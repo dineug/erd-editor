@@ -213,7 +213,7 @@ describe('Toolbar', () => {
       expect(app.store.state.settings.zoomLevel).toBe(0.5);
     });
 
-    it('clamps the zoom level to the maximum of 100%', async () => {
+    it('clamps the zoom level to the maximum of 150%', async () => {
       const { app } = await setup();
       const el = input('zoom level');
 
@@ -221,8 +221,27 @@ describe('Toolbar', () => {
       el.dispatchEvent(new Event('change', { bubbles: true }));
       await flush();
 
-      expect(el.value).toBe('100%');
-      expect(app.store.state.settings.zoomLevel).toBe(1);
+      expect(el.value).toBe('150%');
+      expect(app.store.state.settings.zoomLevel).toBe(1.5);
+    });
+
+    it('takes a magnifying zoom typed into the toolbar', async () => {
+      const { app } = await setup();
+      const el = input('zoom level');
+
+      el.value = '150';
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      await flush();
+
+      expect(el.value).toBe('150%');
+      expect(app.store.state.settings.zoomLevel).toBe(1.5);
+
+      el.value = '120';
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      await flush();
+
+      expect(el.value).toBe('120%');
+      expect(app.store.state.settings.zoomLevel).toBe(1.2);
     });
 
     it('clamps the zoom level to the minimum of 10%', async () => {

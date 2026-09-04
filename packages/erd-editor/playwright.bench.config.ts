@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 5175);
+// A large corpus loads slowly on purpose — that load is one of the
+// measurements — and the xlarge one is another order of magnitude again, so
+// the ceiling is tunable instead of a number to come back and edit.
+const TIMEOUT_MS = Number(process.env.E2E_BENCH_TIMEOUT) || 180_000;
 // Vite's dev server binds to localhost only; 127.0.0.1 is refused.
 const BASE_URL = `http://localhost:${PORT}`;
 
@@ -16,8 +20,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  // A large corpus loads slowly on purpose — that load is one of the measurements.
-  timeout: 180_000,
+  timeout: TIMEOUT_MS,
   reporter: [['list']],
   use: {
     baseURL: BASE_URL,
@@ -44,7 +47,5 @@ export default defineConfig({
     timeout: 120_000,
     stdout: 'ignore',
     stderr: 'pipe',
-    // vite.config.ts opens a browser on serve; this keeps the run headless.
-    env: { E2E: '1' },
   },
 });

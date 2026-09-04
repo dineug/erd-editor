@@ -1,4 +1,5 @@
 import { Point } from '@/internal-types';
+import { type NudgeMemo } from '@/utils/draw-relationship/incremental';
 import {
   countBlocked,
   type Obstacles,
@@ -151,7 +152,8 @@ function moveSlot(slot: Slot, coordinate: number) {
 export function nudgeRoutes(
   routes: Map<string, Point[]>,
   obstacles: Obstacles,
-  endpoints: Map<string, [string, string]>
+  endpoints: Map<string, [string, string]>,
+  memo?: NudgeMemo
 ) {
   const vertical: Slot[] = [];
   const horizontal: Slot[] = [];
@@ -177,7 +179,7 @@ export function nudgeRoutes(
     let channel: Slot[] = [];
     const flush = () => {
       if (channel.length > 1) {
-        separateRuns(channel, axis, obstacles, endpoints);
+        separateRuns(channel, axis, obstacles, endpoints, memo);
       }
       channel = [];
     };
@@ -205,7 +207,8 @@ function separateRuns(
   channel: Slot[],
   axis: Slot[],
   obstacles: Obstacles,
-  endpoints: Map<string, [string, string]>
+  endpoints: Map<string, [string, string]>,
+  memo?: NudgeMemo
 ) {
   channel.sort((a, b) => a.low - b.low || compareSlots(a, b));
 
@@ -213,7 +216,7 @@ function separateRuns(
   let reach = -Infinity;
 
   const flush = () => {
-    if (group.length > 1) separate(group, axis, obstacles, endpoints);
+    if (group.length > 1) separate(group, axis, obstacles, endpoints, memo);
     group = [];
     // Reset with the group. Carrying the previous reach forward joins every
     // later segment on this line into one giant group, spread so far apart that
@@ -319,6 +322,24 @@ function separate(
   group: Slot[],
   axis: Slot[],
   obstacles: Obstacles,
+  endpoints: Map<string, [string, string]>,
+  memo?: NudgeMemo
+) {
+  if (!memo) {
+    separateGroup(group, axis, obstacles, endpoints);
+    return;
+  }
+  if (replay(group, memo)) return;
+
+  const before = group.map(slot => slot.coordinate);
+  separateGroup(group, axis, obstacles, endpoints);
+  markMoved(group, before, memo);
+}
+
+function separateGroup(
+  group: Slot[],
+  axis: Slot[],
+  obstacles: Obstacles,
   endpoints: Map<string, [string, string]>
 ) {
   // A channel is collected by proximity, so most groups arrive already legible.
@@ -374,6 +395,66 @@ function separate(
   // none removed anything leave the group where the router put it: moving
   // segments that end up as overlapped as they started only adds crossings.
   if (best && bestLeft < before) apply(group, best);
+}
+
+/**
+ * Puts a group back where the last sort drew it, when nothing this sort changed
+ * can reach it. The routes are the ones that sort ended with, so the layout it
+ * chose is still the answer and none of the scoring below has to run.
+ */
+function replay(group: Slot[], memo: NudgeMemo) {
+  const coordinates: number[] = [];
+
+  for (const slot of group) {
+    if (memo.dirty.has(slot.relationshipId)) return false;
+
+    const coordinate = memo.coordinate(
+      slot.relationshipId,
+      slot.index,
+      slot.vertical
+    );
+    if (coordinate === undefined) return false;
+    if (
+      memo.lanes.hits(
+        slot.vertical,
+        slot.coordinate,
+        coordinate,
+        slot.low,
+        slot.high
+      )
+    ) {
+      return false;
+    }
+
+    coordinates.push(coordinate);
+  }
+
+  apply(group, coordinates);
+  return true;
+}
+
+/**
+ * Records where a group that was actually laid out ended up, so the groups after
+ * it see the change. The runs on either side keep their own lane and change
+ * length, so the far end of each is marked on the other axis.
+ */
+function markMoved(group: Slot[], before: number[], memo: NudgeMemo) {
+  group.forEach((slot, index) => {
+    const from = before[index];
+    const to = slot.coordinate;
+    if (Math.abs(to - from) < 0.5) return;
+
+    memo.lanes.markSpan(slot.vertical, from, to, slot.low, slot.high);
+
+    const a = slot.points[slot.index];
+    const b = slot.points[slot.index + 1];
+    const low = Math.min(from, to);
+    const high = Math.max(from, to);
+    const first = slot.vertical ? a.y : a.x;
+    const second = slot.vertical ? b.y : b.x;
+    memo.lanes.markSpan(!slot.vertical, first, first, low, high);
+    memo.lanes.markSpan(!slot.vertical, second, second, low, high);
+  });
 }
 
 /**

@@ -1,16 +1,18 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  Mock,
-  vi,
-} from 'vite-plus/test';
+import type { ForceLink } from 'd3-force';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { createVisualization } from '@/components/visualization/createVisualization';
+import {
+  convertVisualization,
+  createVisualization,
+  Group,
+  linkEnds,
+  LinkKind,
+  type Visualization,
+  type VisualizationLink,
+  type VisualizationNode,
+} from '@/components/visualization/createVisualization';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
@@ -21,10 +23,8 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 
-type Props = Parameters<typeof createVisualization>[1];
-
 const contexts: AppContext[] = [];
-const created: Array<ReturnType<typeof createVisualization>> = [];
+const created: Visualization[] = [];
 
 function createApp(): AppContext {
   const app = createTestAppContext();
@@ -32,21 +32,10 @@ function createApp(): AppContext {
   return app;
 }
 
-function createProps(): {
-  [K in keyof Props]: Mock<Props[K]>;
-} {
-  return {
-    onDragStart: vi.fn<Props['onDragStart']>(),
-    onDragEnd: vi.fn<Props['onDragEnd']>(),
-    onStartPreview: vi.fn<Props['onStartPreview']>(),
-    onEndPreview: vi.fn<Props['onEndPreview']>(),
-  };
-}
-
-function create(app: AppContext, props: Props) {
-  const svg = createVisualization(app.store.state, props);
-  created.push(svg);
-  return svg;
+function create(app: AppContext): Visualization {
+  const visualization = createVisualization(app.store.state);
+  created.push(visualization);
+  return visualization;
 }
 
 function addTable(app: AppContext, id: string, name: string) {
@@ -63,129 +52,82 @@ function addColumn(app: AppContext, tableId: string, id: string, name: string) {
   );
 }
 
-const circlesOf = (svg: ReturnType<typeof createVisualization>) =>
-  Array.from(
-    (svg.node() as SVGSVGElement).querySelectorAll('circle')
-  ) as SVGCircleElement[];
-
-const linesOf = (svg: ReturnType<typeof createVisualization>) =>
-  Array.from(
-    (svg.node() as SVGSVGElement).querySelectorAll('line')
-  ) as SVGLineElement[];
-
-/** happy-dom never runs the d3 force timer eagerly, so wait for a real frame. */
-async function waitForTick(svg: ReturnType<typeof createVisualization>) {
-  for (let i = 0; i < 50; i++) {
-    if (circlesOf(svg).every(circle => circle.hasAttribute('cx'))) return;
-    await new Promise(resolve => setTimeout(resolve, 4));
-  }
-  throw new Error('the force simulation never ticked');
-}
-
-/**
- * happy-dom's createSVGPoint() has no matrixTransform, which is the branch
- * d3-selection's pointer() takes for svg nodes. Give it just enough shape
- * for d3-drag to compute a position.
- */
-let pointerAt: [number, number] = [0, 0];
-
-function stubSvgGeometry() {
-  const matrix = { inverse: () => matrix };
-  // d3-drag only binds its touch listeners to "ontouchstart" in node elements.
-  Object.defineProperty(SVGCircleElement.prototype, 'ontouchstart', {
-    configurable: true,
-    writable: true,
-    value: null,
-  });
-  vi.spyOn(SVGSVGElement.prototype as any, 'createSVGPoint').mockImplementation(
-    () => ({
-      x: 0,
-      y: 0,
-      matrixTransform: () => ({ x: pointerAt[0], y: pointerAt[1] }),
+function addRelationship(
+  app: AppContext,
+  id: string,
+  start: string,
+  end: string
+) {
+  app.store.dispatchSync(
+    addRelationshipAction({
+      id,
+      relationshipType: 4,
+      start: { tableId: start, columnIds: [] },
+      end: { tableId: end, columnIds: [] },
     })
   );
-  vi.spyOn(SVGGElement.prototype as any, 'getScreenCTM').mockReturnValue(
-    matrix
-  );
 }
 
-const mouse = (
-  target: EventTarget,
-  type: string,
-  clientX: number,
-  clientY: number
-) =>
-  target.dispatchEvent(
-    new MouseEvent(type, { bubbles: true, view: window, clientX, clientY })
-  );
+const idsOf = (nodes: VisualizationNode[]) => nodes.map(node => node.id);
 
-type TouchLike = { identifier: number; clientX: number; clientY: number };
+/** Resolves on the next step of the layout, which d3 runs on its own timer. */
+function nextTick(visualization: Visualization): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error('the force simulation never ticked')),
+      2000
+    );
 
-/** happy-dom has no TouchEvent; d3-drag only reads changedTouches. */
-function touch(type: string, touches: TouchLike[]): Event {
-  const event = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperty(event, 'changedTouches', { value: touches });
-  return event;
+    visualization.simulation.on('tick.spec', () => {
+      clearTimeout(timeout);
+      visualization.simulation.on('tick.spec', null);
+      resolve();
+    });
+  });
 }
 
 afterEach(() => {
-  created.splice(0).forEach(svg => svg.remove());
+  created.splice(0).forEach(({ simulation }) => simulation.stop());
   contexts.splice(0).forEach(app => app.store.destroy());
-  pointerAt = [0, 0];
-  delete (SVGCircleElement.prototype as any).ontouchstart;
-  vi.restoreAllMocks();
 });
 
-describe('createVisualization', () => {
-  it('creates a detached svg root with a link group and a node group', () => {
+describe('convertVisualization', () => {
+  it('reads an empty document as an empty graph', () => {
     const app = createApp();
-    const svg = create(app, createProps());
-    const node = svg.node() as SVGSVGElement;
 
-    expect(node).toBeTruthy();
-    expect(node.tagName.toLowerCase()).toBe('svg');
-    expect(node.parentNode).toBeNull();
-
-    const groups = Array.from(node.children);
-    expect(groups).toHaveLength(2);
-    expect(groups[0].getAttribute('stroke')).toBe('#999');
-    expect(groups[0].getAttribute('stroke-opacity')).toBe('0.6');
-    expect(groups[1].getAttribute('stroke')).toBe('#fff');
-    expect(groups[1].getAttribute('stroke-width')).toBe('1.5');
+    expect(convertVisualization(app.store.state)).toEqual({
+      nodes: [],
+      links: [],
+    });
   });
 
-  it('renders nothing for an empty document', () => {
-    const app = createApp();
-    const svg = create(app, createProps());
-
-    expect(circlesOf(svg)).toHaveLength(0);
-    expect(linesOf(svg)).toHaveLength(0);
-  });
-
-  it('renders one circle per table and per column', () => {
+  it('makes one node per table and per column, each with its name', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
     addColumn(app, 't1', 'c1', 'id');
     addColumn(app, 't1', 'c2', 'name');
 
-    const svg = create(app, createProps());
+    const { nodes } = convertVisualization(app.store.state);
 
-    expect(circlesOf(svg)).toHaveLength(3);
-    circlesOf(svg).forEach(circle => {
-      expect(circle.getAttribute('r')).toBe('5');
-      expect(circle.getAttribute('fill')).toMatch(/^#/);
-    });
+    expect(
+      nodes.map(({ id, group, name, tableId }) => [id, group, name, tableId])
+    ).toEqual([
+      ['t1', Group.table, 'users', null],
+      ['c1', Group.column, 'id', 't1'],
+      ['c2', Group.column, 'name', 't1'],
+    ]);
   });
 
-  it('colors tables and columns with two distinct ordinal scale values', () => {
+  it('leaves every node unplaced, which is what asks d3 for a spiral', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
-    addColumn(app, 't1', 'c1', 'id');
 
-    const svg = create(app, createProps());
-    const [table, column] = circlesOf(svg);
+    const [node] = convertVisualization(app.store.state).nodes;
 
-    expect(table.getAttribute('fill')).not.toBe(column.getAttribute('fill'));
+    expect(node.x).toBeNaN();
+    expect(node.y).toBeNaN();
+    expect(node.fx).toBeNull();
+    expect(node.fy).toBeNull();
   });
 
   it('links every column back to the table that owns it', () => {
@@ -194,254 +136,161 @@ describe('createVisualization', () => {
     addColumn(app, 't1', 'c1', 'id');
     addColumn(app, 't1', 'c2', 'name');
 
-    const svg = create(app, createProps());
+    const { links } = convertVisualization(app.store.state);
 
-    expect(linesOf(svg)).toHaveLength(2);
-    linesOf(svg).forEach(line => {
-      expect(line.getAttribute('stroke-width')).toBe(String(Math.sqrt(2)));
-    });
+    expect(links).toEqual([
+      { id: 't1-c1', kind: LinkKind.column, source: 't1', target: 'c1' },
+      { id: 't1-c2', kind: LinkKind.column, source: 't1', target: 'c2' },
+    ]);
   });
 
-  it('adds one extra link per relationship between two different tables', () => {
+  it('adds one link per relationship between two different tables', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
     addTable(app, 't2', 'posts');
-    app.store.dispatchSync(
-      addRelationshipAction({
-        id: 'r1',
-        relationshipType: 4,
-        start: { tableId: 't1', columnIds: [] },
-        end: { tableId: 't2', columnIds: [] },
-      })
-    );
+    addRelationship(app, 'r1', 't1', 't2');
 
-    const svg = create(app, createProps());
+    const { links } = convertVisualization(app.store.state);
 
-    expect(linesOf(svg)).toHaveLength(1);
+    expect(links).toEqual([
+      {
+        id: 't1-t2',
+        kind: LinkKind.relationship,
+        source: 't1',
+        target: 't2',
+      },
+    ]);
   });
 
   it('deduplicates relationships that repeat the same ordered table pair', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
     addTable(app, 't2', 'posts');
-    app.store.dispatchSync(
-      addRelationshipAction({
-        id: 'r1',
-        relationshipType: 4,
-        start: { tableId: 't1', columnIds: [] },
-        end: { tableId: 't2', columnIds: [] },
-      }),
-      addRelationshipAction({
-        id: 'r2',
-        relationshipType: 4,
-        start: { tableId: 't1', columnIds: [] },
-        end: { tableId: 't2', columnIds: [] },
-      })
-    );
+    addRelationship(app, 'r1', 't1', 't2');
+    addRelationship(app, 'r2', 't1', 't2');
 
-    const svg = create(app, createProps());
-
-    expect(linesOf(svg)).toHaveLength(1);
+    expect(convertVisualization(app.store.state).links).toHaveLength(1);
   });
 
   it('keeps both orientations because the dedupe key is order sensitive', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
     addTable(app, 't2', 'posts');
-    app.store.dispatchSync(
-      addRelationshipAction({
-        id: 'r1',
-        relationshipType: 4,
-        start: { tableId: 't1', columnIds: [] },
-        end: { tableId: 't2', columnIds: [] },
-      }),
-      addRelationshipAction({
-        id: 'r2',
-        relationshipType: 4,
-        start: { tableId: 't2', columnIds: [] },
-        end: { tableId: 't1', columnIds: [] },
-      })
-    );
+    addRelationship(app, 'r1', 't1', 't2');
+    addRelationship(app, 'r2', 't2', 't1');
 
-    const svg = create(app, createProps());
-
-    expect(linesOf(svg)).toHaveLength(2);
+    expect(convertVisualization(app.store.state).links).toHaveLength(2);
   });
 
   it('ignores self referencing relationships', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
-    app.store.dispatchSync(
-      addRelationshipAction({
-        id: 'r1',
-        relationshipType: 4,
-        start: { tableId: 't1', columnIds: [] },
-        end: { tableId: 't1', columnIds: [] },
-      })
+    addRelationship(app, 'r1', 't1', 't1');
+
+    expect(convertVisualization(app.store.state).links).toEqual([]);
+  });
+
+  it('skips a relationship whose table is not in the document', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addRelationship(app, 'r1', 't1', 'ghost');
+
+    expect(convertVisualization(app.store.state).links).toEqual([]);
+  });
+});
+
+describe('createVisualization', () => {
+  it('hands back the graph with a running layout over it', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addColumn(app, 't1', 'c1', 'id');
+
+    const { nodes, links, simulation } = create(app);
+
+    expect(idsOf(nodes)).toEqual(['t1', 'c1']);
+    expect(links).toHaveLength(1);
+    expect(simulation.nodes()).toBe(nodes);
+    expect(simulation.alpha()).toBeGreaterThan(0);
+  });
+
+  it('places every node before it returns', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addTable(app, 't2', 'posts');
+    addColumn(app, 't1', 'c1', 'id');
+
+    const { nodes } = create(app);
+
+    for (const node of nodes) {
+      expect(Number.isFinite(node.x)).toBe(true);
+      expect(Number.isFinite(node.y)).toBe(true);
+    }
+    // The spiral d3 lays nodes out on puts no two on one point.
+    expect(new Set(nodes.map(({ x, y }) => `${x},${y}`)).size).toBe(3);
+  });
+
+  it('resolves both ends of every link to the nodes they named', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addTable(app, 't2', 'posts');
+    addColumn(app, 't1', 'c1', 'id');
+    addRelationship(app, 'r1', 't1', 't2');
+
+    const { nodes, links } = create(app);
+    const [table, column, other] = nodes;
+
+    expect(linkEnds(links[0])).toEqual([table, column]);
+    expect(linkEnds(links[1])).toEqual([table, other]);
+    expect(linkEnds(links[0])[0]).toBe(table);
+  });
+
+  it('rests a column close to its table and two tables further apart', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addTable(app, 't2', 'posts');
+    addColumn(app, 't1', 'c1', 'id');
+    addRelationship(app, 'r1', 't1', 't2');
+
+    const { links, simulation } = create(app);
+    const link = simulation.force('link') as ForceLink<
+      VisualizationNode,
+      VisualizationLink
+    >;
+    const distance = link.distance() as (link: VisualizationLink) => number;
+
+    expect(distance(links[0])).toBeLessThan(distance(links[1]));
+  });
+
+  it('moves the nodes on every step of the layout', async () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addColumn(app, 't1', 'c1', 'id');
+    addColumn(app, 't1', 'c2', 'name');
+
+    const visualization = create(app);
+    const before = visualization.nodes.map(({ x, y }) => ({ x, y }));
+
+    await nextTick(visualization);
+
+    const moved = visualization.nodes.filter(
+      ({ x, y }, index) => x !== before[index].x || y !== before[index].y
     );
-
-    const svg = create(app, createProps());
-
-    expect(linesOf(svg)).toHaveLength(0);
+    expect(moved.length).toBeGreaterThan(0);
   });
 
-  describe('preview handlers', () => {
-    it('reports only the table id when a table node is hovered', () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      addColumn(app, 't1', 'c1', 'id');
-      const props = createProps();
-      const svg = create(app, props);
+  it('holds a pinned node where it was pinned through a step', async () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addColumn(app, 't1', 'c1', 'id');
 
-      const [tableCircle] = circlesOf(svg);
-      tableCircle.dispatchEvent(new MouseEvent('mouseenter'));
+    const visualization = create(app);
+    const [table] = visualization.nodes;
+    table.fx = 40;
+    table.fy = -30;
 
-      expect(props.onStartPreview).toHaveBeenCalledTimes(1);
-      const [event, tableId, columnId] = props.onStartPreview.mock.calls[0];
-      expect(event).toBeInstanceOf(MouseEvent);
-      expect(tableId).toBe('t1');
-      expect(columnId).toBeNull();
-    });
+    await nextTick(visualization);
 
-    it('reports both ids when a column node is hovered', () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      addColumn(app, 't1', 'c1', 'id');
-      const props = createProps();
-      const svg = create(app, props);
-
-      const [, columnCircle] = circlesOf(svg);
-      columnCircle.dispatchEvent(new MouseEvent('mouseenter'));
-
-      const [, tableId, columnId] = props.onStartPreview.mock.calls[0];
-      expect(tableId).toBe('t1');
-      expect(columnId).toBe('c1');
-    });
-
-    it('ends the preview on mouseleave', () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      const props = createProps();
-      const svg = create(app, props);
-
-      circlesOf(svg)[0].dispatchEvent(new MouseEvent('mouseleave'));
-
-      expect(props.onEndPreview).toHaveBeenCalledTimes(1);
-      expect(props.onStartPreview).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('tick', () => {
-    it('projects the simulated coordinates onto the circles and lines', async () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      addColumn(app, 't1', 'c1', 'id');
-      const svg = create(app, createProps());
-
-      await waitForTick(svg);
-
-      const circles = circlesOf(svg);
-      const lines = linesOf(svg);
-
-      expect(Number(circles[0].getAttribute('cx'))).not.toBeNaN();
-      expect(Number(circles[0].getAttribute('cy'))).not.toBeNaN();
-      expect(circles[0].getAttribute('cx')).toBeTruthy();
-      expect(circles[0].getAttribute('cy')).toBeTruthy();
-      expect(lines[0].getAttribute('x1')).toBeTruthy();
-      expect(lines[0].getAttribute('y1')).toBeTruthy();
-      expect(lines[0].getAttribute('x2')).toBeTruthy();
-      expect(lines[0].getAttribute('y2')).toBeTruthy();
-    });
-
-    it('anchors each link between the coordinates of its two endpoints', async () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      addColumn(app, 't1', 'c1', 'id');
-      const svg = create(app, createProps());
-
-      await waitForTick(svg);
-
-      const [table, column] = circlesOf(svg);
-      const [line] = linesOf(svg);
-
-      expect(line.getAttribute('x1')).toBe(table.getAttribute('cx'));
-      expect(line.getAttribute('y1')).toBe(table.getAttribute('cy'));
-      expect(line.getAttribute('x2')).toBe(column.getAttribute('cx'));
-      expect(line.getAttribute('y2')).toBe(column.getAttribute('cy'));
-    });
-  });
-
-  describe('drag behaviour', () => {
-    beforeEach(() => {
-      stubSvgGeometry();
-    });
-
-    it('notifies drag start on mousedown and drag end on mouseup', () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      const props = createProps();
-      const svg = create(app, props);
-      const [circle] = circlesOf(svg);
-
-      mouse(circle, 'mousedown', 10, 20);
-
-      expect(props.onDragStart).toHaveBeenCalledTimes(1);
-      expect(props.onDragEnd).not.toHaveBeenCalled();
-
-      mouse(window, 'mousemove', 40, 60);
-      mouse(window, 'mouseup', 40, 60);
-
-      expect(props.onDragEnd).toHaveBeenCalledTimes(1);
-    });
-
-    it('pins the node while dragging and releases it on drag end', () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      const props = createProps();
-      const svg = create(app, props);
-      const [circle] = circlesOf(svg);
-      const datum = (circle as any).__data__;
-      const startX = datum.x;
-      const startY = datum.y;
-
-      mouse(circle, 'mousedown', 10, 20);
-      expect(datum.fx).toBe(startX);
-      expect(datum.fy).toBe(startY);
-
-      // d3-drag keeps the grab offset, so the datum follows pointer + offset.
-      pointerAt = [111, 222];
-      mouse(window, 'mousemove', 40, 60);
-      expect(datum.fx).toBeCloseTo(111 + startX, 10);
-      expect(datum.fy).toBeCloseTo(222 + startY, 10);
-
-      mouse(window, 'mouseup', 40, 60);
-      expect(datum.fx).toBeNull();
-      expect(datum.fy).toBeNull();
-    });
-
-    // Kept last: d3-drag guards mouse gestures for 500ms after any touch end.
-    it('reports one drag start and one drag end per concurrent touch', () => {
-      const app = createApp();
-      addTable(app, 't1', 'users');
-      const props = createProps();
-      const svg = create(app, props);
-      const [circle] = circlesOf(svg);
-
-      circle.dispatchEvent(
-        touch('touchstart', [
-          { identifier: 1, clientX: 0, clientY: 0 },
-          { identifier: 2, clientX: 5, clientY: 5 },
-        ])
-      );
-      expect(props.onDragStart).toHaveBeenCalledTimes(2);
-
-      circle.dispatchEvent(
-        touch('touchend', [
-          { identifier: 1, clientX: 0, clientY: 0 },
-          { identifier: 2, clientX: 5, clientY: 5 },
-        ])
-      );
-      expect(props.onDragEnd).toHaveBeenCalledTimes(2);
-    });
+    expect(table.x).toBe(40);
+    expect(table.y).toBe(-30);
   });
 });

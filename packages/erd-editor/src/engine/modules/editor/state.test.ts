@@ -10,12 +10,82 @@ import {
   createEditor,
   FocusType,
   hasMoveKeys,
+  isEditingMemo,
+  isEditingText,
   MoveKey,
   SelectType,
 } from '@/engine/modules/editor/state';
 import { createStore } from '@/engine/store';
 
+const focusTable = (edit: boolean) => ({
+  tableId: 't1',
+  columnId: null,
+  focusType: FocusType.tableName,
+  selectColumnIds: [],
+  prevSelectColumnId: null,
+  edit,
+});
+
 describe('editor/state', () => {
+  describe('isEditingMemo', () => {
+    it('is false while no memo body editor is open', () => {
+      expect(isEditingMemo(createEditor())).toBe(false);
+    });
+
+    it('is true while one is, focused table or not', () => {
+      const editor = createEditor();
+      editor.editMemoId = 'm1';
+
+      expect(isEditingMemo(editor)).toBe(true);
+
+      editor.focusTable = focusTable(false);
+      expect(isEditingMemo(editor)).toBe(true);
+    });
+
+    // The state the memo shortcuts used to leak through: a cell in edit mode is
+    // a text editor too, but it is not the memo's, and the grid keys stay the
+    // grid's while it owns them.
+    it('is false while only a table cell is being edited', () => {
+      const editor = createEditor();
+      editor.focusTable = focusTable(true);
+
+      expect(isEditingMemo(editor)).toBe(false);
+    });
+  });
+
+  describe('isEditingText', () => {
+    it('is false while nothing over the scene holds a caret', () => {
+      expect(isEditingText(createEditor())).toBe(false);
+    });
+
+    it('is true while a memo body editor is open', () => {
+      const editor = createEditor();
+      editor.editMemoId = 'm1';
+
+      expect(isEditingText(editor)).toBe(true);
+    });
+
+    it('is true while a table cell is in edit mode, false while merely focused', () => {
+      const editor = createEditor();
+      editor.focusTable = focusTable(false);
+
+      expect(isEditingText(editor)).toBe(false);
+
+      editor.focusTable.edit = true;
+      expect(isEditingText(editor)).toBe(true);
+    });
+
+    // A memo opened over a focused table leaves both set at once, which is the
+    // state every table shortcut used to read as "nothing is being edited".
+    it('is true while a memo is open over a focused, unedited table', () => {
+      const editor = createEditor();
+      editor.focusTable = focusTable(false);
+      editor.editMemoId = 'm1';
+
+      expect(isEditingText(editor)).toBe(true);
+    });
+  });
+
   describe('createEditor', () => {
     it('creates an editor with the documented defaults', () => {
       const editor = createEditor();
@@ -30,6 +100,8 @@ describe('editor/state', () => {
         height: DEFAULT_HEIGHT,
       });
       expect(editor.focusTable).toBeNull();
+      expect(editor.editMemoId).toBeNull();
+      expect(editor.memoScrollTopMap).toEqual({});
       expect(editor.drawRelationship).toBeNull();
       expect(editor.hoverColumnMap).toEqual({});
       expect(editor.hoverRelationshipMap).toEqual({});

@@ -36,7 +36,7 @@ function selectorOf(cssText: string): string {
   return cssText.slice(0, cssText.indexOf('{')).trim();
 }
 
-/** Every rule adopted when all 62 modules share one module registry. */
+/** Every rule adopted when all 55 modules share one module registry. */
 let cumulative: string[] = [];
 /** The css.global half of cumulative, which the bucket keeps in front. */
 let globalRules: string[] = [];
@@ -46,7 +46,6 @@ let sheetsOfEachKind = { global: 0, component: 0 };
 /** Every rule adopted when each module is rendered alone in a fresh registry. */
 let isolated = new Map<string, string[]>();
 
-let canvasSvgScope = '';
 let erdEditorScope = '';
 let codeBlockRootScope = '';
 let codeBlockClipboardScope = '';
@@ -60,15 +59,12 @@ beforeAll(async () => {
     await styleModules[path]();
   }
 
-  const canvasSvg =
-    await import('@/components/erd/canvas/canvas-svg/CanvasSvg.styles');
   const erdEditor = await import('@/components/erd-editor/ErdEditor.styles');
   const codeBlock =
     await import('@/components/primitives/code-block/CodeBlock.styles');
   const colorPicker =
     await import('@/components/primitives/color-picker/ColorPicker.styles');
   const sash = await import('@/components/primitives/sash/Sash.styles');
-  canvasSvgScope = `.${String(canvasSvg.root)}`;
   erdEditorScope = `.${String(erdEditor.root)}`;
   codeBlockRootScope = `.${String(codeBlock.root)}`;
   codeBlockClipboardScope = `.${String(codeBlock.clipboard)}`;
@@ -94,39 +90,12 @@ beforeAll(async () => {
 });
 
 describe('selector-list scope widening', () => {
-  it('scopes all three segments of the CanvasSvg relationship list', () => {
-    const rule = cumulative.find(text => text.includes('.relationship:hover'));
-
-    // before (hand-written pipeline — segments 2 and 3 leaked to the whole document):
-    //   ${scope} .relationship:hover, .relationship[data-hover],
-    //    .relationship.identification[data-hover] { stroke: var(--relationship-hover); }
-    expect(rule).toBe(
-      `${canvasSvgScope} .relationship:hover,` +
-        `${canvasSvgScope} .relationship[data-hover],` +
-        `${canvasSvgScope} .relationship.identification[data-hover]` +
-        ' { stroke: var(--relationship-hover); }'
-    );
-  });
-
-  it('leaves no unscoped segment in that list', () => {
-    const rule = cumulative.find(text =>
-      text.includes('.relationship:hover')
-    ) as string;
-    const segments = selectorOf(rule).split(',');
-
-    expect(segments).toHaveLength(3);
-    for (const segment of segments) {
-      expect(segment.startsWith(`${canvasSvgScope} `)).toBe(true);
-    }
-  });
-
-  it('is the only selector list a scoped template emits, and it is fully scoped', () => {
-    // CanvasSvg.styles.ts holds the single scoped site whose prelude is a comma
-    // list; the other commas are inside declaration values or in a global sheet.
-    // A new list widens this automatically, since it reads every adopted rule.
+  it('scopes every segment of every selector list a scoped template emits', () => {
+    // P6-51 took the one comma-prelude site with the svg scene, so this no longer
+    // pins a count; the proposition it guarded is r-html's, and r-html/src/css/
+    // selector.test.ts now asserts it on the compiler directly.
     const lists = componentRules.filter(text => selectorOf(text).includes(','));
 
-    expect(lists).toHaveLength(1);
     for (const list of lists) {
       for (const segment of selectorOf(list).split(',')) {
         expect(segment).toMatch(SCOPE_CLASS);
@@ -148,26 +117,26 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 62 style modules', () => {
+  it('loads 56 style modules', () => {
     // A new style module is meant to move this number, which is why it is
-    // pinned rather than derived.
-    expect(modulePaths).toHaveLength(62);
+    // pinned rather than derived. P6-51 took six of them with the dom scene.
+    expect(modulePaths).toHaveLength(56);
   });
 
-  it('adopts 622 rules, none of them a duplicate', () => {
+  it('adopts 607 rules, none of them a duplicate', () => {
     // Pinned rather than derived, so a rule added or lost anywhere in the
     // package has to be accounted for here.
-    expect(cumulative).toHaveLength(622);
-    expect(new Set(cumulative).size).toBe(622);
+    expect(cumulative).toHaveLength(607);
+    expect(new Set(cumulative).size).toBe(607);
   });
 
-  it('splits into 327 global rules ahead of 295 component rules', () => {
+  it('splits into 327 global rules ahead of 280 component rules', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 164 });
+    expect(sheetsOfEachKind).toEqual({ global: 5, component: 154 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(295);
+    expect(componentRules).toHaveLength(280);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -182,9 +151,9 @@ describe('rule-count invariance', () => {
     );
 
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
-    // rendered alone or with the other 61 — which is exactly what makes this comparison mean
+    // rendered alone or with the other 55 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(622);
+    expect(union.size).toBe(607);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

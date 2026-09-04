@@ -1,5 +1,5 @@
 import { expect, test } from '../support/fixtures';
-import { CANVAS_ZOOM_MIN, twoTables } from '../support/schema';
+import { CANVAS_ZOOM_MAX, CANVAS_ZOOM_MIN, twoTables } from '../support/schema';
 import { Shortcut, WHEEL_ZOOM_STEP, ZOOM_STEP } from '../support/shortcuts';
 
 /**
@@ -46,22 +46,30 @@ test.describe('zoom, scroll and overlays', () => {
     await erd.focusCanvas();
     const zoom = erd.toolbar.locator('input[title="zoom level"]');
 
-    // A fresh editor is already at the ceiling, so zooming in changes nothing.
-    // The proof is transitive and comes one step later: if this press had gone
-    // through to 1.04, the single zoomOut below would land on 100%, not 96%.
+    // A fresh editor sits at 1.0, well under the 1.5 ceiling, so this press
+    // has to go through. The zoomOut after it lands back on 100% rather than
+    // 96%, which is what says the step before it was taken.
     await erd.press(Shortcut.zoomIn);
-    await expect(zoom).toHaveValue('100%');
+    await expect(zoom).toHaveValue('104%');
+    expect((await erd.settings()).zoomLevel).toBeCloseTo(1 + ZOOM_STEP, 5);
 
     await erd.press(Shortcut.zoomOut);
-    await expect(zoom).toHaveValue('96%');
-    expect((await erd.settings()).zoomLevel).toBeCloseTo(1 - ZOOM_STEP, 5);
-
-    await erd.press(Shortcut.zoomIn);
     await expect(zoom).toHaveValue('100%');
     expect((await erd.settings()).zoomLevel).toBe(1);
 
-    // From 1.0, 23 steps of 0.04 would land at 0.08; the range clamps to 0.1.
-    for (let step = 0; step < 23; step++) {
+    // From 1.0, 13 steps of 0.04 would land at 1.52; the range clamps to 1.5.
+    for (let step = 0; step < 13; step++) {
+      await erd.press(Shortcut.zoomIn);
+    }
+    await expect(zoom).toHaveValue('150%');
+    expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MAX);
+
+    await erd.press(Shortcut.zoomIn);
+    await expect(zoom).toHaveValue('150%');
+    expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MAX);
+
+    // From 1.5, 36 steps of 0.04 would land at 0.06; the range clamps to 0.1.
+    for (let step = 0; step < 36; step++) {
       await erd.press(Shortcut.zoomOut);
     }
     await expect(zoom).toHaveValue('10%');

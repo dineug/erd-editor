@@ -1,4 +1,3 @@
-import { toBlob } from 'html-to-image';
 import { DateTime } from 'luxon';
 import {
   afterEach,
@@ -9,6 +8,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { createDocumentPng } from '@/services/export-png';
 import {
   exportJSON,
   exportPNG,
@@ -16,11 +16,17 @@ import {
   setExportFileCallback,
 } from '@/utils/file/exportFile';
 
-vi.mock('html-to-image', () => ({
-  toBlob: vi.fn(),
+vi.mock('@/services/export-png', () => ({
+  createDocumentPng: vi.fn(),
 }));
 
-const toBlobMock = vi.mocked(toBlob);
+const createDocumentPngMock = vi.mocked(createDocumentPng);
+
+const pngRequest = () => ({
+  doc: '{"version":"3.0.0"}',
+  theme: { canvasBackground: '#000000' } as any,
+  toWidth: (text: string) => text.length,
+});
 
 const FIXED_TIME = new Date(2024, 2, 9, 4, 5, 6);
 
@@ -36,7 +42,7 @@ describe('exportFile', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(FIXED_TIME);
-    toBlobMock.mockReset();
+    createDocumentPngMock.mockReset();
   });
 
   afterEach(() => {
@@ -102,30 +108,41 @@ describe('exportFile', () => {
   });
 
   describe('exportPNG', () => {
-    it('exports the blob produced by html-to-image', async () => {
+    it('exports the blob the document renderer produced', async () => {
       const png = new Blob(['png'], { type: 'image/png' });
-      toBlobMock.mockResolvedValue(png);
+      createDocumentPngMock.mockResolvedValue(png);
       const calls: Array<[Blob, { fileName: string }]> = [];
       setExportFileCallback((blob, options) => calls.push([blob, options]));
 
-      const root = document.createElement('div');
-      exportPNG(root, 'diagram');
-      await vi.waitFor(() => expect(calls).toHaveLength(1));
+      const request = pngRequest();
+      await exportPNG(request, 'diagram');
 
-      expect(toBlobMock).toHaveBeenCalledWith(root);
+      expect(createDocumentPngMock).toHaveBeenCalledWith(request);
       expect(calls[0][0]).toBe(png);
       expect(calls[0][1].fileName).toBe(`diagram-${nowPrefix()}.png`);
     });
 
-    it('does nothing when html-to-image resolves null', async () => {
-      toBlobMock.mockResolvedValue(null);
+    it('renders from the document rather than from anything on screen', async () => {
+      createDocumentPngMock.mockResolvedValue(
+        new Blob(['png'], { type: 'image/png' })
+      );
+      setExportFileCallback(() => {});
+
+      await exportPNG(pngRequest());
+
+      const [request] = createDocumentPngMock.mock.calls[0];
+      expect(request.doc).toBe('{"version":"3.0.0"}');
+      expect(Reflect.has(request, 'root')).toBe(false);
+    });
+
+    it('rejects rather than writing a file when the render fails', async () => {
+      createDocumentPngMock.mockRejectedValue(new Error('no offscreen canvas'));
       const callback = vi.fn();
       setExportFileCallback(callback);
 
-      exportPNG(document.createElement('div'));
-      await Promise.resolve();
-      await Promise.resolve();
-
+      await expect(exportPNG(pngRequest())).rejects.toThrow(
+        'no offscreen canvas'
+      );
       expect(callback).not.toHaveBeenCalled();
     });
   });

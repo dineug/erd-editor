@@ -10,6 +10,7 @@ describe('Toast.styles', () => {
   it('exports every section token as a distinct class identifier', () => {
     const identifiers = [
       styles.root,
+      styles.indicator,
       styles.textWrap,
       styles.title,
       styles.description,
@@ -30,9 +31,20 @@ describe('Toast.styles', () => {
     expect(text).toContain('border-radius: 6px');
   });
 
+  it('paints the ring in the active color over the toast border, turning while busy', () => {
+    const text = staticText(styles.indicator);
+    expect(text).toContain('color: var(--active)');
+    expect(text).toContain("& [data-part='track']");
+    expect(text).toContain('stroke: var(--toast-border)');
+    expect(text).toContain('stroke: currentColor');
+    expect(text).toContain('transition: stroke-dashoffset');
+    expect(text).toContain('&[data-busy] svg');
+    expect(text).toContain('@keyframes toastSpin');
+  });
+
   it('spaces the stacked text rows apart from each other', () => {
     const text = staticText(styles.textWrap);
-    expect(text).toContain('word-break: break-all');
+    expect(text).toContain('overflow-wrap: anywhere');
     expect(text).toContain('& > div');
     expect(text).toContain('& > div:last-child');
   });

@@ -4,10 +4,12 @@ import {
   createRef,
   defineCustomElement,
   FC,
+  nextTick,
   observable,
   onMounted,
   ref,
   useProvider,
+  watch,
 } from '@dineug/r-html';
 import { fromEvent, throttleTime } from 'rxjs';
 
@@ -20,6 +22,7 @@ import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Settings from '@/components/settings/Settings';
 import Theme from '@/components/theme/Theme';
 import ThemeBuilder from '@/components/theme-builder/ThemeBuilder';
+import { themeContext } from '@/components/themeContext';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import Toolbar from '@/components/toolbar/Toolbar';
 import Visualization from '@/components/visualization/Visualization';
@@ -35,6 +38,7 @@ import {
 import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { observeThemeOverrides, resolveHostTheme } from '@/konva/theme';
 import { getSchemaGCService } from '@/services/schema-gc';
 import { procGC } from '@/services/schema-gc/procGC';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
@@ -115,14 +119,35 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       app: appContextValue,
       root,
     });
+  // Konva resolves no custom property, so the scene reads the palette as values
+  // off this provider. What it carries is the cascade's answer rather than the
+  // preset, which is how an --erd-editor-* override reaches a painted node.
+  const sceneTheme = observable<ThemeType>({ ...theme }, { shallow: true });
+  const themeProvider = useProvider(ctx, themeContext, sceneTheme);
   const { store, keydown$, emitter } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
+
+  const resolveSceneTheme = () => {
+    Object.assign(sceneTheme, resolveHostTheme(ctx, theme));
+  };
+
+  /**
+   * Coalesces the reads a burst of mutations would each ask for. nextTick keys
+   * on the function, so one pass runs however many triggers arrive, and it
+   * lands after the style block a theme change rewrites.
+   */
+  const scheduleSceneTheme = () => {
+    nextTick(resolveSceneTheme);
+  };
+
   const state = observable({
     isFocus: false,
     mouseTracking: false,
   });
 
   destroySet.add(provider.destroy);
+  destroySet.add(themeProvider.destroy);
+  destroySet.add(watch(theme).subscribe(scheduleSceneTheme));
   destroySet.add(
     emitter.on({
       mouseTrackerStart: () => {
@@ -134,6 +159,11 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     })
   );
 
+  /**
+   * Puts the keyboard back inside the element after a field it was in went
+   * away. Retargeting reports the host for anything focused in the shadow root,
+   * so a caret that is already inside is left where it is.
+   */
   const checkAndFocus = () => {
     setTimeout(() => {
       if (document.activeElement !== ctx) {
@@ -194,6 +224,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   onMounted(() => {
     ctx.focus();
+    resolveSceneTheme();
+    addUnsubscribe(observeThemeOverrides(ctx, scheduleSceneTheme));
 
     const $root = root.value;
     const resizeObserver = new ResizeObserver(entries => {
@@ -212,8 +244,11 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         resizeObserver.unobserve($root);
         resizeObserver.disconnect();
       },
+      // The trailing edge is the load-bearing one: the last event of a burst is
+      // the one describing the focus the element is left holding, and dropping
+      // it parks the keyboard outside with the focus ring still painted.
       fromEvent(ctx, focusEvent.type)
-        .pipe(throttleTime(50))
+        .pipe(throttleTime(50, undefined, { leading: true, trailing: true }))
         .subscribe(checkAndFocus),
       fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
     );

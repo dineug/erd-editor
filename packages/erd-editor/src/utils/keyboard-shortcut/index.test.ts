@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createKeyBindingMap,
+  isComposing,
   isMod,
   KeyBindingName,
   KeyBindingNameList,
@@ -201,6 +202,35 @@ describe('keyboard-shortcut', () => {
     it('works with mouse events too', () => {
       expect(isMod(new MouseEvent('click', { ctrlKey: true }))).toBe(true);
       expect(isMod(new MouseEvent('click'))).toBe(false);
+    });
+  });
+
+  describe('isComposing', () => {
+    it('is false for a press the IME never touched', () => {
+      expect(isComposing(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(
+        false
+      );
+    });
+
+    it('reads the flag the browser sets during a composition', () => {
+      const event = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        isComposing: true,
+      });
+
+      expect(isComposing(event)).toBe(true);
+    });
+
+    // Safari reports the composition only through the legacy keyCode on the
+    // press that opens it, which is the one that would otherwise leak.
+    it('reads the legacy keyCode a browser sends instead of the flag', () => {
+      const event = new KeyboardEvent('keydown', {
+        key: 'Process',
+        keyCode: 229,
+      });
+
+      expect(event.isComposing).toBe(false);
+      expect(isComposing(event)).toBe(true);
     });
   });
 

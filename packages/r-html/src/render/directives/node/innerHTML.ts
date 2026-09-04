@@ -1,5 +1,5 @@
 import { createNodeDirective } from '@/render/directives/nodeDirective';
-import { insertBeforeNode, rangeNodes, removeNode } from '@/render/helper';
+import { insertBeforeNode, removeRange } from '@/render/helper';
 
 export const innerHTML = createNodeDirective(
   (value: string) => value,
@@ -7,7 +7,7 @@ export const innerHTML = createNodeDirective(
     let prevValue: string | null = null;
 
     const destroy = () => {
-      rangeNodes(startNode, endNode).forEach(removeNode);
+      removeRange(startNode, endNode);
     };
 
     return value => {

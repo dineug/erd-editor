@@ -1,4 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
+import { createInRange } from '@dineug/shared';
 import {
   forceCollide,
   forceLink,
@@ -6,7 +7,7 @@ import {
   forceSimulation,
   forceX,
   forceY,
-} from 'd3';
+} from 'd3-force';
 
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
@@ -72,6 +73,30 @@ function createNodes(
   });
 
   return [nodes, links];
+}
+
+const progressInRange = createInRange(0, 1);
+
+/** The two readings of a simulation's heat that its progress is taken from. */
+type Cooling = {
+  alpha(): number;
+  alphaMin(): number;
+};
+
+/**
+ * How far a placement has run, from 0 to 1. The simulation cools by a fixed
+ * factor a tick until its heat reaches the floor it stops at, so the log of
+ * the heat over the log of that floor is the share of the ticks it will take.
+ *
+ * @example
+ * simulation.on('tick.progress', () => {
+ *   state.progress = placementProgress(simulation);
+ * });
+ */
+export function placementProgress(simulation: Cooling): number {
+  return progressInRange(
+    Math.log(simulation.alpha()) / Math.log(simulation.alphaMin())
+  );
 }
 
 export function createAutomaticTablePlacement(state: RootState) {

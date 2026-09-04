@@ -46,7 +46,34 @@ const DUPLICATE_EVENT_SUFFIX = /__\d+$/;
  */
 const HTML_TAG = '__rHtml';
 const SVG_TAG = '__rSvg';
+const KONVA_TAG = '__rKonva';
 const DEFAULT_IMPORT_SOURCE = '@dineug/r-html';
+
+/** The alias each template tag is emitted under, keyed by the tag it stands for. */
+const TAG_ALIAS = {
+  html: HTML_TAG,
+  svg: SVG_TAG,
+  konva: KONVA_TAG,
+} as const;
+
+/**
+ * The prefix every konva tag carries. rect, circle, line and path are taken by
+ * SVG already, so a konva scene never spells a bare name.
+ */
+const KONVA_TAG_PREFIX = 'k-';
+
+/** Child expressions a konva node cannot hold — a shape takes no string or number. */
+const PRIMITIVE_EXPRESSIONS = new Set(['StringLiteral', 'NumericLiteral']);
+
+/** Attributes a konva node never carries; z-order and the DOM value paths are the host's. */
+const KONVA_FORBIDDEN_ATTRS = new Set(['class', 'style', 'zIndex']);
+
+/** The file pragma, which is the only thing that picks a host. */
+const JSX_HOST_PRAGMA = /@jsxHost\s+(\S+)/;
+
+type Host = 'dom' | 'konva';
+
+type Tag = keyof typeof TAG_ALIAS;
 
 const SKIP_KEYS = new Set([
   'loc',
@@ -125,15 +152,21 @@ function meaningfulChildren(children: Node[]): Node[] {
 }
 
 class Codegen {
-  readonly used = { html: false, svg: false };
+  readonly used = { html: false, svg: false, konva: false };
 
   constructor(
     private readonly code: string,
-    private readonly filename: string
+    private readonly filename: string,
+    private readonly host: Host = 'dom'
   ) {}
 
-  /** html or svg — decided once, at the root of each emitted template. */
-  private resolveTag(node: Node): 'html' | 'svg' {
+  /**
+   * html, svg or konva — decided once, at the root of each emitted template.
+   * A konva file answers before the root is read, since the host is the file's.
+   */
+  private resolveTag(node: Node): Tag {
+    if (this.host === 'konva') return 'konva';
+
     const element =
       node.type === 'JSXElement'
         ? node
@@ -157,7 +190,7 @@ class Codegen {
         : this.emitElement(node);
 
     this.used[tag] = true;
-    return `${tag === 'svg' ? SVG_TAG : HTML_TAG}\`${body}\``;
+    return `${TAG_ALIAS[tag]}\`${body}\``;
   }
 
   /** Source text of an expression, with any JSX inside it converted first. */
@@ -177,9 +210,17 @@ class Codegen {
 
   private emitAttributes(attributes: Node[], isComponent: boolean): string {
     let out = '';
+    const isKonvaNode = this.host === 'konva' && !isComponent;
 
     for (const attr of attributes) {
       if (attr.type === 'JSXSpreadAttribute') {
+        if (isKonvaNode) {
+          return fail(
+            attr,
+            this.filename,
+            'a spread on a k-* tag is not supported; it would reach the node through Reflect.set, which the konva host does not read. Name the attributes.'
+          );
+        }
         out += ` ...\${${this.emitExpr(attr.argument)}}`;
         continue;
       }
@@ -219,6 +260,13 @@ class Codegen {
                     `unknown attribute namespace \`${ns}:\`. Use bool:, on:, prop: or use:.`
                   );
       } else if (name.type === 'JSXIdentifier') {
+        if (isKonvaNode && KONVA_FORBIDDEN_ATTRS.has(name.name)) {
+          return fail(
+            attr,
+            this.filename,
+            `\`${name.name}\` is not a konva attribute. class and style commit through an HTMLElement check a konva node never passes, and z-order belongs to the host.`
+          );
+        }
         // Every component attribute carries the dot. Both spellings reach the
         // same prop destination, but getAttrType reads any bare name starting
         // with on as an event, so an undotted one would vanish.
@@ -275,8 +323,9 @@ class Codegen {
         );
       }
       const inner = this.emitChildren(node.children);
-      this.used.html = true;
-      out += ` .children=\${${HTML_TAG}\`${inner}\`}`;
+      const tag: Tag = this.host === 'konva' ? 'konva' : 'html';
+      this.used[tag] = true;
+      out += ` .children=\${${TAG_ALIAS[tag]}\`${inner}\`}`;
     }
 
     // r-html has no slot: a component tag never carries markup children, so it
@@ -284,9 +333,30 @@ class Codegen {
     return `${out} />`;
   }
 
+  /** One file, one host: a konva file holds only k-* tags, and a dom file none. */
+  private checkHost(node: Node, tag: string) {
+    const isKonvaTag = tag.startsWith(KONVA_TAG_PREFIX);
+
+    if (this.host === 'konva' && !isKonvaTag) {
+      return fail(
+        node,
+        this.filename,
+        `<${tag}> is a DOM tag in a @jsxHost konva file, where every intrinsic is k-*. Move the DOM markup to a file of its own.`
+      );
+    }
+    if (this.host !== 'konva' && isKonvaTag) {
+      return fail(
+        node,
+        this.filename,
+        `<${tag}> needs the @jsxHost konva pragma at the top of the file. The host is a file's, never a tag's.`
+      );
+    }
+  }
+
   private emitIntrinsic(node: Node): string {
     const opening = node.openingElement;
     const tag = nameSource(opening.name, this.filename);
+    this.checkHost(node, tag);
     const attrs = this.emitAttributes(opening.attributes, false);
     const children = meaningfulChildren(node.children);
 
@@ -301,17 +371,36 @@ class Codegen {
       : this.emitIntrinsic(node);
   }
 
+  /** A konva tree has no text node, so a bare string or number child has nowhere to land. */
+  private failPrimitiveChild(child: Node): never {
+    return fail(
+      child,
+      this.filename,
+      'a konva tree has no text nodes, so a string or number child has nowhere to land. Put the value on a k-text `text` attribute.'
+    );
+  }
+
   emitChildren(children: Node[]): string {
     let out = '';
 
     for (const child of children) {
       switch (child.type) {
         case 'JSXText': {
-          out += escapeTemplateText(cleanJsxText(child.value));
+          const text = cleanJsxText(child.value);
+          if (text !== '' && this.host === 'konva') {
+            return this.failPrimitiveChild(child);
+          }
+          out += escapeTemplateText(text);
           break;
         }
         case 'JSXExpressionContainer': {
           if (child.expression.type === 'JSXEmptyExpression') break;
+          if (
+            this.host === 'konva' &&
+            PRIMITIVE_EXPRESSIONS.has(child.expression.type)
+          ) {
+            return this.failPrimitiveChild(child);
+          }
           out += `\${${this.emitExpr(child.expression)}}`;
           break;
         }
@@ -347,6 +436,41 @@ class Codegen {
 const lineCount = (value: string) => value.split('\n').length;
 
 /**
+ * The host every template in the file compiles to. A root tag cannot answer
+ * this — a component root, an expression root and a component's children all
+ * reach the emitter with no intrinsic in sight — so the file says it once.
+ */
+function resolveHost(ast: Node, filename: string) {
+  const headerEnd = ast.program.body[0]?.start ?? Infinity;
+  let host: Host = 'dom';
+  let pragma: Node | null = null;
+
+  for (const comment of ast.comments ?? []) {
+    const match = JSX_HOST_PRAGMA.exec(comment.value);
+    if (!match) continue;
+
+    if (comment.type !== 'CommentBlock' || comment.start > headerEnd) {
+      return fail(
+        comment,
+        filename,
+        '@jsxHost is read from a block comment above the first statement. Anywhere else it decides nothing.'
+      );
+    }
+    if (match[1] !== 'dom' && match[1] !== 'konva') {
+      return fail(
+        comment,
+        filename,
+        `unknown jsx host \`${match[1]}\`. Use @jsxHost dom or @jsxHost konva.`
+      );
+    }
+    host = match[1];
+    pragma = comment;
+  }
+
+  return { host, pragma };
+}
+
+/**
  * Rewrites every JSX tree as the tagged template it stands for and leaves the
  * rest of the file byte for byte. The output is spliced rather than re-printed,
  * and each replacement is padded back to the line count it replaced.
@@ -354,7 +478,8 @@ const lineCount = (value: string) => value.split('\n').length;
 export function transformJsxToTagged(
   code: string,
   filename = '<unknown>',
-  importSource = DEFAULT_IMPORT_SOURCE
+  importSource = DEFAULT_IMPORT_SOURCE,
+  konvaImportSource?: string
 ) {
   const ast = parseSync(code, {
     babelrc: false,
@@ -370,7 +495,16 @@ export function transformJsxToTagged(
   const roots = findOutermostJsx(ast.program);
   if (!roots.length) return null;
 
-  const codegen = new Codegen(code, filename);
+  const { host, pragma } = resolveHost(ast, filename);
+  if (host === 'konva' && !konvaImportSource) {
+    fail(
+      pragma,
+      filename,
+      '@jsxHost konva needs the konvaImportSource option — nothing else tells this plugin where the konva tag lives.'
+    );
+  }
+
+  const codegen = new Codegen(code, filename, host);
   let out = code;
 
   for (const root of roots.reverse()) {
@@ -389,10 +523,17 @@ export function transformJsxToTagged(
     codegen.used.svg && `svg as ${SVG_TAG}`,
   ].filter(Boolean);
 
+  // Two sources, never two imports: a file is one host, so the konva tag and
+  // the r-html tags are mutually exclusive.
+  const imports = [
+    specifiers.length &&
+      `import { ${specifiers.join(', ')} } from '${importSource}';`,
+    codegen.used.konva &&
+      `import { konva as ${KONVA_TAG} } from '${konvaImportSource}';`,
+  ].filter(Boolean);
+
   // Prepended without a newline so it shares line 1 with whatever was already
   // there. An import on its own line would push the whole file down one and
   // undo the line-count padding above.
-  return specifiers.length
-    ? `import { ${specifiers.join(', ')} } from '${importSource}';${out}`
-    : out;
+  return `${imports.join('')}${out}`;
 }

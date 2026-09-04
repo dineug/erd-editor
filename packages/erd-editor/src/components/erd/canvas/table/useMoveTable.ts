@@ -1,54 +1,23 @@
-import { useAppContext } from '@/components/appContext';
-import { tryStartAltDragDuplicate } from '@/components/erd/canvas/altDragDuplicate';
-import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
+import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import { SelectType } from '@/engine/modules/editor/state';
-import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import { Ctx, Table } from '@/internal-types';
-import { drag$, DragMove } from '@/utils/globalEventObservable';
-import { isMod } from '@/utils/keyboard-shortcut';
+
+/**
+ * Where a table drag never starts. The colour bar opens the picker, a column row
+ * starts its own drag, an icon is a button and a header cell takes focus, so
+ * each of the four owns the gesture that lands on it.
+ */
+const BLOCKED_KINDS = [
+  'table-header-color',
+  'column-row',
+  'icon',
+  'input-padding',
+];
 
 export function useMoveTable(ctx: Ctx, props: { table: Table }) {
-  const app = useAppContext(ctx);
-
-  const handleMove = ({ event, movementX, movementY }: DragMove) => {
-    event.type === 'mousemove' && event.preventDefault();
-    const { store } = app.value;
-    store.dispatch(moveAllAction$(movementX, movementY));
-  };
-
-  const onMoveStart = (event: MouseEvent | TouchEvent) => {
-    const el = event.target as HTMLElement | null;
-    if (!el) return;
-
-    const { store } = app.value;
-    const canDrag =
-      !el.closest('.table-header-color') &&
-      !el.closest('.column-row') &&
-      !el.closest('.icon') &&
-      !el.closest('.input-padding');
-
-    // move$ is not share()d and mutates module-global prevX/prevY, so
-    // a second concurrent drag$ subscriber always reads movementX === 0.
-    if (
-      canDrag &&
-      tryStartAltDragDuplicate(
-        app.value,
-        event,
-        props.table.id,
-        SelectType.table
-      )
-    ) {
-      return;
-    }
-
-    store.dispatch(selectTableAction$(props.table.id, isMod(event)));
-
-    if (canDrag) {
-      drag$.subscribe(handleMove);
-    }
-  };
-
-  return {
-    onMoveStart,
-  };
+  return useMoveEntity(ctx, {
+    entityId: () => props.table.id,
+    selectType: SelectType.table,
+    blockedKinds: BLOCKED_KINDS,
+  });
 }

@@ -15,10 +15,14 @@ import { ColumnOption, RelationshipType } from '@/constants/schema';
 import { History } from '@/engine/history';
 import {
   changeOpenMapAction,
+  editMemoAction,
+  editMemoEndAction,
+  editTableAction,
   focusColumnAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
+import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
@@ -991,5 +995,395 @@ describe('useErdShortcut - gating and teardown', () => {
     await flush();
 
     expect(app.store.state.doc.tableIds).toHaveLength(0);
+  });
+});
+
+/**
+ * Every chord that has to stand down while a text editor owns the keyboard, as
+ * the store sees it. stop, undo and redo are deliberately absent: they keep
+ * working from inside an editor and are pinned by their own tests below.
+ */
+const BLOCKED_SHORTCUTS = [
+  KeyBindingName.edit,
+  KeyBindingName.addTable,
+  KeyBindingName.addColumn,
+  KeyBindingName.addMemo,
+  KeyBindingName.removeTable,
+  KeyBindingName.removeColumn,
+  KeyBindingName.primaryKey,
+  KeyBindingName.selectAllTable,
+  KeyBindingName.selectAllColumn,
+  KeyBindingName.relationshipZeroOne,
+  KeyBindingName.relationshipZeroN,
+  KeyBindingName.relationshipOneOnly,
+  KeyBindingName.relationshipOneN,
+  KeyBindingName.tableProperties,
+  KeyBindingName.zoomIn,
+  KeyBindingName.zoomOut,
+];
+
+/** The traversal keys handleKeydown answers, which shortcut$ never carries. */
+const BLOCKED_KEYS = [
+  { key: 'ArrowUp' },
+  { key: 'ArrowDown' },
+  { key: 'ArrowLeft' },
+  { key: 'ArrowRight' },
+  { key: 'Tab' },
+  { key: 'Tab', shiftKey: true },
+];
+
+const keyName = ({ key, shiftKey }: { key: string; shiftKey?: boolean }) =>
+  shiftKey ? `Shift+${key}` : key;
+
+/** Everything a leaked chord would move, read straight off the store. */
+const snapshot = (app: AppContext) => {
+  const { doc, editor, settings, collections } = app.store.state;
+  const focusTable = editor.focusTable;
+
+  return {
+    tableIds: [...doc.tableIds],
+    memoIds: [...doc.memoIds],
+    columnIds: Object.values(collections.tableEntities).map(table => [
+      table.id,
+      [...table.columnIds],
+    ]),
+    options: Object.values(collections.tableColumnEntities).map(column => [
+      column.id,
+      column.options,
+    ]),
+    selectedMap: { ...editor.selectedMap },
+    editMemoId: editor.editMemoId,
+    drawRelationship: editor.drawRelationship,
+    zoomLevel: settings.zoomLevel,
+    focusTable: focusTable
+      ? {
+          tableId: focusTable.tableId,
+          columnId: focusTable.columnId,
+          focusType: focusTable.focusType,
+          selectColumnIds: [...focusTable.selectColumnIds],
+          edit: focusTable.edit,
+        }
+      : null,
+  };
+};
+
+type Seeded = {
+  app: AppContext;
+  tableId: string;
+  columnId: string;
+  memoId: string;
+};
+
+/**
+ * A memo, a table and a focused column. Every state below is one more dispatch
+ * on top of this, taken from the action path the matching gesture runs.
+ */
+const seedScene = async (): Promise<Seeded> => {
+  const app = await setup();
+  shortcut(app, KeyBindingName.addMemo);
+  await flush();
+  const [memoId] = app.store.state.doc.memoIds;
+  const tableId = seedTable(app);
+  const columnId = seedColumn(app, tableId);
+  return { app, tableId, columnId, memoId };
+};
+
+const enterMemoEdit = ({ app, memoId }: Seeded) => {
+  app.store.dispatchSync(selectMemoAction$(memoId, false));
+  app.store.dispatchSync(editMemoAction({ id: memoId }));
+};
+
+const enterMemoEditFocusTable = ({ app, memoId }: Seeded) => {
+  app.store.dispatchSync(selectMemoAction$(memoId, true));
+  app.store.dispatchSync(editMemoAction({ id: memoId }));
+};
+
+const enterCellEdit = ({ app }: Seeded) => {
+  app.store.dispatchSync(editTableAction());
+};
+
+const enterCellEditThenMemo = (seeded: Seeded) => {
+  enterCellEdit(seeded);
+  enterMemoEditFocusTable(seeded);
+};
+
+/**
+ * The keys a state answers on purpose. A cell editor sits inside the grid, so
+ * Enter closes it and Tab steps to the next cell; a memo editor sits in front
+ * of no grid, and once one is open it owns even those.
+ */
+const CELL_EDIT_OWNS = {
+  shortcuts: [KeyBindingName.edit] as string[],
+  keys: ['Tab', 'Shift+Tab'],
+};
+
+const OWNS_NOTHING = { shortcuts: [] as string[], keys: [] as string[] };
+
+const EDITING_STATES = [
+  ['memoEdit', enterMemoEdit, { focusTable: false, edit: false }, OWNS_NOTHING],
+  [
+    'memoEditFocusTable',
+    enterMemoEditFocusTable,
+    { focusTable: true, edit: false },
+    OWNS_NOTHING,
+  ],
+  ['cellEdit', enterCellEdit, { focusTable: true, edit: true }, CELL_EDIT_OWNS],
+  [
+    'cellEditThenMemo',
+    enterCellEditThenMemo,
+    { focusTable: true, edit: true },
+    OWNS_NOTHING,
+  ],
+] as const;
+
+describe('useErdShortcut - a text editor owns the keyboard', () => {
+  // The axis seven rounds of measurement went without: whether a table is still
+  // focused underneath. Only a $mod gesture leaves both set, and every table
+  // shortcut is unreachable without it, so a grid missing it proves nothing.
+  it.each(EDITING_STATES)(
+    '%s is the state it claims to be',
+    async (_name, enter, expected) => {
+      const seeded = await seedScene();
+      enter(seeded);
+      await flush();
+
+      const { editor } = seeded.app.store.state;
+      expect(Boolean(editor.focusTable)).toBe(expected.focusTable);
+      expect(Boolean(editor.focusTable?.edit)).toBe(expected.edit);
+      expect(editor.editMemoId).toBe(
+        _name === 'cellEdit' ? null : seeded.memoId
+      );
+    }
+  );
+
+  for (const [name, enter, , owns] of EDITING_STATES) {
+    describe(name, () => {
+      const shortcuts = BLOCKED_SHORTCUTS.filter(
+        type => !owns.shortcuts.includes(type)
+      );
+      const keys = BLOCKED_KEYS.filter(
+        init => !owns.keys.includes(keyName(init))
+      );
+
+      it.each(shortcuts)('%s changes nothing', async type => {
+        const seeded = await seedScene();
+        enter(seeded);
+        await flush();
+
+        const before = snapshot(seeded.app);
+        shortcut(seeded.app, type);
+        await flush();
+
+        expect(snapshot(seeded.app)).toEqual(before);
+      });
+
+      it.each(keys.map(init => [keyName(init), init] as const))(
+        '%s moves no focus and is left to the caret',
+        async (_label, init) => {
+          const seeded = await seedScene();
+          enter(seeded);
+          await flush();
+
+          const before = snapshot(seeded.app);
+          const event = new KeyboardEvent('keydown', {
+            ...init,
+            cancelable: true,
+          });
+          seeded.app.keydown$.next(event);
+          await flush();
+          await new Promise(resolve => setTimeout(resolve, 10));
+          await flush();
+
+          expect(snapshot(seeded.app)).toEqual(before);
+          expect(event.defaultPrevented).toBe(false);
+        }
+      );
+    });
+  }
+});
+
+describe('useErdShortcut - the chords are live once the editor closes', () => {
+  const closeMemo = async (seeded: Seeded) => {
+    seeded.app.store.dispatchSync(editMemoEndAction());
+    await flush();
+  };
+
+  // The positive control for the grid above. Same seed, same chords, memo shut:
+  // every one of them lands, so "nothing changed" was the guard and not a state
+  // with nothing left to change.
+  it('removes the focused column again', async () => {
+    const seeded = await seedScene();
+    enterMemoEditFocusTable(seeded);
+    await flush();
+    await closeMemo(seeded);
+
+    shortcut(seeded.app, KeyBindingName.removeColumn);
+    await flush();
+
+    expect(getTable(seeded.app, seeded.tableId)?.columnIds).toHaveLength(0);
+  });
+
+  it('toggles the primary key again', async () => {
+    const seeded = await seedScene();
+    enterMemoEditFocusTable(seeded);
+    await flush();
+    await closeMemo(seeded);
+
+    shortcut(seeded.app, KeyBindingName.primaryKey);
+    await flush();
+
+    expect(
+      bHas(
+        getColumn(seeded.app, seeded.columnId)!.options,
+        ColumnOption.primaryKey
+      )
+    ).toBe(true);
+  });
+
+  it('moves the focus ring again', async () => {
+    const seeded = await seedScene();
+    enterMemoEditFocusTable(seeded);
+    await flush();
+    await closeMemo(seeded);
+
+    seeded.app.keydown$.next(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+    await flush();
+
+    expect(seeded.app.store.state.editor.focusTable?.columnId).toBeNull();
+  });
+
+  it('adds a table again', async () => {
+    const seeded = await seedScene();
+    enterMemoEditFocusTable(seeded);
+    await flush();
+    await closeMemo(seeded);
+
+    shortcut(seeded.app, KeyBindingName.addTable);
+    await flush();
+
+    expect(seeded.app.store.state.doc.tableIds).toHaveLength(2);
+  });
+});
+
+describe('useErdShortcut - what a text editor never takes', () => {
+  it('lets Enter end a cell edit while no memo is open', async () => {
+    const seeded = await seedScene();
+    enterCellEdit(seeded);
+    await flush();
+
+    shortcut(seeded.app, KeyBindingName.edit);
+    await flush();
+
+    expect(seeded.app.store.state.editor.focusTable?.edit).toBe(false);
+  });
+
+  it('lets Tab keep walking the grid from inside a cell editor', async () => {
+    const seeded = await seedScene();
+    enterCellEdit(seeded);
+    await flush();
+    const before = seeded.app.store.state.editor.focusTable?.focusType;
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      cancelable: true,
+    });
+    seeded.app.keydown$.next(event);
+    await flush();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(seeded.app.store.state.editor.focusTable?.focusType).not.toBe(
+      before
+    );
+  });
+
+  // Tab is the one traversal key an open cell editor still answers, which makes
+  // it the only one an IME composition can be measured against here.
+  it.each([
+    ['isComposing', { isComposing: true }],
+    ['keyCode 229', { keyCode: 229 }],
+  ])('leaves Tab to the IME while it reports %s', async (_label, composing) => {
+    const seeded = await seedScene();
+    enterCellEdit(seeded);
+    await flush();
+    const before = seeded.app.store.state.editor.focusTable?.focusType;
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      cancelable: true,
+      ...composing,
+    });
+    seeded.app.keydown$.next(event);
+    await flush();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    await flush();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(seeded.app.store.state.editor.focusTable?.focusType).toBe(before);
+  });
+
+  it.each(EDITING_STATES)('%s still answers stop', async (_name, enter) => {
+    const seeded = await seedScene();
+    enter(seeded);
+    await flush();
+
+    shortcut(seeded.app, KeyBindingName.stop);
+    await flush();
+
+    expect(seeded.app.store.state.editor.focusTable).toBeNull();
+    expect(seeded.app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it.each(EDITING_STATES)(
+    '%s still answers undo and redo',
+    async (_name, enter) => {
+      const undo = vi.fn();
+      const redo = vi.fn();
+      const history = {
+        cursor: -1,
+        size: 0,
+        hasUndo: () => false,
+        hasRedo: () => false,
+        undo,
+        redo,
+        push: vi.fn(),
+        clear: vi.fn(),
+        setLimit: vi.fn(),
+        clone: () => history,
+      } as unknown as History;
+      const app = await setup(
+        createTestAppContext({ getHistory: () => history })
+      );
+      shortcut(app, KeyBindingName.addMemo);
+      await flush();
+      const [memoId] = app.store.state.doc.memoIds;
+      const tableId = seedTable(app);
+      const columnId = seedColumn(app, tableId);
+      enter({ app, tableId, columnId, memoId });
+      await flush();
+
+      shortcut(app, KeyBindingName.undo);
+      shortcut(app, KeyBindingName.redo);
+      await flush();
+
+      expect(undo).toHaveBeenCalledTimes(1);
+      expect(redo).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('leaves the clipboard to the memo textarea the caret is in', async () => {
+    const seeded = await seedScene();
+    enterMemoEditFocusTable(seeded);
+    await flush();
+
+    const textarea = document.createElement('textarea');
+    const { event, setData, preventDefault } = createClipboardEvent(
+      {},
+      textarea
+    );
+    seeded.app.emitter.emit(copyAction({ event }));
+    await flush();
+
+    expect(setData).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
   });
 });

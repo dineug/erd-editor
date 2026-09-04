@@ -68,6 +68,6 @@ listeners. It carries no transport and is `private: true`, which is why the Inte
 
 ### External
 
-Build- and test-only: `vite-plugin-dts` (with `@typescript/typescript6`) for declaration emit, `tslib`.
+Build- and test-only: `vite-plugin-dts` (with `@typescript/typescript6`) for declaration emit.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

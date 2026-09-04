@@ -2,15 +2,28 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { rHtml } from '@dineug/vite-plugin-r-html';
-import { defineConfig } from 'vite-plus';
+import {
+  defaultExclude,
+  defineConfig,
+  type UserWorkspaceConfig,
+} from 'vite-plus';
+import { playwright } from 'vite-plus/test/browser-playwright';
 
 const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
+const browserSpecs = 'src/**/*.browser.test.{ts,tsx}';
 
-export default defineConfig({
-  // Vitest does not read vite.config.ts, so the JSX transform repeats here or a
-  // .tsx spec reaches oxc with its JSX intact. The HMR half is off: it would
-  // switch on state recording in every component the specs never asked for.
-  plugins: [rHtml({ refresh: false })],
+/**
+ * What both projects carry and inherit from nowhere: Vitest reads neither
+ * vite.config.ts nor the root config a project sits in. A missing define
+ * leaves __APP_VERSION__ undefined and kills every spec reaching schema-gc.
+ */
+const createSharedConfig = (): UserWorkspaceConfig => ({
+  // The JSX transform repeats here or a .tsx spec reaches oxc with its JSX
+  // intact. The HMR half is off, and the konva specifier is what a @jsxHost
+  // konva spec compiles against; the plugin refuses the pragma without it.
+  plugins: [
+    rHtml({ jsx: { konvaImportSource: '@/konva/host' }, refresh: false }),
+  ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -19,10 +32,44 @@ export default defineConfig({
       '@': join(import.meta.dirname, 'src'),
     },
   },
+});
+
+export default defineConfig({
   test: {
-    include: ['src/**/*.test.{ts,tsx}'],
-    environment: 'happy-dom',
-    setupFiles: ['./vitest.setup.ts'],
+    projects: [
+      {
+        ...createSharedConfig(),
+        test: {
+          name: 'unit',
+          include: ['src/**/*.test.{ts,tsx}'],
+          // A browser spec matches the unit glob too, so the split lives here.
+          // Spreading the default keeps node_modules and .git out, which naming
+          // an exclude at all would otherwise drop.
+          exclude: [...defaultExclude, browserSpecs],
+          environment: 'happy-dom',
+          setupFiles: ['./vitest.setup.ts'],
+          // Three hooks here import the editor graph, whose cold transform
+          // grew past the default when the scene landed in it. The bound suits
+          // a machine running the other packages' suites beside this one.
+          hookTimeout: 60_000,
+        },
+      },
+      {
+        ...createSharedConfig(),
+        test: {
+          name: 'browser',
+          include: [browserSpecs],
+          browser: {
+            enabled: true,
+            provider: playwright(),
+            instances: [{ browser: 'chromium' }],
+            headless: true,
+          },
+        },
+      },
+    ],
+    // Coverage is a root-only option, so the one block below still spans both
+    // projects and the perFile floor keeps the meaning it had before the split.
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
@@ -34,6 +81,10 @@ export default defineConfig({
         'src/internal-types/**',
         'src/__test-utils__/**',
         'src/**/*.worker.ts',
+        // The stage registry the e2e fixture installs. Its guard keeps it out
+        // of a production build and its consumer lives under e2e, which no
+        // coverage run reaches.
+        'src/konva/testHandle.ts',
       ],
       thresholds: {
         perFile: true,

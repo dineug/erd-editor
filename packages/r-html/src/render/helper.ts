@@ -7,6 +7,8 @@ import {
   isUndefined,
 } from '@/helpers/is-type';
 import { VNodeType } from '@/parser/vNode';
+import type { HostAdapter, HostNode } from '@/render/adapter';
+import { domAdapter } from '@/render/domAdapter';
 import { TAttr, TNode } from '@/template/tNode';
 
 type EventTuple = [
@@ -14,37 +16,117 @@ type EventTuple = [
   undefined | boolean | AddEventListenerOptions | EventListenerOptions,
 ];
 
-const createElement = (name: string, isSvg = false) =>
-  isSvg
-    ? document.createElementNS('http://www.w3.org/2000/svg', name)
-    : document.createElement(name);
-
-export const createNode = (
-  { type, value }: TNode,
-  isSvg = false
-): HTMLElement | Text | Comment | SVGElement =>
-  type === VNodeType.element
-    ? createElement(value, isSvg)
-    : type === VNodeType.text
-      ? document.createTextNode(value)
-      : document.createComment(value);
-
 export const isTruthy = (value?: string | null) =>
   Boolean(value) && value !== 'false';
 
-export function setAttr(node: Element, { type, name, value }: TAttr) {
-  switch (type) {
-    case TAttrType.attribute:
-      node.setAttribute(name, value ?? '');
-      break;
-    case TAttrType.boolean:
-      isTruthy(value) && node.setAttribute(name, '');
-      break;
-    case TAttrType.property:
-      Reflect.set(node, name, value, node);
-      break;
-  }
+/**
+ * The host operations a Part needs that are derived from adapter methods
+ * rather than being one. The adapter's own methods ride along, so one object
+ * answers every question a Part asks of its host.
+ */
+export interface HostHelper extends HostAdapter {
+  createNode(tNode: TNode, isSvg?: boolean): HostNode;
+  setAttr(node: HostNode, attr: TAttr): void;
+  insertBeforeNode(newChild: HostNode, refChild: HostNode): void;
+  insertAfterNode(newChild: HostNode, refChild: HostNode): void;
+  removeNode(node: HostNode): HostNode | null;
+  rangeNodes(startNode: HostNode, endNode: HostNode): HostNode[];
+  removeRange(startNode: HostNode, endNode: HostNode): void;
 }
+
+export function createHostHelper(adapter: HostAdapter): HostHelper {
+  const createNode = ({ type, value }: TNode, isSvg = false): HostNode =>
+    type === VNodeType.element
+      ? adapter.createElement(value, isSvg)
+      : type === VNodeType.text
+        ? adapter.createText(value)
+        : adapter.createMarker(value);
+
+  const setAttr = (node: HostNode, { type, name, value }: TAttr) => {
+    switch (type) {
+      case TAttrType.attribute:
+        adapter.setAttribute(node, name, value ?? '', false);
+        break;
+      case TAttrType.boolean:
+        isTruthy(value) && adapter.setAttribute(node, name, '', false);
+        break;
+      case TAttrType.property:
+        Reflect.set(node, name, value, node);
+        break;
+    }
+  };
+
+  const insertBeforeNode = (newChild: HostNode, refChild: HostNode) => {
+    adapter.insertBefore(newChild, refChild);
+  };
+
+  const insertAfterNode = (newChild: HostNode, refChild: HostNode) => {
+    const parent = adapter.parentOf(refChild);
+    if (!parent) return;
+
+    const nextSibling = adapter.nextSiblingOf(refChild);
+    nextSibling
+      ? adapter.insertBefore(newChild, nextSibling)
+      : adapter.appendChild(parent, newChild);
+  };
+
+  const removeNode = (node: HostNode): HostNode | null => {
+    if (!adapter.parentOf(node)) return null;
+
+    adapter.removeChild(node);
+    return node;
+  };
+
+  const rangeNodes = (startNode: HostNode, endNode: HostNode) => {
+    const nodes: HostNode[] = [];
+    let currentNode = adapter.nextSiblingOf(startNode);
+
+    while (currentNode && currentNode !== endNode) {
+      nodes.push(currentNode);
+      currentNode = adapter.nextSiblingOf(currentNode);
+    }
+
+    return nodes;
+  };
+
+  /** Removes every host node a part rendered between its two markers. */
+  const removeRange = (startNode: HostNode, endNode: HostNode) => {
+    rangeNodes(startNode, endNode).forEach(removeNode);
+  };
+
+  return {
+    ...adapter,
+    createNode,
+    setAttr,
+    insertBeforeNode,
+    insertAfterNode,
+    removeNode,
+    rangeNodes,
+    removeRange,
+  };
+}
+
+export const domHelper = createHostHelper(domAdapter);
+
+/** The DOM binding, whose narrower return type its callers and specs read. */
+export const createNode = (
+  tNode: TNode,
+  isSvg = false
+): HTMLElement | Text | Comment | SVGElement =>
+  domHelper.createNode(tNode, isSvg) as
+    | HTMLElement
+    | Text
+    | Comment
+    | SVGElement;
+
+export const setAttr = domHelper.setAttr;
+export const insertBeforeNode = domHelper.insertBeforeNode;
+export const insertAfterNode = domHelper.insertAfterNode;
+export const removeNode = domHelper.removeNode;
+export const rangeNodes = domHelper.rangeNodes;
+export const removeRange = domHelper.removeRange;
+export const isHostNode = domHelper.isHostNode;
+export const isNode = isHostNode;
 
 export function setProps(props: any, { type, name, value }: TAttr) {
   switch (type) {
@@ -83,39 +165,6 @@ export const isEventTuple = (value: EventTuple) =>
   isArray(value) &&
   isFunction(value[0]) &&
   (isUndefined(value[1]) || isBoolean(value[1]) || isObject(value[1]));
-
-export function insertBeforeNode(newChild: Node, refChild: Node) {
-  const parent = refChild.parentNode;
-  if (!parent) return;
-
-  parent.insertBefore(newChild, refChild);
-}
-
-export function insertAfterNode(newChild: Node, refChild: Node) {
-  const parent = refChild.parentNode;
-  if (!parent) return;
-
-  refChild.nextSibling
-    ? parent.insertBefore(newChild, refChild.nextSibling)
-    : parent.appendChild(newChild);
-}
-
-export const removeNode = (node: Node) =>
-  node.parentNode && node.parentNode.removeChild(node);
-
-export const isNode = (value: any): value is Node => value instanceof Node;
-
-export function rangeNodes(startNode: Node, endNode: Node) {
-  const nodes: Node[] = [];
-  let currentNode = startNode.nextSibling;
-
-  while (currentNode && currentNode !== endNode) {
-    nodes.push(currentNode);
-    currentNode = currentNode.nextSibling;
-  }
-
-  return nodes;
-}
 
 export const noop = () => {};
 

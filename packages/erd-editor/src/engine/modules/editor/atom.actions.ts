@@ -9,9 +9,11 @@ import {
 import { createAction } from '@dineug/r-html';
 import { isNill, isString } from '@dineug/shared';
 import { noop } from 'es-toolkit';
-import { isEmpty } from 'es-toolkit/compat';
+import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType } from '@/constants/schema';
+import { createScrollInRange } from '@/engine/modules/settings/atom.actions';
+import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 import { getAbsolutePoint } from '@/utils/dragSelect';
@@ -98,12 +100,29 @@ export const changeViewportAction = createAction<
   ActionMap[typeof ActionType.changeViewport]
 >(ActionType.changeViewport);
 
+/** Pulls both offsets into the travel the viewport and the zoom now allow. */
+function clampScrollOffsets({ settings, editor }: RootState) {
+  const { scrollLeftInRange, scrollTopInRange } = createScrollInRange(
+    settings,
+    editor.viewport
+  );
+
+  settings.scrollLeft = round(scrollLeftInRange(settings.scrollLeft), 4);
+  settings.scrollTop = round(scrollTopInRange(settings.scrollTop), 4);
+}
+
+/**
+ * The screen the canvas is looking through. Growing it widens the travel the
+ * scroll is allowed, and shrinking it narrows it, so the offsets are clamped
+ * again here: a scroll left outside the new range shows a band of nothing.
+ */
 const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
-  { editor },
+  state,
   { payload: { width, height } }
 ) => {
-  editor.viewport.width = width;
-  editor.viewport.height = height;
+  state.editor.viewport.width = width;
+  state.editor.viewport.height = height;
+  clampScrollOffsets(state);
 };
 
 export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
@@ -115,6 +134,18 @@ const clear: ReducerType<typeof ActionType.clear> = state => {
   state.doc = doc;
   state.collections = collections;
 };
+
+/**
+ * The scroll a loaded document carries, pulled into the travel its own zoom
+ * allows. A file can name an offset no zoom below 1 can hold, and the load path
+ * clamps nowhere else, so the first wheel notch would jump the whole distance.
+ */
+function pullScrollIntoRange(state: RootState) {
+  const { viewport } = state.editor;
+  if (!viewport.width || !viewport.height) return;
+
+  clampScrollOffsets(state);
+}
 
 export const loadJsonAction = createAction<
   ActionMap[typeof ActionType.loadJson]
@@ -133,6 +164,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  pullScrollIntoRange(state);
 };
 
 export const initialClearAction = createAction<
@@ -162,6 +194,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  pullScrollIntoRange(state);
 };
 
 export const focusTableAction = createAction<
@@ -325,6 +358,45 @@ const editTableEnd: ReducerType<typeof ActionType.editTableEnd> = ({
 }) => {
   if (!focusTable) return;
   focusTable.edit = false;
+};
+
+export const editMemoAction = createAction<
+  ActionMap[typeof ActionType.editMemo]
+>(ActionType.editMemo);
+
+const editMemo: ReducerType<typeof ActionType.editMemo> = (
+  { editor },
+  { payload: { id } }
+) => {
+  editor.editMemoId = id;
+};
+
+export const editMemoEndAction = createAction<
+  ActionMap[typeof ActionType.editMemoEnd]
+>(ActionType.editMemoEnd);
+
+const editMemoEnd: ReducerType<typeof ActionType.editMemoEnd> = ({
+  editor,
+}) => {
+  editor.editMemoId = null;
+};
+
+export const scrollMemoAction = createAction<
+  ActionMap[typeof ActionType.scrollMemo]
+>(ActionType.scrollMemo);
+
+/**
+ * Only the floor is held here. The ceiling is what the fold overruns the box
+ * by, which takes the leading the scene lays a body out with, so the scene
+ * clamps what it reads rather than the store what it keeps.
+ */
+const scrollMemo: ReducerType<typeof ActionType.scrollMemo> = (
+  { editor },
+  { payload: { id, scrollTop } }
+) => {
+  editor.memoScrollTopMap[id] = Number.isFinite(scrollTop)
+    ? Math.max(0, scrollTop)
+    : 0;
 };
 
 export const selectAllColumnAction = createAction<
@@ -802,6 +874,9 @@ export const editorReducers = {
   [ActionType.focusMoveTable]: focusMoveTable,
   [ActionType.editTable]: editTable,
   [ActionType.editTableEnd]: editTableEnd,
+  [ActionType.editMemo]: editMemo,
+  [ActionType.editMemoEnd]: editMemoEnd,
+  [ActionType.scrollMemo]: scrollMemo,
   [ActionType.selectAllColumn]: selectAllColumn,
   [ActionType.drawStartRelationship]: drawStartRelationship,
   [ActionType.drawStartAddRelationship]: drawStartAddRelationship,
@@ -838,6 +913,9 @@ export const actions = {
   focusMoveTableAction,
   editTableAction,
   editTableEndAction,
+  editMemoAction,
+  editMemoEndAction,
+  scrollMemoAction,
   selectAllColumnAction,
   drawStartRelationshipAction,
   drawStartAddRelationshipAction,

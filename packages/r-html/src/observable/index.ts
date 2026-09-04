@@ -1,7 +1,7 @@
 import { safeCallback } from '@/helpers/fn';
 import { isArray, isObject } from '@/helpers/is-type';
 import { createSubject, Subject } from '@/helpers/subject';
-import { effect, watchEffect } from '@/observable/scheduler';
+import { cancelTask, effect, watchEffect } from '@/observable/scheduler';
 import { addHmrObservable } from '@/render/hmr';
 
 export type PropName = string | number | symbol;
@@ -33,6 +33,7 @@ export function observer(f: Observer): Unsubscribe {
 }
 
 export function unobserve(observer: Observer) {
+  cancelTask(observer);
   const triggers = observerToTriggers.get(observer);
 
   if (triggers) {

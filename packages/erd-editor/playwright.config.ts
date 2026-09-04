@@ -33,6 +33,10 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        // The descriptor pins a Windows user agent, which the editor parses to
+        // decide whether a mouse $mod is Ctrl or Cmd. On a mac host that answer
+        // is Ctrl, and a Ctrl+click there is a right click — see e2e/README.md.
+        userAgent: undefined,
       },
     },
   ],
@@ -43,7 +47,5 @@ export default defineConfig({
     timeout: 120_000,
     stdout: 'ignore',
     stderr: 'pipe',
-    // vite.config.ts opens a browser on serve; this keeps the e2e run headless.
-    env: { E2E: '1' },
   },
 });

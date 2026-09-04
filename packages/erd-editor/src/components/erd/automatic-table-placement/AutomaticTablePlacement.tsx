@@ -1,5 +1,13 @@
 import { query, toJson } from '@dineug/erd-editor-schema';
-import { createRef, FC, Ref, ref, useProvider, watch } from '@dineug/r-html';
+import {
+  createRef,
+  FC,
+  observable,
+  Ref,
+  ref,
+  useProvider,
+  watch,
+} from '@dineug/r-html';
 import { createInRange } from '@dineug/shared';
 import { round } from 'es-toolkit/compat';
 
@@ -30,7 +38,10 @@ import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { closePromise } from '@/utils/promise';
 
 import * as styles from './AutomaticTablePlacement.styles';
-import { createAutomaticTablePlacement } from './createAutomaticTablePlacement';
+import {
+  createAutomaticTablePlacement,
+  placementProgress,
+} from './createAutomaticTablePlacement';
 
 export type AutomaticTablePlacementProps = {
   app: Ref<AppContext>;
@@ -41,6 +52,38 @@ export type TablePoint = {
   id: string;
   x: number;
   y: number;
+};
+
+type PlacementToastProps = {
+  progress: { value: number };
+  onApply: () => void;
+  onCancel: () => void;
+};
+
+/**
+ * The message up while the tables settle, following the simulation as it
+ * cools. Apply takes the layout as it stands, Cancel puts every table back.
+ */
+const PlacementToast: FC<PlacementToastProps> = props => () => {
+  const { value } = props.progress;
+
+  return (
+    <Toast
+      progress={value}
+      description={`Placing tables… ${Math.round(value * 100)}%`}
+      action={
+        <>
+          <Button
+            variant="soft"
+            size="1"
+            text="Apply"
+            onClick={props.onApply}
+          />
+          <Button size="1" text="Cancel" onClick={props.onCancel} />
+        </>
+      }
+    />
+  );
 };
 
 const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
@@ -121,7 +164,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     handleClose();
     originApp.emitter.emit(
       openToastAction({
-        message: <Toast description="Not found tables" />,
+        message: <Toast description="No tables to place" />,
       })
     );
     return () => null;
@@ -149,23 +192,20 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
       handleClose();
     };
 
+    const progress = observable({ value: 0 });
+
+    simulation.on('tick.progress', () => {
+      progress.value = placementProgress(simulation);
+    });
+
     originApp.emitter.emit(
       openToastAction({
         close,
         message: (
-          <Toast
-            description="Automatic Table Placement..."
-            action={
-              <>
-                <Button
-                  variant="soft"
-                  size="1"
-                  text="Stop"
-                  onClick={handleStop}
-                />
-                <Button size="1" text="Cancel" onClick={handleCancel} />
-              </>
-            }
+          <PlacementToast
+            progress={progress}
+            onApply={handleStop}
+            onCancel={handleCancel}
           />
         ),
       })

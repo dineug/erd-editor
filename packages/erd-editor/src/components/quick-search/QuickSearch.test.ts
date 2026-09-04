@@ -15,9 +15,11 @@ import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import {
   changeOpenMapAction,
+  editMemoAction,
   editTableAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
+import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { toggleSearchAction } from '@/utils/emitter';
@@ -181,6 +183,32 @@ describe('QuickSearch', () => {
     const tableId = app.store.state.doc.tableIds[0];
     app.store.dispatchSync(focusTableAction({ tableId }), editTableAction());
     expect(app.store.state.editor.focusTable?.edit).toBe(true);
+
+    await open();
+
+    expect(isOpen()).toBe(false);
+  });
+
+  it('ignores the toggle while a memo body is being edited', async () => {
+    app.store.dispatchSync(addMemoAction$());
+    const [memoId] = app.store.state.doc.memoIds;
+    app.store.dispatchSync(editMemoAction({ id: memoId }));
+
+    await open();
+
+    expect(isOpen()).toBe(false);
+  });
+
+  // The state a $mod click leaves: a memo editor open over a table that still
+  // holds the focus ring, which the old focusTable-only test could not see.
+  it('ignores the toggle while a memo is open over a focused table', async () => {
+    app.store.dispatchSync(addTableAction$());
+    const tableId = app.store.state.doc.tableIds[0];
+    app.store.dispatchSync(addMemoAction$());
+    const [memoId] = app.store.state.doc.memoIds;
+    app.store.dispatchSync(focusTableAction({ tableId }));
+    app.store.dispatchSync(editMemoAction({ id: memoId }));
+    expect(app.store.state.editor.focusTable?.edit).toBe(false);
 
     await open();
 

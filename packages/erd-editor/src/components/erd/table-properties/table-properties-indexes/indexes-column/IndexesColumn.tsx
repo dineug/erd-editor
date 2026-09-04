@@ -2,8 +2,8 @@ import { query } from '@dineug/erd-editor-schema';
 import { createRef, FC, onUpdated, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
 import Icon from '@/components/primitives/icon/Icon';
+import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import { OrderType } from '@/constants/schema';
 import {
   changeIndexColumnOrderTypeAction$,

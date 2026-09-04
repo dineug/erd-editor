@@ -1,3 +1,5 @@
+/** @jsxHost konva */
+
 import { FC, observable, onMounted, repeat, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -6,6 +8,7 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 
 export type SharedMouseTrackerProps = {};
 
+/** One cursor per peer sharing a pointer, on the presence layer. */
 const SharedMouseTracker: FC<SharedMouseTrackerProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();

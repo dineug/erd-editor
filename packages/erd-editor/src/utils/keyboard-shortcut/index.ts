@@ -159,6 +159,18 @@ export function isMod(event: MouseEvent | TouchEvent | KeyboardEvent): boolean {
   return hasAppleDevice() ? event.metaKey : event.ctrlKey;
 }
 
+/** The keyCode a browser reports for a key an IME has taken for itself. */
+const IME_KEY_CODE = 229;
+
+/**
+ * Whether the press still belongs to an IME composition. The browser finishes
+ * the composition on its own, so a binding that fired here would spend a key
+ * the text editor was owed and leave a half-formed syllable behind.
+ */
+export function isComposing(event: KeyboardEvent): boolean {
+  return event.isComposing || event.keyCode === IME_KEY_CODE;
+}
+
 export function simpleShortcutToString(shortcut?: string): string {
   return shortcutToTuple(shortcut)
     .map(([mods, key]) => [...mods, key].join(' + '))

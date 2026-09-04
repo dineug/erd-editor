@@ -42,19 +42,25 @@ export default defineConfig({
       '@': join(import.meta.dirname, 'src'),
     },
   },
+  // A worker entry is bundled by a pass of its own, inheriting no plugin from
+  // the block below. The export worker pulls the scene, which is jsx, so left
+  // out this build dies on the first tsx module that pass reaches.
+  worker: {
+    plugins: () => [
+      lazyPlugins(async () => {
+        const { rHtml } = await import(rHtmlPackage);
+        return [rHtml({ jsx: { konvaImportSource: '@/konva/host' } })];
+      }),
+    ],
+  },
   // Task metadata resolves before workspace dependencies are built on a clean
   // checkout, so loading r-html's generated entry here would make that graph
   // impossible. dts stays eager because Storybook removes it from its copy.
   plugins: [
     lazyPlugins(async () => {
       const { rHtml } = await import(rHtmlPackage);
-      return [rHtml()];
+      return [rHtml({ jsx: { konvaImportSource: '@/konva/host' } })];
     }),
     dts({ tsconfigPath: './tsconfig.build.json' }),
   ],
-  server: {
-    // The Playwright webServer starts this same command; opening a browser
-    // there would race the run.
-    open: !process.env.E2E,
-  },
 });

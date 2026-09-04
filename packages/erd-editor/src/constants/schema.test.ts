@@ -68,9 +68,14 @@ describe('schema constant re-exports', () => {
     expect(CANVAS_SIZE_MIN).toBe(2_000);
     expect(CANVAS_SIZE_MAX).toBe(20_000);
     expect(CANVAS_ZOOM_MIN).toBe(0.1);
-    expect(CANVAS_ZOOM_MAX).toBe(1);
+    expect(CANVAS_ZOOM_MAX).toBe(1.5);
     expect(CANVAS_SIZE_MIN).toBeLessThan(CANVAS_SIZE_MAX);
     expect(CANVAS_ZOOM_MIN).toBeLessThan(CANVAS_ZOOM_MAX);
+  });
+
+  it('carries the magnifying half of the zoom range, not only the shrinking one', () => {
+    expect(CANVAS_ZOOM_MAX).toBeGreaterThan(1);
+    expect(CANVAS_ZOOM_MAX).toBe(SchemaV3Constants.CANVAS_ZOOM_MAX);
   });
 
   it('exposes the built-in canvas type ids', () => {

@@ -1,0 +1,253 @@
+{
+  "label": "dom-xlarge",
+  "createdAt": "2026-08-30T19:12:10.603Z",
+  "metricsVersion": 3,
+  "rows": [
+    {
+      "corpus": "small",
+      "tables": 16,
+      "relationships": 24,
+      "columns": 120,
+      "perf": {
+        "loadMs": 181.09999999403954,
+        "flipsPerMove": 0,
+        "frame": {
+          "count": 120,
+          "min": 14.599999999999909,
+          "p50": 16.699999999999818,
+          "p95": 17.699999999999818,
+          "max": 18.699999999999818,
+          "mean": 16.666666666666668
+        },
+        "frameIdle": {
+          "count": 120,
+          "min": 14.599999999999909,
+          "p50": 16.699999999999932,
+          "p95": 18.200000000000045,
+          "max": 18.799999999999955,
+          "mean": 16.666666666666668
+        },
+        "busyMsPerMove": 0.41166666547457376,
+        "busyRaw": {
+          "dragMs": 118.6999998986721,
+          "idleMs": 69.30000004172325,
+          "clamped": false
+        },
+        "utilization": 0.02465069853141187,
+        "fanOut": {
+          "count": 120,
+          "min": 6,
+          "p50": 6,
+          "p95": 6,
+          "max": 6,
+          "mean": 6
+        },
+        "attrWrites": {
+          "total": 14644,
+          "svg": 14404,
+          "perMove": 122.03333333333333
+        },
+        "moves": 120
+      },
+      "quality": {
+        "segments": 101,
+        "crossingsShared": 3,
+        "crossingsFree": 1,
+        "nodeCrossings": 24,
+        "collinearOverlapPx": 0,
+        "minAnchorPitch": 58.7,
+        "totalLengthPx": 11644,
+        "worstCollinear": null
+      }
+    },
+    {
+      "corpus": "medium",
+      "tables": 40,
+      "relationships": 62,
+      "columns": 302,
+      "perf": {
+        "loadMs": 320,
+        "flipsPerMove": 0.03333333333333333,
+        "frame": {
+          "count": 120,
+          "min": 14.899999999999636,
+          "p50": 16.699999999999818,
+          "p95": 18.200000000000273,
+          "max": 18.5,
+          "mean": 16.666666666666668
+        },
+        "frameIdle": {
+          "count": 120,
+          "min": 15,
+          "p50": 16.699999999999818,
+          "p95": 17.899999999999864,
+          "max": 18.40000000000009,
+          "mean": 16.6675
+        },
+        "busyMsPerMove": 1.7299999995778004,
+        "busyRaw": {
+          "dragMs": 289.7999999374151,
+          "idleMs": 82.19999998807907,
+          "clamped": false
+        },
+        "utilization": 0.1035928143459772,
+        "fanOut": {
+          "count": 120,
+          "min": 7,
+          "p50": 7,
+          "p95": 7,
+          "max": 8,
+          "mean": 7.016666666666667
+        },
+        "attrWrites": {
+          "total": 17116,
+          "svg": 16876,
+          "perMove": 142.63333333333333
+        },
+        "moves": 120
+      },
+      "quality": {
+        "segments": 375,
+        "crossingsShared": 16,
+        "crossingsFree": 80,
+        "nodeCrossings": 70,
+        "collinearOverlapPx": 0,
+        "minAnchorPitch": 44.8,
+        "totalLengthPx": 48432,
+        "worstCollinear": null
+      }
+    },
+    {
+      "corpus": "large",
+      "tables": 56,
+      "relationships": 120,
+      "columns": 456,
+      "perf": {
+        "loadMs": 411.79999999701977,
+        "flipsPerMove": 0.05,
+        "frame": {
+          "count": 120,
+          "min": 14.799999999999727,
+          "p50": 16.699999999999818,
+          "p95": 17.5,
+          "max": 18.5,
+          "mean": 16.666666666666668
+        },
+        "frameIdle": {
+          "count": 120,
+          "min": 14.900000000000091,
+          "p50": 16.699999999999932,
+          "p95": 17.799999999999727,
+          "max": 18.40000000000009,
+          "mean": 16.666666666666668
+        },
+        "busyMsPerMove": 4.4341666659961145,
+        "busyRaw": {
+          "dragMs": 624.599999949336,
+          "idleMs": 92.50000002980232,
+          "clamped": false
+        },
+        "utilization": 0.26551896203569836,
+        "fanOut": {
+          "count": 120,
+          "min": 11,
+          "p50": 11,
+          "p95": 14,
+          "max": 17,
+          "mean": 11.216666666666667
+        },
+        "attrWrites": {
+          "total": 27384,
+          "svg": 27144,
+          "perMove": 228.2
+        },
+        "moves": 120
+      },
+      "quality": {
+        "segments": 751,
+        "crossingsShared": 81,
+        "crossingsFree": 549,
+        "nodeCrossings": 164,
+        "collinearOverlapPx": 2721,
+        "minAnchorPitch": 37.3,
+        "totalLengthPx": 119832,
+        "worstCollinear": {
+          "length": 765,
+          "axis": "vertical",
+          "a": "r91",
+          "b": "r104",
+          "aEnds": "t8.right→t39.left",
+          "bEnds": "t12.bottom→t43.top",
+          "aPath": "(539,563)-(1733,563) (1733,563)-(1741,571) (1741,571)-(1741,1491) (1741,1491)-(1749,1499) (1749,1499)-(2942,1499)",
+          "bPath": "(1966,702)-(1966,710) (1966,710)-(1958,718) (1958,718)-(1749,718) (1749,718)-(1741,726) (1741,726)-(1741,1737) (1741,1737)-(1733,1745) (1733,1745)-(1515,1745) (1515,1745)-(1508,1752) (1508,1752)-(1508,1760)"
+        }
+      }
+    },
+    {
+      "corpus": "xlarge",
+      "tables": 1000,
+      "relationships": 1600,
+      "columns": 7600,
+      "perf": {
+        "loadMs": 7372.5,
+        "flipsPerMove": 0.016666666666666666,
+        "frame": {
+          "count": 120,
+          "min": 32.79999999999927,
+          "p50": 632.6999999999989,
+          "p95": 666.6999999999971,
+          "max": 1218.300000000003,
+          "mean": 351.24916666666667
+        },
+        "frameIdle": {
+          "count": 120,
+          "min": 14.900000000001455,
+          "p50": 16.69999999999891,
+          "p95": 17.399999999999636,
+          "max": 66.70000000000073,
+          "mean": 17.083333333333332
+        },
+        "busyMsPerMove": 345.7233333333085,
+        "busyRaw": {
+          "dragMs": 41534.90000000596,
+          "idleMs": 48.1000000089407,
+          "clamped": false
+        },
+        "utilization": 0.5464253727411239,
+        "fanOut": {
+          "count": 120,
+          "min": 0,
+          "p50": 15,
+          "p95": 15,
+          "max": 15,
+          "mean": 7.5
+        },
+        "attrWrites": {
+          "total": 17726,
+          "svg": 17486,
+          "perMove": 147.71666666666667
+        },
+        "moves": 120
+      },
+      "quality": {
+        "segments": 12322,
+        "crossingsShared": 841,
+        "crossingsFree": 113983,
+        "nodeCrossings": 10192,
+        "collinearOverlapPx": 762686,
+        "minAnchorPitch": 25.1,
+        "totalLengthPx": 8539287,
+        "worstCollinear": {
+          "length": 9539,
+          "axis": "horizontal",
+          "a": "r388",
+          "b": "r1387",
+          "aEnds": "t382.left→t389.right",
+          "bEnds": "t285.left→t483.right",
+          "aPath": "(12573,3880)-(12565,3880) (12565,3880)-(12557,3888) (12557,3888)-(12557,4082) (12557,4082)-(12549,4090) (12549,4090)-(2670,4090) (2670,4090)-(2662,4098) (2662,4098)-(2662,4292) (2662,4292)-(2654,4300) (2654,4300)-(2646,4300)",
+          "bPath": "(12220,2890)-(12217,2890) (12217,2890)-(12217,4083) (12217,4083)-(12209,4091) (12209,4091)-(1827,4091) (1827,4091)-(1819,4099) (1819,4099)-(1819,5280) (1819,5280)-(1811,5288) (1811,5288)-(1748,5288)"
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
+import { CANVAS_ZOOM_MIN } from '@/constants/schema';
+import { getSceneOrigin } from '@/konva/scene/viewport';
 
 export type Segment = {
   relationshipId: string;
@@ -34,6 +36,12 @@ export type Scene = {
   endpoints: Record<string, [string, string]>;
   /** Both ends of every relationship, read from the document. */
   anchors: Anchor[];
+  /**
+   * Connectors the scene actually holds against connectors the document has.
+   * The canvas culls and the dom scene it replaced did not, so a metric read
+   * off a scene where these two differ is measuring a different population.
+   */
+  population: { drawn: number; total: number };
 };
 
 export type QualityMetrics = {
@@ -45,6 +53,9 @@ export type QualityMetrics = {
   /** Infinity when no table side carries two anchors. */
   minAnchorPitch: number;
   totalLengthPx: number;
+  /** Connectors these numbers were read off, and connectors the document has. */
+  drawn: number;
+  total: number;
   /**
    * Longest single collinear overlap and enough context to act on it. Two
    * relationships leaving one side share a corridor only if slotting failed;
@@ -65,27 +76,43 @@ export type QualityMetrics = {
 
 /**
  * Reads the drawn routing segments and the table boxes in canvas coordinates.
- * The route class is what selects the polyline, because the same group holds a
- * hit band of the same shape, and the canvas scope excludes the minimap's copy.
+ * The route name is what selects the polyline, because the same group holds a
+ * hit band of the same shape, and only the canvas stage carries scene ids.
  */
 export async function readScene(page: Page): Promise<Scene> {
   return page.evaluate(() => {
     const host = document.querySelector('erd-editor');
-    const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null })
-      ?.shadowRoot;
-    if (!root) throw new Error('shadow root is not reachable');
+    if (!host) throw new Error('erd-editor is not mounted');
 
-    const canvas = root.querySelector('[data-testid="erd-canvas"]');
-    if (!canvas) throw new Error('canvas is not rendered');
+    /** The shape of a konva node this reader reaches through, and no more. */
+    type SceneNode = {
+      id(): string;
+      name(): string;
+      x(): number;
+      y(): number;
+      width(): number;
+      height(): number;
+      strokeWidth(): number;
+      getAttr(name: string): unknown;
+      find(selector: string): SceneNode[];
+      findOne(selector: string): SceneNode | undefined;
+    };
+
+    const stages = Reflect.get(window, '__erdStages') as
+      | Record<string, SceneNode>
+      | undefined;
+    const stage = stages?.canvas;
+    if (!stage) throw new Error('the canvas konva stage is not registered');
 
     const segments: Segment[] = [];
-    canvas.querySelectorAll('g.relationship').forEach(group => {
-      const relationshipId = group.getAttribute('data-id') ?? '';
-      const route = group.querySelector('path.route');
-      const numbers = (route?.getAttribute('d') ?? '').match(
+    const groups = stage.find('.relationship');
+    for (const group of groups) {
+      const relationshipId = group.name().split(/\s+/)[1] ?? '';
+      const route = group.findOne('.relationship-route');
+      const numbers = String(route?.getAttr('data') ?? '').match(
         /-?\d+(?:\.\d+)?/g
       );
-      if (!numbers) return;
+      if (!numbers) continue;
 
       for (let index = 2; index + 1 < numbers.length; index += 2) {
         segments.push({
@@ -96,21 +123,23 @@ export async function readScene(page: Page): Promise<Scene> {
           y2: Number(numbers[index + 1]),
         });
       }
-    });
+    }
 
     const rects: TableRect[] = [];
-    canvas.querySelectorAll('.table[data-id]').forEach(element => {
-      const table = element as HTMLElement;
-      // offsetWidth is layout px, so the canvas zoom transform does not scale
-      // it; left/top are the inline position the editor writes from ui.x/y.
+    for (const table of stage.find('.table')) {
+      // The body rect is the box itself; the group holds its position, and the
+      // border straddles the edge, so half a stroke reaches past on each side.
+      const body = table.findOne('.table-body');
+      if (!body) continue;
+      const border = body.strokeWidth();
       rects.push({
-        id: table.getAttribute('data-id') ?? '',
-        x: table.offsetLeft,
-        y: table.offsetTop,
-        width: table.offsetWidth,
-        height: table.offsetHeight,
+        id: table.id().replace(/^table-/, ''),
+        x: table.x() + body.x() - border / 2,
+        y: table.y() + body.y() - border / 2,
+        width: body.width() + border,
+        height: body.height() + border,
       });
-    });
+    }
 
     const editor = host as HTMLElement & { value: string };
     type Point = {
@@ -143,7 +172,16 @@ export async function readScene(page: Page): Promise<Scene> {
       }
     }
 
-    return { segments, rects, endpoints, anchors };
+    return {
+      segments,
+      rects,
+      endpoints,
+      anchors,
+      population: {
+        drawn: groups.length,
+        total: value.doc.relationshipIds.length,
+      },
+    };
   });
 }
 
@@ -393,6 +431,8 @@ export function measureQuality(scene: Scene): QualityMetrics {
       ? Math.round(pitch * 10) / 10
       : Infinity,
     totalLengthPx: Math.round(totalLengthPx),
+    drawn: scene.population.drawn,
+    total: scene.population.total,
     worstCollinear: collinear.worst
       ? {
           ...collinear.worst,
@@ -402,5 +442,45 @@ export function measureQuality(scene: Scene): QualityMetrics {
           bPath: pathOf(collinear.worst.b),
         }
       : null,
+  };
+}
+
+export type SceneView = {
+  zoomLevel: number;
+  scrollLeft: number;
+  scrollTop: number;
+};
+
+/**
+ * A scroll and zoom that leave the whole canvas inside the culling rect, so a
+ * quality read covers every connector rather than the on-screen ones. Two of
+ * the rect's three screens hold the drawn box, centred.
+ *
+ * @example
+ * Object.assign(document.settings, fitWholeCanvas(document.settings, VIEWPORT));
+ */
+export function fitWholeCanvas(
+  canvas: { width: number; height: number },
+  viewport: { width: number; height: number }
+): SceneView {
+  const { width, height } = canvas;
+  const zoomLevel = Math.max(
+    CANVAS_ZOOM_MIN,
+    Math.min(1, (viewport.width * 2) / width, (viewport.height * 2) / height)
+  );
+  // getSceneOrigin is the scroll plus a term that does not move with it, so
+  // the scroll that centres the drawn box is the difference between the two.
+  const origin = getSceneOrigin({
+    width,
+    height,
+    zoomLevel,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
+
+  return {
+    zoomLevel,
+    scrollLeft: (viewport.width - width * zoomLevel) / 2 - origin.x,
+    scrollTop: (viewport.height - height * zoomLevel) / 2 - origin.y,
   };
 }

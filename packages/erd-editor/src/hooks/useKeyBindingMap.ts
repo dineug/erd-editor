@@ -4,7 +4,7 @@ import { tinykeys } from 'tinykeys';
 
 import { useAppContext } from '@/components/appContext';
 import { Ctx } from '@/internal-types';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { useUnmounted } from './useUnmounted';
 
@@ -29,6 +29,10 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
 
         options.forEach(option => {
           acc[option.shortcut] = (event: KeyboardEvent) => {
+            if (isComposing(event)) {
+              return;
+            }
+
             if (option.preventDefault) {
               event.preventDefault();
             }

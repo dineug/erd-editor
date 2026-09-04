@@ -1,14 +1,8 @@
 import { createFilter } from '@rollup/pluginutils';
 import type { Plugin } from 'vite';
 
+import type { JsxOptions } from '../options';
 import { transformJsxToTagged } from './codegen';
-
-export interface JsxOptions {
-  include?: string | RegExp | Array<string | RegExp>;
-  exclude?: string | RegExp | Array<string | RegExp>;
-  /** Where the injected html / svg tags are imported from. */
-  importSource?: string;
-}
 
 const cleanId = (id: string) => id.split('?')[0];
 
@@ -35,7 +29,8 @@ export function rHtmlJsx(options: JsxOptions = {}): Plugin {
       const transformed = transformJsxToTagged(
         code,
         path,
-        options.importSource
+        options.importSource,
+        options.konvaImportSource
       );
       return transformed === null
         ? undefined

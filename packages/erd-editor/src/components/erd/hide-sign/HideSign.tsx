@@ -11,17 +11,14 @@ import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Memo, Point, Table, ValuesType } from '@/internal-types';
+import { toScenePoint, toScreenPoint } from '@/konva/scene/viewport';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import {
-  getAbsolutePoint,
-  getAbsoluteZoomPoint,
-  isOverlapPosition,
-  Rect,
-} from '@/utils/dragSelect';
+import { isOverlapPosition } from '@/utils/dragSelect';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 import * as styles from './HideSign.styles';
+import { getReachableRect } from './hideSignBounds';
 
 export type HideSignProps = {
   root: Ref<HTMLDivElement>;
@@ -78,20 +75,23 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
     return Position.bottom;
   };
 
+  /**
+   * A sign is pinned to the edge of the editor box the scene is drawn in, so
+   * the axis it is free on is the entity read through the very origin that box
+   * places the scene layers at, and the scroll it carries is the debounced one.
+   */
   const getPositionStyle = (point: Point): [Record<string, string>, number] => {
     const { store } = app.value;
     const {
       settings: { width, height, zoomLevel },
     } = store.state;
     const { scrollLeft, scrollTop } = state;
-    const { x: absoluteZoomX, y: absoluteZoomY } = getAbsoluteZoomPoint(
-      point,
-      width,
-      height,
-      zoomLevel
+    const screen = toScreenPoint(
+      { width, height, zoomLevel, scrollLeft, scrollTop },
+      point
     );
-    const top = `${absoluteZoomY + scrollTop}px`;
-    const left = `${absoluteZoomX + scrollLeft}px`;
+    const top = `${screen.y}px`;
+    const left = `${screen.x}px`;
     const position = getPosition(point);
     const rotate = positionToRotateMap[position];
 
@@ -115,18 +115,17 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
     }
   };
 
+  /** Where the click landed, inverted back through that same origin. */
   const getMoveToPoint = (event: MouseEvent): Point => {
     const $root = props.root.value;
     const { store } = app.value;
-    const {
-      settings: { width, height, zoomLevel, scrollLeft, scrollTop },
-    } = store.state;
+    const { settings } = store.state;
     const rect = $root.getBoundingClientRect();
-    const targetPoint = {
-      x: event.clientX - rect.x - scrollLeft,
-      y: event.clientY - rect.y - scrollTop,
-    };
-    return getAbsolutePoint(targetPoint, width, height, zoomLevel);
+
+    return toScenePoint(settings, {
+      x: event.clientX - rect.x,
+      y: event.clientY - rect.y,
+    });
   };
 
   const handleMoveToTable = (event: MouseEvent, table: Table) => {
@@ -222,22 +221,12 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
     const { store } = app.value;
     const {
       doc: { tableIds, memoIds },
-      settings: { zoomLevel, width, height },
+      settings,
+      editor: { viewport },
       collections,
     } = store.state;
 
-    const min = getAbsolutePoint({ x: 0, y: 0 }, width, height, zoomLevel);
-    const max = getAbsolutePoint(
-      { x: width, y: height },
-      width,
-      height,
-      zoomLevel
-    );
-    const rect: Rect = {
-      ...min,
-      w: max.x - min.x,
-      h: max.y - min.y,
-    };
+    const rect = getReachableRect(settings, viewport);
 
     const tables = query(collections)
       .collection('tableEntities')

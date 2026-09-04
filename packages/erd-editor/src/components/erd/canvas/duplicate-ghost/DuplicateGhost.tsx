@@ -1,3 +1,5 @@
+/** @jsxHost konva */
+
 import { query } from '@dineug/erd-editor-schema';
 import { FC, observable, onMounted, onUnmounted, repeat } from '@dineug/r-html';
 import { round } from 'es-toolkit/compat';
@@ -15,12 +17,19 @@ import type { Memo, Table } from '@/internal-types';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isHighLevelTable } from '@/utils/validation';
 
-import * as styles from './DuplicateGhost.styles';
+/**
+ * Translucent as one layer rather than per ghost, so a dragged cluster does not
+ * turn into opaque patches where its ghosts overlap.
+ */
+const GHOST_OPACITY = 0.6;
 
 export type DuplicateGhostProps = {};
 
-// Rendered inside the canvas transform: ghost geometry comes from table.ui,
-// which is document coordinates.
+/**
+ * The Alt-drag copies, drawn on the presence layer above the scene. Ghost
+ * geometry is schema coordinates read from table.ui, and the drag delta rides
+ * on the group above them, so both halves compose into the committed offset.
+ */
 const DuplicateGhost: FC<DuplicateGhostProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
@@ -148,48 +157,46 @@ const DuplicateGhost: FC<DuplicateGhostProps> = (props, ctx) => {
     );
 
     return (
-      <div
-        class={styles.ghostLayer}
-        data-testid="duplicate-ghost-layer"
-        data-ghost=""
-        aria-hidden="true"
-        style={{
-          transform: `translate(${ghostDx}px, ${ghostDy}px)`,
-        }}
+      <k-group
+        id="duplicate-ghost-layer"
+        name="duplicate-ghost-layer"
+        kind="duplicate-ghost-layer"
+        x={ghostDx}
+        y={ghostDy}
+        opacity={GHOST_OPACITY}
+        listening={false}
       >
         {repeat(
           tables,
           table => table.id,
           table => (
-            <div
-              class={styles.ghostItem}
-              data-testid="duplicate-ghost"
-              data-id={table.id}
-              data-select-type={SelectType.table}
+            <k-group
+              id={`duplicate-ghost-${table.id}`}
+              name="duplicate-ghost"
+              kind={`duplicate-ghost-${SelectType.table}`}
             >
               {highLevel ? (
-                <HighLevelTableView table={table} />
+                <HighLevelTableView table={table} preview={true} />
               ) : (
-                <TableView table={table} />
+                <TableView table={table} preview={true} />
               )}
-            </div>
+            </k-group>
           )
         )}
         {repeat(
           memos,
           memo => memo.id,
           memo => (
-            <div
-              class={styles.ghostItem}
-              data-testid="duplicate-ghost"
-              data-id={memo.id}
-              data-select-type={SelectType.memo}
+            <k-group
+              id={`duplicate-ghost-${memo.id}`}
+              name="duplicate-ghost"
+              kind={`duplicate-ghost-${SelectType.memo}`}
             >
-              <MemoView memo={memo} />
-            </div>
+              <MemoView memo={memo} preview={true} />
+            </k-group>
           )
         )}
-      </div>
+      </k-group>
     );
   };
 };

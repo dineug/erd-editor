@@ -1,15 +1,22 @@
-import { equalValues, isTruthy } from '@/render/helper';
+import type { HostNode } from '@/render/adapter';
+import { domHelper, equalValues, HostHelper, isTruthy } from '@/render/helper';
 import { Part } from '@/render/part';
 import { getMarkers, MarkerTuple } from '@/template/helper';
 import { TAttr } from '@/template/tNode';
 
 export class BooleanPart implements Part {
-  #node: Element;
+  #helper: HostHelper;
+  #node: HostNode;
   #attrName: TAttr['name'];
   #markerTuples: Array<MarkerTuple> = [];
   #values: any[] = [];
 
-  constructor(node: Element, { name, value }: TAttr) {
+  constructor(
+    node: HostNode,
+    { name, value }: TAttr,
+    helper: HostHelper = domHelper
+  ) {
+    this.#helper = helper;
     this.#node = node;
     this.#attrName = name;
     this.#markerTuples = getMarkers(value ?? '');
@@ -21,8 +28,8 @@ export class BooleanPart implements Part {
 
     const value = newValues[newValues.length - 1];
     isTruthy(value)
-      ? this.#node.setAttribute(this.#attrName, '')
-      : this.#node.removeAttribute(this.#attrName);
+      ? this.#helper.setAttribute(this.#node, this.#attrName, '', false)
+      : this.#helper.removeAttribute(this.#node, this.#attrName);
     this.#values = newValues;
   }
 }

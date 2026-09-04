@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import * as canvasColumnStyles from '@/components/erd/canvas/table/column/Column.styles';
+import * as canvasColumnStyles from '@/components/table-view/column/Column.styles';
 import * as styles from '@/components/visualization/table/column/Column.styles';
 
 /**

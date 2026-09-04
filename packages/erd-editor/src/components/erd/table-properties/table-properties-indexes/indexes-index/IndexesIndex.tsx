@@ -1,9 +1,9 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import ColumnOption from '@/components/erd/canvas/table/column/column-option/ColumnOption';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
+import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import { COLUMN_UNIQUE_WIDTH } from '@/constants/layout';
 import {
   changeIndexNameAction,

@@ -168,13 +168,19 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'diffCrossForeground',
 ];
 
+/** The custom property one token is published under on :host. */
+export const toThemeVariableName = (token: string) => `--${kebabCase(token)}`;
+
+/** The custom property a host document overrides that token through. */
+export const toThemeOverrideVariableName = (token: string) =>
+  `--erd-editor-${kebabCase(token)}`;
+
 export const themeToTokensString = (theme: Theme) =>
   Object.keys(theme)
-    .map(key => {
-      const name = kebabCase(key);
-      return `--${name}: var(--erd-editor-${name}, ${Reflect.get(
-        theme,
-        key
-      )});`;
-    })
+    .map(
+      key =>
+        `${toThemeVariableName(key)}: var(${toThemeOverrideVariableName(
+          key
+        )}, ${Reflect.get(theme, key)});`
+    )
     .join('\n');

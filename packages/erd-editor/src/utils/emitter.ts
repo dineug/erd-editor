@@ -26,6 +26,7 @@ const InternalActionType = {
   mouseTrackerEnd: 'mouseTrackerEnd',
   openDiffViewer: 'openDiffViewer',
   duplicateDragStart: 'duplicateDragStart',
+  dragSelectStart: 'dragSelectStart',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 
@@ -64,6 +65,10 @@ type InternalActionMap = {
     tableIds: string[];
     memoIds: string[];
   } | void;
+  [InternalActionType.dragSelectStart]: {
+    x: number;
+    y: number;
+  };
 };
 
 type ListenerRecord = {
@@ -158,3 +163,7 @@ export const openDiffViewerAction = createAction<
 export const duplicateDragStartAction = createAction<
   InternalActionMap[typeof InternalActionType.duplicateDragStart]
 >(InternalActionType.duplicateDragStart);
+
+export const dragSelectStartAction = createAction<
+  InternalActionMap[typeof InternalActionType.dragSelectStart]
+>(InternalActionType.dragSelectStart);

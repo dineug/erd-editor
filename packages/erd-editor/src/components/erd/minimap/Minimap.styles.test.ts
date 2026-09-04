@@ -6,9 +6,7 @@ describe('Minimap.styles', () => {
   it('compiles every export to a non empty class identifier', () => {
     expect(String(styles.minimap)).toMatch(/\S/);
     expect(String(styles.border)).toMatch(/\S/);
-    expect(String(styles.canvasSvg)).toMatch(/\S/);
     expect(String(styles.minimap)).not.toBe(String(styles.border));
-    expect(String(styles.border)).not.toBe(String(styles.canvasSvg));
   });
 
   it('clips the minimap to its own absolutely positioned box', () => {
@@ -32,13 +30,8 @@ describe('Minimap.styles', () => {
     expect(source).toContain('background-color: transparent');
   });
 
-  it('keeps the relationship svg overlay click through', () => {
-    expect(styles.canvasSvg.strings.join('')).toContain('pointer-events: none');
-  });
-
   it('interpolates no runtime values into the minimap styles', () => {
     expect(styles.minimap.values).toEqual([]);
     expect(styles.border.values).toEqual([]);
-    expect(styles.canvasSvg.values).toEqual([]);
   });
 });

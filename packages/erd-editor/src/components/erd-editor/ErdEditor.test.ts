@@ -387,6 +387,41 @@ describe('<erd-editor>', () => {
     expect(focusSpy.mock.calls.length).toBe(callsAfterMount);
   });
 
+  // A Tab stop fires a burst: the field it left blurs, and the field it opened
+  // blurs again a keystroke later. Only the last one describes where focus was
+  // finally dropped, so a throttle that keeps the first alone loses it.
+  it('answers a second focus event that lands inside the throttle window', async () => {
+    const focusSpy = vi.fn();
+    const { el } = await createEditor({}, target => {
+      const original = target.focus;
+      Object.defineProperty(target, 'focus', {
+        configurable: true,
+        writable: true,
+        value: () => {
+          focusSpy();
+          original.call(target);
+        },
+      });
+    });
+
+    const outside = document.createElement('input');
+    document.body.append(outside);
+    outside.focus();
+    const callsAfterMount = focusSpy.mock.calls.length;
+
+    el.dispatchEvent(focusEvent());
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(focusSpy.mock.calls.length).toBe(callsAfterMount + 1);
+
+    outside.focus();
+    el.dispatchEvent(focusEvent());
+    await new Promise(resolve => setTimeout(resolve, 120));
+
+    expect(focusSpy.mock.calls.length).toBe(callsAfterMount + 2);
+    expect(document.activeElement).toBe(el);
+    outside.remove();
+  });
+
   it('tracks mouse tracking state through the emitter', async () => {
     const { el, app } = await createEditor();
     const sharedStore = el.getSharedStore();

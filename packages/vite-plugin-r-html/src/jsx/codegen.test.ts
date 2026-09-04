@@ -10,6 +10,24 @@ const emit = (source: string) =>
 
 const expr = (source: string) => emit(`const a = ${source};`);
 
+const PRAGMA = '/** @jsxHost konva */\n';
+const KONVA_SOURCE = 'src/konva/host';
+
+/** The same, for a konva file — the pragma line is stripped along with the import. */
+const konvaEmit = (source: string) =>
+  (
+    transformJsxToTagged(
+      `${PRAGMA}${source}`,
+      'test.tsx',
+      undefined,
+      KONVA_SOURCE
+    ) ?? ''
+  )
+    .replace(IMPORT_LINE, '')
+    .replace(PRAGMA, '');
+
+const konvaExpr = (source: string) => konvaEmit(`const a = ${source};`);
+
 describe('intrinsic elements', () => {
   it('keeps a static attribute static, so it lands in staticAttrs', () => {
     expect(expr('<div class="row" />')).toBe(
@@ -294,5 +312,241 @@ describe('the file around the JSX', () => {
     expect(() =>
       transformJsxToTagged('\nconst a = <div wat:x={y} />;', 'Foo.tsx')
     ).toThrow(/\[r-html-jsx\] Foo\.tsx:2:16/);
+  });
+});
+
+describe('the jsx host pragma', () => {
+  it('compiles every root in the file with the konva tag', () => {
+    expect(konvaExpr('<k-group x={x}><k-rect /></k-group>')).toBe(
+      'const a = __rKonva`<k-group x=${x}><k-rect /></k-group>`;'
+    );
+  });
+
+  it('follows the file into a template nested in an expression', () => {
+    expect(
+      konvaExpr('<k-layer>{rows.map(r => <k-rect key={r} />)}</k-layer>')
+    ).toBe(
+      'const a = __rKonva`<k-layer>${rows.map(r => __rKonva`<k-rect key=${r} />`)}</k-layer>`;'
+    );
+  });
+
+  it('wraps component children with the konva tag rather than html', () => {
+    expect(konvaExpr('<Table><k-rect /></Table>')).toBe(
+      'const a = __rKonva`<${Table} .children=${__rKonva`<k-rect />`} />`;'
+    );
+  });
+
+  it('imports the konva tag from konvaImportSource, and nothing from r-html', () => {
+    expect(
+      transformJsxToTagged(
+        `${PRAGMA}const a = <k-rect />;`,
+        'test.tsx',
+        undefined,
+        KONVA_SOURCE
+      )
+    ).toBe(
+      "import { konva as __rKonva } from 'src/konva/host';/** @jsxHost konva */\nconst a = __rKonva`<k-rect />`;"
+    );
+  });
+
+  it('refuses the pragma when no konva import source is configured', () => {
+    expect(() =>
+      transformJsxToTagged(`${PRAGMA}const a = <k-rect />;`, 'test.tsx')
+    ).toThrow(/needs the konvaImportSource option/);
+  });
+
+  it('reads the pragma from a block comment only', () => {
+    expect(() =>
+      transformJsxToTagged(
+        '// @jsxHost konva\nconst a = <k-rect />;',
+        'test.tsx',
+        undefined,
+        KONVA_SOURCE
+      )
+    ).toThrow(/block comment above the first statement/);
+  });
+
+  it('reads the pragma from above the first statement only', () => {
+    expect(() =>
+      transformJsxToTagged(
+        `const b = 1;\n${PRAGMA}const a = <k-rect />;`,
+        'test.tsx',
+        undefined,
+        KONVA_SOURCE
+      )
+    ).toThrow(/block comment above the first statement/);
+  });
+
+  it('rejects a host it does not know', () => {
+    expect(() =>
+      transformJsxToTagged(
+        '/** @jsxHost svg */\nconst a = <path />;',
+        'test.tsx'
+      )
+    ).toThrow(/unknown jsx host `svg`/);
+  });
+
+  it('leaves the dom host resolving html and svg the way it always did', () => {
+    expect(
+      transformJsxToTagged(
+        '/** @jsxHost dom */\nconst a = <path />;',
+        'test.tsx'
+      )
+    ).toBe(
+      "import { svg as __rSvg } from '@dineug/r-html';/** @jsxHost dom */\nconst a = __rSvg`<path />`;"
+    );
+  });
+});
+
+describe('one file, one host', () => {
+  it('rejects an HTML tag in a konva file', () => {
+    expect(() => konvaExpr('<k-group><div /></k-group>')).toThrow(
+      /<div> is a DOM tag in a @jsxHost konva file/
+    );
+  });
+
+  it('rejects an SVG tag in a konva file', () => {
+    expect(() => konvaExpr('<path d={d} />')).toThrow(
+      /<path> is a DOM tag in a @jsxHost konva file/
+    );
+  });
+
+  it('rejects a konva tag in a file with no pragma', () => {
+    expect(() => expr('<k-rect />')).toThrow(
+      /<k-rect> needs the @jsxHost konva pragma/
+    );
+  });
+
+  it('takes a component tag in either host, since it names no host', () => {
+    expect(konvaExpr('<Table id={id} />')).toBe(
+      'const a = __rKonva`<${Table} .id=${id} />`;'
+    );
+    expect(expr('<Table id={id} />')).toBe(
+      'const a = __rHtml`<${Table} .id=${id} />`;'
+    );
+  });
+});
+
+describe('konva children', () => {
+  it('rejects a text child, which a konva tree has nowhere to put', () => {
+    expect(() => konvaExpr('<k-group>label</k-group>')).toThrow(
+      /no text nodes/
+    );
+  });
+
+  it('rejects a string literal child', () => {
+    expect(() => konvaExpr("<k-group>{'label'}</k-group>")).toThrow(
+      /no text nodes/
+    );
+  });
+
+  it('rejects a number literal child', () => {
+    expect(() => konvaExpr('<k-group>{1}</k-group>')).toThrow(/no text nodes/);
+  });
+
+  it('keeps whitespace-only text, which is dropped before it can offend', () => {
+    expect(konvaExpr('<k-group>\n  <k-rect />\n</k-group>')).toBe(
+      'const a = __rKonva`<k-group><k-rect /></k-group>`\n\n;'
+    );
+  });
+
+  it('keeps an expression child, which stands for nodes at runtime', () => {
+    expect(konvaExpr('<k-group>{children}</k-group>')).toBe(
+      'const a = __rKonva`<k-group>${children}</k-group>`;'
+    );
+  });
+});
+
+describe('konva attributes', () => {
+  it('rejects a spread, which would reach the node through Reflect.set', () => {
+    expect(() => konvaExpr('<k-rect {...attrs} />')).toThrow(
+      /a spread on a k-\* tag is not supported/
+    );
+  });
+
+  it('rejects class, which commits through an HTMLElement check', () => {
+    expect(() => konvaExpr('<k-rect class={c} />')).toThrow(
+      /`class` is not a konva attribute/
+    );
+  });
+
+  it('rejects style, for the same reason', () => {
+    expect(() => konvaExpr('<k-rect style={s} />')).toThrow(
+      /`style` is not a konva attribute/
+    );
+  });
+
+  it('rejects zIndex, because z-order belongs to the host', () => {
+    expect(() => konvaExpr('<k-rect zIndex={2} />')).toThrow(
+      /`zIndex` is not a konva attribute/
+    );
+  });
+
+  it('keeps a spread on a component tag, which lands on props', () => {
+    expect(konvaExpr('<Table {...rest} />')).toBe(
+      'const a = __rKonva`<${Table} ...${rest} />`;'
+    );
+  });
+});
+
+/** Breadth of the DOM half in one file — the witness for the byte-invariance below. */
+const DOM_FIXTURE = [
+  "import { Menu } from './Menu';",
+  '',
+  'export function View({ rows, title, empty }) {',
+  '  return (',
+  '    <div class={styles.root} title="view" bool:hidden={empty} on:click={onClick}>',
+  '      <span>cost {title} more</span>',
+  '      <Menu icon={<Icon name="key" />} {...rest}>',
+  '        <li>one</li>',
+  '      </Menu>',
+  '      <svg viewBox="0 0 1 1">',
+  '        <path d={d} />',
+  '      </svg>',
+  '      {rows.map(row => (',
+  '        <p use:ref={ref(row)} prop:value={row.value}>{row.label}</p>',
+  '      ))}',
+  '    </div>',
+  '  );',
+  '}',
+  '',
+  'export const badge = (',
+  '  <svg viewBox="0 0 2 2">',
+  '    <circle r={r} />',
+  '  </svg>',
+  ');',
+  '',
+].join('\n');
+
+describe('a file with no pragma', () => {
+  it('compiles byte for byte the way it did before the host existed', () => {
+    expect(transformJsxToTagged(DOM_FIXTURE, 'View.tsx'))
+      .toMatchInlineSnapshot(`
+      "import { html as __rHtml, svg as __rSvg } from '@dineug/r-html';import { Menu } from './Menu';
+
+      export function View({ rows, title, empty }) {
+        return (
+          __rHtml\`<div class=\${styles.root} title="view" ?hidden=\${empty} @click=\${onClick}><span>cost \${title} more</span><\${Menu} .icon=\${__rHtml\`<\${Icon} .name="key" />\`} ...\${rest} .children=\${__rHtml\`<li>one</li>\`} /><svg viewBox="0 0 1 1"><path d=\${d} /></svg>\${rows.map(row => (
+              __rHtml\`<p \${ref(row)} .value=\${row.value}>\${row.label}</p>\`
+            ))}</div>\`
+
+
+
+
+
+
+
+
+
+        );
+      }
+
+      export const badge = (
+        __rSvg\`<svg viewBox="0 0 2 2"><circle r=\${r} /></svg>\`
+
+
+      );
+      "
+    `);
   });
 });

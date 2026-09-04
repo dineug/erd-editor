@@ -29,6 +29,7 @@
     "format": "vp fmt",
     "lint": "vp lint .",
     "check": "vp check && tsc --noEmit && node --test tools/vite-config.test.ts && node scripts/check-task-inputs.mjs",
+    "size": "node scripts/check-bundle-size.mjs",
     "cache:clear": "vp cache clean",
     "prepare": "vp config"
   },
@@ -37,7 +38,6 @@
     "@commitlint/config-conventional": "^20.5.3",
     "@types/node": "^22.20.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "tslib": "^2.8.1",
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:"

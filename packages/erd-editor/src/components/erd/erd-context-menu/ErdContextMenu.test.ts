@@ -4,7 +4,6 @@ import {
   FC,
   html,
   observable,
-  Ref,
   useProvider,
 } from '@dineug/r-html';
 import { Subject } from 'rxjs';
@@ -63,7 +62,6 @@ const Wrapper: FC<WrapperProps> = (props, ctx) => {
 let app: AppContext;
 let mounted: Mounted | null = null;
 let onClose: ReturnType<typeof vi.fn>;
-let canvas: Ref<HTMLDivElement>;
 let importRequests: Array<{ type: string; op: string; accept: string }>;
 let exportedFiles: string[];
 
@@ -80,7 +78,6 @@ async function mountMenu({ type, relationshipId, tableId }: MountOptions = {}) {
         children=${html`
           <${ErdContextMenu}
             type=${type ?? ErdContextMenuType.ERD}
-            canvas=${canvas}
             relationshipId=${relationshipId}
             tableId=${tableId}
             .onClose=${onClose}
@@ -139,7 +136,6 @@ async function click(item: HTMLElement, init: MouseEventInit = {}) {
 beforeEach(() => {
   app = createTestAppContext();
   onClose = vi.fn();
-  canvas = { value: document.createElement('div') } as Ref<HTMLDivElement>;
   importRequests = [];
   exportedFiles = [];
   setImportFileCallback(options => {

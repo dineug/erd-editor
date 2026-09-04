@@ -3,10 +3,24 @@ import { test } from '@playwright/test';
 
 import { FIXTURE_URL } from '../support/ErdEditorPage';
 import { DEFAULT_SHOW, Show } from '../support/schema';
-import { createCorpus } from './corpus';
+import { createCorpus, selectCorpus } from './corpus';
 import { installBench, runDragBench } from './harness';
+import {
+  createReport,
+  delta,
+  readBaseline,
+  writeReport,
+  type BenchCorpus,
+} from './report';
 
-const CORPUS = { name: 'large', tables: 56, relationships: 120, hubDegree: 9 };
+const CORPUS = selectCorpus();
+
+/**
+ * Bumped whenever a metric changes what it means rather than what it measures,
+ * which suppresses deltas across the bump. Otherwise a stale baseline prints
+ * percentages against numbers that are no longer the same quantity.
+ */
+const METRICS_VERSION = 1;
 
 type Variant = {
   name: string;
@@ -14,19 +28,6 @@ type Variant = {
   /** Mutates the loaded page before the drag is measured. */
   apply?: (page: Page) => Promise<void>;
   showMask?: number;
-};
-
-/** Injects arbitrary CSS into the editor's shadow root. */
-const css = (rule: string) => async (page: Page) => {
-  await page.evaluate(text => {
-    const host = document.querySelector('erd-editor');
-    const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null })
-      ?.shadowRoot;
-    if (!root) throw new Error('shadow root is not reachable');
-    const style = document.createElement('style');
-    style.textContent = text;
-    root.appendChild(style);
-  }, rule);
 };
 
 /** Injects a stylesheet into the editor's shadow root. */
@@ -42,6 +43,47 @@ const hide = (selector: string) => async (page: Page) => {
   }, `${selector} { display: none !important; }`);
 };
 
+type Hideable = { visible(value: boolean): void };
+
+type StageHandle = {
+  getLayers(): Hideable[];
+  findOne(selector: string): Hideable | undefined;
+};
+
+/**
+ * Takes a subtree of a live stage out of the draw. A konva node that is not
+ * visible is skipped by the layer's own draw, which is the closest thing a
+ * canvas scene has to the dom bench hiding an element with css.
+ */
+const unpaint = (stage: string, selector?: string) => async (page: Page) => {
+  await page.evaluate(
+    ([stageName, nodeSelector]) => {
+      const stages = Reflect.get(window, '__erdStages') as
+        | Record<string, StageHandle>
+        | undefined;
+      const found = stages?.[stageName];
+      if (!found) throw new Error(`konva stage "${stageName}" is missing`);
+
+      if (!nodeSelector) {
+        for (const layer of found.getLayers()) layer.visible(false);
+        return;
+      }
+
+      const node = found.findOne(nodeSelector);
+      if (!node) throw new Error(`konva node "${nodeSelector}" is missing`);
+      node.visible(false);
+    },
+    [stage, selector] as const
+  );
+};
+
+/** Runs several page mutations in the order they are given. */
+const all =
+  (...steps: Array<(page: Page) => Promise<void>>) =>
+  async (page: Page) => {
+    for (const step of steps) await step(page);
+  };
+
 const VARIANTS: Variant[] = [
   {
     name: 'full',
@@ -49,44 +91,45 @@ const VARIANTS: Variant[] = [
   },
   {
     name: 'no-minimap',
-    what: 'minimap hidden — it renders a second copy of every table and edge',
-    apply: hide('.minimap'),
+    what: 'minimap stage neither drawn nor composited — its scene still commits',
+    apply: all(hide('.minimap'), unpaint('minimap')),
   },
   {
     name: 'no-relationships',
-    what: 'relationship SVG off via settings.show',
+    what: 'relationship nodes never built, via settings.show',
     showMask: DEFAULT_SHOW & ~Show.relationship,
   },
   {
-    name: 'no-svg-layer',
-    what: 'the canvas SVG element hidden, tables still live',
-    apply: hide('[data-testid="erd-canvas"] svg'),
-  },
-  {
-    name: 'minimap-layer',
-    what: 'minimap promoted to its own layer — this is what shipped',
-    apply: css('.minimap { will-change: transform; }'),
-  },
-  {
-    name: 'minimap-contain',
-    what: 'paint containment on the minimap subtree — measured to do nothing',
-    apply: css('.minimap { contain: strict; }'),
+    name: 'no-relationship-paint',
+    what: 'connectors still rewritten every move, their group left undrawn',
+    apply: unpaint('canvas', '.relationship-group'),
   },
   {
     name: 'neither',
     what: 'no minimap and no relationships — the floor for table painting',
     showMask: DEFAULT_SHOW & ~Show.relationship,
-    apply: hide('.minimap'),
+    apply: all(hide('.minimap'), unpaint('minimap')),
   },
 ];
 
-const rows: Array<{
-  variant: Variant;
-  framep50: number;
-  framep95: number;
-  dispatch: number;
-  attr: number;
-}> = [];
+type Row = {
+  variant: string;
+  what: string;
+  frameP50: number;
+  frameP95: number;
+  busyMsPerMove: number;
+  sceneWritesPerMove: number;
+};
+
+const rows: Row[] = [];
+
+/** Filled from the first corpus built; the options are the pre-run estimate. */
+let size: BenchCorpus = {
+  name: CORPUS.name,
+  tables: CORPUS.tables,
+  relationships: CORPUS.relationships,
+  columns: 0,
+};
 
 test.describe.configure({ mode: 'serial' });
 
@@ -96,6 +139,12 @@ for (const variant of VARIANTS) {
     await installBench(page);
 
     const corpus = createCorpus(CORPUS);
+    size = {
+      name: corpus.name,
+      tables: corpus.tables,
+      relationships: corpus.relationships,
+      columns: corpus.columns,
+    };
     if (variant.showMask !== undefined) {
       corpus.document.settings.show = variant.showMask;
     }
@@ -108,11 +157,12 @@ for (const variant of VARIANTS) {
     );
 
     rows.push({
-      variant,
-      framep50: result.frame.p50,
-      framep95: result.frame.p95,
-      dispatch: result.busyMsPerMove,
-      attr: result.attrWrites.perMove,
+      variant: variant.name,
+      what: variant.what,
+      frameP50: result.frame.p50,
+      frameP95: result.frame.p95,
+      busyMsPerMove: result.busyMsPerMove,
+      sceneWritesPerMove: result.attrWrites.perMove,
     });
   });
 }
@@ -120,32 +170,65 @@ for (const variant of VARIANTS) {
 test.afterAll(() => {
   if (!rows.length) return;
 
-  const full = rows.find(row => row.variant.name === 'full');
-  const width = Math.max(...rows.map(row => row.variant.name.length));
+  const written = writeReport(
+    'attribution',
+    createReport(rows, METRICS_VERSION, size)
+  );
+  const { baseline, note } = readBaseline<Row>(
+    'attribution',
+    METRICS_VERSION,
+    size
+  );
+  const previous = new Map(baseline?.rows.map(row => [row.variant, row]) ?? []);
+
+  const full = rows.find(row => row.variant === 'full');
+  const width = Math.max(...rows.map(row => row.variant.length));
+
+  // The delta columns appear only against a comparable baseline, so a first
+  // run reads as the plain table it was before there was one.
+  const change = (current: number, old: number | undefined) =>
+    baseline ? [delta(current, old).padEnd(7)] : [];
 
   const lines = rows.map(row => {
+    const old = previous.get(row.variant);
+    // The sign comes off the value, not the template: a variant slower than
+    // full used to print a minus in front of a negative number.
+    const vsFull =
+      full && row !== full ? row.frameP50 - full.frameP50 : undefined;
     const saved =
-      full && row !== full
-        ? ` (−${(full.framep50 - row.framep50).toFixed(1)}ms)`
-        : '';
+      vsFull === undefined
+        ? ''
+        : ` (${vsFull < 0 ? '−' : '+'}${Math.abs(vsFull).toFixed(1)}ms)`;
     return [
-      row.variant.name.padEnd(width),
-      `frame p50 ${row.framep50.toFixed(2)}ms`.padEnd(22),
-      `p95 ${row.framep95.toFixed(2)}ms`.padEnd(16),
-      `busy/move ${row.dispatch.toFixed(2)}ms`.padEnd(20),
-      `attr/move ${row.attr.toFixed(1)}`.padEnd(18),
+      row.variant.padEnd(width),
+      `frame p50 ${row.frameP50.toFixed(2)}ms`.padEnd(22),
+      ...change(row.frameP50, old?.frameP50),
+      `p95 ${row.frameP95.toFixed(2)}ms`.padEnd(16),
+      `busy/move ${row.busyMsPerMove.toFixed(2)}ms`.padEnd(20),
+      ...change(row.busyMsPerMove, old?.busyMsPerMove),
+      `writes/move ${row.sceneWritesPerMove.toFixed(1)}`.padEnd(20),
+      ...change(row.sceneWritesPerMove, old?.sceneWritesPerMove),
       saved,
     ].join('  ');
   });
 
+  const against = note
+    ? `  (${note})`
+    : baseline
+      ? `  (vs baseline "${baseline.label}")`
+      : '  (no baseline saved)';
+
   process.stdout.write(
     [
       '',
-      `frame attribution — ${CORPUS.tables} tables / ${CORPUS.relationships} relationships`,
+      `frame attribution — ${size.name}: ${size.tables} tables / ${size.relationships} relationships${against}`,
       '',
       ...lines,
       '',
-      ...rows.map(row => `  ${row.variant.name}: ${row.variant.what}`),
+      ...rows.map(row => `  ${row.variant}: ${row.what}`),
+      '',
+      `written: ${written.latest}`,
+      ...(written.baseline ? [`baseline: ${written.baseline}`] : []),
       '',
     ].join('\n')
   );

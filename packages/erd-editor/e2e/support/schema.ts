@@ -48,7 +48,7 @@ export const DEFAULT_COLUMN_ORDER = [1, 2, 4, 8, 16, 32, 64];
 
 export const CANVAS_SIZE = 2000;
 export const CANVAS_ZOOM_MIN = 0.1;
-export const CANVAS_ZOOM_MAX = 1;
+export const CANVAS_ZOOM_MAX = 1.5;
 
 export type ColumnSeed = {
   id: string;
@@ -73,14 +73,43 @@ export type TableSeed = {
   columns?: ColumnSeed[];
 };
 
+export type MemoSeed = {
+  id: string;
+  value?: string;
+  x?: number;
+  y?: number;
+  zIndex?: number;
+  width?: number;
+  height?: number;
+  color?: string;
+};
+
+export type RelationshipSeed = {
+  id: string;
+  /** A value of RelationshipType. */
+  relationshipType?: number;
+  identification?: boolean;
+  startTableId: string;
+  startColumnIds: string[];
+  endTableId: string;
+  endColumnIds: string[];
+};
+
 export type SchemaSeed = {
   tables?: TableSeed[];
+  memos?: MemoSeed[];
+  relationships?: RelationshipSeed[];
   zoomLevel?: number;
   scrollTop?: number;
   scrollLeft?: number;
+  width?: number;
+  height?: number;
   show?: number;
   databaseName?: string;
 };
+
+/** The size a fresh memo is given, which is its own minimum plus a little. */
+export const MEMO_SIZE = 127;
 
 export type ErdDocument = {
   version: string;
@@ -200,8 +229,52 @@ const META = { updateAt: 0, createAt: 0 };
 
 export function createSchema(seed: SchemaSeed = {}): ErdDocument {
   const tables = seed.tables ?? [];
+  const memos = seed.memos ?? [];
+  const relationships = seed.relationships ?? [];
   const tableEntities: Record<string, TableEntity> = {};
   const tableColumnEntities: Record<string, ColumnEntity> = {};
+  const memoEntities: Record<string, MemoEntity> = {};
+  const relationshipEntities: Record<string, RelationshipEntity> = {};
+
+  memos.forEach((memo, index) => {
+    memoEntities[memo.id] = {
+      id: memo.id,
+      value: memo.value ?? '',
+      ui: {
+        x: memo.x ?? 200,
+        y: memo.y ?? 200,
+        zIndex: memo.zIndex ?? index + 2,
+        width: memo.width ?? MEMO_SIZE,
+        height: memo.height ?? MEMO_SIZE,
+        color: memo.color ?? '',
+      },
+      meta: { ...META },
+    };
+  });
+
+  relationships.forEach(relationship => {
+    relationshipEntities[relationship.id] = {
+      id: relationship.id,
+      identification: relationship.identification ?? false,
+      relationshipType: relationship.relationshipType ?? RelationshipType.ZeroN,
+      startRelationshipType: 2,
+      start: {
+        tableId: relationship.startTableId,
+        columnIds: [...relationship.startColumnIds],
+        x: 0,
+        y: 0,
+        direction: 1,
+      },
+      end: {
+        tableId: relationship.endTableId,
+        columnIds: [...relationship.endColumnIds],
+        x: 0,
+        y: 0,
+        direction: 1,
+      },
+      meta: { ...META },
+    };
+  });
 
   tables.forEach((table, index) => {
     const columns = table.columns ?? [];
@@ -247,8 +320,8 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
   return {
     version: '3.0.0',
     settings: {
-      width: CANVAS_SIZE,
-      height: CANVAS_SIZE,
+      width: seed.width ?? CANVAS_SIZE,
+      height: seed.height ?? CANVAS_SIZE,
       scrollTop: seed.scrollTop ?? 0,
       scrollLeft: seed.scrollLeft ?? 0,
       zoomLevel: seed.zoomLevel ?? 1,
@@ -268,17 +341,17 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
     },
     doc: {
       tableIds: tables.map(table => table.id),
-      relationshipIds: [],
+      relationshipIds: relationships.map(relationship => relationship.id),
       indexIds: [],
-      memoIds: [],
+      memoIds: memos.map(memo => memo.id),
     },
     collections: {
       tableEntities,
       tableColumnEntities,
-      relationshipEntities: {},
+      relationshipEntities,
       indexEntities: {},
       indexColumnEntities: {},
-      memoEntities: {},
+      memoEntities,
     },
   };
 }

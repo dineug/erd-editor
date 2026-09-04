@@ -9,6 +9,7 @@ import {
   ANCHOR_MAX_PITCH,
   DirectionName,
   DirectionNameList,
+  nextSortEpoch,
   ObjectPoint,
   setRoute,
   setStubSlots,
@@ -17,6 +18,16 @@ import {
   euclideanDistance,
   tableToObjectPoint,
 } from '@/utils/draw-relationship/calc';
+import {
+  boundsOfPoints,
+  createDirtyLanes,
+  diffTableBoxes,
+  getSortCache,
+  markRoute,
+  type NudgeMemo,
+  type RouteEntry,
+  routeTouches,
+} from '@/utils/draw-relationship/incremental';
 import { nudgeRoutes } from '@/utils/draw-relationship/nudge';
 import {
   collectObstacles,
@@ -102,6 +113,11 @@ const WALKS_BACKWARDS: Record<DirectionName, boolean> = {
 };
 
 export function relationshipSort(state: RootState) {
+  // Every route box the last sort left behind answers for a route this one is
+  // about to replace, and the connectors it skips over - self relationships,
+  // and any whose end table left the document - never reach setRoute at all.
+  nextSortEpoch();
+
   const {
     doc: { tableIds, relationshipIds },
     collections,
@@ -192,6 +208,17 @@ function routeRelationships(
   changeMap: Map<Relationship, ChangeRelationship>
 ) {
   const obstacles = collectObstacles(state);
+  const cache = getSortCache(state);
+  const moved = diffTableBoxes(cache, obstacles);
+  const previous = cache.entries;
+  const entries = new Map<string, RouteEntry>();
+  const dirty = new Set<string>();
+  const lanes = createDirtyLanes();
+
+  if (moved) {
+    for (const box of moved) lanes.markBox(box);
+  }
+
   const routes = new Map<string, Point[]>();
   const endpoints = new Map<string, [string, string]>();
   const origins = new Map<string, Relationship>();
@@ -201,9 +228,21 @@ function routeRelationships(
     if (start.tableId === end.tableId) continue;
 
     const { m, l } = stubEnds(origin);
-    routes.set(
-      origin.id,
-      routeOrthogonal(
+    const was = previous.get(origin.id);
+
+    let pristine: Point[];
+    let points: Point[];
+
+    if (
+      moved !== null &&
+      was !== undefined &&
+      sameRouteInputs(was, m, l, start, end) &&
+      !routeTouches(was.bounds, moved)
+    ) {
+      pristine = was.pristine;
+      points = clonePoints(pristine);
+    } else {
+      points = routeOrthogonal(
         m,
         start.direction,
         l,
@@ -211,18 +250,92 @@ function routeRelationships(
         obstacles,
         start.tableId,
         end.tableId
-      )
-    );
+      );
+      pristine = clonePoints(points);
+      dirty.add(origin.id);
+      if (was) markRoute(lanes, was.nudged);
+      markRoute(lanes, pristine);
+    }
+
+    routes.set(origin.id, points);
     endpoints.set(origin.id, [start.tableId, end.tableId]);
     origins.set(origin.id, origin);
+    entries.set(origin.id, {
+      mx: m.x,
+      my: m.y,
+      mDirection: start.direction,
+      lx: l.x,
+      ly: l.y,
+      lDirection: end.direction,
+      startTableId: start.tableId,
+      endTableId: end.tableId,
+      pristine,
+      nudged: points,
+      bounds: boundsOfPoints(pristine),
+    });
   }
 
-  nudgeRoutes(routes, obstacles, endpoints);
+  if (moved) {
+    // A connector that left the document frees the channel it was holding, which
+    // is a change to every group it was part of.
+    for (const [id, entry] of previous) {
+      if (!entries.has(id)) markRoute(lanes, entry.nudged);
+    }
+  }
+
+  nudgeRoutes(
+    routes,
+    obstacles,
+    endpoints,
+    moved === null ? undefined : createMemo(previous, dirty, lanes)
+  );
 
   for (const [id, points] of routes) {
     const origin = origins.get(id);
     if (origin) setRoute(origin, points);
   }
+
+  cache.entries = entries;
+}
+
+function clonePoints(points: Point[]): Point[] {
+  return points.map(({ x, y }) => ({ x, y }));
+}
+
+function createMemo(
+  previous: Map<string, RouteEntry>,
+  dirty: Set<string>,
+  lanes: NudgeMemo['lanes']
+): NudgeMemo {
+  return {
+    dirty,
+    lanes,
+    coordinate(relationshipId, index, vertical) {
+      const point = previous.get(relationshipId)?.nudged[index];
+      if (!point) return undefined;
+      return vertical ? point.x : point.y;
+    },
+  };
+}
+
+/** Whether the route held for a relationship was computed from these ends. */
+function sameRouteInputs(
+  was: RouteEntry,
+  m: Point,
+  l: Point,
+  start: Relationship['start'],
+  end: Relationship['end']
+) {
+  return (
+    was.mx === m.x &&
+    was.my === m.y &&
+    was.lx === l.x &&
+    was.ly === l.y &&
+    was.mDirection === start.direction &&
+    was.lDirection === end.direction &&
+    was.startTableId === start.tableId &&
+    was.endTableId === end.tableId
+  );
 }
 
 function getOrCreateGraph(

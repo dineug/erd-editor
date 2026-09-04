@@ -1,17 +1,46 @@
+/** @jsxHost konva */
+
 import { FC, observable, onMounted } from '@dineug/r-html';
 
-import Icon from '@/components/primitives/icon/Icon';
+import {
+  ICON_STROKE_WIDTH,
+  ICON_VIEW_SIZE,
+  SCENE_FONT_FAMILY,
+} from '@/components/erd/canvas/sceneTokens';
+import { getIcon } from '@/components/primitives/icon/icons';
 import { SharedMouseTracker } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { animationFrames$ } from '@/utils/globalEventObservable';
 import { toSharedColor } from '@/utils/sharedColor';
 
-import * as styles from './SharedMouseCursor.styles';
+const ICON_SIZE = 16;
+const MAX_WIDTH = 100;
+const NICKNAME_WIDTH = MAX_WIDTH - ICON_SIZE;
+const FONT_SIZE = 12;
+
+const ICON_SCALE = ICON_SIZE / ICON_VIEW_SIZE;
+
+/** The outline of the pointer, taken from the icon set the DOM cursor drew. */
+function pointerPathData(): string[] {
+  const icon = getIcon('mouse-pointer-2');
+  if (icon?.type !== 'svg') return [];
+
+  return icon.node
+    .filter(([tag]) => tag === 'path')
+    .map(([, attrs]) => String(attrs.d ?? ''));
+}
+
+const POINTER_PATH_DATA = pointerPathData();
 
 export type SharedMouseCursorProps = {
   tracker: SharedMouseTracker;
 };
 
+/**
+ * One peer's pointer and nickname, eased toward the position they last shared.
+ * The colour identifies the editor rather than the theme, so it comes from the
+ * shared palette instead of a resolved token.
+ */
 const SharedMouseCursor: FC<SharedMouseCursorProps> = (props, ctx) => {
   const state = observable({
     x: props.tracker.x,
@@ -36,17 +65,47 @@ const SharedMouseCursor: FC<SharedMouseCursorProps> = (props, ctx) => {
     const color = toSharedColor(id);
 
     return (
-      <div
-        class={styles.cursor}
-        style={{
-          left: `${state.x}px`,
-          top: `${state.y}px`,
-          color,
-        }}
+      <k-group
+        id={`shared-mouse-cursor-${id}`}
+        name="shared-mouse-cursor"
+        kind="shared-mouse-cursor"
+        x={state.x}
+        y={state.y}
+        listening={false}
       >
-        <Icon name="mouse-pointer-2" size={16} />
-        <span>{nickname}</span>
-      </div>
+        <k-group
+          name="shared-mouse-cursor-icon"
+          kind="shared-mouse-cursor-icon"
+          scaleX={ICON_SCALE}
+          scaleY={ICON_SCALE}
+        >
+          {POINTER_PATH_DATA.map(data => (
+            <k-path
+              name="shared-mouse-cursor-pointer"
+              kind="shared-mouse-cursor-pointer"
+              data={data}
+              stroke={color}
+              strokeWidth={ICON_STROKE_WIDTH}
+              lineCap="round"
+              lineJoin="round"
+            />
+          ))}
+        </k-group>
+        <k-text
+          name="shared-mouse-cursor-nickname"
+          kind="shared-mouse-cursor-nickname"
+          text={nickname}
+          x={ICON_SIZE}
+          width={NICKNAME_WIDTH}
+          height={ICON_SIZE}
+          verticalAlign="middle"
+          wrap="none"
+          ellipsis={true}
+          fill={color}
+          fontFamily={SCENE_FONT_FAMILY}
+          fontSize={FONT_SIZE}
+        />
+      </k-group>
     );
   };
 };

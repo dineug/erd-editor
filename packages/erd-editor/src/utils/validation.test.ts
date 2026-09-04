@@ -70,11 +70,18 @@ describe('canvasSizeInRange', () => {
 });
 
 describe('zoomLevelInRange', () => {
-  it('clamps to [0.1, 1]', () => {
+  it('clamps to [0.1, 1.5]', () => {
     expect(zoomLevelInRange(0)).toBe(0.1);
     expect(zoomLevelInRange(-3)).toBe(0.1);
     expect(zoomLevelInRange(1)).toBe(1);
-    expect(zoomLevelInRange(4)).toBe(1);
+    expect(zoomLevelInRange(1.5)).toBe(1.5);
+    expect(zoomLevelInRange(4)).toBe(1.5);
+  });
+
+  it('passes a magnified zoom through untouched', () => {
+    expect(zoomLevelInRange(1.04)).toBe(1.04);
+    expect(zoomLevelInRange(1.2)).toBe(1.2);
+    expect(zoomLevelInRange(1.49)).toBe(1.49);
   });
 
   it('rounds to 2 decimals', () => {

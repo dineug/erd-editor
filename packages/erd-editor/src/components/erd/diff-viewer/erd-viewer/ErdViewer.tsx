@@ -3,6 +3,7 @@ import { createRef, FC, observable, ref, useProvider } from '@dineug/r-html';
 import { AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import { Diff, DiffMap, getDiffStyle } from '@/components/erd/diff-viewer/diff';
+import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
@@ -77,10 +78,12 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     if (!el) return;
 
     const canHideColorPicker = !el.closest('.color-picker');
+    const hit = sceneHit(canvas.value, event);
+    const onEntity = hit?.kind === 'table' || hit?.kind === 'memo';
 
     const canUnselectAll =
-      !el.closest('.table') &&
-      !el.closest('.memo') &&
+      !onEntity &&
+      !el.closest('.edit-overlay') &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
       !el.closest('.hide-sign') &&

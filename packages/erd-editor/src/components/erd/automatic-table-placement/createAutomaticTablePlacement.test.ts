@@ -1,8 +1,12 @@
+import { forceSimulation } from 'd3-force';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { createAutomaticTablePlacement } from '@/components/erd/automatic-table-placement/createAutomaticTablePlacement';
+import {
+  createAutomaticTablePlacement,
+  placementProgress,
+} from '@/components/erd/automatic-table-placement/createAutomaticTablePlacement';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
@@ -280,5 +284,43 @@ describe('createAutomaticTablePlacement', () => {
     expect(relationship.start.y).not.toBe(-1);
     expect(Number.isFinite(relationship.start.x)).toBe(true);
     expect(Number.isFinite(relationship.end.x)).toBe(true);
+  });
+});
+
+describe('placementProgress', () => {
+  it('reads nothing done at full heat and everything at the floor', () => {
+    const simulation = forceSimulation([]).stop();
+
+    expect(placementProgress(simulation)).toBe(0);
+
+    simulation.alpha(simulation.alphaMin());
+    expect(placementProgress(simulation)).toBe(1);
+  });
+
+  it('runs with the ticks taken rather than with the heat left', () => {
+    // The heat comes down by a fixed factor a tick, so the share of the ticks
+    // the simulation will ever take is what the ratio of the logs reads.
+    const simulation = forceSimulation([]).stop();
+    const total = Math.ceil(
+      Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())
+    );
+    const seen: number[] = [];
+
+    for (let tick = 0; tick < total; tick++) {
+      simulation.tick();
+      seen.push(placementProgress(simulation));
+    }
+
+    expect(seen[Math.floor(total / 2) - 1]).toBeCloseTo(0.5, 1);
+    expect(seen.at(-1)).toBe(1);
+    for (let index = 1; index < seen.length; index++) {
+      expect(seen[index]).toBeGreaterThanOrEqual(seen[index - 1]);
+    }
+  });
+
+  it('holds at the whole once the simulation has cooled past its floor', () => {
+    const simulation = forceSimulation([]).stop().alpha(0);
+
+    expect(placementProgress(simulation)).toBe(1);
   });
 });

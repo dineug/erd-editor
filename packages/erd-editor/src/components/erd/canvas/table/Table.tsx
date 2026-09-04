@@ -1,25 +1,51 @@
+/** @jsxHost konva */
+
 import { query } from '@dineug/erd-editor-schema';
-import {
-  createRef,
-  FC,
-  observable,
-  onMounted,
-  onUpdated,
-  ref,
-  repeat,
-} from '@dineug/r-html';
-import { Subscription } from 'rxjs';
+import { FC, observable, onMounted, repeat } from '@dineug/r-html';
+import type { Node as KonvaNode } from 'konva/lib/Node';
+import type { Stage } from 'konva/lib/Stage';
+import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { headerCellHit } from '@/components/erd/canvas/sceneHit';
+import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
+import {
+  CURSOR_INHERIT,
+  CURSOR_POINTER,
+  FOCUS_BORDER_HEIGHT,
+  HEADER_COLOR_HEIGHT,
+  RING_WIDTH,
+  SCENE_FONT_FAMILY,
+  SCENE_FONT_SIZE,
+  type SceneMouseEvent,
+  setSceneCursor,
+  TABLE_CORNER_RADIUS,
+  TABLE_INSET,
+  TRANSPARENT,
+} from '@/components/erd/canvas/sceneTokens';
+import {
+  CELL_UNDERLINE_Y,
+  focusBorderFill,
+  getCellTextHeight,
+  getHeaderCellSlots,
+  HEADER_CELLS_Y,
+  HEADER_TEXT_Y,
+} from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
+import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import EditInput from '@/components/primitives/edit-input/EditInput';
-import Icon from '@/components/primitives/icon/Icon';
-import { Show } from '@/constants/schema';
+import type { IconName } from '@/components/primitives/icon/icons';
+import { useThemeContext } from '@/components/themeContext';
+import {
+  HEADER_ICON_HEIGHT,
+  INPUT_MARGIN_RIGHT,
+  TABLE_BORDER,
+  TABLE_HEADER_BUTTON_MARGIN_LEFT,
+  TABLE_HEADER_INPUT_HEIGHT,
+} from '@/constants/layout';
 import {
   dragendColumnAction,
   editTableAction,
-  editTableEndAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -27,35 +53,52 @@ import {
   dragstartColumnAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
-import {
-  changeTableCommentAction,
-  changeTableNameAction,
-} from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Table } from '@/internal-types';
-import { bHas } from '@/utils/bit';
-import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { onPrevent } from '@/utils/domEvent';
+import { findColumnDropTarget } from '@/konva/scene/columnDropTarget';
+import { createKonvaFlip, type KonvaFlip } from '@/konva/scene/konvaFlip';
+import {
+  getColumnRect,
+  getTableRect,
+  getTableWidths,
+} from '@/konva/scene/metrics';
+import type { Theme } from '@/themes/tokens';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
-import { FlipAnimation } from '@/utils/flipAnimation';
-import { isMod, simpleShortcutToString } from '@/utils/keyboard-shortcut';
-import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
-import { takeUnsubscribe } from '@/utils/rx-operators/takeUnsubscribe';
+import { drag$ } from '@/utils/globalEventObservable';
+import { isMod } from '@/utils/keyboard-shortcut';
 
-import * as styles from './Table.styles';
 import { useFocusTable } from './useFocusTable';
 import { useMoveTable } from './useMoveTable';
 import { useSharedFocusTable } from './useSharedFocusTable';
 
 export type TableProps = {
   table: Table;
+  /** A drawn copy rather than the table itself, so nothing in it takes an id. */
+  preview?: boolean;
+  hovered?: boolean;
+  hoveredColumnId?: string | null;
+  ghostColumnId?: string | null;
+  editorFocused?: boolean;
+  /** Off while the table is kept built but scrolled out of the culling rect. */
+  visible?: boolean;
+};
+
+type HeaderCellOptions = {
+  focusType: FocusType;
+  x: number;
+  width: number;
+  text: string;
+  fill: string;
+  focus: boolean;
+  edit: boolean;
+  sharedFocus: string | null;
 };
 
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
-  const root = createRef<HTMLDivElement>();
+  const themeRef = useThemeContext(ctx);
   const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
     ctx,
     props.table.id
@@ -67,16 +110,62 @@ const Table: FC<TableProps> = (props, ctx) => {
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
   const { onMoveStart } = useMoveTable(ctx, props);
   const { addUnsubscribe } = useUnmounted();
-
   const state = observable({
+    hover: false,
+    iconHover: null as IconName | null,
     dragstartId: null as string | null,
   });
 
-  const flipAnimation = new FlipAnimation(
-    root,
-    '.column-row',
-    'column-row-move'
-  );
+  const doubleClick = createDoubleClickGuard();
+
+  let dragoverSubscription: Subscription | null = null;
+  let dragLayerStage: Stage | null = null;
+  let flip: KonvaFlip | null = null;
+
+  const handleMouseenter = () => {
+    state.hover = true;
+  };
+
+  const handleMouseleave = () => {
+    state.hover = false;
+  };
+
+  /** What the header icons had as their hover colour and their pointer cursor. */
+  const handleIconMouseenter = (icon: IconName) => (event: SceneMouseEvent) => {
+    state.iconHover = icon;
+    setSceneCursor(event, CURSOR_POINTER);
+  };
+
+  const handleIconMouseleave = (event: SceneMouseEvent) => {
+    state.iconHover = null;
+    setSceneCursor(event, CURSOR_INHERIT);
+  };
+
+  const iconColor = (theme: Theme, icon: IconName, hovered: boolean) => {
+    if (!hovered) return TRANSPARENT;
+
+    return state.iconHover === icon ? theme.active : theme.foreground;
+  };
+
+  /** The border a table body draws, greyed out while the editor is unfocused. */
+  const bodyStroke = (theme: Theme, selected: boolean) => {
+    if (!selected) return theme.tableBorder;
+
+    return props.editorFocused === false
+      ? theme.placeholder
+      : theme.tableSelect;
+  };
+
+  const handleOpenColorPicker = (event: SceneMouseEvent) => {
+    const { emitter } = app.value;
+    emitter.emit(
+      openColorPickerAction({
+        x: event.evt.clientX,
+        y: event.evt.clientY,
+        color: props.table.ui.color,
+      })
+    );
+  };
 
   const handleAddColumn = () => {
     const { store } = app.value;
@@ -93,125 +182,90 @@ const Table: FC<TableProps> = (props, ctx) => {
     store.dispatch(focusTableAction({ tableId: props.table.id, focusType }));
   };
 
-  const handleEdit = () => {
+  const handleEdit = (focusType: FocusType, event: SceneMouseEvent) => {
+    if (!doubleClick.isDouble(focusType, event)) return;
+
     const { store } = app.value;
     store.dispatch(editTableAction());
   };
 
-  const handleEditEnd = () => {
-    const { store } = app.value;
-    store.dispatch(editTableEndAction());
+  /** The canvas point a pointer event lands on, through the scene transform. */
+  const toCanvasPoint = (event: MouseEvent | TouchEvent) => {
+    const stage = dragLayerStage;
+    const layer = stage?.findOne('.scene');
+    if (!stage || !layer) return null;
+
+    stage.setPointersPositions(event);
+    const position = stage.getPointerPosition();
+    if (!position) return null;
+
+    return layer.getAbsoluteTransform().copy().invert().point(position);
   };
 
-  const handleInput = (event: InputEvent, focusType: FocusType) => {
+  const handleDragoverColumn = (event: MouseEvent | TouchEvent) => {
     const { store } = app.value;
-    const input = event.target as HTMLInputElement | null;
-    if (!input) return;
+    const point = toCanvasPoint(event);
+    if (!point) return;
 
-    switch (focusType) {
-      case FocusType.tableName:
-        store.dispatch(
-          changeTableNameAction({ id: props.table.id, value: input.value })
-        );
-        break;
-      case FocusType.tableComment:
-        store.dispatch(
-          changeTableCommentAction({ id: props.table.id, value: input.value })
-        );
-        break;
-    }
-  };
+    const target = findColumnDropTarget(store.state, point);
+    if (!target) return;
 
-  const handleOpenColorPicker = (event: MouseEvent) => {
-    const { emitter } = app.value;
-    emitter.emit(
-      openColorPickerAction({
-        x: event.clientX,
-        y: event.clientY,
-        color: props.table.ui.color,
-      })
-    );
-  };
-
-  const handleMoveColumn = (targetId: string, targetTableId: string) => {
-    const { store } = app.value;
     const {
       editor: { draggableColumn },
     } = store.state;
-    if (!draggableColumn || draggableColumn.columnIds.includes(targetId)) {
+    if (
+      !draggableColumn ||
+      draggableColumn.columnIds.includes(target.columnId)
+    ) {
       return;
     }
 
-    flipAnimation.snapshot();
-    store.dispatch(dragoverColumnAction$(targetId, targetTableId));
-  };
-
-  let draggableColumnSubscription: Subscription | null = null;
-
-  const draggableColumnSubscribe = () => {
-    const $root = root.value;
-    if (!$root || draggableColumnSubscription) return;
-
-    const elements = Array.from<HTMLElement>(
-      $root.querySelectorAll('.column-row')
-    );
-    elements.forEach(el => el.classList.add('none-hover'));
-
-    const cleanup = () => {
-      elements.forEach(el => el.classList.remove('none-hover'));
-      draggableColumnSubscription = null;
-      state.dragstartId = null;
-    };
-
-    draggableColumnSubscription = fromShadowDraggable(elements, el => ({
-      targetId: el.dataset.id as string,
-      targetTableId: el.dataset.tableId as string,
-    }))
-      .pipe(takeUnsubscribe(cleanup))
-      .subscribe({
-        next: ({ targetId, targetTableId }) => {
-          handleMoveColumn(targetId, targetTableId);
-        },
-        complete: cleanup,
-      });
-  };
-
-  const handleDragstartColumn = (event: DragEvent) => {
-    const { store } = app.value;
-    const {
-      editor: { focusTable },
-    } = store.state;
-    const $target = event.target as HTMLElement | null;
-    if (!$target || !focusTable || !focusTable.columnId) {
-      return;
-    }
-
-    const dragstartId = $target.dataset?.id;
-    if (!dragstartId) return;
-
-    state.dragstartId = dragstartId;
-
-    store.dispatch(dragstartColumnAction$(isMod(event)));
-    draggableColumnSubscribe();
+    flip?.snapshot();
+    store.dispatch(dragoverColumnAction$(target.columnId, target.tableId));
   };
 
   const handleDragendColumn = () => {
     const { store, emitter } = app.value;
+    if (!dragoverSubscription && state.dragstartId === null) return;
+
+    dragoverSubscription?.unsubscribe();
+    dragoverSubscription = null;
+    dragLayerStage = null;
+    state.dragstartId = null;
+
     store.dispatch(dragendColumnAction());
     emitter.emit(dragendColumnAllAction());
   };
 
-  const handleDragenter = () => {
+  /**
+   * The drop half of a column drag. Which row a drop lands on is a question
+   * about the whole sibling order, so the table answers it while the row that
+   * was pressed only says that a drag of it began.
+   */
+  const handleDragstartColumn = (columnId: string, event: SceneMouseEvent) => {
     const { store } = app.value;
     const {
-      editor: { draggableColumn },
+      editor: { focusTable },
     } = store.state;
-    if (!draggableColumn) return;
+    if (!focusTable || !focusTable.columnId) return;
 
-    draggableColumnSubscribe();
+    const stage = event.target?.getStage() ?? null;
+    if (!stage) return;
+
+    dragoverSubscription?.unsubscribe();
+    dragLayerStage = stage;
+    state.dragstartId = columnId;
+    flip ??= createKonvaFlip(() => stage.find<KonvaNode>('.column-row'));
+
+    store.dispatch(dragstartColumnAction$(isMod(event.evt)));
+
+    dragoverSubscription = drag$.subscribe({
+      next: ({ event: move }) => {
+        handleDragoverColumn(move);
+      },
+      complete: handleDragendColumn,
+    });
   };
-
-  onUpdated(() => flipAnimation.play());
 
   onMounted(() => {
     const { emitter } = app.value;
@@ -219,156 +273,241 @@ const Table: FC<TableProps> = (props, ctx) => {
     addUnsubscribe(
       emitter.on({
         dragendColumnAll: () => {
-          draggableColumnSubscription?.unsubscribe();
+          dragoverSubscription?.unsubscribe();
+          dragoverSubscription = null;
         },
-      })
+      }),
+      () => {
+        dragoverSubscription?.unsubscribe();
+        dragoverSubscription = null;
+        flip?.cancel();
+      }
     );
   });
 
-  return () => {
-    const { store, keyBindingMap } = app.value;
-    const { editor, settings, collections } = store.state;
-    const { table } = props;
-    const selected = Boolean(editor.selectedMap[table.id]);
-    const tableWidths = calcTableWidths(table, store.state);
-    const height = calcTableHeight(table);
+  /**
+   * A header cell, laid out the way its input-padding div was: the text on the
+   * 20px input line, answering a press for the whole box, and the two underlines
+   * at their own edge. The focus underline keeps its box while edited.
+   */
+  const headerCell = ({
+    focusType,
+    x,
+    width,
+    text,
+    fill,
+    focus,
+    edit,
+    sharedFocus,
+  }: HeaderCellOptions) => (
+    <k-group
+      name={`input-padding ${focusType}`}
+      kind="input-padding"
+      sharedFocus={sharedFocus}
+      x={x}
+      y={0}
+      on:mousedown={(event: SceneMouseEvent) => {
+        handleFocus(focusType);
+        doubleClick.track(focusType, event);
+      }}
+      on:dblclick={(event: SceneMouseEvent) => {
+        handleEdit(focusType, event);
+      }}
+    >
+      <k-text
+        name="cell-text"
+        y={HEADER_TEXT_Y}
+        width={width}
+        height={getCellTextHeight()}
+        text={text}
+        fill={fill}
+        fontFamily={SCENE_FONT_FAMILY}
+        fontSize={SCENE_FONT_SIZE}
+        verticalAlign="middle"
+        wrap="none"
+        ellipsis={true}
+        visible={!edit}
+        hitFunc={headerCellHit}
+      />
+      {focus ? (
+        <k-rect
+          name="cell-focus-border"
+          y={HEADER_TEXT_Y + CELL_UNDERLINE_Y}
+          width={width}
+          height={FOCUS_BORDER_HEIGHT}
+          fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
+          listening={false}
+        />
+      ) : null}
+      {sharedFocus ? (
+        <k-rect
+          name="cell-shared-focus-border"
+          y={TABLE_HEADER_INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
+          width={width + INPUT_MARGIN_RIGHT}
+          height={FOCUS_BORDER_HEIGHT}
+          fill={sharedFocus}
+          listening={false}
+        />
+      ) : null}
+    </k-group>
+  );
 
-    const isGhostColumn =
-      state.dragstartId !== null &&
-      !table.columnIds.includes(state.dragstartId);
+  return () => {
+    const { store } = app.value;
+    const { editor, collections } = store.state;
+    const { table } = props;
+    const theme = themeRef.value;
+    const selected = Boolean(editor.selectedMap[table.id]);
+    const tableWidths = getTableWidths(store.state, table);
+    const rect = getTableRect(store.state, table);
+    const contentWidth = rect.width - TABLE_INSET * 2;
+
+    const hovered = Boolean(props.hovered || state.hover);
+    const draggingColumnId = props.ghostColumnId ?? state.dragstartId;
+    const ghostColumnId =
+      draggingColumnId !== null && !table.columnIds.includes(draggingColumnId)
+        ? draggingColumnId
+        : null;
 
     const sharedTableColor = sharedFocusTableColor();
     const sharedSelected = sharedSelectColor();
     const sharedNameColor = sharedFocusColor(FocusType.tableName);
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
+    const ringColor = sharedTableColor ?? sharedSelected;
+
+    const headerCells = getHeaderCellSlots(store.state, table);
+    const nameCell = headerCells.find(
+      slot => slot.focusType === FocusType.tableName
+    );
+    const commentCell = headerCells.find(
+      slot => slot.focusType === FocusType.tableComment
+    );
 
     const columns = query(collections)
       .collection('tableColumnEntities')
       .selectByIds(
-        isGhostColumn
-          ? [...table.columnIds, state.dragstartId as string]
-          : table.columnIds
+        ghostColumnId ? [...table.columnIds, ghostColumnId] : table.columnIds
       );
 
     return (
-      <div
-        class={['table', styles.root]}
-        style={{
-          top: `${table.ui.y}px`,
-          left: `${table.ui.x}px`,
-          'z-index': `${table.ui.zIndex}`,
-          width: `${tableWidths.width}px`,
-          height: `${height}px`,
-          '--shared-focus': sharedTableColor ?? '',
-          '--shared-select': sharedSelected ?? '',
-        }}
-        use:ref={ref(root)}
-        bool:data-selected={selected}
-        bool:data-focus-border={selected}
-        bool:data-shared-focus={Boolean(sharedTableColor)}
-        bool:data-shared-select={Boolean(sharedSelected)}
-        data-id={table.id}
+      <k-group
+        id={props.preview ? '' : `table-${table.id}`}
+        name="table"
+        kind="table"
+        visible={props.visible ?? true}
+        selected={selected}
+        sharedFocus={sharedTableColor}
+        sharedSelect={sharedSelected}
+        x={rect.x}
+        y={rect.y}
         on:mousedown={onMoveStart}
         on:touchstart={onMoveStart}
+        on:mouseenter={handleMouseenter}
+        on:mouseleave={handleMouseleave}
       >
-        <div class={styles.header}>
-          <div
-            class={['table-header-color', styles.headerColor]}
-            style={{
-              'background-color': table.ui.color,
-            }}
-            on:click={handleOpenColorPicker}
-          ></div>
-          <div class={styles.headerButtonWrap}>
-            <Icon
-              size={12}
-              name="plus"
-              title={simpleShortcutToString(
-                keyBindingMap.addColumn[0]?.shortcut
-              )}
-              useTransition={true}
-              onClick={handleAddColumn}
-            />
-            <Icon
-              size={12}
-              name="x"
-              title={simpleShortcutToString(
-                keyBindingMap.removeTable[0]?.shortcut
-              )}
-              useTransition={true}
-              onClick={handleRemoveTable}
-            />
-          </div>
-          <div class={styles.headerInputWrap}>
-            <div
-              class="input-padding"
-              data-type="tableName"
-              bool:data-shared-focus={Boolean(sharedNameColor)}
-              style={{ '--shared-focus': sharedNameColor ?? '' }}
-              on:mousedown={() => {
-                handleFocus(FocusType.tableName);
-              }}
-              on:dblclick={handleEdit}
-            >
-              <EditInput
-                placeholder="table"
-                width={table.ui.widthName}
-                value={table.name}
-                focus={hasFocus(FocusType.tableName)}
-                edit={hasEdit(FocusType.tableName)}
-                autofocus={true}
-                onBlur={handleEditEnd}
-                onInput={(event: InputEvent) => {
-                  handleInput(event, FocusType.tableName);
-                }}
-              />
-            </div>
-            {bHas(settings.show, Show.tableComment) ? (
-              <div
-                class="input-padding"
-                data-type="tableComment"
-                bool:data-shared-focus={Boolean(sharedCommentColor)}
-                style={{ '--shared-focus': sharedCommentColor ?? '' }}
-                on:mousedown={() => {
-                  handleFocus(FocusType.tableComment);
-                }}
-                on:dblclick={handleEdit}
-              >
-                <EditInput
-                  placeholder="comment"
-                  width={
-                    settings.maxWidthComment === -1
-                      ? table.ui.widthComment
-                      : settings.maxWidthComment < table.ui.widthComment
-                        ? settings.maxWidthComment
-                        : table.ui.widthComment
-                  }
-                  value={table.comment}
-                  focus={hasFocus(FocusType.tableComment)}
-                  edit={hasEdit(FocusType.tableComment)}
-                  autofocus={true}
-                  onBlur={handleEditEnd}
-                  onInput={(event: InputEvent) => {
-                    handleInput(event, FocusType.tableComment);
-                  }}
-                />
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div
-          on:dragenter={handleDragenter}
-          on:dragenter__2={onPrevent}
-          on:dragover={onPrevent}
-        >
+        <k-rect
+          name="table-body"
+          x={TABLE_BORDER / 2}
+          y={TABLE_BORDER / 2}
+          width={rect.width - TABLE_BORDER}
+          height={rect.height - TABLE_BORDER}
+          cornerRadius={TABLE_CORNER_RADIUS}
+          fill={theme.tableBackground}
+          stroke={bodyStroke(theme, selected)}
+          strokeWidth={TABLE_BORDER}
+        />
+        {ringColor ? (
+          <k-rect
+            name="table-ring"
+            x={-RING_WIDTH / 2}
+            y={-RING_WIDTH / 2}
+            width={rect.width + RING_WIDTH}
+            height={rect.height + RING_WIDTH}
+            cornerRadius={TABLE_CORNER_RADIUS}
+            stroke={ringColor}
+            strokeWidth={RING_WIDTH}
+            listening={false}
+          />
+        ) : null}
+        <k-rect
+          name="table-header-color"
+          kind="table-header-color"
+          x={TABLE_BORDER}
+          y={0}
+          width={rect.width - TABLE_BORDER * 2}
+          height={HEADER_COLOR_HEIGHT}
+          cornerRadius={[TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]}
+          fill={table.ui.color}
+          on:click={handleOpenColorPicker}
+          on:mouseenter={(event: SceneMouseEvent) => {
+            setSceneCursor(event, CURSOR_POINTER);
+          }}
+          on:mouseleave={(event: SceneMouseEvent) => {
+            setSceneCursor(event, CURSOR_INHERIT);
+          }}
+        />
+        <k-group name="table-header" x={TABLE_INSET} y={TABLE_INSET}>
+          {sceneIcon({
+            icon: 'plus',
+            name: 'table-add-column',
+            kind: 'icon',
+            size: HEADER_ICON_HEIGHT,
+            color: iconColor(theme, 'plus', hovered),
+            mouseenter: handleIconMouseenter('plus'),
+            mouseleave: handleIconMouseleave,
+            x:
+              contentWidth -
+              HEADER_ICON_HEIGHT * 2 -
+              TABLE_HEADER_BUTTON_MARGIN_LEFT,
+            y: 0,
+            click: handleAddColumn,
+          })}
+          {sceneIcon({
+            icon: 'x',
+            name: 'table-remove',
+            kind: 'icon',
+            size: HEADER_ICON_HEIGHT,
+            color: iconColor(theme, 'x', hovered),
+            mouseenter: handleIconMouseenter('x'),
+            mouseleave: handleIconMouseleave,
+            x: contentWidth - HEADER_ICON_HEIGHT,
+            y: 0,
+            click: handleRemoveTable,
+          })}
+          <k-group name="table-header-inputs" y={HEADER_CELLS_Y - TABLE_INSET}>
+            {nameCell
+              ? headerCell({
+                  ...nameCell,
+                  text: table.name.trim() ? table.name : 'table',
+                  fill: table.name.trim() ? theme.active : theme.placeholder,
+                  focus: hasFocus(FocusType.tableName),
+                  edit: hasEdit(FocusType.tableName),
+                  sharedFocus: sharedNameColor,
+                })
+              : null}
+            {commentCell
+              ? headerCell({
+                  ...commentCell,
+                  text: table.comment.trim() ? table.comment : 'comment',
+                  fill: table.comment.trim() ? theme.active : theme.placeholder,
+                  focus: hasFocus(FocusType.tableComment),
+                  edit: hasEdit(FocusType.tableComment),
+                  sharedFocus: sharedCommentColor,
+                })
+              : null}
+          </k-group>
+        </k-group>
+        <k-group name="table-columns">
           {repeat(
             columns,
             column => column.id,
-            column => (
+            (column, index) => (
               <Column
-                app={app}
                 column={column}
+                y={getColumnRect(store.state, table, index).y - rect.y}
+                width={rect.width}
                 selected={hasSelectColumn(column.id)}
+                hovered={column.id === props.hoveredColumnId}
                 widthName={tableWidths.name}
                 widthDataType={tableWidths.dataType}
                 widthDefault={tableWidths.default}
@@ -415,15 +554,16 @@ const Table: FC<TableProps> = (props, ctx) => {
                   FocusType.columnAutoIncrement,
                   column.id
                 )}
-                draggable={true}
-                ghost={isGhostColumn && column.id === state.dragstartId}
+                ghost={column.id === ghostColumnId}
+                preview={props.preview}
+                editorFocused={props.editorFocused}
                 onDragstart={handleDragstartColumn}
                 onDragend={handleDragendColumn}
               />
             )
           )}
-        </div>
-      </div>
+        </k-group>
+      </k-group>
     );
   };
 };

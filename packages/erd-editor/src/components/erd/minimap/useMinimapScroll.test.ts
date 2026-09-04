@@ -11,6 +11,7 @@ import { AppContext } from '@/components/appContext';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
+  changeZoomLevelAction,
   resizeAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -283,6 +284,120 @@ describe('useMinimapScroll', () => {
     await flush();
 
     expect(api!.state.selected).toBe(false);
+  });
+
+  it('rescales the movement when the canvas is zoomed out', async () => {
+    // A canvas this large still draws wider than the viewport at half zoom, and
+    // the start is far from either bound, so the step below is never clamped.
+    app.store.dispatchSync(resizeAction({ width: 8000, height: 8000 }));
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    app.store.dispatchSync(
+      scrollToAction({ scrollLeft: -3000, scrollTop: -3000 })
+    );
+    await flush();
+    const before = app.store.state.settings.scrollLeft;
+
+    mousedown(100, 100);
+    mousemove(110, 100);
+    await flush();
+
+    // The minimap keeps its scale, so 10px of travel is still 10 / ratio canvas
+    // px; a scroll pixel only buys half of one at this zoom, hence the halving.
+    expect(before).toBe(-3000);
+    expect(app.store.state.settings.scrollLeft - before).toBeCloseTo(
+      -266.6667,
+      3
+    );
+  });
+
+  /**
+   * At 150% the 2000 box draws 3000 wide and starts 500 left of the scroll, so
+   * the handle has 1800 of travel to cover rather than the 800 the canvas box
+   * alone allows. Each move is flushed, because the gate reads the last one.
+   */
+  describe('at a zoom that magnifies', () => {
+    const MAX_SCROLL_LEFT = 500;
+    const MIN_SCROLL_LEFT = 1200 - 3000 + 500;
+    const MAX_SCROLL_TOP = 500;
+    const MIN_SCROLL_TOP = 675 - 3000 + 500;
+
+    const magnify = async () => {
+      app.store.dispatchSync(changeZoomLevelAction({ value: 1.5 }));
+      await flush();
+    };
+
+    const stepHorizontal = async (
+      from: number,
+      step: number,
+      times: number
+    ) => {
+      mousedown(from, 100);
+      for (let index = 1; index <= times; index++) {
+        mousemove(from + step * index, 100);
+        await flush();
+      }
+      mouseup();
+    };
+
+    const stepVertical = async (from: number, step: number, times: number) => {
+      mousedown(100, from);
+      for (let index = 1; index <= times; index++) {
+        mousemove(100, from + step * index);
+        await flush();
+      }
+      mouseup();
+    };
+
+    it('drags the handle across every pixel the engine allows sideways', async () => {
+      await magnify();
+      app.store.dispatchSync(
+        scrollToAction({ scrollLeft: 1_000_000, scrollTop: 0 })
+      );
+      await flush();
+      expect(app.store.state.settings.scrollLeft).toBe(MAX_SCROLL_LEFT);
+
+      await stepHorizontal(100, 10, 9);
+
+      expect(app.store.state.settings.scrollLeft).toBe(MIN_SCROLL_LEFT);
+
+      await stepHorizontal(190, -10, 9);
+
+      expect(app.store.state.settings.scrollLeft).toBe(MAX_SCROLL_LEFT);
+    });
+
+    it('drags the handle across every pixel the engine allows downwards', async () => {
+      await magnify();
+      app.store.dispatchSync(
+        scrollToAction({ scrollLeft: 0, scrollTop: 1_000_000 })
+      );
+      await flush();
+      expect(app.store.state.settings.scrollTop).toBe(MAX_SCROLL_TOP);
+
+      await stepVertical(100, 10, 20);
+
+      expect(app.store.state.settings.scrollTop).toBe(MIN_SCROLL_TOP);
+
+      await stepVertical(300, -10, 20);
+
+      expect(app.store.state.settings.scrollTop).toBe(MAX_SCROLL_TOP);
+    });
+
+    it('still refuses a step once the scroll is standing on a bound', async () => {
+      await magnify();
+      app.store.dispatchSync(
+        scrollToAction({ scrollLeft: -1_000_000, scrollTop: 0 })
+      );
+      await flush();
+
+      mousedown(100, 100);
+      const { types, unsubscribe } = recordActions();
+      mousemove(110, 100);
+      await flush();
+      unsubscribe();
+
+      expect(types).not.toContain(ActionType.streamScrollTo);
+      expect(app.store.state.settings.scrollLeft).toBe(MIN_SCROLL_LEFT);
+    });
   });
 
   it('rescales the movement when the canvas is resized', async () => {

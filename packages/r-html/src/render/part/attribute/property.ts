@@ -1,15 +1,16 @@
+import type { HostNode } from '@/render/adapter';
 import { equalValues } from '@/render/helper';
 import { Part } from '@/render/part';
 import { getMarkers, MarkerTuple } from '@/template/helper';
 import { TAttr } from '@/template/tNode';
 
 export class PropertyPart implements Part {
-  #node: Element;
+  #node: HostNode;
   #attrName: TAttr['name'];
   #markerTuples: Array<MarkerTuple> = [];
   #values: any[] = [];
 
-  constructor(node: Element, { name, value }: TAttr) {
+  constructor(node: HostNode, { name, value }: TAttr) {
     this.#node = node;
     this.#attrName = name;
     this.#markerTuples = getMarkers(value ?? '');

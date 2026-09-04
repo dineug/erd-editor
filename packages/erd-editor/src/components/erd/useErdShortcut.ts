@@ -22,6 +22,8 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import {
   hasMoveKeys,
+  isEditingMemo,
+  isEditingText,
   MoveKey,
   SelectType,
 } from '@/engine/modules/editor/state';
@@ -42,7 +44,7 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import { Column, Ctx } from '@/internal-types';
 import { openTablePropertiesAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 import { fromCopy } from '@/utils/rx-operators/fromCopy';
 import { fromPaste } from '@/utils/rx-operators/fromPaste';
 import {
@@ -94,12 +96,17 @@ export function useErdShortcut(ctx: Ctx) {
     return ++pasteRound;
   };
 
+  /**
+   * Focus-ring traversal, the grid's own reading of the arrows and of Tab. A
+   * memo body editor stands in front of no grid, and an IME composition is not
+   * finished, so while either holds the keyboard these keys are not the grid's.
+   */
   const handleKeydown = (event: KeyboardEvent) => {
     const { store } = app.value;
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
 
-    if (showHighLevelTable) {
+    if (showHighLevelTable || isEditingMemo(editor) || isComposing(event)) {
       return;
     }
 
@@ -144,7 +151,7 @@ export function useErdShortcut(ctx: Ctx) {
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
 
-    if (!editor.focusTable || !editor.focusTable.edit) {
+    if (!isEditingText(editor)) {
       type === KeyBindingName.addTable && store.dispatch(addTableAction$());
       type === KeyBindingName.addColumn && store.dispatch(addColumnAction$());
       type === KeyBindingName.addMemo && store.dispatch(addMemoAction$());
@@ -181,7 +188,7 @@ export function useErdShortcut(ctx: Ctx) {
         store.dispatch(streamZoomLevelAction$(-0.04));
     }
 
-    if (!showHighLevelTable) {
+    if (!showHighLevelTable && !isEditingMemo(editor)) {
       if (editor.focusTable && !editor.focusTable.edit) {
         type === KeyBindingName.selectAllColumn &&
           store.dispatch(selectAllColumnAction());

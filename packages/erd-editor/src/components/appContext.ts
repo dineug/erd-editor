@@ -33,12 +33,21 @@ export type AppContext = EngineContext & {
 
 export type InjectAppContext = InjectEngineContext;
 
+export type AppContextOptions = RxStoreOptions & {
+  /**
+   * Whether a dev build connects the store to the redux devtools extension. Off
+   * for a store built where there is no window to look the extension up on.
+   */
+  devtools?: boolean;
+};
+
 export function createAppContext(
   ctx: InjectAppContext,
-  options?: RxStoreOptions
+  options?: AppContextOptions
 ): AppContext {
+  const { devtools = true, ...storeOptions } = options ?? {};
   const engineContext = createEngineContext(ctx);
-  const store = createRxStore(engineContext, options);
+  const store = createRxStore(engineContext, storeOptions);
   const keyBindingMap = observable(createKeyBindingMap(), { shallow: true });
   const shortcut$ = new Subject<{
     type: KeyBindingName;
@@ -47,7 +56,7 @@ export function createAppContext(
   const keydown$ = new Subject<KeyboardEvent>();
   const emitter = new Emitter();
 
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && devtools) {
     reduxDevtools(store);
   }
 

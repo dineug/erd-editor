@@ -9,6 +9,7 @@ import {
 } from 'vite-plus/test';
 
 import { CanvasType, Show } from '@/constants/schema';
+import { ChangeActionTypes, SharedActionTypes } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
 import {
   changeHasHistoryAction,
@@ -22,6 +23,8 @@ import {
   drawRelationshipAction,
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
+  editMemoAction,
+  editMemoEndAction,
   editTableAction,
   editTableEndAction,
   focusColumnAction,
@@ -35,6 +38,7 @@ import {
   initialLoadJsonAction,
   loadJsonAction,
   mergeLWWAction,
+  scrollMemoAction,
   selectAction,
   selectAllAction,
   selectAllColumnAction,
@@ -52,6 +56,10 @@ import {
   SelectType,
   type SharedFocus,
 } from '@/engine/modules/editor/state';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 import { createIndex } from '@/utils/collection/index.entity';
@@ -181,6 +189,110 @@ describe('editor.changeViewport', () => {
     store.dispatchSync(changeViewportAction({ width: 1024, height: 768 }));
 
     expect(store.state.editor.viewport).toEqual({ width: 1024, height: 768 });
+  });
+
+  /**
+   * A window that grows shortens the travel the scroll is allowed. Leaving an
+   * offset outside it paints a band of nothing along two edges until the next
+   * scroll gesture happens to clamp it, which is a repaint the user has to ask for.
+   */
+  it('pulls a scroll left outside the widened range back into it', () => {
+    store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
+    store.dispatchSync(
+      scrollToAction({ scrollLeft: -1_000_000, scrollTop: -1_000_000 })
+    );
+    expect(store.state.settings.scrollLeft).toBe(900 - 2000);
+    expect(store.state.settings.scrollTop).toBe(700 - 2000);
+
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    expect(store.state.settings.scrollLeft).toBe(1440 - 2000);
+    expect(store.state.settings.scrollTop).toBe(900 - 2000);
+  });
+
+  it('leaves a scroll the narrowed range still holds exactly where it was', () => {
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+    store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: -200 }));
+
+    store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
+
+    expect(store.state.settings.scrollLeft).toBe(-100);
+    expect(store.state.settings.scrollTop).toBe(-200);
+  });
+
+  /**
+   * The same pull with the canvas drawn far smaller than the screen. Travel
+   * closes toward the middle of the screen as the zoom falls, so the offset
+   * lands on the end of it rather than on a midpoint no later zoom can leave.
+   */
+  it('pulls a shrunk canvas back to the end of the travel it still has', () => {
+    store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
+    store.dispatchSync(changeZoomLevelAction({ value: 0.1 }));
+    store.dispatchSync(
+      scrollToAction({ scrollLeft: -1_000_000, scrollTop: -1_000_000 })
+    );
+
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    // (viewport - canvas) times (1 + zoom) halved, on each axis: the far end of
+    // a travel that closes in by the zoom rather than the canvas box's own end.
+    expect(store.state.settings.scrollLeft).toBe(-308);
+    expect(store.state.settings.scrollTop).toBe(-605);
+  });
+});
+
+/** A document that names its own screen size, zoom and scroll and nothing else. */
+const documentAt = (zoomLevel: number, scrollLeft: number, scrollTop: number) =>
+  JSON.stringify({
+    version: '3.0.0',
+    settings: { zoomLevel, scrollLeft, scrollTop },
+  });
+
+describe('editor.loadJson / initialLoadJson', () => {
+  /**
+   * A file can name an offset no zoom below 1 can hold, and nothing else on the
+   * load path clamps. Left alone it opens on empty canvas and the first notch of
+   * the wheel jumps the whole way back in.
+   */
+  it.each([
+    ['loadJson', loadJsonAction],
+    ['initialLoadJson', initialLoadJsonAction],
+  ])('pulls a scroll %s carries into the travel its zoom allows', (_, load) => {
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    store.dispatchSync(load({ value: documentAt(0.3, 0, 0) }));
+
+    expect(store.state.settings.zoomLevel).toBe(0.3);
+    expect(store.state.settings.scrollLeft).toBe(-196);
+    expect(store.state.settings.scrollTop).toBe(-385);
+  });
+
+  it('leaves a scroll the travel already holds exactly where the file put it', () => {
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    store.dispatchSync(loadJsonAction({ value: documentAt(0.3, -300, -400) }));
+
+    expect(store.state.settings.scrollLeft).toBe(-300);
+    expect(store.state.settings.scrollTop).toBe(-400);
+  });
+
+  /**
+   * A host that has not measured its frame yet has no travel to speak of, so the
+   * file's own offset is kept and changeViewport clamps it once there is a
+   * screen. Clamping against a screen of nothing would move it twice.
+   */
+  it('keeps the offset until a screen exists, then lands it in range', () => {
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+
+    store.dispatchSync(loadJsonAction({ value: documentAt(0.3, 0, 0) }));
+
+    expect(store.state.settings.scrollLeft).toBe(0);
+    expect(store.state.settings.scrollTop).toBe(0);
+
+    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+
+    expect(store.state.settings.scrollLeft).toBe(-196);
+    expect(store.state.settings.scrollTop).toBe(-385);
   });
 });
 
@@ -575,6 +687,74 @@ describe('editor.editTable / editTableEnd', () => {
     store.dispatchSync(editTableEndAction());
 
     expect(store.state.editor.focusTable).toBeNull();
+  });
+});
+
+describe('editor.editMemo / editMemoEnd', () => {
+  it('names the memo the body editor is open on', () => {
+    store.dispatchSync(editMemoAction({ id: 'm1' }));
+    expect(store.state.editor.editMemoId).toBe('m1');
+
+    store.dispatchSync(editMemoEndAction());
+    expect(store.state.editor.editMemoId).toBeNull();
+  });
+
+  it('moves the editor straight from one memo to another', () => {
+    store.dispatchSync(editMemoAction({ id: 'm1' }));
+    store.dispatchSync(editMemoAction({ id: 'm2' }));
+
+    expect(store.state.editor.editMemoId).toBe('m2');
+  });
+
+  it('leaves the table focus alone', () => {
+    addTable(store, 't1');
+    store.dispatchSync(
+      focusTableAction({ tableId: 't1' }),
+      editMemoAction({ id: 'm1' })
+    );
+
+    expect(store.state.editor.focusTable?.tableId).toBe('t1');
+    expect(store.state.editor.editMemoId).toBe('m1');
+  });
+});
+
+describe('editor.scrollMemo', () => {
+  it('keeps how far down its body each memo is shown from', () => {
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop: 40 }));
+    store.dispatchSync(scrollMemoAction({ id: 'm2', scrollTop: 12.5 }));
+
+    expect(store.state.editor.memoScrollTopMap).toEqual({ m1: 40, m2: 12.5 });
+  });
+
+  it('replaces a memo scroll rather than adding to it', () => {
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop: 40 }));
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop: 8 }));
+
+    expect(store.state.editor.memoScrollTopMap.m1).toBe(8);
+  });
+
+  it.each([
+    ['a negative scroll', -30],
+    ['a scroll that is not a number', Number.NaN],
+    ['an infinite scroll', Number.POSITIVE_INFINITY],
+  ])('holds %s at the first line', (_label, scrollTop) => {
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop }));
+
+    expect(store.state.editor.memoScrollTopMap.m1).toBe(0);
+  });
+
+  it('leaves the editor open on the memo it was open on', () => {
+    store.dispatchSync(
+      editMemoAction({ id: 'm1' }),
+      scrollMemoAction({ id: 'm1', scrollTop: 40 })
+    );
+
+    expect(store.state.editor.editMemoId).toBe('m1');
+  });
+
+  it('stays on this client, as neither a document change nor a shared action', () => {
+    expect(ChangeActionTypes).not.toContain('editor.scrollMemo');
+    expect(SharedActionTypes).not.toContain('editor.scrollMemo');
   });
 });
 

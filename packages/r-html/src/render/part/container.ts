@@ -1,27 +1,28 @@
 import { TEMPLATE_LITERALS } from '@/constants';
-import {
-  insertAfterNode,
-  insertBeforeNode,
-  rangeNodes,
-  removeNode,
-} from '@/render/helper';
+import type { HostNode } from '@/render/adapter';
+import { domHelper, HostHelper } from '@/render/helper';
 import { createTemplate, Part } from '@/render/part';
 import { TemplateLiterals, TemplateLiteralsType } from '@/template';
 import { isSVG } from '@/template/helper';
 
 export class ContainerPart implements Part {
-  #startNode = document.createComment('');
-  #endNode = document.createComment('');
-  #fragment: DocumentFragment | null = null;
+  #helper: HostHelper;
+  #startNode: HostNode;
+  #endNode: HostNode;
+  #fragment: HostNode | null = null;
   #parts: Part[] = [];
   #strings: TemplateStringsArray;
   #isInject = false;
 
   constructor(
     templateLiterals: TemplateLiterals,
-    startNode?: Comment,
-    endNode?: Comment
+    startNode?: HostNode,
+    endNode?: HostNode,
+    helper: HostHelper = domHelper
   ) {
+    this.#helper = helper;
+    this.#startNode = helper.createMarker('');
+    this.#endNode = helper.createMarker('');
     this.#strings = templateLiterals.strings;
 
     if (
@@ -33,7 +34,8 @@ export class ContainerPart implements Part {
 
     const [fragment, parts] = createTemplate(
       templateLiterals.template.node,
-      isSVG(templateLiterals[TEMPLATE_LITERALS])
+      isSVG(templateLiterals[TEMPLATE_LITERALS]),
+      helper
     );
 
     this.#fragment = fragment;
@@ -43,8 +45,8 @@ export class ContainerPart implements Part {
       this.#endNode = endNode;
       this.#isInject = true;
     } else {
-      fragment.prepend(this.#startNode);
-      fragment.append(this.#endNode);
+      helper.prependChild(fragment, this.#startNode);
+      helper.appendChild(fragment, this.#endNode);
     }
   }
 
@@ -56,22 +58,22 @@ export class ContainerPart implements Part {
     this.#parts.forEach(part => part.commit(values));
   }
 
-  insert(position: 'before' | 'after' | 'children', refNode: Node) {
+  insert(position: 'before' | 'after' | 'children', refNode: HostNode) {
     if (!this.#fragment) return;
     position === 'before'
-      ? insertBeforeNode(this.#fragment, refNode)
+      ? this.#helper.insertBeforeNode(this.#fragment, refNode)
       : position === 'after'
-        ? insertAfterNode(this.#fragment, refNode)
-        : refNode.appendChild(this.#fragment);
+        ? this.#helper.insertAfterNode(this.#fragment, refNode)
+        : this.#helper.appendChild(refNode, this.#fragment);
     this.#fragment = null;
   }
 
   destroy() {
     this.#parts.forEach(part => part.destroy?.());
-    rangeNodes(this.#startNode, this.#endNode).forEach(removeNode);
+    this.#helper.removeRange(this.#startNode, this.#endNode);
     if (!this.#isInject) {
-      this.#startNode.remove();
-      this.#endNode.remove();
+      this.#helper.removeNode(this.#startNode);
+      this.#helper.removeNode(this.#endNode);
     }
   }
 }

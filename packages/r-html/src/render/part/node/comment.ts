@@ -1,16 +1,23 @@
 import { isNull, isPrimitive, isString, isUndefined } from '@/helpers/is-type';
-import { equalValues } from '@/render/helper';
+import type { HostNode } from '@/render/adapter';
+import { domHelper, equalValues, HostHelper } from '@/render/helper';
 import { Part } from '@/render/part';
 import { getMarkers, MarkerTuple } from '@/template/helper';
 import { TNode } from '@/template/tNode';
 
 export class CommentPart implements Part {
-  #node: Comment;
+  #helper: HostHelper;
+  #node: HostNode;
   #value: TNode['value'];
   #markerTuples: Array<MarkerTuple> = [];
   #values: any[] = [];
 
-  constructor(node: Comment, { value }: TNode) {
+  constructor(
+    node: HostNode,
+    { value }: TNode,
+    helper: HostHelper = domHelper
+  ) {
+    this.#helper = helper;
     this.#node = node;
     this.#value = value;
     isString(value) && (this.#markerTuples = getMarkers(value));
@@ -32,6 +39,6 @@ export class CommentPart implements Part {
       this.#value ?? ''
     );
 
-    this.#node.data = value;
+    this.#helper.setText(this.#node, value);
   }
 }

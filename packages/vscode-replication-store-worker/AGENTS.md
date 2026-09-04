@@ -69,6 +69,6 @@ instead of inlined. `private: true`.
 
 ### External
 
-Build-only: `vite-plugin-dts` with `@typescript/typescript6`, and `tslib`.
+Build-only: `vite-plugin-dts` with `@typescript/typescript6`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

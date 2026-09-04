@@ -46,20 +46,24 @@ function sourceFiles(directory = SRC): string[] {
   });
 }
 
-// Two spellings reach Icon: the JSX attribute and a menu descriptor field.
-// Every other name= in this package is Title Case, so case keeps them apart.
+// Three spellings reach an icon: the JSX attribute, a menu descriptor field and
+// a direct lookup for path data. Case separates the first from a DOM template's
+// other name=, and the pragma separates it from a konva scene's node names.
 function referencedNames(): Set<string> {
   const names = new Set<string>();
 
   for (const path of sourceFiles()) {
     const source = readFileSync(path, 'utf8');
 
-    if (path.endsWith('.tsx')) {
+    if (path.endsWith('.tsx') && !source.includes('@jsxHost konva')) {
       for (const [, name] of source.matchAll(/name="([a-z][a-z0-9-]*)"/g)) {
         names.add(name);
       }
     }
     for (const [, name] of source.matchAll(/\bicon(?:Name)?: '([^']+)'/g)) {
+      names.add(name);
+    }
+    for (const [, name] of source.matchAll(/\bgetIcon\('([^']+)'\)/g)) {
       names.add(name);
     }
   }

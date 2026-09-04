@@ -12,8 +12,45 @@ export const root = css`
   border: 1px solid var(--toast-border);
 `;
 
+/**
+ * The ring beside the text of a toast that reports something still running.
+ * A busy one turns a quarter of it; one with a progress fills it from the top.
+ */
+export const indicator = css`
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 12px;
+  color: var(--active);
+
+  & svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  & [data-part='track'] {
+    stroke: var(--toast-border);
+  }
+
+  & [data-part='arc'] {
+    stroke: currentColor;
+    transition: stroke-dashoffset 0.2s;
+  }
+
+  &[data-busy] svg {
+    animation: toastSpin 0.9s linear infinite;
+  }
+
+  @keyframes toastSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
 export const textWrap = css`
-  word-break: break-all;
+  overflow-wrap: anywhere;
 
   & > div {
     margin-bottom: 5px;

@@ -19,7 +19,7 @@ import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import * as styles from '@/components/erd/automatic-table-placement/AutomaticTablePlacement.styles';
-import { MINIMAP_SIZE } from '@/constants/layout';
+import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -47,6 +47,7 @@ vi.mock(
       >();
 
     return {
+      placementProgress: actual.placementProgress,
       createAutomaticTablePlacement: (state: any) => {
         if (hoisted.throwOnCreate) {
           throw new Error('simulation failed');
@@ -154,7 +155,7 @@ describe('AutomaticTablePlacement', () => {
       expect(toasts[0].close).toBeUndefined();
 
       const container = await renderToast(toasts[0]);
-      expect(container.textContent).toContain('Not found tables');
+      expect(container.textContent).toContain('No tables to place');
       expect(container.querySelectorAll('button')).toHaveLength(0);
     });
 
@@ -180,26 +181,35 @@ describe('AutomaticTablePlacement', () => {
       expect(root?.querySelector(`.${styles.container}`)).toBeTruthy();
       expect(container.querySelector('.minimap')).toBeTruthy();
       expect(container.querySelector('.minimap-viewport')).toBeTruthy();
-      expect(container.querySelectorAll('.table').length).toBeGreaterThan(0);
+      expect(
+        container.querySelector('[data-testid="erd-canvas"]')
+      ).toBeTruthy();
     });
 
-    it('previews the document in its own store, zoomed and centered on the viewport', async () => {
+    it('centers the preview scroll on the origin viewport', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       const { width, height } = app.store.state.settings;
 
       const { container } = await open(app, vi.fn());
 
-      const controller = container.querySelector(
-        `.${styles.container} > div`
+      // The scroll is the preview store's, and the minimap viewport rectangle
+      // is where it reaches the dom: the scene's own copy of it went onto the
+      // konva layer, which no unit environment can build.
+      const viewport = container.querySelector(
+        '.minimap-viewport'
       ) as HTMLElement;
+      const ratio = MINIMAP_SIZE / width;
       const zoomLevel = 800 / width;
-      const scrollLeft = -1 * (width / 2 - 800 / 2);
       const scrollTop = -1 * (height / 2 - 600 / 2);
+      // The rectangle is the canvas the screen reaches, not the screen's own
+      // size, so the preview zoom divides into both. Horizontally that is the
+      // whole 2000 box, which is the map, and the offset from its left is nil.
+      const top =
+        (-1 * (scrollTop + (height - height * zoomLevel) / 2)) / zoomLevel;
 
-      expect(controller.style.transform).toBe(
-        `translate(${scrollLeft}px, ${scrollTop}px) scale(${zoomLevel})`
-      );
+      expect(viewport.style.top).toBe(`${MINIMAP_MARGIN + top * ratio}px`);
+      expect(viewport.style.right).toBe(`${MINIMAP_MARGIN}px`);
     });
 
     it('mirrors the origin viewport into the preview store', async () => {
@@ -212,19 +222,24 @@ describe('AutomaticTablePlacement', () => {
       ) as HTMLElement;
       const ratio = MINIMAP_SIZE / width;
 
-      expect(viewport.style.width).toBe(`${800 * ratio}px`);
-      expect(viewport.style.height).toBe(`${600 * ratio}px`);
+      // The preview is zoomed to 0.4 so the whole canvas fits, so the screen
+      // reaches 800 / 0.4 across, which is the canvas box and therefore the
+      // whole map. Only the height leaves room to grow with the viewport.
+      const zoomLevel = 800 / width;
+
+      expect(viewport.style.width).toBe(`${MINIMAP_SIZE}px`);
+      expect(viewport.style.height).toBe(`${(600 / zoomLevel) * ratio}px`);
 
       app.store.dispatchSync(
         changeViewportAction({ width: 1000, height: 400 })
       );
       await flush();
 
-      expect(viewport.style.width).toBe(`${1000 * ratio}px`);
-      expect(viewport.style.height).toBe(`${400 * ratio}px`);
+      expect(viewport.style.width).toBe(`${MINIMAP_SIZE}px`);
+      expect(viewport.style.height).toBe(`${(400 / zoomLevel) * ratio}px`);
     });
 
-    it('opens a closable toast offering Stop and Cancel', async () => {
+    it('opens a closable toast offering Apply and Cancel', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       const toasts = listenToasts(app);
@@ -235,15 +250,43 @@ describe('AutomaticTablePlacement', () => {
       expect(toasts[0].close).toBeInstanceOf(Promise);
 
       const container = await renderToast(toasts[0]);
-      expect(container.textContent).toContain('Automatic Table Placement...');
+      expect(container.textContent).toContain('Placing tables… 0%');
       expect(
         Array.from(container.querySelectorAll('button')).map(el =>
           el.textContent?.trim()
         )
-      ).toEqual(['Stop', 'Cancel']);
+      ).toEqual(['Apply', 'Cancel']);
     });
 
-    it('reports the simulated table positions when Stop is pressed', async () => {
+    it('shows how far the placement has run as the simulation cools', async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users');
+      const toasts = listenToasts(app);
+
+      await open(app, vi.fn());
+      const simulation = hoisted.simulations[0];
+      const container = await renderToast(toasts[0]);
+      const bar = container.querySelector(
+        '[role="progressbar"]'
+      ) as HTMLElement;
+      expect(bar.getAttribute('aria-valuenow')).toBe('0');
+
+      // tick() brings the heat down without dispatching, so the listener is
+      // called here the way the simulation's own timer would call it.
+      for (let tick = 0; tick < 150; tick++) simulation.tick();
+      simulation.on('tick.progress').call(simulation);
+      await flush();
+
+      const percent = Number(/(\d+)%/.exec(container.textContent ?? '')?.[1]);
+      expect(percent).toBeGreaterThan(40);
+      expect(percent).toBeLessThan(60);
+      expect(Number(bar.getAttribute('aria-valuenow')) * 100).toBeCloseTo(
+        percent,
+        0
+      );
+    });
+
+    it('reports the simulated table positions when Apply is pressed', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       addTable(app, 't2', 'posts');
@@ -261,7 +304,7 @@ describe('AutomaticTablePlacement', () => {
       simulation.on('tick').call(simulation);
 
       const container = await renderToast(toasts[0]);
-      clickButton(container, 'Stop');
+      clickButton(container, 'Apply');
 
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange.mock.calls[0][0]).toEqual([
@@ -293,7 +336,7 @@ describe('AutomaticTablePlacement', () => {
       );
     });
 
-    it('ignores a Stop that arrives after the overlay was cancelled', async () => {
+    it('ignores an Apply that arrives after the overlay was cancelled', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       const toasts = listenToasts(app);
@@ -302,7 +345,7 @@ describe('AutomaticTablePlacement', () => {
       await open(app, onChange);
       const container = await renderToast(toasts[0]);
       clickButton(container, 'Cancel');
-      clickButton(container, 'Stop');
+      clickButton(container, 'Apply');
 
       expect(onChange).not.toHaveBeenCalled();
     });

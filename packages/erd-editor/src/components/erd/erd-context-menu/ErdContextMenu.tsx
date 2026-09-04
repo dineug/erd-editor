@@ -1,10 +1,11 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, onMounted, Ref } from '@dineug/r-html';
+import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
+import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
@@ -36,7 +37,6 @@ export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
 
 export type ErdContextMenuProps = {
   type: ErdContextMenuType;
-  canvas: Ref<HTMLDivElement>;
   relationshipId?: string;
   tableId?: string;
   onClose: () => void;
@@ -44,6 +44,7 @@ export type ErdContextMenuProps = {
 
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const themeRef = useThemeContext(ctx);
   const chevronRightIcon = <Icon name="chevron-right" size={14} />;
   const { addUnsubscribe } = useUnmounted();
 
@@ -370,7 +371,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     {createExportMenus(
                       app.value,
                       props.onClose,
-                      props.canvas.value
+                      themeRef.value
                     ).map(menu => (
                       <ContextMenu.Item
                         onClick={menu.onClick}

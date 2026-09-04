@@ -1,12 +1,37 @@
 import { observable } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { MINIMAP_SIZE } from '@/constants/layout';
-import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  getMinimapRatio,
+  toScrollMovement,
+} from '@/components/erd/minimap/minimapGeometry';
+import {
+  getScrollRanges,
+  type ScrollRange,
+  streamScrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { Ctx } from '@/internal-types';
 import { isMouseEvent } from '@/utils/domEvent';
-import { DirectionName } from '@/utils/draw-relationship';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
+
+/**
+ * How much of this step of the drag is the handle's to take. The room is read
+ * off the scroll as it stands rather than off where the step would land, so the
+ * last partial step reaches the reducer and is clamped instead of dropped.
+ */
+const takeMovement = (
+  movement: number,
+  pointer: number,
+  origin: number,
+  scroll: number,
+  { min, max }: ScrollRange
+) => {
+  const backwards = movement < 0;
+  const hasRoom = backwards ? scroll < max : scroll > min;
+  const behindPointer = backwards ? pointer < origin : pointer > origin;
+
+  return hasRoom && behindPointer ? movement : 0;
+};
 
 export function useMinimapScroll(ctx: Ctx) {
   const app = useAppContext(ctx);
@@ -17,17 +42,18 @@ export function useMinimapScroll(ctx: Ctx) {
   let clientX = 0;
   let clientY = 0;
 
-  const getRatio = () => {
+  /**
+   * Minimap travel as the scroll the canvas has to take to follow it. The
+   * minimap is drawn at a fixed ratio, so the canvas distance is zoom free; the
+   * scroll that covers it is not, because a scroll pixel is a screen pixel.
+   */
+  const absoluteMovement = (movement: number) => {
     const { store } = app.value;
     const {
-      settings: { width },
+      settings: { width, zoomLevel },
     } = store.state;
-    return MINIMAP_SIZE / width;
-  };
 
-  const absoluteMovement = (movement: number) => {
-    const ratio = getRatio();
-    return -1 * (movement / ratio);
+    return toScrollMovement(movement, getMinimapRatio(width), zoomLevel);
   };
 
   const getMovementX = ({ movementX, x }: DragMove) => {
@@ -36,28 +62,16 @@ export function useMinimapScroll(ctx: Ctx) {
       settings,
       editor: { viewport },
     } = store.state;
-    const scrollLeft = settings.scrollLeft + absoluteMovement(movementX);
-    const min = viewport.width - settings.width;
-    const max = 0;
-    const direction = movementX < 0 ? DirectionName.left : DirectionName.right;
-    let change = false;
+    const movement = takeMovement(
+      movementX,
+      x,
+      clientX,
+      settings.scrollLeft,
+      getScrollRanges(settings, viewport).left
+    );
 
-    switch (direction) {
-      case DirectionName.left:
-        if (scrollLeft < max && x < clientX) {
-          clientX += movementX;
-          change = true;
-        }
-        break;
-      case DirectionName.right:
-        if (scrollLeft > min && x > clientX) {
-          clientX += movementX;
-          change = true;
-        }
-        break;
-    }
-
-    return change ? movementX : 0;
+    clientX += movement;
+    return movement;
   };
 
   const getMovementY = ({ movementY, y }: DragMove) => {
@@ -66,28 +80,16 @@ export function useMinimapScroll(ctx: Ctx) {
       settings,
       editor: { viewport },
     } = store.state;
-    const scrollTop = settings.scrollTop + absoluteMovement(movementY);
-    const min = viewport.height - settings.height;
-    const max = 0;
-    const direction = movementY < 0 ? DirectionName.top : DirectionName.bottom;
-    let change = false;
+    const movement = takeMovement(
+      movementY,
+      y,
+      clientY,
+      settings.scrollTop,
+      getScrollRanges(settings, viewport).top
+    );
 
-    switch (direction) {
-      case DirectionName.top:
-        if (scrollTop < max && y < clientY) {
-          clientY += movementY;
-          change = true;
-        }
-        break;
-      case DirectionName.bottom:
-        if (scrollTop > min && y > clientY) {
-          clientY += movementY;
-          change = true;
-        }
-        break;
-    }
-
-    return change ? movementY : 0;
+    clientY += movement;
+    return movement;
   };
 
   const handleScroll = (dragMove: DragMove) => {

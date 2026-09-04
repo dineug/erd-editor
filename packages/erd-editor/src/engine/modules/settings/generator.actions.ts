@@ -2,7 +2,7 @@ import { round } from 'es-toolkit/compat';
 
 import { GeneratorAction } from '@/engine/generator.actions';
 import { RootState } from '@/engine/state';
-import { getZoomViewport } from '@/utils/dragSelect';
+import { toScenePoint, toScreenPoint } from '@/konva/scene/viewport';
 import { zoomLevelInRange } from '@/utils/validation';
 
 import {
@@ -12,6 +12,11 @@ import {
   streamZoomLevelAction,
 } from './atom.actions';
 
+/**
+ * How far the scroll has to travel for the scene point under the middle of the
+ * screen to stay under it, solved with the placement the scene is drawn at. The
+ * ratio it replaces was exact only while the zoom being left was 1.
+ */
 function getMovementScrollTo(
   {
     editor: { viewport },
@@ -19,20 +24,18 @@ function getMovementScrollTo(
   }: RootState,
   nextZoomLevel: number
 ) {
-  const zoomViewport = getZoomViewport(width, height, zoomLevel);
-  const nextZoomViewport = getZoomViewport(width, height, nextZoomLevel);
-  const x = (zoomViewport.w - nextZoomViewport.w) / 2;
-  const y = (zoomViewport.h - nextZoomViewport.h) / 2;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const viewportCenterX = scrollLeft * -1 + viewport.width / 2;
-  const viewportCenterY = scrollTop * -1 + viewport.height / 2;
-  const centerXRatio = (centerX - viewportCenterX) / centerX;
-  const centerYRatio = (centerY - viewportCenterY) / centerY;
-  const movementX = round(-1 * x * centerXRatio, 4);
-  const movementY = round(-1 * y * centerYRatio, 4);
+  const transform = { width, height, scrollLeft, scrollTop, zoomLevel };
+  const center = { x: viewport.width / 2, y: viewport.height / 2 };
+  const anchor = toScenePoint(transform, center);
+  const screen = toScreenPoint(
+    { ...transform, zoomLevel: nextZoomLevel },
+    anchor
+  );
 
-  return { movementX, movementY };
+  return {
+    movementX: round(center.x - screen.x, 4),
+    movementY: round(center.y - screen.y, 4),
+  };
 }
 
 export const changeZoomLevelAction$ = (value: number): GeneratorAction =>

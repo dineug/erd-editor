@@ -3,8 +3,11 @@ import { createAction } from '@dineug/r-html';
 import { createInRange, isNill } from '@dineug/shared';
 import { round } from 'es-toolkit/compat';
 
+import { Viewport } from '@/engine/modules/editor/state';
 import { Tag } from '@/engine/tag';
+import { Settings } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { getZoomViewport } from '@/utils/dragSelect';
 import {
   canvasSizeInRange,
   hasBracketType,
@@ -82,6 +85,78 @@ const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
   settings.zoomLevel = zoomLevelInRange(settings.zoomLevel + value);
 };
 
+/** A zoom of exactly 1 negates a zero offset, and the store compares with Object.is. */
+const unsigned = (value: number) => value + 0;
+
+/** How far the scroll may travel on one axis, measured in screen pixels. */
+export type ScrollRange = {
+  min: number;
+  max: number;
+};
+
+export type ScrollRanges = {
+  left: ScrollRange;
+  top: ScrollRange;
+};
+
+/** The canvas box and the zoom that draws it, which is all a range needs. */
+export type ScrollTransform = Pick<Settings, 'width' | 'height' | 'zoomLevel'>;
+
+/**
+ * One axis of travel, written on the scene point the middle of the screen sits
+ * over. It keeps the half screen a zoom of 1 would show between itself and each
+ * edge of the canvas box, which magnifying shrinks to the half it really shows.
+ */
+function toScrollRange(
+  drawn: number,
+  offset: number,
+  viewportLength: number,
+  zoomLevel: number
+): ScrollRange {
+  const reach = Math.min(1, zoomLevel);
+  const near = (viewportLength * (1 - reach)) / 2 - offset;
+  const far = (viewportLength * (1 + reach)) / 2 - drawn - offset;
+
+  return {
+    min: unsigned(Math.min(near, far)),
+    max: unsigned(Math.max(near, far)),
+  };
+}
+
+/**
+ * How far the scroll may travel on each axis. A scene layer sits at the scroll
+ * plus the zoom viewport offset, so magnifying reaches further both ways, while
+ * shrinking closes the travel in by the zoom instead of leaving the box's own.
+ */
+export function getScrollRanges(
+  settings: ScrollTransform,
+  viewport: Viewport
+): ScrollRanges {
+  const { x, y, w, h } = getZoomViewport(
+    settings.width,
+    settings.height,
+    settings.zoomLevel
+  );
+
+  return {
+    left: toScrollRange(w, x, viewport.width, settings.zoomLevel),
+    top: toScrollRange(h, y, viewport.height, settings.zoomLevel),
+  };
+}
+
+/** The clamps every reducer that writes a scroll offset shares. */
+export function createScrollInRange(
+  settings: ScrollTransform,
+  viewport: Viewport
+) {
+  const { left, top } = getScrollRanges(settings, viewport);
+
+  return {
+    scrollLeftInRange: createInRange(left.min, left.max),
+    scrollTopInRange: createInRange(top.min, top.max),
+  };
+}
+
 export const scrollToAction = createAction<
   ActionMap[typeof ActionType.scrollTo]
 >(ActionType.scrollTo);
@@ -94,8 +169,10 @@ const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
     return;
   }
 
-  const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
-  const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
+  const { scrollTopInRange, scrollLeftInRange } = createScrollInRange(
+    settings,
+    viewport
+  );
 
   settings.scrollTop = round(scrollTopInRange(scrollTop), 4);
   settings.scrollLeft = round(scrollLeftInRange(scrollLeft), 4);
@@ -113,8 +190,10 @@ const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
     return;
   }
 
-  const scrollTopInRange = createInRange(viewport.height - settings.height, 0);
-  const scrollLeftInRange = createInRange(viewport.width - settings.width, 0);
+  const { scrollTopInRange, scrollLeftInRange } = createScrollInRange(
+    settings,
+    viewport
+  );
 
   settings.scrollTop = round(
     scrollTopInRange(settings.scrollTop + movementY),

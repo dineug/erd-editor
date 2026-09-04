@@ -11,6 +11,14 @@ export type Editor = {
   hasRedo: boolean;
   viewport: Viewport;
   focusTable: FocusTable | null;
+  /** The memo whose body an overlay editor is open on, and null while none is. */
+  editMemoId: string | null;
+  /**
+   * How far down its body each memo is shown from, by memo id. The scene and
+   * the overlay editor both read it, so the lines a body shows survive the
+   * editor opening and closing over it. Local to this client, never the file.
+   */
+  memoScrollTopMap: Record<string, number>;
   drawRelationship: DrawRelationship | null;
   hoverColumnMap: Record<string, boolean>;
   hoverRelationshipMap: Record<string, boolean>;
@@ -112,6 +120,22 @@ export const MoveKey = {
 export type MoveKey = ValuesType<typeof MoveKey>;
 export const hasMoveKeys = arrayHas(Object.values(MoveKey));
 
+/**
+ * Whether the memo body editor owns the keyboard. Its textarea covers no grid,
+ * so the traversal and edit keys a focused table would otherwise answer belong
+ * to the caret for as long as it is open.
+ */
+export const isEditingMemo = ({ editMemoId }: Editor): boolean =>
+  Boolean(editMemoId);
+
+/**
+ * Whether a live text editor owns the keyboard. A memo body and a table cell
+ * both open a real input over the scene, so a canvas shortcut stands down for
+ * either of them rather than for the cell alone.
+ */
+export const isEditingText = (editor: Editor): boolean =>
+  isEditingMemo(editor) || Boolean(editor.focusTable?.edit);
+
 export const createEditor = (): Editor => ({
   id: nanoid(),
   selectedMap: {},
@@ -122,6 +146,8 @@ export const createEditor = (): Editor => ({
     height: DEFAULT_HEIGHT,
   },
   focusTable: null,
+  editMemoId: null,
+  memoScrollTopMap: {},
   drawRelationship: null,
   hoverColumnMap: {},
   hoverRelationshipMap: {},
