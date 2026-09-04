@@ -25,6 +25,7 @@ export const ActionType = {
   editTableEnd: 'editor.editTableEnd',
   editMemo: 'editor.editMemo',
   editMemoEnd: 'editor.editMemoEnd',
+  scrollMemo: 'editor.scrollMemo',
   selectAllColumn: 'editor.selectAllColumn',
   drawStartRelationship: 'editor.drawStartRelationship',
   drawStartAddRelationship: 'editor.drawStartAddRelationship',
@@ -88,6 +89,11 @@ export type ActionMap = {
     id: string;
   };
   [ActionType.editMemoEnd]: void;
+  [ActionType.scrollMemo]: {
+    id: string;
+    /** How far down its body the memo is shown from, in body px. */
+    scrollTop: number;
+  };
   [ActionType.selectAllColumn]: void;
   [ActionType.drawStartRelationship]: {
     relationshipType: number;

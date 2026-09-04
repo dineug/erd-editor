@@ -12,6 +12,7 @@ import {
 import { type AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import * as overlayStyles from '@/components/erd/canvas/EditOverlay.styles';
+import { getMemoScrollMax } from '@/components/erd/canvas/memo/memoScroll';
 import {
   getMemoLineHeightPx,
   layoutMemoLines,
@@ -49,6 +50,7 @@ import {
   editTableEndAction,
   focusColumnAction,
   focusTableAction,
+  scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
@@ -562,16 +564,20 @@ const memoTextareaOf = (mounted: Mounted) =>
 
 type MemoFixture = Fixture & { memoId: string };
 
-async function editMemo(value = MEMO_VALUE): Promise<MemoFixture> {
+/** Opens the body editor on a memo, scrolled first where a scroll is given. */
+async function editMemo(
+  value = MEMO_VALUE,
+  scrollTop = 0
+): Promise<MemoFixture> {
   const fixture = await setup();
   const { store } = fixture.app;
 
   store.dispatchSync(addMemoAction$());
   const memoId = store.state.doc.memoIds[0];
-  store.dispatchSync(
-    changeMemoValueAction({ id: memoId, value }),
-    editMemoAction({ id: memoId })
-  );
+  store.dispatchSync(changeMemoValueAction({ id: memoId, value }));
+  if (scrollTop)
+    store.dispatchSync(scrollMemoAction({ id: memoId, scrollTop }));
+  store.dispatchSync(editMemoAction({ id: memoId }));
   await flush();
   await whenDrawn();
 
@@ -808,6 +814,92 @@ describe('the memo body editor over the scene', () => {
       .findOne('.memo-textarea').attrs.text as string;
 
     expect(drawn.split(LINE_BREAK)).toEqual(folded);
+  });
+});
+
+/** A body that runs well past the box a new memo opens with. */
+const TALL_MEMO_VALUE = Array.from(
+  { length: 40 },
+  (_, line) => `line ${line}`
+).join(LINE_BREAK);
+
+const memoOf = (fixture: MemoFixture) =>
+  fixture.app.store.state.collections.memoEntities[fixture.memoId];
+
+const drawnBodyOf = (fixture: MemoFixture) =>
+  Reflect.get(globalThis, '__erdStages')
+    .canvas.findOne(`#memo-${fixture.memoId}`)
+    .findOne('.memo-textarea');
+
+/** Resolves on the scroll event a scrollTop set on the element schedules. */
+const scrolled = (el: HTMLElement) =>
+  new Promise<void>(resolve => {
+    el.addEventListener('scroll', () => resolve(), { once: true });
+  });
+
+describe('the scroll the memo body editor shares with the scene', () => {
+  it('opens the textarea at the line the scene was showing', async () => {
+    const fixture = await editMemo(TALL_MEMO_VALUE, 60);
+    const textarea = memoTextareaOf(fixture.mounted);
+
+    expect(getMemoScrollMax(memoOf(fixture))).toBeGreaterThan(60);
+    expect(textarea.scrollTop).toBeCloseTo(60, 0);
+    expect(document.activeElement).toBe(textarea);
+  });
+
+  it('opens a memo nothing scrolled at its first line, caret notwithstanding', async () => {
+    const fixture = await editMemo(TALL_MEMO_VALUE);
+    const textarea = memoTextareaOf(fixture.mounted);
+
+    expect(textarea.scrollTop).toBe(0);
+  });
+
+  it('hands the scroll the textarea moves to back to the scene', async () => {
+    const fixture = await editMemo(TALL_MEMO_VALUE);
+    const textarea = memoTextareaOf(fixture.mounted);
+
+    const moved = scrolled(textarea);
+    textarea.scrollTop = 90;
+    await moved;
+    await flush();
+
+    expect(
+      fixture.app.store.state.editor.memoScrollTopMap[fixture.memoId]
+    ).toBe(90);
+  });
+
+  it('draws the body from the same line once the editor closes', async () => {
+    const fixture = await editMemo(TALL_MEMO_VALUE);
+    const textarea = memoTextareaOf(fixture.mounted);
+    const moved = scrolled(textarea);
+    textarea.scrollTop = 90;
+    await moved;
+    await flush();
+
+    textarea.blur();
+    await flush();
+    await whenDrawn();
+
+    expect(memoTextareas(fixture.mounted).length).toBe(0);
+    expect(drawnBodyOf(fixture).visible()).toBe(true);
+    expect(drawnBodyOf(fixture).offsetY()).toBe(90);
+  });
+
+  it('follows the caret the browser scrolls to while typing past the box', async () => {
+    const fixture = await editMemo(TALL_MEMO_VALUE);
+    const textarea = memoTextareaOf(fixture.mounted);
+    const end = textarea.value.length;
+    textarea.setSelectionRange(end, end);
+
+    const moved = scrolled(textarea);
+    await userEvent.keyboard('x');
+    await moved;
+    await flush();
+
+    expect(textarea.scrollTop).toBeGreaterThan(0);
+    expect(
+      fixture.app.store.state.editor.memoScrollTopMap[fixture.memoId]
+    ).toBe(textarea.scrollTop);
   });
 });
 

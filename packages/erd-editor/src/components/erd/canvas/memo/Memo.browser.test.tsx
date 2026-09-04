@@ -22,18 +22,25 @@ import {
 import type { AppContext } from '@/components/appContext';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import {
+  memoCaretOffsetAt,
+  takeMemoCaret,
+} from '@/components/erd/canvas/memo/memoCaret';
+import { getMemoScrollMax } from '@/components/erd/canvas/memo/memoScroll';
+import {
   getMemoLineHeight,
   layoutMemoLines,
 } from '@/components/erd/canvas/memo/memoText';
 import {
   editMemoAction,
   editMemoEndAction,
+  scrollMemoAction,
   selectAction,
   sharedSelectionTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import {
   addMemoAction,
+  changeMemoValueAction,
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import { Tag } from '@/engine/tag';
@@ -791,7 +798,7 @@ describe('the buttons a memo owns', () => {
  * the editor binds pan and zoom to. Konva binds its listener on the stage
  * content inside it, so a stopped wheel never reaches the box below.
  */
-async function mountUnderWheelListener() {
+async function mountUnderWheelListener(memo: MemoType = createProps()) {
   const wheels: Event[] = [];
   const outer = document.createElement('div');
   outer.style.cssText = 'position: fixed; left: 0; top: 0';
@@ -810,7 +817,7 @@ async function mountUnderWheelListener() {
     container,
     scene: (
       <k-layer name="scene">
-        <Memo memo={createProps()} />
+        <Memo memo={memo} />
       </k-layer>
     ),
     width: 800,
@@ -829,7 +836,7 @@ async function mountUnderWheelListener() {
   // against is painted with it, so the commit gate alone is a frame early.
   await whenPainted();
 
-  return { stage: rendered.stage, wheels };
+  return { app, stage: rendered.stage, wheels };
 }
 
 /** Where a scene node sits on screen, which is what a wheel event carries. */
@@ -848,7 +855,11 @@ function viewportCentre(stage: Stage, name: string) {
  * names the node konva resolved it against, so a test cannot pass by landing
  * on nothing at all.
  */
-function wheelAt(stage: Stage, point: { x: number; y: number }) {
+function wheelAt(
+  stage: Stage,
+  point: { x: number; y: number },
+  init: WheelEventInit = {}
+) {
   stage.content.dispatchEvent(
     new WheelEvent('wheel', {
       bubbles: true,
@@ -856,6 +867,7 @@ function wheelAt(stage: Stage, point: { x: number; y: number }) {
       clientX: point.x,
       clientY: point.y,
       deltaY: 120,
+      ...init,
     })
   );
 
@@ -889,5 +901,238 @@ describe('the wheel a memo body swallows', () => {
 
     expect(hit).toBe('memo-header-color');
     expect(wheels).toHaveLength(1);
+  });
+});
+
+/** A body of numbered lines that runs well past the 150px box. */
+const TALL_VALUE = Array.from({ length: 30 }, (_, line) => `line ${line}`).join(
+  LINE_BREAK
+);
+
+/** One wheel notch of deltaY, which is what the harness above sends. */
+const NOTCH = 120;
+
+async function mountTallMemo() {
+  const app = createTestAppContext();
+  app.store.dispatchSync(
+    addMemoAction({ id: MEMO_ID, ui: { x: 30, y: 40, zIndex: 2 } }),
+    changeMemoValueAction({ id: MEMO_ID, value: TALL_VALUE })
+  );
+  app.store.dispatchSync(
+    resizeMemoAction({ id: MEMO_ID, x: 30, y: 40, width: 200, height: 150 })
+  );
+  const memo = app.store.state.collections.memoEntities[MEMO_ID];
+  const stage = await mountMemo(memo, app);
+
+  return { app, memo, stage };
+}
+
+const bodyOffset = (stage: Stage) =>
+  nodeNamed(stage, 'memo-textarea').offsetY();
+
+describe('the scroll a memo body keeps', () => {
+  it('draws the body from its first line until something scrolls it', async () => {
+    const { stage } = await mountTallMemo();
+
+    expect(bodyOffset(stage)).toBe(0);
+  });
+
+  it('draws the body from the line the memo is scrolled to', async () => {
+    const { app, stage } = await mountTallMemo();
+
+    app.store.dispatchSync(scrollMemoAction({ id: MEMO_ID, scrollTop: 40 }));
+    await settle();
+
+    expect(bodyOffset(stage)).toBe(40);
+    // only the text moves: the clip and the hit target stay on the box
+    expect(nodeNamed(stage, 'memo-text-clip').attrs).toMatchObject({
+      clipY: 0,
+      clipHeight: 150,
+    });
+    expect(nodeNamed(stage, 'memo-textarea-hit').y()).toBe(0);
+  });
+
+  it('stops the drawn scroll at the last line the box can start on', async () => {
+    const { app, memo, stage } = await mountTallMemo();
+    const max = getMemoScrollMax(memo);
+    expect(max).toBeGreaterThan(0);
+
+    app.store.dispatchSync(
+      scrollMemoAction({ id: MEMO_ID, scrollTop: max + 1000 })
+    );
+    await settle();
+
+    expect(bodyOffset(stage)).toBe(max);
+  });
+
+  it('follows the body back up when its value shrinks under the scroll', async () => {
+    const { app, stage } = await mountTallMemo();
+    app.store.dispatchSync(scrollMemoAction({ id: MEMO_ID, scrollTop: 100 }));
+    await settle();
+    expect(bodyOffset(stage)).toBe(100);
+
+    app.store.dispatchSync(
+      changeMemoValueAction({ id: MEMO_ID, value: 'hello memo' })
+    );
+    await settle();
+
+    expect(bodyOffset(stage)).toBe(0);
+  });
+
+  it('follows the box up when a resize gives it the whole body', async () => {
+    const { app, stage } = await mountTallMemo();
+    app.store.dispatchSync(scrollMemoAction({ id: MEMO_ID, scrollTop: 100 }));
+    await settle();
+    expect(bodyOffset(stage)).toBe(100);
+
+    app.store.dispatchSync(
+      resizeMemoAction({ id: MEMO_ID, x: 30, y: 40, width: 200, height: 1000 })
+    );
+    await settle();
+
+    expect(bodyOffset(stage)).toBe(0);
+  });
+
+  it('draws a preview copy from its first line whatever the memo is scrolled to', async () => {
+    const app = createTestAppContext();
+    apps.add(app);
+    app.store.dispatchSync(
+      addMemoAction({ id: MEMO_ID, ui: { x: 30, y: 40, zIndex: 2 } }),
+      changeMemoValueAction({ id: MEMO_ID, value: TALL_VALUE }),
+      scrollMemoAction({ id: MEMO_ID, scrollTop: 100 })
+    );
+    const memo = app.store.state.collections.memoEntities[MEMO_ID];
+    const container = document.createElement('div');
+    document.body.append(container);
+    const rendered: RenderedScene = renderScene({
+      app,
+      container,
+      scene: (
+        <k-layer name="scene">
+          <Memo memo={memo} preview={true} />
+        </k-layer>
+      ),
+      width: 800,
+      height: 600,
+      theme,
+    });
+    teardowns.push(() => {
+      rendered.destroy();
+      container.remove();
+    });
+    await settle();
+
+    expect(bodyOffset(rendered.stage)).toBe(0);
+  });
+
+  it('opens the editor on the glyph under the pointer, scroll included', async () => {
+    const { app, stage } = await mountTallMemo();
+    app.store.dispatchSync(scrollMemoAction({ id: MEMO_ID, scrollTop: 100 }));
+    await settle();
+
+    const clip = nodeNamed(stage, 'memo-text-clip').getAbsolutePosition();
+    moveScenePointer(stage, clip.x + 10, clip.y + 30);
+    fireScenePointer(nodeNamed(stage, 'memo-textarea-hit'), 'click');
+    await flush();
+
+    expect(app.store.state.editor.editMemoId).toBe(MEMO_ID);
+    const offset = takeMemoCaret(MEMO_ID);
+    expect(offset).toBe(memoCaretOffsetAt(TALL_VALUE, 200, 10, 30 + 100));
+    expect(offset).not.toBe(memoCaretOffsetAt(TALL_VALUE, 200, 10, 30));
+  });
+});
+
+describe('the wheel a memo body scrolls by', () => {
+  it('scrolls the body under a wheel and still holds the wheel', async () => {
+    const { app, stage, wheels } = await mountUnderWheelListener(
+      createProps({ value: TALL_VALUE })
+    );
+
+    const hit = wheelAt(stage, viewportCentre(stage, 'memo-textarea-hit'));
+    await settle();
+
+    expect(hit).toBe('memo-textarea-hit');
+    expect(wheels).toHaveLength(0);
+    expect(app.store.state.editor.memoScrollTopMap[MEMO_ID]).toBe(NOTCH);
+    expect(bodyOffset(stage)).toBe(NOTCH);
+  });
+
+  it('runs the scroll out at the last line the box can start on', async () => {
+    const memo = createProps({ value: TALL_VALUE });
+    const { app, stage } = await mountUnderWheelListener(memo);
+    const max = getMemoScrollMax(memo);
+    const centre = viewportCentre(stage, 'memo-textarea-hit');
+
+    // One notch a task, as a mouse sends them: the store reduces on a
+    // microtask, so two in one task would both read the scroll before either.
+    for (let notch = 0; notch * NOTCH < max + NOTCH * 2; notch++) {
+      wheelAt(stage, centre);
+      await flush();
+    }
+    await settle();
+
+    expect(app.store.state.editor.memoScrollTopMap[MEMO_ID]).toBe(max);
+    expect(bodyOffset(stage)).toBe(max);
+  });
+
+  it('scrolls back up, and no further than the first line', async () => {
+    const { app, stage } = await mountUnderWheelListener(
+      createProps({ value: TALL_VALUE })
+    );
+    app.store.dispatchSync(scrollMemoAction({ id: MEMO_ID, scrollTop: 100 }));
+    await settle();
+    const centre = viewportCentre(stage, 'memo-textarea-hit');
+
+    wheelAt(stage, centre, { deltaY: -NOTCH });
+    wheelAt(stage, centre, { deltaY: -NOTCH });
+    await settle();
+
+    expect(app.store.state.editor.memoScrollTopMap[MEMO_ID]).toBe(0);
+    expect(bodyOffset(stage)).toBe(0);
+  });
+
+  it('leaves a body that fits its box where it is', async () => {
+    const { app, stage, wheels } = await mountUnderWheelListener();
+
+    wheelAt(stage, viewportCentre(stage, 'memo-textarea-hit'));
+    await settle();
+
+    expect(wheels).toHaveLength(0);
+    expect(app.store.state.editor.memoScrollTopMap[MEMO_ID]).toBeUndefined();
+    expect(bodyOffset(stage)).toBe(0);
+  });
+
+  it('holds a mod wheel unspent, as the zoom it would be elsewhere', async () => {
+    const { app, stage, wheels } = await mountUnderWheelListener(
+      createProps({ value: TALL_VALUE })
+    );
+
+    wheelAt(stage, viewportCentre(stage, 'memo-textarea-hit'), {
+      ctrlKey: true,
+      metaKey: true,
+    });
+    await settle();
+
+    expect(wheels).toHaveLength(0);
+    expect(app.store.state.editor.memoScrollTopMap[MEMO_ID]).toBeUndefined();
+    expect(bodyOffset(stage)).toBe(0);
+  });
+
+  it('takes the page scroll a wheel over the body would otherwise be', async () => {
+    const { stage } = await mountUnderWheelListener(
+      createProps({ value: TALL_VALUE })
+    );
+    const centre = viewportCentre(stage, 'memo-textarea-hit');
+    const event = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      clientX: centre.x,
+      clientY: centre.y,
+      deltaY: NOTCH,
+    });
+
+    stage.content.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 });

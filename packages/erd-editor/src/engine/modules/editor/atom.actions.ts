@@ -382,6 +382,24 @@ const editMemoEnd: ReducerType<typeof ActionType.editMemoEnd> = ({
   editor.editMemoId = null;
 };
 
+export const scrollMemoAction = createAction<
+  ActionMap[typeof ActionType.scrollMemo]
+>(ActionType.scrollMemo);
+
+/**
+ * Only the floor is held here. The ceiling is what the fold overruns the box
+ * by, which takes the leading the scene lays a body out with, so the scene
+ * clamps what it reads rather than the store what it keeps.
+ */
+const scrollMemo: ReducerType<typeof ActionType.scrollMemo> = (
+  { editor },
+  { payload: { id, scrollTop } }
+) => {
+  editor.memoScrollTopMap[id] = Number.isFinite(scrollTop)
+    ? Math.max(0, scrollTop)
+    : 0;
+};
+
 export const selectAllColumnAction = createAction<
   ActionMap[typeof ActionType.selectAllColumn]
 >(ActionType.selectAllColumn);
@@ -859,6 +877,7 @@ export const editorReducers = {
   [ActionType.editTableEnd]: editTableEnd,
   [ActionType.editMemo]: editMemo,
   [ActionType.editMemoEnd]: editMemoEnd,
+  [ActionType.scrollMemo]: scrollMemo,
   [ActionType.selectAllColumn]: selectAllColumn,
   [ActionType.drawStartRelationship]: drawStartRelationship,
   [ActionType.drawStartAddRelationship]: drawStartAddRelationship,
@@ -897,6 +916,7 @@ export const actions = {
   editTableEndAction,
   editMemoAction,
   editMemoEndAction,
+  scrollMemoAction,
   selectAllColumnAction,
   drawStartRelationshipAction,
   drawStartAddRelationshipAction,

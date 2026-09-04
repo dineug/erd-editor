@@ -1,4 +1,8 @@
-import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
+import type {
+  ErdEditorPage,
+  Point,
+  SceneSelector,
+} from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import {
   createSchema,
@@ -16,6 +20,20 @@ const MEMO_ID = 'note';
 
 /** Where a memo drag starts: the header strip, clear of the remove button. */
 const GRAB_OFFSET = { x: 20, y: 8 };
+
+/** The box a tall memo below is seeded with, which its body runs well past. */
+const TALL_BOX = { width: 220, height: 130 };
+
+/** A body of numbered lines, so a scrolled box shows lines that read apart. */
+const TALL_VALUE = Array.from({ length: 40 }, (_, line) => `line ${line}`).join(
+  '\n'
+);
+
+function withTallMemo(): ErdDocument {
+  return createSchema({
+    memos: [{ id: MEMO_ID, value: TALL_VALUE, x: 320, y: 240, ...TALL_BOX }],
+  });
+}
 
 function withMemo(
   overrides: Partial<ErdDocument['settings']> = {}
@@ -275,6 +293,64 @@ test.describe('memo wheel', () => {
     await expect
       .poll(async () => (await erd.settings()).zoomLevel)
       .toBeLessThan(panned.zoomLevel);
+  });
+
+  test('a wheel over a resting memo body scrolls it, and the editor opens on the same lines', async ({
+    erd,
+  }) => {
+    await erd.seed(withTallMemo());
+    const body: SceneSelector = [`#memo-${MEMO_ID}`, '.memo-textarea'];
+    const hit = await erd.sceneBox([`#memo-${MEMO_ID}`, '.memo-textarea-hit']);
+    const centre = { x: hit.x + hit.width / 2, y: hit.y + hit.height / 2 };
+    const before = await erd.settings();
+    expect(await erd.sceneAttr(body, 'offsetY')).toBe(0);
+
+    await wheelOver(erd, centre, { notches: 2 });
+    await expect
+      .poll(() => erd.sceneAttr(body, 'offsetY'))
+      .toBe(WHEEL_DELTA * 2);
+    expect(viewOf(await erd.settings())).toEqual(viewOf(before));
+
+    await erd.clickAt(centre);
+    await expect(erd.memoEditor).toBeFocused();
+    expect(
+      await erd.memoEditor.evaluate((el: HTMLTextAreaElement) => el.scrollTop)
+    ).toBe(WHEEL_DELTA * 2);
+
+    // one more notch inside the editor, and the scene follows it out
+    await erd.page.mouse.wheel(0, WHEEL_DELTA);
+    await expect
+      .poll(() =>
+        erd.memoEditor.evaluate((el: HTMLTextAreaElement) => el.scrollTop)
+      )
+      .toBe(WHEEL_DELTA * 3);
+    await erd.press('Escape');
+    await expect(erd.memoEditor).toHaveCount(0);
+    await expect
+      .poll(() => erd.sceneAttr(body, 'offsetY'))
+      .toBe(WHEEL_DELTA * 3);
+    expect(viewOf(await erd.settings())).toEqual(viewOf(before));
+  });
+
+  test('a wheel scrolls a memo body no further than its last line', async ({
+    erd,
+  }) => {
+    await erd.seed(withTallMemo());
+    const body: SceneSelector = [`#memo-${MEMO_ID}`, '.memo-textarea'];
+    const hit = await erd.sceneBox([`#memo-${MEMO_ID}`, '.memo-textarea-hit']);
+    const centre = { x: hit.x + hit.width / 2, y: hit.y + hit.height / 2 };
+
+    const lines = ((await erd.sceneAttr(body, 'text')) as string).split('\n');
+    const leading =
+      ((await erd.sceneAttr(body, 'lineHeight')) as number) *
+      ((await erd.sceneAttr(body, 'fontSize')) as number);
+    const max = lines.length * leading - TALL_BOX.height;
+    expect(max).toBeGreaterThan(0);
+    expect(max).toBeLessThan(WHEEL_NOTCHES * WHEEL_DELTA);
+
+    await wheelOver(erd, centre);
+
+    await expect.poll(() => erd.sceneAttr(body, 'offsetY')).toBeCloseTo(max, 5);
   });
 
   test('a wheel over the memo header pans, as the dom scene let it', async ({

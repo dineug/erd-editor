@@ -320,6 +320,13 @@ const SNAP_COLUMN_PX = 1.3;
 /** The box every overflow case below runs in, which its body is taller than. */
 const LONG_BOX = { width: 220, height: 130 };
 
+/**
+ * What the scrolled case wheels a body down by. A multiple of twenty lands on
+ * a whole screen pixel at every zoom above on this display, and the scroll the
+ * scene took is read back, since an emulated finer grid halves a notch.
+ */
+const SCROLL_PX = 60;
+
 /** A body of numbered lines, so every line the author wrote reads apart. */
 const NUMBERED_BODY = Array.from(
   { length: 24 },
@@ -659,7 +666,7 @@ for (const scale of SCALES) {
     /**
      * The case a box that fits its body cannot reach. A caret the editor put
      * past the fold pulls the textarea down to reach it, and the scene behind
-     * it draws from the first line and has no scroll to follow with.
+     * it, which nothing has scrolled yet, draws from the first line.
      */
     test.describe('a body taller than the box it is edited in', () => {
       for (const zoomLevel of ZOOM_LEVELS) {
@@ -778,6 +785,157 @@ for (const scale of SCALES) {
               }
             });
           }
+        }
+      }
+    });
+
+    /**
+     * The same box, scrolled before the editor opens. The scene keeps a scroll
+     * of its own, so the editor has to open on the lines the scene shows and
+     * hand its scroll back on the way out, or the body jumps under the pointer.
+     */
+    test.describe('a body scrolled before it is edited', () => {
+      for (const zoomLevel of ZOOM_LEVELS) {
+        for (const body of LONG_BODIES) {
+          test(`${body.key} keeps its lines at zoom ${zoomLevel}`, async ({
+            erd,
+          }) => {
+            const place = PLACES[0];
+            const drawnBody: SceneSelector = [
+              `#memo-${MEMO_ID}`,
+              '.memo-textarea',
+            ];
+            await quietenOverlay(erd.page);
+            await erd.seed(longSeed(body.value, zoomLevel, place));
+
+            const leading = await leadingOf(erd);
+            const advance = leading * zoomLevel;
+            const lines = await drawnLinesOf(erd);
+            const starts = startsOf(body.value, lines);
+            expect(
+              lines.length * leading - LONG_BOX.height,
+              `${body.key} has the travel this case scrolls`
+            ).toBeGreaterThanOrEqual(SCROLL_PX);
+
+            const box = await erd.sceneBox([
+              `#memo-${MEMO_ID}`,
+              '.memo-textarea-hit',
+            ]);
+            await erd.hoverAt({
+              x: box.x + box.width / 2,
+              y: box.y + box.height / 2,
+            });
+            await erd.page.mouse.wheel(0, SCROLL_PX);
+            await expect
+              .poll(() => erd.sceneAttr(drawnBody, 'offsetY'))
+              .toBeGreaterThan(0);
+            const scrolled = (await erd.sceneAttr(
+              drawnBody,
+              'offsetY'
+            )) as number;
+            expect(
+              scrolled,
+              'the notch scrolled the body no further than it was sent'
+            ).toBeLessThanOrEqual(SCROLL_PX);
+            await erd.hoverAway();
+            await erd.whenDrawn();
+
+            const shown = Math.floor(box.height / advance);
+            const clip = {
+              x: box.x - CROP_MARGIN,
+              y: box.y - CROP_MARGIN,
+              width: box.width + CROP_MARGIN * 2,
+              height: box.height + CROP_MARGIN * 2,
+            };
+            const bands: Band[] = [];
+            for (let line = 0; line < shown; line++) {
+              bands.push([
+                Math.round((CROP_MARGIN + line * advance) * scale),
+                Math.round((CROP_MARGIN + (line + 1) * advance) * scale),
+              ]);
+            }
+            const drawn = await profileOf(erd.page, clip, bands);
+            expect(
+              inkOf(drawn.rows),
+              `${body.key} draws glyphs`
+            ).toBeGreaterThan(1);
+
+            // A line the scrolled box shows whole, clicked on its own middle,
+            // which is where the unscrolled cases put the pointer too.
+            const line = Math.floor(scrolled / leading) + Math.floor(shown / 2);
+            const bodyY = line * leading + leading / 2 - scrolled;
+            expect(bodyY, 'that line is inside the box').toBeGreaterThan(0);
+            expect(bodyY, 'that line is inside the box').toBeLessThan(
+              LONG_BOX.height
+            );
+            await erd.clickAt({
+              x: box.x + 40 * zoomLevel,
+              y: box.y + bodyY * zoomLevel,
+            });
+            await expect(erd.memoEditor).toBeFocused();
+
+            const caret = await erd.memoEditor.evaluate(
+              (el: HTMLTextAreaElement) => ({
+                scrollTop: el.scrollTop,
+                selectionStart: el.selectionStart,
+              })
+            );
+            const edited = await profileOf(erd.page, clip, bands);
+            await closeEditor(erd);
+            await erd.hoverAway();
+            await erd.whenDrawn();
+            const closed = await profileOf(erd.page, clip, bands);
+
+            const passes = [
+              ['under the editor', edited],
+              ['after the editor closes', closed],
+            ] as const;
+            for (const [pass, after] of passes) {
+              bands.forEach(([from, to], shownLine) => {
+                const rowsBefore = drawn.rows.slice(from, to);
+                const rowsAfter = after.rows.slice(from, to);
+                const at = `${body.key} line ${shownLine} ${pass}`;
+                expect(
+                  Math.abs(driftOf(rowsBefore, rowsAfter, scale)) * scale,
+                  `${at} vertical drift`
+                ).toBeLessThanOrEqual(SNAP_DRIFT_PX);
+                expect(
+                  Math.abs(centroidOf(rowsAfter) - centroidOf(rowsBefore)),
+                  `${at} sub pixel vertical drift`
+                ).toBeLessThan(SNAP_ROW_PX);
+                expect(
+                  Math.abs(
+                    driftOf(drawn.cols[shownLine], after.cols[shownLine], scale)
+                  ) * scale,
+                  `${at} horizontal drift`
+                ).toBeLessThanOrEqual(SNAP_DRIFT_PX);
+                expect(
+                  Math.abs(
+                    centroidOf(after.cols[shownLine]) -
+                      centroidOf(drawn.cols[shownLine])
+                  ),
+                  `${at} sub pixel horizontal drift`
+                ).toBeLessThan(SNAP_COLUMN_PX);
+              });
+            }
+
+            expect(
+              caret.scrollTop,
+              `${body.key} opens on the lines the scene was showing`
+            ).toBeCloseTo(scrolled, 1);
+            expect(
+              caret.selectionStart,
+              `${body.key} puts the caret no earlier than the line under the pointer`
+            ).toBeGreaterThanOrEqual(starts[line]);
+            expect(
+              caret.selectionStart,
+              `${body.key} puts the caret no later than that line`
+            ).toBeLessThanOrEqual(starts[line] + lines[line].length);
+            expect(
+              await erd.sceneAttr(drawnBody, 'offsetY'),
+              `${body.key} is still scrolled once the editor is gone`
+            ).toBe(scrolled);
+          });
         }
       }
     });

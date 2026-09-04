@@ -101,6 +101,7 @@ describe('editor/state', () => {
       });
       expect(editor.focusTable).toBeNull();
       expect(editor.editMemoId).toBeNull();
+      expect(editor.memoScrollTopMap).toEqual({});
       expect(editor.drawRelationship).toBeNull();
       expect(editor.hoverColumnMap).toEqual({});
       expect(editor.hoverRelationshipMap).toEqual({});

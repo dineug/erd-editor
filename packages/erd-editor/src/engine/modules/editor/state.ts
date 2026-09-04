@@ -13,6 +13,12 @@ export type Editor = {
   focusTable: FocusTable | null;
   /** The memo whose body an overlay editor is open on, and null while none is. */
   editMemoId: string | null;
+  /**
+   * How far down its body each memo is shown from, by memo id. The scene and
+   * the overlay editor both read it, so the lines a body shows survive the
+   * editor opening and closing over it. Local to this client, never the file.
+   */
+  memoScrollTopMap: Record<string, number>;
   drawRelationship: DrawRelationship | null;
   hoverColumnMap: Record<string, boolean>;
   hoverRelationshipMap: Record<string, boolean>;
@@ -141,6 +147,7 @@ export const createEditor = (): Editor => ({
   },
   focusTable: null,
   editMemoId: null,
+  memoScrollTopMap: {},
   drawRelationship: null,
   hoverColumnMap: {},
   hoverRelationshipMap: {},

@@ -10,6 +10,7 @@ import {
 
 import { useAppContext } from '@/components/appContext';
 import { takeMemoCaret } from '@/components/erd/canvas/memo/memoCaret';
+import { getMemoScrollTop } from '@/components/erd/canvas/memo/memoScroll';
 import {
   getMemoLineHeightPx,
   MEMO_FONT_WEIGHT,
@@ -37,6 +38,7 @@ import {
 import {
   editMemoEndAction,
   editTableEndAction,
+  scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
@@ -240,6 +242,21 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
     ctx.host.dispatchEvent(focusEvent());
   };
 
+  /**
+   * Hands the scene the scroll the textarea is at, whether a wheel moved it or
+   * the browser pulled it to a caret that typed past the box. The scene draws
+   * from that line once the editor closes, so nothing jumps on the way out.
+   */
+  const handleScroll = (event: Event) => {
+    const el = event.target as HTMLTextAreaElement | null;
+    if (!el) return;
+
+    const { store } = app.value;
+    store.dispatch(
+      scrollMemoAction({ id: props.target.memoId, scrollTop: el.scrollTop })
+    );
+  };
+
   const handleKeydown = (event: KeyboardEvent) => {
     // While an IME is composing, Escape cancels the composition and the field
     // stays, which is what the same key does in any other textarea.
@@ -248,18 +265,22 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
   };
 
   /**
-   * Opens on the glyph the click landed on, with the box held at its first
-   * line. The scene draws a body from that line and keeps no scroll of its own,
-   * so a caret that pulled the box down would move the body under the pointer.
+   * Opens on the glyph the click landed on, with the box held at the line the
+   * scene was showing. Left to the caret, the browser would pull the box to it
+   * and move the body under the pointer that had just opened it.
    */
   onMounted(() => {
     const el = textarea.value;
     if (!el) return;
 
+    const { store } = app.value;
+    const memo = query(store.state.collections)
+      .collection('memoEntities')
+      .selectById(props.target.memoId);
     const offset = takeMemoCaret(props.target.memoId);
     el.setSelectionRange(offset, offset);
     el.focus({ preventScroll: true });
-    el.scrollTop = 0;
+    el.scrollTop = memo ? getMemoScrollTop(store.state.editor, memo) : 0;
   });
 
   return () => (
@@ -291,6 +312,7 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
       prop:value={props.target.value}
       on:input={handleInput}
       on:keydown={handleKeydown}
+      on:scroll={handleScroll}
       on:wheel={onStop}
       on:blur={handleBlur}
     ></textarea>

@@ -10,6 +10,10 @@ import {
   requestMemoCaret,
 } from '@/components/erd/canvas/memo/memoCaret';
 import {
+  clampMemoScrollTop,
+  getMemoScrollTop,
+} from '@/components/erd/canvas/memo/memoScroll';
+import {
   getMemoLineHeight,
   layoutMemoLines,
   MEMO_FONT_WEIGHT,
@@ -36,11 +40,15 @@ import {
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
 } from '@/constants/layout';
-import { editMemoAction } from '@/engine/modules/editor/atom.actions';
+import {
+  editMemoAction,
+  scrollMemoAction,
+} from '@/engine/modules/editor/atom.actions';
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import type { Memo } from '@/internal-types';
 import { getMemoRect } from '@/konva/scene/metrics';
 import { openColorPickerAction } from '@/utils/emitter';
+import { isMod } from '@/utils/keyboard-shortcut';
 
 /** The radius the memo box is rounded with. */
 const MEMO_CORNER_RADIUS = 6;
@@ -97,8 +105,8 @@ const Memo: FC<MemoProps> = (props, ctx) => {
 
   /**
    * Opens the body editor with its caret on the glyph the pointer was over. The
-   * point is read in the text group's own space, which is where the body was
-   * folded, so the mapping holds at any zoom and any scroll.
+   * point is read in the text group's own space and pushed down by what the
+   * body is scrolled, which is where it was folded, so the mapping holds anywhere.
    */
   const handleEditValue = (event: SceneMouseEvent) => {
     if (props.preview) return;
@@ -108,9 +116,15 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const point = event.currentTarget.getRelativePointerPosition();
 
     if (point) {
+      const scrollTop = getMemoScrollTop(store.state.editor, memo);
       requestMemoCaret(
         memo.id,
-        memoCaretOffsetAt(memo.value, memo.ui.width, point.x, point.y)
+        memoCaretOffsetAt(
+          memo.value,
+          memo.ui.width,
+          point.x,
+          point.y + scrollTop
+        )
       );
     }
 
@@ -126,12 +140,22 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   };
 
   /**
-   * Swallows a wheel over the memo body, which the dom scene got for free from
-   * the textarea that always sat there. The stage container is inside the
-   * element the pan and zoom listener is bound to, so stopping it there is all.
+   * Scrolls the body under a wheel and keeps the wheel from the canvas, as the
+   * textarea the dom scene kept on every memo did. A mod wheel is a zoom
+   * elsewhere and is held here unspent, which is what that textarea did too.
    */
   const handleValueWheel = (event: KonvaEventObject<WheelEvent>) => {
     event.evt.stopPropagation();
+    event.evt.preventDefault();
+    if (props.preview || isMod(event.evt)) return;
+
+    const { store } = app.value;
+    const { memo } = props;
+    const scrollTop = getMemoScrollTop(store.state.editor, memo);
+    const next = clampMemoScrollTop(memo, scrollTop + event.evt.deltaY);
+    if (next === scrollTop) return;
+
+    store.dispatch(scrollMemoAction({ id: memo.id, scrollTop: next }));
   };
 
   return () => {
@@ -143,6 +167,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const sharedSelected = sharedSelectColor();
     const editing = !props.preview && editor.editMemoId === memo.id;
     const value = layoutMemoLines(memo.value, memo.ui.width).join('\n');
+    const scrollTop = props.preview ? 0 : getMemoScrollTop(editor, memo);
     const { width, height } = getMemoRect(memo);
     // A CSS border sits inside the box and a konva stroke straddles the path,
     // so both edges only cover the same pixels from half a width in.
@@ -252,6 +277,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             <k-text
               name="memo-textarea"
               kind="memo-textarea"
+              offsetY={scrollTop}
               text={value}
               visible={!editing}
               fill={theme.active}

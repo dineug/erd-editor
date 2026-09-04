@@ -9,6 +9,7 @@ import {
 } from 'vite-plus/test';
 
 import { CanvasType, Show } from '@/constants/schema';
+import { ChangeActionTypes, SharedActionTypes } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
 import {
   changeHasHistoryAction,
@@ -37,6 +38,7 @@ import {
   initialLoadJsonAction,
   loadJsonAction,
   mergeLWWAction,
+  scrollMemoAction,
   selectAction,
   selectAllAction,
   selectAllColumnAction,
@@ -713,6 +715,46 @@ describe('editor.editMemo / editMemoEnd', () => {
 
     expect(store.state.editor.focusTable?.tableId).toBe('t1');
     expect(store.state.editor.editMemoId).toBe('m1');
+  });
+});
+
+describe('editor.scrollMemo', () => {
+  it('keeps how far down its body each memo is shown from', () => {
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop: 40 }));
+    store.dispatchSync(scrollMemoAction({ id: 'm2', scrollTop: 12.5 }));
+
+    expect(store.state.editor.memoScrollTopMap).toEqual({ m1: 40, m2: 12.5 });
+  });
+
+  it('replaces a memo scroll rather than adding to it', () => {
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop: 40 }));
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop: 8 }));
+
+    expect(store.state.editor.memoScrollTopMap.m1).toBe(8);
+  });
+
+  it.each([
+    ['a negative scroll', -30],
+    ['a scroll that is not a number', Number.NaN],
+    ['an infinite scroll', Number.POSITIVE_INFINITY],
+  ])('holds %s at the first line', (_label, scrollTop) => {
+    store.dispatchSync(scrollMemoAction({ id: 'm1', scrollTop }));
+
+    expect(store.state.editor.memoScrollTopMap.m1).toBe(0);
+  });
+
+  it('leaves the editor open on the memo it was open on', () => {
+    store.dispatchSync(
+      editMemoAction({ id: 'm1' }),
+      scrollMemoAction({ id: 'm1', scrollTop: 40 })
+    );
+
+    expect(store.state.editor.editMemoId).toBe('m1');
+  });
+
+  it('stays on this client, as neither a document change nor a shared action', () => {
+    expect(ChangeActionTypes).not.toContain('editor.scrollMemo');
+    expect(SharedActionTypes).not.toContain('editor.scrollMemo');
   });
 });
 
