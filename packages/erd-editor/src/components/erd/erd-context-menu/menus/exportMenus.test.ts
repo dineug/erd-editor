@@ -193,7 +193,7 @@ describe('exportMenus', () => {
     expect(exported).toHaveLength(1);
     expect(toasts).toHaveLength(1);
     expect(toasts[0].payload.message.values).toContain(
-      '20000x20000 is past what a browser canvas can hold, so the image is 16384x16384'
+      'The document is 20000x20000, past what a browser canvas can hold, so the PNG is 16384x16384'
     );
     off();
   });
@@ -222,7 +222,7 @@ describe('exportMenus', () => {
     expect(log).toEqual([]);
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(log).toEqual(['open Generating the png']);
+    expect(log).toEqual(['open Exporting PNG…']);
     expect(exported).toHaveLength(0);
 
     render.resolve(png());
@@ -252,16 +252,13 @@ describe('exportMenus', () => {
     createExportMenus(app, () => {}, theme)[2].onClick();
     await vi.advanceTimersByTimeAsync(30_000);
 
-    expect(log).toEqual(['open Generating the png']);
+    expect(log).toEqual(['open Exporting PNG…']);
     expect(exported).toHaveLength(0);
 
     render.resolve(png());
     await vi.advanceTimersByTimeAsync(600);
 
-    expect(log).toEqual([
-      'open Generating the png',
-      'close Generating the png',
-    ]);
+    expect(log).toEqual(['open Exporting PNG…', 'close Exporting PNG…']);
     expect(exported).toHaveLength(1);
     off();
   });
@@ -288,9 +285,9 @@ describe('exportMenus', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(log).toEqual([
-      'open Generating the png',
-      'close Generating the png',
-      'open Exported at a reduced resolution | 20000x20000 is past what a browser canvas can hold, so the image is 16384x16384',
+      'open Exporting PNG…',
+      'close Exporting PNG…',
+      'open Exported at a reduced resolution | The document is 20000x20000, past what a browser canvas can hold, so the PNG is 16384x16384',
     ]);
     expect(exported).toHaveLength(1);
     off();
@@ -310,9 +307,9 @@ describe('exportMenus', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(log).toEqual([
-      'open Generating the png',
-      'close Generating the png',
-      'open Failed to export the document as a png',
+      'open Exporting PNG…',
+      'close Exporting PNG…',
+      "open Couldn't export the PNG | See the browser console for the error",
     ]);
     expect(exported).toHaveLength(0);
     expect(error).toHaveBeenCalledTimes(1);

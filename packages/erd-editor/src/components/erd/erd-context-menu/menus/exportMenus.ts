@@ -31,7 +31,7 @@ function describeReduction({
   width,
   height,
 }: ResolutionReduction) {
-  return `${documentWidth}x${documentHeight} is past what a browser canvas can hold, so the image is ${width}x${height}`;
+  return `The document is ${documentWidth}x${documentHeight}, past what a browser canvas can hold, so the PNG is ${width}x${height}`;
 }
 
 /**
@@ -66,7 +66,7 @@ async function exportDocumentPng(
   await openToastWhileRunning(
     emitter,
     outcome,
-    html`<${Toast} description=${'Generating the png'} />`
+    html`<${Toast} busy=${true} description=${'Exporting PNG…'} />`
   );
 
   const failure = await outcome;
@@ -79,7 +79,8 @@ async function exportDocumentPng(
     emitter.emit(
       openToastAction({
         message: html`<${Toast}
-          description=${'Failed to export the document as a png'}
+          title=${"Couldn't export the PNG"}
+          description=${'See the browser console for the error'}
         />`,
       })
     );

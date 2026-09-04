@@ -98,6 +98,51 @@ describe('Toast', () => {
     expect([...children[1].classList]).toContain(String(styles.action));
   });
 
+  it('turns a ring beside the text while busy', async () => {
+    mounted = await mountAndFlush(
+      html`<${Toast} busy=${true} description=${'Exporting'} />`
+    );
+
+    const indicator = query(styles.indicator) as HTMLElement;
+    expect(indicator).toBeTruthy();
+    expect(indicator.hasAttribute('data-busy')).toBe(true);
+    expect(indicator.getAttribute('role')).toBe('progressbar');
+    expect(indicator.hasAttribute('aria-valuenow')).toBe(false);
+    expect(indicator.querySelector('svg [data-part="arc"]')).toBeTruthy();
+    expect((query(styles.root) as HTMLElement).firstElementChild).toBe(
+      indicator
+    );
+  });
+
+  it('fills the ring by the progress given, held to the whole', async () => {
+    const state = observable({ progress: 0.25 });
+    const Wrapper: FC = () => () =>
+      html`<${Toast} progress=${state.progress} description=${'Placing'} />`;
+
+    mounted = await mountAndFlush(html`<${Wrapper} />`);
+    const indicator = query(styles.indicator) as HTMLElement;
+    const arc = indicator.querySelector('[data-part="arc"]') as SVGElement;
+    const length = Number(arc.getAttribute('stroke-dasharray'));
+    expect(indicator.hasAttribute('data-busy')).toBe(false);
+    expect(indicator.getAttribute('aria-valuenow')).toBe('0.25');
+    expect(Number(arc.getAttribute('stroke-dashoffset'))).toBeCloseTo(
+      length * 0.75,
+      6
+    );
+
+    state.progress = 1.5;
+    await flush();
+
+    expect(indicator.getAttribute('aria-valuenow')).toBe('1');
+    expect(Number(arc.getAttribute('stroke-dashoffset'))).toBe(0);
+  });
+
+  it('draws no ring when nothing is running', async () => {
+    mounted = await mountAndFlush(html`<${Toast} description=${'Done'} />`);
+
+    expect(query(styles.indicator)).toBeNull();
+  });
+
   it('adds and removes the sections reactively', async () => {
     const state = observable<{ title: string; action: string }>({
       title: 'Scheduled',

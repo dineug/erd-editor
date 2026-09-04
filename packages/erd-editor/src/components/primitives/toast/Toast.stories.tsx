@@ -21,6 +21,8 @@ const meta = {
     title: { control: 'text' },
     description: { control: 'text' },
     action: { control: 'text' },
+    busy: { control: 'boolean' },
+    progress: { control: { type: 'range', min: 0, max: 1, step: 0.01 } },
   },
 } satisfies Meta<ToastProps>;
 
@@ -32,5 +34,20 @@ export const Normal: Story = {
     title: 'Scheduled: Catch up',
     description: 'Tuesday, December 5, 2023 at 8:33 PM',
     action: 'Undo',
+  },
+};
+
+export const Busy: Story = {
+  args: {
+    description: 'Exporting PNG…',
+    busy: true,
+  },
+};
+
+export const Progress: Story = {
+  args: {
+    description: 'Placing tables… 42%',
+    action: 'Apply',
+    progress: 0.42,
   },
 };

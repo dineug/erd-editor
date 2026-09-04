@@ -98,7 +98,7 @@ const toastTimeline = (erd: ErdEditorPage) =>
   erd.page.evaluate(() => Reflect.get(window, '__toastTimeline') as string[][]);
 
 const generating = (erd: ErdEditorPage) =>
-  erd.host.locator('.toast-container', { hasText: 'Generating the png' });
+  erd.host.locator('.toast-container', { hasText: 'Exporting PNG…' });
 
 const reduced = (erd: ErdEditorPage) =>
   erd.host.locator('.toast-container', {
@@ -149,7 +149,7 @@ test.describe('exporting the document as a png', () => {
 
     await expect(reduced(erd)).toBeVisible();
     await expect(reduced(erd)).toContainText(
-      `${OVER_LIMIT}x${OVER_LIMIT} is past what a browser canvas can hold, so the image is ${CLAMPED}x${CLAMPED}`
+      `The document is ${OVER_LIMIT}x${OVER_LIMIT}, past what a browser canvas can hold, so the PNG is ${CLAMPED}x${CLAMPED}`
     );
     await expect(generating(erd)).toHaveCount(0);
 
@@ -157,11 +157,11 @@ test.describe('exporting the document as a png', () => {
     // holding both messages at once.
     const shown = (await toastTimeline(erd)).filter(toasts => toasts.length);
     expect(shown).toHaveLength(2);
-    expect(shown[0]).toEqual(['Generating the png']);
+    expect(shown[0]).toEqual(['Exporting PNG…']);
     expect(shown[1]).toHaveLength(1);
     expect(shown[1][0]).toContain('Exported at a reduced resolution');
     expect(shown[1][0]).toContain(
-      `${OVER_LIMIT}x${OVER_LIMIT} is past what a browser canvas can hold, so the image is ${CLAMPED}x${CLAMPED}`
+      `The document is ${OVER_LIMIT}x${OVER_LIMIT}, past what a browser canvas can hold, so the PNG is ${CLAMPED}x${CLAMPED}`
     );
 
     expect(pngSize(await file.path())).toEqual({

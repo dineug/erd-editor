@@ -859,10 +859,10 @@ describe('Erd - automatic table placement', () => {
     const toast = mount(toasts[0], app);
     await flush();
 
-    const stop = findByText(toast.container, 'button', 'Stop')!;
-    expect(stop).toBeTruthy();
+    const apply = findByText(toast.container, 'button', 'Apply')!;
+    expect(apply).toBeTruthy();
     actions.length = 0;
-    dispatchMouse(stop, 'click');
+    dispatchMouse(apply, 'click');
     await flush(6);
 
     expect(actions.map(action => action.type)).toContain(

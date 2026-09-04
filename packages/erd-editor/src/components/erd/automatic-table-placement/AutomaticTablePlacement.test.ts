@@ -47,6 +47,7 @@ vi.mock(
       >();
 
     return {
+      placementProgress: actual.placementProgress,
       createAutomaticTablePlacement: (state: any) => {
         if (hoisted.throwOnCreate) {
           throw new Error('simulation failed');
@@ -154,7 +155,7 @@ describe('AutomaticTablePlacement', () => {
       expect(toasts[0].close).toBeUndefined();
 
       const container = await renderToast(toasts[0]);
-      expect(container.textContent).toContain('Not found tables');
+      expect(container.textContent).toContain('No tables to place');
       expect(container.querySelectorAll('button')).toHaveLength(0);
     });
 
@@ -238,7 +239,7 @@ describe('AutomaticTablePlacement', () => {
       expect(viewport.style.height).toBe(`${(400 / zoomLevel) * ratio}px`);
     });
 
-    it('opens a closable toast offering Stop and Cancel', async () => {
+    it('opens a closable toast offering Apply and Cancel', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       const toasts = listenToasts(app);
@@ -249,15 +250,43 @@ describe('AutomaticTablePlacement', () => {
       expect(toasts[0].close).toBeInstanceOf(Promise);
 
       const container = await renderToast(toasts[0]);
-      expect(container.textContent).toContain('Automatic Table Placement...');
+      expect(container.textContent).toContain('Placing tables… 0%');
       expect(
         Array.from(container.querySelectorAll('button')).map(el =>
           el.textContent?.trim()
         )
-      ).toEqual(['Stop', 'Cancel']);
+      ).toEqual(['Apply', 'Cancel']);
     });
 
-    it('reports the simulated table positions when Stop is pressed', async () => {
+    it('shows how far the placement has run as the simulation cools', async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users');
+      const toasts = listenToasts(app);
+
+      await open(app, vi.fn());
+      const simulation = hoisted.simulations[0];
+      const container = await renderToast(toasts[0]);
+      const bar = container.querySelector(
+        '[role="progressbar"]'
+      ) as HTMLElement;
+      expect(bar.getAttribute('aria-valuenow')).toBe('0');
+
+      // tick() brings the heat down without dispatching, so the listener is
+      // called here the way the simulation's own timer would call it.
+      for (let tick = 0; tick < 150; tick++) simulation.tick();
+      simulation.on('tick.progress').call(simulation);
+      await flush();
+
+      const percent = Number(/(\d+)%/.exec(container.textContent ?? '')?.[1]);
+      expect(percent).toBeGreaterThan(40);
+      expect(percent).toBeLessThan(60);
+      expect(Number(bar.getAttribute('aria-valuenow')) * 100).toBeCloseTo(
+        percent,
+        0
+      );
+    });
+
+    it('reports the simulated table positions when Apply is pressed', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       addTable(app, 't2', 'posts');
@@ -275,7 +304,7 @@ describe('AutomaticTablePlacement', () => {
       simulation.on('tick').call(simulation);
 
       const container = await renderToast(toasts[0]);
-      clickButton(container, 'Stop');
+      clickButton(container, 'Apply');
 
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange.mock.calls[0][0]).toEqual([
@@ -307,7 +336,7 @@ describe('AutomaticTablePlacement', () => {
       );
     });
 
-    it('ignores a Stop that arrives after the overlay was cancelled', async () => {
+    it('ignores an Apply that arrives after the overlay was cancelled', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
       const toasts = listenToasts(app);
@@ -316,7 +345,7 @@ describe('AutomaticTablePlacement', () => {
       await open(app, onChange);
       const container = await renderToast(toasts[0]);
       clickButton(container, 'Cancel');
-      clickButton(container, 'Stop');
+      clickButton(container, 'Apply');
 
       expect(onChange).not.toHaveBeenCalled();
     });
