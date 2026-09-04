@@ -4,8 +4,10 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
+  CURSOR_INHERIT,
   HIT_FILL,
   type ScenePointerEvent,
+  setSceneCursor,
 } from '@/components/erd/canvas/sceneTokens';
 import { SASH_SIZE } from '@/components/primitives/sash/Sash.styles';
 import {
@@ -147,32 +149,22 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
   ): ResizeMemo => {
     const { zoomLevel } = app.value.store.state.settings;
     const ui = Object.assign({ change: false }, props.memo.ui);
-    const mouseDirection =
-      movementX < 0 ? DirectionName.left : DirectionName.right;
     const movement = movementX / zoomLevel;
     const width =
       direction === DirectionName.left
         ? ui.width - movement
         : ui.width + movement;
+    // A resize the minimum caught leaves the anchor where it stopped, so the
+    // pointer takes the box up again only once it is back past that anchor.
+    const pastAnchor = movementX < 0 ? x < clientX : x > clientX;
 
-    switch (mouseDirection) {
-      case DirectionName.left:
-        if (MEMO_MIN_WIDTH < width && x < clientX) {
-          direction === DirectionName.left && (ui.x += movement);
-          clientX += movementX;
-          ui.width = width;
-          ui.change = true;
-        }
-        break;
-      case DirectionName.right:
-        if (MEMO_MIN_WIDTH < width && x > clientX) {
-          direction === DirectionName.left && (ui.x += movement);
-          clientX += movementX;
-          ui.width = width;
-          ui.change = true;
-        }
-        break;
+    if (MEMO_MIN_WIDTH < width && pastAnchor) {
+      if (direction === DirectionName.left) ui.x += movement;
+      clientX += movementX;
+      ui.width = width;
+      ui.change = true;
     }
+
     return ui;
   };
 
@@ -182,32 +174,20 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
   ): ResizeMemo => {
     const { zoomLevel } = app.value.store.state.settings;
     const ui = Object.assign({ change: false }, props.memo.ui);
-    const mouseDirection =
-      movementY < 0 ? DirectionName.top : DirectionName.bottom;
     const movement = movementY / zoomLevel;
     const height =
       direction === DirectionName.top
         ? ui.height - movement
         : ui.height + movement;
+    const pastAnchor = movementY < 0 ? y < clientY : y > clientY;
 
-    switch (mouseDirection) {
-      case DirectionName.top:
-        if (MEMO_MIN_HEIGHT < height && y < clientY) {
-          direction === DirectionName.top && (ui.y += movement);
-          clientY += movementY;
-          ui.height = height;
-          ui.change = true;
-        }
-        break;
-      case DirectionName.bottom:
-        if (MEMO_MIN_HEIGHT < height && y > clientY) {
-          direction === DirectionName.top && (ui.y += movement);
-          clientY += movementY;
-          ui.height = height;
-          ui.change = true;
-        }
-        break;
+    if (MEMO_MIN_HEIGHT < height && pastAnchor) {
+      if (direction === DirectionName.top) ui.y += movement;
+      clientY += movementY;
+      ui.height = height;
+      ui.change = true;
     }
+
     return ui;
   };
 
@@ -243,37 +223,23 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
         break;
     }
 
-    if (verticalUI?.change && horizontalUI?.change) {
-      store.dispatch(
-        resizeMemoAction({
-          id: props.memo.id,
-          x: verticalUI.x,
-          y: horizontalUI.y,
-          width: verticalUI.width,
-          height: horizontalUI.height,
-        })
-      );
-    } else if (verticalUI?.change) {
-      store.dispatch(
-        resizeMemoAction({
-          id: props.memo.id,
-          x: verticalUI.x,
-          y: verticalUI.y,
-          width: verticalUI.width,
-          height: verticalUI.height,
-        })
-      );
-    } else if (horizontalUI?.change) {
-      store.dispatch(
-        resizeMemoAction({
-          id: props.memo.id,
-          x: horizontalUI.x,
-          y: horizontalUI.y,
-          width: horizontalUI.width,
-          height: horizontalUI.height,
-        })
-      );
-    }
+    if (!verticalUI?.change && !horizontalUI?.change) return;
+
+    // Each axis keeps what its own resize answered; an axis this sash never
+    // grabbed, or one the minimum refused, holds the memo where it already was.
+    const { id, ui } = props.memo;
+    const vertical = verticalUI?.change ? verticalUI : ui;
+    const horizontal = horizontalUI?.change ? horizontalUI : ui;
+
+    store.dispatch(
+      resizeMemoAction({
+        id,
+        x: vertical.x,
+        y: horizontal.y,
+        width: vertical.width,
+        height: horizontal.height,
+      })
+    );
   };
 
   const handleMoveStart = (
@@ -284,11 +250,6 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     clientX = pointer.x;
     clientY = pointer.y;
     drag$.subscribe(dragMove => handleMove(dragMove, position));
-  };
-
-  const setCursor = (event: ScenePointerEvent, cursor: string) => {
-    const container = event.target?.getStage()?.container();
-    if (container) container.style.cursor = cursor;
   };
 
   return () => {
@@ -315,10 +276,10 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
               handleMoveStart(event, sash.position);
             }}
             on:mouseenter={(event: ScenePointerEvent) => {
-              setCursor(event, CURSORS[sash.position]);
+              setSceneCursor(event, CURSORS[sash.position]);
             }}
             on:mouseleave={(event: ScenePointerEvent) => {
-              setCursor(event, '');
+              setSceneCursor(event, CURSOR_INHERIT);
             }}
           />
         ))}

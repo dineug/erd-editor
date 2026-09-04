@@ -111,8 +111,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const handleContextmenu = (event: MouseEvent) => {
-    const el = event.target as HTMLElement | null;
-    if (!el || getShowOverLayout()) return;
+    if (!event.target || getShowOverLayout()) return;
 
     const hit = sceneHit(canvas.value, event);
 

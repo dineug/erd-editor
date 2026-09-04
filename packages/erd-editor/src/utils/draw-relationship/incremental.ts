@@ -171,7 +171,8 @@ export type DirtyLanes = {
 };
 
 export function createDirtyLanes(): DirtyLanes {
-  const lanes: [Bucket, Bucket] = [new Map(), new Map()];
+  const verticalLanes: Bucket = new Map();
+  const horizontalLanes: Bucket = new Map();
 
   const markSpan = (
     vertical: boolean,
@@ -180,7 +181,7 @@ export function createDirtyLanes(): DirtyLanes {
     low: number,
     high: number
   ) => {
-    const bucket = lanes[vertical ? 0 : 1];
+    const bucket = vertical ? verticalLanes : horizontalLanes;
     const first = Math.floor(Math.min(from, to) / BUCKET);
     const last = Math.floor(Math.max(from, to) / BUCKET);
 
@@ -201,7 +202,7 @@ export function createDirtyLanes(): DirtyLanes {
       markSpan(false, box.top, box.bottom, box.left, box.right);
     },
     hits(vertical, from, to, low, high) {
-      const bucket = lanes[vertical ? 0 : 1];
+      const bucket = vertical ? verticalLanes : horizontalLanes;
       if (!bucket.size) return false;
 
       const near = Math.min(from, to) - LANE_INFLUENCE;

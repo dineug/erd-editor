@@ -75,14 +75,18 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
     const { store } = app.value;
     const { viewport } = store.state.editor;
 
+    const size = {
+      width: `${viewport.width}px`,
+      height: `${viewport.height}px`,
+      'min-width': `${viewport.width}px`,
+      'min-height': `${viewport.height}px`,
+    };
+
     return (
       <div
         class={styles.controller}
         style={{
-          width: `${viewport.width}px`,
-          height: `${viewport.height}px`,
-          'min-width': `${viewport.width}px`,
-          'min-height': `${viewport.height}px`,
+          ...size,
           'pointer-events': props.grabMove ? 'none' : 'auto',
         }}
       >
@@ -90,12 +94,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
           class={styles.stage}
           data-testid="erd-canvas"
           use:ref={ref(props.canvas)}
-          style={{
-            width: `${viewport.width}px`,
-            height: `${viewport.height}px`,
-            'min-width': `${viewport.width}px`,
-            'min-height': `${viewport.height}px`,
-          }}
+          style={size}
         ></div>
         <EditOverlay />
       </div>

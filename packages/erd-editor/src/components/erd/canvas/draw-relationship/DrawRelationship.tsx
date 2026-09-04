@@ -50,6 +50,12 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
     const { store } = app.value;
     const { path, line } = getDraw(store.state, props.draw);
     const stroke = themeRef.value.keyFK;
+    const decorations = [
+      path.line.start,
+      line.start.base,
+      line.start.base2,
+      line.start.center2,
+    ];
 
     return (
       <k-group
@@ -66,34 +72,15 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
           stroke={stroke}
           strokeWidth={RELATIONSHIP_STROKE_WIDTH}
         />
-        <k-line
-          name={DECORATION}
-          kind={DECORATION}
-          points={segment(path.line.start)}
-          stroke={stroke}
-          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-        />
-        <k-line
-          name={DECORATION}
-          kind={DECORATION}
-          points={segment(line.start.base)}
-          stroke={stroke}
-          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-        />
-        <k-line
-          name={DECORATION}
-          kind={DECORATION}
-          points={segment(line.start.base2)}
-          stroke={stroke}
-          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-        />
-        <k-line
-          name={DECORATION}
-          kind={DECORATION}
-          points={segment(line.start.center2)}
-          stroke={stroke}
-          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-        />
+        {decorations.map(decoration => (
+          <k-line
+            name={DECORATION}
+            kind={DECORATION}
+            points={segment(decoration)}
+            stroke={stroke}
+            strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+          />
+        ))}
       </k-group>
     );
   };

@@ -1,10 +1,7 @@
 import { createRef, FC, ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import {
-  getScrollRanges,
-  scrollToAction,
-} from '@/engine/modules/settings/atom.actions';
+import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 
 import { trackPointToScroll, useVirtualScroll } from './useVirtualScroll';
 import * as styles from './VirtualScroll.styles';
@@ -35,15 +32,13 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
       editor: { viewport },
       settings,
     } = store.state;
-    const { left } = getScrollRanges(settings, viewport);
-    const { ratio } = getHorizontalTrack();
+    const track = getHorizontalTrack();
     const rect = horizontal.value.getBoundingClientRect();
 
     store.dispatch(
       scrollToAction({
         scrollLeft: trackPointToScroll(
-          left,
-          ratio,
+          track,
           event.clientX - rect.x,
           viewport.width
         ),
@@ -66,16 +61,14 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
       editor: { viewport },
       settings,
     } = store.state;
-    const { top } = getScrollRanges(settings, viewport);
-    const { ratio } = getVerticalTrack();
+    const track = getVerticalTrack();
     const rect = vertical.value.getBoundingClientRect();
 
     store.dispatch(
       scrollToAction({
         scrollLeft: settings.scrollLeft,
         scrollTop: trackPointToScroll(
-          top,
-          ratio,
+          track,
           event.clientY - rect.y,
           viewport.height
         ),

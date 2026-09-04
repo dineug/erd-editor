@@ -48,6 +48,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
 import type { RootState } from '@/engine/state';
+import type { Column } from '@/internal-types';
 import {
   getColumnRect,
   getTableRect,
@@ -96,6 +97,23 @@ type MemoTarget = {
 };
 
 type EditTarget = CellTarget | MemoTarget;
+
+/**
+ * The column field a cell editor writes into. Only the four column focus types
+ * EDITABLE names reach here, so the comment cell is what is left over.
+ */
+function getColumnValue(column: Column, focusType: FocusType): string {
+  switch (focusType) {
+    case FocusType.columnName:
+      return column.name;
+    case FocusType.columnDataType:
+      return column.dataType;
+    case FocusType.columnDefault:
+      return column.default;
+    default:
+      return column.comment;
+  }
+}
 
 const keyOf = (target: EditTarget) =>
   target.kind === 'memo'
@@ -159,15 +177,6 @@ function resolveCellTarget(state: RootState): CellTarget | null {
   );
   if (!slot) return null;
 
-  const value =
-    slot.focusType === FocusType.columnName
-      ? column.name
-      : slot.focusType === FocusType.columnDataType
-        ? column.dataType
-        : slot.focusType === FocusType.columnDefault
-          ? column.default
-          : column.comment;
-
   return {
     kind: 'cell',
     focusType: slot.focusType,
@@ -176,7 +185,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     x: rect.x + slot.x,
     y: getColumnRect(state, table, index).y + COLUMN_TEXT_Y,
     width: slot.width,
-    value,
+    value: getColumnValue(column, slot.focusType),
     placeholder,
   };
 }
@@ -358,20 +367,28 @@ const EditOverlay: FC = (_, ctx) => {
     );
   };
 
-  const cellEditor = (target: CellTarget): DOMTemplateLiterals =>
-    target.focusType === FocusType.columnDataType && target.columnId ? (
-      <ColumnDataType
-        tableId={target.tableId}
-        columnId={target.columnId}
-        width={target.width}
-        value={target.value}
-        focus={true}
-        edit={true}
-        onBlur={handleEditEnd}
-        onEditEnd={handleEditEnd}
-        onInput={handleInput}
-      />
-    ) : (
+  const editor = (target: EditTarget): DOMTemplateLiterals => {
+    if (target.kind === 'memo') {
+      return <MemoEditor target={target} />;
+    }
+
+    if (target.focusType === FocusType.columnDataType && target.columnId) {
+      return (
+        <ColumnDataType
+          tableId={target.tableId}
+          columnId={target.columnId}
+          width={target.width}
+          value={target.value}
+          focus={true}
+          edit={true}
+          onBlur={handleEditEnd}
+          onEditEnd={handleEditEnd}
+          onInput={handleInput}
+        />
+      );
+    }
+
+    return (
       <EditInput
         placeholder={target.placeholder}
         width={target.width}
@@ -383,13 +400,7 @@ const EditOverlay: FC = (_, ctx) => {
         onInput={handleInput}
       />
     );
-
-  const editor = (target: EditTarget): DOMTemplateLiterals =>
-    target.kind === 'memo' ? (
-      <MemoEditor target={target} />
-    ) : (
-      cellEditor(target)
-    );
+  };
 
   return () => {
     const { store } = app.value;

@@ -103,10 +103,10 @@ export function memoCaretOffsetAt(
   const lines = foldOf(text, width);
   if (!lines.length) return 0;
 
-  const index = Math.floor(y / getMemoLineHeightPx());
+  const index = Math.max(0, Math.floor(y / getMemoLineHeightPx()));
   if (index >= lines.length) return text.length;
 
-  const line = lines[Math.max(0, index)];
+  const line = lines[index];
 
   return line.start + columnOf(line, x);
 }

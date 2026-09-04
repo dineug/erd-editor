@@ -72,19 +72,15 @@ export async function renderDocumentPng({
 
     const canvas = scene.stage.toCanvas({ pixelRatio: ratio }) as PngCanvas;
     const blob = await toPngBlob(canvas);
+    const { width, height } = canvas;
 
     return {
       blob,
-      width: canvas.width,
-      height: canvas.height,
+      width,
+      height,
       reduction:
         ratio < pixelRatio
-          ? {
-              documentWidth,
-              documentHeight,
-              width: canvas.width,
-              height: canvas.height,
-            }
+          ? { documentWidth, documentHeight, width, height }
           : null,
     };
   } finally {

@@ -7,6 +7,7 @@ import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.action
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
+import { delay } from '@/utils/promise';
 
 import ExportScene from './ExportScene';
 
@@ -18,8 +19,6 @@ export type DocumentSceneOptions = {
 
 export type DocumentScene = {
   stage: Stage;
-  width: number;
-  height: number;
   destroy: () => void;
 };
 
@@ -29,11 +28,6 @@ export type DocumentScene = {
  * window closes would draw the document as it was written rather than as it is.
  */
 const SETTLE_MS = 32;
-
-const settle = () =>
-  new Promise<void>(resolve => {
-    setTimeout(resolve, SETTLE_MS);
-  });
 
 /**
  * The whole document on a Stage of its own, off any screen. The store is built
@@ -50,7 +44,7 @@ export async function renderDocumentScene({
 }: DocumentSceneOptions): Promise<DocumentScene> {
   const app = createAppContext({ toWidth }, { devtools: false });
   app.store.dispatchSync(initialLoadJsonAction$(doc));
-  await settle();
+  await delay(SETTLE_MS);
 
   const { width, height } = app.store.state.settings;
   // Detached on purpose: konva needs a container, and one outside the document
@@ -68,8 +62,6 @@ export async function renderDocumentScene({
 
   return {
     stage: rendered.stage,
-    width,
-    height,
     destroy: () => {
       rendered.destroy();
       appDestroy(app);

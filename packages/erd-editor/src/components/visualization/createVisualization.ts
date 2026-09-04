@@ -73,13 +73,8 @@ export type VisualizationGraph = {
   links: VisualizationLink[];
 };
 
-export type VisualizationSimulation = Simulation<
-  VisualizationNode,
-  VisualizationLink
->;
-
 export type Visualization = VisualizationGraph & {
-  simulation: VisualizationSimulation;
+  simulation: Simulation<VisualizationNode, VisualizationLink>;
 };
 
 /**

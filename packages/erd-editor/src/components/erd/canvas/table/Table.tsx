@@ -25,7 +25,7 @@ import {
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
-  type CellSlot,
+  focusBorderFill,
   getCellTextHeight,
   getHeaderCellSlots,
   HEADER_CELLS_Y,
@@ -43,7 +43,6 @@ import {
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
   TABLE_HEADER_INPUT_HEIGHT,
 } from '@/constants/layout';
-import { Show } from '@/constants/schema';
 import {
   dragendColumnAction,
   editTableAction,
@@ -66,7 +65,6 @@ import {
   getTableWidths,
 } from '@/konva/scene/metrics';
 import type { Theme } from '@/themes/tokens';
-import { bHas } from '@/utils/bit';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -141,12 +139,20 @@ const Table: FC<TableProps> = (props, ctx) => {
     setSceneCursor(event, CURSOR_INHERIT);
   };
 
-  const iconColor = (icon: IconName, hovered: boolean, theme: Theme) =>
-    hovered
-      ? state.iconHover === icon
-        ? theme.active
-        : theme.foreground
-      : TRANSPARENT;
+  const iconColor = (theme: Theme, icon: IconName, hovered: boolean) => {
+    if (!hovered) return TRANSPARENT;
+
+    return state.iconHover === icon ? theme.active : theme.foreground;
+  };
+
+  /** The border a table body draws, greyed out while the editor is unfocused. */
+  const bodyStroke = (theme: Theme, selected: boolean) => {
+    if (!selected) return theme.tableBorder;
+
+    return props.editorFocused === false
+      ? theme.placeholder
+      : theme.tableSelect;
+  };
 
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
     const { emitter } = app.value;
@@ -194,19 +200,6 @@ const Table: FC<TableProps> = (props, ctx) => {
     return layer.getAbsoluteTransform().copy().invert().point(position);
   };
 
-  const handleMoveColumn = (targetId: string, targetTableId: string) => {
-    const { store } = app.value;
-    const {
-      editor: { draggableColumn },
-    } = store.state;
-    if (!draggableColumn || draggableColumn.columnIds.includes(targetId)) {
-      return;
-    }
-
-    flip?.snapshot();
-    store.dispatch(dragoverColumnAction$(targetId, targetTableId));
-  };
-
   const handleDragoverColumn = (event: MouseEvent | TouchEvent) => {
     const { store } = app.value;
     const point = toCanvasPoint(event);
@@ -215,7 +208,18 @@ const Table: FC<TableProps> = (props, ctx) => {
     const target = findColumnDropTarget(store.state, point);
     if (!target) return;
 
-    handleMoveColumn(target.columnId, target.tableId);
+    const {
+      editor: { draggableColumn },
+    } = store.state;
+    if (
+      !draggableColumn ||
+      draggableColumn.columnIds.includes(target.columnId)
+    ) {
+      return;
+    }
+
+    flip?.snapshot();
+    store.dispatch(dragoverColumnAction$(target.columnId, target.tableId));
   };
 
   const handleDragendColumn = () => {
@@ -334,13 +338,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           y={HEADER_TEXT_Y + CELL_UNDERLINE_Y}
           width={width}
           height={FOCUS_BORDER_HEIGHT}
-          fill={
-            edit
-              ? themeRef.value.inputActive
-              : props.editorFocused === false
-                ? themeRef.value.placeholder
-                : themeRef.value.focus
-          }
+          fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
         />
       ) : null}
       {sharedFocus ? (
@@ -357,7 +355,7 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
-    const { editor, settings, collections } = store.state;
+    const { editor, collections } = store.state;
     const { table } = props;
     const theme = themeRef.value;
     const selected = Boolean(editor.selectedMap[table.id]);
@@ -366,9 +364,11 @@ const Table: FC<TableProps> = (props, ctx) => {
     const contentWidth = rect.width - TABLE_INSET * 2;
 
     const hovered = Boolean(props.hovered || state.hover);
-    const ghostColumnId = props.ghostColumnId ?? state.dragstartId;
-    const isGhostColumn =
-      ghostColumnId !== null && !table.columnIds.includes(ghostColumnId);
+    const draggingColumnId = props.ghostColumnId ?? state.dragstartId;
+    const ghostColumnId =
+      draggingColumnId !== null && !table.columnIds.includes(draggingColumnId)
+        ? draggingColumnId
+        : null;
 
     const sharedTableColor = sharedFocusTableColor();
     const sharedSelected = sharedSelectColor();
@@ -376,18 +376,18 @@ const Table: FC<TableProps> = (props, ctx) => {
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
     const ringColor = sharedTableColor ?? sharedSelected;
 
-    const headerCells = new Map<FocusType, CellSlot>(
-      getHeaderCellSlots(store.state, table).map(slot => [slot.focusType, slot])
+    const headerCells = getHeaderCellSlots(store.state, table);
+    const nameCell = headerCells.find(
+      slot => slot.focusType === FocusType.tableName
     );
-    const nameCell = headerCells.get(FocusType.tableName);
-    const commentCell = headerCells.get(FocusType.tableComment);
+    const commentCell = headerCells.find(
+      slot => slot.focusType === FocusType.tableComment
+    );
 
     const columns = query(collections)
       .collection('tableColumnEntities')
       .selectByIds(
-        isGhostColumn
-          ? [...table.columnIds, ghostColumnId as string]
-          : table.columnIds
+        ghostColumnId ? [...table.columnIds, ghostColumnId] : table.columnIds
       );
 
     return (
@@ -413,13 +413,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           height={rect.height - TABLE_BORDER}
           cornerRadius={TABLE_CORNER_RADIUS}
           fill={theme.tableBackground}
-          stroke={
-            selected
-              ? props.editorFocused === false
-                ? theme.placeholder
-                : theme.tableSelect
-              : theme.tableBorder
-          }
+          stroke={bodyStroke(theme, selected)}
           strokeWidth={TABLE_BORDER}
         />
         {ringColor ? (
@@ -457,7 +451,7 @@ const Table: FC<TableProps> = (props, ctx) => {
             name: 'table-add-column',
             kind: 'icon',
             size: HEADER_ICON_HEIGHT,
-            color: iconColor('plus', hovered, theme),
+            color: iconColor(theme, 'plus', hovered),
             mouseenter: handleIconMouseenter('plus'),
             mouseleave: handleIconMouseleave,
             x:
@@ -472,7 +466,7 @@ const Table: FC<TableProps> = (props, ctx) => {
             name: 'table-remove',
             kind: 'icon',
             size: HEADER_ICON_HEIGHT,
-            color: iconColor('x', hovered, theme),
+            color: iconColor(theme, 'x', hovered),
             mouseenter: handleIconMouseenter('x'),
             mouseleave: handleIconMouseleave,
             x: contentWidth - HEADER_ICON_HEIGHT,
@@ -482,9 +476,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           <k-group name="table-header-inputs" y={HEADER_CELLS_Y - TABLE_INSET}>
             {nameCell
               ? headerCell({
-                  focusType: nameCell.focusType,
-                  x: nameCell.x,
-                  width: nameCell.width,
+                  ...nameCell,
                   text: table.name.trim() ? table.name : 'table',
                   fill: table.name.trim() ? theme.active : theme.placeholder,
                   focus: hasFocus(FocusType.tableName),
@@ -494,9 +486,7 @@ const Table: FC<TableProps> = (props, ctx) => {
               : null}
             {commentCell
               ? headerCell({
-                  focusType: commentCell.focusType,
-                  x: commentCell.x,
-                  width: commentCell.width,
+                  ...commentCell,
                   text: table.comment.trim() ? table.comment : 'comment',
                   fill: table.comment.trim() ? theme.active : theme.placeholder,
                   focus: hasFocus(FocusType.tableComment),
@@ -563,7 +553,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                   FocusType.columnAutoIncrement,
                   column.id
                 )}
-                ghost={isGhostColumn && column.id === ghostColumnId}
+                ghost={column.id === ghostColumnId}
                 preview={props.preview}
                 editorFocused={props.editorFocused}
                 onDragstart={handleDragstartColumn}

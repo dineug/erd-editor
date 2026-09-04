@@ -325,11 +325,15 @@ function separate(
   endpoints: Map<string, [string, string]>,
   memo?: NudgeMemo
 ) {
-  if (memo && replay(group, memo)) return;
+  if (!memo) {
+    separateGroup(group, axis, obstacles, endpoints);
+    return;
+  }
+  if (replay(group, memo)) return;
 
-  const before = memo ? group.map(slot => slot.coordinate) : null;
+  const before = group.map(slot => slot.coordinate);
   separateGroup(group, axis, obstacles, endpoints);
-  if (memo && before) markMoved(group, before, memo);
+  markMoved(group, before, memo);
 }
 
 function separateGroup(

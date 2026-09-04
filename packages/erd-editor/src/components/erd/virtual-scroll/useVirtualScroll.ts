@@ -11,6 +11,7 @@ import { drag$, DragMove } from '@/utils/globalEventObservable';
 
 /** One scrollbar as drawn: a track a viewport wide over the content behind it. */
 export type ScrollbarTrack = {
+  range: ScrollRange;
   ratio: number;
   thumb: number;
   offset: number;
@@ -32,6 +33,7 @@ export function getScrollbarTrack(
   const ratio = content > 0 ? viewportLength / content : 1;
 
   return {
+    range,
     ratio,
     thumb: viewportLength * ratio,
     offset: (range.max - scroll) * ratio,
@@ -41,8 +43,7 @@ export function getScrollbarTrack(
 
 /** The scroll that centres the viewport on a point pressed on a track. */
 export function trackPointToScroll(
-  range: ScrollRange,
-  ratio: number,
+  { range, ratio }: ScrollbarTrack,
   point: number,
   viewportLength: number
 ): number {

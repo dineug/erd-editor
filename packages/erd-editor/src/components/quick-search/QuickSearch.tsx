@@ -165,10 +165,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const handleToggleSearch = () => {
     const { store } = app.value;
     const { editor } = store.state;
-    const { openMap } = editor;
 
     if (!isEditingText(editor)) {
-      const opened = !openMap[Open.search];
+      const opened = !editor.openMap[Open.search];
       store.dispatch(changeOpenMapAction({ [Open.search]: opened }));
 
       if (opened) {

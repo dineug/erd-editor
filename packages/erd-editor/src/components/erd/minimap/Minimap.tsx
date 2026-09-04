@@ -32,14 +32,6 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   let stage: Stage | null = null;
 
-  const getRatio = () => {
-    const { store } = app.value;
-    const {
-      settings: { width },
-    } = store.state;
-    return getMinimapRatio(width);
-  };
-
   /**
    * The thumbnail's own box. The container used to be the canvas at full size
    * with a scale on it, and the box below is what that scale drew, which is
@@ -95,7 +87,7 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       settings: { width, height, scrollLeft, scrollTop, zoomLevel },
       editor: { viewport },
     } = store.state;
-    const ratio = getRatio();
+    const ratio = getMinimapRatio(width);
     const $minimap = minimap.value;
     const rect = $minimap.getBoundingClientRect();
     const clientX = isMouseEvent(event)

@@ -73,43 +73,24 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
         const rect = $root.getBoundingClientRect();
         const currentX = event.clientX - rect.x;
         const currentY = event.clientY - rect.y;
-        const min = {
-          x: startX < currentX ? startX : currentX,
-          y: startY < currentY ? startY : currentY,
-        };
-        const max = {
-          x: startX > currentX ? startX : currentX,
-          y: startY > currentY ? startY : currentY,
-        };
+        const minX = Math.min(startX, currentX);
+        const minY = Math.min(startY, currentY);
+        const maxX = Math.max(startX, currentX);
+        const maxY = Math.max(startY, currentY);
 
-        state.left = min.x;
-        state.width = max.x - min.x;
-        if (state.width < 0) {
-          state.width = 0;
-        }
-
-        state.top = min.y;
-        state.height = max.y - min.y;
-        if (state.height < 0) {
-          state.height = 0;
-        }
-
-        const ghostMin = Object.assign({}, min);
-        const ghostMax = Object.assign({}, max);
-
-        ghostMin.x -= scrollLeft;
-        ghostMin.y -= scrollTop;
-        ghostMax.x -= scrollLeft;
-        ghostMax.y -= scrollTop;
+        state.left = minX;
+        state.top = minY;
+        state.width = maxX - minX;
+        state.height = maxY - minY;
 
         const absoluteMin = getAbsolutePoint(
-          ghostMin,
+          { x: minX - scrollLeft, y: minY - scrollTop },
           width,
           height,
           zoomLevel
         );
         const absoluteMax = getAbsolutePoint(
-          ghostMax,
+          { x: maxX - scrollLeft, y: maxY - scrollTop },
           width,
           height,
           zoomLevel

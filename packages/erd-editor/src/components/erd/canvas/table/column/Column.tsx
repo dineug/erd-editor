@@ -26,6 +26,7 @@ import {
   CELL_UNDERLINE_Y,
   COLUMN_TEXT_Y,
   type ColumnCellSlot,
+  focusBorderFill,
   getCellTextHeight,
   getColumnCellSlots,
 } from '@/components/erd/canvas/table/cellLayout';
@@ -134,6 +135,13 @@ const keyFill = (keys: number, theme: Theme) => {
   return TRANSPARENT;
 };
 
+/** The fill a row takes, where a selection outranks a hover. */
+const rowBackground = (theme: Theme, selected: boolean, hover: boolean) => {
+  if (selected) return theme.columnSelect;
+  if (hover) return theme.columnHover;
+  return TRANSPARENT;
+};
+
 const Column: FC<ColumnProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
@@ -193,6 +201,13 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const handleRemoveMouseleave = (event: SceneMouseEvent) => {
     state.removeHover = false;
     setSceneCursor(event, CURSOR_INHERIT);
+  };
+
+  /** The remove button is invisible until the row itself is hovered. */
+  const removeIconColor = (theme: Theme, hover: boolean) => {
+    if (!hover) return TRANSPARENT;
+
+    return state.removeHover ? theme.active : theme.foreground;
   };
 
   const handleFocus = (focusType: FocusType, event: SceneMouseEvent) => {
@@ -296,13 +311,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           y={COLUMN_TEXT_Y + CELL_UNDERLINE_Y}
           width={width}
           height={FOCUS_BORDER_HEIGHT}
-          fill={
-            edit
-              ? themeRef.value.inputActive
-              : props.editorFocused === false
-                ? themeRef.value.placeholder
-                : themeRef.value.focus
-          }
+          fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
         />
       ) : null}
       {sharedFocus ? (
@@ -443,11 +452,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     );
     const dragging = Boolean(editor.draggingColumnMap[column.id]);
     const contentWidth = width - TABLE_INSET * 2;
-    const background = selected
-      ? theme.columnSelect
-      : hover
-        ? theme.columnHover
-        : TRANSPARENT;
+    const background = rowBackground(theme, selected, hover);
 
     return (
       <k-group
@@ -491,11 +496,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           name: 'column-remove',
           kind: 'icon',
           size: COLUMN_DELETE_WIDTH,
-          color: hover
-            ? state.removeHover
-              ? theme.active
-              : theme.foreground
-            : TRANSPARENT,
+          color: removeIconColor(theme, hover),
           x: TABLE_INSET + contentWidth - COLUMN_DELETE_WIDTH,
           y: (COLUMN_HEIGHT - COLUMN_DELETE_WIDTH) / 2,
           click: handleRemove,

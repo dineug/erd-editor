@@ -111,6 +111,32 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       : [];
     const dragRelationships = dragging ? allRelationships.filter(isMoving) : [];
 
+    /** The tables of one layer, in whichever spelling the zoom asks for. */
+    const tableShapes = (list: typeof allTables) =>
+      cache(
+        isHighLevelTable(zoomLevel) ? (
+          <>
+            {repeat(
+              list,
+              table => table.id,
+              table => (
+                <HighLevelTable table={table} />
+              )
+            )}
+          </>
+        ) : (
+          <>
+            {repeat(
+              list,
+              table => table.id,
+              table => (
+                <Table table={table} />
+              )
+            )}
+          </>
+        )
+      );
+
     // The one place the scene transform is written down, so the rect above
     // culls against the origin these layers are actually placed at.
     const { x, y } = getSceneOrigin(state.settings);
@@ -161,29 +187,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
           {drawRelationship?.start ? (
             <DrawRelationship root={props.root} draw={drawRelationship} />
           ) : null}
-          {cache(
-            isHighLevelTable(zoomLevel) ? (
-              <>
-                {repeat(
-                  tables,
-                  table => table.id,
-                  table => (
-                    <HighLevelTable table={table} />
-                  )
-                )}
-              </>
-            ) : (
-              <>
-                {repeat(
-                  tables,
-                  table => table.id,
-                  table => (
-                    <Table table={table} />
-                  )
-                )}
-              </>
-            )
-          )}
+          {tableShapes(tables)}
           {repeat(
             memos,
             memo => memo.id,
@@ -200,29 +204,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             scaleX={zoomLevel}
             scaleY={zoomLevel}
           >
-            {cache(
-              isHighLevelTable(zoomLevel) ? (
-                <>
-                  {repeat(
-                    dragTables,
-                    table => table.id,
-                    table => (
-                      <HighLevelTable table={table} />
-                    )
-                  )}
-                </>
-              ) : (
-                <>
-                  {repeat(
-                    dragTables,
-                    table => table.id,
-                    table => (
-                      <Table table={table} />
-                    )
-                  )}
-                </>
-              )
-            )}
+            {tableShapes(dragTables)}
             {repeat(
               dragMemos,
               memo => memo.id,

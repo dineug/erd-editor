@@ -19,6 +19,7 @@ import { ColumnType, Show } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import type { Table } from '@/internal-types';
+import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import type { ColumnWidth } from '@/utils/calcTable';
 
@@ -50,6 +51,21 @@ export const COLUMN_TEXT_Y = COLUMN_PADDING;
 
 /** Where the scene runs its focus rect inside a cell, header and column both. */
 export const CELL_UNDERLINE_Y = INPUT_HEIGHT - FOCUS_BORDER_HEIGHT;
+
+/**
+ * The paint that focus rect takes, header and column both: the input colour
+ * while the cell is being edited, and greyed out with the rest of the focus
+ * while the editor is not the one holding the keyboard.
+ */
+export function focusBorderFill(
+  theme: Theme,
+  edit: boolean,
+  editorFocused: boolean | undefined
+): string {
+  if (edit) return theme.inputActive;
+  if (editorFocused === false) return theme.placeholder;
+  return theme.focus;
+}
 
 /** The line box a cell reserves above its underline, before it is put on a grid. */
 const RAW_CELL_TEXT_HEIGHT = CELL_UNDERLINE_Y;

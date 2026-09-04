@@ -31,11 +31,11 @@ export class ExportPngService {
    * reports to nobody: its port stays open and every call after it hangs.
    */
   async probeFontWidths(): Promise<number[]> {
-    return measureFontProbe(this.toWidth());
+    return measureFontProbe(this.createToWidth());
   }
 
   async render(request: ExportPngRequest): Promise<RenderPngResult> {
-    const toWidth = this.toWidth();
+    const toWidth = this.createToWidth();
     const probe = measureFontProbe(toWidth);
     if (!sameFontProbe(probe, request.fontProbe)) {
       throw new Error(
@@ -46,7 +46,7 @@ export class ExportPngService {
     return renderDocumentPng({ ...request, toWidth });
   }
 
-  private toWidth(): ToWidth {
+  private createToWidth(): ToWidth {
     const toWidth = createOffscreenToWidth();
     if (!toWidth) {
       throw new Error(

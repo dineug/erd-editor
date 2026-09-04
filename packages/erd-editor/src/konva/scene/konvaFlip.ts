@@ -90,11 +90,17 @@ export function createKonvaFlip(nodes: () => KonvaNode[]): KonvaFlip {
     tween.play();
   };
 
-  const play = () => {
+  /** Drops the armed snapshot and its flush hook, handing back what was armed. */
+  const disarm = () => {
     const taken = snapshots;
     snapshots = null;
     unlisten?.();
     unlisten = null;
+    return taken;
+  };
+
+  const play = () => {
+    const taken = disarm();
     if (!taken) return;
 
     for (const before of taken) {
@@ -121,9 +127,7 @@ export function createKonvaFlip(nodes: () => KonvaNode[]): KonvaFlip {
       unlisten ??= onBeforeFlush(play);
     },
     cancel() {
-      snapshots = null;
-      unlisten?.();
-      unlisten = null;
+      disarm();
       [...running.values()].forEach(stop => stop());
     },
   };

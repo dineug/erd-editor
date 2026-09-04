@@ -100,18 +100,8 @@ export const changeViewportAction = createAction<
   ActionMap[typeof ActionType.changeViewport]
 >(ActionType.changeViewport);
 
-/**
- * The screen the canvas is looking through. Growing it widens the travel the
- * scroll is allowed, and shrinking it narrows it, so the offsets are clamped
- * again here: a scroll left outside the new range shows a band of nothing.
- */
-const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
-  { editor, settings },
-  { payload: { width, height } }
-) => {
-  editor.viewport.width = width;
-  editor.viewport.height = height;
-
+/** Pulls both offsets into the travel the viewport and the zoom now allow. */
+function clampScrollOffsets({ settings, editor }: RootState) {
   const { scrollLeftInRange, scrollTopInRange } = createScrollInRange(
     settings,
     editor.viewport
@@ -119,6 +109,20 @@ const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
 
   settings.scrollLeft = round(scrollLeftInRange(settings.scrollLeft), 4);
   settings.scrollTop = round(scrollTopInRange(settings.scrollTop), 4);
+}
+
+/**
+ * The screen the canvas is looking through. Growing it widens the travel the
+ * scroll is allowed, and shrinking it narrows it, so the offsets are clamped
+ * again here: a scroll left outside the new range shows a band of nothing.
+ */
+const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
+  state,
+  { payload: { width, height } }
+) => {
+  state.editor.viewport.width = width;
+  state.editor.viewport.height = height;
+  clampScrollOffsets(state);
 };
 
 export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
@@ -136,16 +140,11 @@ const clear: ReducerType<typeof ActionType.clear> = state => {
  * allows. A file can name an offset no zoom below 1 can hold, and the load path
  * clamps nowhere else, so the first wheel notch would jump the whole distance.
  */
-function pullScrollIntoRange({ settings, editor }: RootState) {
-  if (!editor.viewport.width || !editor.viewport.height) return;
+function pullScrollIntoRange(state: RootState) {
+  const { viewport } = state.editor;
+  if (!viewport.width || !viewport.height) return;
 
-  const { scrollLeftInRange, scrollTopInRange } = createScrollInRange(
-    settings,
-    editor.viewport
-  );
-
-  settings.scrollLeft = round(scrollLeftInRange(settings.scrollLeft), 4);
-  settings.scrollTop = round(scrollTopInRange(settings.scrollTop), 4);
+  clampScrollOffsets(state);
 }
 
 export const loadJsonAction = createAction<

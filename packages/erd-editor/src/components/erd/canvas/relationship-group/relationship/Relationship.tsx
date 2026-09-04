@@ -4,10 +4,7 @@ import { FC, observable } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { useThemeContext } from '@/components/themeContext';
-import {
-  RELATIONSHIP_HIT_STROKE_WIDTH,
-  RELATIONSHIP_STROKE_WIDTH,
-} from '@/constants/layout';
+import { RELATIONSHIP_HIT_STROKE_WIDTH } from '@/constants/layout';
 import { Direction, StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
 import {
@@ -28,9 +25,9 @@ import {
 } from '@/utils/draw-relationship/pathFinding';
 
 import {
-  DECORATION,
+  decorationLine,
+  decorationRing,
   relationshipShape,
-  segment,
 } from './Relationship.template';
 
 /** Ten on, ten off: what the svg route spelt as a single dasharray of 10. */
@@ -207,61 +204,17 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
           strokeWidth={strokeWidth}
           listening={false}
         />
-        <k-line
-          name={DECORATION}
-          kind={DECORATION}
-          points={segment(path.line.start)}
-          stroke={stroke}
-          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-          listening={false}
-        />
-        <k-line
-          name={DECORATION}
-          kind={DECORATION}
-          points={segment(line.line.start.base)}
-          stroke={stroke}
-          strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-          listening={false}
-        />
+        {decorationLine(path.line.start, stroke)}
+        {decorationLine(line.line.start.base, stroke)}
         {relationship.startRelationshipType === StartRelationshipType.ring ? (
           <>
-            <k-circle
-              name={DECORATION}
-              kind={DECORATION}
-              x={line.startCircle.cx}
-              y={line.startCircle.cy}
-              radius={CIRCLE_RADIUS}
-              stroke={stroke}
-              strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-              listening={false}
-            />
-            <k-line
-              name={DECORATION}
-              kind={DECORATION}
-              points={segment(line.line.start.center)}
-              stroke={stroke}
-              strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-              listening={false}
-            />
+            {decorationRing(line.startCircle, stroke)}
+            {decorationLine(line.line.start.center, stroke)}
           </>
         ) : (
           <>
-            <k-line
-              name={DECORATION}
-              kind={DECORATION}
-              points={segment(line.line.start.base2)}
-              stroke={stroke}
-              strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-              listening={false}
-            />
-            <k-line
-              name={DECORATION}
-              kind={DECORATION}
-              points={segment(line.line.start.center2)}
-              stroke={stroke}
-              strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-              listening={false}
-            />
+            {decorationLine(line.line.start.base2, stroke)}
+            {decorationLine(line.line.start.center2, stroke)}
           </>
         )}
         {shape}

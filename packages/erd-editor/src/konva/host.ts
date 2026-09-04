@@ -147,8 +147,11 @@ const isKonva = (value: any): value is KonvaNode => value instanceof KonvaNode;
 const isFragmentNode = (value: any): value is Group =>
   isKonva(value) && Reflect.get(value, FRAGMENT) === true;
 
+const peekSlot = (node: HostNode): Slot | undefined =>
+  Reflect.get(node, SLOT) as Slot | undefined;
+
 function slotOf(node: HostNode): Slot {
-  const existing = Reflect.get(node, SLOT) as Slot | undefined;
+  const existing = peekSlot(node);
   if (existing) return existing;
 
   const slot: Slot = {
@@ -177,10 +180,10 @@ function ledgerOf(parent: HostNode): Ledger {
 }
 
 const parentOf = (node: HostNode): HostNode | null =>
-  (Reflect.get(node, SLOT) as Slot | undefined)?.parent ?? null;
+  peekSlot(node)?.parent ?? null;
 
 const nextSiblingOf = (node: HostNode): HostNode | null =>
-  (Reflect.get(node, SLOT) as Slot | undefined)?.next?.node ?? null;
+  peekSlot(node)?.next?.node ?? null;
 
 const pending = new Set<HostNode>();
 
@@ -304,14 +307,10 @@ function insertInto(
   }
 }
 
-function releaseNode(node: KonvaNode) {
+function destroyNode(node: KonvaNode) {
   pending.delete(node);
   Reflect.deleteProperty(node, SLOT);
   Reflect.deleteProperty(node, LEDGER);
-}
-
-function destroyNode(node: KonvaNode) {
-  releaseNode(node);
   node.destroy();
 }
 
@@ -571,19 +570,17 @@ export const konvaAdapter: HostAdapter = {
 
   getRoot: rootOf,
   createComponentContext(startNode: HostNode, eventBus: HostNode) {
-    const targetOf = () => {
-      const root = rootOf(startNode);
-      return root instanceof Stage ? root.container() : eventBus;
-    };
-
     return {
       // Resolved per read, never captured: a template is assembled inside a
       // fragment and spliced afterwards, so a context made on the way in would
       // hold the bus for the life of the component.
       get host() {
+        const root = rootOf(startNode);
         // The one EventTarget fallback cast: a scene rendered outside a Stage
         // has no container element, and the bus answers dispatchEvent anyway.
-        return targetOf() as unknown as HTMLElement;
+        return (root instanceof Stage
+          ? root.container()
+          : eventBus) as unknown as HTMLElement;
       },
       // Null on purpose, and not for want of a live parent: useContext prefers
       // this over host, and a konva parent is never an HTMLElement, so leaving

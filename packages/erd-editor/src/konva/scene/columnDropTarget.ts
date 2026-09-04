@@ -1,18 +1,10 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import {
-  COLUMN_HEIGHT,
-  TABLE_BORDER,
-  TABLE_HEADER_HEIGHT,
-  TABLE_PADDING,
-} from '@/constants/layout';
+import { COLUMN_HEIGHT } from '@/constants/layout';
 import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
-import { getTableRect } from '@/konva/scene/metrics';
+import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
 import { getCullingRect, isTableVisible } from '@/konva/scene/viewport';
-
-/** Border plus padding on one side, which is where a table's rows begin. */
-const TABLE_INSET = TABLE_BORDER + TABLE_PADDING;
 
 export type ColumnDropTarget = {
   tableId: string;
@@ -49,10 +41,10 @@ export function findColumnDropTarget(
       point.y <= rect.y + rect.height;
     if (!inside) continue;
 
-    const top = rect.y + TABLE_INSET + TABLE_HEADER_HEIGHT;
-    if (point.y < top) return null;
+    const firstRowY = getColumnRect(state, table, 0).y;
+    if (point.y < firstRowY) return null;
 
-    const index = Math.floor((point.y - top) / COLUMN_HEIGHT);
+    const index = Math.floor((point.y - firstRowY) / COLUMN_HEIGHT);
     const columnId = table.columnIds[index];
     if (!columnId) return null;
 

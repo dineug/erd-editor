@@ -5,7 +5,9 @@ import { DOMTemplateLiterals } from '@dineug/r-html';
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { RelationshipType } from '@/constants/schema';
 import {
+  Circle,
   CIRCLE_RADIUS,
+  Line,
   PointToPoint,
   RelationshipPath,
 } from '@/utils/draw-relationship';
@@ -19,327 +21,85 @@ export const DECORATION = 'relationship-decoration';
 /** Konva takes one flat pair list where svg took four attributes. */
 export const segment = ({ x1, y1, x2, y2 }: PointToPoint) => [x1, y1, x2, y2];
 
-const relationshipZeroOneN = (
-  { path, line }: RelationshipPath,
+/**
+ * One stroke of a cardinality marker. The paint, the width and the two naming
+ * attributes are per node in konva, so every marker is drawn through here.
+ */
+export function decorationLine(
+  points: PointToPoint,
   stroke: string
-) => (
-  <>
+): DOMTemplateLiterals {
+  return (
     <k-line
       name={DECORATION}
       kind={DECORATION}
-      points={segment(path.line.end)}
+      points={segment(points)}
       stroke={stroke}
       strokeWidth={RELATIONSHIP_STROKE_WIDTH}
       listening={false}
     />
+  );
+}
+
+/** The optional ring of a cardinality marker, at either anchor. */
+export function decorationRing(
+  { cx, cy }: Circle,
+  stroke: string
+): DOMTemplateLiterals {
+  return (
     <k-circle
       name={DECORATION}
       kind={DECORATION}
-      x={line.circle.cx}
-      y={line.circle.cy}
+      x={cx}
+      y={cy}
       radius={CIRCLE_RADIUS}
       stroke={stroke}
       strokeWidth={RELATIONSHIP_STROKE_WIDTH}
       listening={false}
     />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.base)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.left)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.center)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.right)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-  </>
-);
+  );
+}
 
-const relationshipZeroOne = (
-  { path, line }: RelationshipPath,
-  stroke: string
-) => (
-  <>
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(path.line.end)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-circle
-      name={DECORATION}
-      kind={DECORATION}
-      x={line.circle.cx}
-      y={line.circle.cy}
-      radius={CIRCLE_RADIUS}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.base)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.center)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-  </>
-);
-
-const relationshipZeroN = (
-  { path, line }: RelationshipPath,
-  stroke: string
-) => (
-  <>
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(path.line.end)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-circle
-      name={DECORATION}
-      kind={DECORATION}
-      x={line.circle.cx}
-      y={line.circle.cy}
-      radius={CIRCLE_RADIUS}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.left)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.center)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.right)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-  </>
-);
-
-const relationshipOneOnly = (
-  { path, line }: RelationshipPath,
-  stroke: string
-) => (
-  <>
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(path.line.end)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.base)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.base2)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.center2)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-  </>
-);
-
-const relationshipOneN = ({ path, line }: RelationshipPath, stroke: string) => (
-  <>
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(path.line.end)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.base)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.left)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.center2)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.right)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-  </>
-);
-
-const relationshipOne = ({ path, line }: RelationshipPath, stroke: string) => (
-  <>
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(path.line.end)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.base)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.center2)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-  </>
-);
-
-const relationshipN = ({ path, line }: RelationshipPath, stroke: string) => (
-  <>
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(path.line.end)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.left)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.center2)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-    <k-line
-      name={DECORATION}
-      kind={DECORATION}
-      points={segment(line.line.end.right)}
-      stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
-      listening={false}
-    />
-  </>
-);
+/**
+ * One cardinality at the end anchor: whether it carries a ring, and the end
+ * ticks it draws, in the order they are drawn.
+ */
+type EndShape = {
+  ring: boolean;
+  ticks: Array<keyof Line['end']>;
+};
 
 // 1, 32 and 64 are the RelationshipType members left commented out in
 // @dineug/erd-editor-schema; they have no constant, so the bits are spelled out.
-const relationshipShapeMap: Record<
-  number,
-  (value: RelationshipPath, stroke: string) => DOMTemplateLiterals
-> = {
-  [1]: relationshipZeroOneN,
-  [RelationshipType.ZeroOne]: relationshipZeroOne,
-  [RelationshipType.ZeroN]: relationshipZeroN,
-  [RelationshipType.OneOnly]: relationshipOneOnly,
-  [RelationshipType.OneN]: relationshipOneN,
-  [32]: relationshipOne,
-  [64]: relationshipN,
+const endShapeMap: Record<number, EndShape> = {
+  [1]: { ring: true, ticks: ['base', 'left', 'center', 'right'] },
+  [RelationshipType.ZeroOne]: { ring: true, ticks: ['base', 'center'] },
+  [RelationshipType.ZeroN]: { ring: true, ticks: ['left', 'center', 'right'] },
+  [RelationshipType.OneOnly]: {
+    ring: false,
+    ticks: ['base', 'base2', 'center2'],
+  },
+  [RelationshipType.OneN]: {
+    ring: false,
+    ticks: ['base', 'left', 'center2', 'right'],
+  },
+  [32]: { ring: false, ticks: ['base', 'center2'] },
+  [64]: { ring: false, ticks: ['left', 'center2', 'right'] },
 };
 
 export function relationshipShape(
   relationshipType: number,
-  relationshipPath: RelationshipPath,
+  { path, line }: RelationshipPath,
   stroke: string
 ): DOMTemplateLiterals | null {
-  const relationshipShapeTpl = relationshipShapeMap[relationshipType];
-  return relationshipShapeTpl?.(relationshipPath, stroke) ?? null;
+  const endShape = endShapeMap[relationshipType];
+  if (!endShape) return null;
+
+  return (
+    <>
+      {decorationLine(path.line.end, stroke)}
+      {endShape.ring ? decorationRing(line.circle, stroke) : null}
+      {endShape.ticks.map(tick => decorationLine(line.line.end[tick], stroke))}
+    </>
+  );
 }

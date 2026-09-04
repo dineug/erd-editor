@@ -42,14 +42,15 @@ export const fromThemeVariables =
  */
 export function readThemeVariables(host: Element): ThemeVariables {
   const style = getComputedStyle(host);
+  const variables: ThemeVariables = {};
 
-  return ThemeTokens.reduce<ThemeVariables>((variables, token) => {
+  for (const token of ThemeTokens) {
     const name = toThemeVariableName(token);
     const value = style.getPropertyValue(name).trim();
     value && (variables[name] = value);
+  }
 
-    return variables;
-  }, {});
+  return variables;
 }
 
 /** The palette the host element resolves to, css overrides included. */

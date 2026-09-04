@@ -229,23 +229,16 @@ function routeRelationships(
 
     const { m, l } = stubEnds(origin);
     const was = previous.get(origin.id);
-    const reusable =
-      moved !== null &&
-      was !== undefined &&
-      was.mx === m.x &&
-      was.my === m.y &&
-      was.lx === l.x &&
-      was.ly === l.y &&
-      was.mDirection === start.direction &&
-      was.lDirection === end.direction &&
-      was.startTableId === start.tableId &&
-      was.endTableId === end.tableId &&
-      !routeTouches(was.bounds, moved);
 
     let pristine: Point[];
     let points: Point[];
 
-    if (reusable && was) {
+    if (
+      moved !== null &&
+      was !== undefined &&
+      sameRouteInputs(was, m, l, start, end) &&
+      !routeTouches(was.bounds, moved)
+    ) {
       pristine = was.pristine;
       points = clonePoints(pristine);
     } else {
@@ -323,6 +316,26 @@ function createMemo(
       return vertical ? point.x : point.y;
     },
   };
+}
+
+/** Whether the route held for a relationship was computed from these ends. */
+function sameRouteInputs(
+  was: RouteEntry,
+  m: Point,
+  l: Point,
+  start: Relationship['start'],
+  end: Relationship['end']
+) {
+  return (
+    was.mx === m.x &&
+    was.my === m.y &&
+    was.lx === l.x &&
+    was.ly === l.y &&
+    was.mDirection === start.direction &&
+    was.lDirection === end.direction &&
+    was.startTableId === start.tableId &&
+    was.endTableId === end.tableId
+  );
 }
 
 function getOrCreateGraph(

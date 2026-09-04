@@ -179,20 +179,24 @@ export function getStubSlots(
   return stubSlots.get(relationship) ?? EMPTY_SLOTS;
 }
 
+type StoredRoute = {
+  points: Point[];
+  epoch: number;
+};
+
 /**
- * The routed polyline, from the first turning point to the last. Routing needs
- * every table and every other route, so it runs once per sort rather than where
- * the path is drawn; with no entry a relationship falls back to two bends.
+ * The routed polyline, from the first turning point to the last, stamped with
+ * the sort that wrote it. Routing needs every table and every other route, so
+ * it runs once per sort; with no entry a relationship falls back to two bends.
  */
-const routes = new WeakMap<Relationship, Point[]>();
+const routes = new WeakMap<Relationship, StoredRoute>();
 
 export function setRoute(relationship: Relationship, points: Point[]) {
-  routes.set(relationship, points);
-  routeBBoxes.set(relationship, { points, epoch: sortEpoch });
+  routes.set(relationship, { points, epoch: sortEpoch });
 }
 
 export function getRoute(relationship: Relationship): Point[] | undefined {
-  return routes.get(relationship);
+  return routes.get(relationship)?.points;
 }
 
 /**
@@ -219,21 +223,13 @@ export type BBox = {
   height: number;
 };
 
-type RouteBBox = {
-  points: Point[];
-  epoch: number;
-};
-
-/**
- * Route boxes under the same identity as the routes themselves, stamped with the
- * sort that wrote them. Identity outlives a sort, so the stamp is what separates
- * a box for the current routes from one the next sort has already replaced.
- */
-const routeBBoxes = new WeakMap<Relationship, RouteBBox>();
-
 let sortEpoch = 0;
 
-/** Opens a sort, retiring every route box the previous one wrote. */
+/**
+ * Opens a sort, retiring every route box the previous one wrote. Identity
+ * outlives a sort, so the stamp a route carries is what separates a box for the
+ * current routes from one the next sort has already replaced.
+ */
 export function nextSortEpoch() {
   sortEpoch += 1;
 }
@@ -273,7 +269,7 @@ export function getRouteBBox(
   strokeWidth: number = RELATIONSHIP_STROKE_WIDTH
 ): BBox {
   const { start, end } = relationship;
-  const entry = routeBBoxes.get(relationship);
+  const entry = routes.get(relationship);
   const routed = entry && entry.epoch === sortEpoch ? entry.points : null;
 
   return inflate(

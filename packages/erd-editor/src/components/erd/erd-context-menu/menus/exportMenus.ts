@@ -34,8 +34,6 @@ function describeReduction({
   return `${documentWidth}x${documentHeight} is past what a browser canvas can hold, so the image is ${width}x${height}`;
 }
 
-type Outcome = { error: unknown } | null;
-
 /**
  * Draws the document, saying so while it draws and reporting afterwards. The
  * two messages are sequenced rather than stacked, so what became of the file
@@ -48,7 +46,7 @@ async function exportDocumentPng(
 ) {
   let reduction: ResolutionReduction | null = null;
 
-  const running = exportPNG(
+  const outcome = exportPNG(
     {
       doc: toJson(store.state),
       theme,
@@ -60,8 +58,7 @@ async function exportDocumentPng(
       },
     },
     databaseName
-  );
-  const outcome: Promise<Outcome> = running.then(
+  ).then(
     () => null,
     (error: unknown) => ({ error })
   );
