@@ -29,6 +29,8 @@ export type HighLevelTableProps = {
   table: Table;
   /** A drawn copy rather than the table itself, so nothing in it takes an id. */
   preview?: boolean;
+  /** Off while the table is kept built but scrolled out of the culling rect. */
+  visible?: boolean;
 };
 
 /**
@@ -80,6 +82,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
         id={props.preview ? '' : `table-${table.id}`}
         name="table high-level-table"
         kind="table"
+        visible={props.visible ?? true}
         selected={selected}
         sharedFocus={sharedFocus}
         sharedSelect={sharedSelected}

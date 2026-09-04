@@ -81,6 +81,8 @@ export type TableProps = {
   hoveredColumnId?: string | null;
   ghostColumnId?: string | null;
   editorFocused?: boolean;
+  /** Off while the table is kept built but scrolled out of the culling rect. */
+  visible?: boolean;
 };
 
 type HeaderCellOptions = {
@@ -395,6 +397,7 @@ const Table: FC<TableProps> = (props, ctx) => {
         id={props.preview ? '' : `table-${table.id}`}
         name="table"
         kind="table"
+        visible={props.visible ?? true}
         selected={selected}
         sharedFocus={sharedTableColor}
         sharedSelect={sharedSelected}

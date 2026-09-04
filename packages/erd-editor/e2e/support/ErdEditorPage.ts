@@ -340,13 +340,27 @@ export class ErdEditorPage {
     );
   }
 
-  /** Whether the scene currently holds a node at all, which culling decides. */
+  /**
+   * Whether the scene holds a node at all, which culling decides. A table that
+   * scrolled off is kept built but hidden for a while, so this stays true of it
+   * where sceneNodeDrawn does not.
+   */
   async hasSceneNode(selector: SceneSelector): Promise<boolean> {
     return this.page.evaluate(target => {
       const stage = Reflect.get(window, '__erdStages')?.canvas;
       let node: any = stage;
       for (const step of target) node = node?.findOne?.(step);
       return Boolean(node) && node !== stage;
+    }, toScenePath(selector));
+  }
+
+  /** Whether the scene holds the node and is drawing it, hidden ancestors included. */
+  async sceneNodeDrawn(selector: SceneSelector): Promise<boolean> {
+    return this.page.evaluate(target => {
+      const stage = Reflect.get(window, '__erdStages')?.canvas;
+      let node: any = stage;
+      for (const step of target) node = node?.findOne?.(step);
+      return Boolean(node) && node !== stage && node.isVisible();
     }, toScenePath(selector));
   }
 
@@ -410,7 +424,9 @@ export class ErdEditorPage {
       if (!stage) return null;
 
       const origin = stage.container().getBoundingClientRect();
-      const nodes = [...stage.find('.table'), ...stage.find('.memo')];
+      const nodes = [...stage.find('.table'), ...stage.find('.memo')].filter(
+        (node: any) => node.isVisible()
+      );
       return nodes.map((node: any) => {
         const rect = node.getClientRect({ relativeTo: stage });
         return {

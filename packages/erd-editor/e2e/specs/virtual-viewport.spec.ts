@@ -5,9 +5,9 @@ import {
   RelationshipType,
 } from '../support/schema';
 
-// AC-S5 and the e2e half of AC-G14. The dom scene drew the whole document and
-// let the browser clip it. Konva draws what is asked for, so what is off screen
-// has no node at all — and the minimap, which is the map of the rest, keeps it.
+// AC-S5 and the e2e half of AC-G14. Konva builds only what is asked for: what
+// was never on screen has no node, a table that scrolled off stays built but
+// hidden for a while, and the minimap, the map of the rest, keeps all of it.
 
 /** A canvas wide enough that the scroll can leave a screen behind. */
 const CANVAS = 6000;
@@ -80,7 +80,7 @@ test.describe('virtual viewport', () => {
     await expect(erd.minimap.locator('.relationship')).toHaveCount(0);
   });
 
-  test('scrolling the far group into view builds it and drops the near one', async ({
+  test('scrolling the far group into view builds it and hides the near one', async ({
     erd,
   }) => {
     await erd.seed(spreadDocument());
@@ -91,11 +91,15 @@ test.describe('virtual viewport', () => {
       .toBe(-2900);
     await erd.whenDrawn();
 
-    await expect.poll(() => erd.hasSceneNode('#table-far_a')).toBe(true);
-    expect(await erd.hasSceneNode('#table-far_b')).toBe(true);
+    await expect.poll(() => erd.sceneNodeDrawn('#table-far_a')).toBe(true);
+    expect(await erd.sceneNodeDrawn('#table-far_b')).toBe(true);
     expect(await erd.hasSceneNode('#memo-far_note')).toBe(true);
     expect(await erd.hasSceneNode('.far_link')).toBe(true);
-    expect(await erd.hasSceneNode('#table-near')).toBe(false);
+
+    // The table that scrolled off is kept built, so a scroll back finds it
+    // rather than building it again; the mirror, like the paint, skips it.
+    expect(await erd.hasSceneNode('#table-near')).toBe(true);
+    expect(await erd.sceneNodeDrawn('#table-near')).toBe(false);
 
     await expect(erd.canvas.locator('.table')).toHaveCount(2);
     await expect(erd.minimap.locator('.table')).toHaveCount(3);
@@ -106,8 +110,13 @@ test.describe('virtual viewport', () => {
       .toBe(0);
     await erd.whenDrawn();
 
-    await expect.poll(() => erd.hasSceneNode('#table-near')).toBe(true);
-    expect(await erd.hasSceneNode('#table-far_a')).toBe(false);
+    await expect.poll(() => erd.sceneNodeDrawn('#table-near')).toBe(true);
+    expect(await erd.hasSceneNode('#table-far_a')).toBe(true);
+    expect(await erd.sceneNodeDrawn('#table-far_a')).toBe(false);
+    await expect(erd.canvas.locator('.table')).toHaveCount(1);
+
+    // Only tables are kept: a memo or a connector that left is gone.
+    expect(await erd.hasSceneNode('#memo-far_note')).toBe(false);
     expect(await erd.hasSceneNode('.far_link')).toBe(false);
   });
 

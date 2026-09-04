@@ -60,7 +60,10 @@ afterEach(async () => {
   await whenDrawn();
 });
 
-async function setup(columns = 0): Promise<Fixture> {
+async function setup(
+  columns = 0,
+  props: { visible?: boolean } = {}
+): Promise<Fixture> {
   const app = createTestAppContext();
   const { store } = app;
 
@@ -78,7 +81,7 @@ async function setup(columns = 0): Promise<Fixture> {
 
   const scene: DOMTemplateLiterals = (
     <k-layer name="scene">
-      <HighLevelTable table={table} />
+      <HighLevelTable table={table} visible={props.visible} />
     </k-layer>
   );
 

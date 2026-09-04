@@ -9,7 +9,7 @@ The editor core: a framework-free `<erd-editor>` custom element built on `@dineu
 store whose actions carry a Lamport clock version and merge through the LWW registers in
 `@dineug/erd-editor-schema`. Published to npm and depended on by `app`, `vscode-webview`, `intellij-webview` and `vscode-replication-store-worker`; three of those import the second entry for a headless replica. No React here.
 
-The ERD scene is drawn on a `<canvas>` by Konva rather than in the DOM. `src/konva/` is a second r-html render host, and everything under `src/components/erd/canvas/`, plus `erd/minimap/MinimapScene.tsx`, `visualization/VisualizationScene.tsx` and `services/export-png/`, is a shape tree instead of markup. The rest of the editor — toolbar, panels, context menus, the editing overlay — is still DOM.
+The ERD scene is drawn on a `<canvas>` by Konva rather than in the DOM. `src/konva/` is a second r-html render host, and everything under `src/components/erd/canvas/`, plus `erd/minimap/MinimapScene.tsx`, `visualization/VisualizationScene.tsx` and `services/export-png/`, is a shape tree instead of markup. The scene builds only what a culling rect three screens wide holds, and a table that scrolls out of it stays built but hidden for a while (`erd/canvas/sceneRetention.ts`), bounded because konva's per-scroll cache walk visits hidden nodes too. The rest of the editor — toolbar, panels, context menus, the editing overlay — is still DOM.
 
 ## Key Files
 

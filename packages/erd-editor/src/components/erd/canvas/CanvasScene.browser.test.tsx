@@ -1,7 +1,8 @@
 /** @jsxHost konva */
 
 // P3-27 and P3-34: the scene's four layers, the transform that replaced the
-// css one and the culling that keeps a table off screen out of the tree.
+// css one and the culling that keeps a table never seen out of the tree, and
+// hides one that scrolled off rather than building it again on the way back.
 
 import { createRef } from '@dineug/r-html';
 import type { Layer } from 'konva/lib/Layer';
@@ -9,7 +10,12 @@ import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestTheme,
+  flush,
+  whenPainted,
+} from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
 import { RelationshipType, Show } from '@/constants/schema';
@@ -82,6 +88,13 @@ const seedTable = (app: AppContext, id: string, x: number, zIndex = 2) => {
 
 const tableIdsOf = (stage: Stage) =>
   stage.find('.table').map(node => node.getAttr('id'));
+
+/** The tables the scene is drawing, as opposed to keeping built and hidden. */
+const drawnTableIdsOf = (stage: Stage) =>
+  stage
+    .find('.table')
+    .filter(node => node.visible())
+    .map(node => node.getAttr('id'));
 
 const backgroundLayerOf = (stage: Stage) =>
   stage.findOne<Layer>('.canvas-background')!;
@@ -281,7 +294,88 @@ describe('the canvas scene', () => {
     app.store.dispatchSync(scrollToAction({ scrollLeft: -4500, scrollTop: 0 }));
     await flush();
 
-    expect(tableIdsOf(stage)).toEqual(['table-far']);
+    expect(drawnTableIdsOf(stage)).toEqual(['table-far']);
+    expect(tableIdsOf(stage)).toEqual(['table-near', 'table-far']);
+  });
+
+  describe('a table that scrolls off', () => {
+    const scrollTo = async (
+      app: AppContext,
+      scrollLeft: number,
+      scrollTop = 0
+    ) => {
+      app.store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
+      await flush();
+    };
+
+    it('is hidden rather than destroyed, and shown again by the same node', async () => {
+      const { app, stage } = await mountScene();
+      app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
+      seedTable(app, 'near', 100);
+      await flush();
+      const node = stage.findOne('#table-near')!;
+      expect(node.visible()).toBe(true);
+
+      await scrollTo(app, -8000);
+
+      expect(stage.findOne('#table-near')).toBe(node);
+      expect(node.visible()).toBe(false);
+      expect(drawnTableIdsOf(stage)).toEqual([]);
+
+      await scrollTo(app, 0);
+
+      expect(stage.findOne('#table-near')).toBe(node);
+      expect(node.visible()).toBe(true);
+    });
+
+    it('answers no hit while hidden', async () => {
+      const { app, stage } = await mountScene();
+      app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
+      seedTable(app, 'near', 100);
+      await flush();
+      await whenPainted();
+      const box = stage.findOne('#table-near')!.getClientRect();
+      const inside = { x: box.x + 10, y: box.y + 10 };
+
+      expect(stage.getIntersection(inside)).toBeTruthy();
+
+      await scrollTo(app, -8000);
+      await whenPainted();
+
+      // The scroll moved the layer, so the same stage point is bare canvas; the
+      // hidden node must not be what answers there.
+      const hit = stage.getIntersection(inside);
+      expect(hit?.findAncestor('#table-near', true)).toBeFalsy();
+    });
+
+    it('is dropped once more have left than the bound keeps', async () => {
+      const { app, stage } = await mountScene();
+      app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
+      // A grid three screens apart, one table per culling rect: each scroll
+      // draws one and retires the one before, oldest first past the floor.
+      const count = 20;
+      const at = (i: number) => ({
+        x: 100 + (i % 5) * 3000,
+        y: 100 + Math.floor(i / 5) * 3000,
+      });
+      for (let i = 0; i < count; i++) {
+        app.store.dispatchSync(
+          addTableAction({ id: `t${i}`, ui: { ...at(i), zIndex: 2 } })
+        );
+      }
+      await flush();
+
+      for (let i = 0; i < count; i++) {
+        await scrollTo(app, 100 - at(i).x, 100 - at(i).y);
+      }
+
+      expect(drawnTableIdsOf(stage)).toEqual(['table-t19']);
+      const kept = tableIdsOf(stage);
+      expect(kept).toHaveLength(17);
+      expect(kept).not.toContain('table-t0');
+      expect(kept).not.toContain('table-t2');
+      expect(kept).toContain('table-t3');
+    });
   });
 
   it('orders the tables by the z-index the dom scene wrote', async () => {

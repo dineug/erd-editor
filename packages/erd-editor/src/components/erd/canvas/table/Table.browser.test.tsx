@@ -72,6 +72,7 @@ type SceneProps = {
   hoveredColumnId?: string | null;
   ghostColumnId?: string | null;
   editorFocused?: boolean;
+  visible?: boolean;
 };
 
 type SetupOptions = {
@@ -129,6 +130,7 @@ async function setup({
         hoveredColumnId={next.hoveredColumnId}
         ghostColumnId={next.ghostColumnId}
         editorFocused={next.editorFocused}
+        visible={next.visible}
       />
     </k-layer>
   );
@@ -595,6 +597,24 @@ describe('the table header', () => {
       expect(text.width()).toBe(expected);
     }
   );
+});
+
+describe('a table kept off screen', () => {
+  it('hides its whole group while visible is off, and shows it again', async () => {
+    const { stage, rerender } = await setup({ props: { visible: false } });
+
+    expect(rootOf(stage).visible()).toBe(false);
+
+    await rerender({ visible: true });
+
+    expect(rootOf(stage).visible()).toBe(true);
+  });
+
+  it('is visible with the prop left out', async () => {
+    const { stage } = await setup();
+
+    expect(rootOf(stage).visible()).toBe(true);
+  });
 });
 
 describe('the header cell text', () => {

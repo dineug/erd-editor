@@ -12,6 +12,7 @@ import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import RelationshipGroup from '@/components/erd/canvas/relationship-group/RelationshipGroup';
+import { createRetentionPool } from '@/components/erd/canvas/sceneRetention';
 import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedDragSelect';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
@@ -48,6 +49,7 @@ const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const retention = createRetentionPool();
 
   return () => {
     const { store } = app.value;
@@ -69,10 +71,21 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       : null;
     const dragging = Boolean(dragIds?.size);
 
-    const allTables = query(collections)
+    const tableEntities = query(collections)
       .collection('tableEntities')
-      .selectByIds(tableIds)
-      .filter(table => isTableVisible(cullingRect, state, table))
+      .selectByIds(tableIds);
+    const drawnIds = new Set(
+      tableEntities
+        .filter(table => isTableVisible(cullingRect, state, table))
+        .map(table => table.id)
+    );
+
+    // A table that scrolled off stays built but hidden for a while, so a scroll
+    // back finds it rather than rebuilding it; the pool bounds how many.
+    const retainedIds = retention.retain(drawnIds, new Set(tableIds));
+
+    const allTables = tableEntities
+      .filter(table => drawnIds.has(table.id) || retainedIds.has(table.id))
       .sort(byZIndex);
 
     const allMemos = query(collections)
@@ -120,7 +133,10 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
               list,
               table => table.id,
               table => (
-                <HighLevelTable table={table} />
+                <HighLevelTable
+                  table={table}
+                  visible={drawnIds.has(table.id)}
+                />
               )
             )}
           </>
@@ -130,7 +146,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
               list,
               table => table.id,
               table => (
-                <Table table={table} />
+                <Table table={table} visible={drawnIds.has(table.id)} />
               )
             )}
           </>
