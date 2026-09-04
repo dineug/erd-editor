@@ -9,7 +9,7 @@ The editor core: a framework-free `<erd-editor>` custom element built on `@dineu
 store whose actions carry a Lamport clock version and merge through the LWW registers in
 `@dineug/erd-editor-schema`. Published to npm and depended on by `app`, `vscode-webview`, `intellij-webview` and `vscode-replication-store-worker`; three of those import the second entry for a headless replica. No React here.
 
-The ERD scene is drawn on a `<canvas>` by Konva rather than in the DOM. `src/konva/` is a second r-html render host, and everything under `src/components/erd/canvas/`, plus `erd/minimap/MinimapScene.tsx` and `services/export-png/`, is a shape tree instead of markup. The rest of the editor — toolbar, panels, context menus, the editing overlay — is still DOM.
+The ERD scene is drawn on a `<canvas>` by Konva rather than in the DOM. `src/konva/` is a second r-html render host, and everything under `src/components/erd/canvas/`, plus `erd/minimap/MinimapScene.tsx`, `visualization/VisualizationScene.tsx` and `services/export-png/`, is a shape tree instead of markup. The rest of the editor — toolbar, panels, context menus, the editing overlay — is still DOM.
 
 ## Key Files
 
@@ -84,7 +84,7 @@ The ERD scene is drawn on a `<canvas>` by Konva rather than in the DOM. `src/kon
 ### External
 
 - `konva` 10.3.2 — the scene renderer, pinned without a caret and reached only through `konva/lib/*` (above). `@chenglou/pretext` 0.0.8 — multi-line text layout for the memo body, which the `<textarea>` the DOM scene kept on every memo used to do for free; `canvas/memo/memoText.ts` restates a textarea's pre-wrap plus break-word rules for it. `html-to-image` left with the DOM scene — a measured 5,155 B gzipped — and `src/konva/imports.test.ts` keeps it out of both the source tree and the manifest.
-- `rxjs` (action pipelines), `comlink` (schema-GC worker RPC), `d3` (force simulation in `visualization/` and `erd/automatic-table-placement/`, plus `drag` and the ordinal scale in the former), `graphql` (`parse` only, for `schema-graphql-parser/`), `tinykeys`, `fuse.js`, `luxon`, `@radix-ui/colors`, `lucide` (icon path data), `@egjs/agent`.
+- `rxjs` (action pipelines), `comlink` (schema-GC worker RPC), `d3` (force simulation only, in `visualization/` and `erd/automatic-table-placement/` — the graph view's `drag` and ordinal scale left with its svg, and its dots, labels, pan and zoom are konva now), `graphql` (`parse` only, for `schema-graphql-parser/`), `tinykeys`, `fuse.js`, `luxon`, `@radix-ui/colors`, `lucide` (icon path data), `@egjs/agent`.
 - `es-toolkit`: `get`, `set`, `isEmpty` and `round` come from `es-toolkit/compat` on purpose — the main entry lacks the first three and rounds exact `.xx5` ties down into persisted LWW state. `@floating-ui/dom` and `framer-motion` are declared but imported nowhere in `src/`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
