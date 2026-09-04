@@ -6,7 +6,7 @@ import {
   forceSimulation,
   forceX,
   forceY,
-} from 'd3';
+} from 'd3-force';
 
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
