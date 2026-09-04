@@ -5,13 +5,13 @@ import { restAttrs } from '@/utils/attribute';
 import * as styles from './Icon.styles';
 import {
   getIcon,
+  ICON_STROKE_WIDTH,
   ICON_VIEW_BOX,
   type IconName,
   type IconNodeChild,
 } from './icons';
 
 const DEFAULT_SIZE = 18;
-const STROKE_WIDTH = 2;
 const FILL = 'none';
 const STROKE = 'currentColor';
 
@@ -111,31 +111,21 @@ const Icon: FC<IconProps> = (props, ctx) => () => {
       on:mouseenter={props.onMouseenter}
       on:mouseleave={props.onMouseleave}
     >
-      {icon.type === 'base64' ? (
-        <img
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-          }}
-          src={icon.src}
-        />
-      ) : (
-        <svg
-          class={props.useTransition ? styles.icon : null}
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-          }}
-          viewBox={ICON_VIEW_BOX}
-          fill={FILL}
-          stroke={STROKE}
-          stroke-width={STROKE_WIDTH}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          {icon.node.map(shape)}
-        </svg>
-      )}
+      <svg
+        class={props.useTransition ? styles.icon : null}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+        }}
+        viewBox={ICON_VIEW_BOX}
+        fill={FILL}
+        stroke={STROKE}
+        stroke-width={ICON_STROKE_WIDTH}
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        {icon.node.map(shape)}
+      </svg>
     </div>
   );
 };

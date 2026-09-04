@@ -34,7 +34,7 @@ import {
 import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import type { IconName } from '@/components/primitives/icon/icons';
+import type { LucideIconName } from '@/components/primitives/icon/icons';
 import { useThemeContext } from '@/components/themeContext';
 import {
   HEADER_ICON_HEIGHT,
@@ -112,7 +112,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     hover: false,
-    iconHover: null as IconName | null,
+    iconHover: null as LucideIconName | null,
     dragstartId: null as string | null,
   });
 
@@ -131,17 +131,18 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   /** What the header icons had as their hover colour and their pointer cursor. */
-  const handleIconMouseenter = (icon: IconName) => (event: SceneMouseEvent) => {
-    state.iconHover = icon;
-    setSceneCursor(event, CURSOR_POINTER);
-  };
+  const handleIconMouseenter =
+    (icon: LucideIconName) => (event: SceneMouseEvent) => {
+      state.iconHover = icon;
+      setSceneCursor(event, CURSOR_POINTER);
+    };
 
   const handleIconMouseleave = (event: SceneMouseEvent) => {
     state.iconHover = null;
     setSceneCursor(event, CURSOR_INHERIT);
   };
 
-  const iconColor = (theme: Theme, icon: IconName, hovered: boolean) => {
+  const iconColor = (theme: Theme, icon: LucideIconName, hovered: boolean) => {
     if (!hovered) return TRANSPARENT;
 
     return state.iconHover === icon ? theme.active : theme.foreground;

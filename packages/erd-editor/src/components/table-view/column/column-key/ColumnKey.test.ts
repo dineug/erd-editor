@@ -34,11 +34,7 @@ async function mountKey(keys: number, handlers: Handlers = {}) {
 }
 
 function keyRoundNode() {
-  const icon = iconMap['key-round'];
-  if (icon.type !== 'svg') {
-    throw new Error('key-round is not an svg icon');
-  }
-  return icon.node;
+  return iconMap['key-round'].node;
 }
 
 function glyphOf(el: HTMLDivElement) {

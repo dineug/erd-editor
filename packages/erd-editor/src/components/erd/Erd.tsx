@@ -409,7 +409,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       ? state.grabCursor
       : drawRelationship
         ? `url("${getRelationshipIcon(
-            drawRelationship.relationshipType
+            drawRelationship.relationshipType,
+            props.isDarkMode
           )}") 16 16, auto`
         : '';
 

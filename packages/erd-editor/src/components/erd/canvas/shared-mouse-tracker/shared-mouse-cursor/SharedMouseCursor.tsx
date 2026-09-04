@@ -3,11 +3,10 @@
 import { FC, observable, onMounted } from '@dineug/r-html';
 
 import {
-  ICON_STROKE_WIDTH,
   ICON_VIEW_SIZE,
   SCENE_FONT_FAMILY,
 } from '@/components/erd/canvas/sceneTokens';
-import { getIcon } from '@/components/primitives/icon/icons';
+import { getIcon, ICON_STROKE_WIDTH } from '@/components/primitives/icon/icons';
 import { SharedMouseTracker } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { animationFrames$ } from '@/utils/globalEventObservable';
@@ -23,7 +22,7 @@ const ICON_SCALE = ICON_SIZE / ICON_VIEW_SIZE;
 /** The outline of the pointer, taken from the icon set the DOM cursor drew. */
 function pointerPathData(): string[] {
   const icon = getIcon('mouse-pointer-2');
-  if (icon?.type !== 'svg') return [];
+  if (!icon) return [];
 
   return icon.node
     .filter(([tag]) => tag === 'path')

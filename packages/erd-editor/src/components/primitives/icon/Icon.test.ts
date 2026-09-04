@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { mountAndFlush, Mounted } from '@/__test-utils__/index';
 import Icon from '@/components/primitives/icon/Icon';
 import * as styles from '@/components/primitives/icon/Icon.styles';
-import { BASE_64_ICON } from '@/components/primitives/icon/icons';
 import { RelationshipType } from '@/constants/schema';
 import { getRelationshipIcon } from '@/utils/icon';
 
@@ -125,27 +124,52 @@ describe('Icon', () => {
     expect(svgOf()!.getAttribute('fill')).toBe('none');
   });
 
-  it('renders a base64 icon as an <img> instead of an <svg>, with no stroke preset on it', async () => {
+  it('renders a notation glyph through the same svg root a lucide glyph gets', async () => {
     mounted = await mountAndFlush(
       html`<${Icon} name=${'ZeroOne'} size=${20} />`
     );
 
-    expect(svgOf()).toBeNull();
-    const img = mounted.container.querySelector('img')!;
-    expect(img).toBeTruthy();
-    expect(img.getAttribute('src')).toBe(BASE_64_ICON.ZeroOne);
-    expect(img.style.width).toBe('20px');
-    expect(img.style.height).toBe('20px');
-    expect(img.hasAttribute('stroke')).toBe(false);
-    expect(img.hasAttribute('fill')).toBe(false);
+    expect(mounted.container.querySelector('img')).toBeNull();
+    const svg = svgOf()! as unknown as HTMLElement;
+    expect(svg.getAttribute('stroke')).toBe('currentColor');
+    expect(svg.getAttribute('stroke-width')).toBe('2');
+    expect(svg.style.width).toBe('20px');
+    expect(svg.style.height).toBe('20px');
+
+    const children = childrenOf();
+    expect(children.map(child => child.tagName)).toEqual([
+      'path',
+      'circle',
+      'path',
+      'path',
+    ]);
+    expect(attrs(children[1])).toEqual({
+      cx: '10',
+      cy: '12',
+      r: '5',
+      fill: 'none',
+      stroke: 'currentColor',
+    });
   });
 
-  it('draws the cardinality image the draw-relationship cursor reads', async () => {
+  it('draws the glyph the draw-relationship cursor is serialized from', async () => {
     mounted = await mountAndFlush(html`<${Icon} name=${'ZeroN'} />`);
 
-    const img = mounted.container.querySelector('img')!;
-    expect(img.getAttribute('src')).toBe(
-      getRelationshipIcon(RelationshipType.ZeroN)
+    const host = document.createElement('div');
+    host.innerHTML = decodeURIComponent(
+      getRelationshipIcon(RelationshipType.ZeroN, false)!.replace(
+        'data:image/svg+xml,',
+        ''
+      )
+    );
+    const geometry = (element: Element) => [
+      element.tagName,
+      ...['d', 'cx', 'cy', 'r'].map(name => element.getAttribute(name)),
+    ];
+
+    const ink = Array.from(host.querySelectorAll('g')).at(-1)!;
+    expect(Array.from(ink.children).map(geometry)).toEqual(
+      childrenOf().map(geometry)
     );
   });
 

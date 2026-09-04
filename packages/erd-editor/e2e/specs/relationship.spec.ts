@@ -26,11 +26,11 @@ const SHAPE = {
 } as const;
 
 /**
- * The armed-draw cursor painted on the editor root: the relationship icon as a
- * base64 PNG with a centred hotspot. The payload is a build artefact, so the
- * shape of the declaration is asserted rather than the bytes.
+ * The armed-draw cursor painted on the editor root: the relationship glyph as
+ * an svg data uri with a centred hotspot. The markup is a build artefact, so
+ * the shape of the declaration is asserted rather than the bytes.
  */
-const DRAW_CURSOR = /^url\("data:image\/png;base64,[^"]+"\) 16 16, auto$/;
+const DRAW_CURSOR = /^url\("data:image\/svg\+xml,[^"]+"\) 16 16, auto$/;
 
 /** The editor root sets no cursor of its own once a draw is over. */
 const IDLE_CURSOR = 'auto';

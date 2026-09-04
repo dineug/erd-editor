@@ -267,9 +267,30 @@ describe('Erd - cursor', () => {
     );
     await flush();
 
-    const icon = getRelationshipIcon(RelationshipType.ZeroN);
+    const icon = getRelationshipIcon(RelationshipType.ZeroN, false);
     expect(icon).toBeTruthy();
     expect(root.style.cursor).toBe(`url("${icon}") 16 16, auto`);
+  });
+
+  it('inks the relationship cursor for the appearance it is drawn on, live', async () => {
+    const { app, root, props } = await setup({ isDarkMode: true });
+
+    app.store.dispatchSync(
+      drawStartRelationshipAction({
+        relationshipType: RelationshipType.ZeroN,
+      })
+    );
+    await flush();
+
+    const dark = getRelationshipIcon(RelationshipType.ZeroN, true);
+    const light = getRelationshipIcon(RelationshipType.ZeroN, false);
+    expect(dark).not.toBe(light);
+    expect(root.style.cursor).toBe(`url("${dark}") 16 16, auto`);
+
+    props.isDarkMode = false;
+    await flush();
+
+    expect(root.style.cursor).toBe(`url("${light}") 16 16, auto`);
   });
 
   it('switches to the grab cursor while space is held on the canvas', async () => {

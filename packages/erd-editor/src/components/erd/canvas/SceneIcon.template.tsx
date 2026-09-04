@@ -4,18 +4,20 @@ import type { DOMTemplateLiterals } from '@dineug/r-html';
 
 import { iconHit } from '@/components/erd/canvas/sceneHit';
 import {
-  ICON_STROKE_WIDTH,
   ICON_VIEW_SIZE,
   type SceneMouseEvent,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   getIcon,
-  type IconName,
+  ICON_STROKE_WIDTH,
   type IconNodeChild,
+  type LucideIconName,
 } from '@/components/primitives/icon/icons';
 
+// lucide only: the circle branch below paints a filled dot, which is what a
+// lucide circle is and what a notation ring is not.
 export type SceneIconOptions = {
-  icon: IconName;
+  icon: LucideIconName;
   name: string;
   kind: string;
   size: number;
@@ -74,7 +76,7 @@ export function sceneIcon({
   mouseleave,
 }: SceneIconOptions): DOMTemplateLiterals | null {
   const definition = getIcon(icon);
-  if (!definition || definition.type !== 'svg') return null;
+  if (!definition) return null;
 
   const scale = size / ICON_VIEW_SIZE;
 

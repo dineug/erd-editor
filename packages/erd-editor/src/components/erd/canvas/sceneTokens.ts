@@ -84,9 +84,6 @@ export const FOCUS_BORDER_HEIGHT = 1.5;
 /** What the ring outside a table box costs, as outline and box-shadow both do. */
 export const RING_WIDTH = 1;
 
-/** The stroke lucide draws with, in the box its path data is written in. */
-export const ICON_STROKE_WIDTH = 2;
-
 /** The side of the square viewBox every icon is authored in. */
 export const ICON_VIEW_SIZE = Number(ICON_VIEW_BOX.split(' ')[2]);
 

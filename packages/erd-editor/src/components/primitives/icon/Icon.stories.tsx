@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from '@storybook/html-vite';
 import { typography } from '@/styles/typography.styles';
 
 import Icon, { IconProps } from './Icon';
-import { iconMap, IconName } from './icons';
+import { iconMap, IconName, NOTATION_ICON, NotationIconName } from './icons';
 
 const meta = {
   title: 'Primitives/Icon',
@@ -65,15 +65,14 @@ const rowLabel = css`
   color: var(--foreground);
 `;
 
-const svgNames = Object.values(iconMap)
-  .filter(icon => icon.type === 'svg')
-  .map(icon => icon.name);
+const notationNames = Object.keys(NOTATION_ICON) as NotationIconName[];
 
-const base64Names = Object.values(iconMap)
-  .filter(icon => icon.type === 'base64')
-  .map(icon => icon.name);
+const lucideNames = (Object.keys(iconMap) as IconName[]).filter(
+  name => !notationNames.includes(name as NotationIconName)
+);
 
-// 12px is the row to check: stroke-width: 2 on a 24 grid renders at 1.0 device px.
+// 12px is the row to check: stroke-width: 2 on a 24 grid renders at 1.0 device
+// px, and 14px is what the context menu draws the notation at.
 const SIZES = [12, 14, 16, 18, 24];
 
 const SAMPLE: IconName[] = [
@@ -89,13 +88,17 @@ const SAMPLE: IconName[] = [
   'database',
   'workflow',
   'share-2',
+  'ZeroOne',
+  'ZeroN',
+  'OneOnly',
+  'OneN',
 ];
 
 export const Icons: Story = {
   render: () =>
     toFragment(
       <div class={grid}>
-        {svgNames.map(name => (
+        {lucideNames.map(name => (
           <div class={cell}>
             <Icon name={name} size={24} useTransition={true} />
             <div class={caption}>{name}</div>
@@ -109,7 +112,7 @@ export const RelationshipNotation: Story = {
   render: () =>
     toFragment(
       <div class={grid}>
-        {base64Names.map(name => (
+        {notationNames.map(name => (
           <div class={cell}>
             <Icon name={name} size={24} />
             <div class={caption}>{name}</div>
