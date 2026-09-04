@@ -7,13 +7,13 @@ import type { Stage } from 'konva/lib/Stage';
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { headerCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
   FOCUS_BORDER_HEIGHT,
   HEADER_COLOR_HEIGHT,
-  HIT_FILL,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
@@ -286,9 +286,9 @@ const Table: FC<TableProps> = (props, ctx) => {
   });
 
   /**
-   * A header cell, laid out the way its input-padding div was: a hit box, the
-   * text on the 20px input line, and the two underlines at their own edge. The
-   * focus underline keeps its box while edited and paints nothing there.
+   * A header cell, laid out the way its input-padding div was: the text on the
+   * 20px input line, answering a press for the whole box, and the two underlines
+   * at their own edge. The focus underline keeps its box while edited.
    */
   const headerCell = ({
     focusType,
@@ -314,12 +314,6 @@ const Table: FC<TableProps> = (props, ctx) => {
         handleEdit(focusType, event);
       }}
     >
-      <k-rect
-        name="cell-hit"
-        width={width + INPUT_MARGIN_RIGHT}
-        height={TABLE_HEADER_INPUT_HEIGHT}
-        fill={HIT_FILL}
-      />
       <k-text
         name="cell-text"
         y={HEADER_TEXT_Y}
@@ -333,6 +327,7 @@ const Table: FC<TableProps> = (props, ctx) => {
         wrap="none"
         ellipsis={true}
         visible={!edit}
+        hitFunc={headerCellHit}
       />
       {focus ? (
         <k-rect
@@ -341,6 +336,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           width={width}
           height={FOCUS_BORDER_HEIGHT}
           fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
+          listening={false}
         />
       ) : null}
       {sharedFocus ? (
@@ -350,6 +346,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           width={width + INPUT_MARGIN_RIGHT}
           height={FOCUS_BORDER_HEIGHT}
           fill={sharedFocus}
+          listening={false}
         />
       ) : null}
     </k-group>
@@ -429,6 +426,7 @@ const Table: FC<TableProps> = (props, ctx) => {
             cornerRadius={TABLE_CORNER_RADIUS}
             stroke={ringColor}
             strokeWidth={RING_WIDTH}
+            listening={false}
           />
         ) : null}
         <k-rect

@@ -1,4 +1,6 @@
 import type { DuplicateSuffix, EventHandler } from '@dineug/r-html/jsx-runtime';
+import type { Context } from 'konva/lib/Context';
+import type { Shape } from 'konva/lib/Shape';
 
 /** The Konva event names a scene binds; Konva routes them off its own tree. */
 type KonvaEventName =
@@ -74,6 +76,8 @@ interface KonvaBaseAttributes extends KonvaEventHandlers {
 interface KonvaShapeAttributes extends KonvaBaseAttributes {
   dash?: number[];
   fill?: string;
+  /** What the shape puts on the hit canvas in place of what it paints. */
+  hitFunc?: (context: Context, shape: Shape) => void;
   hitStrokeWidth?: number;
   lineCap?: 'butt' | 'round' | 'square';
   lineJoin?: 'bevel' | 'miter' | 'round';

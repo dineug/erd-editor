@@ -9,12 +9,12 @@ import {
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { columnCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
   FOCUS_BORDER_HEIGHT,
-  HIT_FILL,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
@@ -256,9 +256,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   };
 
   /**
-   * One cell, laid out the way its div was: a hit box, the text in the 20px
-   * input line inside it, and the two underlines at their own edge. The focus
-   * underline keeps its box while edited and paints nothing there.
+   * One cell, laid out the way its div was: the text in the 20px input line,
+   * answering a press for the whole box, and the two underlines at their own
+   * edge. The focus underline keeps its box while edited and paints nothing.
    */
   const cell = ({
     focusType,
@@ -285,12 +285,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         handleEdit(focusType, event);
       }}
     >
-      <k-rect
-        name="cell-hit"
-        width={width + INPUT_MARGIN_RIGHT}
-        height={COLUMN_HEIGHT}
-        fill={HIT_FILL}
-      />
       <k-text
         name="cell-text"
         y={COLUMN_TEXT_Y}
@@ -304,6 +298,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         wrap="none"
         ellipsis={ellipsis}
         visible={!edit}
+        hitFunc={columnCellHit}
       />
       {focus ? (
         <k-rect
@@ -312,6 +307,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           width={width}
           height={FOCUS_BORDER_HEIGHT}
           fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
+          listening={false}
         />
       ) : null}
       {sharedFocus ? (
@@ -321,6 +317,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           width={width + INPUT_MARGIN_RIGHT}
           height={FOCUS_BORDER_HEIGHT}
           fill={sharedFocus}
+          listening={false}
         />
       ) : null}
     </k-group>

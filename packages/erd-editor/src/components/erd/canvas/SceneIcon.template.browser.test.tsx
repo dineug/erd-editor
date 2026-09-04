@@ -2,16 +2,15 @@
 
 import type { DOMTemplateLiterals } from '@dineug/r-html';
 import { Group } from 'konva/lib/Group';
+import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Circle } from 'konva/lib/shapes/Circle';
-import { Rect } from 'konva/lib/shapes/Rect';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
+import { whenPainted } from '@/__test-utils__';
+import { iconHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
-import {
-  ICON_VIEW_SIZE,
-  TRANSPARENT,
-} from '@/components/erd/canvas/sceneTokens';
+import { ICON_VIEW_SIZE } from '@/components/erd/canvas/sceneTokens';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderKonva } from '@/konva/host';
 
@@ -60,13 +59,22 @@ describe('a lucide icon drawn as konva shapes', () => {
     expect(group.scaleY()).toBe(12 / ICON_VIEW_SIZE);
   });
 
-  it('covers the whole icon box with a hit target that paints nothing', async () => {
+  it('answers a press anywhere in the icon box through its first shape alone', async () => {
     const stage = await mount(plus('#112233'));
-    const hit = stage.findOne<Rect>('.icon-hit') as Rect;
+    await whenPainted();
+    const [first, ...rest] = (
+      stage.findOne<Group>('.add') as Group
+    ).getChildren() as KonvaNode[];
 
-    expect(hit.width()).toBe(ICON_VIEW_SIZE);
-    expect(hit.height()).toBe(ICON_VIEW_SIZE);
-    expect(hit.fill()).toBe(TRANSPARENT);
+    expect(first.getAttr('hitFunc')).toBe(iconHit);
+    expect(rest.map(node => node.listening())).toEqual([false]);
+
+    // The icon sits at 30,40 and is 12 wide: a corner of the box no stroke
+    // reaches still answers, and one unit outside it nothing does.
+    expect(stage.getIntersection({ x: 31, y: 41 })).toBe(first);
+    expect(stage.getIntersection({ x: 41, y: 51 })).toBe(first);
+    expect(stage.getIntersection({ x: 29, y: 39 })).toBeNull();
+    expect(stage.getIntersection({ x: 43, y: 53 })).toBeNull();
   });
 
   it('strokes every path of the icon in the colour it was handed', async () => {
@@ -98,5 +106,19 @@ describe('a lucide icon drawn as konva shapes', () => {
     expect(group.find('Path')).toHaveLength(1);
     expect(circle.fill()).toBe('#445566');
     expect(circle.radius()).toBe(0.5);
+  });
+
+  it('puts the box back at the icon corner when a circle is what answers', async () => {
+    const stage = await mount(
+      <k-group name="dot" x={10} y={20} scaleX={0.5} scaleY={0.5}>
+        <k-circle x={12} y={12} radius={1} fill="#445566" hitFunc={iconHit} />
+      </k-group>
+    );
+    await whenPainted();
+    const circle = stage.findOne<Circle>('Circle') as Circle;
+
+    expect(stage.getIntersection({ x: 11, y: 21 })).toBe(circle);
+    expect(stage.getIntersection({ x: 21, y: 31 })).toBe(circle);
+    expect(stage.getIntersection({ x: 9, y: 19 })).toBeNull();
   });
 });

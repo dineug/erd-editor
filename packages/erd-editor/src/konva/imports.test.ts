@@ -42,6 +42,16 @@ const RUNTIME_MODULES = new Set([
 const TWEEN_OWNER = 'konva/scene/konvaFlip.ts';
 
 /**
+ * Two more a shipped file may name by type alone: the context and the shape a
+ * hit function is handed. Neither is constructed here, so the build never
+ * carries them, and the spec below holds each to an import type.
+ */
+const TYPE_ONLY_MODULES = new Set(['konva/lib/Context', 'konva/lib/Shape']);
+
+/** A static import with its type keyword, if it carries one, and its specifier. */
+const IMPORT_FORM = /\bimport\s+(type\s+)?[^;]*?\bfrom\s*'([^']+)'/g;
+
+/**
  * Two more a spec may name. Animation drives konva's own draw loop, which the
  * specs pin as upstream behaviour rather than call, and Core is the barrel that
  * reaches it and costs 3.3 kB gzipped to name from a build.
@@ -100,12 +110,34 @@ describe('konva enters this package through konva/lib only (AC-L6)', () => {
     expect(barrel).toEqual([]);
   });
 
-  it('names only the modules the host and the scene construct', () => {
-    expect(offenders(RUNTIME_MODULES, file => !isSpec(file))).toEqual([]);
+  it('names only the modules the host and the scene construct, or types', () => {
+    const allowed = new Set([...RUNTIME_MODULES, ...TYPE_ONLY_MODULES]);
+
+    expect(offenders(allowed, file => !isSpec(file))).toEqual([]);
+  });
+
+  it('names the hit function types by type alone', () => {
+    const valued: string[] = [];
+
+    for (const path of sourceFiles(SOURCE_ROOT)) {
+      const source = readFileSync(path, 'utf8');
+
+      for (const [, type, specifier] of source.matchAll(IMPORT_FORM)) {
+        if (TYPE_ONLY_MODULES.has(specifier) && !type) {
+          valued.push(`${posix(path)}: ${specifier}`);
+        }
+      }
+    }
+
+    expect(valued).toEqual([]);
   });
 
   it('lets a spec add the draw loop modules and their barrel, and no more', () => {
-    const allowed = new Set([...RUNTIME_MODULES, ...SPEC_ONLY_MODULES]);
+    const allowed = new Set([
+      ...RUNTIME_MODULES,
+      ...TYPE_ONLY_MODULES,
+      ...SPEC_ONLY_MODULES,
+    ]);
 
     expect(offenders(allowed, isSpec)).toEqual([]);
   });

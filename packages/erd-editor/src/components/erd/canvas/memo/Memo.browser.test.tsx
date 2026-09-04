@@ -30,6 +30,7 @@ import {
   getMemoLineHeight,
   layoutMemoLines,
 } from '@/components/erd/canvas/memo/memoText';
+import { iconHit } from '@/components/erd/canvas/sceneHit';
 import {
   editMemoAction,
   editMemoEndAction,
@@ -502,8 +503,8 @@ describe('the memo scene', () => {
   it('holds the remove button at the end of the header row', async () => {
     const stage = await mountMemo();
 
-    // The icon primitive draws lucide's own 24 unit box and scales it down, so
-    // the hit target is the scaled square rather than a 12 unit rect.
+    // The icon primitive draws lucide's own 24 unit box and scales it down, and
+    // its first path answers a press for that whole square.
     expect(nodeNamed(stage, 'memo-remove').attrs).toMatchObject({
       kind: 'icon',
       x: CONTENT_ORIGIN + 200 - 12,
@@ -511,12 +512,9 @@ describe('the memo scene', () => {
       scaleX: 0.5,
       scaleY: 0.5,
     });
-    expect(childNames(stage, 'memo-remove')[0]).toBe('icon-hit');
-    expect(nodeNamed(stage, 'icon-hit').attrs).toMatchObject({
-      width: 24,
-      height: 24,
-      fill: 'transparent',
-    });
+    const [first, ...rest] = removeGlyph(stage);
+    expect(first.getAttr('hitFunc')).toBe(iconHit);
+    expect(rest.map(node => node.listening())).toEqual([false]);
   });
 
   it('keeps the remove glyph unpainted until the pointer is over the memo', async () => {

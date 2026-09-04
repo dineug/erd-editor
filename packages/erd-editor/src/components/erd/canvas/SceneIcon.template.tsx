@@ -2,8 +2,8 @@
 
 import type { DOMTemplateLiterals } from '@dineug/r-html';
 
+import { iconHit } from '@/components/erd/canvas/sceneHit';
 import {
-  HIT_FILL,
   ICON_STROKE_WIDTH,
   ICON_VIEW_SIZE,
   type SceneMouseEvent,
@@ -28,11 +28,11 @@ export type SceneIconOptions = {
 };
 
 /**
- * One lucide child as a konva shape. The icons this scene draws are made of
- * paths and one filled dot, so a circle is the only special case and everything
- * else is path data handed over verbatim.
+ * One lucide child as a konva shape: one filled dot or path data handed over
+ * verbatim. The first child also answers a press anywhere in the icon's box,
+ * so no shape exists only to be hit.
  */
-const shape = ([tag, attrs]: IconNodeChild, color: string) =>
+const shape = ([tag, attrs]: IconNodeChild, color: string, hit: boolean) =>
   tag === 'circle' ? (
     <k-circle
       x={Number(attrs.cx)}
@@ -41,6 +41,8 @@ const shape = ([tag, attrs]: IconNodeChild, color: string) =>
       fill={color}
       stroke={color}
       strokeWidth={ICON_STROKE_WIDTH}
+      listening={hit}
+      hitFunc={hit ? iconHit : undefined}
     />
   ) : (
     <k-path
@@ -49,6 +51,8 @@ const shape = ([tag, attrs]: IconNodeChild, color: string) =>
       strokeWidth={ICON_STROKE_WIDTH}
       lineCap="round"
       lineJoin="round"
+      listening={hit}
+      hitFunc={hit ? iconHit : undefined}
     />
   );
 
@@ -86,13 +90,7 @@ export function sceneIcon({
       on:mouseenter={mouseenter}
       on:mouseleave={mouseleave}
     >
-      <k-rect
-        name="icon-hit"
-        width={ICON_VIEW_SIZE}
-        height={ICON_VIEW_SIZE}
-        fill={HIT_FILL}
-      />
-      {definition.node.map(child => shape(child, color))}
+      {definition.node.map((child, index) => shape(child, color, index === 0))}
     </k-group>
   );
 }
