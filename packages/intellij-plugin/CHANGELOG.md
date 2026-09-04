@@ -4,6 +4,34 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-05
+
+### Added
+
+- Zoom the canvas in to 150%; 100% used to be the ceiling. A document saved past 100% opens at 100%
+  in an older version.
+- Show progress while tables are being placed automatically and while a PNG is being exported, with
+  Apply and Cancel on the placement toast.
+- Light a hovered table's neighbourhood in the visualization: its columns, the tables it relates to
+  and the links between them stay whole while everything else fades.
+
+### Changed
+
+- Draw the diagram, the minimap and the visualization on canvas instead of the DOM. Large diagrams
+  load and pan much faster, and moving a table re-routes only its own relationships.
+- Zoom the visualization with the wheel, pan it by dragging the background and pin a node by
+  dragging it. Table names appear on the graph as you zoom in, and a hovered table's preview lists
+  its columns.
+- Drop relationship lines from the minimap, and grow its viewport rectangle as the canvas zooms out
+  instead of shrinking the map.
+- Export a PNG in a background worker, so the editor stays responsive while a large document is
+  being drawn.
+
+### Fixed
+
+- Export a document too large for the browser to raster as a smaller PNG, and say so, instead of
+  producing no file.
+
 ## [0.3.0] - 2026-08-29
 
 ### Added
