@@ -35,8 +35,8 @@ export type VisualizationProps = {};
 
 /**
  * The dom shell around the graph: the Stage container, the wheel that zooms
- * it, and the table preview that opens over a hovered dot. The layout, the
- * view and the hover live in one observable here and never reach the store.
+ * it, and the table preview that opens over a hovered table dot. The layout,
+ * the view and the hover live in one observable here and never reach the store.
  */
 const Visualization: FC<VisualizationProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -114,10 +114,10 @@ const Visualization: FC<VisualizationProps> = (props, ctx) => {
     const { store } = app.value;
     const { collections } = store.state;
     const { viewport } = store.state.editor;
-    const table = state.previewTableId
+    const table = state.hoveredTableId
       ? query(collections)
           .collection('tableEntities')
-          .selectById(state.previewTableId)
+          .selectById(state.hoveredTableId)
       : null;
     const showPreview = table && !state.drag;
 
@@ -133,12 +133,7 @@ const Visualization: FC<VisualizationProps> = (props, ctx) => {
           }}
         ></div>
         {showPreview ? (
-          <Table
-            table={table}
-            columnId={state.previewColumnId}
-            x={state.previewX + MARGIN}
-            y={state.previewY}
-          />
+          <Table table={table} x={state.previewX + MARGIN} y={state.previewY} />
         ) : null}
       </div>
     );

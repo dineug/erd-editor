@@ -2,7 +2,12 @@ import { createInRange } from '@dineug/shared';
 
 import type { Point } from '@/internal-types';
 
-import { Group, type VisualizationNode } from './createVisualization';
+import {
+  Group,
+  linkEnds,
+  type VisualizationLink,
+  type VisualizationNode,
+} from './createVisualization';
 
 /** The most of a table name a label shows before it is cut. */
 export const NAME_MAX_LENGTH = 15;
@@ -44,6 +49,45 @@ export const COLUMN_RADIUS = 4;
 /** A table draws larger than the columns that hang off it. */
 export const nodeRadius = (group: Group): number =>
   group === Group.table ? TABLE_RADIUS : COLUMN_RADIUS;
+
+/**
+ * What a dot, a line or a name fades to while it sits outside the lit
+ * neighbourhood of a hovered table, so that neighbourhood reads on its own.
+ */
+export const DIM_OPACITY = 0.2;
+
+/** The ids a hovered table lights up: nodes on one side, links on the other. */
+export type Highlight = {
+  nodeIds: Set<string>;
+  linkIds: Set<string>;
+};
+
+/**
+ * What a hovered table lights: itself, every link at it and whatever sits at
+ * the other end of each, which is its own columns and the tables its
+ * relationships join either way round. The rest is what the scene fades.
+ *
+ * @example
+ * const { nodeIds, linkIds } = highlightOf(graph.links, 't1');
+ */
+export function highlightOf(
+  links: VisualizationLink[],
+  tableId: string
+): Highlight {
+  const nodeIds = new Set<string>([tableId]);
+  const linkIds = new Set<string>();
+
+  links.forEach(link => {
+    const [source, target] = linkEnds(link);
+    if (source.id !== tableId && target.id !== tableId) return;
+
+    linkIds.add(link.id);
+    nodeIds.add(source.id);
+    nodeIds.add(target.id);
+  });
+
+  return { nodeIds, linkIds };
+}
 
 /**
  * The scale a table name is fully gone below and the one it is whole from,
@@ -132,9 +176,13 @@ export type VisualizationState = VisualizationView & {
   tick: number;
   /** A node or the view is being dragged, which is when no preview opens. */
   drag: boolean;
+  /** The dot under the pointer, table or column, the one that wears the ring. */
   hoveredId: string | null;
-  previewTableId: string | null;
-  previewColumnId: string | null;
+  /**
+   * The hovered dot when it is a table, and null over a column: the preview
+   * opens for it, and the graph fades around its neighbourhood.
+   */
+  hoveredTableId: string | null;
   previewX: number;
   previewY: number;
 };
@@ -148,8 +196,7 @@ export function createVisualizationState(
     tick: 0,
     drag: false,
     hoveredId: null,
-    previewTableId: null,
-    previewColumnId: null,
+    hoveredTableId: null,
     previewX: 0,
     previewY: 0,
   };

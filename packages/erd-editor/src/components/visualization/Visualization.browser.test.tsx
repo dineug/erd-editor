@@ -17,6 +17,7 @@ import type { AppContext } from '@/components/appContext';
 import { themeContext } from '@/components/themeContext';
 import Visualization from '@/components/visualization/Visualization';
 import {
+  DIM_OPACITY,
   ZOOM_MAX,
   ZOOM_MIN,
 } from '@/components/visualization/visualizationView';
@@ -259,28 +260,7 @@ describe('the visualization shell', () => {
       expect(preview.style.top).toBe('150px');
     });
 
-    it('highlights the hovered column inside the preview', async () => {
-      const app = createTestAppContext();
-      seed(app);
-      const mounted = await mountVisualization(app);
-
-      hover('c2', 10, 10);
-      await settle();
-
-      const rows = Array.from(
-        previewOf(mounted)!.querySelectorAll('.column-row')
-      );
-      expect(rows.map(row => row.getAttribute('data-id'))).toEqual([
-        'c1',
-        'c2',
-      ]);
-      expect(rows.map(row => row.hasAttribute('data-selected'))).toEqual([
-        false,
-        true,
-      ]);
-    });
-
-    it('selects no column when the hovered dot is the table itself', async () => {
+    it('lists every column of the table, none of them selected', async () => {
       const app = createTestAppContext();
       seed(app);
       const mounted = await mountVisualization(app);
@@ -291,7 +271,22 @@ describe('the visualization shell', () => {
       const rows = Array.from(
         previewOf(mounted)!.querySelectorAll('.column-row')
       );
+      expect(rows.map(row => row.getAttribute('data-id'))).toEqual([
+        'c1',
+        'c2',
+      ]);
       expect(rows.some(row => row.hasAttribute('data-selected'))).toBe(false);
+    });
+
+    it('opens no preview for a hovered column', async () => {
+      const app = createTestAppContext();
+      seed(app);
+      const mounted = await mountVisualization(app);
+
+      hover('c2', 10, 10);
+      await settle();
+
+      expect(previewOf(mounted)).toBeNull();
     });
 
     it('closes the preview on mouseleave', async () => {
@@ -370,6 +365,40 @@ describe('the visualization shell', () => {
       await settle();
 
       expect(previewOf(mounted)).toBeNull();
+    });
+  });
+
+  describe('highlight', () => {
+    it('fades a table the hovered one does not reach, and restores it on leave', async () => {
+      const app = createTestAppContext();
+      seed(app);
+      app.store.dispatchSync(
+        addTableAction({ id: 't2', ui: { x: 0, y: 0, zIndex: 3 } })
+      );
+      await mountVisualization(app);
+
+      hover('t1', 10, 10);
+      await settle();
+      expect(dotOf('c1').opacity()).toBe(1);
+      expect(dotOf('t2').opacity()).toBe(DIM_OPACITY);
+
+      fireScenePointer(dotOf('t1'), 'mouseleave');
+      await settle();
+      expect(dotOf('t2').opacity()).toBe(1);
+    });
+
+    it('fades nothing for a hovered column', async () => {
+      const app = createTestAppContext();
+      seed(app);
+      app.store.dispatchSync(
+        addTableAction({ id: 't2', ui: { x: 0, y: 0, zIndex: 3 } })
+      );
+      await mountVisualization(app);
+
+      hover('c1', 10, 10);
+      await settle();
+
+      expect(dotOf('t2').opacity()).toBe(1);
     });
   });
 

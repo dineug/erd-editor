@@ -31,15 +31,8 @@ let app: AppContext;
 let table: TableEntity;
 let mounted: Mounted | null = null;
 
-function tableTemplate(
-  entity: TableEntity,
-  columnId: string | null = null,
-  x = 120,
-  y = 240
-) {
-  return html`
-    <${Table} table=${entity} columnId=${columnId} x=${x} y=${y} />
-  `;
+function tableTemplate(entity: TableEntity, x = 120, y = 240) {
+  return html` <${Table} table=${entity} x=${x} y=${y} /> `;
 }
 
 const rootOf = (m: Mounted) =>
@@ -118,7 +111,7 @@ describe('visualization Table', () => {
     });
 
     it('moves when the x and y props change', async () => {
-      mounted = await mountAndFlush(tableTemplate(table, null, 10, 20), app);
+      mounted = await mountAndFlush(tableTemplate(table, 10, 20), app);
 
       expect(rootOf(mounted).style.left).toBe('10px');
       expect(rootOf(mounted).style.top).toBe('20px');
@@ -205,21 +198,14 @@ describe('visualization Table', () => {
       ]);
     });
 
-    it('selects only the row matching the columnId prop', async () => {
+    it('selects no row, since the preview opens for a table and never a column', async () => {
       addColumn('c1', 'id');
       addColumn('c2', 'name');
-      mounted = await mountAndFlush(tableTemplate(table, 'c2'), app);
+      mounted = await mountAndFlush(tableTemplate(table), app);
 
       expect(
-        rowsOf(mounted).map(row => row.hasAttribute('data-selected'))
-      ).toEqual([false, true]);
-    });
-
-    it('selects nothing when the columnId prop is null', async () => {
-      addColumn('c1', 'id');
-      mounted = await mountAndFlush(tableTemplate(table, null), app);
-
-      expect(rowsOf(mounted)[0].hasAttribute('data-selected')).toBe(false);
+        rowsOf(mounted).some(row => row.hasAttribute('data-selected'))
+      ).toBe(false);
     });
 
     it('hands every row the shared column widths of the table', async () => {

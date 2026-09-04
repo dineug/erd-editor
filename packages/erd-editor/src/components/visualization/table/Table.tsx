@@ -12,7 +12,6 @@ import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 
 export type TableProps = {
   table: Table;
-  columnId: string | null;
   x: number;
   y: number;
 };
@@ -23,7 +22,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const { settings, collections } = store.state;
-    const { table, columnId, x, y } = props;
+    const { table, x, y } = props;
     const tableWidths = calcTableWidths(table, store.state);
     const height = calcTableHeight(table);
 
@@ -77,7 +76,6 @@ const Table: FC<TableProps> = (props, ctx) => {
             column => (
               <Column
                 column={column}
-                selected={column.id === columnId}
                 widthName={tableWidths.name}
                 widthDataType={tableWidths.dataType}
                 widthDefault={tableWidths.default}

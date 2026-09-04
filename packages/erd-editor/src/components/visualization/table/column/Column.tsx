@@ -21,7 +21,6 @@ import { bHas } from '@/utils/bit';
 
 export type ColumnProps = {
   column: Column;
-  selected: boolean;
   widthName: number;
   widthDataType: number;
   widthDefault: number;
@@ -134,14 +133,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   };
 
   return () => {
-    const { column, selected } = props;
+    const { column } = props;
 
     return (
-      <div
-        class={['column-row', styles.root]}
-        data-id={column.id}
-        bool:data-selected={selected}
-      >
+      <div class={['column-row', styles.root]} data-id={column.id}>
         <ColumnKey keys={column.ui.keys} />
         {repeat(
           getColumnOrder(),

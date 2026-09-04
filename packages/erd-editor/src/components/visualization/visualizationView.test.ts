@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Group } from '@/components/visualization/createVisualization';
+import {
+  Group,
+  LinkKind,
+  type VisualizationLink,
+  type VisualizationNode,
+} from '@/components/visualization/createVisualization';
 import {
   COLUMN_RADIUS,
   createView,
   createVisualizationState,
+  DIM_OPACITY,
   hasName,
+  type Highlight,
+  highlightOf,
   LABEL_FADE_END,
   LABEL_FADE_START,
   labelOf,
@@ -74,6 +82,78 @@ describe('nodeRadius', () => {
     expect(nodeRadius(Group.table)).toBe(TABLE_RADIUS);
     expect(nodeRadius(Group.column)).toBe(COLUMN_RADIUS);
     expect(TABLE_RADIUS).toBeGreaterThan(COLUMN_RADIUS);
+  });
+});
+
+describe('highlightOf', () => {
+  const node = (
+    id: string,
+    group: Group,
+    tableId: string | null = null
+  ): VisualizationNode => ({
+    id,
+    group,
+    name: id,
+    tableId,
+    x: 0,
+    y: 0,
+    fx: null,
+    fy: null,
+  });
+  const link = (
+    kind: LinkKind,
+    source: VisualizationNode,
+    target: VisualizationNode
+  ): VisualizationLink => ({
+    id: `${source.id}-${target.id}`,
+    kind,
+    source,
+    target,
+  });
+
+  const t1 = node('t1', Group.table);
+  const c1 = node('c1', Group.column, 't1');
+  const t2 = node('t2', Group.table);
+  const c2 = node('c2', Group.column, 't2');
+  const t3 = node('t3', Group.table);
+
+  /** t1 owns c1 and joins t2 and t3, one relationship each way round. */
+  const links = [
+    link(LinkKind.column, t1, c1),
+    link(LinkKind.column, t2, c2),
+    link(LinkKind.relationship, t1, t2),
+    link(LinkKind.relationship, t3, t1),
+  ];
+
+  const sorted = ({ nodeIds, linkIds }: Highlight) => ({
+    nodeIds: [...nodeIds].sort(),
+    linkIds: [...linkIds].sort(),
+  });
+
+  it('lights the table, its columns and the tables its relationships join, either way round', () => {
+    expect(sorted(highlightOf(links, 't1'))).toEqual({
+      nodeIds: ['c1', 't1', 't2', 't3'],
+      linkIds: ['t1-c1', 't1-t2', 't3-t1'],
+    });
+  });
+
+  it('stops at a joined table, so its columns and its own links stay out', () => {
+    expect(sorted(highlightOf(links, 't3'))).toEqual({
+      nodeIds: ['t1', 't3'],
+      linkIds: ['t3-t1'],
+    });
+  });
+
+  it('lights a table joined to nothing on its own', () => {
+    expect(sorted(highlightOf([link(LinkKind.column, t1, c1)], 't3'))).toEqual({
+      nodeIds: ['t3'],
+      linkIds: [],
+    });
+  });
+
+  it('fades the rest to a fraction of their rest rather than to nothing', () => {
+    expect(DIM_OPACITY).toBeGreaterThan(0);
+    expect(DIM_OPACITY).toBeLessThan(1);
   });
 });
 
@@ -175,8 +255,7 @@ describe('createVisualizationState', () => {
       tick: 0,
       drag: false,
       hoveredId: null,
-      previewTableId: null,
-      previewColumnId: null,
+      hoveredTableId: null,
       previewX: 0,
       previewY: 0,
     });

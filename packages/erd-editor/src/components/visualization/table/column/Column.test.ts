@@ -40,11 +40,10 @@ let app: AppContext;
 let column: ColumnEntity;
 let mounted: Mounted | null = null;
 
-function columnTemplate(entity: ColumnEntity, selected = false) {
+function columnTemplate(entity: ColumnEntity) {
   return html`
     <${Column}
       column=${entity}
-      selected=${selected}
       widthName=${WIDTH_NAME}
       widthDataType=${WIDTH_DATA_TYPE}
       widthDefault=${WIDTH_DEFAULT}
@@ -98,12 +97,6 @@ describe('visualization Column', () => {
       expect(root.classList.contains(String(styles.root))).toBe(true);
       expect(root.getAttribute('data-id')).toBe(COLUMN_ID);
       expect(root.hasAttribute('data-selected')).toBe(false);
-    });
-
-    it('marks the row as selected from the prop', async () => {
-      mounted = await mountAndFlush(columnTemplate(column, true), app);
-
-      expect(rootOf(mounted).hasAttribute('data-selected')).toBe(true);
     });
 
     it('renders the key icon as the first child of the row', async () => {

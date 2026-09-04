@@ -10,6 +10,7 @@ import {
   type VisualizationNode,
 } from '@/components/visualization/createVisualization';
 import {
+  DIM_OPACITY,
   nodeRadius,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
@@ -23,6 +24,8 @@ export type GraphNodeProps = {
    */
   x: number;
   y: number;
+  /** Outside the neighbourhood of the hovered table, which the scene decides. */
+  dimmed: boolean;
   graph: Visualization;
   state: VisualizationState;
 };
@@ -35,6 +38,13 @@ const DRAG_ALPHA_TARGET = 0.3;
 /** The ring the svg dots wore, in the canvas colour so the dots read apart. */
 const NODE_STROKE_WIDTH = 1.5;
 
+/**
+ * Konva draws a filled and stroked shape below full opacity through a stage
+ * sized buffer, cleared and copied back per dot, which is seconds a frame for
+ * a few hundred dimmed ones. Drawn direct, the canvas colour ring hides nothing.
+ */
+const PERFECT_DRAW_ENABLED = false;
+
 const CURSOR_POINTER = 'pointer';
 
 const CURSOR_INHERIT = '';
@@ -46,9 +56,9 @@ function setCursor(event: NodeMouseEvent, cursor: string): void {
 }
 
 /**
- * One dot, owning its own hover and drag. Hovering opens the table preview at
- * the pointer, and a press pins the node under the pointer and reheats the
- * layout, so the rest of the graph settles around where it is put.
+ * One dot, owning its own hover and drag. A hovered table opens its preview
+ * and lights its neighbourhood, a hovered column only wears a ring, and a
+ * press pins the node under the pointer and reheats the layout around it.
  */
 const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
@@ -57,8 +67,7 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
     const { node, state } = props;
 
     state.hoveredId = node.id;
-    state.previewTableId = node.tableId ?? node.id;
-    state.previewColumnId = node.group === Group.column ? node.id : null;
+    state.hoveredTableId = node.group === Group.table ? node.id : null;
     state.previewX = event.evt.clientX;
     state.previewY = event.evt.clientY;
     setCursor(event, CURSOR_POINTER);
@@ -68,8 +77,7 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
     const { state } = props;
 
     state.hoveredId = null;
-    state.previewTableId = null;
-    state.previewColumnId = null;
+    state.hoveredTableId = null;
     setCursor(event, CURSOR_INHERIT);
   };
 
@@ -103,7 +111,7 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
   };
 
   return () => {
-    const { node, x, y, state } = props;
+    const { node, x, y, dimmed, state } = props;
     const theme = themeRef.value;
     const isTable = node.group === Group.table;
     const hovered = state.hoveredId === node.id;
@@ -119,6 +127,8 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
         fill={isTable ? theme.accentColor9 : theme.grayColor8}
         stroke={hovered ? theme.focus : theme.canvasBackground}
         strokeWidth={NODE_STROKE_WIDTH}
+        opacity={dimmed ? DIM_OPACITY : 1}
+        perfectDrawEnabled={PERFECT_DRAW_ENABLED}
         on:mouseenter={handleMouseenter}
         on:mouseleave={handleMouseleave}
         on:mousedown={handleDragStart}

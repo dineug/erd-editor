@@ -22,6 +22,7 @@ import GraphNode from '@/components/visualization/graph-node/GraphNode';
 import {
   COLUMN_RADIUS,
   createVisualizationState,
+  DIM_OPACITY,
   TABLE_RADIUS,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
@@ -49,6 +50,32 @@ afterEach(async () => {
   await whenDrawn();
 });
 
+/** Every node of a graph as a dot on one layer, the named ones dimmed. */
+function dots(
+  graph: Visualization,
+  state: VisualizationState,
+  dimmedIds: string[] = []
+) {
+  return (
+    <k-layer name="scene">
+      {repeat(
+        graph.nodes,
+        node => node.id,
+        node => (
+          <GraphNode
+            node={node}
+            x={node.x}
+            y={node.y}
+            dimmed={dimmedIds.includes(node.id)}
+            graph={graph}
+            state={state}
+          />
+        )
+      )}
+    </k-layer>
+  );
+}
+
 /**
  * A table with one column, laid out by d3 and then held still: the layout is
  * stopped as soon as it is built, so a position read here is the one drawn.
@@ -69,28 +96,10 @@ async function setup(): Promise<Fixture> {
   const container = document.createElement('div');
   document.body.append(container);
 
-  const scene = (
-    <k-layer name="scene">
-      {repeat(
-        graph.nodes,
-        node => node.id,
-        node => (
-          <GraphNode
-            node={node}
-            x={node.x}
-            y={node.y}
-            graph={graph}
-            state={state}
-          />
-        )
-      )}
-    </k-layer>
-  );
-
   const rendered = renderScene({
     app,
     container,
-    scene,
+    scene: dots(graph, state),
     width: 900,
     height: 700,
     theme,
@@ -169,8 +178,29 @@ describe('a graph node', () => {
     expect(written).toEqual([]);
   });
 
+  it('draws direct rather than through the buffer canvas, so a dimmed dot stays cheap', async () => {
+    const { stage } = await setup();
+
+    for (const dot of dotsOf(stage)) {
+      expect(dot.perfectDrawEnabled()).toBe(false);
+    }
+  });
+
+  it('draws whole until the scene dims it, and then at the dim opacity', async () => {
+    const { stage, graph, state, settle } = await setup();
+
+    expect(dotOf(stage, 't1').opacity()).toBe(1);
+    expect(dotOf(stage, 'c1').opacity()).toBe(1);
+
+    renderKonva(stage, dots(graph, state, ['c1']));
+    await settle();
+
+    expect(dotOf(stage, 't1').opacity()).toBe(1);
+    expect(dotOf(stage, 'c1').opacity()).toBe(DIM_OPACITY);
+  });
+
   describe('hover', () => {
-    it('opens the table preview at the pointer for a table dot', async () => {
+    it('names a hovered table for the preview and the highlight, at the pointer', async () => {
       const { stage, state, theme, settle } = await setup();
       const table = dotOf(stage, 't1');
 
@@ -178,26 +208,27 @@ describe('a graph node', () => {
       await settle();
 
       expect(state.hoveredId).toBe('t1');
-      expect(state.previewTableId).toBe('t1');
-      expect(state.previewColumnId).toBeNull();
+      expect(state.hoveredTableId).toBe('t1');
       expect(state.previewX).toBe(300);
       expect(state.previewY).toBe(150);
       expect(table.stroke()).toBe(theme.focus);
       expect(stage.container().style.cursor).toBe('pointer');
     });
 
-    it('names both the table and the column for a column dot', async () => {
-      const { stage, state, settle } = await setup();
+    it('rings a hovered column and names no table, so nothing opens or lights', async () => {
+      const { stage, state, theme, settle } = await setup();
+      const column = dotOf(stage, 'c1');
 
-      fireScenePointer(dotOf(stage, 'c1'), 'mouseenter', mouse(10, 20));
+      fireScenePointer(column, 'mouseenter', mouse(10, 20));
       await settle();
 
       expect(state.hoveredId).toBe('c1');
-      expect(state.previewTableId).toBe('t1');
-      expect(state.previewColumnId).toBe('c1');
+      expect(state.hoveredTableId).toBeNull();
+      expect(column.stroke()).toBe(theme.focus);
+      expect(stage.container().style.cursor).toBe('pointer');
     });
 
-    it('closes the preview and drops the ring on leave', async () => {
+    it('forgets the table and drops the ring on leave', async () => {
       const { stage, state, theme, settle } = await setup();
       const table = dotOf(stage, 't1');
 
@@ -207,8 +238,7 @@ describe('a graph node', () => {
       await settle();
 
       expect(state.hoveredId).toBeNull();
-      expect(state.previewTableId).toBeNull();
-      expect(state.previewColumnId).toBeNull();
+      expect(state.hoveredTableId).toBeNull();
       expect(table.stroke()).toBe(theme.canvasBackground);
       expect(stage.container().style.cursor).toBe('');
     });
@@ -268,24 +298,7 @@ describe('a graph node', () => {
       // with them lands the dot where the node now is.
       table.x = 123;
       table.y = -45;
-      renderKonva(
-        stage,
-        <k-layer name="scene">
-          {repeat(
-            graph.nodes,
-            node => node.id,
-            node => (
-              <GraphNode
-                node={node}
-                x={node.x}
-                y={node.y}
-                graph={graph}
-                state={state}
-              />
-            )
-          )}
-        </k-layer>
-      );
+      renderKonva(stage, dots(graph, state));
       await settle();
 
       expect(dotOf(stage, 't1').x()).toBe(123);

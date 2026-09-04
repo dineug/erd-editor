@@ -12,7 +12,9 @@ import {
 } from '@/components/visualization/createVisualization';
 import GraphNode from '@/components/visualization/graph-node/GraphNode';
 import {
+  DIM_OPACITY,
   hasName,
+  highlightOf,
   labelOf,
   labelOpacity,
   TABLE_RADIUS,
@@ -41,12 +43,15 @@ const LABEL_GAP = 3;
 
 const LINK_STROKE_WIDTH = Math.sqrt(2);
 
+/** A line at rest; one a hovered table lights draws whole, the others fade. */
 const LINK_OPACITY = 0.6;
+
+const DIMMED_LINK_OPACITY = LINK_OPACITY * DIM_OPACITY;
 
 /**
  * The graph on two layers: a stage sized box that takes a pan, and the scene
  * itself under the view transform, links below dots below labels. Only a table
- * carries a name, and the names fade with the scale as one group.
+ * carries a name, and a hovered table lights its neighbourhood over the rest.
  */
 const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -77,9 +82,15 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
     const { store } = app.value;
     const { viewport } = store.state.editor;
     const theme = themeRef.value;
-    const { x, y, scale } = state;
+    const { x, y, scale, hoveredTableId } = state;
     const opacity = labelOpacity(scale);
     const tables = graph.nodes.filter(node => node.group === Group.table);
+    const highlight = hoveredTableId
+      ? highlightOf(graph.links, hoveredTableId)
+      : null;
+    const dimmed = (id: string) =>
+      highlight !== null && !highlight.nodeIds.has(id);
+    const unlitLinkOpacity = highlight ? DIMMED_LINK_OPACITY : LINK_OPACITY;
 
     // Read for the subscription alone: d3 moves every node behind the proxy,
     // and this one field is what brings each step of the layout to the scene.
@@ -112,14 +123,15 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
               link => link.id,
               link => {
                 const [source, target] = linkEnds(link);
+                const lit = highlight?.linkIds.has(link.id) === true;
 
                 return (
                   <k-line
                     name="visualization-link"
                     points={[source.x, source.y, target.x, target.y]}
-                    stroke={theme.grayColor7}
+                    stroke={lit ? theme.relationshipHover : theme.grayColor7}
                     strokeWidth={LINK_STROKE_WIDTH}
-                    opacity={LINK_OPACITY}
+                    opacity={lit ? 1 : unlitLinkOpacity}
                     listening={false}
                   />
                 );
@@ -135,6 +147,7 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
                   node={node}
                   x={node.x}
                   y={node.y}
+                  dimmed={dimmed(node.id)}
                   graph={graph}
                   state={state}
                 />
@@ -163,6 +176,7 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
                   fontStyle="bold"
                   align="center"
                   wrap="none"
+                  opacity={dimmed(node.id) ? DIM_OPACITY : 1}
                   listening={false}
                 />
               )

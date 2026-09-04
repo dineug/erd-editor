@@ -26,12 +26,14 @@ import {
 import VisualizationScene from '@/components/visualization/VisualizationScene';
 import {
   createVisualizationState,
+  DIM_OPACITY,
   LABEL_FADE_END,
   LABEL_FADE_START,
   NAME_MAX_LENGTH,
   TABLE_RADIUS,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -66,11 +68,9 @@ afterEach(async () => {
 
 /**
  * A long named table with a short named column and an unnamed one, plus an
- * unnamed table, laid out by d3 and then held still, so a position read here
- * is the one drawn.
+ * unnamed table.
  */
-async function setup(): Promise<Fixture> {
-  const app = createTestAppContext();
+function seedGraph(app: AppContext) {
   app.store.dispatchSync(
     addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 2 } }),
     changeTableNameAction({ id: 't1', value: LONG_NAME }),
@@ -79,6 +79,34 @@ async function setup(): Promise<Fixture> {
     addColumnAction({ id: 'c2', tableId: 't1' }),
     addTableAction({ id: 't2', ui: { x: 0, y: 0, zIndex: 3 } })
   );
+}
+
+/**
+ * The base graph plus a third table the first one's relationship joins, and a
+ * fourth with a column of its own that nothing joins.
+ */
+function seedRelated(app: AppContext) {
+  seedGraph(app);
+  app.store.dispatchSync(
+    addTableAction({ id: 't3', ui: { x: 0, y: 0, zIndex: 4 } }),
+    addRelationshipAction({
+      id: 'r1',
+      relationshipType: 4,
+      start: { tableId: 't1', columnIds: [] },
+      end: { tableId: 't3', columnIds: [] },
+    }),
+    addTableAction({ id: 't4', ui: { x: 0, y: 0, zIndex: 5 } }),
+    addColumnAction({ id: 'c3', tableId: 't4' })
+  );
+}
+
+/**
+ * The seeded document laid out by d3 and then held still, so a position read
+ * here is the one drawn.
+ */
+async function setup(seed = seedGraph): Promise<Fixture> {
+  const app = createTestAppContext();
+  seed(app);
 
   const graph = createVisualization(app.store.state);
   graph.simulation.stop();
@@ -132,6 +160,27 @@ const linesOf = (stage: Stage) => stage.find<Line>('.visualization-link');
 
 const textsOf = (stage: Stage) =>
   stage.find<Text>('.visualization-label').map(text => text.text());
+
+/** The line between two dots, found by the ends it was built from. */
+const lineOf = (
+  stage: Stage,
+  graph: Visualization,
+  source: string,
+  target: string
+) => {
+  const index = graph.links.findIndex(
+    link => link.id === `${source}-${target}`
+  );
+  return linesOf(stage)[index];
+};
+
+/** The label under a table's dot, matched by position rather than text. */
+const labelOf = (stage: Stage, graph: Visualization, id: string) => {
+  const node = graph.nodes.find(node => node.id === id)!;
+  return stage
+    .find<Text>('.visualization-label')
+    .find(text => text.y() === node.y + TABLE_RADIUS + 3)!;
+};
 
 describe('the visualization scene', () => {
   it('lays a stage sized background under the graph layer', async () => {
@@ -295,6 +344,110 @@ describe('the visualization scene', () => {
       expect(stage.find('.visualization-label')).toHaveLength(2);
       expect(textsOf(stage)).not.toContain('id');
       expect(textsOf(stage)).not.toContain('column');
+    });
+  });
+
+  describe('highlight', () => {
+    it('draws every line at a hovered table whole and in the hover colour', async () => {
+      const { stage, graph, state, theme, settle } = await setup(seedRelated);
+
+      state.hoveredTableId = 't1';
+      await settle();
+
+      for (const line of [
+        lineOf(stage, graph, 't1', 'c1'),
+        lineOf(stage, graph, 't1', 'c2'),
+        lineOf(stage, graph, 't1', 't3'),
+      ]) {
+        expect(line.stroke()).toBe(theme.relationshipHover);
+        expect(line.opacity()).toBe(1);
+      }
+    });
+
+    it('keeps the table, its columns and a joined table whole', async () => {
+      const { stage, graph, state, settle } = await setup(seedRelated);
+
+      state.hoveredTableId = 't1';
+      await settle();
+
+      for (const id of ['t1', 'c1', 'c2', 't3']) {
+        expect(dotOf(stage, id).opacity()).toBe(1);
+      }
+      expect(labelOf(stage, graph, 't1').opacity()).toBe(1);
+      expect(labelOf(stage, graph, 't3').opacity()).toBe(1);
+    });
+
+    it('fades every dot, line and name the hovered table does not reach', async () => {
+      const { stage, graph, state, theme, settle } = await setup(seedRelated);
+
+      state.hoveredTableId = 't1';
+      await settle();
+
+      expect(dotOf(stage, 't2').opacity()).toBe(DIM_OPACITY);
+      expect(dotOf(stage, 't4').opacity()).toBe(DIM_OPACITY);
+      expect(dotOf(stage, 'c3').opacity()).toBe(DIM_OPACITY);
+      expect(labelOf(stage, graph, 't2').opacity()).toBe(DIM_OPACITY);
+      expect(labelOf(stage, graph, 't4').opacity()).toBe(DIM_OPACITY);
+
+      const unlit = lineOf(stage, graph, 't4', 'c3');
+      expect(unlit.stroke()).toBe(theme.grayColor7);
+      expect(unlit.opacity()).toBeCloseTo(0.6 * DIM_OPACITY, 10);
+    });
+
+    it('lights a joined table from its own end of the relationship too', async () => {
+      const { stage, graph, state, settle } = await setup(seedRelated);
+
+      state.hoveredTableId = 't3';
+      await settle();
+
+      expect(dotOf(stage, 't1').opacity()).toBe(1);
+      expect(lineOf(stage, graph, 't1', 't3').opacity()).toBe(1);
+      expect(dotOf(stage, 'c1').opacity()).toBe(DIM_OPACITY);
+      expect(lineOf(stage, graph, 't1', 'c1').opacity()).toBeCloseTo(
+        0.6 * DIM_OPACITY,
+        10
+      );
+    });
+
+    it('puts the whole graph back at rest once no table is hovered', async () => {
+      const { stage, graph, state, theme, settle } = await setup(seedRelated);
+
+      state.hoveredTableId = 't1';
+      await settle();
+      state.hoveredTableId = null;
+      await settle();
+
+      for (const dot of stage.find<Circle>('.visualization-node')) {
+        expect(dot.opacity()).toBe(1);
+      }
+      for (const line of linesOf(stage)) {
+        expect(line.stroke()).toBe(theme.grayColor7);
+        expect(line.opacity()).toBe(0.6);
+      }
+      expect(labelOf(stage, graph, 't4').opacity()).toBe(1);
+    });
+
+    it('fades nothing for a hovered column, which names no table', async () => {
+      const { stage, graph, state, settle } = await setup(seedRelated);
+
+      state.hoveredId = 'c1';
+      await settle();
+
+      expect(dotOf(stage, 't4').opacity()).toBe(1);
+      expect(lineOf(stage, graph, 't4', 'c3').opacity()).toBe(0.6);
+    });
+
+    it('fades a name inside the scale fade as a fraction of that fade', async () => {
+      const { stage, graph, state, settle } = await setup(seedRelated);
+
+      state.scale = (LABEL_FADE_START + LABEL_FADE_END) / 2;
+      state.hoveredTableId = 't1';
+      await settle();
+
+      expect(labelOf(stage, graph, 't4').getAbsoluteOpacity()).toBeCloseTo(
+        0.5 * DIM_OPACITY,
+        10
+      );
     });
   });
 
