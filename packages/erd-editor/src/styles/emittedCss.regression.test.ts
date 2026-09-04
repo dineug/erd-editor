@@ -123,20 +123,20 @@ describe('rule-count invariance', () => {
     expect(modulePaths).toHaveLength(56);
   });
 
-  it('adopts 600 rules, none of them a duplicate', () => {
+  it('adopts 601 rules, none of them a duplicate', () => {
     // Pinned rather than derived, so a rule added or lost anywhere in the
     // package has to be accounted for here.
-    expect(cumulative).toHaveLength(600);
-    expect(new Set(cumulative).size).toBe(600);
+    expect(cumulative).toHaveLength(601);
+    expect(new Set(cumulative).size).toBe(601);
   });
 
-  it('splits into 327 global rules ahead of 273 component rules', () => {
+  it('splits into 327 global rules ahead of 274 component rules', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 152 });
+    expect(sheetsOfEachKind).toEqual({ global: 5, component: 153 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(273);
+    expect(componentRules).toHaveLength(274);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -153,7 +153,7 @@ describe('rule-count invariance', () => {
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
     // rendered alone or with the other 55 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(600);
+    expect(union.size).toBe(601);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 
