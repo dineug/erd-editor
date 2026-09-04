@@ -110,6 +110,30 @@ function hitsOf(value: string, width: number): Hit[] {
   return hits;
 }
 
+/** The box one character of a body is drawn in, in the body's own coordinates. */
+function boxOf(value: string, width: number, index: number) {
+  const mirror = createMirror(width);
+  mirror.textContent = value;
+  const node = mirror.firstChild as Text;
+  const origin = mirror.getBoundingClientRect();
+  const range = document.createRange();
+
+  range.setStart(node, index);
+  range.setEnd(node, index + 1);
+  const rects = Array.from(range.getClientRects());
+  expect(rects, `${JSON.stringify(value[index])} is drawn once`).toHaveLength(
+    1
+  );
+
+  const [rect] = rects;
+
+  return {
+    left: rect.left - origin.left,
+    right: rect.right - origin.left,
+    top: rect.top - origin.top,
+  };
+}
+
 describe('the offset a click on a drawn memo body falls on', () => {
   it.each(WIDTHS)(
     'lands on the character the pointer is over at %ipx',
@@ -153,7 +177,15 @@ describe('the offset a click on a drawn memo body falls on', () => {
     const leading = getMemoLineHeightPx();
 
     expect(first.endsWith(' ')).toBe(true);
-    expect(memoCaretOffsetAt(value, 120, 119, leading / 2)).toBe(first.length);
+
+    // The fold space keeps its advance and hangs past the body's edge by however
+    // much the font on hand makes it, so the click goes to its far side rather
+    // than to a fixed x the near side may already have crossed.
+    const space = boxOf(value, 120, first.length - 1);
+    expect(space.top).toBeLessThan(leading);
+    expect(memoCaretOffsetAt(value, 120, space.right, leading / 2)).toBe(
+      first.length
+    );
   });
 
   it('opens a line at its start on the left edge of the body', () => {
