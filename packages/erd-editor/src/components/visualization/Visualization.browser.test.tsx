@@ -172,7 +172,7 @@ describe('the visualization shell', () => {
       stageOf()
         .find('.visualization-label')
         .map(label => label.getAttr('text'))
-    ).toEqual(['users', 'id', 'name']);
+    ).toEqual(['users']);
   });
 
   it('follows a viewport change on the box and the Stage', async () => {

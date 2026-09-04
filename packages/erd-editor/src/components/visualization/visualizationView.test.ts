@@ -6,7 +6,8 @@ import {
   createView,
   createVisualizationState,
   hasName,
-  LABEL_FADE,
+  LABEL_FADE_END,
+  LABEL_FADE_START,
   labelOf,
   labelOpacity,
   NAME_MAX_LENGTH,
@@ -51,19 +52,19 @@ describe('truncateName', () => {
 
 describe('labelOf', () => {
   it('draws the cut name where there is one', () => {
-    expect(labelOf({ name: 'users', group: Group.table })).toBe('users');
-    expect(labelOf({ name: 'x'.repeat(20), group: Group.column })).toBe(
+    expect(labelOf({ name: 'users' })).toBe('users');
+    expect(labelOf({ name: 'x'.repeat(20) })).toBe(
       'x'.repeat(NAME_MAX_LENGTH) + '…'
     );
   });
 
-  it('falls back to the placeholder the preview inputs use', () => {
-    expect(labelOf({ name: '', group: Group.table })).toBe('table');
-    expect(labelOf({ name: '   ', group: Group.column })).toBe('column');
+  it('falls back to the placeholder the preview input uses', () => {
+    expect(labelOf({ name: '' })).toBe('table');
+    expect(labelOf({ name: '   ' })).toBe('table');
   });
 
-  it('tells a named node from a placeholder one', () => {
-    expect(hasName({ name: 'id' })).toBe(true);
+  it('tells a named table from a placeholder one', () => {
+    expect(hasName({ name: 'users' })).toBe(true);
     expect(hasName({ name: ' ' })).toBe(false);
   });
 });
@@ -77,34 +78,21 @@ describe('nodeRadius', () => {
 });
 
 describe('labelOpacity', () => {
-  it('hides a label at its fade start and below', () => {
-    for (const group of [Group.table, Group.column]) {
-      expect(labelOpacity(LABEL_FADE[group].start, group)).toBe(0);
-      expect(labelOpacity(ZOOM_MIN, group)).toBe(0);
-    }
+  it('hides a name at the fade start and below', () => {
+    expect(labelOpacity(LABEL_FADE_START)).toBe(0);
+    expect(labelOpacity(ZOOM_MIN)).toBe(0);
   });
 
-  it('shows a label whole at its fade end and above', () => {
-    for (const group of [Group.table, Group.column]) {
-      expect(labelOpacity(LABEL_FADE[group].end, group)).toBe(1);
-      expect(labelOpacity(ZOOM_MAX, group)).toBe(1);
-    }
+  it('shows a name whole at the fade end and above, which is the view at rest', () => {
+    expect(labelOpacity(LABEL_FADE_END)).toBe(1);
+    expect(labelOpacity(1)).toBe(1);
+    expect(labelOpacity(ZOOM_MAX)).toBe(1);
   });
 
   it('fades linearly between the two', () => {
-    for (const group of [Group.table, Group.column]) {
-      const { start, end } = LABEL_FADE[group];
+    const middle = (LABEL_FADE_START + LABEL_FADE_END) / 2;
 
-      expect(labelOpacity((start + end) / 2, group)).toBeCloseTo(0.5, 10);
-    }
-  });
-
-  it('brings a table name in at rest and a column name only closer up', () => {
-    expect(labelOpacity(1, Group.table)).toBe(1);
-    expect(labelOpacity(1, Group.column)).toBe(0);
-    expect(LABEL_FADE[Group.column].start).toBeGreaterThanOrEqual(
-      LABEL_FADE[Group.table].end
-    );
+    expect(labelOpacity(middle)).toBeCloseTo(0.5, 10);
   });
 });
 

@@ -15,7 +15,7 @@ import {
   hasName,
   labelOf,
   labelOpacity,
-  nodeRadius,
+  TABLE_RADIUS,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
 import { renderKonva } from '@/konva/host';
@@ -45,8 +45,8 @@ const LINK_OPACITY = 0.6;
 
 /**
  * The graph on two layers: a stage sized box that takes a pan, and the scene
- * itself under the view transform, links below dots below labels. Each kind
- * of label fades with the scale as one group, and the column names come last.
+ * itself under the view transform, links below dots below labels. Only a table
+ * carries a name, and the names fade with the scale as one group.
  */
 const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -78,44 +78,12 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
     const { viewport } = store.state.editor;
     const theme = themeRef.value;
     const { x, y, scale } = state;
+    const opacity = labelOpacity(scale);
+    const tables = graph.nodes.filter(node => node.group === Group.table);
 
     // Read for the subscription alone: d3 moves every node behind the proxy,
     // and this one field is what brings each step of the layout to the scene.
     void state.tick;
-
-    const labels = (group: Group) => {
-      const opacity = labelOpacity(scale, group);
-
-      return (
-        <k-group
-          name={`visualization-${group}-labels`}
-          listening={false}
-          opacity={opacity}
-          visible={opacity > 0}
-        >
-          {repeat(
-            graph.nodes.filter(node => node.group === group),
-            node => node.id,
-            node => (
-              <k-text
-                name="visualization-label"
-                x={node.x - LABEL_WIDTH / 2}
-                y={node.y + nodeRadius(group) + LABEL_GAP}
-                width={LABEL_WIDTH}
-                text={labelOf(node)}
-                fill={hasName(node) ? theme.foreground : theme.placeholder}
-                fontFamily={TextFontFamily}
-                fontSize={LABEL_FONT_SIZE}
-                fontStyle={group === Group.table ? 'bold' : 'normal'}
-                align="center"
-                wrap="none"
-                listening={false}
-              />
-            )
-          )}
-        </k-group>
-      );
-    };
 
     return (
       <>
@@ -173,8 +141,33 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
               )
             )}
           </k-group>
-          {labels(Group.table)}
-          {labels(Group.column)}
+          <k-group
+            name="visualization-labels"
+            listening={false}
+            opacity={opacity}
+            visible={opacity > 0}
+          >
+            {repeat(
+              tables,
+              node => node.id,
+              node => (
+                <k-text
+                  name="visualization-label"
+                  x={node.x - LABEL_WIDTH / 2}
+                  y={node.y + TABLE_RADIUS + LABEL_GAP}
+                  width={LABEL_WIDTH}
+                  text={labelOf(node)}
+                  fill={hasName(node) ? theme.foreground : theme.placeholder}
+                  fontFamily={TextFontFamily}
+                  fontSize={LABEL_FONT_SIZE}
+                  fontStyle="bold"
+                  align="center"
+                  wrap="none"
+                  listening={false}
+                />
+              )
+            )}
+          </k-group>
         </k-layer>
       </>
     );

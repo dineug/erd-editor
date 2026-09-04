@@ -4,23 +4,20 @@ import type { Point } from '@/internal-types';
 
 import { Group, type VisualizationNode } from './createVisualization';
 
-/** The most of a table or column name a label shows before it is cut. */
+/** The most of a table name a label shows before it is cut. */
 export const NAME_MAX_LENGTH = 15;
 
 const ELLIPSIS = '…';
 
-/** What a label reads where a name is empty, the words the preview's inputs use. */
-const PLACEHOLDER: Record<Group, string> = {
-  [Group.table]: 'table',
-  [Group.column]: 'column',
-};
+/** What a label reads where a table has no name, the word its input shows. */
+const PLACEHOLDER = 'table';
 
 /**
  * A name as its label shows it. The cut counts code points rather than UTF-16
  * units, so a name ending in an emoji or a CJK glyph is never split inside one.
  *
  * @example
- * truncateName('a_very_long_column_name'); // 'a_very_long_col…'
+ * truncateName('a_very_long_table_name'); // 'a_very_long_tab…'
  */
 export function truncateName(name: string): string {
   const chars = Array.from(name);
@@ -29,16 +26,14 @@ export function truncateName(name: string): string {
   return chars.slice(0, NAME_MAX_LENGTH).join('') + ELLIPSIS;
 }
 
-/** The text a node's label draws: its name cut to length, or a placeholder. */
-export function labelOf(
-  node: Pick<VisualizationNode, 'name' | 'group'>
-): string {
+/** The text a table's label draws: its name cut to length, or a placeholder. */
+export function labelOf(node: Pick<VisualizationNode, 'name'>): string {
   const name = node.name.trim();
 
-  return name ? truncateName(name) : PLACEHOLDER[node.group];
+  return name ? truncateName(name) : PLACEHOLDER;
 }
 
-/** Whether a node has a name of its own, which is what its label is painted by. */
+/** Whether a table has a name of its own, which is what its label is painted by. */
 export const hasName = (node: Pick<VisualizationNode, 'name'>): boolean =>
   node.name.trim().length > 0;
 
@@ -50,28 +45,21 @@ export const COLUMN_RADIUS = 4;
 export const nodeRadius = (group: Group): number =>
   group === Group.table ? TABLE_RADIUS : COLUMN_RADIUS;
 
-/** The scale a label is fully gone below, and the one it is whole from. */
-export type LabelFade = {
-  start: number;
-  end: number;
-};
-
 /**
- * Where each kind of name fades in. A table name arrives first and a column
- * name only closer up, so the graph reads as shapes from afar, as tables at
- * rest and as every name once the reader leans in, as Obsidian's graph does.
+ * The scale a table name is fully gone below and the one it is whole from,
+ * fading between the two: the graph reads as shapes from afar and as names at
+ * rest, as Obsidian's graph does. A column carries no name at any scale.
  */
-export const LABEL_FADE: Record<Group, LabelFade> = {
-  [Group.table]: { start: 0.5, end: 1 },
-  [Group.column]: { start: 1, end: 1.5 },
-};
+export const LABEL_FADE_START = 0.5;
+
+export const LABEL_FADE_END = 1;
 
 const opacityInRange = createInRange(0, 1);
 
-export function labelOpacity(scale: number, group: Group): number {
-  const { start, end } = LABEL_FADE[group];
-
-  return opacityInRange((scale - start) / (end - start));
+export function labelOpacity(scale: number): number {
+  return opacityInRange(
+    (scale - LABEL_FADE_START) / (LABEL_FADE_END - LABEL_FADE_START)
+  );
 }
 
 export const ZOOM_MIN = 0.1;

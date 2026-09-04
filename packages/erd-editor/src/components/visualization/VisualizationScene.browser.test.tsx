@@ -21,14 +21,13 @@ import {
 import type { AppContext } from '@/components/appContext';
 import {
   createVisualization,
-  Group,
   type Visualization,
 } from '@/components/visualization/createVisualization';
 import VisualizationScene from '@/components/visualization/VisualizationScene';
 import {
-  COLUMN_RADIUS,
   createVisualizationState,
-  LABEL_FADE,
+  LABEL_FADE_END,
+  LABEL_FADE_START,
   NAME_MAX_LENGTH,
   TABLE_RADIUS,
   type VisualizationState,
@@ -66,8 +65,9 @@ afterEach(async () => {
 });
 
 /**
- * A long named table with a short named column and an unnamed one, laid out
- * by d3 and then held still, so a position read here is the one drawn.
+ * A long named table with a short named column and an unnamed one, plus an
+ * unnamed table, laid out by d3 and then held still, so a position read here
+ * is the one drawn.
  */
 async function setup(): Promise<Fixture> {
   const app = createTestAppContext();
@@ -76,7 +76,8 @@ async function setup(): Promise<Fixture> {
     changeTableNameAction({ id: 't1', value: LONG_NAME }),
     addColumnAction({ id: 'c1', tableId: 't1' }),
     changeColumnNameAction({ id: 'c1', tableId: 't1', value: 'id' }),
-    addColumnAction({ id: 'c2', tableId: 't1' })
+    addColumnAction({ id: 'c2', tableId: 't1' }),
+    addTableAction({ id: 't2', ui: { x: 0, y: 0, zIndex: 3 } })
   );
 
   const graph = createVisualization(app.store.state);
@@ -121,8 +122,8 @@ const sceneOf = (stage: Stage) =>
 const panOf = (stage: Stage) =>
   stage.findOne<Rect>('.visualization-pan') as Rect;
 
-const labelsOf = (stage: Stage, group: Group) =>
-  stage.findOne<KonvaGroup>(`.visualization-${group}-labels`) as KonvaGroup;
+const labelsOf = (stage: Stage) =>
+  stage.findOne<KonvaGroup>('.visualization-labels') as KonvaGroup;
 
 const dotOf = (stage: Stage, id: string) =>
   stage.findOne<Circle>(`.${id}`) as Circle;
@@ -183,7 +184,7 @@ describe('the visualization scene', () => {
     const [table, id, unnamed] = graph.nodes;
     const lines = linesOf(stage);
 
-    expect(stage.find('.visualization-node')).toHaveLength(3);
+    expect(stage.find('.visualization-node')).toHaveLength(4);
     expect(lines).toHaveLength(2);
     expect(lines[0].points()).toEqual([table.x, table.y, id.x, id.y]);
     expect(lines[1].points()).toEqual([table.x, table.y, unnamed.x, unnamed.y]);
@@ -202,8 +203,7 @@ describe('the visualization scene', () => {
     ).toEqual([
       'visualization-links',
       'visualization-nodes',
-      'visualization-table-labels',
-      'visualization-column-labels',
+      'visualization-labels',
     ]);
   });
 
@@ -225,88 +225,76 @@ describe('the visualization scene', () => {
   });
 
   describe('labels', () => {
-    it('writes one label per node, cut to fifteen characters', async () => {
+    it('writes one label per table, cut to fifteen characters, and none for a column', async () => {
       const { stage } = await setup();
 
+      expect(stage.find('.visualization-node')).toHaveLength(4);
       expect(textsOf(stage)).toEqual([
         LONG_NAME.slice(0, NAME_MAX_LENGTH) + '…',
-        'id',
-        'column',
+        'table',
       ]);
     });
 
-    it('centres each label under its dot in the editor face', async () => {
+    it('centres each label under its table in the editor face, in bold', async () => {
       const { stage, graph } = await setup();
-      const [table, id] = graph.nodes;
-      const [tableLabel, idLabel] = stage.find<Text>('.visualization-label');
+      const [table] = graph.nodes;
+      const [label] = stage.find<Text>('.visualization-label');
 
-      expect(tableLabel.x() + tableLabel.width() / 2).toBe(table.x);
-      expect(tableLabel.y()).toBe(table.y + TABLE_RADIUS + 3);
-      expect(tableLabel.align()).toBe('center');
-      expect(tableLabel.wrap()).toBe('none');
-      expect(tableLabel.fontFamily()).toBe(TextFontFamily);
-      expect(tableLabel.fontSize()).toBe(12);
-      expect(idLabel.y()).toBe(id.y + COLUMN_RADIUS + 3);
-    });
-
-    it('sets a table name in bold and a column name in the regular face', async () => {
-      const { stage } = await setup();
-      const [tableLabel, idLabel] = stage.find<Text>('.visualization-label');
-
-      expect(tableLabel.fontStyle()).toBe('bold');
-      expect(idLabel.fontStyle()).toBe('normal');
+      expect(label.x() + label.width() / 2).toBe(table.x);
+      expect(label.y()).toBe(table.y + TABLE_RADIUS + 3);
+      expect(label.align()).toBe('center');
+      expect(label.wrap()).toBe('none');
+      expect(label.fontFamily()).toBe(TextFontFamily);
+      expect(label.fontSize()).toBe(12);
+      expect(label.fontStyle()).toBe('bold');
     });
 
     it('paints a name in the foreground and a placeholder as one', async () => {
       const { stage, theme } = await setup();
-      const [tableLabel, , placeholder] = stage.find<Text>(
-        '.visualization-label'
-      );
+      const [named, placeholder] = stage.find<Text>('.visualization-label');
 
-      expect(tableLabel.fill()).toBe(theme.foreground);
+      expect(named.fill()).toBe(theme.foreground);
       expect(placeholder.fill()).toBe(theme.placeholder);
     });
 
     it('answers no hit test, so a press on a name falls through to the pan', async () => {
       const { stage } = await setup();
 
-      expect(labelsOf(stage, Group.table).listening()).toBe(false);
-      expect(labelsOf(stage, Group.column).listening()).toBe(false);
+      expect(labelsOf(stage).listening()).toBe(false);
     });
 
-    it('fades each kind of name with the scale, and drops it below its fade start', async () => {
+    it('is whole at rest, fades with the scale and goes below the fade start', async () => {
       const { stage, state, settle } = await setup();
+      const labels = labelsOf(stage);
 
-      for (const group of [Group.table, Group.column]) {
-        const labels = labelsOf(stage, group);
-        const { start, end } = LABEL_FADE[group];
+      expect(labels.opacity()).toBe(1);
+      expect(labels.visible()).toBe(true);
 
-        state.scale = end;
-        await settle();
-        expect(labels.opacity()).toBe(1);
-        expect(labels.visible()).toBe(true);
+      state.scale = (LABEL_FADE_START + LABEL_FADE_END) / 2;
+      await settle();
+      expect(labels.opacity()).toBeCloseTo(0.5, 10);
+      expect(labels.visible()).toBe(true);
 
-        state.scale = (start + end) / 2;
-        await settle();
-        expect(labels.opacity()).toBeCloseTo(0.5, 10);
-        expect(labels.visible()).toBe(true);
+      state.scale = LABEL_FADE_START;
+      await settle();
+      expect(labels.opacity()).toBe(0);
+      expect(labels.visible()).toBe(false);
 
-        state.scale = start;
-        await settle();
-        expect(labels.opacity()).toBe(0);
-        expect(labels.visible()).toBe(false);
-      }
+      state.scale = LABEL_FADE_END * 2;
+      await settle();
+      expect(labels.opacity()).toBe(1);
+      expect(labels.visible()).toBe(true);
     });
 
-    it('shows the table names at rest and holds the column names back', async () => {
+    it('gives a column no name however far the reader zooms in', async () => {
       const { stage, state, settle } = await setup();
 
-      state.scale = 1;
+      state.scale = 4;
       await settle();
 
-      expect(labelsOf(stage, Group.table).opacity()).toBe(1);
-      expect(labelsOf(stage, Group.column).opacity()).toBe(0);
-      expect(labelsOf(stage, Group.column).visible()).toBe(false);
+      expect(stage.find('.visualization-label')).toHaveLength(2);
+      expect(textsOf(stage)).not.toContain('id');
+      expect(textsOf(stage)).not.toContain('column');
     });
   });
 
