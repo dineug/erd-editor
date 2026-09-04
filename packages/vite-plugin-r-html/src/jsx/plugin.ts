@@ -1,16 +1,8 @@
 import { createFilter } from '@rollup/pluginutils';
 import type { Plugin } from 'vite';
 
+import type { JsxOptions } from '../options';
 import { transformJsxToTagged } from './codegen';
-
-export interface JsxOptions {
-  include?: string | RegExp | Array<string | RegExp>;
-  exclude?: string | RegExp | Array<string | RegExp>;
-  /** Where the injected html / svg tags are imported from. */
-  importSource?: string;
-  /** Where the injected konva tag comes from; a @jsxHost konva file needs it. */
-  konvaImportSource?: string;
-}
 
 const cleanId = (id: string) => id.split('?')[0];
 

@@ -535,5 +535,5 @@ export function transformJsxToTagged(
   // Prepended without a newline so it shares line 1 with whatever was already
   // there. An import on its own line would push the whole file down one and
   // undo the line-count padding above.
-  return imports.length ? `${imports.join('')}${out}` : out;
+  return `${imports.join('')}${out}`;
 }
