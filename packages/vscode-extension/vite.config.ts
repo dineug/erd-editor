@@ -89,7 +89,7 @@ export default defineConfig({
           'tsconfig.unit.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
           {
-            pattern: 'packages/vscode-bridge/dist/**/*.d.ts',
+            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',
           },
           '!**/*.tsbuildinfo',
@@ -119,7 +119,7 @@ export default defineConfig({
           'tsconfig.unit.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
           {
-            pattern: 'packages/vscode-bridge/dist/**/*.d.ts',
+            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',
           },
           '!**/*.tsbuildinfo',

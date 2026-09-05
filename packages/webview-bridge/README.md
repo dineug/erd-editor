@@ -1,9 +1,9 @@
-# vscode-bridge
+# webview-bridge
 
 > Typed command protocol between an editor host and its webview
 
 Internal to the erd-editor monorepo. It is not published to npm; other packages depend on
-it as `"@dineug/erd-editor-vscode-bridge": "workspace:*"`.
+it as `"@dineug/erd-editor-webview-bridge": "workspace:*"`.
 
 ## No transport
 
@@ -24,7 +24,7 @@ import {
   Bridge,
   hostInitialCommand,
   webviewInitialValueCommand,
-} from '@dineug/erd-editor-vscode-bridge';
+} from '@dineug/erd-editor-webview-bridge';
 
 const bridge = new Bridge();
 const vscode = acquireVsCodeApi();
@@ -58,6 +58,6 @@ and `webviewUpdateThemeCommand` a `Partial` of; `Appearance` (`appearance` also 
 ## Development
 
 ```sh
-pnpm exec vp run --filter @dineug/erd-editor-vscode-bridge --fail-if-no-match test
-pnpm --filter @dineug/erd-editor-vscode-bridge test:coverage
+pnpm exec vp run --filter @dineug/erd-editor-webview-bridge --fail-if-no-match test
+pnpm --filter @dineug/erd-editor-webview-bridge test:coverage
 ```

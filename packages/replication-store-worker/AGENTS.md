@@ -1,7 +1,7 @@
 <!-- Parent: ../../AGENTS.md -->
 <!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
-# vscode-replication-store-worker
+# replication-store-worker
 
 ## Purpose
 
@@ -44,7 +44,7 @@ the VSCode one inlines the worker file in its own build, the IntelliJ one loads 
   `text.length * 10`. It is the one copy both IDE webviews replicate with — a divergent font or
   `TEXT_PADDING` drifts replicated column widths in both.
 - Three commands cross this boundary: in `webviewInitialValueCommand` and
-  `webviewReplicationCommand`, out `hostSaveValueCommand`. A fourth means editing `vscode-bridge`
+  `webviewReplicationCommand`, out `hostSaveValueCommand`. A fourth means editing `webview-bridge`
   and `vscode-webview` too.
 - The webview sends both the initial value and raw editor actions into this worker. The worker's
   `change` callback serializes the current value and sends it back to the host; it does not own the
@@ -53,7 +53,7 @@ the VSCode one inlines the worker file in its own build, the IntelliJ one loads 
 ### Testing Requirements
 
 - No test task and no scripts. Verify with
-  `pnpm exec vp run --filter @dineug/erd-editor-vscode-replication-store-worker --fail-if-no-match build` (`tsc --noEmit`, then `vp build`).
+  `pnpm exec vp run --filter @dineug/erd-editor-replication-store-worker --fail-if-no-match build` (`tsc --noEmit`, then `vp build`).
 - Nothing automated exercises the worker at runtime. Real verification is the VSCode Extension Host:
   open a `.erd` file, edit, confirm the file on disk changes — failure is silent, edits never persist.
 - Changing `createReplicationStore`'s signature also breaks `app` — `pnpm build`; `intellij-webview` reaches it through this package.
@@ -68,7 +68,7 @@ the VSCode one inlines the worker file in its own build, the IntelliJ one loads 
 
 ### Internal
 
-`@dineug/erd-editor` (the `engine.js` entry) and `@dineug/erd-editor-vscode-bridge` are `dependencies`,
+`@dineug/erd-editor` (the `engine.js` entry) and `@dineug/erd-editor-webview-bridge` are `dependencies`,
 so the worker file imports them bare and the consuming webview resolves them once for page and worker
 alike.
 

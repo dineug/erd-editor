@@ -3,7 +3,7 @@ import {
   Appearance,
   GrayColor,
   ThemeOptions,
-} from '@dineug/erd-editor-vscode-bridge';
+} from '@dineug/erd-editor-webview-bridge';
 import * as vscode from 'vscode';
 
 function getConfigurationScope(

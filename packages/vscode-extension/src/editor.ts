@@ -1,4 +1,4 @@
-import { Bridge } from '@dineug/erd-editor-vscode-bridge';
+import { Bridge } from '@dineug/erd-editor-webview-bridge';
 import * as vscode from 'vscode';
 
 import { ErdDocument } from '@/erd-document';

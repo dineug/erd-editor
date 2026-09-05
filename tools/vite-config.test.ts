@@ -317,7 +317,7 @@ test('an IDE webview turns dependency url workers into inline imports', () => {
   assert.ok(
     rewriteUrlWorkers(
       'new Worker(new URL("./workers/replicationStore.worker.js", import.meta.url), { type: "module" })',
-      '/repo/packages/vscode-replication-store-worker/dist/index.js'
+      '/repo/packages/replication-store-worker/dist/index.js'
     )
   );
   const code = `let e = new SharedWorker(new URL("./workers/schemaGC.shared-worker.js", import.meta.url), { type: "module", name: n });

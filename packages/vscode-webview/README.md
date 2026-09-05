@@ -18,13 +18,13 @@ Editor usage is documented in the [Guides](https://docs.erd-editor.io/docs/categ
 ## How it talks to the host
 
 `src/index.ts` creates the `<erd-editor>` element and wires two `Bridge`
-instances from `@dineug/erd-editor-vscode-bridge`, the typed command protocol it
+instances from `@dineug/erd-editor-webview-bridge`, the typed command protocol it
 shares with the extension host:
 
 - **host ↔ webview**, over `acquireVsCodeApi()` `postMessage` — initial value,
   theme, readonly, file import/export, and replication actions.
 - **webview ↔ worker**, over the `Worker` that `createReplicationStoreWorker` from
-  `@dineug/erd-editor-vscode-replication-store-worker` builds, which keeps a headless
+  `@dineug/erd-editor-replication-store-worker` builds, which keeps a headless
   replica of the document.
 
 `editor.getSharedStore({ mouseTracker: false, focusTracker: false })` is subscribed once the host

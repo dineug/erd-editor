@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
 <!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
 
-# vscode-bridge
+# webview-bridge
 
 ## Purpose
 
-`@dineug/erd-editor-vscode-bridge` is the typed command protocol between an editor host and a webview:
+`@dineug/erd-editor-webview-bridge` is the typed command protocol between an editor host and a webview:
 `createCommand<Payload>(type)` mints a token, `Bridge#registerCommand` subscribes, `Bridge.executeCommand`
 builds a plain `{ type, payload }` action, and `Bridge#executeAction` dispatches a received one to its
 listeners. It carries no transport and is `private: true`, which is why the IntelliJ webview imports the
@@ -33,7 +33,7 @@ listeners. It carries no transport and is `private: true`, which is why the Inte
 ### Working In This Directory
 
 - `src/commands.ts` is a wire protocol: renaming or adding a command means editing `vscode-extension`,
-  `vscode-webview`, `vscode-replication-store-worker`, `intellij-webview` and `src/commands.test.ts`.
+  `vscode-webview`, `replication-store-worker`, `intellij-webview` and `src/commands.test.ts`.
 - Payloads must survive `JSON.stringify` — IntelliJ dispatches through `window.cefQuery` in
   `packages/intellij-webview/src/main.ts`. Binary data is base64-encoded by callers, never here.
 - Keep `Bridge` transport-free: it maps `command.type` to listeners only; hosts wire their own dispatch.
@@ -45,10 +45,10 @@ listeners. It carries no transport and is `private: true`, which is why the Inte
 
 ### Testing Requirements
 
-- `pnpm exec vp run --filter @dineug/erd-editor-vscode-bridge --fail-if-no-match test` —
+- `pnpm exec vp run --filter @dineug/erd-editor-webview-bridge --fail-if-no-match test` —
   `tsc --noEmit` then `vp test run` over `src/**/*.test.ts` in a `node` environment. `tsconfig.json`
   has `include: ["src"]`, so the four `*.test.ts` files are typechecked too.
-- `pnpm --filter @dineug/erd-editor-vscode-bridge test:coverage` — v8, `perFile` 80% across
+- `pnpm --filter @dineug/erd-editor-webview-bridge test:coverage` — v8, `perFile` 80% across
   `src/**/*.ts` minus `src/internal-types/**`; a module with no `*.test.ts` fails it. `test:dev` watches.
 - This suite cannot see consumer breakage; run `pnpm build` after a protocol change, where a removed
   or retyped command surfaces as a type error in the four consuming packages.

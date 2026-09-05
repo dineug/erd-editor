@@ -118,7 +118,7 @@ export function base64InlineWorkers(): Plugin {
 
 /** The dist files of the workspace packages that construct a worker from a url. */
 const WORKER_HOSTS =
-  /[\\/](erd-editor|erd-editor-shiki-worker|(?:erd-editor-)?vscode-replication-store-worker)[\\/]dist[\\/].*\.js$/;
+  /[\\/](erd-editor|erd-editor-shiki-worker|(?:erd-editor-)?replication-store-worker)[\\/]dist[\\/].*\.js$/;
 
 /** The one spelling those packages emit, through the comma before the options if there is one. */
 const URL_WORKER =

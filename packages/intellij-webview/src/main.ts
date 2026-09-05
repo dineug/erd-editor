@@ -5,6 +5,7 @@ import {
   setExportFileCallback,
   setGetShikiServiceCallback,
 } from '@dineug/erd-editor';
+import { createReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
 import {
   AnyAction,
   Bridge,
@@ -19,8 +20,7 @@ import {
   webviewReplicationCommand,
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
-} from '@dineug/erd-editor-vscode-bridge';
-import { createReplicationStoreWorker } from '@dineug/erd-editor-vscode-replication-store-worker';
+} from '@dineug/erd-editor-webview-bridge';
 import { encode } from 'base64-arraybuffer';
 
 const bridge = new Bridge();

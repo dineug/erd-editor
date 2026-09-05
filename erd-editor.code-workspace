@@ -21,12 +21,12 @@
       "path": "packages/vscode-webview",
     },
     {
-      "name": "vscode-bridge",
-      "path": "packages/vscode-bridge",
+      "name": "webview-bridge",
+      "path": "packages/webview-bridge",
     },
     {
-      "name": "vscode-replication-store-worker",
-      "path": "packages/vscode-replication-store-worker",
+      "name": "replication-store-worker",
+      "path": "packages/replication-store-worker",
     },
     {
       "name": "intellij-webview",

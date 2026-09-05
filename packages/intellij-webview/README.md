@@ -6,7 +6,7 @@
 
 The web bundle rendered inside the IntelliJ plugin's editor panel. It hosts the
 `<erd-editor>` element and talks to the JVM host through `window.cefQuery`, using the
-command protocol from `@dineug/erd-editor-vscode-bridge`.
+command protocol from `@dineug/erd-editor-webview-bridge`.
 
 This package is internal to the erd-editor monorepo and is never published to npm. It is
 a build artifact: no package in this repository imports it, and its only consumer is

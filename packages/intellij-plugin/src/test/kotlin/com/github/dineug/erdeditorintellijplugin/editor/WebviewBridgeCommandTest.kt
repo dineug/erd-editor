@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * Pins the wire format of the bridge. The `type` strings are a contract shared with
- * `erd-editor/packages/vscode-bridge`; changing one side alone makes commands silently ignored.
+ * `erd-editor/packages/webview-bridge`; changing one side alone makes commands silently ignored.
  */
 class WebviewBridgeCommandTest {
 

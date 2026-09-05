@@ -104,11 +104,11 @@ export default defineConfig({
             base: 'workspace',
           },
           {
-            pattern: 'packages/vscode-bridge/dist/**/*.d.ts',
+            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',
           },
           {
-            pattern: 'packages/vscode-replication-store-worker/dist/**/*.d.ts',
+            pattern: 'packages/replication-store-worker/dist/**/*.d.ts',
             base: 'workspace',
           },
           '!**/*.tsbuildinfo',

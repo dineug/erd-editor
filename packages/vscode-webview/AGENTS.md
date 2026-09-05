@@ -30,7 +30,7 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
   leaves one, and CI starts from a clean checkout.
 - **`base: './'` and the literal `{{extension-base-url}}` token are a contract.** `Editor#buildHtmlForWebview`
   (`packages/vscode-extension/src/editor.ts`) regex-replaces it; absolute asset paths render a blank panel.
-- **Dependency workers are inlined here, and only here.** The document sits on `vscode-webview://` while `asWebviewUri` serves files from `vscode-resource.vscode-cdn.net`, and a worker script is the one resource a browser refuses across origins, so the URL workers `@dineug/erd-editor`, `@dineug/erd-editor-shiki-worker` and `@dineug/erd-editor-vscode-replication-store-worker` ship would throw. `inlineDependencyWorkers` from `tools/vite/inline-worker.ts` rewrites their `dist/` at transform time into Vite's inline form; Vite spells a shared worker as a percent-encoded data URL, which for the Shiki worker passes 2 MiB and fails with an empty error event, so `base64InlineWorkers` re-encodes it and fails the build past the cap.
+- **Dependency workers are inlined here, and only here.** The document sits on `vscode-webview://` while `asWebviewUri` serves files from `vscode-resource.vscode-cdn.net`, and a worker script is the one resource a browser refuses across origins, so the URL workers `@dineug/erd-editor`, `@dineug/erd-editor-shiki-worker` and `@dineug/erd-editor-replication-store-worker` ship would throw. `inlineDependencyWorkers` from `tools/vite/inline-worker.ts` rewrites their `dist/` at transform time into Vite's inline form; Vite spells a shared worker as a percent-encoded data URL, which for the Shiki worker passes 2 MiB and fails with an empty error event, so `base64InlineWorkers` re-encodes it and fails the build past the cap.
 - **`crossorigin` must not reach the emitted HTML** — assets come via `asWebviewUri` from an origin sending
   no CORS headers, so such a script never loads; hence `strip-crossorigin` and `modulePreload: false`.
 - **`acquireVsCodeApi()` is called once, at module scope in `src/index.ts`**; a second call throws.
@@ -66,8 +66,8 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 
 ### Internal
 
-`@dineug/erd-editor` (the element), `@dineug/erd-editor-vscode-bridge` (command protocol),
-`@dineug/erd-editor-vscode-replication-store-worker` (a url worker this build inlines), `@dineug/erd-editor-shiki-worker` (lazy).
+`@dineug/erd-editor` (the element), `@dineug/erd-editor-webview-bridge` (command protocol),
+`@dineug/erd-editor-replication-store-worker` (a url worker this build inlines), `@dineug/erd-editor-shiki-worker` (lazy).
 
 ### External
 

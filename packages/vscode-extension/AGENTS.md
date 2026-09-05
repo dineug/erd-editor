@@ -8,7 +8,7 @@
 The published VSCode extension (`vuerd-vscode`, "ERD Editor", publisher `dineug`) — the Node-side host.
 It registers a `CustomEditorProvider` for `*.erd`, `*.erd.json`, `*.vuerd` and `*.vuerd.json`, owns the
 document bytes, serves the bundle built by `@dineug/erd-editor-vscode-webview`, and translates VSCode
-APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importing `vscode`, and
+APIs into `@dineug/erd-editor-webview-bridge` commands. The only package importing `vscode`, and
 `private: true` — publishing goes through `vsce` (`build:vsce` / `publish:vsce`).
 
 ## Key Files
@@ -63,7 +63,7 @@ APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importin
 
 ### Internal
 
-`@dineug/erd-editor-vscode-bridge` (command protocol), `@dineug/erd-editor-vscode-webview` (fills `public/`).
+`@dineug/erd-editor-webview-bridge` (command protocol), `@dineug/erd-editor-vscode-webview` (fills `public/`).
 
 ### External
 

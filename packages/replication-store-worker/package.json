@@ -1,5 +1,5 @@
 {
-  "name": "@dineug/erd-editor-vscode-replication-store-worker",
+  "name": "@dineug/erd-editor-replication-store-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
   "scripts": {},
   "dependencies": {
     "@dineug/erd-editor": "workspace:*",
-    "@dineug/erd-editor-vscode-bridge": "workspace:*"
+    "@dineug/erd-editor-webview-bridge": "workspace:*"
   },
   "devDependencies": {
     "@typescript/typescript6": "6.0.2",

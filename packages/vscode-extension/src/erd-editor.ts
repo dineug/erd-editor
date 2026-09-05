@@ -13,7 +13,7 @@ import {
   webviewReplicationCommand,
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
-} from '@dineug/erd-editor-vscode-bridge';
+} from '@dineug/erd-editor-webview-bridge';
 import { decode } from 'base64-arraybuffer';
 import * as os from 'os';
 import * as path from 'path';

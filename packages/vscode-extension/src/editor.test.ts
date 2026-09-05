@@ -1,4 +1,4 @@
-import { createCommand } from '@dineug/erd-editor-vscode-bridge';
+import { createCommand } from '@dineug/erd-editor-webview-bridge';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { Editor, widthEditor } from '@/editor';
