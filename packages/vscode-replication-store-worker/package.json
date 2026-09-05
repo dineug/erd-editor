@@ -15,10 +15,11 @@
   "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {},
-  "devDependencies": {
+  "dependencies": {
     "@dineug/erd-editor": "workspace:*",
-    "@dineug/erd-editor-vscode-bridge": "workspace:*",
-    "@dineug/shared": "workspace:*",
+    "@dineug/erd-editor-vscode-bridge": "workspace:*"
+  },
+  "devDependencies": {
     "@typescript/typescript6": "6.0.2",
     "typescript": "7.0.2",
     "vite": "catalog:",

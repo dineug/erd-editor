@@ -63,7 +63,7 @@ APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importin
 
 ### Internal
 
-`@dineug/erd-editor-vscode-bridge` (command protocol), `@dineug/erd-editor-vscode-webview` (fills `public/`), `@dineug/shared` (declared, currently unimported).
+`@dineug/erd-editor-vscode-bridge` (command protocol), `@dineug/erd-editor-vscode-webview` (fills `public/`).
 
 ### External
 

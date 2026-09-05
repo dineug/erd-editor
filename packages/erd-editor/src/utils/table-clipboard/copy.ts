@@ -1,10 +1,10 @@
 import { query } from '@dineug/erd-editor-schema';
-import { arrayHas } from '@dineug/shared';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { SelectType } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { Column, Memo, Settings, Table } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import {
   Cell,

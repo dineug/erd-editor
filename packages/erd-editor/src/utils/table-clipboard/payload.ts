@@ -1,14 +1,8 @@
-import {
-  arrayHas,
-  isArray,
-  isInteger,
-  isNumber,
-  isObject,
-  isString,
-  nanoid,
-} from '@dineug/shared';
+import { isNumber, isPlainObject, isString } from 'es-toolkit';
+import { nanoid } from 'nanoid';
 
 import { ValuesType } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 
 export const CLIPBOARD_MIME = 'application/x-erd-editor';
 
@@ -125,11 +119,11 @@ export function parsePayload(json: string): ParseResult {
     return { status: 'foreign' };
   }
 
-  if (!isObject<Record<string, any>>(raw)) return { status: 'foreign' };
+  if (!isPlainObject(raw)) return { status: 'foreign' };
   if (raw.format !== CLIPBOARD_FORMAT) return { status: 'foreign' };
 
   const version = isNumber(raw.version) ? raw.version : Number.NaN;
-  if (!isInteger(version)) return { status: 'unsupported', version };
+  if (!Number.isInteger(version)) return { status: 'unsupported', version };
   if (version > CLIPBOARD_VERSION) return { status: 'unsupported', version };
   if (!isSupportedStructure(raw)) return { status: 'unsupported', version };
 
@@ -143,9 +137,9 @@ function isSupportedStructure(raw: Record<string, any>): boolean {
   return (
     isString(raw.kind) &&
     hasPayloadKind(raw.kind) &&
-    isArray(raw.tables) &&
-    isArray(raw.columns) &&
-    isArray(raw.memos)
+    Array.isArray(raw.tables) &&
+    Array.isArray(raw.columns) &&
+    Array.isArray(raw.memos)
   );
 }
 

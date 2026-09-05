@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from '@dineug/shared';
+import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';

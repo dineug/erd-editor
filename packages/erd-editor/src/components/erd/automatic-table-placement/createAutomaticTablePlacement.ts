@@ -1,5 +1,4 @@
 import { query } from '@dineug/erd-editor-schema';
-import { createInRange } from '@dineug/shared';
 import {
   forceCollide,
   forceLink,
@@ -8,6 +7,7 @@ import {
   forceX,
   forceY,
 } from 'd3-force';
+import { clamp } from 'es-toolkit';
 
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
@@ -75,7 +75,7 @@ function createNodes(
   return [nodes, links];
 }
 
-const progressInRange = createInRange(0, 1);
+const progressInRange = (value: number) => clamp(value, 0, 1);
 
 /** The two readings of a simulation's heat that its progress is taken from. */
 type Cooling = {

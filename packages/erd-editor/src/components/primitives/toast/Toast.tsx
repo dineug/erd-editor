@@ -1,5 +1,5 @@
 import { DOMTemplateLiterals, FC } from '@dineug/r-html';
-import { createInRange } from '@dineug/shared';
+import { clamp } from 'es-toolkit';
 
 import * as styles from './Toast.styles';
 
@@ -23,7 +23,7 @@ const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 /** How much of the ring a busy toast shows while it turns. */
 const BUSY_ARC = 0.25;
 
-const progressInRange = createInRange(0, 1);
+const progressInRange = (value: number) => clamp(value, 0, 1);
 
 /** The ring with a fraction of it drawn, from the top and clockwise. */
 const ring = (fraction: number) => (

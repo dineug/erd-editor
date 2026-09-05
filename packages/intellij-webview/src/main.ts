@@ -20,6 +20,7 @@ import {
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-vscode-bridge';
+import { createReplicationStoreWorker } from '@dineug/erd-editor-vscode-replication-store-worker';
 import { encode } from 'base64-arraybuffer';
 
 const bridge = new Bridge();
@@ -29,13 +30,9 @@ const sharedStore = editor.getSharedStore({
   mouseTracker: false,
   focusTracker: false,
 });
-const replicationStoreWorker = new Worker(
-  new URL('./services/replicationStore.worker.ts', import.meta.url),
-  {
-    type: 'module',
-    name: '@dineug/erd-editor-intellij-webview/replication-store-worker',
-  }
-);
+const replicationStoreWorker = createReplicationStoreWorker({
+  name: '@dineug/erd-editor-intellij-webview/replication-store-worker',
+});
 
 const dispatch = (action: AnyAction) => {
   window.cefQuery({

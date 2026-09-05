@@ -1,9 +1,10 @@
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas, isNill } from '@dineug/shared';
+import { isNil } from 'es-toolkit';
 import { Observable } from 'rxjs';
 
 import { ReadonlyIgnoreActionTypes } from '@/engine/actions';
 import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 
 export const readonlyIgnoreFilter = (
@@ -13,7 +14,7 @@ export const readonlyIgnoreFilter = (
   const has = arrayHas<string>(ReadonlyIgnoreActionTypes);
   const predicate = (action: AnyAction): boolean => {
     return (
-      (!isNill(action.tags) && passTags.some(tag => bHas(action.tags!, tag))) ||
+      (!isNil(action.tags) && passTags.some(tag => bHas(action.tags!, tag))) ||
       !has(action.type)
     );
   };

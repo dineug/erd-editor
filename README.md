@@ -61,7 +61,7 @@ document.body.appendChild(editor);
 ```
 
 It is a custom element, so it works from any framework or from none. See
-[`packages/erd-editor`](./packages/erd-editor) for the element API, CDN usage and
+[`packages/erd-editor`](./packages/erd-editor) for the element API, installation and
 attributes.
 
 ## Real-time collaboration
@@ -134,7 +134,6 @@ highlighting). Everything else is internal.
 | [`schema-sql-parser`](./packages/schema-sql-parser) | Permissive DDL parser used for SQL import |
 | [`r-html`](./packages/r-html) | The tagged-template rendering framework the editor is built on |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | JSX → tagged templates, plus HMR boundaries |
-| [`shared`](./packages/shared) | Type guards and small helpers shared across the workspace |
 | [`app`](./packages/app) | The React PWA at erd-editor.io |
 | [`vscode-extension`](./packages/vscode-extension) | The published VS Code extension |
 | [`vscode-webview`](./packages/vscode-webview) | The bundle inside the VS Code webview |

@@ -5,14 +5,29 @@ import test from 'node:test';
 
 import { BROWSER_TARGET } from '../build-target.ts';
 import {
+  assertInlineWorkersEncoded,
+  assertNoUrlWorkers,
+  base64UrlLength,
+  MAX_URL_LENGTH,
+  readStringLiteral,
+  rewriteInlineWorkers,
+  rewriteUrlWorkers,
+} from './vite/inline-worker.ts';
+import {
+  createLibraryConfig,
+  createLibraryTasks,
+  createWorkerOptions,
+} from './vite/library-config.ts';
+import {
   createBanner,
   createExternal,
   loadLibraryMetadata,
 } from './vite/package-metadata.ts';
 import {
-  createLibraryConfig,
-  createLibraryTasks,
-} from './vite/library-config.ts';
+  assertWorkerUrlsRewritten,
+  relativeWorkerUrl,
+  rewriteWorkerUrls,
+} from './vite/worker-url.ts';
 
 const workspaceDir = join(import.meta.dirname, '..');
 const editorDir = join(workspaceDir, 'packages/erd-editor');
@@ -80,7 +95,6 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
       pattern: 'packages/schema-sql-parser/dist/**/*.d.ts',
       base: 'workspace',
     },
-    { pattern: 'packages/shared/dist/**/*.d.ts', base: 'workspace' },
     {
       pattern: 'packages/vite-plugin-r-html/dist/**/*.d.ts',
       base: 'workspace',
@@ -120,6 +134,34 @@ test('standard library factory preserves build policies', () => {
   assert.equal(external.test('stylis'), true);
   assert.equal(external.test('stylis/lib/serializer'), true);
   assert.deepEqual(config.server, { open: false });
+  assert.equal(config.worker, undefined);
+});
+
+test('a library that spawns a worker gets the shared worker build', () => {
+  const external = /^stylis(?:\/.+)*$/;
+  assert.deepEqual(createWorkerOptions(external), {
+    format: 'es',
+    rolldownOptions: {
+      external,
+      output: {
+        entryFileNames: 'workers/[name].js',
+        chunkFileNames: 'workers/[name]-[hash].js',
+      },
+    },
+  });
+  assert.deepEqual(createWorkerOptions(undefined).rolldownOptions, {
+    output: {
+      entryFileNames: 'workers/[name].js',
+      chunkFileNames: 'workers/[name]-[hash].js',
+    },
+  });
+
+  const config = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+    workers: true,
+  });
+  assert.equal(config.worker?.format, 'es');
+  assert.ok(config.worker?.rolldownOptions?.external instanceof RegExp);
 });
 
 test('build-only packages do not grow a test task', () => {
@@ -201,3 +243,161 @@ function assertRequiredTaskContracts(tasks: LibraryTasks) {
   assert.equal(tasks.build.command[0], 'tsc --noEmit');
   assert.deepEqual(tasks.build.output, ['dist/**']);
 }
+
+test('library worker urls become the one spelling every bundler resolves', () => {
+  const emitted = `let e = new SharedWorker(new URL(
+			/* @vite-ignore */
+			"/workers/schemaGC.shared-worker.js",
+			"" + import.meta.url
+		), { type: "module", name: n });`;
+
+  assert.equal(
+    rewriteWorkerUrls(emitted, 'index.js'),
+    `let e = new SharedWorker(new URL("./workers/schemaGC.shared-worker.js", import.meta.url), { type: "module", name: n });`
+  );
+  assert.equal(
+    relativeWorkerUrl('engine/index.js', '/workers/schemaGC.shared-worker.js'),
+    '../workers/schemaGC.shared-worker.js'
+  );
+  assert.equal(
+    relativeWorkerUrl('assets/iframe-abc.js', '/assets/worker-def.js'),
+    './worker-def.js'
+  );
+
+  const untouched = `new URL("./local.js", import.meta.url)`;
+  assert.equal(rewriteWorkerUrls(untouched, 'index.js'), untouched);
+});
+
+test('inline shared workers are re-encoded to base64 under the url cap', () => {
+  const chunk = `const jsContent = "self.onconnect = () => {};\\n";
+export default function WorkerWrapper(options) {
+  return new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsContent), { name: options?.name });
+}`;
+
+  const rewritten = rewriteInlineWorkers(chunk);
+  assert.ok(rewritten);
+  assert.match(rewritten, /new SharedWorker\(__toDataUrl\(jsContent\)/);
+  assert.match(rewritten, /function __toDataUrl\(source\)/);
+  assert.equal(
+    readStringLiteral(chunk, 'jsContent'),
+    'self.onconnect = () => {};\n'
+  );
+
+  const twice = `var jsContent = "a";
+var jsContent$1 = "b";
+new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsContent), o);
+new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsContent$1), o);`;
+  const both = rewriteInlineWorkers(twice);
+  assert.ok(both);
+  assert.equal((both.match(/__toDataUrl\(/g) ?? []).length, 3);
+  assert.doesNotMatch(both, /encodeURIComponent/);
+  assert.equal(
+    base64UrlLength('abcd'),
+    'data:text/javascript;base64,'.length + 8
+  );
+  assert.equal(rewriteInlineWorkers('new Worker(url)'), null);
+  assert.throws(
+    () =>
+      rewriteInlineWorkers(
+        `new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(missing))`
+      ),
+    /could not read/
+  );
+  assert.throws(
+    () =>
+      rewriteInlineWorkers(
+        `const big = "${'x'.repeat(MAX_URL_LENGTH)}";\nnew SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(big))`
+      ),
+    /over the/
+  );
+});
+
+test('an IDE webview turns dependency url workers into inline imports', () => {
+  const id = '/repo/packages/erd-editor/dist/index.js';
+  assert.ok(
+    rewriteUrlWorkers(
+      'new Worker(new URL("./workers/replicationStore.worker.js", import.meta.url), { type: "module" })',
+      '/repo/packages/vscode-replication-store-worker/dist/index.js'
+    )
+  );
+  const code = `let e = new SharedWorker(new URL("./workers/schemaGC.shared-worker.js", import.meta.url), { type: "module", name: n });
+let w = new Worker(new URL("./workers/other.js", import.meta.url), { type: "module" });`;
+
+  const rewritten = rewriteUrlWorkers(code, id);
+  assert.ok(rewritten);
+  assert.match(
+    rewritten,
+    /^import __inlineWorker0 from "\/repo\/packages\/erd-editor\/dist\/workers\/schemaGC\.shared-worker\.js\?sharedworker&inline";$/m
+  );
+  assert.match(
+    rewritten,
+    /^import __inlineWorker1 from "\/repo\/packages\/erd-editor\/dist\/workers\/other\.js\?worker&inline";$/m
+  );
+  assert.match(
+    rewritten,
+    /new __inlineWorker0\(\{ type: "module", name: n \}\)/
+  );
+  assert.match(rewritten, /new __inlineWorker1\(\{ type: "module" \}\)/);
+  assert.doesNotMatch(rewritten, /import\.meta\.url/);
+
+  assert.equal(
+    rewriteUrlWorkers(code, '/repo/packages/app/src/index.ts'),
+    null
+  );
+  assert.equal(rewriteUrlWorkers('const x = 1;', id), null);
+
+  assert.match(
+    rewriteUrlWorkers(
+      'new Worker(new URL("./workers/bare.js", import.meta.url))',
+      id
+    ) ?? '',
+    /new __inlineWorker0\(\)/
+  );
+  assert.match(
+    rewriteUrlWorkers(
+      `new SharedWorker(new URL("./workers/x.js", import.meta.url), {
+\t\t\ttype: "module",
+\t\t\tname: n
+\t\t})`,
+      id
+    ) ?? '',
+    /new __inlineWorker0\(\{\n\t\t\ttype: "module",/
+  );
+});
+
+test('the rewrite plugins fail a build where their shape stopped matching', () => {
+  assert.throws(
+    () =>
+      assertWorkerUrlsRewritten(
+        'index.js',
+        'new URL(/* @vite-ignore */ "/workers/x.js", "" + import.meta.url)'
+      ),
+    /survived the rewrite/
+  );
+  assert.doesNotThrow(() =>
+    assertWorkerUrlsRewritten(
+      'index.js',
+      'new URL("./workers/x.js", import.meta.url)'
+    )
+  );
+  assert.throws(
+    () =>
+      assertInlineWorkersEncoded(
+        'bundle.js',
+        'new SharedWorker(`data:text/javascript;charset=utf-8,${encodeURIComponent(x)}`)'
+      ),
+    /percent-encoded/
+  );
+  assert.doesNotThrow(() =>
+    assertInlineWorkersEncoded('bundle.js', '"data:text/javascript;base64,"')
+  );
+  assert.throws(
+    () =>
+      assertNoUrlWorkers(
+        'bundle.js',
+        'new SharedWorker(new URL("/static/js/w.js", import.meta.url))'
+      ),
+    /survived into a host/
+  );
+  assert.doesNotThrow(() => assertNoUrlWorkers('bundle.js', 'new W(o)'));
+});

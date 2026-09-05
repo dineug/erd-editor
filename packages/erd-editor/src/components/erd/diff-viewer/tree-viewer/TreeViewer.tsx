@@ -1,6 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
 import { FC } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 
 import { AppContext } from '@/components/appContext';
 import {
@@ -12,6 +11,7 @@ import Icon from '@/components/primitives/icon/Icon';
 import { START_X, START_Y } from '@/constants/layout';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
 import { orderByNameASC } from '@/utils/schema-sql/utils';

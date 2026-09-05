@@ -1,7 +1,8 @@
-import { arrayHas, nanoid } from '@dineug/shared';
+import { nanoid } from 'nanoid';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { Point, ValuesType } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 import { Rect } from '@/utils/dragSelect';
 
 export type Editor = {

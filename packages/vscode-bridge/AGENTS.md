@@ -64,7 +64,7 @@ listeners. It carries no transport and is `private: true`, which is why the Inte
 
 ### Internal
 
-- `@dineug/shared` (peer) — `isObject`, `isString`, `safeCallback`
+- `es-toolkit` `^1.50.0` — `isPlainObject` and `isString` on every inbound message, a `dependencies` entry the build leaves external; `safeCallback` is local (`src/safeCallback.ts`)
 
 ### External
 

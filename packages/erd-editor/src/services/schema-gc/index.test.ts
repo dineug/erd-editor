@@ -1,23 +1,41 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
 
 const mocks = vi.hoisted(() => ({
   sharedWorker: vi.fn<(options: any) => any>(),
   wrap: vi.fn<(target: any) => any>(),
+  remoteRun: vi.fn<(source: string) => Promise<any>>(),
 }));
 
-vi.mock('./schemaGC.shared-worker?sharedworker&inline', () => ({
-  default: class SharedWorkerMock {
-    port: any;
-    constructor(options: any) {
-      this.port = mocks.sharedWorker(options);
-    }
-  },
-}));
+/** The last worker the code under test built, so a spec can fail it from outside. */
+let lastWorker: SharedWorkerMock | null = null;
+
+const remember = (worker: SharedWorkerMock) => {
+  lastWorker = worker;
+};
+
+/** Stands in for the host's SharedWorker; the url is Vite's business, not this spec's. */
+class SharedWorkerMock {
+  port: any;
+  onerror: null | (() => void) = null;
+  constructor(_url: URL | string, options: any) {
+    this.port = mocks.sharedWorker(options);
+    remember(this);
+  }
+}
+
+const port = () => ({ id: 'port', close: vi.fn() });
 
 vi.mock('comlink', async importOriginal => {
   const actual = await importOriginal<typeof import('comlink')>();
@@ -34,27 +52,76 @@ const throws = (message: string) => () => {
 };
 
 beforeEach(() => {
+  Reflect.set(globalThis, 'SharedWorker', SharedWorkerMock);
+  lastWorker = null;
   mocks.sharedWorker.mockReset();
   mocks.wrap.mockReset();
-  mocks.wrap.mockImplementation(target => ({ remoteOf: target }));
+  mocks.remoteRun.mockReset().mockResolvedValue({ from: 'worker' });
+  mocks.wrap.mockImplementation(() => ({ run: mocks.remoteRun }));
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('getSchemaGCService', () => {
-  it('wraps the shared worker port when a SharedWorker can be created', async () => {
-    const port = { id: 'port' };
-    mocks.sharedWorker.mockReturnValue(port);
+  it('runs a collection through the shared worker port when one can be created', async () => {
+    const workerPort = port();
+    mocks.sharedWorker.mockReturnValue(workerPort);
 
     const { getSchemaGCService } = await importFresh();
     const service = getSchemaGCService();
+    const result = await service!.run('{"version":"3.0.0"}');
 
     expect(mocks.sharedWorker).toHaveBeenCalledTimes(1);
-    expect(mocks.wrap).toHaveBeenCalledWith(port);
-    expect(service).toEqual({ remoteOf: port });
+    expect(mocks.wrap).toHaveBeenCalledWith(workerPort);
+    expect(mocks.remoteRun).toHaveBeenCalledWith('{"version":"3.0.0"}');
+    expect(result).toEqual({ from: 'worker' });
+  });
+
+  it('collects in-process once the worker errors after construction', async () => {
+    const workerPort = port();
+    mocks.sharedWorker.mockReturnValue(workerPort);
+    mocks.remoteRun.mockReturnValue(new Promise(() => {}));
+
+    const { getSchemaGCService } = await importFresh();
+    const service = getSchemaGCService();
+    const pending = service!.run(JSON.stringify({ version: '3.0.0' }));
+    lastWorker!.onerror!();
+    const result = await pending;
+
+    const { SchemaGCService: FreshSchemaGCService } =
+      await import('@/services/schema-gc/schemaGCService');
+    expect(result.tableIds).toEqual([]);
+    expect(workerPort.close).toHaveBeenCalledTimes(1);
+    expect(getSchemaGCService()).toBeInstanceOf(FreshSchemaGCService);
+    expect(console.warn).toHaveBeenCalledWith(
+      '[schema-gc] the shared worker gave way, collecting in-process',
+      expect.any(Error)
+    );
+  });
+
+  it('gives the worker up when a collection goes unanswered', async () => {
+    vi.useFakeTimers();
+    mocks.sharedWorker.mockReturnValue(port());
+    mocks.remoteRun.mockReturnValue(new Promise(() => {}));
+
+    const { getSchemaGCService } = await importFresh();
+    const pending = getSchemaGCService()!.run(
+      JSON.stringify({ version: '3.0.0' })
+    );
+    await vi.advanceTimersByTimeAsync(10_000);
+    const result = await pending;
+
+    const { SchemaGCService: FreshSchemaGCService } =
+      await import('@/services/schema-gc/schemaGCService');
+    expect(result.memoIds).toEqual([]);
+    expect(getSchemaGCService()).toBeInstanceOf(FreshSchemaGCService);
   });
 
   it('names the shared worker with the app version', async () => {
-    mocks.sharedWorker.mockReturnValue({});
+    mocks.sharedWorker.mockReturnValue(port());
 
     const { getSchemaGCService } = await importFresh();
     getSchemaGCService();
@@ -109,7 +176,7 @@ describe('getSchemaGCService', () => {
   });
 
   it('memoizes the remote service across calls', async () => {
-    mocks.sharedWorker.mockReturnValue({ id: 'port' });
+    mocks.sharedWorker.mockReturnValue(port());
 
     const { getSchemaGCService } = await importFresh();
     const first = getSchemaGCService();
@@ -169,7 +236,7 @@ describe('the worker ladder is two rungs everywhere', () => {
     expect(importers).toEqual([]);
   });
 
-  it('reaches its own worker only through the shared worker spelling', () => {
+  it('reaches its own worker only as a url beside the module', () => {
     const source = readFileSync(
       join(SOURCE_ROOT, 'services', 'schema-gc', 'index.ts'),
       'utf8'
@@ -178,9 +245,9 @@ describe('the worker ladder is two rungs everywhere', () => {
       ([, specifier]) => specifier
     );
 
-    expect(specifiers).toContain(
-      './schemaGC.shared-worker?sharedworker&inline'
+    expect(source).toContain(
+      "new URL('./schemaGC.shared-worker.ts', import.meta.url)"
     );
-    expect(specifiers.filter(one => one.includes('worker'))).toHaveLength(1);
+    expect(specifiers.filter(one => one.includes('worker'))).toEqual([]);
   });
 });

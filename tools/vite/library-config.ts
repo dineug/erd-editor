@@ -15,6 +15,7 @@ import {
   createExternal,
   loadLibraryMetadata,
 } from './package-metadata.ts';
+import { libraryWorkerUrls } from './worker-url.ts';
 
 export interface DtsPluginOptions {
   tsconfigPath?: string;
@@ -27,6 +28,27 @@ interface LibraryConfigOptions {
   format?: 'es' | 'cjs';
   minify?: false;
   server?: ViteUserConfig['server'];
+  workers?: true;
+}
+
+/**
+ * The worker half of a library build: an es module per worker under an
+ * unhashed workers/ name, external where the page is, so a consumer's bundler
+ * builds it as an entry of its own and a host that must inline it can name it.
+ */
+export function createWorkerOptions(
+  external?: RegExp
+): NonNullable<ViteUserConfig['worker']> {
+  return {
+    format: 'es',
+    rolldownOptions: {
+      ...(external ? { external } : {}),
+      output: {
+        entryFileNames: 'workers/[name].js',
+        chunkFileNames: 'workers/[name]-[hash].js',
+      },
+    },
+  };
 }
 
 const dependsOn: Array<{
@@ -102,8 +124,12 @@ export function createLibraryConfig(
         '@': join(packageDir, 'src'),
       },
     },
-    plugins: lazyPlugins(() => [options.dts(dtsOptions)]),
+    plugins: lazyPlugins(() => [
+      options.dts(dtsOptions),
+      ...(options.workers ? [libraryWorkerUrls()] : []),
+    ]),
     ...(options.server ? { server: options.server } : {}),
+    ...(options.workers ? { worker: createWorkerOptions(external) } : {}),
   };
 }
 

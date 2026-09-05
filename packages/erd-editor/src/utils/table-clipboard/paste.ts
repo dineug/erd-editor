@@ -1,8 +1,7 @@
-import { arrayHas } from '@dineug/shared';
-
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   Cell,

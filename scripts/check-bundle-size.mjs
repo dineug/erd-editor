@@ -11,8 +11,12 @@ const root = path.resolve(import.meta.dirname, '..');
 const packageDir = path.join(root, 'packages', 'erd-editor');
 const baselinePath = path.join(packageDir, '.size-baseline.json');
 
-/** Gated artifacts, relative to the erd-editor package directory. */
-const ENTRIES = ['dist/erd-editor.js'];
+/**
+ * Gated artifacts, relative to the erd-editor package directory. The build
+ * emits two entries, the chunk they share and a file per worker, so a glob
+ * reads every script in path order and compresses the concatenation as one.
+ */
+const ENTRIES = ['dist/**/*.js'];
 
 /**
  * Compression level every recorded number is measured at. It is stored in the
@@ -99,14 +103,43 @@ function parseBudget(value) {
   return bytes;
 }
 
-function measure(entry) {
-  const file = path.join(packageDir, entry);
-  if (!fs.existsSync(file)) {
+const MISSING_OUTPUT =
+  'Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build';
+
+function scriptsUnder(directory, found = []) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const pathname = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      scriptsUnder(pathname, found);
+    } else if (entry.name.endsWith('.js')) {
+      found.push(pathname);
+    }
+  }
+  return found;
+}
+
+/** The files one entry names: a single path, or every script below a glob's root. */
+function filesOf(entry) {
+  const globbed = entry.match(/^(.*)\/\*\*\/\*\.js$/);
+  const target = path.join(packageDir, globbed ? globbed[1] : entry);
+  if (!fs.existsSync(target)) {
     throw new Error(
-      `Missing build output: ${path.relative(root, file)}. Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build`
+      `Missing build output: ${path.relative(root, target)}. ${MISSING_OUTPUT}`
     );
   }
-  const source = fs.readFileSync(file);
+  if (!globbed) return [target];
+
+  const files = scriptsUnder(target).sort();
+  if (!files.length) {
+    throw new Error(
+      `No script under ${path.relative(root, target)}. ${MISSING_OUTPUT}`
+    );
+  }
+  return files;
+}
+
+function measure(entry) {
+  const source = Buffer.concat(filesOf(entry).map(file => fs.readFileSync(file)));
   return {
     bytes: source.byteLength,
     gzip: gzipSync(source, { level: GZIP_LEVEL }).byteLength,

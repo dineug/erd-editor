@@ -1,4 +1,6 @@
-import { isObject, isString, safeCallback } from '@dineug/shared';
+import { isPlainObject, isString } from 'es-toolkit';
+
+import { safeCallback } from '@/safeCallback';
 
 export type Command<P> = {
   type: string;
@@ -64,5 +66,5 @@ export class Bridge {
 }
 
 function isAction(action: AnyAction) {
-  return isObject(action) && isString(action.type);
+  return isPlainObject(action) && isString(action.type);
 }

@@ -1,5 +1,4 @@
 import { AnyAction } from '@dineug/r-html';
-import { safeCallback } from '@dineug/shared';
 import { cloneDeep } from 'es-toolkit';
 
 import { History } from '@/engine/history';
@@ -22,6 +21,7 @@ import {
 import { tableColumnPushUndoHistoryMap } from '@/engine/modules/table-column/history';
 import { RootState } from '@/engine/state';
 import { Store } from '@/engine/store';
+import { safeCallback } from '@/utils/safeCallback';
 
 export type PushUndoHistory = (
   undoActions: AnyAction[],

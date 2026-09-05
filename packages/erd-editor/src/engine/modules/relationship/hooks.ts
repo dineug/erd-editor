@@ -1,5 +1,4 @@
 import { query } from '@dineug/erd-editor-schema';
-import { arrayHas } from '@dineug/shared';
 import { tap, throttleTime } from 'rxjs';
 
 import { ColumnOption, StartRelationshipType } from '@/constants/schema';
@@ -36,6 +35,7 @@ import {
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { invalidateTableWidths } from '@/utils/calcTable';
 import { relationshipSort } from '@/utils/draw-relationship/sort';

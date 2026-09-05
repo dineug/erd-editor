@@ -1,6 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
 import { FC, observable, onBeforeMount, watch } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 
 import { useAppContext } from '@/components/appContext';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
@@ -8,6 +7,7 @@ import { useContextMenuRootProvider } from '@/components/primitives/context-menu
 import Toast from '@/components/primitives/toast/Toast';
 import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-menu/SchemaSQLContextMenu';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { arrayHas } from '@/utils/arrayHas';
 import { copyToClipboard } from '@/utils/clipboard';
 import { openToastAction } from '@/utils/emitter';
 import { delay } from '@/utils/promise';

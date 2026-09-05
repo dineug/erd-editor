@@ -17,11 +17,10 @@
     "test:dev": "vp test dev",
     "test:coverage": "vp test run --coverage"
   },
-  "peerDependencies": {
-    "@dineug/shared": "*"
+  "dependencies": {
+    "es-toolkit": "^1.50.0"
   },
   "devDependencies": {
-    "@dineug/shared": "workspace:*",
     "@typescript/typescript6": "6.0.2",
     "@vitest/coverage-v8": "catalog:",
     "typescript": "7.0.2",

@@ -1,4 +1,4 @@
-import { arrayHas } from '@dineug/shared';
+import { arrayHas } from '@/utils/arrayHas';
 
 export function addAndSort(ids: string[], seqIds: string[], id: string) {
   const hasSeqId = arrayHas(seqIds);

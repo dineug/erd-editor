@@ -1,5 +1,6 @@
 type Callback = (...args: any[]) => any;
 
+/** Calls an optional callback and keeps its exception on the console rather than in the caller. */
 export function safeCallback<F extends Callback>(
   callback?: F | void,
   ...args: Parameters<F>
@@ -10,9 +11,3 @@ export function safeCallback<F extends Callback>(
     console.error(e);
   }
 }
-
-const queueMicrotaskFallback = (callback: () => void) => {
-  Promise.resolve().then(callback);
-};
-
-export const asap = queueMicrotask ?? queueMicrotaskFallback;

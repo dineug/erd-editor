@@ -1,5 +1,5 @@
 import { createRef, FC, ref } from '@dineug/r-html';
-import { createInRange } from '@dineug/shared';
+import { clamp } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
 import { drag$, DragMove } from '@/utils/globalEventObservable';
@@ -22,7 +22,7 @@ const Slider: FC<SliderProps> = (props, ctx) => {
     const x = clientX - rect.x;
     const ratioValue = round(x / rect.width, 2);
     const max = props.max - props.min;
-    const inRange = createInRange(props.min, props.max);
+    const inRange = (value: number) => clamp(value, props.min, props.max);
     return inRange(round(max * ratioValue) + props.min);
   };
 

@@ -1,4 +1,4 @@
-import { isArray, isBoolean, isNill, isNumber, isString } from '@dineug/shared';
+import { isBoolean, isNil, isNumber, isString } from 'es-toolkit';
 
 import { assign, validString } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -74,9 +74,9 @@ export function createAndMergeTableEntity(
   json?: DeepPartial<TableEntity>
 ): TableEntity {
   const entity = createTableEntity();
-  if (isNill(json)) return entity;
+  if (isNil(json)) return entity;
 
-  if (isArray(json.tables)) {
+  if (Array.isArray(json.tables)) {
     for (const table of json.tables) {
       const targetTable = createTable();
       const assignString = assign(isString, targetTable, table);
@@ -98,7 +98,7 @@ export function createAndMergeTableEntity(
       uiAssignNumber('widthName');
       uiAssignNumber('widthComment');
 
-      if (isArray(table.columns)) {
+      if (Array.isArray(table.columns)) {
         for (const column of table.columns) {
           const targetColumn = createColumn();
           const assignString = assign(isString, targetColumn, column);
@@ -138,7 +138,7 @@ export function createAndMergeTableEntity(
     }
   }
 
-  if (isArray(json.indexes)) {
+  if (Array.isArray(json.indexes)) {
     for (const index of json.indexes) {
       const targetIndex = createIndex();
       const assignString = assign(isString, targetIndex, index);
@@ -149,7 +149,7 @@ export function createAndMergeTableEntity(
       assignString('tableId');
       assignBoolean('unique');
 
-      if (isArray(index.columns)) {
+      if (Array.isArray(index.columns)) {
         for (const column of index.columns) {
           const targetColumn = createIndexColumn();
 

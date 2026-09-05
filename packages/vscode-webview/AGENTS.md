@@ -15,7 +15,7 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `src/index.ts`   | The entire client — element creation, both `Bridge` instances, worker spawn, theme/readonly/import-export handling      |
 | `index.html`     | Entry, at the package root; carries the `{{extension-base-url}}` base tag and the `#loading` placeholder                |
-| `vite.config.ts` | `run.tasks.build`, `base: './'`, `publicDir: false`, the out-of-package `outDir`, `bundle.[hash:8]` names, local `strip-crossorigin` plugin |
+| `vite.config.ts` | `run.tasks.build`, `base: './'`, `publicDir: false`, the out-of-package `outDir`, `bundle.[hash:8]` names, and three plugins: `inlineDependencyWorkers` and `base64InlineWorkers` from `tools/vite/inline-worker.ts` (the first turns the `new SharedWorker(new URL(…, import.meta.url))` the editor packages ship into `?sharedworker&inline` imports, the second re-encodes those data URLs under Chromium's 2 MiB cap), and local `strip-crossorigin` |
 | `src/env.d.ts`   | `@types/vscode-webview` (for `acquireVsCodeApi`) and `vite/client` — the only thing declaring `*.css` imports           |
 | `src/webview.css` | Webview loading and editor-host styles imported before the element is appended |
 
@@ -25,8 +25,12 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 
 - **Output lands in the gitignored `packages/vscode-extension/public`** that `vsce` ships in the VSIX.
   `emptyOutDir: true` and the matching task `output` are both explicit — drop either and stale bundles ship.
+  A cache replay restores the bundle without emptying the directory first, so a tree that has seen
+  several builds can hold two generations; `pnpm cache:clear` and a rebuild before packaging locally
+  leaves one, and CI starts from a clean checkout.
 - **`base: './'` and the literal `{{extension-base-url}}` token are a contract.** `Editor#buildHtmlForWebview`
   (`packages/vscode-extension/src/editor.ts`) regex-replaces it; absolute asset paths render a blank panel.
+- **Dependency workers are inlined here, and only here.** The document sits on `vscode-webview://` while `asWebviewUri` serves files from `vscode-resource.vscode-cdn.net`, and a worker script is the one resource a browser refuses across origins, so the URL workers `@dineug/erd-editor`, `@dineug/erd-editor-shiki-worker` and `@dineug/erd-editor-vscode-replication-store-worker` ship would throw. `inlineDependencyWorkers` from `tools/vite/inline-worker.ts` rewrites their `dist/` at transform time into Vite's inline form; Vite spells a shared worker as a percent-encoded data URL, which for the Shiki worker passes 2 MiB and fails with an empty error event, so `base64InlineWorkers` re-encodes it and fails the build past the cap.
 - **`crossorigin` must not reach the emitted HTML** — assets come via `asWebviewUri` from an origin sending
   no CORS headers, so such a script never loads; hence `strip-crossorigin` and `modulePreload: false`.
 - **`acquireVsCodeApi()` is called once, at module scope in `src/index.ts`**; a second call throws.
@@ -63,7 +67,7 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 ### Internal
 
 `@dineug/erd-editor` (the element), `@dineug/erd-editor-vscode-bridge` (command protocol),
-`@dineug/erd-editor-vscode-replication-store-worker` (pre-inlined `?worker&inline`), `@dineug/erd-editor-shiki-worker` (lazy), `@dineug/shared` (declared, unimported).
+`@dineug/erd-editor-vscode-replication-store-worker` (a url worker this build inlines), `@dineug/erd-editor-shiki-worker` (lazy).
 
 ### External
 

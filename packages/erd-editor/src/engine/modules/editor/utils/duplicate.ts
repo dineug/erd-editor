@@ -1,5 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
-import { nanoid } from '@dineug/shared';
+import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import {

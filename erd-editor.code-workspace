@@ -45,10 +45,6 @@
       "path": "packages/schema-sql-parser",
     },
     {
-      "name": "shared",
-      "path": "packages/shared",
-    },
-    {
       "name": "r-html",
       "path": "packages/r-html",
     },

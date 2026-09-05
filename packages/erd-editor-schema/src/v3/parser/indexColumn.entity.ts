@@ -1,4 +1,4 @@
-import { isNill, isObject, isString } from '@dineug/shared';
+import { isNil, isPlainObject, isString } from 'es-toolkit';
 
 import {
   assign,
@@ -25,7 +25,7 @@ export function createAndMergeIndexColumnEntities(
   json?: DeepPartial<Record<string, IndexColumn>>
 ): Record<string, IndexColumn> {
   const entities: Record<string, IndexColumn> = {};
-  if (!isObject(json) || isNill(json)) return entities;
+  if (!isPlainObject(json) || isNil(json)) return entities;
 
   for (const value of Object.values(json)) {
     if (!value) continue;

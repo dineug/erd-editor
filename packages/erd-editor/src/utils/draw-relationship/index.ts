@@ -1,7 +1,6 @@
-import { arrayHas } from '@dineug/shared';
-
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { Point, Relationship, ValuesType } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 
 export const DirectionName = {
   left: 'left',

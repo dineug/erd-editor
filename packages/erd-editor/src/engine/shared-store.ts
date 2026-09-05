@@ -1,5 +1,4 @@
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas, isArray } from '@dineug/shared';
 import { isEmpty } from 'es-toolkit/compat';
 import { map, merge, Observable, Subject, Subscription } from 'rxjs';
 
@@ -20,6 +19,7 @@ import {
 import { RxStore } from '@/engine/rx-store';
 import { attachActionsTag, attachActionTag, Tag } from '@/engine/tag';
 import { Unsubscribe } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 
 export type SharedStore = {
   connection: () => void;
@@ -99,7 +99,7 @@ export function createSharedStore(
   };
 
   const toMergeLWWAction = (actions: Array<AnyAction> | AnyAction) => {
-    const safeActions = isArray(actions) ? actions : [actions];
+    const safeActions = Array.isArray(actions) ? actions : [actions];
     const isGetLWWAction = safeActions.some(
       action => action.type === getLWWAction.type
     );

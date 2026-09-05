@@ -1,8 +1,8 @@
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import { Observable } from 'rxjs';
 
 import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
+import { arrayHas } from '@/utils/arrayHas';
 
 export const actionsFilter = (
   actionTypes: Array<string> | ReadonlyArray<string>

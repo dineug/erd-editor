@@ -1,7 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { observable, onMounted, Ref, watch } from '@dineug/r-html';
-import { arrayHas, isArray, isString } from '@dineug/shared';
-import { cloneDeep, omit } from 'es-toolkit';
+import { cloneDeep, isString, omit } from 'es-toolkit';
 import { get, isEmpty } from 'es-toolkit/compat';
 
 import { AppContext, appDestroy } from '@/components/appContext';
@@ -39,6 +38,7 @@ import {
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { Theme, ThemeTokens } from '@/themes/tokens';
+import { arrayHas } from '@/utils/arrayHas';
 import {
   mouseTrackerEndAction,
   mouseTrackerStartAction,
@@ -303,7 +303,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   ctx.setKeyBindingMap = newKeyBindingMap => {
     ExternalKeyBindingNameList.forEach(key => {
       const value = get(newKeyBindingMap, key);
-      isArray(value) && Reflect.set(keyBindingMap, key, value);
+      Array.isArray(value) && Reflect.set(keyBindingMap, key, value);
     });
   };
 

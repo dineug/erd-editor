@@ -1,4 +1,4 @@
-import { isArray, isNill, isObject } from '@dineug/shared';
+import { isNil, isPlainObject } from 'es-toolkit';
 
 import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -13,9 +13,9 @@ const createDoc = (): Doc => ({
 
 export function createAndMergeDoc(json?: DeepPartial<Doc>): Doc {
   const doc = createDoc();
-  if (!isObject(json) || isNill(json)) return doc;
+  if (!isPlainObject(json) || isNil(json)) return doc;
 
-  const assignArray = assign(isArray, doc, json);
+  const assignArray = assign(Array.isArray, doc, json);
 
   assignArray('tableIds');
   assignArray('relationshipIds');

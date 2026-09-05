@@ -1,9 +1,9 @@
 import { query } from '@dineug/erd-editor-schema';
-import { arrayHas } from '@dineug/shared';
 
 import { Direction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Point, Relationship, Table } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 import {
   ANCHOR_EDGE_INSET,
   ANCHOR_MAX_PITCH,

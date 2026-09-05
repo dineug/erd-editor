@@ -1,7 +1,8 @@
-import { isObject, safeCallback } from '@dineug/shared';
+import { isPlainObject } from 'es-toolkit';
 
 import { AnyAction, ReducerRecord, ValuesType } from '@/internal-types';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
+import { safeCallback } from '@/utils/safeCallback';
 
 const BridgeActionType = {
   replicationSchemaEntity: 'replicationSchemaEntity',
@@ -65,7 +66,7 @@ export class Emitter<M extends BridgeActionMap> {
   }
 
   emit(action: AnyAction) {
-    if (!isObject(action)) return;
+    if (!isPlainObject(action)) return;
     this.#observers.forEach(reducers => {
       const reducer = Reflect.get(reducers, action.type);
       safeCallback(reducer, action);

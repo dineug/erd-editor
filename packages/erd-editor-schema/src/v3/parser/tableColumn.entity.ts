@@ -1,4 +1,4 @@
-import { isNill, isNumber, isObject, isString } from '@dineug/shared';
+import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 
 import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -26,7 +26,7 @@ export function createAndMergeTableColumnEntities(
   json?: DeepPartial<Record<string, Column>>
 ): Record<string, Column> {
   const entities: Record<string, Column> = {};
-  if (!isObject(json) || isNill(json)) return entities;
+  if (!isPlainObject(json) || isNil(json)) return entities;
 
   for (const value of Object.values(json)) {
     if (!value) continue;

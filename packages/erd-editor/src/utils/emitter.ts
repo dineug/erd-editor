@@ -4,10 +4,10 @@ import {
   createAction,
   DOMTemplateLiterals,
 } from '@dineug/r-html';
-import { safeCallback } from '@dineug/shared';
 
 import { ValuesType } from '@/internal-types';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
+import { safeCallback } from '@/utils/safeCallback';
 
 const InternalActionType = {
   openColorPicker: 'openColorPicker',

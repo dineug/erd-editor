@@ -1,4 +1,4 @@
-import { nanoid } from '@dineug/shared';
+import { nanoid } from 'nanoid';
 
 import { exportKey, generateKey } from '@/utils/crypto';
 

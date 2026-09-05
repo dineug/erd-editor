@@ -50,7 +50,6 @@
   "devDependencies": {
     "@dineug/erd-editor-vscode-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
-    "@dineug/shared": "workspace:*",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.0",
     "@types/vscode": "^1.90.0",

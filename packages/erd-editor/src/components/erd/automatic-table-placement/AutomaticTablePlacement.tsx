@@ -8,7 +8,7 @@ import {
   useProvider,
   watch,
 } from '@dineug/r-html';
-import { createInRange } from '@dineug/shared';
+import { clamp } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
 import {
@@ -116,7 +116,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     }
   );
 
-  const zoomInRange = createInRange(CANVAS_ZOOM_MIN, 0.7);
+  const zoomInRange = (value: number) => clamp(value, CANVAS_ZOOM_MIN, 0.7);
   const zoomLevelInRange = (zoom: number) => round(zoomInRange(zoom), 2);
 
   store.dispatchSync(

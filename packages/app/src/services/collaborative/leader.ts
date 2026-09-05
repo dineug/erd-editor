@@ -1,4 +1,4 @@
-import { safeCallback } from '@dineug/shared';
+import { safeCallback } from '@/utils/safeCallback';
 
 const LOCK_NAME = '@dineug/erd-editor-app/collaborative-leader';
 

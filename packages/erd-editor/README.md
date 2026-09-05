@@ -32,6 +32,13 @@ and the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
 npm install @dineug/erd-editor
 ```
 
+The package ships ES modules with its dependencies left as bare imports, so any bundler
+(Vite, webpack, Rspack, esbuild, …) resolves, dedupes and tree-shakes them like the rest of
+your app. Two features run in shared workers — schema garbage collection and the PNG export —
+constructed as `new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers
+emit as worker files beside your chunks; a strict CSP needs `worker-src 'self'`. The package is
+not a self-contained script, so it cannot be loaded from a CDN or a plain `<script>` tag.
+
 ## Usage
 
 ```js
@@ -62,6 +69,21 @@ useEffect(() => {
 }, []);
 ```
 
+### Vite
+
+In development Vite pre-bundles dependencies into its cache directory, and the worker files
+would then be looked up there rather than beside the package. Exclude the editor packages from
+that step; a production build needs nothing.
+
+```js
+// vite.config.js
+export default {
+  optimizeDeps: {
+    exclude: ['@dineug/erd-editor', '@dineug/erd-editor-shiki-worker'],
+  },
+};
+```
+
 ### HTML
 
 ```html
@@ -79,15 +101,6 @@ erd-editor {
   width: 100%;
   height: 100vh;
 }
-```
-
-### CDN
-
-```html
-<erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
-<script type="module">
-  import 'https://esm.run/@dineug/erd-editor';
-</script>
 ```
 
 ## API

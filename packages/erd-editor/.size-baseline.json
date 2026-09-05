@@ -1,13 +1,13 @@
 {
-  "baseCommit": "3a524e6eb5b2e9edb686792744ef3a71ac65fbc6",
-  "recordedAt": "2026-08-30T18:01:45.249Z",
+  "baseCommit": "5ed8bd72eb457a83a7c17fe37ebb36cade213b14",
+  "recordedAt": "2026-09-05T14:53:37.282Z",
   "gzipLevel": 9,
   "entries": {
-    "dist/erd-editor.js": {
-      "bytes": 1079085,
-      "gzip": 252529,
-      "budgetGzip": 488000,
-      "budgetNote": "475,956 B measured with the png export moved into an inline SharedWorker, plus a 12,044 B (2.53%) margin. The margin is 4.3x the largest ordinary step measured in this migration (one more konva submodule, konva/lib/Tween at +2,772 B gz) and under half the smallest thing the gate now exists to catch: a second inline worker copy, measured at 26,726 B gz this round when the schema-gc dedicated Worker rung came out. So a third worker rung, or an inline worker added anywhere else, fails the round it lands while routine work does not."
+    "dist/**/*.js": {
+      "bytes": 1143687,
+      "gzip": 276970,
+      "budgetGzip": 289250,
+      "budgetNote": "276,970 B measured at the first build with every runtime dependency external and both SharedWorkers emitted as files under dist/workers/ rather than inlined: dist/index.js, the chunk it shares with dist/engine/index.js, that entry and the two worker files, concatenated. The export worker still carries its own copy of the scene, since a worker shares no module instance with the page. Plus a 12,280 B margin, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a second scene copy fails the round it lands in, while routine work and a small dependency do not."
     }
   }
 }

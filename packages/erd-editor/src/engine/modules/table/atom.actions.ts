@@ -1,8 +1,8 @@
 import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import { round } from 'es-toolkit/compat';
 
+import { arrayHas } from '@/utils/arrayHas';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 import { textInRange } from '@/utils/validation';

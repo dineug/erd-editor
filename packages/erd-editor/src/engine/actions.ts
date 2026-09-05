@@ -1,5 +1,3 @@
-import { arrayHas } from '@dineug/shared';
-
 import {
   pushStreamHistoryMap,
   pushUndoHistoryMap,
@@ -28,6 +26,7 @@ import { actions$ as tableActions$ } from '@/engine/modules/table/generator.acti
 import { ActionMap as TableColumnActionMap } from '@/engine/modules/table-column/actions';
 import { actions as tableColumnActions } from '@/engine/modules/table-column/atom.actions';
 import { actions$ as tableColumnActions$ } from '@/engine/modules/table-column/generator.actions';
+import { arrayHas } from '@/utils/arrayHas';
 
 export type Actions = typeof editorActions &
   typeof editorActions$ &

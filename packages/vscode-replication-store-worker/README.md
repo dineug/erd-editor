@@ -23,13 +23,16 @@ commands — inbound `webviewInitialValueCommand` and `webviewReplicationCommand
 
 ## Usage
 
-`ReplicationStoreWorker`, a worker constructor, is the single export.
+`createReplicationStoreWorker(options)` is the single export. It returns a module `Worker` built
+from `new URL('./services/replicationStore.worker.ts', import.meta.url)`, the spelling Vite,
+webpack and Rspack emit as a worker file of its own; a host that cannot load a worker across
+origins, such as the VSCode webview, inlines it in its own build instead.
 
 ```ts
 import { Bridge, hostSaveValueCommand } from '@dineug/erd-editor-vscode-bridge';
-import { ReplicationStoreWorker } from '@dineug/erd-editor-vscode-replication-store-worker';
+import { createReplicationStoreWorker } from '@dineug/erd-editor-vscode-replication-store-worker';
 
-const worker = new ReplicationStoreWorker({ name: 'replication-store-worker' });
+const worker = createReplicationStoreWorker({ name: 'replication-store-worker' });
 const bridge = new Bridge();
 
 bridge.registerCommand(hostSaveValueCommand, ({ value }) => {

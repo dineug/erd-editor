@@ -43,7 +43,7 @@ Defines the persisted `.erd` / `.vuerd` document format: the v2 and v3 schemas, 
 - `query(collections)` exposes `collection`, `selectById(s)`, `selectEntities`, `selectAll`, `set/add/remove` one/many/all operations, `updateOne/many`, `getOrCreate`, and collection-bound LWW operators. `removeAll()` replaces only the query's private collection reference; callers needing the parent `collections[key]` slot replaced must handle that explicitly.
 - LWW comparisons are the correctness core: add runs its recipe when `removeVersion < version`, remove when `addVersion <= version`, replace when the path's `prevVersion <= version`. `src/query/lww.test.ts` pins all three.
 - The canvas bounds in `v3/schema/settings.ts` are the format's, not the editor's: `CANVAS_ZOOM_MIN` 0.1, `CANVAS_ZOOM_MAX` **1.5** (raised from 1 when the editor's scene moved to canvas), `CANVAS_SIZE_MIN` 2,000, `CANVAS_SIZE_MAX` 20,000. `v3/parser/settings.ts` clamps a parsed `zoomLevel` into that range, so widening the ceiling is backward compatible while narrowing it silently rewrites saved documents.
-- `@dineug/shared` is a `peerDependency` (plus a `workspace:*` dev entry), so both tasks list `peerDependencies` in `dependsOn` — dropping it builds against a stale `dist/`.
+- Both tasks list `peerDependencies` in `dependsOn` with the other two fields, the factory's contract for every library; this package declares no workspace dependency now, so nothing here is built against a sibling's `dist/`.
 
 ### Testing Requirements
 
@@ -63,11 +63,11 @@ Defines the persisted `.erd` / `.vuerd` document format: the v2 and v3 schemas, 
 
 ### Internal
 
-- `@dineug/shared` — peer + `workspace:*` dev; type guards (`isString`, `isNumber`, `isArray`) and `nanoid`.
+None — leaf package.
 
 ### External
 
-- `es-toolkit` `^1.50.0` — the only `dependencies` entry: `pick` in `toJson`, `difference` in `convert/` and in both settings parsers. `vite.config.ts` builds `external` from `dependencies` **and** `peerDependencies`, so `@dineug/shared` is external too.
+- `es-toolkit` `^1.50.0` — `pick` in `toJson`, `difference` in `convert/` and in both settings parsers, and the type guards every parser runs on JSON (`isString`, `isNumber`, `isBoolean`, `isNil`, `isPlainObject`; arrays are `Array.isArray`). `nanoid` `^5.1.3` — ids for the v2 → v3 conversion. Both are `dependencies`, so `vite.config.ts` leaves them external.
 - `vite-plugin-dts` 5 + `@typescript/typescript6` — declaration emit; the latter exists only because the plugin needs the JS compiler API TypeScript 7 dropped.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

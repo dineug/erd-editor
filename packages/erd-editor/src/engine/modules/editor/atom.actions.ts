@@ -7,8 +7,7 @@ import {
   schemaV3Parser,
 } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { isNill, isString } from '@dineug/shared';
-import { noop } from 'es-toolkit';
+import { isNil, isString, noop } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType } from '@/constants/schema';
@@ -569,7 +568,7 @@ const sharedMouseTracker: ReducerType<typeof ActionType.sharedMouseTracker> = (
   { payload, tags, meta }
 ) => {
   if (
-    isNill(tags) ||
+    isNil(tags) ||
     !bHas(tags, Tag.shared) ||
     !isString(meta?.editorId) ||
     editor.id === meta.editorId
@@ -613,7 +612,7 @@ const sharedFocusTracker: ReducerType<typeof ActionType.sharedFocusTracker> = (
   { payload: { focus }, tags, meta }
 ) => {
   if (
-    isNill(tags) ||
+    isNil(tags) ||
     !bHas(tags, Tag.shared) ||
     !isString(meta?.editorId) ||
     editor.id === meta.editorId
@@ -659,7 +658,7 @@ const sharedSelectionTracker: ReducerType<
   typeof ActionType.sharedSelectionTracker
 > = ({ editor }, { payload: { selectedIds }, tags, meta }) => {
   if (
-    isNill(tags) ||
+    isNil(tags) ||
     !bHas(tags, Tag.shared) ||
     !isString(meta?.editorId) ||
     editor.id === meta.editorId
@@ -704,7 +703,7 @@ const sharedDragSelectTracker: ReducerType<
   typeof ActionType.sharedDragSelectTracker
 > = ({ editor }, { payload: { rect }, tags, meta }) => {
   if (
-    isNill(tags) ||
+    isNil(tags) ||
     !bHas(tags, Tag.shared) ||
     !isString(meta?.editorId) ||
     editor.id === meta.editorId

@@ -1,13 +1,12 @@
 import {
-  createInRange,
-  isArray,
+  clamp,
+  difference,
   isBoolean,
-  isNill,
+  isNil,
   isNumber,
-  isObject,
+  isPlainObject,
   isString,
-} from '@dineug/shared';
-import { difference } from 'es-toolkit';
+} from 'es-toolkit';
 
 import { assign, validNumber } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -69,13 +68,15 @@ const createSettings = (): Settings => ({
   ignoreSaveSettings: 0,
 });
 
-const sizeInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
-const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
-const maxWidthCommentInRange = createInRange(60, 200);
+const sizeInRange = (value: number) =>
+  clamp(value, CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
+const zoomInRange = (value: number) =>
+  clamp(value, CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
+const maxWidthCommentInRange = (value: number) => clamp(value, 60, 200);
 
 export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   const settings = createSettings();
-  if (!isObject(json) || isNill(json)) return settings;
+  if (!isPlainObject(json) || isNil(json)) return settings;
 
   const assignNumber = assign(isNumber, settings, json);
   const assignString = assign(isString, settings, json);
@@ -110,7 +111,7 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   assign(validNumber(BracketTypeList), settings, json)('bracketType');
 
   if (
-    isArray(json.columnOrder) &&
+    Array.isArray(json.columnOrder) &&
     ColumnTypeList.length === json.columnOrder.length &&
     difference(ColumnTypeList, json.columnOrder).length === 0
   ) {

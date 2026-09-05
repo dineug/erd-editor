@@ -8,17 +8,18 @@
 Runs a headless replica of the editor document off the main thread, so the VSCode host can persist
 `.erd` files without serializing on the UI thread. The webview forwards the raw action stream in; the
 worker feeds it to `createReplicationStore` from `@dineug/erd-editor/engine.js` and emits the
-serialized document back only when the store reports a `change`. Consumed by
-`@dineug/erd-editor-vscode-webview`; `intellij-webview` keeps its own copy, spawned from a URL
-instead of inlined. `private: true`.
+serialized document back only when the store reports a `change`. Consumed by both IDE webviews,
+`vscode-webview` and `intellij-webview`, which spawn it through `createReplicationStoreWorker`;
+the VSCode one inlines the worker file in its own build, the IntelliJ one loads it from its URL.
+`private: true`.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Exports `ReplicationStoreWorker`, the worker constructor, via Vite's `?worker&inline` suffix |
+| `src/index.ts` | Exports `createReplicationStoreWorker(options)`, which is `new Worker(new URL('./services/replicationStore.worker.ts', import.meta.url), { type: 'module', name })` |
 | `src/services/replicationStore.worker.ts` | Worker body — builds the store, registers the two inbound commands, and dispatches `hostSaveValueCommand` after a replica change |
-| `vite.config.ts` | Library worker build; `?worker&inline` is part of the emitted API and the shared library config supplies task inputs |
+| `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, workers: true })` — the standard factory plus its worker half, so `dist/` is `index.js` and `workers/replicationStore.worker.js`, and the URL in `index.js` is the relative spelling `tools/vite/worker-url.ts` writes |
 
 ## Subdirectories
 
@@ -31,14 +32,17 @@ instead of inlined. `private: true`.
 
 ### Working In This Directory
 
-- **`?worker&inline` is load-bearing.** It compiles the whole worker — engine, bridge and all — into
-  a bundled string in `dist/index.js`, run from a Blob URL with no module resolution; a plain worker URL would fail to load its imports.
+- **The worker is a file; the VSCode webview inlines it, IntelliJ loads it.** `dist/workers/replicationStore.worker.js`
+  imports `@dineug/erd-editor/engine.js` and the bridge bare, because both are `dependencies` and the
+  worker build keeps the page's external list; a consumer's bundler treats it as an entry of its own,
+  and `vscode-webview`, which cannot load a worker across its two origins, turns the URL back into an
+  inline worker through `tools/vite/inline-worker.ts`.
 - Import `@dineug/erd-editor/engine.js` (DOM-free), never the package root, which registers custom
   elements and throws in a worker. `tsconfig.json` replaces the inherited `lib` with
   `["ES2022", "WebWorker"]`, so `document` does not typecheck here.
 - `toWidth` measures with a lazy `OffscreenCanvas(0, 0)` 2d context at `400 12px`, falling back to
-  `text.length * 10`. It is byte-identical to `packages/intellij-webview/src/utils/text.ts` — a
-  divergent font or `TEXT_PADDING` drifts replicated column widths.
+  `text.length * 10`. It is the one copy both IDE webviews replicate with — a divergent font or
+  `TEXT_PADDING` drifts replicated column widths in both.
 - Three commands cross this boundary: in `webviewInitialValueCommand` and
   `webviewReplicationCommand`, out `hostSaveValueCommand`. A fourth means editing `vscode-bridge`
   and `vscode-webview` too.
@@ -52,7 +56,7 @@ instead of inlined. `private: true`.
   `pnpm exec vp run --filter @dineug/erd-editor-vscode-replication-store-worker --fail-if-no-match build` (`tsc --noEmit`, then `vp build`).
 - Nothing automated exercises the worker at runtime. Real verification is the VSCode Extension Host:
   open a `.erd` file, edit, confirm the file on disk changes — failure is silent, edits never persist.
-- Changing `createReplicationStore`'s signature also breaks `intellij-webview` and `app` — `pnpm build`.
+- Changing `createReplicationStore`'s signature also breaks `app` — `pnpm build`; `intellij-webview` reaches it through this package.
 
 ### Common Patterns
 
@@ -64,8 +68,9 @@ instead of inlined. `private: true`.
 
 ### Internal
 
-`@dineug/erd-editor` (the `engine.js` entry), `@dineug/erd-editor-vscode-bridge` and `@dineug/shared`
-— all `devDependencies`, bundled into the inlined worker; `shared` is declared but unused by `src/`.
+`@dineug/erd-editor` (the `engine.js` entry) and `@dineug/erd-editor-vscode-bridge` are `dependencies`,
+so the worker file imports them bare and the consuming webview resolves them once for page and worker
+alike.
 
 ### External
 
