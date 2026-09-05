@@ -236,18 +236,24 @@ describe('the worker ladder is two rungs everywhere', () => {
     expect(importers).toEqual([]);
   });
 
-  it('reaches its own worker only as a url beside the module', () => {
-    const source = readFileSync(
+  it('reaches its own worker only through the spawn module, which names it as a url', () => {
+    const index = readFileSync(
       join(SOURCE_ROOT, 'services', 'schema-gc', 'index.ts'),
       'utf8'
     );
-    const specifiers = [...source.matchAll(/^import\s.*?'([^']+)'/gm)].map(
+    const spawn = readFileSync(
+      join(SOURCE_ROOT, 'workers', 'spawn.ts'),
+      'utf8'
+    );
+    const specifiers = [...index.matchAll(/^import\s.*?'([^']+)'/gm)].map(
       ([, specifier]) => specifier
     );
 
-    expect(source).toContain(
-      "new URL('./schemaGC.shared-worker.ts', import.meta.url)"
+    expect(specifiers.filter(one => one.includes('worker'))).toEqual([
+      '@/workers/spawn',
+    ]);
+    expect(spawn).toContain(
+      "new URL('../services/schema-gc/schemaGC.shared-worker.ts', import.meta.url)"
     );
-    expect(specifiers.filter(one => one.includes('worker'))).toEqual([]);
   });
 });

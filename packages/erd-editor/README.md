@@ -36,8 +36,8 @@ The package ships ES modules with its dependencies left as bare imports, so any 
 (Vite, webpack, Rspack, esbuild, …) resolves, dedupes and tree-shakes them like the rest of
 your app. Two features run in shared workers — schema garbage collection and the PNG export —
 constructed as `new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers
-emit as worker files beside your chunks; a strict CSP needs `worker-src 'self'`. The package is
-not a self-contained script, so it cannot be loaded from a CDN or a plain `<script>` tag.
+emit as worker files beside your chunks; a strict CSP needs `worker-src 'self'`. Without a
+bundler, use the UMD file described under [Script tag](#script-tag) instead.
 
 ## Usage
 
@@ -83,6 +83,24 @@ export default {
   },
 };
 ```
+
+### Script tag
+
+`dist/erd-editor.umd.js` is a self-contained build for a plain `<script>` tag: every
+dependency and both workers are inside it, and it registers `<erd-editor>` and exposes the
+three callbacks as `window.ErdEditor`. It is what `unpkg` and `jsdelivr` serve.
+
+```html
+<erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor-shiki-worker/dist/erd-editor-shiki-worker.umd.js"></script>
+<script>
+  ErdEditor.setGetShikiServiceCallback(ErdEditorShikiWorker.getShikiService);
+</script>
+```
+
+The workers travel inside the file as `data:` URLs, so a strict CSP needs `worker-src data:`
+for this build. Pin a version in the URL for anything beyond a demo.
 
 ### HTML
 

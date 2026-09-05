@@ -19,11 +19,13 @@ editor dev and e2e fixtures wire the same callback statically. The worker is a f
 | File | Description |
 | --- | --- |
 | `src/index.ts` | Public surface: `getShikiService` plus the `ShikiService` type |
-| `src/services/index.ts` | Constructs the shared worker from its URL, `Comlink.wrap`s its port, memoizes a successful proxy |
+| `src/services/index.ts` | Spawns the shared worker through `spawn.ts`, `Comlink.wrap`s its port, memoizes a successful proxy |
+| `src/services/spawn.ts`, `spawn.inline.ts` | The one place the worker is constructed: from its URL, or, in the twin the umd config aliases in, from a `?sharedworker&inline` data url |
+| `vite.umd.config.ts` | The script-tag build the `build` task runs after the es one: `formats: ['umd']`, `name: 'ErdEditorShikiWorker'`, no `external`, the spawn alias, and `base64InlineWorkers`, because the percent-encoded form of this worker passes Chromium's 2 MiB url cap |
 | `src/services/shikiService.ts` | The service itself — `createHighlighterCore`, the exact grammar/theme tables, `codeToHtml` |
 | `src/services/shiki.shared-worker.ts` | `SharedWorker` entry; `Comlink.expose`s the service per connection |
-| `package.json` | `dependencies` are what shipped code imports on either side of the worker boundary; `files` publishes `dist/` minus the `.d.ts.map` files; `exports` points at `dist/index.js` |
-| `vite.config.ts` | `run.tasks.build`, ES lib build with `external` from `createExternal(manifest)`, a `worker` block with the same `external`, `format: 'es'` and the unhashed `workers/[name].js` name, `__APP_VERSION__` define, `dts()` with `declarationMap`, and `libraryWorkerUrls()` from `tools/vite/worker-url.ts`, which rewrites the URL Vite writes for the worker into `new URL('./workers/shiki.shared-worker.js', import.meta.url)` |
+| `package.json` | `unpkg` and `jsdelivr` point at `dist/erd-editor-shiki-worker.umd.js`, which the `exports` map never names; `dependencies` are what shipped code imports on either side of the worker boundary; `files` publishes `dist/` minus the `.d.ts.map` files; `exports` points at `dist/index.js` |
+| `vite.config.ts` | `run.tasks.build` (which appends `vp build -c vite.umd.config.ts`), ES lib build with `external` from `createExternal(manifest)`, a `worker` block with the same `external`, `format: 'es'` and the unhashed `workers/[name].js` name, `__APP_VERSION__` define, `dts()` with `declarationMap`, and `libraryWorkerUrls()` from `tools/vite/worker-url.ts`, which rewrites the URL Vite writes for the worker into `new URL('./workers/shiki.shared-worker.js', import.meta.url)` |
 | `tsconfig.json` | `lib` carries `DOM` for the `SharedWorker` constructor on the page side and `WebWorker` for the worker entries; drop either and one half stops typechecking |
 
 ## Subdirectories

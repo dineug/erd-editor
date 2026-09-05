@@ -191,6 +191,7 @@ function localConfigInputs(packageDir: string): string[] {
   for (const name of [
     'vite.config.ts',
     'vite.config.mts',
+    'vite.umd.config.ts',
     'vitest.config.ts',
     'vitest.config.mts',
     'vitest.setup.ts',

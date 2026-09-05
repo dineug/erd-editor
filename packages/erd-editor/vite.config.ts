@@ -20,7 +20,9 @@ const rHtmlPackage: string = '@dineug/vite-plugin-r-html';
 
 export default defineConfig({
   run: {
-    tasks: createLibraryTasks(packageDir),
+    tasks: createLibraryTasks(packageDir, {
+      build: ['vp build -c vite.umd.config.ts'],
+    }),
   },
   define: {
     __APP_VERSION__: JSON.stringify(manifest.version),

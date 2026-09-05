@@ -16,6 +16,8 @@
       "default": "./dist/engine/index.js"
     }
   },
+  "unpkg": "./dist/erd-editor.umd.js",
+  "jsdelivr": "./dist/erd-editor.umd.js",
   "files": [
     "dist",
     "!dist/**/*.map"

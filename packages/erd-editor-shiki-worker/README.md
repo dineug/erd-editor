@@ -54,6 +54,10 @@ highlighted as SQL, the closest grammar shiki ships).
   which Vite, webpack 5 and Rspack all recognise: each emits the worker as a file of its own next
   to your chunks and resolves `shiki` and the grammars inside it from this package's dependencies.
   There is nothing to copy or host by hand.
+- Without a bundler, `dist/erd-editor-shiki-worker.umd.js` (what `unpkg` and `jsdelivr` serve)
+  exposes `window.ErdEditorShikiWorker` with shiki, the grammars and the worker inside it as a
+  `data:` URL, so that build needs `worker-src data:` rather than `'self'`. Pair it with the
+  editor's own UMD file: `ErdEditor.setGetShikiServiceCallback(ErdEditorShikiWorker.getShikiService)`.
 - With Vite, exclude this package from dependency pre-bundling in development
   (`optimizeDeps.exclude: ['@dineug/erd-editor-shiki-worker']`), or the worker file is looked up
   in Vite's cache directory rather than beside the package. A production build needs nothing.

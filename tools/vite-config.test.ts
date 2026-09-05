@@ -63,6 +63,7 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
     { auto: true },
     'src/**',
     'vite.config.ts',
+    'vite.umd.config.ts',
     'vitest.config.ts',
     'vitest.setup.ts',
     'tsconfig.build.json',
@@ -158,6 +159,17 @@ test('a library that spawns a worker gets the shared worker build', () => {
   });
   assert.equal(config.worker?.format, 'es');
   assert.ok(config.worker?.rolldownOptions?.external instanceof RegExp);
+});
+
+test('a package may append a build step after the standard one', () => {
+  const tasks = createLibraryTasks(editorDir, {
+    build: ['vp build -c vite.umd.config.ts'],
+  }) as LibraryTasks;
+  assert.deepEqual(tasks.build.command, [
+    'tsc --noEmit',
+    'vp build',
+    'vp build -c vite.umd.config.ts',
+  ]);
 });
 
 test('build-only packages do not grow a test task', () => {

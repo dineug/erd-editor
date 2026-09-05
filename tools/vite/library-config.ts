@@ -61,11 +61,19 @@ const dependsOn: Array<{
   },
 ];
 
-export function createLibraryTasks(packageDir: string) {
+/** A build step a package runs after the standard one, such as its script-tag build. */
+export interface LibraryTaskOptions {
+  build?: string[];
+}
+
+export function createLibraryTasks(
+  packageDir: string,
+  options: LibraryTaskOptions = {}
+) {
   const metadata = loadLibraryMetadata(packageDir);
   const tasks: NonNullable<NonNullable<ViteUserConfig['run']>['tasks']> = {
     build: {
-      command: ['tsc --noEmit', 'vp build'],
+      command: ['tsc --noEmit', 'vp build', ...(options.build ?? [])],
       dependsOn,
       input: [...metadata.typeGateInput, '!dist/**'],
       output: ['dist/**'],

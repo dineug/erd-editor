@@ -1,6 +1,7 @@
 import * as Comlink from 'comlink';
 
 import type { Theme } from '@/themes/tokens';
+import { spawnExportPngWorker } from '@/workers/spawn';
 
 import type { ExportPngService } from './exportPngService';
 import {
@@ -90,10 +91,7 @@ function connectSharedWorker(): Promise<Remote | null> {
     let worker: SharedWorker;
 
     try {
-      worker = new SharedWorker(
-        new URL('./exportPng.shared-worker.ts', import.meta.url),
-        { type: 'module', name: WORKER_NAME }
-      );
+      worker = spawnExportPngWorker(WORKER_NAME);
     } catch (error) {
       console.warn('[export-png] this host built no shared worker', error);
       return null;

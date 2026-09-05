@@ -12,6 +12,8 @@
       "default": "./dist/index.js"
     }
   },
+  "unpkg": "./dist/erd-editor-shiki-worker.umd.js",
+  "jsdelivr": "./dist/erd-editor-shiki-worker.umd.js",
   "files": [
     "dist",
     "!dist/**/*.map"

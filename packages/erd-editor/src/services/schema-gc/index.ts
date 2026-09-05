@@ -1,5 +1,7 @@
 import * as Comlink from 'comlink';
 
+import { spawnSchemaGCWorker } from '@/workers/spawn';
+
 import { SchemaGCService } from './schemaGCService';
 
 export type GCIds = {
@@ -77,11 +79,7 @@ export function getSchemaGCService(): SchemaGCRunner | null {
   if (service) return service;
 
   try {
-    const worker = new SharedWorker(
-      new URL('./schemaGC.shared-worker.ts', import.meta.url),
-      { type: 'module', name: WORKER_NAME }
-    );
-    service = fromWorker(worker);
+    service = fromWorker(spawnSchemaGCWorker(WORKER_NAME));
   } catch (error) {
     inProcess('this host built no shared worker', error);
   }
