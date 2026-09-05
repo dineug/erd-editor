@@ -66,7 +66,9 @@ describe('index.dev', () => {
     expect(frames.length).toBeGreaterThan(0);
     const framesBefore = frames.length;
 
-    frames[framesBefore - 1](0);
+    // runStats() asks for its frame before runEditor() mounts anything, so the
+    // stats loop is the first frame; the scene's own frames come after it.
+    frames[0](0);
 
     expect(mocks.begin).toHaveBeenCalledTimes(1);
     expect(mocks.end).toHaveBeenCalledTimes(1);
