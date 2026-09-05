@@ -114,6 +114,17 @@ test('standard library factory preserves build policies', () => {
     formats: ['es'],
   });
   assert.equal(config.build?.rolldownOptions?.output, undefined);
+
+  const preserved = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+    minify: false,
+    preserveModules: true,
+  });
+  assert.deepEqual(preserved.build?.rolldownOptions?.output, {
+    preserveModules: true,
+    preserveModulesRoot: join(rHtmlDir, 'src'),
+  });
+  assert.equal(preserved.build?.minify, false);
   const external = config.build?.rolldownOptions?.external;
   assert.ok(external instanceof RegExp);
   assert.equal(external.test('stylis'), true);

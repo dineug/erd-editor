@@ -22,7 +22,7 @@ The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html`/`sv
 | `src/constants.ts` | `MARKER` (per-load random suffix) and its regexps, `TAttrType`, 7 lifecycle `Symbol.for` keys |
 | `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry: one sheet per template, global/component cascade buckets, `<style>` fallback |
 | `src/render/part/node/text/helper.ts` | `PartType`, `getPartType`, and the `isPartMap`/`partMap` registries every value kind goes through |
-| `vite.config.ts` | `run.tasks` (`build`, `test`, both prefixed by `tsc --noEmit`), ESM lib build, `vite-plugin-dts` |
+| `vite.config.ts` | `run.tasks` (`build`, `test`, both prefixed by `tsc --noEmit`), ESM lib build, `vite-plugin-dts` Builds unminified, one module per source file (`preserveModules`), and the manifest says `sideEffects: false`. |
 | `vitest.config.ts` | `happy-dom`, `src/**/*.test.ts`, v8 coverage and the `jsx-runtime`/test-utils exclusions |
 | `playwright.config.ts` | Chromium e2e against `vp dev` on port 5176, viewport pinned 1280x720 |
 | `tsconfig.build.json` | Build/dts view — excludes `src/**/*.test.ts`, `src/__test-utils__/**` and `src/render/__fake-host__/**` so specs, mount helpers and the fake host never reach `dist/` |

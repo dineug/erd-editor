@@ -19,7 +19,7 @@ listeners. It carries no transport and is `private: true`, which is why the Inte
 | `src/commands.ts` | The eleven-command catalogue: six `host*` (webview → host) and five `webview*` (host → webview) |
 | `src/index.ts` | Public surface: bridge types/classes, all command constants, and the theme maps/options |
 | `src/theme.ts` | `Appearance` / `GrayColor` / `AccentColor` `as const` maps and `ThemeOptions` |
-| `vite.config.ts` | `run.tasks` (`build`, `test`) plus the ESM lib build; `peerDependencies` + `dependencies` become the `rolldownOptions.external` regex, so `@dineug/shared` stays unbundled |
+| `vite.config.ts` | `run.tasks` (`build`, `test`) plus the ESM lib build; `peerDependencies` + `dependencies` become the `rolldownOptions.external` regex, so `@dineug/shared` stays unbundled Builds unminified, one module per source file (`preserveModules`), and the manifest says `sideEffects: false`. |
 | `tsconfig.build.json` | The `vite-plugin-dts` program — `tsconfig.json` minus `src/**/*.test.ts`, so no test types reach `dist/` |
 
 ## Subdirectories

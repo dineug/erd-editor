@@ -17,8 +17,7 @@ it, each supplying only its transport and what differs about its host. `private:
 | --- | --- |
 | `src/mountWebview.ts` | The whole client: `WebviewHost` (what a host supplies), `WebviewClient` (what it gets back), and the command wiring |
 | `src/mountWebview.test.ts` | happy-dom spec over a faked editor element, worker and host: every command, both import modes, auto appearance, dispose |
-| `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts })`; all five runtime packages are `dependencies`, so the build leaves them external |
-
+| `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts })`; all five runtime packages are `dependencies`, so the build leaves them external Builds unminified, one module per source file (`preserveModules`), and the manifest says `sideEffects: false`. |
 ## For AI Agents
 
 ### Working In This Directory

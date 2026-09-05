@@ -20,8 +20,13 @@ export interface DtsPluginOptions {
 
 interface LibraryConfigOptions {
   dts: (options: DtsPluginOptions) => PluginOption;
-  format?: 'es' | 'cjs';
   minify?: false;
+  /**
+   * One output module per source file, mirrored under dist. For a library
+   * another bundler consumes, that bundler then prunes at file granularity,
+   * which its sideEffects: false manifest is what allows.
+   */
+  preserveModules?: true;
   server?: ViteUserConfig['server'];
   workers?: true;
 }
@@ -84,7 +89,13 @@ export function createLibraryConfig(
 ): ViteUserConfig {
   const metadata = loadLibraryMetadata(packageDir);
   const external = createExternal(metadata.manifest);
-  const rolldownOptions = external ? { external } : undefined;
+  const output = options.preserveModules
+    ? { preserveModules: true, preserveModulesRoot: join(packageDir, 'src') }
+    : undefined;
+  const rolldownOptions =
+    external || output
+      ? { ...(external ? { external } : {}), ...(output ? { output } : {}) }
+      : undefined;
   const tsconfigBuild = join(packageDir, 'tsconfig.build.json');
   const dtsOptions: DtsPluginOptions = {
     ...(existsSync(tsconfigBuild)
@@ -102,7 +113,7 @@ export function createLibraryConfig(
       ...(options.minify === false ? { minify: false } : {}),
       lib: {
         entry: ['./src/index.ts'],
-        formats: [options.format ?? 'es'],
+        formats: ['es'],
       },
       ...(rolldownOptions ? { rolldownOptions } : {}),
     },

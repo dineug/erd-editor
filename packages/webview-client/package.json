@@ -13,6 +13,7 @@
       "default": "./dist/index.js"
     }
   },
+  "sideEffects": false,
   "license": "MIT",
   "scripts": {
     "test:dev": "vp test dev",

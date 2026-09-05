@@ -16,7 +16,7 @@ Defines the persisted `.erd` / `.vuerd` document format: the v2 and v3 schemas, 
 | `src/query/lww.ts` | `addOperator` / `removeOperator` / `replaceOperator` over `LWW = Record<id, [tag, add, remove, Record<path, version>]>` |
 | `src/query/index.ts` | `CollectionQuery` — `selectById`, `setOne`, `updateOne`, `getOrCreate`, plus the LWW operators bound to a collection key |
 | `src/helper.ts` | `assign`, `assignMeta`, `validString`, `validNumber`, `propOr`, `getDefaultEntityMeta` — every parser is built from these |
-| `vite.config.ts` | Library build (`BROWSER_TARGET`, ES-only, `vite-plugin-dts`) **and** the `build` / `test` tasks supplied by the shared library factory |
+| `vite.config.ts` | Library build (`BROWSER_TARGET`, ES-only, `vite-plugin-dts`) **and** the `build` / `test` tasks supplied by the shared library factory Builds unminified, one module per source file (`preserveModules`), and the manifest says `sideEffects: false`. |
 | `tsconfig.build.json` | dts-only program; excludes `src/**/*.test.ts` so specs never reach `dist/` |
 
 ## Subdirectories

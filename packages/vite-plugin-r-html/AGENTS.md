@@ -22,15 +22,17 @@ file carries the host pragma.
 | `src/jsx/codegen.ts` | JSX AST → tagged-template source; owns the attribute mapping, the SVG namespace call, the `@jsxHost` pragma and the escaping |
 | `src/jsx/plugin.ts`  | `rHtmlJsx(options)` — `enforce: 'pre'`, `.tsx` only, injects `html`/`svg`/`konva` under aliases        |
 | `src/options.ts`     | `Options`, `JsxOptions` (`importSource`, `konvaImportSource`) and `RefreshOptions`                     |
-| `vite.config.mts`    | `run.tasks` (`build`, `test`) plus a CJS-only lib build (`formats: ['cjs']`, `minify: false`) with dts |
+| `vite.config.mts`    | `run.tasks` (`build`, `test`) plus the standard ES lib build (`minify: false`, `preserveModules`, so `dist/` mirrors `src/`) with dts; the manifest is `type: module` with an `exports` map and says `sideEffects: false` |
 | `vitest.config.mts`  | Node tests over `src/**/*.test.ts`; v8 per-file 80% thresholds for coverage runs |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- It is the deliberate CJS-only library: it runs inside Vite's Node process, so the build is
-  `formats: ['cjs']` and `main` is `./dist/index.js`; the public API is named exports.
+- It runs inside Vite's Node process as an ES module, like the configs that load it: `erd-editor`'s
+  `vite.config.ts` reaches it through a dynamic `import()` and its `vitest.config.ts` through a static
+  one. `@babel/core` is CommonJS underneath, which Node's named-export detection handles, and
+  `@rollup/pluginutils` ships an `import` condition. The public API is named exports.
 - Shared `include`, `exclude`, and `importSource` options are passed to both halves; nested `jsx` or
   `refresh` options override them, and either half can be disabled with `false`.
 - The injected snippet assembles `import.meta.hot` from string fragments
