@@ -1,4 +1,4 @@
-import { isArray, isBoolean, isNill, isNumber, isString } from '@dineug/shared';
+import { isBoolean, isNil, isNumber, isString } from 'es-toolkit';
 
 import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -25,7 +25,7 @@ export function createAndMergeMemoEntity(
   json?: DeepPartial<MemoEntity>
 ): MemoEntity {
   const entity = createMemoEntity();
-  if (isNill(json) || !isArray(json.memos)) {
+  if (isNil(json) || !Array.isArray(json.memos)) {
     return entity;
   }
 

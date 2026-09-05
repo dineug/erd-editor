@@ -1,5 +1,4 @@
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import { last } from 'es-toolkit';
 import { map, Observable, throttleTime } from 'rxjs';
 
@@ -12,6 +11,7 @@ import {
 } from '@/engine/actions';
 import { pushStreamHistoryMap } from '@/engine/history.actions';
 import { groupByStreamActions } from '@/engine/rx-operators/groupByStreamActions';
+import { arrayHas } from '@/utils/arrayHas';
 
 const hasStreamActionTypes = arrayHas<string>(StreamActionTypes);
 const hasSharedStreamActionTypes = arrayHas<string>(SharedStreamActionTypes);

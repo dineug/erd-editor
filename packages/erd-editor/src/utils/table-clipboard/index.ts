@@ -1,7 +1,6 @@
-import { arrayHas } from '@dineug/shared';
-
 import { ColumnType, Show } from '@/constants/schema';
 import { ValuesType } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 
 export * from './payload';

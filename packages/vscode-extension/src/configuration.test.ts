@@ -5,7 +5,7 @@ import {
   Appearance,
   GrayColor,
   ThemeOptions,
-} from '@dineug/erd-editor-vscode-bridge';
+} from '@dineug/erd-editor-webview-bridge';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { getTheme, saveTheme } from '@/configuration';

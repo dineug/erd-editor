@@ -1,11 +1,10 @@
 import {
-  isArray,
   isBoolean,
-  isNill,
+  isNil,
   isNumber,
-  isObject,
+  isPlainObject,
   isString,
-} from '@dineug/shared';
+} from 'es-toolkit';
 
 import {
   assign,
@@ -50,7 +49,7 @@ export function createAndMergeRelationshipEntities(
   json?: DeepPartial<Record<string, Relationship>>
 ): Record<string, Relationship> {
   const entities: Record<string, Relationship> = {};
-  if (!isObject(json) || isNill(json)) return entities;
+  if (!isPlainObject(json) || isNil(json)) return entities;
 
   for (const value of Object.values(json)) {
     if (!value) continue;
@@ -79,13 +78,13 @@ export function createAndMergeRelationshipEntities(
     startAssignNumber('x');
     startAssignNumber('y');
     assign(validNumber(DirectionList), target.start, value.start)('direction');
-    assign(isArray, target.start, value.start)('columnIds');
+    assign(Array.isArray, target.start, value.start)('columnIds');
 
     endAssignString('tableId');
     endAssignNumber('x');
     endAssignNumber('y');
     assign(validNumber(DirectionList), target.end, value.end)('direction');
-    assign(isArray, target.end, value.end)('columnIds');
+    assign(Array.isArray, target.end, value.end)('columnIds');
 
     assignMeta(target.meta, value.meta);
 

@@ -13,7 +13,7 @@
       "default": "./dist/index.js"
     }
   },
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
+  "sideEffects": false,
   "license": "MIT",
   "scripts": {
     "test:dev": "vp test dev",

@@ -1,4 +1,4 @@
-import { arrayHas, createInRange, isString } from '@dineug/shared';
+import { clamp, isString } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
@@ -15,16 +15,20 @@ import {
   NameCaseList,
 } from '@/constants/schema';
 import { DatabaseVendorList } from '@/constants/sql/database';
+import { arrayHas } from '@/utils/arrayHas';
 
 const NOT_NUM = /[^0-9]/g;
 
 export const toNumString = (value: string) => value.replace(NOT_NUM, '');
 
-const canvasInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
+const canvasInRange = (value: number) =>
+  clamp(value, CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
 
-const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
+const zoomInRange = (value: number) =>
+  clamp(value, CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
 
-export const maxWidthCommentInRange = createInRange(COLUMN_MIN_WIDTH, 200);
+export const maxWidthCommentInRange = (value: number) =>
+  clamp(value, COLUMN_MIN_WIDTH, 200);
 
 export function canvasSizeInRange(size: number | string) {
   const value = isString(size) ? Number(toNumString(size)) : size;

@@ -1,10 +1,10 @@
 import { query } from '@dineug/erd-editor-schema';
-import { arrayHas } from '@dineug/shared';
 
 import { ColumnType, Show } from '@/constants/schema';
 import { ActionMap, ActionType } from '@/engine/modules/editor/actions';
 import { FocusType, MoveKey } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 
 import { appendSelectColumns } from './selectRangeColumn';

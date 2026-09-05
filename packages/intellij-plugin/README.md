@@ -113,7 +113,7 @@ The plugin compiles against JDK 21; Gradle's toolchain resolver fetches it if yo
 | `src/main/resources/assets/` | The webview bundle, written here by `packages/intellij-webview` |
 
 The bridge command names in `WebviewBridge.kt` must match the definitions in
-[`packages/vscode-bridge`](../vscode-bridge) exactly — change one side only and messages are
+[`packages/webview-bridge`](../webview-bridge) exactly — change one side only and messages are
 silently dropped.
 
 ### Releasing

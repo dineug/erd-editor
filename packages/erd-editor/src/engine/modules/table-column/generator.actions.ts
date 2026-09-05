@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
-import { arrayHas, nanoid } from '@dineug/shared';
 import { last } from 'es-toolkit';
+import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -12,6 +12,7 @@ import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { getRemoveFirstColumnId } from '@/engine/modules/editor/utils/focus';
 import { removeIndexAction } from '@/engine/modules/index/atom.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 
 import { ChangeColumnValuePayload } from './actions';

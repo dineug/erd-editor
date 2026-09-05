@@ -1,4 +1,4 @@
-import { isNumber, isString } from '@dineug/shared';
+import { isNumber, isString } from 'es-toolkit';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {

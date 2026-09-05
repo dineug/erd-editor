@@ -6,7 +6,7 @@ import {
   hostSaveReplicationCommand,
   hostSaveThemeCommand,
   hostSaveValueCommand,
-} from '@dineug/erd-editor-vscode-bridge';
+} from '@dineug/erd-editor-webview-bridge';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { ErdDocument } from '@/erd-document';

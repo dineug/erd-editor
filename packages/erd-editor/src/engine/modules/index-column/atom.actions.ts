@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 
+import { arrayHas } from '@/utils/arrayHas';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { addAndSort } from '@/utils/collection/sequence';

@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas, nanoid } from '@dineug/shared';
+import { nanoid } from 'nanoid';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -32,6 +32,7 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { Column } from '@/internal-types';
 import { nextPoint, nextZIndex } from '@/utils';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { getShowColumnOrder } from '@/utils/table-clipboard';
 

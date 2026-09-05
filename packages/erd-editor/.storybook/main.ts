@@ -29,6 +29,13 @@ const config: StorybookConfig = {
   viteFinal: config => ({
     ...config,
     plugins: withoutDts(config.plugins ?? []),
+    // The library's worker build leaves dependencies external for a consumer's
+    // bundler to resolve. This is a page, with no bundler after it, so its
+    // workers have to carry them; the page half Storybook already overrides.
+    worker: {
+      ...config.worker,
+      rolldownOptions: { ...config.worker?.rolldownOptions, external: [] },
+    },
   }),
 };
 export default config;

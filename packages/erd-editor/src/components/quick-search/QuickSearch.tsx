@@ -6,7 +6,6 @@ import {
   onMounted,
   ref,
 } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import { isEmpty } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
@@ -18,6 +17,7 @@ import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { isEditingText } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { arrayHas } from '@/utils/arrayHas';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';

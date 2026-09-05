@@ -3,7 +3,7 @@ import {
   CompositionActions,
   compositionActionsFlat,
 } from '@dineug/r-html';
-import { asap, isFunction, isNill } from '@dineug/shared';
+import { isFunction, isNil } from 'es-toolkit';
 import { debounceTime, Observable, Subject, Subscription } from 'rxjs';
 
 import {
@@ -86,7 +86,7 @@ export function createRxStore(
       store.context,
       compositionActions
     ).map(action => {
-      if (isNill(action.version)) {
+      if (isNil(action.version)) {
         action.version = version;
       }
       return action;
@@ -99,7 +99,7 @@ export function createRxStore(
   };
 
   const dispatch = (...compositionActions: CompositionActions) => {
-    asap(() => dispatchSync(compositionActions));
+    queueMicrotask(() => dispatchSync(compositionActions));
   };
 
   const destroy = () => {

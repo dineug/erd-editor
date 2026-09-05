@@ -61,7 +61,7 @@ document.body.appendChild(editor);
 ```
 
 It is a custom element, so it works from any framework or from none. See
-[`packages/erd-editor`](./packages/erd-editor) for the element API, CDN usage and
+[`packages/erd-editor`](./packages/erd-editor) for the element API, installation and
 attributes.
 
 ## Real-time collaboration
@@ -134,12 +134,12 @@ highlighting). Everything else is internal.
 | [`schema-sql-parser`](./packages/schema-sql-parser) | Permissive DDL parser used for SQL import |
 | [`r-html`](./packages/r-html) | The tagged-template rendering framework the editor is built on |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | JSX → tagged templates, plus HMR boundaries |
-| [`shared`](./packages/shared) | Type guards and small helpers shared across the workspace |
 | [`app`](./packages/app) | The React PWA at erd-editor.io |
 | [`vscode-extension`](./packages/vscode-extension) | The published VS Code extension |
 | [`vscode-webview`](./packages/vscode-webview) | The bundle inside the VS Code webview |
-| [`vscode-bridge`](./packages/vscode-bridge) | Typed host ↔ webview command protocol |
-| [`vscode-replication-store-worker`](./packages/vscode-replication-store-worker) | Headless document replica for the VS Code host |
+| [`webview-client`](./packages/webview-client) | The editor mounted into an IDE webview, host protocol wired, shared by both IDE bundles |
+| [`webview-bridge`](./packages/webview-bridge) | Typed host ↔ webview command protocol |
+| [`replication-store-worker`](./packages/replication-store-worker) | Headless document replica for the VS Code host |
 | [`intellij-webview`](./packages/intellij-webview) | The bundle inside the IntelliJ plugin's editor panel |
 | [`intellij-plugin`](./packages/intellij-plugin) | The published IntelliJ plugin — Kotlin and Gradle, not TypeScript |
 

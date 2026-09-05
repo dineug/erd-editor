@@ -1,6 +1,6 @@
 import { replaceOperator } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { createInRange, isNill } from '@dineug/shared';
+import { clamp, isNil } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
 import { Viewport } from '@/engine/modules/editor/state';
@@ -63,7 +63,7 @@ const changeZoomLevel: ReducerType<typeof ActionType.changeZoomLevel> = (
   { settings },
   { payload: { value }, tags }
 ) => {
-  if (!isNill(tags) && bHas(tags, Tag.following)) {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
@@ -78,7 +78,7 @@ const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
   { settings },
   { payload: { value }, tags }
 ) => {
-  if (!isNill(tags) && bHas(tags, Tag.following)) {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
@@ -152,8 +152,8 @@ export function createScrollInRange(
   const { left, top } = getScrollRanges(settings, viewport);
 
   return {
-    scrollLeftInRange: createInRange(left.min, left.max),
-    scrollTopInRange: createInRange(top.min, top.max),
+    scrollLeftInRange: (value: number) => clamp(value, left.min, left.max),
+    scrollTopInRange: (value: number) => clamp(value, top.min, top.max),
   };
 }
 
@@ -165,7 +165,7 @@ const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   { settings, editor: { viewport } },
   { payload: { scrollTop, scrollLeft }, tags }
 ) => {
-  if (!isNill(tags) && bHas(tags, Tag.following)) {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
@@ -186,7 +186,7 @@ const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
   { settings, editor: { viewport } },
   { payload: { movementX, movementY }, tags }
 ) => {
-  if (!isNill(tags) && bHas(tags, Tag.following)) {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
@@ -237,7 +237,7 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   { settings },
   { payload: { value }, tags }
 ) => {
-  if (!isNill(tags) && bHas(tags, Tag.following)) {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 

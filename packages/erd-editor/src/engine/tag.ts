@@ -3,8 +3,7 @@ import {
   CompositionActions,
   compositionActionsFlat,
 } from '@dineug/r-html';
-import { isInteger } from '@dineug/shared';
-import { cloneDeep } from 'es-toolkit';
+import { cloneDeep, isNumber } from 'es-toolkit';
 
 import { GeneratorAction } from '@/engine/generator.actions';
 
@@ -17,7 +16,10 @@ export const Tag = {
 export function attachActionTag(tag: number, action: AnyAction): AnyAction {
   return {
     ...cloneDeep(action),
-    tags: isInteger(action.tags) ? action.tags | tag : tag,
+    tags:
+      isNumber(action.tags) && Number.isInteger(action.tags)
+        ? action.tags | tag
+        : tag,
   };
 }
 

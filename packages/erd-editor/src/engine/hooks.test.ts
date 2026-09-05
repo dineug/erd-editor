@@ -1,5 +1,4 @@
 import { AnyAction, createAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import { Subject } from 'rxjs';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -10,6 +9,7 @@ import * as hooksModule from '@/engine/hooks';
 import { hooks as tableHooks } from '@/engine/modules/table/hooks';
 import { RootState } from '@/engine/state';
 import { createStore } from '@/engine/store';
+import { arrayHas } from '@/utils/arrayHas';
 
 const pingAction = createAction<{ value: number }>('test.ping');
 

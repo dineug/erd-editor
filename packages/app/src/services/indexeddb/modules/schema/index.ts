@@ -1,5 +1,5 @@
-import { nanoid } from '@dineug/shared';
 import { omit } from 'es-toolkit';
+import { nanoid } from 'nanoid';
 
 import { EntityType } from '@/internal-types';
 import type { AppDatabase } from '@/services/indexeddb/appDatabaseService';

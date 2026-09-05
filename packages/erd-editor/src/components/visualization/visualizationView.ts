@@ -1,4 +1,4 @@
-import { createInRange } from '@dineug/shared';
+import { clamp } from 'es-toolkit';
 
 import type { Point } from '@/internal-types';
 
@@ -98,7 +98,7 @@ export const LABEL_FADE_START = 0.5;
 
 export const LABEL_FADE_END = 1;
 
-const opacityInRange = createInRange(0, 1);
+const opacityInRange = (value: number) => clamp(value, 0, 1);
 
 export function labelOpacity(scale: number): number {
   return opacityInRange(
@@ -110,7 +110,7 @@ export const ZOOM_MIN = 0.1;
 
 export const ZOOM_MAX = 4;
 
-const zoomInRange = createInRange(ZOOM_MIN, ZOOM_MAX);
+const zoomInRange = (value: number) => clamp(value, ZOOM_MIN, ZOOM_MAX);
 
 /** Where the scene's origin sits on the stage, and how large a scene unit is. */
 export type VisualizationView = {
@@ -152,7 +152,8 @@ const WHEEL_UNIT_PX: Record<number, number> = { 1: 16, 2: 800 };
 /** One notch of a mouse wheel; a trackpad flick past it zooms no faster. */
 const WHEEL_DELTA_MAX = 100;
 
-const wheelDeltaInRange = createInRange(-WHEEL_DELTA_MAX, WHEEL_DELTA_MAX);
+const wheelDeltaInRange = (value: number) =>
+  clamp(value, -WHEEL_DELTA_MAX, WHEEL_DELTA_MAX);
 
 /** Per px of wheel travel, so a full notch grows the scale by about a fifth. */
 const WHEEL_ZOOM_RATE = 0.002;

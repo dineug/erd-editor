@@ -11,8 +11,16 @@ const root = path.resolve(import.meta.dirname, '..');
 const packageDir = path.join(root, 'packages', 'erd-editor');
 const baselinePath = path.join(packageDir, '.size-baseline.json');
 
-/** Gated artifacts, relative to the erd-editor package directory. */
-const ENTRIES = ['dist/erd-editor.js'];
+/**
+ * The one gated artifact: every script a consumer can reach from the exports
+ * map, walked from each entry through its static and dynamic imports and the
+ * worker files it names, then concatenated in path order and compressed.
+ */
+const ENTRIES = ['dist (reachable from exports)'];
+
+/** A relative script reference in emitted code: an import, a dynamic import, or a worker url. */
+const RELATIVE_SCRIPT =
+  /(?:from\s*|import\(\s*)"(\.{1,2}\/[^"]+\.js)"|new URL\("(\.{1,2}\/[^"]+\.js)",\s*import\.meta\.url\)/g;
 
 /**
  * Compression level every recorded number is measured at. It is stored in the
@@ -99,14 +107,49 @@ function parseBudget(value) {
   return bytes;
 }
 
-function measure(entry) {
-  const file = path.join(packageDir, entry);
-  if (!fs.existsSync(file)) {
-    throw new Error(
-      `Missing build output: ${path.relative(root, file)}. Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build`
-    );
+const MISSING_OUTPUT =
+  'Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build';
+
+/** The scripts the exports map points at, as absolute paths. */
+function exportedEntries() {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8')
+  );
+  return Object.values(manifest.exports)
+    .map(target => (typeof target === 'string' ? target : target.default))
+    .filter(Boolean)
+    .map(target => path.join(packageDir, target));
+}
+
+/**
+ * Every script reachable from the exported entries. A stale chunk a cache
+ * replay left beside the live one is unreachable and so never counts, and a
+ * file the build stopped emitting fails here rather than in a consumer.
+ */
+function filesOf() {
+  const reached = new Set();
+  const pending = exportedEntries();
+
+  while (pending.length) {
+    const file = pending.pop();
+    if (reached.has(file)) continue;
+    if (!fs.existsSync(file)) {
+      throw new Error(
+        `Missing build output: ${path.relative(root, file)}. ${MISSING_OUTPUT}`
+      );
+    }
+    reached.add(file);
+    const code = fs.readFileSync(file, 'utf8');
+    for (const match of code.matchAll(RELATIVE_SCRIPT)) {
+      pending.push(path.resolve(path.dirname(file), match[1] ?? match[2]));
+    }
   }
-  const source = fs.readFileSync(file);
+
+  return [...reached].sort();
+}
+
+function measure() {
+  const source = Buffer.concat(filesOf().map(file => fs.readFileSync(file)));
   return {
     bytes: source.byteLength,
     gzip: gzipSync(source, { level: GZIP_LEVEL }).byteLength,

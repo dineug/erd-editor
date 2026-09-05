@@ -1,4 +1,4 @@
-import { isString } from '@dineug/shared';
+import { isString } from 'es-toolkit';
 
 import { AppContext } from '@/components/appContext';
 import Toast from '@/components/primitives/toast/Toast';

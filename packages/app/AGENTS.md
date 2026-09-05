@@ -49,7 +49,7 @@ sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted p
 ### Testing Requirements
 
 - `vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — `src/**/*.test.ts`, happy-dom, `tsc --noEmit` first. `test:coverage` enforces 80% per file over `services/collaborative/**`, `services/indexeddb/modules/collaborative/**`, `utils/broadcastChannel.ts` and `utils/crypto.ts`.
-- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor`, the Shiki worker and `shared`, then runs one Chromium worker against `vp dev` (:5175) and the in-memory nostr relay (`e2e/support/relay.mjs`, :5176). `E2E=1` prevents Vite from opening a browser; WebRTC requires the two launch flags in `playwright.config.ts`. Never runs in CI.
+- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor` and the Shiki worker, then runs one Chromium worker against `vp dev` (:5175) and the in-memory nostr relay (`e2e/support/relay.mjs`, :5176). `E2E=1` prevents Vite from opening a browser; WebRTC requires the two launch flags in `playwright.config.ts`. Never runs in CI.
 - CI's `check` job runs `typecheck` (`tsconfig.json`, `include: ["src"]`) and `e2e:typecheck` (`e2e/tsconfig.json`) — the only program covering `e2e/` and `playwright.config.ts`.
 
 ### Common Patterns
@@ -62,12 +62,12 @@ sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted p
 
 ### Internal
 
-`@dineug/erd-editor` (the element, plus the `engine.js` subpath for the headless `createReplicationStore()` the IndexedDB worker runs), `@dineug/erd-editor-shiki-worker`, `@dineug/shared`.
+`@dineug/erd-editor` (the element, plus the `engine.js` subpath for the headless `createReplicationStore()` the IndexedDB worker runs), `@dineug/erd-editor-shiki-worker`. Type guards come from `es-toolkit`, ids from `nanoid`, and `safeCallback` is local (`src/utils/safeCallback.ts`).
 
 ### External
 
 - `react` 19 / `react-router` 8 — take `RouterProvider` from `react-router/dom`; the root export of the same name omits the `flushSync` wiring and typechecks clean.
 - `jotai` + `jotai-immer` + `immer`; `@radix-ui/themes` 3 + `@emotion/react`; `dexie` at `^3` on purpose (data migration); `comlink` for worker RPC.
-- `@trystero-p2p/nostr` + `@trystero-p2p/mqtt`, both dynamically imported; `base64-arraybuffer` for ciphertext transport; `workbox-*` + `vite-plugin-pwa`; `@sentry/react`; `@vitejs/plugin-legacy` for modern polyfills only; `es-toolkit` (`omit` from the main entry, `isEmpty` from `/compat`). `luxon` is declared but unused in `src/`.
+- `@trystero-p2p/nostr` + `@trystero-p2p/mqtt`, both dynamically imported; `src/utils/base64.ts` (`btoa` / `atob`) for ciphertext transport; `workbox-*` + `vite-plugin-pwa`; `@sentry/react`; `@vitejs/plugin-legacy` for modern polyfills only; `es-toolkit` (`omit` from the main entry, `isEmpty` from `/compat`). `luxon` is declared but unused in `src/`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

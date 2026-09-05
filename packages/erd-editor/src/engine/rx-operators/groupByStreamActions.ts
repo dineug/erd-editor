@@ -1,5 +1,4 @@
 import { AnyAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import {
   buffer,
   debounceTime,
@@ -11,6 +10,7 @@ import {
 } from 'rxjs';
 
 import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
+import { arrayHas } from '@/utils/arrayHas';
 
 const NONE_STREAM_KEY = '@@none-stream';
 

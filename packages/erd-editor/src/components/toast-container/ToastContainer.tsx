@@ -6,7 +6,7 @@ import {
   ref,
   repeat,
 } from '@dineug/r-html';
-import { nanoid } from '@dineug/shared';
+import { nanoid } from 'nanoid';
 
 import { useAppContext } from '@/components/appContext';
 import { useFlipAnimation } from '@/hooks/useFlipAnimation';

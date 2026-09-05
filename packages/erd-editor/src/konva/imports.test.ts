@@ -233,6 +233,6 @@ describe('the DOM rasterizer left with the DOM scene', () => {
     expect(sourceFiles(SOURCE_ROOT).map(posix)).toContain(
       'utils/file/exportFile.ts'
     );
-    expect(Object.keys(manifest.devDependencies)).toContain('konva');
+    expect(Object.keys(manifest.dependencies)).toContain('konva');
   });
 });

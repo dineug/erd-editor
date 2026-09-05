@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from '@dineug/shared';
 import { cloneDeep, omit, uniq } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
+import { nanoid } from 'nanoid';
 
 import { START_ADD } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';

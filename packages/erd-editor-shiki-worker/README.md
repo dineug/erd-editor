@@ -7,8 +7,8 @@ This package supplies the highlighter they look for. It is not a standalone high
 plugs into the editor through that package's `setGetShikiServiceCallback` export.
 
 It ships separately because highlighting is optional and expensive: [Shiki](https://shiki.style),
-its JavaScript regex engine and nine TextMate grammars build out to well over a megabyte, with
-the worker inlined as a `data:` URI. Keeping it out of the editor means you pay
+its JavaScript regex engine and nine TextMate grammars build out to well over a megabyte, all of it
+in a worker chunk your bundler emits beside your own. Keeping it out of the editor means you pay
 that only where you actually load this package — and when you do, tokenizing runs in a shared
 worker that is named per version, so every editor on the page, and in other tabs on the same
 origin, talks to one highlighter instead of one each.
@@ -36,18 +36,6 @@ import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
 A static `import { getShikiService } from '@dineug/erd-editor-shiki-worker'` works too, but it
 puts the whole bundle in your entry chunk whether or not a code panel is ever opened.
 
-### CDN
-
-```html
-<erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
-<script type="module">
-  import { setGetShikiServiceCallback } from 'https://esm.run/@dineug/erd-editor';
-  import { getShikiService } from 'https://esm.run/@dineug/erd-editor-shiki-worker';
-
-  setGetShikiServiceCallback(getShikiService);
-</script>
-```
-
 ## What it covers
 
 | | |
@@ -62,11 +50,20 @@ highlighted as SQL, the closest grammar shiki ships).
 
 ## Notes
 
-- The worker is bundled inline, so there is no extra file to copy or host. Importing the
-  package is the whole deployment step.
-- A host page with a strict CSP needs `worker-src data:`. Without it the worker fails to
-  construct, the error is logged, and the panels stay plain. No WASM directive is required —
-  the regex engine is plain JavaScript.
+- The worker is constructed as `new SharedWorker(new URL('./workers/shiki.shared-worker.js', import.meta.url), { type: 'module' })`,
+  which Vite, webpack 5 and Rspack all recognise: each emits the worker as a file of its own next
+  to your chunks and resolves `shiki` and the grammars inside it from this package's dependencies.
+  There is nothing to copy or host by hand.
+- Without a bundler, `dist/erd-editor-shiki-worker.umd.js` (what `unpkg` and `jsdelivr` serve)
+  exposes `window.ErdEditorShikiWorker` with shiki, the grammars and the worker inside it as a
+  `data:` URL, so that build needs `worker-src data:` rather than `'self'`. Pair it with the
+  editor's own UMD file: `ErdEditor.setGetShikiServiceCallback(ErdEditorShikiWorker.getShikiService)`.
+- With Vite, exclude this package from dependency pre-bundling in development
+  (`optimizeDeps.exclude: ['@dineug/erd-editor-shiki-worker']`), or the worker file is looked up
+  in Vite's cache directory rather than beside the package. A production build needs nothing.
+- A host page with a strict CSP needs `worker-src 'self'`, which the default policy already
+  allows. Without it the worker fails to construct, the error is logged, and the panels stay
+  plain. No WASM directive is required — the regex engine is plain JavaScript.
 - Where `SharedWorker` is missing — Chrome on Android, Safari before 16.4 — no service is
   returned and the underlying error is logged to the console. The editor treats that as "no
   highlighter" and renders the code panels as plain text; nothing else is affected.

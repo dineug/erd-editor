@@ -4,6 +4,6 @@ import { defineLibraryConfig } from '../../tools/vite/library-config.ts';
 
 export default defineLibraryConfig(import.meta.url, {
   dts,
-  format: 'cjs',
   minify: false,
+  preserveModules: true,
 });

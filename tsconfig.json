@@ -27,6 +27,7 @@
     "tools/**/*.ts",
     "packages/*/vite.config.ts",
     "packages/*/vite.config.mts",
+    "packages/*/vite.umd.config.ts",
     "packages/*/vitest.config.ts",
     "packages/*/vitest.config.mts"
   ]

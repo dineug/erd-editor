@@ -1,0 +1,32 @@
+{
+  "name": "@dineug/erd-editor-webview-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "test:dev": "vp test dev",
+    "test:coverage": "vp test run --coverage"
+  },
+  "dependencies": {
+    "es-toolkit": "^1.50.0"
+  },
+  "devDependencies": {
+    "@typescript/typescript6": "6.0.2",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "7.0.2",
+    "vite": "catalog:",
+    "vite-plugin-dts": "^5.0.3",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

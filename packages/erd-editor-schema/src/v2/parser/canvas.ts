@@ -1,12 +1,12 @@
 import {
-  createInRange,
+  clamp,
+  difference,
   isBoolean,
-  isNill,
+  isNil,
   isNumber,
-  isObject,
+  isPlainObject,
   isString,
-} from '@dineug/shared';
-import { difference } from 'es-toolkit';
+} from 'es-toolkit';
 
 import { assign, validString } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -68,14 +68,16 @@ const createCanvasEntity = (): CanvasEntity => ({
   pluginSerializationMap: {},
 });
 
-const sizeInRange = createInRange(CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
-const zoomInRange = createInRange(CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
+const sizeInRange = (value: number) =>
+  clamp(value, CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
+const zoomInRange = (value: number) =>
+  clamp(value, CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
 
 export function createAndMergeCanvasEntity(
   json?: DeepPartial<CanvasEntity>
 ): CanvasEntity {
   const entity = createCanvasEntity();
-  if (isNill(json)) return entity;
+  if (isNil(json)) return entity;
 
   const assignNumber = assign(isNumber, entity, json);
   const assignString = assign(isString, entity, json);
@@ -126,7 +128,7 @@ export function createAndMergeCanvasEntity(
     entity.setting.columnOrder = json.setting.columnOrder as ColumnType[];
   }
 
-  if (isObject(json.pluginSerializationMap)) {
+  if (isPlainObject(json.pluginSerializationMap)) {
     const pluginSerializationMap = json.pluginSerializationMap as Record<
       string,
       string

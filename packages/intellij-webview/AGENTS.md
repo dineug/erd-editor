@@ -6,16 +6,14 @@
 ## Purpose
 
 The HTML/JS bundle embedded by the IntelliJ ERD Editor plugin, whose Kotlin/JVM side is `packages/intellij-plugin`.
-Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol as `vscode-webview`, but webview→host is
+Same `<erd-editor>` element and same `@dineug/erd-editor-webview-bridge` protocol as `vscode-webview`, but webview→host is
 `window.cefQuery` with a JSON string, so payloads must survive `JSON.stringify`/`parse` and binary data is base64-encoded first.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `src/main.ts` | The whole client — element creation, `bridge` (host) + `workerBridge` (worker), worker spawn, theme/readonly commands, lazy shiki registration |
-| `src/services/replicationStore.worker.ts` | Local headless replica over `createReplicationStore` from `@dineug/erd-editor/engine.js` |
-| `src/utils/text.ts` | `toWidth` metrics for the worker; byte-identical to `packages/vscode-replication-store-worker/src/utils/text.ts` — fix both |
+| `src/main.ts` | The host adapter: a `window.cefQuery` transport handed to `mountWebview` from `@dineug/erd-editor-webview-client`, and the worker name |
 | `src/env.d.ts` | Ambient `window.cefQuery` / `cefQueryCancel` types and `declare module '*.css'` |
 | `index.html` | Build entry at the package root; `publicDir: false`, so no static asset dir sits beside it |
 | `vite.config.ts` | The one output path, the `stripCrossorigin` plugin, the `worker` block, `run.tasks` |
@@ -24,18 +22,18 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-vscode-bridge` protocol
 
 | Directory | Purpose |
 | --- | --- |
-| `src/services/` | The replication store web worker |
 | `src/utils/` | `toWidth` canvas text measurement |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- **`build` writes outside this package**, `emptyOutDir: true` into `../intellij-plugin/src/main/resources/assets`. There is no configured production `dist/` and nothing here imports this package; a local dev command may still leave a generated `dist/`, but it is not the shipped output. The task declares the plugin asset directory as its `output`; drop that and a cache hit replays the log without restoring the bundle, which ships as a blank editor.
+- **`build` writes outside this package**, `emptyOutDir: true` into `../intellij-plugin/src/main/resources/assets`. There is no configured production `dist/` and nothing here imports this package; a local dev command may still leave a generated `dist/`, but it is not the shipped output. The task declares the plugin asset directory as its `output`; drop that and a cache hit replays the log without restoring the bundle, which ships as a blank editor. A replay also restores without emptying the directory first, so a tree that has seen several builds can hold two generations; `pnpm cache:clear` and a rebuild before packaging locally leaves one, and CI starts from a clean checkout.
 - Gradle `buildPlugin` and `runIde` verify that the asset bundle exists but do not invoke `buildWebview`; the IntelliJ workflow runs the pnpm webview build before Gradle. Run `./gradlew buildWebview` explicitly after webview changes when working locally.
 - **`base` stays `/`, only `.html`/`.js`/`.css` may be emitted, `sourcemap: false`** — the plugin's CEF
   `SchemeHandlerFactory` maps the URL path onto the classpath and types those three extensions, nothing else.
 - **Do not restore `crossorigin` on injected tags.** `stripCrossorigin` removes it: the scheme handler sends no CORS headers, so the module script is refused and the panel stays blank.
+- **Every worker loads from its URL, and none is written here.** The plugin serves `index.html` and every asset from one origin, `https://<DOMAIN>`, through its scheme handler, so the `new Worker(new URL('./workers/…', import.meta.url))` that `@dineug/erd-editor`, `@dineug/erd-editor-shiki-worker` and `@dineug/erd-editor-replication-store-worker` ship resolves same-origin and Vite emits each as `static/js/<name>.<hash>.js` — a `.js` the handler's whitelist admits. Nothing is inlined, unlike `vscode-webview`. The replica worker that used to live under `src/services/` is that shared package now.
 - **The `worker` block repeats the output naming** because workers do not inherit `build.rolldownOptions.output`, and `worker.format: 'es'`
   matches `main.ts` building its worker as `{ type: 'module' }`. No `build.target` is set — JCEF's Chromium is the only browser here.
 
@@ -61,10 +59,10 @@ cd ../intellij-plugin && ./gradlew runIde
 
 ### Internal
 
-`@dineug/erd-editor` (element + `engine.js`), `@dineug/erd-editor-vscode-bridge` (protocol, reused despite the name), `@dineug/erd-editor-shiki-worker` (lazy), `@dineug/shared` (declared, unimported).
+`@dineug/erd-editor-webview-client`, which brings the editor, the bridge, the replica worker and the lazy Shiki worker with it.
 
 ### External
 
-`base64-arraybuffer` encodes export blobs for the string channel; `core-js@^3.36.1` is imported for side effects.
+`core-js@^3.36.1` is imported for side effects; export blobs reach the string channel as base64 through `webview-client`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

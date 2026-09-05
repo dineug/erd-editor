@@ -10,11 +10,8 @@ import {
 } from 'vite-plus';
 
 import { BROWSER_TARGET } from '../../build-target.ts';
-import {
-  createBanner,
-  createExternal,
-  loadLibraryMetadata,
-} from './package-metadata.ts';
+import { createExternal, loadLibraryMetadata } from './package-metadata.ts';
+import { libraryWorkerUrls } from './worker-url.ts';
 
 export interface DtsPluginOptions {
   tsconfigPath?: string;
@@ -22,11 +19,36 @@ export interface DtsPluginOptions {
 }
 
 interface LibraryConfigOptions {
-  banner?: true;
   dts: (options: DtsPluginOptions) => PluginOption;
-  format?: 'es' | 'cjs';
   minify?: false;
+  /**
+   * One output module per source file, mirrored under dist. For a library
+   * another bundler consumes, that bundler then prunes at file granularity,
+   * which its sideEffects: false manifest is what allows.
+   */
+  preserveModules?: true;
   server?: ViteUserConfig['server'];
+  workers?: true;
+}
+
+/**
+ * The worker half of a library build: an es module per worker under an
+ * unhashed workers/ name, external where the page is, so a consumer's bundler
+ * builds it as an entry of its own and a host that must inline it can name it.
+ */
+export function createWorkerOptions(
+  external?: RegExp
+): NonNullable<ViteUserConfig['worker']> {
+  return {
+    format: 'es',
+    rolldownOptions: {
+      ...(external ? { external } : {}),
+      output: {
+        entryFileNames: 'workers/[name].js',
+        chunkFileNames: 'workers/[name]-[hash].js',
+      },
+    },
+  };
 }
 
 const dependsOn: Array<{
@@ -39,11 +61,19 @@ const dependsOn: Array<{
   },
 ];
 
-export function createLibraryTasks(packageDir: string) {
+/** A build step a package runs after the standard one, such as its script-tag build. */
+export interface LibraryTaskOptions {
+  build?: string[];
+}
+
+export function createLibraryTasks(
+  packageDir: string,
+  options: LibraryTaskOptions = {}
+) {
   const metadata = loadLibraryMetadata(packageDir);
   const tasks: NonNullable<NonNullable<ViteUserConfig['run']>['tasks']> = {
     build: {
-      command: ['tsc --noEmit', 'vp build'],
+      command: ['tsc --noEmit', 'vp build', ...(options.build ?? [])],
       dependsOn,
       input: [...metadata.typeGateInput, '!dist/**'],
       output: ['dist/**'],
@@ -67,14 +97,12 @@ export function createLibraryConfig(
 ): ViteUserConfig {
   const metadata = loadLibraryMetadata(packageDir);
   const external = createExternal(metadata.manifest);
+  const output = options.preserveModules
+    ? { preserveModules: true, preserveModulesRoot: join(packageDir, 'src') }
+    : undefined;
   const rolldownOptions =
-    external || options.banner
-      ? {
-          ...(external ? { external } : {}),
-          ...(options.banner
-            ? { output: { banner: createBanner(metadata.manifest) } }
-            : {}),
-        }
+    external || output
+      ? { ...(external ? { external } : {}), ...(output ? { output } : {}) }
       : undefined;
   const tsconfigBuild = join(packageDir, 'tsconfig.build.json');
   const dtsOptions: DtsPluginOptions = {
@@ -93,7 +121,7 @@ export function createLibraryConfig(
       ...(options.minify === false ? { minify: false } : {}),
       lib: {
         entry: ['./src/index.ts'],
-        formats: [options.format ?? 'es'],
+        formats: ['es'],
       },
       ...(rolldownOptions ? { rolldownOptions } : {}),
     },
@@ -102,8 +130,12 @@ export function createLibraryConfig(
         '@': join(packageDir, 'src'),
       },
     },
-    plugins: lazyPlugins(() => [options.dts(dtsOptions)]),
+    plugins: lazyPlugins(() => [
+      options.dts(dtsOptions),
+      ...(options.workers ? [libraryWorkerUrls()] : []),
+    ]),
     ...(options.server ? { server: options.server } : {}),
+    ...(options.workers ? { worker: createWorkerOptions(external) } : {}),
   };
 }
 

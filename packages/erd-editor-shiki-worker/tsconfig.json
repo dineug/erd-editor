@@ -4,7 +4,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "lib": ["ES2022", "WebWorker"]
+    "lib": ["ES2022", "DOM", "WebWorker"]
   },
   "include": ["src"]
 }

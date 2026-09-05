@@ -2,6 +2,11 @@ import { join } from 'node:path';
 
 import { defineConfig, type Plugin } from 'vite-plus';
 
+import {
+  base64InlineWorkers,
+  inlineDependencyWorkers,
+} from '../../tools/vite/inline-worker.ts';
+
 /**
  * Strips crossorigin from the tags Vite injects. A webview document runs on one
  * origin while asWebviewUri serves assets from another, which answers with none
@@ -19,7 +24,11 @@ function stripCrossorigin(): Plugin {
 
 export default defineConfig({
   base: './',
-  plugins: [stripCrossorigin()],
+  plugins: [
+    inlineDependencyWorkers(),
+    base64InlineWorkers(),
+    stripCrossorigin(),
+  ],
   // index.html is the entry and lives at the package root. There is no static
   // asset directory here, and leaving publicDir at its default would make
   // Vite look for one inside the output it is about to write.
@@ -76,20 +85,15 @@ export default defineConfig({
           'vite.config.ts',
           'tsconfig.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
-          { pattern: 'packages/erd-editor/dist/**/*.d.ts', base: 'workspace' },
+          { pattern: 'tools/vite/inline-worker.ts', base: 'workspace' },
           {
-            pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
+            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',
           },
           {
-            pattern: 'packages/vscode-bridge/dist/**/*.d.ts',
+            pattern: 'packages/webview-client/dist/**/*.d.ts',
             base: 'workspace',
           },
-          {
-            pattern: 'packages/vscode-replication-store-worker/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          { pattern: 'packages/shared/dist/**/*.d.ts', base: 'workspace' },
           '!**/*.tsbuildinfo',
           '!dist/**',
         ],

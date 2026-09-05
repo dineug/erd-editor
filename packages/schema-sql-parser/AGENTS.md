@@ -33,6 +33,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 
 ### Working In This Directory
 
+- The build is the standard factory with `minify: false` and `preserveModules`, so `dist/` mirrors `src/` one module per file, and the manifest says `sideEffects: false`; the consuming bundler prunes at file granularity and minifies once.
 - **Never throw on unrecognized SQL** — the loop advances `$pos` and continues; bailing turns a partial import into a failed one.
 - The public API is only `schemaSQLParser`, `StatementType`, `SortType`, and statement types; tokenizer, matchers, and dialect lists remain internal. The sole workspace consumer is `packages/erd-editor/src/utils/schema-sql-parser/`.
 - **`$pos` (`RefPos = { value: number }`) is a shared mutable cursor.** Each parser must leave it just past what it

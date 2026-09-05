@@ -1,11 +1,11 @@
 import { type AnyAction } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import { Subject, Subscription } from 'rxjs';
 
 import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
 import { hooks as tableHooks } from '@/engine/modules/table/hooks';
 import { hooks as tableColumnHooks } from '@/engine/modules/table-column/hooks';
 import type { Store } from '@/engine/store';
+import { arrayHas } from '@/utils/arrayHas';
 
 type Task = {
   pattern: ReturnType<typeof arrayHas<string>>;

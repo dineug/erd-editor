@@ -32,6 +32,13 @@ and the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
 npm install @dineug/erd-editor
 ```
 
+The package ships ES modules with its dependencies left as bare imports, so any bundler
+(Vite, webpack, Rspack, esbuild, …) resolves, dedupes and tree-shakes them like the rest of
+your app. Two features run in shared workers — schema garbage collection and the PNG export —
+constructed as `new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers
+emit as worker files beside your chunks; a strict CSP needs `worker-src 'self'`. Without a
+bundler, use the UMD file described under [Script tag](#script-tag) instead.
+
 ## Usage
 
 ```js
@@ -62,6 +69,39 @@ useEffect(() => {
 }, []);
 ```
 
+### Vite
+
+In development Vite pre-bundles dependencies into its cache directory, and the worker files
+would then be looked up there rather than beside the package. Exclude the editor packages from
+that step; a production build needs nothing.
+
+```js
+// vite.config.js
+export default {
+  optimizeDeps: {
+    exclude: ['@dineug/erd-editor', '@dineug/erd-editor-shiki-worker'],
+  },
+};
+```
+
+### Script tag
+
+`dist/erd-editor.umd.js` is a self-contained build for a plain `<script>` tag: every
+dependency and both workers are inside it, and it registers `<erd-editor>` and exposes the
+three callbacks as `window.ErdEditor`. It is what `unpkg` and `jsdelivr` serve.
+
+```html
+<erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor-shiki-worker/dist/erd-editor-shiki-worker.umd.js"></script>
+<script>
+  ErdEditor.setGetShikiServiceCallback(ErdEditorShikiWorker.getShikiService);
+</script>
+```
+
+The workers travel inside the file as `data:` URLs, so a strict CSP needs `worker-src data:`
+for this build. Pin a version in the URL for anything beyond a demo.
+
 ### HTML
 
 ```html
@@ -79,15 +119,6 @@ erd-editor {
   width: 100%;
   height: 100vh;
 }
-```
-
-### CDN
-
-```html
-<erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
-<script type="module">
-  import 'https://esm.run/@dineug/erd-editor';
-</script>
 ```
 
 ## API

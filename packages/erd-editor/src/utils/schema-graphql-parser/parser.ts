@@ -1,4 +1,4 @@
-import { nonNullable } from '@dineug/shared';
+import { isNotNil } from 'es-toolkit';
 import {
   DirectiveNode,
   DocumentNode,
@@ -245,7 +245,7 @@ function toTable(
     comment: draft.comment,
     fields: [...inheritedFieldNodes, ...ownFieldNodes]
       .map(toField)
-      .filter(nonNullable),
+      .filter(isNotNil),
     indexes: [],
   };
 

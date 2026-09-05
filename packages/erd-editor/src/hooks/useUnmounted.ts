@@ -1,5 +1,5 @@
 import { onUnmounted } from '@dineug/r-html';
-import { isFunction } from '@dineug/shared';
+import { isFunction } from 'es-toolkit';
 import { Subscription } from 'rxjs';
 
 import { Unsubscribe } from '@/internal-types';

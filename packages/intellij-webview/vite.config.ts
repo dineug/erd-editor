@@ -19,6 +19,9 @@ function stripCrossorigin(): Plugin {
 
 export default defineConfig({
   base: '/',
+  // The IDE serves this bundle and every worker file from one https origin
+  // through its scheme handler, so the dependency workers load from their
+  // urls here and nothing is inlined, unlike vscode-webview.
   plugins: [stripCrossorigin()],
   // index.html is the entry and sits at the package root; there is no static
   // asset directory to copy.
@@ -45,9 +48,9 @@ export default defineConfig({
   },
 
   /**
-   * src/main.ts constructs a module worker, and Vite's default iife format
-   * code-splits through importScripts, which a module worker cannot call.
-   * Workers inherit no output options either, so the naming repeats here.
+   * The dependency workers are module workers, and Vite's default iife
+   * format code-splits through importScripts, which a module worker cannot
+   * call. Workers inherit no output options either, hence the naming.
    */
   worker: {
     format: 'es',
@@ -93,18 +96,9 @@ export default defineConfig({
           'tsconfig.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
           {
-            pattern: 'packages/erd-editor/dist/**/*.d.ts',
+            pattern: 'packages/webview-client/dist/**/*.d.ts',
             base: 'workspace',
           },
-          {
-            pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/vscode-bridge/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          { pattern: 'packages/shared/dist/**/*.d.ts', base: 'workspace' },
           '!**/*.tsbuildinfo',
         ],
         // 이 패키지는 자기 밖에 쓴다 — Gradle이 그 산출물을 클래스패스 리소스로

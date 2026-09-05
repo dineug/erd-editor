@@ -1,4 +1,4 @@
-import { isInteger } from '@dineug/shared';
+import { isNumber } from 'es-toolkit';
 
 export class Clock {
   #version = 0;
@@ -12,7 +12,8 @@ export class Clock {
   };
 
   readonly merge = (remoteVersion?: number): this => {
-    if (!isInteger(remoteVersion)) return this;
+    if (!isNumber(remoteVersion) || !Number.isInteger(remoteVersion))
+      return this;
 
     if (this.getVersion() < remoteVersion) {
       this.#version = remoteVersion;

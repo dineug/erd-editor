@@ -1,4 +1,4 @@
-import { isArray, isBoolean, isNill, isObject, isString } from '@dineug/shared';
+import { isBoolean, isNil, isPlainObject, isString } from 'es-toolkit';
 
 import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -18,14 +18,14 @@ export function createAndMergeIndexEntities(
   json?: DeepPartial<Record<string, Index>>
 ): Record<string, Index> {
   const entities: Record<string, Index> = {};
-  if (!isObject(json) || isNill(json)) return entities;
+  if (!isPlainObject(json) || isNil(json)) return entities;
 
   for (const value of Object.values(json)) {
     if (!value) continue;
     const target = createIndex();
     const assignString = assign(isString, target, value);
     const assignBoolean = assign(isBoolean, target, value);
-    const assignArray = assign(isArray, target, value);
+    const assignArray = assign(Array.isArray, target, value);
 
     assignString('id');
     assignString('name');

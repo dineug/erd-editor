@@ -17,21 +17,16 @@ const state = {
   onerror: null as null | (() => void),
 };
 
+/** Stands in for the host's SharedWorker; the url is Vite's business, not this spec's. */
 class FakeSharedWorker {
   port = { close: state.close };
   set onerror(handler: () => void) {
     state.onerror = handler;
   }
-  constructor(options: { name: string }) {
+  constructor(_url: URL | string, options: { name: string }) {
     state.construct(options);
   }
 }
-
-vi.mock('./exportPng.shared-worker?sharedworker&inline', () => ({
-  get default() {
-    return FakeSharedWorker;
-  },
-}));
 
 vi.mock('comlink', () => ({
   wrap: () => ({

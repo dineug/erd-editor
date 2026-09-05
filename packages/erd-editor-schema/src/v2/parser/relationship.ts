@@ -1,4 +1,4 @@
-import { isArray, isBoolean, isNill, isNumber, isString } from '@dineug/shared';
+import { isBoolean, isNil, isNumber, isString } from 'es-toolkit';
 
 import { assign, validString } from '@/helper';
 import { DeepPartial } from '@/internal-types';
@@ -42,7 +42,7 @@ export function createAndMergeRelationshipEntity(
   json?: DeepPartial<RelationshipEntity>
 ): RelationshipEntity {
   const entity = createRelationshipEntity();
-  if (isNill(json) || !isArray(json.relationships)) {
+  if (isNil(json) || !Array.isArray(json.relationships)) {
     return entity;
   }
 
@@ -92,7 +92,7 @@ export function createAndMergeRelationshipEntity(
       relationship.start
     )('direction');
 
-    if (isArray(relationship.start?.columnIds)) {
+    if (Array.isArray(relationship.start?.columnIds)) {
       target.start.columnIds = relationship.start?.columnIds.filter(
         isString
       ) as string[];
@@ -107,7 +107,7 @@ export function createAndMergeRelationshipEntity(
       relationship.end
     )('direction');
 
-    if (isArray(relationship.end?.columnIds)) {
+    if (Array.isArray(relationship.end?.columnIds)) {
       target.end.columnIds = relationship.end?.columnIds.filter(
         isString
       ) as string[];

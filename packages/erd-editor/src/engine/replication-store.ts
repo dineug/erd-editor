@@ -1,6 +1,5 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
-import { asap, safeCallback } from '@dineug/shared';
 import { omit } from 'es-toolkit';
 import { isEmpty } from 'es-toolkit/compat';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
@@ -18,6 +17,7 @@ import { createHooks } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
 import { procGC } from '@/services/schema-gc/procGC';
 import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
+import { safeCallback } from '@/utils/safeCallback';
 import { toSafeString } from '@/utils/validation';
 
 type ListenerRecord = {
@@ -99,7 +99,7 @@ export function createReplicationStore(
   };
 
   const dispatch = (actions: Array<AnyAction> | AnyAction) => {
-    asap(() => dispatchSync(actions));
+    queueMicrotask(() => dispatchSync(actions));
   };
 
   const destroy = () => {

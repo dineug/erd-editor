@@ -8,11 +8,11 @@ import {
   ref,
   watch,
 } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 
 import Icon from '@/components/primitives/icon/Icon';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getShikiService, ShikiService } from '@/services/shikiService';
+import { arrayHas } from '@/utils/arrayHas';
 import { globalEmitter } from '@/utils/globalEmitter';
 
 import * as styles from './CodeBlock.styles';

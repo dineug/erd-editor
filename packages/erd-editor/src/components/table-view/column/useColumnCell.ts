@@ -1,5 +1,4 @@
 import { observable, onMounted, Ref, watch } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 import { isEmpty } from 'es-toolkit/compat';
 import Fues from 'fuse.js';
 
@@ -7,6 +6,7 @@ import { AppContext } from '@/components/appContext';
 import { DatabaseHintMap, DataTypeHint } from '@/constants/sql/dataType';
 import { changeColumnDataTypeAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { arrayHas } from '@/utils/arrayHas';
 import { isComposing } from '@/utils/keyboard-shortcut';
 
 export type ColumnCellProps = {

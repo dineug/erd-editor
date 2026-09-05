@@ -1,5 +1,4 @@
 import { onMounted } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 
 import { useAppContext } from '@/components/appContext';
 import { Open } from '@/constants/open';
@@ -42,6 +41,7 @@ import {
 } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Column, Ctx } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 import { openTablePropertiesAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';

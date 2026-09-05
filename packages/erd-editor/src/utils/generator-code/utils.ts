@@ -1,4 +1,3 @@
-import { arrayHas } from '@dineug/shared';
 import { camelCase, snakeCase } from 'es-toolkit';
 
 import { NameCase, RelationshipType } from '@/constants/schema';
@@ -9,6 +8,7 @@ import {
 } from '@/constants/sql/dataType';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { pascalCase } from '@/utils';
+import { arrayHas } from '@/utils/arrayHas';
 
 export interface FormatTableOptions {
   buffer: string[];

@@ -8,7 +8,7 @@
 The published VSCode extension (`vuerd-vscode`, "ERD Editor", publisher `dineug`) — the Node-side host.
 It registers a `CustomEditorProvider` for `*.erd`, `*.erd.json`, `*.vuerd` and `*.vuerd.json`, owns the
 document bytes, serves the bundle built by `@dineug/erd-editor-vscode-webview`, and translates VSCode
-APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importing `vscode`, and
+APIs into `@dineug/erd-editor-webview-bridge` commands. The only package importing `vscode`, and
 `private: true` — publishing goes through `vsce` (`build:vsce` / `publish:vsce`).
 
 ## Key Files
@@ -63,10 +63,10 @@ APIs into `@dineug/erd-editor-vscode-bridge` commands. The only package importin
 
 ### Internal
 
-`@dineug/erd-editor-vscode-bridge` (command protocol), `@dineug/erd-editor-vscode-webview` (fills `public/`), `@dineug/shared` (declared, currently unimported).
+`@dineug/erd-editor-webview-bridge` (command protocol), `@dineug/erd-editor-vscode-webview` (fills `public/`).
 
 ### External
 
-`@types/vscode` `^1.90` + `@types/node` `^20`; `base64-arraybuffer` decodes exported binary payloads; `@vscode/test-cli` + `@vscode/test-electron` + `@types/mocha` run the Extension Host suite.
+`@types/vscode` `^1.90` + `@types/node` `^20`; `Buffer.from(value, 'base64')` decodes exported binary payloads; `@vscode/test-cli` + `@vscode/test-electron` + `@types/mocha` run the Extension Host suite.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

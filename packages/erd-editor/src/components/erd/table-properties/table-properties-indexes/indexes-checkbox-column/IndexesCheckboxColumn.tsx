@@ -1,6 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
 import { DOMTemplateLiterals, FC, repeat } from '@dineug/r-html';
-import { arrayHas } from '@dineug/shared';
 
 import { useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
@@ -24,6 +23,7 @@ import {
 } from '@/engine/modules/index-column/generator.actions';
 import { attachChangeOnlyTag$ } from '@/engine/tag';
 import { Column, Index } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { calcTableWidths, ColumnWidth } from '@/utils/calcTable';
 

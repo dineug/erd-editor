@@ -3,17 +3,20 @@
   "version": "0.2.0",
   "description": "Entity-Relationship Diagram Editor shiki-worker",
   "type": "module",
-  "main": "./dist/erd-editor-shiki-worker.js",
-  "module": "./dist/erd-editor-shiki-worker.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/erd-editor-shiki-worker.js"
+      "default": "./dist/index.js"
     }
   },
+  "unpkg": "./dist/erd-editor-shiki-worker.umd.js",
+  "jsdelivr": "./dist/erd-editor-shiki-worker.umd.js",
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.map"
   ],
   "repository": {
     "type": "git",
@@ -23,15 +26,16 @@
     "url": "https://github.com/dineug/erd-editor/issues"
   },
   "homepage": "https://github.com/dineug/erd-editor#readme",
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {},
+  "dependencies": {
+    "@shikijs/langs": "^4.4.3",
+    "@shikijs/themes": "^4.4.3",
+    "comlink": "^4.4.2",
+    "shiki": "^4.4.3"
+  },
   "devDependencies": {
-    "@shikijs/langs": "4.4.3",
-    "@shikijs/themes": "4.4.3",
     "@typescript/typescript6": "6.0.2",
-    "comlink": "4.4.1",
-    "shiki": "4.4.3",
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plugin-dts": "^5.0.3",
