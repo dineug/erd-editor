@@ -67,6 +67,6 @@ APIs into `@dineug/erd-editor-webview-bridge` commands. The only package importi
 
 ### External
 
-`@types/vscode` `^1.90` + `@types/node` `^20`; `base64-arraybuffer` decodes exported binary payloads; `@vscode/test-cli` + `@vscode/test-electron` + `@types/mocha` run the Extension Host suite.
+`@types/vscode` `^1.90` + `@types/node` `^20`; `Buffer.from(value, 'base64')` decodes exported binary payloads; `@vscode/test-cli` + `@vscode/test-electron` + `@types/mocha` run the Extension Host suite.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

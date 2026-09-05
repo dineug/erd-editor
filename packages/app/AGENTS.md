@@ -68,6 +68,6 @@ sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted p
 
 - `react` 19 / `react-router` 8 — take `RouterProvider` from `react-router/dom`; the root export of the same name omits the `flushSync` wiring and typechecks clean.
 - `jotai` + `jotai-immer` + `immer`; `@radix-ui/themes` 3 + `@emotion/react`; `dexie` at `^3` on purpose (data migration); `comlink` for worker RPC.
-- `@trystero-p2p/nostr` + `@trystero-p2p/mqtt`, both dynamically imported; `base64-arraybuffer` for ciphertext transport; `workbox-*` + `vite-plugin-pwa`; `@sentry/react`; `@vitejs/plugin-legacy` for modern polyfills only; `es-toolkit` (`omit` from the main entry, `isEmpty` from `/compat`). `luxon` is declared but unused in `src/`.
+- `@trystero-p2p/nostr` + `@trystero-p2p/mqtt`, both dynamically imported; `src/utils/base64.ts` (`btoa` / `atob`) for ciphertext transport; `workbox-*` + `vite-plugin-pwa`; `@sentry/react`; `@vitejs/plugin-legacy` for modern polyfills only; `es-toolkit` (`omit` from the main entry, `isEmpty` from `/compat`). `luxon` is declared but unused in `src/`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

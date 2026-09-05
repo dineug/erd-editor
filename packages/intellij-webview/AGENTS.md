@@ -63,6 +63,6 @@ cd ../intellij-plugin && ./gradlew runIde
 
 ### External
 
-`base64-arraybuffer` encodes export blobs for the string channel; `core-js@^3.36.1` is imported for side effects.
+`core-js@^3.36.1` is imported for side effects; export blobs reach the string channel as base64 through `webview-client`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

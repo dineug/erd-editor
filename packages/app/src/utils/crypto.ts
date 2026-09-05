@@ -1,10 +1,10 @@
-import * as base64 from 'base64-arraybuffer';
+import { decodeBase64, encodeBase64 } from '@/utils/base64';
 
 type EncryptValue = {
   encrypted: ArrayBuffer;
   // Pinned to ArrayBuffer rather than the default ArrayBufferLike, which both
   // consumers require: a BufferSource excludes a shared-backed view, and
-  // base64.encode takes an ArrayBuffer. TypeScript rejects the unpinned form.
+  // encodeBase64 takes an ArrayBuffer. TypeScript rejects the unpinned form.
   iv: Uint8Array<ArrayBuffer>;
 };
 
@@ -96,11 +96,11 @@ export async function encryptToJson(
 ): Promise<EncryptJson> {
   const { encrypted, iv } = await encrypt(value, key);
   return {
-    encrypted: base64.encode(encrypted),
+    encrypted: encodeBase64(encrypted),
     // .buffer, not the view: generateIv allocates its 12 bytes and never
     // subarrays them, so the encoded string is unchanged and anything already
     // stored stays decryptable. crypto.test.ts holds the frozen witness.
-    iv: base64.encode(iv.buffer),
+    iv: encodeBase64(iv.buffer),
   };
 }
 
@@ -108,5 +108,5 @@ export function decryptFromJson(
   { encrypted, iv }: EncryptJson,
   key: CryptoKey
 ): Promise<string> {
-  return decrypt(base64.decode(encrypted), base64.decode(iv), key);
+  return decrypt(decodeBase64(encrypted), decodeBase64(iv), key);
 }

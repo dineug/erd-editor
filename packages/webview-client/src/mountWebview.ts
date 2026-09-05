@@ -22,7 +22,8 @@ import {
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-webview-bridge';
-import { encode } from 'base64-arraybuffer';
+
+import { encodeBase64 } from './base64';
 
 /** What differs between the IDE hosts; what the protocol itself decides stays in mountWebview. */
 export interface WebviewHost {
@@ -87,7 +88,7 @@ export function mountWebview(host: WebviewHost): WebviewClient {
     const arrayBuffer = await blob.arrayBuffer();
     dispatch(
       Bridge.executeCommand(hostExportFileCommand, {
-        value: encode(arrayBuffer),
+        value: encodeBase64(arrayBuffer),
         fileName: options.fileName,
       })
     );

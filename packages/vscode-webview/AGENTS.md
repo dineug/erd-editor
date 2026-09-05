@@ -70,7 +70,7 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
 
 ### External
 
-`base64-arraybuffer` for binary payloads, `core-js/stable` imported wholesale at the top of `src/index.ts`,
+`core-js/stable` imported wholesale at the top of `src/index.ts`,
 `@types/vscode-webview` for the `acquireVsCodeApi` typing.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

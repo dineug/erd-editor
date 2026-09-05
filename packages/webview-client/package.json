@@ -22,8 +22,7 @@
     "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-replication-store-worker": "workspace:*",
     "@dineug/erd-editor-shiki-worker": "workspace:*",
-    "@dineug/erd-editor-webview-bridge": "workspace:*",
-    "base64-arraybuffer": "^1.0.2"
+    "@dineug/erd-editor-webview-bridge": "workspace:*"
   },
   "devDependencies": {
     "@typescript/typescript6": "6.0.2",

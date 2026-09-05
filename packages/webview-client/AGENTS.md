@@ -42,6 +42,6 @@ it, each supplying only its transport and what differs about its host. `private:
 
 ### External
 
-- `base64-arraybuffer` `^1.0.2` — encodes an exported blob for the host.
+None — `src/base64.ts` encodes an exported blob for the host through `btoa`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

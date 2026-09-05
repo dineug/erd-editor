@@ -14,7 +14,6 @@ import {
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-webview-bridge';
-import { decode } from 'base64-arraybuffer';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -142,7 +141,7 @@ export class ErdEditor extends Editor {
 
           await vscode.workspace.fs.writeFile(
             uri,
-            new Uint8Array(decode(value))
+            new Uint8Array(Buffer.from(value, 'base64'))
           );
         }
       ),
