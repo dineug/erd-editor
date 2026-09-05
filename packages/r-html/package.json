@@ -16,7 +16,6 @@
       "types": "./dist/jsx-runtime.d.ts"
     }
   },
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
     "dev": "vp dev",

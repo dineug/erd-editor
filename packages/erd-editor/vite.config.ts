@@ -8,7 +8,6 @@ import {
   createWorkerOptions,
 } from '../../tools/vite/library-config.ts';
 import {
-  createBanner,
   createExternal,
   loadLibraryMetadata,
 } from '../../tools/vite/package-metadata.ts';
@@ -16,7 +15,6 @@ import { libraryWorkerUrls } from '../../tools/vite/worker-url.ts';
 
 const packageDir = import.meta.dirname;
 const { manifest } = loadLibraryMetadata(packageDir);
-const banner = createBanner(manifest);
 const external = createExternal(manifest);
 const rHtmlPackage: string = '@dineug/vite-plugin-r-html';
 
@@ -44,9 +42,6 @@ export default defineConfig({
       // resolve, dedupe and tree-shake by their own sideEffects fields. The
       // four private workspace libraries are not on npm, so they still inline.
       external,
-      output: {
-        banner,
-      },
     },
   },
   resolve: {

@@ -13,7 +13,7 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-webview-bridge` protoco
 
 | File | Description |
 | --- | --- |
-| `src/main.ts` | The whole client — element creation, `bridge` (host) + `workerBridge` (worker), `createReplicationStoreWorker` from `@dineug/erd-editor-replication-store-worker`, theme/readonly commands, lazy shiki registration |
+| `src/main.ts` | The host adapter: a `window.cefQuery` transport handed to `mountWebview` from `@dineug/erd-editor-webview-client`, and the worker name |
 | `src/env.d.ts` | Ambient `window.cefQuery` / `cefQueryCancel` types and `declare module '*.css'` |
 | `index.html` | Build entry at the package root; `publicDir: false`, so no static asset dir sits beside it |
 | `vite.config.ts` | The one output path, the `stripCrossorigin` plugin, the `worker` block, `run.tasks` |
@@ -59,7 +59,7 @@ cd ../intellij-plugin && ./gradlew runIde
 
 ### Internal
 
-`@dineug/erd-editor` (element), `@dineug/erd-editor-webview-bridge` (protocol), `@dineug/erd-editor-replication-store-worker` (the replica worker), `@dineug/erd-editor-shiki-worker` (lazy).
+`@dineug/erd-editor-webview-client`, which brings the editor, the bridge, the replica worker and the lazy Shiki worker with it.
 
 ### External
 

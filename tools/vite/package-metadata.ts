@@ -9,8 +9,6 @@ export type TypeGateInput =
 export interface PackageManifest {
   name: string;
   version: string;
-  author: string;
-  license: string;
   types?: string;
   typings?: string;
   dependencies?: Record<string, string>;
@@ -251,15 +249,6 @@ export function loadLibraryMetadata(packageDir: string): LibraryMetadata {
     hasTest: configInputs.some(input => input.startsWith('vitest.config.')),
     typeGateInput,
   };
-}
-
-export function createBanner(manifest: PackageManifest): string {
-  return `/*!
- * ${manifest.name}
- * @version ${manifest.version} | ${new Date().toDateString()}
- * @author ${manifest.author}
- * @license ${manifest.license}
- */`;
 }
 
 function escapeRegExp(value: string): string {

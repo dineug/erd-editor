@@ -1,137 +1,16 @@
 import './webview.css';
 import 'core-js/stable';
 
-import {
-  setExportFileCallback,
-  setGetShikiServiceCallback,
-} from '@dineug/erd-editor';
-import { createReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
-import {
-  AnyAction,
-  Bridge,
-  hostExportFileCommand,
-  hostInitialCommand,
-  hostSaveReplicationCommand,
-  hostSaveThemeCommand,
-  hostSaveValueCommand,
-  ThemeOptions,
-  webviewImportFileCommand,
-  webviewInitialValueCommand,
-  webviewReplicationCommand,
-  webviewUpdateReadonlyCommand,
-  webviewUpdateThemeCommand,
-} from '@dineug/erd-editor-webview-bridge';
-import { encode } from 'base64-arraybuffer';
+import { mountWebview } from '@dineug/erd-editor-webview-client';
 
-const bridge = new Bridge();
-const workerBridge = new Bridge();
-const editor = document.createElement('erd-editor');
-const sharedStore = editor.getSharedStore({
-  mouseTracker: false,
-  focusTracker: false,
-});
-const replicationStoreWorker = createReplicationStoreWorker({
-  name: '@dineug/erd-editor-intellij-webview/replication-store-worker',
-});
-
-const dispatch = (action: AnyAction) => {
-  window.cefQuery({
-    request: JSON.stringify(action),
-    persistent: false,
-    onSuccess: () => {},
-    onFailure: () => {},
-  });
-};
-
-const dispatchWorker = (action: AnyAction) => {
-  replicationStoreWorker.postMessage(action);
-};
-
-import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
-  setGetShikiServiceCallback(getShikiService);
-});
-setExportFileCallback(async (blob, options) => {
-  const arrayBuffer = await blob.arrayBuffer();
-  dispatch(
-    Bridge.executeCommand(hostExportFileCommand, {
-      value: encode(arrayBuffer),
-      fileName: options.fileName,
-    })
-  );
-});
-
-const handleChangePresetTheme = (event: Event) => {
-  const e = event as CustomEvent<ThemeOptions>;
-  dispatch(Bridge.executeCommand(hostSaveThemeCommand, e.detail));
-};
-
-Bridge.mergeRegister(
-  bridge.registerCommand(webviewImportFileCommand, ({ type, op, value }) => {
-    switch (type) {
-      case 'json':
-        op === 'set' ? (editor.value = value) : editor.setDiffValue(value);
-        break;
-      case 'sql':
-        op === 'set' && editor.setSchemaSQL(value);
-        break;
-      case 'graphql':
-        op === 'set' && editor.setSchemaGraphQL(value);
-        break;
-      case 'dbml':
-        op === 'set' && editor.setSchemaDBML(value);
-        break;
-      case 'aml':
-        op === 'set' && editor.setSchemaAML(value);
-        break;
-      default: {
-        // The host has already read the file by the time we get here, so an
-        // unhandled type is a silent loss. type is never in this arm, so
-        // widening the bridge union without adding a case breaks the build.
-        const unhandled: never = type;
-        throw new Error(`unsupported import file type "${unhandled}"`);
-      }
-    }
-  }),
-  bridge.registerCommand(webviewInitialValueCommand, ({ value }) => {
-    dispatchWorker(
-      Bridge.executeCommand(webviewInitialValueCommand, { value })
-    );
-
-    editor.addEventListener('changePresetTheme', handleChangePresetTheme);
-    editor.setInitialValue(value);
-    editor.enableThemeBuilder = true;
-    sharedStore.subscribe(actions => {
-      dispatchWorker(
-        Bridge.executeCommand(webviewReplicationCommand, { actions })
-      );
-      dispatch(Bridge.executeCommand(hostSaveReplicationCommand, { actions }));
+mountWebview({
+  dispatch: action => {
+    window.cefQuery({
+      request: JSON.stringify(action),
+      persistent: false,
+      onSuccess: () => {},
+      onFailure: () => {},
     });
-    document.body.appendChild(editor);
-  }),
-  bridge.registerCommand(webviewReplicationCommand, ({ actions }) => {
-    sharedStore.dispatch(actions);
-    dispatchWorker(
-      Bridge.executeCommand(webviewReplicationCommand, { actions })
-    );
-  }),
-  bridge.registerCommand(webviewUpdateThemeCommand, payload => {
-    editor.setPresetTheme({
-      ...payload,
-      appearance: payload.appearance === 'auto' ? 'dark' : payload.appearance,
-    });
-  }),
-  bridge.registerCommand(webviewUpdateReadonlyCommand, readonly => {
-    editor.readonly = readonly;
-  }),
-  workerBridge.registerCommand(hostSaveValueCommand, ({ value }) => {
-    dispatch(Bridge.executeCommand(hostSaveValueCommand, { value }));
-  })
-);
-
-globalThis.addEventListener('message', event => {
-  bridge.executeAction(event.data);
+  },
+  workerName: '@dineug/erd-editor-intellij-webview/replication-store-worker',
 });
-replicationStoreWorker.addEventListener('message', event => {
-  workerBridge.executeAction(event.data);
-});
-dispatch(Bridge.executeCommand(hostInitialCommand, undefined));

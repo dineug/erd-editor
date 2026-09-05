@@ -8,7 +8,6 @@ import {
   createWorkerOptions,
 } from '../../tools/vite/library-config.ts';
 import {
-  createBanner,
   createExternal,
   loadLibraryMetadata,
 } from '../../tools/vite/package-metadata.ts';
@@ -16,7 +15,6 @@ import { libraryWorkerUrls } from '../../tools/vite/worker-url.ts';
 
 const packageDir = import.meta.dirname;
 const { manifest } = loadLibraryMetadata(packageDir);
-const banner = createBanner(manifest);
 const external = createExternal(manifest);
 
 export default defineConfig({
@@ -38,9 +36,6 @@ export default defineConfig({
       // to resolve; shiki and its grammars are among them now that the worker
       // is a file of its own rather than a data URL.
       external,
-      output: {
-        banner,
-      },
     },
   },
   worker: createWorkerOptions(external),

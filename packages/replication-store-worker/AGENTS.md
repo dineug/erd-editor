@@ -9,7 +9,7 @@ Runs a headless replica of the editor document off the main thread, so the VSCod
 `.erd` files without serializing on the UI thread. The webview forwards the raw action stream in; the
 worker feeds it to `createReplicationStore` from `@dineug/erd-editor/engine.js` and emits the
 serialized document back only when the store reports a `change`. Consumed by both IDE webviews,
-`vscode-webview` and `intellij-webview`, which spawn it through `createReplicationStoreWorker`;
+`vscode-webview` and `intellij-webview`, through `mountWebview` in `webview-client`, which calls `createReplicationStoreWorker`;
 the VSCode one inlines the worker file in its own build, the IntelliJ one loads it from its URL.
 `private: true`.
 

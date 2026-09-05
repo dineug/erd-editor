@@ -385,21 +385,9 @@ importers:
 
   packages/intellij-webview:
     dependencies:
-      '@dineug/erd-editor':
+      '@dineug/erd-editor-webview-client':
         specifier: workspace:*
-        version: link:../erd-editor
-      '@dineug/erd-editor-replication-store-worker':
-        specifier: workspace:*
-        version: link:../replication-store-worker
-      '@dineug/erd-editor-shiki-worker':
-        specifier: workspace:*
-        version: link:../erd-editor-shiki-worker
-      '@dineug/erd-editor-webview-bridge':
-        specifier: workspace:*
-        version: link:../webview-bridge
-      base64-arraybuffer:
-        specifier: ^1.0.2
-        version: 1.0.2
+        version: link:../webview-client
     devDependencies:
       core-js:
         specifier: ^3.36.1
@@ -581,21 +569,12 @@ importers:
 
   packages/vscode-webview:
     dependencies:
-      '@dineug/erd-editor':
-        specifier: workspace:*
-        version: link:../erd-editor
-      '@dineug/erd-editor-replication-store-worker':
-        specifier: workspace:*
-        version: link:../replication-store-worker
-      '@dineug/erd-editor-shiki-worker':
-        specifier: workspace:*
-        version: link:../erd-editor-shiki-worker
       '@dineug/erd-editor-webview-bridge':
         specifier: workspace:*
         version: link:../webview-bridge
-      base64-arraybuffer:
-        specifier: ^1.0.2
-        version: 1.0.2
+      '@dineug/erd-editor-webview-client':
+        specifier: workspace:*
+        version: link:../webview-client
     devDependencies:
       '@types/vscode-webview':
         specifier: 1.57.5
@@ -625,6 +604,49 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.2.9
+        version: '@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)'
+      vite-plugin-dts:
+        specifier: ^5.0.3
+        version: 5.0.3(@microsoft/api-extractor@7.51.1(@types/node@22.20.1))(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(rolldown@1.2.4)(rollup@4.62.4)(typescript@7.0.2)(webpack@5.91.0)
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.9(@types/node@22.20.1)(@vitest/browser-playwright@4.1.10(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(playwright@1.62.1)(vitest@4.1.10))(@vitest/coverage-v8@4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10))(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/browser-playwright@4.1.10(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(playwright@1.62.1)(vitest@4.1.10))(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10))(@voidzero-dev/vite-plus-core@0.2.9(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)
+
+  packages/webview-client:
+    dependencies:
+      '@dineug/erd-editor':
+        specifier: workspace:*
+        version: link:../erd-editor
+      '@dineug/erd-editor-replication-store-worker':
+        specifier: workspace:*
+        version: link:../replication-store-worker
+      '@dineug/erd-editor-shiki-worker':
+        specifier: workspace:*
+        version: link:../erd-editor-shiki-worker
+      '@dineug/erd-editor-webview-bridge':
+        specifier: workspace:*
+        version: link:../webview-bridge
+      base64-arraybuffer:
+        specifier: ^1.0.2
+        version: 1.0.2
+    devDependencies:
+      '@typescript/typescript6':
+        specifier: 6.0.2
+        version: 6.0.2
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
+      happy-dom:
+        specifier: ^20.11.2
+        version: 20.11.2
       typescript:
         specifier: 7.0.2
         version: 7.0.2

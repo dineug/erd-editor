@@ -25,6 +25,10 @@
       "path": "packages/webview-bridge",
     },
     {
+      "name": "webview-client",
+      "path": "packages/webview-client",
+    },
+    {
       "name": "replication-store-worker",
       "path": "packages/replication-store-worker",
     },

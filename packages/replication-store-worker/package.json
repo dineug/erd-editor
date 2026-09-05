@@ -12,7 +12,6 @@
       "default": "./dist/index.js"
     }
   },
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {},
   "dependencies": {

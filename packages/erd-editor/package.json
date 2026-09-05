@@ -40,7 +40,6 @@
     "url": "https://github.com/dineug/erd-editor/issues"
   },
   "homepage": "https://github.com/dineug/erd-editor#readme",
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
     "dev": "vp run --filter @dineug/erd-editor... --filter !@dineug/erd-editor build && vp dev",

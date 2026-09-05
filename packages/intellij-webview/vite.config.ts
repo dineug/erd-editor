@@ -96,19 +96,7 @@ export default defineConfig({
           'tsconfig.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
           {
-            pattern: 'packages/erd-editor/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/replication-store-worker/dist/**/*.d.ts',
+            pattern: 'packages/webview-client/dist/**/*.d.ts',
             base: 'workspace',
           },
           '!**/*.tsbuildinfo',

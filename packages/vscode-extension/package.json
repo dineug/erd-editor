@@ -30,7 +30,6 @@
     "type": "git",
     "url": "https://github.com/dineug/erd-editor.git"
   },
-  "author": "dineug <dineug2@gmail.com>",
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"

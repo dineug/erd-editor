@@ -10,11 +10,7 @@ import {
 } from 'vite-plus';
 
 import { BROWSER_TARGET } from '../../build-target.ts';
-import {
-  createBanner,
-  createExternal,
-  loadLibraryMetadata,
-} from './package-metadata.ts';
+import { createExternal, loadLibraryMetadata } from './package-metadata.ts';
 import { libraryWorkerUrls } from './worker-url.ts';
 
 export interface DtsPluginOptions {
@@ -23,7 +19,6 @@ export interface DtsPluginOptions {
 }
 
 interface LibraryConfigOptions {
-  banner?: true;
   dts: (options: DtsPluginOptions) => PluginOption;
   format?: 'es' | 'cjs';
   minify?: false;
@@ -89,15 +84,7 @@ export function createLibraryConfig(
 ): ViteUserConfig {
   const metadata = loadLibraryMetadata(packageDir);
   const external = createExternal(metadata.manifest);
-  const rolldownOptions =
-    external || options.banner
-      ? {
-          ...(external ? { external } : {}),
-          ...(options.banner
-            ? { output: { banner: createBanner(metadata.manifest) } }
-            : {}),
-        }
-      : undefined;
+  const rolldownOptions = external ? { external } : undefined;
   const tsconfigBuild = join(packageDir, 'tsconfig.build.json');
   const dtsOptions: DtsPluginOptions = {
     ...(existsSync(tsconfigBuild)

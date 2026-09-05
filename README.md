@@ -137,6 +137,7 @@ highlighting). Everything else is internal.
 | [`app`](./packages/app) | The React PWA at erd-editor.io |
 | [`vscode-extension`](./packages/vscode-extension) | The published VS Code extension |
 | [`vscode-webview`](./packages/vscode-webview) | The bundle inside the VS Code webview |
+| [`webview-client`](./packages/webview-client) | The editor mounted into an IDE webview, host protocol wired, shared by both IDE bundles |
 | [`webview-bridge`](./packages/webview-bridge) | Typed host ↔ webview command protocol |
 | [`replication-store-worker`](./packages/replication-store-worker) | Headless document replica for the VS Code host |
 | [`intellij-webview`](./packages/intellij-webview) | The bundle inside the IntelliJ plugin's editor panel |

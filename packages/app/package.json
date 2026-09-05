@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "Entity-Relationship Diagram Editor App",
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
     "dev": "vp run --filter @dineug/erd-editor --filter @dineug/erd-editor-shiki-worker build && vp dev",

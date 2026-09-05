@@ -1,13 +1,13 @@
 {
-  "baseCommit": "5ed8bd72eb457a83a7c17fe37ebb36cade213b14",
-  "recordedAt": "2026-09-05T14:53:37.282Z",
+  "baseCommit": "d58585ea20f5c5318579e730fc3ef1b2ba1ca408",
+  "recordedAt": "2026-09-05T15:19:55.601Z",
   "gzipLevel": 9,
   "entries": {
-    "dist/**/*.js": {
-      "bytes": 1143687,
-      "gzip": 276970,
-      "budgetGzip": 289250,
-      "budgetNote": "276,970 B measured at the first build with every runtime dependency external and both SharedWorkers emitted as files under dist/workers/ rather than inlined: dist/index.js, the chunk it shares with dist/engine/index.js, that entry and the two worker files, concatenated. The export worker still carries its own copy of the scene, since a worker shares no module instance with the page. Plus a 12,280 B margin, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a second scene copy fails the round it lands in, while routine work and a small dependency do not."
+    "dist (reachable from exports)": {
+      "bytes": 1142812,
+      "gzip": 276422,
+      "budgetGzip": 288702,
+      "budgetNote": "276,422 B measured at the first build with every runtime dependency external, both SharedWorkers emitted as files under dist/workers/ and no banner: dist/index.js, the chunk it shares with dist/engine/index.js, that entry and the two worker files, every script reachable from the exports map, concatenated. The export worker still carries its own copy of the scene, since a worker shares no module instance with the page. Plus a 12,280 B margin, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a second scene copy fails the round it lands in, while routine work and a small dependency do not."
     }
   }
 }

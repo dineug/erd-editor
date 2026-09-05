@@ -12,11 +12,15 @@ const packageDir = path.join(root, 'packages', 'erd-editor');
 const baselinePath = path.join(packageDir, '.size-baseline.json');
 
 /**
- * Gated artifacts, relative to the erd-editor package directory. The build
- * emits two entries, the chunk they share and a file per worker, so a glob
- * reads every script in path order and compresses the concatenation as one.
+ * The one gated artifact: every script a consumer can reach from the exports
+ * map, walked from each entry through its static and dynamic imports and the
+ * worker files it names, then concatenated in path order and compressed.
  */
-const ENTRIES = ['dist/**/*.js'];
+const ENTRIES = ['dist (reachable from exports)'];
+
+/** A relative script reference in emitted code: an import, a dynamic import, or a worker url. */
+const RELATIVE_SCRIPT =
+  /(?:from\s*|import\(\s*)"(\.{1,2}\/[^"]+\.js)"|new URL\("(\.{1,2}\/[^"]+\.js)",\s*import\.meta\.url\)/g;
 
 /**
  * Compression level every recorded number is measured at. It is stored in the
@@ -106,40 +110,46 @@ function parseBudget(value) {
 const MISSING_OUTPUT =
   'Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build';
 
-function scriptsUnder(directory, found = []) {
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const pathname = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      scriptsUnder(pathname, found);
-    } else if (entry.name.endsWith('.js')) {
-      found.push(pathname);
+/** The scripts the exports map points at, as absolute paths. */
+function exportedEntries() {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8')
+  );
+  return Object.values(manifest.exports)
+    .map(target => (typeof target === 'string' ? target : target.default))
+    .filter(Boolean)
+    .map(target => path.join(packageDir, target));
+}
+
+/**
+ * Every script reachable from the exported entries. A stale chunk a cache
+ * replay left beside the live one is unreachable and so never counts, and a
+ * file the build stopped emitting fails here rather than in a consumer.
+ */
+function filesOf() {
+  const reached = new Set();
+  const pending = exportedEntries();
+
+  while (pending.length) {
+    const file = pending.pop();
+    if (reached.has(file)) continue;
+    if (!fs.existsSync(file)) {
+      throw new Error(
+        `Missing build output: ${path.relative(root, file)}. ${MISSING_OUTPUT}`
+      );
+    }
+    reached.add(file);
+    const code = fs.readFileSync(file, 'utf8');
+    for (const match of code.matchAll(RELATIVE_SCRIPT)) {
+      pending.push(path.resolve(path.dirname(file), match[1] ?? match[2]));
     }
   }
-  return found;
+
+  return [...reached].sort();
 }
 
-/** The files one entry names: a single path, or every script below a glob's root. */
-function filesOf(entry) {
-  const globbed = entry.match(/^(.*)\/\*\*\/\*\.js$/);
-  const target = path.join(packageDir, globbed ? globbed[1] : entry);
-  if (!fs.existsSync(target)) {
-    throw new Error(
-      `Missing build output: ${path.relative(root, target)}. ${MISSING_OUTPUT}`
-    );
-  }
-  if (!globbed) return [target];
-
-  const files = scriptsUnder(target).sort();
-  if (!files.length) {
-    throw new Error(
-      `No script under ${path.relative(root, target)}. ${MISSING_OUTPUT}`
-    );
-  }
-  return files;
-}
-
-function measure(entry) {
-  const source = Buffer.concat(filesOf(entry).map(file => fs.readFileSync(file)));
+function measure() {
+  const source = Buffer.concat(filesOf().map(file => fs.readFileSync(file)));
   return {
     bytes: source.byteLength,
     gzip: gzipSync(source, { level: GZIP_LEVEL }).byteLength,

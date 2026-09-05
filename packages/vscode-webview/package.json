@@ -3,17 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "description": "Entity-Relationship Diagram Editor vscode webview",
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@dineug/erd-editor": "workspace:*",
-    "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/erd-editor-webview-bridge": "workspace:*",
-    "@dineug/erd-editor-replication-store-worker": "workspace:*",
-    "base64-arraybuffer": "^1.0.2"
+    "@dineug/erd-editor-webview-client": "workspace:*"
   },
   "devDependencies": {
     "@types/vscode-webview": "1.57.5",

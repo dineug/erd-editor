@@ -75,8 +75,8 @@ export function rewriteInlineWorkers(code: string): string | null {
     }
   }
 
-  // Appended rather than prepended so a banner keeps the first line; a function
-  // declaration hoists.
+  // Appended rather than prepended, so the chunk's first line stays what it
+  // was; a function declaration hoists.
   return `${code.replace(
     PERCENT_ENCODED_WORKER,
     (_, ident) => `__toDataUrl(${ident})`

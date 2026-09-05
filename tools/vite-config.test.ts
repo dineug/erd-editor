@@ -19,7 +19,6 @@ import {
   createWorkerOptions,
 } from './vite/library-config.ts';
 import {
-  createBanner,
   createExternal,
   loadLibraryMetadata,
 } from './vite/package-metadata.ts';
@@ -47,18 +46,8 @@ type LibraryTask = {
 type LibraryTasks = { build: LibraryTask; test?: LibraryTask };
 type Mutation = [label: string, mutate: (tasks: LibraryTasks) => void];
 
-test('package metadata derives the banner and external policy', () => {
+test('package metadata derives the external policy', () => {
   const { manifest } = loadLibraryMetadata(rHtmlDir);
-
-  assert.equal(
-    createBanner(manifest),
-    `/*!
- * @dineug/r-html
- * @version ${manifest.version} | ${new Date().toDateString()}
- * @author SeungHwan-Lee <dineug2@gmail.com>
- * @license MIT
- */`
-  );
 
   const external = createExternal(manifest);
   assert.ok(external);
@@ -107,7 +96,6 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
 
 test('standard library factory preserves build policies', () => {
   const config = createLibraryConfig(rHtmlDir, {
-    banner: true,
     dts: () => ({ name: 'test-dts' }),
     server: { open: false },
   });
@@ -125,10 +113,7 @@ test('standard library factory preserves build policies', () => {
     entry: ['./src/index.ts'],
     formats: ['es'],
   });
-  const output = config.build?.rolldownOptions?.output as
-    | { banner?: string }
-    | undefined;
-  assert.equal(output?.banner, createBanner(metadata.manifest));
+  assert.equal(config.build?.rolldownOptions?.output, undefined);
   const external = config.build?.rolldownOptions?.external;
   assert.ok(external instanceof RegExp);
   assert.equal(external.test('stylis'), true);

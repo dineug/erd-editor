@@ -23,8 +23,8 @@ shares with the extension host:
 
 - **host ↔ webview**, over `acquireVsCodeApi()` `postMessage` — initial value,
   theme, readonly, file import/export, and replication actions.
-- **webview ↔ worker**, over the `Worker` that `createReplicationStoreWorker` from
-  `@dineug/erd-editor-replication-store-worker` builds, which keeps a headless
+- **webview ↔ worker**, over the replica worker `mountWebview` from
+  `@dineug/erd-editor-webview-client` spawns, which keeps a headless
   replica of the document.
 
 `editor.getSharedStore({ mouseTracker: false, focusTracker: false })` is subscribed once the host
