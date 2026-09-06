@@ -9,6 +9,17 @@ const PIXEL_TOLERANCE = 2;
 /** constants/layout.ts — the square the minimap frame draws, re-checked below. */
 const MINIMAP_SIZE = 150;
 
+/**
+ * How far past the content's far edge a pan is carried, in scene units. Only
+ * the sign of it is the point: the travel the aids draw ends at that edge, and
+ * the pan goes on regardless of it.
+ */
+const BEYOND_EDGE = 200;
+
+/** How far the thumb is dragged, and the step taken before it is measured. */
+const THUMB_DRAG = 48;
+const FIRST_STEP = 4;
+
 /** useVirtualScroll.ts — the width the drawn thumb never goes under. */
 const SCROLLBAR_THUMB_MIN = 24;
 
@@ -335,13 +346,17 @@ test.describe('mouse drag', () => {
     expectClose(scrolled.originY, -120, PIXEL_TOLERANCE);
 
     // Dragging on west reaches where the content's far edge meets the near
-    // edge of the screen, where the aids' travel ends, and the next drag goes
-    // straight past it by its own delta: a pan has no edge to stop at.
-    await erd.panBy(-900, -600);
+    // edge of the screen, and the next drag goes straight past it: how far that
+    // is comes off the drawn box, since a font decides how wide a table is.
+    const toEdge = {
+      x: Math.ceil(farX + scrolled.originX) + BEYOND_EDGE,
+      y: Math.ceil(farY + scrolled.originY) + BEYOND_EDGE,
+    };
+    await erd.panBy(-toEdge.x, -toEdge.y);
 
     const edge = await erd.settings();
-    expectClose(edge.originX, scrolled.originX - 900, PIXEL_TOLERANCE);
-    expectClose(edge.originY, scrolled.originY - 600, PIXEL_TOLERANCE);
+    expectClose(edge.originX, scrolled.originX - toEdge.x, PIXEL_TOLERANCE);
+    expectClose(edge.originY, scrolled.originY - toEdge.y, PIXEL_TOLERANCE);
     expect(edge.originX).toBeLessThanOrEqual(-farX + PIXEL_TOLERANCE);
     expect(edge.originY).toBeLessThanOrEqual(-farY + PIXEL_TOLERANCE);
 
@@ -350,8 +365,8 @@ test.describe('mouse drag', () => {
     const past = await erd.settings();
     expectClose(past.originX, edge.originX - 900, PIXEL_TOLERANCE);
     expectClose(past.originY, edge.originY - 600, PIXEL_TOLERANCE);
-    expect(past.originX).toBeLessThan(-farX - 600);
-    expect(past.originY).toBeLessThan(-farY - 400);
+    expect(past.originX).toBeLessThan(-farX - BEYOND_EDGE);
+    expect(past.originY).toBeLessThan(-farY - BEYOND_EDGE);
   });
 
   test('the hand tool pans even when the drag starts over a table', async ({
@@ -438,31 +453,48 @@ test.describe('mouse drag', () => {
     const trackBox = await boxOf(track);
     expect(trackBox.width).toBeGreaterThan(trackBox.height);
 
-    const before = await boxOf(thumb);
-
     // The thumb is the screen's share of a screen plus the travel behind it and
     // slides over what that leaves, so the gain a drag is scaled by is the
     // thumb's share of the viewport — the host, not the slightly shorter track.
     const hostBox = await boxOf(erd.host);
     expect(trackBox.width).toBeLessThanOrEqual(hostBox.width);
-    expect(before.width).toBeGreaterThan(SCROLLBAR_THUMB_MIN);
-    const ratio = before.width / hostBox.width;
 
     const from = await erd.centerOf(thumb);
-    await dragHold(erd, from, { x: from.x + 48, y: from.y });
+    await erd.page.mouse.move(from.x, from.y);
+    await erd.page.mouse.down();
+
+    // Stepped once before anything is measured: the press is what reads the
+    // table sizes the relationship sort settles after a load, so the two boxes
+    // below are taken against the one geometry the drag holds frozen.
+    await erd.page.mouse.move(from.x + FIRST_STEP, from.y);
     // [data-selected] marks the grabbed thumb for as long as the drag runs.
     await expect(thumb).toHaveAttribute('data-selected', '');
+
+    const held = await boxOf(thumb);
+    expect(held.width).toBeGreaterThan(SCROLLBAR_THUMB_MIN);
+    const ratio = held.width / hostBox.width;
+
+    await erd.page.mouse.move(from.x + THUMB_DRAG, from.y);
+
+    // The thumb is drawn at what is left of the travel above the origin, and
+    // the drag scales the pointer against that same travel, so what it slid is
+    // the pointer delta itself.
+    const during = await boxOf(thumb);
+    expectClose(during.x - held.x, THUMB_DRAG - FIRST_STEP, PIXEL_TOLERANCE);
+
     await erd.page.mouse.up();
     await expect(thumb).not.toHaveAttribute('data-selected', '');
 
     const settings = await erd.settings();
-    expectClose(settings.originX, -48 / ratio, PIXEL_TOLERANCE / ratio);
+    expectClose(settings.originX, -THUMB_DRAG / ratio, PIXEL_TOLERANCE / ratio);
     expect(settings.originY).toBe(0);
 
-    // The thumb is drawn at what is left of the travel above the origin, so
-    // the distance it slid is exactly the pointer delta again.
+    // The drop hands the freeze back, and the drag stayed inside the travel the
+    // content alone allows, so what it was drawn against is what it is drawn
+    // against now: the thumb does not jump when the gesture ends.
     const after = await boxOf(thumb);
-    expectClose(after.x - before.x, 48, PIXEL_TOLERANCE);
+    expectClose(after.x, during.x, PIXEL_TOLERANCE);
+    expectClose(after.width, held.width, PIXEL_TOLERANCE);
   });
 
   test('reordering a column by native drag-and-drop moves it in the store and the DOM', async ({
