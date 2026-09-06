@@ -6,12 +6,10 @@ import test from 'node:test';
 import { BROWSER_TARGET } from '../build-target.ts';
 import {
   assertInlineWorkersEncoded,
-  assertNoUrlWorkers,
   base64UrlLength,
   MAX_URL_LENGTH,
   readStringLiteral,
   rewriteInlineWorkers,
-  rewriteUrlWorkers,
 } from './vite/inline-worker.ts';
 import {
   createLibraryConfig,
@@ -22,6 +20,10 @@ import {
   createExternal,
   loadLibraryMetadata,
 } from './vite/package-metadata.ts';
+import {
+  assertNoUrlWorkers,
+  rewriteUrlWorkersToBlob,
+} from './vite/same-origin-worker.ts';
 import {
   assertWorkerUrlsRewritten,
   relativeWorkerUrl,
@@ -321,56 +323,71 @@ new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsCo
   );
 });
 
-test('an IDE webview turns dependency url workers into inline imports', () => {
+test('an IDE webview reads dependency url workers through the runtime module', () => {
   const id = '/repo/packages/erd-editor/dist/index.js';
+  const runtime = '/repo/packages/vscode-webview/src/workerSources.ts';
   assert.ok(
-    rewriteUrlWorkers(
+    rewriteUrlWorkersToBlob(
       'new Worker(new URL("./workers/replicationStore.worker.js", import.meta.url), { type: "module" })',
-      '/repo/packages/replication-store-worker/dist/index.js'
+      '/repo/packages/replication-store-worker/dist/index.js',
+      runtime
     )
   );
   const code = `let e = new SharedWorker(new URL("./workers/schemaGC.shared-worker.js", import.meta.url), { type: "module", name: n });
 let w = new Worker(new URL("./workers/other.js", import.meta.url), { type: "module" });`;
 
-  const rewritten = rewriteUrlWorkers(code, id);
+  const rewritten = rewriteUrlWorkersToBlob(code, id, runtime);
   assert.ok(rewritten);
   assert.match(
     rewritten,
-    /^import __inlineWorker0 from "\/repo\/packages\/erd-editor\/dist\/workers\/schemaGC\.shared-worker\.js\?sharedworker&inline";$/m
+    /^import \{ registerWorkerSource as __registerWorkerSource, workerBlobUrl as __workerBlobUrl \} from "\/repo\/packages\/vscode-webview\/src\/workerSources\.ts";$/m
   );
   assert.match(
     rewritten,
-    /^import __inlineWorker1 from "\/repo\/packages\/erd-editor\/dist\/workers\/other\.js\?worker&inline";$/m
+    /^import __workerUrl0 from "\/repo\/packages\/erd-editor\/dist\/workers\/schemaGC\.shared-worker\.js\?sharedworker&url";$/m
   );
   assert.match(
     rewritten,
-    /new __inlineWorker0\(\{ type: "module", name: n \}\)/
+    /^import __workerUrl1 from "\/repo\/packages\/erd-editor\/dist\/workers\/other\.js\?worker&url";$/m
   );
-  assert.match(rewritten, /new __inlineWorker1\(\{ type: "module" \}\)/);
+  assert.match(
+    rewritten,
+    /^const __workerSource0 = __registerWorkerSource\(__workerUrl0\);$/m
+  );
+  assert.match(
+    rewritten,
+    /new SharedWorker\(__workerBlobUrl\(__workerSource0\), \{ type: "module", name: n \}\)/
+  );
+  assert.match(
+    rewritten,
+    /new Worker\(__workerBlobUrl\(__workerSource1\), \{ type: "module" \}\)/
+  );
   assert.doesNotMatch(rewritten, /import\.meta\.url/);
 
   assert.equal(
-    rewriteUrlWorkers(code, '/repo/packages/app/src/index.ts'),
+    rewriteUrlWorkersToBlob(code, '/repo/packages/app/src/index.ts', runtime),
     null
   );
-  assert.equal(rewriteUrlWorkers('const x = 1;', id), null);
+  assert.equal(rewriteUrlWorkersToBlob('const x = 1;', id, runtime), null);
 
   assert.match(
-    rewriteUrlWorkers(
+    rewriteUrlWorkersToBlob(
       'new Worker(new URL("./workers/bare.js", import.meta.url))',
-      id
+      id,
+      runtime
     ) ?? '',
-    /new __inlineWorker0\(\)/
+    /new Worker\(__workerBlobUrl\(__workerSource0\)\)/
   );
   assert.match(
-    rewriteUrlWorkers(
+    rewriteUrlWorkersToBlob(
       `new SharedWorker(new URL("./workers/x.js", import.meta.url), {
 \t\t\ttype: "module",
 \t\t\tname: n
 \t\t})`,
-      id
+      id,
+      runtime
     ) ?? '',
-    /new __inlineWorker0\(\{\n\t\t\ttype: "module",/
+    /new SharedWorker\(__workerBlobUrl\(__workerSource0\), \{\n\t\t\ttype: "module",/
   );
 });
 

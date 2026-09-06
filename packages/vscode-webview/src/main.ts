@@ -4,6 +4,8 @@ import 'core-js/stable';
 import { Appearance } from '@dineug/erd-editor-webview-bridge';
 import { mountWebview } from '@dineug/erd-editor-webview-client';
 
+import { whenWorkerSourcesReady } from '@/workerSources';
+
 const vscode = acquireVsCodeApi();
 const loading = document.querySelector('#loading');
 
@@ -19,6 +21,13 @@ function getSystemTheme(): Appearance {
       ? Appearance.light
       : Appearance.dark;
 }
+
+/**
+ * Every worker this host builds is spawned from a synchronous call inside the
+ * editor, and each reads its script from a blob the document filled, so the
+ * reads are awaited here rather than at the spawn that cannot wait for them.
+ */
+await whenWorkerSourcesReady();
 
 const client = mountWebview({
   dispatch: action => vscode.postMessage(action),

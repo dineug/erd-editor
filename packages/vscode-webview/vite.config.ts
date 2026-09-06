@@ -2,10 +2,7 @@ import { join } from 'node:path';
 
 import { defineConfig, type Plugin } from 'vite-plus';
 
-import {
-  base64InlineWorkers,
-  inlineDependencyWorkers,
-} from '../../tools/vite/inline-worker.ts';
+import { sameOriginDependencyWorkers } from '../../tools/vite/same-origin-worker.ts';
 
 /**
  * Strips crossorigin from the tags Vite injects. A webview document runs on one
@@ -25,8 +22,9 @@ function stripCrossorigin(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [
-    inlineDependencyWorkers(),
-    base64InlineWorkers(),
+    sameOriginDependencyWorkers({
+      runtime: join(import.meta.dirname, 'src/workerSources.ts'),
+    }),
     stripCrossorigin(),
   ],
   // index.html is the entry and lives at the package root. There is no static
@@ -46,9 +44,24 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         hashCharacters: 'hex',
-        entryFileNames: 'bundle.[hash:8].js',
-        chunkFileNames: '[name].[hash:8].js',
-        assetFileNames: 'bundle.[hash:8][extname]',
+        entryFileNames: 'static/js/bundle.[hash:8].js',
+        chunkFileNames: 'static/js/[name].[hash:8].js',
+        assetFileNames: 'static/css/bundle.[hash:8][extname]',
+      },
+    },
+  },
+
+  worker: {
+    format: 'es',
+    rolldownOptions: {
+      output: {
+        // A worker here is built from a blob url, and a chunk it imported by a
+        // relative path would resolve against that url rather than against the
+        // directory the chunk was written to.
+        codeSplitting: false,
+        hashCharacters: 'hex',
+        entryFileNames: 'static/js/[name].[hash:8].js',
+        chunkFileNames: 'static/js/[name].[hash:8].js',
       },
     },
   },
@@ -85,7 +98,7 @@ export default defineConfig({
           'vite.config.ts',
           'tsconfig.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
-          { pattern: 'tools/vite/inline-worker.ts', base: 'workspace' },
+          { pattern: 'tools/vite/same-origin-worker.ts', base: 'workspace' },
           {
             pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',

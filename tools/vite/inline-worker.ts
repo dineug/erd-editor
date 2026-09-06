@@ -1,5 +1,3 @@
-import { dirname, resolve } from 'node:path';
-
 import type { Plugin } from 'vite-plus';
 
 /** Chromium's limit on one URL. A data url past it builds a worker that never starts. */
@@ -111,68 +109,6 @@ export function base64InlineWorkers(): Plugin {
         if (output.type === 'chunk') {
           assertInlineWorkersEncoded(output.fileName, output.code);
         }
-      }
-    },
-  };
-}
-
-/** The dist files of the workspace packages that construct a worker from a url. */
-const WORKER_HOSTS =
-  /[\\/](erd-editor|(?:erd-editor-)?replication-store-worker)[\\/]dist[\\/].*\.js$/;
-
-/** The one spelling those packages emit, through the comma before the options if there is one. */
-const URL_WORKER =
-  /new (SharedWorker|Worker)\(new URL\("(\.\.?\/[^"]+)", import\.meta\.url\)(?:,\s*|(?=\)))/g;
-
-/** Throws when a chunk still constructs a worker from a url, which this host cannot load. */
-export function assertNoUrlWorkers(fileName: string, code: string) {
-  if (/new (?:Shared)?Worker\(new URL\(/.test(code)) {
-    throw new Error(
-      `[inlineWorkers] a url worker in ${fileName} survived into a host that cannot load one`
-    );
-  }
-}
-
-/**
- * Rewrites every url worker in one of those dist files into Vite's inline
- * import of the same file, so the worker script travels inside the chunk. Null
- * when the file is not one of theirs or constructs no worker that way.
- */
-export function rewriteUrlWorkers(code: string, id: string): string | null {
-  if (!WORKER_HOSTS.test(id)) return null;
-
-  const imports: string[] = [];
-  const rewritten = code.replace(URL_WORKER, (_, kind: string, url: string) => {
-    const name = `__inlineWorker${imports.length}`;
-    const file = resolve(dirname(id), url);
-    const query = kind === 'SharedWorker' ? 'sharedworker' : 'worker';
-    imports.push(
-      `import ${name} from ${JSON.stringify(`${file}?${query}&inline`)};`
-    );
-    return `new ${name}(`;
-  });
-
-  return imports.length ? `${imports.join('\n')}\n${rewritten}` : null;
-}
-
-/**
- * For a host whose document and scripts sit on different origins, where a
- * worker script is the one resource a browser refuses across that line: the
- * editor packages' url workers become inline ones before Vite sees them.
- */
-export function inlineDependencyWorkers(): Plugin {
-  return {
-    name: 'erd-editor:inline-dependency-workers',
-    enforce: 'pre',
-    apply: 'build',
-    transform(code, id) {
-      const rewritten = rewriteUrlWorkers(code, id);
-      return rewritten === null ? null : { code: rewritten, map: null };
-    },
-    generateBundle(_, bundle) {
-      for (const output of Object.values(bundle)) {
-        if (output.type === 'chunk')
-          assertNoUrlWorkers(output.fileName, output.code);
       }
     },
   };
