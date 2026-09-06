@@ -99,7 +99,9 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
     { shortcut: '$mod+KeyO', preventDefault: true, stopPropagation: true },
   ],
   [KeyBindingName.handTool]: [{ shortcut: 'Space', preventDefault: true }],
-  [KeyBindingName.zenMode]: [{ shortcut: 'Alt+KeyZ', preventDefault: true }],
+  [KeyBindingName.zenMode]: [
+    { shortcut: 'Alt+KeyZ', preventDefault: true, stopPropagation: true },
+  ],
 });
 
 const ModifierKey = {

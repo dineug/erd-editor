@@ -109,7 +109,7 @@ describe('keyboard-shortcut', () => {
         { shortcut: 'Space', preventDefault: true },
       ]);
       expect(map.zenMode).toEqual([
-        { shortcut: 'Alt+KeyZ', preventDefault: true },
+        { shortcut: 'Alt+KeyZ', preventDefault: true, stopPropagation: true },
       ]);
     });
 
