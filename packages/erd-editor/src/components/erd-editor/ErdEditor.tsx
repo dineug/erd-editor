@@ -83,6 +83,7 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
         | typeof KeyBindingName.redo
         | typeof KeyBindingName.zoomIn
         | typeof KeyBindingName.zoomOut
+        | typeof KeyBindingName.zoomReset
       >
     >
   ) => void;

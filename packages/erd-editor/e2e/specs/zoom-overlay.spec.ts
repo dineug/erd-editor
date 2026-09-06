@@ -80,6 +80,47 @@ test.describe('zoom, scroll and overlays', () => {
     expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MIN);
   });
 
+  test('$mod+KeyO puts the zoom back to 100% from either side, holding the middle', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.focusCanvas();
+    const zoom = erd.toolbar.locator('input[title="zoom level"]');
+
+    // The table under the middle of the screen is the anchor: an absolute zoom
+    // holds the scene point there, so the drawn box straddles the same pixel
+    // before and after the reset, whichever side the zoom is reset from.
+    const middleOf = (box: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => ({
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+    });
+    const home = middleOf((await erd.tableEl('users').boundingBox())!);
+
+    for (const [steps, percent] of [
+      [5, '120%'],
+      [-4, '84%'],
+    ] as Array<[number, string]>) {
+      const chord = steps > 0 ? Shortcut.zoomIn : Shortcut.zoomOut;
+      for (let step = 0; step < Math.abs(steps); step++) {
+        await erd.press(chord);
+      }
+      await expect(zoom).toHaveValue(percent);
+
+      await erd.press(Shortcut.zoomReset);
+
+      await expect(zoom).toHaveValue('100%');
+      expect((await erd.settings()).zoomLevel).toBe(1);
+      const back = middleOf((await erd.tableEl('users').boundingBox())!);
+      expect(back.x).toBeCloseTo(home.x, 0);
+      expect(back.y).toBeCloseTo(home.y, 0);
+    }
+  });
+
   test('a plain wheel scrolls the canvas, Shift+wheel scrolls it sideways, and the editor consumes the event', async ({
     erd,
   }) => {

@@ -615,6 +615,7 @@ const PRESSES: Press[] = [
   binding('search', Shortcut.search),
   binding('zoomIn', Shortcut.zoomIn),
   binding('zoomOut', Shortcut.zoomOut),
+  binding('zoomReset', Shortcut.zoomReset),
   binding('ArrowUp', 'ArrowUp'),
   binding('ArrowDown', 'ArrowDown'),
   binding('ArrowLeft', 'ArrowLeft'),
@@ -1073,6 +1074,7 @@ test.describe('an IME composition owns the keyboard', () => {
       Shortcut.tableProperties,
       Shortcut.zoomIn,
       Shortcut.zoomOut,
+      Shortcut.zoomReset,
       Shortcut.search,
     ]) {
       await erd.press(chord);

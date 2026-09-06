@@ -26,6 +26,7 @@ export const Shortcut = {
   tableProperties: 'Alt+Space',
   zoomIn: 'ControlOrMeta+Equal',
   zoomOut: 'ControlOrMeta+Minus',
+  zoomReset: 'ControlOrMeta+KeyO',
 } as const;
 
 export type Shortcut = (typeof Shortcut)[keyof typeof Shortcut];

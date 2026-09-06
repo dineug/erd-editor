@@ -28,10 +28,10 @@ describe('keyboard-shortcut', () => {
       }
     });
 
-    it('lists all 20 binding names', () => {
-      expect(KeyBindingNameList).toHaveLength(20);
+    it('lists all 21 binding names', () => {
+      expect(KeyBindingNameList).toHaveLength(21);
       expect(KeyBindingNameList).toEqual(Object.values(KeyBindingName));
-      expect(KeyBindingNameList).toContain('zoomOut');
+      expect(KeyBindingNameList).toContain('zoomReset');
     });
   });
 
@@ -85,6 +85,9 @@ describe('keyboard-shortcut', () => {
       ]);
       expect(map.zoomOut).toEqual([
         { shortcut: '$mod+Minus', preventDefault: true, stopPropagation: true },
+      ]);
+      expect(map.zoomReset).toEqual([
+        { shortcut: '$mod+KeyO', preventDefault: true, stopPropagation: true },
       ]);
     });
 

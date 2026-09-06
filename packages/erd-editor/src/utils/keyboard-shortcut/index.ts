@@ -30,6 +30,7 @@ export const KeyBindingName = {
   tableProperties: 'tableProperties',
   zoomIn: 'zoomIn',
   zoomOut: 'zoomOut',
+  zoomReset: 'zoomReset',
 } as const;
 export type KeyBindingName = ValuesType<typeof KeyBindingName>;
 export const KeyBindingNameList = Object.values(KeyBindingName);
@@ -91,6 +92,9 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   ],
   [KeyBindingName.zoomOut]: [
     { shortcut: '$mod+Minus', preventDefault: true, stopPropagation: true },
+  ],
+  [KeyBindingName.zoomReset]: [
+    { shortcut: '$mod+KeyO', preventDefault: true, stopPropagation: true },
   ],
 });
 

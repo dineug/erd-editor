@@ -60,6 +60,7 @@ const hasOmitKeyBindingName = arrayHas<string>([
   KeyBindingName.redo,
   KeyBindingName.zoomIn,
   KeyBindingName.zoomOut,
+  KeyBindingName.zoomReset,
 ]);
 
 const ExternalKeyBindingNameList = KeyBindingNameList.filter(
