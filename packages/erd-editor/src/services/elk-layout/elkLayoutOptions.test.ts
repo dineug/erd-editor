@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { TablePlacement } from '@/constants/tablePlacement';
 import {
+  ELK_ALGORITHMS,
   elkLayoutOptions,
   type ElkPlacement,
   isElkPlacement,
@@ -21,6 +22,20 @@ describe('isElkPlacement', () => {
     for (const placement of ELK_PLACEMENTS) {
       expect(isElkPlacement(placement)).toBe(true);
     }
+  });
+});
+
+describe('ELK_ALGORITHMS', () => {
+  it('names every algorithm a placement asks for, once each', () => {
+    const asked = ELK_PLACEMENTS.map(
+      placement => elkLayoutOptions(placement)['elk.algorithm']
+    );
+
+    expect([...ELK_ALGORITHMS].sort()).toEqual([...new Set(asked)].sort());
+  });
+
+  it('is what ELK is asked to register, so it can never be empty', () => {
+    expect(ELK_ALGORITHMS.length).toBeGreaterThan(0);
   });
 });
 

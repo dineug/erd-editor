@@ -7,7 +7,11 @@ import type {
   ElkLayoutPoint,
   ElkLayoutRequest,
 } from './elkGraph';
-import { elkLayoutOptions, usesPorts } from './elkLayoutOptions';
+import {
+  ELK_ALGORITHMS,
+  elkLayoutOptions,
+  usesPorts,
+} from './elkLayoutOptions';
 
 /** The box a port is given. ELK reserves it; the editor draws none of it. */
 const PORT_SIZE = 8;
@@ -113,7 +117,8 @@ let elk: Promise<ELK> | null = null;
  */
 function loadElk(): Promise<ELK> {
   elk ??= import('elkjs/lib/elk.bundled.js').then(
-    ({ default: ELKConstructor }) => new ELKConstructor()
+    ({ default: ELKConstructor }) =>
+      new ELKConstructor({ algorithms: ELK_ALGORITHMS })
   );
 
   return elk;

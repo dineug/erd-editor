@@ -73,3 +73,16 @@ export function elkLayoutOptions(placement: ElkPlacement): LayoutOptions {
       };
   }
 }
+
+/**
+ * Every algorithm the placements name. ELK registers the metadata of these and
+ * no others, so it is read off the options rather than listed: a placement
+ * naming an algorithm left out here would be answered with an error.
+ */
+export const ELK_ALGORITHMS: string[] = [
+  ...new Set(
+    Object.values(TablePlacement)
+      .filter(isElkPlacement)
+      .map(placement => elkLayoutOptions(placement)['elk.algorithm'])
+  ),
+];
