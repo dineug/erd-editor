@@ -56,6 +56,10 @@ export default defineConfig({
     format: 'es',
     rolldownOptions: {
       output: {
+        // Measured in the IDE: a worker's dynamic import fails with a network
+        // error, so the ELK bundle it splits never arrives and a layout never
+        // runs. Each worker ships as a single file instead.
+        codeSplitting: false,
         hashCharacters: 'hex',
         entryFileNames: 'static/js/[name].[hash:8].js',
         chunkFileNames: 'static/js/[name].[hash:8].js',
