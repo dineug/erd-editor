@@ -1,6 +1,14 @@
 import { expect, test } from '../support/fixtures';
 import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
-import { createSchema, twoTables } from '../support/schema';
+import {
+  addedIds,
+  byName,
+  indexRefs,
+  indexShape,
+  relationshipRefs,
+  relationshipShape,
+} from '../support/graph';
+import { createSchema, relatedTables, twoTables } from '../support/schema';
 import { Shortcut } from '../support/shortcuts';
 
 /** Pointer coordinates land on whole device pixels, at both drag endpoints. */
@@ -59,11 +67,15 @@ async function endAltDrag(erd: ErdEditorPage) {
   await erd.page.keyboard.up('Alt');
 }
 
-/** The ids the document gained, in document order. */
-function addedIds(before: string[], after: string[]) {
-  const had = new Set(before);
-  return after.filter(id => !had.has(id));
-}
+/** Every id relatedTables() seeds — nothing a copy points at may be one. */
+const SOURCE_IDS = [
+  'users',
+  'posts',
+  'users_id',
+  'users_email',
+  'posts_id',
+  'posts_user_id',
+];
 
 const zoomedTwoTables = () => {
   const schema = twoTables();
@@ -244,5 +256,110 @@ test.describe('Alt+drag duplicate', () => {
       .not.toBe(original.ui.x);
     expect(await erd.tableIds()).toEqual(['users', 'posts']);
     await expect(ghosts(erd)).toHaveCount(0);
+  });
+
+  // A duplicate carries the graph its tables span: a relationship whose two
+  // ends are both in the copied set is rebuilt onto the copies, and every index
+  // of a copied table rides with it, columns and order type included.
+  test('carries the relationship and every index of what it duplicates', async ({
+    erd,
+  }) => {
+    await erd.seed(relatedTables());
+    await erd.focusCanvas();
+    await erd.press(Shortcut.selectAllTable);
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    const from = await erd.tableHeaderPoint('users');
+    await startAltDrag(erd, 'users', { x: from.x + 90, y: from.y + 45 });
+    await expect(ghosts(erd)).toHaveCount(2);
+    await endAltDrag(erd);
+
+    await expect.poll(() => erd.tableIds()).toHaveLength(4);
+    await expect.poll(() => erd.relationshipIds()).toHaveLength(2);
+    await expect.poll(() => erd.indexIds()).toHaveLength(4);
+
+    const value = await erd.value();
+    const [relationshipCopyId] = addedIds(
+      ['users_posts'],
+      value.doc.relationshipIds
+    );
+    const indexCopyIds = addedIds(
+      ['users_email_index', 'posts_author_index'],
+      value.doc.indexIds
+    );
+
+    expect(relationshipShape(value, relationshipCopyId)).toEqual(
+      relationshipShape(value, 'users_posts')
+    );
+    expect(indexCopyIds.map(id => indexShape(value, id)).sort(byName)).toEqual(
+      ['posts_author_index', 'users_email_index'].map(id =>
+        indexShape(value, id)
+      )
+    );
+
+    // Nothing the copies point at may be a source id: a relationship left with
+    // one end on the original draws a line no sort will ever route, and an
+    // index left pointing at the source column indexes the wrong table.
+    const referenced = [
+      ...relationshipRefs(value, relationshipCopyId),
+      ...indexCopyIds.flatMap(id => indexRefs(value, id)),
+    ];
+    expect(referenced.filter(id => SOURCE_IDS.includes(id))).toEqual([]);
+
+    const copyTableIds = addedIds(['users', 'posts'], value.doc.tableIds);
+    const copy = value.collections.relationshipEntities[relationshipCopyId];
+    expect(copyTableIds).toContain(copy.start.tableId);
+    expect(copyTableIds).toContain(copy.end.tableId);
+
+    // Drawn, and the foreign key badge on the copied end column. The duplicate
+    // emits addColumnAction with the two ids alone and replays no ui.keys, so
+    // the badge is what says a real relationship.add reached the hook.
+    await expect(erd.relationshipEl(relationshipCopyId)).toBeVisible();
+    await expect(erd.columnKey(copy.end.columnIds[0], 'fk')).toBeVisible();
+  });
+
+  // The other half of the rule: half a relationship is not a relationship, and
+  // the table's own indexes ride along regardless.
+  test('copies the indexes but not the relationship when one end stays behind', async ({
+    erd,
+  }) => {
+    await erd.seed(relatedTables());
+
+    const from = await erd.tableHeaderPoint('posts');
+    await startAltDrag(erd, 'posts', { x: from.x + 90, y: from.y + 45 });
+    await expect(ghosts(erd)).toHaveCount(1);
+    await endAltDrag(erd);
+
+    await expect.poll(() => erd.tableIds()).toHaveLength(3);
+    // The index block is emitted after the relationship block, so an index that
+    // has landed is proof a relationship would have landed too.
+    await expect.poll(() => erd.indexIds()).toHaveLength(3);
+    expect(await erd.relationshipIds()).toEqual(['users_posts']);
+
+    const value = await erd.value();
+    const [indexCopyId] = addedIds(
+      ['users_email_index', 'posts_author_index'],
+      value.doc.indexIds
+    );
+
+    expect(indexShape(value, indexCopyId)).toEqual(
+      indexShape(value, 'posts_author_index')
+    );
+    expect(
+      indexRefs(value, indexCopyId).filter(id => SOURCE_IDS.includes(id))
+    ).toEqual([]);
+
+    // With no relationship rebuilt nothing stamps the foreign key bit, and the
+    // duplicate replays no ui.keys of its own, so the copied column has none
+    // even though the payload carried the source column's bit.
+    const [copyTableId] = addedIds(['users', 'posts'], value.doc.tableIds);
+    const fkCopyId = value.collections.tableEntities[
+      copyTableId
+    ].columnIds.find(
+      id => value.collections.tableColumnEntities[id].name === 'user_id'
+    )!;
+
+    expect(value.collections.tableColumnEntities[fkCopyId].ui.keys).toBe(0);
+    await expect(erd.columnKey(fkCopyId, 'fk')).toHaveCount(0);
   });
 });

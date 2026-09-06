@@ -20,6 +20,12 @@ export const RelationshipType = {
   OneN: 16,
 } as const;
 
+/** OrderType values — the direction one index column is sorted in. */
+export const OrderType = {
+  ASC: 1,
+  DESC: 2,
+} as const;
+
 /** Show bits — which parts of a table row are rendered. */
 export const Show = {
   tableComment: 1,
@@ -95,10 +101,31 @@ export type RelationshipSeed = {
   endColumnIds: string[];
 };
 
+export type IndexColumnSeed = {
+  id: string;
+  columnId: string;
+  /** A value of OrderType; ASC when the seed leaves it out. */
+  orderType?: number;
+};
+
+/**
+ * One index of one table. Its columns are nested because an index column has
+ * no identity outside its index, and the seed writes them in the order the
+ * generators read, which is indexColumnIds.
+ */
+export type IndexSeed = {
+  id: string;
+  tableId: string;
+  name?: string;
+  unique?: boolean;
+  columns?: IndexColumnSeed[];
+};
+
 export type SchemaSeed = {
   tables?: TableSeed[];
   memos?: MemoSeed[];
   relationships?: RelationshipSeed[];
+  indexes?: IndexSeed[];
   zoomLevel?: number;
   scrollTop?: number;
   scrollLeft?: number;
@@ -147,8 +174,8 @@ export type ErdDocument = {
     tableEntities: Record<string, TableEntity>;
     tableColumnEntities: Record<string, ColumnEntity>;
     relationshipEntities: Record<string, RelationshipEntity>;
-    indexEntities: Record<string, unknown>;
-    indexColumnEntities: Record<string, unknown>;
+    indexEntities: Record<string, IndexEntity>;
+    indexColumnEntities: Record<string, IndexColumnEntity>;
     memoEntities: Record<string, MemoEntity>;
   };
   lww?: Record<string, unknown>;
@@ -219,6 +246,24 @@ export type RelationshipEntity = {
   meta: { updateAt: number; createAt: number };
 };
 
+export type IndexEntity = {
+  id: string;
+  name: string;
+  tableId: string;
+  indexColumnIds: string[];
+  seqIndexColumnIds: string[];
+  unique: boolean;
+  meta: { updateAt: number; createAt: number };
+};
+
+export type IndexColumnEntity = {
+  id: string;
+  indexId: string;
+  columnId: string;
+  orderType: number;
+  meta: { updateAt: number; createAt: number };
+};
+
 export type MemoEntity = {
   id: string;
   value: string;
@@ -254,10 +299,13 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
   const tables = seed.tables ?? [];
   const memos = seed.memos ?? [];
   const relationships = seed.relationships ?? [];
+  const indexes = seed.indexes ?? [];
   const tableEntities: Record<string, TableEntity> = {};
   const tableColumnEntities: Record<string, ColumnEntity> = {};
   const memoEntities: Record<string, MemoEntity> = {};
   const relationshipEntities: Record<string, RelationshipEntity> = {};
+  const indexEntities: Record<string, IndexEntity> = {};
+  const indexColumnEntities: Record<string, IndexColumnEntity> = {};
 
   memos.forEach((memo, index) => {
     memoEntities[memo.id] = {
@@ -297,6 +345,30 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       },
       meta: { ...META },
     };
+  });
+
+  indexes.forEach(index => {
+    const indexColumns = index.columns ?? [];
+
+    indexEntities[index.id] = {
+      id: index.id,
+      name: index.name ?? '',
+      tableId: index.tableId,
+      indexColumnIds: indexColumns.map(indexColumn => indexColumn.id),
+      seqIndexColumnIds: indexColumns.map(indexColumn => indexColumn.id),
+      unique: index.unique ?? false,
+      meta: { ...META },
+    };
+
+    indexColumns.forEach(indexColumn => {
+      indexColumnEntities[indexColumn.id] = {
+        id: indexColumn.id,
+        indexId: index.id,
+        columnId: indexColumn.columnId,
+        orderType: indexColumn.orderType ?? OrderType.ASC,
+        meta: { ...META },
+      };
+    });
   });
 
   tables.forEach((table, index) => {
@@ -366,15 +438,15 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
     doc: {
       tableIds: tables.map(table => table.id),
       relationshipIds: relationships.map(relationship => relationship.id),
-      indexIds: [],
+      indexIds: indexes.map(index => index.id),
       memoIds: memos.map(memo => memo.id),
     },
     collections: {
       tableEntities,
       tableColumnEntities,
       relationshipEntities,
-      indexEntities: {},
-      indexColumnEntities: {},
+      indexEntities,
+      indexColumnEntities,
       memoEntities,
     },
   };
@@ -418,6 +490,92 @@ export const twoTables = () =>
             keys: ColumnUIKey.primaryKey,
           },
           { id: 'posts_title', name: 'title', dataType: 'varchar(255)' },
+        ],
+      },
+    ],
+  });
+
+/**
+ * Two tables joined by one relationship, each carrying an index of its own —
+ * the graph a whole-table duplicate has to carry over. The end column holds the
+ * foreign key bit a real document does; a copy gets its own from a hook.
+ */
+export const relatedTables = () =>
+  createSchema({
+    tables: [
+      {
+        id: 'users',
+        name: 'users',
+        x: 160,
+        y: 160,
+        columns: [
+          {
+            id: 'users_id',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey | ColumnOption.notNull,
+            keys: ColumnUIKey.primaryKey,
+          },
+          { id: 'users_email', name: 'email', dataType: 'varchar(255)' },
+        ],
+      },
+      {
+        id: 'posts',
+        name: 'posts',
+        x: 700,
+        y: 420,
+        columns: [
+          {
+            id: 'posts_id',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey | ColumnOption.notNull,
+            keys: ColumnUIKey.primaryKey,
+          },
+          {
+            id: 'posts_user_id',
+            name: 'user_id',
+            dataType: 'int',
+            keys: ColumnUIKey.foreignKey,
+          },
+        ],
+      },
+    ],
+    relationships: [
+      {
+        id: 'users_posts',
+        relationshipType: RelationshipType.OneN,
+        startTableId: 'users',
+        startColumnIds: ['users_id'],
+        endTableId: 'posts',
+        endColumnIds: ['posts_user_id'],
+      },
+    ],
+    indexes: [
+      {
+        id: 'users_email_index',
+        tableId: 'users',
+        name: 'users_email_index',
+        unique: true,
+        columns: [
+          {
+            id: 'users_email_index_email',
+            columnId: 'users_email',
+            orderType: OrderType.DESC,
+          },
+        ],
+      },
+      {
+        id: 'posts_author_index',
+        tableId: 'posts',
+        name: 'posts_author_index',
+        columns: [
+          { id: 'posts_author_index_user_id', columnId: 'posts_user_id' },
+          {
+            id: 'posts_author_index_id',
+            columnId: 'posts_id',
+            orderType: OrderType.DESC,
+          },
         ],
       },
     ],

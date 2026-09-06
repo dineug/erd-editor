@@ -1,4 +1,4 @@
-import { isNumber, isPlainObject, isString } from 'es-toolkit';
+import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 import { nanoid } from 'nanoid';
 
 import { ValuesType } from '@/internal-types';
@@ -69,6 +69,34 @@ export type ClipboardMemo = {
   };
 };
 
+export type ClipboardRelationshipPoint = {
+  tableId: string;
+  columnIds: string[];
+};
+
+export type ClipboardRelationship = {
+  relationshipType: number;
+  start: ClipboardRelationshipPoint;
+  end: ClipboardRelationshipPoint;
+};
+
+export type ClipboardIndexColumn = {
+  columnId: string;
+  orderType: number;
+};
+
+/**
+ * An index rides with its table and nests its columns in indexColumnIds order,
+ * because an index column has no identity outside its index and nothing else
+ * ever refers to one.
+ */
+export type ClipboardIndex = {
+  tableId: string;
+  name: string;
+  unique: boolean;
+  indexColumns: ClipboardIndexColumn[];
+};
+
 export type ClipboardPayload = {
   format: typeof CLIPBOARD_FORMAT;
   version: number;
@@ -77,6 +105,8 @@ export type ClipboardPayload = {
   tables: ClipboardTable[];
   columns: ClipboardColumn[];
   memos: ClipboardMemo[];
+  relationships?: ClipboardRelationship[];
+  indexes?: ClipboardIndex[];
 };
 
 export type ParseResult =
@@ -90,6 +120,8 @@ type CreatePayloadConfig = {
   tables?: ClipboardTable[];
   columns?: ClipboardColumn[];
   memos?: ClipboardMemo[];
+  relationships?: ClipboardRelationship[];
+  indexes?: ClipboardIndex[];
 };
 
 export function createPayload({
@@ -98,6 +130,8 @@ export function createPayload({
   tables = [],
   columns = [],
   memos = [],
+  relationships = [],
+  indexes = [],
 }: CreatePayloadConfig): ClipboardPayload {
   return {
     format: CLIPBOARD_FORMAT,
@@ -107,6 +141,8 @@ export function createPayload({
     tables,
     columns,
     memos,
+    relationships,
+    indexes,
   };
 }
 
@@ -133,14 +169,25 @@ export function parsePayload(json: string): ParseResult {
   };
 }
 
+/**
+ * The version 1 triple is the only structure a reader may require: a payload
+ * written before a later array existed still has to parse, so a newer array is
+ * rejected only when it is present and not an array.
+ */
 function isSupportedStructure(raw: Record<string, any>): boolean {
   return (
     isString(raw.kind) &&
     hasPayloadKind(raw.kind) &&
     Array.isArray(raw.tables) &&
     Array.isArray(raw.columns) &&
-    Array.isArray(raw.memos)
+    Array.isArray(raw.memos) &&
+    isOptionalArray(raw.relationships) &&
+    isOptionalArray(raw.indexes)
   );
+}
+
+function isOptionalArray(value: unknown): boolean {
+  return isNil(value) || Array.isArray(value);
 }
 
 export function migratePayload(payload: ClipboardPayload): ClipboardPayload {

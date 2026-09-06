@@ -1,11 +1,21 @@
 import { expect, test } from '../support/fixtures';
 import type { ErdEditorPage } from '../support/ErdEditorPage';
 import {
+  addedIds,
+  byName,
+  indexRefs,
+  indexShape,
+  relationshipRefs,
+  relationshipShape,
+} from '../support/graph';
+import {
   ColumnOption,
   ColumnUIKey,
   createSchema,
   type ErdDocument,
+  relatedTables,
 } from '../support/schema';
+import { Shortcut } from '../support/shortcuts';
 
 // ── mirrored from src ─────────────────────────────────────────────────────
 
@@ -469,5 +479,149 @@ test.describe('clipboard paste ladder', () => {
     // The original is left exactly as it was — no columns appended to it.
     expect(await tableShape(erd, 'users')).toEqual(shape);
     expect((await erd.table('users')).ui).toEqual(original.ui);
+  });
+});
+
+/** Every id relatedTables() seeds — nothing a copy may point at. */
+const SOURCE_IDS = [
+  'users',
+  'posts',
+  'users_id',
+  'users_email',
+  'posts_id',
+  'posts_user_id',
+];
+
+type CopiedPayload = {
+  kind: string;
+  relationships: unknown[];
+  indexes: unknown[];
+};
+
+/** The editor's own flavour, parsed — the wire the graph rides on. */
+function payloadOf(flavours: Flavours): CopiedPayload {
+  return JSON.parse(flavours[CLIPBOARD_MIME]) as CopiedPayload;
+}
+
+test.describe('the graph a copy carries', () => {
+  // The clipboard half of the duplicate rule, over the real clipboard: both
+  // ends of the relationship are copied, so it is rebuilt onto the copies, and
+  // each table's indexes come with it.
+  test('round trips the relationship and the indexes of two copied tables', async ({
+    erd,
+  }) => {
+    await erd.seed(relatedTables());
+    await erd.focusCanvas();
+    await erd.press(Shortcut.selectAllTable);
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    const payload = payloadOf(await copy(erd));
+    expect(payload.kind).toBe('tables');
+    expect(payload.relationships).toHaveLength(1);
+    expect(payload.indexes).toHaveLength(2);
+
+    const record = await paste(erd);
+    expect(record.defaultPrevented).toBe(true);
+
+    await expect.poll(() => erd.tableIds()).toHaveLength(4);
+    await expect.poll(() => erd.relationshipIds()).toHaveLength(2);
+    await expect.poll(() => erd.indexIds()).toHaveLength(4);
+
+    const value = await erd.value();
+    const [relationshipCopyId] = addedIds(
+      ['users_posts'],
+      value.doc.relationshipIds
+    );
+    const indexCopyIds = addedIds(
+      ['users_email_index', 'posts_author_index'],
+      value.doc.indexIds
+    );
+
+    expect(relationshipShape(value, relationshipCopyId)).toEqual(
+      relationshipShape(value, 'users_posts')
+    );
+    expect(indexCopyIds.map(id => indexShape(value, id)).sort(byName)).toEqual(
+      ['posts_author_index', 'users_email_index'].map(id =>
+        indexShape(value, id)
+      )
+    );
+
+    const referenced = [
+      ...relationshipRefs(value, relationshipCopyId),
+      ...indexCopyIds.flatMap(id => indexRefs(value, id)),
+    ];
+    expect(referenced.filter(id => SOURCE_IDS.includes(id))).toEqual([]);
+
+    // The duplicate replays no ui.keys, so the foreign key badge on a copy is
+    // stamped by addColumnForeignKeyHook watching relationship.add alone — it
+    // is what says one really landed.
+    const rebuilt = value.collections.relationshipEntities[relationshipCopyId];
+    await expect(erd.relationshipEl(relationshipCopyId)).toBeVisible();
+    await expect(erd.columnKey(rebuilt.end.columnIds[0], 'fk')).toBeVisible();
+  });
+
+  // Only one end is in the copied set, so the relationship is not on the wire
+  // at all — while the copied table's own index still is.
+  test('leaves the relationship behind when only one end is copied', async ({
+    erd,
+  }) => {
+    await erd.seed(relatedTables());
+    await erd.clickTableHeader('posts');
+    await expect(erd.selectedTables()).toHaveCount(1);
+
+    const payload = payloadOf(await copy(erd));
+    expect(payload.relationships).toEqual([]);
+    expect(payload.indexes).toHaveLength(1);
+
+    await paste(erd);
+
+    await expect.poll(() => erd.tableIds()).toHaveLength(3);
+    // Indexes are emitted after relationships, so one that has landed is proof
+    // a relationship would have landed too.
+    await expect.poll(() => erd.indexIds()).toHaveLength(3);
+    expect(await erd.relationshipIds()).toEqual(['users_posts']);
+
+    const value = await erd.value();
+    const [indexCopyId] = addedIds(
+      ['users_email_index', 'posts_author_index'],
+      value.doc.indexIds
+    );
+
+    expect(indexShape(value, indexCopyId)).toEqual(
+      indexShape(value, 'posts_author_index')
+    );
+    expect(
+      indexRefs(value, indexCopyId).filter(id => SOURCE_IDS.includes(id))
+    ).toEqual([]);
+  });
+
+  // The scope boundary, at the surface the two paths fork on: a copy made while
+  // columns are selected is the column payload, and it carries no graph on the
+  // wire and appends none on the way back in.
+  test('keeps a column copy free of the graph, and its paste a column append', async ({
+    erd,
+  }) => {
+    await erd.seed(relatedTables());
+    await erd.focusCell(erd.cell(erd.columnEl('posts_user_id'), 'columnName'));
+    await expect(erd.selectedColumns()).toHaveCount(1);
+
+    const payload = payloadOf(await copy(erd));
+    expect(payload.kind).toBe('columns');
+    expect(payload.relationships).toEqual([]);
+    expect(payload.indexes).toEqual([]);
+
+    await erd.clickTableHeader('users');
+    await expect(erd.selectedTables()).toHaveCount(1);
+    const record = await paste(erd);
+    expect(record.defaultPrevented).toBe(true);
+
+    await expect.poll(() => erd.columnIds('users')).toHaveLength(3);
+    expect(await erd.columnIds('posts')).toHaveLength(2);
+    expect(await erd.tableIds()).toEqual(['users', 'posts']);
+    expect(await erd.relationshipIds()).toEqual(['users_posts']);
+    expect(await erd.indexIds()).toEqual([
+      'users_email_index',
+      'posts_author_index',
+    ]);
   });
 });

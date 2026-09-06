@@ -34,7 +34,8 @@ suite red.
 | `playwright.config.ts`          | Chromium project, pinned 1440x900 viewport, `E2E_PORT` webServer  |
 | `playwright.bench.config.ts`    | The bench project — own testDir, one worker, asserts nothing      |
 | `e2e/fixture/`                  | The page under test — a deterministic `<erd-editor>` mount        |
-| `e2e/support/schema.ts`         | Hand-authored v3 seed documents and the schema bit constants      |
+| `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes    |
+| `e2e/support/graph.ts`          | A relationship or index read back by the names it joins           |
 | `e2e/support/sceneMirror.ts`    | Projects every live Konva stage into divs a css locator can name  |
 | `e2e/support/shortcuts.ts`      | Key strings mirroring `createKeyBindingMap()`, `MOD_KEY`, steps   |
 | `e2e/support/ErdEditorPage.ts`  | Page object: locators, scene coordinates, gesture helpers         |
@@ -79,6 +80,15 @@ The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
 pass against the canvas; `context-menu` arrived with it.
+
+`alt-drag-duplicate` and `clipboard` hold down one rule from their two ends: a
+duplicate of whole tables carries a relationship only when **both** its end
+tables are copied, carries every index of a copied table whole, and points every
+one of them at the new ids. `relatedTables()` is the seed both use, and the
+foreign key badge on a copied end column is the user-visible half — the payload
+does carry `ui.keys`, but the duplicate never replays it (`toCreateEntityActions`
+emits `addColumnAction` with `id` and `tableId` alone), so the badge is only
+there if a real `relationship.add` reached `addColumnForeignKeyHook`.
 
 ## The things that make this suite work
 
@@ -129,7 +139,7 @@ only when you deliberately want both copies. A minimap node carries no `data-id`
 Removing a table drops its id from `doc.tableIds` but leaves the entity in
 `collections.tableEntities` so the change can replicate. Counting collection
 keys will tell you nothing was deleted. `ErdEditorPage#tableIds()`,
-`#relationshipIds()` and `#memoIds()` read `doc`; use them.
+`#relationshipIds()`, `#indexIds()` and `#memoIds()` read `doc`; use them.
 
 ### 5. `el.value` is the authoritative, synchronous state
 

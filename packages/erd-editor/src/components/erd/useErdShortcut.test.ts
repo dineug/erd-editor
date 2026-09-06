@@ -21,8 +21,11 @@ import {
   focusColumnAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType } from '@/engine/modules/editor/state';
+import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import { addIndexAction } from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
@@ -652,6 +655,66 @@ describe('useErdShortcut - clipboard', () => {
 
     expect(setData.mock.calls[0][1]).toBe('');
     expect(setData.mock.calls[1][1]).not.toContain('<table>');
+  });
+
+  const seedRelatedPair = (app: AppContext) => {
+    const t1 = seedTable(app);
+    const c1 = seedColumn(app, t1);
+    const t2 = seedTable(app);
+    const c2 = seedColumn(app, t2);
+
+    app.store.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: t1, columnIds: [c1] },
+        end: { tableId: t2, columnIds: [c2] },
+      })
+    );
+    app.store.dispatchSync(addIndexAction({ id: 'i1', tableId: t1 }));
+    app.store.dispatchSync(
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: t1,
+        columnId: c1,
+      })
+    );
+
+    return { t1, t2 };
+  };
+
+  it('carries relationships and indexes on a table copy', async () => {
+    const app = await setup();
+    const { t1, t2 } = seedRelatedPair(app);
+    app.store.state.editor.focusTable = null;
+    app.store.state.editor.selectedMap = {
+      [t1]: SelectType.table,
+      [t2]: SelectType.table,
+    };
+    const { event, setData } = createClipboardEvent();
+
+    app.emitter.emit(copyAction({ event }));
+    await flush();
+
+    const payload = readPayload(setData);
+    expect(payload.kind).toBe(PayloadKind.tables);
+    expect(payload.relationships).toHaveLength(1);
+    expect(payload.indexes).toHaveLength(1);
+  });
+
+  it('a column copy carries neither', async () => {
+    const app = await setup();
+    seedRelatedPair(app);
+    const { event, setData } = createClipboardEvent();
+
+    app.emitter.emit(copyAction({ event }));
+    await flush();
+
+    const payload = readPayload(setData);
+    expect(payload.kind).toBe(PayloadKind.columns);
+    expect(payload.relationships).toEqual([]);
+    expect(payload.indexes).toEqual([]);
   });
 
   // AC-5

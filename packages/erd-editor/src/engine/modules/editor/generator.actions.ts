@@ -34,7 +34,7 @@ import {
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
 import { RootState } from '@/engine/state';
-import { Collections, Point } from '@/internal-types';
+import { Point } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
@@ -51,6 +51,10 @@ import {
   PlacementPoint,
   resolvePlacement,
 } from '@/utils/table-clipboard';
+import {
+  toClipboardIndexes,
+  toClipboardRelationships,
+} from '@/utils/table-clipboard/copy';
 
 import {
   clearAction,
@@ -165,6 +169,8 @@ export const pasteEntitiesAction$ = (
         tables: payload.tables,
         columns: payload.columns,
         memos: payload.memos,
+        relationships: payload.relationships ?? [],
+        indexes: payload.indexes ?? [],
       },
       offset: { x: START_ADD * pasteRound, y: START_ADD * pasteRound },
       escapeCollision: true,
@@ -179,7 +185,7 @@ export const duplicateAction$ = ({
 }: DuplicateConfig): GeneratorAction =>
   function* (state) {
     yield* createEntities$(state, {
-      input: toDuplicateInput(state.collections, {
+      input: toDuplicateInput(state, {
         tableIds: tableIds ?? [],
         memoIds: memoIds ?? [],
       }),
@@ -264,9 +270,10 @@ function roundPlacement(
 }
 
 function toDuplicateInput(
-  collections: Collections,
+  state: RootState,
   { tableIds, memoIds }: SelectTypeIds
 ): CreateEntityInput {
+  const { collections } = state;
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds);
@@ -278,6 +285,7 @@ function toDuplicateInput(
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds)
   );
+  const copiedTableIds = tables.map(({ id }) => id);
 
   return {
     tables: tables.map(table => ({
@@ -322,6 +330,8 @@ function toDuplicateInput(
         color: memo.ui.color,
       },
     })),
+    relationships: toClipboardRelationships(state, copiedTableIds),
+    indexes: toClipboardIndexes(state, copiedTableIds),
   };
 }
 

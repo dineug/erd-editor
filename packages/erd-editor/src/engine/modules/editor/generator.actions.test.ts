@@ -9,7 +9,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { ColumnOption, RelationshipType } from '@/constants/schema';
+import { ColumnOption, OrderType, RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   dragstartColumnAction,
@@ -43,11 +43,23 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { FocusType, MoveKey, SelectType } from '@/engine/modules/editor/state';
 import {
+  addIndexAction,
+  changeIndexNameAction,
+  changeIndexUniqueAction,
+} from '@/engine/modules/index/atom.actions';
+import {
+  addIndexColumnAction,
+  changeIndexColumnOrderTypeAction,
+} from '@/engine/modules/index-column/atom.actions';
+import {
   addMemoAction,
   changeMemoColorAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
-import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import {
   changeDatabaseNameAction,
   changeZoomLevelAction,
@@ -76,7 +88,9 @@ import { bHas } from '@/utils/bit';
 import { createTable } from '@/utils/collection/table.entity';
 import {
   ClipboardColumn,
+  ClipboardIndex,
   ClipboardMemo,
+  ClipboardRelationship,
   ClipboardTable,
   createPayload,
   PayloadKind,
@@ -107,6 +121,41 @@ function seedMemo(store: Store, id: string, x = 0, y = 0) {
 
 function seedColumn(store: Store, tableId: string, id: string) {
   store.dispatchSync(addColumnAction({ id, tableId }));
+}
+
+function seedRelationship(
+  store: Store,
+  id: string,
+  start: { tableId: string; columnIds: string[] },
+  end: { tableId: string; columnIds: string[] },
+  relationshipType: number = RelationshipType.ZeroN
+) {
+  store.dispatchSync(
+    addRelationshipAction({ id, relationshipType, start, end })
+  );
+}
+
+function seedIndex(store: Store, id: string, tableId: string) {
+  store.dispatchSync(addIndexAction({ id, tableId }));
+}
+
+function seedIndexColumn(
+  store: Store,
+  payload: { id: string; indexId: string; tableId: string; columnId: string }
+) {
+  store.dispatchSync(addIndexColumnAction(payload));
+}
+
+function indexOf(store: Store, id: string) {
+  return store.state.collections.indexEntities[id];
+}
+
+function indexColumnOf(store: Store, id: string) {
+  return store.state.collections.indexColumnEntities[id];
+}
+
+function relationshipOf(store: Store, id: string) {
+  return store.state.collections.relationshipEntities[id];
 }
 
 function tableOf(store: Store, id: string) {
@@ -181,6 +230,8 @@ const entitiesPayload = (
     tables: ClipboardTable[];
     columns: ClipboardColumn[];
     memos: ClipboardMemo[];
+    relationships: ClipboardRelationship[];
+    indexes: ClipboardIndex[];
   }> = {}
 ) => createPayload({ kind: PayloadKind.tables, ...parts });
 
@@ -1551,6 +1602,65 @@ describe('duplicateAction$ history depth', () => {
       '#ff0000'
     );
   });
+
+  it('records exactly one history command for a table with a relationship and an index', () => {
+    vi.useFakeTimers();
+    const rxStore = createRxTestStore();
+
+    rxStore.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 2 } })
+    );
+    rxStore.dispatchSync(addColumnAction({ id: 'c1', tableId: 't1' }));
+    rxStore.dispatchSync(addColumnAction({ id: 'c2', tableId: 't1' }));
+    rxStore.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: 't1', columnIds: ['c1'] },
+        end: { tableId: 't1', columnIds: ['c2'] },
+      })
+    );
+    rxStore.dispatchSync(addIndexAction({ id: 'i1', tableId: 't1' }));
+    rxStore.dispatchSync(
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: 't1',
+        columnId: 'c1',
+      })
+    );
+    vi.advanceTimersByTime(300);
+
+    const size = rxStore.history.size;
+
+    rxStore.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    expect(rxStore.state.doc.tableIds).toHaveLength(2);
+    expect(rxStore.state.doc.relationshipIds).toHaveLength(2);
+    expect(rxStore.state.doc.indexIds).toHaveLength(2);
+    expect(rxStore.history.size).toBe(size + 1);
+
+    vi.advanceTimersByTime(300);
+    expect(rxStore.history.size).toBe(size + 1);
+
+    rxStore.undo();
+
+    expect(rxStore.state.doc.tableIds).toEqual(['t1']);
+    expect(rxStore.state.doc.relationshipIds).toEqual(['r1']);
+    expect(rxStore.state.doc.indexIds).toEqual(['i1']);
+
+    rxStore.redo();
+
+    expect(rxStore.state.doc.tableIds).toHaveLength(2);
+    expect(rxStore.state.doc.relationshipIds).toHaveLength(2);
+    expect(rxStore.state.doc.indexIds).toHaveLength(2);
+  });
 });
 
 describe('actions$', () => {
@@ -1579,5 +1689,280 @@ describe('actions$', () => {
         'unselectAllAction$',
       ].sort()
     );
+  });
+});
+
+describe('pasteEntitiesAction$ — relationships and indexes', () => {
+  it('rebuilds the relationship between the two pasted tables', () => {
+    seedTable(store, 't1', 100, 100);
+    seedTable(store, 't2', 500, 100);
+    seedColumn(store, 't1', 'c1');
+    seedColumn(store, 't2', 'c2');
+    seedRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] },
+      RelationshipType.OneN
+    );
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, t2: SelectType.table })
+    );
+
+    store.dispatchSync(
+      pasteEntitiesAction$(entitiesCopyToPayload(store.state)!, 1)
+    );
+
+    const [copyId] = addedIds(['r1'], store.state.doc.relationshipIds);
+    const copy = relationshipOf(store, copyId);
+    const newTableIds = addedIds(['t1', 't2'], store.state.doc.tableIds);
+
+    expect(copy.relationshipType).toBe(RelationshipType.OneN);
+    expect(newTableIds).toContain(copy.start.tableId);
+    expect(newTableIds).toContain(copy.end.tableId);
+    expect(tableOf(store, copy.start.tableId).columnIds).toEqual(
+      copy.start.columnIds
+    );
+    expect(tableOf(store, copy.end.tableId).columnIds).toEqual(
+      copy.end.columnIds
+    );
+    expect(relationshipOf(store, 'r1').start.columnIds).toEqual(['c1']);
+  });
+
+  it("rebuilds a table's indexes onto the copy", () => {
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    seedColumn(store, 't1', 'c2');
+    seedIndex(store, 'i1', 't1');
+    store.dispatchSync(
+      changeIndexNameAction({ id: 'i1', tableId: 't1', value: 'users_idx' })
+    );
+    store.dispatchSync(
+      changeIndexUniqueAction({ id: 'i1', tableId: 't1', value: true })
+    );
+    seedIndexColumn(store, {
+      id: 'ic1',
+      indexId: 'i1',
+      tableId: 't1',
+      columnId: 'c2',
+    });
+    seedIndexColumn(store, {
+      id: 'ic2',
+      indexId: 'i1',
+      tableId: 't1',
+      columnId: 'c1',
+    });
+    store.dispatchSync(
+      changeIndexColumnOrderTypeAction({
+        id: 'ic2',
+        indexId: 'i1',
+        columnId: 'c1',
+        value: OrderType.DESC,
+      })
+    );
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+    store.dispatchSync(
+      pasteEntitiesAction$(entitiesCopyToPayload(store.state)!, 1)
+    );
+
+    const [indexCopyId] = addedIds(['i1'], store.state.doc.indexIds);
+    const indexCopy = indexOf(store, indexCopyId);
+    const [tableCopyId] = addedIds(['t1'], store.state.doc.tableIds);
+    const tableCopy = tableOf(store, tableCopyId);
+    const indexColumns = indexCopy.indexColumnIds.map(id =>
+      indexColumnOf(store, id)
+    );
+
+    expect(indexCopy.name).toBe('users_idx');
+    expect(indexCopy.unique).toBe(true);
+    expect(indexCopy.tableId).toBe(tableCopyId);
+    expect(indexColumns.map(({ columnId }) => columnId)).toEqual([
+      tableCopy.columnIds[1],
+      tableCopy.columnIds[0],
+    ]);
+    expect(indexColumns.map(({ orderType }) => orderType)).toEqual([
+      OrderType.ASC,
+      OrderType.DESC,
+    ]);
+  });
+
+  it('pastes a payload that predates the graph arrays', () => {
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+    const payload = entitiesCopyToPayload(store.state)!;
+    delete payload.relationships;
+    delete payload.indexes;
+
+    store.dispatchSync(pasteEntitiesAction$(payload, 1));
+
+    expect(store.state.doc.tableIds).toHaveLength(2);
+    expect(store.state.doc.relationshipIds).toEqual([]);
+    expect(store.state.doc.indexIds).toEqual([]);
+  });
+});
+
+describe('duplicateAction$ — relationships and indexes', () => {
+  const seedRelatedPair = () => {
+    seedTable(store, 't1', 100, 100);
+    seedTable(store, 't2', 500, 100);
+    seedColumn(store, 't1', 'c1');
+    seedColumn(store, 't2', 'c2');
+    seedRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] }
+    );
+  };
+
+  const duplicate = (tableIds: string[]) =>
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds,
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+  it('duplicates the relationship between two duplicated tables', () => {
+    seedRelatedPair();
+    const source = JSON.parse(JSON.stringify(relationshipOf(store, 'r1')));
+
+    duplicate(['t1', 't2']);
+
+    const [copyId] = addedIds(['r1'], store.state.doc.relationshipIds);
+    const copy = relationshipOf(store, copyId);
+    const sourceIds = ['t1', 't2', 'c1', 'c2'];
+    const referenced = [
+      copy.start.tableId,
+      copy.end.tableId,
+      ...copy.start.columnIds,
+      ...copy.end.columnIds,
+    ];
+
+    expect(referenced.some(id => sourceIds.includes(id))).toBe(false);
+    expect(JSON.parse(JSON.stringify(relationshipOf(store, 'r1')))).toEqual(
+      source
+    );
+  });
+
+  it('leaves the relationship out when only one end is duplicated', () => {
+    seedRelatedPair();
+
+    duplicate(['t1']);
+
+    expect(store.state.doc.relationshipIds).toEqual(['r1']);
+  });
+
+  it("duplicates the table's indexes", () => {
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    seedIndex(store, 'i1', 't1');
+    store.dispatchSync(
+      changeIndexNameAction({ id: 'i1', tableId: 't1', value: 'users_idx' })
+    );
+    store.dispatchSync(
+      changeIndexUniqueAction({ id: 'i1', tableId: 't1', value: true })
+    );
+    seedIndexColumn(store, {
+      id: 'ic1',
+      indexId: 'i1',
+      tableId: 't1',
+      columnId: 'c1',
+    });
+    store.dispatchSync(
+      changeIndexColumnOrderTypeAction({
+        id: 'ic1',
+        indexId: 'i1',
+        columnId: 'c1',
+        value: OrderType.DESC,
+      })
+    );
+
+    duplicate(['t1']);
+
+    const [indexCopyId] = addedIds(['i1'], store.state.doc.indexIds);
+    const indexCopy = indexOf(store, indexCopyId);
+    const [tableCopyId] = addedIds(['t1'], store.state.doc.tableIds);
+    const [indexColumnCopy] = indexCopy.indexColumnIds.map(id =>
+      indexColumnOf(store, id)
+    );
+
+    expect(indexCopy.name).toBe('users_idx');
+    expect(indexCopy.unique).toBe(true);
+    expect(indexCopy.tableId).toBe(tableCopyId);
+    expect(indexColumnCopy.columnId).toBe(
+      tableOf(store, tableCopyId).columnIds[0]
+    );
+    expect(indexColumnCopy.orderType).toBe(OrderType.DESC);
+  });
+
+  it('reads only the live relationships and indexes', () => {
+    // removeRelationship splices doc.relationshipIds and leaves the entity in
+    // collections, so a gatherer reaching for selectAll would resurrect it.
+    seedRelatedPair();
+    store.dispatchSync(removeRelationshipAction({ id: 'r1' }));
+
+    duplicate(['t1', 't2']);
+
+    expect(store.state.doc.relationshipIds).toEqual([]);
+  });
+
+  it('agrees with the clipboard producer on what a copy carries', () => {
+    seedRelatedPair();
+    seedIndex(store, 'i1', 't1');
+    seedIndexColumn(store, {
+      id: 'ic1',
+      indexId: 'i1',
+      tableId: 't1',
+      columnId: 'c1',
+    });
+
+    duplicate(['t1', 't2']);
+    const afterDuplicate = {
+      relationships: store.state.doc.relationshipIds.length,
+      indexes: store.state.doc.indexIds.length,
+    };
+
+    const copyStore = createTestStore();
+    copyStore.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 2 } })
+    );
+    copyStore.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 500, y: 100, zIndex: 2 } })
+    );
+    copyStore.dispatchSync(addColumnAction({ id: 'c1', tableId: 't1' }));
+    copyStore.dispatchSync(addColumnAction({ id: 'c2', tableId: 't2' }));
+    copyStore.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: 't1', columnIds: ['c1'] },
+        end: { tableId: 't2', columnIds: ['c2'] },
+      })
+    );
+    copyStore.dispatchSync(addIndexAction({ id: 'i1', tableId: 't1' }));
+    copyStore.dispatchSync(
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: 't1',
+        columnId: 'c1',
+      })
+    );
+    copyStore.dispatchSync(
+      selectAction({ t1: SelectType.table, t2: SelectType.table })
+    );
+    copyStore.dispatchSync(
+      pasteEntitiesAction$(entitiesCopyToPayload(copyStore.state)!, 1)
+    );
+
+    expect({
+      relationships: copyStore.state.doc.relationshipIds.length,
+      indexes: copyStore.state.doc.indexIds.length,
+    }).toEqual(afterDuplicate);
   });
 });

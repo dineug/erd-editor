@@ -1,15 +1,31 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { ColumnOption, ColumnType, Show } from '@/constants/schema';
+import {
+  ColumnOption,
+  ColumnType,
+  OrderType,
+  RelationshipType,
+  Show,
+} from '@/constants/schema';
 import {
   createEditor,
   FocusType,
   SelectType,
 } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
-import { Column, Memo, Table } from '@/internal-types';
+import {
+  Column,
+  Index,
+  IndexColumn,
+  Memo,
+  Relationship,
+  Table,
+} from '@/internal-types';
+import { createIndex } from '@/utils/collection/index.entity';
+import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createMemo } from '@/utils/collection/memo.entity';
+import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
@@ -56,6 +72,11 @@ type Options = {
   tables?: Table[];
   columns?: Column[];
   memos?: Memo[];
+  relationships?: Relationship[];
+  indexes?: Index[];
+  indexColumns?: IndexColumn[];
+  relationshipIds?: string[];
+  indexIds?: string[];
   selectedMap?: Record<string, SelectType>;
   show?: number;
   columnOrder?: number[];
@@ -70,6 +91,11 @@ function createState({
   tables = [],
   columns = [],
   memos = [],
+  relationships = [],
+  indexes = [],
+  indexColumns = [],
+  relationshipIds = relationships.map(({ id }) => id),
+  indexIds = indexes.map(({ id }) => id),
   selectedMap = {},
   show = ALL_SHOW,
   columnOrder = FULL_COLUMN_ORDER,
@@ -93,7 +119,18 @@ function createState({
   for (const memo of memos) {
     state.collections.memoEntities[memo.id] = memo;
   }
+  for (const relationship of relationships) {
+    state.collections.relationshipEntities[relationship.id] = relationship;
+  }
+  for (const index of indexes) {
+    state.collections.indexEntities[index.id] = index;
+  }
+  for (const indexColumn of indexColumns) {
+    state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
+  }
 
+  state.doc.relationshipIds = [...relationshipIds];
+  state.doc.indexIds = [...indexIds];
   state.editor.selectedMap = { ...selectedMap };
 
   if (focusTable) {
@@ -398,6 +435,11 @@ function createEntitiesState(
     show?: number;
     columnOrder?: number[];
     selectedMap?: Record<string, SelectType>;
+    relationships?: Relationship[];
+    indexes?: Index[];
+    indexColumns?: IndexColumn[];
+    relationshipIds?: string[];
+    indexIds?: string[];
   } = {}
 ) {
   const fixture = createEntitiesFixture();
@@ -408,6 +450,11 @@ function createEntitiesState(
     selectedMap: overrides.selectedMap ?? ALL_SELECTED,
     show: overrides.show,
     columnOrder: overrides.columnOrder,
+    relationships: overrides.relationships,
+    indexes: overrides.indexes,
+    indexColumns: overrides.indexColumns,
+    relationshipIds: overrides.relationshipIds,
+    indexIds: overrides.indexIds,
   });
 
   return { ...fixture, state };
@@ -892,5 +939,212 @@ describe('AC-40d — the generated text/html never yields a memo derived column'
     );
 
     expect(tablePasteFromHtmlToColumns(state, html)).toHaveLength(0);
+  });
+});
+
+const usersToPosts = () =>
+  createRelationship({
+    id: 'relationship-1',
+    relationshipType: RelationshipType.OneN,
+    start: { tableId: 'table-1', columnIds: ['column-id'] },
+    end: { tableId: 'table-2', columnIds: ['column-title'] },
+  });
+
+const ONLY_USERS: Record<string, SelectType> = {
+  'table-1': SelectType.table,
+};
+
+describe('entitiesCopyToPayload — relationships', () => {
+  it('copies a relationship whose two end tables are both selected', () => {
+    const { state } = createEntitiesState({
+      relationships: [usersToPosts()],
+    });
+
+    expect(entitiesCopyToPayload(state)?.relationships).toEqual([
+      {
+        relationshipType: RelationshipType.OneN,
+        start: { tableId: 'table-1', columnIds: ['column-id'] },
+        end: { tableId: 'table-2', columnIds: ['column-title'] },
+      },
+    ]);
+  });
+
+  it.each([
+    ['start', { 'table-2': SelectType.table }],
+    ['end', ONLY_USERS],
+  ])(
+    'leaves out a relationship with its %s outside the selection',
+    (_name, selectedMap) => {
+      const { state } = createEntitiesState({
+        selectedMap,
+        relationships: [usersToPosts()],
+      });
+
+      expect(entitiesCopyToPayload(state)?.relationships).toEqual([]);
+    }
+  );
+
+  it('copies a self referencing relationship of a single selected table', () => {
+    const { state } = createEntitiesState({
+      selectedMap: ONLY_USERS,
+      relationships: [
+        createRelationship({
+          id: 'relationship-self',
+          start: { tableId: 'table-1', columnIds: ['column-id'] },
+          end: { tableId: 'table-1', columnIds: ['column-name'] },
+        }),
+      ],
+    });
+
+    expect(entitiesCopyToPayload(state)?.relationships).toHaveLength(1);
+  });
+
+  it('never copies a relationship the document no longer holds', () => {
+    // removeRelationship only splices doc.relationshipIds; the entity itself
+    // survives in collections, so selectAll would resurrect every deletion.
+    const { state } = createEntitiesState({
+      relationships: [usersToPosts()],
+      relationshipIds: [],
+    });
+
+    expect(entitiesCopyToPayload(state)?.relationships).toEqual([]);
+  });
+});
+
+describe('entitiesCopyToPayload — indexes', () => {
+  const compositeIndex = () => ({
+    indexes: [
+      createIndex({
+        id: 'index-1',
+        tableId: 'table-1',
+        name: 'users_id_name',
+        unique: true,
+        indexColumnIds: ['index-column-2', 'index-column-1'],
+        seqIndexColumnIds: ['index-column-1', 'index-column-2'],
+      }),
+    ],
+    indexColumns: [
+      createIndexColumn({
+        id: 'index-column-1',
+        indexId: 'index-1',
+        columnId: 'column-id',
+        orderType: OrderType.ASC,
+      }),
+      createIndexColumn({
+        id: 'index-column-2',
+        indexId: 'index-1',
+        columnId: 'column-name',
+        orderType: OrderType.DESC,
+      }),
+    ],
+  });
+
+  it('copies every index of a selected table with its columns in indexColumnIds order', () => {
+    const { state } = createEntitiesState(compositeIndex());
+
+    expect(
+      entitiesCopyToPayload(state)?.indexes?.[0].indexColumns.map(
+        ({ columnId }) => columnId
+      )
+    ).toEqual(['column-name', 'column-id']);
+  });
+
+  it('carries the index name, unique flag and each column orderType', () => {
+    const { state } = createEntitiesState(compositeIndex());
+
+    expect(entitiesCopyToPayload(state)?.indexes).toEqual([
+      {
+        tableId: 'table-1',
+        name: 'users_id_name',
+        unique: true,
+        indexColumns: [
+          { columnId: 'column-name', orderType: OrderType.DESC },
+          { columnId: 'column-id', orderType: OrderType.ASC },
+        ],
+      },
+    ]);
+  });
+
+  it('leaves out an index of a table that was not selected', () => {
+    const { state } = createEntitiesState({
+      ...compositeIndex(),
+      selectedMap: { 'table-2': SelectType.table },
+    });
+
+    expect(entitiesCopyToPayload(state)?.indexes).toEqual([]);
+  });
+
+  it('drops an index whose indexColumnIds name a missing index column', () => {
+    const fixture = compositeIndex();
+    const { state } = createEntitiesState({
+      ...fixture,
+      indexColumns: [fixture.indexColumns[0]],
+    });
+
+    // Narrowing a composite index would make it a stronger constraint than the
+    // one it was copied from, so the whole index goes instead.
+    expect(entitiesCopyToPayload(state)?.indexes).toEqual([]);
+  });
+
+  it('copies an index that has no index columns', () => {
+    const { state } = createEntitiesState({
+      indexes: [createIndex({ id: 'index-1', tableId: 'table-1' })],
+    });
+
+    expect(entitiesCopyToPayload(state)?.indexes).toEqual([
+      { tableId: 'table-1', name: '', unique: false, indexColumns: [] },
+    ]);
+  });
+
+  it('never copies an index the document no longer holds', () => {
+    const { state } = createEntitiesState({
+      ...compositeIndex(),
+      indexIds: [],
+    });
+
+    expect(entitiesCopyToPayload(state)?.indexes).toEqual([]);
+  });
+});
+
+describe('the column path carries no graph', () => {
+  it('keeps the column payload free of relationships and indexes', () => {
+    const { table, idColumn } = createFixture();
+    const state = createState({
+      tables: [table],
+      columns: [idColumn],
+      relationships: [
+        createRelationship({
+          id: 'relationship-1',
+          start: { tableId: 'table-1', columnIds: ['column-id'] },
+          end: { tableId: 'table-1', columnIds: ['column-id'] },
+        }),
+      ],
+      indexes: [createIndex({ id: 'index-1', tableId: 'table-1' })],
+      focusTable: { tableId: 'table-1', selectColumnIds: ['column-id'] },
+    });
+
+    const payload = columnsCopyToPayload(state);
+
+    expect(payload?.kind).toBe(PayloadKind.columns);
+    expect(payload?.relationships).toEqual([]);
+    expect(payload?.indexes).toEqual([]);
+  });
+
+  it('leaves the text and html flavours unchanged when the document carries a graph', () => {
+    const plain = createEntitiesState();
+    const withGraph = createEntitiesState({
+      relationships: [usersToPosts()],
+      indexes: [createIndex({ id: 'index-1', tableId: 'table-1' })],
+    });
+
+    const plainPayload = entitiesCopyToPayload(plain.state)!;
+    const graphPayload = entitiesCopyToPayload(withGraph.state)!;
+
+    expect(entitiesToTsv(graphPayload, withGraph.state.settings)).toBe(
+      entitiesToTsv(plainPayload, plain.state.settings)
+    );
+    expect(entitiesToHtmlTable(graphPayload, withGraph.state.settings)).toBe(
+      entitiesToHtmlTable(plainPayload, plain.state.settings)
+    );
   });
 });

@@ -127,6 +127,10 @@ export class ErdEditorPage {
     return (await this.value()).doc.relationshipIds;
   }
 
+  async indexIds() {
+    return (await this.value()).doc.indexIds;
+  }
+
   async memoIds() {
     return (await this.value()).doc.memoIds;
   }
@@ -152,6 +156,16 @@ export class ErdEditorPage {
   async relationship(id: string) {
     const { collections } = await this.value();
     return collections.relationshipEntities[id];
+  }
+
+  async index(id: string) {
+    const { collections } = await this.value();
+    return collections.indexEntities[id];
+  }
+
+  async indexColumn(id: string) {
+    const { collections } = await this.value();
+    return collections.indexColumnEntities[id];
   }
 
   async memo(id: string) {
