@@ -8,7 +8,7 @@ import { useThemeContext } from '@/components/themeContext';
 import { dragSelectRectAction } from '@/engine/modules/editor/atom.actions';
 import { dragSelectAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { getAbsolutePoint } from '@/utils/dragSelect';
+import { toScenePoint } from '@/konva/scene/viewport';
 import { mouseup$ } from '@/utils/globalEventObservable';
 
 const STROKE_WIDTH = 1;
@@ -67,9 +67,7 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
     subscription.add(
       fromEvent<MouseEvent>($root, 'mousemove').subscribe(event => {
         event.preventDefault();
-        const {
-          settings: { width, height, zoomLevel, scrollLeft, scrollTop },
-        } = store.state;
+        const { settings } = store.state;
         const rect = $root.getBoundingClientRect();
         const currentX = event.clientX - rect.x;
         const currentY = event.clientY - rect.y;
@@ -83,23 +81,13 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
         state.width = maxX - minX;
         state.height = maxY - minY;
 
-        const absoluteMin = getAbsolutePoint(
-          { x: minX - scrollLeft, y: minY - scrollTop },
-          width,
-          height,
-          zoomLevel
-        );
-        const absoluteMax = getAbsolutePoint(
-          { x: maxX - scrollLeft, y: maxY - scrollTop },
-          width,
-          height,
-          zoomLevel
-        );
+        const sceneMin = toScenePoint(settings, { x: minX, y: minY });
+        const sceneMax = toScenePoint(settings, { x: maxX, y: maxY });
 
         const dragRect = {
-          ...absoluteMin,
-          w: absoluteMax.x - absoluteMin.x,
-          h: absoluteMax.y - absoluteMin.y,
+          ...sceneMin,
+          w: sceneMax.x - sceneMin.x,
+          h: sceneMax.y - sceneMin.y,
         };
 
         store.dispatch(

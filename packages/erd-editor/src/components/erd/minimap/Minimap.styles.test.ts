@@ -14,20 +14,38 @@ describe('Minimap.styles', () => {
 
     expect(source).toContain('position: absolute');
     expect(source).toContain('overflow: hidden');
-    expect(source).toContain(
-      'background-color: var(--canvas-boundary-background)'
-    );
   });
 
-  it('draws the border overlay without capturing pointer events', () => {
+  /**
+   * The thumbnail box is filled edge to edge by the stage container inside it,
+   * which paints the canvas background, so a colour of its own here would never
+   * show: the document has no boundary for the map to draw outside of.
+   */
+  it('paints no background of its own behind the stage', () => {
+    expect(styles.minimap.strings.join('')).not.toContain('background-color');
+  });
+
+  /**
+   * The thumbnail keeps the content's shape, so it seldom fills the square;
+   * the frame paints the boundary colour behind it, or the scene under the
+   * minimap would show through the letterbox.
+   */
+  it('draws the frame painted with the boundary colour, without capturing pointer events', () => {
     const source = styles.border.strings.join('');
 
     expect(source).toContain('position: absolute');
     expect(source).toContain('box-sizing: content-box');
     expect(source).toContain('pointer-events: none');
     expect(source).toContain('border: 1px solid var(--minimap-border)');
-    expect(source).toContain('box-shadow: 0 1px 6px var(--minimap-shadow)');
-    expect(source).toContain('background-color: transparent');
+    // The negative spread is what keeps an opaque shadow colour from reading
+    // as a slab under the frame.
+    expect(source).toContain(
+      'box-shadow: 0 1px 6px -3px var(--minimap-shadow)'
+    );
+    expect(source).toContain(
+      'background-color: var(--canvas-boundary-background)'
+    );
+    expect(source).not.toContain('background-color: transparent');
   });
 
   it('interpolates no runtime values into the minimap styles', () => {

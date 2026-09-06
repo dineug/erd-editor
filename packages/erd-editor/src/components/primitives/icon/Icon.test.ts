@@ -219,7 +219,7 @@ describe('Icon', () => {
     mounted.unmount();
 
     mounted = await mountAndFlush(
-      html`<${Icon} name=${'map-pin'} rotate=${90} />`
+      html`<${Icon} name=${'chevron-right'} rotate=${90} />`
     );
     expect(wrapOf()!.style.transform).toBe('rotate(90deg)');
   });

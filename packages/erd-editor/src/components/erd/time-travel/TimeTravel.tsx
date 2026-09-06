@@ -61,9 +61,11 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
     cursor: history.cursor,
   });
 
+  // Measured before the document lands, so a load pulls its origin against
+  // the screen it is shown on rather than against the store's default size.
   store.dispatchSync(
-    initialLoadJsonAction$(toJson(originApp.store.state)),
-    changeViewportAction(getViewport())
+    changeViewportAction(getViewport()),
+    initialLoadJsonAction$(toJson(originApp.store.state))
   );
 
   const runTimeTravel = (cursor: number) => {

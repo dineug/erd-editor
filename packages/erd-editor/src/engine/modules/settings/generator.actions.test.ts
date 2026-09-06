@@ -16,18 +16,40 @@ import {
   changeZoomLevelAction$,
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
+import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Point } from '@/internal-types';
-import { toScenePoint, toScreenPoint } from '@/konva/scene/viewport';
+import { getOriginToPlace, toScenePoint } from '@/konva/scene/viewport';
 
 const toWidth = (text: string) => text.length * 10;
 
+const VIEWPORT = { width: 1000, height: 800 };
+const SCREEN_CENTRE = { x: VIEWPORT.width / 2, y: VIEWPORT.height / 2 };
+
+/**
+ * Two tables spanning the corner to 2000 on each axis, which is what gives the
+ * origin travel to re-centre over: every anchor below sits inside it at every
+ * zoom, so no walk starts from or runs into a clamp.
+ */
 function createTestStore(): Store {
   const store = createStore({ toWidth, clock: new Clock() });
-  // canvas 2000x2000, viewport 1000x800 → scroll range [-1000, 0] x [-1200, 0]
-  store.dispatchSync(changeViewportAction({ width: 1000, height: 800 }));
+  store.dispatchSync(changeViewportAction(VIEWPORT));
+  store.dispatchSync(
+    addTableAction({ id: 'near', ui: { x: 0, y: 0, zIndex: 2 } })
+  );
+  store.dispatchSync(
+    addTableAction({ id: 'far', ui: { x: 2_000, y: 2_000, zIndex: 2 } })
+  );
   return store;
 }
+
+/**
+ * The origin that keeps the scene point under the middle of the screen where
+ * it is once the zoom changes, for a view that started unscrolled at zoom 1:
+ * that point is the screen centre itself, so the canon places it back there.
+ */
+const holdingCentre = (zoomLevel: number) =>
+  getOriginToPlace(zoomLevel, SCREEN_CENTRE, SCREEN_CENTRE);
 
 function flatten(store: Store, action: any): AnyAction[] {
   return compositionActionsFlat(store.state, store.context, [action]);
@@ -58,57 +80,67 @@ describe('settings/generator.actions', () => {
         ActionType.scrollTo,
       ]);
       expect(emitted[0]).toEqual(changeZoomLevelAction({ value: 0.5 }));
-      expect(emitted[1].payload.scrollLeft).toBeCloseTo(-250, 6);
-      expect(emitted[1].payload.scrollTop).toBeCloseTo(-300, 6);
+      expect(emitted[1].payload.originX).toBeCloseTo(holdingCentre(0.5).x, 6);
+      expect(emitted[1].payload.originY).toBeCloseTo(holdingCentre(0.5).y, 6);
       expect(emitted[1].type).toBe(scrollToAction.type);
     });
 
     /**
-     * The generator asks for -250 x -300, and the reducer clamps that against
-     * the box the zoom actually draws: 1000 wide at zoom 0.5, exactly the
-     * viewport, so the horizontal offset has one legal value and both land on it.
+     * The generator asks for the origin that holds the screen centre, and the
+     * reducer clamps that against the box the zoom actually draws: 1000 wide at
+     * zoom 0.5, exactly the viewport, so the request lands inside the travel.
      */
-    it('applies zoom and scroll to the store when dispatched', () => {
+    it('applies zoom and origin to the store when dispatched', () => {
       store.dispatchSync(changeZoomLevelAction$(0.5));
 
       expect(store.state.settings.zoomLevel).toBe(0.5);
-      expect(store.state.settings.scrollLeft).toBe(-250);
-      expect(store.state.settings.scrollTop).toBe(-300);
+      expect(store.state.settings.originX).toBe(holdingCentre(0.5).x);
+      expect(store.state.settings.originY).toBe(holdingCentre(0.5).y);
     });
 
-    it('adds the movement on top of the existing scroll offsets', () => {
-      store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: -100 }));
+    it('adds the movement on top of the existing origin', () => {
+      store.dispatchSync(scrollToAction({ originX: -100, originY: -100 }));
+      const anchor = toScenePoint(store.state.settings, SCREEN_CENTRE);
       store.dispatchSync(changeZoomLevelAction$(0.5));
 
       // The middle of the screen sits over scene 600, 500 before the zoom, and
-      // holding it there at 0.5 asks for -200, -250 on top of what is already
-      // scrolled. Both land inside the travel the 2000 box has.
-      expect(store.state.settings.scrollLeft).toBe(-300);
-      expect(store.state.settings.scrollTop).toBe(-350);
+      // holding it there at 0.5 is an origin the travel of the 2000 box has.
+      const expected = getOriginToPlace(0.5, anchor, SCREEN_CENTRE);
+      expect(store.state.settings.originX).toBe(expected.x);
+      expect(store.state.settings.originY).toBe(expected.y);
       expect(store.state.settings.zoomLevel).toBe(0.5);
     });
 
     /**
-     * Magnifying moves the scroll the other way. At zoom 1.5 the 2000 box draws
-     * 3000 wide and starts 500 left of the scroll, so a positive offset is what
-     * keeps its top left corner on screen.
+     * Magnifying moves the origin the other way: at zoom 1.5 the scene point
+     * under the middle of the screen is drawn further from the top left corner,
+     * so the origin has to go negative to keep it there.
      */
     it('clamps an out-of-range zoom level and re-centres on the way up', () => {
       store.dispatchSync(changeZoomLevelAction$(10));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
-      expect(store.state.settings.scrollLeft).toBe(250);
-      expect(store.state.settings.scrollTop).toBe(300);
+      expect(store.state.settings.originX).toBe(
+        holdingCentre(CANVAS_ZOOM_MAX).x
+      );
+      expect(store.state.settings.originY).toBe(
+        holdingCentre(CANVAS_ZOOM_MAX).y
+      );
+      expect(store.state.settings.originX).toBeLessThan(0);
     });
 
     it('clamps a below-range zoom level', () => {
       store.dispatchSync(changeZoomLevelAction$(-3));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MIN);
-      // x = y = (2000 - 200) / 2 = 900, and the travel a canvas drawn smaller
-      // than the screen keeps is the box's own, so the movement lands whole.
-      expect(store.state.settings.scrollLeft).toBe(-450);
-      expect(store.state.settings.scrollTop).toBe(-540);
+      // The travel a canvas drawn smaller than the screen keeps is the half
+      // screen either side of the middle, so the movement lands whole.
+      expect(store.state.settings.originX).toBe(
+        holdingCentre(CANVAS_ZOOM_MIN).x
+      );
+      expect(store.state.settings.originY).toBe(
+        holdingCentre(CANVAS_ZOOM_MIN).y
+      );
     });
   });
 
@@ -122,16 +154,17 @@ describe('settings/generator.actions', () => {
       ]);
       expect(emitted[0]).toEqual(streamZoomLevelAction({ value: -0.5 }));
       expect(emitted[1].type).toBe(streamScrollToAction.type);
-      expect(emitted[1].payload.movementX).toBeCloseTo(-250, 6);
-      expect(emitted[1].payload.movementY).toBeCloseTo(-300, 6);
+      // From an origin of zero the movement is the whole of the holding origin.
+      expect(emitted[1].payload.movementX).toBeCloseTo(holdingCentre(0.5).x, 6);
+      expect(emitted[1].payload.movementY).toBeCloseTo(holdingCentre(0.5).y, 6);
     });
 
-    it('applies the delta and the relative scroll to the store', () => {
+    it('applies the delta and the relative movement to the store', () => {
       store.dispatchSync(streamZoomLevelAction$(-0.5));
 
       expect(store.state.settings.zoomLevel).toBe(0.5);
-      expect(store.state.settings.scrollLeft).toBe(-250);
-      expect(store.state.settings.scrollTop).toBe(-300);
+      expect(store.state.settings.originX).toBe(holdingCentre(0.5).x);
+      expect(store.state.settings.originY).toBe(holdingCentre(0.5).y);
     });
 
     it('accumulates across successive deltas', () => {
@@ -140,16 +173,21 @@ describe('settings/generator.actions', () => {
 
       store.dispatchSync(streamZoomLevelAction$(-0.25));
       expect(store.state.settings.zoomLevel).toBe(0.5);
-      expect(store.state.settings.scrollLeft).toBeLessThan(0);
-      expect(store.state.settings.scrollTop).toBeLessThan(0);
+      // Two notches that each hold the centre compose to the one jump would.
+      expect(store.state.settings.originX).toBeCloseTo(holdingCentre(0.5).x, 3);
+      expect(store.state.settings.originY).toBeCloseTo(holdingCentre(0.5).y, 3);
     });
 
     it('stops the delta at the ceiling and re-centres for the zoom it reached', () => {
       store.dispatchSync(streamZoomLevelAction$(5));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
-      expect(store.state.settings.scrollLeft).toBe(250);
-      expect(store.state.settings.scrollTop).toBe(300);
+      expect(store.state.settings.originX).toBe(
+        holdingCentre(CANVAS_ZOOM_MAX).x
+      );
+      expect(store.state.settings.originY).toBe(
+        holdingCentre(CANVAS_ZOOM_MAX).y
+      );
     });
 
     it('reaches the ceiling in shortcut sized steps', () => {
@@ -167,7 +205,7 @@ describe('settings/generator.actions', () => {
   });
 
   /**
-   * The gesture, not the reducer. Every notch moves the scroll to hold the
+   * The gesture, not the reducer. Every notch moves the origin to hold the
    * middle of the screen still, so walking the zoom down to the floor and back
    * up the same path is a walk to nowhere and has to end where it started.
    */
@@ -197,11 +235,11 @@ describe('settings/generator.actions', () => {
       }
     }
 
-    function roundTrip(scrollLeft: number, scrollTop: number) {
-      store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
+    function roundTrip(originX: number, originY: number) {
+      store.dispatchSync(scrollToAction({ originX, originY }));
       const before = {
-        scrollLeft: store.state.settings.scrollLeft,
-        scrollTop: store.state.settings.scrollTop,
+        originX: store.state.settings.originX,
+        originY: store.state.settings.originY,
       };
 
       const path = wheelToFloor();
@@ -222,22 +260,22 @@ describe('settings/generator.actions', () => {
       [-120, -80],
       [-400, -600],
       [-1_000, -1_200],
-    ])('returns a scroll of %s, %s to where it started', (left, top) => {
+    ])('returns an origin of %s, %s to where it started', (left, top) => {
       const { before, after } = roundTrip(left, top);
 
-      expect(after.scrollLeft).toBeCloseTo(before.scrollLeft, 3);
-      expect(after.scrollTop).toBeCloseTo(before.scrollTop, 3);
+      expect(after.originX).toBeCloseTo(before.originX, 3);
+      expect(after.originY).toBeCloseTo(before.originY, 3);
     });
 
     /**
-     * The shape of the regression this guards. The offsets used to arrive at
-     * the midpoint of the travel whatever they started as, so every row above
+     * The shape of the regression this guards. The origin used to arrive at
+     * the midpoint of the travel whatever it started as, so every row above
      * landed on one pair and the view could not be zoomed back to.
      */
     it('does not gather every starting point onto one midpoint', () => {
-      const landings = [-120, -400, -900].map(scroll => {
+      const landings = [-120, -400, -900].map(origin => {
         store = createTestStore();
-        return roundTrip(scroll, scroll).after.scrollLeft;
+        return roundTrip(origin, origin).after.originX;
       });
 
       expect(new Set(landings).size).toBe(landings.length);
@@ -254,12 +292,12 @@ describe('settings/generator.actions', () => {
     /** Where the middle of the screen falls in the scene, right now. */
     function centre(): Point {
       const {
-        settings: { width, height, scrollLeft, scrollTop, zoomLevel },
+        settings: { originX, originY, zoomLevel },
         editor: { viewport },
       } = store.state;
 
       return toScenePoint(
-        { width, height, scrollLeft, scrollTop, zoomLevel },
+        { originX, originY, zoomLevel },
         { x: viewport.width / 2, y: viewport.height / 2 }
       );
     }
@@ -270,23 +308,17 @@ describe('settings/generator.actions', () => {
      * measurement and every case below has to start from one that can.
      */
     function centreOn(anchor: Point, zoomLevel: number) {
-      const {
-        settings: { width, height },
-        editor: { viewport },
-      } = store.state;
+      const { viewport } = store.state.editor;
 
       store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
 
-      const unscrolled = toScreenPoint(
-        { width, height, zoomLevel, scrollLeft: 0, scrollTop: 0 },
-        anchor
-      );
+      const origin = getOriginToPlace(zoomLevel, anchor, {
+        x: viewport.width / 2,
+        y: viewport.height / 2,
+      });
 
       store.dispatchSync(
-        scrollToAction({
-          scrollLeft: viewport.width / 2 - unscrolled.x,
-          scrollTop: viewport.height / 2 - unscrolled.y,
-        })
+        scrollToAction({ originX: origin.x, originY: origin.y })
       );
 
       expect(centre().x).toBeCloseTo(anchor.x, 6);
@@ -358,14 +390,8 @@ describe('settings/generator.actions', () => {
 
           walkTo(1, step);
           expect(store.state.settings.zoomLevel).toBeCloseTo(1, 6);
-          expect(store.state.settings.scrollLeft).toBeCloseTo(
-            before.scrollLeft,
-            3
-          );
-          expect(store.state.settings.scrollTop).toBeCloseTo(
-            before.scrollTop,
-            3
-          );
+          expect(store.state.settings.originX).toBeCloseTo(before.originX, 3);
+          expect(store.state.settings.originY).toBeCloseTo(before.originY, 3);
         }
       }
     );
@@ -387,14 +413,8 @@ describe('settings/generator.actions', () => {
 
           walkTo(1, step);
           expect(store.state.settings.zoomLevel).toBeCloseTo(1, 6);
-          expect(store.state.settings.scrollLeft).toBeCloseTo(
-            before.scrollLeft,
-            3
-          );
-          expect(store.state.settings.scrollTop).toBeCloseTo(
-            before.scrollTop,
-            3
-          );
+          expect(store.state.settings.originX).toBeCloseTo(before.originX, 3);
+          expect(store.state.settings.originY).toBeCloseTo(before.originY, 3);
         }
       }
     );
@@ -412,11 +432,8 @@ describe('settings/generator.actions', () => {
         store.dispatchSync(changeZoomLevelAction$(CANVAS_ZOOM_MIN));
         store.dispatchSync(changeZoomLevelAction$(1));
 
-        expect(store.state.settings.scrollLeft).toBeCloseTo(
-          before.scrollLeft,
-          3
-        );
-        expect(store.state.settings.scrollTop).toBeCloseTo(before.scrollTop, 3);
+        expect(store.state.settings.originX).toBeCloseTo(before.originX, 3);
+        expect(store.state.settings.originY).toBeCloseTo(before.originY, 3);
       }
     });
   });

@@ -1,13 +1,27 @@
 import { expect, test } from '../support/fixtures';
 import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
 import { createSchema, oneTable, twoTables } from '../support/schema';
-import { MOD_KEY } from '../support/shortcuts';
+import { MOD_KEY, Shortcut } from '../support/shortcuts';
 
 /** One screen pixel of pointer rounding, doubled for the two drag endpoints. */
 const PIXEL_TOLERANCE = 2;
 
-/** constants/layout.ts — the rendered edge of .minimap, re-checked below. */
+/** constants/layout.ts — the square the minimap frame draws, re-checked below. */
 const MINIMAP_SIZE = 150;
+
+/**
+ * How far past the content's far edge a pan is carried, in scene units. Only
+ * the sign of it is the point: the travel the aids draw ends at that edge, and
+ * the pan goes on regardless of it.
+ */
+const BEYOND_EDGE = 200;
+
+/** How far the thumb is dragged, and the step taken before it is measured. */
+const THUMB_DRAG = 48;
+const FIRST_STEP = 4;
+
+/** useVirtualScroll.ts — the width the drawn thumb never goes under. */
+const SCROLLBAR_THUMB_MIN = 24;
 
 function expectClose(actual: number, expected: number, tolerance: number) {
   expect(
@@ -37,7 +51,7 @@ const marqueeBand = (erd: ErdEditorPage) =>
 
 /**
  * The div Canvas.ts wraps the canvas in. It carries the
- * translate(scrollLeft, scrollTop) scale(zoomLevel) transform and the
+ * translate(originX, originY) scale(zoomLevel) transform and the
  * pointer-events switch, so it is what a pan visibly moves.
  */
 const canvasController = (erd: ErdEditorPage) => erd.canvas.locator('xpath=..');
@@ -174,9 +188,9 @@ test.describe('mouse drag', () => {
     await pressTableHeader(erd, 'b', { mod: true });
     await expect(erd.selectedTables()).toHaveCount(2);
 
-    // The drag has to carry $mod as well: selectTableAction$ unselects
-    // everything else when the mousedown has no modifier, so a plain drag would
-    // collapse the multi-selection to the table under the cursor first.
+    // The modifier is no longer what keeps the selection together — a press on
+    // a table already in it does that — but a $mod drag is the older spelling
+    // and still has to carry the whole selection.
     const from = await erd.tableHeaderPoint('a');
     await erd.drag(
       from,
@@ -203,6 +217,57 @@ test.describe('mouse drag', () => {
 
     await expect(erd.selectedTables()).toHaveCount(2);
     await expect(erd.tableEl('c')).not.toHaveAttribute('data-selected', '');
+  });
+
+  test('a plain drag on a table the selection holds carries the whole selection', async ({
+    erd,
+  }) => {
+    await erd.seed(threeTables());
+
+    await pressTableHeader(erd, 'a');
+    await pressTableHeader(erd, 'b', { mod: true });
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    // No modifier at all this time: the press lands on a table the selection
+    // already holds, so it keeps it rather than collapsing onto that table.
+    const from = await erd.tableHeaderPoint('a');
+    await erd.drag(from, { x: from.x + 120, y: from.y + 60 });
+
+    const [a, b, c] = [
+      await erd.table('a'),
+      await erd.table('b'),
+      await erd.table('c'),
+    ];
+    expectClose(a.ui.x, 160 + 120, PIXEL_TOLERANCE);
+    expectClose(a.ui.y, 160 + 60, PIXEL_TOLERANCE);
+    expectClose(b.ui.x, 700 + 120, PIXEL_TOLERANCE);
+    expectClose(b.ui.y, 160 + 60, PIXEL_TOLERANCE);
+    expect([c.ui.x, c.ui.y]).toEqual([160, 520]);
+    await expect(erd.selectedTables()).toHaveCount(2);
+  });
+
+  test('a plain drag on a table the selection never held collapses onto it', async ({
+    erd,
+  }) => {
+    await erd.seed(threeTables());
+
+    await pressTableHeader(erd, 'a');
+    await pressTableHeader(erd, 'b', { mod: true });
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    const from = await erd.tableHeaderPoint('c');
+    await erd.drag(from, { x: from.x + 90, y: from.y + 40 });
+
+    const [a, b, c] = [
+      await erd.table('a'),
+      await erd.table('b'),
+      await erd.table('c'),
+    ];
+    expect([a.ui.x, a.ui.y]).toEqual([160, 160]);
+    expect([b.ui.x, b.ui.y]).toEqual([700, 160]);
+    expectClose(c.ui.x, 160 + 90, PIXEL_TOLERANCE);
+    expectClose(c.ui.y, 520 + 40, PIXEL_TOLERANCE);
+    await expect(erd.selectedTables()).toHaveCount(1);
   });
 
   test('$mod + drag on empty canvas marquee-selects the tables it covers', async ({
@@ -256,55 +321,79 @@ test.describe('mouse drag', () => {
 
     // …and it marquee-selected rather than panned.
     const settings = await erd.settings();
-    expect([settings.scrollLeft, settings.scrollTop]).toEqual([0, 0]);
+    expect([settings.originX, settings.originY]).toEqual([0, 0]);
   });
 
-  test('a plain drag on empty canvas pans the canvas and clamps at 0', async ({
+  test('a plain drag on empty canvas pans the canvas and keeps going past it', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
+
+    // At zoom 1 and origin 0 a screen offset from scene zero is a scene
+    // coordinate, so the far corner of the lower, righter table is where the
+    // content ends — posts is that table in this seed.
+    const zero = await erd.pointAt(0, 0);
+    const posts = await erd.sceneBox('#table-posts');
+    const farX = posts.x - zero.x + posts.width;
+    const farY = posts.y - zero.y + posts.height;
 
     // (1100, 700) in canvas coordinates is empty: posts sits at (760, 420)
     // and its box ends near (1090, 530).
     await erd.panBy(-240, -120, { x: 1100, y: 700 });
 
     const scrolled = await erd.settings();
-    expectClose(scrolled.scrollLeft, -240, PIXEL_TOLERANCE);
-    expectClose(scrolled.scrollTop, -120, PIXEL_TOLERANCE);
+    expectClose(scrolled.originX, -240, PIXEL_TOLERANCE);
+    expectClose(scrolled.originY, -120, PIXEL_TOLERANCE);
 
-    // Scrolling back past the origin clamps: streamScrollTo caps at 0.
-    await erd.panBy(360, 240, { x: 1100, y: 700 });
+    // Dragging on west reaches where the content's far edge meets the near
+    // edge of the screen, and the next drag goes straight past it: how far that
+    // is comes off the drawn box, since a font decides how wide a table is.
+    const toEdge = {
+      x: Math.ceil(farX + scrolled.originX) + BEYOND_EDGE,
+      y: Math.ceil(farY + scrolled.originY) + BEYOND_EDGE,
+    };
+    await erd.panBy(-toEdge.x, -toEdge.y);
 
-    const clamped = await erd.settings();
-    expect(clamped.scrollLeft).toBe(0);
-    expect(clamped.scrollTop).toBe(0);
+    const edge = await erd.settings();
+    expectClose(edge.originX, scrolled.originX - toEdge.x, PIXEL_TOLERANCE);
+    expectClose(edge.originY, scrolled.originY - toEdge.y, PIXEL_TOLERANCE);
+    expect(edge.originX).toBeLessThanOrEqual(-farX + PIXEL_TOLERANCE);
+    expect(edge.originY).toBeLessThanOrEqual(-farY + PIXEL_TOLERANCE);
+
+    await erd.panBy(-900, -600);
+
+    const past = await erd.settings();
+    expectClose(past.originX, edge.originX - 900, PIXEL_TOLERANCE);
+    expectClose(past.originY, edge.originY - 600, PIXEL_TOLERANCE);
+    expect(past.originX).toBeLessThan(-farX - BEYOND_EDGE);
+    expect(past.originY).toBeLessThan(-farY - BEYOND_EDGE);
   });
 
-  test('holding Space pans even when the drag starts over a table', async ({
+  test('the hand tool pans even when the drag starts over a table', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
 
-    // grabMove is armed by a Space keydown whose target is a DIV, so the
-    // editor root has to hold focus first. (1100, 700) is the same empty canvas
-    // point the pan test uses.
+    // Space toggles the tool rather than holding it, so the editor root has to
+    // own the keyboard first. (1100, 700) is the same empty canvas point the
+    // pan test uses.
     await erd.focusCanvas({ x: 1100, y: 700 });
-    await erd.page.keyboard.down('Space');
+    await erd.press(Shortcut.handTool);
 
-    // Grab mode makes the canvas wrapper transparent to the pointer — that is
+    // The hand makes the canvas wrapper transparent to the pointer — that is
     // what stops the table underneath from receiving the mousedown.
     await expect(canvasController(erd)).toHaveCSS('pointer-events', 'none');
 
     const from = await erd.tableHeaderPoint('users');
     await erd.drag(from, { x: from.x - 120, y: from.y - 60 });
-    // Space only disarms on a window-level keyup; leaving it down would make
+    // The tool stays down until it is pressed again; leaving it down would make
     // every later drag in this page pan.
-    await erd.page.keyboard.up('Space');
+    await erd.press(Shortcut.handTool);
     await expect(canvasController(erd)).toHaveCSS('pointer-events', 'auto');
 
     const settings = await erd.settings();
-    expectClose(settings.scrollLeft, -120, PIXEL_TOLERANCE);
-    expectClose(settings.scrollTop, -60, PIXEL_TOLERANCE);
+    expectClose(settings.originX, -120, PIXEL_TOLERANCE);
+    expectClose(settings.originY, -60, PIXEL_TOLERANCE);
 
     // The table itself never moved, and never even got the mousedown.
     const users = await erd.table('users');
@@ -319,29 +408,34 @@ test.describe('mouse drag', () => {
     await erd.seed(twoTables());
 
     const settingsBefore = await erd.settings();
+    const hostBox = await boxOf(erd.host);
 
-    // useMinimapScroll divides the pointer movement by the minimap's own scale,
-    // and the minimap is the full canvas scaled by exactly that ratio, so the
-    // rendered box is where the ratio comes from.
+    // The thumbnail is a map of the travel, the content and a screen either
+    // way, so its longer side fills the frame; the handle is the screen mapped
+    // onto it, which is where the scale the drag is divided by can be read.
     const minimapBox = await boxOf(erd.minimap);
-    expect(minimapBox.width).toBeCloseTo(MINIMAP_SIZE, 3);
-    const ratio = minimapBox.width / settingsBefore.width;
-
+    expect(Math.max(minimapBox.width, minimapBox.height)).toBeCloseTo(
+      MINIMAP_SIZE,
+      3
+    );
     const handleBefore = await boxOf(erd.minimapViewport);
+    const ratio =
+      handleBefore.width / (hostBox.width / settingsBefore.zoomLevel);
 
     const from = await erd.centerOf(erd.minimapViewport);
-    await erd.drag(from, { x: from.x + 24, y: from.y + 12 });
+    await dragHold(erd, from, { x: from.x + 24, y: from.y + 12 });
+
+    // The map is held still for the drag, so the ratio the press saw is the
+    // one every step is read against and the handle follows the pointer 1:1.
+    const handleDuring = await boxOf(erd.minimapViewport);
+    expectClose(handleDuring.x - handleBefore.x, 24, PIXEL_TOLERANCE);
+    expectClose(handleDuring.y - handleBefore.y, 12, PIXEL_TOLERANCE);
+    await erd.page.mouse.up();
 
     const settings = await erd.settings();
     const tolerance = PIXEL_TOLERANCE / ratio;
-    expectClose(settings.scrollLeft, -24 / ratio, tolerance);
-    expectClose(settings.scrollTop, -12 / ratio, tolerance);
-
-    // The handle follows the pointer 1:1, because it is drawn at
-    // scroll * ratio.
-    const handleAfter = await boxOf(erd.minimapViewport);
-    expectClose(handleAfter.x - handleBefore.x, 24, PIXEL_TOLERANCE);
-    expectClose(handleAfter.y - handleBefore.y, 12, PIXEL_TOLERANCE);
+    expectClose(settings.originX, -24 / ratio, tolerance);
+    expectClose(settings.originY, -12 / ratio, tolerance);
   });
 
   test('dragging the horizontal scrollbar thumb scrolls the canvas', async ({
@@ -359,31 +453,48 @@ test.describe('mouse drag', () => {
     const trackBox = await boxOf(track);
     expect(trackBox.width).toBeGreaterThan(trackBox.height);
 
-    const settingsBefore = await erd.settings();
-    const before = await boxOf(thumb);
-
-    // getWidthRatio is the viewport over the canvas width, and the viewport is
-    // fed by a ResizeObserver that subtracts only the toolbar height, so the
-    // host width is the viewport width. The thumb width verifies that.
+    // The thumb is the screen's share of a screen plus the travel behind it and
+    // slides over what that leaves, so the gain a drag is scaled by is the
+    // thumb's share of the viewport — the host, not the slightly shorter track.
     const hostBox = await boxOf(erd.host);
-    const ratio = hostBox.width / settingsBefore.width;
-    expectClose(before.width, hostBox.width * ratio, PIXEL_TOLERANCE);
+    expect(trackBox.width).toBeLessThanOrEqual(hostBox.width);
 
     const from = await erd.centerOf(thumb);
-    await dragHold(erd, from, { x: from.x + 48, y: from.y });
+    await erd.page.mouse.move(from.x, from.y);
+    await erd.page.mouse.down();
+
+    // Stepped once before anything is measured: the press is what reads the
+    // table sizes the relationship sort settles after a load, so the two boxes
+    // below are taken against the one geometry the drag holds frozen.
+    await erd.page.mouse.move(from.x + FIRST_STEP, from.y);
     // [data-selected] marks the grabbed thumb for as long as the drag runs.
     await expect(thumb).toHaveAttribute('data-selected', '');
+
+    const held = await boxOf(thumb);
+    expect(held.width).toBeGreaterThan(SCROLLBAR_THUMB_MIN);
+    const ratio = held.width / hostBox.width;
+
+    await erd.page.mouse.move(from.x + THUMB_DRAG, from.y);
+
+    // The thumb is drawn at what is left of the travel above the origin, and
+    // the drag scales the pointer against that same travel, so what it slid is
+    // the pointer delta itself.
+    const during = await boxOf(thumb);
+    expectClose(during.x - held.x, THUMB_DRAG - FIRST_STEP, PIXEL_TOLERANCE);
+
     await erd.page.mouse.up();
     await expect(thumb).not.toHaveAttribute('data-selected', '');
 
     const settings = await erd.settings();
-    expectClose(settings.scrollLeft, -48 / ratio, PIXEL_TOLERANCE / ratio);
-    expect(settings.scrollTop).toBe(0);
+    expectClose(settings.originX, -THUMB_DRAG / ratio, PIXEL_TOLERANCE / ratio);
+    expect(settings.originY).toBe(0);
 
-    // The thumb is drawn at -scrollLeft * ratio, which is exactly the
-    // pointer delta again.
+    // The drop hands the freeze back, and the drag stayed inside the travel the
+    // content alone allows, so what it was drawn against is what it is drawn
+    // against now: the thumb does not jump when the gesture ends.
     const after = await boxOf(thumb);
-    expectClose(after.x - before.x, 48, PIXEL_TOLERANCE);
+    expectClose(after.x, during.x, PIXEL_TOLERANCE);
+    expectClose(after.width, held.width, PIXEL_TOLERANCE);
   });
 
   test('reordering a column by native drag-and-drop moves it in the store and the DOM', async ({

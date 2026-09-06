@@ -1,5 +1,8 @@
 import type { Page } from '@playwright/test';
 
+import { openingOrigin } from '@/engine/modules/settings/scrollRange';
+import { getOriginToPlace } from '@/konva/scene/viewport';
+
 import type { ErdDocument } from '../support/schema';
 
 export type Stats = {
@@ -544,30 +547,47 @@ const GRIP_Y = 200;
 export const VIEWPORT = { width: 1440, height: 900 };
 
 /**
- * Scrolls the document so the dragged table is on screen before it is loaded.
- * The scene culls, so a table outside the drawn region has no node to grip, and
- * the corpus parks its hub in the middle of a canvas many screens wide.
+ * Moves the view so the dragged table is on screen before it is loaded. The
+ * scene culls, so a table outside the drawn region has no node to grip, and the
+ * corpus parks its hub in the middle of a canvas many screens wide.
  */
 function scrollToTable(document: ErdDocument, tableId: string) {
   const table = document.collections.tableEntities[tableId];
   if (!table) return;
 
-  // Parking it mid-range also keeps the scroll clamp out of the measurement:
-  // from a corner, half of a there-and-back pan is clamped flat by the reducer
-  // and measures nothing at all.
   const { settings } = document;
-  const inRange = (value: number, viewport: number, size: number) =>
-    Math.max(Math.min(0, viewport - size), Math.min(0, value));
-
-  settings.scrollLeft = inRange(
-    Math.round(GRIP_X - table.ui.x),
-    VIEWPORT.width,
-    settings.width
+  const { zoomLevel } = settings;
+  const origin = getOriginToPlace(
+    zoomLevel,
+    { x: table.ui.x, y: table.ui.y },
+    { x: GRIP_X, y: GRIP_Y }
   );
-  settings.scrollTop = inRange(
-    Math.round(GRIP_Y - table.ui.y),
+
+  const tables = Object.values(document.collections.tableEntities);
+
+  /**
+   * Where the load settles an origin, read from the engine's own one-axis rule
+   * over the corpus's extent. Table positions stand in for their boxes, so this
+   * extent sits inside the real one and the load leaves an origin settled to it.
+   */
+  const settle = (value: number, viewport: number, edges: number[]) =>
+    openingOrigin(
+      value,
+      Math.min(...edges),
+      Math.max(...edges),
+      viewport,
+      zoomLevel
+    );
+
+  settings.originX = settle(
+    Math.round(origin.x),
+    VIEWPORT.width,
+    tables.map(({ ui }) => ui.x)
+  );
+  settings.originY = settle(
+    Math.round(origin.y),
     VIEWPORT.height,
-    settings.height
+    tables.map(({ ui }) => ui.y)
   );
 }
 

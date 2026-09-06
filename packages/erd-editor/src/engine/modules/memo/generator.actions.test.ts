@@ -94,8 +94,8 @@ describe('addMemoAction$', () => {
     expect(memoOf(store, id).ui.y).toBe(150);
   });
 
-  it('honours the canvas scroll offset', () => {
-    store.dispatchSync(scrollToAction({ scrollLeft: -30, scrollTop: -10 }));
+  it('honours the canvas origin', () => {
+    store.dispatchSync(scrollToAction({ originX: -30, originY: -10 }));
 
     store.dispatchSync(addMemoAction$());
 

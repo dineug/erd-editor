@@ -1,10 +1,8 @@
 import { AnyAction } from '@dineug/r-html';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   BracketType,
-  CANVAS_SIZE_MAX,
-  CANVAS_SIZE_MIN,
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
   CanvasType,
@@ -35,17 +33,42 @@ import {
   changeShowAction,
   changeTableNameCaseAction,
   changeZoomLevelAction,
+  clampScrollMovement,
+  getContentScrollRanges,
   getScrollRanges,
-  resizeAction,
   scrollToAction,
   settingsReducers,
   streamScrollToAction,
   streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
+import {
+  addTableAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
+import { getContentRect } from '@/konva/scene/contentBounds';
+import { freezeView, thawView } from '@/konva/scene/viewFreeze';
 
 const toWidth = (text: string) => text.length * 10;
+
+const VIEWPORT_WIDTH = 1000;
+const VIEWPORT_HEIGHT = 800;
+
+/** A table at a scene point, which is what gives the origin any travel at all. */
+const seedTable = (store: Store, id: string, x: number, y: number) => {
+  store.dispatchSync(addTableAction({ id, ui: { x, y, zIndex: 2 } }));
+};
+
+/** The content's two edges on each axis, read off the box the range is built on. */
+const edges = (store: Store) => {
+  const rect = getContentRect(store.state)!;
+
+  return {
+    x: [rect.x, rect.x + rect.width] as const,
+    y: [rect.y, rect.y + rect.height] as const,
+  };
+};
 
 function createTestStore(): Store {
   return createStore({ toWidth, clock: new Clock() });
@@ -60,8 +83,13 @@ describe('settings/atom.actions', () => {
 
   beforeEach(() => {
     store = createTestStore();
-    // deterministic viewport: scroll ranges become [-1000, 0] x [-1200, 0]
-    store.dispatchSync(changeViewportAction({ width: 1000, height: 800 }));
+    store.dispatchSync(
+      changeViewportAction({ width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT })
+    );
+  });
+
+  afterEach(() => {
+    thawView(store.state);
   });
 
   describe('changeDatabaseName', () => {
@@ -111,18 +139,6 @@ describe('settings/atom.actions', () => {
       });
       expect(store.state.settings.databaseName).toBe('v9');
       expect(store.state.lww['settings.databaseName'][3].databaseName).toBe(9);
-    });
-  });
-
-  describe('resize', () => {
-    it('clamps both dimensions into the canvas range', () => {
-      store.dispatchSync(resizeAction({ width: 3000, height: 4000 }));
-      expect(store.state.settings.width).toBe(3000);
-      expect(store.state.settings.height).toBe(4000);
-
-      store.dispatchSync(resizeAction({ width: 1, height: 999_999 }));
-      expect(store.state.settings.width).toBe(CANVAS_SIZE_MIN);
-      expect(store.state.settings.height).toBe(CANVAS_SIZE_MAX);
     });
   });
 
@@ -184,432 +200,423 @@ describe('settings/atom.actions', () => {
   });
 
   describe('scrollTo', () => {
-    it('clamps the scroll offsets against viewport minus canvas size', () => {
-      store.dispatchSync(scrollToAction({ scrollTop: -300, scrollLeft: -250 }));
-      expect(store.state.settings.scrollTop).toBe(-300);
-      expect(store.state.settings.scrollLeft).toBe(-250);
+    /**
+     * An absolute request names the origin it means, and the range follows it:
+     * the minimap, a jump to a table and a replayed history entry all rely on
+     * landing exactly where they asked, however far from the content that is.
+     */
+    it('honours a request far outside the content and widens the range to it', () => {
+      seedTable(store, 't', 0, 0);
+      const before = getContentScrollRanges(store.state);
 
-      store.dispatchSync(scrollToAction({ scrollTop: 500, scrollLeft: 500 }));
-      expect(store.state.settings.scrollTop).toBe(0);
-      expect(store.state.settings.scrollLeft).toBe(0);
+      store.dispatchSync(scrollToAction({ originX: -40_000, originY: 12_345 }));
 
-      store.dispatchSync(
-        scrollToAction({ scrollTop: -99_999, scrollLeft: -99_999 })
-      );
-      expect(store.state.settings.scrollTop).toBe(800 - 2000);
-      expect(store.state.settings.scrollLeft).toBe(1000 - 2000);
+      expect(store.state.settings.originX).toBe(-40_000);
+      expect(store.state.settings.originY).toBe(12_345);
+      expect(-40_000).toBeLessThan(before.left.min);
+      expect(12_345).toBeGreaterThan(before.top.max);
+      expect(getScrollRanges(store.state).left.min).toBe(-40_000);
+      expect(getScrollRanges(store.state).top.max).toBe(12_345);
     });
 
     it('rounds to four decimals', () => {
       store.dispatchSync(
-        scrollToAction({ scrollTop: -1.123456789, scrollLeft: -2.987654321 })
+        scrollToAction({ originY: -1.123456789, originX: -2.987654321 })
       );
-      expect(store.state.settings.scrollTop).toBe(-1.1235);
-      expect(store.state.settings.scrollLeft).toBe(-2.9877);
+      expect(store.state.settings.originY).toBe(-1.1235);
+      expect(store.state.settings.originX).toBe(-2.9877);
     });
 
     it('is a no-op for following-tagged actions', () => {
       store.dispatchSync(
-        tag(scrollToAction({ scrollTop: -10, scrollLeft: -10 }), Tag.following)
+        tag(scrollToAction({ originY: -10, originX: -10 }), Tag.following)
       );
-      expect(store.state.settings.scrollTop).toBe(0);
-      expect(store.state.settings.scrollLeft).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
+      expect(store.state.settings.originX).toBe(0);
+    });
+
+    it('never touches the legacy scroll pair', () => {
+      // A pair the default would not tell apart from a zeroing reducer.
+      store.state.settings.scrollLeft = -300;
+      store.state.settings.scrollTop = -400;
+      seedTable(store, 't', 1_000, 1_000);
+
+      store.dispatchSync(scrollToAction({ originY: -300, originX: -250 }));
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -100, movementY: -200 })
+      );
+
+      expect(store.state.settings.originX).toBe(-350);
+      expect(store.state.settings.originY).toBe(-500);
+      expect(store.state.settings.scrollLeft).toBe(-300);
+      expect(store.state.settings.scrollTop).toBe(-400);
     });
   });
 
   describe('streamScrollTo', () => {
-    it('accumulates movement and clamps the result', () => {
-      store.dispatchSync(
-        streamScrollToAction({ movementX: -100, movementY: -200 })
-      );
-      expect(store.state.settings.scrollLeft).toBe(-100);
-      expect(store.state.settings.scrollTop).toBe(-200);
+    /**
+     * A pan has no edge: the wheel, the grab and the touch pan each carry the
+     * origin as far as they are moved, past the content on either side, and
+     * the hull every aid is drawn from follows the origin out rather than holding it.
+     */
+    it('writes the origin unclamped past the content on both sides', () => {
+      seedTable(store, 't', 1_000, 1_000);
+      const pure = getContentScrollRanges(store.state);
 
       store.dispatchSync(
         streamScrollToAction({ movementX: -100, movementY: -200 })
       );
-      expect(store.state.settings.scrollLeft).toBe(-200);
-      expect(store.state.settings.scrollTop).toBe(-400);
+      expect(store.state.settings.originX).toBe(-100);
+      expect(store.state.settings.originY).toBe(-200);
 
       store.dispatchSync(
         streamScrollToAction({ movementX: 99_999, movementY: 99_999 })
       );
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      const past = { x: -100 + 99_999, y: -200 + 99_999 };
+      expect(past.x).toBeGreaterThan(pure.left.max);
+      expect(past.y).toBeGreaterThan(pure.top.max);
+      expect(store.state.settings.originX).toBe(past.x);
+      expect(store.state.settings.originY).toBe(past.y);
+      expect(getScrollRanges(store.state).left.max).toBe(past.x);
+      expect(getScrollRanges(store.state).top.max).toBe(past.y);
+
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -199_998, movementY: -199_998 })
+      );
+      const before = { x: past.x - 199_998, y: past.y - 199_998 };
+      expect(before.x).toBeLessThan(pure.left.min);
+      expect(before.y).toBeLessThan(pure.top.min);
+      expect(store.state.settings.originX).toBe(before.x);
+      expect(store.state.settings.originY).toBe(before.y);
+      expect(getScrollRanges(store.state).left.min).toBe(before.x);
+      expect(getScrollRanges(store.state).top.min).toBe(before.y);
+      expect(getContentScrollRanges(store.state)).toEqual(pure);
+    });
+
+    it('rounds to four decimals', () => {
+      seedTable(store, 't', 1_000, 1_000);
+
+      store.dispatchSync(
+        streamScrollToAction({
+          movementX: -1.123456789,
+          movementY: -2.987654321,
+        })
+      );
+
+      expect(store.state.settings.originX).toBe(-1.1235);
+      expect(store.state.settings.originY).toBe(-2.9877);
     });
 
     it('is a no-op for following-tagged actions', () => {
+      seedTable(store, 't', 1_000, 1_000);
+
       store.dispatchSync(
         tag(
           streamScrollToAction({ movementX: -50, movementY: -50 }),
           Tag.following
         )
       );
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      expect(store.state.settings.originX).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
     });
   });
 
   /**
    * Where a scene point lands on screen, written out longhand rather than read
-   * back from the helper the reducer clamps with, so the two have to agree
+   * back from the canon the ranges are built on, so the two have to agree
    * instead of restating one another.
    */
-  const toScreen = (
-    scene: number,
-    scroll: number,
-    size: number,
-    zoomLevel: number
-  ) => scene * zoomLevel + scroll + (size * (1 - zoomLevel)) / 2;
+  const toScreen = (scene: number, origin: number, zoomLevel: number) =>
+    scene * zoomLevel + origin;
 
-  /**
-   * That placement inverted at the middle of the screen. The range is written
-   * on this point, so every property below reads it rather than the offset the
-   * reducer happens to store.
-   */
-  const atCentre = (
-    scroll: number,
-    size: number,
-    zoomLevel: number,
-    viewportLength: number
-  ) => (viewportLength / 2 - scroll - (size * (1 - zoomLevel)) / 2) / zoomLevel;
-
-  /** The scroll that puts a scene point under the middle of the screen. */
-  const toScroll = (
-    centre: number,
-    size: number,
-    zoomLevel: number,
-    viewportLength: number
-  ) => viewportLength / 2 - centre * zoomLevel - (size * (1 - zoomLevel)) / 2;
-
-  describe('the scroll range the zoom draws', () => {
-    const VIEWPORT_WIDTH = 1000;
-    const VIEWPORT_HEIGHT = 800;
-
-    const grid: Array<[number, number]> = [];
-    for (const size of [2_000, 8_000, 20_000]) {
-      for (const zoomLevel of [0.1, 0.5, 1, 1.2, 1.5]) {
-        grid.push([size, zoomLevel]);
+  describe('the travel the content draws', () => {
+    const ZOOMS = [0.1, 0.5, 1, 1.2, 1.5];
+    const PLACES: Array<[number, number]> = [
+      [0, 0],
+      [1_000, 1_000],
+      [-4_000, -2_500],
+      [30_000, -12_000],
+    ];
+    const grid: Array<[number, number, number]> = [];
+    for (const zoomLevel of ZOOMS) {
+      for (const [x, y] of PLACES) {
+        grid.push([zoomLevel, x, y]);
       }
     }
 
-    function place(size: number, zoomLevel: number) {
-      store.dispatchSync(resizeAction({ width: size, height: size }));
-      store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
-    }
-
-    /** How far in from an edge the middle of the screen is held, in scene units. */
-    const halfScreen = (viewportLength: number, zoomLevel: number) =>
-      viewportLength / (2 * Math.max(1, zoomLevel));
-
+    /**
+     * The screen-space statement of the pure range: at its minimum the far edge
+     * of the content sits on the screen's near edge, at its maximum the near
+     * edge sits on the screen's far edge, on each axis.
+     */
     it.each(grid)(
-      'ends the travel with the screen edge on the document at size %s zoom %s',
-      (size, zoomLevel) => {
-        place(size, zoomLevel);
-        const insetX = halfScreen(VIEWPORT_WIDTH, zoomLevel);
-        const insetY = halfScreen(VIEWPORT_HEIGHT, zoomLevel);
+      'ends where the content edges meet the screen edges at zoom %s for a table at %s,%s',
+      (zoomLevel, x, y) => {
+        seedTable(store, 't', x, y);
+        store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+        const content = edges(store);
+        const { left, top } = getContentScrollRanges(store.state);
 
-        store.dispatchSync(
-          scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
+        expect(toScreen(content.x[1], left.min, zoomLevel)).toBeCloseTo(0, 6);
+        expect(toScreen(content.x[0], left.max, zoomLevel)).toBeCloseTo(
+          VIEWPORT_WIDTH,
+          6
         );
-        const { scrollLeft: atStart, scrollTop: atTop } = store.state.settings;
-
-        expect(atCentre(atStart, size, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
-          Math.min(insetX, size - insetX),
-          3
+        expect(toScreen(content.y[1], top.min, zoomLevel)).toBeCloseTo(0, 6);
+        expect(toScreen(content.y[0], top.max, zoomLevel)).toBeCloseTo(
+          VIEWPORT_HEIGHT,
+          6
         );
-        expect(atCentre(atTop, size, zoomLevel, VIEWPORT_HEIGHT)).toBeCloseTo(
-          Math.min(insetY, size - insetY),
-          3
-        );
-
-        store.dispatchSync(
-          scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
-        );
-        const { scrollLeft: atEnd, scrollTop: atBottom } = store.state.settings;
-
-        expect(atCentre(atEnd, size, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
-          Math.max(insetX, size - insetX),
-          3
-        );
-        expect(
-          atCentre(atBottom, size, zoomLevel, VIEWPORT_HEIGHT)
-        ).toBeCloseTo(Math.max(insetY, size - insetY), 3);
       }
     );
 
-    /**
-     * The magnifying half of the range, which the pre-canvas clamp had no term
-     * for: at zoom 1.5 the 2000 box draws 3000 wide and starts 500 to the left
-     * of the scroll, so the offset has to go positive to show the left edge.
-     */
-    it('lets the scroll go positive once the zoom magnifies', () => {
-      place(2_000, 1.5);
+    it.each(ZOOMS)(
+      'spans the content at zoom %s plus one screen',
+      zoomLevel => {
+        seedTable(store, 'a', -3_000, 500);
+        seedTable(store, 'b', 7_000, -900);
+        store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+        const content = edges(store);
+        const { left, top } = getContentScrollRanges(store.state);
 
-      store.dispatchSync(
-        scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
-      );
-      expect(store.state.settings.scrollLeft).toBe(500);
-      expect(store.state.settings.scrollTop).toBe(500);
+        expect(left.max - left.min).toBeCloseTo(
+          (content.x[1] - content.x[0]) * zoomLevel + VIEWPORT_WIDTH,
+          6
+        );
+        expect(top.max - top.min).toBeCloseTo(
+          (content.y[1] - content.y[0]) * zoomLevel + VIEWPORT_HEIGHT,
+          6
+        );
+      }
+    );
 
-      store.dispatchSync(
-        scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
+    it('is the pure range itself while the origin stands inside it', () => {
+      seedTable(store, 't', 1_000, 1_000);
+      store.dispatchSync(scrollToAction({ originX: -500, originY: -300 }));
+
+      expect(getScrollRanges(store.state)).toEqual(
+        getContentScrollRanges(store.state)
       );
-      expect(store.state.settings.scrollLeft).toBe(1000 - 3000 + 500);
-      expect(store.state.settings.scrollTop).toBe(800 - 3000 + 500);
+    });
+
+    it('widens to hold the origin wherever an absolute request put it', () => {
+      seedTable(store, 't', 0, 0);
+      const pure = getContentScrollRanges(store.state);
+
+      store.dispatchSync(scrollToAction({ originX: 40_000, originY: -40_000 }));
+      const hull = getScrollRanges(store.state);
+
+      expect(hull.left).toEqual({ min: pure.left.min, max: 40_000 });
+      expect(hull.top).toEqual({ min: -40_000, max: pure.top.max });
+      expect(getContentScrollRanges(store.state)).toEqual(pure);
     });
 
     /**
-     * The pre-canvas range written longhand. A magnifying zoom is the half of
-     * the travel that was already right, so the new range has to hand back the
-     * same bits there rather than merely the same neighbourhood.
+     * The hull follows a stream wherever it goes: from far outside the content
+     * a wheel walks back toward it and the hull closes in behind, and a wheel
+     * the other way walks further out with the hull widening ahead of it.
      */
-    const preCanvasRange = (
-      size: number,
-      zoomLevel: number,
-      viewportLength: number
-    ) => {
-      const drawn = size * zoomLevel;
-      const offset = (size - drawn) / 2;
+    it('follows a stream in toward the content and out past it with the hull', () => {
+      seedTable(store, 't', 0, 0);
+      const pure = getContentScrollRanges(store.state);
+      store.dispatchSync(scrollToAction({ originX: 40_000, originY: 0 }));
 
-      return {
-        min:
-          Math.min(viewportLength - size, viewportLength - drawn - offset) + 0,
-        max: Math.max(0, -offset) + 0,
-      };
-    };
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -100, movementY: 0 })
+      );
+      expect(store.state.settings.originX).toBe(39_900);
+      expect(getScrollRanges(store.state).left.max).toBe(39_900);
 
-    it.each([1, 1.1, 1.25, 1.5])(
-      'is the pre-canvas range bit for bit at zoom %s',
-      zoomLevel => {
-        const off: string[] = [];
+      store.dispatchSync(
+        streamScrollToAction({ movementX: 500, movementY: 0 })
+      );
+      expect(store.state.settings.originX).toBe(40_400);
+      expect(getScrollRanges(store.state).left.max).toBe(40_400);
 
-        for (const size of [2_000, 8_000, 20_000]) {
-          for (const viewport of [
-            { width: 640, height: 480 },
-            { width: 1_000, height: 800 },
-            { width: 1_440, height: 900 },
-          ]) {
-            const { left, top } = getScrollRanges(
-              { width: size, height: size, zoomLevel },
-              viewport
-            );
-            const expected = {
-              left: preCanvasRange(size, zoomLevel, viewport.width),
-              top: preCanvasRange(size, zoomLevel, viewport.height),
-            };
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -99_999, movementY: 0 })
+      );
+      expect(store.state.settings.originX).toBe(40_400 - 99_999);
+      expect(getScrollRanges(store.state).left).toEqual({
+        min: 40_400 - 99_999,
+        max: pure.left.max,
+      });
+    });
 
-            for (const axis of ['left', 'top'] as const) {
-              for (const end of ['min', 'max'] as const) {
-                if (Object.is({ left, top }[axis][end], expected[axis][end])) {
-                  continue;
-                }
-                off.push(
-                  `size ${size} viewport ${viewport.width}x${viewport.height} ${axis}.${end}: ${{ left, top }[axis][end]} not ${expected[axis][end]}`
-                );
-              }
-            }
-          }
-        }
+    it('offers no travel on an empty document, standing wherever a pan has moved the origin', () => {
+      store.dispatchSync(scrollToAction({ originX: -640, originY: 480 }));
 
-        expect(off).toEqual([]);
-      }
-    );
+      expect(getContentScrollRanges(store.state)).toEqual({
+        left: { min: -640, max: -640 },
+        top: { min: 480, max: 480 },
+      });
+      expect(getScrollRanges(store.state)).toEqual(
+        getContentScrollRanges(store.state)
+      );
+
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -100, movementY: 100 })
+      );
+      expect(store.state.settings.originX).toBe(-740);
+      expect(store.state.settings.originY).toBe(580);
+      expect(getScrollRanges(store.state)).toEqual({
+        left: { min: -740, max: -740 },
+        top: { min: 580, max: 580 },
+      });
+    });
 
     /**
-     * The shrinking half, which is where the defect lived. The screen's own
-     * edges stay on the document, so the two offsets close in on each other by
-     * the zoom instead of holding the unzoomed box's pair.
+     * Deleting everything while far away leaves the view where it was rather
+     * than snapping it anywhere: there is nothing left to snap to, and a table
+     * created next lands under the pointer where the reader is looking.
      */
-    it.each([1, 0.9, 0.5, 0.25, CANVAS_ZOOM_MIN])(
-      'closes the travel in by the zoom at zoom %s',
-      zoomLevel => {
-        place(2_000, zoomLevel);
-        const { left, top } = getScrollRanges(
-          store.state.settings,
-          store.state.editor.viewport
-        );
-        const ends = (viewportLength: number) => ({
-          min: ((viewportLength - 2_000) * (1 + zoomLevel)) / 2,
-          max: ((viewportLength - 2_000) * (1 - zoomLevel)) / 2,
+    it('keeps the origin where deleting the last entity found it, and pans on from there', () => {
+      seedTable(store, 't', 0, 0);
+      store.dispatchSync(
+        scrollToAction({ originX: -40_000, originY: -30_000 })
+      );
+
+      store.dispatchSync(removeTableAction({ id: 't' }));
+
+      expect(store.state.settings.originX).toBe(-40_000);
+      expect(store.state.settings.originY).toBe(-30_000);
+      expect(getScrollRanges(store.state)).toEqual({
+        left: { min: -40_000, max: -40_000 },
+        top: { min: -30_000, max: -30_000 },
+      });
+
+      store.dispatchSync(
+        streamScrollToAction({ movementX: 500, movementY: 500 })
+      );
+      expect(store.state.settings.originX).toBe(-40_000 + 500);
+      expect(store.state.settings.originY).toBe(-30_000 + 500);
+    });
+
+    it.each([
+      [0, 0],
+      [0, 800],
+      [1_000, 0],
+      [-1, 800],
+    ])(
+      'has no travel and cuts no step while the screen reads %s x %s',
+      (width, height) => {
+        seedTable(store, 't', 0, 0);
+        store.dispatchSync(scrollToAction({ originX: 120, originY: -80 }));
+        store.dispatchSync(changeViewportAction({ width, height }));
+
+        expect(getContentScrollRanges(store.state)).toEqual({
+          left: { min: 120, max: 120 },
+          top: { min: -80, max: -80 },
         });
+        expect(
+          clampScrollMovement(store.state, {
+            movementX: -123_456.5,
+            movementY: 654_321.25,
+          })
+        ).toEqual({ movementX: -123_456.5, movementY: 654_321.25 });
 
-        expect(left.min).toBeCloseTo(ends(VIEWPORT_WIDTH).min, 9);
-        expect(left.max).toBeCloseTo(ends(VIEWPORT_WIDTH).max, 9);
-        expect(top.min).toBeCloseTo(ends(VIEWPORT_HEIGHT).min, 9);
-        expect(top.max).toBeCloseTo(ends(VIEWPORT_HEIGHT).max, 9);
-      }
-    );
-
-    it('is the pre-canvas clamp exactly at zoom 1', () => {
-      place(2_000, 1);
-      const { left, top } = getScrollRanges(
-        store.state.settings,
-        store.state.editor.viewport
-      );
-
-      expect(left).toEqual({ min: VIEWPORT_WIDTH - 2_000, max: 0 });
-      expect(top).toEqual({ min: VIEWPORT_HEIGHT - 2_000, max: 0 });
-    });
-
-    /**
-     * The defect this range closes. Shrinking used to leave the whole document
-     * past one end of the travel, and the reader was handed an empty canvas
-     * with the minimap the only way back to it.
-     */
-    it('keeps the document on screen at both ends of every travel', () => {
-      const blank: string[] = [];
-      const zooms = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.25, 1.5];
-
-      for (const size of [2_000, 6_000, 20_000]) {
-        for (const viewport of [
-          { width: 1_440, height: 900 },
-          { width: 1_024, height: 768 },
-          { width: 520, height: 420 },
-        ]) {
-          for (const zoomLevel of zooms) {
-            const ranges = getScrollRanges(
-              { width: size, height: size, zoomLevel },
-              viewport
-            );
-            const axes = [
-              ['left', ranges.left, viewport.width],
-              ['top', ranges.top, viewport.height],
-            ] as const;
-
-            for (const [axis, range, viewportLength] of axes) {
-              for (const end of ['min', 'max'] as const) {
-                const near = toScreen(0, range[end], size, zoomLevel);
-                const far = toScreen(size, range[end], size, zoomLevel);
-                const shown = Math.min(far, viewportLength) - Math.max(near, 0);
-
-                if (shown > 0) continue;
-                blank.push(
-                  `size ${size} viewport ${viewport.width}x${viewport.height} zoom ${zoomLevel} ${axis}.${end}: the document covers ${shown} of the screen`
-                );
-              }
-            }
-          }
-        }
-      }
-
-      expect(blank).toEqual([]);
-    });
-
-    /**
-     * What holds a zoom round trip together: below zoom 1 the run of the
-     * document the middle of the screen can reach is the same at every zoom,
-     * so no walk down and back can trim it.
-     */
-    it('holds the reachable middle of the screen fixed below zoom 1', () => {
-      const drift: string[] = [];
-
-      for (const zoomLevel of [CANVAS_ZOOM_MIN, 0.25, 0.5, 0.75, 0.9, 1]) {
-        place(2_000, zoomLevel);
-        const { left } = getScrollRanges(
-          store.state.settings,
-          store.state.editor.viewport
-        );
-        const low = atCentre(left.max, 2_000, zoomLevel, VIEWPORT_WIDTH);
-        const high = atCentre(left.min, 2_000, zoomLevel, VIEWPORT_WIDTH);
-
-        if (Math.abs(low - VIEWPORT_WIDTH / 2) > 1e-9) {
-          drift.push(
-            `zoom ${zoomLevel} reaches ${low}, not ${VIEWPORT_WIDTH / 2}`
-          );
-        }
-        if (Math.abs(high - (2_000 - VIEWPORT_WIDTH / 2)) > 1e-9) {
-          drift.push(
-            `zoom ${zoomLevel} reaches ${high}, not ${2_000 - VIEWPORT_WIDTH / 2}`
-          );
-        }
-      }
-
-      expect(drift).toEqual([]);
-    });
-
-    /**
-     * The reversibility that follows, stated on the reducer: a zoom gesture
-     * moves the scroll so the middle of the screen holds its scene point, and
-     * a trip to the floor and back has to leave the offsets where it found them.
-     */
-    it.each([0, -120, -500, -1_000])(
-      'brings a scroll of %s back from the zoom floor unchanged',
-      scrollLeft => {
-        place(2_000, 1);
         store.dispatchSync(
-          scrollToAction({ scrollLeft, scrollTop: scrollLeft })
+          streamScrollToAction({ movementX: -123_456, movementY: 654_321 })
         );
-
-        const before = {
-          scrollLeft: store.state.settings.scrollLeft,
-          scrollTop: store.state.settings.scrollTop,
-        };
-        const centreX = atCentre(before.scrollLeft, 2_000, 1, VIEWPORT_WIDTH);
-        const centreY = atCentre(before.scrollTop, 2_000, 1, VIEWPORT_HEIGHT);
-
-        for (const zoomLevel of [
-          0.75,
-          0.5,
-          0.25,
-          CANVAS_ZOOM_MIN,
-          0.25,
-          0.5,
-          0.75,
-          1,
-        ]) {
-          store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
-          store.dispatchSync(
-            scrollToAction({
-              scrollLeft: toScroll(centreX, 2_000, zoomLevel, VIEWPORT_WIDTH),
-              scrollTop: toScroll(centreY, 2_000, zoomLevel, VIEWPORT_HEIGHT),
-            })
-          );
-
-          expect(
-            atCentre(
-              store.state.settings.scrollLeft,
-              2_000,
-              zoomLevel,
-              VIEWPORT_WIDTH
-            )
-          ).toBeCloseTo(centreX, 6);
-        }
-
-        expect(store.state.settings.scrollLeft).toBe(before.scrollLeft);
-        expect(store.state.settings.scrollTop).toBe(before.scrollTop);
+        expect(store.state.settings.originX).toBe(120 - 123_456);
+        expect(store.state.settings.originY).toBe(-80 + 654_321);
       }
     );
 
     /**
-     * A screen wider than the whole canvas turns the two ends around. The clamp
-     * keeps whichever end it applies last, so the pair is sorted and what stays
-     * inside is the document rather than the screen.
+     * The one gesture the hull gates is a thumb or handle drag, and it gates it
+     * here: a step that would carry the origin past the end of the travel is
+     * cut to land on the end, one inside the travel is handed back as it is.
      */
-    it('sorts the two ends on a screen wider than the canvas', () => {
+    it('cuts the step of a drag to the end of the hull on either side', () => {
+      seedTable(store, 't', 1_000, 1_000);
+      store.dispatchSync(scrollToAction({ originX: -100, originY: -400 }));
+      const { left, top } = getScrollRanges(store.state);
+      expect(getContentScrollRanges(store.state)).toEqual({ left, top });
+      expect(left.min).toBeLessThan(-100 - 50);
+      expect(top.max).toBeGreaterThan(-400 + 75);
+
+      expect(
+        clampScrollMovement(store.state, { movementX: -50, movementY: 75 })
+      ).toEqual({ movementX: -50, movementY: 75 });
+      expect(
+        clampScrollMovement(store.state, {
+          movementX: -99_999,
+          movementY: 99_999,
+        })
+      ).toEqual({ movementX: left.min + 100, movementY: top.max + 400 });
+      expect(
+        clampScrollMovement(store.state, {
+          movementX: 99_999,
+          movementY: -99_999,
+        })
+      ).toEqual({ movementX: left.max + 100, movementY: top.min + 400 });
+    });
+
+    it('hands back no step out from an origin a pan left past the content, and the whole step back in', () => {
+      seedTable(store, 't', 0, 0);
+      store.dispatchSync(scrollToAction({ originX: 40_000, originY: -40_000 }));
+
+      expect(
+        clampScrollMovement(store.state, { movementX: 500, movementY: -500 })
+      ).toEqual({ movementX: 0, movementY: 0 });
+      expect(
+        clampScrollMovement(store.state, { movementX: -500, movementY: 500 })
+      ).toEqual({ movementX: -500, movementY: 500 });
+    });
+
+    /**
+     * A drag is cut to the hull it began with: the origin it started from is
+     * held inside the hull for the drag's duration, so a step back out reaches
+     * that origin and no further, and the thaw is what lets the hull close in.
+     */
+    it('cuts a frozen drag to the hull it began with, until the thaw', () => {
+      seedTable(store, 't', 0, 0);
+      store.dispatchSync(scrollToAction({ originX: 40_000, originY: 0 }));
+
+      freezeView(store.state);
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -1_000, movementY: 0 })
+      );
+      expect(store.state.settings.originX).toBe(39_000);
+      expect(
+        clampScrollMovement(store.state, { movementX: 5_000, movementY: 0 })
+      ).toEqual({ movementX: 40_000 - 39_000, movementY: 0 });
+
+      thawView(store.state);
+
+      expect(
+        clampScrollMovement(store.state, { movementX: 5_000, movementY: 0 })
+      ).toEqual({ movementX: 0, movementY: 0 });
+    });
+
+    it('never reads a minimum above its maximum', () => {
       const wrong: string[] = [];
-      const viewport = { width: 3_000, height: 3_000 };
 
-      for (const zoomLevel of [0.1, 0.5, 1, 1.2, 1.5]) {
-        const { left } = getScrollRanges(
-          { width: 2_000, height: 2_000, zoomLevel },
-          viewport
-        );
+      for (const [zoomLevel, x, y] of grid) {
+        for (const viewport of [
+          { width: 320, height: 200 },
+          { width: 1_000, height: 800 },
+          { width: 5_000, height: 5_000 },
+        ]) {
+          const own = createTestStore();
+          own.dispatchSync(changeViewportAction(viewport));
+          own.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+          seedTable(own, 't', x, y);
+          own.dispatchSync(scrollToAction({ originX: -x, originY: y }));
 
-        if (left.min > left.max) {
-          wrong.push(
-            `zoom ${zoomLevel} reads min ${left.min} above max ${left.max}`
-          );
-        }
-
-        for (const end of ['min', 'max'] as const) {
-          const near = toScreen(0, left[end], 2_000, zoomLevel);
-          const far = toScreen(2_000, left[end], 2_000, zoomLevel);
-
-          if (near < -1e-9 || far > viewport.width + 1e-9) {
-            wrong.push(
-              `zoom ${zoomLevel} ${end} puts the canvas at ${near} to ${far}, outside the screen`
-            );
+          for (const ranges of [
+            getContentScrollRanges(own.state),
+            getScrollRanges(own.state),
+          ]) {
+            if (
+              ranges.left.min > ranges.left.max ||
+              ranges.top.min > ranges.top.max
+            ) {
+              wrong.push(
+                `zoom ${zoomLevel} table ${x},${y} viewport ${viewport.width}x${viewport.height}: ${JSON.stringify(ranges)}`
+              );
+            }
           }
         }
       }
@@ -617,43 +624,39 @@ describe('settings/atom.actions', () => {
       expect(wrong).toEqual([]);
     });
 
-    it('pins the scroll inside that sorted range', () => {
-      place(2_000, 1);
-      store.dispatchSync(changeViewportAction({ width: 3_000, height: 3_000 }));
+    /**
+     * A drag scales against the travel it started with. Holding the origin it
+     * began from inside the hull keeps that travel fixed while the origin
+     * closes in on the content, and the drop lets the hull collapse to it.
+     */
+    it('holds the range a frozen drag began with until the view is thawed', () => {
+      seedTable(store, 't', 0, 0);
+      store.dispatchSync(scrollToAction({ originX: 40_000, originY: 0 }));
+      const start = getScrollRanges(store.state);
 
-      store.dispatchSync(scrollToAction({ scrollLeft: -500, scrollTop: -500 }));
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      freezeView(store.state);
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -1_000, movementY: 0 })
+      );
+
+      expect(store.state.settings.originX).toBe(39_000);
+      expect(getScrollRanges(store.state)).toEqual(start);
+
+      thawView(store.state);
+
+      expect(getScrollRanges(store.state).left.max).toBe(39_000);
     });
 
-    it('keeps the unzoomed range and its sign exactly as it was', () => {
-      place(2_000, 1);
+    it('still holds an origin an absolute request moved past the frozen anchor', () => {
+      seedTable(store, 't', 0, 0);
+      freezeView(store.state);
 
-      store.dispatchSync(scrollToAction({ scrollTop: 500, scrollLeft: 500 }));
-      expect(Object.is(store.state.settings.scrollTop, 0)).toBe(true);
-      expect(Object.is(store.state.settings.scrollLeft, 0)).toBe(true);
+      store.dispatchSync(scrollToAction({ originX: 40_000, originY: -40_000 }));
+      const { left, top } = getScrollRanges(store.state);
 
-      store.dispatchSync(
-        scrollToAction({ scrollTop: -99_999, scrollLeft: -99_999 })
-      );
-      expect(store.state.settings.scrollTop).toBe(800 - 2000);
-      expect(store.state.settings.scrollLeft).toBe(1000 - 2000);
-    });
-
-    it('carries the same range into the streaming reducer', () => {
-      place(2_000, 1.5);
-
-      store.dispatchSync(
-        streamScrollToAction({ movementX: 99_999, movementY: 99_999 })
-      );
-      expect(store.state.settings.scrollLeft).toBe(500);
-      expect(store.state.settings.scrollTop).toBe(500);
-
-      store.dispatchSync(
-        streamScrollToAction({ movementX: -99_999, movementY: -99_999 })
-      );
-      expect(store.state.settings.scrollLeft).toBe(-1500);
-      expect(store.state.settings.scrollTop).toBe(-1700);
+      expect(left.max).toBe(40_000);
+      expect(top.min).toBe(-40_000);
+      thawView(store.state);
     });
   });
 
@@ -957,7 +960,6 @@ describe('settings/atom.actions', () => {
         'changeShowAction',
         'changeTableNameCaseAction',
         'changeZoomLevelAction',
-        'resizeAction',
         'scrollToAction',
         'streamScrollToAction',
         'streamZoomLevelAction',

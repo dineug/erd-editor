@@ -16,6 +16,26 @@ const OVER_LIMIT = 20_000;
 
 const CLAMPED = 16_384;
 
+/** services/export-png/exportBox.ts — the margin the image leaves around the content. */
+const EXPORT_MARGIN = 80;
+
+/**
+ * utils/calcMemo.ts — the frame a memo draws around the box its ui states, on
+ * both sides. A memo is the only entity whose drawn size is in the seed rather
+ * than measured from a font the runner happens to have.
+ */
+const MEMO_FRAME_WIDTH = 18;
+const MEMO_FRAME_HEIGHT = 34;
+
+/** The ui box every memo seeded here is given, so its drawn frame is known. */
+const MEMO_BOX = { width: 100, height: 100 };
+
+const memoWidth = MEMO_BOX.width + MEMO_FRAME_WIDTH;
+const memoHeight = MEMO_BOX.height + MEMO_FRAME_HEIGHT;
+
+/** The content span an image of exactly size on a side is drawn from. */
+const spanFor = (size: number) => size - EXPORT_MARGIN * 2;
+
 /**
  * Long enough for one export on the dev server. The shared worker never starts
  * there, so every export spends the ten second handshake before the main
@@ -23,31 +43,25 @@ const CLAMPED = 16_384;
  */
 const EXPORT_TIMEOUT = 45_000;
 
-/** Bare canvas below both seeded tables, high enough for the menu to fit. */
-const MENU_ORIGIN = { x: 300, y: 400 };
+/** Bare canvas clear of the memo at scene zero, high enough for the menu to fit. */
+const MENU_ORIGIN = { x: 400, y: 400 };
 
-function document(size: number): ErdDocument {
+/**
+ * A document whose drawn content spans exactly span scene units on each axis:
+ * one memo at scene zero and one whose far corner lands on the span. The image
+ * is that span plus the margin on every side, and nothing else states its size.
+ */
+function document(span: number): ErdDocument {
   return createSchema({
     databaseName: 'shop',
-    width: size,
-    height: size,
-    tables: [
+    memos: [
+      { id: 'origin', value: 'origin', x: 0, y: 0, ...MEMO_BOX },
       {
-        id: 'users',
-        name: 'users',
-        x: 120,
-        y: 120,
-        columns: [
-          { id: 'users_id', name: 'id', dataType: 'int', keys: 1 },
-          { id: 'users_name', name: 'name', dataType: 'varchar(255)' },
-        ],
-      },
-      {
-        id: 'posts',
-        name: 'posts',
-        x: 700,
-        y: 120,
-        columns: [{ id: 'posts_id', name: 'id', dataType: 'int', keys: 1 }],
+        id: 'far',
+        value: 'far',
+        x: span - memoWidth,
+        y: span - memoHeight,
+        ...MEMO_BOX,
       },
     ],
   });
@@ -109,7 +123,7 @@ test.describe('exporting the document as a png', () => {
   test.slow();
 
   test('hands the browser a png of the whole canvas', async ({ erd }) => {
-    await erd.seed(document(2000));
+    await erd.seed(document(spanFor(2160)));
 
     const download = erd.page.waitForEvent('download', {
       timeout: EXPORT_TIMEOUT,
@@ -118,11 +132,36 @@ test.describe('exporting the document as a png', () => {
     const file = await download;
 
     expect(file.suggestedFilename()).toMatch(/^shop-.*\.png$/);
-    expect(pngSize(await file.path())).toEqual({ width: 2000, height: 2000 });
+    expect(pngSize(await file.path())).toEqual({ width: 2160, height: 2160 });
+  });
+
+  test('draws the png at the zoom the editor is showing it at', async ({
+    erd,
+  }) => {
+    await erd.seed(document(spanFor(2160)));
+
+    // The toolbar box, which names one zoom rather than a run of notches.
+    const zoom = erd.toolbar.locator('input[title="zoom level"]');
+    await zoom.click();
+    await zoom.fill('50');
+    await zoom.press('Enter');
+    await expect
+      .poll(async () => (await erd.settings()).zoomLevel)
+      .toBeCloseTo(0.5, 5);
+
+    const download = erd.page.waitForEvent('download', {
+      timeout: EXPORT_TIMEOUT,
+    });
+    await exportPng(erd);
+    const file = await download;
+
+    // The image holds the whole document either way. What the zoom decides is
+    // how many image pixels one scene unit was drawn with.
+    expect(pngSize(await file.path())).toEqual({ width: 1080, height: 1080 });
   });
 
   test('says the png is being generated while it draws', async ({ erd }) => {
-    await erd.seed(document(OVER_LIMIT));
+    await erd.seed(document(spanFor(OVER_LIMIT)));
 
     const download = erd.page.waitForEvent('download', {
       timeout: EXPORT_TIMEOUT,
@@ -138,7 +177,7 @@ test.describe('exporting the document as a png', () => {
   test('replaces that message with the reduced resolution, never stacking the two', async ({
     erd,
   }) => {
-    await erd.seed(document(OVER_LIMIT));
+    await erd.seed(document(spanFor(OVER_LIMIT)));
     await recordToasts(erd);
 
     const download = erd.page.waitForEvent('download', {

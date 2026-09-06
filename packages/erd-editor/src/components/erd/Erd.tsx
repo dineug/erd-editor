@@ -13,13 +13,18 @@ import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
+import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
-import HideSign from '@/components/erd/hide-sign/HideSign';
+import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
+import {
+  getScrollToCenter,
+  getViewTransform,
+} from '@/components/erd/minimap/minimapGeometry';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
@@ -36,13 +41,20 @@ import {
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { Viewport } from '@/engine/modules/editor/state';
-import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  scrollToAction,
+  streamScrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import {
+  getContentRect,
+  getContentRectAfter,
+} from '@/konva/scene/contentBounds';
+import { toScenePoint } from '@/konva/scene/viewport';
 import { isMouseEvent } from '@/utils/domEvent';
-import { getAbsolutePoint } from '@/utils/dragSelect';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
@@ -72,7 +84,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     colorPickerInitialColor: '',
     tablePropertiesId: '',
     tablePropertiesIds: [] as string[],
-    grabMove: false,
     grabCursor: 'grab',
     diffValue: '{}',
   });
@@ -198,12 +209,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !onEditor &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
-      !el.closest('.hide-sign') &&
       canHideColorPicker;
 
     const canDrag =
       canUnselectAll &&
       canHideColorPicker &&
+      !el.closest('.content-compass') &&
+      !el.closest('.floating-toolbar') &&
       !el.closest('.minimap') &&
       !el.closest('.minimap-viewport') &&
       !el.closest('.virtual-scroll') &&
@@ -232,7 +244,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         })
       );
     } else {
-      if (state.grabMove) {
+      if (app.value.store.state.editor.handTool) {
         state.grabCursor = 'grabbing';
       }
 
@@ -250,9 +262,29 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     store.dispatch(changeColorAllAction$(color));
   };
 
+  /**
+   * The moves and the view centred on where they land go out as one dispatch,
+   * so the history holds them as one entry and a single undo puts the tables
+   * and the view back together. The box is read off the points before the move.
+   */
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
-    store.dispatch(tables.map(moveToTableAction));
+    const moves = tables.map(moveToTableAction);
+    const content = getContentRectAfter(store.state, tables);
+
+    if (!content) {
+      store.dispatch(moves);
+      return;
+    }
+
+    const origin = getScrollToCenter(getViewTransform(store.state), {
+      x: content.x + content.width / 2,
+      y: content.y + content.height / 2,
+    });
+    store.dispatch([
+      ...moves,
+      scrollToAction({ originX: origin.x, originY: origin.y }),
+    ]);
   };
 
   const handleChangeTableProperties = (tableId: string) => {
@@ -293,19 +325,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       )
       .subscribe(event => {
         const rect = $root.getBoundingClientRect();
-        const {
-          settings: { scrollLeft, scrollTop, width, height, zoomLevel },
-        } = store.state;
-        const x = event.clientX - rect.x - scrollLeft;
-        const y = event.clientY - rect.y - scrollTop;
-        const absolutePoint = getAbsolutePoint(
-          { x, y },
-          width,
-          height,
-          zoomLevel
-        );
+        const scenePoint = toScenePoint(store.state.settings, {
+          x: event.clientX - rect.x,
+          y: event.clientY - rect.y,
+        });
 
-        store.dispatch(sharedMouseTrackerAction(absolutePoint));
+        store.dispatch(sharedMouseTrackerAction(scenePoint));
       });
   };
 
@@ -358,38 +383,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           state.diffValue = value;
           store.dispatch(changeOpenMapAction({ [Open.diffViewer]: true }));
         },
-      }),
-      keydown$
-        .pipe(
-          filter(event => {
-            const el = event.target as HTMLElement | null;
-            if (!el) return false;
-
-            const { editor, settings } = store.state;
-            const showAutomaticTablePlacement =
-              editor.openMap[Open.automaticTablePlacement];
-            const showTableProperties = editor.openMap[Open.tableProperties];
-            const showTimeTravel = editor.openMap[Open.timeTravel];
-            const showDiffViewer = editor.openMap[Open.diffViewer];
-            const isCanvasType = settings.canvasType === CanvasType.ERD;
-
-            const canGrabMove =
-              isCanvasType &&
-              !showAutomaticTablePlacement &&
-              !showTableProperties &&
-              !showDiffViewer &&
-              !showTimeTravel;
-
-            if (!canGrabMove) return false;
-
-            return event.code === 'Space' && el.tagName === 'DIV';
-          })
-        )
-        .subscribe(() => {
-          state.grabMove = true;
-        }),
-      keyup$.pipe(filter(event => event.code === 'Space')).subscribe(() => {
-        state.grabMove = false;
       })
     );
   });
@@ -404,8 +397,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const showTableProperties = openMap[Open.tableProperties];
     const showTimeTravel = openMap[Open.timeTravel];
     const showDiffViewer = openMap[Open.diffViewer];
+    const { handTool, zenMode } = store.state.editor;
+    // An empty document has no travel and draws no scrollbar; the map of it
+    // would be as empty, so it is left out the same way.
+    const hasContent = getContentRect(store.state) !== null;
 
-    const cursor = state.grabMove
+    const cursor = handTool
       ? state.grabCursor
       : drawRelationship
         ? `url("${getRelationshipIcon(
@@ -425,10 +422,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         on:touchstart={handleDragSelect}
         on:wheel={handleWheel}
       >
-        <Canvas root={root} canvas={canvas} grabMove={state.grabMove} />
-        <VirtualScroll />
-        <Minimap />
-        <HideSign root={root} />
+        <Canvas root={root} canvas={canvas} grabMove={handTool} />
+        {zenMode ? null : <VirtualScroll />}
+        {hasContent && !zenMode ? <Minimap /> : null}
+        <ContentCompass />
+        <FloatingToolbar />
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

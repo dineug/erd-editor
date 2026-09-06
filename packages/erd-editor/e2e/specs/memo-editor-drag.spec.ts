@@ -10,8 +10,9 @@ const MEMO_ID = 'note';
 const BODY = 'the quick brown fox jumps over the lazy dog and keeps going';
 
 /**
- * Scrolled away from the origin on purpose: a document opens clamped there, so
- * a pan the assertion is watching for would be swallowed and prove nothing.
+ * Scrolled away from scene zero on purpose, through the legacy pair the parser
+ * migrates: the origin is then one the file set, so a view that stood still is
+ * told from one put back to the default, and a pan moves it from wherever it stands.
  */
 function withMemo(): ErdDocument {
   const document = createSchema({
@@ -55,9 +56,9 @@ test.describe('memo editor drag', () => {
     expect(selected.length).toBeGreaterThan(0);
 
     const after = await erd.settings();
-    expect([after.scrollLeft, after.scrollTop]).toEqual([
-      before.scrollLeft,
-      before.scrollTop,
+    expect([after.originX, after.originY]).toEqual([
+      before.originX,
+      before.originY,
     ]);
     await expect(erd.memoEditor).toBeVisible();
   });
@@ -101,14 +102,14 @@ test.describe('memo editor drag', () => {
       y: box!.y + box!.height + 120,
     };
 
-    // Away from the origin, because a document opens scrolled to it and a drag
-    // the other way is clamped there rather than moving.
+    // Started past the editor's corner and kept short of it, so the press lands
+    // on bare canvas and every step of the drag stays outside the open editor.
     await erd.drag(from, { x: from.x - 90, y: from.y - 50 }, { steps: 10 });
 
     const after = await erd.settings();
-    expect([after.scrollLeft, after.scrollTop]).not.toEqual([
-      before.scrollLeft,
-      before.scrollTop,
+    expect([after.originX, after.originY]).not.toEqual([
+      before.originX,
+      before.originY,
     ]);
     await expect(erd.memoEditor).toHaveCount(0);
   });

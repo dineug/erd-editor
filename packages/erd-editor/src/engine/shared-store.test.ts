@@ -1,12 +1,17 @@
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { getLWWAction } from '@/engine/modules/editor/atom.actions';
 import { duplicateAction$ } from '@/engine/modules/editor/generator.actions';
+import { addIndexAction } from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createSharedStore, SharedStore } from '@/engine/shared-store';
 import { Tag } from '@/engine/tag';
@@ -175,6 +180,49 @@ describe('createSharedStore', () => {
     expect(types).toContain('table.add');
     expect(types).toContain('table.changeName');
     // Selection is local: a peer pasting must not move anyone else's cursor.
+    expect(types).not.toContain('editor.select');
+    expect(types).not.toContain('editor.unselectAll');
+    expect(types).not.toContain('editor.focusTableEnd');
+  });
+
+  it('broadcasts the duplicated relationship and indexes', () => {
+    const fixture = make();
+    fixture.store.dispatchSync(addTable('t1'));
+    fixture.store.dispatchSync(addColumnAction({ id: 'c1', tableId: 't1' }));
+    fixture.store.dispatchSync(addColumnAction({ id: 'c2', tableId: 't1' }));
+    fixture.store.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: 't1', columnIds: ['c1'] },
+        end: { tableId: 't1', columnIds: ['c2'] },
+      })
+    );
+    fixture.store.dispatchSync(addIndexAction({ id: 'i1', tableId: 't1' }));
+    fixture.store.dispatchSync(
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: 't1',
+        columnId: 'c1',
+      })
+    );
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+
+    fixture.store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        memoIds: [],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    const types = fixture.types();
+    expect(types).toContain('relationship.add');
+    expect(types).toContain('index.add');
+    expect(types).toContain('indexColumn.add');
     expect(types).not.toContain('editor.select');
     expect(types).not.toContain('editor.unselectAll');
     expect(types).not.toContain('editor.focusTableEnd');

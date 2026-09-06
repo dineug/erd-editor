@@ -5,6 +5,7 @@ import {
   oneTable,
   twoTables,
 } from '../support/schema';
+import { Shortcut } from '../support/shortcuts';
 
 // AC-I7. A dom node carried its own cursor in a stylesheet and a reordered row
 // animated because css said transition. Konva has neither, so the container is
@@ -31,7 +32,7 @@ function withMemo(): ErdDocument {
 }
 
 test.describe('cursor and motion', () => {
-  test('holding Space asks for a grab and the press makes it a fist', async ({
+  test('the hand tool asks for a grab and the press makes it a fist', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
@@ -39,7 +40,7 @@ test.describe('cursor and motion', () => {
     expect(await erd.canvasCursor()).toBe(IDLE);
 
     await erd.focusCanvas({ x: 1100, y: 700 });
-    await erd.page.keyboard.down('Space');
+    await erd.press(Shortcut.handTool);
     await expect.poll(() => erd.canvasCursor()).toBe('grab');
 
     const from = await erd.pointAt(1100, 700);
@@ -51,9 +52,9 @@ test.describe('cursor and motion', () => {
     await erd.page.mouse.up();
     await expect.poll(() => erd.canvasCursor()).toBe('grab');
 
-    // Space only disarms on a window keyup, so leaving it down would make
-    // every later gesture on this page pan.
-    await erd.page.keyboard.up('Space');
+    // The tool is a toggle now, so leaving it down would make every later
+    // gesture on this page pan.
+    await erd.press(Shortcut.handTool);
     await expect.poll(() => erd.canvasCursor()).toBe(IDLE);
   });
 

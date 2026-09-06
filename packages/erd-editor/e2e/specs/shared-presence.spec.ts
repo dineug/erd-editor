@@ -135,8 +135,8 @@ const peerSettings = (page: Page) =>
       JSON.parse(document.querySelector<any>('#peer erd-editor').value)
         .settings as {
         zoomLevel: number;
-        scrollLeft: number;
-        scrollTop: number;
+        originX: number;
+        originY: number;
       }
   );
 
@@ -384,7 +384,7 @@ test.describe('shared presence', () => {
       .poll(async () => (await peerSettings(page)).zoomLevel)
       .toBeLessThan(0.75);
     await expect
-      .poll(async () => (await peerSettings(page)).scrollTop)
+      .poll(async () => (await peerSettings(page)).originY)
       .toBeLessThan(0);
 
     // A synthetic event keeps whole client px, so the aim is rounded first and

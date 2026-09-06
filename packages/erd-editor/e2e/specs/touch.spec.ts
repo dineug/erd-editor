@@ -75,14 +75,14 @@ test.describe('touch input', () => {
     await erd.seed(twoTables());
 
     const before = await erd.settings();
-    expect([before.scrollLeft, before.scrollTop]).toEqual([0, 0]);
+    expect([before.originX, before.originY]).toEqual([0, 0]);
 
     const from = await erd.emptyPoint();
     await erd.touchDrag(from, { x: from.x - 160, y: from.y - 100 });
 
     const after = await erd.settings();
-    expect(after.scrollLeft).toBeCloseTo(-160, 0);
-    expect(after.scrollTop).toBeCloseTo(-100, 0);
+    expect(after.originX).toBeCloseTo(-160, 0);
+    expect(after.originY).toBeCloseTo(-100, 0);
   });
 
   test('a touch on the minimap lands the canvas where a click there does', async ({
@@ -92,27 +92,29 @@ test.describe('touch input', () => {
 
     const box = await erd.minimap.boundingBox();
     expect(box).not.toBeNull();
+    // Chromium truncates a fractional mouse coordinate and keeps a fractional
+    // touch one, so the one press both paths spell alike is a whole pixel.
     const target = {
-      x: (box?.x ?? 0) + (box?.width ?? 0) * 0.85,
-      y: (box?.y ?? 0) + (box?.height ?? 0) * 0.85,
+      x: Math.round((box?.x ?? 0) + (box?.width ?? 0) * 0.85),
+      y: Math.round((box?.y ?? 0) + (box?.height ?? 0) * 0.85),
     };
 
     await erd.clickAt(target);
     const clicked = await erd.settings();
-    expect(clicked.scrollLeft).toBeLessThan(0);
-    expect(clicked.scrollTop).toBeLessThan(0);
+    expect(clicked.originX).toBeLessThan(0);
+    expect(clicked.originY).toBeLessThan(0);
 
     await erd.seed(twoTables());
-    expect((await erd.settings()).scrollLeft).toBe(0);
+    expect((await erd.settings()).originX).toBe(0);
 
     await erd.touchStart(target);
     await erd.touchEnd();
 
     await expect
       .poll(async () => {
-        const { scrollLeft, scrollTop } = await erd.settings();
-        return [scrollLeft, scrollTop];
+        const { originX, originY } = await erd.settings();
+        return [originX, originY];
       })
-      .toEqual([clicked.scrollLeft, clicked.scrollTop]);
+      .toEqual([clicked.originX, clicked.originY]);
   });
 });

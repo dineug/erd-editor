@@ -31,9 +31,9 @@ const COLUMN_ID = 'cells_a';
 const CELL_TEXT = 'Hxp';
 
 /**
- * Far enough in that every cell is on screen at 1.5 too, where the canvas box is
- * wider than the viewport and the scene starts negative. Round, so the scene
- * lands on whole pixels at every zoom the round-placement cases use.
+ * Far enough in that every cell is on screen at 1.5 too, where the migrated
+ * origin is negative and the scene starts left of the container. Round, so the
+ * scene lands on whole pixels at every zoom the round-placement cases use.
  */
 const ROUND_AT = { x: 400, y: 400 };
 

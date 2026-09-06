@@ -82,7 +82,6 @@ const SAMPLE: IconName[] = [
   'check',
   'chevron-right',
   'grip-vertical',
-  'map-pin',
   'contrast',
   'mouse-pointer-2',
   'database',

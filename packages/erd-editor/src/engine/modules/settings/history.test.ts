@@ -8,7 +8,6 @@ import { ActionType } from '@/engine/modules/settings/actions';
 import {
   changeShowAction,
   changeZoomLevelAction,
-  resizeAction,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
@@ -41,7 +40,6 @@ describe('settings/history', () => {
     it('covers exactly the undoable settings actions', () => {
       expect(Object.keys(settingsPushUndoHistoryMap).sort()).toEqual(
         [
-          ActionType.resize,
           ActionType.scrollTo,
           ActionType.changeShow,
           ActionType.changeZoomLevel,
@@ -49,33 +47,18 @@ describe('settings/history', () => {
       );
     });
 
-    it('resize pushes the pre-change canvas size', () => {
-      store.dispatchSync(resizeAction({ width: 3000, height: 4000 }));
-
-      const undoActions: AnyAction[] = [];
-      settingsPushUndoHistoryMap[ActionType.resize](
-        undoActions,
-        resizeAction({ width: 5000, height: 6000 }),
-        state()
-      );
-
-      expect(undoActions).toEqual([
-        resizeAction({ width: 3000, height: 4000 }),
-      ]);
-    });
-
-    it('scrollTo pushes the pre-change scroll offsets', () => {
-      store.dispatchSync(scrollToAction({ scrollLeft: -120, scrollTop: -240 }));
+    it('scrollTo pushes the pre-change origin', () => {
+      store.dispatchSync(scrollToAction({ originX: -120, originY: -240 }));
 
       const undoActions: AnyAction[] = [];
       settingsPushUndoHistoryMap[ActionType.scrollTo](
         undoActions,
-        scrollToAction({ scrollLeft: -1, scrollTop: -2 }),
+        scrollToAction({ originX: -1, originY: -2 }),
         state()
       );
 
       expect(undoActions).toEqual([
-        scrollToAction({ scrollLeft: -120, scrollTop: -240 }),
+        scrollToAction({ originX: -120, originY: -240 }),
       ]);
     });
 

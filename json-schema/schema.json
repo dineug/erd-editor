@@ -71,6 +71,12 @@
         "scrollLeft": {
           "type": "number"
         },
+        "originX": {
+          "type": "number"
+        },
+        "originY": {
+          "type": "number"
+        },
         "zoomLevel": {
           "type": "number",
           "minimum": 0.1,

@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   Atom,
   Braces,
   Brackets,
@@ -16,9 +17,11 @@ import {
   FileInput,
   FileOutput,
   GripVertical,
+  Hand,
   type IconNode,
   KeyRound,
-  MapPin,
+  Maximize,
+  Minimize,
   Minus,
   MoonStar,
   MousePointer2,
@@ -50,6 +53,7 @@ export type IconNodeChild = IconNode[number];
 // lucide's own kebab names, disjoint from the PascalCase notation ones, which
 // is what lets one flat namespace serve both.
 const LUCIDE_ICON = {
+  'arrow-right': ArrowRight,
   atom: Atom,
   braces: Braces,
   brackets: Brackets,
@@ -67,8 +71,10 @@ const LUCIDE_ICON = {
   'file-input': FileInput,
   'file-output': FileOutput,
   'grip-vertical': GripVertical,
+  hand: Hand,
   'key-round': KeyRound,
-  'map-pin': MapPin,
+  maximize: Maximize,
+  minimize: Minimize,
   minus: Minus,
   'moon-star': MoonStar,
   'mouse-pointer-2': MousePointer2,

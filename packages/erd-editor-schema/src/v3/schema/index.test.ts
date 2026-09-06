@@ -128,6 +128,8 @@ describe('v3/schema/index', () => {
           height: CANVAS_SIZE_MAX,
           scrollTop: 0,
           scrollLeft: 0,
+          originX: 0,
+          originY: 0,
           zoomLevel: CANVAS_ZOOM_MIN,
           show: Show.tableComment,
           database: Database.PostgreSQL,

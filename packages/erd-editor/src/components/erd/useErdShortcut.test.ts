@@ -15,17 +15,25 @@ import { ColumnOption, RelationshipType } from '@/constants/schema';
 import { History } from '@/engine/history';
 import {
   changeOpenMapAction,
+  drawStartRelationshipAction,
   editMemoAction,
   editMemoEndAction,
   editTableAction,
   focusColumnAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType } from '@/engine/modules/editor/state';
+import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import { addIndexAction } from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import { toScenePoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
 import { copyAction, pasteAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
@@ -273,6 +281,51 @@ describe('useErdShortcut - table properties', () => {
   });
 });
 
+describe('useErdShortcut - canvas modes', () => {
+  it('toggles the hand tool on every press, rather than holding it down', async () => {
+    const app = await setup();
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+    expect(app.store.state.editor.handTool).toBe(true);
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+    expect(app.store.state.editor.handTool).toBe(false);
+  });
+
+  /**
+   * The two modes a press on the canvas can mean are exclusive: taking up the
+   * hand ends a draw that was armed, so a press is never read as both.
+   */
+  it('ends a relationship draw when the hand tool is taken up', async () => {
+    const app = await setup();
+    app.store.dispatchSync(
+      drawStartRelationshipAction({
+        relationshipType: RelationshipType.ZeroN,
+      })
+    );
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+
+    expect(app.store.state.editor.handTool).toBe(true);
+    expect(app.store.state.editor.drawRelationship).toBeNull();
+  });
+
+  it('toggles zen mode', async () => {
+    const app = await setup();
+
+    shortcut(app, KeyBindingName.zenMode);
+    await flush();
+    expect(app.store.state.editor.zenMode).toBe(true);
+
+    shortcut(app, KeyBindingName.zenMode);
+    await flush();
+    expect(app.store.state.editor.zenMode).toBe(false);
+  });
+});
+
 describe('useErdShortcut - zoom', () => {
   it('zooms in', async () => {
     const app = await setup();
@@ -292,6 +345,41 @@ describe('useErdShortcut - zoom', () => {
     await flush();
 
     expect(app.store.state.settings.zoomLevel).toBe(0.76);
+  });
+
+  it('resets the zoom from either side of it', async () => {
+    const app = await setup();
+
+    for (const value of [0.5, 1.4]) {
+      app.store.dispatchSync(changeZoomLevelAction({ value }));
+
+      shortcut(app, KeyBindingName.zoomReset);
+      await flush();
+
+      expect(app.store.state.settings.zoomLevel).toBe(1);
+    }
+  });
+
+  /**
+   * The reset names the zoom it means rather than stepping toward it, so it
+   * holds the scene point under the middle of the screen the way a toolbar
+   * zoom does, and one undo takes both halves back.
+   */
+  it('moves the origin with the reset, keeping the middle of the screen', async () => {
+    const app = await setup();
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    app.store.dispatchSync(scrollToAction({ originX: -400, originY: -300 }));
+
+    const { viewport } = app.store.state.editor;
+    const center = { x: viewport.width / 2, y: viewport.height / 2 };
+    const anchor = toScenePoint(app.store.state.settings, center);
+
+    shortcut(app, KeyBindingName.zoomReset);
+    await flush();
+
+    const after = toScenePoint(app.store.state.settings, center);
+    expect(after.x).toBeCloseTo(anchor.x, 3);
+    expect(after.y).toBeCloseTo(anchor.y, 3);
   });
 });
 
@@ -652,6 +740,66 @@ describe('useErdShortcut - clipboard', () => {
 
     expect(setData.mock.calls[0][1]).toBe('');
     expect(setData.mock.calls[1][1]).not.toContain('<table>');
+  });
+
+  const seedRelatedPair = (app: AppContext) => {
+    const t1 = seedTable(app);
+    const c1 = seedColumn(app, t1);
+    const t2 = seedTable(app);
+    const c2 = seedColumn(app, t2);
+
+    app.store.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: t1, columnIds: [c1] },
+        end: { tableId: t2, columnIds: [c2] },
+      })
+    );
+    app.store.dispatchSync(addIndexAction({ id: 'i1', tableId: t1 }));
+    app.store.dispatchSync(
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: t1,
+        columnId: c1,
+      })
+    );
+
+    return { t1, t2 };
+  };
+
+  it('carries relationships and indexes on a table copy', async () => {
+    const app = await setup();
+    const { t1, t2 } = seedRelatedPair(app);
+    app.store.state.editor.focusTable = null;
+    app.store.state.editor.selectedMap = {
+      [t1]: SelectType.table,
+      [t2]: SelectType.table,
+    };
+    const { event, setData } = createClipboardEvent();
+
+    app.emitter.emit(copyAction({ event }));
+    await flush();
+
+    const payload = readPayload(setData);
+    expect(payload.kind).toBe(PayloadKind.tables);
+    expect(payload.relationships).toHaveLength(1);
+    expect(payload.indexes).toHaveLength(1);
+  });
+
+  it('a column copy carries neither', async () => {
+    const app = await setup();
+    seedRelatedPair(app);
+    const { event, setData } = createClipboardEvent();
+
+    app.emitter.emit(copyAction({ event }));
+    await flush();
+
+    const payload = readPayload(setData);
+    expect(payload.kind).toBe(PayloadKind.columns);
+    expect(payload.relationships).toEqual([]);
+    expect(payload.indexes).toEqual([]);
   });
 
   // AC-5
@@ -1020,6 +1168,9 @@ const BLOCKED_SHORTCUTS = [
   KeyBindingName.tableProperties,
   KeyBindingName.zoomIn,
   KeyBindingName.zoomOut,
+  KeyBindingName.zoomReset,
+  KeyBindingName.handTool,
+  KeyBindingName.zenMode,
 ];
 
 /** The traversal keys handleKeydown answers, which shortcut$ never carries. */

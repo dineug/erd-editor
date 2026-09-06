@@ -5,7 +5,7 @@ import {
   type Page,
 } from '@playwright/test';
 
-import { type ErdDocument } from './schema';
+import { type ErdDocument, type LiveSettings } from './schema';
 import { SCENE_MIRROR_FLAG } from './sceneMirror';
 import { MOD_KEY, type Shortcut } from './shortcuts';
 
@@ -46,6 +46,7 @@ export class ErdEditorPage {
   readonly toolbar: Locator;
   readonly minimap: Locator;
   readonly minimapViewport: Locator;
+  readonly contentCompass: Locator;
   readonly contextMenu: Locator;
 
   private session: CDPSession | null = null;
@@ -56,6 +57,7 @@ export class ErdEditorPage {
     this.toolbar = this.host.locator('.toolbar');
     this.minimap = this.host.locator('.minimap');
     this.minimapViewport = this.host.locator('.minimap-viewport');
+    this.contentCompass = this.host.locator('.content-compass');
     this.contextMenu = this.host.locator('.context-menu-content');
   }
 
@@ -125,6 +127,10 @@ export class ErdEditorPage {
     return (await this.value()).doc.relationshipIds;
   }
 
+  async indexIds() {
+    return (await this.value()).doc.indexIds;
+  }
+
   async memoIds() {
     return (await this.value()).doc.memoIds;
   }
@@ -139,8 +145,8 @@ export class ErdEditorPage {
     return collections.tableColumnEntities[id];
   }
 
-  async settings() {
-    return (await this.value()).settings;
+  async settings(): Promise<LiveSettings> {
+    return (await this.value()).settings as LiveSettings;
   }
 
   async columnIds(tableId: string) {
@@ -150,6 +156,16 @@ export class ErdEditorPage {
   async relationship(id: string) {
     const { collections } = await this.value();
     return collections.relationshipEntities[id];
+  }
+
+  async index(id: string) {
+    const { collections } = await this.value();
+    return collections.indexEntities[id];
+  }
+
+  async indexColumn(id: string) {
+    const { collections } = await this.value();
+    return collections.indexColumnEntities[id];
   }
 
   async memo(id: string) {
@@ -266,16 +282,6 @@ export class ErdEditorPage {
     return this.host.locator('.color-picker');
   }
 
-  /** Every off-canvas marker the editor pins along the edges of the screen. */
-  hideSigns() {
-    return this.host.locator('.hide-sign');
-  }
-
-  /** One off-canvas marker, named by the entity it points at. */
-  hideSign(title: string) {
-    return this.host.locator(`.hide-sign[title="${title}"]`);
-  }
-
   /**
    * One table as the minimap draws it. A minimap node carries no id, because
    * two stages spelling one id make an id scan ambiguous, so the table it
@@ -285,8 +291,9 @@ export class ErdEditorPage {
     return this.minimap.locator(`[data-table-id="${id}"]`);
   }
 
+  /** Named by the title it opens with, which carries its chord after the name. */
   toolbarButton(title: string) {
-    return this.toolbar.locator(`[title="${title}"]`);
+    return this.toolbar.locator(`[title^="${title}"]`);
   }
 
   contextMenuItem(label: string | RegExp) {

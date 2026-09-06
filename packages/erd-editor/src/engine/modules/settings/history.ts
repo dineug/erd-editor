@@ -4,7 +4,6 @@ import { ActionType } from './actions';
 import {
   changeShowAction,
   changeZoomLevelAction,
-  resizeAction,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
@@ -12,17 +11,11 @@ import {
 
 const MOVE_MIN = 20;
 
-const resize: PushUndoHistory = (undoActions, _, { settings }) => {
-  undoActions.push(
-    resizeAction({ width: settings.width, height: settings.height })
-  );
-};
-
 const scrollTo: PushUndoHistory = (undoActions, _, { settings }) => {
   undoActions.push(
     scrollToAction({
-      scrollLeft: settings.scrollLeft,
-      scrollTop: settings.scrollTop,
+      originX: settings.originX,
+      originY: settings.originY,
     })
   );
 };
@@ -39,7 +32,6 @@ const changeZoomLevel: PushUndoHistory = (undoActions, _, { settings }) => {
 };
 
 export const settingsPushUndoHistoryMap = {
-  [ActionType.resize]: resize,
   [ActionType.scrollTo]: scrollTo,
   [ActionType.changeShow]: changeShow,
   [ActionType.changeZoomLevel]: changeZoomLevel,

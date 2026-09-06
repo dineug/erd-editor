@@ -11,6 +11,12 @@ export type Editor = {
   hasUndo: boolean;
   hasRedo: boolean;
   viewport: Viewport;
+  /**
+   * Whether a loaded origin still waits to be pulled into the content's travel
+   * because the host had not measured a screen when the document arrived. The
+   * first changeViewport that reports one applies the pull and clears this.
+   */
+  scrollPullPending: boolean;
   focusTable: FocusTable | null;
   /** The memo whose body an overlay editor is open on, and null while none is. */
   editMemoId: string | null;
@@ -24,6 +30,10 @@ export type Editor = {
   hoverColumnMap: Record<string, boolean>;
   hoverRelationshipMap: Record<string, boolean>;
   openMap: Record<string, boolean>;
+  /** Whether the pointer pans the canvas instead of reaching the scene under it. */
+  handTool: boolean;
+  /** Whether the editor is drawn without its scrollbars, its map and its toolbar. */
+  zenMode: boolean;
   draggableColumn: DraggableColumn | null;
   draggingColumnMap: Record<string, boolean>;
   sharedMouseTrackerMap: Record<string, SharedMouseTracker>;
@@ -146,6 +156,7 @@ export const createEditor = (): Editor => ({
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,
   },
+  scrollPullPending: false,
   focusTable: null,
   editMemoId: null,
   memoScrollTopMap: {},
@@ -153,6 +164,8 @@ export const createEditor = (): Editor => ({
   hoverColumnMap: {},
   hoverRelationshipMap: {},
   openMap: {},
+  handTool: false,
+  zenMode: false,
   draggableColumn: null,
   draggingColumnMap: {},
   sharedMouseTrackerMap: {},

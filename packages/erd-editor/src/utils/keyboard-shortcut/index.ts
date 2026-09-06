@@ -30,6 +30,9 @@ export const KeyBindingName = {
   tableProperties: 'tableProperties',
   zoomIn: 'zoomIn',
   zoomOut: 'zoomOut',
+  zoomReset: 'zoomReset',
+  handTool: 'handTool',
+  zenMode: 'zenMode',
 } as const;
 export type KeyBindingName = ValuesType<typeof KeyBindingName>;
 export const KeyBindingNameList = Object.values(KeyBindingName);
@@ -65,6 +68,7 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   ],
   [KeyBindingName.primaryKey]: [{ shortcut: 'Alt+KeyK', preventDefault: true }],
   [KeyBindingName.selectAllTable]: [
+    { shortcut: '$mod+KeyA', preventDefault: true },
     { shortcut: '$mod+Alt+KeyA', preventDefault: true },
   ],
   [KeyBindingName.selectAllColumn]: [
@@ -91,6 +95,11 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.zoomOut]: [
     { shortcut: '$mod+Minus', preventDefault: true, stopPropagation: true },
   ],
+  [KeyBindingName.zoomReset]: [
+    { shortcut: '$mod+KeyO', preventDefault: true, stopPropagation: true },
+  ],
+  [KeyBindingName.handTool]: [{ shortcut: 'Space', preventDefault: true }],
+  [KeyBindingName.zenMode]: [{ shortcut: 'Alt+KeyZ', preventDefault: true }],
 });
 
 const ModifierKey = {
@@ -169,6 +178,21 @@ const IME_KEY_CODE = 229;
  */
 export function isComposing(event: KeyboardEvent): boolean {
   return event.isComposing || event.keyCode === IME_KEY_CODE;
+}
+
+/**
+ * What a button says it is: its name and the first chord bound to it, since a
+ * command can carry several and a tooltip naming all of them reads as noise.
+ */
+export function toShortcutTitle(
+  keyBindingMap: KeyBindingMap,
+  name: string,
+  keyBindingName: KeyBindingName
+): string {
+  const [option] = keyBindingMap[keyBindingName] ?? [];
+  const shortcut = option ? simpleShortcutToString(option.shortcut) : '';
+
+  return shortcut ? `${name} (${shortcut})` : name;
 }
 
 export function simpleShortcutToString(shortcut?: string): string {

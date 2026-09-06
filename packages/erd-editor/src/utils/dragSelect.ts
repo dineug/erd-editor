@@ -1,5 +1,3 @@
-import { Point } from '@/internal-types';
-
 type PointToPoint = {
   x1: number;
   y1: number;
@@ -36,66 +34,4 @@ export function getOverlapPosition(
   target.y2 = Math.min(dragRect.y + dragRect.h, rect.y + rect.h) - rect.y;
 
   return target;
-}
-
-export function getZoomViewport(
-  width: number,
-  height: number,
-  zoomLevel: number
-): Rect {
-  const viewport: Rect = { x: 0, y: 0, w: 0, h: 0 };
-
-  viewport.w = width * zoomLevel;
-  viewport.h = height * zoomLevel;
-  viewport.x = (width - viewport.w) / 2;
-  viewport.y = (height - viewport.h) / 2;
-
-  return viewport;
-}
-
-export const getAbsolutePosition = (
-  overlapPosition: PointToPoint,
-  zoomViewport: Rect,
-  zoomLevel: number
-): PointToPoint => ({
-  x1: (overlapPosition.x1 - zoomViewport.x) / zoomLevel,
-  y1: (overlapPosition.y1 - zoomViewport.y) / zoomLevel,
-  x2: overlapPosition.x2 / zoomLevel,
-  y2: overlapPosition.y2 / zoomLevel,
-});
-
-export function getAbsoluteZoomPoint(
-  { x, y }: Point,
-  width: number,
-  height: number,
-  zoomLevel: number
-) {
-  const zoomViewport = getZoomViewport(width, height, zoomLevel);
-  const zoomX = x * zoomLevel;
-  const zoomY = y * zoomLevel;
-  const absoluteZoomX = zoomViewport.x + zoomX;
-  const absoluteZoomY = zoomViewport.y + zoomY;
-
-  return { x: absoluteZoomX, y: absoluteZoomY };
-}
-
-export function getAbsolutePoint(
-  point: Point,
-  width: number,
-  height: number,
-  zoomLevel: number
-): Point {
-  const { x, y } = point;
-  const { x: absoluteZoomX, y: absoluteZoomY } = getAbsoluteZoomPoint(
-    point,
-    width,
-    height,
-    zoomLevel
-  );
-  const diffZoomX = (x - absoluteZoomX) / zoomLevel;
-  const diffZoomY = (y - absoluteZoomY) / zoomLevel;
-  const absoluteX = x + diffZoomX;
-  const absoluteY = y + diffZoomY;
-
-  return { x: absoluteX, y: absoluteY };
 }

@@ -1,20 +1,27 @@
 import { observable } from '@dineug/r-html';
 
-/**
- * Whether a pointer is moving a selection right now. One pointer means one
- * drag, so the flag is module wide the way the drag stream it follows is.
- */
-const state = observable({ active: false });
+import { RootState } from '@/engine/state';
+import { freezeView, thawView } from '@/konva/scene/viewFreeze';
 
-export function beginEntityDrag(): void {
-  state.active = true;
+/**
+ * Which stores a pointer is moving a selection in right now, by the id their
+ * editor state mints once, so a drag in one editor on a page is not read as a
+ * drag by the scene of another.
+ */
+const state = observable({ active: {} as Record<string, boolean> });
+
+/** Raises the flag and holds the view as it stands until endEntityDrag. */
+export function beginEntityDrag(root: RootState): void {
+  state.active[root.editor.id] = true;
+  freezeView(root);
 }
 
-export function endEntityDrag(): void {
-  state.active = false;
+export function endEntityDrag(root: RootState): void {
+  Reflect.deleteProperty(state.active, root.editor.id);
+  thawView(root);
 }
 
 /** Reads the flag through the observable, so a scene render tracks it. */
-export function isEntityDragActive(): boolean {
-  return state.active;
+export function isEntityDragActive(root: RootState): boolean {
+  return state.active[root.editor.id] === true;
 }

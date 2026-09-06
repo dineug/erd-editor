@@ -130,15 +130,10 @@ test.describe('table properties — indexes tab', () => {
     await expect(selectedColumns.nth(0)).toContainText('id');
     await expect.poll(() => checkedStates(panel)).toEqual([true, false, false]);
 
-    // schema.ts leaves the two index collections untyped, so read them here.
     const { collections, doc } = await erd.value();
     const [, secondIndexId] = doc.indexIds;
-    const { indexColumnIds } = collections.indexEntities[
-      secondIndexId
-    ] as Record<'indexColumnIds', string[]>;
-    const indexColumn = collections.indexColumnEntities[
-      indexColumnIds[0]
-    ] as Record<'columnId', string>;
+    const { indexColumnIds } = collections.indexEntities[secondIndexId];
+    const indexColumn = collections.indexColumnEntities[indexColumnIds[0]];
 
     expect(indexColumnIds).toHaveLength(1);
     expect(indexColumn.columnId).toBe('student_id');

@@ -33,6 +33,9 @@ const EXPECTED_COMMANDS = [
   'Table Properties',
   'Zoom In',
   'Zoom Out',
+  'Zoom Reset',
+  'Hand Tool',
+  'Zen Mode',
 ];
 
 const table = () =>

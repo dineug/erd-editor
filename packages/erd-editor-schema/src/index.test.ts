@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   addOperator,
+  migrateScrollToOrigin,
   parser,
   parserV2,
   query,
@@ -49,6 +50,21 @@ describe('public entry point', () => {
 
     expect(lww.id).toEqual(['tableEntities', 1, 3, { name: 2 }]);
     expect(recipe).toHaveBeenCalledTimes(3);
+  });
+
+  it('exposes the legacy scroll migration the editor restates', () => {
+    const box = {
+      width: 3000,
+      height: 4000,
+      zoomLevel: 0.5,
+      scrollLeft: -200,
+      scrollTop: -100,
+    };
+
+    expect(migrateScrollToOrigin(box)).toEqual({
+      originX: box.scrollLeft + (box.width * (1 - box.zoomLevel)) / 2,
+      originY: box.scrollTop + (box.height * (1 - box.zoomLevel)) / 2,
+    });
   });
 
   it('exposes both constant bundles', () => {

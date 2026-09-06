@@ -40,10 +40,10 @@ describe('settings/actions', () => {
   });
 
   it('action creators build actions carrying the matching type', () => {
-    const action = actions.resizeAction({ width: 3000, height: 4000 });
-    expect(action.type).toBe(ActionType.resize);
-    expect(action.payload).toEqual({ width: 3000, height: 4000 });
-    expect(`${actions.resizeAction}`).toBe(ActionType.resize);
+    const action = actions.scrollToAction({ originX: -120, originY: -240 });
+    expect(action.type).toBe(ActionType.scrollTo);
+    expect(action.payload).toEqual({ originX: -120, originY: -240 });
+    expect(`${actions.scrollToAction}`).toBe(ActionType.scrollTo);
   });
 
   it('keeps the well-known action type literals stable', () => {

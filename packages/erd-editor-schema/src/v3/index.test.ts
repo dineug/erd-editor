@@ -3,14 +3,20 @@ import { describe, expect, it } from 'vite-plus/test';
 import * as v3 from '@/v3';
 import { SchemaV3Constants, schemaV3Parser } from '@/v3';
 import { parser } from '@/v3/parser';
+import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import { SchemaV3Constants as sourceConstants } from '@/v3/schema';
 
 describe('v3/index', () => {
-  it('exposes exactly the two public runtime entry points', () => {
+  it('exposes exactly the public runtime entry points', () => {
     expect(Object.keys(v3).sort()).toEqual([
       'SchemaV3Constants',
+      'migrateScrollToOrigin',
       'schemaV3Parser',
     ]);
+  });
+
+  it('re-exports the legacy scroll migration without copying it', () => {
+    expect(v3.migrateScrollToOrigin).toBe(migrateScrollToOrigin);
   });
 
   it('aliases the v3 parser as schemaV3Parser', () => {

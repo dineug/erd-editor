@@ -19,8 +19,13 @@ import {
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
-import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  changeZenModeAction,
+} from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import { getTableRect } from '@/konva/scene/metrics';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 
 const { appContexts, gcState } = vi.hoisted(() => ({
@@ -152,6 +157,53 @@ describe('<erd-editor>', () => {
     expect(root.getAttribute('tabindex')).toBe('-1');
     expect(root.classList.contains('dark')).toBe(true);
     expect(shadow.querySelector('.toolbar')).toBeTruthy();
+  });
+
+  it('takes the toolbar away in zen mode, and only over the canvas it was entered from', async () => {
+    const { app, shadow } = await createEditor();
+
+    app.store.dispatchSync(changeZenModeAction({ value: true }));
+    await flush();
+
+    expect(shadow.querySelector('.toolbar')).toBeNull();
+
+    // Another canvas type keeps its toolbar whatever the mode says, or the tab
+    // that turned zen mode on would be the only one it could be turned off from.
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    await flush();
+
+    expect(shadow.querySelector('.toolbar')).toBeTruthy();
+  });
+
+  it('gives the canvas the toolbar height back the moment zen mode takes it away', async () => {
+    const { app } = await createEditor();
+
+    resizeCallbacks[0]([
+      { contentRect: { width: 900, height: 600 } as DOMRectReadOnly },
+    ]);
+    await flush();
+    expect(app.store.state.editor.viewport).toEqual({
+      width: 900,
+      height: 600 - TOOLBAR_HEIGHT,
+    });
+
+    // No resize follows a mode change, so the viewport has to be applied from
+    // the mode as well, or the scene would stay short by a toolbar.
+    app.store.dispatchSync(changeZenModeAction({ value: true }));
+    await flush();
+    expect(app.store.state.editor.viewport).toEqual({
+      width: 900,
+      height: 600,
+    });
+
+    app.store.dispatchSync(changeZenModeAction({ value: false }));
+    await flush();
+    expect(app.store.state.editor.viewport).toEqual({
+      width: 900,
+      height: 600 - TOOLBAR_HEIGHT,
+    });
   });
 
   it('renders the ERD canvas by default and swaps it for the other canvas types', async () => {
@@ -332,6 +384,66 @@ describe('<erd-editor>', () => {
       width: 800,
       height: 640 - TOOLBAR_HEIGHT,
     });
+  });
+
+  /**
+   * The host hands the document over before the ResizeObserver has measured
+   * anything. Pulled against the store's default size, a far origin would park
+   * the content at the edge of a screen nobody has, so the pull waits.
+   */
+  it('starts unmeasured, and pulls a loaded origin against the first frame that has a size', async () => {
+    const { el, app } = await createEditor();
+    expect(app.store.state.editor.viewport).toEqual({ width: 0, height: 0 });
+
+    el.setInitialValue(
+      JSON.stringify({
+        version: '3.0.0',
+        settings: { zoomLevel: 1, originX: 40_000, originY: -40_000 },
+        doc: { tableIds: ['t1'] },
+        collections: {
+          tableEntities: {
+            t1: {
+              id: 't1',
+              name: 't1',
+              comment: '',
+              columnIds: [],
+              seqColumnIds: [],
+              ui: { x: 0, y: 0, zIndex: 2, widthName: 60, widthComment: 60 },
+              meta: { updateAt: 1, createAt: 1 },
+            },
+          },
+        },
+      })
+    );
+    await flush();
+
+    expect(app.store.state.settings.originX).toBe(40_000);
+    expect(app.store.state.settings.originY).toBe(-40_000);
+    expect(app.store.state.editor.scrollPullPending).toBe(true);
+
+    resizeCallbacks[0]([
+      {
+        contentRect: {
+          width: 1440,
+          height: 900 + TOOLBAR_HEIGHT,
+        } as DOMRectReadOnly,
+      },
+    ]);
+    await flush();
+
+    const { settings, editor, collections } = app.store.state;
+    const rect = getTableRect(app.store.state, collections.tableEntities.t1);
+    expect(editor.viewport).toEqual({ width: 1440, height: 900 });
+    expect(editor.scrollPullPending).toBe(false);
+    // Pulled onto the measured screen: the table's far edge on its far edge,
+    // which the 1200 wide default would have put 240 pixels short of.
+    expect(
+      toScreenPoint(settings, { x: rect.x + rect.width, y: rect.y }).x
+    ).toBeCloseTo(1440, 6);
+    expect(toScreenPoint(settings, { x: rect.x, y: rect.y }).y).toBeCloseTo(
+      0,
+      6
+    );
   });
 
   it('re-focuses itself when an internal focus event arrives while focus is elsewhere', async () => {

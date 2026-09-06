@@ -1,4 +1,10 @@
-import { type LWW } from '@dineug/erd-editor-schema';
+import {
+  type LWW,
+  migrateScrollToOrigin,
+  parser,
+  toJson,
+} from '@dineug/erd-editor-schema';
+import { round } from 'es-toolkit/compat';
 import {
   afterEach,
   beforeEach,
@@ -57,11 +63,15 @@ import {
   type SharedFocus,
 } from '@/engine/modules/editor/state';
 import {
-  changeZoomLevelAction,
+  getContentScrollRanges,
   scrollToAction,
+  streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
+import { getContentRect } from '@/konva/scene/contentBounds';
+import { getTableRect } from '@/konva/scene/metrics';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createMemo } from '@/utils/collection/memo.entity';
@@ -77,8 +87,13 @@ function createTestStore(enableObservable = true): Store {
   );
 }
 
-function addTable(store: Store, id: string, columnIds: string[] = []) {
-  const table = createTable({ id, name: id, columnIds: [...columnIds] });
+function addTable(
+  store: Store,
+  id: string,
+  columnIds: string[] = [],
+  ui: { x: number; y: number } = { x: 200, y: 100 }
+) {
+  const table = createTable({ id, name: id, columnIds: [...columnIds], ui });
   store.state.collections.tableEntities[id] = table;
   store.state.doc.tableIds.push(id);
   return table;
@@ -192,107 +207,381 @@ describe('editor.changeViewport', () => {
   });
 
   /**
-   * A window that grows shortens the travel the scroll is allowed. Leaving an
-   * offset outside it paints a band of nothing along two edges until the next
-   * scroll gesture happens to clamp it, which is a repaint the user has to ask for.
+   * A resize moves nothing. The frame grows, shrinks or goes unmeasured, and
+   * what was under its corner stays under its corner, wherever the origin
+   * stands: far past the content, inside its travel, or on the default.
    */
-  it('pulls a scroll left outside the widened range back into it', () => {
+  it.each([
+    ['far past the content', -40_000, 700],
+    ['inside the travel of the content', -100, -50],
+    ['on the default', 0, 0],
+  ])('moves nothing on a resize with the origin %s', (_, originX, originY) => {
+    addTable(store, 't1');
     store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
-    store.dispatchSync(
-      scrollToAction({ scrollLeft: -1_000_000, scrollTop: -1_000_000 })
-    );
-    expect(store.state.settings.scrollLeft).toBe(900 - 2000);
-    expect(store.state.settings.scrollTop).toBe(700 - 2000);
+    store.dispatchSync(scrollToAction({ originX, originY }));
 
-    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
-
-    expect(store.state.settings.scrollLeft).toBe(1440 - 2000);
-    expect(store.state.settings.scrollTop).toBe(900 - 2000);
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 300, height: 200 },
+      { width: 0, height: 0 },
+      { width: 1024, height: 768 },
+    ]) {
+      store.dispatchSync(changeViewportAction(viewport));
+      expect(store.state.editor.viewport).toEqual(viewport);
+      expect(store.state.settings.originX).toBe(originX);
+      expect(store.state.settings.originY).toBe(originY);
+    }
   });
 
-  it('leaves a scroll the narrowed range still holds exactly where it was', () => {
-    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
-    store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: -200 }));
-
+  it('moves nothing on a resize over an empty document either', () => {
     store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
-
-    expect(store.state.settings.scrollLeft).toBe(-100);
-    expect(store.state.settings.scrollTop).toBe(-200);
-  });
-
-  /**
-   * The same pull with the canvas drawn far smaller than the screen. Travel
-   * closes toward the middle of the screen as the zoom falls, so the offset
-   * lands on the end of it rather than on a midpoint no later zoom can leave.
-   */
-  it('pulls a shrunk canvas back to the end of the travel it still has', () => {
-    store.dispatchSync(changeViewportAction({ width: 900, height: 700 }));
-    store.dispatchSync(changeZoomLevelAction({ value: 0.1 }));
-    store.dispatchSync(
-      scrollToAction({ scrollLeft: -1_000_000, scrollTop: -1_000_000 })
-    );
+    store.dispatchSync(scrollToAction({ originX: 12_345, originY: -6_789 }));
 
     store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
-
-    // (viewport - canvas) times (1 + zoom) halved, on each axis: the far end of
-    // a travel that closes in by the zoom rather than the canvas box's own end.
-    expect(store.state.settings.scrollLeft).toBe(-308);
-    expect(store.state.settings.scrollTop).toBe(-605);
+    expect(store.state.settings.originX).toBe(12_345);
+    expect(store.state.settings.originY).toBe(-6_789);
   });
 });
 
-/** A document that names its own screen size, zoom and scroll and nothing else. */
-const documentAt = (zoomLevel: number, scrollLeft: number, scrollTop: number) =>
+/** A table entity as a file spells it, at a scene point. */
+const tableJson = (id: string, x: number, y: number) => ({
+  id,
+  name: id,
+  comment: '',
+  columnIds: [],
+  seqColumnIds: [],
+  ui: { x, y, zIndex: 2, widthName: 60, widthComment: 60, color: '' },
+  meta: { updateAt: 1, createAt: 1 },
+});
+
+/** A document naming its zoom, its origin and the tables it holds. */
+const documentAt = (
+  zoomLevel: number,
+  originX: number,
+  originY: number,
+  tables: Array<[string, number, number]> = []
+) =>
+  JSON.stringify({
+    version: '3.0.0',
+    settings: { zoomLevel, originX, originY },
+    doc: { tableIds: tables.map(([id]) => id) },
+    collections: {
+      tableEntities: Object.fromEntries(
+        tables.map(([id, x, y]) => [id, tableJson(id, x, y)])
+      ),
+    },
+  });
+
+/**
+ * A document saved before the origin pair existed: it names the legacy scroll
+ * pair, which the parser migrates once into an origin and otherwise carries as
+ * it found it.
+ */
+const legacyDocumentAt = (
+  zoomLevel: number,
+  scrollLeft: number,
+  scrollTop: number,
+  tables: Array<[string, number, number]> = []
+) =>
   JSON.stringify({
     version: '3.0.0',
     settings: { zoomLevel, scrollLeft, scrollTop },
+    doc: { tableIds: tables.map(([id]) => id) },
+    collections: {
+      tableEntities: Object.fromEntries(
+        tables.map(([id, x, y]) => [id, tableJson(id, x, y)])
+      ),
+    },
+  });
+
+/** The origin the parser gives a legacy document drawn in the default box. */
+const migrated = (zoomLevel: number, scrollLeft: number, scrollTop: number) =>
+  migrateScrollToOrigin({
+    width: 2000,
+    height: 2000,
+    zoomLevel,
+    scrollLeft,
+    scrollTop,
   });
 
 describe('editor.loadJson / initialLoadJson', () => {
+  const VIEWPORT = { width: 1440, height: 900 };
+
+  /** The box of the one table the documents below hold, as the scene draws it. */
+  const tableRect = (id = 't1') =>
+    getTableRect(store.state, store.state.collections.tableEntities[id]);
+
   /**
-   * A file can name an offset no zoom below 1 can hold, and nothing else on the
-   * load path clamps. Left alone it opens on empty canvas and the first notch of
-   * the wheel jumps the whole way back in.
+   * A file can name an origin tens of thousands of pixels from anything it
+   * holds, and nothing else on the load path clamps. Left alone it opens on
+   * empty canvas; pulled, it opens with the whole table on the screen.
    */
   it.each([
     ['loadJson', loadJsonAction],
     ['initialLoadJson', initialLoadJsonAction],
-  ])('pulls a scroll %s carries into the travel its zoom allows', (_, load) => {
-    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+  ])(
+    'pulls an origin %s carries 40000 away to where the table is drawn',
+    (_, load) => {
+      store.dispatchSync(changeViewportAction(VIEWPORT));
 
-    store.dispatchSync(load({ value: documentAt(0.3, 0, 0) }));
+      store.dispatchSync(
+        load({ value: documentAt(1, 40_000, -40_000, [['t1', 0, 0]]) })
+      );
 
-    expect(store.state.settings.zoomLevel).toBe(0.3);
-    expect(store.state.settings.scrollLeft).toBe(-196);
-    expect(store.state.settings.scrollTop).toBe(-385);
+      const { left, top } = getContentScrollRanges(store.state);
+      const { settings } = store.state;
+      expect(40_000).toBeGreaterThan(left.max);
+      expect(-40_000).toBeLessThan(top.min);
+      // Pulled back the shortest way onto the content, read through the canon:
+      // from past the far end the table's far edge lands on the screen's far
+      // edge, and from past the near end its near edge lands on the top.
+      const rect = tableRect();
+      const near = toScreenPoint(settings, { x: rect.x, y: rect.y });
+      const far = toScreenPoint(settings, {
+        x: rect.x + rect.width,
+        y: rect.y + rect.height,
+      });
+      expect(far.x).toBeCloseTo(VIEWPORT.width, 6);
+      expect(near.y).toBeCloseTo(0, 6);
+      expect(near.x).toBeGreaterThan(0);
+      expect(far.y).toBeLessThan(VIEWPORT.height);
+      expect(store.state.editor.scrollPullPending).toBe(false);
+    }
+  );
+
+  /**
+   * The shape a file saved without its view takes: an origin of zero and the
+   * content wherever the diagram was drawn. The old clamp opened this on the
+   * blank canvas one pixel past the table; the pull opens it on the table.
+   */
+  it('opens a file whose origin was zeroed on the table it holds', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 0, 0, [['t1', 10_000, 10_000]]) })
+    );
+
+    const rect = tableRect();
+    const { settings } = store.state;
+    const near = toScreenPoint(settings, { x: rect.x, y: rect.y });
+    const far = toScreenPoint(settings, {
+      x: rect.x + rect.width,
+      y: rect.y + rect.height,
+    });
+    expect(far.x).toBeCloseTo(VIEWPORT.width, 6);
+    expect(far.y).toBeCloseTo(VIEWPORT.height, 6);
+    expect(near.x).toBeGreaterThan(0);
+    expect(near.y).toBeGreaterThan(0);
   });
 
-  it('leaves a scroll the travel already holds exactly where the file put it', () => {
-    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+  it('fills the screen with content bigger than it, from the edge it was pulled back to', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
 
-    store.dispatchSync(loadJsonAction({ value: documentAt(0.3, -300, -400) }));
+    store.dispatchSync(
+      loadJsonAction({
+        value: documentAt(1, 40_000, -40_000, [
+          ['t1', 0, 0],
+          ['t2', 5_000, 5_000],
+        ]),
+      })
+    );
 
-    expect(store.state.settings.scrollLeft).toBe(-300);
-    expect(store.state.settings.scrollTop).toBe(-400);
+    const content = getContentRect(store.state)!;
+    const { settings } = store.state;
+    expect(content.width).toBeGreaterThan(VIEWPORT.width);
+    expect(content.height).toBeGreaterThan(VIEWPORT.height);
+    // From past the far end the content's near edge meets the screen's near
+    // edge; from past the near end its far edge meets the screen's far edge.
+    expect(toScreenPoint(settings, content).x).toBeCloseTo(0, 6);
+    expect(
+      toScreenPoint(settings, {
+        x: content.x,
+        y: content.y + content.height,
+      }).y
+    ).toBeCloseTo(VIEWPORT.height, 6);
   });
 
   /**
-   * A host that has not measured its frame yet has no travel to speak of, so the
-   * file's own offset is kept and changeViewport clamps it once there is a
-   * screen. Clamping against a screen of nothing would move it twice.
+   * At the end of the pure range the table's near edge sits exactly on the
+   * screen's far edge, so nothing of it is drawn: an origin standing there is
+   * pulled like one past it, where one a pixel inside is kept.
    */
-  it('keeps the offset until a screen exists, then lands it in range', () => {
-    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+  it('pulls an origin standing exactly on the end of the pure range', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 0, 0, [['t1', 0, 0]]) })
+    );
+    const { left } = getContentScrollRanges(store.state);
+    const rect = tableRect();
 
-    store.dispatchSync(loadJsonAction({ value: documentAt(0.3, 0, 0) }));
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, left.max, 0, [['t1', 0, 0]]) })
+    );
+    expect(store.state.settings.originX).not.toBe(left.max);
+    expect(
+      toScreenPoint(store.state.settings, { x: rect.x + rect.width, y: 0 }).x
+    ).toBeCloseTo(VIEWPORT.width, 6);
 
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, left.max - 1, 0, [['t1', 0, 0]]) })
+    );
+    expect(store.state.settings.originX).toBe(left.max - 1);
+  });
+
+  it('leaves an origin the travel already holds exactly where the file put it', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(0.3, 400, 300, [['t1', 0, 0]]) })
+    );
+
+    expect(store.state.settings.originX).toBe(400);
+    expect(store.state.settings.originY).toBe(300);
+  });
+
+  it('keeps the origin of an empty document wherever the file put it', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, -40_000) })
+    );
+
+    expect(store.state.settings.originX).toBe(40_000);
+    expect(store.state.settings.originY).toBe(-40_000);
+  });
+
+  /**
+   * A legacy document at zoom 0.3 with no scroll showed the 2000 box centred,
+   * an origin of 700 on each axis, inside the travel a table at the corner
+   * allows: the migrated origin is kept, and the legacy pair stays as written.
+   */
+  it('migrates a legacy document and keeps the origin the travel holds', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    const origin = migrated(0.3, 0, 0);
+
+    store.dispatchSync(
+      loadJsonAction({ value: legacyDocumentAt(0.3, 0, 0, [['t1', 0, 0]]) })
+    );
+
+    const { left, top } = getContentScrollRanges(store.state);
+    expect(origin.originX).toBeLessThan(left.max);
+    expect(origin.originY).toBeLessThan(top.max);
+    expect(store.state.settings).toMatchObject(origin);
     expect(store.state.settings.scrollLeft).toBe(0);
     expect(store.state.settings.scrollTop).toBe(0);
+  });
 
-    store.dispatchSync(changeViewportAction({ width: 1440, height: 900 }));
+  it('migrates a legacy document, then pulls an origin outside the travel in', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    const origin = migrated(0.3, -5_000, -6_000);
 
-    expect(store.state.settings.scrollLeft).toBe(-196);
-    expect(store.state.settings.scrollTop).toBe(-385);
+    store.dispatchSync(
+      loadJsonAction({
+        value: legacyDocumentAt(0.3, -5_000, -6_000, [['t1', 0, 0]]),
+      })
+    );
+
+    const { left, top } = getContentScrollRanges(store.state);
+    expect(origin.originX).toBeLessThan(left.min);
+    expect(origin.originY).toBeLessThan(top.min);
+    // From past the near end on both axes, the table's near corner lands on
+    // the screen's near corner, drawn at the migrated zoom.
+    const rect = tableRect();
+    const near = toScreenPoint(store.state.settings, { x: rect.x, y: rect.y });
+    expect(near.x).toBeCloseTo(0, 4);
+    expect(near.y).toBeCloseTo(0, 4);
+    expect(store.state.settings.scrollLeft).toBe(-5_000);
+    expect(store.state.settings.scrollTop).toBe(-6_000);
+  });
+
+  /**
+   * The freeze in one round trip: the view moves, the document is written, and
+   * the legacy pair reads back exactly as the file arrived with it, beside an
+   * origin that has moved on from the one it migrated to.
+   */
+  it('writes the legacy pair back unchanged after the view has moved', () => {
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    store.dispatchSync(
+      loadJsonAction({
+        value: legacyDocumentAt(0.3, -300, -400, [['t1', 1_000, 1_000]]),
+      })
+    );
+    const loaded = migrated(0.3, -300, -400);
+
+    store.dispatchSync(scrollToAction({ originX: 350, originY: 100 }));
+    store.dispatchSync(streamScrollToAction({ movementX: 10, movementY: 20 }));
+
+    const { settings } = parser(toJson(store.state));
+    expect(settings.originX).toBe(350 + 10);
+    expect(settings.originY).toBe(100 + 20);
+    expect(settings.originX).not.toBe(loaded.originX);
+    expect(settings.originY).not.toBe(loaded.originY);
+    expect(settings.scrollLeft).toBe(-300);
+    expect(settings.scrollTop).toBe(-400);
+  });
+
+  /**
+   * A host that has not measured its frame yet has no travel to speak of, so
+   * the file's own origin is kept and the pull waits for the first frame that
+   * reports a screen. Pulling against a screen of nothing would land nowhere.
+   */
+  it('keeps the origin until a screen exists, then pulls it into the content travel', () => {
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, -40_000, [['t1', 0, 0]]) })
+    );
+
+    expect(store.state.settings.originX).toBe(40_000);
+    expect(store.state.settings.originY).toBe(-40_000);
+    expect(store.state.editor.scrollPullPending).toBe(true);
+
+    store.dispatchSync(changeViewportAction({ width: 0, height: 900 }));
+    expect(store.state.settings.originX).toBe(40_000);
+    expect(store.state.editor.scrollPullPending).toBe(true);
+
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+
+    const rect = tableRect();
+    const { settings } = store.state;
+    expect(
+      toScreenPoint(settings, { x: rect.x + rect.width, y: rect.y }).x
+    ).toBeCloseTo(VIEWPORT.width, 6);
+    expect(toScreenPoint(settings, { x: rect.x, y: rect.y }).y).toBeCloseTo(
+      0,
+      6
+    );
+    expect(store.state.editor.scrollPullPending).toBe(false);
+  });
+
+  it('pulls only once: the next frame leaves the origin where the reader put it', () => {
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, 0, [['t1', 0, 0]]) })
+    );
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    store.dispatchSync(scrollToAction({ originX: 40_000, originY: 0 }));
+
+    store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+
+    expect(store.state.settings.originX).toBe(40_000);
+  });
+
+  it.each([
+    ['clear', clearAction],
+    ['initialClear', initialClearAction],
+  ])('drops a pending pull on %s', (_, clear) => {
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, 0, [['t1', 0, 0]]) })
+    );
+    expect(store.state.editor.scrollPullPending).toBe(true);
+
+    store.dispatchSync(clear());
+
+    expect(store.state.editor.scrollPullPending).toBe(false);
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    expect(store.state.settings.originX).toBe(40_000);
   });
 });
 
@@ -855,17 +1144,17 @@ describe('editor draw relationship', () => {
   it('translates the pointer into canvas coordinates', () => {
     addTable(store, 't1');
     store.state.settings.zoomLevel = 0.5;
-    store.state.settings.scrollLeft = 20;
-    store.state.settings.scrollTop = 30;
+    store.state.settings.originX = 20;
+    store.state.settings.originY = 30;
     store.dispatchSync(drawStartRelationshipAction({ relationshipType: 8 }));
     store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
 
     store.dispatchSync(drawRelationshipAction({ x: 120, y: 230 }));
 
-    // width/height are 2000: zoom viewport origin is (500, 500) at zoom 0.5
+    // The pointer less the origin, over the zoom: (120 - 20) / 0.5 and so on.
     expect(store.state.editor.drawRelationship?.end).toEqual({
-      x: -800,
-      y: -600,
+      x: 200,
+      y: 400,
     });
   });
 

@@ -6,7 +6,10 @@ import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import Memo from '@/components/erd/minimap/memo/Memo';
-import { getMinimapRatio } from '@/components/erd/minimap/minimapGeometry';
+import {
+  getMinimapLayout,
+  toMinimapPoint,
+} from '@/components/erd/minimap/minimapGeometry';
 import Table from '@/components/erd/minimap/table/Table';
 import { renderKonva } from '@/konva/host';
 
@@ -27,7 +30,6 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const {
-      settings: { width },
       doc: { tableIds, memoIds },
       collections,
     } = store.state;
@@ -42,29 +44,33 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
       .selectByIds(memoIds)
       .sort(byZIndex);
 
-    // One scale and no offset: the canvas box fills the minimap square whatever
-    // the zoom is, and the zoom is drawn by the viewport rectangle over it.
-    const scale = getMinimapRatio(width);
+    // The map's ratio as the one scale and its corner as the one offset: scene
+    // zero lands where the map puts it, and the centring in the minimap square
+    // is the container's to do, so nothing here restates it.
+    const layout = getMinimapLayout(store.state);
+    const place = toMinimapPoint(layout, { x: 0, y: 0 });
 
     return (
       <k-layer
         name="minimap-scene"
         listening={false}
-        scaleX={scale}
-        scaleY={scale}
+        scaleX={layout.ratio}
+        scaleY={layout.ratio}
+        x={place.x}
+        y={place.y}
       >
         {repeat(
           tables,
           table => table.id,
           table => (
-            <Table table={table} />
+            <Table table={table} ratio={layout.ratio} />
           )
         )}
         {repeat(
           memos,
           memo => memo.id,
           memo => (
-            <Memo memo={memo} />
+            <Memo memo={memo} ratio={layout.ratio} />
           )
         )}
       </k-layer>

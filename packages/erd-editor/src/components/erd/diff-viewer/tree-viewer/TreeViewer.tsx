@@ -11,9 +11,9 @@ import Icon from '@/components/primitives/icon/Icon';
 import { START_X, START_Y } from '@/constants/layout';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
+import { getOriginToPlace } from '@/konva/scene/viewport';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
-import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
 import * as styles from './TreeViewer.styles';
@@ -175,7 +175,7 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
 
   const move = ({ store }: AppContext, tableId: string) => {
     const {
-      settings: { width, height, zoomLevel },
+      settings: { zoomLevel },
       collections,
     } = store.state;
     const table = query(collections)
@@ -183,17 +183,14 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
       .selectById(tableId);
     if (!table) return;
 
-    const { x, y } = getAbsoluteZoomPoint(
-      { x: table.ui.x - START_X, y: table.ui.y - START_Y },
-      width,
-      height,
-      zoomLevel
-    );
+    // The table parks a zoomed START_X, START_Y in from the corner: the
+    // landing point the DOM scene had, kept so a jump looks the same.
+    const { x, y } = getOriginToPlace(zoomLevel, table.ui, {
+      x: START_X * zoomLevel,
+      y: START_Y * zoomLevel,
+    });
     store.dispatch(
-      scrollToAction({
-        scrollLeft: x * -1,
-        scrollTop: y * -1,
-      }),
+      scrollToAction({ originX: x, originY: y }),
       selectTableAction$(table.id, false)
     );
   };

@@ -10,12 +10,11 @@ import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
-  resizeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import {
-  canvasSizeInRange,
   toNumString,
   toZoomFormat,
   zoomLevelInRange,
@@ -37,16 +36,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
     const { store } = app.value;
     store.dispatch(changeDatabaseNameAction({ value: el.value }));
-  };
-
-  const handleResize = (event: Event) => {
-    const el = event.target as HTMLInputElement | null;
-    if (!el) return;
-
-    const size = canvasSizeInRange(el.value);
-    const { store } = app.value;
-    el.value = size.toString();
-    store.dispatch(resizeAction({ width: size, height: size }));
   };
 
   const handleZoomLevel = (event: Event) => {
@@ -99,8 +88,10 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   };
 
   return () => {
-    const { store } = app.value;
+    const { store, keyBindingMap } = app.value;
     const { settings, editor, doc } = store.state;
+    const title = (name: string, keyBindingName: KeyBindingName) =>
+      toShortcutTitle(keyBindingMap, name, keyBindingName);
 
     const showAutomaticTablePlacement =
       editor.openMap[Open.automaticTablePlacement];
@@ -128,14 +119,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           width={150}
           value={settings.databaseName}
           onInput={handleChangeDatabaseName}
-        />
-        <TextInput
-          title="canvas size"
-          placeholder="canvas size"
-          width={45}
-          value={settings.width.toString()}
-          numberOnly={true}
-          onChange={handleResize}
         />
         <TextInput
           title="zoom level"
@@ -197,7 +180,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           <Icon name="settings" size={16} />
         </div>
         <div class={styles.vertical}></div>
-        <div class={styles.menu} title="Search" on:click={handleSearch}>
+        <div
+          class={styles.menu}
+          title={title('Search', KeyBindingName.search)}
+          on:click={handleSearch}
+        >
           <Icon name="search" size={16} />
         </div>
         {props.enableThemeBuilder ? (
@@ -216,7 +203,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                   active: editor.hasUndo,
                 },
               ]}
-              title="Undo"
+              title={title('Undo', KeyBindingName.undo)}
               on:click={handleUndo}
             >
               <Icon name="undo-2" size={16} />
@@ -229,7 +216,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                   active: editor.hasRedo,
                 },
               ]}
-              title="Redo"
+              title={title('Redo', KeyBindingName.redo)}
               on:click={handleRedo}
             >
               <Icon name="redo-2" size={16} />

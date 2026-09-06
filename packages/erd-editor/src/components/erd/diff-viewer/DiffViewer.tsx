@@ -50,13 +50,15 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
     };
   };
 
+  // The pane is measured before either document lands in it, so a load pulls
+  // its origin against the pane rather than against the store's default size.
   prevApp.store.dispatchSync(
-    initialLoadJsonAction$(props.initialValue),
-    changeViewportAction(getViewport())
+    changeViewportAction(getViewport()),
+    initialLoadJsonAction$(props.initialValue)
   );
   app.store.dispatchSync(
-    initialLoadJsonAction$(toJson(originApp.store.state)),
-    changeViewportAction(getViewport())
+    changeViewportAction(getViewport()),
+    initialLoadJsonAction$(toJson(originApp.store.state))
   );
 
   const [prevDiffMap, diffMap] = diffState(

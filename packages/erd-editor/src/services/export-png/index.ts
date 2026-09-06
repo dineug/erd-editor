@@ -41,6 +41,12 @@ export type DocumentPngOptions = {
   toWidth: ToWidth;
   pixelRatio?: number;
   /**
+   * The zoom the image is drawn at, which is the editor's own rather than the
+   * document's whenever the author asked for the zoom not to be saved. Left
+   * out, the image is drawn at the zoom the document carries.
+   */
+  zoomLevel?: number;
+  /**
    * Called once, after a file exists, when the box outran what a canvas holds
    * and the image had to be scaled down. A caller with somewhere to put it is
    * what turns a silent loss of resolution into something the author is told.
@@ -51,8 +57,8 @@ export type DocumentPngOptions = {
 };
 
 /**
- * One image pixel per canvas unit, so the png is exactly the canvas box for
- * every box a canvas can hold.
+ * One image pixel per scene unit at the zoom it is drawn at, so the png is
+ * exactly the box the document draws for every box a canvas can hold.
  */
 const DEFAULT_PIXEL_RATIO = 1;
 
@@ -132,9 +138,9 @@ function report(
 }
 
 /**
- * A png of the whole canvas box, whatever the editor is scrolled or zoomed to.
- * The scene is drawn again from the document rather than read off the screen,
- * which is what makes the image the same however the editor is being viewed.
+ * A png of everything the document draws, at the zoom it is being read at. The
+ * scene is drawn again from the document rather than read off the screen, so
+ * the image holds the whole document however far it was scrolled away.
  *
  * @example
  * const blob = await createDocumentPng({ doc: toJson(store.state), theme, toWidth });
@@ -144,6 +150,7 @@ export async function createDocumentPng({
   theme,
   toWidth,
   pixelRatio = DEFAULT_PIXEL_RATIO,
+  zoomLevel,
   onResolutionReduced,
   onProgress,
 }: DocumentPngOptions): Promise<Blob> {
@@ -154,7 +161,7 @@ export async function createDocumentPng({
   // Copied, not passed on: the editor hands out its palette as an observable
   // proxy, and a proxy is what structuredClone refuses, so a worker sent the
   // live object gets a DataCloneError instead of an image.
-  const request = { doc, theme: { ...theme }, pixelRatio };
+  const request = { doc, theme: { ...theme }, pixelRatio, zoomLevel };
   const reporters = { onResolutionReduced, onProgress };
 
   if (typeof SharedWorker !== 'undefined') {

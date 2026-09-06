@@ -121,7 +121,6 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'memo.resize',
   // settings
   'settings.changeDatabaseName',
-  'settings.resize',
   'settings.changeZoomLevel',
   'settings.streamZoomLevel',
   'settings.scrollTo',

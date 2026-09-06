@@ -284,18 +284,16 @@ describe('DragSelect - store', () => {
     });
   });
 
-  it('shifts the dragged rect by the current canvas scroll', async () => {
+  it('shifts the dragged rect by the current canvas origin', async () => {
     const app = createTestAppContext();
     seedTable(app, 't1', 0, 0);
     seedTable(app, 't2', 0, 100);
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -100, scrollTop: -100 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -100, originY: -100 }));
     const mounted = await openMarquee(0, 0, app);
 
     await moveTo(mounted.root, 300, 300);
 
-    // Without the scroll both tables overlap; the -100 shift drops t1.
+    // With the origin at zero both tables overlap; the -100 shift drops t1.
     expect({ ...app.store.state.editor.selectedMap }).toEqual({
       t2: SelectType.table,
     });
@@ -304,14 +302,16 @@ describe('DragSelect - store', () => {
   it('maps the rect into canvas space using the zoom level', async () => {
     const app = createTestAppContext();
     seedTable(app, 't1', 0, 0);
-    seedTable(app, 't2', -800, -800);
+    seedTable(app, 't2', 400, 400);
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     const mounted = await openMarquee(0, 0, app);
 
     await moveTo(mounted.root, 300, 300);
 
-    // At 50% zoom the 0..300 screen rect maps to -1000..-400 on the canvas.
+    // At 50% zoom and an origin of zero the 0..300 screen rect maps to 0..600
+    // on the canvas, which reaches t2 where the same rect at zoom 1 would not.
     expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      t1: SelectType.table,
       t2: SelectType.table,
     });
   });
@@ -343,7 +343,7 @@ describe('DragSelect - store', () => {
   it('shares the same absolute rect the selection was computed from', async () => {
     const app = createTestAppContext();
     seedTable(app, 't1', 0, 0);
-    seedTable(app, 't2', -800, -800);
+    seedTable(app, 't2', 400, 400);
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     const mounted = await openMarquee(0, 0, app);
     const { rects, unsubscribe } = recordDragSelectRects(app);
@@ -351,18 +351,16 @@ describe('DragSelect - store', () => {
     await moveTo(mounted.root, 300, 300);
     unsubscribe();
 
-    // The same -1000..-400 canvas rect the selection above is derived from,
-    // not the 0..300 screen box the marquee is drawn with.
-    const shared = { x: -1000, y: -1000, w: 600, h: 600 };
+    // The same 0..600 canvas rect the selection above is derived from, not the
+    // 0..300 screen box the marquee is drawn with.
+    const shared = { x: 0, y: 0, w: 600, h: 600 };
     expect(rects).toEqual([shared]);
     expect(app.store.state.editor.dragSelect).toEqual(shared);
   });
 
-  it('shares the rect shifted by the canvas scroll', async () => {
+  it('shares the rect shifted by the canvas origin', async () => {
     const app = createTestAppContext();
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -100, scrollTop: -100 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -100, originY: -100 }));
     const mounted = await openMarquee(0, 0, app);
     const { rects, unsubscribe } = recordDragSelectRects(app);
 

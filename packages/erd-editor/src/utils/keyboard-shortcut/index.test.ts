@@ -28,10 +28,10 @@ describe('keyboard-shortcut', () => {
       }
     });
 
-    it('lists all 20 binding names', () => {
-      expect(KeyBindingNameList).toHaveLength(20);
+    it('lists all 23 binding names', () => {
+      expect(KeyBindingNameList).toHaveLength(23);
       expect(KeyBindingNameList).toEqual(Object.values(KeyBindingName));
-      expect(KeyBindingNameList).toContain('zoomOut');
+      expect(KeyBindingNameList).toContain('zenMode');
     });
   });
 
@@ -85,6 +85,31 @@ describe('keyboard-shortcut', () => {
       ]);
       expect(map.zoomOut).toEqual([
         { shortcut: '$mod+Minus', preventDefault: true, stopPropagation: true },
+      ]);
+      expect(map.zoomReset).toEqual([
+        { shortcut: '$mod+KeyO', preventDefault: true, stopPropagation: true },
+      ]);
+    });
+
+    it('binds select all to the plain $mod+A a canvas is expected to answer, keeping the older chord', () => {
+      const map = createKeyBindingMap();
+
+      expect(map.selectAllTable).toEqual([
+        { shortcut: '$mod+KeyA', preventDefault: true },
+        { shortcut: '$mod+Alt+KeyA', preventDefault: true },
+      ]);
+    });
+
+    it('binds the two canvas modes to a bare Space and to Alt+Z', () => {
+      const map = createKeyBindingMap();
+
+      // Space carries no stopPropagation: a caret owns it as a space, and
+      // useKeyBindingMap is where the binding stands down for one.
+      expect(map.handTool).toEqual([
+        { shortcut: 'Space', preventDefault: true },
+      ]);
+      expect(map.zenMode).toEqual([
+        { shortcut: 'Alt+KeyZ', preventDefault: true },
       ]);
     });
 

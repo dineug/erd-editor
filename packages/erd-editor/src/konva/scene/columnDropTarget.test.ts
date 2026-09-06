@@ -14,6 +14,7 @@ import { createEditor } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import { findColumnDropTarget } from '@/konva/scene/columnDropTarget';
 import { getTableRect } from '@/konva/scene/metrics';
+import { toScenePoint } from '@/konva/scene/viewport';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
@@ -131,15 +132,13 @@ describe('the row a column drag drops on (AC-G5)', () => {
 
   it('names the row under a pointer on a canvas the zoom has shrunk', () => {
     const state = createState();
-    state.settings.width = 8000;
-    state.settings.height = 8000;
     state.settings.zoomLevel = 0.5;
     state.editor.viewport = { width: 1000, height: 1000 };
     // What the middle of the screen inverts to here. The culling rect this
     // shares with the scene used to have dropped the table before the row
     // arithmetic ever ran, so a drag over a visible row found nothing.
-    const centre = (500 - (8000 * (1 - 0.5)) / 2) / 0.5;
-    addTable(state, 't1', centre, centre, ['c1', 'c2']);
+    const centre = toScenePoint(state.settings, { x: 500, y: 500 });
+    addTable(state, 't1', centre.x, centre.y, ['c1', 'c2']);
 
     expect(findColumnDropTarget(state, rowCentre(state, 't1', 1))).toEqual({
       tableId: 't1',

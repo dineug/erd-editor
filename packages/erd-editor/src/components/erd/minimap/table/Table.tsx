@@ -3,6 +3,7 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { getMinimapMarkRect } from '@/components/erd/minimap/minimapGeometry';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_BORDER } from '@/constants/layout';
 import type { Table } from '@/internal-types';
@@ -13,12 +14,14 @@ const CORNER_RADIUS = 6;
 
 export type TableProps = {
   table: Table;
+  /** Thumbnail pixels per scene unit, which is what the box is floored at. */
+  ratio: number;
 };
 
 /**
- * A table as the minimap draws it: the box and nothing in it. The id stays off
- * the node because two stages spelling one id make an id scan ambiguous, so a
- * minimap node is found by its name and the table it carries.
+ * A table as the minimap draws it: the box and nothing in it, no smaller than a
+ * mark however far the map is folded. The id stays off the node because two
+ * stages spelling one id make an id scan ambiguous, so it is found by name and table.
  */
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -26,9 +29,9 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
-    const { table } = props;
+    const { table, ratio } = props;
     const theme = themeRef.value;
-    const rect = getTableRect(store.state, table);
+    const rect = getMinimapMarkRect(ratio, getTableRect(store.state, table));
 
     return (
       <k-rect

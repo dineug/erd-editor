@@ -12,8 +12,11 @@ import {
   CLIPBOARD_HTML_ATTR,
   CLIPBOARD_HTML_TRUNCATED_ATTR,
   ClipboardColumn,
+  ClipboardIndex,
+  ClipboardIndexColumn,
   ClipboardMemo,
   ClipboardPayload,
+  ClipboardRelationship,
   ClipboardTable,
   createPayload,
   getShowColumnOrder,
@@ -102,10 +105,13 @@ function getTableData({
   );
 }
 
-export function entitiesCopyToPayload({
-  editor: { selectedMap },
-  collections,
-}: RootState): ClipboardPayload | null {
+export function entitiesCopyToPayload(
+  state: RootState
+): ClipboardPayload | null {
+  const {
+    editor: { selectedMap },
+    collections,
+  } = state;
   const tableIds: string[] = [];
   const memoIds: string[] = [];
 
@@ -131,13 +137,88 @@ export function entitiesCopyToPayload({
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds)
   );
+  const copiedTableIds = tables.map(({ id }) => id);
 
   return createPayload({
     kind: PayloadKind.tables,
     tables: tables.map(toClipboardTable),
     columns: columns.map(toClipboardColumn),
     memos: memos.map(toClipboardMemo),
+    relationships: toClipboardRelationships(state, copiedTableIds),
+    indexes: toClipboardIndexes(state, copiedTableIds),
   });
+}
+
+/**
+ * A relationship is copied only when both end tables are in the copied set:
+ * half of one would point at the source tables, and relationshipSort refuses to
+ * route it while the scene still draws it at the old anchors.
+ */
+export function toClipboardRelationships(
+  { doc, collections }: Pick<RootState, 'doc' | 'collections'>,
+  tableIds: string[]
+): ClipboardRelationship[] {
+  const hasTableId = arrayHas(tableIds);
+
+  return query(collections)
+    .collection('relationshipEntities')
+    .selectByIds(doc.relationshipIds)
+    .filter(
+      ({ start, end }) => hasTableId(start.tableId) && hasTableId(end.tableId)
+    )
+    .map(({ relationshipType, start, end }) => ({
+      relationshipType,
+      start: { tableId: start.tableId, columnIds: [...start.columnIds] },
+      end: { tableId: end.tableId, columnIds: [...end.columnIds] },
+    }));
+}
+
+/**
+ * An index is copied whole or not at all, because a narrower copy of a
+ * composite index means something else — the same reason removeColumnAction$
+ * removes a whole index when one of its columns goes.
+ */
+export function toClipboardIndexes(
+  { doc, collections }: Pick<RootState, 'doc' | 'collections'>,
+  tableIds: string[]
+): ClipboardIndex[] {
+  const hasTableId = arrayHas(tableIds);
+  const indexColumnCollection = query(collections).collection(
+    'indexColumnEntities'
+  );
+  const clipboardIndexes: ClipboardIndex[] = [];
+
+  for (const index of query(collections)
+    .collection('indexEntities')
+    .selectByIds(doc.indexIds)) {
+    if (!hasTableId(index.tableId)) continue;
+
+    const indexColumns: ClipboardIndexColumn[] = [];
+    let resolved = true;
+
+    for (const indexColumnId of index.indexColumnIds) {
+      const indexColumn = indexColumnCollection.selectById(indexColumnId);
+      if (!indexColumn) {
+        resolved = false;
+        break;
+      }
+
+      indexColumns.push({
+        columnId: indexColumn.columnId,
+        orderType: indexColumn.orderType,
+      });
+    }
+    if (!resolved) continue;
+
+    clipboardIndexes.push({
+      tableId: index.tableId,
+      name: index.name,
+      unique: index.unique,
+      indexColumns,
+    });
+  }
+
+  return clipboardIndexes;
 }
 
 export function columnsCopyToPayload({

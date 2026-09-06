@@ -176,9 +176,11 @@ describe('exportMenus', () => {
 
   it('tells the user what it gave up when the image is scaled down', async () => {
     vi.mocked(createDocumentPng).mockImplementationOnce(async options => {
+      // The box is the content plus a margin in scene units, so it arrives
+      // fractional and is rounded to the whole units the message reads in.
       options.onResolutionReduced?.({
-        documentWidth: 20_000,
-        documentHeight: 20_000,
+        documentWidth: 20_378.5,
+        documentHeight: 20_000.4,
         width: 16_384,
         height: 16_384,
       });
@@ -193,7 +195,7 @@ describe('exportMenus', () => {
     expect(exported).toHaveLength(1);
     expect(toasts).toHaveLength(1);
     expect(toasts[0].payload.message.values).toContain(
-      'The document is 20000x20000, past what a browser canvas can hold, so the PNG is 16384x16384'
+      'The document is 20379x20000, past what a browser canvas can hold, so the PNG is 16384x16384'
     );
     off();
   });
@@ -268,9 +270,11 @@ describe('exportMenus', () => {
     const render = createDeferred<void>();
     vi.mocked(createDocumentPng).mockImplementationOnce(async options => {
       await render.promise;
+      // The box is the content plus a margin in scene units, so it arrives
+      // fractional and is rounded to the whole units the message reads in.
       options.onResolutionReduced?.({
-        documentWidth: 20_000,
-        documentHeight: 20_000,
+        documentWidth: 20_378.5,
+        documentHeight: 20_000.4,
         width: 16_384,
         height: 16_384,
       });
@@ -287,7 +291,7 @@ describe('exportMenus', () => {
     expect(log).toEqual([
       'open Exporting PNG…',
       'close Exporting PNG…',
-      'open Exported at a reduced resolution | The document is 20000x20000, past what a browser canvas can hold, so the PNG is 16384x16384',
+      'open Exported at a reduced resolution | The document is 20379x20000, past what a browser canvas can hold, so the PNG is 16384x16384',
     ]);
     expect(exported).toHaveLength(1);
     off();

@@ -4,7 +4,9 @@ import { useAppContext } from '@/components/appContext';
 import { Open } from '@/constants/open';
 import { RelationshipType } from '@/constants/schema';
 import {
+  changeHandToolAction,
   changeOpenMapAction,
+  changeZenModeAction,
   drawEndRelationshipAction,
   editTableAction,
   editTableEndAction,
@@ -27,7 +29,10 @@ import {
   SelectType,
 } from '@/engine/modules/editor/state';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
-import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import {
+  changeZoomLevelAction$,
+  streamZoomLevelAction$,
+} from '@/engine/modules/settings/generator.actions';
 import {
   addTableAction$,
   pasteTableAction$,
@@ -73,6 +78,9 @@ const isRelationshipKeyBindingName = arrayHas<string>([
   KeyBindingName.relationshipOneOnly,
   KeyBindingName.relationshipOneN,
 ]);
+
+/** The zoom a document opens at, and the one the reset chord puts it back to. */
+const ZOOM_RESET = 1;
 
 const keyBindingNameToRelationshipType: Record<string, number> = {
   [KeyBindingName.relationshipZeroOne]: RelationshipType.ZeroOne,
@@ -182,10 +190,19 @@ export function useErdShortcut(ctx: Ctx) {
         }
       }
 
+      type === KeyBindingName.handTool &&
+        store.dispatch(changeHandToolAction({ value: !editor.handTool }));
+      type === KeyBindingName.zenMode &&
+        store.dispatch(changeZenModeAction({ value: !editor.zenMode }));
+
       type === KeyBindingName.zoomIn &&
         store.dispatch(streamZoomLevelAction$(0.04));
       type === KeyBindingName.zoomOut &&
         store.dispatch(streamZoomLevelAction$(-0.04));
+      // Absolute rather than a run of steps, so it holds the middle of the
+      // screen the way the toolbar's own zoom does.
+      type === KeyBindingName.zoomReset &&
+        store.dispatch(changeZoomLevelAction$(ZOOM_RESET));
     }
 
     if (!showHighLevelTable && !isEditingMemo(editor)) {

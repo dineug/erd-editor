@@ -26,8 +26,8 @@ const createSettings = (partial: Partial<Settings> = {}): Settings => ({
   ...schemaV3Parser({}).settings,
   width: 2000,
   height: 2000,
-  scrollTop: 0,
-  scrollLeft: 0,
+  originX: 0,
+  originY: 0,
   zoomLevel: 1,
   ...partial,
 });

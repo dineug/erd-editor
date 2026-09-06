@@ -150,7 +150,7 @@ erd-editor {
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance`, `grayColor` and `accentColor`. |
 | `setTheme(theme)` | Override individual theme tokens. |
-| `setKeyBindingMap(map)` | Remap shortcuts. `edit`, `stop`, `search`, `undo`, `redo`, `zoomIn` and `zoomOut` are reserved. |
+| `setKeyBindingMap(map)` | Remap shortcuts. `edit`, `stop`, `search`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
 | `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport. `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
 | `focus()` / `blur()` | Move focus in and out of the editor. |
 | `clear()` | Empty the document. |

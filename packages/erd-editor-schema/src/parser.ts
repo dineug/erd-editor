@@ -26,24 +26,23 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
     'doc',
     'collections',
   ]);
+  const settings = { ...source.settings };
+  source.settings = settings;
 
   if (
-    bHas(
-      source.settings.ignoreSaveSettings,
-      SchemaV3Constants.SaveSettingType.scroll
-    )
+    bHas(settings.ignoreSaveSettings, SchemaV3Constants.SaveSettingType.scroll)
   ) {
-    source.settings.scrollTop = 0;
-    source.settings.scrollLeft = 0;
+    settings.originX = 0;
+    settings.originY = 0;
   }
 
   if (
     bHas(
-      source.settings.ignoreSaveSettings,
+      settings.ignoreSaveSettings,
       SchemaV3Constants.SaveSettingType.zoomLevel
     )
   ) {
-    source.settings.zoomLevel = 1;
+    settings.zoomLevel = 1;
   }
 
   return JSON.stringify(source, null, 2);

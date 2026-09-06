@@ -34,6 +34,8 @@ export const ActionType = {
   hoverColumnMap: 'editor.hoverColumnMap',
   hoverRelationshipMap: 'editor.hoverRelationshipMap',
   changeOpenMap: 'editor.changeOpenMap',
+  changeHandTool: 'editor.changeHandTool',
+  changeZenMode: 'editor.changeZenMode',
   dragstartColumn: 'editor.dragstartColumn',
   dragendColumn: 'editor.dragendColumn',
   sharedMouseTracker: 'editor.sharedMouseTracker',
@@ -113,6 +115,12 @@ export type ActionMap = {
     relationshipIds: string[];
   };
   [ActionType.changeOpenMap]: Record<string, boolean>;
+  [ActionType.changeHandTool]: {
+    value: boolean;
+  };
+  [ActionType.changeZenMode]: {
+    value: boolean;
+  };
   [ActionType.dragstartColumn]: {
     tableId: string;
     columnIds: string[];

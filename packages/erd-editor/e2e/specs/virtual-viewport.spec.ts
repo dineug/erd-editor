@@ -9,16 +9,15 @@ import {
 // was never on screen has no node, a table that scrolled off stays built but
 // hidden for a while, and the minimap, the map of the rest, keeps all of it.
 
-/** A canvas wide enough that the scroll can leave a screen behind. */
-const CANVAS = 6000;
-
-/** How far the far group sits from the origin, in canvas units. */
+/**
+ * How far the far group sits from the near one, in scene units. Far enough that
+ * a scroll to it leaves a whole screen behind, and inside the travel the content
+ * itself allows, which is all there is to reach now.
+ */
 const FAR_X = 4200;
 
 function spreadDocument(): ErdDocument {
   return createSchema({
-    width: CANVAS,
-    height: CANVAS,
     tables: [
       {
         id: 'near',
@@ -87,7 +86,7 @@ test.describe('virtual viewport', () => {
 
     await erd.wheel(0, { deltaX: 2900 });
     await expect
-      .poll(async () => Math.round((await erd.settings()).scrollLeft))
+      .poll(async () => Math.round((await erd.settings()).originX))
       .toBe(-2900);
     await erd.whenDrawn();
 
@@ -106,7 +105,7 @@ test.describe('virtual viewport', () => {
 
     await erd.wheel(0, { deltaX: -2900 });
     await expect
-      .poll(async () => Math.round((await erd.settings()).scrollLeft))
+      .poll(async () => Math.round((await erd.settings()).originX))
       .toBe(0);
     await erd.whenDrawn();
 

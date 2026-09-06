@@ -11,11 +11,14 @@ import { isNil, isString, noop } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType } from '@/constants/schema';
-import { createScrollInRange } from '@/engine/modules/settings/atom.actions';
+import {
+  getOpeningOrigin,
+  hasViewport,
+} from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
+import { toScenePoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
-import { getAbsolutePoint } from '@/utils/dragSelect';
 import { hasCanvasType } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
@@ -99,21 +102,10 @@ export const changeViewportAction = createAction<
   ActionMap[typeof ActionType.changeViewport]
 >(ActionType.changeViewport);
 
-/** Pulls both offsets into the travel the viewport and the zoom now allow. */
-function clampScrollOffsets({ settings, editor }: RootState) {
-  const { scrollLeftInRange, scrollTopInRange } = createScrollInRange(
-    settings,
-    editor.viewport
-  );
-
-  settings.scrollLeft = round(scrollLeftInRange(settings.scrollLeft), 4);
-  settings.scrollTop = round(scrollTopInRange(settings.scrollTop), 4);
-}
-
 /**
- * The screen the canvas is looking through. Growing it widens the travel the
- * scroll is allowed, and shrinking it narrows it, so the offsets are clamped
- * again here: a scroll left outside the new range shows a band of nothing.
+ * The screen the canvas is looking through. A load that found no screen left
+ * its origin waiting, and the first frame that reports one lands it in the
+ * content's own travel; every other resize moves nothing, wherever the origin stands.
  */
 const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
   state,
@@ -121,7 +113,10 @@ const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
 ) => {
   state.editor.viewport.width = width;
   state.editor.viewport.height = height;
-  clampScrollOffsets(state);
+
+  if (state.editor.scrollPullPending) {
+    pullScrollIntoRange(state);
+  }
 };
 
 export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
@@ -132,18 +127,27 @@ const clear: ReducerType<typeof ActionType.clear> = state => {
   const { doc, collections } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
+  state.editor.scrollPullPending = false;
 };
 
 /**
- * The scroll a loaded document carries, pulled into the travel its own zoom
- * allows. A file can name an offset no zoom below 1 can hold, and the load path
- * clamps nowhere else, so the first wheel notch would jump the whole distance.
+ * The origin a loaded document carries, kept while it draws any of the content
+ * and otherwise pulled to where a screen's worth of it is, so the file opens on
+ * what it holds rather than on empty canvas. An unmeasured frame waits for one.
  */
 function pullScrollIntoRange(state: RootState) {
-  const { viewport } = state.editor;
-  if (!viewport.width || !viewport.height) return;
+  const { settings, editor } = state;
 
-  clampScrollOffsets(state);
+  if (!hasViewport(editor.viewport)) {
+    editor.scrollPullPending = true;
+    return;
+  }
+
+  const origin = getOpeningOrigin(state);
+
+  settings.originX = round(origin.x, 4);
+  settings.originY = round(origin.y, 4);
+  editor.scrollPullPending = false;
 }
 
 export const loadJsonAction = createAction<
@@ -174,6 +178,7 @@ const initialClear: ReducerType<typeof ActionType.initialClear> = state => {
   const { doc, collections } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
+  state.editor.scrollPullPending = false;
 };
 
 export const initialLoadJsonAction = createAction<
@@ -469,23 +474,15 @@ export const drawRelationshipAction = createAction<
 >(ActionType.drawRelationship);
 
 const drawRelationship: ReducerType<typeof ActionType.drawRelationship> = (
-  {
-    editor: { drawRelationship },
-    settings: { scrollLeft, scrollTop, zoomLevel, width, height },
-  },
+  { editor: { drawRelationship }, settings },
   { payload: { x, y } }
 ) => {
   if (!drawRelationship?.start) return;
 
-  const absolutePoint = getAbsolutePoint(
-    { x: x - scrollLeft, y: y - scrollTop },
-    width,
-    height,
-    zoomLevel
-  );
+  const scenePoint = toScenePoint(settings, { x, y });
 
-  drawRelationship.end.x = absolutePoint.x;
-  drawRelationship.end.y = absolutePoint.y;
+  drawRelationship.end.x = scenePoint.x;
+  drawRelationship.end.y = scenePoint.y;
 };
 
 export const hoverColumnMapAction = createAction<
@@ -530,6 +527,36 @@ const changeOpenMap: ReducerType<typeof ActionType.changeOpenMap> = (
   { payload }
 ) => {
   Object.assign(editor.openMap, payload);
+};
+
+export const changeHandToolAction = createAction<
+  ActionMap[typeof ActionType.changeHandTool]
+>(ActionType.changeHandTool);
+
+/**
+ * The tool a press on the canvas is read as. Drawing a relationship is a third
+ * thing the same press can mean, so taking the hand up ends a draw that was
+ * still running rather than leaving two modes armed at once.
+ */
+const changeHandTool: ReducerType<typeof ActionType.changeHandTool> = (
+  { editor },
+  { payload: { value } }
+) => {
+  editor.handTool = value;
+  if (value) {
+    editor.drawRelationship = null;
+  }
+};
+
+export const changeZenModeAction = createAction<
+  ActionMap[typeof ActionType.changeZenMode]
+>(ActionType.changeZenMode);
+
+const changeZenMode: ReducerType<typeof ActionType.changeZenMode> = (
+  { editor },
+  { payload: { value } }
+) => {
+  editor.zenMode = value;
 };
 
 export const dragstartColumnAction = createAction<
@@ -884,6 +911,8 @@ export const editorReducers = {
   [ActionType.hoverColumnMap]: hoverColumnMap,
   [ActionType.hoverRelationshipMap]: hoverRelationshipMap,
   [ActionType.changeOpenMap]: changeOpenMap,
+  [ActionType.changeHandTool]: changeHandTool,
+  [ActionType.changeZenMode]: changeZenMode,
   [ActionType.dragstartColumn]: dragstartColumn,
   [ActionType.dragendColumn]: dragendColumn,
   [ActionType.sharedMouseTracker]: sharedMouseTracker,
@@ -923,6 +952,8 @@ export const actions = {
   hoverColumnMapAction,
   hoverRelationshipMapAction,
   changeOpenMapAction,
+  changeHandToolAction,
+  changeZenModeAction,
   dragstartColumnAction,
   dragendColumnAction,
   sharedMouseTrackerAction,

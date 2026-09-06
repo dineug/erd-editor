@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { CANVAS_ZOOM_MIN } from '@/constants/schema';
-import { getSceneOrigin } from '@/konva/scene/viewport';
+import { getOriginToPlace } from '@/konva/scene/viewport';
 
 export type Segment = {
   relationshipId: string;
@@ -447,12 +447,12 @@ export function measureQuality(scene: Scene): QualityMetrics {
 
 export type SceneView = {
   zoomLevel: number;
-  scrollLeft: number;
-  scrollTop: number;
+  originX: number;
+  originY: number;
 };
 
 /**
- * A scroll and zoom that leave the whole canvas inside the culling rect, so a
+ * An origin and zoom that leave the whole canvas inside the culling rect, so a
  * quality read covers every connector rather than the on-screen ones. Two of
  * the rect's three screens hold the drawn box, centred.
  *
@@ -468,19 +468,13 @@ export function fitWholeCanvas(
     CANVAS_ZOOM_MIN,
     Math.min(1, (viewport.width * 2) / width, (viewport.height * 2) / height)
   );
-  // getSceneOrigin is the scroll plus a term that does not move with it, so
-  // the scroll that centres the drawn box is the difference between the two.
-  const origin = getSceneOrigin({
-    width,
-    height,
+  // Centred is the middle of the box under the middle of the screen, which is
+  // one question for the canon rather than an arithmetic of its own.
+  const origin = getOriginToPlace(
     zoomLevel,
-    scrollLeft: 0,
-    scrollTop: 0,
-  });
+    { x: width / 2, y: height / 2 },
+    { x: viewport.width / 2, y: viewport.height / 2 }
+  );
 
-  return {
-    zoomLevel,
-    scrollLeft: (viewport.width - width * zoomLevel) / 2 - origin.x,
-    scrollTop: (viewport.height - height * zoomLevel) / 2 - origin.y,
-  };
+  return { zoomLevel, originX: origin.x, originY: origin.y };
 }

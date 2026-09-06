@@ -338,6 +338,54 @@ test.describe('keyboard shortcuts', () => {
     ).toHaveCount(0);
   });
 
+  test('$mod+KeyA selects every table and memo, and a caret keeps it for its own text', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'users',
+            name: 'users',
+            x: 160,
+            y: 160,
+            columns: [{ id: 'users_id', name: 'id', dataType: 'int' }],
+          },
+          {
+            id: 'posts',
+            name: 'posts',
+            x: 760,
+            y: 420,
+            columns: [{ id: 'posts_id', name: 'id', dataType: 'int' }],
+          },
+        ],
+        memos: [
+          {
+            id: 'note',
+            value: 'note',
+            x: 520,
+            y: 640,
+            width: 100,
+            height: 100,
+          },
+        ],
+      })
+    );
+
+    // A caret owns the chord first: pressed in the toolbar's own input it
+    // selects that text and the document hears nothing of it.
+    await erd.toolbar.locator('input[title="database name"]').click();
+    await erd.press(Shortcut.selectAll);
+    await expect(erd.selectedTables()).toHaveCount(0);
+
+    await erd.focusCanvas();
+    await erd.expectKeyboardFocusInside();
+    await erd.press(Shortcut.selectAll);
+
+    await expect(erd.selectedTables()).toHaveCount(2);
+    await expect(erd.memoEl('note')).toHaveAttribute('data-selected', '');
+  });
+
   test('shortcuts stay inside the editor: an outside element swallows them', async ({
     erd,
     page,
@@ -567,6 +615,7 @@ const PRESSES: Press[] = [
   binding('search', Shortcut.search),
   binding('zoomIn', Shortcut.zoomIn),
   binding('zoomOut', Shortcut.zoomOut),
+  binding('zoomReset', Shortcut.zoomReset),
   binding('ArrowUp', 'ArrowUp'),
   binding('ArrowDown', 'ArrowDown'),
   binding('ArrowLeft', 'ArrowLeft'),
@@ -1025,6 +1074,7 @@ test.describe('an IME composition owns the keyboard', () => {
       Shortcut.tableProperties,
       Shortcut.zoomIn,
       Shortcut.zoomOut,
+      Shortcut.zoomReset,
       Shortcut.search,
     ]) {
       await erd.press(chord);

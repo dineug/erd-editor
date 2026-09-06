@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { MINIMAP_MARK_MIN } from '@/components/erd/minimap/minimapGeometry';
 import Table from '@/components/erd/minimap/table/Table';
 import { TABLE_BORDER } from '@/constants/layout';
 import { Show } from '@/constants/schema';
@@ -51,9 +52,14 @@ const createTable = (
   meta: { updateAt: 0, createAt: 0 },
 });
 
+/**
+ * Mounts the box at a ratio of one thumbnail pixel per scene unit unless told
+ * otherwise, which is where every box is past the mark and drawn at its own size.
+ */
 async function mountTable(
   table: TableType = createTable(),
-  app: AppContext = createTestAppContext()
+  app: AppContext = createTestAppContext(),
+  ratio = 1
 ): Promise<Stage> {
   const container = document.createElement('div');
   document.body.append(container);
@@ -63,7 +69,7 @@ async function mountTable(
     container,
     scene: (
       <k-layer name="scene">
-        <Table table={table} />
+        <Table table={table} ratio={ratio} />
       </k-layer>
     ),
     width: 400,
@@ -165,5 +171,28 @@ describe('the minimap table box', () => {
     expect(box.getAttr('fill')).toBe(THEME.tableBackground);
     expect(box.getAttr('stroke')).toBe(THEME.tableBorder);
     expect(box.getAttr('strokeWidth')).toBe(TABLE_BORDER);
+  });
+
+  /**
+   * On a map folded far the table's own height draws under a pixel, so the box
+   * is grown to the mark about the table's middle, the stroke still centred a
+   * border in from it, and the wider side is left the table's own.
+   */
+  it('draws no smaller than a mark at a ratio that folds the table away', async () => {
+    const ratio = 0.005;
+    const stage = await mountTable(
+      createTable(),
+      createTestAppContext(),
+      ratio
+    );
+    const box = boxOf(stage);
+    const mark = MINIMAP_MARK_MIN / ratio;
+
+    expect(56 * ratio).toBeLessThan(MINIMAP_MARK_MIN);
+    expect(365 * ratio).toBeLessThan(MINIMAP_MARK_MIN);
+    expect(box.width() + TABLE_BORDER).toBeCloseTo(mark, 9);
+    expect(box.height() + TABLE_BORDER).toBeCloseTo(mark, 9);
+    expect(box.x() - TABLE_BORDER / 2 + mark / 2).toBeCloseTo(11 + 365 / 2, 9);
+    expect(box.y() - TABLE_BORDER / 2 + mark / 2).toBeCloseTo(22 + 56 / 2, 9);
   });
 });

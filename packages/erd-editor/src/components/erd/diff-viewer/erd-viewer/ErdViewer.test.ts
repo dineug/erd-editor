@@ -15,6 +15,7 @@ import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 
 let mounted: Mounted | null = null;
@@ -25,9 +26,16 @@ afterEach(() => {
   window.dispatchEvent(new MouseEvent('mouseup'));
 });
 
+/** A screen over two tables far apart, which gives the origin travel to scroll over. */
 function createApp(): AppContext {
   const app = createTestAppContext();
   app.store.dispatchSync(changeViewportAction({ width: 1000, height: 800 }));
+  app.store.dispatchSync(
+    addTableAction({ id: 'near', ui: { x: 0, y: 0, zIndex: 2 } })
+  );
+  app.store.dispatchSync(
+    addTableAction({ id: 'far', ui: { x: 2_000, y: 2_000, zIndex: 2 } })
+  );
   return app;
 }
 
@@ -77,7 +85,7 @@ const DOM_GUARDS = [
   'edit-overlay',
   'edit-input',
   'context-menu-content',
-  'hide-sign',
+  'content-compass',
   'minimap',
   'minimap-viewport',
   'virtual-scroll',
@@ -141,6 +149,19 @@ describe('ErdViewer', () => {
     expect(root.querySelector('[data-testid="erd-canvas"]')).toBeTruthy();
   });
 
+  it('draws the compass here too, once the pane is panned off every entity', async () => {
+    const { app, root } = await mountViewer(Diff.insert);
+
+    expect(root.querySelector('.content-compass')).toBeNull();
+
+    app.store.dispatchSync(
+      scrollToAction({ originX: -9_000, originY: -7_000 })
+    );
+    await flush();
+
+    expect(root.querySelector('.content-compass')).toBeTruthy();
+  });
+
   it('prevents the native context menu', async () => {
     const { root } = await mountViewer(Diff.insert);
 
@@ -160,8 +181,8 @@ describe('ErdViewer', () => {
     await flush();
 
     expect(event.defaultPrevented).toBe(true);
-    expect(app.store.state.settings.scrollTop).toBe(-100);
-    expect(app.store.state.settings.scrollLeft).toBe(-40);
+    expect(app.store.state.settings.originY).toBe(-100);
+    expect(app.store.state.settings.originX).toBe(-40);
     expect(app.store.state.settings.zoomLevel).toBe(1);
   });
 
@@ -171,10 +192,14 @@ describe('ErdViewer', () => {
     wheelAt(root, { deltaY: 100, mod: true });
     await flush();
 
-    // A plain wheel carrying no deltaX leaves scrollLeft alone; the zoom path
-    // re-centres both axes, so the horizontal offset is what separates them.
+    // A plain wheel carrying no deltaX leaves the horizontal origin alone; the
+    // zoom path re-centres both axes, so that origin is what separates them:
+    // holding the middle of a 1000 wide screen still at 0.9 moves it by 50.
     expect(app.store.state.settings.zoomLevel).toBeCloseTo(0.9, 5);
-    expect(app.store.state.settings.scrollLeft).toBe(-50);
+    expect(app.store.state.settings.originX).toBeCloseTo(
+      (1000 / 2) * (1 - 0.9),
+      4
+    );
   });
 
   it('zooms in when the wheel scrolls up with the mod key', async () => {
@@ -279,8 +304,8 @@ describe('ErdViewer', () => {
     );
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-30);
-    expect(app.store.state.settings.scrollTop).toBe(-50);
+    expect(app.store.state.settings.originX).toBe(-30);
+    expect(app.store.state.settings.originY).toBe(-50);
 
     window.dispatchEvent(new MouseEvent('mouseup'));
     await flush();
@@ -300,8 +325,8 @@ describe('ErdViewer', () => {
     );
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(0);
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 
   it('resets a scrolled root element while dragging', async () => {
@@ -354,6 +379,6 @@ describe('ErdViewer', () => {
     wheelAt(root, { deltaY: 100 });
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 });

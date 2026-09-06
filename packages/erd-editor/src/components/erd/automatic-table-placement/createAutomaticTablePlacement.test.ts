@@ -14,6 +14,8 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { RootState } from '@/engine/state';
+import { getContentRect } from '@/konva/scene/contentBounds';
+import { type Rect } from '@/konva/scene/metrics';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 
 type Simulation = ReturnType<typeof createAutomaticTablePlacement>;
@@ -35,11 +37,23 @@ function createApp(): AppContext {
   return app;
 }
 
-function addTable(app: AppContext, id: string, name: string) {
+function addTable(
+  app: AppContext,
+  id: string,
+  name: string,
+  ui: { x: number; y: number } = { x: 0, y: 0 }
+) {
   app.store.dispatchSync(
-    addTableAction({ id, ui: { x: 0, y: 0, zIndex: 2 } }),
+    addTableAction({ id, ui: { ...ui, zIndex: 2 } }),
     changeTableNameAction({ id, value: name })
   );
+}
+
+/** Where the tables already are, which is what the layout is drawn around. */
+function contentCenter(state: RootState) {
+  const { x, y, width, height } = getContentRect(state) as Rect;
+
+  return { x: x + width / 2, y: y + height / 2 };
 }
 
 afterEach(() => {
@@ -48,20 +62,23 @@ afterEach(() => {
 });
 
 describe('createAutomaticTablePlacement', () => {
-  it('creates one node per table seeded at the canvas center', () => {
+  it('creates one node per table seeded at the middle of the content', () => {
     const app = createApp();
-    addTable(app, 't1', 'users');
-    addTable(app, 't2', 'posts');
+    addTable(app, 't1', 'users', { x: -1_000, y: -2_000 });
+    addTable(app, 't2', 'posts', { x: 3_000, y: 4_000 });
     const state = app.store.state;
+    const center = contentCenter(state);
 
     const simulation = create(state);
     const nodes = simulation.nodes() as any[];
 
     expect(nodes.map(node => node.id)).toEqual(['t1', 't2']);
-    expect(nodes.every(node => node.x === state.settings.width / 2)).toBe(true);
-    expect(nodes.every(node => node.y === state.settings.height / 2)).toBe(
-      true
-    );
+    expect(nodes.every(node => node.x === center.x)).toBe(true);
+    expect(nodes.every(node => node.y === center.y)).toBe(true);
+    // Nothing about the seed is the canvas box any more, which a document this
+    // far from it would otherwise pull every node back to.
+    expect(center.x).not.toBe(state.settings.width / 2);
+    expect(center.y).not.toBe(state.settings.height / 2);
   });
 
   it('derives the node radius from the rendered table width and height', () => {
@@ -106,20 +123,18 @@ describe('createAutomaticTablePlacement', () => {
     expect(radius(node)).toBe(100 + node.r);
   });
 
-  it('pulls every node toward the canvas center on both axes', () => {
+  it('pulls every node toward the middle of the content on both axes', () => {
     const app = createApp();
-    addTable(app, 't1', 'users');
+    addTable(app, 't1', 'users', { x: -1_000, y: -2_000 });
+    addTable(app, 't2', 'posts', { x: 3_000, y: 4_000 });
     const state = app.store.state;
+    const center = contentCenter(state);
 
     const simulation = create(state);
     const [node] = simulation.nodes() as any[];
 
-    expect((simulation.force('x') as any).x()(node)).toBe(
-      state.settings.width / 2
-    );
-    expect((simulation.force('y') as any).y()(node)).toBe(
-      state.settings.height / 2
-    );
+    expect((simulation.force('x') as any).x()(node)).toBe(center.x);
+    expect((simulation.force('y') as any).y()(node)).toBe(center.y);
   });
 
   it('links tables that a relationship connects', () => {

@@ -34,7 +34,8 @@ suite red.
 | `playwright.config.ts`          | Chromium project, pinned 1440x900 viewport, `E2E_PORT` webServer  |
 | `playwright.bench.config.ts`    | The bench project — own testDir, one worker, asserts nothing      |
 | `e2e/fixture/`                  | The page under test — a deterministic `<erd-editor>` mount        |
-| `e2e/support/schema.ts`         | Hand-authored v3 seed documents and the schema bit constants      |
+| `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes    |
+| `e2e/support/graph.ts`          | A relationship or index read back by the names it joins           |
 | `e2e/support/sceneMirror.ts`    | Projects every live Konva stage into divs a css locator can name  |
 | `e2e/support/shortcuts.ts`      | Key strings mirroring `createKeyBindingMap()`, `MOD_KEY`, steps   |
 | `e2e/support/ErdEditorPage.ts`  | Page object: locators, scene coordinates, gesture helpers         |
@@ -44,7 +45,7 @@ suite red.
 
 ## What is covered
 
-21 spec files. Ten of the groups exist because the DOM scene got their subject
+31 spec files. Nine of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -56,14 +57,39 @@ for free and the canvas has to draw and dispatch it itself:
 | `memo.spec.ts`                  | Memo drag, resize sashes and caret, all scene nodes now           |
 | `table-color.spec.ts`           | A scene node handing a viewport point to a DOM colour picker      |
 | `draw-preview.spec.ts`          | The dashed preview agreeing with the cursor every frame           |
-| `hide-sign.spec.ts`             | Off-canvas markers for entities culling has dropped               |
 | `context-menu-cardinality.spec.ts` | A right click that finds a connector by hit-testing the scene  |
 | `virtual-viewport.spec.ts`      | Culling: what is off screen has no node, and the minimap keeps it |
+
+Ten more are the canvas's own geometry, and the DOM the editing overlay
+puts over it:
+
+| Spec                            | What it holds down                                                |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `zoom-round-trip.spec.ts`       | A zoom out and back in that returns the reader's own view         |
+| `infinite-canvas.spec.ts`       | The travel, thumbs, map, compass and image the content now decide |
+| `floating-toolbar.spec.ts`      | The two canvas tools, the notations and what zen mode takes away  |
+| `scroll-origin.spec.ts`         | The origin the scene draws with, and the legacy pair migrated once |
+| `export-png.spec.ts`            | The file the browser really receives, and the messages around it  |
+| `memo-editor-drag.spec.ts`      | A press in the overlay textarea, which used to pan the canvas     |
+| `memo-editor-alignment.spec.ts` | The drawn memo and its textarea, one device grid at a time        |
+| `cell-editor-alignment.spec.ts` | The drawn cell and its input, on both device grids                |
+| `cell-editor-underline.spec.ts` | The underline the two rasterisers have to agree on                |
+| `data-type-hint.spec.ts`        | The autocomplete DOM the stage cannot hit test                    |
+| `relationship-hover.spec.ts`    | Every part a connector draws, hovered one at a time               |
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
 pass against the canvas; `context-menu` arrived with it.
+
+`alt-drag-duplicate` and `clipboard` hold down one rule from their two ends: a
+duplicate of whole tables carries a relationship only when **both** its end
+tables are copied, carries every index of a copied table whole, and points every
+one of them at the new ids. `relatedTables()` is the seed both use, and the
+foreign key badge on a copied end column is the user-visible half — the payload
+does carry `ui.keys`, but the duplicate never replays it (`toCreateEntityActions`
+emits `addColumnAction` with `id` and `tableId` alone), so the badge is only
+there if a real `relationship.add` reached `addColumnForeignKeyHook`.
 
 ## The things that make this suite work
 
@@ -114,7 +140,7 @@ only when you deliberately want both copies. A minimap node carries no `data-id`
 Removing a table drops its id from `doc.tableIds` but leaves the entity in
 `collections.tableEntities` so the change can replicate. Counting collection
 keys will tell you nothing was deleted. `ErdEditorPage#tableIds()`,
-`#relationshipIds()` and `#memoIds()` read `doc`; use them.
+`#relationshipIds()`, `#indexIds()` and `#memoIds()` read `doc`; use them.
 
 ### 5. `el.value` is the authoritative, synchronous state
 
@@ -355,8 +381,9 @@ cost when you hit them blind.
   `Ctrl` opens nothing — tested a different state from a workstation. Sending
   the ctrl bit through CDP without a key press opens the menu too, so the user
   agent is the only place this can be fixed.
-- `toJson()` — which backs the `value` getter — mutates settings when
-  `ignoreSaveSettings` bits are set. Every seed keeps it at `0`; leave it there.
+- `toJson()` — which backs the `value` getter — serialises a copy, so reading
+  `value` never moves the live view. With the `ignoreSaveSettings` scroll bit
+  set it writes the origin pair out as zero. Every seed keeps the field at `0`.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root
   `.root` div, with bubble-phase listeners. Dispatching at `document` or at the
   host element will not reach them.
