@@ -1,5 +1,6 @@
 import * as Comlink from 'comlink';
 
+import { withTimeout } from '@/utils/promise';
 import { spawnSchemaGCWorker } from '@/workers/spawn';
 
 import { SchemaGCService } from './schemaGCService';
@@ -29,16 +30,6 @@ function inProcess(reason: string, error: unknown): SchemaGCRunner {
   return service;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error('[schema-gc] the worker did not answer')),
-      ms
-    );
-    promise.then(resolve, reject).finally(() => clearTimeout(timer));
-  });
-}
-
 /**
  * A url worker can fail after its constructor returns, on a missing file or a
  * policy block, without throwing, and a call on its port then waits forever.
@@ -57,7 +48,8 @@ function fromWorker(worker: SharedWorker): SchemaGCRunner {
       try {
         return await withTimeout(
           Promise.race([remote.run(source), failed]),
-          FAILOVER_MS
+          FAILOVER_MS,
+          '[schema-gc] the worker did not answer'
         );
       } catch (error) {
         worker.port.close();
