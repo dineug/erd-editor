@@ -4,7 +4,9 @@ import { useAppContext } from '@/components/appContext';
 import { Open } from '@/constants/open';
 import { RelationshipType } from '@/constants/schema';
 import {
+  changeHandToolAction,
   changeOpenMapAction,
+  changeZenModeAction,
   drawEndRelationshipAction,
   editTableAction,
   editTableEndAction,
@@ -187,6 +189,11 @@ export function useErdShortcut(ctx: Ctx) {
           store.dispatch(changeOpenMapAction({ [Open.tableProperties]: true }));
         }
       }
+
+      type === KeyBindingName.handTool &&
+        store.dispatch(changeHandToolAction({ value: !editor.handTool }));
+      type === KeyBindingName.zenMode &&
+        store.dispatch(changeZenModeAction({ value: !editor.zenMode }));
 
       type === KeyBindingName.zoomIn &&
         store.dispatch(streamZoomLevelAction$(0.04));

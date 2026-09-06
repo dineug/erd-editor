@@ -129,6 +129,27 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it('reads a bare Space as the hand tool on the canvas', () => {
+    const event = press({ key: ' ', code: 'Space' });
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.handTool,
+    ]);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('leaves Space to a caret, which owns it as a space', () => {
+    const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+    const input = document.createElement('input');
+    $root.append(input);
+
+    const event = keydown({ key: ' ', code: 'Space' });
+    input.dispatchEvent(event);
+
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it('leaves $mod+KeyA to a caret, which owns it as select all text', () => {
     const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
     const input = document.createElement('input');

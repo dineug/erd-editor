@@ -291,8 +291,9 @@ export class ErdEditorPage {
     return this.minimap.locator(`[data-table-id="${id}"]`);
   }
 
+  /** Named by the title it opens with, which carries its chord after the name. */
   toolbarButton(title: string) {
-    return this.toolbar.locator(`[title="${title}"]`);
+    return this.toolbar.locator(`[title^="${title}"]`);
   }
 
   contextMenuItem(label: string | RegExp) {

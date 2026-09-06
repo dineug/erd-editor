@@ -18,6 +18,7 @@ import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
+import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import {
@@ -83,7 +84,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     colorPickerInitialColor: '',
     tablePropertiesId: '',
     tablePropertiesIds: [] as string[],
-    grabMove: false,
     grabCursor: 'grab',
     diffValue: '{}',
   });
@@ -215,6 +215,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       canUnselectAll &&
       canHideColorPicker &&
       !el.closest('.content-compass') &&
+      !el.closest('.floating-toolbar') &&
       !el.closest('.minimap') &&
       !el.closest('.minimap-viewport') &&
       !el.closest('.virtual-scroll') &&
@@ -243,7 +244,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         })
       );
     } else {
-      if (state.grabMove) {
+      if (app.value.store.state.editor.handTool) {
         state.grabCursor = 'grabbing';
       }
 
@@ -382,38 +383,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           state.diffValue = value;
           store.dispatch(changeOpenMapAction({ [Open.diffViewer]: true }));
         },
-      }),
-      keydown$
-        .pipe(
-          filter(event => {
-            const el = event.target as HTMLElement | null;
-            if (!el) return false;
-
-            const { editor, settings } = store.state;
-            const showAutomaticTablePlacement =
-              editor.openMap[Open.automaticTablePlacement];
-            const showTableProperties = editor.openMap[Open.tableProperties];
-            const showTimeTravel = editor.openMap[Open.timeTravel];
-            const showDiffViewer = editor.openMap[Open.diffViewer];
-            const isCanvasType = settings.canvasType === CanvasType.ERD;
-
-            const canGrabMove =
-              isCanvasType &&
-              !showAutomaticTablePlacement &&
-              !showTableProperties &&
-              !showDiffViewer &&
-              !showTimeTravel;
-
-            if (!canGrabMove) return false;
-
-            return event.code === 'Space' && el.tagName === 'DIV';
-          })
-        )
-        .subscribe(() => {
-          state.grabMove = true;
-        }),
-      keyup$.pipe(filter(event => event.code === 'Space')).subscribe(() => {
-        state.grabMove = false;
       })
     );
   });
@@ -428,11 +397,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const showTableProperties = openMap[Open.tableProperties];
     const showTimeTravel = openMap[Open.timeTravel];
     const showDiffViewer = openMap[Open.diffViewer];
+    const { handTool, zenMode } = store.state.editor;
     // An empty document has no travel and draws no scrollbar; the map of it
     // would be as empty, so it is left out the same way.
     const hasContent = getContentRect(store.state) !== null;
 
-    const cursor = state.grabMove
+    const cursor = handTool
       ? state.grabCursor
       : drawRelationship
         ? `url("${getRelationshipIcon(
@@ -452,10 +422,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         on:touchstart={handleDragSelect}
         on:wheel={handleWheel}
       >
-        <Canvas root={root} canvas={canvas} grabMove={state.grabMove} />
-        <VirtualScroll />
-        {hasContent ? <Minimap /> : null}
+        <Canvas root={root} canvas={canvas} grabMove={handTool} />
+        {zenMode ? null : <VirtualScroll />}
+        {hasContent && !zenMode ? <Minimap /> : null}
         <ContentCompass />
+        <FloatingToolbar />
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

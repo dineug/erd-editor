@@ -37,7 +37,11 @@ describe('Minimap.styles', () => {
     expect(source).toContain('box-sizing: content-box');
     expect(source).toContain('pointer-events: none');
     expect(source).toContain('border: 1px solid var(--minimap-border)');
-    expect(source).toContain('box-shadow: 0 1px 6px var(--minimap-shadow)');
+    // The negative spread is what keeps an opaque shadow colour from reading
+    // as a slab under the frame.
+    expect(source).toContain(
+      'box-shadow: 0 1px 6px -3px var(--minimap-shadow)'
+    );
     expect(source).toContain(
       'background-color: var(--canvas-boundary-background)'
     );

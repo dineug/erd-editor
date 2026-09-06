@@ -24,7 +24,9 @@ import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import { History } from '@/engine/history';
 import {
+  changeHandToolAction,
   changeOpenMapAction,
+  changeZenModeAction,
   drawStartRelationshipAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -161,6 +163,7 @@ const DOM_GUARDS = [
   'edit-input',
   'context-menu-content',
   'content-compass',
+  'floating-toolbar',
   'minimap',
   'minimap-viewport',
   'virtual-scroll',
@@ -306,7 +309,7 @@ describe('Erd - shell', () => {
     app.store.dispatchSync(
       scrollToAction({ originX: -9_000, originY: -7_000 })
     );
-    pressKeydown(app, root, 'Space');
+    app.store.dispatchSync(changeHandToolAction({ value: true }));
     await flush();
 
     const pill = root.querySelector('.content-compass') as HTMLElement;
@@ -314,6 +317,39 @@ describe('Erd - shell', () => {
     await flush();
 
     expect(root.style.cursor).toBe('grab');
+  });
+
+  it('draws the floating tools over the canvas, in zen mode as well', async () => {
+    const app = appWithContent();
+    const { root } = await setup({}, app);
+
+    expect(root.querySelector('.floating-toolbar')).toBeTruthy();
+
+    app.store.dispatchSync(changeZenModeAction({ value: true }));
+    await flush();
+
+    expect(root.querySelector('.floating-toolbar')).toBeTruthy();
+  });
+
+  it('takes the scrollbars and the map away in zen mode, and gives them back', async () => {
+    const app = appWithContent();
+    const { root } = await setup({}, app);
+
+    expect(root.querySelectorAll('.virtual-scroll')).toHaveLength(2);
+    expect(root.querySelector('.minimap')).toBeTruthy();
+
+    app.store.dispatchSync(changeZenModeAction({ value: true }));
+    await flush();
+
+    expect(root.querySelectorAll('.virtual-scroll')).toHaveLength(0);
+    expect(root.querySelector('.minimap')).toBeNull();
+    expect(root.querySelector('.minimap-viewport')).toBeNull();
+
+    app.store.dispatchSync(changeZenModeAction({ value: false }));
+    await flush();
+
+    expect(root.querySelectorAll('.virtual-scroll')).toHaveLength(2);
+    expect(root.querySelector('.minimap')).toBeTruthy();
   });
 
   it('renders no overlay by default', async () => {
@@ -368,60 +404,23 @@ describe('Erd - cursor', () => {
     expect(root.style.cursor).toBe(`url("${light}") 16 16, auto`);
   });
 
-  it('switches to the grab cursor while space is held on the canvas', async () => {
+  it('shows the grab cursor for as long as the hand tool is down', async () => {
     const { app, root } = await setup();
 
-    pressKeydown(app, root, 'Space');
+    app.store.dispatchSync(changeHandToolAction({ value: true }));
     await flush();
 
     expect(root.style.cursor).toBe('grab');
 
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    app.store.dispatchSync(changeHandToolAction({ value: false }));
     await flush();
 
     expect(root.style.cursor).toBe('');
   });
 
-  it('ignores space when the keydown target is not a div', async () => {
+  it('shows the grabbing cursor while the hand tool drags', async () => {
     const { app, root } = await setup();
-    const span = document.createElement('span');
-    root.append(span);
-
-    pressKeydown(app, span, 'Space');
-    await flush();
-
-    expect(root.style.cursor).toBe('');
-    span.remove();
-  });
-
-  it('ignores space when the canvas type is not the ERD canvas', async () => {
-    const { app, root } = await setup();
-    app.store.dispatchSync(
-      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
-    );
-
-    pressKeydown(app, root, 'Space');
-    await flush();
-
-    expect(root.style.cursor).toBe('');
-  });
-
-  it('ignores space while an overlay is open', async () => {
-    const { app, root } = await setup();
-    app.store.dispatchSync(
-      changeOpenMapAction({ [Open.tableProperties]: true })
-    );
-    await flush();
-
-    pressKeydown(app, root, 'Space');
-    await flush();
-
-    expect(root.style.cursor).toBe('');
-  });
-
-  it('shows the grabbing cursor while dragging with space held', async () => {
-    const { app, root } = await setup();
-    pressKeydown(app, root, 'Space');
+    app.store.dispatchSync(changeHandToolAction({ value: true }));
     await flush();
 
     dispatchMouse(root, 'mousedown', { clientX: 10, clientY: 10 });

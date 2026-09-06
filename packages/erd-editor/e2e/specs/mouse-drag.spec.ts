@@ -1,7 +1,7 @@
 import { expect, test } from '../support/fixtures';
 import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
 import { createSchema, oneTable, twoTables } from '../support/schema';
-import { MOD_KEY } from '../support/shortcuts';
+import { MOD_KEY, Shortcut } from '../support/shortcuts';
 
 /** One screen pixel of pointer rounding, doubled for the two drag endpoints. */
 const PIXEL_TOLERANCE = 2;
@@ -354,26 +354,26 @@ test.describe('mouse drag', () => {
     expect(past.originY).toBeLessThan(-farY - 400);
   });
 
-  test('holding Space pans even when the drag starts over a table', async ({
+  test('the hand tool pans even when the drag starts over a table', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
 
-    // grabMove is armed by a Space keydown whose target is a DIV, so the
-    // editor root has to hold focus first. (1100, 700) is the same empty canvas
-    // point the pan test uses.
+    // Space toggles the tool rather than holding it, so the editor root has to
+    // own the keyboard first. (1100, 700) is the same empty canvas point the
+    // pan test uses.
     await erd.focusCanvas({ x: 1100, y: 700 });
-    await erd.page.keyboard.down('Space');
+    await erd.press(Shortcut.handTool);
 
-    // Grab mode makes the canvas wrapper transparent to the pointer — that is
+    // The hand makes the canvas wrapper transparent to the pointer — that is
     // what stops the table underneath from receiving the mousedown.
     await expect(canvasController(erd)).toHaveCSS('pointer-events', 'none');
 
     const from = await erd.tableHeaderPoint('users');
     await erd.drag(from, { x: from.x - 120, y: from.y - 60 });
-    // Space only disarms on a window-level keyup; leaving it down would make
+    // The tool stays down until it is pressed again; leaving it down would make
     // every later drag in this page pan.
-    await erd.page.keyboard.up('Space');
+    await erd.press(Shortcut.handTool);
     await expect(canvasController(erd)).toHaveCSS('pointer-events', 'auto');
 
     const settings = await erd.settings();

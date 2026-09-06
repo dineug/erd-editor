@@ -46,8 +46,10 @@ const root = () =>
 const input = (title: string) =>
   root().querySelector(`input[title="${title}"]`) as HTMLInputElement;
 
+// Matched on the name the title opens with, since a title carries the chord
+// the command answers after it.
 const menu = (title: string) =>
-  root().querySelector(`div[title="${title}"]`) as HTMLDivElement;
+  root().querySelector(`div[title^="${title}"]`) as HTMLDivElement;
 
 const withNullTarget = <T extends Event>(event: T): T => {
   Object.defineProperty(event, 'target', {

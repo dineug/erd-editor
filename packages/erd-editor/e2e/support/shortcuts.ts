@@ -27,6 +27,8 @@ export const Shortcut = {
   zoomIn: 'ControlOrMeta+Equal',
   zoomOut: 'ControlOrMeta+Minus',
   zoomReset: 'ControlOrMeta+KeyO',
+  handTool: 'Space',
+  zenMode: 'Alt+KeyZ',
 } as const;
 
 export type Shortcut = (typeof Shortcut)[keyof typeof Shortcut];

@@ -30,6 +30,10 @@ export type Editor = {
   hoverColumnMap: Record<string, boolean>;
   hoverRelationshipMap: Record<string, boolean>;
   openMap: Record<string, boolean>;
+  /** Whether the pointer pans the canvas instead of reaching the scene under it. */
+  handTool: boolean;
+  /** Whether the editor is drawn without its scrollbars, its map and its toolbar. */
+  zenMode: boolean;
   draggableColumn: DraggableColumn | null;
   draggingColumnMap: Record<string, boolean>;
   sharedMouseTrackerMap: Record<string, SharedMouseTracker>;
@@ -160,6 +164,8 @@ export const createEditor = (): Editor => ({
   hoverColumnMap: {},
   hoverRelationshipMap: {},
   openMap: {},
+  handTool: false,
+  zenMode: false,
   draggableColumn: null,
   draggingColumnMap: {},
   sharedMouseTrackerMap: {},

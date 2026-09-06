@@ -19,7 +19,10 @@ import {
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
-import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  changeZenModeAction,
+} from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
@@ -154,6 +157,53 @@ describe('<erd-editor>', () => {
     expect(root.getAttribute('tabindex')).toBe('-1');
     expect(root.classList.contains('dark')).toBe(true);
     expect(shadow.querySelector('.toolbar')).toBeTruthy();
+  });
+
+  it('takes the toolbar away in zen mode, and only over the canvas it was entered from', async () => {
+    const { app, shadow } = await createEditor();
+
+    app.store.dispatchSync(changeZenModeAction({ value: true }));
+    await flush();
+
+    expect(shadow.querySelector('.toolbar')).toBeNull();
+
+    // Another canvas type keeps its toolbar whatever the mode says, or the tab
+    // that turned zen mode on would be the only one it could be turned off from.
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    await flush();
+
+    expect(shadow.querySelector('.toolbar')).toBeTruthy();
+  });
+
+  it('gives the canvas the toolbar height back the moment zen mode takes it away', async () => {
+    const { app } = await createEditor();
+
+    resizeCallbacks[0]([
+      { contentRect: { width: 900, height: 600 } as DOMRectReadOnly },
+    ]);
+    await flush();
+    expect(app.store.state.editor.viewport).toEqual({
+      width: 900,
+      height: 600 - TOOLBAR_HEIGHT,
+    });
+
+    // No resize follows a mode change, so the viewport has to be applied from
+    // the mode as well, or the scene would stay short by a toolbar.
+    app.store.dispatchSync(changeZenModeAction({ value: true }));
+    await flush();
+    expect(app.store.state.editor.viewport).toEqual({
+      width: 900,
+      height: 600,
+    });
+
+    app.store.dispatchSync(changeZenModeAction({ value: false }));
+    await flush();
+    expect(app.store.state.editor.viewport).toEqual({
+      width: 900,
+      height: 600 - TOOLBAR_HEIGHT,
+    });
   });
 
   it('renders the ERD canvas by default and swaps it for the other canvas types', async () => {

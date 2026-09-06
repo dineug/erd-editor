@@ -23,6 +23,11 @@ export const border = css`
   box-sizing: content-box;
   pointer-events: none;
   border: 1px solid var(--minimap-border);
-  box-shadow: 0 1px 6px var(--minimap-shadow);
+  /*
+   * Drawn back from the edge by the negative spread, so what lands is the soft
+   * end of the blur rather than the ink beside it: the shadow colour is an
+   * opaque black, and the dom minimap only ever showed it through a css scale.
+   */
+  box-shadow: 0 1px 6px -3px var(--minimap-shadow);
   background-color: var(--canvas-boundary-background);
 `;

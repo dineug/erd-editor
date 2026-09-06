@@ -45,7 +45,7 @@ suite red.
 
 ## What is covered
 
-30 spec files. Nine of the groups exist because the DOM scene got their subject
+31 spec files. Nine of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -67,6 +67,7 @@ puts over it:
 | ------------------------------- | ---------------------------------------------------------------- |
 | `zoom-round-trip.spec.ts`       | A zoom out and back in that returns the reader's own view         |
 | `infinite-canvas.spec.ts`       | The travel, thumbs, map, compass and image the content now decide |
+| `floating-toolbar.spec.ts`      | The two canvas tools, the notations and what zen mode takes away  |
 | `scroll-origin.spec.ts`         | The origin the scene draws with, and the legacy pair migrated once |
 | `export-png.spec.ts`            | The file the browser really receives, and the messages around it  |
 | `memo-editor-drag.spec.ts`      | A press in the overlay textarea, which used to pan the canvas     |

@@ -104,6 +104,14 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
         command: 'Zoom Reset',
         shortcuts: keyBindingMap.zoomReset,
       },
+      {
+        command: 'Hand Tool',
+        shortcuts: keyBindingMap.handTool,
+      },
+      {
+        command: 'Zen Mode',
+        shortcuts: keyBindingMap.zenMode,
+      },
     ];
   };
 

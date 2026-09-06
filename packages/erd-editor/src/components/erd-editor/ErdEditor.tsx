@@ -36,6 +36,7 @@ import {
   validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
+import { RootState } from '@/engine/state';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { observeThemeOverrides, resolveHostTheme } from '@/konva/theme';
@@ -100,6 +101,14 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   ) => SharedStore;
   setDiffValue: (value: string) => void;
 }
+
+/**
+ * Whether the toolbar is drawn. Zen mode takes it away over the canvas it was
+ * entered from alone, or the tab that turned the mode on would be the only one
+ * it could be turned off from.
+ */
+const hasToolbar = ({ editor, settings }: RootState): boolean =>
+  !editor.zenMode || settings.canvasType !== CanvasType.ERD;
 
 const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const text = createText();
@@ -229,6 +238,27 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   destroySet.add(emitter.on({ schemaGC: handleSchemaGC }));
 
+  /** The root as the observer last measured it, which the toolbar shares. */
+  let observed = { width: 0, height: 0 };
+
+  /**
+   * The canvas is the root less whatever the toolbar takes, and zen mode takes
+   * the toolbar away without the root changing size, so the viewport is applied
+   * from the mode as well as from the observer.
+   */
+  const applyViewport = () => {
+    const toolbar = hasToolbar(store.state) ? TOOLBAR_HEIGHT : 0;
+
+    store.dispatch(
+      changeViewportAction({
+        width: observed.width,
+        // A hidden host reports no height at all, which must not read as a
+        // viewport with a negative one.
+        height: Math.max(0, observed.height - toolbar),
+      })
+    );
+  };
+
   onMounted(() => {
     ctx.focus();
     resolveSceneTheme();
@@ -238,14 +268,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        // A hidden host reports no height at all, which must not read as a
-        // viewport with a negative one.
-        store.dispatch(
-          changeViewportAction({
-            width,
-            height: Math.max(0, height - TOOLBAR_HEIGHT),
-          })
-        );
+        observed = { width, height };
+        applyViewport();
       }
     });
 
@@ -256,6 +280,12 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         resizeObserver.unobserve($root);
         resizeObserver.disconnect();
       },
+      watch(store.state.editor).subscribe(name => {
+        name === 'zenMode' && applyViewport();
+      }),
+      watch(store.state.settings).subscribe(name => {
+        name === 'canvasType' && applyViewport();
+      }),
       // The trailing edge is the load-bearing one: the last event of a burst is
       // the one describing the focus the element is left holding, and dropping
       // it parks the keyboard outside with the focus ring still painted.
@@ -283,6 +313,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   return () => {
     const { settings } = store.state;
     const isDarkMode = hasDarkMode();
+    // Only over the canvas the mode is entered from, so a toolbar left out of
+    // another tab could never take the way back to this one with it.
 
     return (
       <>
@@ -304,10 +336,12 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           on:paste={handlePaste}
           on:mousedown={handleOutsideClick}
         >
-          <Toolbar
-            enableThemeBuilder={props.enableThemeBuilder}
-            readonly={props.readonly}
-          />
+          {hasToolbar(store.state) ? (
+            <Toolbar
+              enableThemeBuilder={props.enableThemeBuilder}
+              readonly={props.readonly}
+            />
+          ) : null}
           {cache(
             settings.canvasType === CanvasType.ERD ? (
               <div class={styles.scope}>

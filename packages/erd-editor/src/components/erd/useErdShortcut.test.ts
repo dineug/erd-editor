@@ -15,6 +15,7 @@ import { ColumnOption, RelationshipType } from '@/constants/schema';
 import { History } from '@/engine/history';
 import {
   changeOpenMapAction,
+  drawStartRelationshipAction,
   editMemoAction,
   editMemoEndAction,
   editTableAction,
@@ -277,6 +278,51 @@ describe('useErdShortcut - table properties', () => {
     expect(
       app.store.state.editor.openMap[Open.tableProperties]
     ).toBeUndefined();
+  });
+});
+
+describe('useErdShortcut - canvas modes', () => {
+  it('toggles the hand tool on every press, rather than holding it down', async () => {
+    const app = await setup();
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+    expect(app.store.state.editor.handTool).toBe(true);
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+    expect(app.store.state.editor.handTool).toBe(false);
+  });
+
+  /**
+   * The two modes a press on the canvas can mean are exclusive: taking up the
+   * hand ends a draw that was armed, so a press is never read as both.
+   */
+  it('ends a relationship draw when the hand tool is taken up', async () => {
+    const app = await setup();
+    app.store.dispatchSync(
+      drawStartRelationshipAction({
+        relationshipType: RelationshipType.ZeroN,
+      })
+    );
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+
+    expect(app.store.state.editor.handTool).toBe(true);
+    expect(app.store.state.editor.drawRelationship).toBeNull();
+  });
+
+  it('toggles zen mode', async () => {
+    const app = await setup();
+
+    shortcut(app, KeyBindingName.zenMode);
+    await flush();
+    expect(app.store.state.editor.zenMode).toBe(true);
+
+    shortcut(app, KeyBindingName.zenMode);
+    await flush();
+    expect(app.store.state.editor.zenMode).toBe(false);
   });
 });
 
@@ -1123,6 +1169,8 @@ const BLOCKED_SHORTCUTS = [
   KeyBindingName.zoomIn,
   KeyBindingName.zoomOut,
   KeyBindingName.zoomReset,
+  KeyBindingName.handTool,
+  KeyBindingName.zenMode,
 ];
 
 /** The traversal keys handleKeydown answers, which shortcut$ never carries. */

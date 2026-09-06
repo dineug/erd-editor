@@ -529,6 +529,36 @@ const changeOpenMap: ReducerType<typeof ActionType.changeOpenMap> = (
   Object.assign(editor.openMap, payload);
 };
 
+export const changeHandToolAction = createAction<
+  ActionMap[typeof ActionType.changeHandTool]
+>(ActionType.changeHandTool);
+
+/**
+ * The tool a press on the canvas is read as. Drawing a relationship is a third
+ * thing the same press can mean, so taking the hand up ends a draw that was
+ * still running rather than leaving two modes armed at once.
+ */
+const changeHandTool: ReducerType<typeof ActionType.changeHandTool> = (
+  { editor },
+  { payload: { value } }
+) => {
+  editor.handTool = value;
+  if (value) {
+    editor.drawRelationship = null;
+  }
+};
+
+export const changeZenModeAction = createAction<
+  ActionMap[typeof ActionType.changeZenMode]
+>(ActionType.changeZenMode);
+
+const changeZenMode: ReducerType<typeof ActionType.changeZenMode> = (
+  { editor },
+  { payload: { value } }
+) => {
+  editor.zenMode = value;
+};
+
 export const dragstartColumnAction = createAction<
   ActionMap[typeof ActionType.dragstartColumn]
 >(ActionType.dragstartColumn);
@@ -881,6 +911,8 @@ export const editorReducers = {
   [ActionType.hoverColumnMap]: hoverColumnMap,
   [ActionType.hoverRelationshipMap]: hoverRelationshipMap,
   [ActionType.changeOpenMap]: changeOpenMap,
+  [ActionType.changeHandTool]: changeHandTool,
+  [ActionType.changeZenMode]: changeZenMode,
   [ActionType.dragstartColumn]: dragstartColumn,
   [ActionType.dragendColumn]: dragendColumn,
   [ActionType.sharedMouseTracker]: sharedMouseTracker,
@@ -920,6 +952,8 @@ export const actions = {
   hoverColumnMapAction,
   hoverRelationshipMapAction,
   changeOpenMapAction,
+  changeHandToolAction,
+  changeZenModeAction,
   dragstartColumnAction,
   dragendColumnAction,
   sharedMouseTrackerAction,
