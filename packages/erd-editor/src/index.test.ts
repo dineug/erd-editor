@@ -2,21 +2,18 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import * as index from '@/index';
-import { getShikiService } from '@/services/shikiService';
 import { exportJSON } from '@/utils/file/exportFile';
 import { importJSON } from '@/utils/file/importFile';
 
 afterEach(() => {
   index.setExportFileCallback(null);
   index.setImportFileCallback(null);
-  index.setGetShikiServiceCallback(() => null);
 });
 
 describe('@dineug/erd-editor entry point', () => {
   it('exposes exactly the documented public surface', () => {
     expect(Object.keys(index).sort()).toEqual([
       'setExportFileCallback',
-      'setGetShikiServiceCallback',
       'setImportFileCallback',
     ]);
   });
@@ -60,12 +57,5 @@ describe('@dineug/erd-editor entry point', () => {
       op: 'set',
       accept: '.json',
     });
-  });
-
-  it('re-exports setGetShikiServiceCallback so highlighting can be provided', () => {
-    const service = { codeToHtml: async () => '<pre></pre>' };
-    index.setGetShikiServiceCallback(() => service);
-
-    expect(getShikiService()).toBe(service);
   });
 });

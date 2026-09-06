@@ -118,19 +118,17 @@ flowchart TB
 
 ## Packages
 
-This is a pnpm workspace. The two packages published to npm are
-[`@dineug/erd-editor`](./packages/erd-editor) (the editor itself) and
-[`@dineug/erd-editor-shiki-worker`](./packages/erd-editor-shiki-worker) (optional syntax
-highlighting). Everything else is internal.
+This is a pnpm workspace. The one package published to npm is
+[`@dineug/erd-editor`](./packages/erd-editor), the editor itself, syntax highlighting
+included. Everything else is internal.
 
 <details>
-<summary>All 14 packages</summary>
+<summary>All 13 packages</summary>
 
 | Package | Description |
 | --- | --- |
 | [`erd-editor`](./packages/erd-editor) | The editor core — the `<erd-editor>` custom element |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | The `.erd.json` document format, parsers and LWW operators |
-| [`erd-editor-shiki-worker`](./packages/erd-editor-shiki-worker) | Syntax highlighting off the main thread |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | Permissive DDL parser used for SQL import |
 | [`r-html`](./packages/r-html) | The tagged-template rendering framework the editor is built on |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | JSX → tagged templates, plus HMR boundaries |

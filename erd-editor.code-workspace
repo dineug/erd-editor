@@ -9,10 +9,6 @@
       "path": "packages/erd-editor-schema",
     },
     {
-      "name": "erd-editor-shiki-worker",
-      "path": "packages/erd-editor-shiki-worker",
-    },
-    {
       "name": "vscode-extension",
       "path": "packages/vscode-extension",
     },

@@ -7,7 +7,6 @@ import {
   dragendColumnAllAction,
   duplicateDragStartAction,
   Emitter,
-  loadShikiServiceAction,
   mouseTrackerEndAction,
   mouseTrackerStartAction,
   openColorPickerAction,
@@ -165,10 +164,6 @@ describe('action creators', () => {
     expect(openToastAction({ message, close })).toEqual({
       type: 'openToast',
       payload: { message, close },
-    });
-    expect(loadShikiServiceAction()).toEqual({
-      type: 'loadShikiService',
-      payload: undefined,
     });
     expect(openTablePropertiesAction({ tableId: 'a' })).toEqual({
       type: 'openTableProperties',

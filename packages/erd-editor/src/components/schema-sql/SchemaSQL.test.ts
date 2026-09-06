@@ -27,11 +27,21 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
-import {
-  setGetShikiServiceCallback,
-  ShikiService,
-} from '@/services/shikiService';
+import type { ShikiService } from '@/services/shiki';
 import { openToastAction } from '@/utils/emitter';
+
+const mocks = vi.hoisted(() => ({
+  getShikiService: vi.fn<() => ShikiService | null>(() => null),
+}));
+
+vi.mock('@/services/shiki', () => ({
+  getShikiService: mocks.getShikiService,
+}));
+
+/** What the code block reads; the worker itself is nothing this spec builds. */
+const setShikiService = (service: ShikiService | null) => {
+  mocks.getShikiService.mockImplementation(() => service);
+};
 
 const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(
   navigator,
@@ -73,7 +83,7 @@ beforeEach(() => {
 afterEach(() => {
   mounted?.unmount();
   mounted = null;
-  setGetShikiServiceCallback(() => null);
+  setShikiService(null);
 
   if (originalClipboardDescriptor) {
     Object.defineProperty(navigator, 'clipboard', originalClipboardDescriptor);
@@ -140,9 +150,7 @@ describe('SchemaSQL', () => {
 
   it('passes the dark theme to the code block when isDarkMode is true', async () => {
     const codeToHtml = createCodeToHtml();
-    setGetShikiServiceCallback(
-      () => ({ codeToHtml }) as unknown as ShikiService
-    );
+    setShikiService({ codeToHtml } as unknown as ShikiService);
 
     mounted = await mountAndFlush(html`<${SchemaSQL} isDarkMode=${true} />`);
 
@@ -154,9 +162,7 @@ describe('SchemaSQL', () => {
 
   it('passes the light theme to the code block when isDarkMode is false', async () => {
     const codeToHtml = createCodeToHtml();
-    setGetShikiServiceCallback(
-      () => ({ codeToHtml }) as unknown as ShikiService
-    );
+    setShikiService({ codeToHtml } as unknown as ShikiService);
 
     mounted = await mountAndFlush(html`<${SchemaSQL} isDarkMode=${false} />`);
 

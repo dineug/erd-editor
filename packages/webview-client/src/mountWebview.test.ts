@@ -26,24 +26,17 @@ import { mountWebview, type WebviewClient } from './mountWebview';
 
 const mocks = vi.hoisted(() => ({
   setExportFileCallback: vi.fn(),
-  setGetShikiServiceCallback: vi.fn(),
   setImportFileCallback: vi.fn(),
   createReplicationStoreWorker: vi.fn(),
-  getShikiService: vi.fn(),
 }));
 
 vi.mock('@dineug/erd-editor', () => ({
   setExportFileCallback: mocks.setExportFileCallback,
-  setGetShikiServiceCallback: mocks.setGetShikiServiceCallback,
   setImportFileCallback: mocks.setImportFileCallback,
 }));
 
 vi.mock('@dineug/erd-editor-replication-store-worker', () => ({
   createReplicationStoreWorker: mocks.createReplicationStoreWorker,
-}));
-
-vi.mock('@dineug/erd-editor-shiki-worker', () => ({
-  getShikiService: mocks.getShikiService,
 }));
 
 const createElement = document.createElement.bind(document);

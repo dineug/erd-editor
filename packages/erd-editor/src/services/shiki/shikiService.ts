@@ -12,6 +12,8 @@ import githubLight from '@shikijs/themes/github-light';
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
+import type { Lang } from '@/constants/language';
+
 const themeMap = {
   dark: 'github-dark',
   light: 'github-light',
@@ -21,6 +23,14 @@ function getThemeKey(theme?: string): 'dark' | 'light' {
   return theme === 'dark' || theme === 'light' ? theme : 'dark';
 }
 
+/**
+ * Shiki behind the one method the code panels call, instantiated in the shared
+ * worker and nowhere else. The grammars are exactly what constants/language.ts
+ * maps a Language onto, imported one by one so the worker carries no others.
+ *
+ * @example
+ * const html = await new ShikiService().codeToHtml('select 1', { lang: 'sql' });
+ */
 export class ShikiService {
   private highlighter: Promise<HighlighterCore>;
 
@@ -38,28 +48,16 @@ export class ShikiService {
         go,
         python,
       ],
+      // Plain javascript rather than oniguruma, so no host needs wasm-unsafe-eval
+      // in its policy; forgiving turns a grammar the engine cannot transpile into
+      // missing colour instead of a throw.
       engine: createJavaScriptRegexEngine({ forgiving: true }),
     });
   }
 
   async codeToHtml(
     code: string,
-    {
-      lang,
-      theme,
-    }: {
-      lang:
-        | 'sql'
-        | 'typescript'
-        | 'graphql'
-        | 'csharp'
-        | 'java'
-        | 'kotlin'
-        | 'scala'
-        | 'go'
-        | 'python';
-      theme?: 'dark' | 'light';
-    }
+    { lang, theme }: { lang: Lang; theme?: 'dark' | 'light' }
   ): Promise<string> {
     const highlighter = await this.highlighter;
 

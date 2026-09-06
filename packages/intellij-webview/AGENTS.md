@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-07 -->
 
 # intellij-webview
 
@@ -33,7 +33,7 @@ Same `<erd-editor>` element and same `@dineug/erd-editor-webview-bridge` protoco
 - **`base` stays `/`, only `.html`/`.js`/`.css` may be emitted, `sourcemap: false`** — the plugin's CEF
   `SchemeHandlerFactory` maps the URL path onto the classpath and types those three extensions, nothing else.
 - **Do not restore `crossorigin` on injected tags.** `stripCrossorigin` removes it: the scheme handler sends no CORS headers, so the module script is refused and the panel stays blank.
-- **Every worker loads from its URL, and none is written here.** The plugin serves `index.html` and every asset from one origin, `https://<DOMAIN>`, through its scheme handler, so the `new Worker(new URL('./workers/…', import.meta.url))` that `@dineug/erd-editor`, `@dineug/erd-editor-shiki-worker` and `@dineug/erd-editor-replication-store-worker` ship resolves same-origin and Vite emits each as `static/js/<name>.<hash>.js` — a `.js` the handler's whitelist admits. Nothing is inlined, unlike `vscode-webview`. The replica worker that used to live under `src/services/` is that shared package now.
+- **Every worker loads from its URL, and none is written here.** The plugin serves `index.html` and every asset from one origin, `https://<DOMAIN>`, through its scheme handler, so the `new Worker(new URL('./workers/…', import.meta.url))` that `@dineug/erd-editor` and `@dineug/erd-editor-replication-store-worker` ship resolves same-origin and Vite emits each as `static/js/<name>.<hash>.js` — a `.js` the handler's whitelist admits. Nothing is inlined, unlike `vscode-webview`. The replica worker that used to live under `src/services/` is that shared package now.
 - **The `worker` block repeats the output naming** because workers do not inherit `build.rolldownOptions.output`, and `worker.format: 'es'`
   matches `main.ts` building its worker as `{ type: 'module' }`. No `build.target` is set — JCEF's Chromium is the only browser here.
 
@@ -59,7 +59,7 @@ cd ../intellij-plugin && ./gradlew runIde
 
 ### Internal
 
-`@dineug/erd-editor-webview-client`, which brings the editor, the bridge, the replica worker and the lazy Shiki worker with it.
+`@dineug/erd-editor-webview-client`, which brings the editor, the bridge and the replica worker with it; the editor carries its own four workers, the Shiki one included.
 
 ### External
 

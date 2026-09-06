@@ -14,7 +14,6 @@ const InternalActionType = {
   openColorPicker: 'openColorPicker',
   closeColorPicker: 'closeColorPicker',
   openToast: 'openToast',
-  loadShikiService: 'loadShikiService',
   openTableProperties: 'openTableProperties',
   dragendColumnAll: 'dragendColumnAll',
   copy: 'copy',
@@ -43,7 +42,6 @@ type InternalActionMap = {
     message: DOMTemplateLiterals;
     close?: Promise<void>;
   };
-  [InternalActionType.loadShikiService]: void;
   [InternalActionType.openTableProperties]: {
     tableId: string;
   };
@@ -116,10 +114,6 @@ export const closeColorPickerAction = createAction<
 export const openToastAction = createAction<
   InternalActionMap[typeof InternalActionType.openToast]
 >(InternalActionType.openToast);
-
-export const loadShikiServiceAction = createAction<
-  InternalActionMap[typeof InternalActionType.loadShikiService]
->(InternalActionType.loadShikiService);
 
 export const openTablePropertiesAction = createAction<
   InternalActionMap[typeof InternalActionType.openTableProperties]

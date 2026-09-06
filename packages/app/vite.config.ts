@@ -203,10 +203,6 @@ export default defineConfig(({ mode }) => {
               pattern: 'packages/erd-editor/dist/**/*.d.ts',
               base: 'workspace',
             },
-            {
-              pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
-              base: 'workspace',
-            },
             '!**/*.tsbuildinfo',
             '!dist/**',
           ],
@@ -236,10 +232,6 @@ export default defineConfig(({ mode }) => {
             { pattern: 'tsconfig.app.json', base: 'workspace' },
             {
               pattern: 'packages/erd-editor/dist/**/*.d.ts',
-              base: 'workspace',
-            },
-            {
-              pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
               base: 'workspace',
             },
             '!**/*.tsbuildinfo',

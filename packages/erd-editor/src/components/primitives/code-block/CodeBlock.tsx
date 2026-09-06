@@ -10,10 +10,10 @@ import {
 } from '@dineug/r-html';
 
 import Icon from '@/components/primitives/icon/Icon';
+import type { Lang } from '@/constants/language';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { getShikiService, ShikiService } from '@/services/shikiService';
+import { getShikiService } from '@/services/shiki';
 import { arrayHas } from '@/utils/arrayHas';
-import { globalEmitter } from '@/utils/globalEmitter';
 
 import * as styles from './CodeBlock.styles';
 
@@ -25,7 +25,7 @@ const hasPropName = arrayHas<string | number | symbol>([
 
 export type CodeBlockProps = {
   value: string;
-  lang: Parameters<ShikiService['codeToHtml']>[1]['lang'];
+  lang: Lang;
   theme?: 'dark' | 'light';
   onCopy?: (value: string) => void;
 };
@@ -124,7 +124,6 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
     setHighlight();
 
     addUnsubscribe(
-      globalEmitter.on({ loadShikiService: setHighlight }),
       watch(props).subscribe(propName => {
         hasPropName(propName) && setHighlight();
       }),

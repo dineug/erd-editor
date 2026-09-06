@@ -1,6 +1,5 @@
-import { getShikiService } from '@dineug/erd-editor-shiki-worker';
+import '@/index';
 
-import { setGetShikiServiceCallback } from '@/index';
 import { installStageTestHandle } from '@/konva/testHandle';
 
 import { installSceneMirror, SCENE_MIRROR_FLAG } from '../support/sceneMirror';
@@ -10,8 +9,6 @@ import { installSceneMirror, SCENE_MIRROR_FLAG } from '../support/sceneMirror';
  * builder, and systemDarkMode pinned off so the runner's prefers-color-scheme
  * cannot change what is rendered.
  */
-setGetShikiServiceCallback(getShikiService);
-
 const editor = document.createElement('erd-editor');
 editor.systemDarkMode = false;
 editor.enableThemeBuilder = false;

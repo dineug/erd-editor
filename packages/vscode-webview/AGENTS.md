@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-07 -->
 
 # vscode-webview
 
@@ -30,7 +30,7 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
   leaves one, and CI starts from a clean checkout.
 - **`base: './'` and the literal `{{extension-base-url}}` token are a contract.** `Editor#buildHtmlForWebview`
   (`packages/vscode-extension/src/editor.ts`) regex-replaces it; absolute asset paths render a blank panel.
-- **Dependency workers are inlined here, and only here.** The document sits on `vscode-webview://` while `asWebviewUri` serves files from `vscode-resource.vscode-cdn.net`, and a worker script is the one resource a browser refuses across origins, so the URL workers `@dineug/erd-editor`, `@dineug/erd-editor-shiki-worker` and `@dineug/erd-editor-replication-store-worker` ship would throw. `inlineDependencyWorkers` from `tools/vite/inline-worker.ts` rewrites their `dist/` at transform time into Vite's inline form; Vite spells a shared worker as a percent-encoded data URL, which for the Shiki worker passes 2 MiB and fails with an empty error event, so `base64InlineWorkers` re-encodes it and fails the build past the cap.
+- **Dependency workers are inlined here, and only here.** The document sits on `vscode-webview://` while `asWebviewUri` serves files from `vscode-resource.vscode-cdn.net`, and a worker script is the one resource a browser refuses across origins, so the URL workers `@dineug/erd-editor` and `@dineug/erd-editor-replication-store-worker` ship would throw. `inlineDependencyWorkers` from `tools/vite/inline-worker.ts` rewrites their `dist/` at transform time into Vite's inline form; Vite spells a shared worker as a percent-encoded data URL, which for the Shiki worker passes 2 MiB and fails with an empty error event, so `base64InlineWorkers` re-encodes it and fails the build past the cap.
 - **`crossorigin` must not reach the emitted HTML** — assets come via `asWebviewUri` from an origin sending
   no CORS headers, so such a script never loads; hence `strip-crossorigin` and `modulePreload: false`.
 - **`acquireVsCodeApi()` is called once, at module scope in `src/index.ts`**; a second call throws. Everything after it is `mountWebview` from `@dineug/erd-editor-webview-client`; the protocol wiring lives there and is tested there.
@@ -59,14 +59,14 @@ replication-store worker holding the host's copy. It builds *into* `../vscode-ex
   Handlers are registered up front and collected with `Bridge.mergeRegister`.
 - `editor.getSharedStore({ mouseTracker: false, focusTracker: false })` — that store feeds host replication, not collaboration;
   nothing here receives cursor positions.
-- Shiki loads lazily into its own chunk; `#loading` is removed and the editor appended to `document.body`
-  only when `webviewInitialValueCommand` arrives.
+- `#loading` is removed and the editor appended to `document.body` only when `webviewInitialValueCommand`
+  arrives.
 
 ## Dependencies
 
 ### Internal
 
-`@dineug/erd-editor-webview-client` (the mounted editor and all of the protocol), `@dineug/erd-editor-webview-bridge` (for `Appearance`). The editor, the replica worker and the Shiki worker arrive through the client and are still bundled and inlined here.
+`@dineug/erd-editor-webview-client` (the mounted editor and all of the protocol), `@dineug/erd-editor-webview-bridge` (for `Appearance`). The editor and the replica worker arrive through the client and are still bundled and inlined here; the editor's four workers, the Shiki one included, are among what is inlined.
 
 ### External
 

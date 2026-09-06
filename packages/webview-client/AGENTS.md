@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-09-06 | Updated: 2026-09-06 -->
+<!-- Generated: 2026-09-06 | Updated: 2026-09-07 -->
 
 # webview-client
 
@@ -7,8 +7,9 @@
 
 `mountWebview(host)` puts `<erd-editor>` into an IDE webview and wires everything the host
 protocol needs: the `@dineug/erd-editor-webview-bridge` commands in both directions, the
-replica worker from `@dineug/erd-editor-replication-store-worker`, file export as base64 and
-the lazily loaded Shiki worker. `vscode-webview` and `intellij-webview` are thin adapters over
+replica worker from `@dineug/erd-editor-replication-store-worker`, and file export as base64.
+Highlighting needs no wiring — the editor spawns that worker itself. `vscode-webview` and
+`intellij-webview` are thin adapters over
 it, each supplying only its transport and what differs about its host. `private: true`.
 
 ## Key Files
@@ -37,7 +38,7 @@ it, each supplying only its transport and what differs about its host. `private:
 
 ### Internal
 
-`@dineug/erd-editor`, `@dineug/erd-editor-replication-store-worker`, `@dineug/erd-editor-shiki-worker` (lazy), `@dineug/erd-editor-webview-bridge` — all `dependencies`, all external.
+`@dineug/erd-editor`, `@dineug/erd-editor-replication-store-worker`, `@dineug/erd-editor-webview-bridge` — all `dependencies`, all external.
 
 ### External
 

@@ -1,6 +1,7 @@
 import ElkLayoutSharedWorker from '../services/elk-layout/elkLayout.shared-worker?sharedworker&inline';
 import ExportPngSharedWorker from '../services/export-png/exportPng.shared-worker?sharedworker&inline';
 import SchemaGCSharedWorker from '../services/schema-gc/schemaGC.shared-worker?sharedworker&inline';
+import ShikiSharedWorker from '../services/shiki/shiki.shared-worker?sharedworker&inline';
 
 /**
  * The umd build's spawn module, aliased in by vite.umd.config.ts: a script tag
@@ -17,4 +18,8 @@ export function spawnExportPngWorker(name: string): SharedWorker {
 
 export function spawnElkLayoutWorker(name: string): SharedWorker {
   return new ElkLayoutSharedWorker({ name });
+}
+
+export function spawnShikiWorker(name: string): SharedWorker {
+  return new ShikiSharedWorker({ name });
 }

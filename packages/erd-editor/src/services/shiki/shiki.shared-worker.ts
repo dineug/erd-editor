@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 
-import { ShikiService } from '@/services/shikiService';
+import { ShikiService } from '@/services/shiki/shikiService';
 
 declare let self: SharedWorkerGlobalScope;
 

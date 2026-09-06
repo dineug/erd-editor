@@ -352,15 +352,15 @@ for (const dir of packageDirs) {
   }
 }
 
-if (libraryCount !== 9) {
-  problems.push(`expected 9 library configs, found ${libraryCount}`);
+if (libraryCount !== 8) {
+  problems.push(`expected 8 library configs, found ${libraryCount}`);
 }
 if (factoryCount !== 7) {
   problems.push(`expected 7 defineLibraryConfig consumers, found ${factoryCount}`);
 }
-if (sharedTaskCount !== 2) {
+if (sharedTaskCount !== 1) {
   problems.push(
-    `expected 2 bespoke createLibraryTasks consumers, found ${sharedTaskCount}`
+    `expected 1 bespoke createLibraryTasks consumer, found ${sharedTaskCount}`
   );
 }
 

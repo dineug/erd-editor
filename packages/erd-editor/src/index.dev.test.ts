@@ -1,17 +1,10 @@
 import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 
-import { getShikiService } from '@/services/shikiService';
-
-const mocks = vi.hoisted(() => {
-  const shikiService = { codeToHtml: async () => '<pre></pre>' };
-  return {
-    shikiService,
-    getShikiService: vi.fn(() => shikiService),
-    begin: vi.fn(),
-    end: vi.fn(),
-    statsInstances: [] as Array<{ dom: HTMLElement }>,
-  };
-});
+const mocks = vi.hoisted(() => ({
+  begin: vi.fn(),
+  end: vi.fn(),
+  statsInstances: [] as Array<{ dom: HTMLElement }>,
+}));
 
 vi.mock('stats.js', () => ({
   default: class StatsMock {
@@ -23,10 +16,6 @@ vi.mock('stats.js', () => ({
       mocks.statsInstances.push(this);
     }
   },
-}));
-
-vi.mock('@dineug/erd-editor-shiki-worker', () => ({
-  getShikiService: mocks.getShikiService,
 }));
 
 const frames: FrameRequestCallback[] = [];
@@ -41,11 +30,6 @@ beforeAll(async () => {
 });
 
 describe('index.dev', () => {
-  it('registers the shiki service factory from the worker package', () => {
-    expect(getShikiService()).toBe(mocks.shikiService);
-    expect(mocks.getShikiService).toHaveBeenCalled();
-  });
-
   it('prepares the document body for a full-height editor', () => {
     expect(document.body.style.margin).toBe('0px');
     expect(document.body.style.height).toBe('100vh');

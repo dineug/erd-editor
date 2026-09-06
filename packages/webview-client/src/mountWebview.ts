@@ -1,7 +1,6 @@
 import {
   type ErdEditorElement,
   setExportFileCallback,
-  setGetShikiServiceCallback,
   setImportFileCallback,
 } from '@dineug/erd-editor';
 import { createReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
@@ -49,8 +48,8 @@ export interface WebviewClient {
 
 /**
  * Mounts the editor into a webview and wires the whole host protocol: the
- * bridge commands both ways, the replica worker, file export and the lazy
- * highlighter. The editor joins the document once the host sends its value.
+ * bridge commands both ways, the replica worker and file export. The editor
+ * joins the document once the host sends its value.
  */
 export function mountWebview(host: WebviewHost): WebviewClient {
   const bridge = new Bridge();
@@ -76,9 +75,6 @@ export function mountWebview(host: WebviewHost): WebviewClient {
     replicationStoreWorker.postMessage(action);
   };
 
-  import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
-    setGetShikiServiceCallback(getShikiService);
-  });
   if (host.importFile) {
     setImportFileCallback(options => {
       dispatch(Bridge.executeCommand(hostImportFileCommand, options));

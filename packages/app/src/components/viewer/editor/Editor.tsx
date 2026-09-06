@@ -1,7 +1,6 @@
-import {
-  ErdEditorElement,
-  setGetShikiServiceCallback,
-} from '@dineug/erd-editor';
+import '@dineug/erd-editor';
+
+import type { ErdEditorElement } from '@dineug/erd-editor';
 import { useAtom, useAtomValue } from 'jotai';
 import { useLayoutEffect, useRef } from 'react';
 
@@ -12,10 +11,6 @@ import { SchemaEntity } from '@/services/indexeddb/modules/schema';
 import { bridge } from '@/utils/broadcastChannel';
 
 import * as styles from './Editor.styles';
-
-import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
-  setGetShikiServiceCallback(getShikiService);
-});
 
 interface EditorProps {
   entity: SchemaEntity;

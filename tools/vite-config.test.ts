@@ -31,7 +31,10 @@ import {
 const workspaceDir = join(import.meta.dirname, '..');
 const editorDir = join(workspaceDir, 'packages/erd-editor');
 const rHtmlDir = join(workspaceDir, 'packages/r-html');
-const shikiWorkerDir = join(workspaceDir, 'packages/erd-editor-shiki-worker');
+const replicationStoreWorkerDir = join(
+  workspaceDir,
+  'packages/replication-store-worker'
+);
 
 type CacheInput =
   | string
@@ -76,10 +79,6 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
       pattern: 'packages/erd-editor-schema/dist/**/*.d.ts',
       base: 'workspace',
     },
-    {
-      pattern: 'packages/erd-editor-shiki-worker/dist/**/*.d.ts',
-      base: 'workspace',
-    },
     { pattern: 'packages/r-html/dist/**/*.d.ts', base: 'workspace' },
     {
       pattern: 'packages/schema-sql-parser/dist/**/*.d.ts',
@@ -92,7 +91,7 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
     '!**/*.tsbuildinfo',
   ]);
   assert.equal(metadata.hasTest, true);
-  assert.equal(loadLibraryMetadata(shikiWorkerDir).hasTest, false);
+  assert.equal(loadLibraryMetadata(replicationStoreWorkerDir).hasTest, false);
 });
 
 test('standard library factory preserves build policies', () => {
@@ -173,7 +172,9 @@ test('a package may append a build step after the standard one', () => {
 });
 
 test('build-only packages do not grow a test task', () => {
-  assert.deepEqual(Object.keys(createLibraryTasks(shikiWorkerDir)), ['build']);
+  assert.deepEqual(Object.keys(createLibraryTasks(replicationStoreWorkerDir)), [
+    'build',
+  ]);
 });
 
 test('task metadata does not require generated workspace plugins', () => {

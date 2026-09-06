@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-07 -->
 
 # app
 
@@ -39,6 +39,7 @@ sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted p
 ### Working In This Directory
 
 - **The editor is a custom element, not a React component.** `Editor.tsx` creates it via refs and drives it through element methods; props never reach its internals.
+- **`import '@dineug/erd-editor';` on its own line is what registers `<erd-editor>`.** Every other name the package exports is a type now that highlighting needs no callback, so a file that names only `ErdEditorElement` loses the whole import to type elision and `createElement('erd-editor')` returns an unupgraded `HTMLElement` — `getSharedStore is not a function` at mount, past `tsc` and past the build. `src/erdEditorRegistration.test.ts` pins the side-effect import beside every caller.
 - The router serves the editor at `/` and the lazy live collaboration view at `/live`; the catch-all route redirects back to `/`.
 - `VitePWA` uses `injectManifest` with `registerType: 'prompt'`, but `registerSW.ts` reloads on an update activation. The service worker keeps hashed JS/CSS in `static`, other images/fonts in `assets`, and Google Fonts in separate caches.
 - **Collaboration cannot move into a worker** — `RTCPeerConnection` is window-only. `leader.ts` elects one tab via `navigator.locks`; `atoms/modules/sidebar/index.ts` routes every batch as `collaborativeDispatch`, `bridge.emit` in the leader and `dispatch` elsewhere, because BroadcastChannel never echoes to the poster.
@@ -48,8 +49,8 @@ sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted p
 
 ### Testing Requirements
 
-- `vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — `src/**/*.test.ts`, happy-dom, `tsc --noEmit` first. `test:coverage` enforces 80% per file over `services/collaborative/**`, `services/indexeddb/modules/collaborative/**`, `utils/broadcastChannel.ts` and `utils/crypto.ts`.
-- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor` and the Shiki worker, then runs one Chromium worker against `vp dev` (:5175) and the in-memory nostr relay (`e2e/support/relay.mjs`, :5176). WebRTC requires the two launch flags in `playwright.config.ts`. Never runs in CI.
+- `vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — `src/**/*.test.ts`, happy-dom, `tsc --noEmit` first. `erdEditorRegistration.test.ts` reads source rather than mounting anything: it is the one gate in CI for the element registration above, since the e2e suite that would catch it never runs there. `test:coverage` enforces 80% per file over `services/collaborative/**`, `services/indexeddb/modules/collaborative/**`, `utils/broadcastChannel.ts` and `utils/crypto.ts`.
+- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor`, then runs one Chromium worker against `vp dev` (:5175) and the in-memory nostr relay (`e2e/support/relay.mjs`, :5176). WebRTC requires the two launch flags in `playwright.config.ts`. Never runs in CI.
 - CI's `check` job runs `typecheck` (`tsconfig.json`, `include: ["src"]`) and `e2e:typecheck` (`e2e/tsconfig.json`) — the only program covering `e2e/` and `playwright.config.ts`.
 
 ### Common Patterns
@@ -62,7 +63,7 @@ sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted p
 
 ### Internal
 
-`@dineug/erd-editor` (the element, plus the `engine.js` subpath for the headless `createReplicationStore()` the IndexedDB worker runs), `@dineug/erd-editor-shiki-worker`. Type guards come from `es-toolkit`, ids from `nanoid`, and `safeCallback` is local (`src/utils/safeCallback.ts`).
+`@dineug/erd-editor` (the element, plus the `engine.js` subpath for the headless `createReplicationStore()` the IndexedDB worker runs) — one dependency now that highlighting is inside it. Type guards come from `es-toolkit`, ids from `nanoid`, and `safeCallback` is local (`src/utils/safeCallback.ts`).
 
 ### External
 

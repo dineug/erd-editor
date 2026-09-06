@@ -34,10 +34,11 @@ npm install @dineug/erd-editor
 
 The package ships ES modules with its dependencies left as bare imports, so any bundler
 (Vite, webpack, Rspack, esbuild, …) resolves, dedupes and tree-shakes them like the rest of
-your app. Two features run in shared workers — schema garbage collection and the PNG export —
-constructed as `new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers
-emit as worker files beside your chunks; a strict CSP needs `worker-src 'self'`. Without a
-bundler, use the UMD file described under [Script tag](#script-tag) instead.
+your app. Four features run in shared workers — schema garbage collection, the PNG export, the
+automatic table placement and the syntax highlighting — constructed as
+`new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers emit as worker
+files beside your chunks; a strict CSP needs `worker-src 'self'`. Without a bundler, use the UMD
+file described under [Script tag](#script-tag) instead.
 
 ## Usage
 
@@ -79,7 +80,7 @@ that step; a production build needs nothing.
 // vite.config.js
 export default {
   optimizeDeps: {
-    exclude: ['@dineug/erd-editor', '@dineug/erd-editor-shiki-worker'],
+    exclude: ['@dineug/erd-editor'],
   },
 };
 ```
@@ -87,16 +88,12 @@ export default {
 ### Script tag
 
 `dist/erd-editor.umd.js` is a self-contained build for a plain `<script>` tag: every
-dependency and both workers are inside it, and it registers `<erd-editor>` and exposes the
-three callbacks as `window.ErdEditor`. It is what `unpkg` and `jsdelivr` serve.
+dependency and all four workers are inside it, and it registers `<erd-editor>` and exposes the
+two file callbacks as `window.ErdEditor`. It is what `unpkg` and `jsdelivr` serve.
 
 ```html
 <erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
 <script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.umd.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor-shiki-worker/dist/erd-editor-shiki-worker.umd.js"></script>
-<script>
-  ErdEditor.setGetShikiServiceCallback(ErdEditorShikiWorker.getShikiService);
-</script>
 ```
 
 The workers travel inside the file as `data:` URLs, so a strict CSP needs `worker-src data:`
@@ -165,22 +162,22 @@ erd-editor {
 
 ## Syntax highlighting
 
-The SQL and code-generation panels render as plain text unless a highlighter is supplied.
-[`@dineug/erd-editor-shiki-worker`](https://www.npmjs.com/package/@dineug/erd-editor-shiki-worker)
-runs one in a shared worker. It is a separate install:
+The SQL and code-generation panels are highlighted by [Shiki](https://shiki.style), in a shared
+worker of its own. There is nothing to install or register: the worker is built the first time a
+code panel renders, so a page that opens none never fetches the grammars.
 
-```sh
-npm install @dineug/erd-editor-shiki-worker
-```
+| | |
+| --- | --- |
+| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python |
+| Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
-```js
-import { setGetShikiServiceCallback } from '@dineug/erd-editor';
+Those are exactly the languages the panels emit — the JPA generator emits Java, the SQLAlchemy
+generator emits Python, the TypeORM, Sequelize and Drizzle generators emit TypeScript, and the
+DBML and AML generators are highlighted as SQL, the closest grammar shiki ships.
 
-// deferred, so the highlighter never lands in your main chunk
-import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
-  setGetShikiServiceCallback(getShikiService);
-});
-```
+Where `SharedWorker` is missing — Chrome on Android, Safari before 16.4 — the underlying error is
+logged and the panels render as plain text; nothing else is affected. The regex engine is plain
+JavaScript, so no host CSP needs `wasm-unsafe-eval`.
 
 ## File dialogs
 

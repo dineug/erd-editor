@@ -1,7 +1,6 @@
-import {
-  ErdEditorElement,
-  setGetShikiServiceCallback,
-} from '@dineug/erd-editor';
+import '@dineug/erd-editor';
+
+import type { ErdEditorElement } from '@dineug/erd-editor';
 import { Flex, Text } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -20,10 +19,6 @@ import {
 } from '@/utils/errors';
 
 import * as styles from './LiveCollaborative.styles';
-
-import('@dineug/erd-editor-shiki-worker').then(({ getShikiService }) => {
-  setGetShikiServiceCallback(getShikiService);
-});
 
 interface LiveCollaborativeProps {}
 

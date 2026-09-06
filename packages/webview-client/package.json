@@ -22,7 +22,6 @@
   "dependencies": {
     "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-replication-store-worker": "workspace:*",
-    "@dineug/erd-editor-shiki-worker": "workspace:*",
     "@dineug/erd-editor-webview-bridge": "workspace:*"
   },
   "devDependencies": {

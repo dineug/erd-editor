@@ -4,10 +4,20 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
 import * as styles from '@/components/primitives/code-block/CodeBlock.styles';
-import {
-  setGetShikiServiceCallback,
-  ShikiService,
-} from '@/services/shikiService';
+import type { ShikiService } from '@/services/shiki';
+
+const mocks = vi.hoisted(() => ({
+  getShikiService: vi.fn<() => ShikiService | null>(() => null),
+}));
+
+vi.mock('@/services/shiki', () => ({
+  getShikiService: mocks.getShikiService,
+}));
+
+/** What the code panels read; the worker itself is nothing this spec builds. */
+const setShikiService = (service: ShikiService | null) => {
+  mocks.getShikiService.mockImplementation(() => service);
+};
 
 const HIGHLIGHT = `<pre class="shiki" style="background-color:#123456" tabindex="0"><code><span class="line">SELECT 1;</span></code></pre>`;
 
@@ -23,7 +33,7 @@ const pendingHighlight = () => {
   const codeToHtml = vi.fn(
     () => new Promise<string>(resolve => deferred.push(resolve))
   );
-  setGetShikiServiceCallback(() => ({ codeToHtml }) as unknown as ShikiService);
+  setShikiService({ codeToHtml } as unknown as ShikiService);
 
   const state = observable({
     value: 'SELECT 1;',
@@ -68,7 +78,7 @@ let mounted: Mounted | null = null;
 afterEach(() => {
   mounted?.unmount();
   mounted = null;
-  setGetShikiServiceCallback(() => null);
+  setShikiService(null);
 });
 
 describe('CodeBlock', () => {
@@ -180,7 +190,7 @@ describe('CodeBlock', () => {
 
   it('strips the trailing newline, which a textarea turns into a line the preview has not got', async () => {
     const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
     const onCopy = vi.fn();
 
     mounted = await mountAndFlush(
@@ -245,7 +255,7 @@ describe('CodeBlock', () => {
 
   it('keeps the textarea on the raw value once the highlight lands', async () => {
     const { service } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
@@ -257,7 +267,7 @@ describe('CodeBlock', () => {
 
   it('highlights through the shiki service and adopts its background color', async () => {
     const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} theme=${'dark'} />`
@@ -280,7 +290,7 @@ describe('CodeBlock', () => {
 
   it('drops the tab stop shiki puts on its pre', async () => {
     const { service } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
@@ -297,7 +307,7 @@ describe('CodeBlock', () => {
     const { service } = createShikiService(
       '<div class="plain">SELECT 1;</div>'
     );
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
@@ -311,7 +321,7 @@ describe('CodeBlock', () => {
     const { service } = createShikiService(
       '<pre class="shiki"><code>SELECT 1;</code></pre>'
     );
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
@@ -323,7 +333,7 @@ describe('CodeBlock', () => {
 
   it('registers no scroll listener, because the scroller carries both layers', async () => {
     const { service } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     const addEventListener = vi.spyOn(
       HTMLTextAreaElement.prototype,
@@ -385,7 +395,7 @@ describe('CodeBlock', () => {
 
   it('re-highlights when a watched prop changes and ignores unwatched props', async () => {
     const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     const state = observable({
       value: 'SELECT 1;',
@@ -481,20 +491,6 @@ describe('CodeBlock', () => {
     expect(preview.querySelector('.stale')).toBeNull();
   });
 
-  it('re-highlights when the shiki service loads after mount', async () => {
-    mounted = await mountAndFlush(
-      html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
-    );
-    expect(getPreview(mounted).querySelector('pre.shiki')).toBeNull();
-
-    const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
-    await flush();
-
-    expect(codeToHtml).toHaveBeenCalledTimes(1);
-    expect(getPreview(mounted).querySelector('pre.shiki')).toBeTruthy();
-  });
-
   it('tolerates a highlight resolving after unmount, once the preview ref is released', async () => {
     let resolveHighlight: (value: string) => void = () => {};
     const codeToHtml = vi.fn(
@@ -503,15 +499,14 @@ describe('CodeBlock', () => {
           resolveHighlight = resolve;
         })
     );
-    setGetShikiServiceCallback(
-      () => ({ codeToHtml }) as unknown as ShikiService
-    );
+    setShikiService({ codeToHtml } as unknown as ShikiService);
 
     mounted = await mountAndFlush(
       html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
     );
     const scroller = getScroller(mounted);
     const root = getRoot(mounted);
+    const container = mounted.container;
     expect(codeToHtml).toHaveBeenCalledTimes(1);
 
     mounted.unmount();
@@ -524,25 +519,7 @@ describe('CodeBlock', () => {
     // color is never committed to the detached node
     expect(scroller.style.backgroundColor).toBe('');
     expect(root.isConnected).toBe(false);
-  });
-
-  it('tears down its subscriptions on unmount', async () => {
-    const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
-
-    mounted = await mountAndFlush(
-      html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
-    );
-    const callsWhileMounted = codeToHtml.mock.calls.length;
-
-    mounted.unmount();
-    const container = mounted.container;
-    mounted = null;
-
-    setGetShikiServiceCallback(() => service);
-    await flush();
-
-    expect(codeToHtml.mock.calls.length).toBe(callsWhileMounted);
+    expect(codeToHtml).toHaveBeenCalledTimes(1);
     expect(container.querySelector('.scrollbar')).toBeNull();
   });
 });

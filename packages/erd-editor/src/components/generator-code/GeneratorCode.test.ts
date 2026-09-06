@@ -32,15 +32,25 @@ import {
   changeColumnDataTypeAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
-import {
-  setGetShikiServiceCallback,
-  ShikiService,
-} from '@/services/shikiService';
+import type { ShikiService } from '@/services/shiki';
 import {
   createGeneratorCode,
   createGeneratorCodeTable,
 } from '@/utils/generator-code';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+
+const mocks = vi.hoisted(() => ({
+  getShikiService: vi.fn<() => ShikiService | null>(() => null),
+}));
+
+vi.mock('@/services/shiki', () => ({
+  getShikiService: mocks.getShikiService,
+}));
+
+/** What the code block reads; the worker itself is nothing this spec builds. */
+const setShikiService = (service: ShikiService | null) => {
+  mocks.getShikiService.mockImplementation(() => service);
+};
 
 let mounted: Mounted | null = null;
 let clipboardDescriptor: PropertyDescriptor | undefined;
@@ -126,7 +136,7 @@ beforeEach(() => {
 afterEach(() => {
   mounted?.unmount();
   mounted = null;
-  setGetShikiServiceCallback(() => null);
+  setShikiService(null);
 
   if (clipboardDescriptor) {
     Object.defineProperty(navigator, 'clipboard', clipboardDescriptor);
@@ -233,7 +243,7 @@ describe('GeneratorCode', () => {
   it('regenerates for the language setting and passes the mapped lang to the code block', async () => {
     const app = createSeededApp();
     const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${GeneratorCode} isDarkMode=${false} />`,
@@ -264,7 +274,7 @@ describe('GeneratorCode', () => {
     app.store.dispatchSync(changeLanguageAction({ value: Language.JPA }));
 
     const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${GeneratorCode} isDarkMode=${false} />`,
@@ -280,7 +290,7 @@ describe('GeneratorCode', () => {
   it('forwards the dark theme when isDarkMode is set', async () => {
     const app = createSeededApp();
     const { service, codeToHtml } = createShikiService();
-    setGetShikiServiceCallback(() => service);
+    setShikiService(service);
 
     mounted = await mountAndFlush(
       html`<${GeneratorCode} isDarkMode=${true} />`,
