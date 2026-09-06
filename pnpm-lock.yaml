@@ -206,6 +206,9 @@ importers:
       deepmerge:
         specifier: ^4.3.1
         version: 4.3.1
+      elkjs:
+        specifier: ^0.12.0
+        version: 0.12.0
       es-toolkit:
         specifier: ^1.50.0
         version: 1.50.0
@@ -5135,6 +5138,9 @@ packages:
 
   electron-to-chromium@1.5.407:
     resolution: {integrity: sha512-4R8XgQOdfxexCd/u63lRm6wCHjECwI45MV9wxAs2ggtfWe2hwlo1ql97jKsju2IcJ+jFSTwBssyYoiWhh7mauQ==}
+
+  elkjs@0.12.0:
+    resolution: {integrity: sha512-YZcKynxVxYoKIOEpywEPwCFdg+BTbxQRNf3pbwdDCvc8O3kQD8bmIwSxKU1eOTVc4Xo+VG9Te+575mlfvOrhEQ==}
 
   emoji-regex@10.3.0:
     resolution: {integrity: sha512-QpLs9D9v9kArv4lfDEgg1X/gN5XLnf/A6l9cs8SPZLRZR3ZkY9+kwIQTxm+fsSej5UMYGE8fdoaZVIBlqG0XTw==}
@@ -12109,6 +12115,8 @@ snapshots:
   electron-to-chromium@1.5.113: {}
 
   electron-to-chromium@1.5.407: {}
+
+  elkjs@0.12.0: {}
 
   emoji-regex@10.3.0: {}
 

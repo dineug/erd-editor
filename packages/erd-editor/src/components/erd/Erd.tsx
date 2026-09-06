@@ -12,6 +12,7 @@ import { useAppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
+import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
 import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
@@ -54,6 +55,7 @@ import {
   getContentRectAfter,
 } from '@/konva/scene/contentBounds';
 import { toScenePoint } from '@/konva/scene/viewport';
+import { isElkPlacement } from '@/services/elk-layout';
 import { isMouseEvent, suppressSelection } from '@/utils/domEvent';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
@@ -397,6 +399,23 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         openDiffViewer: ({ payload: { value } }) => {
           state.diffValue = value;
           store.dispatch(changeOpenMapAction({ [Open.diffViewer]: true }));
+        },
+        openAutomaticTablePlacement: ({ payload: { placement } }) => {
+          // Only the simulation is worth watching settle, so only it opens the
+          // preview. ELK answers in one go and its layout is applied where the
+          // document already is.
+          if (isElkPlacement(placement)) {
+            runElkPlacement(
+              app.value,
+              placement,
+              handleChangeAutomaticTablePlacement
+            );
+            return;
+          }
+
+          store.dispatch(
+            changeOpenMapAction({ [Open.automaticTablePlacement]: true })
+          );
         },
       })
     );

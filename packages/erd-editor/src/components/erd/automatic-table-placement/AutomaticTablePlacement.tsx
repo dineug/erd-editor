@@ -94,37 +94,39 @@ const centerOfRect = ({ x, y, width, height }: Rect): Point => ({
   y: y + height / 2,
 });
 
+/** How far the simulation has cooled, from 0 to 1. */
+export type PlacementToastState = {
+  progress: number;
+};
+
 type PlacementToastProps = {
-  progress: { value: number };
+  state: PlacementToastState;
   onApply: () => void;
   onCancel: () => void;
 };
+
+export function placementDescription({
+  progress,
+}: PlacementToastState): string {
+  return `Placing tables… ${Math.round(progress * 100)}%`;
+}
 
 /**
  * The message up while the tables settle, following the simulation as it
  * cools. Apply takes the layout as it stands, Cancel puts every table back.
  */
-const PlacementToast: FC<PlacementToastProps> = props => () => {
-  const { value } = props.progress;
-
-  return (
-    <Toast
-      progress={value}
-      description={`Placing tables… ${Math.round(value * 100)}%`}
-      action={
-        <>
-          <Button
-            variant="soft"
-            size="1"
-            text="Apply"
-            onClick={props.onApply}
-          />
-          <Button size="1" text="Cancel" onClick={props.onCancel} />
-        </>
-      }
-    />
-  );
-};
+const PlacementToast: FC<PlacementToastProps> = props => () => (
+  <Toast
+    progress={props.state.progress}
+    description={placementDescription(props.state)}
+    action={
+      <>
+        <Button variant="soft" size="1" text="Apply" onClick={props.onApply} />
+        <Button size="1" text="Cancel" onClick={props.onCancel} />
+      </>
+    }
+  />
+);
 
 const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   props,
@@ -204,13 +206,15 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     return () => null;
   }
 
+  const toast = observable<PlacementToastState>({ progress: 0 });
+
   try {
     const simulation = createAutomaticTablePlacement(store.state);
 
-    const handleStop = () => {
+    const handleApply = () => {
+      simulation.stop();
       if (isClosed) return;
 
-      simulation.stop();
       props.onChange(
         tables.map(table => ({
           id: table.id,
@@ -226,26 +230,23 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
       handleClose();
     };
 
-    const progress = observable({ value: 0 });
-
     simulation.on('tick.progress', () => {
-      progress.value = placementProgress(simulation);
+      toast.progress = placementProgress(simulation);
     });
+    simulation.on('end', handleApply);
 
     originApp.emitter.emit(
       openToastAction({
         close,
         message: (
           <PlacementToast
-            progress={progress}
-            onApply={handleStop}
+            state={toast}
+            onApply={handleApply}
             onCancel={handleCancel}
           />
         ),
       })
     );
-
-    simulation.on('end', handleStop);
     addUnsubscribe(
       originApp.shortcut$.subscribe(({ type }) => {
         type === KeyBindingName.stop && handleCancel();

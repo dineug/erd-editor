@@ -6,15 +6,14 @@ import Fues from 'fuse.js';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
+import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
 import Icon from '@/components/primitives/icon/Icon';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { START_X, START_Y } from '@/constants/layout';
-import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
-import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
@@ -31,6 +30,7 @@ import {
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
 import { getOriginToPlace } from '@/konva/scene/viewport';
+import { openAutomaticTablePlacementAction } from '@/utils/emitter';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
   importAML,
@@ -197,13 +197,17 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     })),
     {
-      icon: <Icon name="atom" size={16} />,
-      name: 'Automatic Table Placement',
-      perform: ({ store }) => {
-        store.dispatch(
-          changeOpenMapAction({ [Open.automaticTablePlacement]: true })
-        );
-      },
+      icon: <Icon name="wand-sparkles" size={16} />,
+      name: 'Auto Layout',
+      next: tablePlacementMenus.map<Action>(menu => ({
+        icon: <Icon name={menu.iconName} size={16} />,
+        name: menu.name,
+        perform: ({ emitter }) => {
+          emitter.emit(
+            openAutomaticTablePlacementAction({ placement: menu.placement })
+          );
+        },
+      })),
       filter: ({ store }) => {
         return store.state.settings.canvasType === CanvasType.ERD;
       },

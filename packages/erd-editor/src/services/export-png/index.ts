@@ -1,6 +1,7 @@
 import * as Comlink from 'comlink';
 
 import type { Theme } from '@/themes/tokens';
+import { withTimeout } from '@/utils/promise';
 import { spawnExportPngWorker } from '@/workers/spawn';
 
 import type { ExportPngService } from './exportPngService';
@@ -75,16 +76,6 @@ type Remote = Comlink.Remote<ExportPngService>;
 
 let connection: Promise<Remote | null> | null = null;
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error('[export-png] the worker did not answer')),
-      ms
-    );
-    promise.then(resolve, reject).finally(() => clearTimeout(timer));
-  });
-}
-
 /**
  * The shared worker, or null on a host that will not run one. The handshake is
  * what separates the two, because a constructor that returns is no evidence
@@ -112,7 +103,11 @@ function connectSharedWorker(): Promise<Remote | null> {
     const remote = Comlink.wrap<ExportPngService>(worker.port);
 
     try {
-      await withTimeout(remote.probeFontWidths(), HANDSHAKE_MS);
+      await withTimeout(
+        remote.probeFontWidths(),
+        HANDSHAKE_MS,
+        '[export-png] the worker did not answer'
+      );
       return remote;
     } catch (error) {
       console.warn('[export-png] the shared worker did not start', error);

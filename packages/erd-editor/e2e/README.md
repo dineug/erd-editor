@@ -300,7 +300,7 @@ too fast for it.
   it can be a click into nothing.
 - **No `waitForTimeout` as synchronisation.** Use locator auto-waiting or
   `expect.poll` against `erd.value()`. Timeouts hide races; they do not fix them.
-- **Never assert exact coordinates from `Automatic Table Placement`** — it is a
+- **Never assert exact coordinates from `Auto Layout`** — it is a
   d3 force simulation with random jitter. Assert that positions _changed_.
 - **Never assert exact `fuse.js` result ordering** in quick search. Assert
   membership.

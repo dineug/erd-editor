@@ -1,4 +1,6 @@
 import {
+  AlignHorizontalDistributeCenter,
+  AlignVerticalDistributeCenter,
   ArrowRight,
   Atom,
   Braces,
@@ -39,6 +41,8 @@ import {
   Table,
   TableProperties,
   Undo2,
+  WandSparkles,
+  Waypoints,
   Workflow,
   X,
 } from 'lucide';
@@ -53,6 +57,8 @@ export type IconNodeChild = IconNode[number];
 // lucide's own kebab names, disjoint from the PascalCase notation ones, which
 // is what lets one flat namespace serve both.
 const LUCIDE_ICON = {
+  'align-horizontal-distribute-center': AlignHorizontalDistributeCenter,
+  'align-vertical-distribute-center': AlignVerticalDistributeCenter,
   'arrow-right': ArrowRight,
   atom: Atom,
   braces: Braces,
@@ -92,6 +98,8 @@ const LUCIDE_ICON = {
   table: Table,
   'table-properties': TableProperties,
   'undo-2': Undo2,
+  'wand-sparkles': WandSparkles,
+  waypoints: Waypoints,
   workflow: Workflow,
   x: X,
 } satisfies Record<string, IconNode>;

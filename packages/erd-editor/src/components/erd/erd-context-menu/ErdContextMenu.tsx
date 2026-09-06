@@ -27,6 +27,7 @@ import { createExportMenus } from './menus/exportMenus';
 import { createImportMenus } from './menus/importMenus';
 import { createRelationshipMenus } from './menus/relationshipMenus';
 import { createShowMenus } from './menus/showMenus';
+import { createTablePlacementMenus } from './menus/tablePlacementMenus';
 
 export const ErdContextMenuType = {
   ERD: 'ERD',
@@ -57,14 +58,6 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const handleAddMemo = () => {
     const { store } = app.value;
     store.dispatch(addMemoAction$());
-    props.onClose();
-  };
-
-  const handleAutomaticTablePlacement = () => {
-    const { store } = app.value;
-    store.dispatch(
-      changeOpenMapAction({ [Open.automaticTablePlacement]: true })
-    );
     props.onClose();
   };
 
@@ -387,12 +380,29 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 }
               />
               <ContextMenu.Item
-                onClick={handleAutomaticTablePlacement}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="atom" size={14} />}
-                    name="Automatic Table Placement"
+                    icon={<Icon name="wand-sparkles" size={14} />}
+                    name="Auto Layout"
+                    right={chevronRightIcon}
                   />
+                }
+                subChildren={
+                  <>
+                    {createTablePlacementMenus(app.value, props.onClose).map(
+                      menu => (
+                        <ContextMenu.Item
+                          onClick={menu.onClick}
+                          children={
+                            <ContextMenu.Menu
+                              icon={<Icon name={menu.iconName} size={14} />}
+                              name={menu.name}
+                            />
+                          }
+                        />
+                      )
+                    )}
+                  </>
                 }
               />
               <ContextMenu.Item

@@ -23,8 +23,8 @@ import {
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { START_X, START_Y } from '@/constants/layout';
-import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { TablePlacement } from '@/constants/tablePlacement';
 import {
   changeCanvasTypeAction,
   changeZoomLevelAction,
@@ -93,7 +93,7 @@ describe('searchActions', () => {
   const catalog: Action[] = [
     { name: 'New Table' },
     { name: 'New Memo' },
-    { name: 'Automatic Table Placement' },
+    { name: 'Auto Layout' },
     { name: 'customers', keywords: 'Table' },
   ];
 
@@ -214,7 +214,7 @@ describe('createScopeActions', () => {
       'Zero N',
       'One Only',
       'One N',
-      'Automatic Table Placement',
+      'Auto Layout',
     ]);
   });
 
@@ -449,13 +449,24 @@ describe('createScopeActions / ERD commands', () => {
     expect(app.store.state.doc.memoIds).toHaveLength(1);
   });
 
-  it('opens the automatic table placement dialog', async () => {
-    find(scope(), 'Automatic Table Placement').perform?.(app);
+  it('offers one automatic table placement action per placement', () => {
+    expect(
+      find(scope(), 'Auto Layout').next?.map(action => action.name)
+    ).toEqual(['Force', 'Flow', 'Tree - vertical', 'Tree - horizontal']);
+  });
+
+  it('opens the automatic table placement dialog on the placement picked', async () => {
+    const placements: string[] = [];
+    app.emitter.on({
+      openAutomaticTablePlacement: ({ payload: { placement } }) => {
+        placements.push(placement);
+      },
+    });
+
+    find(find(scope(), 'Auto Layout').next ?? [], 'Flow').perform?.(app);
     await flush();
 
-    expect(app.store.state.editor.openMap[Open.automaticTablePlacement]).toBe(
-      true
-    );
+    expect(placements).toEqual([TablePlacement.flow]);
   });
 
   it('exposes every draw-relationship menu with the Relationship keyword', () => {
