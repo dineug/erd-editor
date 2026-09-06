@@ -4,6 +4,35 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-06
+
+### Added
+
+- Pan the canvas anywhere: it has no edges any more. The scrollbars and the minimap now describe
+  where the diagram is rather than a fixed page, and both hide themselves on an empty document.
+- Point an empty screen back at the diagram: when no table or memo is on screen, a pill on the
+  bottom edge gives the direction and distance to the nearest one, and pressing it centres it.
+- Select every table and memo with Ctrl/Cmd+A as well as the older Ctrl/Cmd+Alt+A, and drag a
+  whole selection by any entity in it without holding a modifier.
+- Carry relationships and indexes through a copy of whole tables, by Alt+drag or by copy and
+  paste. A relationship comes along when both of its tables are in the copied set, and an index
+  comes along whole.
+- Reset the zoom to 100% with Ctrl/Cmd+O.
+- Reach the canvas tools from a floating toolbar in its top-left corner: the hand and pointer
+  tools, the four relationship notations, and zen mode (Alt+Z), which leaves the canvas and that
+  toolbar alone on screen. Space toggles the hand tool, and every button names its shortcut.
+
+### Changed
+
+- Export a PNG cropped to the diagram's own bounds plus a margin, drawn at the zoom the editor is
+  showing.
+- Drop the canvas size setting from the toolbar, and the edge markers that pointed at every
+  off-screen table and memo — an unbounded canvas has no size to set, and the compass above
+  replaces the markers.
+- Store the view position as an origin pair in the document. An older version keeps reading the
+  scroll fields it always did, which this version no longer writes, so it opens a file saved here
+  where it last left it rather than where this version saved it.
+
 ## [0.4.0] - 2026-09-05
 
 ### Added

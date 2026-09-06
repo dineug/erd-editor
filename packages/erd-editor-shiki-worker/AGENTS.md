@@ -9,7 +9,7 @@ Runs [Shiki](https://shiki.style) syntax highlighting off the main thread. `getS
 a named `SharedWorker` from `new URL('./shiki.shared-worker.ts', import.meta.url)` and returns a Comlink
 proxy of `ShikiService`, whose only method is `codeToHtml(code, { lang, theme })` over nine grammars (sql,
 typescript, graphql, csharp, java, kotlin, scala, go, python) and the github-dark / github-light themes.
-Published to npm at v0.2.0; `app`, `vscode-webview` and `intellij-webview` load it lazily, while the
+Published to npm at v0.3.0; `app`, `vscode-webview` and `intellij-webview` load it lazily, while the
 editor dev and e2e fixtures wire the same callback statically. The worker is a file of its own,
 `dist/workers/shiki.shared-worker.js`, and `shiki`, `@shikijs/langs`, `@shikijs/themes` and `comlink` are
 `dependencies` the consumer's bundler resolves; nothing is inlined.

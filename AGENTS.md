@@ -44,16 +44,16 @@ Build order is derived from workspace dependencies: the leaves are `r-html`, `vi
 | `packages/r-html` | `@dineug/r-html` | Library | tagged-template rendering framework + store |
 | `packages/vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | Build tool | JSX → tagged templates, and HMR boundaries |
 | `packages/schema-sql-parser` | `@dineug/schema-sql-parser` | Library | permissive DDL parser for SQL import |
-| `packages/erd-editor-shiki-worker` | `@dineug/erd-editor-shiki-worker` | Worker | Shiki highlighting off the main thread (published, 0.2.0) |
+| `packages/erd-editor-shiki-worker` | `@dineug/erd-editor-shiki-worker` | Worker | Shiki highlighting off the main thread (published, 0.3.0) |
 | `packages/erd-editor-schema` | `@dineug/erd-editor-schema` | Library | v2/v3 document schema, parsing, LWW operators |
-| `packages/erd-editor` | `@dineug/erd-editor` | Library | **editor core** — the `<erd-editor>` element (published, 3.5.0) |
+| `packages/erd-editor` | `@dineug/erd-editor` | Library | **editor core** — the `<erd-editor>` element (published, 3.6.0) |
 | `packages/webview-bridge` | `@dineug/erd-editor-webview-bridge` | Library | typed host↔webview command protocol |
 | `packages/webview-client` | `@dineug/erd-editor-webview-client` | Library | `mountWebview(host)` — the editor in an IDE webview with the whole host protocol wired; both webviews are thin adapters over it |
 | `packages/replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | Worker | headless document replica spawned by both IDE webviews |
 | `packages/vscode-webview` | `@dineug/erd-editor-vscode-webview` | App | bundle inside the VSCode webview iframe |
-| `packages/vscode-extension` | `vuerd-vscode` | App | the published VSCode extension (2.4.0) |
+| `packages/vscode-extension` | `vuerd-vscode` | App | the published VSCode extension (2.5.0) |
 | `packages/intellij-webview` | `@dineug/erd-editor-intellij-webview` | App | bundle for the IntelliJ plugin, over `window.cefQuery` |
-| `packages/intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | App | the published IntelliJ plugin — Kotlin/Gradle, no TS (0.4.0) |
+| `packages/intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | App | the published IntelliJ plugin — Kotlin/Gradle, no TS (0.5.0) |
 | `packages/app` | `@dineug/erd-editor-app` | App | the React PWA at erd-editor.io |
 
 ## CODE MAP
