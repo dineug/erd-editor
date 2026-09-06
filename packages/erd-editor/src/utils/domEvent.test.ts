@@ -7,6 +7,7 @@ import {
   onPrevent,
   onStop,
   onStopImmediate,
+  suppressSelection,
 } from '@/utils/domEvent';
 
 describe('onNumberOnly', () => {
@@ -103,5 +104,26 @@ describe('isTouchEvent', () => {
 
   it('is false for a MouseEvent', () => {
     expect(isTouchEvent(new MouseEvent('mousedown'))).toBe(false);
+  });
+});
+
+describe('suppressSelection', () => {
+  it('takes selection off the element until the undo is called', () => {
+    const el = document.createElement('div');
+
+    const restore = suppressSelection(el);
+    expect(el.style.userSelect).toBe('none');
+
+    restore();
+    expect(el.style.userSelect).toBe('');
+  });
+
+  it('puts back whatever the element declared inline before', () => {
+    const el = document.createElement('div');
+    el.style.userSelect = 'text';
+
+    suppressSelection(el)();
+
+    expect(el.style.userSelect).toBe('text');
   });
 });

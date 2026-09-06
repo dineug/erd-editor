@@ -120,7 +120,7 @@ describe('moveStart$', () => {
 
 describe('moveEnd$', () => {
   it('merges mouseup and touchend', () => {
-    const values: Array<MouseEvent | TouchEvent> = [];
+    const values: Event[] = [];
     const subscription = moveEnd$.subscribe(event => values.push(event));
 
     const up = mouse('mouseup', 1, 2);
@@ -130,6 +130,21 @@ describe('moveEnd$', () => {
     subscription.unsubscribe();
 
     expect(values).toEqual([up, end]);
+  });
+
+  it('also ends where the browser takes the pointer away', () => {
+    const values: Event[] = [];
+    const subscription = moveEnd$.subscribe(event => values.push(event));
+
+    const dragstart = new Event('dragstart');
+    const pointercancel = new Event('pointercancel');
+    const blur = new Event('blur');
+    window.dispatchEvent(dragstart);
+    window.dispatchEvent(pointercancel);
+    window.dispatchEvent(blur);
+    subscription.unsubscribe();
+
+    expect(values).toEqual([dragstart, pointercancel, blur]);
   });
 });
 
@@ -213,5 +228,18 @@ describe('drag$', () => {
 
     expect(complete).toHaveBeenCalledOnce();
     subscription.unsubscribe();
+  });
+
+  it('stops following a pointer whose mouseup a native drag ate', () => {
+    anchor(0, 0);
+    const values: DragMove[] = [];
+    const subscription = drag$.subscribe(value => values.push(value));
+
+    window.dispatchEvent(mouse('mousemove', 4, 8));
+    window.dispatchEvent(new Event('dragstart'));
+    window.dispatchEvent(mouse('mousemove', 40, 80));
+
+    expect(values).toHaveLength(1);
+    expect(subscription.closed).toBe(true);
   });
 });

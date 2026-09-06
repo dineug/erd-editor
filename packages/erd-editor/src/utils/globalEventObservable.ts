@@ -32,6 +32,10 @@ export const touchstart$ = windowEvent$<TouchEvent>('touchstart');
 export const touchmove$ = windowEvent$<TouchEvent>('touchmove');
 export const touchend$ = windowEvent$<TouchEvent>('touchend');
 
+const dragstart$ = windowEvent$<DragEvent>('dragstart');
+const pointercancel$ = windowEvent$<PointerEvent>('pointercancel');
+const windowBlur$ = windowEvent$<FocusEvent>('blur');
+
 export const animationFrames$ = animationFrames().pipe(share());
 
 const forwardMoveStartEvent$ = windowEvent$<
@@ -43,7 +47,19 @@ export const moveStart$ = merge(
   touchstart$,
   forwardMoveStartEvent$
 );
-export const moveEnd$ = merge(mouseup$, touchend$);
+
+/**
+ * A gesture also ends wherever the browser takes the pointer away: a native
+ * drag swallows the rest of the stream, a cancelled pointer never lifts, and a
+ * blurred window never sees the mouseup, each leaving drag$ subscribed.
+ */
+export const moveEnd$ = merge(
+  mouseup$,
+  touchend$,
+  dragstart$,
+  pointercancel$,
+  windowBlur$
+);
 
 let prevX = 0;
 let prevY = 0;

@@ -54,7 +54,7 @@ import {
   getContentRectAfter,
 } from '@/konva/scene/contentBounds';
 import { toScenePoint } from '@/konva/scene/viewport';
-import { isMouseEvent } from '@/utils/domEvent';
+import { isMouseEvent, suppressSelection } from '@/utils/domEvent';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
@@ -248,12 +248,19 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         state.grabCursor = 'grabbing';
       }
 
-      drag$.subscribe({
-        next: handleMove,
-        complete: () => {
-          state.grabCursor = 'grab';
-        },
-      });
+      // Before the first move rather than on it: the selection a press starts
+      // is already there by the time a mousemove could preventDefault it, and
+      // the native drag it turns into is what eats the mouseup this ends on.
+      const restoreSelection = suppressSelection(root.value);
+
+      drag$
+        .subscribe({
+          next: handleMove,
+          complete: () => {
+            state.grabCursor = 'grab';
+          },
+        })
+        .add(restoreSelection);
     }
   };
 

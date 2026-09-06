@@ -95,6 +95,16 @@ const canvasOf = (mounted: Mounted) =>
 const selectedIds = (mounted: Mounted) =>
   Object.keys(mounted.app.store.state.editor.selectedMap);
 
+/** Erd renders one element, and the pan takes the selection off that one. */
+const rootOf = (mounted: Mounted) =>
+  mounted.container.firstElementChild as HTMLDivElement;
+
+const pressCanvas = (mounted: Mounted) => {
+  canvasOf(mounted).dispatchEvent(
+    new MouseEvent('mousedown', { bubbles: true, clientX: 400, clientY: 300 })
+  );
+};
+
 describe('Erd - a press inside the editor over the scene', () => {
   it('leaves the memo selected and its editor open', async () => {
     const mounted = await mountEditingMemo();
@@ -117,5 +127,28 @@ describe('Erd - a press inside the editor over the scene', () => {
     await flush();
 
     expect(selectedIds(mounted)).toEqual([]);
+  });
+});
+
+describe('Erd - a canvas pan', () => {
+  it('takes selection off the editor for the length of the drag', async () => {
+    const mounted = await mountEditingMemo();
+    const root = rootOf(mounted);
+
+    pressCanvas(mounted);
+    expect(root.style.userSelect).toBe('none');
+
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(root.style.userSelect).toBe('');
+  });
+
+  it('puts it back where a native drag ate the mouseup', async () => {
+    const mounted = await mountEditingMemo();
+    const root = rootOf(mounted);
+
+    pressCanvas(mounted);
+    window.dispatchEvent(new Event('dragstart'));
+
+    expect(root.style.userSelect).toBe('');
   });
 });
