@@ -32,6 +32,7 @@ import {
 } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { Open } from '@/constants/open';
 import { ColumnOption, Database, RelationshipType } from '@/constants/schema';
+import { TablePlacement } from '@/constants/tablePlacement';
 import { focusColumnAction } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -165,7 +166,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Database',
       'Import',
       'Export',
-      'Automatic Table Placement',
+      'Auto Layout',
       'Diff Viewer',
     ]);
   });
@@ -188,14 +189,32 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('opens automatic table placement', async () => {
+  it('lists every placement in the automatic table placement submenu', async () => {
     await mountMenu();
 
-    await click(findItem(rootItems(), 'Automatic Table Placement'));
+    const sub = await openSubMenu(findItem(rootItems(), 'Auto Layout'));
 
-    expect(app.store.state.editor.openMap[Open.automaticTablePlacement]).toBe(
-      true
-    );
+    expect(labelsOf(itemsOf(sub))).toEqual([
+      'Force',
+      'Flow',
+      'Tree - vertical',
+      'Tree - horizontal',
+    ]);
+  });
+
+  it('opens automatic table placement with the placement that was picked', async () => {
+    await mountMenu();
+    const placements: string[] = [];
+    app.emitter.on({
+      openAutomaticTablePlacement: ({ payload: { placement } }) => {
+        placements.push(placement);
+      },
+    });
+
+    const sub = await openSubMenu(findItem(rootItems(), 'Auto Layout'));
+    await click(findItem(itemsOf(sub), 'Tree - vertical'));
+
+    expect(placements).toEqual([TablePlacement.layeredVertical]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

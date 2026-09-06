@@ -5,6 +5,7 @@ import {
   DOMTemplateLiterals,
 } from '@dineug/r-html';
 
+import { TablePlacement } from '@/constants/tablePlacement';
 import { ValuesType } from '@/internal-types';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
 import { safeCallback } from '@/utils/safeCallback';
@@ -25,6 +26,7 @@ const InternalActionType = {
   mouseTrackerStart: 'mouseTrackerStart',
   mouseTrackerEnd: 'mouseTrackerEnd',
   openDiffViewer: 'openDiffViewer',
+  openAutomaticTablePlacement: 'openAutomaticTablePlacement',
   duplicateDragStart: 'duplicateDragStart',
   dragSelectStart: 'dragSelectStart',
 } as const;
@@ -60,6 +62,9 @@ type InternalActionMap = {
   [InternalActionType.mouseTrackerEnd]: void;
   [InternalActionType.openDiffViewer]: {
     value: string;
+  };
+  [InternalActionType.openAutomaticTablePlacement]: {
+    placement: TablePlacement;
   };
   [InternalActionType.duplicateDragStart]: {
     tableIds: string[];
@@ -159,6 +164,10 @@ export const mouseTrackerEndAction = createAction<
 export const openDiffViewerAction = createAction<
   InternalActionMap[typeof InternalActionType.openDiffViewer]
 >(InternalActionType.openDiffViewer);
+
+export const openAutomaticTablePlacementAction = createAction<
+  InternalActionMap[typeof InternalActionType.openAutomaticTablePlacement]
+>(InternalActionType.openAutomaticTablePlacement);
 
 export const duplicateDragStartAction = createAction<
   InternalActionMap[typeof InternalActionType.duplicateDragStart]

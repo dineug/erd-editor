@@ -163,6 +163,13 @@ export default defineConfig(({ mode }) => {
       },
     },
 
+    // erd-editor의 elk 워커가 동적으로 집는 commonjs 번들. dev 서버 스캐너는
+    // 워커 엔트리를 걷지 않아서, 여기 적지 않으면 첫 정렬에서 의존성을 새로
+    // 발견하고 페이지를 통째로 리로드한다 — 편집 중인 문서가 날아간다.
+    optimizeDeps: {
+      include: ['@dineug/erd-editor > elkjs/lib/elk.bundled.js'],
+    },
+
     /**
      * nx.json targetDefaults의 대체. from에 셋을 다 적는 이유는 워크스페이스 의존이
      * 패키지마다 다른 필드에 있어서다 — 기본값에 맡기면 라이브러리 쪽 간선이 비고,

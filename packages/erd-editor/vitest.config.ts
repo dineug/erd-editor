@@ -32,6 +32,12 @@ const createSharedConfig = (): UserWorkspaceConfig => ({
       '@': join(import.meta.dirname, 'src'),
     },
   },
+  // ELK is a commonjs bundle a browser cannot load as it stands, so the dev
+  // server pre-bundles it. Named here rather than discovered, because it is
+  // reached from a worker and a discovery mid-run reloads the spec that asked.
+  optimizeDeps: {
+    include: ['elkjs/lib/elk.bundled.js'],
+  },
 });
 
 export default defineConfig({

@@ -1,3 +1,4 @@
+import ElkLayoutSharedWorker from '../services/elk-layout/elkLayout.shared-worker?sharedworker&inline';
 import ExportPngSharedWorker from '../services/export-png/exportPng.shared-worker?sharedworker&inline';
 import SchemaGCSharedWorker from '../services/schema-gc/schemaGC.shared-worker?sharedworker&inline';
 
@@ -12,4 +13,8 @@ export function spawnSchemaGCWorker(name: string): SharedWorker {
 
 export function spawnExportPngWorker(name: string): SharedWorker {
   return new ExportPngSharedWorker({ name });
+}
+
+export function spawnElkLayoutWorker(name: string): SharedWorker {
+  return new ElkLayoutSharedWorker({ name });
 }

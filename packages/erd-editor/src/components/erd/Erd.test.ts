@@ -525,7 +525,7 @@ describe('Erd - context menu', () => {
     await openContextMenu(root);
 
     expect(findByText(root, 'div', 'New Table')).toBeTruthy();
-    expect(findByText(root, 'div', 'Automatic Table Placement')).toBeTruthy();
+    expect(findByText(root, 'div', 'Auto Layout')).toBeTruthy();
   });
 
   it('opens the erd context menu where the scene answers with no entity', async () => {

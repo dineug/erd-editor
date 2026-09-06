@@ -132,7 +132,7 @@ describe('QuickSearch', () => {
       'Zero N',
       'One Only',
       'One N',
-      'Automatic Table Placement',
+      'Auto Layout',
     ]);
   });
 
@@ -302,10 +302,10 @@ describe('QuickSearch keyword filtering', () => {
     await type('Memo');
     const narrowed = rowNames();
 
-    await type('Automatic Table Placement');
+    await type('Auto Layout');
 
-    expect(narrowed).not.toContain('Automatic Table Placement');
-    expect(rowNames()).not.toContain('Automatic Table Placement');
+    expect(narrowed).not.toContain('Auto Layout');
+    expect(rowNames()).not.toContain('Auto Layout');
   });
 
   it('resets the selection when the keyword changes', async () => {
