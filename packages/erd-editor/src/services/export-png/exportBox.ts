@@ -57,17 +57,27 @@ export function getExportRect(state: RootState): Rect {
 }
 
 /**
- * How far the box has to be scaled down for a canvas to hold it at one image
- * pixel per scene unit. A document is unbounded now, so this is what keeps the
- * Stage itself inside the ceiling that fitPixelRatio keeps the raster inside.
+ * What the box is drawn at: the zoom the image was asked for, cut to whatever a
+ * canvas can hold. A document is unbounded now, so this is what keeps the Stage
+ * itself inside the ceiling that fitPixelRatio keeps the raster inside.
  *
  * @example
- * const scale = getExportScale(getExportRect(store.state));
+ * const scale = getExportScale(getExportRect(store.state), settings.zoomLevel);
  */
-export function getExportScale({ width, height }: Rect): number {
+export function getExportScale(
+  { width, height }: Rect,
+  zoomLevel: number = 1
+): number {
+  const zoom = zoomLevel > 0 ? zoomLevel : 1;
   const side = Math.max(width, height);
   const area = width * height;
-  if (side <= 0 || area <= 0) return 1;
+  if (side <= 0 || area <= 0) return zoom;
 
-  return Math.min(1, CANVAS_SIDE_MAX / side, Math.sqrt(CANVAS_AREA_MAX / area));
+  // The ceilings bound the Stage, which is the box at this very scale, so they
+  // are read off the box itself and the zoom is only what is asked for.
+  return Math.min(
+    zoom,
+    CANVAS_SIDE_MAX / side,
+    Math.sqrt(CANVAS_AREA_MAX / area)
+  );
 }

@@ -135,6 +135,31 @@ test.describe('exporting the document as a png', () => {
     expect(pngSize(await file.path())).toEqual({ width: 2160, height: 2160 });
   });
 
+  test('draws the png at the zoom the editor is showing it at', async ({
+    erd,
+  }) => {
+    await erd.seed(document(spanFor(2160)));
+
+    // The toolbar box, which names one zoom rather than a run of notches.
+    const zoom = erd.toolbar.locator('input[title="zoom level"]');
+    await zoom.click();
+    await zoom.fill('50');
+    await zoom.press('Enter');
+    await expect
+      .poll(async () => (await erd.settings()).zoomLevel)
+      .toBeCloseTo(0.5, 5);
+
+    const download = erd.page.waitForEvent('download', {
+      timeout: EXPORT_TIMEOUT,
+    });
+    await exportPng(erd);
+    const file = await download;
+
+    // The image holds the whole document either way. What the zoom decides is
+    // how many image pixels one scene unit was drawn with.
+    expect(pngSize(await file.path())).toEqual({ width: 1080, height: 1080 });
+  });
+
   test('says the png is being generated while it draws', async ({ erd }) => {
     await erd.seed(document(spanFor(OVER_LIMIT)));
 

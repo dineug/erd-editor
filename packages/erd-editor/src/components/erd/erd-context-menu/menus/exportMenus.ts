@@ -54,6 +54,9 @@ async function exportDocumentPng(
       doc: toJson(store.state),
       theme,
       toWidth,
+      // The live zoom rather than the document's, which is 1 for an author who
+      // asked for the zoom not to be saved.
+      zoomLevel: store.state.settings.zoomLevel,
       // Held, not shown: the file does not exist yet, and this message belongs
       // after the one saying the editor is still drawing it.
       onResolutionReduced: value => {

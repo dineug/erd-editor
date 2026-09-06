@@ -10,6 +10,7 @@ import {
   createDocumentPng,
   type ResolutionReduction,
 } from '@/services/export-png';
+import { renderDocumentScene } from '@/services/export-png/documentScene';
 import { EXPORT_MARGIN, getExportScale } from '@/services/export-png/exportBox';
 import {
   CANVAS_AREA_MAX,
@@ -42,8 +43,16 @@ type RelationshipSeed = {
   end: { x: number; y: number };
 };
 
+type TableSeed = {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+};
+
 type Seed = {
   memos?: MemoSeed[];
+  tables?: TableSeed[];
   relationships?: RelationshipSeed[];
   show?: number;
   originX?: number;
@@ -66,6 +75,7 @@ const DEFAULT_MEMO: MemoSeed = {
  */
 function createDoc({
   memos = [DEFAULT_MEMO],
+  tables = [],
   relationships = [],
   show,
   originX = 0,
@@ -84,13 +94,33 @@ function createDoc({
       ...(show === undefined ? {} : { show }),
     },
     doc: {
-      tableIds: [],
+      tableIds: tables.map(({ id }) => id),
       relationshipIds: relationships.map(({ id }) => id),
       indexIds: [],
       memoIds: memos.map(({ id }) => id),
     },
     collections: {
-      tableEntities: {},
+      tableEntities: Object.fromEntries(
+        tables.map(({ id, name, x, y }) => [
+          id,
+          {
+            id,
+            name,
+            comment: '',
+            columnIds: [],
+            seqColumnIds: [],
+            ui: {
+              x,
+              y,
+              zIndex: 2,
+              widthName: 60,
+              widthComment: 60,
+              color: '#00ff00',
+            },
+            meta: meta(),
+          },
+        ])
+      ),
       tableColumnEntities: {},
       relationshipEntities: Object.fromEntries(
         relationships.map(({ id, start, end }) => [
@@ -187,6 +217,48 @@ const TALL_MEMO: MemoSeed = {
 
 const theme: Theme = createTestTheme();
 
+/** One table, whose rows are what the high level spelling drops. */
+const TABLE: TableSeed = { id: 't-1', name: 'users', x: 0, y: 0 };
+
+describe('renderDocumentScene', () => {
+  /**
+   * The zoom decides the spelling as well as the scale, so an image taken while
+   * the editor shows named boxes is one of named boxes.
+   */
+  const drawnTables = async (zoomLevel: number) => {
+    const scene = await renderDocumentScene({
+      doc: createDoc({ memos: [], tables: [TABLE] }),
+      theme,
+      toWidth,
+      zoomLevel,
+    });
+
+    try {
+      return {
+        tables: scene.stage.find('.table').length,
+        highLevel: scene.stage.find('.high-level-table').length,
+        scale: scene.scale,
+      };
+    } finally {
+      scene.destroy();
+    }
+  };
+
+  it('draws a table in full at a zoom that can show its rows', async () => {
+    const drawn = await drawnTables(1);
+
+    expect(drawn).toEqual({ tables: 1, highLevel: 0, scale: 1 });
+  });
+
+  it('draws a table as a named box under the high level threshold', async () => {
+    const drawn = await drawnTables(0.5);
+
+    // The high level group carries both names, so it is one table drawn in the
+    // other spelling rather than a second node beside it.
+    expect(drawn).toEqual({ tables: 1, highLevel: 1, scale: 0.5 });
+  });
+});
+
 describe('createDocumentPng', () => {
   it('is what the document draws with a margin around it, not the canvas box', async () => {
     const box = expectedBox();
@@ -210,15 +282,66 @@ describe('createDocumentPng', () => {
     expect(image.at(EXPORT_MARGIN, EXPORT_MARGIN)).toBe(theme.canvasBackground);
   });
 
-  it('draws the same image whatever the editor is scrolled and zoomed to', async () => {
+  it('draws the same image wherever the editor is scrolled to', async () => {
     const plain = await createDocumentPng({ doc: createDoc(), theme, toWidth });
     const moved = await createDocumentPng({
-      doc: createDoc({ originX: -640, originY: -480, zoomLevel: 0.5 }),
+      doc: createDoc({ originX: -640, originY: -480 }),
       theme,
       toWidth,
     });
 
     expect(await bytesOf(moved)).toEqual(await bytesOf(plain));
+  });
+
+  it('draws the document at the zoom it is being read at', async () => {
+    const box = expectedBox();
+    const image = await decode(
+      await createDocumentPng({
+        doc: createDoc({ zoomLevel: 0.5 }),
+        theme,
+        toWidth,
+      })
+    );
+
+    // The box the image holds is the whole document either way; what the zoom
+    // decides is how many image pixels one scene unit is drawn with.
+    expect([image.width, image.height]).toEqual([
+      Math.round(box.width * 0.5),
+      Math.round(box.height * 0.5),
+    ]);
+  });
+
+  it('draws at the zoom the caller names, over the one the document carries', async () => {
+    const box = expectedBox();
+    const image = await decode(
+      await createDocumentPng({
+        // A document saved with the zoom left out arrives at 1, so the editor's
+        // own zoom is what the caller has to be able to name.
+        doc: createDoc({ zoomLevel: 1 }),
+        theme,
+        toWidth,
+        zoomLevel: 0.5,
+      })
+    );
+
+    expect([image.width, image.height]).toEqual([
+      Math.round(box.width * 0.5),
+      Math.round(box.height * 0.5),
+    ]);
+  });
+
+  it('says nothing about resolution for an image the zoom alone made smaller', async () => {
+    const reductions: unknown[] = [];
+
+    await createDocumentPng({
+      doc: createDoc(),
+      theme,
+      toWidth,
+      zoomLevel: 0.5,
+      onResolutionReduced: reduction => reductions.push(reduction),
+    });
+
+    expect(reductions).toEqual([]);
   });
 
   it('holds a memo left of and above where the old canvas box began', async () => {

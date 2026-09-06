@@ -136,6 +136,29 @@ describe('getExportScale', () => {
     expect(getExportScale({ x: 0, y: 0, width: 2_000, height: 2_000 })).toBe(1);
   });
 
+  it('is the zoom the image was asked for, for a box a canvas can hold', () => {
+    const box = { x: 0, y: 0, width: 2_000, height: 2_000 };
+
+    expect(getExportScale(box, 0.5)).toBe(0.5);
+    expect(getExportScale(box, 1.5)).toBe(1.5);
+  });
+
+  it('is the ceiling rather than the zoom where the two disagree', () => {
+    const box = { x: 0, y: 0, width: 400_000, height: 360 };
+    const ceiling = CANVAS_SIDE_MAX / box.width;
+
+    // A zoom under the ceiling is honoured; one over it is what the ceiling cuts.
+    expect(getExportScale(box, ceiling / 2)).toBeCloseTo(ceiling / 2, 12);
+    expect(getExportScale(box, 1.5)).toBeCloseTo(ceiling, 12);
+  });
+
+  it('reads a zoom of zero or less as no zoom at all, which only a torn state reports', () => {
+    const box = { x: 0, y: 0, width: 2_000, height: 2_000 };
+
+    expect(getExportScale(box, 0)).toBe(1);
+    expect(getExportScale(box, -1)).toBe(1);
+  });
+
   it('is what brings the longest side back under the side ceiling', () => {
     const box = { x: 0, y: 0, width: 400_000, height: 360 };
     const scale = getExportScale(box);

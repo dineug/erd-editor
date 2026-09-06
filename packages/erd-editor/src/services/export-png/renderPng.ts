@@ -17,6 +17,8 @@ export type RenderPngRequest = {
   doc: string;
   theme: Theme;
   pixelRatio: number;
+  /** The zoom to draw at; the document's own when the caller names none. */
+  zoomLevel?: number;
 };
 
 export type RenderPngResult = {
@@ -59,9 +61,10 @@ export async function renderDocumentPng({
   doc,
   theme,
   pixelRatio,
+  zoomLevel,
   toWidth,
 }: RenderPngRequest & { toWidth: ToWidth }): Promise<RenderPngResult> {
-  const scene = await renderDocumentScene({ doc, theme, toWidth });
+  const scene = await renderDocumentScene({ doc, theme, toWidth, zoomLevel });
 
   try {
     // A stage rasterises at its own box times the ratio, so the ratio is fitted
@@ -79,13 +82,17 @@ export async function renderDocumentPng({
     // and the raster of that Stage. Compared as factors rather than as pixels,
     // which a canvas rounds to whole ones and a scene box does not.
     const drawn = scene.scale * ratio;
+    // A zoomed out image is smaller because it was asked to be, so what says
+    // resolution was lost is the zoom that was asked for, not one image pixel
+    // per scene unit.
+    const asked = pixelRatio * scene.zoomLevel;
 
     return {
       blob,
       width,
       height,
       reduction:
-        drawn < pixelRatio
+        drawn < asked
           ? {
               documentWidth: scene.box.width,
               documentHeight: scene.box.height,

@@ -52,12 +52,12 @@ export function exportSchemaSQL(sql: string, name?: string) {
 }
 
 /**
- * Writes the whole document out as an image. What is on screen is not an input:
- * the scene is rendered again off screen from the document alone, so the file a
- * reader opens does not depend on where the author had scrolled or zoomed to.
+ * Writes the whole document out as an image, at the zoom the author is reading
+ * it at. The scene is rendered again off screen rather than captured, so the
+ * file holds the whole document however far it was scrolled away from.
  *
  * @example
- * exportPNG({ doc: toJson(store.state), theme, toWidth }, databaseName);
+ * exportPNG({ doc: toJson(store.state), theme, toWidth, zoomLevel }, databaseName);
  */
 export function exportPNG(
   options: DocumentPngOptions,
