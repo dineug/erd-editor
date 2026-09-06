@@ -157,11 +157,6 @@ export default defineConfig(({ mode }) => {
       },
     },
 
-    server: {
-      // Playwright drives the browser itself; see playwright.config.ts.
-      open: !process.env.E2E,
-    },
-
     resolve: {
       alias: {
         '@': join(import.meta.dirname, 'src'),

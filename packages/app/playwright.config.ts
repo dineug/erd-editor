@@ -66,9 +66,7 @@ export default defineConfig({
       timeout: 180_000,
       stdout: 'ignore',
       stderr: 'pipe',
-      // E2E keeps the dev server from opening a browser of its own —
-      // vp dev has no --no-open flag, so this is the way to say it.
-      env: { E2E: '1', ERD_EDITOR_NOSTR_RELAY_URLS: RELAY_URL },
+      env: { ERD_EDITOR_NOSTR_RELAY_URLS: RELAY_URL },
     },
   ],
 });

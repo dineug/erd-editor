@@ -49,7 +49,7 @@ sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted p
 ### Testing Requirements
 
 - `vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — `src/**/*.test.ts`, happy-dom, `tsc --noEmit` first. `test:coverage` enforces 80% per file over `services/collaborative/**`, `services/indexeddb/modules/collaborative/**`, `utils/broadcastChannel.ts` and `utils/crypto.ts`.
-- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor` and the Shiki worker, then runs one Chromium worker against `vp dev` (:5175) and the in-memory nostr relay (`e2e/support/relay.mjs`, :5176). `E2E=1` prevents Vite from opening a browser; WebRTC requires the two launch flags in `playwright.config.ts`. Never runs in CI.
+- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor` and the Shiki worker, then runs one Chromium worker against `vp dev` (:5175) and the in-memory nostr relay (`e2e/support/relay.mjs`, :5176). WebRTC requires the two launch flags in `playwright.config.ts`. Never runs in CI.
 - CI's `check` job runs `typecheck` (`tsconfig.json`, `include: ["src"]`) and `e2e:typecheck` (`e2e/tsconfig.json`) — the only program covering `e2e/` and `playwright.config.ts`.
 
 ### Common Patterns
