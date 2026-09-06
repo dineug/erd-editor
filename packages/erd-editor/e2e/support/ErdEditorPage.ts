@@ -46,6 +46,7 @@ export class ErdEditorPage {
   readonly toolbar: Locator;
   readonly minimap: Locator;
   readonly minimapViewport: Locator;
+  readonly contentCompass: Locator;
   readonly contextMenu: Locator;
 
   private session: CDPSession | null = null;
@@ -56,6 +57,7 @@ export class ErdEditorPage {
     this.toolbar = this.host.locator('.toolbar');
     this.minimap = this.host.locator('.minimap');
     this.minimapViewport = this.host.locator('.minimap-viewport');
+    this.contentCompass = this.host.locator('.content-compass');
     this.contextMenu = this.host.locator('.context-menu-content');
   }
 

@@ -13,6 +13,7 @@ import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
+import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import ErdContextMenu, {
   ErdContextMenuType,
@@ -213,6 +214,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const canDrag =
       canUnselectAll &&
       canHideColorPicker &&
+      !el.closest('.content-compass') &&
       !el.closest('.minimap') &&
       !el.closest('.minimap-viewport') &&
       !el.closest('.virtual-scroll') &&
@@ -453,6 +455,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <Canvas root={root} canvas={canvas} grabMove={state.grabMove} />
         <VirtualScroll />
         {hasContent ? <Minimap /> : null}
+        <ContentCompass />
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

@@ -29,14 +29,14 @@ export function getContentRect(state: RootState): Rect | null {
 }
 
 /**
- * The content rect as it will stand once each table named is at its point. The
- * placement centres the view on where its tables land in the very dispatch that
- * moves them, so it has to know the box before any reducer has run.
+ * One box per table and memo, each table at the point named for it. The reader
+ * that asks which entity is nearest needs them apart, where the box below folds
+ * them together, and both are the same pass over the document.
  */
-export function getContentRectAfter(
+export function getContentRects(
   state: RootState,
-  moves: ReadonlyArray<TableMove>
-): Rect | null {
+  moves: ReadonlyArray<TableMove> = []
+): Rect[] {
   const { doc, collections } = state;
   const moved = new Map(moves.map(move => [move.id, move]));
   const tables = query(collections)
@@ -45,7 +45,8 @@ export function getContentRectAfter(
   const memos = query(collections)
     .collection('memoEntities')
     .selectByIds(doc.memoIds);
-  const boxes = [
+
+  return [
     ...tables.map(table => {
       const move = moved.get(table.id);
 
@@ -58,6 +59,18 @@ export function getContentRectAfter(
     }),
     ...memos.map(getMemoRect),
   ];
+}
+
+/**
+ * The content rect as it will stand once each table named is at its point. The
+ * placement centres the view on where its tables land in the very dispatch that
+ * moves them, so it has to know the box before any reducer has run.
+ */
+export function getContentRectAfter(
+  state: RootState,
+  moves: ReadonlyArray<TableMove>
+): Rect | null {
+  const boxes = getContentRects(state, moves);
 
   return boxes.length ? boxes.reduce(unionRect) : null;
 }

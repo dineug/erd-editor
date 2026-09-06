@@ -11,6 +11,7 @@ import { RootState } from '@/engine/state';
 import {
   getContentRect,
   getContentRectAfter,
+  getContentRects,
   unionRect,
 } from '@/konva/scene/contentBounds';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
@@ -209,5 +210,44 @@ describe('getContentRectAfter', () => {
     expect(
       getContentRectAfter(state, [{ id: 'gone', x: 40_000, y: 40_000 }])
     ).toEqual(getTableRect(state, table));
+  });
+});
+
+describe('getContentRects', () => {
+  it('is empty for a document with neither a table nor a memo', () => {
+    expect(getContentRects(createState())).toEqual([]);
+  });
+
+  it('hands back one box per entity, the tables before the memos', () => {
+    const state = createState();
+    const a = addTable(state, 'a', 100, 200);
+    const b = addTable(state, 'b', -4_000, 3_500);
+    const memo = addMemo(state, 'm', 12_000, -900, 300, 100);
+
+    expect(getContentRects(state)).toEqual([
+      getTableRect(state, a),
+      getTableRect(state, b),
+      getMemoRect(memo),
+    ]);
+  });
+
+  it('is the boxes the content rect is folded from', () => {
+    const state = createState();
+    addTable(state, 'a', 100, 200);
+    addMemo(state, 'm', 12_000, -900, 300, 100);
+
+    expect(getContentRects(state).reduce(unionRect)).toEqual(
+      getContentRect(state)
+    );
+  });
+
+  it('reads a named table at its point, as the fold does', () => {
+    const state = createState();
+    const table = addTable(state, 't', 0, 0);
+    const move = { id: 't', x: 900, y: -700 };
+    const [rect] = getContentRects(state, [move]);
+
+    expect([rect.x, rect.y]).toEqual([move.x, move.y]);
+    expect([table.ui.x, table.ui.y]).toEqual([0, 0]);
   });
 });

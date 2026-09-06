@@ -15,6 +15,7 @@ import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 
 let mounted: Mounted | null = null;
@@ -84,6 +85,7 @@ const DOM_GUARDS = [
   'edit-overlay',
   'edit-input',
   'context-menu-content',
+  'content-compass',
   'minimap',
   'minimap-viewport',
   'virtual-scroll',
@@ -145,6 +147,19 @@ describe('ErdViewer', () => {
     expect(root.querySelector('.virtual-scroll')).toBeTruthy();
     expect(root.querySelector('.minimap')).toBeTruthy();
     expect(root.querySelector('[data-testid="erd-canvas"]')).toBeTruthy();
+  });
+
+  it('draws the compass here too, once the pane is panned off every entity', async () => {
+    const { app, root } = await mountViewer(Diff.insert);
+
+    expect(root.querySelector('.content-compass')).toBeNull();
+
+    app.store.dispatchSync(
+      scrollToAction({ originX: -9_000, originY: -7_000 })
+    );
+    await flush();
+
+    expect(root.querySelector('.content-compass')).toBeTruthy();
   });
 
   it('prevents the native context menu', async () => {

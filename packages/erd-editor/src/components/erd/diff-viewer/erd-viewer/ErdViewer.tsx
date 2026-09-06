@@ -2,6 +2,7 @@ import { createRef, FC, observable, ref, useProvider } from '@dineug/r-html';
 
 import { AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
+import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import { Diff, DiffMap, getDiffStyle } from '@/components/erd/diff-viewer/diff';
 import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
@@ -92,6 +93,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     const canDrag =
       canUnselectAll &&
       canHideColorPicker &&
+      !el.closest('.content-compass') &&
       !el.closest('.minimap') &&
       !el.closest('.minimap-viewport') &&
       !el.closest('.virtual-scroll');
@@ -141,6 +143,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
         <Canvas root={root} canvas={canvas} grabMove={true} />
         <VirtualScroll />
         {hasContent ? <Minimap /> : null}
+        <ContentCompass />
       </div>
     );
   };

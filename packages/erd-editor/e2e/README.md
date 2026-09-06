@@ -65,7 +65,7 @@ puts over it:
 | Spec                            | What it holds down                                                |
 | ------------------------------- | ---------------------------------------------------------------- |
 | `zoom-round-trip.spec.ts`       | A zoom out and back in that returns the reader's own view         |
-| `infinite-canvas.spec.ts`       | The travel, thumbs, map and image the content alone now decide    |
+| `infinite-canvas.spec.ts`       | The travel, thumbs, map, compass and image the content now decide |
 | `scroll-origin.spec.ts`         | The origin the scene draws with, and the legacy pair migrated once |
 | `export-png.spec.ts`            | The file the browser really receives, and the messages around it  |
 | `memo-editor-drag.spec.ts`      | A press in the overlay textarea, which used to pan the canvas     |

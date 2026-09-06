@@ -353,6 +353,7 @@ test.describe('a canvas with no edges', () => {
     await expect(tracks).toHaveCount(0);
     await expect(erd.minimap).toHaveCount(0);
     await expect(erd.minimapViewport).toHaveCount(0);
+    await expect(erd.contentCompass).toHaveCount(0);
     expect(await erd.tableIds()).toEqual([]);
 
     await erd.wheel(-700, { deltaX: -1500 });
@@ -381,6 +382,56 @@ test.describe('a canvas with no edges', () => {
     expectClose(back.originX, panned.originX + 900, PIXEL_TOLERANCE);
     expectClose(back.originY, panned.originY + 500, PIXEL_TOLERANCE);
     await expect(tracks).toHaveCount(0);
+  });
+
+  test('points the way back once the screen is off every entity, and goes there when pressed', async ({
+    erd,
+  }) => {
+    await erd.seed(createSchema({ tables: [tableAt('users', 200, 200)] }));
+
+    // Nothing to point at while the table is on the screen.
+    await expect(erd.contentCompass).toHaveCount(0);
+
+    // Carried up and left of the table by more than a screen, so what is left
+    // to find lies off the top left corner of everything the reader can see.
+    await erd.wheel(2_500, { deltaX: 3_000 });
+    await expect
+      .poll(async () => {
+        const { originX, originY } = await erd.settings();
+        return { x: originX, y: originY };
+      })
+      .toEqual({ x: -3_000, y: -2_500 });
+
+    await expect(erd.contentCompass).toBeVisible();
+
+    // The gap in scene units, which at zoom 1 is the pixels between the near
+    // edge of the screen and the table's own box.
+    await expect(erd.contentCompass).toHaveText(/^\d[\d.]*k?$/);
+
+    const rotation = await erd.contentCompass
+      .locator('.icon')
+      .evaluate(el => (el as HTMLElement).style.transform);
+    const angle = Number(/rotate\((-?[\d.]+)deg\)/.exec(rotation)?.[1]);
+    expect(angle).toBeGreaterThan(-180);
+    expect(angle).toBeLessThan(-90);
+
+    await erd.contentCompass.click();
+
+    // The press puts the table in the middle of the screen, which leaves the
+    // compass with nothing to point at.
+    await expect(erd.contentCompass).toHaveCount(0);
+    const canvas = await boxOf(erd.host.locator('[data-testid="erd-canvas"]'));
+    const drawn = await erd.sceneBox('#table-users');
+    expectClose(
+      drawn.x + drawn.width / 2,
+      canvas.x + canvas.width / 2,
+      PIXEL_TOLERANCE
+    );
+    expectClose(
+      drawn.y + drawn.height / 2,
+      canvas.y + canvas.height / 2,
+      PIXEL_TOLERANCE
+    );
   });
 
   test('sizes the scrollbar thumbs from the content, never under the floor', async ({

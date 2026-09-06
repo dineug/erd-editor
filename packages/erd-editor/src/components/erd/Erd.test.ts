@@ -29,7 +29,10 @@ import {
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -157,6 +160,7 @@ const DOM_GUARDS = [
   'edit-overlay',
   'edit-input',
   'context-menu-content',
+  'content-compass',
   'minimap',
   'minimap-viewport',
   'virtual-scroll',
@@ -274,6 +278,42 @@ describe('Erd - shell', () => {
 
     expect(root.querySelector('.minimap')).toBeTruthy();
     expect(root.querySelector('.minimap-viewport')).toBeTruthy();
+  });
+
+  it('draws the compass once the view is panned off every entity, and puts it away on the way back', async () => {
+    const app = appWithContent();
+    const { root } = await setup({}, app);
+
+    expect(root.querySelector('.content-compass')).toBeNull();
+
+    app.store.dispatchSync(
+      scrollToAction({ originX: -9_000, originY: -7_000 })
+    );
+    await flush();
+
+    expect(root.querySelector('.content-compass')).toBeTruthy();
+
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
+    await flush();
+
+    expect(root.querySelector('.content-compass')).toBeNull();
+  });
+
+  it('takes a press on the compass as a jump rather than as the start of a pan', async () => {
+    const app = appWithContent();
+    const { root } = await setup({}, app);
+
+    app.store.dispatchSync(
+      scrollToAction({ originX: -9_000, originY: -7_000 })
+    );
+    pressKeydown(app, root, 'Space');
+    await flush();
+
+    const pill = root.querySelector('.content-compass') as HTMLElement;
+    dispatchMouse(pill, 'mousedown', { clientX: 10, clientY: 10 });
+    await flush();
+
+    expect(root.style.cursor).toBe('grab');
   });
 
   it('renders no overlay by default', async () => {
