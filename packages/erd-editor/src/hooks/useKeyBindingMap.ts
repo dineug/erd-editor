@@ -5,8 +5,18 @@ import { tinykeys } from 'tinykeys';
 import { useAppContext } from '@/components/appContext';
 import { Ctx } from '@/internal-types';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isEditableTarget } from '@/utils/validation';
 
 import { useUnmounted } from './useUnmounted';
+
+/**
+ * The bindings a caret owns first. $mod+A is select all text wherever one is,
+ * and a binding that swallowed it there would spend the press selecting
+ * entities nobody was looking at.
+ */
+const YIELDS_TO_A_CARET = new Set<KeyBindingName>([
+  KeyBindingName.selectAllTable,
+]);
 
 export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
   const app = useAppContext(ctx);
@@ -30,6 +40,10 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
         options.forEach(option => {
           acc[option.shortcut] = (event: KeyboardEvent) => {
             if (isComposing(event)) {
+              return;
+            }
+
+            if (YIELDS_TO_A_CARET.has(type) && isEditableTarget(event.target)) {
               return;
             }
 

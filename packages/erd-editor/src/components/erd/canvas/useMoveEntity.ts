@@ -57,12 +57,16 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
       return;
     }
 
-    const $mod = isMod(event.evt);
+    // A press on something already selected keeps the rest of the selection,
+    // so a group moves as one under a plain drag; a press on anything else
+    // collapses to it, which is the rule the alt drag duplicate reads too.
+    const keepSelection =
+      isMod(event.evt) || Boolean(store.state.editor.selectedMap[entityId]);
 
     store.dispatch(
       options.selectType === SelectType.memo
-        ? selectMemoAction$(entityId, $mod)
-        : selectTableAction$(entityId, $mod)
+        ? selectMemoAction$(entityId, keepSelection)
+        : selectTableAction$(entityId, keepSelection)
     );
 
     if (canDrag) {

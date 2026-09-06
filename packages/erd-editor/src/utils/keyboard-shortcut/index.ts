@@ -65,6 +65,7 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   ],
   [KeyBindingName.primaryKey]: [{ shortcut: 'Alt+KeyK', preventDefault: true }],
   [KeyBindingName.selectAllTable]: [
+    { shortcut: '$mod+KeyA', preventDefault: true },
     { shortcut: '$mod+Alt+KeyA', preventDefault: true },
   ],
   [KeyBindingName.selectAllColumn]: [

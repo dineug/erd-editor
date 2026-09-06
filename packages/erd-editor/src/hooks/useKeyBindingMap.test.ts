@@ -29,19 +29,25 @@ type KeyInit = {
   key: string;
   code?: string;
   altKey?: boolean;
+  mod?: boolean;
   isComposing?: boolean;
   keyCode?: number;
 };
+
+/** The modifier $mod resolves to, read off the platform the way tinykeys reads it. */
+const APPLE = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
 let mounted: Mounted | null = null;
 let app: AppContext;
 let shortcuts: Array<{ type: KeyBindingName; event: KeyboardEvent }> = [];
 
-const keydown = ({ key, code, altKey, isComposing, keyCode }: KeyInit) =>
+const keydown = ({ key, code, altKey, mod, isComposing, keyCode }: KeyInit) =>
   new KeyboardEvent('keydown', {
     key,
     code: code ?? key,
     altKey: altKey ?? false,
+    ctrlKey: Boolean(mod) && !APPLE,
+    metaKey: Boolean(mod) && APPLE,
     isComposing: isComposing ?? false,
     keyCode: keyCode ?? 0,
     bubbles: true,
@@ -112,6 +118,27 @@ describe('useKeyBindingMap', () => {
 
     expect(onKeydown).toHaveBeenCalledTimes(1);
     expect(shortcuts).toHaveLength(1);
+  });
+
+  it('reads $mod+KeyA as the select all command', () => {
+    const event = press({ key: 'a', code: 'KeyA', mod: true });
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.selectAllTable,
+    ]);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('leaves $mod+KeyA to a caret, which owns it as select all text', () => {
+    const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+    const input = document.createElement('input');
+    $root.append(input);
+
+    const event = keydown({ key: 'a', code: 'KeyA', mod: true });
+    input.dispatchEvent(event);
+
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it('ignores keys that are not part of the map', () => {

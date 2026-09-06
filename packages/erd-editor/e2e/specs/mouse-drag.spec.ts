@@ -177,9 +177,9 @@ test.describe('mouse drag', () => {
     await pressTableHeader(erd, 'b', { mod: true });
     await expect(erd.selectedTables()).toHaveCount(2);
 
-    // The drag has to carry $mod as well: selectTableAction$ unselects
-    // everything else when the mousedown has no modifier, so a plain drag would
-    // collapse the multi-selection to the table under the cursor first.
+    // The modifier is no longer what keeps the selection together — a press on
+    // a table already in it does that — but a $mod drag is the older spelling
+    // and still has to carry the whole selection.
     const from = await erd.tableHeaderPoint('a');
     await erd.drag(
       from,
@@ -206,6 +206,57 @@ test.describe('mouse drag', () => {
 
     await expect(erd.selectedTables()).toHaveCount(2);
     await expect(erd.tableEl('c')).not.toHaveAttribute('data-selected', '');
+  });
+
+  test('a plain drag on a table the selection holds carries the whole selection', async ({
+    erd,
+  }) => {
+    await erd.seed(threeTables());
+
+    await pressTableHeader(erd, 'a');
+    await pressTableHeader(erd, 'b', { mod: true });
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    // No modifier at all this time: the press lands on a table the selection
+    // already holds, so it keeps it rather than collapsing onto that table.
+    const from = await erd.tableHeaderPoint('a');
+    await erd.drag(from, { x: from.x + 120, y: from.y + 60 });
+
+    const [a, b, c] = [
+      await erd.table('a'),
+      await erd.table('b'),
+      await erd.table('c'),
+    ];
+    expectClose(a.ui.x, 160 + 120, PIXEL_TOLERANCE);
+    expectClose(a.ui.y, 160 + 60, PIXEL_TOLERANCE);
+    expectClose(b.ui.x, 700 + 120, PIXEL_TOLERANCE);
+    expectClose(b.ui.y, 160 + 60, PIXEL_TOLERANCE);
+    expect([c.ui.x, c.ui.y]).toEqual([160, 520]);
+    await expect(erd.selectedTables()).toHaveCount(2);
+  });
+
+  test('a plain drag on a table the selection never held collapses onto it', async ({
+    erd,
+  }) => {
+    await erd.seed(threeTables());
+
+    await pressTableHeader(erd, 'a');
+    await pressTableHeader(erd, 'b', { mod: true });
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    const from = await erd.tableHeaderPoint('c');
+    await erd.drag(from, { x: from.x + 90, y: from.y + 40 });
+
+    const [a, b, c] = [
+      await erd.table('a'),
+      await erd.table('b'),
+      await erd.table('c'),
+    ];
+    expect([a.ui.x, a.ui.y]).toEqual([160, 160]);
+    expect([b.ui.x, b.ui.y]).toEqual([700, 160]);
+    expectClose(c.ui.x, 160 + 90, PIXEL_TOLERANCE);
+    expectClose(c.ui.y, 520 + 40, PIXEL_TOLERANCE);
+    await expect(erd.selectedTables()).toHaveCount(1);
   });
 
   test('$mod + drag on empty canvas marquee-selects the tables it covers', async ({

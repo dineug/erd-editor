@@ -16,6 +16,8 @@ export const Shortcut = {
   removeColumn: 'Alt+Backspace',
   primaryKey: 'Alt+KeyK',
   selectAllTable: 'ControlOrMeta+Alt+KeyA',
+  /** The second binding of the same command, and the one a caret owns first. */
+  selectAll: 'ControlOrMeta+KeyA',
   selectAllColumn: 'Alt+KeyA',
   relationshipZeroOne: 'ControlOrMeta+Alt+Digit1',
   relationshipZeroN: 'ControlOrMeta+Alt+Digit2',

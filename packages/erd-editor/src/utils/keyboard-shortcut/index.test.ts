@@ -88,6 +88,15 @@ describe('keyboard-shortcut', () => {
       ]);
     });
 
+    it('binds select all to the plain $mod+A a canvas is expected to answer, keeping the older chord', () => {
+      const map = createKeyBindingMap();
+
+      expect(map.selectAllTable).toEqual([
+        { shortcut: '$mod+KeyA', preventDefault: true },
+        { shortcut: '$mod+Alt+KeyA', preventDefault: true },
+      ]);
+    });
+
     it('binds both Backspace and Delete for the remove actions', () => {
       const map = createKeyBindingMap();
 

@@ -13,6 +13,7 @@ import { AppContext } from '@/components/appContext';
 import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
+import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { getContentRect } from '@/konva/scene/contentBounds';
@@ -77,6 +78,24 @@ afterEach(() => {
   thawView(app.store.state);
 });
 
+/** A second table beside the pressed one, and both of them selected. */
+const selectBoth = () => {
+  app.store.dispatchSync(
+    addTableAction({ id: 't2', ui: { x: 900, y: 200, zIndex: 3 } })
+  );
+  app.store.dispatchSync(
+    selectAction({ t1: SelectType.table, t2: SelectType.table })
+  );
+};
+
+const selectedIds = () =>
+  Object.keys(app.store.state.editor.selectedMap).sort();
+
+const pointOf = (id: string) => {
+  const { ui } = app.store.state.collections.tableEntities[id];
+  return { x: ui.x, y: ui.y };
+};
+
 describe('useMoveEntity', () => {
   it('starts with no drag and no view held', () => {
     expect(isEntityDragActive(app.store.state)).toBe(false);
@@ -136,6 +155,63 @@ describe('useMoveEntity', () => {
 
     expect(isEntityDragActive(app.store.state)).toBe(false);
     expect(isViewFrozen(app.store.state)).toBe(false);
+  });
+
+  it('collapses a selection the pressed entity is no part of', async () => {
+    app.store.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 900, y: 200, zIndex: 3 } })
+    );
+    app.store.dispatchSync(selectAction({ t2: SelectType.table }));
+
+    api.onMoveStart(press());
+    await flush();
+
+    expect(selectedIds()).toEqual(['t1']);
+  });
+
+  it('keeps a selection the pressed entity is part of, with no modifier held', async () => {
+    selectBoth();
+
+    api.onMoveStart(press());
+    await flush();
+
+    expect(selectedIds()).toEqual(['t1', 't2']);
+  });
+
+  /**
+   * The point of keeping it: moveAll moves what is selected, so a group that
+   * survives the press is a group the pointer carries as one.
+   */
+  it('carries every selected entity under a plain drag', async () => {
+    selectBoth();
+    const before = { t1: pointOf('t1'), t2: pointOf('t2') };
+
+    api.onMoveStart(press());
+    movePointer(120, 60);
+    await flush();
+
+    expect(pointOf('t1')).toEqual({
+      x: before.t1.x + 120,
+      y: before.t1.y + 60,
+    });
+    expect(pointOf('t2')).toEqual({
+      x: before.t2.x + 120,
+      y: before.t2.y + 60,
+    });
+  });
+
+  it('leaves an entity the selection never held where it stands', async () => {
+    app.store.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 900, y: 200, zIndex: 3 } })
+    );
+    const before = pointOf('t2');
+
+    api.onMoveStart(press());
+    movePointer(120, 60);
+    await flush();
+
+    expect(pointOf('t2')).toEqual(before);
+    expect(selectedIds()).toEqual(['t1']);
   });
 
   it('neither drags nor holds the view from a blocked kind', () => {
