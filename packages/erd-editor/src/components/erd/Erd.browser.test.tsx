@@ -95,7 +95,7 @@ const canvasOf = (mounted: Mounted) =>
 const selectedIds = (mounted: Mounted) =>
   Object.keys(mounted.app.store.state.editor.selectedMap);
 
-/** Erd renders one element, and the pan takes the selection off that one. */
+/** Standing in for the editor root a mounted Erd has no ancestor of here. */
 const rootOf = (mounted: Mounted) =>
   mounted.container.firstElementChild as HTMLDivElement;
 

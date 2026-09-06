@@ -63,6 +63,14 @@ import { isMod } from '@/utils/keyboard-shortcut';
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';
 
+/**
+ * The editor root, which is where a pan has to take the selection off: the top
+ * toolbar is a sibling of this component, so suppressing it any lower leaves a
+ * drag that reaches the toolbar free to select its text.
+ */
+const editorRootOf = (el: HTMLElement) =>
+  el.closest<HTMLElement>('.root') ?? el;
+
 export type ErdProps = {
   isDarkMode: boolean;
   mouseTracking: boolean;
@@ -251,7 +259,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       // Before the first move rather than on it: the selection a press starts
       // is already there by the time a mousemove could preventDefault it, and
       // the native drag it turns into is what eats the mouseup this ends on.
-      const restoreSelection = suppressSelection(root.value);
+      const restoreSelection = suppressSelection(editorRootOf(root.value));
 
       drag$
         .subscribe({

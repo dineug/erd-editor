@@ -304,3 +304,26 @@ describe('<erd-editor> preset changes', () => {
     expect(tableBody(stage).getAttr('fill')).not.toBe(slate);
   });
 });
+
+describe('<erd-editor> a canvas pan', () => {
+  it('takes selection off the editor, toolbar included, for the drag', async () => {
+    await createSeededEditor();
+    const canvas = stageRegistry().canvas.container();
+    const editorRoot = canvas.closest('.root') as HTMLDivElement;
+    expect(editorRoot).toBeTruthy();
+
+    const { left, top, width, height } = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(
+      new MouseEvent('mousedown', {
+        bubbles: true,
+        clientX: left + width / 2,
+        clientY: top + height / 2,
+      })
+    );
+    expect(editorRoot.style.userSelect).toBe('none');
+
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(editorRoot.style.userSelect).toBe('');
+  });
+});
