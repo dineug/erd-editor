@@ -18,8 +18,8 @@ const createSettings = (partial: Partial<Settings> = {}): Settings => ({
   ...schemaV3Parser({}).settings,
   width: 2000,
   height: 2000,
-  scrollTop: 0,
-  scrollLeft: 0,
+  originX: 0,
+  originY: 0,
   zoomLevel: 1,
   ...partial,
 });
@@ -54,8 +54,8 @@ describe('nextZIndex', () => {
 });
 
 describe('nextPoint', () => {
-  it('offsets the start point by the scroll at zoom level 1', () => {
-    const settings = createSettings({ scrollLeft: 30, scrollTop: 10 });
+  it('offsets the start point by the origin at zoom level 1', () => {
+    const settings = createSettings({ originX: 30, originY: 10 });
 
     expect(nextPoint(settings, [], [])).toEqual({
       x: START_X - 30,
@@ -64,13 +64,24 @@ describe('nextPoint', () => {
   });
 
   it('converts the start point into canvas coordinates when zoomed out', () => {
+    const settings = createSettings({ zoomLevel: 0.5 });
+
+    expect(nextPoint(settings, [], [])).toEqual({
+      x: START_X / 0.5,
+      y: START_Y / 0.5,
+    });
+  });
+
+  it('reads nothing off the canvas box', () => {
     const settings = createSettings({
-      width: 1000,
-      height: 800,
+      originX: -60,
+      originY: 40,
       zoomLevel: 0.5,
     });
 
-    expect(nextPoint(settings, [], [])).toEqual({ x: -100, y: -200 });
+    expect(
+      nextPoint({ ...settings, width: 8000, height: 8000 }, [], [])
+    ).toEqual(nextPoint(settings, [], []));
   });
 
   it('shifts the point while it collides with an existing table', () => {

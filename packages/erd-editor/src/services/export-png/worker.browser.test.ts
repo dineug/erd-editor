@@ -35,8 +35,8 @@ function createDoc(width = CANVAS, height = CANVAS) {
     settings: {
       width,
       height,
-      scrollLeft: 0,
-      scrollTop: 0,
+      originX: 0,
+      originY: 0,
       zoomLevel: 1,
       databaseName: 'worker',
     },

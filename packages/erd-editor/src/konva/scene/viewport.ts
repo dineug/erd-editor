@@ -1,15 +1,15 @@
+import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { RootState } from '@/engine/state';
 import { Memo, Point, Relationship, Settings, Table } from '@/internal-types';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
-import { getZoomViewport } from '@/utils/dragSelect';
 import { getRouteBBox } from '@/utils/draw-relationship';
 
 export type CullingRect = Rect;
 
-/** The scroll, the zoom and the canvas box every scene layer is placed with. */
+/** The origin and the zoom every scene layer is placed with. */
 export type SceneTransform = Pick<
   Settings,
-  'width' | 'height' | 'scrollLeft' | 'scrollTop' | 'zoomLevel'
+  'originX' | 'originY' | 'zoomLevel'
 >;
 
 export type CullingRectOptions = SceneTransform & {
@@ -19,19 +19,11 @@ export type CullingRectOptions = SceneTransform & {
 
 /**
  * Where a scene layer sits on the stage, so screen equals scene times the zoom
- * plus this. The css transform it replaces scaled about the middle of the canvas
- * box, so half the shrink travels with the scroll instead of riding on the scale.
+ * plus this. The document stores it directly: settings.originX and originY are
+ * the screen point scene (0, 0) lands on, and nothing else enters.
  */
-export function getSceneOrigin({
-  width,
-  height,
-  scrollLeft,
-  scrollTop,
-  zoomLevel,
-}: SceneTransform): Point {
-  const zoomViewport = getZoomViewport(width, height, zoomLevel);
-
-  return { x: scrollLeft + zoomViewport.x, y: scrollTop + zoomViewport.y };
+export function getSceneOrigin({ originX, originY }: SceneTransform): Point {
+  return { x: originX, y: originY };
 }
 
 /** A zoom of zero would invert to nothing, and only a torn frame reports one. */
@@ -59,22 +51,38 @@ export function toScenePoint(transform: SceneTransform, point: Point): Point {
 }
 
 /**
+ * The origin that puts a scene point under a point on the stage, the placement
+ * solved for its own offset. A jump to a table names where the table should
+ * land and asks this for the view that lands it there.
+ */
+export function getOriginToPlace(
+  zoomLevel: number,
+  scene: Point,
+  screen: Point
+): Point {
+  return {
+    x: screen.x - scene.x * zoomLevel,
+    y: screen.y - scene.y * zoomLevel,
+  };
+}
+
+/**
  * What is on screen with a screen's worth of margin on every side, read back
  * through the very origin getSceneOrigin places the layer at. The margin is
- * measured in viewport pixels, never in the canvas box, which is not the screen.
+ * measured in viewport pixels, never in the document, which is not the screen.
  */
 export function createCullingRect(options: CullingRectOptions): CullingRect {
-  const { width, height, viewportWidth, viewportHeight } = options;
+  const { viewportWidth, viewportHeight } = options;
   const zoomLevel = safeZoom(options.zoomLevel);
   const origin = getSceneOrigin({ ...options, zoomLevel });
 
   // A frame the host has not measured yet reports no viewport at all. The
-  // canvas box stands in for it so the rect stays finite and keeps the whole
-  // document, where an empty one would blank the scene until the next resize.
+  // default editor size stands in for it so the rect stays finite and keeps a
+  // screen's worth of scene, where an empty one would blank it until a resize.
   const screenWidth =
-    (viewportWidth > 0 ? viewportWidth : width * zoomLevel) / zoomLevel;
+    (viewportWidth > 0 ? viewportWidth : DEFAULT_WIDTH) / zoomLevel;
   const screenHeight =
-    (viewportHeight > 0 ? viewportHeight : height * zoomLevel) / zoomLevel;
+    (viewportHeight > 0 ? viewportHeight : DEFAULT_HEIGHT) / zoomLevel;
 
   return {
     x: -origin.x / zoomLevel - screenWidth,
@@ -84,18 +92,16 @@ export function createCullingRect(options: CullingRectOptions): CullingRect {
   };
 }
 
-/** The culling rect for the editor's current scroll, zoom, canvas and viewport. */
+/** The culling rect for the editor's current origin, zoom and viewport. */
 export function getCullingRect(state: RootState): CullingRect {
   const {
-    settings: { width, height, scrollLeft, scrollTop, zoomLevel },
+    settings: { originX, originY, zoomLevel },
     editor: { viewport },
   } = state;
 
   return createCullingRect({
-    width,
-    height,
-    scrollLeft,
-    scrollTop,
+    originX,
+    originY,
     zoomLevel,
     viewportWidth: viewport.width,
     viewportHeight: viewport.height,

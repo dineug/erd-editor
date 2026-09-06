@@ -37,7 +37,7 @@ const marqueeBand = (erd: ErdEditorPage) =>
 
 /**
  * The div Canvas.ts wraps the canvas in. It carries the
- * translate(scrollLeft, scrollTop) scale(zoomLevel) transform and the
+ * translate(originX, originY) scale(zoomLevel) transform and the
  * pointer-events switch, so it is what a pan visibly moves.
  */
 const canvasController = (erd: ErdEditorPage) => erd.canvas.locator('xpath=..');
@@ -256,7 +256,7 @@ test.describe('mouse drag', () => {
 
     // …and it marquee-selected rather than panned.
     const settings = await erd.settings();
-    expect([settings.scrollLeft, settings.scrollTop]).toEqual([0, 0]);
+    expect([settings.originX, settings.originY]).toEqual([0, 0]);
   });
 
   test('a plain drag on empty canvas pans the canvas and clamps at 0', async ({
@@ -269,15 +269,15 @@ test.describe('mouse drag', () => {
     await erd.panBy(-240, -120, { x: 1100, y: 700 });
 
     const scrolled = await erd.settings();
-    expectClose(scrolled.scrollLeft, -240, PIXEL_TOLERANCE);
-    expectClose(scrolled.scrollTop, -120, PIXEL_TOLERANCE);
+    expectClose(scrolled.originX, -240, PIXEL_TOLERANCE);
+    expectClose(scrolled.originY, -120, PIXEL_TOLERANCE);
 
     // Scrolling back past the origin clamps: streamScrollTo caps at 0.
     await erd.panBy(360, 240, { x: 1100, y: 700 });
 
     const clamped = await erd.settings();
-    expect(clamped.scrollLeft).toBe(0);
-    expect(clamped.scrollTop).toBe(0);
+    expect(clamped.originX).toBe(0);
+    expect(clamped.originY).toBe(0);
   });
 
   test('holding Space pans even when the drag starts over a table', async ({
@@ -303,8 +303,8 @@ test.describe('mouse drag', () => {
     await expect(canvasController(erd)).toHaveCSS('pointer-events', 'auto');
 
     const settings = await erd.settings();
-    expectClose(settings.scrollLeft, -120, PIXEL_TOLERANCE);
-    expectClose(settings.scrollTop, -60, PIXEL_TOLERANCE);
+    expectClose(settings.originX, -120, PIXEL_TOLERANCE);
+    expectClose(settings.originY, -60, PIXEL_TOLERANCE);
 
     // The table itself never moved, and never even got the mousedown.
     const users = await erd.table('users');
@@ -334,8 +334,8 @@ test.describe('mouse drag', () => {
 
     const settings = await erd.settings();
     const tolerance = PIXEL_TOLERANCE / ratio;
-    expectClose(settings.scrollLeft, -24 / ratio, tolerance);
-    expectClose(settings.scrollTop, -12 / ratio, tolerance);
+    expectClose(settings.originX, -24 / ratio, tolerance);
+    expectClose(settings.originY, -12 / ratio, tolerance);
 
     // The handle follows the pointer 1:1, because it is drawn at
     // scroll * ratio.
@@ -377,10 +377,10 @@ test.describe('mouse drag', () => {
     await expect(thumb).not.toHaveAttribute('data-selected', '');
 
     const settings = await erd.settings();
-    expectClose(settings.scrollLeft, -48 / ratio, PIXEL_TOLERANCE / ratio);
-    expect(settings.scrollTop).toBe(0);
+    expectClose(settings.originX, -48 / ratio, PIXEL_TOLERANCE / ratio);
+    expect(settings.originY).toBe(0);
 
-    // The thumb is drawn at -scrollLeft * ratio, which is exactly the
+    // The thumb is drawn at -originX * ratio, which is exactly the
     // pointer delta again.
     const after = await boxOf(thumb);
     expectClose(after.x - before.x, 48, PIXEL_TOLERANCE);

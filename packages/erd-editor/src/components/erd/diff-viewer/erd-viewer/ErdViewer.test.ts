@@ -160,8 +160,8 @@ describe('ErdViewer', () => {
     await flush();
 
     expect(event.defaultPrevented).toBe(true);
-    expect(app.store.state.settings.scrollTop).toBe(-100);
-    expect(app.store.state.settings.scrollLeft).toBe(-40);
+    expect(app.store.state.settings.originY).toBe(-100);
+    expect(app.store.state.settings.originX).toBe(-40);
     expect(app.store.state.settings.zoomLevel).toBe(1);
   });
 
@@ -171,10 +171,14 @@ describe('ErdViewer', () => {
     wheelAt(root, { deltaY: 100, mod: true });
     await flush();
 
-    // A plain wheel carrying no deltaX leaves scrollLeft alone; the zoom path
-    // re-centres both axes, so the horizontal offset is what separates them.
+    // A plain wheel carrying no deltaX leaves the horizontal origin alone; the
+    // zoom path re-centres both axes, so that origin is what separates them:
+    // holding the middle of a 1000 wide screen still at 0.9 moves it by 50.
     expect(app.store.state.settings.zoomLevel).toBeCloseTo(0.9, 5);
-    expect(app.store.state.settings.scrollLeft).toBe(-50);
+    expect(app.store.state.settings.originX).toBeCloseTo(
+      (1000 / 2) * (1 - 0.9),
+      4
+    );
   });
 
   it('zooms in when the wheel scrolls up with the mod key', async () => {
@@ -279,8 +283,8 @@ describe('ErdViewer', () => {
     );
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-30);
-    expect(app.store.state.settings.scrollTop).toBe(-50);
+    expect(app.store.state.settings.originX).toBe(-30);
+    expect(app.store.state.settings.originY).toBe(-50);
 
     window.dispatchEvent(new MouseEvent('mouseup'));
     await flush();
@@ -300,8 +304,8 @@ describe('ErdViewer', () => {
     );
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(0);
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 
   it('resets a scrolled root element while dragging', async () => {
@@ -354,6 +358,6 @@ describe('ErdViewer', () => {
     wheelAt(root, { deltaY: 100 });
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 });

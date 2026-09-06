@@ -11,7 +11,7 @@ const rectAt = (zoomLevel: number, viewport = VIEWPORT) =>
   getReachableRect({ ...CANVAS, zoomLevel }, viewport);
 
 /**
- * How far past each edge of the canvas box the scroll can still carry the
+ * How far past each edge of the canvas box the origin can still carry the
  * screen: the half screen a shrinking zoom holds inside the document, or, once
  * the screen outgrows the drawn canvas, whatever is left of it, over the zoom.
  */
@@ -23,8 +23,8 @@ const overhang = (size: number, viewportLength: number, zoomLevel: number) => {
 };
 
 /** Where the scene layer puts a point, written longhand rather than inverted. */
-const toScreen = (scene: number, scroll: number, zoomLevel: number) =>
-  scene * zoomLevel + scroll + (CANVAS.width * (1 - zoomLevel)) / 2;
+const toScreen = (scene: number, origin: number, zoomLevel: number) =>
+  scene * zoomLevel + origin;
 
 describe('getReachableRect', () => {
   it('is the document box itself at zoom 1', () => {
@@ -151,8 +151,8 @@ describe('getReachableRect', () => {
       ).left;
       const shown = (scene: number) => {
         for (let step = 0; step <= 512; step++) {
-          const scroll = min + ((max - min) * step) / 512;
-          const at = toScreen(scene, scroll, zoomLevel);
+          const origin = min + ((max - min) * step) / 512;
+          const at = toScreen(scene, origin, zoomLevel);
 
           if (at >= 0 && at <= VIEWPORT.width) return true;
         }

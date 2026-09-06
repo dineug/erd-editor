@@ -37,7 +37,15 @@ const source = toJson(schema); // JSON string, ready to write back
 
 `parserV2(source)` is the mirror image: it also accepts either version and returns
 `ERDEditorSchemaV2`. `toJson` honours the document's `ignoreSaveSettings` bits, resetting
-scroll position and zoom level before serializing when they are not meant to persist.
+the view origin and zoom level before serializing when they are not meant to persist. It
+never mutates the schema it is handed — the settings it writes are a copy.
+
+`settings.originX` / `originY` are the view: the screen point scene `(0, 0)` lands on.
+`settings.scrollLeft` / `scrollTop` are the older spelling of the same idea, measured from
+the canvas box centred in the viewport, and they are now frozen: the parser reads them
+once, through `migrateScrollToOrigin`, to give a document written before this release the
+view it had, and after that nothing writes or derives them. A file keeps whatever legacy
+pair it arrived with, so an editor from before this release still opens where it left off.
 
 ## Exports
 
@@ -49,6 +57,8 @@ scroll position and zoom level before serializing when they are not meant to per
 - `query` — chainable reads and writes over the v3 collections, plus the operators below
   bound to a collection.
 - `addOperator`, `removeOperator`, `replaceOperator`, and the `LWW` / `LWWTuple` types.
+- `migrateScrollToOrigin` — the one-way legacy migration, for anything that has to
+  restate what a document without an origin pair used to show.
 
 ## Why the LWW operators
 

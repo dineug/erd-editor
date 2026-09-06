@@ -51,6 +51,7 @@ import { addRelationshipAction } from '@/engine/modules/relationship/atom.action
 import {
   changeDatabaseNameAction,
   changeZoomLevelAction,
+  scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -771,6 +772,48 @@ describe('loadSchemaAMLAction$', () => {
     store.dispatchSync(loadSchemaAMLAction$('type uid int'));
 
     expect(store.state.doc.tableIds).toEqual([]);
+  });
+});
+
+/**
+ * An import is a brand-new document, so both view pairs come from the parser at
+ * their defaults: the live origin and the frozen legacy pair are left out of the
+ * settings an importer carries over, and the rest of them survive the import.
+ */
+describe('the four importers open the new document at the origin', () => {
+  it.each([
+    [
+      'loadSchemaSQLAction$',
+      loadSchemaSQLAction$,
+      'CREATE TABLE users (id INT);',
+    ],
+    [
+      'loadSchemaGraphQLAction$',
+      loadSchemaGraphQLAction$,
+      'type User { id: ID! }',
+    ],
+    [
+      'loadSchemaDBMLAction$',
+      loadSchemaDBMLAction$,
+      'Table users {\n  id int\n}',
+    ],
+    ['loadSchemaAMLAction$', loadSchemaAMLAction$, 'users\n  id int pk'],
+  ])('%s', (_, load, source) => {
+    store.dispatchSync(changeDatabaseNameAction({ value: 'keep-me' }));
+    store.state.settings.scrollLeft = -300;
+    store.state.settings.scrollTop = -400;
+    store.dispatchSync(scrollToAction({ originX: -250, originY: -300 }));
+    expect(store.state.settings.originX).toBe(-250);
+    expect(store.state.settings.originY).toBe(-300);
+
+    store.dispatchSync(load(source));
+
+    expect(store.state.doc.tableIds).toHaveLength(1);
+    expect(store.state.settings.originX).toBe(0);
+    expect(store.state.settings.originY).toBe(0);
+    expect(store.state.settings.scrollLeft).toBe(0);
+    expect(store.state.settings.scrollTop).toBe(0);
+    expect(store.state.settings.databaseName).toBe('keep-me');
   });
 });
 

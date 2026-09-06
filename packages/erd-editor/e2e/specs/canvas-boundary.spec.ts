@@ -17,8 +17,9 @@ type Point = { x: number; y: number };
 const ZOOM = 0.2;
 
 /**
- * Puts the document's own origin 300px into the canvas container on both axes:
- * getSceneOrigin is the scroll plus half the shrink of the box.
+ * This seed is a legacy document: the parser's migrateScrollToOrigin adds half
+ * the shrink of the box to the scroll, so this pair lands the document's own
+ * origin 300px into the canvas container on both axes.
  */
 const SCROLL = 300 - (2000 - 2000 * ZOOM) / 2;
 

@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
-  getAbsolutePoint,
-  getAbsolutePosition,
-  getAbsoluteZoomPoint,
   getOverlapPosition,
-  getZoomViewport,
   isOverlapPosition,
   type Rect,
 } from '@/utils/dragSelect';
@@ -96,103 +92,5 @@ describe('getOverlapPosition', () => {
     expect(getOverlapPosition(rect(10, 0, 10, 10), rect(0, 0, 10, 10))).toEqual(
       { x1: 10, y1: 0, x2: 10, y2: 10 }
     );
-  });
-});
-
-describe('getZoomViewport', () => {
-  it('centers a shrunken viewport inside the canvas', () => {
-    expect(getZoomViewport(1000, 500, 0.5)).toEqual({
-      x: 250,
-      y: 125,
-      w: 500,
-      h: 250,
-    });
-  });
-
-  it('returns the full canvas at zoom level 1', () => {
-    expect(getZoomViewport(1000, 500, 1)).toEqual({
-      x: 0,
-      y: 0,
-      w: 1000,
-      h: 500,
-    });
-  });
-
-  it('produces negative offsets when zoomed above 1', () => {
-    expect(getZoomViewport(100, 100, 2)).toEqual({
-      x: -50,
-      y: -50,
-      w: 200,
-      h: 200,
-    });
-  });
-});
-
-describe('getAbsolutePosition', () => {
-  it('removes the viewport offset from x1/y1 and scales every value', () => {
-    const zoomViewport = getZoomViewport(1000, 500, 0.5);
-
-    expect(
-      getAbsolutePosition(
-        { x1: 300, y1: 175, x2: 50, y2: 25 },
-        zoomViewport,
-        0.5
-      )
-    ).toEqual({ x1: 100, y1: 100, x2: 100, y2: 50 });
-  });
-
-  it('is the identity at zoom level 1', () => {
-    const overlap = { x1: 10, y1: 20, x2: 30, y2: 40 };
-
-    expect(
-      getAbsolutePosition(overlap, getZoomViewport(800, 600, 1), 1)
-    ).toEqual(overlap);
-  });
-});
-
-describe('getAbsoluteZoomPoint', () => {
-  it('scales the point and shifts it by the zoom viewport origin', () => {
-    expect(getAbsoluteZoomPoint({ x: 100, y: 50 }, 1000, 500, 0.5)).toEqual({
-      x: 300,
-      y: 150,
-    });
-  });
-
-  it('returns the point unchanged at zoom level 1', () => {
-    expect(getAbsoluteZoomPoint({ x: 100, y: 50 }, 1000, 500, 1)).toEqual({
-      x: 100,
-      y: 50,
-    });
-  });
-});
-
-describe('getAbsolutePoint', () => {
-  it('returns the point unchanged at zoom level 1', () => {
-    expect(getAbsolutePoint({ x: 100, y: 50 }, 1000, 500, 1)).toEqual({
-      x: 100,
-      y: 50,
-    });
-  });
-
-  it('compensates for the zoom viewport offset when zoomed out', () => {
-    expect(getAbsolutePoint({ x: 100, y: 50 }, 1000, 500, 0.5)).toEqual({
-      x: -300,
-      y: -150,
-    });
-  });
-
-  it('compensates in the opposite direction when zoomed in', () => {
-    // zoomViewport: { x: -50, y: -50 }, zoom point: { x: 150, y: 150 }
-    expect(getAbsolutePoint({ x: 100, y: 100 }, 100, 100, 2)).toEqual({
-      x: 75,
-      y: 75,
-    });
-  });
-
-  it('keeps the canvas center fixed', () => {
-    expect(getAbsolutePoint({ x: 500, y: 250 }, 1000, 500, 0.5)).toEqual({
-      x: 500,
-      y: 250,
-    });
   });
 });

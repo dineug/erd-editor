@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { v2ToV3 } from '@/convert/v2ToV3';
 import { type ERDEditorSchemaV2, schemaV2Parser } from '@/v2';
 import { SchemaV3Constants } from '@/v3';
+import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 
 const {
   BracketType,
@@ -282,6 +283,42 @@ describe('v2ToV3', () => {
       expect(settings.canvasType).toBe(SchemaV3Constants.CanvasType.ERD);
       expect(settings.relationshipDataTypeSync).toBe(false);
       expect(settings.relationshipOptimization).toBe(true);
+    });
+
+    it('migrates the v2 legacy scroll onto the origin pair', () => {
+      const { canvas } = createSchemaV2();
+      const { settings } = v2ToV3(createSchemaV2());
+      const term = (length: number) => (length * (1 - canvas.zoomLevel)) / 2;
+
+      expect(settings.originX).toBeCloseTo(
+        canvas.scrollLeft + term(canvas.width),
+        4
+      );
+      expect(settings.originY).toBeCloseTo(
+        canvas.scrollTop + term(canvas.height),
+        4
+      );
+    });
+
+    it('migrates with the clamps the v2 parser already applied', () => {
+      const schemaV2 = schemaV2Parser({
+        canvas: {
+          width: 999_999,
+          height: 10,
+          zoomLevel: 0.5,
+          scrollLeft: 40,
+          scrollTop: 60,
+        },
+      });
+      const { settings } = v2ToV3(schemaV2);
+
+      expect(schemaV2.canvas.width).toBe(20_000);
+      expect(schemaV2.canvas.height).toBe(2000);
+      expect(schemaV2.canvas.zoomLevel).toBe(0.5);
+      // The box term is read from the clamped size: the width the json named
+      // would have put the origin a quarter of a million pixels further on.
+      expect(settings.originX).toBe(40 + (20_000 * (1 - 0.5)) / 2);
+      expect(settings.originY).toBe(60 + (2000 * (1 - 0.5)) / 2);
     });
 
     it('packs the boolean show map into a bit flag', () => {

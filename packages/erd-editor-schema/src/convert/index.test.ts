@@ -7,6 +7,7 @@ import {
   SchemaV3Constants,
   schemaV3Parser,
 } from '@/v3';
+import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 
 function createSchemaV2(): ERDEditorSchemaV2 {
   return schemaV2Parser({
@@ -183,6 +184,23 @@ describe('convert barrel', () => {
       expect(result.canvas.setting).toEqual(source.canvas.setting);
     });
 
+    it('migrates an origin on the way up and drops it on the way down', () => {
+      const term = (length: number) =>
+        (length * (1 - source.canvas.zoomLevel)) / 2;
+      const lifted = v2ToV3(createSchemaV2()).settings;
+
+      expect(lifted.originX).toBeCloseTo(
+        source.canvas.scrollLeft + term(source.canvas.width),
+        4
+      );
+      expect(lifted.originY).toBeCloseTo(
+        source.canvas.scrollTop + term(source.canvas.height),
+        4
+      );
+      expect(result.canvas).not.toHaveProperty('originX');
+      expect(result.canvas).not.toHaveProperty('originY');
+    });
+
     it('preserves tables, columns and their ui flags', () => {
       expect(result.table.tables).toEqual(
         source.table.tables.map(({ visible, ...table }) => {
@@ -245,10 +263,28 @@ describe('convert barrel', () => {
 
       expect(result.settings.width).toBe(source.settings.width);
       expect(result.settings.height).toBe(source.settings.height);
+      expect(result.settings.scrollLeft).toBe(source.settings.scrollLeft);
+      expect(result.settings.scrollTop).toBe(source.settings.scrollTop);
+      expect(result.settings.originX).toBe(source.settings.originX);
+      expect(result.settings.originY).toBe(source.settings.originY);
+      expect(result.settings.zoomLevel).toBe(source.settings.zoomLevel);
       expect(result.settings.show).toBe(source.settings.show);
       expect(result.settings.database).toBe(source.settings.database);
       expect(result.settings.language).toBe(source.settings.language);
       expect(result.settings.columnOrder).toEqual(source.settings.columnOrder);
+    });
+
+    it('rebuilds the origin from the legacy pair a v2 hop kept', () => {
+      const source = createSchemaV3();
+      source.settings.originX = 4242;
+      source.settings.originY = -4242;
+      const result = v2ToV3(v3ToV2(source));
+
+      expect(result.settings.scrollLeft).toBe(source.settings.scrollLeft);
+      expect(result.settings.scrollTop).toBe(source.settings.scrollTop);
+      expect(result.settings).toMatchObject(
+        migrateScrollToOrigin(result.settings)
+      );
     });
 
     it('loses the Databricks database because v2 has no such vendor', () => {

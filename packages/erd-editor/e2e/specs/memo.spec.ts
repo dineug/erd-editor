@@ -191,9 +191,9 @@ test.describe('memo', () => {
     await erd.page.mouse.wheel(0, -240);
 
     const after = await erd.settings();
-    expect([after.scrollLeft, after.scrollTop, after.zoomLevel]).toEqual([
-      before.scrollLeft,
-      before.scrollTop,
+    expect([after.originX, after.originY, after.zoomLevel]).toEqual([
+      before.originX,
+      before.originY,
       before.zoomLevel,
     ]);
   });
@@ -227,10 +227,10 @@ const WHEEL_NOTCHES = 40;
 const WHEEL_DELTA = 120;
 
 const viewOf = (settings: {
-  scrollLeft: number;
-  scrollTop: number;
+  originX: number;
+  originY: number;
   zoomLevel: number;
-}) => [settings.scrollLeft, settings.scrollTop, settings.zoomLevel];
+}) => [settings.originX, settings.originY, settings.zoomLevel];
 
 /**
  * Wheels over a viewport point, holding the modifier the zoom path reads when
@@ -285,8 +285,8 @@ test.describe('memo wheel', () => {
     const before = await erd.settings();
     await wheelOver(erd, await erd.emptyPoint());
     await expect
-      .poll(async () => (await erd.settings()).scrollTop)
-      .toBeLessThan(before.scrollTop);
+      .poll(async () => (await erd.settings()).originY)
+      .toBeLessThan(before.originY);
 
     const panned = await erd.settings();
     await wheelOver(erd, await erd.emptyPoint(), { mod: true });
@@ -365,7 +365,7 @@ test.describe('memo wheel', () => {
     await wheelOver(erd, header, { notches: 1 });
 
     await expect
-      .poll(async () => (await erd.settings()).scrollTop)
-      .toBeLessThan(before.scrollTop);
+      .poll(async () => (await erd.settings()).originY)
+      .toBeLessThan(before.originY);
   });
 });

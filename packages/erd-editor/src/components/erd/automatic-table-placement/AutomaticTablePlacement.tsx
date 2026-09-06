@@ -19,6 +19,7 @@ import {
 } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import Minimap from '@/components/erd/minimap/Minimap';
+import { getScrollToCenter } from '@/components/erd/minimap/minimapGeometry';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { Open } from '@/constants/open';
@@ -119,24 +120,30 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   const zoomInRange = (value: number) => clamp(value, CANVAS_ZOOM_MIN, 0.7);
   const zoomLevelInRange = (zoom: number) => round(zoomInRange(zoom), 2);
 
+  // The preview shows the whole canvas box centred in the viewport, computed
+  // with the zoom the dispatch below puts in effect rather than the current one.
+  const previewZoomLevel = zoomLevelInRange(
+    originState.editor.viewport.width / originState.settings.width
+  );
+  const { width, height, originX, originY } = originState.settings;
+  const previewOrigin = getScrollToCenter(
+    {
+      width,
+      height,
+      originX,
+      originY,
+      zoomLevel: previewZoomLevel,
+      viewportWidth: originState.editor.viewport.width,
+      viewportHeight: originState.editor.viewport.height,
+    },
+    { x: width / 2, y: height / 2 }
+  );
+
   store.dispatchSync(
     initialLoadJsonAction$(toJson(originState)),
     changeViewportAction(getViewport()),
-    changeZoomLevelAction({
-      value: zoomLevelInRange(
-        originState.editor.viewport.width / originState.settings.width
-      ),
-    }),
-    scrollToAction({
-      scrollLeft:
-        -1 *
-        (originState.settings.width / 2 -
-          originState.editor.viewport.width / 2),
-      scrollTop:
-        -1 *
-        (originState.settings.height / 2 -
-          originState.editor.viewport.height / 2),
-    })
+    changeZoomLevelAction({ value: previewZoomLevel }),
+    scrollToAction({ originX: previewOrigin.x, originY: previewOrigin.y })
   );
 
   const {

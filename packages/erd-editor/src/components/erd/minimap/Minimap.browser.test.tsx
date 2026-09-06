@@ -277,17 +277,17 @@ describe('the minimap shell', () => {
     );
     await flush();
 
-    // (85 - 10) / 0.075 = 1000 -> 1000 - 1200 / 2 = 400
-    expect(app.store.state.settings.scrollLeft).toBe(-400);
-    // (50 - 20) / 0.075 = 400 -> 400 - 675 / 2 = 62.5
-    expect(app.store.state.settings.scrollTop).toBe(-62.5);
+    // (85 - 10) / 0.075 = 1000 -> 1200 / 2 - 1000 = -400
+    expect(app.store.state.settings.originX).toBe(-400);
+    // (50 - 20) / 0.075 = 400 -> 675 / 2 - 400 = -62.5
+    expect(app.store.state.settings.originY).toBe(-62.5);
   });
 
   it('centres the press on the same canvas point while zoomed out', async () => {
     const app = createTestAppContext();
     const mounted = await mountMinimap(app);
     // 8000 at half zoom still draws wider than the editor viewport, so the
-    // scroll this asks for is nowhere near the bound and no clamp hides it.
+    // origin this asks for is nowhere near the bound and no clamp hides it.
     app.store.dispatchSync(resizeAction({ width: 8000, height: 8000 }));
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     await flush();
@@ -298,10 +298,11 @@ describe('the minimap shell', () => {
     );
     await flush();
 
-    // 45 / 0.01875 is canvas 2400 at any zoom, but at half zoom the screen
-    // spans 2400 canvas units, so centring it is not 2400 - 1200 / 2.
-    expect(app.store.state.settings.scrollLeft).toBe(-2600);
-    expect(app.store.state.settings.scrollTop).toBe(-2862.5);
+    // 45 / 0.01875 is canvas 2400 at any zoom, and at half zoom that point is
+    // drawn 1200 screen px from the origin, so the origin that centres it sits
+    // half a screen back from there on each axis.
+    expect(app.store.state.settings.originX).toBe(1200 / 2 - 2400 * 0.5);
+    expect(app.store.state.settings.originY).toBe(675 / 2 - 2400 * 0.5);
 
     const el = viewportOf(mounted);
     const width = parseFloat(el.style.width);
@@ -314,7 +315,7 @@ describe('the minimap shell', () => {
     expect(y + height / 2).toBeCloseTo(45, 3);
   });
 
-  it('clamps the scroll to the canvas bounds', async () => {
+  it('clamps the origin to the canvas bounds', async () => {
     const app = createTestAppContext();
     const mounted = await mountMinimap(app);
     stubRect(0, 0);
@@ -324,9 +325,9 @@ describe('the minimap shell', () => {
     );
     await flush();
 
-    // min scroll = viewport (1200 x 675) - canvas (2000 x 2000)
-    expect(app.store.state.settings.scrollLeft).toBe(-800);
-    expect(app.store.state.settings.scrollTop).toBe(-1325);
+    // min origin = viewport (1200 x 675) - canvas (2000 x 2000)
+    expect(app.store.state.settings.originX).toBe(-800);
+    expect(app.store.state.settings.originY).toBe(-1325);
   });
 
   it('marks the viewport as selected for the duration of the press', async () => {
@@ -360,8 +361,8 @@ describe('the minimap shell', () => {
     );
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-400);
-    expect(app.store.state.settings.scrollTop).toBe(-62.5);
+    expect(app.store.state.settings.originX).toBe(-400);
+    expect(app.store.state.settings.originY).toBe(-62.5);
     expect(viewportOf(mounted).classList.contains('selected')).toBe(true);
   });
 
@@ -374,7 +375,7 @@ describe('the minimap shell', () => {
       new MouseEvent('mousedown', { bubbles: true, clientX: 60, clientY: 40 })
     );
     await flush();
-    const afterPress = app.store.state.settings.scrollLeft;
+    const afterPress = app.store.state.settings.originX;
 
     window.dispatchEvent(
       new MouseEvent('mousemove', {
@@ -387,7 +388,7 @@ describe('the minimap shell', () => {
     await flush();
 
     expect(afterPress).toBe(-200);
-    expect(app.store.state.settings.scrollLeft).toBe(-333.3333);
+    expect(app.store.state.settings.originX).toBe(-333.3333);
   });
 
   it('keeps the viewport rectangle under the pointer while zoomed out', async () => {
@@ -418,9 +419,12 @@ describe('the minimap shell', () => {
     );
     await flush();
 
-    // The scroll carries the zoom, so ten pointer pixels are ten minimap
+    // The origin travel carries the zoom, so ten pointer pixels are ten minimap
     // pixels: dropping the zoom term moves the rectangle twice as far.
-    expect(app.store.state.settings.scrollLeft).toBe(-2866.6667);
+    expect(app.store.state.settings.originX).toBeCloseTo(
+      1200 / 2 - 2400 * 0.5 - (10 / (150 / 8000)) * 0.5,
+      3
+    );
     expect(before - parseFloat(viewportOf(mounted).style.right)).toBeCloseTo(
       10,
       3

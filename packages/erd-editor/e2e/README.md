@@ -44,7 +44,7 @@ suite red.
 
 ## What is covered
 
-21 spec files. Ten of the groups exist because the DOM scene got their subject
+32 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -59,6 +59,23 @@ for free and the canvas has to draw and dispatch it itself:
 | `hide-sign.spec.ts`             | Off-canvas markers for entities culling has dropped               |
 | `context-menu-cardinality.spec.ts` | A right click that finds a connector by hit-testing the scene  |
 | `virtual-viewport.spec.ts`      | Culling: what is off screen has no node, and the minimap keeps it |
+
+Eleven more are the canvas's own geometry, and the DOM the editing overlay
+puts over it:
+
+| Spec                            | What it holds down                                                |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `zoom-round-trip.spec.ts`       | A zoom out and back in that returns the reader's own view         |
+| `scroll-origin.spec.ts`         | The origin the scene draws with, and the legacy pair migrated once |
+| `canvas-boundary.spec.ts`       | Where the document ends, now that the container is the screen     |
+| `hide-sign-zoom.spec.ts`        | The markers above zoom 1, where the measured box used to shrink   |
+| `export-png.spec.ts`            | The file the browser really receives, and the messages around it  |
+| `memo-editor-drag.spec.ts`      | A press in the overlay textarea, which used to pan the canvas     |
+| `memo-editor-alignment.spec.ts` | The drawn memo and its textarea, one device grid at a time        |
+| `cell-editor-alignment.spec.ts` | The drawn cell and its input, on both device grids                |
+| `cell-editor-underline.spec.ts` | The underline the two rasterisers have to agree on                |
+| `data-type-hint.spec.ts`        | The autocomplete DOM the stage cannot hit test                    |
+| `relationship-hover.spec.ts`    | Every part a connector draws, hovered one at a time               |
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
@@ -355,8 +372,9 @@ cost when you hit them blind.
   `Ctrl` opens nothing — tested a different state from a workstation. Sending
   the ctrl bit through CDP without a key press opens the menu too, so the user
   agent is the only place this can be fixed.
-- `toJson()` — which backs the `value` getter — mutates settings when
-  `ignoreSaveSettings` bits are set. Every seed keeps it at `0`; leave it there.
+- `toJson()` — which backs the `value` getter — serialises a copy, so reading
+  `value` never moves the live view. With the `ignoreSaveSettings` scroll bit
+  set it writes the origin pair out as zero. Every seed keeps the field at `0`.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root
   `.root` div, with bubble-phase listeners. Dispatching at `document` or at the
   host element will not reach them.

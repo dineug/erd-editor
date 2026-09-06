@@ -16,19 +16,19 @@ import { drag$, DragMove } from '@/utils/globalEventObservable';
 
 /**
  * How much of this step of the drag is the handle's to take. The room is read
- * off the scroll as it stands rather than off where the step would land, so the
+ * off the origin as it stands rather than off where the step would land, so the
  * last partial step reaches the reducer and is clamped instead of dropped.
  */
 const takeMovement = (
   movement: number,
   pointer: number,
+  start: number,
   origin: number,
-  scroll: number,
   { min, max }: ScrollRange
 ) => {
   const backwards = movement < 0;
-  const hasRoom = backwards ? scroll < max : scroll > min;
-  const behindPointer = backwards ? pointer < origin : pointer > origin;
+  const hasRoom = backwards ? origin < max : origin > min;
+  const behindPointer = backwards ? pointer < start : pointer > start;
 
   return hasRoom && behindPointer ? movement : 0;
 };
@@ -43,9 +43,9 @@ export function useMinimapScroll(ctx: Ctx) {
   let clientY = 0;
 
   /**
-   * Minimap travel as the scroll the canvas has to take to follow it. The
-   * minimap is drawn at a fixed ratio, so the canvas distance is zoom free; the
-   * scroll that covers it is not, because a scroll pixel is a screen pixel.
+   * Minimap travel as the origin travel the canvas has to take to follow it.
+   * The minimap is drawn at a fixed ratio, so the canvas distance is zoom free;
+   * the travel that covers it is not, because an origin pixel is a screen pixel.
    */
   const absoluteMovement = (movement: number) => {
     const { store } = app.value;
@@ -66,7 +66,7 @@ export function useMinimapScroll(ctx: Ctx) {
       movementX,
       x,
       clientX,
-      settings.scrollLeft,
+      settings.originX,
       getScrollRanges(settings, viewport).left
     );
 
@@ -84,7 +84,7 @@ export function useMinimapScroll(ctx: Ctx) {
       movementY,
       y,
       clientY,
-      settings.scrollTop,
+      settings.originY,
       getScrollRanges(settings, viewport).top
     );
 

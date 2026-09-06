@@ -54,8 +54,8 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
 
   const state = observable({
-    scrollLeft: 0,
-    scrollTop: 0,
+    originX: 0,
+    originY: 0,
   });
 
   const getPosition = ({ x, y }: Point): Position => {
@@ -78,18 +78,15 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
   /**
    * A sign is pinned to the edge of the editor box the scene is drawn in, so
    * the axis it is free on is the entity read through the very origin that box
-   * places the scene layers at, and the scroll it carries is the debounced one.
+   * places the scene layers at, and the origin it carries is the debounced one.
    */
   const getPositionStyle = (point: Point): [Record<string, string>, number] => {
     const { store } = app.value;
     const {
-      settings: { width, height, zoomLevel },
+      settings: { zoomLevel },
     } = store.state;
-    const { scrollLeft, scrollTop } = state;
-    const screen = toScreenPoint(
-      { width, height, zoomLevel, scrollLeft, scrollTop },
-      point
-    );
+    const { originX, originY } = state;
+    const screen = toScreenPoint({ zoomLevel, originX, originY }, point);
     const top = `${screen.y}px`;
     const left = `${screen.x}px`;
     const position = getPosition(point);
@@ -197,22 +194,22 @@ const HideSign: FC<HideSignProps> = (props, ctx) => {
   onMounted(() => {
     const { store } = app.value;
     const { settings } = store.state;
-    const scroll$ = new Observable<{ scrollLeft: number; scrollTop: number }>(
+    const origin$ = new Observable<{ originX: number; originY: number }>(
       subscriber =>
         watch(settings).subscribe(propName => {
-          if (propName === 'scrollLeft' || propName === 'scrollTop') {
+          if (propName === 'originX' || propName === 'originY') {
             subscriber.next({
-              scrollLeft: settings.scrollLeft,
-              scrollTop: settings.scrollTop,
+              originX: settings.originX,
+              originY: settings.originY,
             });
           }
         })
     );
 
     addUnsubscribe(
-      scroll$.pipe(debounceTime(100)).subscribe(({ scrollLeft, scrollTop }) => {
-        state.scrollLeft = scrollLeft;
-        state.scrollTop = scrollTop;
+      origin$.pipe(debounceTime(100)).subscribe(({ originX, originY }) => {
+        state.originX = originX;
+        state.originY = originY;
       })
     );
   });

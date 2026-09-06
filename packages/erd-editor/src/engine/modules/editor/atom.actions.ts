@@ -14,8 +14,8 @@ import { CanvasType } from '@/constants/schema';
 import { createScrollInRange } from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
+import { toScenePoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
-import { getAbsolutePoint } from '@/utils/dragSelect';
 import { hasCanvasType } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
@@ -99,21 +99,21 @@ export const changeViewportAction = createAction<
   ActionMap[typeof ActionType.changeViewport]
 >(ActionType.changeViewport);
 
-/** Pulls both offsets into the travel the viewport and the zoom now allow. */
+/** Pulls the origin into the travel the viewport and the zoom now allow. */
 function clampScrollOffsets({ settings, editor }: RootState) {
-  const { scrollLeftInRange, scrollTopInRange } = createScrollInRange(
+  const { originXInRange, originYInRange } = createScrollInRange(
     settings,
     editor.viewport
   );
 
-  settings.scrollLeft = round(scrollLeftInRange(settings.scrollLeft), 4);
-  settings.scrollTop = round(scrollTopInRange(settings.scrollTop), 4);
+  settings.originX = round(originXInRange(settings.originX), 4);
+  settings.originY = round(originYInRange(settings.originY), 4);
 }
 
 /**
  * The screen the canvas is looking through. Growing it widens the travel the
- * scroll is allowed, and shrinking it narrows it, so the offsets are clamped
- * again here: a scroll left outside the new range shows a band of nothing.
+ * origin is allowed, and shrinking it narrows it, so the origin is clamped
+ * again here: one left outside the new range shows a band of nothing.
  */
 const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
   state,
@@ -135,7 +135,7 @@ const clear: ReducerType<typeof ActionType.clear> = state => {
 };
 
 /**
- * The scroll a loaded document carries, pulled into the travel its own zoom
+ * The origin a loaded document carries, pulled into the travel its own zoom
  * allows. A file can name an offset no zoom below 1 can hold, and the load path
  * clamps nowhere else, so the first wheel notch would jump the whole distance.
  */
@@ -469,23 +469,15 @@ export const drawRelationshipAction = createAction<
 >(ActionType.drawRelationship);
 
 const drawRelationship: ReducerType<typeof ActionType.drawRelationship> = (
-  {
-    editor: { drawRelationship },
-    settings: { scrollLeft, scrollTop, zoomLevel, width, height },
-  },
+  { editor: { drawRelationship }, settings },
   { payload: { x, y } }
 ) => {
   if (!drawRelationship?.start) return;
 
-  const absolutePoint = getAbsolutePoint(
-    { x: x - scrollLeft, y: y - scrollTop },
-    width,
-    height,
-    zoomLevel
-  );
+  const scenePoint = toScenePoint(settings, { x, y });
 
-  drawRelationship.end.x = absolutePoint.x;
-  drawRelationship.end.y = absolutePoint.y;
+  drawRelationship.end.x = scenePoint.x;
+  drawRelationship.end.y = scenePoint.y;
 };
 
 export const hoverColumnMapAction = createAction<

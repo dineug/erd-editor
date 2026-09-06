@@ -21,8 +21,8 @@ const resize: PushUndoHistory = (undoActions, _, { settings }) => {
 const scrollTo: PushUndoHistory = (undoActions, _, { settings }) => {
   undoActions.push(
     scrollToAction({
-      scrollLeft: settings.scrollLeft,
-      scrollTop: settings.scrollTop,
+      originX: settings.originX,
+      originY: settings.originY,
     })
   );
 };

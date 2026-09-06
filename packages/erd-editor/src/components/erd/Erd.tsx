@@ -41,8 +41,8 @@ import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.acti
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { toScenePoint } from '@/konva/scene/viewport';
 import { isMouseEvent } from '@/utils/domEvent';
-import { getAbsolutePoint } from '@/utils/dragSelect';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
@@ -293,19 +293,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       )
       .subscribe(event => {
         const rect = $root.getBoundingClientRect();
-        const {
-          settings: { scrollLeft, scrollTop, width, height, zoomLevel },
-        } = store.state;
-        const x = event.clientX - rect.x - scrollLeft;
-        const y = event.clientY - rect.y - scrollTop;
-        const absolutePoint = getAbsolutePoint(
-          { x, y },
-          width,
-          height,
-          zoomLevel
-        );
+        const scenePoint = toScenePoint(store.state.settings, {
+          x: event.clientX - rect.x,
+          y: event.clientY - rect.y,
+        });
 
-        store.dispatch(sharedMouseTrackerAction(absolutePoint));
+        store.dispatch(sharedMouseTrackerAction(scenePoint));
       });
   };
 

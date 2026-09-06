@@ -22,14 +22,19 @@ import {
   searchActions,
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
+import { START_X, START_Y } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import { setImportFileCallback } from '@/utils/file/importFile';
 
@@ -602,9 +607,32 @@ describe('createScopeActions / table actions', () => {
     expect(recorder.types()).toContain('settings.scrollTo');
     expect(app.store.state.editor.selectedMap[id]).toBeTruthy();
     expect(app.store.state.editor.focusTable?.tableId).toBe(id);
-    expect(app.store.state.settings.scrollLeft).toBeLessThanOrEqual(0);
-    expect(app.store.state.settings.scrollTop).toBeLessThanOrEqual(0);
+    expect(app.store.state.settings.originX).toBeLessThanOrEqual(0);
+    expect(app.store.state.settings.originY).toBeLessThanOrEqual(0);
   });
+
+  /**
+   * The landing point the DOM scene had: the table parks START_X, START_Y in
+   * from the corner, scaled by the zoom, so at 0.5 it sits 100 px in and at 1.5
+   * it sits 300 px in, from a position whose origins the default screen allows.
+   */
+  it.each([0.5, 1, 1.5])(
+    'parks the table a zoomed START_X, START_Y in from the corner at zoom %s',
+    async zoomLevel => {
+      setCanvasType(CanvasType.ERD);
+      const id = addTable('users', 100, 200);
+      app.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+
+      find(scope(), 'users').perform?.(app);
+      await flush();
+
+      const table = app.store.state.collections.tableEntities[id];
+      const screen = toScreenPoint(app.store.state.settings, table.ui);
+      expect(table.ui).toMatchObject({ x: 300, y: 300 });
+      expect(screen.x).toBeCloseTo(START_X * zoomLevel, 4);
+      expect(screen.y).toBeCloseTo(START_Y * zoomLevel, 4);
+    }
+  );
 
   it('carries no icon on table actions', () => {
     setCanvasType(CanvasType.ERD);

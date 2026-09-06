@@ -494,6 +494,8 @@ export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
           ...omit(cloneDeep(settings), [
             'width',
             'height',
+            'originX',
+            'originY',
             'scrollTop',
             'scrollLeft',
             'zoomLevel',
@@ -514,6 +516,8 @@ export const loadSchemaGraphQLAction$ = (value: string): GeneratorAction =>
           ...omit(cloneDeep(settings), [
             'width',
             'height',
+            'originX',
+            'originY',
             'scrollTop',
             'scrollLeft',
             'zoomLevel',
@@ -534,6 +538,8 @@ export const loadSchemaDBMLAction$ = (value: string): GeneratorAction =>
           ...omit(cloneDeep(settings), [
             'width',
             'height',
+            'originX',
+            'originY',
             'scrollTop',
             'scrollLeft',
             'zoomLevel',
@@ -554,6 +560,8 @@ export const loadSchemaAMLAction$ = (value: string): GeneratorAction =>
           ...omit(cloneDeep(settings), [
             'width',
             'height',
+            'originX',
+            'originY',
             'scrollTop',
             'scrollLeft',
             'zoomLevel',

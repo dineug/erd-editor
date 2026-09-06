@@ -1,5 +1,8 @@
 import type { Page } from '@playwright/test';
 
+import { toScrollRange } from '@/engine/modules/settings/scrollRange';
+import { getOriginToPlace } from '@/konva/scene/viewport';
+
 import type { ErdDocument } from '../support/schema';
 
 export type Stats = {
@@ -544,9 +547,9 @@ const GRIP_Y = 200;
 export const VIEWPORT = { width: 1440, height: 900 };
 
 /**
- * Scrolls the document so the dragged table is on screen before it is loaded.
- * The scene culls, so a table outside the drawn region has no node to grip, and
- * the corpus parks its hub in the middle of a canvas many screens wide.
+ * Moves the view so the dragged table is on screen before it is loaded. The
+ * scene culls, so a table outside the drawn region has no node to grip, and the
+ * corpus parks its hub in the middle of a canvas many screens wide.
  */
 function scrollToTable(document: ErdDocument, tableId: string) {
   const table = document.collections.tableEntities[tableId];
@@ -556,16 +559,27 @@ function scrollToTable(document: ErdDocument, tableId: string) {
   // from a corner, half of a there-and-back pan is clamped flat by the reducer
   // and measures nothing at all.
   const { settings } = document;
-  const inRange = (value: number, viewport: number, size: number) =>
-    Math.max(Math.min(0, viewport - size), Math.min(0, value));
+  const { zoomLevel } = settings;
+  const origin = getOriginToPlace(
+    zoomLevel,
+    { x: table.ui.x, y: table.ui.y },
+    { x: GRIP_X, y: GRIP_Y }
+  );
 
-  settings.scrollLeft = inRange(
-    Math.round(GRIP_X - table.ui.x),
+  // The travel the reducer clamps an origin to, read from the same one-axis
+  // range getScrollRanges builds its answer from.
+  const inRange = (value: number, viewport: number, size: number) => {
+    const { min, max } = toScrollRange(size * zoomLevel, viewport, zoomLevel);
+    return Math.min(max, Math.max(min, value));
+  };
+
+  settings.originX = inRange(
+    Math.round(origin.x),
     VIEWPORT.width,
     settings.width
   );
-  settings.scrollTop = inRange(
-    Math.round(GRIP_Y - table.ui.y),
+  settings.originY = inRange(
+    Math.round(origin.y),
     VIEWPORT.height,
     settings.height
   );

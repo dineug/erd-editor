@@ -1,5 +1,7 @@
+import { round } from 'es-toolkit/compat';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import { createAndMergeSettings } from '@/v3/parser/settings';
 import {
   BracketType,
@@ -37,6 +39,8 @@ describe('createAndMergeSettings', () => {
       height: 2000,
       scrollTop: 0,
       scrollLeft: 0,
+      originX: 0,
+      originY: 0,
       zoomLevel: 1,
       show: defaultShow,
       database: Database.MySQL,
@@ -52,6 +56,13 @@ describe('createAndMergeSettings', () => {
       maxWidthComment: -1,
       ignoreSaveSettings: 0,
     });
+  });
+
+  it('leaves the default origin at zero, where the box term vanishes too', () => {
+    const settings = createAndMergeSettings();
+
+    expect(settings.zoomLevel).toBe(1);
+    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
   });
 
   it('computes the default show bitmask as 431', () => {
@@ -333,5 +344,80 @@ describe('createAndMergeSettings', () => {
         createAndMergeSettings({ columnOrder: 'nope' as any }).columnOrder
       ).toEqual(defaultColumnOrder);
     });
+  });
+});
+
+describe('the legacy scroll migration', () => {
+  const legacy = (zoomLevel: number) => ({
+    width: 3333,
+    height: 3333,
+    zoomLevel,
+    scrollLeft: -137.25,
+    scrollTop: 1234.5,
+  });
+
+  it.each([0.5, 0.1, 1.5])(
+    'migrates a document with no origin pair at zoom %s',
+    zoomLevel => {
+      const json = legacy(zoomLevel);
+      const settings = createAndMergeSettings(json);
+
+      expect(settings.originX).toBe(
+        round(json.scrollLeft + (json.width * (1 - zoomLevel)) / 2, 4)
+      );
+      expect(settings.originY).toBe(
+        round(json.scrollTop + (json.height * (1 - zoomLevel)) / 2, 4)
+      );
+    }
+  );
+
+  it.each([0.5, 0.1, 1.5])(
+    'carries the legacy pair through the migration at zoom %s',
+    zoomLevel => {
+      const json = legacy(zoomLevel);
+      const settings = createAndMergeSettings(json);
+
+      expect(settings.scrollLeft).toBe(json.scrollLeft);
+      expect(settings.scrollTop).toBe(json.scrollTop);
+    }
+  );
+
+  it('migrates from the clamped box and zoom, not the raw json', () => {
+    const settings = createAndMergeSettings({
+      width: 999_999,
+      height: 10,
+      zoomLevel: 10,
+      scrollLeft: 40,
+      scrollTop: 60,
+    });
+
+    expect(settings.width).toBe(20_000);
+    expect(settings.height).toBe(2000);
+    expect(settings.zoomLevel).toBe(1.5);
+    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
+  });
+
+  it('keeps an origin pair the document carries and migrates nothing', () => {
+    const settings = createAndMergeSettings({
+      ...legacy(0.5),
+      originX: -11,
+      originY: 22.5,
+    });
+
+    expect(settings.originX).toBe(-11);
+    expect(settings.originY).toBe(22.5);
+    expect(settings.scrollLeft).toBe(-137.25);
+    expect(settings.scrollTop).toBe(1234.5);
+  });
+
+  it.each([
+    ['only originX', { originX: -11 }],
+    ['only originY', { originY: 22.5 }],
+    ['a non-number originX', { originX: '-11' as any, originY: 22.5 }],
+  ])('migrates when the document carries %s', (_label, origin) => {
+    const json = { ...legacy(0.5), ...origin };
+    const settings = createAndMergeSettings(json);
+
+    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
   });
 });

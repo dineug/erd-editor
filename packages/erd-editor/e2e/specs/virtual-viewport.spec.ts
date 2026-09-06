@@ -87,7 +87,7 @@ test.describe('virtual viewport', () => {
 
     await erd.wheel(0, { deltaX: 2900 });
     await expect
-      .poll(async () => Math.round((await erd.settings()).scrollLeft))
+      .poll(async () => Math.round((await erd.settings()).originX))
       .toBe(-2900);
     await erd.whenDrawn();
 
@@ -106,7 +106,7 @@ test.describe('virtual viewport', () => {
 
     await erd.wheel(0, { deltaX: -2900 });
     await expect
-      .poll(async () => Math.round((await erd.settings()).scrollLeft))
+      .poll(async () => Math.round((await erd.settings()).originX))
       .toBe(0);
     await erd.whenDrawn();
 

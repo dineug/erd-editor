@@ -19,8 +19,8 @@ const meta = () => ({ updateAt: 0, createAt: 0 });
 const toWidth = (text: string) => text.length * 7 + 2;
 
 type Placement = {
-  scrollLeft?: number;
-  scrollTop?: number;
+  originX?: number;
+  originY?: number;
   zoomLevel?: number;
 };
 
@@ -30,8 +30,8 @@ type Placement = {
  * editor happens to be looking at the document through.
  */
 function createDoc({
-  scrollLeft = 0,
-  scrollTop = 0,
+  originX = 0,
+  originY = 0,
   zoomLevel = 1,
 }: Placement = {}) {
   return JSON.stringify({
@@ -39,8 +39,8 @@ function createDoc({
     settings: {
       width: CANVAS,
       height: CANVAS,
-      scrollLeft,
-      scrollTop,
+      originX,
+      originY,
       zoomLevel,
       databaseName: 'export',
     },
@@ -122,8 +122,8 @@ function createTallDoc() {
     settings: {
       width: TALL_WIDTH,
       height: TALL_HEIGHT,
-      scrollLeft: 0,
-      scrollTop: 0,
+      originX: 0,
+      originY: 0,
       zoomLevel: 1,
       databaseName: 'tall',
     },
@@ -166,7 +166,7 @@ describe('createDocumentPng', () => {
   it('draws the same image whatever the editor is scrolled and zoomed to', async () => {
     const plain = await createDocumentPng({ doc: createDoc(), theme, toWidth });
     const moved = await createDocumentPng({
-      doc: createDoc({ scrollLeft: -640, scrollTop: -480, zoomLevel: 0.5 }),
+      doc: createDoc({ originX: -640, originY: -480, zoomLevel: 0.5 }),
       theme,
       toWidth,
     });

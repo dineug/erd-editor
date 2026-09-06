@@ -67,13 +67,11 @@ describe('minimap Viewport', () => {
     const app = createTestAppContext();
     await mount_(false, app);
 
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -400, scrollTop: -200 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -400, originY: -200 }));
     await flush();
 
     const el = viewportOf();
-    // x = -400 * 0.075 = -30, y = -200 * 0.075 = -15
+    // x = 400 * 0.075 = 30, y = 200 * 0.075 = 15
     expect(el.style.top).toBe('35px');
     expect(el.style.right).toBe('50px');
   });
@@ -86,13 +84,13 @@ describe('minimap Viewport', () => {
     await flush();
 
     const el = viewportOf();
-    // At half zoom the screen reaches 2400 x 1350 canvas units, which is 180 x
-    // 101.25 from -75, -75 at the same 0.075. The map is 150 square, so what is
-    // drawn is the part of that which lands on it.
-    expect(parseFloat(el.style.width)).toBeCloseTo(105, 3);
-    expect(parseFloat(el.style.height)).toBeCloseTo(26.25, 3);
+    // At half zoom the screen reaches 2400 x 1350 canvas units from the origin,
+    // which is 180 x 101.25 from 0, 0 at the same 0.075. The map is 150 square,
+    // so what is drawn is the part of that which lands on it.
+    expect(parseFloat(el.style.width)).toBeCloseTo(150, 3);
+    expect(parseFloat(el.style.height)).toBeCloseTo(101.25, 3);
     expect(parseFloat(el.style.top)).toBeCloseTo(20, 3);
-    expect(parseFloat(el.style.right)).toBeCloseTo(65, 3);
+    expect(parseFloat(el.style.right)).toBeCloseTo(20, 3);
 
     app.store.dispatchSync(changeZoomLevelAction({ value: 1 }));
     await flush();
@@ -195,7 +193,7 @@ describe('minimap Viewport', () => {
     );
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-133.3333);
+    expect(app.store.state.settings.originX).toBe(-133.3333);
   });
 
   it('stays selected while the prop is true even after the drag ends', async () => {

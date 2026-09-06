@@ -98,14 +98,14 @@ test.describe('zoom, scroll and overlays', () => {
 
     await erd.wheel(200);
     await expect
-      .poll(async () => (await erd.settings()).scrollTop)
+      .poll(async () => (await erd.settings()).originY)
       .toBeLessThan(0);
 
     const scrolled = await erd.settings();
     const afterY = await erd.tableEl('users').boundingBox();
-    expect(scrolled.scrollLeft).toBe(0);
-    // scrollTop is applied as a canvas translate, so the table moves with it.
-    expect(afterY!.y - before!.y).toBeCloseTo(scrolled.scrollTop, 0);
+    expect(scrolled.originX).toBe(0);
+    // The origin is where the scene layer sits, so the table moves with it.
+    expect(afterY!.y - before!.y).toBeCloseTo(scrolled.originY, 0);
     expect(afterY!.x).toBeCloseTo(before!.x, 0);
 
     // Shift maps the vertical notch onto the horizontal axis. Chromium keeps
@@ -113,13 +113,13 @@ test.describe('zoom, scroll and overlays', () => {
     // handleWheel's isReverse branch that runs; both branches land here.
     await erd.wheel(200, { modifiers: ['Shift'] });
     await expect
-      .poll(async () => (await erd.settings()).scrollLeft)
+      .poll(async () => (await erd.settings()).originX)
       .toBeLessThan(0);
 
     const scrolledX = await erd.settings();
     const afterX = await erd.tableEl('users').boundingBox();
-    expect(scrolledX.scrollTop).toBe(scrolled.scrollTop);
-    expect(afterX!.x - before!.x).toBeCloseTo(scrolledX.scrollLeft, 0);
+    expect(scrolledX.originY).toBe(scrolled.originY);
+    expect(afterX!.x - before!.x).toBeCloseTo(scrolledX.originX, 0);
     expect(afterX!.y).toBeCloseTo(afterY!.y, 0);
 
     expect(

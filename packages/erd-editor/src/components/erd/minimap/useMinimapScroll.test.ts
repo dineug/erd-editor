@@ -141,8 +141,8 @@ describe('useMinimapScroll', () => {
 
     const { settings } = app.store.state;
     // ratio = 150 / 2000; 10px of minimap travel = 10 / ratio canvas px
-    expect(settings.scrollLeft).toBe(-133.3333);
-    expect(Math.abs(settings.scrollTop)).toBe(0);
+    expect(settings.originX).toBe(-133.3333);
+    expect(Math.abs(settings.originY)).toBe(0);
   });
 
   it('scales a downward drag into an inverse canvas scroll', async () => {
@@ -151,8 +151,8 @@ describe('useMinimapScroll', () => {
     await flush();
 
     const { settings } = app.store.state;
-    expect(settings.scrollTop).toBe(-133.3333);
-    expect(Math.abs(settings.scrollLeft)).toBe(0);
+    expect(settings.originY).toBe(-133.3333);
+    expect(Math.abs(settings.originX)).toBe(0);
   });
 
   it('prevents the default of the forwarded mousemove', async () => {
@@ -172,34 +172,30 @@ describe('useMinimapScroll', () => {
     unsubscribe();
 
     expect(types).not.toContain(ActionType.streamScrollTo);
-    expect(Math.abs(app.store.state.settings.scrollLeft)).toBe(0);
-    expect(Math.abs(app.store.state.settings.scrollTop)).toBe(0);
+    expect(Math.abs(app.store.state.settings.originX)).toBe(0);
+    expect(Math.abs(app.store.state.settings.originY)).toBe(0);
   });
 
   it('drags left once the canvas is already scrolled', async () => {
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -500, scrollTop: -500 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -500, originY: -500 }));
     await flush();
 
     mousedown(100, 100);
     mousemove(90, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-366.6667);
+    expect(app.store.state.settings.originX).toBe(-366.6667);
   });
 
   it('drags up once the canvas is already scrolled', async () => {
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -500, scrollTop: -500 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -500, originY: -500 }));
     await flush();
 
     mousedown(100, 100);
     mousemove(100, 90);
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBe(-366.6667);
+    expect(app.store.state.settings.originY).toBe(-366.6667);
   });
 
   it('refuses to drag left when the canvas is already at the left edge', async () => {
@@ -211,15 +207,13 @@ describe('useMinimapScroll', () => {
     unsubscribe();
 
     expect(types).not.toContain(ActionType.streamScrollTo);
-    expect(Math.abs(app.store.state.settings.scrollLeft)).toBe(0);
-    expect(Math.abs(app.store.state.settings.scrollTop)).toBe(0);
+    expect(Math.abs(app.store.state.settings.originX)).toBe(0);
+    expect(Math.abs(app.store.state.settings.originY)).toBe(0);
   });
 
   it('refuses to drag past the far edge of the canvas', async () => {
-    // min scroll = viewport (1200 x 675) - canvas (2000 x 2000)
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -800, scrollTop: -1325 })
-    );
+    // min origin = viewport (1200 x 675) - canvas (2000 x 2000)
+    app.store.dispatchSync(scrollToAction({ originX: -800, originY: -1325 }));
     await flush();
 
     mousedown(100, 100);
@@ -230,8 +224,8 @@ describe('useMinimapScroll', () => {
     unsubscribe();
 
     expect(types).not.toContain(ActionType.streamScrollTo);
-    expect(app.store.state.settings.scrollLeft).toBe(-800);
-    expect(app.store.state.settings.scrollTop).toBe(-1325);
+    expect(app.store.state.settings.originX).toBe(-800);
+    expect(app.store.state.settings.originY).toBe(-1325);
   });
 
   it('keeps the drag origin fixed while a move is refused', async () => {
@@ -247,7 +241,7 @@ describe('useMinimapScroll', () => {
     unsubscribe();
 
     expect(types).not.toContain(ActionType.streamScrollTo);
-    expect(Math.abs(app.store.state.settings.scrollLeft)).toBe(0);
+    expect(Math.abs(app.store.state.settings.originX)).toBe(0);
   });
 
   it('stops scrolling once the pointer is released', async () => {
@@ -259,7 +253,7 @@ describe('useMinimapScroll', () => {
     mousemove(130, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-133.3333);
+    expect(app.store.state.settings.originX).toBe(-133.3333);
   });
 
   it('reads the start point from the first touch and scrolls on touchmove', async () => {
@@ -271,7 +265,7 @@ describe('useMinimapScroll', () => {
     const event = touchmove(110, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-133.3333);
+    expect(app.store.state.settings.originX).toBe(-133.3333);
     expect(event.defaultPrevented).toBe(false);
   });
 
@@ -291,35 +285,30 @@ describe('useMinimapScroll', () => {
     // the start is far from either bound, so the step below is never clamped.
     app.store.dispatchSync(resizeAction({ width: 8000, height: 8000 }));
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -3000, scrollTop: -3000 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -1000, originY: -1000 }));
     await flush();
-    const before = app.store.state.settings.scrollLeft;
+    const before = app.store.state.settings.originX;
 
     mousedown(100, 100);
     mousemove(110, 100);
     await flush();
 
     // The minimap keeps its scale, so 10px of travel is still 10 / ratio canvas
-    // px; a scroll pixel only buys half of one at this zoom, hence the halving.
-    expect(before).toBe(-3000);
-    expect(app.store.state.settings.scrollLeft - before).toBeCloseTo(
-      -266.6667,
-      3
-    );
+    // px; an origin pixel only buys half of one at this zoom, hence the halving.
+    expect(before).toBe(-1000);
+    expect(app.store.state.settings.originX - before).toBeCloseTo(-266.6667, 3);
   });
 
   /**
-   * At 150% the 2000 box draws 3000 wide and starts 500 left of the scroll, so
-   * the handle has 1800 of travel to cover rather than the 800 the canvas box
-   * alone allows. Each move is flushed, because the gate reads the last one.
+   * At 150% the 2000 box draws 3000 wide, so the handle has 1800 of travel to
+   * cover rather than the 800 the canvas box alone allows, from an origin of
+   * zero back to the drawn far edge. Each move is flushed: the gate reads the last.
    */
   describe('at a zoom that magnifies', () => {
-    const MAX_SCROLL_LEFT = 500;
-    const MIN_SCROLL_LEFT = 1200 - 3000 + 500;
-    const MAX_SCROLL_TOP = 500;
-    const MIN_SCROLL_TOP = 675 - 3000 + 500;
+    const MAX_ORIGIN_X = 0;
+    const MIN_ORIGIN_X = 1200 - 3000;
+    const MAX_ORIGIN_Y = 0;
+    const MIN_ORIGIN_Y = 675 - 3000;
 
     const magnify = async () => {
       app.store.dispatchSync(changeZoomLevelAction({ value: 1.5 }));
@@ -351,41 +340,41 @@ describe('useMinimapScroll', () => {
     it('drags the handle across every pixel the engine allows sideways', async () => {
       await magnify();
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: 1_000_000, scrollTop: 0 })
+        scrollToAction({ originX: 1_000_000, originY: 0 })
       );
       await flush();
-      expect(app.store.state.settings.scrollLeft).toBe(MAX_SCROLL_LEFT);
+      expect(app.store.state.settings.originX).toBe(MAX_ORIGIN_X);
 
       await stepHorizontal(100, 10, 9);
 
-      expect(app.store.state.settings.scrollLeft).toBe(MIN_SCROLL_LEFT);
+      expect(app.store.state.settings.originX).toBe(MIN_ORIGIN_X);
 
       await stepHorizontal(190, -10, 9);
 
-      expect(app.store.state.settings.scrollLeft).toBe(MAX_SCROLL_LEFT);
+      expect(app.store.state.settings.originX).toBe(MAX_ORIGIN_X);
     });
 
     it('drags the handle across every pixel the engine allows downwards', async () => {
       await magnify();
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: 0, scrollTop: 1_000_000 })
+        scrollToAction({ originX: 0, originY: 1_000_000 })
       );
       await flush();
-      expect(app.store.state.settings.scrollTop).toBe(MAX_SCROLL_TOP);
+      expect(app.store.state.settings.originY).toBe(MAX_ORIGIN_Y);
 
       await stepVertical(100, 10, 20);
 
-      expect(app.store.state.settings.scrollTop).toBe(MIN_SCROLL_TOP);
+      expect(app.store.state.settings.originY).toBe(MIN_ORIGIN_Y);
 
       await stepVertical(300, -10, 20);
 
-      expect(app.store.state.settings.scrollTop).toBe(MAX_SCROLL_TOP);
+      expect(app.store.state.settings.originY).toBe(MAX_ORIGIN_Y);
     });
 
-    it('still refuses a step once the scroll is standing on a bound', async () => {
+    it('still refuses a step once the origin is standing on a bound', async () => {
       await magnify();
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: -1_000_000, scrollTop: 0 })
+        scrollToAction({ originX: -1_000_000, originY: 0 })
       );
       await flush();
 
@@ -396,7 +385,7 @@ describe('useMinimapScroll', () => {
       unsubscribe();
 
       expect(types).not.toContain(ActionType.streamScrollTo);
-      expect(app.store.state.settings.scrollLeft).toBe(MIN_SCROLL_LEFT);
+      expect(app.store.state.settings.originX).toBe(MIN_ORIGIN_X);
     });
   });
 
@@ -410,6 +399,6 @@ describe('useMinimapScroll', () => {
     await flush();
 
     // ratio = 150 / 4000 -> 10px of travel = 266.6667 canvas px
-    expect(app.store.state.settings.scrollLeft).toBe(-266.6667);
+    expect(app.store.state.settings.originX).toBe(-266.6667);
   });
 });

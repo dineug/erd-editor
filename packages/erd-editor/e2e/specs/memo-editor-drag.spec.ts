@@ -55,9 +55,9 @@ test.describe('memo editor drag', () => {
     expect(selected.length).toBeGreaterThan(0);
 
     const after = await erd.settings();
-    expect([after.scrollLeft, after.scrollTop]).toEqual([
-      before.scrollLeft,
-      before.scrollTop,
+    expect([after.originX, after.originY]).toEqual([
+      before.originX,
+      before.originY,
     ]);
     await expect(erd.memoEditor).toBeVisible();
   });
@@ -106,9 +106,9 @@ test.describe('memo editor drag', () => {
     await erd.drag(from, { x: from.x - 90, y: from.y - 50 }, { steps: 10 });
 
     const after = await erd.settings();
-    expect([after.scrollLeft, after.scrollTop]).not.toEqual([
-      before.scrollLeft,
-      before.scrollTop,
+    expect([after.originX, after.originY]).not.toEqual([
+      before.originX,
+      before.originY,
     ]);
     await expect(erd.memoEditor).toHaveCount(0);
   });

@@ -231,8 +231,13 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
+        // A hidden host reports no height at all, which must not read as a
+        // viewport with a negative one.
         store.dispatch(
-          changeViewportAction({ width, height: height - TOOLBAR_HEIGHT })
+          changeViewportAction({
+            width,
+            height: Math.max(0, height - TOOLBAR_HEIGHT),
+          })
         );
       }
     });

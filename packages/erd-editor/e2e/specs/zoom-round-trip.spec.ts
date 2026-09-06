@@ -1,14 +1,20 @@
 import { expect, test } from '../support/fixtures';
-import { CANVAS_SIZE, createSchema, type ErdDocument } from '../support/schema';
+import {
+  CANVAS_SIZE,
+  CANVAS_ZOOM_MIN,
+  createSchema,
+  type ErdDocument,
+} from '../support/schema';
 import { WHEEL_ZOOM_STEP } from '../support/shortcuts';
 import { type ErdEditorPage } from '../support/ErdEditorPage';
 
 /**
- * Zooming out and back in is a walk to nowhere: the offsets it pass through are
- * the editor's memory of where the reader was, and this is where a clamp that
- * narrowed with the canvas used to gather every one of them instead.
+ * Zooming out and back in is a walk to nowhere, and this is where a clamp that
+ * narrowed with the canvas used to gather every view the reader had into the
+ * one view that centres the drawn box on the screen.
  */
-const midpoint = (viewportLength: number) => (viewportLength - CANVAS_SIZE) / 2;
+const centred = (viewportLength: number, zoomLevel: number) =>
+  (viewportLength - CANVAS_SIZE * zoomLevel) / 2;
 
 /**
  * Far enough west to stay off the canvas at every zoom. The box a marker is
@@ -73,32 +79,28 @@ async function signPlacement(erd: ErdEditorPage, title: string) {
     return {
       left: rect.x - parent.x,
       top: rect.y - parent.y,
-      originX: parent.x,
-      originY: parent.y,
+      parentX: parent.x,
+      parentY: parent.y,
     };
   });
 }
 
 /**
- * Where the scene layer puts a point, written out longhand. It is the css
- * transform the canvas replaced: scale the canvas box about its middle, then
- * carry it by the scroll, so half the shrink rides with the scroll.
+ * Where the scene layer puts a point, written out longhand: the document names
+ * the screen point scene zero lands on, so a scene coordinate is that origin
+ * plus its own distance at the zoom.
  */
-const onScreen = (
-  scene: number,
-  scroll: number,
-  size: number,
-  zoomLevel: number
-) => scene * zoomLevel + scroll + (size * (1 - zoomLevel)) / 2;
+const onScreen = (scene: number, origin: number, zoomLevel: number) =>
+  scene * zoomLevel + origin;
 
 test.describe('a zoom out and back in', () => {
-  test('returns the scroll to where the reader left it', async ({ erd }) => {
+  test('returns the origin to where the reader left it', async ({ erd }) => {
     await erd.seed(strandedWest());
     await erd.panBy(-200, -300);
 
     const before = await erd.settings();
-    expect(before.scrollLeft).toBeCloseTo(-200, 0);
-    expect(before.scrollTop).toBeCloseTo(-300, 0);
+    expect(before.originX).toBeCloseTo(-200, 0);
+    expect(before.originY).toBeCloseTo(-300, 0);
 
     // Twenty notches is zoom 0.4, which draws the 2000 box smaller than either
     // axis of the screen. That is the regime the old clamp had no travel in.
@@ -109,7 +111,10 @@ test.describe('a zoom out and back in', () => {
 
     const viewport = erd.page.viewportSize()!;
     const shrunk = await erd.settings();
-    expect(shrunk.scrollLeft).not.toBeCloseTo(midpoint(viewport.width), 0);
+    expect(shrunk.originX).not.toBeCloseTo(
+      centred(viewport.width, shrunk.zoomLevel),
+      0
+    );
 
     await wheelZoom(erd, 20, -120);
     await expect
@@ -120,8 +125,8 @@ test.describe('a zoom out and back in', () => {
     // compose to the identity and what is left is the four decimals each
     // movement is rounded to rather than a drift the reader can see.
     const after = await erd.settings();
-    expect(Math.abs(after.scrollLeft - before.scrollLeft)).toBeLessThan(0.05);
-    expect(Math.abs(after.scrollTop - before.scrollTop)).toBeLessThan(0.05);
+    expect(Math.abs(after.originX - before.originX)).toBeLessThan(0.05);
+    expect(Math.abs(after.originY - before.originY)).toBeLessThan(0.05);
   });
 
   /**
@@ -129,7 +134,7 @@ test.describe('a zoom out and back in', () => {
    * average the error out over, so this is where the reader saw it: a trip to
    * a tenth and straight back used to land hundreds of pixels away.
    */
-  test('returns the scroll when the toolbar box does the zooming', async ({
+  test('returns the origin when the toolbar box does the zooming', async ({
     erd,
   }) => {
     await erd.seed(strandedWest());
@@ -142,8 +147,8 @@ test.describe('a zoom out and back in', () => {
       await toolbarZoom(erd, 100);
 
       const after = await erd.settings();
-      expect(Math.abs(after.scrollLeft - before.scrollLeft)).toBeLessThan(0.05);
-      expect(Math.abs(after.scrollTop - before.scrollTop)).toBeLessThan(0.05);
+      expect(Math.abs(after.originX - before.originX)).toBeLessThan(0.05);
+      expect(Math.abs(after.originY - before.originY)).toBeLessThan(0.05);
     }
   });
 
@@ -164,13 +169,14 @@ test.describe('a zoom out and back in', () => {
         .poll(async () => (await erd.settings()).zoomLevel)
         .toBeCloseTo(0.1, 5);
 
-      atFloor.push((await erd.settings()).scrollLeft);
+      atFloor.push((await erd.settings()).originX);
     }
 
     const viewport = erd.page.viewportSize()!;
+    const gathered = centred(viewport.width, CANVAS_ZOOM_MIN);
     expect(atFloor[0]).not.toBeCloseTo(atFloor[1], 0);
-    expect(atFloor[0]).not.toBeCloseTo(midpoint(viewport.width), 0);
-    expect(atFloor[1]).not.toBeCloseTo(midpoint(viewport.width), 0);
+    expect(atFloor[0]).not.toBeCloseTo(gathered, 0);
+    expect(atFloor[1]).not.toBeCloseTo(gathered, 0);
   });
 });
 
@@ -195,14 +201,7 @@ test.describe('an off-canvas marker', () => {
           return Math.round(placement.top);
         })
         .toBe(
-          Math.round(
-            onScreen(
-              WEST_Y,
-              settings.scrollTop,
-              settings.height,
-              settings.zoomLevel
-            )
-          )
+          Math.round(onScreen(WEST_Y, settings.originY, settings.zoomLevel))
         );
 
       const placement = await signPlacement(erd, 'west');
@@ -239,20 +238,10 @@ test.describe('an off-canvas marker', () => {
     const table = await erd.table('west');
 
     expect(
-      onScreen(
-        table.ui.x,
-        settings.scrollLeft,
-        settings.width,
-        settings.zoomLevel
-      )
-    ).toBeCloseTo(at.x - placement.originX, 1);
+      onScreen(table.ui.x, settings.originX, settings.zoomLevel)
+    ).toBeCloseTo(at.x - placement.parentX, 1);
     expect(
-      onScreen(
-        table.ui.y,
-        settings.scrollTop,
-        settings.height,
-        settings.zoomLevel
-      )
-    ).toBeCloseTo(at.y - placement.originY, 1);
+      onScreen(table.ui.y, settings.originY, settings.zoomLevel)
+    ).toBeCloseTo(at.y - placement.parentY, 1);
   });
 });

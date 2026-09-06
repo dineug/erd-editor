@@ -480,7 +480,7 @@ describe('the editing overlay', () => {
     expect(transform.scale).toBe(1);
   });
 
-  it('scales the editor with the zoom and follows the scroll', async () => {
+  it('scales the editor with the zoom and follows the origin', async () => {
     const fixture = await setup();
     const { store } = fixture.app;
     // The lowest zoom that still draws cells: below the 0.7 boundary a table is
@@ -492,11 +492,9 @@ describe('the editing overlay', () => {
     );
     await editTableName(fixture);
 
-    const { scrollLeft, scrollTop, width, height } = store.state.settings;
+    const { originX, originY } = store.state.settings;
     const table = store.state.collections.tableEntities[fixture.tableId];
     const rect = getTableRect(store.state, table);
-    const originX = scrollLeft + (width * (1 - zoom)) / 2;
-    const originY = scrollTop + (height * (1 - zoom)) / 2;
     const transform = transformOf(fixture.mounted);
 
     expect(transform.x).toBeCloseTo(

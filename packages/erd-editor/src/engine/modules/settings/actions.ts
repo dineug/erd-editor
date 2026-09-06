@@ -41,8 +41,8 @@ export type ActionMap = {
     value: number;
   };
   [ActionType.scrollTo]: {
-    scrollTop: number;
-    scrollLeft: number;
+    originX: number;
+    originY: number;
   };
   [ActionType.streamScrollTo]: {
     movementX: number;

@@ -20,11 +20,11 @@ import {
 function getMovementScrollTo(
   {
     editor: { viewport },
-    settings: { scrollLeft, scrollTop, zoomLevel, width, height },
+    settings: { originX, originY, zoomLevel },
   }: RootState,
   nextZoomLevel: number
 ) {
-  const transform = { width, height, scrollLeft, scrollTop, zoomLevel };
+  const transform = { originX, originY, zoomLevel };
   const center = { x: viewport.width / 2, y: viewport.height / 2 };
   const anchor = toScenePoint(transform, center);
   const screen = toScreenPoint(
@@ -41,15 +41,15 @@ function getMovementScrollTo(
 export const changeZoomLevelAction$ = (value: number): GeneratorAction =>
   function* (state) {
     const {
-      settings: { scrollLeft, scrollTop },
+      settings: { originX, originY },
     } = state;
     const nextZoomLevel = zoomLevelInRange(value);
     const { movementX, movementY } = getMovementScrollTo(state, nextZoomLevel);
 
     yield changeZoomLevelAction({ value });
     yield scrollToAction({
-      scrollLeft: scrollLeft + movementX,
-      scrollTop: scrollTop + movementY,
+      originX: originX + movementX,
+      originY: originY + movementY,
     });
   };
 

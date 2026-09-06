@@ -17,8 +17,8 @@ const transform = (
 ): MinimapTransform => ({
   width: 2000,
   height: 2000,
-  scrollLeft: 0,
-  scrollTop: 0,
+  originX: 0,
+  originY: 0,
   zoomLevel: 1,
   viewportWidth: 1200,
   viewportHeight: 675,
@@ -33,7 +33,7 @@ describe('getMinimapRatio', () => {
 });
 
 describe('getVisibleCanvasRect', () => {
-  it('is the scroll and the editor viewport when the canvas is unzoomed', () => {
+  it('is the negated origin and the editor viewport when the canvas is unzoomed', () => {
     expect(getVisibleCanvasRect(transform())).toEqual({
       x: 0,
       y: 0,
@@ -42,16 +42,16 @@ describe('getVisibleCanvasRect', () => {
     });
 
     expect(
-      getVisibleCanvasRect(transform({ scrollLeft: -400, scrollTop: -200 }))
+      getVisibleCanvasRect(transform({ originX: -400, originY: -200 }))
     ).toEqual({ x: 400, y: 200, width: 1200, height: 675 });
   });
 
   it('covers more canvas per screen pixel as the canvas zooms out', () => {
     // The screen is 1200 wide over a canvas drawn at half size, so it reaches
-    // 2400 canvas units, starting 1000 left of the box the zoom shrank about.
+    // 2400 canvas units from the origin, which the zoom leaves where it is.
     expect(getVisibleCanvasRect(transform({ zoomLevel: 0.5 }))).toEqual({
-      x: -1000,
-      y: -1000,
+      x: 0,
+      y: 0,
       width: 2400,
       height: 1350,
     });
@@ -59,8 +59,8 @@ describe('getVisibleCanvasRect', () => {
 
   it('covers less canvas per screen pixel as the canvas zooms in', () => {
     expect(getVisibleCanvasRect(transform({ zoomLevel: 2 }))).toEqual({
-      x: 500,
-      y: 500,
+      x: 0,
+      y: 0,
       width: 600,
       height: 337.5,
     });
@@ -96,8 +96,8 @@ describe('getMinimapViewportRect', () => {
     // Twice the 90 the same viewport draws at zoom 1: the map underneath keeps
     // its size, so the whole of the zoom has to land in this rectangle.
     expect(getMinimapViewportRect(transform({ zoomLevel: 0.5 }))).toEqual({
-      x: -75,
-      y: -75,
+      x: 0,
+      y: 0,
       width: 180,
       height: 101.25,
     });
@@ -105,18 +105,18 @@ describe('getMinimapViewportRect', () => {
 
   it('shrinks inside the minimap square as the canvas zooms in', () => {
     expect(getMinimapViewportRect(transform({ zoomLevel: 2 }))).toEqual({
-      x: 37.5,
-      y: 37.5,
+      x: 0,
+      y: 0,
       width: 45,
       height: 25.3125,
     });
   });
 
-  it('stays inside the minimap for every scroll the engine allows at zoom 1', () => {
-    // The engine clamps the scroll to viewport minus canvas, which at zoom 1 is
+  it('stays inside the minimap for every origin the engine allows at zoom 1', () => {
+    // The engine clamps the origin to viewport minus canvas, which at zoom 1 is
     // exactly the range that keeps this rectangle within the 150px square.
-    const left = getMinimapViewportRect(transform({ scrollLeft: 0 }));
-    const right = getMinimapViewportRect(transform({ scrollLeft: -800 }));
+    const left = getMinimapViewportRect(transform({ originX: 0 }));
+    const right = getMinimapViewportRect(transform({ originX: -800 }));
 
     expect(left.x).toBe(0);
     expect(right.x + right.width).toBe(150);
@@ -141,21 +141,21 @@ describe('getMinimapHandleRect', () => {
   });
 
   it('trims the part of the rectangle that leaves the map', () => {
-    // Untrimmed this is 180 x 101.25 from -75, -75, so both leading edges are
-    // off the map and only the far edges land on it.
+    // Untrimmed this is 180 x 101.25 from 0, 0, so the right edge is off the
+    // map and the width is cut back to the 150 that lands on it.
     expect(getMinimapHandleRect(transform({ zoomLevel: 0.5 }))).toEqual({
       x: 0,
       y: 0,
-      width: 105,
-      height: 26.25,
+      width: 150,
+      height: 101.25,
     });
   });
 
-  it('stays inside the map at every zoom and every scroll', () => {
+  it('stays inside the map at every zoom and every origin', () => {
     for (const zoomLevel of [1, 0.7, 0.5, 0.2, 0.1, 2]) {
-      for (const scroll of [0, -400, -800, -2000, 500]) {
+      for (const origin of [0, -400, -800, -2000, 500]) {
         const rect = getMinimapHandleRect(
-          transform({ zoomLevel, scrollLeft: scroll, scrollTop: scroll })
+          transform({ zoomLevel, originX: origin, originY: origin })
         );
 
         // The drawn box is a pointer target: anything of it outside the map
@@ -172,7 +172,7 @@ describe('getMinimapHandleRect', () => {
 });
 
 describe('toScrollDistance', () => {
-  it('turns a canvas distance into the screen scroll that travels it', () => {
+  it('turns a canvas distance into the origin travel that covers it', () => {
     expect(toScrollDistance(100, 1)).toBe(-100);
     expect(toScrollDistance(100, 0.5)).toBe(-50);
     expect(toScrollDistance(100, 2)).toBe(-200);
@@ -193,10 +193,8 @@ describe('toScrollMovement', () => {
   it('moves the drawn rectangle by exactly the pointer travel at every zoom', () => {
     for (const zoomLevel of [1, 0.7, 0.5, 0.2, 0.1, 2]) {
       const before = getMinimapViewportRect(transform({ zoomLevel }));
-      const scrollLeft = toScrollMovement(10, getMinimapRatio(2000), zoomLevel);
-      const after = getMinimapViewportRect(
-        transform({ zoomLevel, scrollLeft })
-      );
+      const originX = toScrollMovement(10, getMinimapRatio(2000), zoomLevel);
+      const after = getMinimapViewportRect(transform({ zoomLevel, originX }));
 
       expect(after.x - before.x).toBeCloseTo(10, 6);
       expect(after.width).toBeCloseTo(before.width, 6);
@@ -205,19 +203,19 @@ describe('toScrollMovement', () => {
 });
 
 describe('getScrollToCenter', () => {
-  it('leaves the scroll where it is when the point is already centred', () => {
-    const scroll = getScrollToCenter(transform(), { x: 600, y: 337.5 });
+  it('leaves the origin where it is when the point is already centred', () => {
+    const origin = getScrollToCenter(transform(), { x: 600, y: 337.5 });
 
-    expect(scroll.x).toBe(0);
-    expect(scroll.y).toBe(0);
+    expect(origin.x).toBe(0);
+    expect(origin.y).toBe(0);
   });
 
   it('centres the screen on the point at every zoom', () => {
     for (const zoomLevel of [1, 0.7, 0.5, 0.2, 0.1, 2]) {
       const center = { x: 400, y: 900 };
-      const scroll = getScrollToCenter(transform({ zoomLevel }), center);
+      const origin = getScrollToCenter(transform({ zoomLevel }), center);
       const rect = getVisibleCanvasRect(
-        transform({ zoomLevel, scrollLeft: scroll.x, scrollTop: scroll.y })
+        transform({ zoomLevel, originX: origin.x, originY: origin.y })
       );
 
       expect(rect.x + rect.width / 2).toBeCloseTo(center.x, 6);
@@ -225,10 +223,10 @@ describe('getScrollToCenter', () => {
     }
   });
 
-  it('answers the same scroll whatever scroll it starts from', () => {
+  it('answers the same origin whatever origin it starts from', () => {
     const center = { x: 400, y: 900 };
     const from = getScrollToCenter(
-      transform({ zoomLevel: 0.5, scrollLeft: -500, scrollTop: -700 }),
+      transform({ zoomLevel: 0.5, originX: -500, originY: -700 }),
       center
     );
     const fresh = getScrollToCenter(transform({ zoomLevel: 0.5 }), center);

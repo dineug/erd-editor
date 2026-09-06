@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { flush } from '@/__test-utils__/index';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
+import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { whenDrawn } from '@/konva/batchDraw';
 import { Appearance, GrayColor } from '@/themes/radix-ui-theme';
 
@@ -20,8 +21,8 @@ const document$ = JSON.stringify({
   settings: {
     width: 2000,
     height: 2000,
-    scrollTop: 0,
-    scrollLeft: 0,
+    originX: 0,
+    originY: 0,
     zoomLevel: 1,
     show: 431,
     database: 4,
@@ -122,11 +123,15 @@ const nextFrame = () =>
     requestAnimationFrame(() => resolve());
   });
 
-async function createSeededEditor(): Promise<ErdEditorElement> {
+const HOST_STYLE = 'display: block; width: 900px; height: 600px;';
+
+async function createSeededEditor(
+  style = HOST_STYLE
+): Promise<ErdEditorElement> {
   const el = document.createElement('erd-editor');
   el.systemDarkMode = false;
   el.enableThemeBuilder = false;
-  el.setAttribute('style', 'display: block; width: 900px; height: 600px;');
+  el.setAttribute('style', style);
   document.body.append(el);
   editors.push(el);
 
@@ -196,6 +201,23 @@ describe('<erd-editor> scene palette', () => {
 
     expect(before).not.toBe('#123456');
     expect(tableBody(stage).getAttr('fill')).toBe('#123456');
+  });
+});
+
+describe('<erd-editor> viewport', () => {
+  // The Stage is sized straight from editor.viewport, so it is where the
+  // measured host reaches something a spec can read.
+  it('reads a host shorter than the toolbar as an empty viewport, never a negative one', async () => {
+    const height = TOOLBAR_HEIGHT - 20;
+    await createSeededEditor(
+      `display: block; width: 400px; height: ${height}px;`
+    );
+    await nextFrame();
+    await flush();
+
+    const stage = stageRegistry().canvas;
+    expect(stage.width()).toBe(400);
+    expect(stage.height()).toBe(0);
   });
 });
 

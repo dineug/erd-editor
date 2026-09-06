@@ -3,8 +3,18 @@ import { ValuesType } from '@/internal-types';
 export type Settings = {
   width: number;
   height: number;
+  /**
+   * The legacy view offset every released editor reads, measured from the
+   * canvas box centred in the viewport. The parser reads the pair once to
+   * migrate a document that carries no origin; nothing else ever writes it.
+   */
   scrollTop: number;
   scrollLeft: number;
+  /**
+   * The live view: the screen point scene (0, 0) lands on.
+   */
+  originX: number;
+  originY: number;
   zoomLevel: number;
   show: number;
   database: number;

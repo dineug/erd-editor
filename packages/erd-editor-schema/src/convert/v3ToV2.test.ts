@@ -247,6 +247,17 @@ describe('v3ToV2', () => {
       expect(canvas.setting.relationshipOptimization).toBe(true);
     });
 
+    it('copies the frozen legacy pair and derives nothing from the origin', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.originX = 4242;
+      schemaV3.settings.originY = -4242;
+
+      const { canvas } = v3ToV2(schemaV3);
+
+      expect(canvas.scrollLeft).toBe(schemaV3.settings.scrollLeft);
+      expect(canvas.scrollTop).toBe(schemaV3.settings.scrollTop);
+    });
+
     it('unpacks the show bit flag into booleans', () => {
       const { canvas } = v3ToV2(createSchemaV3());
 

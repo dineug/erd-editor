@@ -7,7 +7,6 @@ import { Viewport } from '@/engine/modules/editor/state';
 import { Tag } from '@/engine/tag';
 import { Settings } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { getZoomViewport } from '@/utils/dragSelect';
 import {
   canvasSizeInRange,
   hasBracketType,
@@ -20,6 +19,9 @@ import {
 } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
+import { type ScrollRange, toScrollRange } from './scrollRange';
+
+export type { ScrollRange } from './scrollRange';
 
 export const changeDatabaseNameAction = createAction<
   ActionMap[typeof ActionType.changeDatabaseName]
@@ -85,15 +87,6 @@ const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
   settings.zoomLevel = zoomLevelInRange(settings.zoomLevel + value);
 };
 
-/** A zoom of exactly 1 negates a zero offset, and the store compares with Object.is. */
-const unsigned = (value: number) => value + 0;
-
-/** How far the scroll may travel on one axis, measured in screen pixels. */
-export type ScrollRange = {
-  min: number;
-  max: number;
-};
-
 export type ScrollRanges = {
   left: ScrollRange;
   top: ScrollRange;
@@ -103,48 +96,23 @@ export type ScrollRanges = {
 export type ScrollTransform = Pick<Settings, 'width' | 'height' | 'zoomLevel'>;
 
 /**
- * One axis of travel, written on the scene point the middle of the screen sits
- * over. It keeps the half screen a zoom of 1 would show between itself and each
- * edge of the canvas box, which magnifying shrinks to the half it really shows.
- */
-function toScrollRange(
-  drawn: number,
-  offset: number,
-  viewportLength: number,
-  zoomLevel: number
-): ScrollRange {
-  const reach = Math.min(1, zoomLevel);
-  const near = (viewportLength * (1 - reach)) / 2 - offset;
-  const far = (viewportLength * (1 + reach)) / 2 - drawn - offset;
-
-  return {
-    min: unsigned(Math.min(near, far)),
-    max: unsigned(Math.max(near, far)),
-  };
-}
-
-/**
- * How far the scroll may travel on each axis. A scene layer sits at the scroll
- * plus the zoom viewport offset, so magnifying reaches further both ways, while
- * shrinking closes the travel in by the zoom instead of leaving the box's own.
+ * How far the origin may travel on each axis. The drawn box is the canvas box
+ * at the zoom, so magnifying reaches further both ways, while shrinking closes
+ * the travel in by the zoom instead of leaving the box's own.
  */
 export function getScrollRanges(
   settings: ScrollTransform,
   viewport: Viewport
 ): ScrollRanges {
-  const { x, y, w, h } = getZoomViewport(
-    settings.width,
-    settings.height,
-    settings.zoomLevel
-  );
+  const { width, height, zoomLevel } = settings;
 
   return {
-    left: toScrollRange(w, x, viewport.width, settings.zoomLevel),
-    top: toScrollRange(h, y, viewport.height, settings.zoomLevel),
+    left: toScrollRange(width * zoomLevel, viewport.width, zoomLevel),
+    top: toScrollRange(height * zoomLevel, viewport.height, zoomLevel),
   };
 }
 
-/** The clamps every reducer that writes a scroll offset shares. */
+/** The clamps every reducer that writes the origin shares. */
 export function createScrollInRange(
   settings: ScrollTransform,
   viewport: Viewport
@@ -152,8 +120,8 @@ export function createScrollInRange(
   const { left, top } = getScrollRanges(settings, viewport);
 
   return {
-    scrollLeftInRange: (value: number) => clamp(value, left.min, left.max),
-    scrollTopInRange: (value: number) => clamp(value, top.min, top.max),
+    originXInRange: (value: number) => clamp(value, left.min, left.max),
+    originYInRange: (value: number) => clamp(value, top.min, top.max),
   };
 }
 
@@ -163,19 +131,19 @@ export const scrollToAction = createAction<
 
 const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   { settings, editor: { viewport } },
-  { payload: { scrollTop, scrollLeft }, tags }
+  { payload: { originX, originY }, tags }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
-  const { scrollTopInRange, scrollLeftInRange } = createScrollInRange(
+  const { originXInRange, originYInRange } = createScrollInRange(
     settings,
     viewport
   );
 
-  settings.scrollTop = round(scrollTopInRange(scrollTop), 4);
-  settings.scrollLeft = round(scrollLeftInRange(scrollLeft), 4);
+  settings.originX = round(originXInRange(originX), 4);
+  settings.originY = round(originYInRange(originY), 4);
 };
 
 export const streamScrollToAction = createAction<
@@ -190,19 +158,13 @@ const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
     return;
   }
 
-  const { scrollTopInRange, scrollLeftInRange } = createScrollInRange(
+  const { originXInRange, originYInRange } = createScrollInRange(
     settings,
     viewport
   );
 
-  settings.scrollTop = round(
-    scrollTopInRange(settings.scrollTop + movementY),
-    4
-  );
-  settings.scrollLeft = round(
-    scrollLeftInRange(settings.scrollLeft + movementX),
-    4
-  );
+  settings.originX = round(originXInRange(settings.originX + movementX), 4);
+  settings.originY = round(originYInRange(settings.originY + movementY), 4);
 };
 
 export const changeShowAction = createAction<

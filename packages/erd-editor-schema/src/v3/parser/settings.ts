@@ -10,6 +10,7 @@ import {
 
 import { assign, validNumber } from '@/helper';
 import { DeepPartial } from '@/internal-types';
+import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import {
   BracketType,
   BracketTypeList,
@@ -44,6 +45,8 @@ const createSettings = (): Settings => ({
   height: 2000,
   scrollTop: 0,
   scrollLeft: 0,
+  originX: 0,
+  originY: 0,
   zoomLevel: 1,
   show: defaultShow,
   database: Database.MySQL,
@@ -116,6 +119,15 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     difference(ColumnTypeList, json.columnOrder).length === 0
   ) {
     settings.columnOrder = json.columnOrder as number[];
+  }
+
+  if (isNumber(json.originX) && isNumber(json.originY)) {
+    settings.originX = json.originX;
+    settings.originY = json.originY;
+  } else {
+    const { originX, originY } = migrateScrollToOrigin(settings);
+    settings.originX = originX;
+    settings.originY = originY;
   }
 
   return settings;

@@ -234,6 +234,8 @@ describe('v3/schema/settings', () => {
       height: CANVAS_SIZE_MAX,
       scrollTop: 0,
       scrollLeft: 0,
+      originX: 0,
+      originY: 0,
       zoomLevel: CANVAS_ZOOM_MAX,
       show: Show.tableComment | Show.relationship,
       database: Database.MySQL,

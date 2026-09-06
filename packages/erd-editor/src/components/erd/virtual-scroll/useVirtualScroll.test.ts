@@ -20,8 +20,8 @@ type Api = ReturnType<typeof useVirtualScroll>;
 // Default state: viewport 1200x675, canvas 2000x2000.
 const W_RATIO = 1200 / 2000;
 const H_RATIO = 675 / 2000;
-const MIN_SCROLL_LEFT = 1200 - 2000;
-const MIN_SCROLL_TOP = 675 - 2000;
+const MIN_ORIGIN_X = 1200 - 2000;
+const MIN_ORIGIN_Y = 675 - 2000;
 
 let api: Api;
 
@@ -143,18 +143,18 @@ describe('useVirtualScroll', () => {
     await flush();
 
     expect(move.defaultPrevented).toBe(true);
-    expect(app.store.state.settings.scrollLeft).toBeCloseTo(-50 / W_RATIO, 3);
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originX).toBeCloseTo(-50 / W_RATIO, 3);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 
   it('scrolls the canvas right when the horizontal thumb is dragged back', async () => {
-    app.store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: 0 }));
+    app.store.dispatchSync(scrollToAction({ originX: -100, originY: 0 }));
 
     pressHorizontal(200, 100);
     dispatchMouse('mousemove', 150, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBeCloseTo(
+    expect(app.store.state.settings.originX).toBeCloseTo(
       -100 + 50 / W_RATIO,
       3
     );
@@ -162,22 +162,22 @@ describe('useVirtualScroll', () => {
 
   it('ignores a horizontal drag that would push past the canvas edge', async () => {
     app.store.dispatchSync(
-      scrollToAction({ scrollLeft: MIN_SCROLL_LEFT, scrollTop: 0 })
+      scrollToAction({ originX: MIN_ORIGIN_X, originY: 0 })
     );
 
     pressHorizontal(100, 100);
     dispatchMouse('mousemove', 150, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(MIN_SCROLL_LEFT);
+    expect(app.store.state.settings.originX).toBe(MIN_ORIGIN_X);
   });
 
-  it('ignores a horizontal drag back while the canvas is already at scrollLeft 0', async () => {
+  it('ignores a horizontal drag back while the canvas is already at an origin of 0', async () => {
     pressHorizontal(200, 100);
     dispatchMouse('mousemove', 150, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 
   it('scrolls the canvas up when the vertical thumb is dragged down', async () => {
@@ -185,18 +185,18 @@ describe('useVirtualScroll', () => {
     dispatchMouse('mousemove', 100, 150);
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBeCloseTo(-50 / H_RATIO, 3);
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originY).toBeCloseTo(-50 / H_RATIO, 3);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 
   it('scrolls the canvas down when the vertical thumb is dragged back', async () => {
-    app.store.dispatchSync(scrollToAction({ scrollLeft: 0, scrollTop: -200 }));
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY: -200 }));
 
     pressVertical(100, 200);
     dispatchMouse('mousemove', 100, 150);
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBeCloseTo(
+    expect(app.store.state.settings.originY).toBeCloseTo(
       -200 + 50 / H_RATIO,
       3
     );
@@ -204,31 +204,31 @@ describe('useVirtualScroll', () => {
 
   it('ignores a vertical drag that would push past the canvas edge', async () => {
     app.store.dispatchSync(
-      scrollToAction({ scrollLeft: 0, scrollTop: MIN_SCROLL_TOP })
+      scrollToAction({ originX: 0, originY: MIN_ORIGIN_Y })
     );
 
     pressVertical(100, 100);
     dispatchMouse('mousemove', 100, 150);
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBe(MIN_SCROLL_TOP);
+    expect(app.store.state.settings.originY).toBe(MIN_ORIGIN_Y);
   });
 
-  it('ignores a vertical drag back while the canvas is already at scrollTop 0', async () => {
+  it('ignores a vertical drag back while the canvas is already at an origin of 0', async () => {
     pressVertical(100, 200);
     dispatchMouse('mousemove', 100, 150);
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 
-  it('keeps the axes independent — a horizontal drag never moves scrollTop', async () => {
+  it('keeps the axes independent — a horizontal drag never moves the vertical origin', async () => {
     pressHorizontal(100, 100);
     dispatchMouse('mousemove', 150, 160);
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBe(0);
-    expect(app.store.state.settings.scrollLeft).toBeCloseTo(-50 / W_RATIO, 3);
+    expect(app.store.state.settings.originY).toBe(0);
+    expect(app.store.state.settings.originX).toBeCloseTo(-50 / W_RATIO, 3);
   });
 
   it('follows touch drags without preventing the default touch behaviour', async () => {
@@ -237,7 +237,7 @@ describe('useVirtualScroll', () => {
     await flush();
 
     expect(move.defaultPrevented).toBe(false);
-    expect(app.store.state.settings.scrollLeft).toBeCloseTo(-50 / W_RATIO, 3);
+    expect(app.store.state.settings.originX).toBeCloseTo(-50 / W_RATIO, 3);
   });
 
   /**
@@ -246,13 +246,13 @@ describe('useVirtualScroll', () => {
    * a gap the pointer cannot close however far it keeps going.
    */
   it('takes the overshooting step and lets the reducer clamp it', async () => {
-    app.store.dispatchSync(scrollToAction({ scrollLeft: -500, scrollTop: 0 }));
+    app.store.dispatchSync(scrollToAction({ originX: -500, originY: 0 }));
 
     pressHorizontal(100, 100);
     dispatchMouse('mousemove', 350, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(MIN_SCROLL_LEFT);
+    expect(app.store.state.settings.originX).toBe(MIN_ORIGIN_X);
   });
 
   it('stops reacting to moves once the pointer has been released', async () => {
@@ -263,18 +263,19 @@ describe('useVirtualScroll', () => {
     dispatchMouse('mousemove', 400, 100);
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 
   /**
-   * At 150% the 2000 box draws 3000 wide and starts 500 left of the scroll, so
-   * the travel is 1800 rather than the 800 the canvas box alone would suggest.
+   * At 150% the 2000 box draws 3000 wide, so the origin travels from zero back
+   * to the drawn far edge: 1800 rather than the 800 the canvas box alone would
+   * suggest.
    */
   describe('at a zoom that magnifies', () => {
-    const MAX_SCROLL_LEFT = 500;
-    const MIN_ZOOMED_LEFT = 1200 - 3000 + 500;
-    const MAX_SCROLL_TOP = 500;
-    const MIN_ZOOMED_TOP = 675 - 3000 + 500;
+    const MAX_ORIGIN_X = 0;
+    const MIN_ZOOMED_X = 1200 - 3000;
+    const MAX_ORIGIN_Y = 0;
+    const MIN_ZOOMED_Y = 675 - 3000;
 
     const magnify = () => {
       app.store.dispatchSync(changeZoomLevelAction({ value: 1.5 }));
@@ -314,47 +315,47 @@ describe('useVirtualScroll', () => {
     it('drags the horizontal thumb across every pixel the engine allows', async () => {
       magnify();
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: 1_000_000, scrollTop: 0 })
+        scrollToAction({ originX: 1_000_000, originY: 0 })
       );
-      expect(app.store.state.settings.scrollLeft).toBe(MAX_SCROLL_LEFT);
+      expect(app.store.state.settings.originX).toBe(MAX_ORIGIN_X);
 
       await stepHorizontal(100, 72, 10);
 
-      expect(app.store.state.settings.scrollLeft).toBe(MIN_ZOOMED_LEFT);
+      expect(app.store.state.settings.originX).toBe(MIN_ZOOMED_X);
 
       await stepHorizontal(820, -72, 10);
 
-      expect(app.store.state.settings.scrollLeft).toBe(MAX_SCROLL_LEFT);
+      expect(app.store.state.settings.originX).toBe(MAX_ORIGIN_X);
     });
 
     it('drags the vertical thumb across every pixel the engine allows', async () => {
       magnify();
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: 0, scrollTop: 1_000_000 })
+        scrollToAction({ originX: 0, originY: 1_000_000 })
       );
-      expect(app.store.state.settings.scrollTop).toBe(MAX_SCROLL_TOP);
+      expect(app.store.state.settings.originY).toBe(MAX_ORIGIN_Y);
 
       await stepVertical(100, 40, 20);
 
-      expect(app.store.state.settings.scrollTop).toBe(MIN_ZOOMED_TOP);
+      expect(app.store.state.settings.originY).toBe(MIN_ZOOMED_Y);
 
       await stepVertical(900, -40, 20);
 
-      expect(app.store.state.settings.scrollTop).toBe(MAX_SCROLL_TOP);
+      expect(app.store.state.settings.originY).toBe(MAX_ORIGIN_Y);
     });
 
     it('still refuses a step once the scroll is standing on a bound', async () => {
       magnify();
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: -1_000_000, scrollTop: 0 })
+        scrollToAction({ originX: -1_000_000, originY: 0 })
       );
-      expect(app.store.state.settings.scrollLeft).toBe(MIN_ZOOMED_LEFT);
+      expect(app.store.state.settings.originX).toBe(MIN_ZOOMED_X);
 
       pressHorizontal(100, 100);
       dispatchMouse('mousemove', 150, 100);
       await flush();
 
-      expect(app.store.state.settings.scrollLeft).toBe(MIN_ZOOMED_LEFT);
+      expect(app.store.state.settings.originX).toBe(MIN_ZOOMED_X);
     });
   });
 });

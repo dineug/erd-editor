@@ -54,7 +54,7 @@ import {
   getTableRect,
   getTableWidths,
 } from '@/konva/scene/metrics';
-import { getSceneOrigin } from '@/konva/scene/viewport';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import { onStop } from '@/utils/domEvent';
 import { focusEvent } from '@/utils/internalEvents';
 import { isComposing } from '@/utils/keyboard-shortcut';
@@ -408,10 +408,6 @@ const EditOverlay: FC = (_, ctx) => {
     const target = resolveEditTarget(store.state);
     const { zoomLevel } = settings;
 
-    // The same origin CanvasScene gives its layers, read from the one place
-    // that transform is written down.
-    const { x: originX, y: originY } = getSceneOrigin(settings);
-
     return (
       <div
         class="edit-overlay"
@@ -422,34 +418,38 @@ const EditOverlay: FC = (_, ctx) => {
           'pointer-events': 'none',
         }}
       >
-        {repeat(target ? [target] : [], keyOf, item => (
-          <div
-            class={[
-              'edit-overlay-cell',
-              item.kind === 'cell' ? styles.cell : null,
-            ]}
-            style={{
-              position: 'absolute',
-              top: '0',
-              left: '0',
-              'pointer-events': 'auto',
-              'transform-origin': '0 0',
-              transform: `translate(${originX + item.x * zoomLevel}px, ${
-                originY + item.y * zoomLevel
-              }px) scale(${zoomLevel})`,
-              ...(item.kind === 'cell'
-                ? {
-                    width: `${item.width}px`,
-                    // The box konva centred the drawn line in, handed to the
-                    // input as a property so the two share one measurement.
-                    '--cell-text-height': `${getCellTextHeight()}px`,
-                  }
-                : {}),
-            }}
-          >
-            {editor(item)}
-          </div>
-        ))}
+        {repeat(target ? [target] : [], keyOf, item => {
+          // The same placement CanvasScene gives its layers, read from the one
+          // place that transform is written down.
+          const screen = toScreenPoint(settings, item);
+
+          return (
+            <div
+              class={[
+                'edit-overlay-cell',
+                item.kind === 'cell' ? styles.cell : null,
+              ]}
+              style={{
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                'pointer-events': 'auto',
+                'transform-origin': '0 0',
+                transform: `translate(${screen.x}px, ${screen.y}px) scale(${zoomLevel})`,
+                ...(item.kind === 'cell'
+                  ? {
+                      width: `${item.width}px`,
+                      // The box konva centred the drawn line in, handed to the
+                      // input as a property so the two share one measurement.
+                      '--cell-text-height': `${getCellTextHeight()}px`,
+                    }
+                  : {}),
+              }}
+            >
+              {editor(item)}
+            </div>
+          );
+        })}
       </div>
     );
   };

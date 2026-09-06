@@ -1,14 +1,24 @@
-import { schemaV3Parser } from '@dineug/erd-editor-schema';
+import {
+  type LegacyScrollBox,
+  migrateScrollToOrigin,
+  schemaV3Parser,
+} from '@dineug/erd-editor-schema';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
+import {
+  DEFAULT_HEIGHT,
+  DEFAULT_WIDTH,
+  RELATIONSHIP_STROKE_WIDTH,
+} from '@/constants/layout';
 import { createEditor } from '@/engine/modules/editor/state';
+import { getScrollRanges } from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { Memo, Point, Relationship } from '@/internal-types';
 import {
   createCullingRect,
   type CullingRect,
   getCullingRect,
+  getOriginToPlace,
   getSceneOrigin,
   intersects,
   isMemoVisible,
@@ -21,7 +31,6 @@ import {
 import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
-import { getAbsolutePoint } from '@/utils/dragSelect';
 import {
   type BBox,
   getRoute,
@@ -111,11 +120,8 @@ const rectAt = (x: number, y: number, width: number, height: number) => ({
  */
 function screenToScene(
   screen: Point,
-  { width, height, scrollLeft, scrollTop, zoomLevel }: SceneTransform
+  { originX, originY, zoomLevel }: SceneTransform
 ): Point {
-  const originX = scrollLeft + (width * (1 - zoomLevel)) / 2;
-  const originY = scrollTop + (height * (1 - zoomLevel)) / 2;
-
   return {
     x: (screen.x - originX) / zoomLevel,
     y: (screen.y - originY) / zoomLevel,
@@ -127,6 +133,39 @@ type ScreenCase = SceneTransform & {
   viewportHeight: number;
 };
 
+type LegacyCase = LegacyScrollBox & {
+  viewportWidth: number;
+  viewportHeight: number;
+};
+
+/**
+ * A document saved before the origin pair existed, as the parser now loads it.
+ * The defect cases below are such documents, so each is stated in the fields
+ * it was saved with and migrated the way the schema package migrates it.
+ */
+function legacyCase({
+  width,
+  height,
+  zoomLevel,
+  scrollLeft,
+  scrollTop,
+  viewportWidth,
+  viewportHeight,
+}: LegacyCase): ScreenCase {
+  return {
+    ...migrateScrollToOrigin({
+      width,
+      height,
+      zoomLevel,
+      scrollLeft,
+      scrollTop,
+    }),
+    zoomLevel,
+    viewportWidth,
+    viewportHeight,
+  };
+}
+
 const screenCorners = (options: ScreenCase): Point[] =>
   [
     { x: 0, y: 0 },
@@ -137,13 +176,13 @@ const screenCorners = (options: ScreenCase): Point[] =>
 
 /**
  * Where the old rect went wrong: the canvas box is not the screen, so a zoom
- * that shrinks a large canvas moves the scene origin by more than the margin,
- * and the top left of the screen falls out of a rect that never read the box.
+ * that shrinks a large canvas moved the scene origin by more than the margin,
+ * and the top left of the screen fell out of a rect that never read the box.
  */
 const DEFECT_CASES: Array<[string, ScreenCase]> = [
   [
     'canvas 8000 at zoom 0.5, the case a screen-centred table vanished in',
-    {
+    legacyCase({
       width: 8000,
       height: 8000,
       scrollLeft: 0,
@@ -151,11 +190,11 @@ const DEFECT_CASES: Array<[string, ScreenCase]> = [
       zoomLevel: 0.5,
       viewportWidth: 1000,
       viewportHeight: 1000,
-    },
+    }),
   ],
   [
     'canvas 8000 at zoom 0.3, where the whole screen fell out of the rect',
-    {
+    legacyCase({
       width: 8000,
       height: 8000,
       scrollLeft: -3280,
@@ -163,11 +202,11 @@ const DEFECT_CASES: Array<[string, ScreenCase]> = [
       zoomLevel: 0.3,
       viewportWidth: 1440,
       viewportHeight: 870,
-    },
+    }),
   ],
   [
     'canvas 4000 at zoom 0.5 on a wide viewport, one axis over and one under',
-    {
+    legacyCase({
       width: 4000,
       height: 4000,
       scrollLeft: -400,
@@ -175,11 +214,11 @@ const DEFECT_CASES: Array<[string, ScreenCase]> = [
       zoomLevel: 0.5,
       viewportWidth: 1440,
       viewportHeight: 870,
-    },
+    }),
   ],
   [
     'the default canvas at the lowest zoom, which a pan alone reaches',
-    {
+    legacyCase({
       width: 2000,
       height: 2000,
       scrollLeft: -504,
@@ -187,11 +226,11 @@ const DEFECT_CASES: Array<[string, ScreenCase]> = [
       zoomLevel: 0.1,
       viewportWidth: 1440,
       viewportHeight: 690,
-    },
+    }),
   ],
   [
     'canvas 20000 at zoom 0.5, the largest box the toolbar offers',
-    {
+    legacyCase({
       width: 20000,
       height: 20000,
       scrollLeft: 0,
@@ -199,9 +238,20 @@ const DEFECT_CASES: Array<[string, ScreenCase]> = [
       zoomLevel: 0.5,
       viewportWidth: 1000,
       viewportHeight: 1000,
-    },
+    }),
   ],
 ];
+
+/** Places a state's view where a screen case says, the way a load would. */
+function applyCase(state: RootState, options: ScreenCase) {
+  state.settings.originX = options.originX;
+  state.settings.originY = options.originY;
+  state.settings.zoomLevel = options.zoomLevel;
+  state.editor.viewport = {
+    width: options.viewportWidth,
+    height: options.viewportHeight,
+  };
+}
 
 describe('the culling rect covers the screen it is inverted out of', () => {
   it.each(DEFECT_CASES)(
@@ -218,13 +268,7 @@ describe('the culling rect covers the screen it is inverted out of', () => {
   it('keeps a table sitting dead centre of a shrunk 8000 canvas', () => {
     const options = DEFECT_CASES[0][1];
     const state = createState();
-    state.settings.width = options.width;
-    state.settings.height = options.height;
-    state.settings.zoomLevel = options.zoomLevel;
-    state.editor.viewport = {
-      width: options.viewportWidth,
-      height: options.viewportHeight,
-    };
+    applyCase(state, options);
     const centre = screenToScene({ x: 500, y: 500 }, options);
     const table = addTable(
       state,
@@ -243,69 +287,31 @@ describe('the culling rect covers the screen it is inverted out of', () => {
     const screenWidth = options.viewportWidth / options.zoomLevel;
     const screenHeight = options.viewportHeight / options.zoomLevel;
 
-    expect(origin).toEqual({
-      x: options.scrollLeft + (options.width * (1 - options.zoomLevel)) / 2,
-      y: options.scrollTop + (options.height * (1 - options.zoomLevel)) / 2,
-    });
+    expect(origin).toEqual({ x: options.originX, y: options.originY });
     expect(rect.x + screenWidth).toBeCloseTo(-origin.x / options.zoomLevel);
     expect(rect.y + screenHeight).toBeCloseTo(-origin.y / options.zoomLevel);
   });
 
-  it('lands on the point the editor already inverts a screen point with', () => {
-    const options = DEFECT_CASES[1][1];
-    const rect = createCullingRect(options);
-    const topLeft = getAbsolutePoint(
-      { x: -options.scrollLeft, y: -options.scrollTop },
-      options.width,
-      options.height,
-      options.zoomLevel
-    );
-
-    expect(rect.x + options.viewportWidth / options.zoomLevel).toBeCloseTo(
-      topLeft.x
-    );
-    expect(rect.y + options.viewportHeight / options.zoomLevel).toBeCloseTo(
-      topLeft.y
-    );
-  });
-
-  it('reads the canvas box, not only the scroll, zoom and viewport', () => {
+  it('is independent of the canvas box', () => {
     const state = createState();
+    applyCase(state, DEFECT_CASES[0][1]);
     state.settings.width = 8000;
     state.settings.height = 8000;
-    state.settings.zoomLevel = 0.5;
-    state.editor.viewport = { width: 1000, height: 1000 };
     const wide = getCullingRect(state);
 
     state.settings.width = 2000;
     state.settings.height = 2000;
 
-    expect(getCullingRect(state)).not.toEqual(wide);
-    expect(getCullingRect(state)).toEqual(
-      createCullingRect({
-        width: 2000,
-        height: 2000,
-        scrollLeft: 0,
-        scrollTop: 0,
-        zoomLevel: 0.5,
-        viewportWidth: 1000,
-        viewportHeight: 1000,
-      })
-    );
+    expect(getCullingRect(state)).toEqual(wide);
+    expect(wide).toEqual(createCullingRect(DEFECT_CASES[0][1]));
   });
 });
 
 describe('the two directions through the scene origin', () => {
   const transforms: SceneTransform[] = [];
   for (const zoomLevel of [0.1, 0.5, 1, 1.2, 1.5]) {
-    for (const scrollLeft of [0, -260, -1_000, 340]) {
-      transforms.push({
-        width: 2_000,
-        height: 2_000,
-        scrollLeft,
-        scrollTop: scrollLeft / 2,
-        zoomLevel,
-      });
+    for (const originX of [0, -260, -1_000, 340]) {
+      transforms.push({ originX, originY: originX / 2, zoomLevel });
     }
   }
 
@@ -318,29 +324,19 @@ describe('the two directions through the scene origin', () => {
 
   /**
    * The placement written out longhand rather than read back from the helper,
-   * so the two have to agree instead of restating one another. It is the css
-   * transform the port replaced: scale about the middle of the box, then scroll.
+   * so the two have to agree instead of restating one another: the scene point
+   * scaled by the zoom, then moved to where the document says the origin is.
    */
-  const longhand = (
-    scene: number,
-    scroll: number,
-    size: number,
-    zoom: number
-  ) => scene * zoom + scroll + (size * (1 - zoom)) / 2;
+  const longhand = (scene: number, origin: number, zoom: number) =>
+    scene * zoom + origin;
 
   it.each(transforms)('places a scene point at %s', transform => {
     for (const point of scenePoints) {
       const screen = toScreenPoint(transform, point);
-      const { width, height, scrollLeft, scrollTop, zoomLevel } = transform;
+      const { originX, originY, zoomLevel } = transform;
 
-      expect(screen.x).toBeCloseTo(
-        longhand(point.x, scrollLeft, width, zoomLevel),
-        6
-      );
-      expect(screen.y).toBeCloseTo(
-        longhand(point.y, scrollTop, height, zoomLevel),
-        6
-      );
+      expect(screen.x).toBeCloseTo(longhand(point.x, originX, zoomLevel), 6);
+      expect(screen.y).toBeCloseTo(longhand(point.y, originY, zoomLevel), 6);
     }
   });
 
@@ -354,31 +350,31 @@ describe('the two directions through the scene origin', () => {
   });
 
   it.each(transforms)(
-    'agrees with the editor own inversion at %s',
+    'solves for the origin that lands a scene point where asked at %s',
     transform => {
-      const screen = { x: 640, y: 480 };
-      const absolute = getAbsolutePoint(
-        {
-          x: screen.x - transform.scrollLeft,
-          y: screen.y - transform.scrollTop,
-        },
-        transform.width,
-        transform.height,
-        transform.zoomLevel
-      );
-      const scene = toScenePoint(transform, screen);
+      for (const point of scenePoints) {
+        const screen = { x: 640, y: 480 };
+        const origin = getOriginToPlace(transform.zoomLevel, point, screen);
+        const placed = toScreenPoint(
+          {
+            zoomLevel: transform.zoomLevel,
+            originX: origin.x,
+            originY: origin.y,
+          },
+          point
+        );
 
-      expect(scene.x).toBeCloseTo(absolute.x, 6);
-      expect(scene.y).toBeCloseTo(absolute.y, 6);
+        expect(origin.x).toBeCloseTo(screen.x - point.x * transform.zoomLevel);
+        expect(placed.x).toBeCloseTo(screen.x, 6);
+        expect(placed.y).toBeCloseTo(screen.y, 6);
+      }
     }
   );
 
   it('reads a zoom of zero as one on the way back, as the rect does', () => {
     const torn: SceneTransform = {
-      width: 2_000,
-      height: 2_000,
-      scrollLeft: -100,
-      scrollTop: -100,
+      originX: -100,
+      originY: -100,
       zoomLevel: 0,
     };
 
@@ -388,10 +384,8 @@ describe('the two directions through the scene origin', () => {
 
 describe('the culling rect is three screens on a side (AC-G4)', () => {
   const base: ScreenCase = {
-    width: 2000,
-    height: 2000,
-    scrollLeft: -300,
-    scrollTop: -200,
+    originX: -300,
+    originY: -200,
     zoomLevel: 1,
     viewportWidth: 800,
     viewportHeight: 600,
@@ -419,13 +413,7 @@ describe('the culling rect is three screens on a side (AC-G4)', () => {
   it('still drops what a whole screen of margin does not reach', () => {
     const options = DEFECT_CASES[0][1];
     const state = createState();
-    state.settings.width = options.width;
-    state.settings.height = options.height;
-    state.settings.zoomLevel = options.zoomLevel;
-    state.editor.viewport = {
-      width: options.viewportWidth,
-      height: options.viewportHeight,
-    };
+    applyCase(state, options);
     const corner = screenToScene({ x: 0, y: 0 }, options);
     const near = addTable(state, 'near', corner.x - 1500, corner.y);
     const far = addTable(state, 'far', corner.x - 2500, corner.y);
@@ -437,17 +425,17 @@ describe('the culling rect is three screens on a side (AC-G4)', () => {
 });
 
 /**
- * The scroll offsets the reducer allows, longhand. Zooming past 1 flips the
- * sign of the box offset, so the far end of the range moves the opposite way
- * from the one the shrinking half of the zoom range walks.
+ * The origins the reducer allows on one axis, read from the range it clamps
+ * with: both ends and the middle. Zooming past 1 draws the box wider than the
+ * screen, so the travel runs from the drawn far edge back to zero.
  */
-function reachableScrolls(size: number, zoomLevel: number, viewport: number) {
-  const drawn = size * zoomLevel;
-  const offset = (size - drawn) / 2;
-  const max = -offset;
-  const min = viewport - drawn - offset;
+function reachableOrigins(size: number, zoomLevel: number, viewport: number) {
+  const { min, max } = getScrollRanges(
+    { width: size, height: size, zoomLevel },
+    { width: viewport, height: viewport }
+  ).left;
 
-  return min > max ? [max] : [min, (min + max) / 2, max];
+  return min === max ? [max] : [min, (min + max) / 2, max];
 }
 
 const MAGNIFIED_GRID: Array<[number, number]> = [];
@@ -466,21 +454,19 @@ describe('nothing on screen goes undrawn while the zoom magnifies', () => {
     (width, zoomLevel) => {
       const missed: string[] = [];
 
-      for (const scrollLeft of reachableScrolls(
+      for (const originX of reachableOrigins(
         width,
         zoomLevel,
         VIEWPORT_WIDTH
       )) {
-        for (const scrollTop of reachableScrolls(
+        for (const originY of reachableOrigins(
           width,
           zoomLevel,
           VIEWPORT_HEIGHT
         )) {
           const options: ScreenCase = {
-            width,
-            height: width,
-            scrollLeft,
-            scrollTop,
+            originX,
+            originY,
             zoomLevel,
             viewportWidth: VIEWPORT_WIDTH,
             viewportHeight: VIEWPORT_HEIGHT,
@@ -489,9 +475,7 @@ describe('nothing on screen goes undrawn while the zoom magnifies', () => {
 
           for (const corner of screenCorners(options)) {
             if (!contains(rect, corner)) {
-              missed.push(
-                `${scrollLeft},${scrollTop} @ ${corner.x},${corner.y}`
-              );
+              missed.push(`${originX},${originY} @ ${corner.x},${corner.y}`);
             }
           }
         }
@@ -514,31 +498,31 @@ describe('nothing on screen goes undrawn while the zoom magnifies', () => {
       };
       const undrawn: string[] = [];
 
-      for (const scrollLeft of reachableScrolls(
+      for (const originX of reachableOrigins(
         width,
         zoomLevel,
         VIEWPORT_WIDTH
       )) {
-        for (const scrollTop of reachableScrolls(
+        for (const originY of reachableOrigins(
           width,
           zoomLevel,
           VIEWPORT_HEIGHT
         )) {
-          state.settings.scrollLeft = scrollLeft;
-          state.settings.scrollTop = scrollTop;
+          state.settings.originX = originX;
+          state.settings.originY = originY;
           const centre = screenToScene(
             { x: VIEWPORT_WIDTH / 2, y: VIEWPORT_HEIGHT / 2 },
             state.settings
           );
           const table = addTable(
             state,
-            `${scrollLeft}:${scrollTop}`,
+            `${originX}:${originY}`,
             centre.x - TABLE_WIDTH / 2,
             centre.y - TABLE_HEIGHT / 2
           );
 
           if (!isTableVisible(getCullingRect(state), state, table)) {
-            undrawn.push(`${scrollLeft},${scrollTop}`);
+            undrawn.push(`${originX},${originY}`);
           }
         }
       }
@@ -548,62 +532,42 @@ describe('nothing on screen goes undrawn while the zoom magnifies', () => {
   );
 
   /**
-   * The far corner is the one a magnifying zoom loses: the box offset turns
-   * negative, so a rect that read the scroll alone would slide off the wrong
-   * end of the screen from the one the shrinking half slides off.
+   * The far corner is the one a magnifying zoom used to lose: with the drawn
+   * box wider than the screen, the view that shows its bottom right edge is
+   * the one furthest from zero, picked here through the canon.
    */
   it('keeps the bottom right corner of a magnified 20000 canvas', () => {
+    const zoomLevel = 1.5;
+    const farCorner = { x: 20_000, y: 20_000 };
+    const screenCorner = { x: VIEWPORT_WIDTH, y: VIEWPORT_HEIGHT };
+    const origin = getOriginToPlace(zoomLevel, farCorner, screenCorner);
     const options: ScreenCase = {
-      width: 20_000,
-      height: 20_000,
-      scrollLeft: VIEWPORT_WIDTH - 30_000 + 5_000,
-      scrollTop: VIEWPORT_HEIGHT - 30_000 + 5_000,
-      zoomLevel: 1.5,
+      originX: origin.x,
+      originY: origin.y,
+      zoomLevel,
       viewportWidth: VIEWPORT_WIDTH,
       viewportHeight: VIEWPORT_HEIGHT,
     };
     const rect = createCullingRect(options);
-    const corner = screenToScene(
-      { x: VIEWPORT_WIDTH, y: VIEWPORT_HEIGHT },
-      options
-    );
+    const corner = screenToScene(screenCorner, options);
 
-    expect(corner.x).toBeCloseTo(20_000, 6);
-    expect(corner.y).toBeCloseTo(20_000, 6);
+    expect(corner.x).toBeCloseTo(farCorner.x, 6);
+    expect(corner.y).toBeCloseTo(farCorner.y, 6);
     expect(contains(rect, corner)).toBe(true);
-  });
-
-  it('reads the canvas box at a magnifying zoom, not the scroll alone', () => {
-    const base: ScreenCase = {
-      width: 2_000,
-      height: 2_000,
-      scrollLeft: 0,
-      scrollTop: 0,
-      zoomLevel: 1.5,
-      viewportWidth: VIEWPORT_WIDTH,
-      viewportHeight: VIEWPORT_HEIGHT,
-    };
-
-    expect(getSceneOrigin(base)).toEqual({ x: -500, y: -500 });
-    expect(createCullingRect(base)).not.toEqual(
-      createCullingRect({ ...base, width: 8_000, height: 8_000 })
-    );
   });
 });
 
 describe('a frame the host has not measured yet', () => {
-  const canvas = {
-    width: 2000,
-    height: 2000,
-    scrollLeft: 0,
-    scrollTop: 0,
+  const canvas: SceneTransform = {
+    originX: 0,
+    originY: 0,
     zoomLevel: 0.5,
   };
 
   it.each([
     ['no viewport at all', 0, 0],
     ['a viewport the toolbar height drove negative', -30, -30],
-  ])('falls back to the canvas box for %s', (_name, width, height) => {
+  ])('stands the default editor size in for %s', (_name, width, height) => {
     const rect = createCullingRect({
       ...canvas,
       viewportWidth: width,
@@ -613,7 +577,13 @@ describe('a frame the host has not measured yet', () => {
     expect(Number.isFinite(rect.x)).toBe(true);
     expect(Number.isFinite(rect.width)).toBe(true);
     expect(contains(rect, { x: 0, y: 0 })).toBe(true);
-    expect(contains(rect, { x: canvas.width, y: canvas.height })).toBe(true);
+    expect(rect).toEqual(
+      createCullingRect({
+        ...canvas,
+        viewportWidth: DEFAULT_WIDTH,
+        viewportHeight: DEFAULT_HEIGHT,
+      })
+    );
   });
 
   it('reads a zoom of zero as one rather than inverting by it', () => {

@@ -11,6 +11,7 @@ import {
 import { createIndex } from '@/v3/parser/index.entity';
 import { createIndexColumn } from '@/v3/parser/indexColumn.entity';
 import { createMemo } from '@/v3/parser/memo.entity';
+import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import { createRelationship } from '@/v3/parser/relationship.entity';
 import { createTable } from '@/v3/parser/table.entity';
 import { createColumn } from '@/v3/parser/tableColumn.entity';
@@ -35,6 +36,11 @@ function assignCanvas(
   target.scrollTop = source.scrollTop;
   target.scrollLeft = source.scrollLeft;
   target.zoomLevel = source.zoomLevel;
+
+  const { originX, originY } = migrateScrollToOrigin(target);
+  target.originX = originX;
+  target.originY = originY;
+
   target.databaseName = source.databaseName;
   target.canvasType = SchemaV3Constants.CanvasType.ERD;
 

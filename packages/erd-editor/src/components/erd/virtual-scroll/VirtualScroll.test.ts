@@ -119,9 +119,7 @@ describe('VirtualScroll', () => {
   });
 
   it('translates each thumb by the scrolled distance scaled to its track', async () => {
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -400, scrollTop: -200 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -400, originY: -200 }));
     await flush();
 
     const [horizontalThumb, verticalThumb] = thumbs();
@@ -167,11 +165,11 @@ describe('VirtualScroll', () => {
     await flush();
 
     // 600 / ratio = 1000 absolute, minus half a viewport.
-    expect(app.store.state.settings.scrollLeft).toBeCloseTo(
+    expect(app.store.state.settings.originX).toBeCloseTo(
       -(600 / W_RATIO - VIEWPORT_WIDTH / 2),
       3
     );
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
     expect(thumbs()[0].hasAttribute('data-selected')).toBe(true);
     expect(thumbs()[1].hasAttribute('data-selected')).toBe(false);
   });
@@ -182,34 +180,34 @@ describe('VirtualScroll', () => {
     vertical.dispatchEvent(mouse('mousedown', TRACK_X, TRACK_Y + 300));
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBeCloseTo(
+    expect(app.store.state.settings.originY).toBeCloseTo(
       -(300 / H_RATIO - VIEWPORT_HEIGHT / 2),
       3
     );
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
     expect(thumbs()[1].hasAttribute('data-selected')).toBe(true);
     expect(thumbs()[0].hasAttribute('data-selected')).toBe(false);
   });
 
   it('keeps the horizontal scroll put when the press starts on the ghost thumb', async () => {
-    app.store.dispatchSync(scrollToAction({ scrollLeft: -100, scrollTop: 0 }));
+    app.store.dispatchSync(scrollToAction({ originX: -100, originY: 0 }));
     await flush();
 
     thumbs()[0].dispatchEvent(mouse('mousedown', TRACK_X + 600, TRACK_Y));
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-100);
+    expect(app.store.state.settings.originX).toBe(-100);
     expect(thumbs()[0].hasAttribute('data-selected')).toBe(true);
   });
 
   it('keeps the vertical scroll put when the press starts on the ghost thumb', async () => {
-    app.store.dispatchSync(scrollToAction({ scrollLeft: 0, scrollTop: -100 }));
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY: -100 }));
     await flush();
 
     thumbs()[1].dispatchEvent(mouse('mousedown', TRACK_X, TRACK_Y + 300));
     await flush();
 
-    expect(app.store.state.settings.scrollTop).toBe(-100);
+    expect(app.store.state.settings.originY).toBe(-100);
     expect(thumbs()[1].hasAttribute('data-selected')).toBe(true);
   });
 
@@ -218,18 +216,18 @@ describe('VirtualScroll', () => {
     window.dispatchEvent(mouse('mousemove', 150, 0));
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBeCloseTo(-50 / W_RATIO, 3);
+    expect(app.store.state.settings.originX).toBeCloseTo(-50 / W_RATIO, 3);
   });
 
   /**
-   * At 150% the 2000 box draws 3000 wide and starts 500 left of the scroll. The
-   * offset the scroll then takes is positive at one end, so a thumb placed by
-   * negating the scroll alone hangs off the near end of its own track.
+   * At 150% the 2000 box draws 3000 wide, so the origin travels from zero back
+   * to the drawn far edge, 1800 in all, and the thumb is sized and placed from
+   * that travel rather than from the 800 the canvas box alone allows.
    */
   describe('at a zoom that magnifies', () => {
     const ZOOMED_RATIO = VIEWPORT_WIDTH / 3000;
-    const MAX_SCROLL_LEFT = 500;
-    const MIN_SCROLL_LEFT = VIEWPORT_WIDTH - 3000 + 500;
+    const MAX_ORIGIN_X = 0;
+    const MIN_ORIGIN_X = VIEWPORT_WIDTH - 3000;
 
     const magnify = async () => {
       app.store.dispatchSync(changeZoomLevelAction({ value: 1.5 }));
@@ -252,7 +250,7 @@ describe('VirtualScroll', () => {
     it('keeps the thumb inside its track at both ends of the travel', async () => {
       await magnify();
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: MAX_SCROLL_LEFT, scrollTop: 0 })
+        scrollToAction({ originX: MAX_ORIGIN_X, originY: 0 })
       );
       await flush();
 
@@ -265,7 +263,7 @@ describe('VirtualScroll', () => {
       expect(offsetOf()).toBeCloseTo(0, 6);
 
       app.store.dispatchSync(
-        scrollToAction({ scrollLeft: MIN_SCROLL_LEFT, scrollTop: 0 })
+        scrollToAction({ originX: MIN_ORIGIN_X, originY: 0 })
       );
       await flush();
 
@@ -290,8 +288,8 @@ describe('VirtualScroll', () => {
       horizontal.dispatchEvent(mouse('mousedown', TRACK_X + 600, TRACK_Y));
       await flush();
 
-      expect(app.store.state.settings.scrollLeft).toBeCloseTo(
-        MAX_SCROLL_LEFT - (600 / ZOOMED_RATIO - VIEWPORT_WIDTH / 2),
+      expect(app.store.state.settings.originX).toBeCloseTo(
+        MAX_ORIGIN_X - (600 / ZOOMED_RATIO - VIEWPORT_WIDTH / 2),
         3
       );
     });
@@ -308,6 +306,6 @@ describe('VirtualScroll', () => {
 
     window.dispatchEvent(mouse('mousemove', 400, 0));
     await flush();
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 });

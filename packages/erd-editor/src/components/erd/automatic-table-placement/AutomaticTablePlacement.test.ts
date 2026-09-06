@@ -19,6 +19,10 @@ import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import * as styles from '@/components/erd/automatic-table-placement/AutomaticTablePlacement.styles';
+import {
+  getMinimapHandleRect,
+  getScrollToCenter,
+} from '@/components/erd/minimap/minimapGeometry';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
@@ -186,30 +190,49 @@ describe('AutomaticTablePlacement', () => {
       ).toBeTruthy();
     });
 
-    it('centers the preview scroll on the origin viewport', async () => {
+    it('centres the preview on the middle of the canvas box', async () => {
       const app = createOrigin();
       addTable(app, 't1', 'users');
-      const { width, height } = app.store.state.settings;
+      const { width, height, originX, originY } = app.store.state.settings;
 
       const { container } = await open(app, vi.fn());
 
-      // The scroll is the preview store's, and the minimap viewport rectangle
+      // The origin is the preview store's, and the minimap viewport rectangle
       // is where it reaches the dom: the scene's own copy of it went onto the
       // konva layer, which no unit environment can build.
       const viewport = container.querySelector(
         '.minimap-viewport'
       ) as HTMLElement;
-      const ratio = MINIMAP_SIZE / width;
       const zoomLevel = 800 / width;
-      const scrollTop = -1 * (height / 2 - 600 / 2);
-      // The rectangle is the canvas the screen reaches, not the screen's own
-      // size, so the preview zoom divides into both. Horizontally that is the
-      // whole 2000 box, which is the map, and the offset from its left is nil.
-      const top =
-        (-1 * (scrollTop + (height - height * zoomLevel) / 2)) / zoomLevel;
+      const transform = {
+        width,
+        height,
+        originX,
+        originY,
+        zoomLevel,
+        viewportWidth: 800,
+        viewportHeight: 600,
+      };
+      // The preview asks the canon for the origin that centres the box, and
+      // the handle is that same origin read back through the minimap geometry.
+      // Horizontally the screen reaches the whole 2000 box, which is the map.
+      const origin = getScrollToCenter(transform, {
+        x: width / 2,
+        y: height / 2,
+      });
+      // The closed form of centring the box: half the screen less half the box
+      // at the preview zoom, so the canon is checked here rather than re-run.
+      expect(origin.x).toBeCloseTo((800 - width * zoomLevel) / 2, 6);
+      expect(origin.y).toBeCloseTo((600 - height * zoomLevel) / 2, 6);
+      const rect = getMinimapHandleRect({
+        ...transform,
+        originX: origin.x,
+        originY: origin.y,
+      });
 
-      expect(viewport.style.top).toBe(`${MINIMAP_MARGIN + top * ratio}px`);
+      expect(viewport.style.top).toBe(`${MINIMAP_MARGIN + rect.y}px`);
       expect(viewport.style.right).toBe(`${MINIMAP_MARGIN}px`);
+      expect(rect.y).toBeGreaterThan(0);
     });
 
     it('mirrors the origin viewport into the preview store', async () => {

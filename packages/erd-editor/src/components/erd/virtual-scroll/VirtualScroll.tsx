@@ -37,12 +37,12 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
 
     store.dispatch(
       scrollToAction({
-        scrollLeft: trackPointToScroll(
+        originX: trackPointToScroll(
           track,
           event.clientX - rect.x,
           viewport.width
         ),
-        scrollTop: settings.scrollTop,
+        originY: settings.originY,
       })
     );
 
@@ -66,8 +66,8 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
 
     store.dispatch(
       scrollToAction({
-        scrollLeft: settings.scrollLeft,
-        scrollTop: trackPointToScroll(
+        originX: settings.originX,
+        originY: trackPointToScroll(
           track,
           event.clientY - rect.y,
           viewport.height

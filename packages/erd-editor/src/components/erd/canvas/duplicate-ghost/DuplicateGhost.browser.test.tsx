@@ -111,11 +111,9 @@ const select = (app: AppContext, selectedMap: Record<string, SelectType>) => {
   app.store.dispatchSync(selectAction(selectedMap));
 };
 
-const setViewport = (app: AppContext, zoomLevel: number, scroll = 0) => {
+const setViewport = (app: AppContext, zoomLevel: number, origin = 0) => {
   app.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
-  app.store.dispatchSync(
-    scrollToAction({ scrollLeft: scroll, scrollTop: scroll })
-  );
+  app.store.dispatchSync(scrollToAction({ originX: origin, originY: origin }));
 };
 
 /**

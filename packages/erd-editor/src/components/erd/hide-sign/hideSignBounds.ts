@@ -15,14 +15,14 @@ export function getReachableRect(
   settings: ScrollTransform,
   viewport: Viewport
 ): Rect {
-  const { width, height, zoomLevel } = settings;
+  const { zoomLevel } = settings;
   const { left, top } = getScrollRanges(settings, viewport);
   const min = toScenePoint(
-    { width, height, zoomLevel, scrollLeft: left.max, scrollTop: top.max },
+    { zoomLevel, originX: left.max, originY: top.max },
     { x: 0, y: 0 }
   );
   const max = toScenePoint(
-    { width, height, zoomLevel, scrollLeft: left.min, scrollTop: top.min },
+    { zoomLevel, originX: left.min, originY: top.min },
     { x: viewport.width, y: viewport.height }
   );
 

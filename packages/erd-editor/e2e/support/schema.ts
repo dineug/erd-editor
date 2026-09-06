@@ -102,6 +102,8 @@ export type SchemaSeed = {
   zoomLevel?: number;
   scrollTop?: number;
   scrollLeft?: number;
+  originX?: number;
+  originY?: number;
   width?: number;
   height?: number;
   show?: number;
@@ -118,6 +120,8 @@ export type ErdDocument = {
     height: number;
     scrollTop: number;
     scrollLeft: number;
+    originX?: number;
+    originY?: number;
     zoomLevel: number;
     show: number;
     database: number;
@@ -149,6 +153,14 @@ export type ErdDocument = {
   };
   lww?: Record<string, unknown>;
 };
+
+/**
+ * Settings as a document read back from the editor carries them. A seed may
+ * leave the origin out and be migrated on parse; what the store hands back has
+ * always been through that parse, so both fields are there.
+ */
+export type LiveSettings = ErdDocument['settings'] &
+  Required<Pick<ErdDocument['settings'], 'originX' | 'originY'>>;
 
 export type TableEntity = {
   id: string;
@@ -226,6 +238,17 @@ export type MemoEntity = {
  * editor only compares them relatively.
  */
 const META = { updateAt: 0, createAt: 0 };
+
+/**
+ * The live view, written only when the seed asks for one. A seed that names
+ * neither origin is a legacy document on purpose: the parser migrates its
+ * scrollLeft/scrollTop into the origin the shipped editor showed for them.
+ */
+function seededOrigin(seed: SchemaSeed) {
+  return seed.originX === undefined && seed.originY === undefined
+    ? {}
+    : { originX: seed.originX ?? 0, originY: seed.originY ?? 0 };
+}
 
 export function createSchema(seed: SchemaSeed = {}): ErdDocument {
   const tables = seed.tables ?? [];
@@ -324,6 +347,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       height: seed.height ?? CANVAS_SIZE,
       scrollTop: seed.scrollTop ?? 0,
       scrollLeft: seed.scrollLeft ?? 0,
+      ...seededOrigin(seed),
       zoomLevel: seed.zoomLevel ?? 1,
       show: seed.show ?? DEFAULT_SHOW,
       database: 4,

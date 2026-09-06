@@ -8,6 +8,9 @@ export {
 } from '@/v2';
 export {
   type ERDEditorSchemaV3,
+  type LegacyScrollBox,
+  migrateScrollToOrigin,
+  type Origin,
   SchemaV3Constants,
   schemaV3Parser,
 } from '@/v3';

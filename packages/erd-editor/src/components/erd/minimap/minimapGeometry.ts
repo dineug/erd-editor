@@ -4,6 +4,8 @@ import { getSceneOrigin, type SceneTransform } from '@/konva/scene/viewport';
 
 /** The canvas box the minimap draws, plus the screen that is looking at it. */
 export type MinimapTransform = SceneTransform & {
+  width: number;
+  height: number;
   viewportWidth: number;
   viewportHeight: number;
 };
@@ -33,7 +35,7 @@ export function getMinimapRatio(width: number): number {
 /**
  * The canvas the screen actually covers, read back through the very origin
  * getSceneOrigin places the scene layer at. One screen pixel buys one over the
- * zoom in canvas units, so zooming out widens this with the scroll standing still.
+ * zoom in canvas units, so zooming out widens this with the origin standing still.
  */
 export function getVisibleCanvasRect(transform: MinimapTransform): MinimapRect {
   const zoomLevel = safeZoom(transform.zoomLevel);
@@ -92,15 +94,15 @@ export function getMinimapHandleRect(transform: MinimapTransform): MinimapRect {
 }
 
 /**
- * A canvas distance as the scroll that travels it. Scroll is measured in screen
- * pixels and moves the view the opposite way, so it carries both the zoom and
- * the sign that a minimap coordinate does not.
+ * A canvas distance as the origin travel that covers it. The origin is measured
+ * in screen pixels and moves the view the opposite way, so it carries both the
+ * zoom and the sign that a minimap coordinate does not.
  */
 export function toScrollDistance(distance: number, zoomLevel: number): number {
   return unsigned(-distance * safeZoom(zoomLevel));
 }
 
-/** Minimap travel as the scroll that keeps the rectangle under the pointer. */
+/** Minimap travel as the origin travel that keeps the rectangle under the pointer. */
 export function toScrollMovement(
   movement: number,
   ratio: number,
@@ -110,23 +112,22 @@ export function toScrollMovement(
 }
 
 /**
- * The scroll that puts a canvas point in the middle of the screen. Stated as a
- * step away from where the scroll stands now, so the origin is read once through
+ * The origin that puts a canvas point in the middle of the screen. Stated as a
+ * step away from where the origin stands now, so it is read once through
  * getVisibleCanvasRect rather than restated inverted here.
  */
 export function getScrollToCenter(
   transform: MinimapTransform,
   center: Point
 ): Point {
-  const { zoomLevel, scrollLeft, scrollTop } = transform;
+  const { zoomLevel, originX, originY } = transform;
   const rect = getVisibleCanvasRect(transform);
 
   return {
     x:
-      scrollLeft +
-      toScrollDistance(center.x - rect.width / 2 - rect.x, zoomLevel),
+      originX + toScrollDistance(center.x - rect.width / 2 - rect.x, zoomLevel),
     y:
-      scrollTop +
+      originY +
       toScrollDistance(center.y - rect.height / 2 - rect.y, zoomLevel),
   };
 }

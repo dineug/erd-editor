@@ -261,7 +261,7 @@ describe('HideSign', () => {
     }
   );
 
-  it('offsets the edge-relative signs by the debounced canvas scroll', async () => {
+  it('offsets the edge-relative signs by the debounced canvas origin', async () => {
     const { app, container } = await mountHideSign(a => {
       addTable(a, 'left-side', NEG, INSIDE);
       addTable(a, 'top-side', INSIDE, NEG);
@@ -276,13 +276,11 @@ describe('HideSign', () => {
     expect(signByTitle(container, 'left-side').style.top).toBe(`${INSIDE}px`);
     expect(signByTitle(container, 'top-side').style.left).toBe(`${INSIDE}px`);
 
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -200, scrollTop: -300 })
-    );
-    expect(app.store.state.settings.scrollLeft).toBe(-200);
-    expect(app.store.state.settings.scrollTop).toBe(-300);
+    app.store.dispatchSync(scrollToAction({ originX: -200, originY: -300 }));
+    expect(app.store.state.settings.originX).toBe(-200);
+    expect(app.store.state.settings.originY).toBe(-300);
 
-    // the scroll stream is debounced by 100ms before it reaches local state
+    // the origin stream is debounced by 100ms before it reaches local state
     expect(signByTitle(container, 'left-side').style.top).toBe(`${INSIDE}px`);
 
     await new Promise(resolve => setTimeout(resolve, 160));
@@ -299,28 +297,27 @@ describe('HideSign', () => {
    */
   const WEST = -20_000;
   const NORTH = -20_000;
-  const CANVAS = 2_000;
 
+  /** A zoom and an origin the travel at that zoom holds, so the clamp is idle. */
   const ZOOM_CASES: Array<[number, number, number]> = [
-    [0.1, -500, -600],
-    [0.1, -460, -560],
-    [0.5, -260, -400],
+    [0.1, 400, 300],
+    [0.1, 440, 340],
+    [0.5, 240, 100],
     [1, -260, -180],
-    [1.2, -260, -180],
-    [1.5, 340, 220],
+    [1.2, -460, -380],
+    [1.5, -160, -280],
   ];
 
   /**
-   * Where the scene layer puts a point, written longhand: the css transform the
-   * port replaced scaled the canvas box about its middle and then scrolled it,
-   * so half the shrink rides with the scroll rather than on the scale.
+   * Where the scene layer puts a point, written longhand: the scene point
+   * scaled by the zoom and moved to the origin the document stores.
    */
-  const onScreen = (scene: number, scroll: number, zoomLevel: number) =>
-    scene * zoomLevel + scroll + (CANVAS * (1 - zoomLevel)) / 2;
+  const onScreen = (scene: number, origin: number, zoomLevel: number) =>
+    scene * zoomLevel + origin;
 
   it.each(ZOOM_CASES)(
-    'reads the free axis off the scene origin at zoom %s scroll %s, %s',
-    async (zoomLevel, scrollLeft, scrollTop) => {
+    'reads the free axis off the scene origin at zoom %s origin %s, %s',
+    async (zoomLevel, originX, originY) => {
       const { app, container } = await mountHideSign(a => {
         a.store.dispatchSync(
           changeViewportAction({ width: 1_000, height: 800 })
@@ -336,9 +333,9 @@ describe('HideSign', () => {
         a.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
       });
 
-      app.store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
-      expect(app.store.state.settings.scrollLeft).toBe(scrollLeft);
-      expect(app.store.state.settings.scrollTop).toBe(scrollTop);
+      app.store.dispatchSync(scrollToAction({ originX, originY }));
+      expect(app.store.state.settings.originX).toBe(originX);
+      expect(app.store.state.settings.originY).toBe(originY);
 
       await new Promise(resolve => setTimeout(resolve, 160));
       await flush();
@@ -348,12 +345,12 @@ describe('HideSign', () => {
 
       expect(west.style.left).toBe('0px');
       expect(parseFloat(west.style.top)).toBeCloseTo(
-        onScreen(INSIDE, scrollTop, zoomLevel),
+        onScreen(INSIDE, originY, zoomLevel),
         6
       );
       expect(north.style.top).toBe('0px');
       expect(parseFloat(north.style.left)).toBeCloseTo(
-        onScreen(INSIDE, scrollLeft, zoomLevel),
+        onScreen(INSIDE, originX, zoomLevel),
         6
       );
     }
@@ -364,8 +361,8 @@ describe('HideSign', () => {
    * point has to name the scene point that placement would have put there.
    */
   it.each(ZOOM_CASES)(
-    'inverts that placement on a click at zoom %s scroll %s, %s',
-    async (zoomLevel, scrollLeft, scrollTop) => {
+    'inverts that placement on a click at zoom %s origin %s, %s',
+    async (zoomLevel, originX, originY) => {
       const { app, container } = await mountHideSign(a => {
         a.store.dispatchSync(
           changeViewportAction({ width: 1_000, height: 800 })
@@ -377,7 +374,7 @@ describe('HideSign', () => {
         a.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
       });
 
-      app.store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
+      app.store.dispatchSync(scrollToAction({ originX, originY }));
       await new Promise(resolve => setTimeout(resolve, 160));
       await flush();
 
@@ -385,12 +382,12 @@ describe('HideSign', () => {
       await flush();
 
       const { ui } = app.store.state.collections.tableEntities.west;
-      expect(onScreen(ui.x, scrollLeft, zoomLevel)).toBeCloseTo(POINT_X, 6);
-      expect(onScreen(ui.y, scrollTop, zoomLevel)).toBeCloseTo(POINT_Y, 6);
+      expect(onScreen(ui.x, originX, zoomLevel)).toBeCloseTo(POINT_X, 6);
+      expect(onScreen(ui.y, originY, zoomLevel)).toBeCloseTo(POINT_Y, 6);
     }
   );
 
-  it('ignores settings changes that are not a scroll', async () => {
+  it('ignores settings changes that are not the origin', async () => {
     const { app, container } = await mountHideSign(a => {
       addTable(a, 'left-side', NEG, INSIDE);
       a.store.dispatchSync(
@@ -496,12 +493,10 @@ describe('HideSign', () => {
     }
   );
 
-  it('takes the scroll offset out of the move-to point', async () => {
+  it('takes the origin out of the move-to point', async () => {
     const { app, container } = await mountHideSign(a => {
       addTable(a, 'table-1', NEG, INSIDE);
-      a.store.dispatchSync(
-        scrollToAction({ scrollLeft: -120, scrollTop: -80 })
-      );
+      a.store.dispatchSync(scrollToAction({ originX: -120, originY: -80 }));
     });
 
     click(signs(container)[0]);

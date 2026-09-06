@@ -393,8 +393,8 @@ describe('Erd - wheel', () => {
     await flush();
 
     expect(event.defaultPrevented).toBe(true);
-    expect(app.store.state.settings.scrollLeft).toBe(-100);
-    expect(app.store.state.settings.scrollTop).toBe(-50);
+    expect(app.store.state.settings.originX).toBe(-100);
+    expect(app.store.state.settings.originY).toBe(-50);
   });
 
   it('maps a shift wheel onto the horizontal axis', async () => {
@@ -403,8 +403,8 @@ describe('Erd - wheel', () => {
     wheel(root, { deltaX: 0, deltaY: 80, shiftKey: true });
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(-80);
-    expect(app.store.state.settings.scrollTop).toBe(0);
+    expect(app.store.state.settings.originX).toBe(-80);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 
   it('zooms out with the modifier key held', async () => {
@@ -435,7 +435,7 @@ describe('Erd - wheel', () => {
     await flush();
 
     expect(event.defaultPrevented).toBe(false);
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 });
 
@@ -522,8 +522,8 @@ describe('Erd - drag select and grab move', () => {
     dispatchMouse(window, 'mousemove', { clientX: 140, clientY: 160 });
     await flush();
 
-    const { scrollLeft, scrollTop } = app.store.state.settings;
-    expect([scrollLeft, scrollTop]).toEqual([0, 0]);
+    const { originX, originY } = app.store.state.settings;
+    expect([originX, originY]).toEqual([0, 0]);
   });
 
   it('unselects everything and hides the color picker on a canvas mousedown', async () => {
@@ -551,8 +551,8 @@ describe('Erd - drag select and grab move', () => {
     await flush();
 
     expect(move.defaultPrevented).toBe(true);
-    expect(app.store.state.settings.scrollLeft).toBe(-40);
-    expect(app.store.state.settings.scrollTop).toBe(-30);
+    expect(app.store.state.settings.originX).toBe(-40);
+    expect(app.store.state.settings.originY).toBe(-30);
 
     dispatchMouse(window, 'mouseup');
   });
@@ -564,7 +564,7 @@ describe('Erd - drag select and grab move', () => {
     dispatchMouse(window, 'mousemove', { clientX: 100, clientY: 100 });
     await flush();
 
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
     dispatchMouse(window, 'mouseup');
   });
 

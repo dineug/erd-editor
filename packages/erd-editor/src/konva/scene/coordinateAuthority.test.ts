@@ -2,6 +2,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  type LegacyScrollBox,
+  migrateScrollToOrigin,
+} from '@dineug/erd-editor-schema';
 import ts from '@typescript/typescript6';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -12,15 +16,15 @@ import {
 import { getScrollRanges } from '@/engine/modules/settings/atom.actions';
 import {
   createCullingRect,
+  getOriginToPlace,
   getSceneOrigin,
   type SceneTransform,
   toScenePoint,
   toScreenPoint,
 } from '@/konva/scene/viewport';
-import { getAbsolutePoint } from '@/utils/dragSelect';
 
 /**
- * The screen equals scene times zoom plus origin placement, stated once. Every
+ * The screen equals scene times zoom plus the origin, stated once. Every
  * property below reads it back through the authority rather than restating it,
  * so a term dropped anywhere shows up as a disagreement instead of as silence.
  */
@@ -41,7 +45,13 @@ const POINTS = [
   { x: -900, y: -1_200 },
 ];
 
+/**
+ * One row of the grid: a document as a released editor saved it, with the
+ * canvas box and the legacy scroll pair, and the transform the parser now loads
+ * it as. The box and the scroll feed the legacy oracle and nothing else.
+ */
 type Grid = {
+  legacy: LegacyScrollBox;
   transform: SceneTransform;
   viewport: { width: number; height: number };
 };
@@ -53,14 +63,17 @@ function eachTransform(): Grid[] {
     for (const zoomLevel of ZOOMS) {
       for (const scroll of SCROLLS) {
         for (const viewport of VIEWPORTS) {
+          const legacy: LegacyScrollBox = {
+            width: size,
+            height: size,
+            zoomLevel,
+            scrollLeft: scroll,
+            scrollTop: scroll / 2,
+          };
+
           rows.push({
-            transform: {
-              width: size,
-              height: size,
-              scrollLeft: scroll,
-              scrollTop: scroll / 2,
-              zoomLevel,
-            },
+            legacy,
+            transform: { ...migrateScrollToOrigin(legacy), zoomLevel },
             viewport,
           });
         }
@@ -78,10 +91,11 @@ function close(actual: number, expected: number): boolean {
   return Math.abs(actual - expected) <= 1e-6 * Math.max(1, Math.abs(expected));
 }
 
-function label({ transform, viewport }: Grid): string {
-  const { width, zoomLevel, scrollLeft, scrollTop } = transform;
+function label({ legacy, transform, viewport }: Grid): string {
+  const { width, zoomLevel, scrollLeft, scrollTop } = legacy;
+  const { originX, originY } = transform;
 
-  return `canvas ${width} zoom ${zoomLevel} scroll ${scrollLeft},${scrollTop} viewport ${viewport.width}x${viewport.height}`;
+  return `canvas ${width} zoom ${zoomLevel} legacy scroll ${scrollLeft},${scrollTop} origin ${originX},${originY} viewport ${viewport.width}x${viewport.height}`;
 }
 
 function failures(rows: Grid[], check: (row: Grid) => string | null): string[] {
@@ -143,9 +157,11 @@ describe('the scene transform is one formula', () => {
   });
 
   it('draws the minimap rectangle over what the screen really covers', () => {
-    const bad = failures(GRID, ({ transform, viewport }) => {
+    const bad = failures(GRID, ({ legacy, transform, viewport }) => {
       const minimap = {
         ...transform,
+        width: legacy.width,
+        height: legacy.height,
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
       };
@@ -179,24 +195,22 @@ describe('the scene transform is one formula', () => {
   });
 
   it('ends the scroll travel where the screen edge meets the document', () => {
-    const bad = failures(GRID, ({ transform, viewport }) => {
-      const { width, height, zoomLevel } = transform;
+    const bad = failures(GRID, ({ legacy, transform, viewport }) => {
+      const { width, height, zoomLevel } = legacy;
       const ranges = getScrollRanges({ width, height, zoomLevel }, viewport);
-      const at = (scrollLeft: number) =>
-        toScenePoint(
-          { ...transform, scrollLeft },
-          { x: viewport.width / 2, y: 0 }
-        ).x;
+      const at = (originX: number) =>
+        toScenePoint({ ...transform, originX }, { x: viewport.width / 2, y: 0 })
+          .x;
       const inset = viewport.width / (2 * Math.max(1, zoomLevel));
       const near = Math.min(inset, width - inset);
       const far = Math.max(inset, width - inset);
 
       if (!close(at(ranges.left.max), near)) {
-        return `at the scroll maximum the middle of the screen reads scene x ${at(ranges.left.max)}, not ${near}`;
+        return `at the origin maximum the middle of the screen reads scene x ${at(ranges.left.max)}, not ${near}`;
       }
 
       if (!close(at(ranges.left.min), far)) {
-        return `at the scroll minimum the middle of the screen reads scene x ${at(ranges.left.min)}, not ${far}`;
+        return `at the origin minimum the middle of the screen reads scene x ${at(ranges.left.min)}, not ${far}`;
       }
 
       return null;
@@ -211,20 +225,14 @@ describe('the scene transform is one formula', () => {
     for (const size of WIDTHS) {
       for (const viewport of VIEWPORTS) {
         const reach = (zoomLevel: number) => {
-          const transform = {
-            width: size,
-            height: size,
-            scrollLeft: 0,
-            scrollTop: 0,
-            zoomLevel,
-          };
+          const transform = { originX: 0, originY: 0, zoomLevel };
           const { left } = getScrollRanges(
             { width: size, height: size, zoomLevel },
             viewport
           );
-          const at = (scrollLeft: number) =>
+          const at = (originX: number) =>
             toScenePoint(
-              { ...transform, scrollLeft },
+              { ...transform, originX },
               { x: viewport.width / 2, y: 0 }
             ).x;
 
@@ -246,29 +254,65 @@ describe('the scene transform is one formula', () => {
 
     expect(bad).toEqual([]);
   });
+
+  it('solves for the origin that lands a scene point on a screen point', () => {
+    const bad = failures(GRID, ({ transform, viewport }) => {
+      const screen = { x: viewport.width / 2, y: viewport.height / 2 };
+
+      for (const point of POINTS) {
+        const origin = getOriginToPlace(transform.zoomLevel, point, screen);
+        const landed = toScreenPoint(
+          {
+            zoomLevel: transform.zoomLevel,
+            originX: origin.x,
+            originY: origin.y,
+          },
+          point
+        );
+
+        if (!close(landed.x, screen.x) || !close(landed.y, screen.y)) {
+          return `getOriginToPlace put scene ${point.x},${point.y} at ${landed.x},${landed.y} rather than ${screen.x},${screen.y}`;
+        }
+      }
+
+      return null;
+    });
+
+    expect(bad).toEqual([]);
+  });
 });
 
 /**
- * The five files below spell a transform by hand instead of calling the
- * authority. They agree with it today, and these two properties are what says
- * so; the day they stop agreeing the failure names the files to repair.
+ * The document stores the origin, so the canvas box is not an input to the
+ * placement at all: the same origin and zoom place the scene the same way in
+ * a 2000 box and a 20000 one, and only the legacy migration ever reads the box.
  */
-describe('the hand-spelled transforms still agree with the authority', () => {
-  it('inverts a screen point the way toScenePoint does', () => {
-    const bad = failures(GRID, ({ transform }) => {
-      const { width, height, zoomLevel, scrollLeft, scrollTop } = transform;
+describe('the origin is the document field, not a derivation', () => {
+  it('places the scene independently of the canvas box', () => {
+    const bad = failures(GRID, ({ transform, viewport }) => {
+      const origin = getSceneOrigin(transform);
 
-      for (const point of POINTS) {
-        const byHand = getAbsolutePoint(
-          { x: point.x - scrollLeft, y: point.y - scrollTop },
+      if (origin.x !== transform.originX || origin.y !== transform.originY) {
+        return `getSceneOrigin answered ${origin.x},${origin.y} for the stored origin`;
+      }
+
+      const rects = WIDTHS.map(width =>
+        getVisibleCanvasRect({
+          ...transform,
           width,
-          height,
-          zoomLevel
-        );
-        const authority = toScenePoint(transform, point);
+          height: width,
+          viewportWidth: viewport.width,
+          viewportHeight: viewport.height,
+        })
+      );
 
-        if (!close(byHand.x, authority.x) || !close(byHand.y, authority.y)) {
-          return `getAbsolutePoint after subtracting the scroll gave ${byHand.x},${byHand.y} where toScenePoint gives ${authority.x},${authority.y}`;
+      for (const rect of rects.slice(1)) {
+        if (
+          rect.x !== rects[0].x ||
+          rect.y !== rects[0].y ||
+          rect.width !== rects[0].width
+        ) {
+          return `the visible rect moved with the canvas box: ${JSON.stringify(rects)}`;
         }
       }
 
@@ -278,20 +322,65 @@ describe('the hand-spelled transforms still agree with the authority', () => {
     expect(bad).toEqual([]);
   });
 
-  it('places a scene point the way toScreenPoint does', () => {
-    const bad = failures(GRID, ({ transform }) => {
-      const origin = getSceneOrigin(transform);
+  /**
+   * The legacy oracle. A released editor inverted a screen point as the scroll
+   * plus half the shrink of the box about its middle, restated here inline; the
+   * parser's migration has to hand the canon the origin that reads the same.
+   */
+  it('reads a migrated legacy document the way the old editor did', () => {
+    const bad = failures(GRID, ({ legacy, transform }) => {
+      const { width, height, zoomLevel, scrollLeft, scrollTop } = legacy;
+      const oldScene = (point: { x: number; y: number }) => ({
+        x: (point.x - scrollLeft - (width * (1 - zoomLevel)) / 2) / zoomLevel,
+        y: (point.y - scrollTop - (height * (1 - zoomLevel)) / 2) / zoomLevel,
+      });
 
       for (const point of POINTS) {
-        const byHand = {
-          x: origin.x + point.x * transform.zoomLevel,
-          y: origin.y + point.y * transform.zoomLevel,
-        };
-        const authority = toScreenPoint(transform, point);
+        const legacyScene = oldScene(point);
+        const scene = toScenePoint(transform, point);
 
-        if (!close(byHand.x, authority.x) || !close(byHand.y, authority.y)) {
-          return `the origin plus a zoomed point gave ${byHand.x},${byHand.y} where toScreenPoint gives ${authority.x},${authority.y}`;
+        if (!close(scene.x, legacyScene.x) || !close(scene.y, legacyScene.y)) {
+          return `the old editor read screen ${point.x},${point.y} as scene ${legacyScene.x},${legacyScene.y}, the migrated origin reads ${scene.x},${scene.y}`;
         }
+      }
+
+      return null;
+    });
+
+    expect(bad).toEqual([]);
+  });
+
+  /**
+   * A document that already carries the origin pair is used as it stands. The
+   * legacy pair beside it may disagree, since a released editor saved a view of
+   * its own there, and nothing here reads it.
+   */
+  it('uses the origin pair a document carries as it is', () => {
+    const bad = failures(GRID, ({ legacy, transform }) => {
+      const disagreeing = {
+        ...legacy,
+        originX: transform.originX + 1_234,
+        originY: transform.originY - 567,
+      };
+
+      for (const point of POINTS) {
+        const scene = toScenePoint(disagreeing, point);
+        const expected = {
+          x: (point.x - disagreeing.originX) / legacy.zoomLevel,
+          y: (point.y - disagreeing.originY) / legacy.zoomLevel,
+        };
+
+        if (!close(scene.x, expected.x) || !close(scene.y, expected.y)) {
+          return `a document with its own origin read screen ${point.x},${point.y} as ${scene.x},${scene.y}, not ${expected.x},${expected.y}`;
+        }
+      }
+
+      const origin = getSceneOrigin(disagreeing);
+      if (
+        origin.x !== disagreeing.originX ||
+        origin.y !== disagreeing.originY
+      ) {
+        return `getSceneOrigin let the legacy pair in: ${origin.x},${origin.y}`;
       }
 
       return null;
@@ -307,30 +396,29 @@ describe('the hand-spelled transforms still agree with the authority', () => {
  */
 const AUTHORITY = [
   'konva/scene/viewport.ts',
-  'utils/dragSelect.ts',
   'engine/modules/settings/atom.actions.ts',
   'components/erd/minimap/minimapGeometry.ts',
 ];
 
 /**
- * Spellings that predate the authority and are proven equal to it above. A file
- * leaves this list by calling toScreenPoint or toScenePoint; nothing may join it
- * without the same proof, and the scan refuses an entry that no longer exists.
+ * Spellings that predate the authority and are proven equal to it above. The
+ * list is empty: every caller reaches the canon now, and nothing may join it
+ * without the same proof, since the scan refuses an entry that does not exist.
  */
-const QUARANTINE = [
-  'components/erd/Erd.tsx',
-  'components/erd/canvas/EditOverlay.tsx',
-  'components/erd/canvas/drag-select/DragSelect.tsx',
-  'engine/modules/editor/atom.actions.ts',
-  'utils/index.ts',
-];
+const QUARANTINE: string[] = [];
 
-const ZOOM_PRIMITIVES = new Set([
-  'getZoomViewport',
-  'getAbsoluteZoomPoint',
-  'getAbsolutePoint',
+/**
+ * The canon's exports. A file that calls one of these and then adds an origin
+ * to the answer, or scales around getSceneOrigin, is finishing the transform
+ * itself, which is the shape both scanned rules name.
+ */
+const CANON = new Set([
+  'getSceneOrigin',
+  'toScreenPoint',
+  'toScenePoint',
+  'getOriginToPlace',
 ]);
-const SCROLL_NAMES = new Set(['scrollLeft', 'scrollTop']);
+const ORIGIN_NAMES = new Set(['originX', 'originY']);
 const ZOOM_NAMES = new Set(['zoomLevel']);
 
 const ARITHMETIC = new Set([
@@ -384,6 +472,13 @@ function enclosingScopes(node: ts.Node): ts.Node[] {
   return scopes;
 }
 
+/** The scopes a site is keyed on: its functions, or the file for code outside any. */
+function siteScopes(node: ts.Node, sourceFile: ts.SourceFile): ts.Node[] {
+  const scopes = enclosingScopes(node);
+
+  return scopes.length ? scopes : [sourceFile];
+}
+
 /**
  * Whether the subtree reads one of these names as a value. A property key or a
  * renamed binding is the word, not the number, and reading a scroll off an
@@ -416,6 +511,74 @@ function reads(node: ts.Node, names: Set<string>): boolean {
   return found;
 }
 
+/**
+ * The names a file reads the origin under besides its own: a renamed binding,
+ * or a local built from an origin read, each kept to the function declaring it.
+ * Arithmetic on such a name is arithmetic on the origin, and is read as one.
+ */
+function collectOriginAliases(
+  sourceFile: ts.SourceFile
+): Map<ts.Node, Set<string>> {
+  const aliases = new Map<ts.Node, Set<string>>();
+  const add = (node: ts.Node, name: string) => {
+    const scope = siteScopes(node, sourceFile)[0];
+    const names = aliases.get(scope) ?? new Set<string>();
+    names.add(name);
+    aliases.set(scope, names);
+  };
+  const isCanonCall = (node: ts.Node) =>
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    CANON.has(node.expression.text);
+
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isBindingElement(node) &&
+      node.propertyName &&
+      ts.isIdentifier(node.propertyName) &&
+      ORIGIN_NAMES.has(node.propertyName.text) &&
+      ts.isIdentifier(node.name)
+    ) {
+      add(node, node.name.text);
+    }
+
+    // The canon's answer is a point, not the origin: the composed-by-hand rule
+    // is what watches an origin added to it.
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      !isCanonCall(node.initializer) &&
+      reads(node.initializer, originNamesAt(aliases, sourceFile, node))
+    ) {
+      add(node, node.name.text);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+
+  return aliases;
+}
+
+/** The origin's own names plus every alias visible from a node. */
+function originNamesAt(
+  aliases: Map<ts.Node, Set<string>>,
+  sourceFile: ts.SourceFile,
+  node: ts.Node
+): Set<string> {
+  const names = new Set(ORIGIN_NAMES);
+
+  for (const scope of [sourceFile, ...enclosingScopes(node)]) {
+    for (const name of aliases.get(scope) ?? []) {
+      names.add(name);
+    }
+  }
+
+  return names;
+}
+
 type Site = { line: number; text: string };
 
 function push(map: Map<ts.Node, Site[]>, scopes: ts.Node[], site: Site) {
@@ -426,6 +589,11 @@ function push(map: Map<ts.Node, Site[]>, scopes: ts.Node[], site: Site) {
   }
 }
 
+/**
+ * Each rule pairs its two halves inside one function, or at module level for
+ * code outside any, so the origin combined with the zoom across two functions
+ * of one file is a shape this scan does not see.
+ */
 export function analyze(file: string, source: string): Violation[] {
   const sourceFile = ts.createSourceFile(
     file,
@@ -440,9 +608,13 @@ export function analyze(file: string, source: string): Violation[] {
   const excerpt = (node: ts.Node) =>
     node.getText(sourceFile).replace(/\s+/g, ' ').slice(0, 60);
 
-  const primitives = new Map<ts.Node, Site[]>();
+  const aliases = collectOriginAliases(sourceFile);
+  const originNames = (node: ts.Node) =>
+    originNamesAt(aliases, sourceFile, node);
+
+  const canon = new Map<ts.Node, Site[]>();
   const origins = new Map<ts.Node, Site[]>();
-  const scrollMath = new Map<ts.Node, Site[]>();
+  const originMath = new Map<ts.Node, Site[]>();
   const zoomScaling = new Map<ts.Node, Site[]>();
 
   const visit = (node: ts.Node) => {
@@ -450,21 +622,22 @@ export function analyze(file: string, source: string): Violation[] {
       const name = node.expression.text;
       const site = { line: lineOf(node), text: name };
 
-      if (ZOOM_PRIMITIVES.has(name)) {
-        push(primitives, enclosingScopes(node), site);
+      if (CANON.has(name)) {
+        push(canon, siteScopes(node, sourceFile), site);
       }
 
       if (name === 'getSceneOrigin') {
-        push(origins, enclosingScopes(node), site);
+        push(origins, siteScopes(node, sourceFile), site);
       }
     }
 
     if (
       ts.isBinaryExpression(node) &&
       ARITHMETIC.has(node.operatorToken.kind) &&
-      (reads(node.left, SCROLL_NAMES) || reads(node.right, SCROLL_NAMES))
+      (reads(node.left, originNames(node)) ||
+        reads(node.right, originNames(node)))
     ) {
-      push(scrollMath, enclosingScopes(node), {
+      push(originMath, siteScopes(node, sourceFile), {
         line: lineOf(node),
         text: excerpt(node),
       });
@@ -473,9 +646,9 @@ export function analyze(file: string, source: string): Violation[] {
     if (
       ts.isPrefixUnaryExpression(node) &&
       node.operator === ts.SyntaxKind.MinusToken &&
-      reads(node.operand, SCROLL_NAMES)
+      reads(node.operand, originNames(node))
     ) {
-      push(scrollMath, enclosingScopes(node), {
+      push(originMath, siteScopes(node, sourceFile), {
         line: lineOf(node),
         text: excerpt(node),
       });
@@ -486,7 +659,7 @@ export function analyze(file: string, source: string): Violation[] {
       SCALING.has(node.operatorToken.kind) &&
       (reads(node.left, ZOOM_NAMES) || reads(node.right, ZOOM_NAMES))
     ) {
-      push(zoomScaling, enclosingScopes(node), {
+      push(zoomScaling, siteScopes(node, sourceFile), {
         line: lineOf(node),
         text: excerpt(node),
       });
@@ -506,17 +679,31 @@ export function analyze(file: string, source: string): Violation[] {
     violations.push(violation);
   };
 
-  for (const [scope, calls] of primitives) {
-    const math = scrollMath.get(scope);
+  for (const [scope, math] of originMath) {
+    const scaling = zoomScaling.get(scope);
+    if (!scaling) continue;
+
+    record({
+      file,
+      line: math[0].line,
+      rule: 'origin-transformed-by-hand',
+      detail: `${math[0].text} sits in the same function as ${scaling[0].text} on line ${scaling[0].line}, so this file combines the origin with the zoom itself`,
+      remedy:
+        'call toScreenPoint, toScenePoint or getOriginToPlace from @/konva/scene/viewport and pass the settings whole',
+    });
+  }
+
+  for (const [scope, calls] of canon) {
+    const math = originMath.get(scope);
     if (!math) continue;
 
     record({
       file,
       line: math[0].line,
-      rule: 'scroll-composed-by-hand',
-      detail: `${math[0].text} sits in the same function as ${calls[0].text} on line ${calls[0].line}, so this file adds the scroll to a zoom primitive itself`,
+      rule: 'origin-composed-by-hand',
+      detail: `${math[0].text} sits in the same function as ${calls[0].text} on line ${calls[0].line}, so this file adds an origin to the canon's answer itself`,
       remedy:
-        'call toScreenPoint or toScenePoint from @/konva/scene/viewport and pass the settings whole',
+        'hand the canon the whole settings and use its answer as it is; the origin is already inside it',
     });
   }
 
@@ -561,24 +748,18 @@ function collect(dir: string, files: string[] = []): string[] {
 }
 
 const OLD_HIDE_SIGN = `
-import { getAbsolutePoint, getAbsoluteZoomPoint } from '@/utils/dragSelect';
-
 export const getPositionStyle = (point: Point, store: Store) => {
-  const { width, height, zoomLevel } = store.state.settings;
-  const { scrollLeft, scrollTop } = state;
-  const { x: absoluteZoomX, y: absoluteZoomY } = getAbsoluteZoomPoint(
-    point, width, height, zoomLevel
-  );
-  return { top: absoluteZoomY + scrollTop, left: absoluteZoomX + scrollLeft };
+  const { zoomLevel } = store.state.settings;
+  const { originX, originY } = state;
+  return { top: originY + point.y * zoomLevel, left: originX + point.x * zoomLevel };
 };
 
 export const getMoveToPoint = (event: MouseEvent, rect: DOMRect) => {
-  const { width, height, zoomLevel, scrollLeft, scrollTop } = settings;
-  const targetPoint = {
-    x: event.clientX - rect.x - scrollLeft,
-    y: event.clientY - rect.y - scrollTop,
+  const { zoomLevel, originX, originY } = settings;
+  return {
+    x: (event.clientX - rect.x - originX) / zoomLevel,
+    y: (event.clientY - rect.y - originY) / zoomLevel,
   };
-  return getAbsolutePoint(targetPoint, width, height, zoomLevel);
 };
 `;
 
@@ -586,15 +767,35 @@ const NEW_HIDE_SIGN = `
 import { toScenePoint, toScreenPoint } from '@/konva/scene/viewport';
 
 export const getPositionStyle = (point: Point, store: Store) => {
-  const { width, height, zoomLevel } = store.state.settings;
-  const { scrollLeft, scrollTop } = state;
-  const screen = toScreenPoint({ width, height, zoomLevel, scrollLeft, scrollTop }, point);
+  const { zoomLevel } = store.state.settings;
+  const { originX, originY } = state;
+  const screen = toScreenPoint({ zoomLevel, originX, originY }, point);
   return { top: screen.y, left: screen.x };
 };
 
 export const getMoveToPoint = (event: MouseEvent, rect: DOMRect) => {
   return toScenePoint(settings, { x: event.clientX - rect.x, y: event.clientY - rect.y });
 };
+`;
+
+const RENAMED_ORIGIN = `
+export const getPositionStyle = (point: Point, settings: Settings) => {
+  const { zoomLevel, originX: left, originY: top } = settings;
+  return { top: top + point.y * zoomLevel, left: left + point.x * zoomLevel };
+};
+
+export const getMoveToPoint = (event: MouseEvent, settings: Settings) => {
+  const { zoomLevel } = settings;
+  const origin = { x: settings.originX, y: settings.originY };
+  const dx = event.clientX - origin.x;
+  return { x: dx / zoomLevel, y: (event.clientY - origin.y) / zoomLevel };
+};
+`;
+
+const TOP_LEVEL_ORIGIN = `
+import { settings } from './state';
+
+export const shifted = settings.originX + 10 * settings.zoomLevel;
 `;
 
 const OVERLAY_IN_JSX = `
@@ -618,6 +819,28 @@ const Overlay: FC = (props, ctx) => () => {
 };
 `;
 
+const JUMP_BY_HAND = `
+import { getOriginToPlace } from '@/konva/scene/viewport';
+
+export const jumpTo = (table: Table, settings: Settings) => {
+  const origin = getOriginToPlace(settings.zoomLevel, table.ui, { x: 0, y: 0 });
+  return { originX: origin.x + settings.originX, originY: origin.y };
+};
+`;
+
+const JUMP_THROUGH_CANON = `
+import { getOriginToPlace } from '@/konva/scene/viewport';
+
+export const jumpTo = (table: Table, settings: Settings) => {
+  const { zoomLevel } = settings;
+  const { x, y } = getOriginToPlace(zoomLevel, table.ui, {
+    x: START_X * zoomLevel,
+    y: START_Y * zoomLevel,
+  });
+  return { originX: x, originY: y };
+};
+`;
+
 describe('nobody outside the authority spells the transform', () => {
   it('reads the sources it means to read', () => {
     const files = collect(SRC_ROOT).map(file => relative(SRC_ROOT, file));
@@ -629,17 +852,36 @@ describe('nobody outside the authority spells the transform', () => {
     }
   });
 
-  it('finds the hand-spelled shapes the hide sign used to carry', () => {
+  it('finds the origin combined with the zoom by hand', () => {
     const found = analyze('HideSign.tsx', OLD_HIDE_SIGN);
 
     expect(found.map(violation => violation.rule)).toEqual([
-      'scroll-composed-by-hand',
-      'scroll-composed-by-hand',
+      'origin-transformed-by-hand',
+      'origin-transformed-by-hand',
     ]);
   });
 
   it('says nothing about the same component once it calls the authority', () => {
     expect(analyze('HideSign.tsx', NEW_HIDE_SIGN)).toEqual([]);
+  });
+
+  it('follows the origin into a renamed binding and a local built from it', () => {
+    const found = analyze('HideSign.tsx', RENAMED_ORIGIN);
+
+    expect(found.map(violation => violation.rule)).toEqual([
+      'origin-transformed-by-hand',
+      'origin-transformed-by-hand',
+    ]);
+    expect(found.map(violation => violation.line)).toEqual([4, 10]);
+  });
+
+  it('reads code outside any function as one site of its own', () => {
+    const found = analyze('shift.ts', TOP_LEVEL_ORIGIN);
+
+    expect(found.map(violation => violation.rule)).toEqual([
+      'origin-transformed-by-hand',
+    ]);
+    expect(found.map(violation => violation.line)).toEqual([4]);
   });
 
   it('reads jsx with the r-html sigils, not only plain typescript', () => {
@@ -648,6 +890,18 @@ describe('nobody outside the authority spells the transform', () => {
     expect(found.map(violation => violation.rule)).toEqual([
       'origin-scaled-by-hand',
     ]);
+  });
+
+  it('finds an origin added to the answer the canon gave', () => {
+    const found = analyze('jump.ts', JUMP_BY_HAND);
+
+    expect(found.map(violation => violation.rule)).toEqual([
+      'origin-composed-by-hand',
+    ]);
+  });
+
+  it('allows a landing point scaled by the zoom and handed to the canon', () => {
+    expect(analyze('jump.ts', JUMP_THROUGH_CANON)).toEqual([]);
   });
 
   it('leaves the transform to the files that own it', () => {

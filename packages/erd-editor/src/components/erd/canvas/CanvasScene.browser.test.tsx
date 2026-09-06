@@ -115,21 +115,21 @@ describe('the canvas scene', () => {
     ]);
   });
 
-  it('moves the scroll and the zoom onto the layers that hold the document', async () => {
+  it('moves the origin and the zoom onto the layers that hold the document', async () => {
     const { app, stage } = await mountScene();
 
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -100, scrollTop: -50 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -100, originY: -50 }));
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     await flush();
 
-    // The css transform scaled about the middle of the 2000px canvas box, so
-    // half the shrink joins the scroll: -100 + 2000 * (1 - 0.5) / 2.
+    // The layer sits at the origin the document stores, and a zoom on its own
+    // leaves that origin where it is.
+    const { originX, originY } = app.store.state.settings;
+    expect([originX, originY]).toEqual([-100, -50]);
     for (const name of ['scene', 'presence']) {
       const layer = stage.findOne(`.${name}`)!;
-      expect(layer.x()).toBe(400);
-      expect(layer.y()).toBe(450);
+      expect(layer.x()).toBe(originX);
+      expect(layer.y()).toBe(originY);
       expect(layer.scaleX()).toBe(0.5);
       expect(layer.scaleY()).toBe(0.5);
     }
@@ -138,9 +138,7 @@ describe('the canvas scene', () => {
   it('leaves the marquee layer in screen space', async () => {
     const { app, stage } = await mountScene();
 
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -100, scrollTop: -50 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -100, originY: -50 }));
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     await flush();
 
@@ -163,9 +161,9 @@ describe('the canvas scene', () => {
   });
 
   /**
-   * A big canvas at a low zoom, the pair the culling rect used to fall apart on.
-   * The scene layer slides by half the shrink of the canvas box, so a rect that
-   * reads only the scroll walks off the screen it is meant to describe.
+   * A big canvas at a low zoom, the pair the culling rect used to fall apart on
+   * when the scene layer slid by half the shrink of the canvas box. The origin
+   * is the document's own now, and the rect reads the very same one.
    */
   describe('with the canvas box far larger than the screen', () => {
     const CANVAS = 8000;
@@ -181,10 +179,7 @@ describe('the canvas scene', () => {
       // Puts the scene origin on the stage origin, so screen equals scene
       // times the zoom and a table's screen box is its position halved.
       mounted.app.store.dispatchSync(
-        scrollToAction({
-          scrollLeft: -(CANVAS * (1 - ZOOM)) / 2,
-          scrollTop: -(CANVAS * (1 - ZOOM)) / 2,
-        })
+        scrollToAction({ originX: 0, originY: 0 })
       );
       await flush();
 
@@ -195,7 +190,7 @@ describe('the canvas scene', () => {
       app.store.dispatchSync(addTableAction({ id, ui: { x, y, zIndex: 2 } }));
     };
 
-    it('places the layer where half the canvas shrink cancels the scroll', async () => {
+    it('places the layer on the stage origin for an origin of zero', async () => {
       const { stage } = await mountShrunkCanvas();
       const layer = stage.findOne('.scene')!;
 
@@ -291,7 +286,7 @@ describe('the canvas scene', () => {
     seedTable(app, 'far', 5000);
     await flush();
 
-    app.store.dispatchSync(scrollToAction({ scrollLeft: -4500, scrollTop: 0 }));
+    app.store.dispatchSync(scrollToAction({ originX: -4500, originY: 0 }));
     await flush();
 
     expect(drawnTableIdsOf(stage)).toEqual(['table-far']);
@@ -299,12 +294,8 @@ describe('the canvas scene', () => {
   });
 
   describe('a table that scrolls off', () => {
-    const scrollTo = async (
-      app: AppContext,
-      scrollLeft: number,
-      scrollTop = 0
-    ) => {
-      app.store.dispatchSync(scrollToAction({ scrollLeft, scrollTop }));
+    const scrollTo = async (app: AppContext, originX: number, originY = 0) => {
+      app.store.dispatchSync(scrollToAction({ originX, originY }));
       await flush();
     };
 
@@ -481,9 +472,7 @@ describe('the canvas background', () => {
   it('is placed at the very origin the scene layer is placed at', async () => {
     const { app, stage } = await mountScene();
 
-    app.store.dispatchSync(
-      scrollToAction({ scrollLeft: -100, scrollTop: -50 })
-    );
+    app.store.dispatchSync(scrollToAction({ originX: -100, originY: -50 }));
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     await flush();
 
@@ -527,14 +516,21 @@ describe('the canvas background', () => {
   it('stops short of the stage once the zoom shrinks the canvas box', async () => {
     const { app, stage } = await mountScene();
 
-    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    // At 0.4 the 2000px box draws 800 wide, and an origin of 100 is inside the
+    // travel that zoom allows, so the box sits 100 in from every stage edge.
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.4 }));
+    app.store.dispatchSync(scrollToAction({ originX: 100, originY: 100 }));
     await flush();
 
-    // Half the shrink of the 2000px box travels with the scroll, so the box
-    // lands at 500 and spans 1000 of the 1000px stage from there.
     const box = backgroundRectOf(stage).getClientRect();
-    expect(box).toEqual({ x: 500, y: 500, width: 1000, height: 1000 });
+    expect(box).toEqual({
+      x: 100,
+      y: 100,
+      width: CANVAS * 0.4,
+      height: CANVAS * 0.4,
+    });
     expect(box.x).toBeGreaterThan(0);
+    expect(box.x + box.width).toBeLessThan(VIEWPORT);
     expect(stage.width()).toBe(VIEWPORT);
   });
 });

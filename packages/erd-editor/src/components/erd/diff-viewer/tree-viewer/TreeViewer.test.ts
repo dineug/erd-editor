@@ -11,7 +11,9 @@ import { AppContext } from '@/components/appContext';
 import { diffState } from '@/components/erd/diff-viewer/diff';
 import TreeViewer from '@/components/erd/diff-viewer/tree-viewer/TreeViewer';
 import * as styles from '@/components/erd/diff-viewer/tree-viewer/TreeViewer.styles';
+import { START_X, START_Y } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableCommentAction,
@@ -22,6 +24,7 @@ import {
   changeColumnDataTypeAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { toScreenPoint } from '@/konva/scene/viewport';
 
 type ColumnSeed = { id: string; name: string; dataType?: string };
 
@@ -321,10 +324,10 @@ describe('TreeViewer', () => {
     expect(app.store.state.editor.selectedMap.n1).toBeTruthy();
     expect(prevApp.store.state.editor.focusTable?.tableId).toBe('p1');
     expect(app.store.state.editor.focusTable?.tableId).toBe('n1');
-    expect(prevApp.store.state.settings.scrollLeft).toBe(-500);
-    expect(prevApp.store.state.settings.scrollTop).toBe(-400);
-    expect(app.store.state.settings.scrollLeft).toBe(-500);
-    expect(app.store.state.settings.scrollTop).toBe(-400);
+    expect(prevApp.store.state.settings.originX).toBe(-500);
+    expect(prevApp.store.state.settings.originY).toBe(-400);
+    expect(app.store.state.settings.originX).toBe(-500);
+    expect(app.store.state.settings.originY).toBe(-400);
   });
 
   it('moves only the previous side for a delete only row', async () => {
@@ -338,9 +341,9 @@ describe('TreeViewer', () => {
     await flush();
 
     expect(prevApp.store.state.editor.selectedMap.p1).toBeTruthy();
-    expect(prevApp.store.state.settings.scrollLeft).toBe(-500);
+    expect(prevApp.store.state.settings.originX).toBe(-500);
     expect(app.store.state.editor.selectedMap.n1).toBeFalsy();
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 
   it('moves only the new side for an insert only row', async () => {
@@ -354,9 +357,9 @@ describe('TreeViewer', () => {
     await flush();
 
     expect(app.store.state.editor.selectedMap.n1).toBeTruthy();
-    expect(app.store.state.settings.scrollLeft).toBe(-500);
+    expect(app.store.state.settings.originX).toBe(-500);
     expect(prevApp.store.state.editor.selectedMap.p1).toBeFalsy();
-    expect(prevApp.store.state.settings.scrollLeft).toBe(0);
+    expect(prevApp.store.state.settings.originX).toBe(0);
   });
 
   it('clicking a column row moves to its owning table', async () => {
@@ -388,6 +391,38 @@ describe('TreeViewer', () => {
     expect(app.store.state.editor.selectedMap.n1).toBeTruthy();
   });
 
+  /**
+   * The landing point the DOM scene had: the table parks START_X, START_Y in
+   * from the corner, scaled by the zoom, so at 0.5 it sits 100 px in and at 1.5
+   * it sits 300 px in, from a position whose origins the 1000 by 800 screen allows.
+   */
+  it.each([0.5, 1, 1.5])(
+    'parks both tables a zoomed START_X, START_Y in from the corner at zoom %s',
+    async zoomLevel => {
+      const { prevApp, app } = await mountTree(
+        [{ id: 'p1', name: 'users', comment: 'old', x: 300, y: 300 }],
+        [{ id: 'n1', name: 'users', comment: 'new', x: 300, y: 300 }]
+      );
+      for (const side of [prevApp, app]) {
+        side.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+      }
+
+      tableRows()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flush();
+
+      for (const [side, id] of [
+        [prevApp, 'p1'],
+        [app, 'n1'],
+      ] as const) {
+        const table = side.store.state.collections.tableEntities[id];
+        const screen = toScreenPoint(side.store.state.settings, table.ui);
+
+        expect(screen.x).toBeCloseTo(START_X * zoomLevel, 4);
+        expect(screen.y).toBeCloseTo(START_Y * zoomLevel, 4);
+      }
+    }
+  );
+
   it('ignores a click whose table has vanished from the collection', async () => {
     const { prevApp, app } = await mountTree(
       [{ id: 'p1', name: 'users', comment: 'old', x: 700, y: 500 }],
@@ -400,8 +435,8 @@ describe('TreeViewer', () => {
     tableRows()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await flush();
 
-    expect(prevApp.store.state.settings.scrollLeft).toBe(0);
-    expect(app.store.state.settings.scrollLeft).toBe(0);
+    expect(prevApp.store.state.settings.originX).toBe(0);
+    expect(app.store.state.settings.originX).toBe(0);
     expect(prevApp.store.state.editor.selectedMap.p1).toBeFalsy();
   });
 });

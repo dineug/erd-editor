@@ -23,15 +23,15 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
   const styleMap = () => {
     const { store } = app.value;
     const {
-      settings: { width, height, scrollLeft, scrollTop, zoomLevel },
+      settings: { width, height, originX, originY, zoomLevel },
       editor: { viewport },
     } = store.state;
 
     const rect = getMinimapHandleRect({
       width,
       height,
-      scrollLeft,
-      scrollTop,
+      originX,
+      originY,
       zoomLevel,
       viewportWidth: viewport.width,
       viewportHeight: viewport.height,

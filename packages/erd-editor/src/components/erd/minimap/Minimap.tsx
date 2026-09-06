@@ -78,13 +78,13 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
 
   /**
    * Centres the screen on the pressed point. The press lands in minimap pixels
-   * and the ratio turns it into canvas units, which is a zoom free step; how
-   * much scroll reaches that point is not, so the geometry does that half.
+   * and the ratio turns it into canvas units, which is a zoom free step; which
+   * origin reaches that point is not, so the geometry does that half.
    */
   const handleMove = (event: MouseEvent | TouchEvent) => {
     const { store } = app.value;
     const {
-      settings: { width, height, scrollLeft, scrollTop, zoomLevel },
+      settings: { width, height, originX, originY, zoomLevel },
       editor: { viewport },
     } = store.state;
     const ratio = getMinimapRatio(width);
@@ -101,12 +101,12 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       x: (clientX - rect.x) / ratio,
       y: (clientY - rect.y) / ratio,
     };
-    const scroll = getScrollToCenter(
+    const origin = getScrollToCenter(
       {
         width,
         height,
-        scrollLeft,
-        scrollTop,
+        originX,
+        originY,
         zoomLevel,
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
@@ -114,9 +114,7 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       center
     );
 
-    store.dispatch(
-      scrollToAction({ scrollLeft: scroll.x, scrollTop: scroll.y })
-    );
+    store.dispatch(scrollToAction({ originX: origin.x, originY: origin.y }));
 
     onScrollStart(event);
   };

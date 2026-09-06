@@ -5,7 +5,7 @@ import {
   type Page,
 } from '@playwright/test';
 
-import { type ErdDocument } from './schema';
+import { type ErdDocument, type LiveSettings } from './schema';
 import { SCENE_MIRROR_FLAG } from './sceneMirror';
 import { MOD_KEY, type Shortcut } from './shortcuts';
 
@@ -139,8 +139,8 @@ export class ErdEditorPage {
     return collections.tableColumnEntities[id];
   }
 
-  async settings() {
-    return (await this.value()).settings;
+  async settings(): Promise<LiveSettings> {
+    return (await this.value()).settings as LiveSettings;
   }
 
   async columnIds(tableId: string) {

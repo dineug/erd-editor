@@ -30,7 +30,7 @@ import {
   addTableAction$,
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
-import { getAbsoluteZoomPoint } from '@/utils/dragSelect';
+import { getOriginToPlace } from '@/konva/scene/viewport';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
   importAML,
@@ -313,19 +313,16 @@ function createTableActions({ store }: AppContext): Action[] {
       keywords: 'Table',
       perform: ({ store }) => {
         const {
-          settings: { width, height, zoomLevel },
+          settings: { zoomLevel },
         } = store.state;
-        const { x, y } = getAbsoluteZoomPoint(
-          { x: table.ui.x - START_X, y: table.ui.y - START_Y },
-          width,
-          height,
-          zoomLevel
-        );
+        // The table parks a zoomed START_X, START_Y in from the corner: the
+        // landing point the DOM scene had, kept so a jump looks the same.
+        const { x, y } = getOriginToPlace(zoomLevel, table.ui, {
+          x: START_X * zoomLevel,
+          y: START_Y * zoomLevel,
+        });
         store.dispatch(
-          scrollToAction({
-            scrollLeft: x * -1,
-            scrollTop: y * -1,
-          }),
+          scrollToAction({ originX: x, originY: y }),
           selectTableAction$(table.id, false)
         );
       },

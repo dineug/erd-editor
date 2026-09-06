@@ -44,6 +44,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
+import { getSceneOrigin } from '@/konva/scene/viewport';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -60,7 +61,7 @@ describe('settings/atom.actions', () => {
 
   beforeEach(() => {
     store = createTestStore();
-    // deterministic viewport: scroll ranges become [-1000, 0] x [-1200, 0]
+    // deterministic viewport: origin ranges become [-1000, 0] x [-1200, 0]
     store.dispatchSync(changeViewportAction({ width: 1000, height: 800 }));
   });
 
@@ -124,6 +125,21 @@ describe('settings/atom.actions', () => {
       expect(store.state.settings.width).toBe(CANVAS_SIZE_MIN);
       expect(store.state.settings.height).toBe(CANVAS_SIZE_MAX);
     });
+
+    // The origin is stored, not derived from the box, so a resize at any zoom
+    // moves nothing on screen; the old derived origin slid by half the change.
+    it('changes the box alone and leaves the origin where it stands', () => {
+      store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+      store.dispatchSync(scrollToAction({ originX: -120, originY: -80 }));
+      const before = getSceneOrigin(store.state.settings);
+      expect(before).toEqual({ x: -120, y: -80 });
+
+      store.dispatchSync(resizeAction({ width: 4000, height: 4000 }));
+
+      expect(store.state.settings.width).toBe(4000);
+      expect(store.state.settings.height).toBe(4000);
+      expect(getSceneOrigin(store.state.settings)).toEqual(before);
+    });
   });
 
   describe('changeZoomLevel', () => {
@@ -184,36 +200,52 @@ describe('settings/atom.actions', () => {
   });
 
   describe('scrollTo', () => {
-    it('clamps the scroll offsets against viewport minus canvas size', () => {
-      store.dispatchSync(scrollToAction({ scrollTop: -300, scrollLeft: -250 }));
-      expect(store.state.settings.scrollTop).toBe(-300);
-      expect(store.state.settings.scrollLeft).toBe(-250);
+    it('clamps the origin against viewport minus canvas size', () => {
+      store.dispatchSync(scrollToAction({ originY: -300, originX: -250 }));
+      expect(store.state.settings.originY).toBe(-300);
+      expect(store.state.settings.originX).toBe(-250);
 
-      store.dispatchSync(scrollToAction({ scrollTop: 500, scrollLeft: 500 }));
-      expect(store.state.settings.scrollTop).toBe(0);
-      expect(store.state.settings.scrollLeft).toBe(0);
+      store.dispatchSync(scrollToAction({ originY: 500, originX: 500 }));
+      expect(store.state.settings.originY).toBe(0);
+      expect(store.state.settings.originX).toBe(0);
 
       store.dispatchSync(
-        scrollToAction({ scrollTop: -99_999, scrollLeft: -99_999 })
+        scrollToAction({ originY: -99_999, originX: -99_999 })
       );
-      expect(store.state.settings.scrollTop).toBe(800 - 2000);
-      expect(store.state.settings.scrollLeft).toBe(1000 - 2000);
+      expect(store.state.settings.originY).toBe(800 - 2000);
+      expect(store.state.settings.originX).toBe(1000 - 2000);
     });
 
     it('rounds to four decimals', () => {
       store.dispatchSync(
-        scrollToAction({ scrollTop: -1.123456789, scrollLeft: -2.987654321 })
+        scrollToAction({ originY: -1.123456789, originX: -2.987654321 })
       );
-      expect(store.state.settings.scrollTop).toBe(-1.1235);
-      expect(store.state.settings.scrollLeft).toBe(-2.9877);
+      expect(store.state.settings.originY).toBe(-1.1235);
+      expect(store.state.settings.originX).toBe(-2.9877);
     });
 
     it('is a no-op for following-tagged actions', () => {
       store.dispatchSync(
-        tag(scrollToAction({ scrollTop: -10, scrollLeft: -10 }), Tag.following)
+        tag(scrollToAction({ originY: -10, originX: -10 }), Tag.following)
       );
-      expect(store.state.settings.scrollTop).toBe(0);
-      expect(store.state.settings.scrollLeft).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
+      expect(store.state.settings.originX).toBe(0);
+    });
+
+    it('never touches the legacy scroll pair', () => {
+      // A pair the default would not tell apart from a zeroing reducer.
+      store.state.settings.scrollLeft = -300;
+      store.state.settings.scrollTop = -400;
+
+      store.dispatchSync(scrollToAction({ originY: -300, originX: -250 }));
+      store.dispatchSync(
+        streamScrollToAction({ movementX: -100, movementY: -200 })
+      );
+
+      expect(store.state.settings.originX).toBe(-350);
+      expect(store.state.settings.originY).toBe(-500);
+      expect(store.state.settings.scrollLeft).toBe(-300);
+      expect(store.state.settings.scrollTop).toBe(-400);
     });
   });
 
@@ -222,20 +254,20 @@ describe('settings/atom.actions', () => {
       store.dispatchSync(
         streamScrollToAction({ movementX: -100, movementY: -200 })
       );
-      expect(store.state.settings.scrollLeft).toBe(-100);
-      expect(store.state.settings.scrollTop).toBe(-200);
+      expect(store.state.settings.originX).toBe(-100);
+      expect(store.state.settings.originY).toBe(-200);
 
       store.dispatchSync(
         streamScrollToAction({ movementX: -100, movementY: -200 })
       );
-      expect(store.state.settings.scrollLeft).toBe(-200);
-      expect(store.state.settings.scrollTop).toBe(-400);
+      expect(store.state.settings.originX).toBe(-200);
+      expect(store.state.settings.originY).toBe(-400);
 
       store.dispatchSync(
         streamScrollToAction({ movementX: 99_999, movementY: 99_999 })
       );
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      expect(store.state.settings.originX).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
     });
 
     it('is a no-op for following-tagged actions', () => {
@@ -245,8 +277,8 @@ describe('settings/atom.actions', () => {
           Tag.following
         )
       );
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      expect(store.state.settings.originX).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
     });
   });
 
@@ -255,12 +287,8 @@ describe('settings/atom.actions', () => {
    * back from the helper the reducer clamps with, so the two have to agree
    * instead of restating one another.
    */
-  const toScreen = (
-    scene: number,
-    scroll: number,
-    size: number,
-    zoomLevel: number
-  ) => scene * zoomLevel + scroll + (size * (1 - zoomLevel)) / 2;
+  const toScreen = (scene: number, origin: number, zoomLevel: number) =>
+    scene * zoomLevel + origin;
 
   /**
    * That placement inverted at the middle of the screen. The range is written
@@ -268,19 +296,17 @@ describe('settings/atom.actions', () => {
    * reducer happens to store.
    */
   const atCentre = (
-    scroll: number,
-    size: number,
+    origin: number,
     zoomLevel: number,
     viewportLength: number
-  ) => (viewportLength / 2 - scroll - (size * (1 - zoomLevel)) / 2) / zoomLevel;
+  ) => (viewportLength / 2 - origin) / zoomLevel;
 
-  /** The scroll that puts a scene point under the middle of the screen. */
-  const toScroll = (
+  /** The origin that puts a scene point under the middle of the screen. */
+  const toOrigin = (
     centre: number,
-    size: number,
     zoomLevel: number,
     viewportLength: number
-  ) => viewportLength / 2 - centre * zoomLevel - (size * (1 - zoomLevel)) / 2;
+  ) => viewportLength / 2 - centre * zoomLevel;
 
   describe('the scroll range the zoom draws', () => {
     const VIEWPORT_WIDTH = 1000;
@@ -310,77 +336,77 @@ describe('settings/atom.actions', () => {
         const insetY = halfScreen(VIEWPORT_HEIGHT, zoomLevel);
 
         store.dispatchSync(
-          scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
+          scrollToAction({ originY: 1_000_000, originX: 1_000_000 })
         );
-        const { scrollLeft: atStart, scrollTop: atTop } = store.state.settings;
+        const { originX: atStart, originY: atTop } = store.state.settings;
 
-        expect(atCentre(atStart, size, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
+        expect(atCentre(atStart, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
           Math.min(insetX, size - insetX),
           3
         );
-        expect(atCentre(atTop, size, zoomLevel, VIEWPORT_HEIGHT)).toBeCloseTo(
+        expect(atCentre(atTop, zoomLevel, VIEWPORT_HEIGHT)).toBeCloseTo(
           Math.min(insetY, size - insetY),
           3
         );
 
         store.dispatchSync(
-          scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
+          scrollToAction({ originY: -1_000_000, originX: -1_000_000 })
         );
-        const { scrollLeft: atEnd, scrollTop: atBottom } = store.state.settings;
+        const { originX: atEnd, originY: atBottom } = store.state.settings;
 
-        expect(atCentre(atEnd, size, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
+        expect(atCentre(atEnd, zoomLevel, VIEWPORT_WIDTH)).toBeCloseTo(
           Math.max(insetX, size - insetX),
           3
         );
-        expect(
-          atCentre(atBottom, size, zoomLevel, VIEWPORT_HEIGHT)
-        ).toBeCloseTo(Math.max(insetY, size - insetY), 3);
+        expect(atCentre(atBottom, zoomLevel, VIEWPORT_HEIGHT)).toBeCloseTo(
+          Math.max(insetY, size - insetY),
+          3
+        );
       }
     );
 
     /**
-     * The magnifying half of the range, which the pre-canvas clamp had no term
-     * for: at zoom 1.5 the 2000 box draws 3000 wide and starts 500 to the left
-     * of the scroll, so the offset has to go positive to show the left edge.
+     * The magnifying half of the range: at zoom 1.5 the 2000 box draws 3000
+     * wide, so the origin runs from zero, where the box's left edge meets the
+     * screen's, back to where its right edge meets the screen's right edge.
      */
-    it('lets the scroll go positive once the zoom magnifies', () => {
+    it('holds the origin at zero at the near end once the zoom magnifies', () => {
       place(2_000, 1.5);
+      const drawn = 2_000 * 1.5;
 
       store.dispatchSync(
-        scrollToAction({ scrollTop: 1_000_000, scrollLeft: 1_000_000 })
+        scrollToAction({ originY: 1_000_000, originX: 1_000_000 })
       );
-      expect(store.state.settings.scrollLeft).toBe(500);
-      expect(store.state.settings.scrollTop).toBe(500);
+      expect(store.state.settings.originX).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
 
       store.dispatchSync(
-        scrollToAction({ scrollTop: -1_000_000, scrollLeft: -1_000_000 })
+        scrollToAction({ originY: -1_000_000, originX: -1_000_000 })
       );
-      expect(store.state.settings.scrollLeft).toBe(1000 - 3000 + 500);
-      expect(store.state.settings.scrollTop).toBe(800 - 3000 + 500);
+      expect(store.state.settings.originX).toBe(VIEWPORT_WIDTH - drawn);
+      expect(store.state.settings.originY).toBe(VIEWPORT_HEIGHT - drawn);
     });
 
     /**
-     * The pre-canvas range written longhand. A magnifying zoom is the half of
-     * the travel that was already right, so the new range has to hand back the
-     * same bits there rather than merely the same neighbourhood.
+     * The magnifying range written longhand. Past zoom 1 the screen shows less
+     * than the box, so the two ends are the box's own edges meeting the screen's
+     * and nothing of the shrinking half's inset survives.
      */
-    const preCanvasRange = (
+    const magnifiedRange = (
       size: number,
       zoomLevel: number,
       viewportLength: number
     ) => {
       const drawn = size * zoomLevel;
-      const offset = (size - drawn) / 2;
 
       return {
-        min:
-          Math.min(viewportLength - size, viewportLength - drawn - offset) + 0,
-        max: Math.max(0, -offset) + 0,
+        min: Math.min(viewportLength - drawn, 0) + 0,
+        max: Math.max(viewportLength - drawn, 0) + 0,
       };
     };
 
     it.each([1, 1.1, 1.25, 1.5])(
-      'is the pre-canvas range bit for bit at zoom %s',
+      'runs the origin from the drawn far edge to zero bit for bit at zoom %s',
       zoomLevel => {
         const off: string[] = [];
 
@@ -395,8 +421,8 @@ describe('settings/atom.actions', () => {
               viewport
             );
             const expected = {
-              left: preCanvasRange(size, zoomLevel, viewport.width),
-              top: preCanvasRange(size, zoomLevel, viewport.height),
+              left: magnifiedRange(size, zoomLevel, viewport.width),
+              top: magnifiedRange(size, zoomLevel, viewport.height),
             };
 
             for (const axis of ['left', 'top'] as const) {
@@ -418,7 +444,7 @@ describe('settings/atom.actions', () => {
 
     /**
      * The shrinking half, which is where the defect lived. The screen's own
-     * edges stay on the document, so the two offsets close in on each other by
+     * edges stay on the document, so the two ends close in on each other by
      * the zoom instead of holding the unzoomed box's pair.
      */
     it.each([1, 0.9, 0.5, 0.25, CANVAS_ZOOM_MIN])(
@@ -430,8 +456,8 @@ describe('settings/atom.actions', () => {
           store.state.editor.viewport
         );
         const ends = (viewportLength: number) => ({
-          min: ((viewportLength - 2_000) * (1 + zoomLevel)) / 2,
-          max: ((viewportLength - 2_000) * (1 - zoomLevel)) / 2,
+          min: (viewportLength * (1 + zoomLevel)) / 2 - 2_000 * zoomLevel,
+          max: (viewportLength * (1 - zoomLevel)) / 2,
         });
 
         expect(left.min).toBeCloseTo(ends(VIEWPORT_WIDTH).min, 9);
@@ -479,8 +505,8 @@ describe('settings/atom.actions', () => {
 
             for (const [axis, range, viewportLength] of axes) {
               for (const end of ['min', 'max'] as const) {
-                const near = toScreen(0, range[end], size, zoomLevel);
-                const far = toScreen(size, range[end], size, zoomLevel);
+                const near = toScreen(0, range[end], zoomLevel);
+                const far = toScreen(size, range[end], zoomLevel);
                 const shown = Math.min(far, viewportLength) - Math.max(near, 0);
 
                 if (shown > 0) continue;
@@ -510,8 +536,8 @@ describe('settings/atom.actions', () => {
           store.state.settings,
           store.state.editor.viewport
         );
-        const low = atCentre(left.max, 2_000, zoomLevel, VIEWPORT_WIDTH);
-        const high = atCentre(left.min, 2_000, zoomLevel, VIEWPORT_WIDTH);
+        const low = atCentre(left.max, zoomLevel, VIEWPORT_WIDTH);
+        const high = atCentre(left.min, zoomLevel, VIEWPORT_WIDTH);
 
         if (Math.abs(low - VIEWPORT_WIDTH / 2) > 1e-9) {
           drift.push(
@@ -530,23 +556,21 @@ describe('settings/atom.actions', () => {
 
     /**
      * The reversibility that follows, stated on the reducer: a zoom gesture
-     * moves the scroll so the middle of the screen holds its scene point, and
-     * a trip to the floor and back has to leave the offsets where it found them.
+     * moves the origin so the middle of the screen holds its scene point, and
+     * a trip to the floor and back has to leave the origin where it found it.
      */
     it.each([0, -120, -500, -1_000])(
-      'brings a scroll of %s back from the zoom floor unchanged',
-      scrollLeft => {
+      'brings an origin of %s back from the zoom floor unchanged',
+      originX => {
         place(2_000, 1);
-        store.dispatchSync(
-          scrollToAction({ scrollLeft, scrollTop: scrollLeft })
-        );
+        store.dispatchSync(scrollToAction({ originX, originY: originX }));
 
         const before = {
-          scrollLeft: store.state.settings.scrollLeft,
-          scrollTop: store.state.settings.scrollTop,
+          originX: store.state.settings.originX,
+          originY: store.state.settings.originY,
         };
-        const centreX = atCentre(before.scrollLeft, 2_000, 1, VIEWPORT_WIDTH);
-        const centreY = atCentre(before.scrollTop, 2_000, 1, VIEWPORT_HEIGHT);
+        const centreX = atCentre(before.originX, 1, VIEWPORT_WIDTH);
+        const centreY = atCentre(before.originY, 1, VIEWPORT_HEIGHT);
 
         for (const zoomLevel of [
           0.75,
@@ -561,23 +585,18 @@ describe('settings/atom.actions', () => {
           store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
           store.dispatchSync(
             scrollToAction({
-              scrollLeft: toScroll(centreX, 2_000, zoomLevel, VIEWPORT_WIDTH),
-              scrollTop: toScroll(centreY, 2_000, zoomLevel, VIEWPORT_HEIGHT),
+              originX: toOrigin(centreX, zoomLevel, VIEWPORT_WIDTH),
+              originY: toOrigin(centreY, zoomLevel, VIEWPORT_HEIGHT),
             })
           );
 
           expect(
-            atCentre(
-              store.state.settings.scrollLeft,
-              2_000,
-              zoomLevel,
-              VIEWPORT_WIDTH
-            )
+            atCentre(store.state.settings.originX, zoomLevel, VIEWPORT_WIDTH)
           ).toBeCloseTo(centreX, 6);
         }
 
-        expect(store.state.settings.scrollLeft).toBe(before.scrollLeft);
-        expect(store.state.settings.scrollTop).toBe(before.scrollTop);
+        expect(store.state.settings.originX).toBe(before.originX);
+        expect(store.state.settings.originY).toBe(before.originY);
       }
     );
 
@@ -603,8 +622,8 @@ describe('settings/atom.actions', () => {
         }
 
         for (const end of ['min', 'max'] as const) {
-          const near = toScreen(0, left[end], 2_000, zoomLevel);
-          const far = toScreen(2_000, left[end], 2_000, zoomLevel);
+          const near = toScreen(0, left[end], zoomLevel);
+          const far = toScreen(2_000, left[end], zoomLevel);
 
           if (near < -1e-9 || far > viewport.width + 1e-9) {
             wrong.push(
@@ -617,43 +636,44 @@ describe('settings/atom.actions', () => {
       expect(wrong).toEqual([]);
     });
 
-    it('pins the scroll inside that sorted range', () => {
+    it('pins the origin inside that sorted range', () => {
       place(2_000, 1);
       store.dispatchSync(changeViewportAction({ width: 3_000, height: 3_000 }));
 
-      store.dispatchSync(scrollToAction({ scrollLeft: -500, scrollTop: -500 }));
-      expect(store.state.settings.scrollLeft).toBe(0);
-      expect(store.state.settings.scrollTop).toBe(0);
+      store.dispatchSync(scrollToAction({ originX: -500, originY: -500 }));
+      expect(store.state.settings.originX).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
     });
 
     it('keeps the unzoomed range and its sign exactly as it was', () => {
       place(2_000, 1);
 
-      store.dispatchSync(scrollToAction({ scrollTop: 500, scrollLeft: 500 }));
-      expect(Object.is(store.state.settings.scrollTop, 0)).toBe(true);
-      expect(Object.is(store.state.settings.scrollLeft, 0)).toBe(true);
+      store.dispatchSync(scrollToAction({ originY: 500, originX: 500 }));
+      expect(Object.is(store.state.settings.originY, 0)).toBe(true);
+      expect(Object.is(store.state.settings.originX, 0)).toBe(true);
 
       store.dispatchSync(
-        scrollToAction({ scrollTop: -99_999, scrollLeft: -99_999 })
+        scrollToAction({ originY: -99_999, originX: -99_999 })
       );
-      expect(store.state.settings.scrollTop).toBe(800 - 2000);
-      expect(store.state.settings.scrollLeft).toBe(1000 - 2000);
+      expect(store.state.settings.originY).toBe(800 - 2000);
+      expect(store.state.settings.originX).toBe(1000 - 2000);
     });
 
     it('carries the same range into the streaming reducer', () => {
       place(2_000, 1.5);
+      const drawn = 2_000 * 1.5;
 
       store.dispatchSync(
         streamScrollToAction({ movementX: 99_999, movementY: 99_999 })
       );
-      expect(store.state.settings.scrollLeft).toBe(500);
-      expect(store.state.settings.scrollTop).toBe(500);
+      expect(store.state.settings.originX).toBe(0);
+      expect(store.state.settings.originY).toBe(0);
 
       store.dispatchSync(
         streamScrollToAction({ movementX: -99_999, movementY: -99_999 })
       );
-      expect(store.state.settings.scrollLeft).toBe(-1500);
-      expect(store.state.settings.scrollTop).toBe(-1700);
+      expect(store.state.settings.originX).toBe(VIEWPORT_WIDTH - drawn);
+      expect(store.state.settings.originY).toBe(VIEWPORT_HEIGHT - drawn);
     });
   });
 
