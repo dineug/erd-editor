@@ -92,9 +92,11 @@ test.describe('touch input', () => {
 
     const box = await erd.minimap.boundingBox();
     expect(box).not.toBeNull();
+    // Chromium truncates a fractional mouse coordinate and keeps a fractional
+    // touch one, so the one press both paths spell alike is a whole pixel.
     const target = {
-      x: (box?.x ?? 0) + (box?.width ?? 0) * 0.85,
-      y: (box?.y ?? 0) + (box?.height ?? 0) * 0.85,
+      x: Math.round((box?.x ?? 0) + (box?.width ?? 0) * 0.85),
+      y: Math.round((box?.y ?? 0) + (box?.height ?? 0) * 0.85),
     };
 
     await erd.clickAt(target);

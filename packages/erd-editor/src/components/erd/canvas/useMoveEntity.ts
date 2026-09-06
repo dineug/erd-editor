@@ -66,8 +66,11 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     );
 
     if (canDrag) {
-      beginEntityDrag();
-      drag$.subscribe({ next: handleMove, complete: endEntityDrag });
+      beginEntityDrag(store.state);
+      // The gesture belongs to the pointer, not to this component: the press
+      // raises the entity's z-index and the scene rebuilds the node it started
+      // on, so the subscription outlives it and a finalizer lets the view go.
+      drag$.subscribe(handleMove).add(() => endEntityDrag(store.state));
     }
   };
 

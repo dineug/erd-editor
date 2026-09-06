@@ -23,7 +23,8 @@ type Menu = {
 
 /**
  * Says what was lost and why, because a png smaller than the document it came
- * from otherwise looks like the editor drew the wrong thing.
+ * from otherwise looks like the editor drew the wrong thing. The document box
+ * is scene units around whatever was drawn, so it is rounded to be read.
  */
 function describeReduction({
   documentWidth,
@@ -31,7 +32,9 @@ function describeReduction({
   width,
   height,
 }: ResolutionReduction) {
-  return `The document is ${documentWidth}x${documentHeight}, past what a browser canvas can hold, so the PNG is ${width}x${height}`;
+  const box = `${Math.round(documentWidth)}x${Math.round(documentHeight)}`;
+
+  return `The document is ${box}, past what a browser canvas can hold, so the PNG is ${width}x${height}`;
 }
 
 /**

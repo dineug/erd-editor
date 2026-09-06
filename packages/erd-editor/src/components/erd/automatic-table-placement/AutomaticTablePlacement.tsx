@@ -19,7 +19,10 @@ import {
 } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import Minimap from '@/components/erd/minimap/Minimap';
-import { getScrollToCenter } from '@/components/erd/minimap/minimapGeometry';
+import {
+  getScrollToCenter,
+  getViewTransform,
+} from '@/components/erd/minimap/minimapGeometry';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { Open } from '@/constants/open';
@@ -29,11 +32,15 @@ import {
   changeViewportAction,
 } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+import type { Viewport } from '@/engine/modules/editor/state';
 import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { Point } from '@/internal-types';
+import { getContentRect } from '@/konva/scene/contentBounds';
+import type { Rect } from '@/konva/scene/metrics';
 import { openToastAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { closePromise } from '@/utils/promise';
@@ -54,6 +61,38 @@ export type TablePoint = {
   x: number;
   y: number;
 };
+
+/**
+ * Scene units left around the content when the preview fits it, so a table at
+ * the edge of the document is not flush against the edge of the screen.
+ */
+export const FIT_PADDING = 200;
+
+/** The closest the preview opens at: the whole document is what it is for. */
+export const PREVIEW_ZOOM_MAX = 0.7;
+
+/**
+ * The zoom the preview opens at: the content with its padding fitted into the
+ * screen on both axes, rounded to the two places a zoom is kept to, and held
+ * between the floor every zoom has and the ceiling above.
+ */
+export function previewZoomLevel(content: Rect, viewport: Viewport): number {
+  const fit = Math.min(
+    viewport.width / (content.width + FIT_PADDING),
+    viewport.height / (content.height + FIT_PADDING)
+  );
+
+  return clamp(round(fit, 2), CANVAS_ZOOM_MIN, PREVIEW_ZOOM_MAX);
+}
+
+/** What a document drawing nothing is fitted to, which is a point at the origin. */
+const EMPTY_RECT = { x: 0, y: 0, width: 0, height: 0 };
+
+/** The middle of a box, which is what the view and the forces are centred on. */
+const centerOfRect = ({ x, y, width, height }: Rect): Point => ({
+  x: x + width / 2,
+  y: y + height / 2,
+});
 
 type PlacementToastProps = {
   progress: { value: number };
@@ -117,32 +156,20 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     }
   );
 
-  const zoomInRange = (value: number) => clamp(value, CANVAS_ZOOM_MIN, 0.7);
-  const zoomLevelInRange = (zoom: number) => round(zoomInRange(zoom), 2);
-
-  // The preview shows the whole canvas box centred in the viewport, computed
-  // with the zoom the dispatch below puts in effect rather than the current one.
-  const previewZoomLevel = zoomLevelInRange(
-    originState.editor.viewport.width / originState.settings.width
-  );
-  const { width, height, originX, originY } = originState.settings;
+  // The preview shows everything the document draws, fitted once and centred in
+  // the viewport, with the zoom the dispatch below puts in effect rather than
+  // the current one. An empty document closes the overlay a few lines down.
+  const contentRect = getContentRect(originState) ?? EMPTY_RECT;
+  const zoomLevel = previewZoomLevel(contentRect, originState.editor.viewport);
   const previewOrigin = getScrollToCenter(
-    {
-      width,
-      height,
-      originX,
-      originY,
-      zoomLevel: previewZoomLevel,
-      viewportWidth: originState.editor.viewport.width,
-      viewportHeight: originState.editor.viewport.height,
-    },
-    { x: width / 2, y: height / 2 }
+    { ...getViewTransform(originState), zoomLevel },
+    centerOfRect(contentRect)
   );
 
   store.dispatchSync(
     initialLoadJsonAction$(toJson(originState)),
     changeViewportAction(getViewport()),
-    changeZoomLevelAction({ value: previewZoomLevel }),
+    changeZoomLevelAction({ value: zoomLevel }),
     scrollToAction({ originX: previewOrigin.x, originY: previewOrigin.y })
   );
 

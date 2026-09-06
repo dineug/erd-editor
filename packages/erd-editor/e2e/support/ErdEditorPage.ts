@@ -266,16 +266,6 @@ export class ErdEditorPage {
     return this.host.locator('.color-picker');
   }
 
-  /** Every off-canvas marker the editor pins along the edges of the screen. */
-  hideSigns() {
-    return this.host.locator('.hide-sign');
-  }
-
-  /** One off-canvas marker, named by the entity it points at. */
-  hideSign(title: string) {
-    return this.host.locator(`.hide-sign[title="${title}"]`);
-  }
-
   /**
    * One table as the minimap draws it. A minimap node carries no id, because
    * two stages spelling one id make an id scan ambiguous, so the table it

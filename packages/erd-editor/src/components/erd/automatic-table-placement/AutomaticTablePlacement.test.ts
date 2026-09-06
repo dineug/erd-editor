@@ -1,4 +1,6 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import { createRef, DOMTemplateLiterals, html } from '@dineug/r-html';
+import { round } from 'es-toolkit/compat';
 import {
   afterEach,
   beforeEach,
@@ -16,21 +18,35 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
+  FIT_PADDING,
+  PREVIEW_ZOOM_MAX,
+  previewZoomLevel,
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import * as styles from '@/components/erd/automatic-table-placement/AutomaticTablePlacement.styles';
 import {
   getMinimapHandleRect,
+  getMinimapLayout,
   getScrollToCenter,
+  getViewTransform,
+  getVisibleCanvasRect,
 } from '@/components/erd/minimap/minimapGeometry';
-import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
+import { MINIMAP_MARGIN } from '@/constants/layout';
 import { Open } from '@/constants/open';
+import { CANVAS_ZOOM_MIN } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { getContentRect } from '@/konva/scene/contentBounds';
+import type { Rect } from '@/konva/scene/metrics';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const hoisted = vi.hoisted(() => ({
@@ -70,17 +86,82 @@ type Toast = { message: DOMTemplateLiterals; close?: Promise<void> };
 let mounted: Mounted | null = null;
 let toastContainer: Mounted | null = null;
 
+const contexts: AppContext[] = [];
+
 function createOrigin(): AppContext {
   const app = createTestAppContext();
   app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+  contexts.push(app);
   return app;
 }
 
-function addTable(app: AppContext, id: string, name: string) {
+function addTable(
+  app: AppContext,
+  id: string,
+  name: string,
+  ui: { x: number; y: number } = { x: 10, y: 20 }
+) {
   app.store.dispatchSync(
-    addTableAction({ id, ui: { x: 10, y: 20, zIndex: 2 } }),
+    addTableAction({ id, ui: { ...ui, zIndex: 2 } }),
     changeTableNameAction({ id, value: name })
   );
+}
+
+const centerOf = (rect: Rect) => ({
+  x: rect.x + rect.width / 2,
+  y: rect.y + rect.height / 2,
+});
+
+/**
+ * A store placed as the overlay places its own: the same document, fitted once
+ * to the viewport it opened with and centred on the content. What the overlay
+ * builds is unreachable from here, so the minimap it draws is compared to this.
+ */
+function createPreview(app: AppContext): AppContext {
+  const state = app.store.state;
+  const content = getContentRect(state) as Rect;
+  const { viewport } = state.editor;
+  const zoomLevel = previewZoomLevel(content, viewport);
+  const origin = getScrollToCenter(
+    { ...getViewTransform(state), zoomLevel },
+    centerOf(content)
+  );
+  const preview = createTestAppContext();
+
+  preview.store.dispatchSync(
+    initialLoadJsonAction$(toJson(state)),
+    changeViewportAction({ ...viewport }),
+    changeZoomLevelAction({ value: zoomLevel }),
+    scrollToAction({ originX: origin.x, originY: origin.y })
+  );
+  contexts.push(preview);
+
+  return preview;
+}
+
+/** The minimap handle that store draws, as Viewport lays it out in the dom. */
+function handleStyle(preview: AppContext) {
+  const state = preview.store.state;
+  const layout = getMinimapLayout(state);
+  const rect = getMinimapHandleRect(layout, getViewTransform(state));
+  const { box, offset } = layout;
+
+  return {
+    width: rect.width,
+    height: rect.height,
+    top: MINIMAP_MARGIN + offset.y + rect.y,
+    right: MINIMAP_MARGIN + offset.x + (box.width - rect.x - rect.width),
+  };
+}
+
+/** The same four lengths off the element, which the dom keeps to six places. */
+function elementStyle(element: HTMLElement) {
+  return {
+    width: Number.parseFloat(element.style.width),
+    height: Number.parseFloat(element.style.height),
+    top: Number.parseFloat(element.style.top),
+    right: Number.parseFloat(element.style.right),
+  };
 }
 
 function listenToasts(app: AppContext): Toast[] {
@@ -126,6 +207,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  contexts.splice(0).forEach(app => app.store.destroy());
   toastContainer?.unmount();
   toastContainer = null;
   mounted?.unmount();
@@ -190,10 +272,11 @@ describe('AutomaticTablePlacement', () => {
       ).toBeTruthy();
     });
 
-    it('centres the preview on the middle of the canvas box', async () => {
+    it('fits the whole content into the preview and centres it on it', async () => {
       const app = createOrigin();
-      addTable(app, 't1', 'users');
-      const { width, height, originX, originY } = app.store.state.settings;
+      addTable(app, 't1', 'users', { x: 0, y: 0 });
+      addTable(app, 't2', 'posts', { x: 4_000, y: 3_000 });
+      const content = getContentRect(app.store.state) as Rect;
 
       const { container } = await open(app, vi.fn());
 
@@ -203,63 +286,59 @@ describe('AutomaticTablePlacement', () => {
       const viewport = container.querySelector(
         '.minimap-viewport'
       ) as HTMLElement;
-      const zoomLevel = 800 / width;
-      const transform = {
-        width,
-        height,
-        originX,
-        originY,
-        zoomLevel,
-        viewportWidth: 800,
-        viewportHeight: 600,
-      };
-      // The preview asks the canon for the origin that centres the box, and
-      // the handle is that same origin read back through the minimap geometry.
-      // Horizontally the screen reaches the whole 2000 box, which is the map.
-      const origin = getScrollToCenter(transform, {
-        x: width / 2,
-        y: height / 2,
-      });
-      // The closed form of centring the box: half the screen less half the box
-      // at the preview zoom, so the canon is checked here rather than re-run.
-      expect(origin.x).toBeCloseTo((800 - width * zoomLevel) / 2, 6);
-      expect(origin.y).toBeCloseTo((600 - height * zoomLevel) / 2, 6);
-      const rect = getMinimapHandleRect({
-        ...transform,
-        originX: origin.x,
-        originY: origin.y,
-      });
+      const preview = createPreview(app);
+      const style = handleStyle(preview);
+      const drawn = elementStyle(viewport);
 
-      expect(viewport.style.top).toBe(`${MINIMAP_MARGIN + rect.y}px`);
-      expect(viewport.style.right).toBe(`${MINIMAP_MARGIN}px`);
-      expect(rect.y).toBeGreaterThan(0);
+      expect(drawn.top).toBeCloseTo(style.top, 5);
+      expect(drawn.right).toBeCloseTo(style.right, 5);
+      expect(drawn.width).toBeCloseTo(style.width, 5);
+      expect(drawn.height).toBeCloseTo(style.height, 5);
+
+      // What makes that placement a fit: the screen reaches past the content on
+      // both axes, and the middle of what it reaches is the middle of the content.
+      const visible = getVisibleCanvasRect(
+        getViewTransform(preview.store.state)
+      );
+      expect(visible.width).toBeGreaterThan(content.width);
+      expect(visible.height).toBeGreaterThan(content.height);
+      expect(centerOf(visible).x).toBeCloseTo(centerOf(content).x, 6);
+      expect(centerOf(visible).y).toBeCloseTo(centerOf(content).y, 6);
     });
 
     it('mirrors the origin viewport into the preview store', async () => {
       const app = createOrigin();
-      addTable(app, 't1', 'users');
-      const { width } = app.store.state.settings;
+      addTable(app, 't1', 'users', { x: 0, y: 0 });
+      addTable(app, 't2', 'posts', { x: 4_000, y: 3_000 });
       const { container } = await open(app, vi.fn());
       const viewport = container.querySelector(
         '.minimap-viewport'
       ) as HTMLElement;
-      const ratio = MINIMAP_SIZE / width;
+      const preview = createPreview(app);
 
-      // The preview is zoomed to 0.4 so the whole canvas fits, so the screen
-      // reaches 800 / 0.4 across, which is the canvas box and therefore the
-      // whole map. Only the height leaves room to grow with the viewport.
-      const zoomLevel = 800 / width;
+      expect(elementStyle(viewport).height).toBeCloseTo(
+        handleStyle(preview).height,
+        5
+      );
 
-      expect(viewport.style.width).toBe(`${MINIMAP_SIZE}px`);
-      expect(viewport.style.height).toBe(`${(600 / zoomLevel) * ratio}px`);
-
+      // The fit is taken once, so a viewport that changes afterwards moves the
+      // handle without re-zooming: the preview store is told only the new screen.
       app.store.dispatchSync(
+        changeViewportAction({ width: 1000, height: 400 })
+      );
+      preview.store.dispatchSync(
         changeViewportAction({ width: 1000, height: 400 })
       );
       await flush();
 
-      expect(viewport.style.width).toBe(`${MINIMAP_SIZE}px`);
-      expect(viewport.style.height).toBe(`${(400 / zoomLevel) * ratio}px`);
+      expect(elementStyle(viewport).height).toBeCloseTo(
+        handleStyle(preview).height,
+        5
+      );
+      expect(elementStyle(viewport).width).toBeCloseTo(
+        handleStyle(preview).width,
+        5
+      );
     });
 
     it('opens a closable toast offering Apply and Cancel', async () => {
@@ -484,5 +563,64 @@ describe('AutomaticTablePlacement', () => {
         false
       );
     });
+  });
+});
+
+describe('previewZoomLevel', () => {
+  const viewport = { width: 1200, height: 675 };
+  const rect = (width: number, height: number): Rect => ({
+    x: 0,
+    y: 0,
+    width,
+    height,
+  });
+
+  /** The fit before it is rounded or held, written out longhand. */
+  const rawFit = ({ width, height }: Rect) =>
+    Math.min(
+      viewport.width / (width + FIT_PADDING),
+      viewport.height / (height + FIT_PADDING)
+    );
+
+  it('opens no closer than the ceiling on content the screen dwarfs', () => {
+    const content = rect(200, 100);
+
+    expect(rawFit(content)).toBeGreaterThan(PREVIEW_ZOOM_MAX);
+    expect(previewZoomLevel(content, viewport)).toBe(PREVIEW_ZOOM_MAX);
+  });
+
+  it('opens no farther than the floor every zoom has on content the screen cannot hold', () => {
+    const content = rect(20_000, 20_000);
+
+    expect(rawFit(content)).toBeLessThan(CANVAS_ZOOM_MIN);
+    expect(previewZoomLevel(content, viewport)).toBe(CANVAS_ZOOM_MIN);
+  });
+
+  it('is the fit itself, rounded to two places, in between', () => {
+    for (const content of [
+      rect(2_000, 1_500),
+      rect(700, 1_800),
+      rect(3_333, 300),
+    ]) {
+      const zoomLevel = previewZoomLevel(content, viewport);
+      const fit = rawFit(content);
+
+      expect(fit).toBeGreaterThan(CANVAS_ZOOM_MIN);
+      expect(fit).toBeLessThan(PREVIEW_ZOOM_MAX);
+      expect(zoomLevel).toBe(round(zoomLevel, 2));
+      expect(Math.abs(zoomLevel - fit)).toBeLessThanOrEqual(0.005);
+    }
+  });
+
+  it('fits the tighter axis, so the whole content is on screen either way', () => {
+    const wide = rect(4_000, 100);
+    const tall = rect(100, 4_000);
+
+    expect(previewZoomLevel(wide, viewport)).toBe(
+      round(viewport.width / (wide.width + FIT_PADDING), 2)
+    );
+    expect(previewZoomLevel(tall, viewport)).toBe(
+      round(viewport.height / (tall.height + FIT_PADDING), 2)
+    );
   });
 });

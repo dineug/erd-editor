@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { unselectAllAction } from '@/engine/modules/editor/atom.actions';
 import {
+  scrollToAction,
+  streamScrollToAction,
+} from '@/engine/modules/settings/atom.actions';
+import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
@@ -275,6 +279,41 @@ describe('createReplicationStore', () => {
 
       expect(boom).toHaveBeenCalledTimes(1);
       expect(ok).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  /**
+   * A replica has no screen. Had it kept the default editor size the store
+   * starts with, a document replicated with its view far outside the content
+   * would be pulled onto it against a frame nobody looks through and drift from the source.
+   */
+  describe('the view of a replica', () => {
+    it('keeps an absolute scroll exactly as it arrives', () => {
+      const store = make();
+      store.dispatchSync(addTable('t1'));
+
+      store.dispatchSync(
+        scrollToAction({ originX: -40_000, originY: 12_345.6789 })
+      );
+
+      expect(parse(store).settings.originX).toBe(-40_000);
+      expect(parse(store).settings.originY).toBe(12_345.6789);
+    });
+
+    it('keeps a streamed scroll unclamped, with content and without', () => {
+      const withContent = make();
+      withContent.dispatchSync(addTable('t1'));
+      const empty = make();
+
+      for (const store of [withContent, empty]) {
+        store.dispatchSync(scrollToAction({ originX: -40_000, originY: 0 }));
+        store.dispatchSync(
+          streamScrollToAction({ movementX: -500, movementY: 250.5 })
+        );
+
+        expect(parse(store).settings.originX).toBe(-40_500);
+        expect(parse(store).settings.originY).toBe(250.5);
+      }
     });
   });
 

@@ -1,6 +1,5 @@
 import { expect, test } from '../support/fixtures';
 import {
-  CANVAS_SIZE,
   CANVAS_ZOOM_MIN,
   createSchema,
   type ErdDocument,
@@ -9,17 +8,9 @@ import { WHEEL_ZOOM_STEP } from '../support/shortcuts';
 import { type ErdEditorPage } from '../support/ErdEditorPage';
 
 /**
- * Zooming out and back in is a walk to nowhere, and this is where a clamp that
- * narrowed with the canvas used to gather every view the reader had into the
- * one view that centres the drawn box on the screen.
- */
-const centred = (viewportLength: number, zoomLevel: number) =>
-  (viewportLength - CANVAS_SIZE * zoomLevel) / 2;
-
-/**
- * Far enough west to stay off the canvas at every zoom. The box a marker is
- * measured against grows as the zoom shrinks, so a nearer table would drift in
- * and out of the marker list along the way and measure nothing.
+ * Far enough west to stay off the screen at every zoom, so the document spans
+ * far more than one screen and the view has travel to lose on the way out and
+ * find again on the way back.
  */
 const WEST_X = -20_000;
 const WEST_Y = 900;
@@ -69,30 +60,6 @@ async function wheelZoom(erd: ErdEditorPage, notches: number, deltaY: number) {
   await erd.page.keyboard.up(modKey);
 }
 
-/** The editor box a marker is pinned inside, and the marker's place in it. */
-async function signPlacement(erd: ErdEditorPage, title: string) {
-  return erd.hideSign(title).evaluate(el => {
-    const box = el as HTMLElement;
-    const parent = (box.offsetParent as HTMLElement).getBoundingClientRect();
-    const rect = el.getBoundingClientRect();
-
-    return {
-      left: rect.x - parent.x,
-      top: rect.y - parent.y,
-      parentX: parent.x,
-      parentY: parent.y,
-    };
-  });
-}
-
-/**
- * Where the scene layer puts a point, written out longhand: the document names
- * the screen point scene zero lands on, so a scene coordinate is that origin
- * plus its own distance at the zoom.
- */
-const onScreen = (scene: number, origin: number, zoomLevel: number) =>
-  scene * zoomLevel + origin;
-
 test.describe('a zoom out and back in', () => {
   test('returns the origin to where the reader left it', async ({ erd }) => {
     await erd.seed(strandedWest());
@@ -102,19 +69,13 @@ test.describe('a zoom out and back in', () => {
     expect(before.originX).toBeCloseTo(-200, 0);
     expect(before.originY).toBeCloseTo(-300, 0);
 
-    // Twenty notches is zoom 0.4, which draws the 2000 box smaller than either
-    // axis of the screen. That is the regime the old clamp had no travel in.
+    // Twenty notches is zoom 0.4. There is no clamp to gather this into any
+    // view any more — a pan goes anywhere, and the aids only draw the content
+    // — so the walk back is the whole of the proof.
     await wheelZoom(erd, 20, 120);
     await expect
       .poll(async () => (await erd.settings()).zoomLevel)
       .toBeCloseTo(1 - 20 * WHEEL_ZOOM_STEP, 5);
-
-    const viewport = erd.page.viewportSize()!;
-    const shrunk = await erd.settings();
-    expect(shrunk.originX).not.toBeCloseTo(
-      centred(viewport.width, shrunk.zoomLevel),
-      0
-    );
 
     await wheelZoom(erd, 20, -120);
     await expect
@@ -167,81 +128,13 @@ test.describe('a zoom out and back in', () => {
       await wheelZoom(erd, 40, 120);
       await expect
         .poll(async () => (await erd.settings()).zoomLevel)
-        .toBeCloseTo(0.1, 5);
+        .toBeCloseTo(CANVAS_ZOOM_MIN, 5);
 
       atFloor.push((await erd.settings()).originX);
     }
 
-    const viewport = erd.page.viewportSize()!;
-    const gathered = centred(viewport.width, CANVAS_ZOOM_MIN);
+    // Two readers who panned differently still see different things at the
+    // floor. The view the box used to gather them into is not a place any more.
     expect(atFloor[0]).not.toBeCloseTo(atFloor[1], 0);
-    expect(atFloor[0]).not.toBeCloseTo(gathered, 0);
-    expect(atFloor[1]).not.toBeCloseTo(gathered, 0);
-  });
-});
-
-test.describe('an off-canvas marker', () => {
-  test('sits where the scene layer would have drawn its table', async ({
-    erd,
-  }) => {
-    await erd.seed(strandedWest());
-
-    for (const notches of [0, 10, 20, -20, -15]) {
-      if (notches !== 0) {
-        await wheelZoom(erd, Math.abs(notches), notches > 0 ? 120 : -120);
-      }
-
-      const settings = await erd.settings();
-
-      // The marker reads a debounced copy of the scroll, so the placement it
-      // is asked for is the one that settles rather than the one mid-gesture.
-      await expect
-        .poll(async () => {
-          const placement = await signPlacement(erd, 'west');
-          return Math.round(placement.top);
-        })
-        .toBe(
-          Math.round(onScreen(WEST_Y, settings.originY, settings.zoomLevel))
-        );
-
-      const placement = await signPlacement(erd, 'west');
-      expect(placement.left).toBeCloseTo(0, 1);
-    }
-  });
-
-  test('brings its table back under the pointer that clicked it', async ({
-    erd,
-  }) => {
-    await erd.seed(strandedWest());
-    await wheelZoom(erd, 12, 120);
-    await expect
-      .poll(async () => (await erd.settings()).zoomLevel)
-      .toBeCloseTo(1 - 12 * WHEEL_ZOOM_STEP, 5);
-
-    // The marker's own placement settles a beat after the gesture, and the
-    // click has to land on it rather than where it was during the wheel.
-    await erd.page.waitForTimeout(200);
-    const placement = await signPlacement(erd, 'west');
-    const box = (await erd.hideSign('west').boundingBox())!;
-
-    // Whole pixels, because the browser delivers the press at whole ones and
-    // the point being checked is the one the editor was actually handed.
-    const at = {
-      x: Math.round(box.x + box.width / 2),
-      y: Math.round(box.y + box.height / 2),
-    };
-
-    await erd.page.mouse.click(at.x, at.y);
-    await expect.poll(() => erd.hasSceneNode('#table-west')).toBe(true);
-
-    const settings = await erd.settings();
-    const table = await erd.table('west');
-
-    expect(
-      onScreen(table.ui.x, settings.originX, settings.zoomLevel)
-    ).toBeCloseTo(at.x - placement.parentX, 1);
-    expect(
-      onScreen(table.ui.y, settings.originY, settings.zoomLevel)
-    ).toBeCloseTo(at.y - placement.parentY, 1);
   });
 });

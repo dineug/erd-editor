@@ -10,12 +10,10 @@ import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
-  resizeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
 import {
-  canvasSizeInRange,
   toNumString,
   toZoomFormat,
   zoomLevelInRange,
@@ -37,16 +35,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
     const { store } = app.value;
     store.dispatch(changeDatabaseNameAction({ value: el.value }));
-  };
-
-  const handleResize = (event: Event) => {
-    const el = event.target as HTMLInputElement | null;
-    if (!el) return;
-
-    const size = canvasSizeInRange(el.value);
-    const { store } = app.value;
-    el.value = size.toString();
-    store.dispatch(resizeAction({ width: size, height: size }));
   };
 
   const handleZoomLevel = (event: Event) => {
@@ -128,14 +116,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           width={150}
           value={settings.databaseName}
           onInput={handleChangeDatabaseName}
-        />
-        <TextInput
-          title="canvas size"
-          placeholder="canvas size"
-          width={45}
-          value={settings.width.toString()}
-          numberOnly={true}
-          onChange={handleResize}
         />
         <TextInput
           title="zoom level"

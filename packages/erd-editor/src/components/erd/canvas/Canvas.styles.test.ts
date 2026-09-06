@@ -15,27 +15,19 @@ describe('Canvas.styles', () => {
     }
   });
 
-  it('generates a distinct class identifier per token', () => {
-    const identifiers = [styles.root, styles.stage, styles.controller].map(
-      String
-    );
-    expect(new Set(identifiers).size).toBe(identifiers.length);
+  it('generates a distinct class identifier per rule set', () => {
+    expect(String(styles.stage)).not.toBe(String(styles.controller));
   });
 
-  it('anchors the root at the origin so tables can be absolutely placed', () => {
-    const text = staticText(styles.root);
-    expect(text).toContain('position: relative');
-    expect(text).toContain('top: 0');
-    expect(text).toContain('left: 0');
+  /**
+   * The minimap's thumbnail is a picture of the canvas, so it is painted by
+   * the canvas's own rules rather than by a copy of them that could drift.
+   */
+  it('gives the minimap thumbnail the rules the stage container carries', () => {
+    expect(styles.root).toBe(styles.stage);
   });
 
-  it('paints the root from the canvas background custom property', () => {
-    expect(staticText(styles.root)).toContain(
-      'background-color: var(--canvas-background)'
-    );
-  });
-
-  it('anchors the stage container at the origin, as the root is anchored', () => {
+  it('anchors the stage container at the origin so tables can be absolutely placed', () => {
     const text = staticText(styles.stage);
     expect(text).toContain('position: relative');
     expect(text).toContain('top: 0');
@@ -43,16 +35,17 @@ describe('Canvas.styles', () => {
   });
 
   /**
-   * The container is the screen and the document box is a konva rect inside it,
-   * so a background here would paint the canvas colour over the whole viewport
-   * and the boundary outside the document would stop being visible at all.
+   * The container is the screen and the scene draws no document box any more,
+   * so this is the one place the canvas colour comes from and it has to reach
+   * every corner the reader can scroll to.
    */
-  it('leaves the stage container unpainted so the boundary shows through', () => {
-    expect(staticText(styles.stage)).not.toContain('background-color');
+  it('paints the stage container from the canvas background custom property', () => {
+    expect(staticText(styles.stage)).toContain(
+      'background-color: var(--canvas-background)'
+    );
   });
 
-  it('hints transform compositing on both the root and the controller', () => {
-    expect(staticText(styles.root)).toContain('will-change: transform');
+  it('hints transform compositing on both the stage and the controller', () => {
     expect(staticText(styles.stage)).toContain('will-change: transform');
     expect(staticText(styles.controller)).toContain('will-change: transform');
   });

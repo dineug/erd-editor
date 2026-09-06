@@ -5,15 +5,29 @@ import { fileURLToPath } from 'node:url';
 import {
   type LegacyScrollBox,
   migrateScrollToOrigin,
+  schemaV3Parser,
 } from '@dineug/erd-editor-schema';
 import ts from '@typescript/typescript6';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  fromMinimapPoint,
+  getMinimapLayout,
   getMinimapViewportRect,
+  getScrollToCenter,
+  getViewTransform,
   getVisibleCanvasRect,
+  MINIMAP_MAP_STEP,
+  toMinimapPoint,
 } from '@/components/erd/minimap/minimapGeometry';
-import { getScrollRanges } from '@/engine/modules/settings/atom.actions';
+import { createEditor } from '@/engine/modules/editor/state';
+import {
+  getContentScrollRanges,
+  getOpeningOrigin,
+  getScrollRanges,
+} from '@/engine/modules/settings/atom.actions';
+import { RootState } from '@/engine/state';
+import { getContentRect } from '@/konva/scene/contentBounds';
 import {
   createCullingRect,
   getOriginToPlace,
@@ -22,6 +36,7 @@ import {
   toScenePoint,
   toScreenPoint,
 } from '@/konva/scene/viewport';
+import { createTable } from '@/utils/collection/table.entity';
 
 /**
  * The screen equals scene times zoom plus the origin, stated once. Every
@@ -98,6 +113,29 @@ function label({ legacy, transform, viewport }: Grid): string {
   return `canvas ${width} zoom ${zoomLevel} legacy scroll ${scrollLeft},${scrollTop} origin ${originX},${originY} viewport ${viewport.width}x${viewport.height}`;
 }
 
+/**
+ * A document at the row's view holding a table at each of the grid's points,
+ * which is what gives the origin a range to travel at all.
+ */
+function stateOf({ transform, viewport }: Grid): RootState {
+  const state: RootState = {
+    ...schemaV3Parser({}),
+    editor: createEditor(),
+    lww: {},
+  };
+
+  Object.assign(state.settings, transform);
+  state.editor.viewport = { ...viewport };
+
+  POINTS.forEach((point, index) => {
+    const id = `t${index}`;
+    state.collections.tableEntities[id] = createTable({ id, ui: point });
+    state.doc.tableIds.push(id);
+  });
+
+  return state;
+}
+
 function failures(rows: Grid[], check: (row: Grid) => string | null): string[] {
   return rows
     .map(row => {
@@ -157,15 +195,14 @@ describe('the scene transform is one formula', () => {
   });
 
   it('draws the minimap rectangle over what the screen really covers', () => {
-    const bad = failures(GRID, ({ legacy, transform, viewport }) => {
-      const minimap = {
+    const bad = failures(GRID, row => {
+      const { transform, viewport } = row;
+      const view = {
         ...transform,
-        width: legacy.width,
-        height: legacy.height,
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
       };
-      const rect = getVisibleCanvasRect(minimap);
+      const rect = getVisibleCanvasRect(view);
       const topLeft = toScenePoint(transform, { x: 0, y: 0 });
       const bottomRight = toScenePoint(transform, {
         x: viewport.width,
@@ -183,8 +220,11 @@ describe('the scene transform is one formula', () => {
         return `visible rect ends at ${rect.x + rect.width},${rect.y + rect.height} but the screen corner is ${bottomRight.x},${bottomRight.y}`;
       }
 
-      const ratio = getMinimapViewportRect(minimap).width / rect.width;
-      if (!close(ratio, getMinimapViewportRect(minimap).height / rect.height)) {
+      const drawn = getMinimapViewportRect(
+        getMinimapLayout(stateOf(row)),
+        view
+      );
+      if (!close(drawn.width / rect.width, drawn.height / rect.height)) {
         return 'the minimap rectangle is scaled by two different ratios';
       }
 
@@ -194,23 +234,35 @@ describe('the scene transform is one formula', () => {
     expect(bad).toEqual([]);
   });
 
-  it('ends the scroll travel where the screen edge meets the document', () => {
-    const bad = failures(GRID, ({ legacy, transform, viewport }) => {
-      const { width, height, zoomLevel } = legacy;
-      const ranges = getScrollRanges({ width, height, zoomLevel }, viewport);
-      const at = (originX: number) =>
-        toScenePoint({ ...transform, originX }, { x: viewport.width / 2, y: 0 })
-          .x;
-      const inset = viewport.width / (2 * Math.max(1, zoomLevel));
-      const near = Math.min(inset, width - inset);
-      const far = Math.max(inset, width - inset);
+  /**
+   * The pure range in screen space: at its minimum the content's far edge sits
+   * on the screen's near edge, at its maximum the content's near edge sits on
+   * the screen's far edge, read back through the canon on both axes.
+   */
+  it('ends the pure travel with the content edges on the screen edges', () => {
+    const bad = failures(GRID, row => {
+      const state = stateOf(row);
+      const { left, top } = getContentScrollRanges(state);
+      const content = getContentRect(state)!;
+      const at = (originX: number, originY: number, x: number, y: number) =>
+        toScreenPoint({ ...row.transform, originX, originY }, { x, y });
+      const farEdge = at(
+        left.min,
+        top.min,
+        content.x + content.width,
+        content.y + content.height
+      );
+      const nearEdge = at(left.max, top.max, content.x, content.y);
 
-      if (!close(at(ranges.left.max), near)) {
-        return `at the origin maximum the middle of the screen reads scene x ${at(ranges.left.max)}, not ${near}`;
+      if (!close(farEdge.x, 0) || !close(farEdge.y, 0)) {
+        return `at the range minimum the content's far edge lands on ${farEdge.x},${farEdge.y}, not on the screen's near edge`;
       }
 
-      if (!close(at(ranges.left.min), far)) {
-        return `at the origin minimum the middle of the screen reads scene x ${at(ranges.left.min)}, not ${far}`;
+      if (
+        !close(nearEdge.x, row.viewport.width) ||
+        !close(nearEdge.y, row.viewport.height)
+      ) {
+        return `at the range maximum the content's near edge lands on ${nearEdge.x},${nearEdge.y}, not on the screen's far edge ${row.viewport.width},${row.viewport.height}`;
       }
 
       return null;
@@ -219,38 +271,94 @@ describe('the scene transform is one formula', () => {
     expect(bad).toEqual([]);
   });
 
-  it('never lets a zoom-out narrow the document a zoom of one reaches', () => {
-    const bad: string[] = [];
+  it('holds the pure range and the origin where it stands inside the hull', () => {
+    const bad = failures(GRID, row => {
+      const state = stateOf(row);
+      const pure = getContentScrollRanges(state);
+      const hull = getScrollRanges(state);
+      const { originX, originY } = row.transform;
+      const axes = [
+        ['left', pure.left, hull.left, originX],
+        ['top', pure.top, hull.top, originY],
+      ] as const;
 
-    for (const size of WIDTHS) {
-      for (const viewport of VIEWPORTS) {
-        const reach = (zoomLevel: number) => {
-          const transform = { originX: 0, originY: 0, zoomLevel };
-          const { left } = getScrollRanges(
-            { width: size, height: size, zoomLevel },
-            viewport
-          );
-          const at = (originX: number) =>
-            toScenePoint(
-              { ...transform, originX },
-              { x: viewport.width / 2, y: 0 }
-            ).x;
+      for (const [axis, inner, outer, origin] of axes) {
+        if (outer.min > inner.min || outer.max < inner.max) {
+          return `${axis}: hull ${outer.min}..${outer.max} does not hold the pure range ${inner.min}..${inner.max}`;
+        }
 
-          return at(left.min) - at(left.max);
-        };
-        const unzoomed = reach(1);
+        if (origin < outer.min || origin > outer.max) {
+          return `${axis}: hull ${outer.min}..${outer.max} does not hold the origin ${origin}`;
+        }
 
-        for (const zoomLevel of ZOOMS.filter(zoom => zoom <= 1)) {
-          const own = reach(zoomLevel);
+        if (outer.min > outer.max || inner.min > inner.max) {
+          return `${axis}: a range reads its minimum above its maximum`;
+        }
+      }
 
-          if (own < unzoomed - 1e-9) {
-            bad.push(
-              `canvas ${size} viewport ${viewport.width}: zoom ${zoomLevel} reaches ${own} of the document, zoom 1 reaches ${unzoomed}`
-            );
+      return null;
+    });
+
+    expect(bad).toEqual([]);
+  });
+
+  /**
+   * A load settles an origin past either end of the pure range where the
+   * content is drawn: its near edge on the screen's near edge when it fills
+   * the screen, else its far edge on the screen's far edge with all of it inside.
+   */
+  it('lands a loaded origin past either end where the content is drawn', () => {
+    const bad = failures(GRID, row => {
+      const state = stateOf(row);
+      const content = getContentRect(state)!;
+      const pure = getContentScrollRanges(state);
+      const { zoomLevel } = row.transform;
+      const axes = [
+        ['x', pure.left, content.x, content.width, row.viewport.width],
+        ['y', pure.top, content.y, content.height, row.viewport.height],
+      ] as const;
+
+      for (const [axis, range, near, length, screen] of axes) {
+        const fills = length * zoomLevel >= screen;
+        const far = near + length;
+
+        for (const [origin, side] of [
+          [range.max + 777, 'far'],
+          [range.min - 777, 'near'],
+        ] as const) {
+          state.settings.originX = axis === 'x' ? origin : 0;
+          state.settings.originY = axis === 'y' ? origin : 0;
+          const settled = getOpeningOrigin(state)[axis];
+          const at = (value: number) =>
+            toScreenPoint(
+              {
+                zoomLevel,
+                originX: axis === 'x' ? settled : 0,
+                originY: axis === 'y' ? settled : 0,
+              },
+              { x: axis === 'x' ? value : 0, y: axis === 'y' ? value : 0 }
+            )[axis];
+          const expected =
+            side === 'far'
+              ? fills
+                ? [at(near), 0]
+                : [at(far), screen]
+              : fills
+                ? [at(far), screen]
+                : [at(near), 0];
+
+          if (!close(expected[0], expected[1])) {
+            return `${axis}: an origin past the ${side} end settled at ${settled}, landing the edge on ${expected[0]} rather than ${expected[1]}`;
+          }
+
+          if (settled <= range.min || settled >= range.max) {
+            return `${axis}: the settled origin ${settled} is not strictly inside ${range.min}..${range.max}`;
           }
         }
       }
-    }
+
+      return null;
+    });
 
     expect(bad).toEqual([]);
   });
@@ -289,31 +397,11 @@ describe('the scene transform is one formula', () => {
  */
 describe('the origin is the document field, not a derivation', () => {
   it('places the scene independently of the canvas box', () => {
-    const bad = failures(GRID, ({ transform, viewport }) => {
+    const bad = failures(GRID, ({ transform }) => {
       const origin = getSceneOrigin(transform);
 
       if (origin.x !== transform.originX || origin.y !== transform.originY) {
         return `getSceneOrigin answered ${origin.x},${origin.y} for the stored origin`;
-      }
-
-      const rects = WIDTHS.map(width =>
-        getVisibleCanvasRect({
-          ...transform,
-          width,
-          height: width,
-          viewportWidth: viewport.width,
-          viewportHeight: viewport.height,
-        })
-      );
-
-      for (const rect of rects.slice(1)) {
-        if (
-          rect.x !== rects[0].x ||
-          rect.y !== rects[0].y ||
-          rect.width !== rects[0].width
-        ) {
-          return `the visible rect moved with the canvas box: ${JSON.stringify(rects)}`;
-        }
       }
 
       return null;
@@ -391,12 +479,133 @@ describe('the origin is the document field, not a derivation', () => {
 });
 
 /**
- * The files that own a screen to scene formula. Everything else calls them, and
- * the scan below is what makes that true rather than customary.
+ * The minimap is a map of the same transform: its layout holds the content and
+ * the screen, and a pixel pressed on it names one scene point, which the origin
+ * the press asks for puts in the middle of the screen, back under that pixel.
+ */
+describe('the minimap maps the transform it is drawn over', () => {
+  /** The corners and the middle of the thumbnail box, which every press lands inside. */
+  const pixelsOf = ({ box }: { box: { width: number; height: number } }) => [
+    { x: 0, y: 0 },
+    { x: box.width, y: box.height },
+    { x: box.width / 2, y: box.height / 2 },
+    { x: box.width * 0.8, y: box.height * 0.3 },
+  ];
+
+  it('holds the content and the screen inside a map on its grid', () => {
+    const bad = failures(GRID, row => {
+      const state = stateOf(row);
+      const { map } = getMinimapLayout(state);
+      const view = getViewTransform(state);
+      const inside = (rect: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }) =>
+        rect.x >= map.x &&
+        rect.y >= map.y &&
+        rect.x + rect.width <= map.x + map.width &&
+        rect.y + rect.height <= map.y + map.height;
+
+      if (!inside(getContentRect(state)!)) {
+        return `the map ${JSON.stringify(map)} does not hold the content`;
+      }
+
+      if (!inside(getVisibleCanvasRect(view))) {
+        return `the map ${JSON.stringify(map)} does not hold the screen`;
+      }
+
+      for (const edge of [
+        map.x,
+        map.y,
+        map.x + map.width,
+        map.y + map.height,
+      ]) {
+        if (edge % MINIMAP_MAP_STEP !== 0) {
+          return `the map edge ${edge} is off the ${MINIMAP_MAP_STEP} grid`;
+        }
+      }
+
+      return null;
+    });
+
+    expect(bad).toEqual([]);
+  });
+
+  it('round-trips a scene point under a press to the same pixel', () => {
+    const bad = failures(GRID, row => {
+      const state = stateOf(row);
+      const layout = getMinimapLayout(state);
+      const view = getViewTransform(state);
+
+      for (const pixel of pixelsOf(layout)) {
+        const scene = fromMinimapPoint(layout, pixel);
+        const back = toMinimapPoint(layout, scene);
+
+        if (!close(back.x, pixel.x) || !close(back.y, pixel.y)) {
+          return `pixel ${pixel.x},${pixel.y} came back as ${back.x},${back.y}`;
+        }
+
+        const origin = getScrollToCenter(view, scene);
+        const pressed = { ...view, originX: origin.x, originY: origin.y };
+        const landed = toScreenPoint(pressed, scene);
+
+        if (
+          !close(landed.x, view.viewportWidth / 2) ||
+          !close(landed.y, view.viewportHeight / 2)
+        ) {
+          return `the press put scene ${scene.x},${scene.y} at ${landed.x},${landed.y}, not the screen's middle`;
+        }
+
+        const handle = getMinimapViewportRect(layout, pressed);
+        const middle = {
+          x: handle.x + handle.width / 2,
+          y: handle.y + handle.height / 2,
+        };
+
+        if (!close(middle.x, pixel.x) || !close(middle.y, pixel.y)) {
+          return `after the press the handle is centred on ${middle.x},${middle.y}, not on the pixel ${pixel.x},${pixel.y}`;
+        }
+      }
+
+      return null;
+    });
+
+    expect(bad).toEqual([]);
+  });
+
+  it('draws the handle where the screen corner lands on the map', () => {
+    const bad = failures(GRID, row => {
+      const state = stateOf(row);
+      const layout = getMinimapLayout(state);
+      const view = getViewTransform(state);
+      const handle = getMinimapViewportRect(layout, view);
+      const corner = toMinimapPoint(
+        layout,
+        toScenePoint(row.transform, { x: 0, y: 0 })
+      );
+
+      if (!close(handle.x, corner.x) || !close(handle.y, corner.y)) {
+        return `the handle starts at ${handle.x},${handle.y} but the screen corner maps to ${corner.x},${corner.y}`;
+      }
+
+      return null;
+    });
+
+    expect(bad).toEqual([]);
+  });
+});
+
+/**
+ * The files that own a screen to scene formula, and the leaf whose range ends
+ * are the origins placing a content edge on a screen edge. Everything else calls
+ * them, and the scan below is what makes that true rather than customary.
  */
 const AUTHORITY = [
   'konva/scene/viewport.ts',
   'engine/modules/settings/atom.actions.ts',
+  'engine/modules/settings/scrollRange.ts',
   'components/erd/minimap/minimapGeometry.ts',
 ];
 

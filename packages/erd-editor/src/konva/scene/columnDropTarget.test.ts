@@ -132,8 +132,6 @@ describe('the row a column drag drops on (AC-G5)', () => {
 
   it('names the row under a pointer on a canvas the zoom has shrunk', () => {
     const state = createState();
-    state.settings.width = 8000;
-    state.settings.height = 8000;
     state.settings.zoomLevel = 0.5;
     state.editor.viewport = { width: 1000, height: 1000 };
     // What the middle of the screen inverts to here. The culling rect this

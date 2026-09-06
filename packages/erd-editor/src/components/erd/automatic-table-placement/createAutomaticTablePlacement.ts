@@ -11,6 +11,7 @@ import { clamp } from 'es-toolkit';
 
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
+import { getContentRect } from '@/konva/scene/contentBounds';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
@@ -100,9 +101,11 @@ export function placementProgress(simulation: Cooling): number {
 }
 
 export function createAutomaticTablePlacement(state: RootState) {
-  const { settings } = state;
-  const centerX = settings.width / 2;
-  const centerY = settings.height / 2;
+  // The middle of what the document already draws, so a layout of an empty
+  // document settles where its tables were rather than where a box once was.
+  const content = getContentRect(state) ?? { x: 0, y: 0, width: 0, height: 0 };
+  const centerX = content.x + content.width / 2;
+  const centerY = content.y + content.height / 2;
   const [nodes, links] = createNodes(state, centerX, centerY);
 
   return forceSimulation(nodes)

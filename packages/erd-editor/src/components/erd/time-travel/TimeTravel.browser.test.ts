@@ -12,6 +12,11 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import {
+  getMinimapHandleRect,
+  getMinimapLayout,
+  getViewTransform,
+} from '@/components/erd/minimap/minimapGeometry';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import * as styles from '@/components/erd/time-travel/TimeTravel.styles';
 import * as sliderStyles from '@/components/primitives/slider/Slider.styles';
@@ -146,6 +151,17 @@ const tableCount = () => {
   );
 };
 
+/**
+ * The handle the preview's minimap should draw: the preview store mirrors the
+ * origin document and its viewport, so the origin state lays out the same map,
+ * and the handle is the origin's screen mapped through it.
+ */
+const expectedHandle = (app: AppContext) =>
+  getMinimapHandleRect(
+    getMinimapLayout(app.store.state),
+    getViewTransform(app.store.state)
+  );
+
 /** min = -1, max = size - 1, so ratio 0 is -1 and ratio 1 is the newest entry. */
 const slideTo = async (ratio: number) => {
   sliderRoot().dispatchEvent(
@@ -199,15 +215,17 @@ describe('TimeTravel', () => {
     });
 
     it('copies the origin viewport into the preview store on creation', async () => {
-      await setup({ viewport: { width: 1000, height: 800 } });
+      const { originApp } = await setup({
+        viewport: { width: 1000, height: 800 },
+      });
 
       const viewport = container().querySelector(
         '.minimap-viewport'
       ) as HTMLElement;
+      const handle = expectedHandle(originApp);
 
-      // MINIMAP_SIZE / settings.width = 150 / 2000 = 0.075
-      expect(viewport.style.width).toBe('75px');
-      expect(viewport.style.height).toBe('60px');
+      expect(parseFloat(viewport.style.width)).toBeCloseTo(handle.width, 3);
+      expect(parseFloat(viewport.style.height)).toBeCloseTo(handle.height, 3);
     });
 
     it('follows later viewport changes on the origin store', async () => {
@@ -223,8 +241,10 @@ describe('TimeTravel', () => {
       const viewport = container().querySelector(
         '.minimap-viewport'
       ) as HTMLElement;
-      expect(viewport.style.width).toBe('150px');
-      expect(viewport.style.height).toBe('30px');
+      const handle = expectedHandle(originApp);
+
+      expect(parseFloat(viewport.style.width)).toBeCloseTo(handle.width, 3);
+      expect(parseFloat(viewport.style.height)).toBeCloseTo(handle.height, 3);
     });
 
     it('parks the slider on the newest history entry', async () => {

@@ -5,10 +5,12 @@ import type { Stage } from 'konva/lib/Stage';
 import { appDestroy, createAppContext } from '@/components/appContext';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { whenDrawn } from '@/konva/batchDraw';
+import type { Rect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { delay } from '@/utils/promise';
 
+import { getExportRect, getExportScale } from './exportBox';
 import ExportScene from './ExportScene';
 
 export type DocumentSceneOptions = {
@@ -19,6 +21,10 @@ export type DocumentSceneOptions = {
 
 export type DocumentScene = {
   stage: Stage;
+  /** What the Stage holds, in scene units, before it was scaled to fit. */
+  box: Rect;
+  /** The factor between that box and the Stage the scene was drawn on. */
+  scale: number;
   destroy: () => void;
 };
 
@@ -46,15 +52,20 @@ export async function renderDocumentScene({
   app.store.dispatchSync(initialLoadJsonAction$(doc));
   await delay(SETTLE_MS);
 
-  const { width, height } = app.store.state.settings;
+  // Read once the load hooks have run, which is what stamps the connector
+  // routes: a sort in another editor retires them while this one draws, and
+  // then getRouteBBox answers the anchors inflated by MAX_STUB, a box the union holds.
+  const box = getExportRect(app.store.state);
+  const scale = getExportScale(box);
+
   // Detached on purpose: konva needs a container, and one outside the document
   // is never laid out, never painted and never reachable from the editor.
   const rendered = renderScene({
     app,
     container: document.createElement('div'),
-    scene: <ExportScene />,
-    width,
-    height,
+    scene: <ExportScene box={box} scale={scale} />,
+    width: box.width * scale,
+    height: box.height * scale,
     theme,
   });
 
@@ -62,6 +73,8 @@ export async function renderDocumentScene({
 
   return {
     stage: rendered.stage,
+    box,
+    scale,
     destroy: () => {
       rendered.destroy();
       appDestroy(app);

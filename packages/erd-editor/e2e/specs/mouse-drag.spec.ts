@@ -6,8 +6,11 @@ import { MOD_KEY } from '../support/shortcuts';
 /** One screen pixel of pointer rounding, doubled for the two drag endpoints. */
 const PIXEL_TOLERANCE = 2;
 
-/** constants/layout.ts — the rendered edge of .minimap, re-checked below. */
+/** constants/layout.ts — the square the minimap frame draws, re-checked below. */
 const MINIMAP_SIZE = 150;
+
+/** useVirtualScroll.ts — the width the drawn thumb never goes under. */
+const SCROLLBAR_THUMB_MIN = 24;
 
 function expectClose(actual: number, expected: number, tolerance: number) {
   expect(
@@ -259,10 +262,18 @@ test.describe('mouse drag', () => {
     expect([settings.originX, settings.originY]).toEqual([0, 0]);
   });
 
-  test('a plain drag on empty canvas pans the canvas and clamps at 0', async ({
+  test('a plain drag on empty canvas pans the canvas and keeps going past it', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
+
+    // At zoom 1 and origin 0 a screen offset from scene zero is a scene
+    // coordinate, so the far corner of the lower, righter table is where the
+    // content ends — posts is that table in this seed.
+    const zero = await erd.pointAt(0, 0);
+    const posts = await erd.sceneBox('#table-posts');
+    const farX = posts.x - zero.x + posts.width;
+    const farY = posts.y - zero.y + posts.height;
 
     // (1100, 700) in canvas coordinates is empty: posts sits at (760, 420)
     // and its box ends near (1090, 530).
@@ -272,12 +283,24 @@ test.describe('mouse drag', () => {
     expectClose(scrolled.originX, -240, PIXEL_TOLERANCE);
     expectClose(scrolled.originY, -120, PIXEL_TOLERANCE);
 
-    // Scrolling back past the origin clamps: streamScrollTo caps at 0.
-    await erd.panBy(360, 240, { x: 1100, y: 700 });
+    // Dragging on west reaches where the content's far edge meets the near
+    // edge of the screen, where the aids' travel ends, and the next drag goes
+    // straight past it by its own delta: a pan has no edge to stop at.
+    await erd.panBy(-900, -600);
 
-    const clamped = await erd.settings();
-    expect(clamped.originX).toBe(0);
-    expect(clamped.originY).toBe(0);
+    const edge = await erd.settings();
+    expectClose(edge.originX, scrolled.originX - 900, PIXEL_TOLERANCE);
+    expectClose(edge.originY, scrolled.originY - 600, PIXEL_TOLERANCE);
+    expect(edge.originX).toBeLessThanOrEqual(-farX + PIXEL_TOLERANCE);
+    expect(edge.originY).toBeLessThanOrEqual(-farY + PIXEL_TOLERANCE);
+
+    await erd.panBy(-900, -600);
+
+    const past = await erd.settings();
+    expectClose(past.originX, edge.originX - 900, PIXEL_TOLERANCE);
+    expectClose(past.originY, edge.originY - 600, PIXEL_TOLERANCE);
+    expect(past.originX).toBeLessThan(-farX - 600);
+    expect(past.originY).toBeLessThan(-farY - 400);
   });
 
   test('holding Space pans even when the drag starts over a table', async ({
@@ -319,29 +342,34 @@ test.describe('mouse drag', () => {
     await erd.seed(twoTables());
 
     const settingsBefore = await erd.settings();
+    const hostBox = await boxOf(erd.host);
 
-    // useMinimapScroll divides the pointer movement by the minimap's own scale,
-    // and the minimap is the full canvas scaled by exactly that ratio, so the
-    // rendered box is where the ratio comes from.
+    // The thumbnail is a map of the travel, the content and a screen either
+    // way, so its longer side fills the frame; the handle is the screen mapped
+    // onto it, which is where the scale the drag is divided by can be read.
     const minimapBox = await boxOf(erd.minimap);
-    expect(minimapBox.width).toBeCloseTo(MINIMAP_SIZE, 3);
-    const ratio = minimapBox.width / settingsBefore.width;
-
+    expect(Math.max(minimapBox.width, minimapBox.height)).toBeCloseTo(
+      MINIMAP_SIZE,
+      3
+    );
     const handleBefore = await boxOf(erd.minimapViewport);
+    const ratio =
+      handleBefore.width / (hostBox.width / settingsBefore.zoomLevel);
 
     const from = await erd.centerOf(erd.minimapViewport);
-    await erd.drag(from, { x: from.x + 24, y: from.y + 12 });
+    await dragHold(erd, from, { x: from.x + 24, y: from.y + 12 });
+
+    // The map is held still for the drag, so the ratio the press saw is the
+    // one every step is read against and the handle follows the pointer 1:1.
+    const handleDuring = await boxOf(erd.minimapViewport);
+    expectClose(handleDuring.x - handleBefore.x, 24, PIXEL_TOLERANCE);
+    expectClose(handleDuring.y - handleBefore.y, 12, PIXEL_TOLERANCE);
+    await erd.page.mouse.up();
 
     const settings = await erd.settings();
     const tolerance = PIXEL_TOLERANCE / ratio;
     expectClose(settings.originX, -24 / ratio, tolerance);
     expectClose(settings.originY, -12 / ratio, tolerance);
-
-    // The handle follows the pointer 1:1, because it is drawn at
-    // scroll * ratio.
-    const handleAfter = await boxOf(erd.minimapViewport);
-    expectClose(handleAfter.x - handleBefore.x, 24, PIXEL_TOLERANCE);
-    expectClose(handleAfter.y - handleBefore.y, 12, PIXEL_TOLERANCE);
   });
 
   test('dragging the horizontal scrollbar thumb scrolls the canvas', async ({
@@ -359,15 +387,15 @@ test.describe('mouse drag', () => {
     const trackBox = await boxOf(track);
     expect(trackBox.width).toBeGreaterThan(trackBox.height);
 
-    const settingsBefore = await erd.settings();
     const before = await boxOf(thumb);
 
-    // getWidthRatio is the viewport over the canvas width, and the viewport is
-    // fed by a ResizeObserver that subtracts only the toolbar height, so the
-    // host width is the viewport width. The thumb width verifies that.
+    // The thumb is the screen's share of a screen plus the travel behind it and
+    // slides over what that leaves, so the gain a drag is scaled by is the
+    // thumb's share of the viewport — the host, not the slightly shorter track.
     const hostBox = await boxOf(erd.host);
-    const ratio = hostBox.width / settingsBefore.width;
-    expectClose(before.width, hostBox.width * ratio, PIXEL_TOLERANCE);
+    expect(trackBox.width).toBeLessThanOrEqual(hostBox.width);
+    expect(before.width).toBeGreaterThan(SCROLLBAR_THUMB_MIN);
+    const ratio = before.width / hostBox.width;
 
     const from = await erd.centerOf(thumb);
     await dragHold(erd, from, { x: from.x + 48, y: from.y });
@@ -380,8 +408,8 @@ test.describe('mouse drag', () => {
     expectClose(settings.originX, -48 / ratio, PIXEL_TOLERANCE / ratio);
     expect(settings.originY).toBe(0);
 
-    // The thumb is drawn at -originX * ratio, which is exactly the
-    // pointer delta again.
+    // The thumb is drawn at what is left of the travel above the origin, so
+    // the distance it slid is exactly the pointer delta again.
     const after = await boxOf(thumb);
     expectClose(after.x - before.x, 48, PIXEL_TOLERANCE);
   });

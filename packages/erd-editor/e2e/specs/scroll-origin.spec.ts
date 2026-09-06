@@ -10,8 +10,8 @@ const ZOOM = 0.5;
 
 /**
  * A legacy pair chosen so the origin it migrates to is inside the travel the
- * viewport allows at this zoom. A pair outside it would be pulled into range on
- * load, and the assertions would be measuring the clamp instead.
+ * viewport allows at this zoom. A pair outside it would be pulled onto the
+ * content on load, and the assertions would be measuring the pull instead.
  */
 const LEGACY = { scrollLeft: -300, scrollTop: -400 };
 

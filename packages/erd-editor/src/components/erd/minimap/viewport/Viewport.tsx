@@ -1,9 +1,13 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { getMinimapHandleRect } from '@/components/erd/minimap/minimapGeometry';
+import {
+  getMinimapHandleRect,
+  getMinimapLayout,
+  getViewTransform,
+} from '@/components/erd/minimap/minimapGeometry';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
-import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
+import { MINIMAP_MARGIN } from '@/constants/layout';
 
 import * as styles from './Viewport.styles';
 
@@ -16,31 +20,20 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
   const { state, onScrollStart } = useMinimapScroll(ctx);
 
   /**
-   * The screen's own footprint on the canvas, drawn at the minimap's fixed
-   * ratio and trimmed to the map. The zoom lives in the size here rather than
-   * in the thumbnail, so zooming out grows this instead of shrinking the map.
+   * The screen's own footprint on the map, drawn at the map's ratio and
+   * trimmed to the box. The zoom lives in the size here and in how much of the
+   * map the screen takes, so zooming out grows this and the map together.
    */
   const styleMap = () => {
     const { store } = app.value;
-    const {
-      settings: { width, height, originX, originY, zoomLevel },
-      editor: { viewport },
-    } = store.state;
+    const layout = getMinimapLayout(store.state);
+    const rect = getMinimapHandleRect(layout, getViewTransform(store.state));
+    const { box, offset } = layout;
 
-    const rect = getMinimapHandleRect({
-      width,
-      height,
-      originX,
-      originY,
-      zoomLevel,
-      viewportWidth: viewport.width,
-      viewportHeight: viewport.height,
-    });
-
-    // The minimap box is anchored to the right, so the offset that positions
-    // this one is measured from its right edge back over the rectangle.
-    const top = MINIMAP_MARGIN + rect.y;
-    const right = MINIMAP_MARGIN + MINIMAP_SIZE - rect.x - rect.width;
+    // The thumbnail box is anchored to the right and centred in the square, so
+    // this one is measured from the square's right edge back over the box.
+    const top = MINIMAP_MARGIN + offset.y + rect.y;
+    const right = MINIMAP_MARGIN + offset.x + (box.width - rect.x - rect.width);
 
     return {
       width: `${rect.width}px`,

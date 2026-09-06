@@ -11,7 +11,7 @@ import {
   RELATIONSHIP_STROKE_WIDTH,
 } from '@/constants/layout';
 import { createEditor } from '@/engine/modules/editor/state';
-import { getScrollRanges } from '@/engine/modules/settings/atom.actions';
+import { getContentScrollRanges } from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { Memo, Point, Relationship } from '@/internal-types';
 import {
@@ -425,17 +425,25 @@ describe('the culling rect is three screens on a side (AC-G4)', () => {
 });
 
 /**
- * The origins the reducer allows on one axis, read from the range it clamps
- * with: both ends and the middle. Zooming past 1 draws the box wider than the
- * screen, so the travel runs from the drawn far edge back to zero.
+ * The origins the content allows on each axis, read from the pure range the
+ * load pulls an origin into: both ends and the middle, over a document whose
+ * two tables span the size given from the corner.
  */
-function reachableOrigins(size: number, zoomLevel: number, viewport: number) {
-  const { min, max } = getScrollRanges(
-    { width: size, height: size, zoomLevel },
-    { width: viewport, height: viewport }
-  ).left;
+function reachableOrigins(
+  size: number,
+  zoomLevel: number,
+  viewport: { width: number; height: number }
+) {
+  const state = createState();
+  state.settings.zoomLevel = zoomLevel;
+  state.editor.viewport = { ...viewport };
+  addTable(state, 'near', 0, 0);
+  addTable(state, 'far', size - TABLE_WIDTH, size - TABLE_HEIGHT);
+  const ends = ({ min, max }: { min: number; max: number }) =>
+    min === max ? [max] : [min, (min + max) / 2, max];
+  const { left, top } = getContentScrollRanges(state);
 
-  return min === max ? [max] : [min, (min + max) / 2, max];
+  return { left: ends(left), top: ends(top) };
 }
 
 const MAGNIFIED_GRID: Array<[number, number]> = [];
@@ -453,17 +461,13 @@ describe('nothing on screen goes undrawn while the zoom magnifies', () => {
     'covers every reachable scroll of a %s canvas at zoom %s',
     (width, zoomLevel) => {
       const missed: string[] = [];
+      const origins = reachableOrigins(width, zoomLevel, {
+        width: VIEWPORT_WIDTH,
+        height: VIEWPORT_HEIGHT,
+      });
 
-      for (const originX of reachableOrigins(
-        width,
-        zoomLevel,
-        VIEWPORT_WIDTH
-      )) {
-        for (const originY of reachableOrigins(
-          width,
-          zoomLevel,
-          VIEWPORT_HEIGHT
-        )) {
+      for (const originX of origins.left) {
+        for (const originY of origins.top) {
           const options: ScreenCase = {
             originX,
             originY,
@@ -489,25 +493,19 @@ describe('nothing on screen goes undrawn while the zoom magnifies', () => {
     'keeps a table under the screen centre of a %s canvas at zoom %s',
     (width, zoomLevel) => {
       const state = createState();
-      state.settings.width = width;
-      state.settings.height = width;
       state.settings.zoomLevel = zoomLevel;
       state.editor.viewport = {
         width: VIEWPORT_WIDTH,
         height: VIEWPORT_HEIGHT,
       };
       const undrawn: string[] = [];
+      const origins = reachableOrigins(width, zoomLevel, {
+        width: VIEWPORT_WIDTH,
+        height: VIEWPORT_HEIGHT,
+      });
 
-      for (const originX of reachableOrigins(
-        width,
-        zoomLevel,
-        VIEWPORT_WIDTH
-      )) {
-        for (const originY of reachableOrigins(
-          width,
-          zoomLevel,
-          VIEWPORT_HEIGHT
-        )) {
+      for (const originX of origins.left) {
+        for (const originY of origins.top) {
           state.settings.originX = originX;
           state.settings.originY = originY;
           const centre = screenToScene(

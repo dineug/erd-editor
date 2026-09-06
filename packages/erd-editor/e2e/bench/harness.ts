@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { toScrollRange } from '@/engine/modules/settings/scrollRange';
+import { openingOrigin } from '@/engine/modules/settings/scrollRange';
 import { getOriginToPlace } from '@/konva/scene/viewport';
 
 import type { ErdDocument } from '../support/schema';
@@ -555,9 +555,6 @@ function scrollToTable(document: ErdDocument, tableId: string) {
   const table = document.collections.tableEntities[tableId];
   if (!table) return;
 
-  // Parking it mid-range also keeps the scroll clamp out of the measurement:
-  // from a corner, half of a there-and-back pan is clamped flat by the reducer
-  // and measures nothing at all.
   const { settings } = document;
   const { zoomLevel } = settings;
   const origin = getOriginToPlace(
@@ -566,22 +563,31 @@ function scrollToTable(document: ErdDocument, tableId: string) {
     { x: GRIP_X, y: GRIP_Y }
   );
 
-  // The travel the reducer clamps an origin to, read from the same one-axis
-  // range getScrollRanges builds its answer from.
-  const inRange = (value: number, viewport: number, size: number) => {
-    const { min, max } = toScrollRange(size * zoomLevel, viewport, zoomLevel);
-    return Math.min(max, Math.max(min, value));
-  };
+  const tables = Object.values(document.collections.tableEntities);
 
-  settings.originX = inRange(
+  /**
+   * Where the load settles an origin, read from the engine's own one-axis rule
+   * over the corpus's extent. Table positions stand in for their boxes, so this
+   * extent sits inside the real one and the load leaves an origin settled to it.
+   */
+  const settle = (value: number, viewport: number, edges: number[]) =>
+    openingOrigin(
+      value,
+      Math.min(...edges),
+      Math.max(...edges),
+      viewport,
+      zoomLevel
+    );
+
+  settings.originX = settle(
     Math.round(origin.x),
     VIEWPORT.width,
-    settings.width
+    tables.map(({ ui }) => ui.x)
   );
-  settings.originY = inRange(
+  settings.originY = settle(
     Math.round(origin.y),
     VIEWPORT.height,
-    settings.height
+    tables.map(({ ui }) => ui.y)
   );
 }
 

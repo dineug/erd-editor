@@ -51,8 +51,8 @@ export type DocumentPngOptions = {
 };
 
 /**
- * One image pixel per canvas unit, so the png is exactly the canvas box for
- * every box a canvas can hold.
+ * One image pixel per scene unit, so the png is exactly the box the document
+ * draws for every box a canvas can hold.
  */
 const DEFAULT_PIXEL_RATIO = 1;
 
@@ -132,9 +132,9 @@ function report(
 }
 
 /**
- * A png of the whole canvas box, whatever the editor is scrolled or zoomed to.
- * The scene is drawn again from the document rather than read off the screen,
- * which is what makes the image the same however the editor is being viewed.
+ * A png of everything the document draws, whatever the editor is scrolled or
+ * zoomed to. The scene is drawn again from the document rather than read off
+ * the screen, which is what makes the image the same however it is viewed.
  *
  * @example
  * const blob = await createDocumentPng({ doc: toJson(store.state), theme, toWidth });

@@ -1,12 +1,14 @@
-import { createRef, FC, onMounted, ref, watch } from '@dineug/r-html';
+import { createRef, FC, onMounted, ref } from '@dineug/r-html';
 import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import * as canvasStyle from '@/components/erd/canvas/Canvas.styles';
 import {
-  getMinimapBoxSize,
-  getMinimapRatio,
+  fromMinimapPoint,
+  getMinimapLayout,
   getScrollToCenter,
+  getViewTransform,
+  type MinimapLayout,
 } from '@/components/erd/minimap/minimapGeometry';
 import { renderMinimapScene } from '@/components/erd/minimap/MinimapScene';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
@@ -32,39 +34,24 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   let stage: Stage | null = null;
 
+  const getLayout = () => getMinimapLayout(app.value.store.state);
+
   /**
-   * The thumbnail's own box. The container used to be the canvas at full size
-   * with a scale on it, and the box below is what that scale drew, which is
-   * what getBoundingClientRect answered then and answers now.
+   * The thumbnail's own box, centred in the minimap square along its shorter
+   * side. The map is a rect of the travel, so the box follows its aspect, and
+   * the frame around it stays the square it always was.
    */
-  const getSize = () => {
-    const { store } = app.value;
-    const {
-      settings: { width, height },
-    } = store.state;
+  const styleMap = ({ box, offset }: MinimapLayout) => ({
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+    right: `${MINIMAP_MARGIN + offset.x}px`,
+    top: `${MINIMAP_MARGIN + offset.y}px`,
+  });
 
-    return getMinimapBoxSize(width, height);
-  };
-
-  const styleMap = () => {
-    const { width, height } = getSize();
-
-    return {
-      width: `${width}px`,
-      height: `${height}px`,
-      right: `${MINIMAP_MARGIN}px`,
-      top: `${MINIMAP_MARGIN}px`,
-    };
-  };
-
-  const sceneStyleMap = () => {
-    const { width, height } = getSize();
-
-    return {
-      width: `${width}px`,
-      height: `${height}px`,
-    };
-  };
+  const sceneStyleMap = ({ box }: MinimapLayout) => ({
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+  });
 
   const borderStyleMap = () => {
     const margin = MINIMAP_MARGIN - BORDER;
@@ -77,17 +64,28 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
   };
 
   /**
-   * Centres the screen on the pressed point. The press lands in minimap pixels
-   * and the ratio turns it into canvas units, which is a zoom free step; which
-   * origin reaches that point is not, so the geometry does that half.
+   * Keeps the Stage the size of the box. Read off the layout the render just
+   * took rather than watched on the settings, because a table moved far away
+   * changes the box with no setting changing at all.
+   */
+  const fitStage = ({ box }: MinimapLayout) => {
+    if (!stage) return;
+    if (stage.width() === box.width && stage.height() === box.height) return;
+    stage.size(box);
+  };
+
+  /**
+   * Centres the screen on the pressed point, wherever that is. A press at the
+   * map's edge asks for a screen half outside the travel and gets it: a pan
+   * goes anywhere, and the map grows to hold the screen where the press sent it.
    */
   const handleMove = (event: MouseEvent | TouchEvent) => {
+    // A tap is followed by a compatibility mouse press at the same pixel, and
+    // the map has moved by then, so the second one centres somewhere else.
+    if (!isMouseEvent(event)) event.preventDefault();
+
     const { store } = app.value;
-    const {
-      settings: { width, height, originX, originY, zoomLevel },
-      editor: { viewport },
-    } = store.state;
-    const ratio = getMinimapRatio(width);
+    const layout = getLayout();
     const $minimap = minimap.value;
     const rect = $minimap.getBoundingClientRect();
     const clientX = isMouseEvent(event)
@@ -97,56 +95,42 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       ? event.clientY
       : event.touches[0].clientY;
 
-    const center = {
-      x: (clientX - rect.x) / ratio,
-      y: (clientY - rect.y) / ratio,
-    };
-    const origin = getScrollToCenter(
-      {
-        width,
-        height,
-        originX,
-        originY,
-        zoomLevel,
-        viewportWidth: viewport.width,
-        viewportHeight: viewport.height,
-      },
-      center
-    );
+    const center = fromMinimapPoint(layout, {
+      x: clientX - rect.x,
+      y: clientY - rect.y,
+    });
+    const origin = getScrollToCenter(getViewTransform(store.state), center);
 
-    store.dispatch(scrollToAction({ originX: origin.x, originY: origin.y }));
+    // Landed before the drag takes hold of the view, so the map the drag then
+    // holds is one laid out around the screen the press sent it to, and the
+    // handle is whole on it for as long as the drag lasts.
+    store.dispatchSync(
+      scrollToAction({ originX: origin.x, originY: origin.y })
+    );
 
     onScrollStart(event);
   };
 
   onMounted(() => {
-    const { store } = app.value;
-    const { settings } = store.state;
-    const size = getSize();
+    const { box } = getLayout();
 
     const $stage = new Stage({
       container: canvas.value,
       name: MINIMAP_STAGE_NAME,
-      width: size.width,
-      height: size.height,
+      width: box.width,
+      height: box.height,
     });
 
     stage = $stage;
     registerStage(MINIMAP_STAGE_NAME, $stage);
     renderMinimapScene($stage);
 
-    addUnsubscribe(
-      watch(settings).subscribe(propName => {
-        if (propName !== 'width' && propName !== 'height') return;
-        $stage.size(getSize());
-      }),
-      () => {
-        stage = null;
-        unregisterStage(MINIMAP_STAGE_NAME, $stage);
-        renderKonva($stage, null);
-        $stage.destroy();
-      }
-    );
+    addUnsubscribe(() => {
+      stage = null;
+      unregisterStage(MINIMAP_STAGE_NAME, $stage);
+      renderKonva($stage, null);
+      $stage.destroy();
+    });
   });
 
   if (import.meta.hot) {
@@ -162,25 +146,32 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     );
   }
 
-  return () => (
-    <>
-      <div
-        class={['minimap', styles.minimap]}
-        style={styleMap()}
-        use:ref={ref(minimap)}
-        on:mousedown={handleMove}
-        on:touchstart={handleMove}
-      >
+  return () => {
+    const layout = getLayout();
+    fitStage(layout);
+
+    // The frame comes first so the thumbnail, centred inside it, is painted
+    // over its boundary colour rather than under it.
+    return (
+      <>
+        <div class={styles.border} style={borderStyleMap()}></div>
         <div
-          class={canvasStyle.root}
-          style={sceneStyleMap()}
-          use:ref={ref(canvas)}
-        ></div>
-      </div>
-      <div class={styles.border} style={borderStyleMap()}></div>
-      <Viewport selected={state.selected} />
-    </>
-  );
+          class={['minimap', styles.minimap]}
+          style={styleMap(layout)}
+          use:ref={ref(minimap)}
+          on:mousedown={handleMove}
+          on:touchstart={handleMove}
+        >
+          <div
+            class={canvasStyle.root}
+            style={sceneStyleMap(layout)}
+            use:ref={ref(canvas)}
+          ></div>
+        </div>
+        <Viewport selected={state.selected} />
+      </>
+    );
+  };
 };
 
 export default Minimap;

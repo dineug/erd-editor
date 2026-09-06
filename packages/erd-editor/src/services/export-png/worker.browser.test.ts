@@ -2,14 +2,17 @@ import { observable } from '@dineug/r-html';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { createTestTheme } from '@/__test-utils__';
+import { getMemoRect } from '@/konva/scene/metrics';
 import {
   createDocumentPng,
   type ExportPngProgress,
 } from '@/services/export-png';
+import { EXPORT_MARGIN } from '@/services/export-png/exportBox';
 import { CANVAS_SIDE_MAX } from '@/services/export-png/pixelRatio';
 import { renderDocumentPng } from '@/services/export-png/renderPng';
 import { createOffscreenToWidth } from '@/services/export-png/textWidth';
 import type { Theme } from '@/themes/tokens';
+import { createMemo } from '@/utils/collection/memo.entity';
 import { createText } from '@/utils/text';
 
 const CANVAS = 600;
@@ -29,12 +32,12 @@ const { toWidth } = createText();
  * Text in three scripts, so a realm that resolved the family list differently
  * would draw glyphs of a different width and the comparison would see it.
  */
-function createDoc(width = CANVAS, height = CANVAS) {
+function createDoc() {
   return JSON.stringify({
     version: '3.0.0',
     settings: {
-      width,
-      height,
+      width: CANVAS,
+      height: CANVAS,
       originX: 0,
       originY: 0,
       zoomLevel: 1,
@@ -109,6 +112,76 @@ function createDoc(width = CANVAS, height = CANVAS) {
   });
 }
 
+type MemoSeed = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * A document of memos and nothing else, so the box the image holds is the memo
+ * frames and the margin around them, both of which the seed states outright.
+ */
+function createMemoDoc(memos: MemoSeed[]) {
+  return JSON.stringify({
+    version: '3.0.0',
+    settings: {
+      width: CANVAS,
+      height: CANVAS,
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+      databaseName: 'worker',
+    },
+    doc: {
+      tableIds: [],
+      relationshipIds: [],
+      indexIds: [],
+      memoIds: memos.map(({ id }) => id),
+    },
+    collections: {
+      tableEntities: {},
+      tableColumnEntities: {},
+      relationshipEntities: {},
+      indexEntities: {},
+      indexColumnEntities: {},
+      memoEntities: Object.fromEntries(
+        memos.map(({ id, x, y, width, height }) => [
+          id,
+          {
+            id,
+            value: '',
+            ui: { x, y, width, height, zIndex: 2, color: '#ff0000' },
+            meta: meta(),
+          },
+        ])
+      ),
+    },
+  });
+}
+
+/** What those memos and that margin come to, spelled from the memo geometry. */
+function memoDocBox(memos: MemoSeed[]) {
+  const rects = memos.map(({ id, x, y, width, height }) =>
+    getMemoRect(createMemo({ id, ui: { x, y, width, height } }))
+  );
+  const left = Math.min(...rects.map(rect => rect.x));
+  const top = Math.min(...rects.map(rect => rect.y));
+
+  return {
+    width:
+      Math.max(...rects.map(rect => rect.x + rect.width)) -
+      left +
+      EXPORT_MARGIN * 2,
+    height:
+      Math.max(...rects.map(rect => rect.y + rect.height)) -
+      top +
+      EXPORT_MARGIN * 2,
+  };
+}
+
 type Exported = {
   blob: Blob;
   progress: ExportPngProgress[];
@@ -151,6 +224,27 @@ const differingBytes = (a: ImageData, b: ImageData) =>
     (count, byte, index) => (byte === b.data[index] ? count : count + 1),
     0
   );
+
+/** Bytes that differ inside the region both images cover, from their shared corner. */
+const differingBytesOver = (
+  a: ImageData,
+  b: ImageData,
+  width: number,
+  height: number
+) => {
+  let count = 0;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      for (let channel = 0; channel < 4; channel++) {
+        const byte = a.data[(y * a.width + x) * 4 + channel];
+        if (byte !== b.data[(y * b.width + x) * 4 + channel]) count++;
+      }
+    }
+  }
+
+  return count;
+};
 
 describe('the export runs in a shared worker', () => {
   it('draws in the worker when the caller measures text as the worker does', async () => {
@@ -224,8 +318,16 @@ describe('the export runs in a shared worker', () => {
       pixelsOf(other.blob),
     ]);
 
-    expect([a.width, a.height]).toEqual([b.width, b.height]);
-    expect(differingBytes(a, b)).toBeGreaterThan(0);
+    // The image is the box the document draws and a table's width is measured,
+    // so a realm that measures differently does not even raster the same box.
+    // Only the width moves: a row's height is the same however wide its text is.
+    expect(a.height).toBe(b.height);
+    expect(a.width).not.toBe(b.width);
+    // And inside the region both hold, the narrower table's right edge falls
+    // where the wider one is still drawing its body, so the pictures differ too.
+    expect(
+      differingBytesOver(a, b, Math.min(a.width, b.width), a.height)
+    ).toBeGreaterThan(0);
   });
 
   it('measures a string identically in both realms', async () => {
@@ -271,12 +373,19 @@ describe('the worker and the main thread draw the same document', () => {
 });
 
 describe('a box past what a canvas holds', () => {
+  /** Two memos far enough apart that the box holding both is taller than tall. */
+  const FAR_APART: MemoSeed[] = [
+    { id: 'm-top', x: 0, y: 0, width: 240, height: 160 },
+    { id: 'm-bottom', x: 0, y: 20_000, width: 240, height: 160 },
+  ];
+
   it('is scaled down in the worker, and says so on the main thread', async () => {
+    const box = memoDocBox(FAR_APART);
     const reductions: unknown[] = [];
     const progress: ExportPngProgress[] = [];
 
     const blob = await createDocumentPng({
-      doc: createDoc(2000, 20_000),
+      doc: createMemoDoc(FAR_APART),
       theme,
       toWidth,
       pixelRatio: 2,
@@ -295,8 +404,8 @@ describe('a box past what a canvas holds', () => {
     expect(drawn.height).toBe(CANVAS_SIDE_MAX);
     expect(reductions).toEqual([
       {
-        documentWidth: 2000,
-        documentHeight: 20_000,
+        documentWidth: box.width,
+        documentHeight: box.height,
         width: drawn.width,
         height: drawn.height,
       },
@@ -304,10 +413,11 @@ describe('a box past what a canvas holds', () => {
   }, 60_000);
 
   it('keeps every pixel of a box that fits, and says nothing', async () => {
+    const box = memoDocBox(FAR_APART);
     const reductions: unknown[] = [];
 
     const blob = await createDocumentPng({
-      doc: createDoc(2000, 20_000),
+      doc: createMemoDoc(FAR_APART),
       theme,
       toWidth,
       onResolutionReduced: reduction => reductions.push(reduction),
@@ -315,7 +425,7 @@ describe('a box past what a canvas holds', () => {
 
     const drawn = await createImageBitmap(blob);
 
-    expect([drawn.width, drawn.height]).toEqual([2000, 20_000]);
+    expect([drawn.width, drawn.height]).toEqual([box.width, box.height]);
     expect(reductions).toEqual([]);
   }, 60_000);
 });

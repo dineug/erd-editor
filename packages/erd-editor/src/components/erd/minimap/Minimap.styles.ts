@@ -3,7 +3,6 @@ import { css } from '@dineug/r-html';
 export const minimap = css`
   position: absolute;
   overflow: hidden;
-  background-color: var(--canvas-boundary-background);
   /*
    * The minimap redraws its own copy of the document on every table move, and
    * it sits over the canvas that is redrawing at the same time. Promoting the
@@ -14,11 +13,16 @@ export const minimap = css`
   will-change: transform;
 `;
 
+/*
+ * The square the thumbnail is centred in. The map keeps the content's own
+ * shape, so the thumbnail rarely fills the square, and the frame paints the
+ * boundary colour behind it or the scene would show through the letterbox.
+ */
 export const border = css`
   position: absolute;
   box-sizing: content-box;
   pointer-events: none;
   border: 1px solid var(--minimap-border);
   box-shadow: 0 1px 6px var(--minimap-shadow);
-  background-color: transparent;
+  background-color: var(--canvas-boundary-background);
 `;

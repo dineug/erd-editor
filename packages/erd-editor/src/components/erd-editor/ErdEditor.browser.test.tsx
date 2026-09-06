@@ -151,17 +151,25 @@ function tableBody(stage: Stage) {
   return body!;
 }
 
+/**
+ * How many pixels the stage has put down across all of its layers. The bottom
+ * layer paints nothing of its own now, so which layer answers is the scene's
+ * business and the count is taken over every one of them.
+ */
 function paintedPixels(stage: Stage): number {
-  const layer = stage.getLayers()[0];
-  const canvas = layer.getCanvas()._canvas;
-  const data = canvas
-    .getContext('2d')!
-    .getImageData(0, 0, canvas.width, canvas.height).data;
-
   let painted = 0;
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] !== 0) painted++;
+
+  for (const layer of stage.getLayers()) {
+    const canvas = layer.getCanvas()._canvas;
+    const data = canvas
+      .getContext('2d')!
+      .getImageData(0, 0, canvas.width, canvas.height).data;
+
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] !== 0) painted++;
+    }
   }
+
   return painted;
 }
 
@@ -181,6 +189,9 @@ describe('<erd-editor> scene palette', () => {
     await createSeededEditor();
 
     const stage = stageRegistry().canvas;
+    // The store starts unmeasured and the Stage is sized from the first frame
+    // the ResizeObserver reports, which lands after the frame that mounted it.
+    await expect.poll(() => stage.width()).toBeGreaterThan(0);
     await nextFrame();
 
     expect(stage.size()).toEqual({
@@ -215,8 +226,10 @@ describe('<erd-editor> viewport', () => {
     await nextFrame();
     await flush();
 
+    // The measurement arrives on a ResizeObserver callback of its own, so the
+    // Stage follows the host a frame or more after the element is in the page.
     const stage = stageRegistry().canvas;
-    expect(stage.width()).toBe(400);
+    await expect.poll(() => stage.width()).toBe(400);
     expect(stage.height()).toBe(0);
   });
 });

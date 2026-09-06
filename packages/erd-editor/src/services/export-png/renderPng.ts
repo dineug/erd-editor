@@ -64,23 +64,34 @@ export async function renderDocumentPng({
   const scene = await renderDocumentScene({ doc, theme, toWidth });
 
   try {
-    // A stage rasterises at its own box times the ratio, so the box is read
-    // back off the stage rather than recomputed from the document here.
-    const documentWidth = scene.stage.width();
-    const documentHeight = scene.stage.height();
-    const ratio = fitPixelRatio(pixelRatio, documentWidth, documentHeight);
+    // A stage rasterises at its own box times the ratio, so the ratio is fitted
+    // to the Stage rather than to the scene box the Stage was sized from.
+    const ratio = fitPixelRatio(
+      pixelRatio,
+      scene.stage.width(),
+      scene.stage.height()
+    );
 
     const canvas = scene.stage.toCanvas({ pixelRatio: ratio }) as PngCanvas;
     const blob = await toPngBlob(canvas);
     const { width, height } = canvas;
+    // Both reductions in one number: the Stage the box was already scaled onto,
+    // and the raster of that Stage. Compared as factors rather than as pixels,
+    // which a canvas rounds to whole ones and a scene box does not.
+    const drawn = scene.scale * ratio;
 
     return {
       blob,
       width,
       height,
       reduction:
-        ratio < pixelRatio
-          ? { documentWidth, documentHeight, width, height }
+        drawn < pixelRatio
+          ? {
+              documentWidth: scene.box.width,
+              documentHeight: scene.box.height,
+              width,
+              height,
+            }
           : null,
     };
   } finally {

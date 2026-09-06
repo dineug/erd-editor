@@ -9,7 +9,10 @@ import {
   createEngineContext,
   type InjectEngineContext,
 } from '@/engine/context';
-import { validationIdsAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeViewportAction,
+  validationIdsAction,
+} from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
@@ -47,6 +50,10 @@ export function createReplicationStore(
   const subscriptionSet = new Set<Subscription>();
   const engineContext = createEngineContext(context);
   const store = createStore(engineContext, false);
+  // A replica has no screen, and the default editor size the store starts with
+  // would pull every replicated load against a frame nobody looks through, so
+  // the viewport is reported empty before anything can be reduced against it.
+  store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
   const hooks = createHooks(store);
   const dispatch$ = new Subject<Array<AnyAction>>();
   const change$ = new Observable<Array<AnyAction>>(subscriber =>

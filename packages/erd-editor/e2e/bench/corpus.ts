@@ -16,22 +16,13 @@ import {
  */
 export const BENCH_CANVAS = 4000;
 
-/** Mirrors CANVAS_SIZE_MAX in src/constants/schema.ts, past which the editor clamps. */
-const CANVAS_MAX = 20_000;
-
 /**
  * The shared canvas wherever the grid fits inside it, which is every corpus up
- * to large, and the grid's own extent where it does not — a canvas short of
- * the grid clips the SVG the quality metrics are read from.
+ * to large, and the grid's own extent where it does not. The scene reads no
+ * canvas box any more, so a grid of any extent is a corpus the editor draws.
  */
 function fitCanvas(extent: number) {
-  const size = Math.max(BENCH_CANVAS, Math.ceil(extent));
-  if (size > CANVAS_MAX) {
-    throw new Error(
-      `corpus needs a ${size}px canvas, above the schema maximum of ${CANVAS_MAX}`
-    );
-  }
-  return size;
+  return Math.max(BENCH_CANVAS, Math.ceil(extent));
 }
 
 const META = { updateAt: 0, createAt: 0 };

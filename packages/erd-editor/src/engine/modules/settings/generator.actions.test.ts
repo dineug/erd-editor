@@ -16,6 +16,7 @@ import {
   changeZoomLevelAction$,
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
+import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Point } from '@/internal-types';
 import { getOriginToPlace, toScenePoint } from '@/konva/scene/viewport';
@@ -25,10 +26,20 @@ const toWidth = (text: string) => text.length * 10;
 const VIEWPORT = { width: 1000, height: 800 };
 const SCREEN_CENTRE = { x: VIEWPORT.width / 2, y: VIEWPORT.height / 2 };
 
+/**
+ * Two tables spanning the corner to 2000 on each axis, which is what gives the
+ * origin travel to re-centre over: every anchor below sits inside it at every
+ * zoom, so no walk starts from or runs into a clamp.
+ */
 function createTestStore(): Store {
   const store = createStore({ toWidth, clock: new Clock() });
-  // canvas 2000x2000, viewport 1000x800 → origin range [-1000, 0] x [-1200, 0]
   store.dispatchSync(changeViewportAction(VIEWPORT));
+  store.dispatchSync(
+    addTableAction({ id: 'near', ui: { x: 0, y: 0, zIndex: 2 } })
+  );
+  store.dispatchSync(
+    addTableAction({ id: 'far', ui: { x: 2_000, y: 2_000, zIndex: 2 } })
+  );
   return store;
 }
 

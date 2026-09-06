@@ -107,6 +107,12 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     { toWidth: text.toWidth },
     { getReadonly }
   );
+  // The host hands the document over before the ResizeObserver below has
+  // measured anything, and a load pulled against the store's default size
+  // would land on a screen nobody has, so the viewport starts empty instead.
+  appContextValue.store.dispatchSync(
+    changeViewportAction({ width: 0, height: 0 })
+  );
   const provider = useProvider(ctx, appContext, appContextValue);
 
   const root = createRef<HTMLDivElement>();

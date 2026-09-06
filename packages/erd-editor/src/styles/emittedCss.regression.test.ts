@@ -117,26 +117,27 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 56 style modules', () => {
+  it('loads 55 style modules', () => {
     // A new style module is meant to move this number, which is why it is
-    // pinned rather than derived. P6-51 took six of them with the dom scene.
-    expect(modulePaths).toHaveLength(56);
+    // pinned rather than derived. P6-51 took six of them with the dom scene,
+    // and the off-canvas marker took one more with the document's edge.
+    expect(modulePaths).toHaveLength(55);
   });
 
-  it('adopts 607 rules, none of them a duplicate', () => {
+  it('adopts 604 rules, none of them a duplicate', () => {
     // Pinned rather than derived, so a rule added or lost anywhere in the
     // package has to be accounted for here.
-    expect(cumulative).toHaveLength(607);
-    expect(new Set(cumulative).size).toBe(607);
+    expect(cumulative).toHaveLength(604);
+    expect(new Set(cumulative).size).toBe(604);
   });
 
-  it('splits into 327 global rules ahead of 280 component rules', () => {
+  it('splits into 327 global rules ahead of 277 component rules', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 154 });
+    expect(sheetsOfEachKind).toEqual({ global: 5, component: 152 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(280);
+    expect(componentRules).toHaveLength(277);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -151,9 +152,9 @@ describe('rule-count invariance', () => {
     );
 
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
-    // rendered alone or with the other 55 — which is exactly what makes this comparison mean
+    // rendered alone or with the other 54 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(607);
+    expect(union.size).toBe(604);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

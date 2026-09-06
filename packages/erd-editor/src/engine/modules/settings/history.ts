@@ -4,19 +4,12 @@ import { ActionType } from './actions';
 import {
   changeShowAction,
   changeZoomLevelAction,
-  resizeAction,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
 } from './atom.actions';
 
 const MOVE_MIN = 20;
-
-const resize: PushUndoHistory = (undoActions, _, { settings }) => {
-  undoActions.push(
-    resizeAction({ width: settings.width, height: settings.height })
-  );
-};
 
 const scrollTo: PushUndoHistory = (undoActions, _, { settings }) => {
   undoActions.push(
@@ -39,7 +32,6 @@ const changeZoomLevel: PushUndoHistory = (undoActions, _, { settings }) => {
 };
 
 export const settingsPushUndoHistoryMap = {
-  [ActionType.resize]: resize,
   [ActionType.scrollTo]: scrollTo,
   [ActionType.changeShow]: changeShow,
   [ActionType.changeZoomLevel]: changeZoomLevel,

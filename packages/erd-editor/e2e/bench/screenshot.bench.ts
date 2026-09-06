@@ -81,9 +81,9 @@ for (const scene of SCENES) {
       };
     }
 
-    // The generator lays tables on a grid inside a canvas no smaller than
-    // 4000px, which leaves the viewport looking at empty space. Shrink it to
-    // the occupied region and zoom so the whole scene is in frame.
+    // The generator lays tables on a grid that can run well past one screen,
+    // which leaves the viewport looking at a corner of it. Zoom so the whole
+    // occupied region is in frame; the scene reads no canvas box any more.
     const tables = Object.values(corpus.document.collections.tableEntities);
     const right = Math.max(...tables.map(table => table.ui.x));
     const bottom = Math.max(...tables.map(table => table.ui.y));
@@ -92,8 +92,6 @@ for (const scene of SCENES) {
     const width = right + 420;
     const height = bottom + 420;
 
-    corpus.document.settings.width = width;
-    corpus.document.settings.height = height;
     corpus.document.settings.zoomLevel = Math.min(
       1,
       VIEWPORT.width / width,

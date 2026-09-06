@@ -70,19 +70,23 @@ describe('Toolbar', () => {
       expect(el.getAttribute('class')).toContain(String(styles.root));
     });
 
-    it('binds the three text inputs to the current settings', async () => {
+    it('binds the two text inputs to the current settings', async () => {
       await setup();
 
       expect(input('database name').value).toBe('');
-      expect(input('canvas size').value).toBe('2000');
       expect(input('zoom level').value).toBe('100%');
     });
 
-    it('sizes the database name input wider than the numeric ones', async () => {
+    it('offers no canvas size box, the document having no edge to size', async () => {
+      await setup();
+
+      expect(input('canvas size')).toBeNull();
+    });
+
+    it('sizes the database name input wider than the numeric one', async () => {
       await setup();
 
       expect(input('database name').style.width).toBe('150px');
-      expect(input('canvas size').style.width).toBe('45px');
       expect(input('zoom level').style.width).toBe('45px');
     });
 
@@ -164,43 +168,6 @@ describe('Toolbar', () => {
       expect(app.store.state.settings.databaseName).toBe('sakila');
     });
 
-    it('resizes the canvas to a square of the committed size', async () => {
-      const { app } = await setup();
-      const el = input('canvas size');
-
-      el.value = '3000';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('3000');
-      expect(app.store.state.settings.width).toBe(3000);
-      expect(app.store.state.settings.height).toBe(3000);
-    });
-
-    it('clamps an oversized canvas size back into range and rewrites the input', async () => {
-      const { app } = await setup();
-      const el = input('canvas size');
-
-      el.value = '999999';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('20000');
-      expect(app.store.state.settings.width).toBe(20000);
-    });
-
-    it('strips non digits from the canvas size before clamping', async () => {
-      const { app } = await setup();
-      const el = input('canvas size');
-
-      el.value = 'abc';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('2000');
-      expect(app.store.state.settings.width).toBe(2000);
-    });
-
     it('applies a committed zoom level as a percentage', async () => {
       const { app } = await setup();
       const el = input('zoom level');
@@ -266,19 +233,6 @@ describe('Toolbar', () => {
       await flush();
 
       expect(app.store.state.settings.databaseName).toBe(before);
-    });
-
-    it('ignores a canvas size change event that carries no target element', async () => {
-      const { app } = await setup();
-      const el = input('canvas size');
-      const before = app.store.state.settings.width;
-
-      el.value = '5000';
-      el.dispatchEvent(withNullTarget(new Event('change')));
-      await flush();
-
-      expect(el.value).toBe('5000');
-      expect(app.store.state.settings.width).toBe(before);
     });
 
     it('ignores a zoom level change event that carries no target element', async () => {

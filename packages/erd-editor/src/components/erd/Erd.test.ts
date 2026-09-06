@@ -15,6 +15,10 @@ import {
 import { AppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import * as styles from '@/components/erd/Erd.styles';
+import {
+  getViewTransform,
+  getVisibleCanvasRect,
+} from '@/components/erd/minimap/minimapGeometry';
 import * as tablePropertiesStyles from '@/components/erd/table-properties/TableProperties.styles';
 import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
@@ -27,11 +31,14 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import {
+  addTableAction,
   changeTableNameAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import { getContentRect } from '@/konva/scene/contentBounds';
+import type { Rect } from '@/konva/scene/metrics';
 import {
   openColorPickerAction,
   openDiffViewerAction,
@@ -107,6 +114,18 @@ async function setup(
   return { app, container: mounted.container, root, props, actions };
 }
 
+/** Two tables far apart, which is what gives the origin travel to scroll over. */
+const appWithContent = () => {
+  const app = createTestAppContext();
+  app.store.dispatchSync(
+    addTableAction({ id: 'near', ui: { x: 0, y: 0, zIndex: 2 } })
+  );
+  app.store.dispatchSync(
+    addTableAction({ id: 'far', ui: { x: 2_000, y: 2_000, zIndex: 2 } })
+  );
+  return app;
+};
+
 const seedTable = (app: AppContext, name?: string) => {
   app.store.dispatchSync(addTableAction$());
   const id =
@@ -138,7 +157,6 @@ const DOM_GUARDS = [
   'edit-overlay',
   'edit-input',
   'context-menu-content',
-  'hide-sign',
   'minimap',
   'minimap-viewport',
   'virtual-scroll',
@@ -231,12 +249,29 @@ describe('Erd - scene routing', () => {
 });
 
 describe('Erd - shell', () => {
-  it('renders the canvas shell with the scroll, minimap and hide sign layers', async () => {
-    const { root } = await setup();
+  it('renders the canvas shell with the scroll and minimap layers', async () => {
+    const { root } = await setup({}, appWithContent());
 
     expect(root).toBeTruthy();
     expect(root.className).toBe(String(styles.root));
     expect(root.querySelectorAll('.virtual-scroll')).toHaveLength(2);
+    expect(root.querySelector('.minimap')).toBeTruthy();
+    expect(root.querySelector('.minimap-viewport')).toBeTruthy();
+  });
+
+  it('hides the minimap on an empty document, as the scrollbars are, until a table exists', async () => {
+    const app = createTestAppContext();
+    const { root } = await setup({}, app);
+
+    expect(root.querySelectorAll('.virtual-scroll')).toHaveLength(0);
+    expect(root.querySelector('.minimap')).toBeNull();
+    expect(root.querySelector('.minimap-viewport')).toBeNull();
+
+    app.store.dispatchSync(
+      addTableAction({ id: 'first', ui: { x: 0, y: 0, zIndex: 2 } })
+    );
+    await flush();
+
     expect(root.querySelector('.minimap')).toBeTruthy();
     expect(root.querySelector('.minimap-viewport')).toBeTruthy();
   });
@@ -387,7 +422,7 @@ describe('Erd - wheel', () => {
   };
 
   it('scrolls the canvas', async () => {
-    const { app, root } = await setup();
+    const { app, root } = await setup({}, appWithContent());
 
     const event = wheel(root, { deltaX: 100, deltaY: 50 });
     await flush();
@@ -398,7 +433,7 @@ describe('Erd - wheel', () => {
   });
 
   it('maps a shift wheel onto the horizontal axis', async () => {
-    const { app, root } = await setup();
+    const { app, root } = await setup({}, appWithContent());
 
     wheel(root, { deltaX: 0, deltaY: 80, shiftKey: true });
     await flush();
@@ -541,7 +576,7 @@ describe('Erd - drag select and grab move', () => {
   });
 
   it('scrolls the canvas while dragging', async () => {
-    const { app, root } = await setup();
+    const { app, root } = await setup({}, appWithContent());
 
     dispatchMouse(root, 'mousedown', { clientX: 100, clientY: 100 });
     const move = dispatchMouse(window, 'mousemove', {
@@ -858,6 +893,11 @@ describe('Erd - time travel', () => {
 });
 
 describe('Erd - automatic table placement', () => {
+  const middleOf = ({ x, y, width, height }: Rect) => ({
+    x: x + width / 2,
+    y: y + height / 2,
+  });
+
   it('moves the tables to the positions the simulation produced', async () => {
     const { app, actions } = await setup();
     seedTable(app, 'alpha');
@@ -892,6 +932,104 @@ describe('Erd - automatic table placement', () => {
     expect(app.store.state.editor.openMap[Open.automaticTablePlacement]).toBe(
       false
     );
+    toast.unmount();
+  });
+
+  it('centres the view on where the placement left the tables', async () => {
+    const { app } = await setup();
+    seedTable(app, 'alpha');
+    seedTable(app, 'beta');
+    await flush();
+
+    const toasts: any[] = [];
+    app.emitter.on({
+      openToast: ({ payload: { message } }) => {
+        toasts.push(message);
+      },
+    });
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.automaticTablePlacement]: true })
+    );
+    await flush(6);
+    const toast = mount(toasts[0], app);
+    await flush();
+
+    dispatchMouse(findByText(toast.container, 'button', 'Apply')!, 'click');
+    await flush(6);
+
+    // Wherever the simulation left them, the screen is centred on the box they
+    // now occupy: the placement is applied to the document and to the view.
+    const content = middleOf(getContentRect(app.store.state)!);
+    const visible = middleOf(
+      getVisibleCanvasRect(getViewTransform(app.store.state))
+    );
+
+    expect(visible.x).toBeCloseTo(content.x, 6);
+    expect(visible.y).toBeCloseTo(content.y, 6);
+    toast.unmount();
+  });
+
+  /**
+   * The moves and the re-centre are one dispatch, so the history holds them as
+   * one entry: a single undo puts every table and the view back where they
+   * were, where two entries would leave the tables placed and only the view undone.
+   */
+  it('undoes the placement and the re-centre together, in one step', async () => {
+    const { app } = await setup();
+    seedTable(app, 'alpha');
+    seedTable(app, 'beta');
+    await flush();
+
+    const positionsOf = () =>
+      app.store.state.doc.tableIds.map(id => {
+        const { x, y } = app.store.state.collections.tableEntities[id].ui;
+        return [id, x, y];
+      });
+    const originOf = () => {
+      const { originX, originY } = app.store.state.settings;
+      return { x: originX, y: originY };
+    };
+    const before = {
+      positions: positionsOf(),
+      origin: originOf(),
+      cursor: app.store.history.cursor,
+    };
+
+    const toasts: any[] = [];
+    app.emitter.on({
+      openToast: ({ payload: { message } }) => {
+        toasts.push(message);
+      },
+    });
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.automaticTablePlacement]: true })
+    );
+    await flush(6);
+    const toast = mount(toasts[0], app);
+    await flush();
+
+    // Let the simulation tick before applying: a tick rewrites every position
+    // in the preview, which is what gives the undo below something to put back.
+    await vi.waitFor(() => {
+      const percent = /(\d+)%/.exec(toast.container.textContent ?? '')?.[1];
+      expect(Number(percent)).toBeGreaterThan(0);
+    });
+
+    dispatchMouse(findByText(toast.container, 'button', 'Apply')!, 'click');
+    await flush(6);
+
+    expect(positionsOf()).not.toEqual(before.positions);
+    expect(originOf()).not.toEqual(before.origin);
+    expect(app.store.history.cursor).toBe(before.cursor + 1);
+
+    app.store.undo();
+    await flush(6);
+
+    expect(positionsOf()).toEqual(before.positions);
+    expect(originOf()).toEqual(before.origin);
+    expect(app.store.history.cursor).toBe(before.cursor);
     toast.unmount();
   });
 });

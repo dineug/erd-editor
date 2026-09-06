@@ -10,6 +10,7 @@ import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { getContentRect } from '@/konva/scene/contentBounds';
 import { onPrevent } from '@/utils/domEvent';
 import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
@@ -86,7 +87,6 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
       !el.closest('.edit-overlay') &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
-      !el.closest('.hide-sign') &&
       canHideColorPicker;
 
     const canDrag =
@@ -118,27 +118,32 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     });
   };
 
-  return () => (
-    <div
-      class={[
-        styles.root,
-        props.diff === Diff.insert
-          ? 'diff-viewer-insert'
-          : 'diff-viewer-delete',
-      ]}
-      style={{ cursor: state.grabCursor }}
-      use:ref={ref(root)}
-      on:contextmenu={onPrevent}
-      on:mousedown={handleDragSelect}
-      on:touchstart={handleDragSelect}
-      on:wheel={handleWheel}
-    >
-      {diffStyle}
-      <Canvas root={root} canvas={canvas} grabMove={true} />
-      <VirtualScroll />
-      <Minimap />
-    </div>
-  );
+  return () => {
+    // As in Erd: an empty document draws no scrollbar and no map either.
+    const hasContent = getContentRect(app.store.state) !== null;
+
+    return (
+      <div
+        class={[
+          styles.root,
+          props.diff === Diff.insert
+            ? 'diff-viewer-insert'
+            : 'diff-viewer-delete',
+        ]}
+        style={{ cursor: state.grabCursor }}
+        use:ref={ref(root)}
+        on:contextmenu={onPrevent}
+        on:mousedown={handleDragSelect}
+        on:touchstart={handleDragSelect}
+        on:wheel={handleWheel}
+      >
+        {diffStyle}
+        <Canvas root={root} canvas={canvas} grabMove={true} />
+        <VirtualScroll />
+        {hasContent ? <Minimap /> : null}
+      </div>
+    );
+  };
 };
 
 export default ErdViewer;

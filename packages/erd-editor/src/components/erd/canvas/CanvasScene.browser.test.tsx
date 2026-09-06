@@ -6,7 +6,6 @@
 
 import { createRef } from '@dineug/r-html';
 import type { Layer } from 'konva/lib/Layer';
-import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -29,7 +28,6 @@ import { addRelationshipAction } from '@/engine/modules/relationship/atom.action
 import {
   changeShowAction,
   changeZoomLevelAction,
-  resizeAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
@@ -99,10 +97,6 @@ const drawnTableIdsOf = (stage: Stage) =>
 const backgroundLayerOf = (stage: Stage) =>
   stage.findOne<Layer>('.canvas-background')!;
 
-/** The one child of the background layer, which carries no name of its own. */
-const backgroundRectOf = (stage: Stage): KonvaNode =>
-  backgroundLayerOf(stage).getChildren()[0];
-
 describe('the canvas scene', () => {
   it('roots four layers in the Stage, background first and presence last', async () => {
     const { stage } = await mountScene();
@@ -151,7 +145,6 @@ describe('the canvas scene', () => {
   it('gives a table off screen no node at all', async () => {
     const { app, stage } = await mountScene();
 
-    app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
     seedTable(app, 'near', 100);
     seedTable(app, 'far', 5000);
     await flush();
@@ -161,20 +154,16 @@ describe('the canvas scene', () => {
   });
 
   /**
-   * A big canvas at a low zoom, the pair the culling rect used to fall apart on
-   * when the scene layer slid by half the shrink of the canvas box. The origin
-   * is the document's own now, and the rect reads the very same one.
+   * Content spread far wider than the screen at a low zoom, the pair the
+   * culling rect used to fall apart on when the scene layer slid by half the
+   * shrink of the canvas box. The rect reads the document's own origin now.
    */
-  describe('with the canvas box far larger than the screen', () => {
-    const CANVAS = 8000;
+  describe('with the content far larger than the screen', () => {
     const ZOOM = 0.5;
 
     async function mountShrunkCanvas() {
       const mounted = await mountScene();
 
-      mounted.app.store.dispatchSync(
-        resizeAction({ width: CANVAS, height: CANVAS })
-      );
       mounted.app.store.dispatchSync(changeZoomLevelAction({ value: ZOOM }));
       // Puts the scene origin on the stage origin, so screen equals scene
       // times the zoom and a table's screen box is its position halved.
@@ -281,7 +270,6 @@ describe('the canvas scene', () => {
   it('builds the node once a pan brings the table on screen', async () => {
     const { app, stage } = await mountScene();
 
-    app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
     seedTable(app, 'near', 100);
     seedTable(app, 'far', 5000);
     await flush();
@@ -301,7 +289,6 @@ describe('the canvas scene', () => {
 
     it('is hidden rather than destroyed, and shown again by the same node', async () => {
       const { app, stage } = await mountScene();
-      app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
       seedTable(app, 'near', 100);
       await flush();
       const node = stage.findOne('#table-near')!;
@@ -321,7 +308,6 @@ describe('the canvas scene', () => {
 
     it('answers no hit while hidden', async () => {
       const { app, stage } = await mountScene();
-      app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
       seedTable(app, 'near', 100);
       await flush();
       await whenPainted();
@@ -341,7 +327,6 @@ describe('the canvas scene', () => {
 
     it('is dropped once more have left than the bound keeps', async () => {
       const { app, stage } = await mountScene();
-      app.store.dispatchSync(resizeAction({ width: 20000, height: 20000 }));
       // A grid three screens apart, one table per culling rect: each scroll
       // draws one and retires the one before, oldest first past the floor.
       const count = 20;
@@ -450,23 +435,18 @@ describe('the canvas scene', () => {
 });
 
 /**
- * The dom scene painted the canvas colour on a document sized box and let the
- * boundary colour of the editor show around it. The stage container is the
- * screen now, so the document box is a rect the scene draws at its own origin.
+ * The bottom layer used to carry a document sized rect painted in the canvas
+ * colour. The document has no edge any more, so the colour is on the stage
+ * container and the layer is there for a drag's connectors alone.
  */
-describe('the canvas background', () => {
-  const CANVAS = 2000;
-
-  it('covers the canvas box in the canvas colour of the live theme', async () => {
+describe('the bottom layer', () => {
+  it('draws no document box, leaving the container to paint the canvas', async () => {
     const { stage } = await mountScene();
-    const rect = backgroundRectOf(stage);
 
-    expect(rect.className).toBe('Rect');
-    expect(rect.getAttr('fill')).toBe(createTestTheme().canvasBackground);
-    expect(rect.x()).toBe(0);
-    expect(rect.y()).toBe(0);
-    expect(rect.getAttr('width')).toBe(CANVAS);
-    expect(rect.getAttr('height')).toBe(CANVAS);
+    expect(backgroundLayerOf(stage).getChildren()).toHaveLength(0);
+    expect(stage.find('Rect').map(node => node.getAttr('fill'))).not.toContain(
+      createTestTheme().canvasBackground
+    );
   });
 
   it('is placed at the very origin the scene layer is placed at', async () => {
@@ -484,53 +464,5 @@ describe('the canvas background', () => {
       scene.scaleX(),
       scene.scaleY(),
     ]);
-  });
-
-  it('follows the canvas box when the document is resized', async () => {
-    const { app, stage } = await mountScene();
-
-    app.store.dispatchSync(resizeAction({ width: 4000, height: 3000 }));
-    await flush();
-
-    const rect = backgroundRectOf(stage);
-    expect(rect.getAttr('width')).toBe(4000);
-    expect(rect.getAttr('height')).toBe(3000);
-  });
-
-  it('leaves the canvas box on the stage origin at a zoom of one', async () => {
-    const { stage } = await mountScene();
-
-    expect(backgroundRectOf(stage).getClientRect()).toEqual({
-      x: 0,
-      y: 0,
-      width: CANVAS,
-      height: CANVAS,
-    });
-  });
-
-  /**
-   * The whole point of the rect: zoomed out, the canvas box stops filling the
-   * stage, and what the scene leaves unpainted there is where the boundary
-   * colour of the element holding the editor shows through.
-   */
-  it('stops short of the stage once the zoom shrinks the canvas box', async () => {
-    const { app, stage } = await mountScene();
-
-    // At 0.4 the 2000px box draws 800 wide, and an origin of 100 is inside the
-    // travel that zoom allows, so the box sits 100 in from every stage edge.
-    app.store.dispatchSync(changeZoomLevelAction({ value: 0.4 }));
-    app.store.dispatchSync(scrollToAction({ originX: 100, originY: 100 }));
-    await flush();
-
-    const box = backgroundRectOf(stage).getClientRect();
-    expect(box).toEqual({
-      x: 100,
-      y: 100,
-      width: CANVAS * 0.4,
-      height: CANVAS * 0.4,
-    });
-    expect(box.x).toBeGreaterThan(0);
-    expect(box.x + box.width).toBeLessThan(VIEWPORT);
-    expect(stage.width()).toBe(VIEWPORT);
   });
 });

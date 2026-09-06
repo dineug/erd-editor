@@ -25,9 +25,16 @@ afterEach(() => {
   window.dispatchEvent(new MouseEvent('mouseup'));
 });
 
+/** A screen over two tables far apart, which gives the origin travel to scroll over. */
 function createApp(): AppContext {
   const app = createTestAppContext();
   app.store.dispatchSync(changeViewportAction({ width: 1000, height: 800 }));
+  app.store.dispatchSync(
+    addTableAction({ id: 'near', ui: { x: 0, y: 0, zIndex: 2 } })
+  );
+  app.store.dispatchSync(
+    addTableAction({ id: 'far', ui: { x: 2_000, y: 2_000, zIndex: 2 } })
+  );
   return app;
 }
 
@@ -77,7 +84,6 @@ const DOM_GUARDS = [
   'edit-overlay',
   'edit-input',
   'context-menu-content',
-  'hide-sign',
   'minimap',
   'minimap-viewport',
   'virtual-scroll',

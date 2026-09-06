@@ -99,6 +99,7 @@ describe('editor/state', () => {
         width: DEFAULT_WIDTH,
         height: DEFAULT_HEIGHT,
       });
+      expect(editor.scrollPullPending).toBe(false);
       expect(editor.focusTable).toBeNull();
       expect(editor.editMemoId).toBeNull();
       expect(editor.memoScrollTopMap).toEqual({});

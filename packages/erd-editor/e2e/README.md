@@ -44,7 +44,7 @@ suite red.
 
 ## What is covered
 
-32 spec files. Ten of the groups exist because the DOM scene got their subject
+30 spec files. Nine of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -56,19 +56,17 @@ for free and the canvas has to draw and dispatch it itself:
 | `memo.spec.ts`                  | Memo drag, resize sashes and caret, all scene nodes now           |
 | `table-color.spec.ts`           | A scene node handing a viewport point to a DOM colour picker      |
 | `draw-preview.spec.ts`          | The dashed preview agreeing with the cursor every frame           |
-| `hide-sign.spec.ts`             | Off-canvas markers for entities culling has dropped               |
 | `context-menu-cardinality.spec.ts` | A right click that finds a connector by hit-testing the scene  |
 | `virtual-viewport.spec.ts`      | Culling: what is off screen has no node, and the minimap keeps it |
 
-Eleven more are the canvas's own geometry, and the DOM the editing overlay
+Ten more are the canvas's own geometry, and the DOM the editing overlay
 puts over it:
 
 | Spec                            | What it holds down                                                |
 | ------------------------------- | ---------------------------------------------------------------- |
 | `zoom-round-trip.spec.ts`       | A zoom out and back in that returns the reader's own view         |
+| `infinite-canvas.spec.ts`       | The travel, thumbs, map and image the content alone now decide    |
 | `scroll-origin.spec.ts`         | The origin the scene draws with, and the legacy pair migrated once |
-| `canvas-boundary.spec.ts`       | Where the document ends, now that the container is the screen     |
-| `hide-sign-zoom.spec.ts`        | The markers above zoom 1, where the measured box used to shrink   |
 | `export-png.spec.ts`            | The file the browser really receives, and the messages around it  |
 | `memo-editor-drag.spec.ts`      | A press in the overlay textarea, which used to pan the canvas     |
 | `memo-editor-alignment.spec.ts` | The drawn memo and its textarea, one device grid at a time        |

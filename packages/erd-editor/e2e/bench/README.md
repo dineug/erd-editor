@@ -214,9 +214,7 @@ meant, and those are the numbers AC-S7 is judged on.
 **The scene culls, so only what is drawn can be measured.** Before each run the
 harness scrolls the document to park the dragged table near the top left, which
 is what gives `xlarge` a node to grip at all — its hub sits at (8480, 5180) on a
-13565px canvas, nine screens from the origin the dom bench measured from. It
-also keeps the scroll clamp out of the measurement: started from a corner, half
-of a there-and-back pan is clamped flat by the reducer and measures nothing.
+13565px canvas, nine screens from the origin the dom bench measured from.
 
 Quality figures fall out of the same fact. Routes drawn: 101 / 335 / 748 / 3884
 against the dom baseline's 101 / 375 / 751 / 12322. The three small corpora are

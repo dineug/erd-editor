@@ -72,7 +72,7 @@ describe('pushUndoHistoryMap / pushStreamHistoryMap', () => {
         'column.add',
         'relationship.add',
         'memo.add',
-        'settings.resize',
+        'settings.scrollTo',
         'editor.loadJson',
         'index.add',
         'indexColumn.add',

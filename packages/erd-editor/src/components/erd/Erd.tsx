@@ -17,9 +17,12 @@ import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
-import HideSign from '@/components/erd/hide-sign/HideSign';
 import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
+import {
+  getScrollToCenter,
+  getViewTransform,
+} from '@/components/erd/minimap/minimapGeometry';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
@@ -36,11 +39,18 @@ import {
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { Viewport } from '@/engine/modules/editor/state';
-import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  scrollToAction,
+  streamScrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import {
+  getContentRect,
+  getContentRectAfter,
+} from '@/konva/scene/contentBounds';
 import { toScenePoint } from '@/konva/scene/viewport';
 import { isMouseEvent } from '@/utils/domEvent';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
@@ -198,7 +208,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !onEditor &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
-      !el.closest('.hide-sign') &&
       canHideColorPicker;
 
     const canDrag =
@@ -250,9 +259,29 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     store.dispatch(changeColorAllAction$(color));
   };
 
+  /**
+   * The moves and the view centred on where they land go out as one dispatch,
+   * so the history holds them as one entry and a single undo puts the tables
+   * and the view back together. The box is read off the points before the move.
+   */
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
-    store.dispatch(tables.map(moveToTableAction));
+    const moves = tables.map(moveToTableAction);
+    const content = getContentRectAfter(store.state, tables);
+
+    if (!content) {
+      store.dispatch(moves);
+      return;
+    }
+
+    const origin = getScrollToCenter(getViewTransform(store.state), {
+      x: content.x + content.width / 2,
+      y: content.y + content.height / 2,
+    });
+    store.dispatch([
+      ...moves,
+      scrollToAction({ originX: origin.x, originY: origin.y }),
+    ]);
   };
 
   const handleChangeTableProperties = (tableId: string) => {
@@ -397,6 +426,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const showTableProperties = openMap[Open.tableProperties];
     const showTimeTravel = openMap[Open.timeTravel];
     const showDiffViewer = openMap[Open.diffViewer];
+    // An empty document has no travel and draws no scrollbar; the map of it
+    // would be as empty, so it is left out the same way.
+    const hasContent = getContentRect(store.state) !== null;
 
     const cursor = state.grabMove
       ? state.grabCursor
@@ -420,8 +452,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       >
         <Canvas root={root} canvas={canvas} grabMove={state.grabMove} />
         <VirtualScroll />
-        <Minimap />
-        <HideSign root={root} />
+        {hasContent ? <Minimap /> : null}
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

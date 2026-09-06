@@ -11,7 +11,10 @@ import { isNil, isString, noop } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType } from '@/constants/schema';
-import { createScrollInRange } from '@/engine/modules/settings/atom.actions';
+import {
+  getOpeningOrigin,
+  hasViewport,
+} from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { toScenePoint } from '@/konva/scene/viewport';
@@ -99,21 +102,10 @@ export const changeViewportAction = createAction<
   ActionMap[typeof ActionType.changeViewport]
 >(ActionType.changeViewport);
 
-/** Pulls the origin into the travel the viewport and the zoom now allow. */
-function clampScrollOffsets({ settings, editor }: RootState) {
-  const { originXInRange, originYInRange } = createScrollInRange(
-    settings,
-    editor.viewport
-  );
-
-  settings.originX = round(originXInRange(settings.originX), 4);
-  settings.originY = round(originYInRange(settings.originY), 4);
-}
-
 /**
- * The screen the canvas is looking through. Growing it widens the travel the
- * origin is allowed, and shrinking it narrows it, so the origin is clamped
- * again here: one left outside the new range shows a band of nothing.
+ * The screen the canvas is looking through. A load that found no screen left
+ * its origin waiting, and the first frame that reports one lands it in the
+ * content's own travel; every other resize moves nothing, wherever the origin stands.
  */
 const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
   state,
@@ -121,7 +113,10 @@ const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
 ) => {
   state.editor.viewport.width = width;
   state.editor.viewport.height = height;
-  clampScrollOffsets(state);
+
+  if (state.editor.scrollPullPending) {
+    pullScrollIntoRange(state);
+  }
 };
 
 export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
@@ -132,18 +127,27 @@ const clear: ReducerType<typeof ActionType.clear> = state => {
   const { doc, collections } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
+  state.editor.scrollPullPending = false;
 };
 
 /**
- * The origin a loaded document carries, pulled into the travel its own zoom
- * allows. A file can name an offset no zoom below 1 can hold, and the load path
- * clamps nowhere else, so the first wheel notch would jump the whole distance.
+ * The origin a loaded document carries, kept while it draws any of the content
+ * and otherwise pulled to where a screen's worth of it is, so the file opens on
+ * what it holds rather than on empty canvas. An unmeasured frame waits for one.
  */
 function pullScrollIntoRange(state: RootState) {
-  const { viewport } = state.editor;
-  if (!viewport.width || !viewport.height) return;
+  const { settings, editor } = state;
 
-  clampScrollOffsets(state);
+  if (!hasViewport(editor.viewport)) {
+    editor.scrollPullPending = true;
+    return;
+  }
+
+  const origin = getOpeningOrigin(state);
+
+  settings.originX = round(origin.x, 4);
+  settings.originY = round(origin.y, 4);
+  editor.scrollPullPending = false;
 }
 
 export const loadJsonAction = createAction<
@@ -174,6 +178,7 @@ const initialClear: ReducerType<typeof ActionType.initialClear> = state => {
   const { doc, collections } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
+  state.editor.scrollPullPending = false;
 };
 
 export const initialLoadJsonAction = createAction<
