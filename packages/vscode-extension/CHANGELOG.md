@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.6.0] - 2026-09-07
+
+### Added
+
+- Lay the whole diagram out from an Auto Layout menu, on the canvas context menu and in the quick
+  search. Force is the simulation you watch settle, with Apply and Cancel as before; Flow, Tree -
+  vertical and Tree - horizontal read the relationships and arrive in one go, and a single undo puts
+  every table back. Flow also decides where each line meets a table, which pulls the crossings out.
+
+### Fixed
+
+- End a canvas pan the pointer was taken from: dragging out of the window used to leave the canvas
+  following a mouse that was no longer held.
+- Keep a pan from selecting text as it travels, the top toolbar included.
+- Keep Alt+Z inside the editor, so toggling zen mode no longer also reaches whatever that chord is
+  bound to outside it.
+
 ## [2.5.0] - 2026-09-06
 
 ### Added
