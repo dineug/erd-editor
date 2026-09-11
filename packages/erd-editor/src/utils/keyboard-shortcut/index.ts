@@ -96,7 +96,7 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
     { shortcut: '$mod+Minus', preventDefault: true, stopPropagation: true },
   ],
   [KeyBindingName.zoomReset]: [
-    { shortcut: '$mod+KeyO', preventDefault: true, stopPropagation: true },
+    { shortcut: '$mod+Digit0', preventDefault: true, stopPropagation: true },
   ],
   [KeyBindingName.handTool]: [{ shortcut: 'Space', preventDefault: true }],
   [KeyBindingName.zenMode]: [

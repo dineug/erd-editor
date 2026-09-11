@@ -26,7 +26,7 @@ export const Shortcut = {
   tableProperties: 'Alt+Space',
   zoomIn: 'ControlOrMeta+Equal',
   zoomOut: 'ControlOrMeta+Minus',
-  zoomReset: 'ControlOrMeta+KeyO',
+  zoomReset: 'ControlOrMeta+Digit0',
   handTool: 'Space',
   zenMode: 'Alt+KeyZ',
 } as const;

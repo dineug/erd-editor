@@ -87,7 +87,11 @@ describe('keyboard-shortcut', () => {
         { shortcut: '$mod+Minus', preventDefault: true, stopPropagation: true },
       ]);
       expect(map.zoomReset).toEqual([
-        { shortcut: '$mod+KeyO', preventDefault: true, stopPropagation: true },
+        {
+          shortcut: '$mod+Digit0',
+          preventDefault: true,
+          stopPropagation: true,
+        },
       ]);
     });
 

@@ -80,7 +80,7 @@ test.describe('zoom, scroll and overlays', () => {
     expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MIN);
   });
 
-  test('$mod+KeyO puts the zoom back to 100% from either side, holding the middle', async ({
+  test('$mod+Digit0 puts the zoom back to 100% from either side, holding the middle', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
