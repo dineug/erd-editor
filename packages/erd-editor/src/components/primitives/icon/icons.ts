@@ -1,6 +1,4 @@
 import {
-  AlignHorizontalDistributeCenter,
-  AlignVerticalDistributeCenter,
   ArrowRight,
   Atom,
   Braces,
@@ -27,6 +25,7 @@ import {
   Minus,
   MoonStar,
   MousePointer2,
+  Network,
   Palette,
   Plus,
   Redo2,
@@ -57,8 +56,6 @@ export type IconNodeChild = IconNode[number];
 // lucide's own kebab names, disjoint from the PascalCase notation ones, which
 // is what lets one flat namespace serve both.
 const LUCIDE_ICON = {
-  'align-horizontal-distribute-center': AlignHorizontalDistributeCenter,
-  'align-vertical-distribute-center': AlignVerticalDistributeCenter,
   'arrow-right': ArrowRight,
   atom: Atom,
   braces: Braces,
@@ -84,6 +81,7 @@ const LUCIDE_ICON = {
   minus: Minus,
   'moon-star': MoonStar,
   'mouse-pointer-2': MousePointer2,
+  network: Network,
   palette: Palette,
   plus: Plus,
   'redo-2': Redo2,

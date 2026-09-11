@@ -52,10 +52,14 @@ describe('tablePlacementMenus', () => {
     ).toEqual(['Force', 'Flow', 'Tree - vertical', 'Tree - horizontal']);
   });
 
-  it('gives every placement an icon of its own', () => {
-    const icons = menus.map(menu => menu.iconName);
+  it('draws the two tree placements as one icon and the rest apart', () => {
+    const iconOf = (name: string) =>
+      menus.find(menu => menu.name === name)?.iconName;
 
-    expect(new Set(icons).size).toBe(icons.length);
+    expect(iconOf('Tree - vertical')).toBe(iconOf('Tree - horizontal'));
+    expect(new Set(menus.map(menu => menu.iconName)).size).toBe(
+      menus.length - 1
+    );
   });
 
   it('asks for the placement that was clicked', () => {

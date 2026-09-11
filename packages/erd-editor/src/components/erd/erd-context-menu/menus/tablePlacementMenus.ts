@@ -22,12 +22,12 @@ export const menus: Menu[] = [
   },
   {
     name: 'Tree - vertical',
-    iconName: 'align-vertical-distribute-center',
+    iconName: 'network',
     placement: TablePlacement.layeredVertical,
   },
   {
     name: 'Tree - horizontal',
-    iconName: 'align-horizontal-distribute-center',
+    iconName: 'network',
     placement: TablePlacement.layeredHorizontal,
   },
 ];
