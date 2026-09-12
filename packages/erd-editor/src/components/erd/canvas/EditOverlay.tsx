@@ -29,6 +29,7 @@ import {
   HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
 import EditInput from '@/components/primitives/edit-input/EditInput';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
 import {
   MEMO_BORDER,
@@ -335,6 +336,7 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
  */
 const EditOverlay: FC = (_, ctx) => {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
 
   const handleEditEnd = () => {
     const { store } = app.value;
@@ -403,6 +405,10 @@ const EditOverlay: FC = (_, ctx) => {
   };
 
   return () => {
+    // A view blocks every document edit, so this overlay is the document
+    // scene's alone rather than a second coordinate system over a view.
+    if (sourceRef.value !== 'document') return null;
+
     const { store } = app.value;
     const { settings } = store.state;
     const target = resolveEditTarget(store.state);

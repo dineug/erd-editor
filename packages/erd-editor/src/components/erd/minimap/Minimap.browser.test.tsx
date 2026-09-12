@@ -2,7 +2,7 @@
 // instead of a full size copy under a css scale, and it is a map of the content
 // and the screen wherever a pan has taken it, not of a fixed box.
 
-import { useProvider } from '@dineug/r-html';
+import { render, useProvider } from '@dineug/r-html';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
@@ -10,10 +10,9 @@ import {
   createTestAppContext,
   createTestTheme,
   flush,
-  mount,
   type Mounted,
 } from '@/__test-utils__';
-import { AppContext } from '@/components/appContext';
+import { AppContext, appContext } from '@/components/appContext';
 import * as canvasStyles from '@/components/erd/canvas/Canvas.styles';
 import Minimap from '@/components/erd/minimap/Minimap';
 import * as styles from '@/components/erd/minimap/Minimap.styles';
@@ -33,9 +32,16 @@ import {
   toMinimapPoint,
   toScrollMovement,
 } from '@/components/erd/minimap/minimapGeometry';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { themeContext } from '@/components/themeContext';
 import { MINIMAP_MARGIN, MINIMAP_SIZE, TABLE_BORDER } from '@/constants/layout';
 import { RelationshipType, Show } from '@/constants/schema';
+import { ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewOpenAction,
+  viewScrollToAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
@@ -48,11 +54,13 @@ import {
   addTableAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
+import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import { freezeView, thawView } from '@/konva/scene/viewFreeze';
 import { toScreenPoint } from '@/konva/scene/viewport';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 const teardowns: Array<() => void> = [];
 
@@ -67,23 +75,49 @@ afterEach(async () => {
 const stageRegistry = (): Record<string, Stage> =>
   Reflect.get(globalThis, '__erdStages') ?? {};
 
-async function mountMinimap(app = createTestAppContext()): Promise<Mounted> {
-  const mounted = mount(<Minimap />, app);
+/**
+ * The minimap the way a scene root mounts it: under that root's providers,
+ * hung before the render because the shell reads its source as it is set up,
+ * and the scene source among them when the root is a view.
+ */
+async function mountMinimap(
+  app = createTestAppContext(),
+  source: GeometrySource | null = null
+): Promise<Mounted> {
+  const container = document.createElement('div');
+  document.body.append(container);
   // useProvider takes a bare element at runtime and types only a component
   // context, hence the cast; it is r-html's own, not a React hook.
   // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const appProvider = useProvider(container as any, appContext, app);
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
   const themeProvider = useProvider(
-    mounted.container as any,
+    container as any,
     themeContext,
     createTestTheme()
   );
+  const sourceProvider = source
+    ? // oxlint-disable-next-line react-hooks/rules-of-hooks
+      useProvider(container as any, sceneSourceContext, source)
+    : null;
+  render(container, <Minimap />);
+  const mounted: Mounted = {
+    container,
+    app,
+    unmount: () => {
+      render(container, null);
+      container.remove();
+    },
+  };
 
   await flush();
   await whenDrawn();
 
   teardowns.push(() => {
     mounted.unmount();
+    sourceProvider?.destroy();
     themeProvider.destroy();
+    appProvider.destroy();
   });
 
   return mounted;
@@ -960,5 +994,230 @@ describe('the minimap shell', () => {
 
     expect(stageRegistry().minimap).toBeUndefined();
     expect(stage.getLayers()).toHaveLength(0);
+  });
+});
+
+/**
+ * The ERD half of AC-61. A Focus overlay opens over this tab and takes its own
+ * source with it, so the minimap beside the ERD is left on the document: every
+ * table it holds, the memos a view drops, and the document's own placement.
+ */
+describe('the minimap under an open view', () => {
+  const DOC_POINTS: Record<string, Point> = {
+    t1: { x: 100, y: 100 },
+    t2: { x: 900, y: 100 },
+    t3: { x: 1700, y: 100 },
+  };
+
+  /** Nowhere near the document's own points, so a minimap reading them is obvious. */
+  const VIEW_POINTS: Record<string, Point> = {
+    t1: { x: 4000, y: 4000 },
+    t2: { x: 4800, y: 4000 },
+  };
+
+  /** A chain t1 - t2 - t3 and one memo, with a Focus view open on t1 at one hop. */
+  function seedAndOpen(app: AppContext) {
+    const link = (id: string, start: string, end: string) =>
+      addRelationshipAction({
+        id,
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: start, columnIds: [] },
+        end: { tableId: end, columnIds: [] },
+      });
+
+    app.store.dispatchSync(
+      ...Object.entries(DOC_POINTS).map(([id, point], index) =>
+        addTableAction({ id, ui: { ...point, zIndex: index + 1 } })
+      ),
+      addMemoAction({ id: 'm1', ui: { x: 100, y: 900, zIndex: 9 } }),
+      link('r1', 't1', 't2'),
+      link('r2', 't2', 't3'),
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
+      viewSetLayoutAction({ kind: ViewKind.focus, positions: VIEW_POINTS })
+    );
+  }
+
+  it('draws the whole document at the document points, memos included', async () => {
+    const app = createTestAppContext();
+    seedAndOpen(app);
+    await mountMinimap(app);
+    const stage = stageRegistry().minimap;
+    const layout = layoutOf(app);
+
+    expect(
+      stage.find('.minimap-table').map(node => node.getAttr('tableId'))
+    ).toEqual(['t1', 't2', 't3']);
+    expect(stage.find('.minimap-memo')).toHaveLength(1);
+
+    // t1 is a centre of the view and placed far away there, so a minimap that
+    // had taken the view's source would draw this box off the other corner.
+    const rect = getMinimapMarkRect(
+      layout.ratio,
+      getTableRect(
+        app.store.state,
+        app.store.state.collections.tableEntities.t1
+      )
+    );
+    const mappedAt = toMinimapPoint(layout, {
+      x: rect.x + TABLE_BORDER / 2,
+      y: rect.y + TABLE_BORDER / 2,
+    });
+    const drawnAt = stage.find('.minimap-table')[0].getAbsolutePosition();
+
+    expect(rect.x).toBe(DOC_POINTS.t1.x);
+    expect(drawnAt.x).toBeCloseTo(mappedAt.x, 6);
+    expect(drawnAt.y).toBeCloseTo(mappedAt.y, 6);
+  });
+
+  it('maps the travel the document scrolls over, not the one a view holds', async () => {
+    const app = createTestAppContext();
+    seedAndOpen(app);
+    await mountMinimap(app);
+
+    expect(layoutOf(app).map).toEqual(
+      getMinimapLayout(app.store.state, 'document').map
+    );
+    expect(layoutOf(app).map).not.toEqual(
+      getMinimapLayout(app.store.state, 'focus').map
+    );
+  });
+});
+
+/**
+ * The overlay half of AC-61 as the shell shows it: under a view provider the
+ * map, its handle and a press on it are that view's, and with a Focus view
+ * open over a Flow scene they are the Flow view's and never the active one's.
+ */
+describe('the minimap under a view provider', () => {
+  const DOC_POINTS: Record<string, Point> = {
+    t1: { x: 100, y: 100 },
+    t2: { x: 900, y: 100 },
+    t3: { x: 1700, y: 100 },
+  };
+
+  const FLOW_POINTS: Record<string, Point> = {
+    t1: { x: 0, y: 0 },
+    t2: { x: 1200, y: 300 },
+    t3: { x: 2400, y: 0 },
+  };
+
+  const FOCUS_POINTS: Record<string, Point> = {
+    t1: { x: 4000, y: 4000 },
+    t2: { x: 4800, y: 4000 },
+  };
+
+  const FLOW_ORIGIN = { originX: -300, originY: -150 };
+
+  /** Three tables and a memo in the document, a Flow view placing all three and scrolled, and a Focus view on t1 open over it. */
+  function seedFlowUnderFocus(app: AppContext) {
+    const link = (id: string, start: string, end: string) =>
+      addRelationshipAction({
+        id,
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: start, columnIds: [] },
+        end: { tableId: end, columnIds: [] },
+      });
+
+    app.store.dispatchSync(
+      ...Object.entries(DOC_POINTS).map(([id, point], index) =>
+        addTableAction({ id, ui: { ...point, zIndex: index + 1 } })
+      ),
+      addMemoAction({ id: 'm1', ui: { x: 100, y: 900, zIndex: 9 } }),
+      link('r1', 't1', 't2'),
+      link('r2', 't2', 't3'),
+      viewOpenAction({ kind: ViewKind.flow }),
+      viewSetLayoutAction({ kind: ViewKind.flow, positions: FLOW_POINTS }),
+      viewScrollToAction({ ...FLOW_ORIGIN, kind: ViewKind.flow }),
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
+      viewSetLayoutAction({ kind: ViewKind.focus, positions: FOCUS_POINTS })
+    );
+  }
+
+  const flowLayoutOf = (app: AppContext) =>
+    getMinimapLayout(app.store.state, 'flow');
+
+  it('draws the Flow view at the Flow points, memos aside, on a box the Flow map sizes', async () => {
+    const app = createTestAppContext();
+    seedFlowUnderFocus(app);
+    const mounted = await mountMinimap(app, 'flow');
+    const stage = stageRegistry().minimap;
+    const layout = flowLayoutOf(app);
+    const { state } = app.store;
+
+    expect(layout.map).not.toEqual(getMinimapLayout(state, 'focus').map);
+    expect(layout.map).not.toEqual(getMinimapLayout(state).map);
+    expect(
+      stage.find('.minimap-table').map(node => node.getAttr('tableId'))
+    ).toEqual(['t1', 't2', 't3']);
+    expect(stage.find('.minimap-memo')).toHaveLength(0);
+    expectStageSized(layout);
+    expect(parseFloat(minimapOf(mounted).style.width)).toBeCloseTo(
+      layout.box.width,
+      6
+    );
+
+    const t3 = getTableRect(state, state.collections.tableEntities.t3, 'flow');
+    const rect = getMinimapMarkRect(layout.ratio, t3);
+    const mappedAt = toMinimapPoint(layout, {
+      x: rect.x + TABLE_BORDER / 2,
+      y: rect.y + TABLE_BORDER / 2,
+    });
+    const drawnAt = stage.find('.minimap-table')[2].getAbsolutePosition();
+
+    expect({ x: t3.x, y: t3.y }).toEqual(FLOW_POINTS.t3);
+    expect(drawnAt.x).toBeCloseTo(mappedAt.x, 6);
+    expect(drawnAt.y).toBeCloseTo(mappedAt.y, 6);
+  });
+
+  it('draws the handle where the Flow view stands on the Flow map', async () => {
+    const app = createTestAppContext();
+    seedFlowUnderFocus(app);
+    const mounted = await mountMinimap(app, 'flow');
+    const { state } = app.store;
+    const layout = flowLayoutOf(app);
+    const expected = getMinimapHandleRect(
+      layout,
+      getViewTransform(state, 'flow')
+    );
+    const handle = handleOf(mounted, layout);
+
+    expect(handle.x).toBeCloseTo(expected.x, 3);
+    expect(handle.y).toBeCloseTo(expected.y, 3);
+    expect(handle.width).toBeCloseTo(expected.width, 3);
+    expect(handle.height).toBeCloseTo(expected.height, 3);
+    expect(expected).not.toEqual(
+      getMinimapHandleRect(
+        getMinimapLayout(state, 'focus'),
+        getViewTransform(state, 'focus')
+      )
+    );
+  });
+
+  it('centres the Flow view on the point pressed, and leaves the Focus view and the document where they stand', async () => {
+    const app = createTestAppContext();
+    seedFlowUnderFocus(app);
+    const mounted = await mountMinimap(app, 'flow');
+    stubRect(10, 20);
+    const { state } = app.store;
+    const { flow, focus } = state.editor.views;
+    const layout = flowLayoutOf(app);
+    const pixel = pixelIn(layout, 0.6, 0.5);
+    const scene = fromMinimapPoint(layout, pixel);
+    const origin = getScrollToCenter(getViewTransform(state, 'flow'), scene);
+
+    minimapOf(mounted).dispatchEvent(
+      new MouseEvent('mousedown', {
+        bubbles: true,
+        clientX: 10 + pixel.x,
+        clientY: 20 + pixel.y,
+      })
+    );
+    await flush();
+
+    expect(flow!.originX).toBeCloseTo(origin.x, 3);
+    expect(flow!.originY).toBeCloseTo(origin.y, 3);
+    expect(focus).toMatchObject({ originX: 0, originY: 0 });
+    expect(state.settings).toMatchObject({ originX: 0, originY: 0 });
+    expect(flowLayoutOf(app)).toEqual(layout);
   });
 });

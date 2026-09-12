@@ -113,6 +113,7 @@ async function setup({ props = {}, prepare }: SetupOptions = {}) {
     <k-layer name="scene">
       <Column
         column={column}
+        source="document"
         y={0}
         width={rect.width}
         selected={next.selected ?? false}

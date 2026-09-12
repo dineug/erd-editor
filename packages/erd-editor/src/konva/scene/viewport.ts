@@ -1,8 +1,10 @@
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
+import { getActiveView, getSourceView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
 import { Memo, Point, Relationship, Settings, Table } from '@/internal-types';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import { getRouteBBox } from '@/utils/draw-relationship';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 export type CullingRect = Rect;
 
@@ -16,6 +18,27 @@ export type CullingRectOptions = SceneTransform & {
   viewportWidth: number;
   viewportHeight: number;
 };
+
+/**
+ * The placement a reader standing outside every scene means: the active
+ * view's while one is open, else the document's. The toolbar, a jump and the
+ * zoom generators read it, since the redirect sends what they dispatch there too.
+ */
+export function getActiveTransform(state: RootState): SceneTransform {
+  return getActiveView(state) ?? state.settings;
+}
+
+/**
+ * The placement a scene is drawn at: the document's own, or that of the view
+ * of the scene's kind. A view scene whose view is not open falls back to the
+ * document, so it draws something rather than nothing while one is opening.
+ */
+export function getSceneTransform(
+  state: RootState,
+  source: GeometrySource = 'document'
+): SceneTransform {
+  return getSourceView(state, source) ?? state.settings;
+}
 
 /**
  * Where a scene layer sits on the stage, so screen equals scene times the zoom
@@ -92,12 +115,13 @@ export function createCullingRect(options: CullingRectOptions): CullingRect {
   };
 }
 
-/** The culling rect for the editor's current origin, zoom and viewport. */
-export function getCullingRect(state: RootState): CullingRect {
-  const {
-    settings: { originX, originY, zoomLevel },
-    editor: { viewport },
-  } = state;
+/** The culling rect for the scene's current origin, zoom and the editor's viewport. */
+export function getCullingRect(
+  state: RootState,
+  source: GeometrySource = 'document'
+): CullingRect {
+  const { originX, originY, zoomLevel } = getSceneTransform(state, source);
+  const { viewport } = state.editor;
 
   return createCullingRect({
     originX,
@@ -121,9 +145,10 @@ export function intersects(rect: Rect, other: Rect): boolean {
 export function isTableVisible(
   rect: CullingRect,
   state: RootState,
-  table: Table
+  table: Table,
+  source: GeometrySource = 'document'
 ): boolean {
-  return intersects(rect, getTableRect(state, table));
+  return intersects(rect, getTableRect(state, table, source));
 }
 
 export function isMemoVisible(rect: CullingRect, memo: Memo): boolean {
@@ -138,7 +163,8 @@ export function isMemoVisible(rect: CullingRect, memo: Memo): boolean {
 export function isRelationshipVisible(
   rect: CullingRect,
   relationship: Relationship,
-  strokeWidth?: number
+  strokeWidth?: number,
+  source: GeometrySource = 'document'
 ): boolean {
-  return intersects(rect, getRouteBBox(relationship, strokeWidth));
+  return intersects(rect, getRouteBBox(relationship, strokeWidth, source));
 }

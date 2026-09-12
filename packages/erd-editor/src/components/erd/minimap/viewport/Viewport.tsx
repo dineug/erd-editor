@@ -7,6 +7,7 @@ import {
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { MINIMAP_MARGIN } from '@/constants/layout';
 
 import * as styles from './Viewport.styles';
@@ -18,6 +19,7 @@ export type ViewportProps = {
 const Viewport: FC<ViewportProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { state, onScrollStart } = useMinimapScroll(ctx);
+  const sourceRef = useSceneSource(ctx);
 
   /**
    * The screen's own footprint on the map, drawn at the map's ratio and
@@ -26,8 +28,12 @@ const Viewport: FC<ViewportProps> = (props, ctx) => {
    */
   const styleMap = () => {
     const { store } = app.value;
-    const layout = getMinimapLayout(store.state);
-    const rect = getMinimapHandleRect(layout, getViewTransform(store.state));
+    const source = sourceRef.value;
+    const layout = getMinimapLayout(store.state, source);
+    const rect = getMinimapHandleRect(
+      layout,
+      getViewTransform(store.state, source)
+    );
     const { box, offset } = layout;
 
     // The thumbnail box is anchored to the right and centred in the square, so

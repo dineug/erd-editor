@@ -41,6 +41,14 @@ export type Editor = {
   sharedSelectionTrackerMap: Record<string, SharedSelectionTracker>;
   sharedDragSelectTrackerMap: Record<string, SharedDragSelectTracker>;
   dragSelect: Rect | null;
+  /**
+   * The two scene views a reader can stand in over the one document: the Flow
+   * mode of the visualization tab and the Focus overlay. Each is null while it
+   * is not open. Local to this client, never the file, the history or a peer.
+   */
+  views: EditorViews;
+  /** Which of its two modes the visualization tab shows. Remembered for the session. */
+  visualizationMode: VisualizationMode;
 };
 
 export type Viewport = {
@@ -108,6 +116,55 @@ export const SelectType = {
 } as const;
 export type SelectType = ValuesType<typeof SelectType>;
 
+export const ShowMode = {
+  nameOnly: 'nameOnly',
+  keysOnly: 'keysOnly',
+  allFields: 'allFields',
+} as const;
+export type ShowMode = ValuesType<typeof ShowMode>;
+
+export const ViewKind = {
+  flow: 'flow',
+  focus: 'focus',
+} as const;
+export type ViewKind = ValuesType<typeof ViewKind>;
+
+export const VisualizationMode = {
+  graph: 'graph',
+  flow: 'flow',
+} as const;
+export type VisualizationMode = ValuesType<typeof VisualizationMode>;
+
+/** The centers a Focus view has stood on, oldest first, and which one it stands on now. */
+export type ViewHistory = {
+  entries: string[][];
+  cursor: number;
+};
+
+/**
+ * A scene drawn over the document in its own coordinates: the tables it places
+ * by id, the placement it is looked at through, and what it shows of each
+ * table. Memos are never placed, so a view draws none.
+ */
+export type SceneView = {
+  kind: ViewKind;
+  showMode: ShowMode;
+  positions: Record<string, Point>;
+  originX: number;
+  originY: number;
+  zoomLevel: number;
+  /** The tables a Focus view is built around; a Flow view has none. */
+  centerIds: string[];
+  /** How many relationships out from a center a Focus view reaches, 1 or 2. */
+  hop: number;
+  history: ViewHistory;
+};
+
+export type EditorViews = {
+  flow: SceneView | null;
+  focus: SceneView | null;
+};
+
 export const FocusType = {
   tableName: 'tableName',
   tableComment: 'tableComment',
@@ -173,4 +230,6 @@ export const createEditor = (): Editor => ({
   sharedSelectionTrackerMap: {},
   sharedDragSelectTrackerMap: {},
   dragSelect: null,
+  views: { flow: null, focus: null },
+  visualizationMode: VisualizationMode.graph,
 });

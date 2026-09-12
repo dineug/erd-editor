@@ -10,6 +10,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
@@ -24,7 +25,7 @@ type HostProps = {
 };
 
 const Host: FC<HostProps> = (props, ctx) => {
-  const { onMoveStart } = useMoveTable(ctx, props);
+  const { onMoveStart } = useMoveTable(ctx, props, useSceneSource(ctx));
   props.capture(onMoveStart);
 
   return () => html`<div class="host"></div>`;

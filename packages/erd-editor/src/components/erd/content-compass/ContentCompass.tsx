@@ -10,7 +10,8 @@ import {
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
 import Icon from '@/components/primitives/icon/Icon';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import { useSceneSource } from '@/components/sceneSourceContext';
+import { sceneScrollToAction } from '@/engine/modules/settings/atom.actions';
 
 import * as styles from './ContentCompass.styles';
 
@@ -26,6 +27,7 @@ const ARROW_SIZE = 14;
  */
 const ContentCompass: FC<ContentCompassProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
 
   /**
    * Read again on the press rather than closed over: a wheel between the render
@@ -34,19 +36,22 @@ const ContentCompass: FC<ContentCompassProps> = (props, ctx) => {
    */
   const handleClick = () => {
     const { store } = app.value;
-    const compass = getContentCompass(store.state);
+    const source = sourceRef.value;
+    const compass = getContentCompass(store.state, source);
     if (!compass) return;
 
     const origin = getScrollToCenter(
-      getViewTransform(store.state),
+      getViewTransform(store.state, source),
       compass.target
     );
-    store.dispatch(scrollToAction({ originX: origin.x, originY: origin.y }));
+    store.dispatch(
+      sceneScrollToAction(source, { originX: origin.x, originY: origin.y })
+    );
   };
 
   return () => {
     const { store } = app.value;
-    const compass = getContentCompass(store.state);
+    const compass = getContentCompass(store.state, sourceRef.value);
 
     return (
       <>

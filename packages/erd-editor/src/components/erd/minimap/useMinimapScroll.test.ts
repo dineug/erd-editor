@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC, html, useProvider } from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -13,6 +13,13 @@ import {
   toScrollMovement,
 } from '@/components/erd/minimap/minimapGeometry';
 import { useMinimapScroll } from '@/components/erd/minimap/useMinimapScroll';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
+import { ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewOpenAction,
+  viewScrollToAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
   changeZoomLevelAction,
@@ -20,6 +27,7 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { isViewFrozen } from '@/konva/scene/viewFreeze';
 
 type Api = ReturnType<typeof useMinimapScroll>;
@@ -32,6 +40,15 @@ const Probe: FC<{}> = (props, ctx) => {
 
   return () =>
     html`<div class=${['probe', { selected: scroll.state.selected }]}></div>`;
+};
+
+/** A Flow scene root the way the visualization tab mounts one: a wrapper of its own, the provider inside. */
+const FlowScope: FC<{ children: any }> = (props, ctx) => {
+  const provider = useProvider(ctx, sceneSourceContext, 'flow');
+  const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => provider.destroy());
+
+  return () => html`${props.children}`;
 };
 
 let mounted: Mounted | null = null;
@@ -53,6 +70,33 @@ const setup = async () => {
 };
 
 const ranges = () => getScrollRanges(app.store.state);
+
+/**
+ * A Flow view placing the seeded tables and scrolled off the document's
+ * origin, with a Focus view open over it standing far away, so the three
+ * maps the store holds are all different, and the probe mounted in the Flow scene.
+ */
+const setupFlowUnderFocus = async () => {
+  app.store.dispatchSync(
+    viewOpenAction({ kind: ViewKind.flow }),
+    viewSetLayoutAction({
+      kind: ViewKind.flow,
+      positions: { near: { x: 0, y: 0 }, far: { x: 3_000, y: 500 } },
+    }),
+    viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow }),
+    viewOpenAction({ kind: ViewKind.focus, centerIds: ['near'] }),
+    viewSetLayoutAction({
+      kind: ViewKind.focus,
+      positions: { near: { x: 40_000, y: 40_000 } },
+    })
+  );
+  mounted!.unmount();
+  mounted = mount(
+    html`<div><${FlowScope} .children=${html`<${Probe} />`} /></div>`,
+    app
+  );
+  await flush();
+};
 
 /**
  * What a step of the pointer is worth in origin pixels for the store as it
@@ -174,6 +218,36 @@ describe('useMinimapScroll', () => {
     expect(step).toBeLessThan(0);
     expect(settings.originX).toBeCloseTo(step, 3);
     expect(Math.abs(settings.originY)).toBe(0);
+  });
+
+  /** The overlay half of AC-61: a handle in a Flow scene is the Flow view's, whichever view is active. */
+  it('scrolls the Flow view by the Flow map under a Flow provider, with a Focus view open over it', async () => {
+    await setupFlowUnderFocus();
+    const { state } = app.store;
+    const { flow, focus } = state.editor.views;
+    const layout = getMinimapLayout(state, 'flow');
+    const step = toScrollMovement(10, layout.ratio, flow!.zoomLevel);
+    expect(layout.map).not.toEqual(getMinimapLayout(state, 'focus').map);
+    expect(layout.map).not.toEqual(getMinimapLayout(state).map);
+    const { types, unsubscribe } = recordActions();
+
+    mousedown(100, 100);
+    mousemove(110, 100);
+    await flush();
+
+    expect(isViewFrozen(state, 'flow')).toBe(true);
+    expect(isViewFrozen(state, 'focus')).toBe(false);
+    expect(step).toBeLessThan(0);
+    expect(flow!.originX).toBeCloseTo(-900 + step, 3);
+    expect(flow!.originY).toBe(-100);
+    expect(focus).toMatchObject({ originX: 0, originY: 0 });
+    expect(state.settings).toMatchObject({ originX: 0, originY: 0 });
+    expect(types).toEqual(['editor.viewStreamScrollTo']);
+
+    unsubscribe();
+    mouseup();
+    await flush();
+    expect(isViewFrozen(state, 'flow')).toBe(false);
   });
 
   it('scales a downward drag into an inverse canvas scroll', async () => {

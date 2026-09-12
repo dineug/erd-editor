@@ -29,7 +29,7 @@ import {
   addTableAction$,
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
-import { getOriginToPlace } from '@/konva/scene/viewport';
+import { getActiveTransform, getOriginToPlace } from '@/konva/scene/viewport';
 import { openAutomaticTablePlacementAction } from '@/utils/emitter';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
@@ -316,9 +316,9 @@ function createTableActions({ store }: AppContext): Action[] {
       name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
       keywords: 'Table',
       perform: ({ store }) => {
-        const {
-          settings: { zoomLevel },
-        } = store.state;
+        // The zoom is the active view's while one is open, since the scroll
+        // this dispatches is redirected there; the redirect cannot rescale it.
+        const { zoomLevel } = getActiveTransform(store.state);
         // The table parks a zoomed START_X, START_Y in from the corner: the
         // landing point the DOM scene had, kept so a jump looks the same.
         const { x, y } = getOriginToPlace(zoomLevel, table.ui, {

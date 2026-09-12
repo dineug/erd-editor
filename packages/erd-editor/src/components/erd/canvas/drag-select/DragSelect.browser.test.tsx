@@ -1,6 +1,6 @@
 /** @jsxHost konva */
 
-import { createRef } from '@dineug/r-html';
+import { createRef, useProvider } from '@dineug/r-html';
 import type { Group } from 'konva/lib/Group';
 import type { Rect } from 'konva/lib/shapes/Rect';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -8,16 +8,24 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import { AppContext } from '@/components/appContext';
 import DragSelect from '@/components/erd/canvas/drag-select/DragSelect';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { dragSelectRectAction } from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
+import { SelectType, ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewChangeZoomLevelAction,
+  viewOpenAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { whenDrawn } from '@/konva/batchDraw';
+import { getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import { type Rect as DragRect } from '@/utils/dragSelect';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { dragSelectStartAction } from '@/utils/emitter';
 
 const THEME = createTestTheme();
@@ -48,12 +56,26 @@ const createFixedDiv = () => {
   return el;
 };
 
+/**
+ * The marquee in a Stage, under a shell that provides the scene source when
+ * one is given, the way a view overlay hangs its own over the canvas it mounts.
+ */
 async function mountMarquee(
-  app: AppContext = createTestAppContext()
+  app: AppContext = createTestAppContext(),
+  source: GeometrySource | null = null
 ): Promise<Mounted> {
+  const shell = createFixedDiv();
   const container = createFixedDiv();
   const $root = createFixedDiv();
   const root = createRef<HTMLDivElement>($root);
+  shell.append(container);
+
+  // useProvider takes a bare element at runtime and types only a component
+  // context, hence the cast; it is r-html's own, not a React hook.
+  const provider = source
+    ? // oxlint-disable-next-line react-hooks/rules-of-hooks
+      useProvider(shell as any, sceneSourceContext, source)
+    : null;
 
   const rendered = renderScene({
     app,
@@ -70,7 +92,9 @@ async function mountMarquee(
 
   teardowns.push(() => {
     rendered.destroy();
+    provider?.destroy();
     container.remove();
+    shell.remove();
     $root.remove();
   });
 
@@ -82,7 +106,9 @@ async function mountMarquee(
     stage: rendered.stage,
     root: $root,
     begin: async (x: number, y: number) => {
-      app.emitter.emit(dragSelectStartAction({ x, y }));
+      app.emitter.emit(
+        dragSelectStartAction({ x, y, source: source ?? 'document' })
+      );
       await flush();
       await whenDrawn();
     },
@@ -368,5 +394,146 @@ describe('DragSelect - store', () => {
     unsubscribe();
 
     expect(rects).toEqual([{ x: 100, y: 100, w: 300, h: 300 }]);
+  });
+});
+
+describe('DragSelect - scene source', () => {
+  /**
+   * Three tables under two placements that disagree on every number: on screen
+   * 0..300 reaches t1 in the scrolled document and t2 in the view, and t3 sits
+   * at (400, 400) in the view, outside that box until the view zoom widens it.
+   */
+  function createViewApp(): AppContext {
+    const app = createTestAppContext();
+    seedTable(app, 't1', 0, 100);
+    seedTable(app, 't2', 5000, 5000);
+    seedTable(app, 't3', 5000, 5000);
+    app.store.dispatchSync(
+      scrollToAction({ originX: -100, originY: -100 }),
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1', 't2', 't3'] }),
+      viewSetLayoutAction({
+        kind: ViewKind.focus,
+        positions: {
+          t1: { x: 5000, y: 5000 },
+          t2: { x: 0, y: 0 },
+          t3: { x: 400, y: 400 },
+        },
+      })
+    );
+    return app;
+  }
+
+  it('maps the rect through the view placement under a view provider', async () => {
+    const app = createViewApp();
+    const mounted = await mountMarquee(app, 'focus');
+    await mounted.begin(0, 0);
+
+    await moveTo(mounted.root, 300, 300);
+
+    // The document places t1 under the same 0..300 screen box, and the view
+    // puts t2 there; the selection is the only reading of the mapped rect.
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      t2: SelectType.table,
+    });
+  });
+
+  it('selects the table the view placed under the marquee, by the view box', async () => {
+    const app = createViewApp();
+    const mounted = await mountMarquee(app, 'focus');
+    await mounted.begin(0, 0);
+
+    // Dragged over the box the view source measures for t2, which the document
+    // places five thousand units away from that same spot.
+    const table = app.store.state.collections.tableEntities.t2;
+    const rect = getTableRect(app.store.state, table, 'focus');
+
+    await moveTo(
+      mounted.root,
+      rect.x + rect.width / 2 + 10,
+      rect.y + rect.height / 2 + 10
+    );
+
+    expect(getTableRect(app.store.state, table).x).toBe(5000);
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      t2: SelectType.table,
+    });
+  });
+
+  it('scales the rect by the view zoom, not the document zoom', async () => {
+    const app = createViewApp();
+    app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
+    const mounted = await mountMarquee(app, 'focus');
+    await mounted.begin(0, 0);
+
+    await moveTo(mounted.root, 300, 300);
+
+    // At the view's 50% the 0..300 screen box is 0..600 in view coordinates,
+    // which reaches t3 at (400, 400) where the document zoom of 1 would not.
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      t2: SelectType.table,
+      t3: SelectType.table,
+    });
+  });
+
+  it('publishes no rect for a peer to draw while the scene is a view', async () => {
+    const app = createViewApp();
+    const mounted = await mountMarquee(app, 'focus');
+    await mounted.begin(0, 0);
+    const { rects, unsubscribe } = recordDragSelectRects(app);
+
+    await moveTo(mounted.root, 300, 300);
+    window.dispatchEvent(new MouseEvent('mouseup'));
+    await flush();
+    unsubscribe();
+
+    // editor.dragSelect reaches a peer verbatim and is drawn on their document
+    // scene, so a view marquee writes neither its rect nor a clear of it.
+    expect(rects).toEqual([]);
+    expect(app.store.state.editor.dragSelect).toBeNull();
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      t2: SelectType.table,
+    });
+  });
+
+  it('opens in the scene the gesture names and leaves the other closed', async () => {
+    const app = createViewApp();
+    const documentScene = await mountMarquee(app);
+    const viewScene = await mountMarquee(app, 'focus');
+
+    app.emitter.emit(dragSelectStartAction({ x: 0, y: 0, source: 'document' }));
+    await flush();
+    await whenDrawn();
+
+    expect(marqueeOf(documentScene)).not.toBeNull();
+    expect(marqueeOf(viewScene)).toBeNull();
+
+    window.dispatchEvent(new MouseEvent('mouseup'));
+    await flush();
+    await whenDrawn();
+
+    app.emitter.emit(dragSelectStartAction({ x: 0, y: 0, source: 'focus' }));
+    await flush();
+    await whenDrawn();
+
+    expect(marqueeOf(viewScene)).not.toBeNull();
+    expect(marqueeOf(documentScene)).toBeNull();
+  });
+
+  it('stays on the document placement with no provider over it', async () => {
+    const app = createViewApp();
+    const mounted = await mountMarquee(app);
+    await mounted.begin(0, 0);
+
+    await moveTo(mounted.root, 300, 300);
+
+    expect(app.store.state.editor.dragSelect).toEqual({
+      x: 100,
+      y: 100,
+      w: 300,
+      h: 300,
+    });
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      t1: SelectType.table,
+    });
   });
 });

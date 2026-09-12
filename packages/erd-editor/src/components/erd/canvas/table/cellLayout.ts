@@ -22,6 +22,7 @@ import type { Table } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import type { ColumnWidth } from '@/utils/calcTable';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** The four widths a column row measures from its table; the rest are fixed. */
 export type ColumnCellWidths = Pick<
@@ -114,14 +115,18 @@ export function getWidthComment(state: RootState, table: Table): number {
 /**
  * The name and comment boxes across a table header. One list feeds both the
  * scene that draws them and the overlay that edits them, so an editor can never
- * sit anywhere but on the text it replaces.
+ * sit anywhere but on the text it replaces. A view draws the name alone.
  */
-export function getHeaderCellSlots(state: RootState, table: Table): CellSlot[] {
+export function getHeaderCellSlots(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): CellSlot[] {
   const slots: CellSlot[] = [
     { focusType: FocusType.tableName, x: 0, width: table.ui.widthName },
   ];
 
-  if (bHas(state.settings.show, Show.tableComment)) {
+  if (source === 'document' && bHas(state.settings.show, Show.tableComment)) {
     slots.push({
       focusType: FocusType.tableComment,
       x: table.ui.widthName + INPUT_MARGIN_RIGHT,
@@ -182,24 +187,38 @@ const COLUMN_SLOTS: Array<{
   },
 ];
 
+/** The cells a view draws in every row, whatever the settings show or order. */
+const VIEW_COLUMN_ORDER: number[] = [
+  ColumnType.columnName,
+  ColumnType.columnDataType,
+];
+
 /**
  * The cells of one column row, in the order the settings put them and at the x
- * each lands on once the ones before it have taken their width.
+ * each lands on once the ones before it have taken their width. A view lays
+ * out the name and the type and reads neither the show bits nor the order.
  */
 export function getColumnCellSlots(
   state: RootState,
-  widths: ColumnCellWidths
+  widths: ColumnCellWidths,
+  source: GeometrySource = 'document'
 ): ColumnCellSlot[] {
   const { settings } = state;
   const slots: ColumnCellSlot[] = [];
   let cursor = COLUMN_CELLS_X;
+  const order =
+    source === 'document' ? settings.columnOrder : VIEW_COLUMN_ORDER;
 
-  for (const columnType of settings.columnOrder) {
+  for (const columnType of order) {
     const definition = COLUMN_SLOTS.find(
       slot => slot.columnType === columnType
     );
     if (!definition) continue;
-    if (definition.show !== null && !bHas(settings.show, definition.show)) {
+    if (
+      source === 'document' &&
+      definition.show !== null &&
+      !bHas(settings.show, definition.show)
+    ) {
       continue;
     }
 

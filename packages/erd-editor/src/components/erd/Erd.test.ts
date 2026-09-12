@@ -564,7 +564,7 @@ describe('Erd - context menu', () => {
 });
 
 describe('Erd - drag select and grab move', () => {
-  it('hands the marquee its origin in root coordinates on a modifier mousedown', async () => {
+  it('hands the marquee its origin and its scene on a modifier mousedown', async () => {
     const { app, root } = await setup();
     const dragSelectStart = vi.fn();
     app.emitter.on({ dragSelectStart });
@@ -580,7 +580,7 @@ describe('Erd - drag select and grab move', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(dragSelectStart).toHaveBeenCalledWith({
       type: 'dragSelectStart',
-      payload: { x: 40, y: 60 },
+      payload: { x: 40, y: 60, source: 'document' },
     });
   });
 

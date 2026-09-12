@@ -78,7 +78,8 @@ export async function renderDocumentScene({
   const scale = getExportScale(box, zoom);
 
   // Detached on purpose: konva needs a container, and one outside the document
-  // is never laid out, never painted and never reachable from the editor.
+  // is never laid out, never painted and never reachable from the editor. No
+  // scene source provider is met either, so the scene draws the document.
   const rendered = renderScene({
     app,
     container: document.createElement('div'),

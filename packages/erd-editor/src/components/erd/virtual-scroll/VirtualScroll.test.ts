@@ -1,4 +1,4 @@
-import { html } from '@dineug/r-html';
+import { FC, html, useProvider } from '@dineug/r-html';
 import {
   afterEach,
   beforeEach,
@@ -17,8 +17,15 @@ import {
 import { AppContext } from '@/components/appContext';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import * as styles from '@/components/erd/virtual-scroll/VirtualScroll.styles';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewOpenAction,
+  viewScrollToAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   changeZoomLevelAction,
   getScrollRanges,
@@ -26,11 +33,21 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 
 // happy-dom measures every element as 0x0 at (0, 0), so the tracks get a
 // deliberate origin to prove the component subtracts it from the click point.
 const TRACK_X = 40;
 const TRACK_Y = 25;
+
+/** A Flow scene root the way the visualization tab mounts one: a wrapper of its own, the provider inside. */
+const FlowScope: FC<{ children: any }> = (props, ctx) => {
+  const provider = useProvider(ctx, sceneSourceContext, 'flow');
+  const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => provider.destroy());
+
+  return () => html`${props.children}`;
+};
 
 let mounted: Mounted | null = null;
 let app: AppContext;
@@ -362,5 +379,76 @@ describe('VirtualScroll', () => {
     window.dispatchEvent(mouse('mousemove', 400, 0));
     await flush();
     expect(app.store.state.settings.originX).toBe(0);
+  });
+  // AC-61: a Focus overlay opens over this tab with a source of its own, so
+  // the bars beside the ERD go on measuring the document's travel however far
+  // the view has placed the same tables and wherever it stands over them.
+  it('measures the travel the document scrolls over while a view is open', async () => {
+    app.store.dispatchSync(scrollToAction({ originX: -400, originY: -200 }));
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['near'] }),
+      viewSetLayoutAction({
+        kind: ViewKind.focus,
+        positions: { near: { x: 40_000, y: 40_000 } },
+      })
+    );
+    await flush();
+
+    const { left, top } = ranges();
+    const [horizontalThumb, verticalThumb] = thumbs();
+
+    expect(left).not.toEqual(getScrollRanges(app.store.state, 'focus').left);
+    expect(translateOf(horizontalThumb)[0]).toBeCloseTo(
+      bar(left, DEFAULT_WIDTH).offsetAt(-400),
+      6
+    );
+    expect(translateOf(verticalThumb)[1]).toBeCloseTo(
+      bar(top, DEFAULT_HEIGHT).offsetAt(-200),
+      6
+    );
+  });
+
+  /** The overlay half of AC-61: the bars in a Flow scene are the Flow view's, whichever view is active. */
+  it('draws the Flow travel and jumps the Flow view under a Flow provider, with a Focus view open over it', async () => {
+    mounted?.unmount();
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow }),
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: { near: { x: 0, y: 0 }, far: { x: 3_000, y: 500 } },
+      }),
+      viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow }),
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['near'] }),
+      viewSetLayoutAction({
+        kind: ViewKind.focus,
+        positions: { near: { x: 40_000, y: 40_000 } },
+      })
+    );
+    mounted = await mountAndFlush(
+      html`<div><${FlowScope} .children=${html`<${VirtualScroll} />`} /></div>`,
+      app
+    );
+    const { flow, focus } = app.store.state.editor.views;
+    const { left, top } = getScrollRanges(app.store.state, 'flow');
+    const [horizontalThumb, verticalThumb] = thumbs();
+
+    expect(left).not.toEqual(ranges().left);
+    expect(left).not.toEqual(getScrollRanges(app.store.state, 'focus').left);
+    expect(translateOf(horizontalThumb)[0]).toBeCloseTo(
+      bar(left, DEFAULT_WIDTH).offsetAt(-900),
+      6
+    );
+    expect(translateOf(verticalThumb)[1]).toBeCloseTo(
+      bar(top, DEFAULT_HEIGHT).offsetAt(-100),
+      6
+    );
+
+    tracks()[0].dispatchEvent(mouse('mousedown', TRACK_X + 600, TRACK_Y));
+    await flush();
+
+    expect(flow!.originX).toBeCloseTo(bar(left, DEFAULT_WIDTH).pressAt(600), 3);
+    expect(flow!.originY).toBe(-100);
+    expect(focus).toMatchObject({ originX: 0, originY: 0 });
+    expect(app.store.state.settings).toMatchObject({ originX: 0, originY: 0 });
   });
 });

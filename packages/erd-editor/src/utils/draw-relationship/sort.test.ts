@@ -2,11 +2,13 @@ import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { Direction } from '@/constants/schema';
-import { createEditor } from '@/engine/modules/editor/state';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
 import { Relationship } from '@/internal-types';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
+import { getRoute } from '@/utils/draw-relationship';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 // A table with no columns and every show flag disabled is 118 x 56.
@@ -355,5 +357,52 @@ describe('relationshipSort', () => {
 
     expect(() => relationshipSort(state)).not.toThrow();
     expect(state.doc.relationshipIds).toHaveLength(0);
+  });
+
+  /** AC-67. The source argument defaults to the document. */
+  it('sorts the document by default', () => {
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', 400, 0);
+    const relationship = addRelationship(state, 'r', 'A', 'B');
+
+    relationshipSort(state);
+    const bare = {
+      start: { ...relationship.start },
+      end: { ...relationship.end },
+      route: getRoute(relationship),
+    };
+
+    relationshipSort(state, 'document');
+
+    expect({
+      start: { ...relationship.start },
+      end: { ...relationship.end },
+      route: getRoute(relationship),
+    }).toEqual(bare);
+  });
+
+  /** AC-56. A Focus view standing elsewhere changes nothing the document sort writes. */
+  it('leaves the document anchors where they are while a Focus view stands elsewhere', () => {
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', 400, 0);
+    const relationship = addRelationship(state, 'r', 'A', 'B');
+    const view = createSceneView(ViewKind.focus, ['A']);
+    view.positions = { A: { x: 5_000, y: -3_000 }, B: { x: 5_600, y: -3_000 } };
+    state.editor.views.focus = view;
+
+    relationshipSort(state, 'focus');
+    relationshipSort(state);
+
+    expect(relationship.start).toMatchObject({
+      x: 118,
+      y: 28,
+      direction: Direction.right,
+    });
+    expect(relationship.end).toMatchObject({
+      x: 400,
+      y: 28,
+      direction: Direction.left,
+    });
+    expect(getRoute(relationship)?.[0].y).toBe(28);
   });
 });

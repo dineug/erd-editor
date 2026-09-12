@@ -10,7 +10,9 @@ import {
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
-import { createEditor } from '@/engine/modules/editor/state';
+import { ColumnUIKey } from '@/constants/schema';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import type { RootState } from '@/engine/state';
 import { findColumnDropTarget } from '@/konva/scene/columnDropTarget';
 import { getTableRect } from '@/konva/scene/metrics';
@@ -145,6 +147,29 @@ describe('the row a column drag drops on (AC-G5)', () => {
       columnId: 'c2',
       index: 1,
     });
+  });
+
+  it('names the row among the rows the view shows, where the view placed the table', () => {
+    const state = createState();
+    const table = addTable(state, 't1', 100, 100, ['c1', 'c2', 'c3']);
+    state.collections.tableColumnEntities.c3.ui.keys = ColumnUIKey.primaryKey;
+    const view = createSceneView(ViewKind.focus, ['t1']);
+    view.positions.t1 = { x: 600, y: 400 };
+    state.editor.views.focus = view;
+
+    // A Focus view opens on the key rows, so c3 is the one row and the first.
+    const rect = getTableRect(state, table, 'focus');
+    const point = {
+      x: rect.x + rect.width / 2,
+      y: rect.y + TABLE_INSET + TABLE_HEADER_HEIGHT + COLUMN_HEIGHT / 2,
+    };
+
+    expect(findColumnDropTarget(state, point, 'focus')).toEqual({
+      tableId: 't1',
+      columnId: 'c3',
+      index: 0,
+    });
+    expect(findColumnDropTarget(state, point)).toBeNull();
   });
 
   it('never reads the hit canvas, which is a frame the bench measures', () => {

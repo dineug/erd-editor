@@ -33,6 +33,7 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
   HEADER_ICON_HEIGHT,
@@ -65,8 +66,9 @@ export type MemoProps = {
 const Memo: FC<MemoProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.memo.id);
-  const { onMoveStart } = useMoveMemo(ctx, props);
+  const { onMoveStart } = useMoveMemo(ctx, props, sourceRef);
   const state = observable({ hover: false, removeHover: false });
 
   const handleMouseenter = () => {

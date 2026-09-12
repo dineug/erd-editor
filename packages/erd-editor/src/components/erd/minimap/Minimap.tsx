@@ -12,8 +12,9 @@ import {
 } from '@/components/erd/minimap/minimapGeometry';
 import { renderMinimapScene } from '@/components/erd/minimap/MinimapScene';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import { sceneScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { MINIMAP_STAGE_NAME, renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
@@ -31,10 +32,12 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
   const minimap = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
   const { state, onScrollStart } = useMinimapScroll(ctx);
+  const sourceRef = useSceneSource(ctx);
   const { addUnsubscribe } = useUnmounted();
   let stage: Stage | null = null;
 
-  const getLayout = () => getMinimapLayout(app.value.store.state);
+  const getLayout = () =>
+    getMinimapLayout(app.value.store.state, sourceRef.value);
 
   /**
    * The thumbnail's own box, centred in the minimap square along its shorter
@@ -99,13 +102,17 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
       x: clientX - rect.x,
       y: clientY - rect.y,
     });
-    const origin = getScrollToCenter(getViewTransform(store.state), center);
+    const source = sourceRef.value;
+    const origin = getScrollToCenter(
+      getViewTransform(store.state, source),
+      center
+    );
 
     // Landed before the drag takes hold of the view, so the map the drag then
     // holds is one laid out around the screen the press sent it to, and the
     // handle is whole on it for as long as the drag lasts.
     store.dispatchSync(
-      scrollToAction({ originX: origin.x, originY: origin.y })
+      sceneScrollToAction(source, { originX: origin.x, originY: origin.y })
     );
 
     onScrollStart(event);

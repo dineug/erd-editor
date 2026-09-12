@@ -4,6 +4,7 @@ import {
   observable,
   onMounted,
   ref,
+  useProvider,
   watch,
 } from '@dineug/r-html';
 import { filter, fromEvent, Subscription, throttleTime } from 'rxjs';
@@ -31,6 +32,7 @@ import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import {
@@ -54,9 +56,10 @@ import {
   getContentRect,
   getContentRectAfter,
 } from '@/konva/scene/contentBounds';
-import { toScenePoint } from '@/konva/scene/viewport';
+import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
 import { isMouseEvent, suppressSelection } from '@/utils/domEvent';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
@@ -78,8 +81,16 @@ export type ErdProps = {
   mouseTracking: boolean;
 };
 
+/**
+ * The ERD tab is the document's own scene. Said here rather than left to the
+ * context default, so a view overlay opened over it cannot hand its source down
+ * to this canvas, its map, its scrollbars or its compass.
+ */
+const SOURCE: GeometrySource = 'document';
+
 const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
+  const sceneSource = useProvider(ctx, sceneSourceContext, SOURCE);
   const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
@@ -100,6 +111,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   useErdShortcut(ctx);
 
   const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => sceneSource.destroy());
 
   const resetScroll = () => {
     // Defensive: the drag subscription outlives the render part, so root can
@@ -251,6 +263,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         dragSelectStartAction({
           x: event.clientX - x,
           y: event.clientY - y,
+          source: SOURCE,
         })
       );
     } else {
@@ -287,14 +300,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
     const moves = tables.map(moveToTableAction);
-    const content = getContentRectAfter(store.state, tables);
+    const content = getContentRectAfter(store.state, tables, SOURCE);
 
     if (!content) {
       store.dispatch(moves);
       return;
     }
 
-    const origin = getScrollToCenter(getViewTransform(store.state), {
+    const origin = getScrollToCenter(getViewTransform(store.state, SOURCE), {
       x: content.x + content.width / 2,
       y: content.y + content.height / 2,
     });
@@ -342,10 +355,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       )
       .subscribe(event => {
         const rect = $root.getBoundingClientRect();
-        const scenePoint = toScenePoint(store.state.settings, {
-          x: event.clientX - rect.x,
-          y: event.clientY - rect.y,
-        });
+        const scenePoint = toScenePoint(
+          getSceneTransform(store.state, SOURCE),
+          {
+            x: event.clientX - rect.x,
+            y: event.clientY - rect.y,
+          }
+        );
 
         store.dispatch(sharedMouseTrackerAction(scenePoint));
       });

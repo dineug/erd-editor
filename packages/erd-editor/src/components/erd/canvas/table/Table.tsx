@@ -35,6 +35,7 @@ import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
   HEADER_ICON_HEIGHT,
@@ -64,6 +65,12 @@ import {
   getTableRect,
   getTableWidths,
 } from '@/konva/scene/metrics';
+import {
+  clearViewHoverTable,
+  getHighlightIds,
+  getVisibleColumnIds,
+  setViewHoverTable,
+} from '@/konva/scene/viewLayout';
 import type { Theme } from '@/themes/tokens';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
@@ -99,6 +106,7 @@ type HeaderCellOptions = {
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
     ctx,
     props.table.id
@@ -108,7 +116,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     props.table.id
   );
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
-  const { onMoveStart } = useMoveTable(ctx, props);
+  const { onMoveStart } = useMoveTable(ctx, props, sourceRef);
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     hover: false,
@@ -122,13 +130,35 @@ const Table: FC<TableProps> = (props, ctx) => {
   let dragLayerStage: Stage | null = null;
   let flip: KonvaFlip | null = null;
 
+  /**
+   * The hover a view lights by, taken beside the local one the icons read. It
+   * is scene state and carries no action, so what a reader points at never
+   * reaches the document, the history or a peer.
+   */
   const handleMouseenter = () => {
     state.hover = true;
+
+    if (sourceRef.value !== 'document') {
+      setViewHoverTable(app.value.store.state, props.table.id, sourceRef.value);
+    }
   };
 
   const handleMouseleave = () => {
     state.hover = false;
+
+    if (sourceRef.value !== 'document') {
+      setViewHoverTable(app.value.store.state, null, sourceRef.value);
+    }
   };
+
+  // Culling and a closing view take the node out from under the pointer, and
+  // neither sends a mouseleave, so the hover leaves with whatever held it. The
+  // document scene shares the editor id, so only a view table clears it.
+  addUnsubscribe(() => {
+    if (sourceRef.value === 'document') return;
+
+    clearViewHoverTable(app.value.store.state, props.table.id, sourceRef.value);
+  });
 
   /** What the header icons had as their hover colour and their pointer cursor. */
   const handleIconMouseenter =
@@ -185,6 +215,9 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   const handleEdit = (focusType: FocusType, event: SceneMouseEvent) => {
     if (!doubleClick.isDouble(focusType, event)) return;
+    // A view edits nothing: the editor this would open is the document
+    // overlay's, which draws on the document placement and not on this cell.
+    if (sourceRef.value !== 'document') return;
 
     const { store } = app.value;
     store.dispatch(editTableAction());
@@ -208,7 +241,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     const point = toCanvasPoint(event);
     if (!point) return;
 
-    const target = findColumnDropTarget(store.state, point);
+    const target = findColumnDropTarget(store.state, point, sourceRef.value);
     if (!target) return;
 
     const {
@@ -245,6 +278,10 @@ const Table: FC<TableProps> = (props, ctx) => {
    */
   const handleDragstartColumn = (columnId: string, event: SceneMouseEvent) => {
     const { store } = app.value;
+    // A view reorders nothing: the gate drops what a drag would dispatch, so
+    // arming one here would only run the flip and the drop search for nothing.
+    if (sourceRef.value !== 'document') return;
+
     const {
       editor: { focusTable },
     } = store.state;
@@ -359,8 +396,9 @@ const Table: FC<TableProps> = (props, ctx) => {
     const { table } = props;
     const theme = themeRef.value;
     const selected = Boolean(editor.selectedMap[table.id]);
-    const tableWidths = getTableWidths(store.state, table);
-    const rect = getTableRect(store.state, table);
+    const source = sourceRef.value;
+    const tableWidths = getTableWidths(store.state, table, source);
+    const rect = getTableRect(store.state, table, source);
     const contentWidth = rect.width - TABLE_INSET * 2;
 
     const hovered = Boolean(props.hovered || state.hover);
@@ -376,7 +414,20 @@ const Table: FC<TableProps> = (props, ctx) => {
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
     const ringColor = sharedTableColor ?? sharedSelected;
 
-    const headerCells = getHeaderCellSlots(store.state, table);
+    // A view draws no affordance the width it is measured at has no room for,
+    // and the colour band is the same read only header, so it takes no click:
+    // the picker it opens sits over a view whose colour change the gate drops.
+    const view = source !== 'document';
+
+    /**
+     * Whether a cell hands its text over to an editor. Only the document scene
+     * carries one, so a view keeps every cell drawn while the document is
+     * edited, and blanks nothing it has no input to put in the gap.
+     */
+    const cellEdit = (focusType: FocusType, columnId?: string) =>
+      !view && hasEdit(focusType, columnId);
+
+    const headerCells = getHeaderCellSlots(store.state, table, source);
     const nameCell = headerCells.find(
       slot => slot.focusType === FocusType.tableName
     );
@@ -384,11 +435,21 @@ const Table: FC<TableProps> = (props, ctx) => {
       slot => slot.focusType === FocusType.tableComment
     );
 
+    const columnIds = getVisibleColumnIds(store.state, table, source);
+
+    // A view lights its centers and what a hover reaches; a table it leaves
+    // unlit keeps its type column's width and draws nothing in it. Asked for
+    // only where a row reads it, since the walk behind it costs every link.
+    const dataTypeOpacity =
+      view &&
+      columnIds.length > 0 &&
+      !getHighlightIds(store.state, source).tableIds.has(table.id)
+        ? 0
+        : 1;
+
     const columns = query(collections)
       .collection('tableColumnEntities')
-      .selectByIds(
-        ghostColumnId ? [...table.columnIds, ghostColumnId] : table.columnIds
-      );
+      .selectByIds(ghostColumnId ? [...columnIds, ghostColumnId] : columnIds);
 
     return (
       <k-group
@@ -439,6 +500,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           height={HEADER_COLOR_HEIGHT}
           cornerRadius={[TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]}
           fill={table.ui.color}
+          listening={!view}
           on:click={handleOpenColorPicker}
           on:mouseenter={(event: SceneMouseEvent) => {
             setSceneCursor(event, CURSOR_POINTER);
@@ -448,33 +510,37 @@ const Table: FC<TableProps> = (props, ctx) => {
           }}
         />
         <k-group name="table-header" x={TABLE_INSET} y={TABLE_INSET}>
-          {sceneIcon({
-            icon: 'plus',
-            name: 'table-add-column',
-            kind: 'icon',
-            size: HEADER_ICON_HEIGHT,
-            color: iconColor(theme, 'plus', hovered),
-            mouseenter: handleIconMouseenter('plus'),
-            mouseleave: handleIconMouseleave,
-            x:
-              contentWidth -
-              HEADER_ICON_HEIGHT * 2 -
-              TABLE_HEADER_BUTTON_MARGIN_LEFT,
-            y: 0,
-            click: handleAddColumn,
-          })}
-          {sceneIcon({
-            icon: 'x',
-            name: 'table-remove',
-            kind: 'icon',
-            size: HEADER_ICON_HEIGHT,
-            color: iconColor(theme, 'x', hovered),
-            mouseenter: handleIconMouseenter('x'),
-            mouseleave: handleIconMouseleave,
-            x: contentWidth - HEADER_ICON_HEIGHT,
-            y: 0,
-            click: handleRemoveTable,
-          })}
+          {view
+            ? null
+            : sceneIcon({
+                icon: 'plus',
+                name: 'table-add-column',
+                kind: 'icon',
+                size: HEADER_ICON_HEIGHT,
+                color: iconColor(theme, 'plus', hovered),
+                mouseenter: handleIconMouseenter('plus'),
+                mouseleave: handleIconMouseleave,
+                x:
+                  contentWidth -
+                  HEADER_ICON_HEIGHT * 2 -
+                  TABLE_HEADER_BUTTON_MARGIN_LEFT,
+                y: 0,
+                click: handleAddColumn,
+              })}
+          {view
+            ? null
+            : sceneIcon({
+                icon: 'x',
+                name: 'table-remove',
+                kind: 'icon',
+                size: HEADER_ICON_HEIGHT,
+                color: iconColor(theme, 'x', hovered),
+                mouseenter: handleIconMouseenter('x'),
+                mouseleave: handleIconMouseleave,
+                x: contentWidth - HEADER_ICON_HEIGHT,
+                y: 0,
+                click: handleRemoveTable,
+              })}
           <k-group name="table-header-inputs" y={HEADER_CELLS_Y - TABLE_INSET}>
             {nameCell
               ? headerCell({
@@ -482,7 +548,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: table.name.trim() ? table.name : 'table',
                   fill: table.name.trim() ? theme.active : theme.placeholder,
                   focus: hasFocus(FocusType.tableName),
-                  edit: hasEdit(FocusType.tableName),
+                  edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,
                 })
               : null}
@@ -492,7 +558,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: table.comment.trim() ? table.comment : 'comment',
                   fill: table.comment.trim() ? theme.active : theme.placeholder,
                   focus: hasFocus(FocusType.tableComment),
-                  edit: hasEdit(FocusType.tableComment),
+                  edit: cellEdit(FocusType.tableComment),
                   sharedFocus: sharedCommentColor,
                 })
               : null}
@@ -505,7 +571,9 @@ const Table: FC<TableProps> = (props, ctx) => {
             (column, index) => (
               <Column
                 column={column}
-                y={getColumnRect(store.state, table, index).y - rect.y}
+                source={source}
+                dataTypeOpacity={dataTypeOpacity}
+                y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}
                 selected={hasSelectColumn(column.id)}
                 hovered={column.id === props.hoveredColumnId}
@@ -523,10 +591,10 @@ const Table: FC<TableProps> = (props, ctx) => {
                   FocusType.columnAutoIncrement,
                   column.id
                 )}
-                editName={hasEdit(FocusType.columnName, column.id)}
-                editDataType={hasEdit(FocusType.columnDataType, column.id)}
-                editDefault={hasEdit(FocusType.columnDefault, column.id)}
-                editComment={hasEdit(FocusType.columnComment, column.id)}
+                editName={cellEdit(FocusType.columnName, column.id)}
+                editDataType={cellEdit(FocusType.columnDataType, column.id)}
+                editDefault={cellEdit(FocusType.columnDefault, column.id)}
+                editComment={cellEdit(FocusType.columnComment, column.id)}
                 sharedFocusName={sharedFocusColor(
                   FocusType.columnName,
                   column.id

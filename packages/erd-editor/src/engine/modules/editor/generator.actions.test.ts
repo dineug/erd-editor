@@ -41,7 +41,17 @@ import {
   removeSelectedAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
-import { FocusType, MoveKey, SelectType } from '@/engine/modules/editor/state';
+import {
+  FocusType,
+  MoveKey,
+  SelectType,
+  ViewKind,
+} from '@/engine/modules/editor/state';
+import {
+  viewChangeZoomLevelAction,
+  viewOpenAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   addIndexAction,
   changeIndexNameAction,
@@ -374,6 +384,37 @@ describe('moveAllAction$', () => {
 
     expect(typesOf(store, moveAllAction$(1, 1))).toEqual([]);
   });
+
+  it('moves the placement of the view named from a view scene, by that view zoom, and leaves the document alone', () => {
+    seedTable(store, 't1', 100, 100);
+    seedMemo(store, 'm1', 200, 200);
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow }),
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: { t1: { x: 0, y: 0 } },
+      }),
+      viewChangeZoomLevelAction({ value: 0.5, kind: ViewKind.flow }),
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
+    );
+
+    expect(typesOf(store, moveAllAction$(10, 20, 'flow'))).toEqual([
+      'editor.viewMoveTable',
+    ]);
+
+    store.dispatchSync(moveAllAction$(10, 20, 'flow'));
+
+    expect(store.state.editor.views.flow!.positions.t1).toEqual({
+      x: 20,
+      y: 40,
+    });
+    expect(store.state.editor.views.focus!.positions).toEqual({});
+    expect(tableOf(store, 't1').ui).toMatchObject({ x: 100, y: 100 });
+    expect(memoOf(store, 'm1').ui).toMatchObject({ x: 200, y: 200 });
+  });
 });
 
 describe('removeSelectedAction$', () => {
@@ -445,6 +486,26 @@ describe('dragSelectAction$', () => {
 
     store.dispatchSync(dragSelectAction$({ x: 100000, y: 100000, w: 1, h: 1 }));
     expect(store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('picks by the point the view placed each table at, and no memo, from the view', () => {
+    seedTable(store, 't1', 0, 0);
+    seedTable(store, 't2', 5000, 5000);
+    seedMemo(store, 'm1', 0, 0);
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1', 't2'] }),
+      viewSetLayoutAction({
+        kind: ViewKind.focus,
+        positions: { t1: { x: 5000, y: 5000 }, t2: { x: 0, y: 0 } },
+      })
+    );
+
+    store.dispatchSync(
+      dragSelectAction$({ x: 0, y: 0, w: 300, h: 300 }, 'focus')
+    );
+
+    // The document at the same rect would pick t1 and the memo under it.
+    expect(store.state.editor.selectedMap).toEqual({ t2: SelectType.table });
   });
 });
 

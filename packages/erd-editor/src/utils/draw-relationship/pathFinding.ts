@@ -1,7 +1,9 @@
 import { Direction } from '@/constants/schema';
 import { Point, Relationship, RelationshipPoint } from '@/internal-types';
 import {
+  type Anchor,
   CIRCLE_HEIGHT,
+  getAnchors,
   getRoute,
   getStubSlots,
   Line,
@@ -14,6 +16,7 @@ import {
   ROUTE_CHAMFER,
 } from '@/utils/draw-relationship';
 import { chamferPolyline } from '@/utils/draw-relationship/chamfer';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import {
   clampStub,
   facingGap,
@@ -22,10 +25,11 @@ import {
 } from '@/utils/draw-relationship/stub';
 
 export function getRelationshipPath(
-  relationship: Relationship
+  relationship: Relationship,
+  source: GeometrySource = 'document'
 ): RelationshipPath {
-  const { start, end } = relationship;
-  const [startSlot, endSlot] = getStubSlots(relationship);
+  const { start, end } = getAnchors(relationship, source);
+  const [startSlot, endSlot] = getStubSlots(relationship, source);
   const gap = facingGap(start, end);
 
   return {
@@ -34,15 +38,15 @@ export function getRelationshipPath(
       end,
       clampStub(stubFor(startSlot), gap),
       clampStub(stubFor(endSlot), gap),
-      getRoute(relationship)
+      getRoute(relationship, source)
     ),
     line: getLine(start, end),
   };
 }
 
 function getPath(
-  start: Relationship['start'],
-  end: Relationship['end'],
+  start: Anchor,
+  end: Anchor,
   startStub: number,
   endStub: number,
   route: Point[] | undefined

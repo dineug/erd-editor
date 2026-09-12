@@ -81,8 +81,8 @@ afterEach(() => {
 });
 
 describe('relationship/hooks registration', () => {
-  it('registers exactly three hooks', () => {
-    expect(hooks).toHaveLength(3);
+  it('registers exactly four hooks', () => {
+    expect(hooks).toHaveLength(4);
     for (const [pattern, effect] of hooks) {
       expect(Array.isArray(pattern)).toBe(true);
       expect(pattern.length).toBeGreaterThan(0);

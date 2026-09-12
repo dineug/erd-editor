@@ -1,12 +1,15 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { createEditor } from '@/engine/modules/editor/state';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
-import { getRoute } from '@/utils/draw-relationship';
+import { getAnchors, getRoute } from '@/utils/draw-relationship';
+import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
+import { getSortCache } from '@/utils/draw-relationship/incremental';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 type Placement = [id: string, x: number, y: number];
@@ -134,6 +137,53 @@ describe('relationshipSort incremental reuse', () => {
     relationshipSort(fresh);
 
     expect(drawingOf(incremental)).toEqual(drawingOf(fresh));
+  });
+
+  it('keeps one route cache per source, the document by default', () => {
+    const state = createScene();
+
+    expect(getSortCache(state)).toBe(getSortCache(state, 'document'));
+    expect(getSortCache(state, 'focus')).not.toBe(getSortCache(state));
+    expect(getSortCache(state, 'focus')).toBe(getSortCache(state, 'focus'));
+  });
+
+  /** AC-56. A view sorting between the steps of a drag reads and writes a cache of its own. */
+  it('draws a moved table as a sort from scratch while a view sorts between the steps', () => {
+    const incremental = createScene();
+    const view = createSceneView(ViewKind.focus, ['A']);
+    view.positions = {
+      A: { x: 5_000, y: -3_000 },
+      B: { x: 5_600, y: -3_000 },
+      C: { x: 5_600, y: -2_600 },
+      D: { x: 5_000, y: -2_600 },
+      E: { x: 5_300, y: -2_800 },
+    };
+    incremental.editor.views.focus = view;
+    relationshipSort(incremental);
+    relationshipSort(incremental, 'focus');
+
+    for (let step = 1; step <= 12; step++) {
+      const table = incremental.collections.tableEntities.A;
+      table.ui.x = step * 9;
+      table.ui.y = step * 5;
+      relationshipSort(incremental);
+      view.positions.A = { x: 5_000 + step * 3, y: -3_000 - step * 2 };
+      relationshipSort(incremental, 'focus');
+    }
+
+    const fresh = createScene({ x: 12 * 9, y: 12 * 5 });
+    relationshipSort(fresh);
+
+    expect(drawingOf(incremental)).toEqual(drawingOf(fresh));
+    // The view followed its own moves: A's right edge, twelve steps of three on.
+    const { width } = tableToObjectPoint(
+      incremental,
+      incremental.collections.tableEntities.A,
+      'focus'
+    );
+    expect(
+      getAnchors(incremental.collections.relationshipEntities.ab, 'focus').start
+    ).toMatchObject({ tableId: 'A', x: 5_000 + 36 + width });
   });
 });
 /**

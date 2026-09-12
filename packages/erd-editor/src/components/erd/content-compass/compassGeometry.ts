@@ -7,6 +7,7 @@ import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
 import { getContentRects } from '@/konva/scene/contentBounds';
 import { type Rect } from '@/konva/scene/metrics';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** Which way the nearest entity lies and how far, while the screen holds none. */
 export type ContentCompass = {
@@ -46,14 +47,17 @@ const middleOf = (rect: Rect): Point => ({
  * from the screen's own middle. Null while any table or memo reaches the screen,
  * touching it counting as reaching it, and null while nobody has measured one.
  */
-export function getContentCompass(state: RootState): ContentCompass | null {
+export function getContentCompass(
+  state: RootState,
+  source: GeometrySource = 'document'
+): ContentCompass | null {
   if (!hasViewport(state.editor.viewport)) return null;
 
-  const screen = getVisibleCanvasRect(getViewTransform(state));
+  const screen = getVisibleCanvasRect(getViewTransform(state, source));
   let nearest: Rect | null = null;
   let distance = Infinity;
 
-  for (const rect of getContentRects(state)) {
+  for (const rect of getContentRects(state, [], source)) {
     const gap = gapBetween(screen, rect);
     if (gap.x === 0 && gap.y === 0) return null;
 

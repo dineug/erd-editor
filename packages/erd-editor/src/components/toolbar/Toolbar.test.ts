@@ -10,7 +10,17 @@ import {
   changeOpenMapAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
+import {
+  SelectType,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
+import {
+  changeVisualizationModeAction,
+  viewChangeZoomLevelAction,
+  viewCloseAction,
+  viewOpenAction,
+} from '@/engine/modules/editor/view.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
@@ -223,6 +233,49 @@ describe('Toolbar', () => {
 
       expect(el.value).toBe('10%');
       expect(app.store.state.settings.zoomLevel).toBe(0.1);
+    });
+
+    /**
+     * The bar is a sibling of every scene, so no scene source reaches it: it
+     * shows the zoom of the view the redirect sends its own input to.
+     */
+    it('shows the open view zoom, and the document zoom again once it closes', async () => {
+      const { app } = await setup();
+
+      app.store.dispatchSync(viewOpenAction({ kind: ViewKind.focus }));
+      app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
+      await flush();
+
+      expect(input('zoom level').value).toBe('50%');
+      expect(app.store.state.settings.zoomLevel).toBe(1);
+
+      app.store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+      await flush();
+
+      expect(input('zoom level').value).toBe('100%');
+    });
+
+    it('shows the Flow zoom while the visualization tab is in Flow with no Focus open', async () => {
+      const { app } = await setup();
+
+      app.store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.visualization })
+      );
+      app.store.dispatchSync(
+        changeVisualizationModeAction({ value: VisualizationMode.flow })
+      );
+      app.store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.3 }));
+      await flush();
+
+      expect(input('zoom level').value).toBe('30%');
+
+      app.store.dispatchSync(
+        changeVisualizationModeAction({ value: VisualizationMode.graph })
+      );
+      await flush();
+
+      expect(input('zoom level').value).toBe('100%');
     });
 
     it('ignores an input event that carries no target element', async () => {

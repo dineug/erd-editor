@@ -2,7 +2,8 @@ import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { getMinimapLayout } from '@/components/erd/minimap/minimapGeometry';
-import { createEditor } from '@/engine/modules/editor/state';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { getScrollRanges } from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { getContentRect } from '@/konva/scene/contentBounds';
@@ -92,6 +93,50 @@ describe('viewFreeze', () => {
 
     thawView(held);
     expect(isViewFrozen(held)).toBe(false);
+  });
+
+  /**
+   * A Focus overlay opens over the ERD on the same store: a drag on the
+   * overlay's minimap or scrollbar holds the view's origin, and the ERD under
+   * it keeps reading its own live content and origin, and the other way about.
+   */
+  it('holds the document and a view of one store apart', () => {
+    const state = stateWith(0, 0);
+    state.settings.originX = -700;
+    state.editor.views.focus = createSceneView(ViewKind.focus);
+    state.editor.views.focus.originX = -40_000;
+    const documentRanges = getScrollRanges(state);
+
+    freezeView(state, 'focus');
+
+    expect(isViewFrozen(state, 'focus')).toBe(true);
+    expect(isViewFrozen(state)).toBe(false);
+    expect(getFrozenOrigin(state, 'focus')).toEqual({ x: -40_000, y: 0 });
+    expect(getFrozenOrigin(state)).toBeNull();
+    expect(getScrollRanges(state)).toEqual(documentRanges);
+    expect(getScrollRanges(state).left.min).not.toBe(-40_000);
+    expect(getScrollRanges(state, 'focus').left.min).toBe(-40_000);
+
+    state.collections.tableEntities.t.ui.x = 9_000;
+    expect(getViewContentRect(state)).toEqual(getContentRect(state));
+    expect(getViewContentRect(state, 'focus')).not.toEqual(
+      getContentRect(state)
+    );
+
+    freezeView(state);
+    expect(getFrozenOrigin(state)).toEqual({ x: -700, y: 0 });
+    expect(getFrozenOrigin(state, 'focus')).toEqual({ x: -40_000, y: 0 });
+
+    state.editor.views.focus.originX = 0;
+    expect(getScrollRanges(state, 'focus').left.min).toBe(-40_000);
+
+    thawView(state, 'focus');
+    expect(isViewFrozen(state, 'focus')).toBe(false);
+    expect(isViewFrozen(state)).toBe(true);
+    expect(getScrollRanges(state, 'focus').left.min).not.toBe(-40_000);
+
+    thawView(state);
+    expect(isViewFrozen(state)).toBe(false);
   });
 
   it('holds two stores at once and releases each on its own', () => {

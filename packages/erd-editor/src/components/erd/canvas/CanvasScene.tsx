@@ -16,12 +16,15 @@ import { createRetentionPool } from '@/components/erd/canvas/sceneRetention';
 import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedDragSelect';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { Show } from '@/constants/schema';
 import type { Relationship } from '@/internal-types';
 import { renderKonva } from '@/konva/host';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
 import {
   getCullingRect,
   getSceneOrigin,
+  getSceneTransform,
   isMemoVisible,
   isTableVisible,
 } from '@/konva/scene/viewport';
@@ -41,29 +44,41 @@ type Stacked = { ui: { zIndex: number } };
 const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
- * The four layers of the canvas, plus the one a drag opens. Background, scene
- * and presence carry the canvas transform, and the marquee layer stays in
- * screen space because that is where its own mousemove measures.
+ * The layers of the canvas, four over the document and three under a view,
+ * plus the one a drag opens. Each carries the canvas transform but the
+ * marquee, which stays in screen space where its own mousemove measures.
  */
 const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const retention = createRetentionPool();
 
   return () => {
     const { store } = app.value;
     const { state } = store;
     const {
-      settings: { zoomLevel, show },
-      doc: { tableIds, memoIds, relationshipIds },
       editor: { drawRelationship },
       collections,
     } = state;
+    const source = sourceRef.value;
+    const transform = getSceneTransform(state, source);
+    const { zoomLevel } = transform;
 
-    const cullingRect = getCullingRect(state);
+    // The show bits are the document scene's own setting. A view spells what
+    // it shows for itself, and its links are the point of it, so a reader who
+    // hid connectors in the ERD still gets them here.
+    const showRelationship =
+      source !== 'document' || bHas(state.settings.show, Show.relationship);
+
+    // What this source shows: the whole document, or what the active view
+    // places, keeps within its hop and joins, memos left out of it.
+    const { tableIds, memoIds, relationshipIds } = getVisibleIds(state, source);
+
+    const cullingRect = getCullingRect(state, source);
 
     // Read only while a drag runs, or the scene would re-render on a selection
     // that moves nothing. What moves is what moveAllAction$ moves.
-    const dragIds = isEntityDragActive(state)
+    const dragIds = isEntityDragActive(state, source)
       ? new Set(Object.keys(state.editor.selectedMap))
       : null;
     const dragging = Boolean(dragIds?.size);
@@ -73,7 +88,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       .selectByIds(tableIds);
     const drawnIds = new Set(
       tableEntities
-        .filter(table => isTableVisible(cullingRect, state, table))
+        .filter(table => isTableVisible(cullingRect, state, table, source))
         .map(table => table.id)
     );
 
@@ -121,10 +136,22 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       : [];
     const dragRelationships = dragging ? allRelationships.filter(isMoving) : [];
 
+    /**
+     * A view draws its own spelling at every zoom: its rows are already the
+     * few its show mode keeps, and the shrunk box a low zoom asks the document
+     * for would take that away and put the document's rows back on a zoom in.
+     */
+    const highLevel = source === 'document' && isHighLevelTable(zoomLevel);
+
+    // A peer broadcasts document points and the ghost an alt drag carries
+    // reads the document zoom, so the presence layer is the document scene's
+    // alone; a view would stand the same cursors somewhere unrelated.
+    const presence = source === 'document';
+
     /** The tables of one layer, in whichever spelling the zoom asks for. */
     const tableShapes = (list: typeof allTables) =>
       cache(
-        isHighLevelTable(zoomLevel) ? (
+        highLevel ? (
           <>
             {repeat(
               list,
@@ -152,7 +179,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
 
     // The one place the scene transform is written down, so the rect above
     // culls against the origin these layers are actually placed at.
-    const { x, y } = getSceneOrigin(state.settings);
+    const { x, y } = getSceneOrigin(transform);
 
     // The bottom layer paints nothing of its own now that the document has no
     // edge; it exists for a drag's own connectors, which go under the static
@@ -166,7 +193,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
           scaleX={zoomLevel}
           scaleY={zoomLevel}
         >
-          {dragging && bHas(show, Show.relationship) ? (
+          {dragging && showRelationship ? (
             <RelationshipGroup
               relationships={dragRelationships}
               viewport={cullingRect}
@@ -174,13 +201,13 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
           ) : null}
         </k-layer>
         <k-layer name="scene" x={x} y={y} scaleX={zoomLevel} scaleY={zoomLevel}>
-          {bHas(show, Show.relationship) ? (
+          {showRelationship ? (
             <RelationshipGroup
               relationships={relationships}
               viewport={cullingRect}
             />
           ) : null}
-          {drawRelationship?.start ? (
+          {source === 'document' && drawRelationship?.start ? (
             <DrawRelationship root={props.root} draw={drawRelationship} />
           ) : null}
           {tableShapes(tables)}
@@ -213,18 +240,20 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
         <k-layer name="overlay-marquee" listening={false}>
           <DragSelect root={props.root} />
         </k-layer>
-        <k-layer
-          name="presence"
-          listening={false}
-          x={x}
-          y={y}
-          scaleX={zoomLevel}
-          scaleY={zoomLevel}
-        >
-          <SharedMouseTracker />
-          <SharedDragSelect />
-          <DuplicateGhost />
-        </k-layer>
+        {presence ? (
+          <k-layer
+            name="presence"
+            listening={false}
+            x={x}
+            y={y}
+            scaleX={zoomLevel}
+            scaleY={zoomLevel}
+          >
+            <SharedMouseTracker />
+            <SharedDragSelect />
+            <DuplicateGhost />
+          </k-layer>
+        ) : null}
       </>
     );
   };

@@ -6,16 +6,19 @@ import {
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
 } from '@/constants/layout';
-import { createEditor } from '@/engine/modules/editor/state';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
 import {
   getContentRect,
   getContentRectAfter,
   getContentRects,
+  getSceneContentRect,
   unionRect,
 } from '@/konva/scene/contentBounds';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import { createMemo } from '@/utils/collection/memo.entity';
+import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 
 function createState(): RootState {
@@ -249,5 +252,126 @@ describe('getContentRects', () => {
 
     expect([rect.x, rect.y]).toEqual([move.x, move.y]);
     expect([table.ui.x, table.ui.y]).toEqual([0, 0]);
+  });
+});
+
+/**
+ * A Focus view on a, which joins b, placed far from where the document has
+ * them, over a document that also holds c and a memo, neither of which the
+ * view shows.
+ */
+function seedView(state: RootState) {
+  const a = addTable(state, 'a', 100, 200);
+  const b = addTable(state, 'b', -4_000, 3_500);
+  addTable(state, 'c', 12_000, 12_000);
+  addMemo(state, 'm', 12_000, -900, 300, 100);
+  state.collections.relationshipEntities.ab = createRelationship({
+    id: 'ab',
+    start: { tableId: 'a', columnIds: [] },
+    end: { tableId: 'b', columnIds: [] },
+  });
+  state.doc.relationshipIds.push('ab');
+
+  const view = createSceneView(ViewKind.focus, ['a']);
+  view.positions = { a: { x: 50_000, y: 50_000 }, b: { x: 50_400, y: 50_000 } };
+  state.editor.views.focus = view;
+
+  return { a, b, view };
+}
+
+describe('getSceneContentRect', () => {
+  /** AC-58. The document half: the content rect itself, view open or not. */
+  it('is the content rect for the document, whether or not a view is open', () => {
+    const state = createState();
+    addTable(state, 'a', 100, 200);
+    addMemo(state, 'm', -500, 900, 200, 100);
+
+    expect(getSceneContentRect(state)).toEqual(getContentRect(state));
+    expect(getSceneContentRect(state, 'document')).toEqual(
+      getContentRect(state)
+    );
+
+    seedView(state);
+    expect(getSceneContentRect(state, 'document')).toEqual(
+      getContentRect(state)
+    );
+  });
+
+  /** AC-58 and AC-64. The view half: the shown tables at their view points, and no memo. */
+  it('is the box around what the view shows at its view points, and holds no memo', () => {
+    const state = createState();
+    const { a, b } = seedView(state);
+    const boxes = [
+      getTableRect(state, a, 'focus'),
+      getTableRect(state, b, 'focus'),
+    ];
+
+    const rect = getSceneContentRect(state, 'focus')!;
+
+    expect(rect).toEqual(boxes.reduce(unionRect));
+    expect(rect.x).toBe(50_000);
+    expect(rect.y).toBe(50_000);
+    expect(right(rect)).toBe(50_400 + boxes[1].width);
+    expect(bottom(rect)).toBe(
+      50_000 + Math.max(...boxes.map(box => box.height))
+    );
+    expect(rect).not.toEqual(getContentRect(state));
+  });
+
+  it('is null while the view shows nothing', () => {
+    const state = createState();
+    addTable(state, 'a', 100, 200);
+    addMemo(state, 'm', -500, 900, 200, 100);
+
+    expect(getSceneContentRect(state, 'focus')).toBeNull();
+
+    state.editor.views.focus = createSceneView(ViewKind.focus, ['gone']);
+    expect(getSceneContentRect(state, 'focus')).toBeNull();
+  });
+
+  it('leaves the document rect where it was while the view is open', () => {
+    const state = createState();
+    const before = getContentRect(state);
+    seedView(state);
+    const withView = getContentRect(state);
+
+    // The document box still spans b at -4000 to c and the memo at 12000 and beyond.
+    expect(before).toBeNull();
+    expect(withView).toEqual(getSceneContentRect(state, 'document'));
+    expect(withView!.x).toBe(-4_000);
+    expect(right(withView!)).toBeGreaterThan(12_000);
+    expect(withView).not.toEqual(getSceneContentRect(state, 'focus'));
+  });
+});
+
+describe('getContentRects for a view', () => {
+  /** AC-64. */
+  it('hands back one box per shown table at its view point, and no memo', () => {
+    const state = createState();
+    const { a, b } = seedView(state);
+
+    expect(getContentRects(state, [], 'focus')).toEqual([
+      getTableRect(state, a, 'focus'),
+      getTableRect(state, b, 'focus'),
+    ]);
+    expect(getContentRects(state, [], 'focus').map(box => box.x)).toEqual([
+      50_000, 50_400,
+    ]);
+  });
+
+  it('reads a named table at its point in a view too', () => {
+    const state = createState();
+    const { view } = seedView(state);
+    const [rect] = getContentRects(
+      state,
+      [{ id: 'a', x: 900, y: -700 }],
+      'focus'
+    );
+
+    expect([rect.x, rect.y]).toEqual([900, -700]);
+    expect(view.positions.a).toEqual({ x: 50_000, y: 50_000 });
+    expect(
+      getContentRectAfter(state, [{ id: 'a', x: 900, y: -700 }], 'focus')!.x
+    ).toBe(900);
   });
 });

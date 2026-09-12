@@ -6,7 +6,6 @@ import {
   createTestAppContext,
   createTestTheme,
   flush,
-  mount,
   type Mounted,
 } from '@/__test-utils__';
 import { type AppContext, appContext } from '@/components/appContext';
@@ -34,6 +33,7 @@ import {
   HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
 import { themeContext } from '@/components/themeContext';
 import {
@@ -52,7 +52,12 @@ import {
   focusTableAction,
   scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType } from '@/engine/modules/editor/state';
+import { FocusType, ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewOpenAction,
+  viewScrollToAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
 import {
   addMemoAction$,
@@ -77,6 +82,7 @@ import {
   getTableRect,
   getTableWidths,
 } from '@/konva/scene/metrics';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { focusEvent } from '@/utils/internalEvents';
 
 const teardowns: Array<() => void> = [];
@@ -93,21 +99,41 @@ type Fixture = {
   columnId: string;
 };
 
-async function setup(): Promise<Fixture> {
+/**
+ * The canvas with its overlay, under the scene source a view overlay would
+ * provide. Every provider is hung before the render: a consumer asks for its
+ * context at setup and once more before it mounts, and never again after.
+ */
+async function setup(source: GeometrySource | null = null): Promise<Fixture> {
   const $root = document.createElement('div');
-  document.body.append($root);
+  const container = document.createElement('div');
+  document.body.append(container, $root);
   const root = createRef<HTMLDivElement>($root);
   const canvas = createRef<HTMLDivElement>();
   const app = createTestAppContext();
-  const mounted = mount(<Canvas root={root} canvas={canvas} />, app);
   // useProvider takes a bare element at runtime and types only a component
   // context, hence the cast; it is r-html's own, not a React hook.
   // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const appProvider = useProvider(container as any, appContext, app);
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
   const themeProvider = useProvider(
-    mounted.container as any,
+    container as any,
     themeContext,
     createTestTheme()
   );
+  const sourceProvider = source
+    ? // oxlint-disable-next-line react-hooks/rules-of-hooks
+      useProvider(container as any, sceneSourceContext, source)
+    : null;
+  render(container, <Canvas root={root} canvas={canvas} />);
+  const mounted: Mounted = {
+    container,
+    app,
+    unmount: () => {
+      render(container, null);
+      container.remove();
+    },
+  };
 
   const { store } = app;
   store.dispatchSync(addTableAction$());
@@ -120,7 +146,9 @@ async function setup(): Promise<Fixture> {
 
   teardowns.push(() => {
     mounted.unmount();
+    sourceProvider?.destroy();
     themeProvider.destroy();
+    appProvider.destroy();
     $root.remove();
   });
 
@@ -1416,4 +1444,79 @@ describe('the box the cell editor covers on the scene', () => {
       }
     });
   }
+});
+
+/**
+ * A view blocks every document edit, so this overlay is the document scene's
+ * alone: under a view source it draws nothing at all, and the edit the document
+ * is holding is left exactly where it was. Spec A.5, decision 1.
+ */
+describe('the overlay under a view source', () => {
+  /**
+   * The table this scene did draw, so an absence below reads as the overlay
+   * declining rather than as a canvas that failed to render under the provider.
+   */
+  const sceneTableOf = (fixture: Fixture) =>
+    Reflect.get(globalThis, '__erdStages').canvas.findOne(
+      `#table-${fixture.tableId}`
+    );
+
+  /** Opens a Focus view over the fixture table, shown at a view point of its own. */
+  function openFocusView(fixture: Fixture) {
+    fixture.app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.focus, centerIds: [fixture.tableId] }),
+      viewSetLayoutAction({
+        kind: ViewKind.focus,
+        positions: { [fixture.tableId]: { x: 2000, y: 1000 } },
+      })
+    );
+  }
+
+  it('opens no editing overlay under a focus provider', async () => {
+    const fixture = await setup('focus');
+    const { store } = fixture.app;
+
+    openFocusView(fixture);
+    await editTableName(fixture);
+    await whenDrawn();
+
+    // The edit is still the document's own; only this scene declines to show it.
+    expect(sceneTableOf(fixture)).toBeTruthy();
+    expect(overlayOf(fixture.mounted)).toBeNull();
+    expect(store.state.editor.focusTable?.edit).toBe(true);
+  });
+
+  it('opens no memo body editor under a focus provider', async () => {
+    const fixture = await setup('focus');
+    const { store } = fixture.app;
+
+    store.dispatchSync(addMemoAction$());
+    const memoId = store.state.doc.memoIds[0];
+    store.dispatchSync(editMemoAction({ id: memoId }));
+    openFocusView(fixture);
+    await flush();
+    await whenDrawn();
+
+    expect(sceneTableOf(fixture)).toBeTruthy();
+    expect(overlayOf(fixture.mounted)).toBeNull();
+    expect(store.state.editor.editMemoId).toBe(memoId);
+  });
+
+  it('keeps the document overlay on the document placement while a view is up', async () => {
+    const fixture = await setup('document');
+    const { store } = fixture.app;
+
+    openFocusView(fixture);
+    store.dispatchSync(viewScrollToAction({ originX: 30, originY: 70 }));
+    await editTableName(fixture);
+
+    const table = store.state.collections.tableEntities[fixture.tableId];
+    const rect = getTableRect(store.state, table);
+    const transform = transformOf(fixture.mounted);
+
+    expect(inputOf(fixture.mounted)).toBeTruthy();
+    expect(transform.x).toBeCloseTo(rect.x + HEADER_CELLS_X, 5);
+    expect(transform.y).toBeCloseTo(rect.y + HEADER_CELLS_Y + HEADER_TEXT_Y, 5);
+    expect(transform.scale).toBe(1);
+  });
 });

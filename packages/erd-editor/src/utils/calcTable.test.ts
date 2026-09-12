@@ -1,19 +1,36 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { COLUMN_HEIGHT } from '@/constants/layout';
-import { Show } from '@/constants/schema';
+import {
+  COLUMN_HEIGHT,
+  COLUMN_KEY_WIDTH,
+  INPUT_MARGIN_RIGHT,
+  TABLE_BORDER,
+  TABLE_PADDING,
+} from '@/constants/layout';
+import { ColumnType, ColumnUIKey, Show } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
-import { createEditor } from '@/engine/modules/editor/state';
+import {
+  createEditor,
+  ShowMode,
+  ViewKind,
+} from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
+import { getVisibleColumnIds } from '@/konva/scene/viewLayout';
 import {
   calcTableHeight,
   calcTableWidths,
+  calcViewTableWidths,
   recalculateTableWidth,
 } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+
+/** The view widths for the rows the Focus view shows, which the function no longer looks up itself. */
+const viewWidths = (table: Table, state: RootState) =>
+  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'focus'));
 
 type StateOptions = {
   show?: number;
@@ -289,6 +306,175 @@ describe('calcTableHeight', () => {
     );
     expect(calcTableHeight(createTable({ columnIds: ['a', 'b', 'c'] }))).toBe(
       128
+    );
+  });
+
+  /** AC-1. A view showing fewer rows than the table has is that many rows tall, and none is the header alone. */
+  it('counts the rows it is given rather than the columns', () => {
+    const table = createTable({
+      columnIds: Array.from({ length: 40 }, (_, index) => `c${index}`),
+    });
+
+    expect(calcTableHeight(table, 0)).toBe(56);
+    expect(calcTableHeight(table, 0)).toBe(calcTableHeight(createTable()));
+    expect(calcTableHeight(table, 2)).toBe(56 + 2 * COLUMN_HEIGHT);
+    expect(calcTableHeight(table)).toBe(56 + 40 * COLUMN_HEIGHT);
+  });
+});
+
+describe('calcViewTableWidths', () => {
+  const CHROME = (TABLE_BORDER + TABLE_PADDING) * 2;
+
+  /** The row width a name and a type take past the key badge, margins included. */
+  const rowWidth = (name: number, dataType: number) =>
+    COLUMN_KEY_WIDTH +
+    INPUT_MARGIN_RIGHT +
+    name +
+    INPUT_MARGIN_RIGHT +
+    dataType +
+    INPUT_MARGIN_RIGHT;
+
+  /** A keys only Focus view on the table, so the key rows are what it shows. */
+  function openKeysOnly(
+    state: RootState,
+    tableId: string,
+    showMode: ShowMode = ShowMode.keysOnly
+  ) {
+    const view = createSceneView(ViewKind.focus, [tableId]);
+    view.showMode = showMode;
+    state.editor.views.focus = view;
+    return view;
+  }
+
+  function keyedTable() {
+    const columns = [
+      createColumn({
+        id: 'key',
+        tableId: 'table-1',
+        ui: {
+          keys: ColumnUIKey.primaryKey,
+          widthName: 80,
+          widthDataType: 90,
+          widthComment: 500,
+          widthDefault: 500,
+        },
+      }),
+      createColumn({
+        id: 'plain',
+        tableId: 'table-1',
+        ui: { widthName: 300, widthDataType: 300 },
+      }),
+    ];
+    const table = createTable({
+      id: 'table-1',
+      columnIds: ['key', 'plain'],
+      ui: { widthName: 40, widthComment: 400 },
+    });
+
+    return { table, columns };
+  }
+
+  it('measures only the rows the view shows, the name and the type of each', () => {
+    const { table, columns } = keyedTable();
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    expect(viewWidths(table, state)).toEqual({
+      width: CHROME + rowWidth(80, 90),
+      name: 80,
+      comment: 0,
+      dataType: 90,
+      default: 0,
+      notNull: 0,
+      autoIncrement: 0,
+      unique: 0,
+    });
+  });
+
+  it('measures every row in an all fields view', () => {
+    const { table, columns } = keyedTable();
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id, ShowMode.allFields);
+
+    expect(viewWidths(table, state).width).toBe(CHROME + rowWidth(300, 300));
+  });
+
+  /** AC-4 and B.5. The document's show bits and column order say nothing about a view. */
+  it('reads neither the show bits nor the column order', () => {
+    const { table, columns } = keyedTable();
+    const shows = [
+      0,
+      Show.tableComment,
+      Show.columnComment,
+      Show.columnDataType,
+      Show.columnDefault,
+      Show.columnNotNull,
+      Show.columnAutoIncrement,
+      Show.columnUnique,
+      Show.relationship,
+      Object.values(Show).reduce((acc, bit) => acc | bit, 0),
+    ];
+    const orders = [
+      [ColumnType.columnName, ColumnType.columnDataType],
+      [ColumnType.columnDataType, ColumnType.columnName],
+      [ColumnType.columnName],
+      [],
+    ];
+    const widths = new Set<string>();
+
+    for (const show of shows) {
+      for (const columnOrder of orders) {
+        const state = createState({ show, tables: [table], columns });
+        state.settings.columnOrder = columnOrder;
+        state.settings.maxWidthComment = 10;
+        openKeysOnly(state, table.id);
+        widths.add(JSON.stringify(viewWidths(table, state)));
+      }
+    }
+
+    expect(widths.size).toBe(1);
+    expect(JSON.parse([...widths][0]).width).toBe(CHROME + rowWidth(80, 90));
+  });
+
+  /** AC-5. The type is counted into the width whether the table is lit or not. */
+  it('counts the type width whether or not the table is lit', () => {
+    const { table, columns } = keyedTable();
+    const lit = createState({ tables: [table], columns });
+    openKeysOnly(lit, table.id);
+    const unlit = createState({ tables: [table], columns });
+    openKeysOnly(unlit, 'some-other-table');
+
+    expect(viewWidths(table, lit)).toEqual(viewWidths(table, unlit));
+
+    columns[0].ui.widthDataType = 10;
+    expect(viewWidths(table, unlit).width).toBe(CHROME + rowWidth(80, 10));
+  });
+
+  it('is the header name alone while the view shows no row', () => {
+    const { table, columns } = keyedTable();
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id, ShowMode.nameOnly);
+
+    expect(viewWidths(table, state)).toEqual({
+      width: CHROME + 40 + INPUT_MARGIN_RIGHT,
+      name: 0,
+      comment: 0,
+      dataType: 0,
+      default: 0,
+      notNull: 0,
+      autoIncrement: 0,
+      unique: 0,
+    });
+  });
+
+  it('lets a header wider than any row set the width', () => {
+    const { table, columns } = keyedTable();
+    table.ui.widthName = 1_000;
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    expect(viewWidths(table, state).width).toBe(
+      CHROME + 1_000 + INPUT_MARGIN_RIGHT
     );
   });
 });

@@ -14,6 +14,7 @@ import {
   isEditingText,
   MoveKey,
   SelectType,
+  VisualizationMode,
 } from '@/engine/modules/editor/state';
 import { createStore } from '@/engine/store';
 
@@ -114,6 +115,8 @@ describe('editor/state', () => {
       expect(editor.sharedSelectionTrackerMap).toEqual({});
       expect(editor.sharedDragSelectTrackerMap).toEqual({});
       expect(editor.dragSelect).toBeNull();
+      expect(editor.views).toEqual({ flow: null, focus: null });
+      expect(editor.visualizationMode).toBe(VisualizationMode.graph);
     });
 
     it('gives each editor its own id and its own mutable containers', () => {

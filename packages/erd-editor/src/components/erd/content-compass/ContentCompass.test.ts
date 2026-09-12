@@ -17,6 +17,12 @@ import {
   getViewTransform,
   getVisibleCanvasRect,
 } from '@/components/erd/minimap/minimapGeometry';
+import { ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewOpenAction,
+  viewScrollToAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 
@@ -143,5 +149,29 @@ describe('ContentCompass', () => {
     const { originX, originY } = app.store.state.settings;
     expect(originX).toBeCloseTo(away.originX, 3);
     expect(originY).toBeCloseTo(away.originY, 3);
+  });
+  // AC-61: a Focus overlay opens over this tab with a source of its own, so
+  // the compass beside the ERD keeps pointing at the document's own content
+  // from the document's own screen, whatever the view holds.
+  it('points at the document while a view stands somewhere else', async () => {
+    const { app, pill, label } = await setup();
+
+    await panTo(app, -5_000, -4_000);
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['users'] }),
+      viewSetLayoutAction({
+        kind: ViewKind.focus,
+        positions: { users: { x: 9_000, y: 9_000 } },
+      }),
+      viewScrollToAction({ originX: -9_000, originY: -9_000 })
+    );
+    await flush();
+
+    // The view's own screen holds the one table it reaches, so a compass on
+    // that source draws nothing at all here while this one draws the gap.
+    const compass = getContentCompass(app.store.state, 'document')!;
+    expect(getContentCompass(app.store.state, 'focus')).toBeNull();
+    expect(pill()).toBeTruthy();
+    expect(label()).toBe(formatDistance(compass.distance));
   });
 });

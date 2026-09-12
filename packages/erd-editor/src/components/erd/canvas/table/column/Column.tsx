@@ -62,11 +62,24 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 export type ColumnProps = {
   column: Column;
+  /**
+   * The source the table drawing this row reads, which picks the row's cells. A
+   * prop rather than useSceneSource, the one leaf to depart from it: the table
+   * resolved it already, and a context costs an observable and a subscription per row.
+   */
+  source: GeometrySource;
+  /**
+   * What the type cell is drawn at, which a view dims to nothing on a table it
+   * does not light. The cell keeps its box either way, so the width a table was
+   * measured at never depends on what is lit, and a dimmed one answers no pointer.
+   */
+  dataTypeOpacity?: number;
   y: number;
   width: number;
   selected: boolean;
@@ -117,6 +130,7 @@ type CellOptions = {
   edit: boolean;
   sharedFocus: string | null;
   ellipsis: boolean;
+  opacity?: number;
 };
 
 type ColumnOrderTpl = {
@@ -226,6 +240,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
 
   const handleEdit = (focusType: FocusType, event: SceneMouseEvent) => {
     if (!doubleClick.isDouble(focusType, event)) return;
+    // A view edits nothing, and this is both halves of it: the document
+    // overlay on a text cell, and a write straight to the document on a flag.
+    if (props.source !== 'document') return;
 
     const { store } = app.value;
     const { column } = props;
@@ -270,6 +287,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     edit,
     sharedFocus,
     ellipsis,
+    opacity = 1,
   }: CellOptions) => (
     <k-group
       name={`column-col ${focusType}`}
@@ -277,6 +295,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       sharedFocus={sharedFocus}
       x={x}
       y={0}
+      opacity={opacity}
+      listening={opacity > 0}
       on:mousedown={(event: SceneMouseEvent) => {
         handleFocus(focusType, event);
         doubleClick.track(focusType, event);
@@ -381,6 +401,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           edit: props.editDataType,
           sharedFocus: props.sharedFocusDataType,
           ellipsis: true,
+          opacity: props.dataTypeOpacity,
         });
       case ColumnType.columnNotNull:
         return cell({
@@ -430,12 +451,16 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const getColumnOrder = (): ColumnOrderTpl[] => {
     const { store } = app.value;
 
-    return getColumnCellSlots(store.state, {
-      name: props.widthName,
-      comment: props.widthComment,
-      dataType: props.widthDataType,
-      default: props.widthDefault,
-    })
+    return getColumnCellSlots(
+      store.state,
+      {
+        name: props.widthName,
+        comment: props.widthComment,
+        dataType: props.widthDataType,
+        default: props.widthDefault,
+      },
+      props.source
+    )
       .map(slot => ({ columnType: slot.columnType, template: cellOf(slot) }))
       .filter(({ template }) => Boolean(template));
   };
@@ -488,18 +513,20 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           ({ columnType }) => columnType,
           ({ template }) => template
         )}
-        {sceneIcon({
-          icon: 'x',
-          name: 'column-remove',
-          kind: 'icon',
-          size: COLUMN_DELETE_WIDTH,
-          color: removeIconColor(theme, hover),
-          x: TABLE_INSET + contentWidth - COLUMN_DELETE_WIDTH,
-          y: (COLUMN_HEIGHT - COLUMN_DELETE_WIDTH) / 2,
-          click: handleRemove,
-          mouseenter: handleRemoveMouseenter,
-          mouseleave: handleRemoveMouseleave,
-        })}
+        {props.source !== 'document'
+          ? null
+          : sceneIcon({
+              icon: 'x',
+              name: 'column-remove',
+              kind: 'icon',
+              size: COLUMN_DELETE_WIDTH,
+              color: removeIconColor(theme, hover),
+              x: TABLE_INSET + contentWidth - COLUMN_DELETE_WIDTH,
+              y: (COLUMN_HEIGHT - COLUMN_DELETE_WIDTH) / 2,
+              click: handleRemove,
+              mouseenter: handleRemoveMouseenter,
+              mouseleave: handleRemoveMouseleave,
+            })}
       </k-group>
     );
   };

@@ -29,6 +29,7 @@ import {
   appendSelectRangeColumns,
   selectRangeColumns,
 } from './utils/selectRangeColumn';
+import { clearViews, viewActions, viewReducers } from './view.actions';
 
 const SHARED_MOUSE_TRACKER_TIMEOUT = 1000 * 30;
 export const SHARED_FOCUS_TRACKER_TIMEOUT = 1000 * 90;
@@ -128,6 +129,7 @@ const clear: ReducerType<typeof ActionType.clear> = state => {
   state.doc = doc;
   state.collections = collections;
   state.editor.scrollPullPending = false;
+  clearViews(state.editor);
 };
 
 /**
@@ -167,6 +169,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  clearViews(state.editor);
   pullScrollIntoRange(state);
 };
 
@@ -179,6 +182,7 @@ const initialClear: ReducerType<typeof ActionType.initialClear> = state => {
   state.doc = doc;
   state.collections = collections;
   state.editor.scrollPullPending = false;
+  clearViews(state.editor);
 };
 
 export const initialLoadJsonAction = createAction<
@@ -198,6 +202,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  clearViews(state.editor);
   pullScrollIntoRange(state);
 };
 
@@ -923,6 +928,7 @@ export const editorReducers = {
   [ActionType.validationIds]: validationIds,
   [ActionType.getLWW]: getLWW,
   [ActionType.mergeLWW]: mergeLWW,
+  ...viewReducers,
 };
 
 export const actions = {
@@ -964,4 +970,5 @@ export const actions = {
   validationIdsAction,
   getLWWAction,
   mergeLWWAction,
+  ...viewActions,
 };

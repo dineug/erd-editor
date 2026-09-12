@@ -6,9 +6,15 @@ import {
 } from '@/constants/layout';
 import { RootState } from '@/engine/state';
 import { Memo, Table } from '@/internal-types';
+import { getTablePoint, getVisibleColumnIds } from '@/konva/scene/viewLayout';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
-import { calcTableWidths, type ColumnWidth } from '@/utils/calcTable';
+import {
+  calcTableWidths,
+  calcViewTableWidths,
+  type ColumnWidth,
+} from '@/utils/calcTable';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 export type Rect = {
   x: number;
@@ -25,9 +31,13 @@ const TABLE_INSET = TABLE_BORDER + TABLE_PADDING;
  * relationship sort measures anchors against, so a scene node and the connectors
  * reaching it cannot disagree about where an edge is.
  */
-export function getTableRect(state: RootState, table: Table): Rect {
-  const { width, height } = tableToObjectPoint(state, table);
-  const { x, y } = table.ui;
+export function getTableRect(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): Rect {
+  const { width, height } = tableToObjectPoint(state, table, source);
+  const { x, y } = getTablePoint(state, table, source);
 
   return { x, y, width, height };
 }
@@ -37,8 +47,18 @@ export function getTableRect(state: RootState, table: Table): Rect {
  * width in getTableRect are the same sum reached by two routes, the box through
  * the sort's cache and this fresh, which is the split the DOM scene drew with.
  */
-export function getTableWidths(state: RootState, table: Table): ColumnWidth {
-  return calcTableWidths(table, state);
+export function getTableWidths(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): ColumnWidth {
+  return source === 'document'
+    ? calcTableWidths(table, state)
+    : calcViewTableWidths(
+        table,
+        state,
+        getVisibleColumnIds(state, table, source)
+      );
 }
 
 /**
@@ -49,9 +69,10 @@ export function getTableWidths(state: RootState, table: Table): ColumnWidth {
 export function getColumnRect(
   state: RootState,
   table: Table,
-  index: number
+  index: number,
+  source: GeometrySource = 'document'
 ): Rect {
-  const { x, y, width } = getTableRect(state, table);
+  const { x, y, width } = getTableRect(state, table, source);
 
   return {
     x: x + TABLE_INSET,

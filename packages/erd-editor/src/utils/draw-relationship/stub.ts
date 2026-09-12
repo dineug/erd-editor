@@ -1,7 +1,8 @@
 import { Direction } from '@/constants/schema';
-import { Point, Relationship } from '@/internal-types';
+import { Point } from '@/internal-types';
 import {
-  getStubSlots,
+  type Anchor,
+  type Anchors,
   MIN_STUB,
   PATH_END_HEIGHT,
   PATH_LINE_HEIGHT,
@@ -22,10 +23,7 @@ export function stubFor(slot: number) {
  * null when they do not. Only this arrangement can collapse: a gap of twice the
  * stub puts both turning points on one spot, and a smaller gap inverts the path.
  */
-export function facingGap(
-  start: Relationship['start'],
-  end: Relationship['end']
-): number | null {
+export function facingGap(start: Anchor, end: Anchor): number | null {
   if (start.tableId === end.tableId) return null;
 
   if (start.direction === Direction.right && end.direction === Direction.left) {
@@ -80,10 +78,15 @@ function offsetFrom(point: Point, direction: number, distance: number): Point {
     : { x: point.x, y: point.y + sign * distance };
 }
 
-/** The two points a route has to join, given the anchors and their slots. */
-export function stubEnds(relationship: Relationship): StubEnds {
-  const { start, end } = relationship;
-  const [startSlot, endSlot] = getStubSlots(relationship);
+/**
+ * The two points a route has to join, given the anchors and the slot each end
+ * took. Both come from the sort in hand rather than a channel, so the document
+ * and a view route from what they just placed and never from each other.
+ */
+export function stubEnds(
+  { start, end }: Anchors,
+  [startSlot, endSlot]: readonly [number, number]
+): StubEnds {
   const gap = facingGap(start, end);
   const startStub = clampStub(stubFor(startSlot), gap);
   const endStub = clampStub(stubFor(endSlot), gap);

@@ -12,6 +12,7 @@ import {
   StreamRegroupColorActionTypes,
   StreamRegroupMoveActionTypes,
   StreamRegroupScrollActionTypes,
+  ViewIgnoreActionTypes,
 } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
 import {
@@ -167,6 +168,62 @@ describe('ReadonlyIgnoreActionTypes', () => {
     expect(ReadonlyIgnoreActionTypes).toContain('table.add');
     expect(ReadonlyIgnoreActionTypes).toContain('column.remove');
     expect(ReadonlyIgnoreActionTypes).toContain('editor.loadJson');
+  });
+});
+
+describe('ViewIgnoreActionTypes', () => {
+  it('is ReadonlyIgnoreActionTypes minus the two document replacements', () => {
+    expect(ViewIgnoreActionTypes).toEqual(
+      ReadonlyIgnoreActionTypes.filter(
+        type => type !== 'editor.loadJson' && type !== 'editor.clear'
+      )
+    );
+    expect(ViewIgnoreActionTypes.length).toBe(
+      ReadonlyIgnoreActionTypes.length - 2
+    );
+  });
+
+  it('only references types backed by an atom action creator', () => {
+    const missing = ViewIgnoreActionTypes.filter(
+      type => !atomActionTypes.has(type as string)
+    );
+
+    expect(missing).toEqual([]);
+  });
+});
+
+describe('view action types', () => {
+  const VIEW_ACTION_TYPES = [
+    'editor.viewOpen',
+    'editor.viewClose',
+    'editor.viewScrollTo',
+    'editor.viewStreamScrollTo',
+    'editor.viewChangeZoomLevel',
+    'editor.viewStreamZoomLevel',
+    'editor.viewMoveTable',
+    'editor.viewSetLayout',
+    'editor.viewChangeShowMode',
+    'editor.viewChangeHop',
+    'editor.viewSetCenters',
+    'editor.viewHistoryMove',
+    'editor.changeVisualizationMode',
+  ];
+
+  it('are declared by the editor module with an atom creator each', () => {
+    for (const type of VIEW_ACTION_TYPES) {
+      expect(allActionTypes.has(type)).toBe(true);
+      expect(atomActionTypes.has(type)).toBe(true);
+    }
+  });
+
+  it('stay out of every list that reaches the file, the history or a peer', () => {
+    for (const type of VIEW_ACTION_TYPES) {
+      expect(ChangeActionTypes).not.toContain(type);
+      expect(HistoryActionTypes).not.toContain(type);
+      expect(SharedActionTypes).not.toContain(type);
+      expect(ReadonlyIgnoreActionTypes).not.toContain(type);
+      expect(ViewIgnoreActionTypes).not.toContain(type);
+    }
   });
 });
 

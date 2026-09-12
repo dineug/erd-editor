@@ -203,12 +203,69 @@ function calcMaxWidthColumn(
   return columnWidth;
 }
 
-export function calcTableHeight(table: Table): number {
+/**
+ * The width a view draws a table at: the header name, or the key badge with
+ * the widest name and type among the rows given, whichever is wider. The rows
+ * are the caller's to name, and the show bits and the column order are the document's, read by no view.
+ */
+export function calcViewTableWidths(
+  table: Table,
+  state: RootState,
+  columnIds: string[]
+): ColumnWidth {
+  const columnWidth: ColumnWidth = {
+    width: 0,
+    name: 0,
+    comment: 0,
+    dataType: 0,
+    default: 0,
+    notNull: 0,
+    autoIncrement: 0,
+    unique: 0,
+  };
+  const columns = query(state.collections)
+    .collection('tableColumnEntities')
+    .selectByIds(columnIds);
+
+  // The type is counted whether or not it is drawn, so lighting a table
+  // never changes its width.
+  for (const column of columns) {
+    columnWidth.name = Math.max(columnWidth.name, column.ui.widthName);
+    columnWidth.dataType = Math.max(
+      columnWidth.dataType,
+      column.ui.widthDataType
+    );
+  }
+
+  const rowWidth = columns.length
+    ? COLUMN_KEY_WIDTH +
+      INPUT_MARGIN_RIGHT +
+      columnWidth.name +
+      INPUT_MARGIN_RIGHT +
+      columnWidth.dataType +
+      INPUT_MARGIN_RIGHT
+    : 0;
+  const headerWidth = table.ui.widthName + INPUT_MARGIN_RIGHT;
+  columnWidth.width =
+    TABLE_BORDER +
+    TABLE_PADDING +
+    Math.max(headerWidth, rowWidth) +
+    TABLE_PADDING +
+    TABLE_BORDER;
+
+  return columnWidth;
+}
+
+/** The box height for the rows given, every row of the table unless a view shows fewer. */
+export function calcTableHeight(
+  table: Table,
+  rowCount: number = table.columnIds.length
+): number {
   return (
     TABLE_BORDER +
     TABLE_PADDING +
     TABLE_HEADER_HEIGHT +
-    table.columnIds.length * COLUMN_HEIGHT +
+    rowCount * COLUMN_HEIGHT +
     TABLE_PADDING +
     TABLE_BORDER
   );

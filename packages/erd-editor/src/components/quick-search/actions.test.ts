@@ -25,6 +25,11 @@ import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-contex
 import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
+import { ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewChangeZoomLevelAction,
+  viewOpenAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   changeCanvasTypeAction,
   changeZoomLevelAction,
@@ -644,6 +649,31 @@ describe('createScopeActions / table actions', () => {
       expect(screen.y).toBeCloseTo(START_Y * zoomLevel, 4);
     }
   );
+
+  /**
+   * The jump is redirected to an open view, so it is solved at the view's
+   * zoom: at the document's the landing point would be off by the ratio of
+   * the two, and the document's own origin never moves.
+   */
+  it('lands at the view zoom while a view is open and leaves the document origin alone', async () => {
+    setCanvasType(CanvasType.ERD);
+    const id = addTable('users', 100, 200);
+    app.store.dispatchSync(viewOpenAction({ kind: ViewKind.focus }));
+    app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
+    const document = { ...app.store.state.settings };
+
+    find(scope(), 'users').perform?.(app);
+    await flush();
+
+    const view = app.store.state.editor.views.focus!;
+    const table = app.store.state.collections.tableEntities[id];
+    const screen = toScreenPoint(view, table.ui);
+    expect(screen.x).toBeCloseTo(START_X * 0.5, 4);
+    expect(screen.y).toBeCloseTo(START_Y * 0.5, 4);
+    expect(app.store.state.settings.originX).toBe(document.originX);
+    expect(app.store.state.settings.originY).toBe(document.originY);
+    expect(app.store.state.settings.zoomLevel).toBe(document.zoomLevel);
+  });
 
   it('carries no icon on table actions', () => {
     setCanvasType(CanvasType.ERD);

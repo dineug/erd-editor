@@ -3,18 +3,19 @@
 import { FC, observable } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { RELATIONSHIP_HIT_STROKE_WIDTH } from '@/constants/layout';
 import { Direction, StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
+import { Point, Relationship as RelationshipType } from '@/internal-types';
+import { getSceneTransform } from '@/konva/scene/viewport';
 import {
-  Point,
-  Relationship as RelationshipType,
-  RelationshipPoint,
-} from '@/internal-types';
-import {
+  type Anchor,
+  type Anchors,
   CIRCLE_HEIGHT,
   CIRCLE_RADIUS,
+  getAnchors,
   LINE_HEIGHT,
   LINE_SIZE,
   RelationshipPath,
@@ -40,7 +41,7 @@ const ROUTE_SOLID: number[] = [];
  * Which way a connector leaves its anchor, as the unit pair every marker is
  * placed with: one step outward along the axis, one step across it.
  */
-function anchorAxes({ direction }: RelationshipPoint) {
+function anchorAxes({ direction }: Anchor) {
   const outward =
     direction === Direction.left || direction === Direction.top ? -1 : 1;
   const horizontal =
@@ -55,7 +56,7 @@ type AnchorAxes = ReturnType<typeof anchorAxes>;
 
 /** A point so far out from the anchor and so far across the axis. */
 function anchorPoint(
-  { x, y }: RelationshipPoint,
+  { x, y }: Anchor,
   { along, across }: AnchorAxes,
   out: number,
   side: number
@@ -80,7 +81,7 @@ function circleD({ x, y }: Point, radius: number) {
  * follows each of them. Which ones this connector actually drew does not
  * matter: a trace over an unused one costs a band nothing is painted under.
  */
-function anchorMarkersD(point: RelationshipPoint) {
+function anchorMarkersD(point: Anchor) {
   const axes = anchorAxes(point);
   const at = (out: number, side: number) => anchorPoint(point, axes, out, side);
   const tip = at(LINE_HEIGHT, 0);
@@ -100,7 +101,7 @@ function anchorMarkersD(point: RelationshipPoint) {
  * reaches both anchors and a marker trace carries the band over each end.
  */
 function toHitPathD(
-  { start, end }: RelationshipType,
+  { start, end }: Anchors,
   { line }: RelationshipPath['path'],
   segments: Array<[Point, Point]>
 ) {
@@ -136,6 +137,7 @@ export type RelationshipProps = {
 const Relationship: FC<RelationshipProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const state = observable({ hover: false });
 
   const handleMouseenter = () => {
@@ -160,10 +162,15 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
-    const { editor, settings } = store.state;
+    const { editor } = store.state;
     const { relationship, strokeWidth } = props;
     const theme = themeRef.value;
-    const relationshipPath = getRelationshipPath(relationship);
+    const source = sourceRef.value;
+    const { zoomLevel } = getSceneTransform(store.state, source);
+    // The same anchors the path is drawn from, so the band a view lays follows
+    // the view's ends and not the document's, which the entity still carries.
+    const anchors = getAnchors(relationship, source);
+    const relationshipPath = getRelationshipPath(relationship, source);
     const { path, line } = relationshipPath;
     const lines = path.path.d();
     // Both are read, never short-circuited: an unread one is an untracked one,
@@ -191,8 +198,8 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
         <k-path
           name="relationship-hit-area"
           kind="relationship-hit-area"
-          data={toHitPathD(relationship, path, lines)}
-          hitStrokeWidth={hitBandWidth(settings.zoomLevel)}
+          data={toHitPathD(anchors, path, lines)}
+          hitStrokeWidth={hitBandWidth(zoomLevel)}
           lineCap="round"
         />
         <k-path

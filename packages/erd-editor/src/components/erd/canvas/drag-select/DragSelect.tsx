@@ -4,11 +4,12 @@ import { FC, observable, onMounted, Ref } from '@dineug/r-html';
 import { fromEvent, Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { dragSelectRectAction } from '@/engine/modules/editor/atom.actions';
 import { dragSelectAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { toScenePoint } from '@/konva/scene/viewport';
+import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { mouseup$ } from '@/utils/globalEventObservable';
 
 const STROKE_WIDTH = 1;
@@ -29,6 +30,7 @@ export type DragSelectProps = {
 const DragSelect: FC<DragSelectProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const state = observable({
     active: false,
     width: 0,
@@ -40,14 +42,23 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
 
   let subscription: Subscription | null = null;
 
+  /**
+   * editor.dragSelect goes to peers verbatim and is drawn on their document
+   * scene, so it is the document marquee's field alone: a view neither
+   * publishes its own placement there nor clears a rect it never wrote.
+   */
+  const clearRect = () => {
+    if (sourceRef.value !== 'document') return;
+    app.value.store.dispatchSync(dragSelectRectAction({ rect: null }));
+  };
+
   const stop = () => {
-    const { store } = app.value;
     subscription?.unsubscribe();
     subscription = null;
     state.active = false;
     state.width = 0;
     state.height = 0;
-    store.dispatchSync(dragSelectRectAction({ rect: null }));
+    clearRect();
   };
 
   const start = (startX: number, startY: number) => {
@@ -67,7 +78,10 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
     subscription.add(
       fromEvent<MouseEvent>($root, 'mousemove').subscribe(event => {
         event.preventDefault();
-        const { settings } = store.state;
+        // The placement the scene this marquee sits in is drawn at, so the
+        // rect it selects by is in that scene's own coordinates.
+        const source = sourceRef.value;
+        const transform = getSceneTransform(store.state, source);
         const rect = $root.getBoundingClientRect();
         const currentX = event.clientX - rect.x;
         const currentY = event.clientY - rect.y;
@@ -81,8 +95,8 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
         state.width = maxX - minX;
         state.height = maxY - minY;
 
-        const sceneMin = toScenePoint(settings, { x: minX, y: minY });
-        const sceneMax = toScenePoint(settings, { x: maxX, y: maxY });
+        const sceneMin = toScenePoint(transform, { x: minX, y: minY });
+        const sceneMax = toScenePoint(transform, { x: maxX, y: maxY });
 
         const dragRect = {
           ...sceneMin,
@@ -90,25 +104,36 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
           h: sceneMax.y - sceneMin.y,
         };
 
-        store.dispatch(
-          dragSelectAction$(dragRect),
-          dragSelectRectAction({ rect: dragRect })
-        );
+        // The document-only field clearRect explains, published in the same
+        // batch as the selection it was measured for.
+        if (source === 'document') {
+          store.dispatch(
+            dragSelectAction$(dragRect, source),
+            dragSelectRectAction({ rect: dragRect })
+          );
+        } else {
+          store.dispatch(dragSelectAction$(dragRect, source));
+        }
       })
     );
   };
 
   onMounted(() => {
-    const { emitter, store } = app.value;
+    const { emitter } = app.value;
 
     addUnsubscribe(
       emitter.on({
-        dragSelectStart: ({ payload: { x, y } }) => start(x, y),
+        dragSelectStart: ({ payload: { x, y, source } }) => {
+          // The emitter reaches every scene at once, so the gesture names the
+          // one it began in and the others sit this drag out.
+          if (source !== sourceRef.value) return;
+          start(x, y);
+        },
       }),
       () => {
         subscription?.unsubscribe();
         subscription = null;
-        store.dispatchSync(dragSelectRectAction({ rect: null }));
+        clearRect();
       }
     );
   });

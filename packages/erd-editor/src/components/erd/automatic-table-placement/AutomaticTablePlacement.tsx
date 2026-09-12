@@ -25,6 +25,7 @@ import {
 } from '@/components/erd/minimap/minimapGeometry';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { Open } from '@/constants/open';
 import { CANVAS_ZOOM_MIN } from '@/constants/schema';
 import {
@@ -140,6 +141,9 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   });
   const { addUnsubscribe } = useUnmounted();
   const provider = useProvider(ctx, appContext, app);
+  // The preview is a document of its own, so it names the document source
+  // rather than inheriting whatever scene it was opened over.
+  const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
 
   const {
     store: { state: originState },
@@ -153,6 +157,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
       app.store.dispatch(changeViewportAction(getViewport()));
     }),
     () => {
+      sceneSource.destroy();
       provider.destroy();
       appDestroy(app);
     }

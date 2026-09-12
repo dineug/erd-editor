@@ -12,6 +12,7 @@ import {
   changeDatabaseNameAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import { getActiveTransform } from '@/konva/scene/viewport';
 import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import {
@@ -90,6 +91,9 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   return () => {
     const { store, keyBindingMap } = app.value;
     const { settings, editor, doc } = store.state;
+    // The bar sits beside every scene rather than in one, so it shows the
+    // active view's zoom, the one the input's dispatch is redirected to.
+    const { zoomLevel } = getActiveTransform(store.state);
     const title = (name: string, keyBindingName: KeyBindingName) =>
       toShortcutTitle(keyBindingMap, name, keyBindingName);
 
@@ -124,7 +128,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           title="zoom level"
           placeholder="zoom level"
           width={45}
-          value={toZoomFormat(settings.zoomLevel)}
+          value={toZoomFormat(zoomLevel)}
           numberOnly={true}
           onChange={handleZoomLevel}
         />

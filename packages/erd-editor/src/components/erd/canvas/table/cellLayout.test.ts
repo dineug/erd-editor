@@ -179,6 +179,74 @@ describe('the boxes a column row lays out', () => {
   });
 });
 
+/** AC-4. A view row is the name and the type, and the document's settings cannot change that. */
+describe('the boxes a view lays out', () => {
+  const VIEW_ROW = [
+    {
+      columnType: ColumnType.columnName,
+      focusType: FocusType.columnName,
+      x: COLUMN_CELLS_X,
+      width: 60,
+    },
+    {
+      columnType: ColumnType.columnDataType,
+      focusType: FocusType.columnDataType,
+      x: COLUMN_CELLS_X + 60 + INPUT_MARGIN_RIGHT,
+      width: 80,
+    },
+  ];
+
+  it('is the name and the type of a row, in that order', () => {
+    const state = createState(0);
+    state.settings.columnOrder = [];
+
+    expect(getColumnCellSlots(state, WIDTHS, 'focus')).toEqual(VIEW_ROW);
+  });
+
+  it('keeps that row whatever show bit is set and however the columns are ordered', () => {
+    const shows = [
+      ...Object.values(Show),
+      Object.values(Show).reduce((acc, bit) => acc | bit, 0),
+    ];
+    const orders = [
+      [ColumnType.columnDataType, ColumnType.columnName],
+      [
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+        ColumnType.columnDefault,
+        ColumnType.columnComment,
+      ],
+      [],
+    ];
+
+    for (const show of shows) {
+      for (const columnOrder of orders) {
+        const state = createState(show);
+        state.settings.columnOrder = columnOrder;
+
+        expect(getColumnCellSlots(state, WIDTHS, 'focus')).toEqual(VIEW_ROW);
+        expect(getColumnCellSlots(state, WIDTHS, 'document')).toEqual(
+          getColumnCellSlots(state, WIDTHS)
+        );
+      }
+    }
+  });
+
+  it('carries the header name alone even while the comment is shown', () => {
+    const state = createState(Show.tableComment);
+    state.settings.maxWidthComment = -1;
+    const entity = table();
+    entity.ui.widthName = 60;
+    entity.ui.widthComment = 70;
+
+    expect(getHeaderCellSlots(state, entity, 'focus')).toEqual([
+      { focusType: FocusType.tableName, x: 0, width: 60 },
+    ]);
+    expect(getHeaderCellSlots(state, entity, 'document')).toHaveLength(2);
+  });
+});
+
 describe('the box a cell lays one line of text out in', () => {
   it('runs its underline along the bottom of the input slot', () => {
     expect(CELL_UNDERLINE_Y).toBe(INPUT_HEIGHT - FOCUS_BORDER_HEIGHT);
