@@ -467,6 +467,36 @@ describe('the Focus walk reducers', () => {
     expect(view.centerIds).not.toBe(view.history.entries[1]);
   });
 
+  it('viewSetCenters with no kind stands the active view on them, Flow or Focus', () => {
+    showFlowTab();
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+    const flow = store.state.editor.views.flow!;
+
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
+    expect(flow.centerIds).toEqual(['t1']);
+
+    const focus = openFocus(['t2']);
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3'] }));
+
+    expect(focus.centerIds).toEqual(['t3']);
+    expect(flow.centerIds).toEqual(['t1']);
+  });
+
+  it('viewSetCenters stands the slot the kind names on them, and not the active view', () => {
+    const focus = openFocus(['t1']);
+    showFlowTab();
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+    const flow = store.state.editor.views.flow!;
+
+    store.dispatchSync(
+      viewSetCentersAction({ tableIds: ['t2'], kind: ViewKind.flow })
+    );
+
+    expect(flow.centerIds).toEqual(['t2']);
+    expect(getActiveView(store.state)).toBe(focus);
+    expect(focus.centerIds).toEqual(['t1']);
+  });
+
   // AC-46
   it('walking from three centers to one and back restores the three', () => {
     const view = openFocus(['t1', 't2', 't3']);
@@ -502,15 +532,15 @@ describe('the Focus walk reducers', () => {
     expect(view.history.cursor).toBe(0);
   });
 
-  it('do nothing while no Focus view is open, even with a Flow view active', () => {
+  it('the Focus half does nothing while no Focus view is open, and never lands on the Flow view instead', () => {
     showFlowTab();
     store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
     const flow = store.state.editor.views.flow!;
 
     store.dispatchSync(
       viewChangeHopAction({ value: 2 }),
-      viewSetCentersAction({ tableIds: ['t1'], push: true }),
-      viewHistoryMoveAction({ delta: -1 })
+      viewHistoryMoveAction({ delta: -1 }),
+      viewSetCentersAction({ tableIds: ['t1'], kind: ViewKind.focus })
     );
 
     expect(flow.hop).toBe(1);

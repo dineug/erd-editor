@@ -15,10 +15,8 @@ import Minimap from '@/components/erd/minimap/Minimap';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import {
-  hasFlowLayout,
-  isFlowLayoutPending,
-  placeFlowView,
-  restoreFlowLayout,
+  ensureFlowPlaced,
+  keepFlowPlaced,
 } from '@/components/visualization/flowLayout';
 import { useViewGestures } from '@/components/visualization/useViewGestures';
 import { ViewKind } from '@/engine/modules/editor/state';
@@ -73,23 +71,20 @@ const VisualizationFlow: FC<VisualizationFlowProps> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
 
+  const { addUnsubscribe } = useUnmounted();
+
   const { handleWheel, handleMousedown } = useViewGestures(ctx, {
     root,
     canvas,
     source: SOURCE,
   });
 
+  // Placed on the one question this mount and the loop both ask: a return to
+  // the tab stands the view back on the landing its display set has, dropping
+  // what a drag moved, or joins the ask still out for it.
   onMounted(() => {
-    const { store } = app.value;
-
-    // Placed once for the session: a return to the tab stands the view back on
-    // that landing, dropping what a drag moved, or waits on the ask still out
-    // for it, and asks ELK nothing either way.
-    if (hasFlowLayout(store.state)) {
-      restoreFlowLayout(store);
-    } else if (!isFlowLayoutPending(store.state)) {
-      placeFlowView(app.value);
-    }
+    ensureFlowPlaced(app.value);
+    addUnsubscribe(keepFlowPlaced(app.value));
   });
 
   // The box the ERD tab hangs its scene in, which the scrollbars, the map and

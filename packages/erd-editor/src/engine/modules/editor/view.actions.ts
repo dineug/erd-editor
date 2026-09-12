@@ -209,15 +209,15 @@ export const viewSetCentersAction = createAction<
 >(ActionType.viewSetCenters);
 
 /**
- * Stands the Focus view on new centers. A push opens a history entry and
- * drops the forward ones; otherwise the entry stood on is rewritten, so the
- * entry under the cursor always names the centers the view stands on.
+ * Stands the view the kind names, else the active one, on new centers. A push
+ * opens a history entry and drops the forward ones; otherwise the entry stood
+ * on is rewritten, so the entry under the cursor always names the centers the view stands on.
  */
 const viewSetCenters: ReducerType<typeof ActionType.viewSetCenters> = (
-  { editor: { views } },
-  { payload: { tableIds, push = false } }
+  state,
+  { payload: { tableIds, push = false, kind } }
 ) => {
-  const view = views.focus;
+  const view = getAimedView(state, kind);
   if (!view) return;
 
   const { history } = view;

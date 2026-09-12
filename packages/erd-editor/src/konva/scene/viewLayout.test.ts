@@ -373,6 +373,33 @@ describe('getVisibleIds', () => {
     });
   });
 
+  /** The display set turns on the centers a view stands on, never on the kind of the slot it stands in. */
+  it('shows a Flow view standing on no centers what its layout placed', () => {
+    const state = createState();
+    seedGraph(state);
+    const view = openFlow(state, ['a', 'b', 'c']);
+
+    expect(view.centerIds).toEqual([]);
+    expect(getVisibleIds(state, 'flow')).toEqual({
+      tableIds: ['a', 'b', 'c'],
+      memoIds: [],
+      relationshipIds: ['ab', 'bc'],
+    });
+  });
+
+  it('shows a Flow view standing on centers those and their one hop, placed or not', () => {
+    const state = createState();
+    seedGraph(state);
+    const view = openFlow(state, ['a', 'b', 'c']);
+    view.centerIds = ['d'];
+
+    expect(getVisibleIds(state, 'flow')).toEqual({
+      tableIds: ['c', 'd'],
+      memoIds: [],
+      relationshipIds: ['cd'],
+    });
+  });
+
   /** The tab decides which view is active, never what a Flow scene shows: the scene names its view. */
   it('shows the Flow view whichever tab is up, while the tab alone decides the active view', () => {
     const state = createState();

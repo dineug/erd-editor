@@ -215,6 +215,7 @@ export type ActionMap = {
     tableIds: string[];
     /** Whether the centers open a new history entry rather than rewriting the current one. */
     push?: boolean;
+    kind?: ViewKind;
   };
   [ActionType.viewHistoryMove]: {
     /** How many entries to walk, negative for back. */

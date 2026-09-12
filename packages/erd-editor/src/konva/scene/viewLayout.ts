@@ -126,9 +126,9 @@ function reach(
 }
 
 /**
- * What a scene drawn from the source given shows: the whole document, or in a
- * view its centers and their neighbours out to its hop for Focus and what the
- * layout placed for Flow, with only the relationships joining two shown tables and no memo.
+ * What a scene drawn from the source given shows: the whole document, or a
+ * view's centers with their neighbours out to its hop while it stands on
+ * centers and what its layout placed while it stands on none, with no memo and only the joining relationships.
  */
 export function getVisibleIds(
   state: RootState,
@@ -153,10 +153,9 @@ export function getVisibleIds(
   // Object.keys registers no trigger on the positions object, since the
   // observable proxy has no ownKeys trap. The layout reducer replaces the
   // object whole, which is what keeps a Flow scene redrawing; a per-key write would not.
-  const shown =
-    view.kind === ViewKind.focus
-      ? reach(view.centerIds, view.hop, relationships)
-      : new Set(Object.keys(view.positions));
+  const shown = view.centerIds.length
+    ? reach(view.centerIds, view.hop, relationships)
+    : new Set(Object.keys(view.positions));
   const tableIds = doc.tableIds.filter(id => shown.has(id));
   const inView = new Set(tableIds);
 

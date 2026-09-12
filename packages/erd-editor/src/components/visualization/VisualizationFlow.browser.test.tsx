@@ -489,15 +489,18 @@ describe('the Flow mode of the visualization tab', () => {
     );
     await flush();
     mounted = await mountVisualization(app);
-    expect(hoisted.requests).toHaveLength(1);
+    // The ask still out was made over another document, so the return takes
+    // its place rather than joining it.
+    expect(hoisted.requests).toHaveLength(2);
 
     click(menuOf(mounted, 'Tidy Up'));
     await settle();
 
-    expect(hoisted.requests).toHaveLength(2);
-    expect(tableIdsOf(hoisted.requests[1])).toContain('e');
+    expect(hoisted.requests).toHaveLength(3);
+    expect(tableIdsOf(hoisted.requests[2])).toContain('e');
 
-    // The first answer is the earlier ask's, over four tables, and lands nowhere.
+    // The two earlier answers are earlier asks' and land nowhere.
+    hoisted.release.shift()?.();
     hoisted.release.shift()?.();
     await settle();
     expect(positionsOf(app)).toEqual({});
@@ -530,15 +533,15 @@ describe('the Flow mode of the visualization tab', () => {
     expect(app.store.state.settings.originY).toBe(0);
   });
 
-  it('asks nothing for a table added to the document, and places it on Tidy up', async () => {
+  it('places a table added to the document on the return to the tab, and asks nothing while away', async () => {
     const app = createTestAppContext();
     seed(app);
     let mounted = await mountVisualization(app);
     await enterFlow(mounted);
 
     // Added from the ERD tab, where the document takes edits, in a dispatch
-    // of its own: the gate reads a batch against the state before it, and a
-    // batch that leaves the tab is still classified under the Flow view.
+    // of its own: the tab is away and its loop is down, so nothing is asked
+    // until the tab is back.
     mounted.unmount();
     app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
     app.store.dispatchSync(
@@ -546,18 +549,24 @@ describe('the Flow mode of the visualization tab', () => {
     );
     await flush();
     expect(app.store.state.doc.tableIds).toContain('e');
+    expect(hoisted.requests).toHaveLength(1);
+
+    const screen = {
+      zoomLevel: app.store.state.editor.views.flow!.zoomLevel,
+      originX: app.store.state.editor.views.flow!.originX,
+      originY: app.store.state.editor.views.flow!.originY,
+    };
     mounted = await mountVisualization(app);
 
-    expect(hoisted.requests).toHaveLength(1);
-    expect(tableOf('e')).toBeUndefined();
-    expect(flowStage().find('.table')).toHaveLength(4);
-
-    click(menuOf(mounted, 'Tidy Up'));
-    await settle();
-
+    // The landing it kept was computed over the document as it was, so the
+    // return asks again rather than standing back on it. The screen is the
+    // reader's own by then, and nothing here is them asking to be moved.
     expect(hoisted.requests).toHaveLength(2);
     expect(tableOf('e')).toBeDefined();
     expect(flowStage().find('.table')).toHaveLength(5);
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBe(screen.zoomLevel);
+    expect(app.store.state.editor.views.flow!.originX).toBe(screen.originX);
+    expect(app.store.state.editor.views.flow!.originY).toBe(screen.originY);
   });
 
   it('stands a dragged table back on the landing on a return to the tab', async () => {

@@ -388,7 +388,7 @@ test.describe('the visualization tab and the focus view over the document', () =
     ).toEqual(placed);
   });
 
-  test('asks nothing for a table a peer adds while the flow stands, and places it on tidy up', async ({
+  test('places a table a peer adds while the flow stands, and asks once more for it', async ({
     erd,
     page,
   }) => {
@@ -426,19 +426,25 @@ test.describe('the visualization tab and the focus view over the document', () =
     });
 
     await expect.poll(() => erd.tableIds()).toContain('invoices');
+    // The placement the view stands on was computed over the document as it
+    // was, so a table added to it is a placement gone stale and the tab asks
+    // again over the document it has now.
+    await expect
+      .poll(() => elkAsks(page), { timeout: PLACEMENT_TIMEOUT })
+      .toBe(2);
     await erd.whenDrawn();
-    expect(await settledElkAsks(page)).toBe(1);
 
     await modeButton(erd, 'Tidy Up').click();
     await expect
       .poll(() => elkAsks(page), { timeout: PLACEMENT_TIMEOUT })
-      .toBe(2);
+      .toBe(3);
     await expect(flowTable(erd, 'invoices')).toBeVisible();
     await erd.whenDrawn();
 
     const { invoices } = await placementsOf(erd, ['invoices']);
     expect(invoices).not.toBeNull();
     expect(invoices).not.toEqual({ x: 4_000, y: 3_000 });
+    expect(await settledElkAsks(page)).toBe(3);
   });
 
   test('stands the flow back on the layout elk gave it after a drag and a tab change', async ({

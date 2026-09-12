@@ -1,3 +1,5 @@
+import type { AnyAction } from '@dineug/r-html';
+
 import type { AppContext } from '@/components/appContext';
 import { PlacingToast } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import {
@@ -7,11 +9,14 @@ import {
 import Toast from '@/components/primitives/toast/Toast';
 import { CANVAS_ZOOM_MAX } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
+import { SharedStreamActionTypes, StreamActionTypes } from '@/engine/actions';
+import { ActionType } from '@/engine/modules/editor/actions';
 import { type SceneView, ViewKind } from '@/engine/modules/editor/state';
 import {
   viewChangeZoomLevelAction,
   viewOpenAction,
   viewScrollToAction,
+  viewSetCentersAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
 import { hasViewport } from '@/engine/modules/settings/atom.actions';
@@ -20,12 +25,15 @@ import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
 import {
   createElkLayout,
   createElkLayoutRequest,
   type ElkLayoutPoint,
+  type ElkLayoutRequest,
   toViewPoints,
 } from '@/services/elk-layout';
+import { arrayHas } from '@/utils/arrayHas';
 import { openToastAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { closePromise } from '@/utils/promise';
@@ -33,41 +41,70 @@ import { closePromise } from '@/utils/promise';
 /** The slot the Flow scene reads and the kind every placement here names. */
 const FLOW = ViewKind.flow;
 
+/** One display set of one view, placed: where ELK stood each table and the key that ask was made under. */
+type Landing = { positions: Record<string, Point>; key: string };
+
+/** The two display sets a Flow view stands in, and so the two landings it keeps. */
+type FlowSlot = 'full' | 'focused';
+
+type FlowLayouts = {
+  full: Landing | null;
+  focused: Landing | null;
+  pending: { key: string } | null;
+  stood: string | null;
+};
+
 /**
- * The landing ELK gave each Flow view, by the view it was computed for. A drag
- * moves the view's own placement and never this, so a return to the tab
- * stands the view back here; a view the document replaces takes its entry with it.
+ * What each Flow view has been placed as, one landing per display set, beside
+ * the key of the ask still out for it and the display set it currently stands
+ * on. A drag moves the view's own placement and never this; a view the document replaces takes its entry.
  */
-const layouts = new WeakMap<SceneView, Record<string, Point>>();
+const layouts = new WeakMap<SceneView, FlowLayouts>();
 
 /**
  * The ask each Flow view is waiting on. A return to the tab while ELK answers
- * finds no landing yet and waits on this rather than asking again; a Tidy up
- * or a cancel ends it, so the answer, when it comes, lands nowhere and the next ask is a new one.
+ * joins it rather than asking again; a Tidy up, a change of what the view is
+ * placed over or a cancel ends it, so the answer, when it comes, lands nowhere.
  */
 const asks = new WeakMap<SceneView, { cancel: () => void }>();
 
-/** Whether the open Flow view has a landing to stand back on, which a return to the tab reads. */
-export function hasFlowLayout(state: RootState): boolean {
-  const view = state.editor.views.flow;
+/** What the view given has been placed as, made empty on the first read of it. */
+function layoutsOf(view: SceneView): FlowLayouts {
+  const entry = layouts.get(view) ?? {
+    full: null,
+    focused: null,
+    pending: null,
+    stood: null,
+  };
+  layouts.set(view, entry);
 
-  return view !== null && layouts.has(view);
+  return entry;
 }
 
-/** Whether the open Flow view is waiting on an ask, which a return to the tab joins rather than repeats. */
-export function isFlowLayoutPending(state: RootState): boolean {
+/** Which display set the view stands in: what its centers reach, or everything its layout placed. */
+const slotOf = (view: SceneView): FlowSlot =>
+  view.centerIds.length ? 'focused' : 'full';
+
+/** The display set itself, named by its centers, which is the first term of the key below. */
+const centersOf = (view: SceneView): string => view.centerIds.join(' ');
+
+/**
+ * What a placement was computed over: the centers, the show mode, and the
+ * document's own lists. Never the positions a landing writes, since the loop
+ * reading this asks again on a change and would otherwise be reading its own answer.
+ */
+function placedKey(state: RootState): string {
   const view = state.editor.views.flow;
+  if (!view) return '';
 
-  return view !== null && asks.has(view);
-}
+  const { doc } = state;
 
-/** Stands the Flow view back on the layout ELK gave it, dropping whatever a drag moved. */
-export function restoreFlowLayout(store: RxStore): void {
-  const view = store.state.editor.views.flow;
-  const positions = view ? layouts.get(view) : undefined;
-  if (!positions) return;
-
-  store.dispatchSync(viewSetLayoutAction({ kind: FLOW, positions }));
+  return [
+    centersOf(view),
+    view.showMode,
+    doc.tableIds.join(' '),
+    doc.relationshipIds.join(' '),
+  ].join('|');
 }
 
 /**
@@ -94,35 +131,78 @@ export function fitFlowView(store: RxStore): void {
 }
 
 /**
- * Lands a layout in the view it was asked for and fits it. The answer comes
- * back later, and the view it was asked for may have gone with the document
- * in the meantime, in which case it is dropped rather than landed on another.
+ * Stands the view on the positions given, and moves the screen to them only
+ * where the reader asked to be moved: a first placement, a display set they
+ * changed, a Tidy up. A return to the tab, a peer's edit and a show mode keep the viewport.
+ */
+function standFlowView(
+  store: RxStore,
+  entry: FlowLayouts,
+  centers: string,
+  positions: Record<string, Point>,
+  forced: boolean
+): void {
+  const fits = forced || entry.stood !== centers;
+  entry.stood = centers;
+
+  store.dispatchSync(viewSetLayoutAction({ kind: FLOW, positions }));
+  fits && fitFlowView(store);
+}
+
+/**
+ * Lands a layout in the slot it was asked for. The answer comes back later,
+ * and the view may have gone with the document or moved on to another display
+ * set meanwhile, in which case it is dropped rather than landed on either.
  */
 function landFlowLayout(
   store: RxStore,
   view: SceneView,
-  points: ElkLayoutPoint[]
+  slot: FlowSlot,
+  key: string,
+  points: ElkLayoutPoint[],
+  forced: boolean
 ): void {
   if (store.state.editor.views.flow !== view) return;
+  if (placedKey(store.state) !== key) return;
 
   const positions = Object.fromEntries(
     points.map(({ id, x, y }) => [id, { x, y }])
   );
+  const entry = layoutsOf(view);
 
-  layouts.set(view, positions);
-  store.dispatchSync(viewSetLayoutAction({ kind: FLOW, positions }));
-  fitFlowView(store);
+  entry[slot] = { positions, key };
+  standFlowView(store, entry, centersOf(view), positions, forced);
 }
 
 /**
- * Places every table of the document in the Flow view by ELK: on entry, and
- * again on Tidy up. One new request per call, over the tables the document has
- * now and in place of any still out; a return to the tab asks nothing and reads the two above.
+ * What ELK is asked for the display set the view stands in: the tables its
+ * centers reach, every one of them joined to a center so nothing is grouped,
+ * or the whole document with the tables nothing reaches gathered into a group.
+ */
+function flowLayoutRequest(state: RootState, slot: FlowSlot): ElkLayoutRequest {
+  return slot === 'focused'
+    ? createElkLayoutRequest(state, TablePlacement.liamLayered, {
+        tableIds: getVisibleIds(state, FLOW).tableIds,
+        source: FLOW,
+      })
+    : createElkLayoutRequest(state, TablePlacement.liamLayered, {
+        source: FLOW,
+        groupUnrelated: true,
+      });
+}
+
+/**
+ * The one place a Flow placement is asked for. The landing the display set
+ * already has under this key is stood back on, an ask already out for it is
+ * joined, and anything else is one new ask; a Tidy up forces that ask and its fit.
  *
  * @example
- * hasFlowLayout(store.state) ? restoreFlowLayout(store) : placeFlowView(app);
+ * onMounted(() => ensureFlowPlaced(app.value));
  */
-export function placeFlowView(app: AppContext): Promise<void> {
+export function ensureFlowPlaced(
+  app: AppContext,
+  { force = false }: { force?: boolean } = {}
+): Promise<void> {
   const { store } = app;
 
   if (!store.state.editor.views.flow) {
@@ -134,29 +214,44 @@ export function placeFlowView(app: AppContext): Promise<void> {
   const view = store.state.editor.views.flow;
   if (!view) return Promise.resolve();
 
+  const entry = layoutsOf(view);
+  const slot = slotOf(view);
+  const key = placedKey(store.state);
+
+  if (!force && entry.pending?.key === key) return Promise.resolve();
+
+  // Whatever is still out was asked under another key, so its answer is
+  // already bound to be dropped and only its toast would outlive this.
   asks.get(view)?.cancel();
 
-  return requestFlowLayout(app, view);
+  const landing = force ? null : entry[slot];
+  if (landing?.key === key) {
+    standFlowView(store, entry, centersOf(view), landing.positions, false);
+
+    return Promise.resolve();
+  }
+
+  return requestFlowLayout(app, view, slot, key, force);
 }
 
-/** One request for the view given, from the ask to the landing or the toast that says it failed. */
+/** One request for the view and slot given, from the ask to the landing or the toast that says it failed. */
 async function requestFlowLayout(
   app: AppContext,
-  view: SceneView
+  view: SceneView,
+  slot: FlowSlot,
+  key: string,
+  forced: boolean
 ): Promise<void> {
   const { store, emitter, shortcut$ } = app;
-  const request = createElkLayoutRequest(
-    store.state,
-    TablePlacement.liamLayered,
-    { source: FLOW, groupUnrelated: true }
-  );
+  const request = flowLayoutRequest(store.state, slot);
 
   if (!request.nodes.length) {
-    landFlowLayout(store, view, []);
+    landFlowLayout(store, view, slot, key, [], forced);
     return;
   }
 
   const [close, onClose] = closePromise();
+  const entry = layoutsOf(view);
   let cancelled = false;
   // The chord is the Focus overlay's to close while one is up over the tab,
   // and the ask under it stays out so the Flow has its landing when the overlay is down.
@@ -164,18 +259,22 @@ async function requestFlowLayout(
     type === KeyBindingName.stop && !store.state.editor.views.focus && cancel();
   });
   // The ask is the view's until it lands, fails or is cancelled, and a later
-  // ask for the same view takes its place, so each of these lets go only of its own.
+  // ask for the same view takes its place, so each of these lets go only of
+  // its own, and the mark a return to the tab reads goes with it.
   const ask = { cancel };
+  const pending = { key };
   const finish = () => {
     subscription.unsubscribe();
     onClose();
     asks.get(view) === ask && asks.delete(view);
+    entry.pending === pending && (entry.pending = null);
   };
   function cancel() {
     cancelled = true;
     finish();
   }
   asks.set(view, ask);
+  entry.pending = pending;
 
   try {
     // The toast is the placement's own, raised only once the wait is long
@@ -192,7 +291,14 @@ async function requestFlowLayout(
     finish();
     if (cancelled) return;
 
-    landFlowLayout(store, view, toViewPoints(request, points));
+    landFlowLayout(
+      store,
+      view,
+      slot,
+      key,
+      toViewPoints(request, points),
+      forced
+    );
   } catch (error) {
     finish();
     console.warn('[visualization] no flow layout came back', error);
@@ -204,4 +310,64 @@ async function requestFlowLayout(
       })
     );
   }
+}
+
+/**
+ * Narrows the Flow view to the tables given and their one hop. State alone:
+ * the loop below reads the display set it names and asks for the placement,
+ * so this and the mount never hold two answers to the one question.
+ */
+export function focusFlowView(app: AppContext, tableIds: string[]): void {
+  app.store.dispatchSync(viewSetCentersAction({ tableIds, kind: FLOW }));
+}
+
+/** Widens the Flow view back to everything it placed, through that same one channel: state alone. */
+export function showAllFlowView(app: AppContext): void {
+  app.store.dispatchSync(viewSetCentersAction({ tableIds: [], kind: FLOW }));
+}
+
+/**
+ * The actions that move what is drawn and none of what is placed over: a pan,
+ * a zoom, a drag or a landing, in the document or a view, and what a peer
+ * streams. Each comes once a frame, so a batch of nothing else is let by unread.
+ */
+const isUnplacing = arrayHas<string>([
+  ...StreamActionTypes,
+  ...SharedStreamActionTypes,
+  ActionType.viewScrollTo,
+  ActionType.viewStreamScrollTo,
+  ActionType.viewChangeZoomLevel,
+  ActionType.viewStreamZoomLevel,
+  ActionType.viewMoveTable,
+  ActionType.viewSetLayout,
+]);
+
+const isUnplacingBatch = (actions: AnyAction[]) =>
+  actions.every(({ type }) => isUnplacing(type));
+
+/**
+ * Keeps the Flow view placed for as long as the tab draws it: placed again
+ * after any batch that changed what it is placed over, and never at the
+ * subscription itself, which the mount has asked for already. Returns the teardown.
+ *
+ * @example
+ * onMounted(() => addUnsubscribe(keepFlowPlaced(app.value)));
+ */
+export function keepFlowPlaced(app: AppContext): () => void {
+  const { store } = app;
+  let key = placedKey(store.state);
+
+  // The ask outlives this loop on purpose: the view is the session's and the
+  // tab is not, so a leave while ELK answers leaves the ask out for the return.
+  return store.subscribe(actions => {
+    const view = store.state.editor.views.flow;
+    if (!view || isUnplacingBatch(actions)) return;
+
+    const next = placedKey(store.state);
+    const replace = key !== next;
+    key = next;
+    if (!replace) return;
+
+    ensureFlowPlaced(app);
+  });
 }

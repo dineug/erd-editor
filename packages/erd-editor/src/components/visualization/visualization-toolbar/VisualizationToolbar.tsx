@@ -4,8 +4,8 @@ import { useAppContext } from '@/components/appContext';
 import * as styles from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import Icon from '@/components/primitives/icon/Icon';
 import {
+  ensureFlowPlaced,
   fitFlowView,
-  placeFlowView,
 } from '@/components/visualization/flowLayout';
 import { VisualizationMode } from '@/engine/modules/editor/state';
 import { changeVisualizationModeAction } from '@/engine/modules/editor/view.actions';
@@ -32,7 +32,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   };
 
   const handleTidyUp = () => {
-    placeFlowView(app.value);
+    ensureFlowPlaced(app.value, { force: true });
   };
 
   return () => {
