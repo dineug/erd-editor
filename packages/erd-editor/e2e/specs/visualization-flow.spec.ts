@@ -560,6 +560,55 @@ test.describe('the visualization tab and the flow view over the document', () =>
     await expect(flowScene(erd).locator('.table[data-id]')).toHaveCount(5);
   });
 
+  /** AC-45. The Related button narrows the display set to one table and its hop. */
+  test('narrows the flow to one table and its hop from the Related button', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+
+    await flowTable(erd, 'orders').hover();
+    await flowScene(erd)
+      .locator('.table[data-id="orders"] .table-related')
+      .click();
+    await erd.whenDrawn();
+
+    // orders reaches customers and order_items; products and addresses are
+    // each two hops out and leave the display set with the narrowing.
+    await expect(flowTable(erd, 'customers')).toBeVisible({
+      timeout: PLACEMENT_TIMEOUT,
+    });
+    await expect(flowTable(erd, 'order_items')).toBeVisible();
+    await expect(flowTable(erd, 'products')).toHaveCount(0);
+    await expect(flowTable(erd, 'addresses')).toHaveCount(0);
+  });
+
+  /** AC-48. The Go to ERD button leaves for the ERD tab, standing on that table. */
+  test('leaves for the ERD tab on the Go to ERD button, scrolled to that table', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+    const before = await erd.settings();
+
+    await flowTable(erd, 'addresses').hover();
+    await flowScene(erd)
+      .locator('.table[data-id="addresses"] .table-go-to-erd')
+      .click();
+
+    await expect
+      .poll(async () => (await erd.settings()).canvasType)
+      .toBe('ERD');
+    await erd.whenDrawn();
+
+    // The document keeps addresses far outside the screen the runner opens
+    // with, so the way out scrolls to it and selects it there.
+    const after = await erd.settings();
+    expect(after.originX).not.toBe(before.originX);
+    expect(after.originY).not.toBe(before.originY);
+    await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
   /** AC-60. Nothing a reader does inside the view reaches the host. */
   test('says nothing to the host while the reader stands in the view', async ({
     erd,

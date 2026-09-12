@@ -3,13 +3,18 @@
 import { FC, observable } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import {
+  progressOf,
+  transitionKey,
+  transitionTo,
+} from '@/components/erd/canvas/highlightTransition';
+import { mixColor } from '@/components/erd/canvas/mixColor';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { RELATIONSHIP_HIT_STROKE_WIDTH } from '@/constants/layout';
 import { Direction, StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
 import { Point, Relationship as RelationshipType } from '@/internal-types';
-import { DIM_OPACITY } from '@/konva/scene/viewLayout';
 import { getSceneTransform } from '@/konva/scene/viewport';
 import {
   type Anchor,
@@ -133,8 +138,8 @@ function hitBandWidth(zoomLevel: number) {
 export type RelationshipProps = {
   relationship: RelationshipType;
   strokeWidth: number;
-  /** Drawn dim, which a Flow hover asks of every connector it does not light. */
-  faded?: boolean;
+  /** Whether the view lights this connector, decided by the scene it is drawn in. */
+  lit?: boolean;
 };
 
 const Relationship: FC<RelationshipProps> = (props, ctx) => {
@@ -180,11 +185,24 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     // and the connector would then miss the change that flipped it.
     const mapHover = Boolean(editor.hoverRelationshipMap[relationship.id]);
     const hover = state.hover || mapHover;
-    const stroke = hover
+    const grey = hover
       ? theme.relationshipHover
       : relationship.identification
         ? theme.keyPFK
         : theme.keyFK;
+
+    // A view lights the connectors that reach what it lights, and the colour
+    // walks between the two rather than jumping. The document has no light of
+    // its own, so its route takes the colour it always took.
+    const view = source !== 'document';
+    const lit = view && Boolean(props.lit);
+    const litKey = transitionKey(editor.id, 'relationship', relationship.id);
+    view && transitionTo(litKey, lit ? 1 : 0);
+    const stroke = mixColor(
+      grey,
+      theme.accentColor9,
+      view ? progressOf(litKey) : 0
+    );
     const shape = relationshipShape(
       relationship.relationshipType,
       relationshipPath,
@@ -195,7 +213,6 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       <k-group
         name={`relationship ${relationship.id}`}
         kind="relationship"
-        opacity={props.faded ? DIM_OPACITY : 1}
         on:mouseenter={handleMouseenter}
         on:mouseleave={handleMouseleave}
       >

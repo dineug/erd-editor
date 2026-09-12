@@ -8,9 +8,12 @@ import type { Point } from '@/internal-types';
 import type { ParticleEdge } from './particleEdges';
 import {
   PARTICLE_COUNT,
-  PARTICLE_RADIUS,
+  PARTICLE_RX,
+  PARTICLE_RY,
+  particleGradient,
   particlePhase,
   pointAlong,
+  tangentAt,
 } from './particlePath';
 
 /** The time and the frame a loop runs on, so a spec can freeze a phase or count frames. */
@@ -72,9 +75,10 @@ export function createParticleLoop(
     const circles: Circle[] = [];
     for (let index = 0; index < PARTICLE_COUNT; index++) {
       const circle = new Circle({
-        radius: PARTICLE_RADIUS,
-        fill,
+        radius: PARTICLE_RY,
+        scaleX: PARTICLE_RX / PARTICLE_RY,
         listening: false,
+        ...particleGradient(fill),
       });
       group.add(circle);
       circles.push(circle);
@@ -86,8 +90,9 @@ export function createParticleLoop(
   const repaint = () => {
     if (fill === painted) return;
     painted = fill;
+    const gradient = particleGradient(fill);
     for (const { circles } of groups) {
-      for (const circle of circles) circle.fill(fill);
+      for (const circle of circles) circle.setAttrs(gradient);
     }
   };
 
@@ -123,6 +128,7 @@ export function createParticleLoop(
       const distances = particlePhase(elapsed, edge.path.length);
       circles.forEach((circle, at) => {
         circle.position(pointAlong(edge.path, distances[at]));
+        circle.rotation(tangentAt(edge.path, distances[at]));
       });
     });
 

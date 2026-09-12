@@ -166,6 +166,13 @@ export const ANCHOR_EDGE_INSET = 12;
  */
 export const ROUTE_CHAMFER = 8;
 
+/**
+ * The radius a view rounds the same corner to. Larger than the document's cut
+ * because an arc reads as a curve only once it is wide enough to see, and
+ * clamped the same way, so a short run keeps its right angle here too.
+ */
+export const VIEW_ROUTE_ARC = 12;
+
 const EMPTY_SLOTS: readonly [number, number] = [0, 0];
 
 type StoredRoute = {

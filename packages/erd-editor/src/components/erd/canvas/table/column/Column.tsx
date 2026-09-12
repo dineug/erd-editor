@@ -9,12 +9,14 @@ import {
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { mixColor } from '@/components/erd/canvas/mixColor';
 import { columnCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
   FOCUS_BORDER_HEIGHT,
+  SCENE_CODE_FONT_FAMILY,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
@@ -81,6 +83,19 @@ export type ColumnProps = {
    * measured at never depends on what is lit, and a dimmed one answers no pointer.
    */
   dataTypeOpacity?: number;
+  /**
+   * Whether a relationship ends on this column, which a view tints the row
+   * for. Decided by the table, which walks the links once for all its rows.
+   */
+  related?: boolean;
+  /**
+   * How strongly a view brings that tint up, which is the value the type cell
+   * above is drawn at. The table hands the one number down, so the tint and the
+   * type cell come up over the one span of time.
+   */
+  tintAlpha?: number;
+  /** Whether a view rules a line under this row, which every row but the last does. */
+  divider?: boolean;
   y: number;
   width: number;
   selected: boolean;
@@ -132,6 +147,8 @@ type CellOptions = {
   sharedFocus: string | null;
   ellipsis: boolean;
   opacity?: number;
+  align?: 'center' | 'left' | 'right';
+  fontFamily?: string;
 };
 
 type ColumnOrderTpl = {
@@ -150,10 +167,23 @@ const keyFill = (keys: number, theme: Theme) => {
   return TRANSPARENT;
 };
 
-/** The fill a row takes, where a selection outranks a hover. */
-const rowBackground = (theme: Theme, selected: boolean, hover: boolean) => {
+/**
+ * The fill a row takes, where a selection outranks a hover and a hover outranks
+ * the tint a view puts on the rows a relationship ends at. The tint is the
+ * standing mark and the hover the passing one, so the passing one is on top.
+ */
+const rowBackground = (
+  theme: Theme,
+  selected: boolean,
+  hover: boolean,
+  tint: number
+) => {
   if (selected) return theme.columnSelect;
   if (hover) return theme.columnHover;
+  // Mixed against the card rather than laid over it as a second rect, so the
+  // row keeps the one fill the hover and the selection already paint.
+  if (tint > 0)
+    return mixColor(theme.tableBackground, theme.accentColor3, tint);
   return TRANSPARENT;
 };
 
@@ -289,6 +319,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     sharedFocus,
     ellipsis,
     opacity = 1,
+    align,
+    fontFamily = SCENE_FONT_FAMILY,
   }: CellOptions) => (
     <k-group
       name={`column-col ${focusType}`}
@@ -310,11 +342,12 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         name="cell-text"
         y={getColumnTextY(props.source)}
         width={width}
-        height={getCellTextHeight()}
+        height={getCellTextHeight(fontFamily)}
         text={text}
         fill={fill}
-        fontFamily={SCENE_FONT_FAMILY}
+        fontFamily={fontFamily}
         fontSize={SCENE_FONT_SIZE}
+        align={align}
         verticalAlign="middle"
         wrap="none"
         ellipsis={ellipsis}
@@ -353,6 +386,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   }: ColumnCellSlot): DOMTemplateLiterals | null => {
     const { column } = props;
     const theme = themeRef.value;
+    const view = props.source !== 'document';
 
     switch (columnType) {
       case ColumnType.columnName:
@@ -403,6 +437,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           sharedFocus: props.sharedFocusDataType,
           ellipsis: true,
           opacity: props.dataTypeOpacity,
+          align: view ? 'right' : undefined,
+          fontFamily: view ? SCENE_CODE_FONT_FAMILY : undefined,
         });
       case ColumnType.columnNotNull:
         return cell({
@@ -475,7 +511,13 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     );
     const dragging = Boolean(editor.draggingColumnMap[column.id]);
     const contentWidth = width - TABLE_INSET * 2;
-    const background = rowBackground(theme, selected, hover);
+    const view = props.source !== 'document';
+    const background = rowBackground(
+      theme,
+      selected,
+      hover,
+      view && props.related ? (props.tintAlpha ?? 0) : 0
+    );
     const rowHeight = tableRowHeight(props.source);
 
     return (
@@ -515,7 +557,16 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           ({ columnType }) => columnType,
           ({ template }) => template
         )}
-        {props.source !== 'document'
+        {view && props.divider ? (
+          <k-line
+            name="column-row-divider"
+            points={[TABLE_BORDER, rowHeight, width - TABLE_BORDER, rowHeight]}
+            stroke={theme.tableBorder}
+            strokeWidth={TABLE_BORDER}
+            listening={false}
+          />
+        ) : null}
+        {view
           ? null
           : sceneIcon({
               icon: 'x',

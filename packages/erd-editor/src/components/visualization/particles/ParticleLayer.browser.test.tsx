@@ -44,7 +44,16 @@ import { getAnchors } from '@/utils/draw-relationship';
 
 import { getParticleEdges } from './particleEdges';
 import { particleClock } from './particleLoop';
-import { PARTICLE_COUNT, particlePhase, pointAlong } from './particlePath';
+import {
+  PARTICLE_COUNT,
+  PARTICLE_EDGE_ALPHA,
+  PARTICLE_RX,
+  PARTICLE_RY,
+  particlePhase,
+  pointAlong,
+  tangentAt,
+  withAlpha,
+} from './particlePath';
 
 const hoisted = vi.hoisted(() => ({
   requests: [] as Array<{ placement: string; nodes: any[] }>,
@@ -295,6 +304,48 @@ describe('the particles of a Flow view', () => {
     now.mockReturnValue(5_999);
     await whenPainted();
     expect(toEnd(at(0))).toBeLessThan(edge.path.length / 100);
+  });
+
+  it('draws each particle as a Circle stretched along its run, turned to face it and fading at its edge (AC-30, AC-31)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    vi.spyOn(particleClock, 'now').mockReturnValue(0);
+    await mountFlow(app, ['t1']);
+
+    const theme = createTestTheme();
+    const [edge] = getParticleEdges(app.store.state, SOURCE).filter(
+      candidate => candidate.id === 'r12'
+    );
+    const circles = groupOf('r12')!.find<Circle>('Circle');
+    const distances = particlePhase(0, edge.path.length);
+
+    circles.forEach((circle, index) => {
+      // A Circle with a scale rather than an Ellipse, which is the one shape
+      // class the konva allowlist and the scene's tag count both stand on.
+      expect(circle.getClassName()).toBe('Circle');
+      expect(circle.radius()).toBe(PARTICLE_RY);
+      expect(circle.scaleX()).toBeCloseTo(PARTICLE_RX / PARTICLE_RY, 9);
+      expect(circle.scaleY()).toBe(1);
+      expect(circle.rotation()).toBeCloseTo(
+        tangentAt(edge.path, distances[index]),
+        9
+      );
+      expect(circle.fillPriority()).toBe('radial-gradient');
+      expect(circle.fillRadialGradientStartRadius()).toBe(0);
+      expect(circle.fillRadialGradientEndRadius()).toBe(PARTICLE_RY);
+      expect(circle.fillRadialGradientColorStops()).toEqual([
+        0,
+        theme.accentColor9,
+        1,
+        withAlpha(theme.accentColor9, PARTICLE_EDGE_ALPHA),
+      ]);
+    });
+
+    // The connector bends, so the six do not all face one way.
+    const facings = new Set(
+      circles.map(circle => Math.round(circle.rotation()))
+    );
+    expect(facings.size).toBeGreaterThan(1);
   });
 
   it('follows the hover: a lit connector takes its particles on with it and off with the leave (AC-33)', async () => {

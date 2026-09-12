@@ -2,11 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { observable } from '@dineug/r-html';
 
 import { ColumnUIKey } from '@/constants/schema';
-import {
-  type SceneView,
-  ShowMode,
-  ViewKind,
-} from '@/engine/modules/editor/state';
+import { type SceneView, ShowMode } from '@/engine/modules/editor/state';
 import { getSourceView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
 import { Point, Relationship, Table } from '@/internal-types';
@@ -63,7 +59,10 @@ const isKeyColumn = (keys: number) =>
   bHas(keys, ColumnUIKey.primaryKey) || bHas(keys, ColumnUIKey.foreignKey);
 
 /** The columns any relationship holds an end of on this table, whether or not they are flagged. */
-function relationshipColumnIds(state: RootState, table: Table): Set<string> {
+export function relationshipColumnIds(
+  state: RootState,
+  table: Table
+): Set<string> {
   const ids = new Set<string>();
   const relationships = query(state.collections)
     .collection('relationshipEntities')
@@ -329,32 +328,4 @@ export function getHighlightIds(
   }
 
   return { tableIds, relationshipIds };
-}
-
-/**
- * What a Flow scene fades while a table is hovered: every table it shows and
- * every connector between them outside what the hover lights. Null while no
- * shown table is hovered, and for any other scene, since only Flow reads as a whole graph.
- */
-export function getFadedIds(
-  state: RootState,
-  source: GeometrySource = 'document'
-): HighlightIds | null {
-  const view = getSourceView(state, source);
-  if (!view || view.kind !== ViewKind.flow) return null;
-
-  const hovered = getViewHoverTable(state, source);
-  if (hovered === null) return null;
-
-  const shown = getVisibleIds(state, source);
-  if (!shown.tableIds.includes(hovered)) return null;
-
-  const lit = getHighlightIds(state, source);
-
-  return {
-    tableIds: new Set(shown.tableIds.filter(id => !lit.tableIds.has(id))),
-    relationshipIds: new Set(
-      shown.relationshipIds.filter(id => !lit.relationshipIds.has(id))
-    ),
-  };
 }

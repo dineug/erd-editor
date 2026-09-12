@@ -714,8 +714,11 @@ describe('a scene the context points at a view', () => {
     await flush();
     await whenPainted();
 
+    // Skipping the shadow: a view card casts one and the rect would otherwise
+    // reach past the card, standing the pointer on ground no hit test answers.
     const box = tableOf(focus.stage, 't1').getClientRect({
       relativeTo: focus.stage,
+      skipShadow: true,
     });
     moveScenePointer(focus.stage, box.x + box.width / 2, box.y + 4);
     await flush();

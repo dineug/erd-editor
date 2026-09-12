@@ -7,6 +7,12 @@ import type { Stage } from 'konva/lib/Stage';
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import {
+  progressOf,
+  transitionKey,
+  transitionTo,
+} from '@/components/erd/canvas/highlightTransition';
+import { mixColor } from '@/components/erd/canvas/mixColor';
 import { headerCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
@@ -23,6 +29,12 @@ import {
   TABLE_CORNER_RADIUS,
   TABLE_INSET,
   TRANSPARENT,
+  VIEW_CARD_GLOW_BLUR,
+  VIEW_CARD_GLOW_OPACITY,
+  VIEW_CARD_SHADOW_BLUR,
+  VIEW_CARD_SHADOW_OFFSET_X,
+  VIEW_CARD_SHADOW_OFFSET_Y,
+  VIEW_CARD_SHADOW_OPACITY,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
@@ -34,16 +46,20 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
+import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
+import { focusFlowView } from '@/components/visualization/flowCenters';
 import {
   HEADER_ICON_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
   TABLE_HEADER_INPUT_HEIGHT,
+  VIEW_TABLE_HEADER_BUTTON_SIZE,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
 import {
   dragendColumnAction,
@@ -68,9 +84,8 @@ import {
 } from '@/konva/scene/metrics';
 import {
   clearViewHoverTable,
-  DIM_OPACITY,
-  getHighlightIds,
   getVisibleColumnIds,
+  relationshipColumnIds,
   setViewHoverTable,
 } from '@/konva/scene/viewLayout';
 import type { Theme } from '@/themes/tokens';
@@ -93,8 +108,8 @@ export type TableProps = {
   editorFocused?: boolean;
   /** Off while the table is kept built but scrolled out of the culling rect. */
   visible?: boolean;
-  /** Drawn dim, which a Flow hover asks of every table outside its neighbourhood. */
-  faded?: boolean;
+  /** Whether the view lights this card, decided by the scene it is drawn in. */
+  lit?: boolean;
 };
 
 type HeaderCellOptions = {
@@ -218,6 +233,16 @@ const Table: FC<TableProps> = (props, ctx) => {
   const handleRemoveTable = () => {
     const { store } = app.value;
     store.dispatch(removeTableAction$(props.table.id));
+  };
+
+  /** The Related button: the view narrows to this table and its one hop. */
+  const handleRelated = () => {
+    focusFlowView(app.value, [props.table.id]);
+  };
+
+  /** The Go to ERD button: the tab, then the scroll and the selection. */
+  const handleGoToErd = () => {
+    goToErdTable(app.value.store, props.table.id);
   };
 
   const handleFocus = (focusType: FocusType) => {
@@ -412,6 +437,11 @@ const Table: FC<TableProps> = (props, ctx) => {
     const tableWidths = getTableWidths(store.state, table, source);
     const rect = getTableRect(store.state, table, source);
     const contentWidth = rect.width - TABLE_INSET * 2;
+    // The view header has no icon band above its name box, so its two buttons
+    // sit centred on the name line and after it, over the end of a name that
+    // reaches them: konva paints and hit tests siblings in order.
+    const headerButtonY =
+      (VIEW_TABLE_HEADER_HEIGHT - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2;
 
     const hovered = Boolean(props.hovered || state.hover);
     const draggingColumnId = props.ghostColumnId ?? state.dragstartId;
@@ -431,6 +461,9 @@ const Table: FC<TableProps> = (props, ctx) => {
     // the picker it opens sits over a view whose colour change the gate drops.
     const view = source !== 'document';
 
+    // The two header buttons, on the hovered card of a view alone.
+    const viewButtons = view && hovered;
+
     /**
      * Whether a cell hands its text over to an editor. Only the document scene
      * carries one, so a view keeps every cell drawn while the document is
@@ -449,15 +482,25 @@ const Table: FC<TableProps> = (props, ctx) => {
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
-    // A view lights its centers and what a hover reaches; a table it leaves
-    // unlit keeps its type column's width and draws nothing in it. Asked for
-    // only where a row reads it, since the walk behind it costs every link.
-    const dataTypeOpacity =
-      view &&
-      columnIds.length > 0 &&
-      !getHighlightIds(store.state, source).tableIds.has(table.id)
-        ? 0
-        : 1;
+    // A view lights its centers and what a hover reaches. The card wears that
+    // as an accent border and a glow, and a table it leaves unlit keeps its
+    // type column's width and draws nothing in it.
+    const lit = view && Boolean(props.lit);
+
+    // How far the light has come up on this card, which is what every paint the
+    // highlight owns is scaled by: one value, so they all arrive together.
+    const litKey = transitionKey(editor.id, 'table', table.id);
+    view && transitionTo(litKey, lit ? 1 : 0);
+    const litAlpha = view ? progressOf(litKey) : 0;
+    const dataTypeOpacity = view ? litAlpha : 1;
+
+    // The rows this table ends a relationship at, walked once per card that
+    // draws rows: every row would otherwise repeat the walk over every link,
+    // and a card in name only reads none of it.
+    const relatedIds =
+      view && columnIds.length > 0
+        ? relationshipColumnIds(store.state, table)
+        : null;
 
     const columns = query(collections)
       .collection('tableColumnEntities')
@@ -469,7 +512,6 @@ const Table: FC<TableProps> = (props, ctx) => {
         name="table"
         kind="table"
         visible={props.visible ?? true}
-        opacity={props.faded ? DIM_OPACITY : 1}
         selected={selected}
         sharedFocus={sharedTableColor}
         sharedSelect={sharedSelected}
@@ -488,8 +530,18 @@ const Table: FC<TableProps> = (props, ctx) => {
           height={rect.height - TABLE_BORDER}
           cornerRadius={TABLE_CORNER_RADIUS}
           fill={theme.tableBackground}
-          stroke={bodyStroke(theme, selected)}
+          stroke={mixColor(
+            bodyStroke(theme, selected),
+            theme.accentColor9,
+            litAlpha
+          )}
           strokeWidth={TABLE_BORDER}
+          shadowColor={view ? theme.minimapShadow : undefined}
+          shadowBlur={view ? VIEW_CARD_SHADOW_BLUR : undefined}
+          shadowOffsetX={view ? VIEW_CARD_SHADOW_OFFSET_X : undefined}
+          shadowOffsetY={view ? VIEW_CARD_SHADOW_OFFSET_Y : undefined}
+          shadowOpacity={view ? VIEW_CARD_SHADOW_OPACITY : undefined}
+          shadowForStrokeEnabled={view ? false : undefined}
           on:mouseenter={(event: SceneMouseEvent) => {
             view && setSceneCursor(event, CURSOR_POINTER);
           }}
@@ -497,6 +549,24 @@ const Table: FC<TableProps> = (props, ctx) => {
             view && setSceneCursor(event, CURSOR_INHERIT);
           }}
         />
+        {litAlpha > 0 ? (
+          <k-rect
+            name="table-glow"
+            x={-RING_WIDTH / 2}
+            y={-RING_WIDTH / 2}
+            width={rect.width + RING_WIDTH}
+            height={rect.height + RING_WIDTH}
+            cornerRadius={TABLE_CORNER_RADIUS}
+            opacity={litAlpha}
+            stroke={theme.accentColor9}
+            strokeWidth={TABLE_BORDER}
+            shadowColor={theme.accentColor9}
+            shadowBlur={VIEW_CARD_GLOW_BLUR}
+            shadowOpacity={VIEW_CARD_GLOW_OPACITY}
+            shadowForStrokeEnabled={true}
+            listening={false}
+          />
+        ) : null}
         {ringColor ? (
           <k-rect
             name="table-ring"
@@ -585,6 +655,37 @@ const Table: FC<TableProps> = (props, ctx) => {
                 })
               : null}
           </k-group>
+          {viewButtons
+            ? sceneIcon({
+                icon: 'waypoints',
+                name: 'table-related',
+                kind: 'icon',
+                size: VIEW_TABLE_HEADER_BUTTON_SIZE,
+                color: iconColor(theme, 'waypoints', hovered),
+                mouseenter: handleIconMouseenter('waypoints'),
+                mouseleave: handleIconMouseleave,
+                x:
+                  contentWidth -
+                  VIEW_TABLE_HEADER_BUTTON_SIZE * 2 -
+                  TABLE_HEADER_BUTTON_MARGIN_LEFT,
+                y: headerButtonY,
+                click: handleRelated,
+              })
+            : null}
+          {viewButtons
+            ? sceneIcon({
+                icon: 'external-link',
+                name: 'table-go-to-erd',
+                kind: 'icon',
+                size: VIEW_TABLE_HEADER_BUTTON_SIZE,
+                color: iconColor(theme, 'external-link', hovered),
+                mouseenter: handleIconMouseenter('external-link'),
+                mouseleave: handleIconMouseleave,
+                x: contentWidth - VIEW_TABLE_HEADER_BUTTON_SIZE,
+                y: headerButtonY,
+                click: handleGoToErd,
+              })
+            : null}
         </k-group>
         <k-group name="table-columns">
           {repeat(
@@ -595,6 +696,9 @@ const Table: FC<TableProps> = (props, ctx) => {
                 column={column}
                 source={source}
                 dataTypeOpacity={dataTypeOpacity}
+                related={relatedIds?.has(column.id) ?? false}
+                tintAlpha={litAlpha}
+                divider={view && index < columns.length - 1}
                 y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}
                 selected={hasSelectColumn(column.id)}

@@ -18,6 +18,7 @@ import {
   type Mounted,
   movePointer,
   releasePointer,
+  stepTransitions,
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
@@ -66,7 +67,7 @@ import {
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { Tag } from '@/engine/tag';
-import { whenDrawn } from '@/konva/batchDraw';
+import { onBeforeFlush, whenDrawn } from '@/konva/batchDraw';
 import { MINIMAP_STAGE_NAME } from '@/konva/host';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
@@ -254,13 +255,36 @@ async function mountVisualization(
   };
 }
 
+/**
+ * The highlight ticker on a clock these cases wind, so a case reads the light
+ * where it lands rather than on whichever frame the wall clock stopped at.
+ */
+const transitions = stepTransitions();
+
 /** Two rounds: the layout lands in a microtask after the first, and the fit after it. */
 const settle = async () => {
   await flush();
   await whenDrawn();
   await flush();
   await whenDrawn();
+  transitions.settle();
+  await flush();
+  await whenDrawn();
 };
+
+/** What a read answers on each of the next frames, in the order they came. */
+async function sample<T>(read: () => T, frames: number): Promise<T[]> {
+  const taken: T[] = [];
+
+  for (let index = 0; index < frames; index++) {
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => resolve());
+    });
+    taken.push(read());
+  }
+
+  return taken;
+}
 
 const menuOf = (mounted: Mounted, title: string) =>
   mounted.container.querySelector<HTMLElement>(
@@ -661,6 +685,98 @@ describe('the Flow mode of the visualization tab', () => {
     expect(app.store.state.settings.originY).toBe(0);
   });
 
+  /**
+   * AC-38, by result rather than by the ticker's shape. A camera that walked
+   * would show a place of its own on the commit the gesture lands on and
+   * another on each frame after it; this one shows two places in all, the two it stood at.
+   */
+  it('stands the screen where a fit and a display set switch put it, with no place in between', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    const transformOf = () => {
+      const { originX, originY, zoomLevel } = getSceneTransform(
+        app.store.state,
+        ViewKind.flow
+      );
+
+      return JSON.stringify({ originX, originY, zoomLevel });
+    };
+
+    // The stage half of the same question: a walk written onto the layer while
+    // the store jumped at once would keep every store clause green and still
+    // animate on the screen, so the placed layer is read beside the state.
+    const layerOf = () => {
+      const layer = flowStage().findOne<Layer>('.scene') as Layer;
+
+      return JSON.stringify({
+        x: layer.x(),
+        y: layer.y(),
+        scaleX: layer.scaleX(),
+      });
+    };
+
+    const seen: string[] = [];
+    const record = () => onBeforeFlush(() => seen.push(transformOf()));
+
+    // Moved off the landing first, so the Fit below has somewhere to come from.
+    wheelOver(mounted, { deltaY: 240 });
+    await settle();
+    const panned = transformOf();
+    const pannedLayer = layerOf();
+
+    let stop = record();
+    click(menuOf(mounted, 'Fit'));
+    // Read before a commit has had the chance to run: the whole move is in the
+    // dispatch the click made, which is what having no walk means.
+    const atOnce = transformOf();
+    await settle();
+    const fitted = transformOf();
+    const fittedLayer = layerOf();
+    const afterFit = await sample(transformOf, 5);
+    const afterFitLayer = await sample(layerOf, 5);
+    stop();
+
+    expect(fitted).not.toBe(panned);
+    expect(atOnce).toBe(fitted);
+    expect(afterFit).toEqual([fitted, fitted, fitted, fitted, fitted]);
+    // Commits did land inside the window, or the clause below would say
+    // nothing more than the five frames beside it already do.
+    expect(seen.length).toBeGreaterThan(0);
+    expect([...new Set([...seen, ...afterFit])]).toEqual([fitted]);
+    expect(fittedLayer).not.toBe(pannedLayer);
+    expect([...new Set(afterFitLayer)]).toEqual([fittedLayer]);
+    expect(JSON.parse(fitted).zoomLevel).toBe(
+      previewZoomLevel(
+        getSceneContentRect(app.store.state, ViewKind.flow)!,
+        VIEWPORT,
+        CANVAS_ZOOM_MAX
+      )
+    );
+
+    seen.splice(0);
+    stop = record();
+    app.store.dispatchSync(
+      viewSetCentersAction({ tableIds: ['t1'], kind: ViewKind.flow })
+    );
+    await settle();
+    const focused = transformOf();
+    const focusedLayer = layerOf();
+    const afterFocus = await sample(transformOf, 5);
+    const afterFocusLayer = await sample(layerOf, 5);
+    stop();
+
+    // The placement its centers ask for lands before the first commit draws
+    // anything, so every commit from the switch on shows the one place.
+    expect(focused).not.toBe(fitted);
+    expect(afterFocus).toEqual([focused, focused, focused, focused, focused]);
+    expect(seen.length).toBeGreaterThan(0);
+    expect([...new Set([...seen, ...afterFocus])]).toEqual([focused]);
+    expect([...new Set(afterFocusLayer)]).toEqual([focusedLayer]);
+  });
+
   it('places a table added to the document on the return to the tab, and asks nothing while away', async () => {
     const app = createTestAppContext();
     seed(app);
@@ -797,7 +913,12 @@ describe('the Flow mode of the visualization tab', () => {
     expect(litTableIds(app)).toEqual([]);
   });
 
-  it('lights the hovered table, its neighbours and the connectors between, and fades the rest', async () => {
+  /**
+   * AC-19. A hover lights a neighbourhood and dims nothing: every card and
+   * every connector the view shows stands at one, hover or no hover, which is
+   * what the accent border and the glow are the contrast against instead.
+   */
+  it('leaves every card and connector at full opacity while a hover lights one neighbourhood', async () => {
     const app = createTestAppContext();
     seed(app);
     const mounted = await mountVisualization(app);
@@ -811,38 +932,56 @@ describe('the Flow mode of the visualization tab', () => {
       ab: connectorOf('ab').opacity(),
       bc: connectorOf('bc').opacity(),
     });
+    const allLit = { a: 1, b: 1, c: 1, d: 1, ab: 1, bc: 1 };
 
-    expect(opacities()).toEqual({ a: 1, b: 1, c: 1, d: 1, ab: 1, bc: 1 });
+    expect(opacities()).toEqual(allLit);
 
     fireScenePointer(tableOf('a')!, 'mouseenter');
     await settle();
 
-    expect(opacities()).toEqual({
-      a: 1,
-      b: 1,
-      c: DIM_OPACITY,
-      d: DIM_OPACITY,
-      ab: 1,
-      bc: DIM_OPACITY,
-    });
+    // The highlight moved and the opacity did not: a and b are what the hover
+    // lights, and c, d and the connector between b and c are outside it.
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+    expect(opacities()).toEqual(allLit);
 
     fireScenePointer(tableOf('a')!, 'mouseleave');
     fireScenePointer(tableOf('b')!, 'mouseenter');
     await settle();
 
-    expect(opacities()).toEqual({
-      a: 1,
-      b: 1,
-      c: 1,
-      d: DIM_OPACITY,
-      ab: 1,
-      bc: 1,
-    });
+    expect(litTableIds(app)).toEqual(['a', 'b', 'c']);
+    expect(opacities()).toEqual(allLit);
 
     fireScenePointer(tableOf('b')!, 'mouseleave');
     await settle();
 
-    expect(opacities()).toEqual({ a: 1, b: 1, c: 1, d: 1, ab: 1, bc: 1 });
+    expect(opacities()).toEqual(allLit);
+  });
+
+  /**
+   * AC-19 and AC-58 together, on one fixture: the graph still fades what a
+   * hover does not reach, and the Flow mode over the same document no longer
+   * does. A dim value leaking back into a view fails here rather than in a screenshot.
+   */
+  it('dims the unreached node in the graph and leaves the unreached card lit in the flow', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+
+    const dotOf = (id: string) => graphStage().findOne(`.${id}`)!;
+    fireScenePointer(dotOf('a'), 'mouseenter', { clientX: 10, clientY: 10 });
+    await settle();
+
+    expect(dotOf('b').opacity()).toBe(1);
+    expect(dotOf('c').opacity()).toBe(DIM_OPACITY);
+
+    fireScenePointer(dotOf('a'), 'mouseleave');
+    await enterFlow(mounted);
+    fireScenePointer(tableOf('a')!, 'mouseenter');
+    await settle();
+
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+    expect(tableOf('c')!.opacity()).toBe(1);
+    expect(connectorOf('bc').opacity()).toBe(1);
   });
 
   it('moves the screen on a plain wheel, and the document not at all (AC-39)', async () => {
@@ -1120,7 +1259,7 @@ describe('the Flow mode of the visualization tab', () => {
     expect(particleLayer().find('Circle')).toHaveLength(0);
   });
 
-  it('leaves the particles off past sixty lit connectors, and keeps the fade and the highlight (AC-51)', async () => {
+  it('leaves the particles off past sixty lit connectors, and keeps the highlight (AC-51)', async () => {
     const app = createTestAppContext();
     const spokes = PARTICLE_EDGE_MAX + 1;
     const half = Math.floor(spokes / 2);
@@ -1148,7 +1287,7 @@ describe('the Flow mode of the visualization tab', () => {
     await whenPainted();
 
     expect(particleLayer().find('Circle')).toHaveLength(0);
-    expect(tableOf('lone')!.opacity()).toBe(DIM_OPACITY);
+    expect(tableOf('lone')!.opacity()).toBe(1);
     expect(tableOf(`s${half}`)!.opacity()).toBe(1);
     expect(connectorOf(`r${half}`).opacity()).toBe(1);
 
@@ -1163,7 +1302,7 @@ describe('the Flow mode of the visualization tab', () => {
     expect(particleLayer().find('Circle')).toHaveLength(
       PARTICLE_EDGE_MAX * PARTICLE_COUNT
     );
-    expect(tableOf('lone')!.opacity()).toBe(DIM_OPACITY);
+    expect(tableOf('lone')!.opacity()).toBe(1);
   });
 });
 

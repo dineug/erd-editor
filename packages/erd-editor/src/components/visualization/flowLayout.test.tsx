@@ -8,10 +8,12 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
-  ensureFlowPlaced,
   focusFlowView,
-  keepFlowPlaced,
   showAllFlowView,
+} from '@/components/visualization/flowCenters';
+import {
+  ensureFlowPlaced,
+  keepFlowPlaced,
 } from '@/components/visualization/flowLayout';
 import { CANVAS_ZOOM_MAX, RelationshipType } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';

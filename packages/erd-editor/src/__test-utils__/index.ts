@@ -11,6 +11,11 @@ import {
   appContext,
   createAppContext,
 } from '@/components/appContext';
+import {
+  setTransitionClock,
+  TRANSITION_MS,
+  type TransitionClock,
+} from '@/components/erd/canvas/highlightTransition';
 import { RxStoreOptions } from '@/engine/rx-store';
 import { type Theme, ThemeTokens } from '@/themes/tokens';
 
@@ -31,6 +36,58 @@ export function createTestTheme(): Theme {
     Reflect.set(theme, token, `#${(index + 1).toString(16).padStart(6, '0')}`);
     return theme;
   }, {} as Theme);
+}
+
+export type SteppedTransitions = {
+  /** Advances the clock by the milliseconds given and runs whatever frames that leaves due. */
+  step(ms: number): void;
+  /** Advances past the whole duration, which lands every transition on its target. */
+  settle(): void;
+  /** How many frames the ticker has asked for since the clock was installed. */
+  frames(): number;
+};
+
+/**
+ * Puts the highlight ticker on a clock the spec steps by hand, so a case reads
+ * the highlight where it says rather than where the wall clock left it. Vitest
+ * gives each spec file its own module, so installing this at file scope is enough.
+ *
+ * @example
+ * const transitions = stepTransitions();
+ */
+export function stepTransitions(): SteppedTransitions {
+  let now = 0;
+  let asked = 0;
+  let pending: (() => void) | null = null;
+
+  const clock: TransitionClock = {
+    now: () => now,
+    requestFrame: callback => {
+      asked += 1;
+      pending = callback;
+      return asked;
+    },
+    cancelFrame: () => {
+      pending = null;
+    },
+  };
+
+  setTransitionClock(clock);
+
+  const step = (ms: number) => {
+    now += ms;
+
+    // A frame that settles nothing asks for the next one, so the due frames are
+    // drained rather than run one deep; the bound is there for a clock that is
+    // stepped by nothing at all.
+    for (let round = 0; pending && round < 10; round++) {
+      const frame = pending;
+      pending = null;
+      frame();
+    }
+  };
+
+  return { step, settle: () => step(TRANSITION_MS), frames: () => asked };
 }
 
 /** Let the r-html scheduler and pending microtasks drain. */

@@ -435,3 +435,45 @@ describe('toPathD', () => {
     expect(toPathD([])).toBe('');
   });
 });
+
+describe('the corner each source turns (AC-28, AC-29)', () => {
+  const relationship = () =>
+    createRelationship({
+      id: 'rel',
+      start: { tableId: 'A', x: 100, y: 100, direction: Direction.bottom },
+      end: { tableId: 'B', x: 300, y: 500, direction: Direction.top },
+    });
+
+  const pathOf = (source: 'document' | 'flow') =>
+    getRelationshipPath(relationship(), source).path.path.d();
+
+  /** The widest turn between two neighbouring segments, in degrees. */
+  const sharpestTurn = (segments: ReturnType<typeof pathOf>) => {
+    const heading = segments.map(([from, to]) =>
+      Math.atan2(to.y - from.y, to.x - from.x)
+    );
+    let widest = 0;
+    for (let index = 1; index < heading.length; index++) {
+      let turn = heading[index] - heading[index - 1];
+      if (turn > Math.PI) turn -= 2 * Math.PI;
+      if (turn < -Math.PI) turn += 2 * Math.PI;
+      widest = Math.max(widest, Math.abs((turn * 180) / Math.PI));
+    }
+    return widest;
+  };
+
+  it('spends one segment on each document corner and four on each view corner', () => {
+    const document = pathOf('document');
+    const flow = pathOf('flow');
+
+    expect(document).toHaveLength(5);
+    expect(flow).toHaveLength(11);
+    expect(flow[0][0]).toEqual(document[0][0]);
+    expect(flow[flow.length - 1][1]).toEqual(document[document.length - 1][1]);
+  });
+
+  it('turns the document corner in one 45 degree step and the view corner in 22.5 degree ones', () => {
+    expect(sharpestTurn(pathOf('document'))).toBeCloseTo(45, 6);
+    expect(sharpestTurn(pathOf('flow'))).toBeCloseTo(22.5, 6);
+  });
+});

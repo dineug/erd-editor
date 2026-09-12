@@ -16,7 +16,6 @@ import {
   viewChangeZoomLevelAction,
   viewOpenAction,
   viewScrollToAction,
-  viewSetCentersAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
 import { hasViewport } from '@/engine/modules/settings/atom.actions';
@@ -308,20 +307,6 @@ async function requestFlowLayout(
       })
     );
   }
-}
-
-/**
- * Narrows the Flow view to the tables given and their one hop. State alone:
- * the loop below reads the display set it names and asks for the placement,
- * so this and the mount never hold two answers to the one question.
- */
-export function focusFlowView(app: AppContext, tableIds: string[]): void {
-  app.store.dispatchSync(viewSetCentersAction({ tableIds, kind: FLOW }));
-}
-
-/** Widens the Flow view back to everything it placed, through that same one channel: state alone. */
-export function showAllFlowView(app: AppContext): void {
-  app.store.dispatchSync(viewSetCentersAction({ tableIds: [], kind: FLOW }));
 }
 
 /**

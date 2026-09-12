@@ -106,6 +106,7 @@ const DOM_TAG = /<(div|svg)\b/;
  * still fails. Line numbers are left out because formatting moves them.
  */
 const OUTSIDE_REFERENCES = [
+  '__test-utils__/index.ts @/components/erd/canvas/highlightTransition',
   'components/erd/Erd.tsx @/components/erd/canvas/Canvas',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
   'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
@@ -154,7 +155,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the fourteen references that own a reason to', () => {
+  it('is reached from outside by the fifteen references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

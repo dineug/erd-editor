@@ -11,10 +11,10 @@ import {
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
 import Icon from '@/components/primitives/icon/Icon';
+import { showAllFlowView } from '@/components/visualization/flowCenters';
 import {
   ensureFlowPlaced,
   fitFlowView,
-  showAllFlowView,
 } from '@/components/visualization/flowLayout';
 import {
   getGraphView,

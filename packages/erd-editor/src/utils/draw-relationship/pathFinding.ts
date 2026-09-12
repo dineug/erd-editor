@@ -14,7 +14,9 @@ import {
   PathPoint,
   RelationshipPath,
   ROUTE_CHAMFER,
+  VIEW_ROUTE_ARC,
 } from '@/utils/draw-relationship';
+import { arcPolyline } from '@/utils/draw-relationship/arcCorner';
 import { chamferPolyline } from '@/utils/draw-relationship/chamfer';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import {
@@ -38,7 +40,8 @@ export function getRelationshipPath(
       end,
       clampStub(stubFor(startSlot), gap),
       clampStub(stubFor(endSlot), gap),
-      getRoute(relationship, source)
+      getRoute(relationship, source),
+      source
     ),
     line: getLine(start, end),
   };
@@ -49,7 +52,8 @@ function getPath(
   end: Anchor,
   startStub: number,
   endStub: number,
-  route: Point[] | undefined
+  route: Point[] | undefined,
+  source: GeometrySource
 ): RelationshipPath['path'] {
   const line: PathLine = {
     start: {
@@ -84,7 +88,11 @@ function getPath(
           ? route
           : twoBend(this.M, this.L, start.direction);
 
-      return toSegments(chamferPolyline(polyline, ROUTE_CHAMFER));
+      return toSegments(
+        source === 'document'
+          ? chamferPolyline(polyline, ROUTE_CHAMFER)
+          : arcPolyline(polyline, VIEW_ROUTE_ARC)
+      );
     },
   };
 

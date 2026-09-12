@@ -16,14 +16,27 @@ import {
   fireScenePointer,
   flush,
   moveScenePointer,
+  stepTransitions,
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
+import { TRANSITION_MS } from '@/components/erd/canvas/highlightTransition';
+import { mixColor } from '@/components/erd/canvas/mixColor';
 import { columnCellHit } from '@/components/erd/canvas/sceneHit';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
+  SCENE_CODE_FONT_FAMILY,
+  SCENE_FONT_FAMILY,
+  SCENE_FONT_SIZE,
+  TRANSPARENT,
+  VIEW_CARD_GLOW_BLUR,
+  VIEW_CARD_GLOW_OPACITY,
+  VIEW_CARD_SHADOW_BLUR,
+  VIEW_CARD_SHADOW_OFFSET_X,
+  VIEW_CARD_SHADOW_OFFSET_Y,
+  VIEW_CARD_SHADOW_OPACITY,
 } from '@/components/erd/canvas/sceneTokens';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import {
@@ -33,6 +46,7 @@ import {
   TABLE_BORDER,
   TABLE_HEADER_ICON_MARGIN_BOTTOM,
   VIEW_COLUMN_HEIGHT,
+  VIEW_TABLE_HEADER_BUTTON_SIZE,
 } from '@/constants/layout';
 import { CanvasType, ColumnUIKey, RelationshipType } from '@/constants/schema';
 import {
@@ -207,9 +221,26 @@ const mountViewScene = () => mountScene('flow');
 /** The same store and the same leaves under the document provider, which is the ERD tab's own. */
 const mountDocumentScene = () => mountScene('document');
 
-const settle = async () => {
+/**
+ * The ticker on a clock these cases wind. Vitest gives the file its own module
+ * registry, so installing it here reaches every case in it and no other file.
+ */
+const transitions = stepTransitions();
+
+const commit = async () => {
   await flush();
   await whenDrawn();
+};
+
+/**
+ * A commit, the whole of the highlight transition, then the commit that writes
+ * it. Every case but the ones that measure the walk reads the highlight where
+ * it lands rather than partway along.
+ */
+const settle = async () => {
+  await commit();
+  transitions.settle();
+  await commit();
 };
 
 const tableOf = (stage: Stage, id: string) =>
@@ -240,10 +271,34 @@ const cellOf = (stage: Stage, id: string, focusType: string) =>
 const cellTextOf = (cell: Container) =>
   cell.findOne<KonvaNode>('.cell-text') as KonvaNode;
 
-/** Where the pointer lands to hover one table, in the stage's own coordinates. */
+const glowOf = (stage: Stage, id: string) =>
+  tableOf(stage, id).find('.table-glow');
+
+/** The theme the mounts above hand the scene, read again for the paints it names. */
+const theme = createTestTheme();
+
+/** Enters and leaves the pointer on one card, which is what the view lights by. */
+const enterTable = async (stage: Stage, id: string) => {
+  fireScenePointer(tableOf(stage, id), 'mouseenter');
+  await settle();
+};
+
+const leaveTable = async (stage: Stage, id: string) => {
+  fireScenePointer(tableOf(stage, id), 'mouseleave');
+  await settle();
+};
+
+/**
+ * Where the pointer lands to hover one table, in the stage's own coordinates.
+ * The shadow a view card casts is left out of the rect, since it reaches past
+ * the card and no hit test answers for the ground under it.
+ */
 const hoverTable = async (stage: Stage, id: string) => {
   await whenPainted();
-  const box = tableOf(stage, id).getClientRect({ relativeTo: stage });
+  const box = tableOf(stage, id).getClientRect({
+    relativeTo: stage,
+    skipShadow: true,
+  });
   moveScenePointer(stage, box.x + box.width / 2, box.y + box.height - 4);
   await settle();
 };
@@ -364,6 +419,29 @@ describe('the type cell a view lights', () => {
     expect(typeOpacityOf(stage, 'e')).toEqual([0]);
   });
 
+  /**
+   * AC-23. The type reads as a type: the code face the SQL panels use, the
+   * smallest size on the scale, and set against the right edge of its box.
+   */
+  it('draws the type in the code face at the smallest size, against the right edge', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+    const cell = cellTextOf(cellOf(view.stage, 'b', 'columnDataType'));
+
+    expect(cell.getAttr('fontFamily')).toBe(SCENE_CODE_FONT_FAMILY);
+    expect(cell.getAttr('fontSize')).toBe(SCENE_FONT_SIZE);
+    expect(cell.getAttr('align')).toBe('right');
+    // The name beside it keeps the text face, so the contrast is the point.
+    expect(
+      cellTextOf(cellOf(view.stage, 'b', 'columnName')).getAttr('fontFamily')
+    ).toBe(SCENE_FONT_FAMILY);
+
+    // AC-61. The ERD's own type cell is the left aligned text face it was.
+    const erdCell = cellTextOf(cellOf(document.stage, 'b', 'columnDataType'));
+    expect(erdCell.getAttr('fontFamily')).toBe(SCENE_FONT_FAMILY);
+    expect(erdCell.getAttr('align')).toBe('left');
+  });
+
   it('draws the header colour band, and takes no press anywhere on the header', async () => {
     const { app, stage } = await mountViewScene();
     const header = tableOf(stage, 'a');
@@ -378,6 +456,285 @@ describe('the type cell a view lights', () => {
     expect(band.listening()).toBe(false);
     expect(header.find('.table-add-column')).toHaveLength(0);
     expect(header.find('.table-remove')).toHaveLength(0);
+  });
+});
+
+describe('the card a view draws', () => {
+  /** AC-17. The card sits on a shadow the ERD tab has never drawn under one. */
+  it('casts a shadow under the card, and casts none in the document', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+    const card = bodyOf(view.stage, 'a');
+
+    expect(card.getAttr('shadowColor')).toBe(theme.minimapShadow);
+    expect(card.getAttr('shadowBlur')).toBe(VIEW_CARD_SHADOW_BLUR);
+    expect(card.getAttr('shadowOffsetX')).toBe(VIEW_CARD_SHADOW_OFFSET_X);
+    expect(card.getAttr('shadowOffsetY')).toBe(VIEW_CARD_SHADOW_OFFSET_Y);
+    expect(card.getAttr('shadowOpacity')).toBe(VIEW_CARD_SHADOW_OPACITY);
+    // The stroke is left out of it, or the border would double the shadow.
+    expect(card.getAttr('shadowForStrokeEnabled')).toBe(false);
+
+    // No colour and no blur is konva for a shape that casts nothing at all.
+    const plain = bodyOf(document.stage, 'a');
+    expect(plain.getAttr('shadowColor')).toBeUndefined();
+    expect(plain.getAttr('shadowBlur')).toBe(0);
+    // AC-61. No glow either: the document card has no light to wear one for.
+    expect(glowOf(document.stage, 'a')).toHaveLength(0);
+  });
+
+  /**
+   * AC-18. A lit card takes the accent as its border and wears a glow beside
+   * it, both in the one accent the particles and the lit connectors already use.
+   */
+  it('gives a lit card the accent border and a glow, and leaves an unlit one plain', async () => {
+    const { stage } = await mountViewScene();
+
+    expect(bodyOf(stage, 'a').getAttr('stroke')).toBe(theme.tableBorder);
+    expect(glowOf(stage, 'a')).toHaveLength(0);
+
+    await enterTable(stage, 'a');
+
+    const glow = glowOf(stage, 'a')[0] as KonvaNode;
+    expect(bodyOf(stage, 'a').getAttr('stroke')).toBe(theme.accentColor9);
+    expect(glow).toBeDefined();
+    expect(glow.getAttr('stroke')).toBe(theme.accentColor9);
+    expect(glow.getAttr('shadowColor')).toBe(theme.accentColor9);
+    expect(glow.getAttr('shadowBlur')).toBe(VIEW_CARD_GLOW_BLUR);
+    expect(glow.getAttr('shadowOpacity')).toBe(VIEW_CARD_GLOW_OPACITY);
+    // Stroke only, so nothing has to be reordered under the card body.
+    expect(glow.getAttr('shadowForStrokeEnabled')).toBe(true);
+    expect(glow.getAttr('fill')).toBeUndefined();
+
+    // c is two hops from a, so it stays the plain card the bare view draws.
+    expect(bodyOf(stage, 'c').getAttr('stroke')).toBe(theme.tableBorder);
+    expect(glowOf(stage, 'c')).toHaveLength(0);
+
+    await leaveTable(stage, 'a');
+
+    expect(bodyOf(stage, 'a').getAttr('stroke')).toBe(theme.tableBorder);
+    expect(glowOf(stage, 'a')).toHaveLength(0);
+  });
+
+  /** AC-19. Nothing a view shows is dimmed, whatever the hover lights. */
+  it('leaves every card it shows at full opacity while one is hovered', async () => {
+    const { stage } = await mountViewScene();
+
+    await enterTable(stage, 'a');
+
+    for (const id of ['a', 'b', 'c', 'd', 'e']) {
+      expect({ id, opacity: tableOf(stage, id).opacity() }).toEqual({
+        id,
+        opacity: 1,
+      });
+    }
+  });
+});
+
+const rowBackgroundOf = (row: Container) =>
+  (row.findOne<KonvaNode>('.column-row-background') as KonvaNode).getAttr(
+    'fill'
+  );
+
+const dividerCountsOf = (stage: Stage, id: string) =>
+  rowsOf(stage, id).map(row => row.find('.column-row-divider').length);
+
+describe('the rows a view card rules and tints', () => {
+  /** AC-20. A line runs under every row but the last, and under none in the document. */
+  it('rules a divider under every row but the last, and none in the document', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+
+    expect(dividerCountsOf(view.stage, 'b')).toEqual([1, 1, 0]);
+    expect(
+      (
+        rowsOf(view.stage, 'b')[0].findOne('.column-row-divider') as KonvaNode
+      ).getAttr('stroke')
+    ).toBe(theme.tableBorder);
+    expect(new Set(dividerCountsOf(document.stage, 'b'))).toEqual(new Set([0]));
+  });
+
+  /** AC-21 and AC-22. The tint marks a relationship row and the hover outranks it. */
+  it('tints the rows a relationship ends at and lets a hover paint over the tint', async () => {
+    const { stage } = await mountViewScene();
+    // The tint is one of the paints the highlight brings up, so the card is
+    // lit for it: b is where the two ends of two links land.
+    await enterTable(stage, 'b');
+    const [pk, fk, ref] = rowsOf(stage, 'b');
+
+    // b_pk carries a key and no link; b_fk and b_ref are each one end of one.
+    expect(rowBackgroundOf(pk)).toBe(TRANSPARENT);
+    expect(rowBackgroundOf(fk)).toBe(theme.accentColor3);
+    expect(rowBackgroundOf(ref)).toBe(theme.accentColor3);
+
+    fireScenePointer(pk, 'mouseenter');
+    fireScenePointer(fk, 'mouseenter');
+    await settle();
+
+    expect(rowBackgroundOf(pk)).toBe(theme.columnHover);
+    expect(rowBackgroundOf(fk)).toBe(theme.columnHover);
+  });
+
+  /**
+   * AC-22 as Step 29 settles it. The tint is one of the five paints the light
+   * brings up, so a card the light has not reached rests plain and the rows a
+   * link ends at are the rows the bare view already drew.
+   */
+  it('rests a card untinted until the light reaches it', async () => {
+    const { stage } = await mountViewScene();
+
+    expect(rowsOf(stage, 'b').map(rowBackgroundOf)).toEqual([
+      TRANSPARENT,
+      TRANSPARENT,
+      TRANSPARENT,
+    ]);
+
+    await enterTable(stage, 'b');
+
+    expect(rowsOf(stage, 'b').map(rowBackgroundOf)).toEqual([
+      TRANSPARENT,
+      theme.accentColor3,
+      theme.accentColor3,
+    ]);
+  });
+
+  /** AC-61. The ERD row is the one it was: no tint, whatever a link ends on it. */
+  it('tints no row in the document, where a relationship row is plain', async () => {
+    const { stage } = await mountDocumentScene();
+
+    expect(rowsOf(stage, 'b').map(rowBackgroundOf)).toEqual(
+      rowsOf(stage, 'b').map(() => TRANSPARENT)
+    );
+  });
+});
+
+/** The drawn route of one connector, by the id its group carries beside its name. */
+const routeOf = (stage: Stage, id: string) =>
+  (
+    (stage.findOne<Container>(`.${id}`) as Container).findOne<KonvaNode>(
+      '.relationship-route'
+    ) as KonvaNode
+  ).getAttr('stroke');
+
+/**
+ * AC-35, AC-36 and AC-37 on one fixture. Every paint the highlight owns is
+ * scaled by the one number the card computes, so they cannot come up over
+ * different spans however the ticker is wound.
+ */
+describe('the time a highlight takes', () => {
+  it('brings the border, the glow, the type cell, the tint and the connector up over three hundred milliseconds', async () => {
+    const { stage } = await mountViewScene();
+    // Read before the hover, since the grey a connector rests at is what the
+    // walk starts from and the case never assumes which grey that is.
+    const grey = routeOf(stage, 'r1');
+    const asked = transitions.frames();
+    const tintOf = () => rowBackgroundOf(rowsOf(stage, 'b')[1]);
+
+    fireScenePointer(tableOf(stage, 'b'), 'mouseenter');
+    await commit();
+
+    // The commit the hover lands on draws the card as it was: the walk starts
+    // here rather than a step in.
+    expect(typeOpacityOf(stage, 'b')).toEqual([0, 0, 0]);
+    expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(theme.tableBorder);
+    expect(glowOf(stage, 'b')).toHaveLength(0);
+    expect(tintOf()).toBe(TRANSPARENT);
+    expect(routeOf(stage, 'r1')).toBe(grey);
+
+    transitions.step(TRANSITION_MS / 2);
+    await commit();
+
+    // Ease out puts half the time seven eighths of the way, and the one value
+    // is what every paint here is scaled by.
+    const half = 0.875;
+    const halfStroke = mixColor(theme.tableBorder, theme.accentColor9, half);
+    expect(typeOpacityOf(stage, 'b')).toEqual([half, half, half]);
+    expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(halfStroke);
+    expect(glowOf(stage, 'b')[0].opacity()).toBe(half);
+    expect(tintOf()).toBe(
+      mixColor(theme.tableBackground, theme.accentColor3, half)
+    );
+    expect(routeOf(stage, 'r1')).toBe(mixColor(grey, theme.accentColor9, half));
+    // Partway is a place of its own, not one of the two ends rounded to.
+    expect(
+      new Set([theme.tableBorder, halfStroke, theme.accentColor9]).size
+    ).toBe(3);
+    expect(new Set([grey, routeOf(stage, 'r1'), theme.accentColor9]).size).toBe(
+      3
+    );
+
+    transitions.step(TRANSITION_MS / 2);
+    await commit();
+
+    expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
+    expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(theme.accentColor9);
+    expect(glowOf(stage, 'b')[0].opacity()).toBe(1);
+    expect(tintOf()).toBe(theme.accentColor3);
+    expect(routeOf(stage, 'r1')).toBe(theme.accentColor9);
+    // The counter the document case reads for nothing does rise here, so its
+    // zero is a scene that asked for no frame rather than a dead counter.
+    expect(transitions.frames()).toBeGreaterThan(asked);
+  });
+
+  it('takes the same five back out over the same three hundred', async () => {
+    const { stage } = await mountViewScene();
+    const grey = routeOf(stage, 'r1');
+    const tintOf = () => rowBackgroundOf(rowsOf(stage, 'b')[1]);
+
+    await enterTable(stage, 'b');
+    expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
+
+    fireScenePointer(tableOf(stage, 'b'), 'mouseleave');
+    await commit();
+    transitions.step(TRANSITION_MS / 2);
+    await commit();
+
+    const half = 1 - 0.875;
+    expect(typeOpacityOf(stage, 'b')).toEqual([half, half, half]);
+    expect(glowOf(stage, 'b')[0].opacity()).toBe(half);
+    expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(
+      mixColor(theme.tableBorder, theme.accentColor9, half)
+    );
+    expect(tintOf()).toBe(
+      mixColor(theme.tableBackground, theme.accentColor3, half)
+    );
+    expect(routeOf(stage, 'r1')).toBe(mixColor(grey, theme.accentColor9, half));
+
+    transitions.step(TRANSITION_MS / 2);
+    await commit();
+
+    expect(typeOpacityOf(stage, 'b')).toEqual([0, 0, 0]);
+    expect(glowOf(stage, 'b')).toHaveLength(0);
+    expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(theme.tableBorder);
+    expect(tintOf()).toBe(TRANSPARENT);
+    expect(routeOf(stage, 'r1')).toBe(grey);
+  });
+
+  /** AC-42's colour half: a connector neither end of which is lit never leaves its grey. */
+  it('leaves a connector the light does not reach at the grey it rests on', async () => {
+    const { stage } = await mountViewScene();
+    const grey = routeOf(stage, 'r5');
+
+    await enterTable(stage, 'b');
+
+    expect(routeOf(stage, 'r1')).toBe(theme.accentColor9);
+    expect(routeOf(stage, 'r5')).toBe(grey);
+  });
+
+  /**
+   * The invariant behind the export worker, which re-renders this table and so
+   * carries the ticker: a document scene asks it for no frame, ever.
+   */
+  it('asks the ticker for no frame in a document scene', async () => {
+    const asked = transitions.frames();
+    const { stage } = await mountDocumentScene();
+
+    await enterTable(stage, 'b');
+    await hoverTable(stage, 'b');
+    await leaveTable(stage, 'b');
+
+    expect(transitions.frames()).toBe(asked);
+    expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1, 1]);
+    expect(glowOf(stage, 'b')).toHaveLength(0);
   });
 });
 
@@ -455,6 +812,119 @@ describe('the source the drawn card is measured by', () => {
     expect(
       cellTextOf(cellOf(document.stage, 'b', 'columnName')).getAttr('hitFunc')
     ).toBe(columnCellHit.document);
+  });
+});
+
+const buttonOf = (stage: Stage, id: string, name: string) =>
+  tableOf(stage, id).findOne<KonvaNode>(`.${name}`) ?? null;
+
+/** Every action type the store took from now on, which is what AC-60 counts. */
+function recordActions(app: AppContext): string[] {
+  const types: string[] = [];
+  app.store.subscribe(actions => {
+    types.push(...actions.map(action => action.type));
+  });
+
+  return types;
+}
+
+describe('the two buttons a view card header carries', () => {
+  /** AC-26 and AC-27. Neither button is there until the card is under the pointer. */
+  it('shows Related and Go to ERD on the hovered card alone', async () => {
+    const { stage } = await mountViewScene();
+
+    expect(buttonOf(stage, 'a', 'table-related')).toBeNull();
+    expect(buttonOf(stage, 'a', 'table-go-to-erd')).toBeNull();
+
+    await enterTable(stage, 'a');
+
+    const related = buttonOf(stage, 'a', 'table-related');
+    expect(related).not.toBeNull();
+    expect(buttonOf(stage, 'a', 'table-go-to-erd')).not.toBeNull();
+    expect(related!.scaleX()).toBe(VIEW_TABLE_HEADER_BUTTON_SIZE / 24);
+    // The card beside it is not hovered and carries neither.
+    expect(buttonOf(stage, 'b', 'table-related')).toBeNull();
+
+    await leaveTable(stage, 'a');
+
+    expect(buttonOf(stage, 'a', 'table-related')).toBeNull();
+    expect(buttonOf(stage, 'a', 'table-go-to-erd')).toBeNull();
+  });
+
+  /** AC-26. The ERD keeps the add and remove icons the view gave that room to. */
+  it('leaves the document header on its add and remove icons', async () => {
+    const { stage } = await mountDocumentScene();
+
+    // Hovered, which is the half of the gate the source decides: an unhovered
+    // card carries neither button in either scene, so a document card that
+    // lost its source branch would still read empty here.
+    await enterTable(stage, 'a');
+    const header = tableOf(stage, 'a');
+
+    expect(header.find('.table-add-column')).toHaveLength(1);
+    expect(header.find('.table-remove')).toHaveLength(1);
+    expect(header.find('.table-related')).toHaveLength(0);
+    expect(header.find('.table-go-to-erd')).toHaveLength(0);
+  });
+
+  /** AC-45. Related narrows the display set to that table and its one hop. */
+  it('narrows the view to the table and its one hop on Related', async () => {
+    const { app, stage } = await mountViewScene();
+    await enterTable(stage, 'a');
+
+    fireScenePointer(buttonOf(stage, 'a', 'table-related')!, 'click');
+    await settle();
+
+    expect(app.store.state.editor.views.flow?.centerIds).toEqual(['a']);
+    // a is the center, b across the first link and d across the third; c and
+    // e are two hops out and leave the display set with it.
+    expect(
+      stage
+        .find('.table')
+        .map(node => node.id().replace('table-', ''))
+        .sort()
+    ).toEqual(['a', 'b', 'd']);
+  });
+
+  /**
+   * AC-48 and AC-60. Go to ERD swaps the tab, selects the table and scrolls to
+   * it, and the tab change with the one scroll is everything the host hears.
+   */
+  it('swaps to the ERD tab and scrolls to a table the document keeps off screen', async () => {
+    const { app, stage } = await mountViewScene();
+    await enterTable(stage, 'e');
+    const types = recordActions(app);
+
+    fireScenePointer(buttonOf(stage, 'e', 'table-go-to-erd')!, 'click');
+    await settle();
+
+    const { settings, editor } = app.store.state;
+    expect(settings.canvasType).toBe(CanvasType.ERD);
+    expect(Boolean(editor.selectedMap.e)).toBe(true);
+    expect(settings.originX).not.toBe(0);
+    expect(types.filter(type => type === 'settings.scrollTo')).toHaveLength(1);
+    expect(
+      types.filter(
+        type => type.startsWith('settings.') || type === 'editor.scrollTo'
+      )
+    ).toEqual(['settings.changeCanvasType', 'settings.scrollTo']);
+    // The view's own placement is untouched: the scroll was the document's.
+    expect(app.store.state.editor.views.flow?.originX).toBe(0);
+  });
+
+  /** AC-48. A table already on screen is swapped to and never scrolled to. */
+  it('swaps to the ERD tab without a scroll for a table already on screen', async () => {
+    const { app, stage } = await mountViewScene();
+    await enterTable(stage, 'a');
+    const types = recordActions(app);
+
+    fireScenePointer(buttonOf(stage, 'a', 'table-go-to-erd')!, 'click');
+    await settle();
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(Boolean(app.store.state.editor.selectedMap.a)).toBe(true);
+    expect(types.filter(type => type === 'settings.scrollTo')).toHaveLength(0);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 });
 

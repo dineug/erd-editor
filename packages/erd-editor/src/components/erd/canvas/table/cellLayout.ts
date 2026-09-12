@@ -104,30 +104,30 @@ const RAW_CELL_TEXT_HEIGHT = CELL_UNDERLINE_Y;
 
 /**
  * The baseline one line of cell text is drawn on, down from the top of the
- * cell. Blink puts a painted baseline on the device grid before the zoom scales
- * it, so only a whole pixel survives both rasterisers unchanged.
+ * cell, in the face named or the scene's own. Blink puts a painted baseline on
+ * the device grid before the zoom scales it, so only a whole pixel survives both rasterisers.
  *
  * @example
  * const baseline = getCellTextBaseline();
  */
-export function getCellTextBaseline(): number {
-  const { ascent, descent } = getSceneFontMetrics();
+export function getCellTextBaseline(fontFamily?: string): number {
+  const { ascent, descent } = getSceneFontMetrics(fontFamily);
 
   return Math.round(RAW_CELL_TEXT_HEIGHT / 2 + (ascent - descent) / 2);
 }
 
 /**
- * The box one line of cell text is centred in. The scene hands konva this
- * height with verticalAlign middle and the editor gives its input the same one,
- * which is what puts the two baselines on one whole pixel instead of two.
+ * The box one line of cell text is centred in, in the face named or the
+ * scene's own. The scene hands konva this height with verticalAlign middle and
+ * the editor gives its input the same one, which puts the two baselines on one whole pixel.
  *
  * @example
  * const height = getCellTextHeight();
  */
-export function getCellTextHeight(): number {
-  const { ascent, descent } = getSceneFontMetrics();
+export function getCellTextHeight(fontFamily?: string): number {
+  const { ascent, descent } = getSceneFontMetrics(fontFamily);
 
-  return (getCellTextBaseline() - (ascent - descent) / 2) * 2;
+  return (getCellTextBaseline(fontFamily) - (ascent - descent) / 2) * 2;
 }
 
 /** Where a column row's cells start, past the key badge. */

@@ -13,7 +13,6 @@ import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 import {
   clearViewHoverTable,
-  getFadedIds,
   getHighlightIds,
   getTablePoint,
   getViewHoverTable,
@@ -772,61 +771,6 @@ describe('getHighlightIds', () => {
     expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['b', 'c', 'd']),
       relationshipIds: new Set(['bc', 'cd']),
-    });
-  });
-});
-
-// AC-19: what a Flow hover fades is everything shown that the hover does not
-// light, and no other scene fades at all, whatever its hover holds.
-describe('getFadedIds', () => {
-  it('fades what the hover leaves unlit in a Flow view, tables and connectors both', () => {
-    const state = createState();
-    seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-    setViewHoverTable(state, 'c', 'flow');
-
-    expect(getFadedIds(state, 'flow')).toEqual({
-      tableIds: new Set(['a', 'e']),
-      relationshipIds: new Set(['ab']),
-    });
-  });
-
-  it('fades nothing while no table is hovered', () => {
-    const state = createState();
-    seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-
-    expect(getFadedIds(state, 'flow')).toBeNull();
-  });
-
-  it('fades nothing for a hover on a table the view does not show', () => {
-    const state = createState();
-    seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd']);
-    setViewHoverTable(state, 'e', 'flow');
-
-    expect(getFadedIds(state, 'flow')).toBeNull();
-  });
-
-  it('fades nothing in the document scene, whatever a Flow hover holds', () => {
-    const state = createState();
-    seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-    setViewHoverTable(state, 'c', 'flow');
-
-    expect(getFadedIds(state, 'document')).toBeNull();
-    expect(getFadedIds(state)).toBeNull();
-  });
-
-  it('fades nothing in a view narrowed to its centers, where the light reaches all it shows', () => {
-    const state = createState();
-    seedGraph(state);
-    openFocused(state, ['b']);
-    setViewHoverTable(state, 'c', 'flow');
-
-    expect(getFadedIds(state, 'flow')).toEqual({
-      tableIds: new Set(),
-      relationshipIds: new Set(),
     });
   });
 });

@@ -317,7 +317,9 @@ export class ErdEditorPage {
       for (const step of target) node = node?.findOne?.(step);
       if (!node || node === stage) return null;
 
-      const rect = node.getClientRect({ relativeTo: stage });
+      // The shadow a view card casts is left out: the rect is where the node
+      // is drawn, and no hit test answers for the ground its shadow reaches.
+      const rect = node.getClientRect({ relativeTo: stage, skipShadow: true });
       const origin = stage.container().getBoundingClientRect();
       return {
         x: origin.x + rect.x,
@@ -435,7 +437,12 @@ export class ErdEditorPage {
         (node: any) => node.isVisible()
       );
       return nodes.map((node: any) => {
-        const rect = node.getClientRect({ relativeTo: stage });
+        // The shadow a view card casts is left out: the rect is where the node
+        // is drawn, and no hit test answers for the ground its shadow reaches.
+        const rect = node.getClientRect({
+          relativeTo: stage,
+          skipShadow: true,
+        });
         return {
           x: origin.x + rect.x,
           y: origin.y + rect.y,

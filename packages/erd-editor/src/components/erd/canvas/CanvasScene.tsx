@@ -10,6 +10,7 @@ import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRela
 import DuplicateGhost from '@/components/erd/canvas/duplicate-ghost/DuplicateGhost';
 import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
+import { stopTransitions } from '@/components/erd/canvas/highlightTransition';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import RelationshipGroup from '@/components/erd/canvas/relationship-group/RelationshipGroup';
 import { createRetentionPool } from '@/components/erd/canvas/sceneRetention';
@@ -19,9 +20,10 @@ import Table from '@/components/erd/canvas/table/Table';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import ParticleLayer from '@/components/visualization/particles/ParticleLayer';
 import { Show } from '@/constants/schema';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Relationship } from '@/internal-types';
 import { renderKonva } from '@/konva/host';
-import { getFadedIds, getVisibleIds } from '@/konva/scene/viewLayout';
+import { getHighlightIds, getVisibleIds } from '@/konva/scene/viewLayout';
 import {
   getCullingRect,
   getSceneOrigin,
@@ -53,6 +55,16 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const sourceRef = useSceneSource(ctx);
   const retention = createRetentionPool();
+  const { addUnsubscribe } = useUnmounted();
+
+  // The highlight the cards and connectors of a view were walking through
+  // belongs to the scene that opened it, and the ticker keys each one by
+  // editor, so a closing view drops its own and leaves the document's alone.
+  addUnsubscribe(() => {
+    if (sourceRef.value === 'document') return;
+
+    stopTransitions(app.value.store.state.editor.id);
+  });
 
   return () => {
     const { store } = app.value;
@@ -137,11 +149,11 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       : [];
     const dragRelationships = dragging ? allRelationships.filter(isMoving) : [];
 
-    // What a Flow hover fades, decided here and handed down as a flag: only
-    // the tables and connectors whose flag flips redraw, where a leaf reading
-    // the hover itself would walk every link on every hover, once per table.
-    const faded = getFadedIds(state, source);
-    const isFadedTable = (id: string) => faded?.tableIds.has(id) ?? false;
+    // What a view lights, decided here and handed down as a flag: only the
+    // cards and connectors whose flag flips redraw, where a leaf reading the
+    // highlight itself would walk every link on every hover, once per leaf.
+    const lit = source === 'document' ? null : getHighlightIds(state, source);
+    const isLitTable = (id: string) => lit?.tableIds.has(id) ?? false;
 
     /**
      * A view draws its own spelling at every zoom: its rows are already the
@@ -180,7 +192,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
                 <Table
                   table={table}
                   visible={drawnIds.has(table.id)}
-                  faded={isFadedTable(table.id)}
+                  lit={isLitTable(table.id)}
                 />
               )
             )}
@@ -208,7 +220,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             <RelationshipGroup
               relationships={dragRelationships}
               viewport={cullingRect}
-              fadedIds={faded?.relationshipIds}
+              litIds={lit?.relationshipIds}
             />
           ) : null}
         </k-layer>
@@ -217,7 +229,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             <RelationshipGroup
               relationships={relationships}
               viewport={cullingRect}
-              fadedIds={faded?.relationshipIds}
+              litIds={lit?.relationshipIds}
             />
           ) : null}
           {source === 'document' && drawRelationship?.start ? (
