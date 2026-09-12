@@ -8,7 +8,7 @@ export type TransitionClock = {
 };
 
 /** The clock every shipped transition runs on: wall time and the browser's own animation frame. */
-export const transitionClock: TransitionClock = {
+const transitionClock: TransitionClock = {
   now: () => performance.now(),
   requestFrame: callback => requestAnimationFrame(callback),
   cancelFrame: handle => cancelAnimationFrame(handle),

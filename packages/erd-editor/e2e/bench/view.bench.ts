@@ -7,16 +7,16 @@ import { createCorpus, type CorpusOptions, selectCorpus } from './corpus';
 import { installBench, runEditBench, runHoverBench } from './harness';
 import { createReport, delta, readBaseline, writeReport } from './report';
 
-// What the scene views cost: a hover over a Flow of three hundred name boxes,
+// What the Flow view costs: a hover over a Flow of three hundred name boxes,
 // the same hover over the ERD with no view open, and one document edit landing
 // while a Flow stands over it. It asserts nothing, like every bench here.
 
 /**
  * Bumped whenever a metric changes what it means rather than what it measures,
- * which suppresses deltas across the bump. Otherwise a stale baseline prints
- * percentages against numbers that are no longer the same quantity.
+ * which suppresses deltas across the bump. Version 3: the view lost its aid
+ * layer, its highlight walks over 300ms, and a particle frame solves its path rather than reading one.
  */
-const METRICS_VERSION = 2;
+const METRICS_VERSION = 3;
 
 /** The corpus the ERD hover baseline runs, as every diagnostic here does. */
 const CORPUS = selectCorpus();

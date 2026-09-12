@@ -29,7 +29,7 @@ import {
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
-/** The view widths for the rows the Focus view shows, which the function no longer looks up itself. */
+/** The view widths for the rows a view shows, which the function no longer looks up itself. */
 const viewWidths = (table: Table, state: RootState) =>
   calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'flow'));
 
@@ -349,7 +349,7 @@ describe('calcViewTableWidths', () => {
     dataType +
     INPUT_MARGIN_RIGHT;
 
-  /** A keys only Focus view on the table, so the key rows are what it shows. */
+  /** A keys only view over the table, so the key rows are what it shows. */
   function openKeysOnly(
     state: RootState,
     tableId: string,

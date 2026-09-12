@@ -998,9 +998,9 @@ describe('the minimap shell', () => {
 });
 
 /**
- * The ERD half of AC-61. A Focus overlay opens over this tab and takes its own
- * source with it, so the minimap beside the ERD is left on the document: every
- * table it holds, the memos a view drops, and the document's own placement.
+ * The ERD half of AC-61. A view stands on a tab of its own and reads its own
+ * source, so the minimap beside the ERD is left on the document: every table it
+ * holds, the memos a view drops, and the document's own placement.
  */
 describe('the minimap under an open view', () => {
   const DOC_POINTS: Record<string, Point> = {
@@ -1015,7 +1015,7 @@ describe('the minimap under an open view', () => {
     t2: { x: 4800, y: 4000 },
   };
 
-  /** A chain t1 - t2 - t3 and one memo, with a Focus view open on t1 at one hop. */
+  /** A chain t1 - t2 - t3 and one memo, with a view narrowed to t1 and its hop. */
   function seedAndOpen(app: AppContext) {
     const link = (id: string, start: string, end: string) =>
       addRelationshipAction({

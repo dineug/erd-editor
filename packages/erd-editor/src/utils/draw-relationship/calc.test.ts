@@ -22,7 +22,7 @@ import {
   tableToObjectPoint,
 } from '@/utils/draw-relationship/calc';
 
-/** The view widths for the rows the Focus view shows, which the function no longer looks up itself. */
+/** The view widths for the rows a view shows, which the function no longer looks up itself. */
 const viewWidths = (table: Table, state: RootState) =>
   calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'flow'));
 

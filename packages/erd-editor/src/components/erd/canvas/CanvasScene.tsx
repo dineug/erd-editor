@@ -23,7 +23,11 @@ import { Show } from '@/constants/schema';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Relationship } from '@/internal-types';
 import { renderKonva } from '@/konva/host';
-import { getHighlightIds, getVisibleIds } from '@/konva/scene/viewLayout';
+import {
+  getHighlightIds,
+  getVisibleIds,
+  relationshipColumnIdsByTable,
+} from '@/konva/scene/viewLayout';
 import {
   getCullingRect,
   getSceneOrigin,
@@ -155,6 +159,12 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const lit = source === 'document' ? null : getHighlightIds(state, source);
     const isLitTable = (id: string) => lit?.tableIds.has(id) ?? false;
 
+    // The rows a view tints, walked once here for the same reason the light is:
+    // a card reading its own would walk every relationship of the document, and
+    // every card with rows would then be an observer of the whole link list.
+    const related =
+      source === 'document' ? null : relationshipColumnIdsByTable(state);
+
     /**
      * A view draws its own spelling at every zoom: its rows are already the
      * few its show mode keeps, and the shrunk box a low zoom asks the document
@@ -193,6 +203,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
                   table={table}
                   visible={drawnIds.has(table.id)}
                   lit={isLitTable(table.id)}
+                  relatedColumnIds={related?.get(table.id) ?? null}
                 />
               )
             )}

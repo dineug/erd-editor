@@ -442,6 +442,7 @@ describe('the type cell a view lights', () => {
     expect(erdCell.getAttr('align')).toBe('left');
   });
 
+  /** AC-16. The table's colour is the one thing of the document header a view card keeps. */
   it('draws the header colour band, and takes no press anywhere on the header', async () => {
     const { app, stage } = await mountViewScene();
     const header = tableOf(stage, 'a');

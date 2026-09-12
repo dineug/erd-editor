@@ -150,9 +150,9 @@ describe('ContentCompass', () => {
     expect(originX).toBeCloseTo(away.originX, 3);
     expect(originY).toBeCloseTo(away.originY, 3);
   });
-  // AC-61: a Focus overlay opens over this tab with a source of its own, so
-  // the compass beside the ERD keeps pointing at the document's own content
-  // from the document's own screen, whatever the view holds.
+  // AC-61: a view stands on a tab of its own with a source of its own, so the
+  // compass beside the ERD keeps pointing at the document's own content from
+  // the document's own screen, whatever the view holds.
   it('points at the document while a view stands somewhere else', async () => {
     const { app, pill, label } = await setup();
 

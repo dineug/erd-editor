@@ -381,8 +381,8 @@ describe('relationshipSort', () => {
     }).toEqual(bare);
   });
 
-  /** AC-56. A Focus view standing elsewhere changes nothing the document sort writes. */
-  it('leaves the document anchors where they are while a Focus view stands elsewhere', () => {
+  /** AC-61. A view standing elsewhere changes nothing the document sort writes. */
+  it('leaves the document anchors where they are while a view stands elsewhere', () => {
     addTable(state, 'A', 0, 0);
     addTable(state, 'B', 400, 0);
     const relationship = addRelationship(state, 'r', 'A', 'B');

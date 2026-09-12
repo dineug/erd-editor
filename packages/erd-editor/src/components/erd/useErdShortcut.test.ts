@@ -287,7 +287,7 @@ describe('useErdShortcut - table properties', () => {
   });
 });
 
-describe('useErdShortcut - focus view', () => {
+describe('useErdShortcut - focus on a table', () => {
   it('stands the Flow view on the one selected table (AC-51)', async () => {
     const app = await setup();
     const tableId = seedTable(app);

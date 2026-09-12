@@ -1,8 +1,13 @@
 import {
+  getScrollToCenter,
   getViewTransform,
   getVisibleCanvasRect,
 } from '@/components/erd/minimap/minimapGeometry';
-import { hasViewport } from '@/engine/modules/settings/atom.actions';
+import {
+  hasViewport,
+  sceneScrollToAction,
+} from '@/engine/modules/settings/atom.actions';
+import type { RxStore } from '@/engine/rx-store';
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
 import { getContentRects } from '@/konva/scene/contentBounds';
@@ -94,6 +99,33 @@ export function getContentCompass(
   return nearestContent(
     getContentRects(state, [], source),
     getVisibleCanvasRect(getViewTransform(state, source))
+  );
+}
+
+/** Small enough beside a label or a button to read as a mark rather than one. */
+export const COMPASS_ARROW_SIZE = 14;
+
+/**
+ * Puts the nearest entity in the middle of the screen of the source given, and
+ * does nothing while the screen holds one. Read on the press rather than closed
+ * over by the render that drew the arrow, since a wheel between the two moves the screen.
+ *
+ * @example
+ * scrollToNearestContent(store, ViewKind.flow);
+ */
+export function scrollToNearestContent(
+  store: RxStore,
+  source: GeometrySource = 'document'
+): void {
+  const compass = getContentCompass(store.state, source);
+  if (!compass) return;
+
+  const origin = getScrollToCenter(
+    getViewTransform(store.state, source),
+    compass.target
+  );
+  store.dispatch(
+    sceneScrollToAction(source, { originX: origin.x, originY: origin.y })
   );
 }
 

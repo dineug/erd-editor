@@ -34,7 +34,7 @@ import { createMemo } from '@/utils/collection/memo.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
-/** The view widths for the rows the Focus view shows, which the function no longer looks up itself. */
+/** The view widths for the rows a view shows, which the function no longer looks up itself. */
 const viewWidths = (table: Table, state: RootState) =>
   calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'flow'));
 

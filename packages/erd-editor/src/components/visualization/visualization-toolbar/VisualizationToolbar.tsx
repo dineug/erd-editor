@@ -2,16 +2,14 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
+  COMPASS_ARROW_SIZE,
   type ContentCompass,
   getContentCompass,
+  scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
-import {
-  getScrollToCenter,
-  getViewTransform,
-} from '@/components/erd/minimap/minimapGeometry';
+import { showAllFlowView } from '@/components/flowCenters';
 import Icon from '@/components/primitives/icon/Icon';
-import { showAllFlowView } from '@/components/visualization/flowCenters';
 import {
   ensureFlowPlaced,
   fitFlowView,
@@ -24,8 +22,8 @@ import {
   centerGraphView,
   fitGraphView,
   graphCompass,
-  zoomAt,
 } from '@/components/visualization/visualizationView';
+import { stepVisualizationZoom } from '@/components/visualization/zoomVisualization';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
   ShowMode,
@@ -36,8 +34,6 @@ import {
   changeVisualizationModeAction,
   viewChangeShowModeAction,
 } from '@/engine/modules/editor/view.actions';
-import { sceneScrollToAction } from '@/engine/modules/settings/atom.actions';
-import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { getSceneTransform } from '@/konva/scene/viewport';
 
 import * as styles from './VisualizationToolbar.styles';
@@ -45,9 +41,6 @@ import * as styles from './VisualizationToolbar.styles';
 export type VisualizationToolbarProps = {};
 
 const ICON_SIZE = 16;
-
-/** Small enough beside the buttons to read as the mark a compass pill carries. */
-const ARROW_SIZE = 14;
 
 /** The three steps of a card, in the order the bar offers them. */
 const SHOW_MODES = [
@@ -72,27 +65,8 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
     store.dispatch(changeVisualizationModeAction({ value }));
   };
 
-  /**
-   * One chord's worth of zoom, in the mode that is up. The Flow's runs through
-   * the canon the document's own does; the graph's holds the middle of the
-   * stage still, which is where the same step lands for a view with no scroll under it.
-   */
   const handleZoom = (step: number) => () => {
-    const { store } = app.value;
-
-    if (isFlow()) {
-      store.dispatch(streamZoomLevelAction$(step, ViewKind.flow));
-      return;
-    }
-
-    const { editor } = store.state;
-    const center = {
-      x: editor.viewport.width / 2,
-      y: editor.viewport.height / 2,
-    };
-    updateGraphView(editor.id, ({ state }) =>
-      zoomAt(state, center, (state.scale + step) / state.scale)
-    );
+    stepVisualizationZoom(app.value, step);
   };
 
   const handleFit = () => {
@@ -122,28 +96,11 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
     showAllFlowView(app.value);
   };
 
-  /**
-   * Read again on the press rather than closed over, as the ERD's own compass
-   * reads it: a wheel between the render that drew the arrow and the press
-   * moves the screen, and what was nearest then may not be nearest now.
-   */
   const handleCompass = () => {
     const { store } = app.value;
 
     if (isFlow()) {
-      const compass = getContentCompass(store.state, ViewKind.flow);
-      if (!compass) return;
-
-      const origin = getScrollToCenter(
-        getViewTransform(store.state, ViewKind.flow),
-        compass.target
-      );
-      store.dispatch(
-        sceneScrollToAction(ViewKind.flow, {
-          originX: origin.x,
-          originY: origin.y,
-        })
-      );
+      scrollToNearestContent(store, ViewKind.flow);
       return;
     }
 
@@ -251,7 +208,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
             >
               <Icon
                 name="arrow-right"
-                size={ARROW_SIZE}
+                size={COMPASS_ARROW_SIZE}
                 rotate={compass.angle}
               />
             </div>

@@ -48,10 +48,10 @@ import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { focusFlowView } from '@/components/flowCenters';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
-import { focusFlowView } from '@/components/visualization/flowCenters';
 import {
   HEADER_ICON_HEIGHT,
   INPUT_MARGIN_RIGHT,
@@ -85,7 +85,6 @@ import {
 import {
   clearViewHoverTable,
   getVisibleColumnIds,
-  relationshipColumnIds,
   setViewHoverTable,
 } from '@/konva/scene/viewLayout';
 import type { Theme } from '@/themes/tokens';
@@ -110,6 +109,11 @@ export type TableProps = {
   visible?: boolean;
   /** Whether the view lights this card, decided by the scene it is drawn in. */
   lit?: boolean;
+  /**
+   * The rows of this table a relationship ends on, which a view tints. Decided
+   * by the scene, which walks the document's links once for every card it draws.
+   */
+  relatedColumnIds?: Set<string> | null;
 };
 
 type HeaderCellOptions = {
@@ -492,15 +496,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     const litKey = transitionKey(editor.id, 'table', table.id);
     view && transitionTo(litKey, lit ? 1 : 0);
     const litAlpha = view ? progressOf(litKey) : 0;
-    const dataTypeOpacity = view ? litAlpha : 1;
-
-    // The rows this table ends a relationship at, walked once per card that
-    // draws rows: every row would otherwise repeat the walk over every link,
-    // and a card in name only reads none of it.
-    const relatedIds =
-      view && columnIds.length > 0
-        ? relationshipColumnIds(store.state, table)
-        : null;
+    const relatedIds = props.relatedColumnIds ?? null;
 
     const columns = query(collections)
       .collection('tableColumnEntities')
@@ -695,9 +691,8 @@ const Table: FC<TableProps> = (props, ctx) => {
               <Column
                 column={column}
                 source={source}
-                dataTypeOpacity={dataTypeOpacity}
                 related={relatedIds?.has(column.id) ?? false}
-                tintAlpha={litAlpha}
+                litAlpha={litAlpha}
                 divider={view && index < columns.length - 1}
                 y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}

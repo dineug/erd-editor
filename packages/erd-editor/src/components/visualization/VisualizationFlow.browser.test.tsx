@@ -23,6 +23,7 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import { themeContext } from '@/components/themeContext';
+import { PARTICLE_GROUP_NAME } from '@/components/visualization/particles/particleLoop';
 import {
   PARTICLE_COUNT,
   PARTICLE_EDGE_MAX,
@@ -331,8 +332,8 @@ const particleLayer = () =>
 /** The connectors carrying particles, by the id each group of six is named with. */
 const particleIdsOf = () =>
   particleLayer()
-    .find<Group>('.particle-edge')
-    .map(group => group.name().replace('particle-edge ', ''))
+    .find<Group>(`.${PARTICLE_GROUP_NAME}`)
+    .map(group => group.name().replace(`${PARTICLE_GROUP_NAME} `, ''))
     .sort();
 
 /** A document edit the way a peer's arrives, which is the one way an edit reaches the store under a view. */

@@ -636,4 +636,81 @@ test.describe('the visualization tab and the flow view over the document', () =>
     expect(after.originY).toBe(0);
     expect(after.zoomLevel).toBe(1);
   });
+
+  /**
+   * AC-60. A whole session in the view, gesture by gesture: nothing a reader
+   * does inside it is a document change, so the recorder started after the tab
+   * came up hears nothing at all.
+   */
+  test('records no document change through a whole session in the view', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+
+    // The tab change is the one thing the reader already paid for, so the
+    // count starts after it and the gestures below are all it can hear.
+    await countChanges(page);
+    await recordActions(page);
+
+    await flowTable(erd, 'orders').hover();
+    await erd.whenDrawn();
+    await flowTable(erd, 'orders').click();
+    await erd.whenDrawn();
+
+    // A drag over the bare canvas while the fit still leaves room for one.
+    await erd.panBy(40, 30);
+    await erd.whenDrawn();
+
+    const at = (await placementsOf(erd, ['customers'])).customers!;
+    const modKey = await erd.pointerModKey();
+    await erd.wheel(-120, { at, modifiers: [modKey] });
+    await erd.whenDrawn();
+    await erd.wheel(160, { at });
+    await erd.whenDrawn();
+
+    await modeButton(erd, 'Fit').click();
+    await erd.whenDrawn();
+
+    await modeButton(erd, 'Tidy Up').click();
+    await expect(flowTable(erd, 'customers')).toBeVisible({
+      timeout: PLACEMENT_TIMEOUT,
+    });
+    await erd.whenDrawn();
+
+    const rows = flowScene(erd).locator('.column-row');
+    await expect(rows).toHaveCount(0);
+    await modeButton(erd, 'All fields').click();
+    await expect
+      .poll(() => rows.count(), { timeout: PLACEMENT_TIMEOUT })
+      .toBeGreaterThan(0);
+    await modeButton(erd, 'Keys only').click();
+    await erd.whenDrawn();
+
+    await flowTable(erd, 'orders').hover();
+    await flowScene(erd)
+      .locator('.table[data-id="orders"] .table-related')
+      .click();
+    await expect(flowTable(erd, 'products')).toHaveCount(0, {
+      timeout: PLACEMENT_TIMEOUT,
+    });
+
+    await modeButton(erd, 'Show all').click();
+    await expect(flowTable(erd, 'products')).toBeVisible({
+      timeout: PLACEMENT_TIMEOUT,
+    });
+    await erd.whenDrawn();
+
+    expect(await settledChanges(page)).toBe(0);
+    expect(await recordedChanges(page)).toEqual([]);
+    // The reader is still in the view, and the document is where it was
+    // seeded: none of the placements above reached the file.
+    const after = await erd.settings();
+    expect(after.canvasType).toContain('visualization');
+    expect(after.originX).toBe(0);
+    expect(after.originY).toBe(0);
+    expect(after.zoomLevel).toBe(1);
+    expect((await erd.table('customers')).ui).toMatchObject({ x: 200, y: 200 });
+  });
 });

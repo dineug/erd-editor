@@ -78,22 +78,16 @@ export type ColumnProps = {
    */
   source: GeometrySource;
   /**
-   * What the type cell is drawn at, which a view dims to nothing on a table it
-   * does not light. The cell keeps its box either way, so the width a table was
-   * measured at never depends on what is lit, and a dimmed one answers no pointer.
-   */
-  dataTypeOpacity?: number;
-  /**
    * Whether a relationship ends on this column, which a view tints the row
-   * for. Decided by the table, which walks the links once for all its rows.
+   * for. Decided by the scene, which walks the links once for every card.
    */
   related?: boolean;
   /**
-   * How strongly a view brings that tint up, which is the value the type cell
-   * above is drawn at. The table hands the one number down, so the tint and the
-   * type cell come up over the one span of time.
+   * How far the light has come up on the card this row is drawn in, which is
+   * what the row tint and the type cell above are both drawn at. One number, so
+   * the two of them come up over the one span of time and a document row reads none of it.
    */
-  tintAlpha?: number;
+  litAlpha?: number;
   /** Whether a view rules a line under this row, which every row but the last does. */
   divider?: boolean;
   y: number;
@@ -436,7 +430,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           edit: props.editDataType,
           sharedFocus: props.sharedFocusDataType,
           ellipsis: true,
-          opacity: props.dataTypeOpacity,
+          opacity: view ? (props.litAlpha ?? 0) : 1,
           align: view ? 'right' : undefined,
           fontFamily: view ? SCENE_CODE_FONT_FAMILY : undefined,
         });
@@ -516,7 +510,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       theme,
       selected,
       hover,
-      view && props.related ? (props.tintAlpha ?? 0) : 0
+      view && props.related ? (props.litAlpha ?? 0) : 0
     );
     const rowHeight = tableRowHeight(props.source);
 

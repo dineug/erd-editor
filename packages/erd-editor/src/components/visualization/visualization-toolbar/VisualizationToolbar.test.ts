@@ -26,7 +26,10 @@ import {
   viewScrollToAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import { PREVIEW_ZOOM_MAX } from '@/konva/scene/fitZoom';
 
 const hoisted = vi.hoisted(() => ({ requests: 0 }));
@@ -100,6 +103,10 @@ function seedFlow(app: AppContext, centerIds: string[] = []) {
     changeVisualizationModeAction({ value: VisualizationMode.flow }),
     addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
     addTableAction({ id: 't2', ui: { x: 0, y: 0, zIndex: 2 } }),
+    // Named, or a bar that printed the centre's name would print the empty
+    // string and the case below would pass on nothing being there to print.
+    changeTableNameAction({ id: 't1', value: 'customers' }),
+    changeTableNameAction({ id: 't2', value: 'orders' }),
     viewOpenAction({ kind: ViewKind.flow, centerIds })
   );
   app.store.dispatchSync(
@@ -188,7 +195,9 @@ describe('VisualizationToolbar', () => {
   it('names no center and counts no neighbour (AC-9)', async () => {
     const { root } = await setup(seedFlow(createTestAppContext(), ['t1']));
 
-    expect(root.textContent).not.toMatch(/t1|neighbour|neighbor|table/i);
+    expect(root.textContent).not.toMatch(
+      /t1|customers|neighbour|neighbor|table/i
+    );
     expect(titles(root)).not.toContain('Back');
     expect(titles(root)).not.toContain('Forward');
   });

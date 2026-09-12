@@ -43,7 +43,7 @@ import { whenDrawn } from '@/konva/batchDraw';
 import { getAnchors } from '@/utils/draw-relationship';
 
 import { getParticleEdges } from './particleEdges';
-import { particleClock } from './particleLoop';
+import { PARTICLE_GROUP_NAME, particleClock } from './particleLoop';
 import {
   PARTICLE_COUNT,
   PARTICLE_EDGE_ALPHA,
@@ -198,7 +198,7 @@ const flowStage = () => stageRegistry().canvas;
 const particleLayer = () =>
   flowStage().findOne<Layer>('.view-particles') as Layer;
 
-const groupsOf = () => particleLayer().find<Group>('.particle-edge');
+const groupsOf = () => particleLayer().find<Group>(`.${PARTICLE_GROUP_NAME}`);
 
 const circlesOf = () => particleLayer().find<Circle>('Circle');
 
@@ -206,7 +206,7 @@ const groupOf = (id: string) => particleLayer().findOne<Group>(`.${id}`);
 
 const litIdsOf = () =>
   groupsOf()
-    .map(group => group.name().replace('particle-edge ', ''))
+    .map(group => group.name().replace(`${PARTICLE_GROUP_NAME} `, ''))
     .sort();
 
 const tableOf = (id: string) =>
@@ -430,7 +430,9 @@ describe('the particles of a Flow view', () => {
     const expectIntact = (lit: number) => {
       expect(circlesOf()).toHaveLength(lit * PARTICLE_COUNT);
       expect(
-        particles.getChildren().every(child => child.hasName('particle-edge'))
+        particles
+          .getChildren()
+          .every(child => child.hasName(PARTICLE_GROUP_NAME))
       ).toBe(true);
     };
 

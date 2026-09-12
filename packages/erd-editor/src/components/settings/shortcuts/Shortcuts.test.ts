@@ -32,7 +32,7 @@ const EXPECTED_COMMANDS = [
   'Relationship One Only',
   'Relationship One N',
   'Table Properties',
-  'Focus View',
+  'Focus on this table',
   'Zoom In',
   'Zoom Out',
   'Zoom Reset',

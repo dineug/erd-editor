@@ -2,6 +2,7 @@ import type { Ref } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { sceneHit } from '@/components/erd/hitTest';
+import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { sceneStreamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
@@ -24,9 +25,6 @@ export type ViewGestureOptions = {
   /** The view the gestures land in, named so they never reach the active one. */
   source: ViewSource;
 };
-
-/** How far one wheel notch carrying the modifier zooms, the step the ERD tab takes. */
-const WHEEL_ZOOM_STEP = 0.03;
 
 /**
  * The gestures a view scene takes on its box: the wheel moves the screen and

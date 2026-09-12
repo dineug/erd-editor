@@ -58,22 +58,57 @@ export function getTablePoint(
 const isKeyColumn = (keys: number) =>
   bHas(keys, ColumnUIKey.primaryKey) || bHas(keys, ColumnUIKey.foreignKey);
 
+/** Every end every relationship of the document holds, table by table. */
+function forEachRelationshipEnd(
+  state: RootState,
+  visit: (tableId: string, columnIds: string[]) => void
+): void {
+  const relationships = query(state.collections)
+    .collection('relationshipEntities')
+    .selectByIds(state.doc.relationshipIds);
+
+  for (const { start, end } of relationships) {
+    visit(start.tableId, start.columnIds);
+    visit(end.tableId, end.columnIds);
+  }
+}
+
 /** The columns any relationship holds an end of on this table, whether or not they are flagged. */
 export function relationshipColumnIds(
   state: RootState,
   table: Table
 ): Set<string> {
   const ids = new Set<string>();
-  const relationships = query(state.collections)
-    .collection('relationshipEntities')
-    .selectByIds(state.doc.relationshipIds);
 
-  for (const { start, end } of relationships) {
-    if (start.tableId === table.id) start.columnIds.forEach(id => ids.add(id));
-    if (end.tableId === table.id) end.columnIds.forEach(id => ids.add(id));
-  }
+  forEachRelationshipEnd(state, (tableId, columnIds) => {
+    if (tableId !== table.id) return;
+
+    columnIds.forEach(id => ids.add(id));
+  });
 
   return ids;
+}
+
+/**
+ * The same rows for every table at once, walked once over the document. What a
+ * scene hands its cards, since a card asking for its own would walk every link
+ * again, once per card drawn.
+ *
+ * @example
+ * const related = relationshipColumnIdsByTable(state).get(table.id);
+ */
+export function relationshipColumnIdsByTable(
+  state: RootState
+): Map<string, Set<string>> {
+  const byTable = new Map<string, Set<string>>();
+
+  forEachRelationshipEnd(state, (tableId, columnIds) => {
+    const ids = byTable.get(tableId) ?? new Set<string>();
+    columnIds.forEach(id => ids.add(id));
+    byTable.set(tableId, ids);
+  });
+
+  return byTable;
 }
 
 /**

@@ -35,6 +35,7 @@ import { useContextMenuRootProvider } from '@/components/primitives/context-menu
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import {
   changeOpenMapAction,
   sharedMouseTrackerAction,
@@ -183,7 +184,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     store.dispatch(
       $mod
-        ? streamZoomLevelAction$(event.deltaY < 0 ? 0.03 : -0.03)
+        ? streamZoomLevelAction$(
+            event.deltaY < 0 ? WHEEL_ZOOM_STEP : -WHEEL_ZOOM_STEP
+          )
         : streamScrollToAction(
             isReverse
               ? {

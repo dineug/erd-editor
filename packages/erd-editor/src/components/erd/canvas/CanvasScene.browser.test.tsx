@@ -558,18 +558,18 @@ describe('a scene the context points at a view', () => {
     );
   }
 
-  /** The Focus view the overlay opens: t1 at the centre, one hop, key rows. */
-  function openFocus(app: AppContext) {
+  /** The display set a narrowing opens: t1 at the centre, its hop, key rows. */
+  function narrowView(app: AppContext) {
     app.store.dispatchSync(
       viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
       viewSetLayoutAction({ kind: ViewKind.flow, positions: VIEW_POINTS })
     );
   }
 
-  async function mountFocusScene(): Promise<Mounted> {
+  async function mountNarrowedScene(): Promise<Mounted> {
     const app = createTestAppContext();
     seedDocument(app);
-    openFocus(app);
+    narrowView(app);
 
     return mountScene({ app, source: 'flow' });
   }
@@ -588,19 +588,19 @@ describe('a scene the context points at a view', () => {
       .map(node => (node.findOne('.cell-text') as Text).text());
 
   it('shows what the view reaches, where the view stands it, and no memo', async () => {
-    const { stage } = await mountFocusScene();
+    const { stage } = await mountNarrowedScene();
 
     expect(tableIdsOf(stage)).toEqual(['table-t1', 'table-t2']);
     expect(tableOf(stage, 't1').x()).toBe(VIEW_POINTS.t1.x);
     expect(tableOf(stage, 't1').y()).toBe(VIEW_POINTS.t1.y);
     expect(stage.find('.memo')).toHaveLength(0);
-    // The show mode a Focus view opens on: the key rows alone, which here is
-    // the one column carrying the primary key.
+    // The show mode a narrowed view opens on: the key rows alone, which here
+    // is the one column carrying the primary key.
     expect(rowIdsOf(stage, 't1')).toEqual(['column-c1']);
   });
 
   it('keeps its own spelling at a zoom the document would go high level at', async () => {
-    const { app, stage } = await mountFocusScene();
+    const { app, stage } = await mountNarrowedScene();
 
     app.store.dispatchSync(
       viewChangeZoomLevelAction({ value: 0.3, kind: ViewKind.flow })
@@ -613,7 +613,7 @@ describe('a scene the context points at a view', () => {
   });
 
   it('follows a rename that reaches the document while it is open', async () => {
-    const { app, stage } = await mountFocusScene();
+    const { app, stage } = await mountNarrowedScene();
     expect(nameTextsOf(stage, 't1')).toEqual(['column']);
 
     // The way an edit reaches a document under an open view: from a peer,
@@ -631,7 +631,7 @@ describe('a scene the context points at a view', () => {
     const app = createTestAppContext();
     seedDocument(app);
     const erd = await mountScene({ app });
-    openFocus(app);
+    narrowView(app);
     const focus = await mountScene({ app, source: 'flow' });
     await flush();
 
@@ -651,7 +651,7 @@ describe('a scene the context points at a view', () => {
     const erd = await mountScene({ app });
     expect(erd.stage.find('.high-level-table')).toHaveLength(3);
 
-    openFocus(app);
+    narrowView(app);
     const focus = await mountScene({ app, source: 'flow' });
     await flush();
 
@@ -667,7 +667,7 @@ describe('a scene the context points at a view', () => {
     app.store.dispatchSync(
       changeShowAction({ show: Show.relationship, value: false })
     );
-    openFocus(app);
+    narrowView(app);
     const erd = await mountScene({ app });
     const focus = await mountScene({ app, source: 'flow' });
     await flush();
@@ -680,7 +680,7 @@ describe('a scene the context points at a view', () => {
   });
 
   it('roots a particle layer over the scene and no presence layer, since a peer broadcasts document points', async () => {
-    const { stage } = await mountFocusScene();
+    const { stage } = await mountNarrowedScene();
 
     expect(stage.getLayers().map(layer => layer.name())).toEqual([
       'canvas-background',
@@ -691,7 +691,7 @@ describe('a scene the context points at a view', () => {
   });
 
   it('draws no relationship preview, which is the document scene alone', async () => {
-    const { app, stage } = await mountFocusScene();
+    const { app, stage } = await mountNarrowedScene();
 
     app.store.dispatchSync(
       drawStartRelationshipAction({
@@ -708,7 +708,7 @@ describe('a scene the context points at a view', () => {
   it('keeps the hover a view holds when the scene under it goes away', async () => {
     const app = createTestAppContext();
     seedDocument(app);
-    openFocus(app);
+    narrowView(app);
     const erd = await mountScene({ app });
     const focus = await mountScene({ app, source: 'flow' });
     await flush();

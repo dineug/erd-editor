@@ -401,6 +401,20 @@ describe('editor.changeVisualizationMode', () => {
     );
     expect(store.state.editor.visualizationMode).toBe(VisualizationMode.graph);
   });
+
+  /** AC-56. The session's, so a walk to another tab and back is not a new one. */
+  it('keeps the mode across a walk to another canvas type and back', () => {
+    showFlowTab();
+
+    store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+    expect(store.state.editor.visualizationMode).toBe(VisualizationMode.flow);
+
+    store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.visualization })
+    );
+
+    expect(store.state.editor.visualizationMode).toBe(VisualizationMode.flow);
+  });
 });
 
 // AC-48: a replaced document takes the view with it.

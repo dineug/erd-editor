@@ -35,7 +35,7 @@ describe('keyboard-shortcut', () => {
       expect(KeyBindingNameList).toContain('focusView');
     });
 
-    it('gives the Focus view a chord no other binding claims', () => {
+    it('gives the focusView binding a chord no other binding claims', () => {
       const map = createKeyBindingMap();
       const shortcuts = KeyBindingNameList.filter(
         name => name !== KeyBindingName.focusView

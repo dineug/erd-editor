@@ -45,7 +45,7 @@ Build order is derived from workspace dependencies: the leaves are `r-html`, `vi
 | `packages/vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | Build tool | JSX → tagged templates, and HMR boundaries |
 | `packages/schema-sql-parser` | `@dineug/schema-sql-parser` | Library | permissive DDL parser for SQL import |
 | `packages/erd-editor-schema` | `@dineug/erd-editor-schema` | Library | v2/v3 document schema, parsing, LWW operators |
-| `packages/erd-editor` | `@dineug/erd-editor` | Library | **editor core** — the `<erd-editor>` element (published, 3.7.0). The Konva scene draws three things: the document, the Visualization tab's Flow mode, and the Focus view that opens over the editor on a few tables and what they reach; the two views are the reader's own and never reach the file |
+| `packages/erd-editor` | `@dineug/erd-editor` | Library | **editor core** — the `<erd-editor>` element (published, 3.7.0). The Konva scene draws two things: the document and the Visualization tab's Flow mode, which stands either over the whole document or narrowed to a few tables and the ones a relationship out from them; that view is the reader's own and never reaches the file |
 | `packages/webview-bridge` | `@dineug/erd-editor-webview-bridge` | Library | typed host↔webview command protocol |
 | `packages/webview-client` | `@dineug/erd-editor-webview-client` | Library | `mountWebview(host)` — the editor in an IDE webview with the whole host protocol wired; both webviews are thin adapters over it |
 | `packages/replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | Worker | headless document replica spawned by both IDE webviews |

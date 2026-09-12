@@ -130,8 +130,8 @@ const tick = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * One store with two tables at the document's corner joined by a connector,
- * and a Focus view standing both far away, each source sorted so the route
- * the culling reads is settled for both.
+ * and a view standing both far away, each source sorted so the route the
+ * culling reads is settled for both.
  */
 async function createViewApp(): Promise<{
   app: AppContext;

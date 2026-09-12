@@ -64,6 +64,24 @@ const find = (actions: Action[], name: string): Action => {
 
 const names = (actions: Action[]) => actions.map(action => action.name);
 
+const visibleNames = () =>
+  names(scope().filter(action => action.filter?.(app) ?? true));
+
+/** Every row the ERD canvas offers, which is the whole of what its scope holds. */
+const ERD_TOOLBOX = [
+  'Tab',
+  'Database',
+  'Import',
+  'Export',
+  'New Table',
+  'New Memo',
+  'Zero One',
+  'Zero N',
+  'One Only',
+  'One N',
+  'Auto Layout',
+];
+
 const recordActions = () => {
   const dispatched: AnyAction[] = [];
   const unsubscribe = app.store.subscribe(list => {
@@ -207,23 +225,8 @@ describe('createScopeActions', () => {
 
   it('lists the full ERD toolbox in the ERD canvas', () => {
     setCanvasType(CanvasType.ERD);
-    const visible = names(
-      scope().filter(action => action.filter?.(app) ?? true)
-    );
 
-    expect(visible).toEqual([
-      'Tab',
-      'Database',
-      'Import',
-      'Export',
-      'New Table',
-      'New Memo',
-      'Zero One',
-      'Zero N',
-      'One Only',
-      'One N',
-      'Auto Layout',
-    ]);
+    expect(visibleNames()).toEqual(ERD_TOOLBOX);
   });
 
   it('keeps only Database and Bracket in the schema SQL canvas', () => {
@@ -678,6 +681,11 @@ describe('createScopeActions / no focus actions', () => {
   it('offers no Focus action from any canvas type or visualization mode', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
+
+    // The toolbox and the one row the table itself is, which is the jump to it:
+    // a second row minted per table would stand in this list whatever keyword
+    // it carried, where the filter below only catches the one that was taken out.
+    expect(visibleNames()).toEqual([...ERD_TOOLBOX, 'users']);
 
     for (const canvasType of [
       CanvasType.ERD,

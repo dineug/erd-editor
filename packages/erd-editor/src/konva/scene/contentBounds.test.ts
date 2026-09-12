@@ -256,7 +256,7 @@ describe('getContentRects', () => {
 });
 
 /**
- * A Focus view on a, which joins b, placed far from where the document has
+ * A view narrowed to a, which joins b, placed far from where the document has
  * them, over a document that also holds c and a memo, neither of which the
  * view shows.
  */

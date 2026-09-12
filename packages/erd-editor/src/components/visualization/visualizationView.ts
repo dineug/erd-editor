@@ -169,15 +169,32 @@ function rectOfNode(node: VisualizationNode): Rect {
 const isPlaced = (node: VisualizationNode): boolean =>
   Number.isFinite(node.x) && Number.isFinite(node.y);
 
+/**
+ * The boxes of the dots that stand somewhere, one at a time. A graph carries a
+ * dot per table and a dot per column, so a reader that stops on the first box
+ * it likes must not be handed an array of all of them first.
+ */
+function* placedRects(nodes: Iterable<VisualizationNode>): Generator<Rect> {
+  for (const node of nodes) {
+    if (isPlaced(node)) yield rectOfNode(node);
+  }
+}
+
 /** The box every dot of the graph stands inside, or null while none of them is placed. */
 function boundsOf(nodes: VisualizationNode[]): Rect | null {
-  const rects = nodes.filter(isPlaced).map(rectOfNode);
-  if (!rects.length) return null;
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
 
-  const left = Math.min(...rects.map(rect => rect.x));
-  const top = Math.min(...rects.map(rect => rect.y));
-  const right = Math.max(...rects.map(rect => rect.x + rect.width));
-  const bottom = Math.max(...rects.map(rect => rect.y + rect.height));
+  for (const rect of placedRects(nodes)) {
+    left = Math.min(left, rect.x);
+    top = Math.min(top, rect.y);
+    right = Math.max(right, rect.x + rect.width);
+    bottom = Math.max(bottom, rect.y + rect.height);
+  }
+
+  if (left === Infinity) return null;
 
   return { x: left, y: top, width: right - left, height: bottom - top };
 }
@@ -258,15 +275,15 @@ export function centerGraphView(
  */
 export function graphCompass(
   view: VisualizationView,
-  nodes: VisualizationNode[],
+  nodes: Iterable<VisualizationNode>,
   viewport: Viewport
 ): ContentCompass | null {
   if (viewport.width <= 0 || viewport.height <= 0) return null;
 
-  return nearestContent(
-    nodes.filter(isPlaced).map(rectOfNode),
-    visibleSceneRect(view, viewport)
-  );
+  // The bar reads this once a simulation step, so the boxes are walked lazily:
+  // the first dot that reaches the stage answers the question, and the rest of
+  // a graph of thousands is never built.
+  return nearestContent(placedRects(nodes), visibleSceneRect(view, viewport));
 }
 
 /** What one wheel unit is in px where a host reports lines or pages instead. */

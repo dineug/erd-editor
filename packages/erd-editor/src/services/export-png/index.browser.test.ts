@@ -257,6 +257,30 @@ describe('renderDocumentScene', () => {
     // other spelling rather than a second node beside it.
     expect(drawn).toEqual({ tables: 1, highLevel: 1, scale: 0.5 });
   });
+
+  /**
+   * The worker this runs inside has no animation frame, and Table reaches the
+   * highlight ticker. Nothing asks the ticker for one while the scene draws the
+   * document, so the source this scene resolves to is pinned by what it paints.
+   */
+  it('draws the document card, wearing none of the paint a view card carries', async () => {
+    const scene = await renderDocumentScene({
+      doc: createDoc({ memos: [], tables: [TABLE] }),
+      theme,
+      toWidth,
+    });
+
+    try {
+      const body = scene.stage.findOne('.table-body');
+
+      // No colour and no blur is konva for a shape that casts nothing at all.
+      expect(body?.getAttr('shadowColor')).toBeUndefined();
+      expect(body?.getAttr('shadowBlur')).toBe(0);
+      expect(scene.stage.find('.table-glow')).toHaveLength(0);
+    } finally {
+      scene.destroy();
+    }
+  });
 });
 
 describe('createDocumentPng', () => {

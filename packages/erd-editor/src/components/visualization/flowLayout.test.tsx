@@ -7,10 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
-import {
-  focusFlowView,
-  showAllFlowView,
-} from '@/components/visualization/flowCenters';
+import { focusFlowView, showAllFlowView } from '@/components/flowCenters';
 import {
   ensureFlowPlaced,
   keepFlowPlaced,

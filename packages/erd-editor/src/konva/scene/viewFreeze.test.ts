@@ -96,9 +96,9 @@ describe('viewFreeze', () => {
   });
 
   /**
-   * A Focus overlay opens over the ERD on the same store: a drag on the
-   * overlay's minimap or scrollbar holds the view's origin, and the ERD under
-   * it keeps reading its own live content and origin, and the other way about.
+   * A view is a second scene on the one store: a drag that holds the view's
+   * origin leaves the ERD reading its own live content and origin, and a drag
+   * on the ERD's own aids leaves the view's alone.
    */
   it('holds the document and a view of one store apart', () => {
     const state = stateWith(0, 0);

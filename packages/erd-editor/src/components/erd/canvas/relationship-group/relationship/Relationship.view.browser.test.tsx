@@ -40,7 +40,7 @@ import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 const THEME = createTestTheme();
 
-/** Where the Focus view stands the two tables, nowhere near the document's corner. */
+/** Where the view stands the two tables, nowhere near the document's corner. */
 const VIEW_POSITIONS: Record<string, Point> = {
   t1: { x: 5_000, y: -3_000 },
   t2: { x: 5_600, y: -3_000 },

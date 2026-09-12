@@ -44,7 +44,8 @@ request, so a comparison is always against a baseline someone chose.
 | `attribution.bench.ts` | Diagnostic: which painter owns the frame                        |
 | `scaling.bench.ts`     | Diagnostic: does cost track what changed, or what is on screen? |
 | `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG — this repo has no other visual check |
-| `view.bench.ts`        | Diagnostic: what the Flow and Focus views cost — a hover and a document edit |
+| `view.bench.ts`        | Diagnostic: what the Flow view costs — a hover and a document edit |
+| `visualization-shots.bench.ts` | Ten frames of the Visualization tab, which is the human gate the redesign ends in |
 | `report.ts`            | The JSON report every bench but `routing.bench.ts` writes through |
 | `baselines/`           | Committed results that cannot be re-measured from the working tree |
 
@@ -273,11 +274,14 @@ rasterisation rather than in the host's commit path. The lever is what the scene
 draws — a tighter culling rect than three screens each way, or cheaper shapes —
 and not how it is committed.
 
-## The scene views
+## The scene view
 
-`view.bench.ts` measures the two scene views the visualization tab and the
-Focus overlay draw over the one document. Four rows, all through
-`installBench`, so the instruments are the drag bench's own:
+`view.bench.ts` measures the Flow view the visualization tab draws over the one
+document. Four rows, all through `installBench`, so the instruments are the drag
+bench's own. Its `METRICS_VERSION` is 3: the redesign took the aid layer out of
+the view, made the highlight a 300ms walk rather than an opacity flip, and gave
+the particle frame a path to solve, so the rows measure other quantities than
+the ones a version 2 report holds under the same names:
 
 | Row          | What it stands in                                                |
 | ------------ | ---------------------------------------------------------------- |
@@ -562,3 +566,20 @@ clips the SVG the quality metrics are read from. The other three sit inside
 `data/` is still the manual check. Import a real dump and look at it before
 calling a routing change done; there is no visual regression test anywhere in
 this repo.
+
+## The visualization shots
+
+`visualization-shots.bench.ts` writes the ten frames the spec makes this
+feature's acceptance gate into `e2e/.bench/shots/`, prefixed with
+`E2E_BENCH_LABEL` (`current` by default): `graph-default`, `flow-all`,
+`flow-hover`, `flow-focused`, the three `flow-focused-*` row modes,
+`card-closeup`, `toolbar-closeup` and `compass`. It measures nothing — a person
+looks at them and judges. The corpus is one hub carrying ten of eighteen links,
+because a narrowed view lights every card it draws and the hub is where that
+either reads as a highlight or reads as a wall of glow.
+
+Like every diagnostic here it needs `E2E_BENCH_ALL=1`:
+
+```bash
+E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench
+```

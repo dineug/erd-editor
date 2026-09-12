@@ -16,8 +16,9 @@ const SOURCE_ROOT = join(process.cwd(), 'src');
 const SELF = 'components/focusViewGone.test.ts';
 
 /**
- * The five names the overlay was built out of, each anchored so a longer
- * identifier that merely contains one does not count as a survivor.
+ * The names the overlay was built out of, each anchored so a longer identifier
+ * that merely contains one does not count as a survivor, plus the two word
+ * spelling every one of them walked past while it stood in a comment.
  */
 const RETIRED: Array<[string, RegExp]> = [
   ['FocusView', /\bFocusView\b/],
@@ -25,6 +26,10 @@ const RETIRED: Array<[string, RegExp]> = [
   ['focusExit', /\bfocusExit\b/],
   ['Open.focus', /\bOpen\s*\.\s*focus\b/],
   ['ViewKind.focus', /\bViewKind\s*\.\s*focus\b/],
+  [
+    'a Focus view, bar or overlay in prose',
+    /\bfocus\s+(?:view|overlay|bar)\b/i,
+  ],
 ];
 
 function sourceFiles(directory: string, found: string[] = []): string[] {
