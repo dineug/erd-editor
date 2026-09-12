@@ -17,9 +17,11 @@ import {
   getHighlightIds,
   getTablePoint,
   getViewHoverTable,
+  getViewPinnedTable,
   getVisibleColumnIds,
   getVisibleIds,
   setViewHoverTable,
+  setViewPinnedTable,
 } from '@/konva/scene/viewLayout';
 import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
@@ -114,10 +116,9 @@ function seedGraph(state: RootState) {
   addRelationship(state, 'cd', ['c', ['c.id']], ['d', ['d.c_id']]);
 }
 
-function openFocus(state: RootState, centerIds: string[], hop = 1) {
-  const view = createSceneView(ViewKind.focus, centerIds);
-  view.hop = hop;
-  state.editor.views.focus = view;
+function openFocused(state: RootState, centerIds: string[]) {
+  const view = createSceneView(ViewKind.flow, centerIds);
+  state.editor.views.flow = view;
   return view;
 }
 
@@ -136,7 +137,7 @@ describe('getTablePoint', () => {
   it('is the table placement in the document, whatever a view has', () => {
     const state = createState();
     const table = addTable(state, 't', [], 120, 340);
-    openFocus(state, ['t']).positions.t = { x: 9, y: 9 };
+    openFocused(state, ['t']).positions.t = { x: 9, y: 9 };
 
     expect(getTablePoint(state, table)).toEqual({ x: 120, y: 340 });
     expect(getTablePoint(state, table, 'document')).toEqual({
@@ -148,9 +149,9 @@ describe('getTablePoint', () => {
   it('is the point the active view placed the table at', () => {
     const state = createState();
     const table = addTable(state, 't', [], 120, 340);
-    openFocus(state, ['t']).positions.t = { x: -50, y: 75 };
+    openFocused(state, ['t']).positions.t = { x: -50, y: 75 };
 
-    expect(getTablePoint(state, table, 'focus')).toEqual({ x: -50, y: 75 });
+    expect(getTablePoint(state, table, 'flow')).toEqual({ x: -50, y: 75 });
     expect(table.ui.x).toBe(120);
   });
 
@@ -158,10 +159,10 @@ describe('getTablePoint', () => {
     const state = createState();
     const table = addTable(state, 't', [], 120, 340);
 
-    expect(getTablePoint(state, table, 'focus')).toEqual({ x: 120, y: 340 });
+    expect(getTablePoint(state, table, 'flow')).toEqual({ x: 120, y: 340 });
 
-    openFocus(state, ['t']);
-    expect(getTablePoint(state, table, 'focus')).toEqual({ x: 120, y: 340 });
+    openFocused(state, ['t']);
+    expect(getTablePoint(state, table, 'flow')).toEqual({ x: 120, y: 340 });
   });
 });
 
@@ -169,7 +170,7 @@ describe('getVisibleColumnIds', () => {
   it('is every row in the document, whatever the view shows', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['b']).showMode = ShowMode.nameOnly;
+    openFocused(state, ['b']).showMode = ShowMode.nameOnly;
     const table = state.collections.tableEntities.b;
 
     expect(getVisibleColumnIds(state, table)).toBe(table.columnIds);
@@ -183,20 +184,20 @@ describe('getVisibleColumnIds', () => {
   it('is no row at all in a name only view', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['b']).showMode = ShowMode.nameOnly;
+    openFocused(state, ['b']).showMode = ShowMode.nameOnly;
 
     expect(
-      getVisibleColumnIds(state, state.collections.tableEntities.b, 'focus')
+      getVisibleColumnIds(state, state.collections.tableEntities.b, 'flow')
     ).toEqual([]);
   });
 
   it('is every row in an all fields view', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['b']).showMode = ShowMode.allFields;
+    openFocused(state, ['b']).showMode = ShowMode.allFields;
 
     expect(
-      getVisibleColumnIds(state, state.collections.tableEntities.b, 'focus')
+      getVisibleColumnIds(state, state.collections.tableEntities.b, 'flow')
     ).toEqual(['b.id', 'b.a_id', 'b.note']);
   });
 
@@ -207,11 +208,11 @@ describe('getVisibleColumnIds', () => {
   it('keeps the flagged rows and the relationship ends in a keys only view', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['c']);
+    openFocused(state, ['c']);
     const { b, c } = state.collections.tableEntities;
 
-    expect(getVisibleColumnIds(state, b, 'focus')).toEqual(['b.id', 'b.a_id']);
-    expect(getVisibleColumnIds(state, c, 'focus')).toEqual(['c.id', 'c.b_ref']);
+    expect(getVisibleColumnIds(state, b, 'flow')).toEqual(['b.id', 'b.a_id']);
+    expect(getVisibleColumnIds(state, c, 'flow')).toEqual(['c.id', 'c.b_ref']);
   });
 
   it('keeps a relationship end that starts on the table as well as one that ends there', () => {
@@ -219,13 +220,13 @@ describe('getVisibleColumnIds', () => {
     addTable(state, 's', [{ id: 's.left' }, { id: 's.other' }]);
     addTable(state, 't', [{ id: 't.right' }]);
     addRelationship(state, 'st', ['s', ['s.left']], ['t', ['t.right']]);
-    openFocus(state, ['s']);
+    openFocused(state, ['s']);
 
     expect(
-      getVisibleColumnIds(state, state.collections.tableEntities.s, 'focus')
+      getVisibleColumnIds(state, state.collections.tableEntities.s, 'flow')
     ).toEqual(['s.left']);
     expect(
-      getVisibleColumnIds(state, state.collections.tableEntities.t, 'focus')
+      getVisibleColumnIds(state, state.collections.tableEntities.t, 'flow')
     ).toEqual(['t.right']);
   });
 
@@ -233,10 +234,10 @@ describe('getVisibleColumnIds', () => {
   it('is no row for a table with no key in a keys only view', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['e']);
+    openFocused(state, ['e']);
 
     expect(
-      getVisibleColumnIds(state, state.collections.tableEntities.e, 'focus')
+      getVisibleColumnIds(state, state.collections.tableEntities.e, 'flow')
     ).toEqual([]);
   });
 
@@ -245,7 +246,7 @@ describe('getVisibleColumnIds', () => {
     seedGraph(state);
 
     expect(
-      getVisibleColumnIds(state, state.collections.tableEntities.c, 'focus')
+      getVisibleColumnIds(state, state.collections.tableEntities.c, 'flow')
     ).toEqual(['c.id', 'c.b_ref', 'c.plain']);
   });
 });
@@ -254,7 +255,7 @@ describe('getVisibleIds', () => {
   it('is the document itself for the document, by the very lists it keeps', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a']);
+    openFocused(state, ['a']);
 
     const ids = getVisibleIds(state);
 
@@ -268,7 +269,7 @@ describe('getVisibleIds', () => {
     const state = createState();
     seedGraph(state);
 
-    expect(getVisibleIds(state, 'focus')).toEqual({
+    expect(getVisibleIds(state, 'flow')).toEqual({
       tableIds: [],
       memoIds: [],
       relationshipIds: [],
@@ -276,41 +277,36 @@ describe('getVisibleIds', () => {
   });
 
   /** AC-22 and AC-64. One center, its neighbours, the relationships between them, no memo. */
-  it('shows a Focus center with its neighbours one hop out, and no memo', () => {
+  it('shows a center with its neighbours one hop out, and no memo', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['b']);
+    openFocused(state, ['b']);
 
-    expect(getVisibleIds(state, 'focus')).toEqual({
+    expect(getVisibleIds(state, 'flow')).toEqual({
       tableIds: ['a', 'b', 'c'],
       memoIds: [],
       relationshipIds: ['ab', 'bc'],
     });
   });
 
-  /** AC-23. */
-  it('reaches two hops out once the view asks for them', () => {
+  /** AC-51. The reach is one hop and no more: c is two out from a and stays out. */
+  it('reaches one hop out and no further', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a'], 2);
+    openFocused(state, ['a']);
 
-    expect(getVisibleIds(state, 'focus').tableIds).toEqual(['a', 'b', 'c']);
-    expect(getVisibleIds(state, 'focus').relationshipIds).toEqual(['ab', 'bc']);
+    expect(getVisibleIds(state, 'flow').tableIds).toEqual(['a', 'b']);
+    expect(getVisibleIds(state, 'flow').relationshipIds).toEqual(['ab']);
   });
 
   /** AC-24. */
   it('is the union of every center and its neighbours', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a', 'd']);
+    openFocused(state, ['a', 'd']);
 
-    expect(getVisibleIds(state, 'focus').tableIds).toEqual([
-      'a',
-      'b',
-      'c',
-      'd',
-    ]);
-    expect(getVisibleIds(state, 'focus').relationshipIds).toEqual([
+    expect(getVisibleIds(state, 'flow').tableIds).toEqual(['a', 'b', 'c', 'd']);
+    expect(getVisibleIds(state, 'flow').relationshipIds).toEqual([
       'ab',
       'bc',
       'cd',
@@ -320,9 +316,9 @@ describe('getVisibleIds', () => {
   it('leaves out a relationship whose other end the view does not show', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a']);
+    openFocused(state, ['a']);
 
-    expect(getVisibleIds(state, 'focus')).toEqual({
+    expect(getVisibleIds(state, 'flow')).toEqual({
       tableIds: ['a', 'b'],
       memoIds: [],
       relationshipIds: ['ab'],
@@ -332,9 +328,9 @@ describe('getVisibleIds', () => {
   it('shows an isolated center on its own', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['e'], 2);
+    openFocused(state, ['e']);
 
-    expect(getVisibleIds(state, 'focus')).toEqual({
+    expect(getVisibleIds(state, 'flow')).toEqual({
       tableIds: ['e'],
       memoIds: [],
       relationshipIds: [],
@@ -345,14 +341,14 @@ describe('getVisibleIds', () => {
   it('drops a neighbour and a center the document no longer holds', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['b', 'gone']);
+    openFocused(state, ['b', 'gone']);
 
     state.doc.tableIds = state.doc.tableIds.filter(id => id !== 'c');
     state.doc.relationshipIds = state.doc.relationshipIds.filter(
       id => id !== 'bc'
     );
 
-    expect(getVisibleIds(state, 'focus')).toEqual({
+    expect(getVisibleIds(state, 'flow')).toEqual({
       tableIds: ['a', 'b'],
       memoIds: [],
       relationshipIds: ['ab'],
@@ -416,20 +412,13 @@ describe('getVisibleIds', () => {
     expect(getActiveView(state)).toBeNull();
   });
 
-  it('shows each view its own set while a Focus view is open over a Flow view', () => {
+  it('keeps the placement it landed while the centers narrow what it shows', () => {
     const state = createState();
     seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-    openFocus(state, ['d']);
+    const view = openFlow(state, ['a', 'b', 'c', 'd', 'e']);
+    view.centerIds = ['d'];
 
-    expect(getVisibleIds(state, 'focus').tableIds).toEqual(['c', 'd']);
-    expect(getVisibleIds(state, 'flow').tableIds).toEqual([
-      'a',
-      'b',
-      'c',
-      'd',
-      'e',
-    ]);
+    expect(getVisibleIds(state, 'flow').tableIds).toEqual(['c', 'd']);
     expect(
       getTablePoint(state, state.collections.tableEntities.d, 'flow')
     ).toEqual({ x: 300, y: 0 });
@@ -442,41 +431,41 @@ describe('the table a view hover rests on', () => {
     const other = createState();
     seedGraph(one);
     seedGraph(other);
-    openFocus(one, ['a']);
-    openFocus(other, ['a']);
+    openFocused(one, ['a']);
+    openFocused(other, ['a']);
 
-    expect(getViewHoverTable(one, 'focus')).toBeNull();
+    expect(getViewHoverTable(one, 'flow')).toBeNull();
 
-    setViewHoverTable(one, 'a', 'focus');
-    expect(getViewHoverTable(one, 'focus')).toBe('a');
-    expect(getViewHoverTable(other, 'focus')).toBeNull();
+    setViewHoverTable(one, 'a', 'flow');
+    expect(getViewHoverTable(one, 'flow')).toBe('a');
+    expect(getViewHoverTable(other, 'flow')).toBeNull();
 
-    setViewHoverTable(one, null, 'focus');
-    expect(getViewHoverTable(one, 'focus')).toBeNull();
+    setViewHoverTable(one, null, 'flow');
+    expect(getViewHoverTable(one, 'flow')).toBeNull();
   });
 
   it('holds nothing while no view is open', () => {
     const state = createState();
     seedGraph(state);
 
-    setViewHoverTable(state, 'a', 'focus');
+    setViewHoverTable(state, 'a', 'flow');
 
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
+    expect(getViewHoverTable(state, 'flow')).toBeNull();
   });
 
   /** AC-63. A hover belongs to the view it was taken in: a close drops it, and so does a reopen. */
   it('is dropped with the view it was taken in', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a']);
-    setViewHoverTable(state, 'a', 'focus');
+    openFocused(state, ['a']);
+    setViewHoverTable(state, 'a', 'flow');
 
-    state.editor.views.focus = null;
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
+    state.editor.views.flow = null;
+    expect(getViewHoverTable(state, 'flow')).toBeNull();
 
-    openFocus(state, ['a']);
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
-    expect(getHighlightIds(state, 'focus')).toEqual({
+    openFocused(state, ['a']);
+    expect(getViewHoverTable(state, 'flow')).toBeNull();
+    expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['a', 'b']),
       relationshipIds: new Set(['ab']),
     });
@@ -485,86 +474,214 @@ describe('the table a view hover rests on', () => {
   it('is dropped by the table that held it as it leaves the scene', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a']);
-    setViewHoverTable(state, 'b', 'focus');
+    openFocused(state, ['a']);
+    setViewHoverTable(state, 'b', 'flow');
 
     // A table culled out from under the pointer sends no mouseleave, and
     // another that never held the hover must not drop it on its way out.
-    clearViewHoverTable(state, 'c', 'focus');
-    expect(getViewHoverTable(state, 'focus')).toBe('b');
+    clearViewHoverTable(state, 'c', 'flow');
+    expect(getViewHoverTable(state, 'flow')).toBe('b');
 
-    clearViewHoverTable(state, 'b', 'focus');
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
+    clearViewHoverTable(state, 'b', 'flow');
+    expect(getViewHoverTable(state, 'flow')).toBeNull();
   });
 
   it('is dropped by that table even once the view it was taken in is gone', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a']);
-    setViewHoverTable(state, 'b', 'focus');
+    openFocused(state, ['a']);
+    setViewHoverTable(state, 'b', 'flow');
 
-    state.editor.views.focus = null;
-    clearViewHoverTable(state, 'b', 'focus');
-    openFocus(state, ['b']);
+    state.editor.views.flow = null;
+    clearViewHoverTable(state, 'b', 'flow');
+    openFocused(state, ['b']);
 
     // Nothing of the closed session is left to take back: the entry is gone
     // rather than merely ignored, so neither map holds this editor any more.
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
+    expect(getViewHoverTable(state, 'flow')).toBeNull();
   });
 
-  it('is dropped when the Focus view over a Flow view closes, and was never the Flow scene hover', () => {
+  it('is dropped when the view closes, and was never the document scene hover', () => {
     const state = createState();
     seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-    openFocus(state, ['a']);
-    setViewHoverTable(state, 'a', 'focus');
+    openFocused(state, ['a']);
+    setViewHoverTable(state, 'a', 'flow');
+    expect(getViewHoverTable(state, 'document')).toBeNull();
+
+    state.editor.views.flow = null;
+
     expect(getViewHoverTable(state, 'flow')).toBeNull();
     expect(getHighlightIds(state, 'flow').tableIds).toEqual(new Set());
-
-    state.editor.views.focus = null;
-
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
-    expect(getHighlightIds(state, 'focus').tableIds).toEqual(new Set());
   });
 
   it('is dropped only by a table of the scene it was taken in', () => {
     const state = createState();
     seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-    openFocus(state, ['a']);
-    setViewHoverTable(state, 'b', 'focus');
+    openFocused(state, ['a']);
+    setViewHoverTable(state, 'b', 'flow');
 
-    // The Flow scene under the overlay unmounting its b, say on a tab
-    // switch, is not the Focus b leaving the pointer.
+    // The document scene unmounting its b, say on a tab switch, is not the
+    // view's b leaving the pointer.
+    clearViewHoverTable(state, 'b', 'document');
+    expect(getViewHoverTable(state, 'flow')).toBe('b');
+
     clearViewHoverTable(state, 'b', 'flow');
-    expect(getViewHoverTable(state, 'focus')).toBe('b');
-
-    clearViewHoverTable(state, 'b', 'focus');
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
+    expect(getViewHoverTable(state, 'flow')).toBeNull();
   });
 
-  it('is kept through a leave on the scene of the other kind, open or not', () => {
+  it('is kept through a leave on the scene of the other source', () => {
     const state = createState();
     seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-    openFocus(state, ['a']);
-    setViewHoverTable(state, 'b', 'focus');
+    openFocused(state, ['a']);
+    setViewHoverTable(state, 'b', 'flow');
 
-    // The pointer crossing from the Flow scene onto the overlay is a
-    // mouseleave on a Flow table, and not the Focus b leaving the pointer.
-    setViewHoverTable(state, null, 'flow');
-    expect(getViewHoverTable(state, 'focus')).toBe('b');
-    expect(getHighlightIds(state, 'focus').tableIds).toEqual(
+    // The pointer crossing from the document scene onto the view is a
+    // mouseleave on a document table, and not the view's b leaving it.
+    setViewHoverTable(state, null, 'document');
+    expect(getViewHoverTable(state, 'flow')).toBe('b');
+    expect(getHighlightIds(state, 'flow').tableIds).toEqual(
       new Set(['a', 'b'])
     );
 
-    state.editor.views.flow = null;
-    setViewHoverTable(state, null, 'flow');
-    setViewHoverTable(state, 'c', 'flow');
-    expect(getViewHoverTable(state, 'focus')).toBe('b');
+    setViewHoverTable(state, 'c', 'document');
+    expect(getViewHoverTable(state, 'flow')).toBe('b');
 
-    setViewHoverTable(state, null, 'focus');
-    expect(getViewHoverTable(state, 'focus')).toBeNull();
+    setViewHoverTable(state, null, 'flow');
+    expect(getViewHoverTable(state, 'flow')).toBeNull();
+  });
+});
+
+describe('the table a view pin holds', () => {
+  it('starts on none and holds what it is told, by editor', () => {
+    const one = createState();
+    const other = createState();
+    seedGraph(one);
+    seedGraph(other);
+    openFocused(one, ['a']);
+    openFocused(other, ['a']);
+
+    expect(getViewPinnedTable(one, 'flow')).toBeNull();
+
+    setViewPinnedTable(one, 'a', 'flow');
+    expect(getViewPinnedTable(one, 'flow')).toBe('a');
+    expect(getViewPinnedTable(other, 'flow')).toBeNull();
+  });
+
+  /** AC-43. The gesture is its own toggle: the same table twice lets it go, another takes it over. */
+  it('lets the table it holds go on a second take, and moves to any other', () => {
+    const state = createState();
+    seedGraph(state);
+    openFocused(state, ['a']);
+
+    setViewPinnedTable(state, 'a', 'flow');
+    setViewPinnedTable(state, 'a', 'flow');
+    expect(getViewPinnedTable(state, 'flow')).toBeNull();
+
+    setViewPinnedTable(state, 'a', 'flow');
+    setViewPinnedTable(state, 'b', 'flow');
+    expect(getViewPinnedTable(state, 'flow')).toBe('b');
+  });
+
+  it('holds nothing while no view is open', () => {
+    const state = createState();
+    seedGraph(state);
+
+    setViewPinnedTable(state, 'a', 'flow');
+
+    expect(getViewPinnedTable(state, 'flow')).toBeNull();
+  });
+
+  /**
+   * The whole cleanup story of the slot: a pin belongs to the view it was
+   * taken in, so a close drops it and a reopen does not revive it. Nothing
+   * else clears it, which is why the identity is what has to be held still.
+   */
+  it('is dropped with the view it was taken in, and a reopen does not revive it', () => {
+    const state = createState();
+    seedGraph(state);
+    openFocused(state, ['a']);
+    setViewPinnedTable(state, 'a', 'flow');
+
+    state.editor.views.flow = null;
+    expect(getViewPinnedTable(state, 'flow')).toBeNull();
+
+    openFocused(state, ['b']);
+    expect(getViewPinnedTable(state, 'flow')).toBeNull();
+    expect(getHighlightIds(state, 'flow')).toEqual({
+      tableIds: new Set(['a', 'b', 'c']),
+      relationshipIds: new Set(['ab', 'bc']),
+    });
+  });
+
+  it('takes the same table again in the view that reopened, rather than reading the old take as a release', () => {
+    const state = createState();
+    seedGraph(state);
+    openFocused(state, ['a']);
+    setViewPinnedTable(state, 'a', 'flow');
+
+    state.editor.views.flow = null;
+    openFocused(state, ['a']);
+    setViewPinnedTable(state, 'a', 'flow');
+
+    expect(getViewPinnedTable(state, 'flow')).toBe('a');
+  });
+
+  it('is never the document scene pin, whichever source asks', () => {
+    const state = createState();
+    seedGraph(state);
+    openFocused(state, ['a']);
+
+    setViewPinnedTable(state, 'a', 'document');
+    expect(getViewPinnedTable(state, 'flow')).toBeNull();
+
+    setViewPinnedTable(state, 'a', 'flow');
+    expect(getViewPinnedTable(state, 'document')).toBeNull();
+    expect(getHighlightIds(state, 'document')).toEqual({
+      tableIds: new Set(),
+      relationshipIds: new Set(),
+    });
+  });
+
+  /** AC-43 in the whole display set, where a pin is the only thing lighting anything. */
+  it('lights the table it holds and its one hop with no pointer on the scene', () => {
+    const state = createState();
+    seedGraph(state);
+    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
+
+    expect(getHighlightIds(state, 'flow').tableIds).toEqual(new Set());
+
+    setViewPinnedTable(state, 'c', 'flow');
+    expect(getHighlightIds(state, 'flow')).toEqual({
+      tableIds: new Set(['b', 'c', 'd']),
+      relationshipIds: new Set(['bc', 'cd']),
+    });
+  });
+
+  it('lights beside a hover rather than in its place', () => {
+    const state = createState();
+    seedGraph(state);
+    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
+
+    setViewPinnedTable(state, 'a', 'flow');
+    setViewHoverTable(state, 'd', 'flow');
+
+    expect(getHighlightIds(state, 'flow')).toEqual({
+      tableIds: new Set(['a', 'b', 'c', 'd']),
+      relationshipIds: new Set(['ab', 'cd']),
+    });
+  });
+
+  it('lights nothing while the table it holds is one the view does not show', () => {
+    const state = createState();
+    seedGraph(state);
+    openFocused(state, ['a']);
+    setViewPinnedTable(state, 'd', 'flow');
+
+    expect(getViewPinnedTable(state, 'flow')).toBe('d');
+    expect(getHighlightIds(state, 'flow')).toEqual({
+      tableIds: new Set(['a', 'b']),
+      relationshipIds: new Set(['ab']),
+    });
   });
 });
 
@@ -572,47 +689,57 @@ describe('getHighlightIds', () => {
   it('lights nothing while no view is open', () => {
     const state = createState();
     seedGraph(state);
-    setViewHoverTable(state, 'a', 'focus');
+    setViewHoverTable(state, 'a', 'flow');
 
-    expect(getHighlightIds(state, 'focus')).toEqual({
+    expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(),
       relationshipIds: new Set(),
     });
   });
 
-  /** AC-27 and AC-45. The centers and their one hop light; a table two hops out does not. */
-  it('lights the centers, their one hop and the relationships between, and not the second hop', () => {
+  /** AC-27 and AC-42. The centers and their one hop light; a table two hops out is not even shown. */
+  it('lights the centers, their one hop and the relationships between', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a'], 2);
+    openFocused(state, ['a']);
 
-    expect(getHighlightIds(state, 'focus')).toEqual({
+    expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['a', 'b']),
       relationshipIds: new Set(['ab']),
     });
   });
 
-  /** AC-45. A hover lights the hovered table and its one hop as well. */
-  it('lights the hovered table and its one hop beside the centers', () => {
+  /**
+   * AC-42. A hover lights the hovered table and its one hop as well, which in
+   * a narrowed view is a connector between two neighbours that stood grey.
+   */
+  it('lights a neighbour to neighbour connector once one of its ends is hovered', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a'], 2);
-    setViewHoverTable(state, 'c', 'focus');
+    addRelationship(state, 'ac', ['a', ['a.id']], ['c', ['c.plain']]);
+    openFocused(state, ['a']);
 
-    expect(getHighlightIds(state, 'focus')).toEqual({
+    expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['a', 'b', 'c']),
-      relationshipIds: new Set(['ab', 'bc']),
+      relationshipIds: new Set(['ab', 'ac']),
+    });
+
+    setViewHoverTable(state, 'b', 'flow');
+
+    expect(getHighlightIds(state, 'flow')).toEqual({
+      tableIds: new Set(['a', 'b', 'c']),
+      relationshipIds: new Set(['ab', 'ac', 'bc']),
     });
   });
 
   it('keeps the light inside what the view shows', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['b']);
-    setViewHoverTable(state, 'c', 'focus');
+    openFocused(state, ['b']);
+    setViewHoverTable(state, 'c', 'flow');
 
     // c is shown but d, its other neighbour, is not; a hover on c lights c and b only.
-    expect(getHighlightIds(state, 'focus')).toEqual({
+    expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['a', 'b', 'c']),
       relationshipIds: new Set(['ab', 'bc']),
     });
@@ -621,10 +748,10 @@ describe('getHighlightIds', () => {
   it('ignores a hover on a table the view does not show', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['a']);
-    setViewHoverTable(state, 'd', 'focus');
+    openFocused(state, ['a']);
+    setViewHoverTable(state, 'd', 'flow');
 
-    expect(getHighlightIds(state, 'focus')).toEqual({
+    expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['a', 'b']),
       relationshipIds: new Set(['ab']),
     });
@@ -691,22 +818,15 @@ describe('getFadedIds', () => {
     expect(getFadedIds(state)).toBeNull();
   });
 
-  it('fades nothing in a Focus view, which lights its centers instead', () => {
+  it('fades nothing in a view narrowed to its centers, where the light reaches all it shows', () => {
     const state = createState();
     seedGraph(state);
-    openFocus(state, ['b']);
-    setViewHoverTable(state, 'c', 'focus');
+    openFocused(state, ['b']);
+    setViewHoverTable(state, 'c', 'flow');
 
-    expect(getFadedIds(state, 'focus')).toBeNull();
-  });
-
-  it('keeps a Focus hover over a Flow view out of the Flow scene', () => {
-    const state = createState();
-    seedGraph(state);
-    openFlow(state, ['a', 'b', 'c', 'd', 'e']);
-    openFocus(state, ['b']);
-    setViewHoverTable(state, 'c', 'focus');
-
-    expect(getFadedIds(state, 'flow')).toBeNull();
+    expect(getFadedIds(state, 'flow')).toEqual({
+      tableIds: new Set(),
+      relationshipIds: new Set(),
+    });
   });
 });

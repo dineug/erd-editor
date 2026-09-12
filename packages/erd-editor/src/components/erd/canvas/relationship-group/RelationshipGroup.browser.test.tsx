@@ -149,9 +149,9 @@ async function createViewApp(): Promise<{
       start: { tableId: 't1', columnIds: [] },
       end: { tableId: 't2', columnIds: [] },
     }),
-    viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
+    viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
     viewSetLayoutAction({
-      kind: ViewKind.focus,
+      kind: ViewKind.flow,
       positions: { t1: { x: 5_000, y: -3_000 }, t2: { x: 5_600, y: -3_000 } },
     })
   );
@@ -159,7 +159,7 @@ async function createViewApp(): Promise<{
   // means the sorts below are the last word rather than one overwritten later.
   await tick(50);
   relationshipSort(store.state);
-  relationshipSort(store.state, 'focus');
+  relationshipSort(store.state, 'flow');
 
   return { app, relationship: store.state.collections.relationshipEntities.r1 };
 }
@@ -233,13 +233,13 @@ describe('RelationshipGroup', () => {
 
     const viewOverView = await mountGroup({
       app,
-      source: 'focus',
+      source: 'flow',
       relationships,
       viewport: aroundView,
     });
     const viewOverDocument = await mountGroup({
       app,
-      source: 'focus',
+      source: 'flow',
       relationships,
       viewport: aroundDocument,
     });

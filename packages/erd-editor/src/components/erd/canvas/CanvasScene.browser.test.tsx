@@ -561,8 +561,8 @@ describe('a scene the context points at a view', () => {
   /** The Focus view the overlay opens: t1 at the centre, one hop, key rows. */
   function openFocus(app: AppContext) {
     app.store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
-      viewSetLayoutAction({ kind: ViewKind.focus, positions: VIEW_POINTS })
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+      viewSetLayoutAction({ kind: ViewKind.flow, positions: VIEW_POINTS })
     );
   }
 
@@ -571,7 +571,7 @@ describe('a scene the context points at a view', () => {
     seedDocument(app);
     openFocus(app);
 
-    return mountScene({ app, source: 'focus' });
+    return mountScene({ app, source: 'flow' });
   }
 
   const tableOf = (stage: Stage, tableId: string) =>
@@ -602,7 +602,9 @@ describe('a scene the context points at a view', () => {
   it('keeps its own spelling at a zoom the document would go high level at', async () => {
     const { app, stage } = await mountFocusScene();
 
-    app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.3 }));
+    app.store.dispatchSync(
+      viewChangeZoomLevelAction({ value: 0.3, kind: ViewKind.flow })
+    );
     await flush();
 
     expect(stage.findOne<Layer>('.scene')!.scaleX()).toBe(0.3);
@@ -630,7 +632,7 @@ describe('a scene the context points at a view', () => {
     seedDocument(app);
     const erd = await mountScene({ app });
     openFocus(app);
-    const focus = await mountScene({ app, source: 'focus' });
+    const focus = await mountScene({ app, source: 'flow' });
     await flush();
 
     expect(tableIdsOf(erd.stage)).toEqual(['table-t1', 'table-t2', 'table-t3']);
@@ -650,7 +652,7 @@ describe('a scene the context points at a view', () => {
     expect(erd.stage.find('.high-level-table')).toHaveLength(3);
 
     openFocus(app);
-    const focus = await mountScene({ app, source: 'focus' });
+    const focus = await mountScene({ app, source: 'flow' });
     await flush();
 
     expect(erd.stage.find('.high-level-table')).toHaveLength(3);
@@ -667,7 +669,7 @@ describe('a scene the context points at a view', () => {
     );
     openFocus(app);
     const erd = await mountScene({ app });
-    const focus = await mountScene({ app, source: 'focus' });
+    const focus = await mountScene({ app, source: 'flow' });
     await flush();
 
     // The bit is the document scene's setting, and the links are what the
@@ -708,7 +710,7 @@ describe('a scene the context points at a view', () => {
     seedDocument(app);
     openFocus(app);
     const erd = await mountScene({ app });
-    const focus = await mountScene({ app, source: 'focus' });
+    const focus = await mountScene({ app, source: 'flow' });
     await flush();
     await whenPainted();
 
@@ -718,7 +720,7 @@ describe('a scene the context points at a view', () => {
     moveScenePointer(focus.stage, box.x + box.width / 2, box.y + 4);
     await flush();
     await whenDrawn();
-    expect(getViewHoverTable(app.store.state, 'focus')).toBe('t1');
+    expect(getViewHoverTable(app.store.state, 'flow')).toBe('t1');
 
     // Both scenes stand on one editor id, and the ERD going away unmounts a
     // t1 of its own that never held the hover; the pointer is still on the
@@ -726,6 +728,6 @@ describe('a scene the context points at a view', () => {
     erd.destroy();
     await flush();
 
-    expect(getViewHoverTable(app.store.state, 'focus')).toBe('t1');
+    expect(getViewHoverTable(app.store.state, 'flow')).toBe('t1');
   });
 });

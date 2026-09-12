@@ -9,7 +9,6 @@ import {
 } from '@/engine/modules/editor/state';
 import {
   changeVisualizationModeAction,
-  viewChangeHopAction,
   viewChangeShowModeAction,
   viewCloseAction,
   viewMoveTableAction,
@@ -49,7 +48,7 @@ vi.mock('@/utils/draw-relationship/sort', async importOriginal => {
   return { ...actual, relationshipSort: vi.fn(actual.relationshipSort) };
 });
 
-const FOCUS_POSITIONS: Record<string, Point> = {
+const FOCUSED_POSITIONS: Record<string, Point> = {
   t1: { x: 5_000, y: -3_000 },
   t2: { x: 5_600, y: -3_000 },
 };
@@ -80,7 +79,7 @@ afterEach(() => {
 });
 
 /**
- * t1 joined to t2, and t3 on its own with a column, so a Focus view on t1
+ * t1 joined to t2, and t3 on its own with a column, so a view standing on t1
  * shows the first two and an edit to t3 is an edit outside the view.
  */
 function createScene(): RxStore {
@@ -119,10 +118,12 @@ function createScene(): RxStore {
 const relationshipOf = (store: RxStore) =>
   store.state.collections.relationshipEntities.r12;
 
-async function openFocus(store: RxStore) {
+async function openFocused(store: RxStore) {
   store.dispatchSync(
-    viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
-    viewSetLayoutAction({ kind: ViewKind.focus, positions: FOCUS_POSITIONS })
+    changeCanvasTypeAction({ value: CanvasType.visualization }),
+    changeVisualizationModeAction({ value: VisualizationMode.flow }),
+    viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+    viewSetLayoutAction({ kind: ViewKind.flow, positions: FOCUSED_POSITIONS })
   );
   await settle();
   clearSorts();
@@ -159,15 +160,13 @@ describe('the view sort hook registration', () => {
       'editor.viewMoveTable',
       'editor.viewSetLayout',
       'editor.viewChangeShowMode',
-      'editor.viewChangeHop',
       'editor.viewSetCenters',
-      'editor.viewHistoryMove',
     ]);
   });
 });
 
 describe('the view sort hook on the view actions', () => {
-  /** AC-57. Each of the five runs one view sort and no document sort. */
+  /** AC-57. Each of the four runs one view sort and no document sort. */
   it.each([
     [
       'viewMoveTable',
@@ -177,7 +176,7 @@ describe('the view sort hook on the view actions', () => {
       'viewSetLayout',
       () =>
         viewSetLayoutAction({
-          kind: ViewKind.focus,
+          kind: ViewKind.flow,
           positions: { t1: { x: 7_000, y: 0 }, t2: { x: 7_600, y: 0 } },
         }),
     ],
@@ -185,19 +184,15 @@ describe('the view sort hook on the view actions', () => {
       'viewChangeShowMode',
       () => viewChangeShowModeAction({ value: ShowMode.allFields }),
     ],
-    [
-      'viewSetCenters',
-      () => viewSetCentersAction({ tableIds: ['t2'], push: true }),
-    ],
-    ['viewChangeHop', () => viewChangeHopAction({ value: 2 })],
+    ['viewSetCenters', () => viewSetCentersAction({ tableIds: ['t2'] })],
   ])('%s runs one view sort and no document sort', async (_, action) => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
     store.dispatchSync(action());
     await settle();
 
-    expect(sorts('focus')).toBe(1);
+    expect(sorts('flow')).toBe(1);
     expect(sorts('document')).toBe(0);
   });
 
@@ -205,23 +200,30 @@ describe('the view sort hook on the view actions', () => {
     const store = createScene();
 
     store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
+      changeCanvasTypeAction({ value: CanvasType.visualization }),
+      changeVisualizationModeAction({ value: VisualizationMode.flow })
     );
-    expect(sorts('focus')).toBe(0);
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] })
+    );
+    expect(sorts('flow')).toBe(0);
     await settle();
-    expect(sorts('focus')).toBe(1);
-    expect(getAnchors(relationshipOf(store), 'focus').start.x).toBeLessThan(
+    expect(sorts('flow')).toBe(1);
+    expect(getAnchors(relationshipOf(store), 'flow').start.x).toBeLessThan(
       1_000
     );
 
     store.dispatchSync(
-      viewSetLayoutAction({ kind: ViewKind.focus, positions: FOCUS_POSITIONS })
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: FOCUSED_POSITIONS,
+      })
     );
     await settle();
 
-    expect(sorts('focus')).toBe(2);
+    expect(sorts('flow')).toBe(2);
     expect(
-      getAnchors(relationshipOf(store), 'focus').start.x
+      getAnchors(relationshipOf(store), 'flow').start.x
     ).toBeGreaterThanOrEqual(5_000);
     expect(sorts('document')).toBe(0);
   });
@@ -229,20 +231,20 @@ describe('the view sort hook on the view actions', () => {
   /** AC-66. The window is 5 ms, trailing only. */
   it('collapses a burst into one trailing view sort', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
-    store.dispatchSync(viewChangeHopAction({ value: 2 }));
-    store.dispatchSync(viewChangeHopAction({ value: 1 }));
-    store.dispatchSync(viewChangeHopAction({ value: 2 }));
-    expect(sorts('focus')).toBe(0);
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    expect(sorts('flow')).toBe(0);
     await settle();
 
-    expect(sorts('focus')).toBe(1);
+    expect(sorts('flow')).toBe(1);
   });
 
   it('does not sort for a scroll or a zoom of the view', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
     store.dispatchSync(
       viewScrollToAction({ originX: 40, originY: 60 }),
@@ -250,22 +252,22 @@ describe('the view sort hook on the view actions', () => {
     );
     await settle();
 
-    expect(sorts('focus')).toBe(0);
+    expect(sorts('flow')).toBe(0);
     expect(sorts('document')).toBe(0);
   });
 
   it('does not sort while no view is open', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
     await settle();
-    expect(sorts('focus')).toBe(0);
+    expect(sorts('flow')).toBe(0);
 
-    store.dispatchSync(viewChangeHopAction({ value: 2 }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
     await settle();
 
-    expect(sorts('focus')).toBe(0);
+    expect(sorts('flow')).toBe(0);
   });
 });
 
@@ -273,25 +275,25 @@ describe('the view sort hook on the document actions', () => {
   /** AC-66. An edit to a table the view does not show leaves the view alone. */
   it('does not sort the view for an edit outside what it shows, and does for one inside', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
     store.dispatchSync(
       shared(changeColumnNameAction({ id: 'c-t3', tableId: 't3', value: 'x' }))
     );
     await settle();
-    expect(sorts('focus')).toBe(0);
+    expect(sorts('flow')).toBe(0);
     expect(sorts('document')).toBe(1);
 
     store.dispatchSync(
       shared(changeColumnNameAction({ id: 'c-t2', tableId: 't2', value: 'y' }))
     );
     await settle();
-    expect(sorts('focus')).toBe(1);
+    expect(sorts('flow')).toBe(1);
     expect(sorts('document')).toBe(2);
   });
 
   /**
-   * AC-12. Focus opens on the key rows, so a remote key flag on a shown table
+   * AC-12. A narrowed view opens on the key rows, so a remote key flag on a shown table
    * adds a row to its box; the document sort never sees the flag, the view's does.
    */
   it('sorts the view for a remote key flag on a table it shows, which the document sort ignores', async () => {
@@ -303,9 +305,9 @@ describe('the view sort hook on the document actions', () => {
       name: 'c-t2-b',
     });
     state.collections.tableEntities.t2.columnIds.push('c-t2-b');
-    await openFocus(store);
+    await openFocused(store);
     const relationship = relationshipOf(store);
-    const before = getAnchors(relationship, 'focus').end.y;
+    const before = getAnchors(relationship, 'flow').end.y;
 
     store.dispatchSync(
       shared(
@@ -318,18 +320,18 @@ describe('the view sort hook on the document actions', () => {
     );
     await settle();
 
-    expect(sorts('focus')).toBe(1);
+    expect(sorts('flow')).toBe(1);
     expect(sorts('document')).toBe(0);
-    expect(getAnchors(relationship, 'focus').end).toMatchObject({
+    expect(getAnchors(relationship, 'flow').end).toMatchObject({
       x: 5_600,
       direction: Direction.left,
     });
-    expect(getAnchors(relationship, 'focus').end.y).toBeGreaterThan(before);
+    expect(getAnchors(relationship, 'flow').end.y).toBeGreaterThan(before);
   });
 
   it('does not sort the view for a key flag on a table outside it', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
     store.dispatchSync(
       shared(
@@ -338,52 +340,52 @@ describe('the view sort hook on the document actions', () => {
     );
     await settle();
 
-    expect(sorts('focus')).toBe(0);
+    expect(sorts('flow')).toBe(0);
   });
 
   it('does not sort the view for a table added outside it', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
     store.dispatchSync(
       shared(addTableAction({ id: 't4', ui: { x: 0, y: 900, zIndex: 9 } }))
     );
     await settle();
 
-    expect(sorts('focus')).toBe(0);
+    expect(sorts('flow')).toBe(0);
     expect(sorts('document')).toBe(1);
   });
 
   it('does not sort the view for a show bit, which a view never reads', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
 
     store.dispatchSync(
       shared(changeShowAction({ show: Show.tableComment, value: false }))
     );
     await settle();
 
-    expect(sorts('focus')).toBe(0);
+    expect(sorts('flow')).toBe(0);
     expect(sorts('document')).toBe(1);
   });
 
   /** AC-13. A neighbour leaving the view is a change to what it shows, though its id has already left. */
   it('sorts the view when a connector it showed is removed', async () => {
     const store = createScene();
-    await openFocus(store);
-    expect(getRoute(relationshipOf(store), 'focus')).toBeDefined();
+    await openFocused(store);
+    expect(getRoute(relationshipOf(store), 'flow')).toBeDefined();
 
     store.dispatchSync(shared(removeRelationshipAction({ id: 'r12' })));
     await settle();
 
-    expect(sorts('focus')).toBe(1);
+    expect(sorts('flow')).toBe(1);
     expect(store.state.doc.relationshipIds).toEqual([]);
   });
 
   /** AC-55. A remote move re-sorts the document onto the entity and the view into its channel. */
   it('keeps the entity on the document while a remote move re-sorts both', async () => {
     const store = createScene();
-    await openFocus(store);
+    await openFocused(store);
     const relationship = relationshipOf(store);
 
     store.dispatchSync(
@@ -392,7 +394,7 @@ describe('the view sort hook on the document actions', () => {
     await settle();
 
     expect(sorts('document')).toBe(1);
-    expect(sorts('focus')).toBe(1);
+    expect(sorts('flow')).toBe(1);
     // The entity sits on t2's document left edge, where the move put it, and
     // the view's end stays on the left edge of the box the view placed.
     expect(store.state.collections.tableEntities.t2.ui.x).toBe(700);
@@ -400,85 +402,18 @@ describe('the view sort hook on the document actions', () => {
       x: 700,
       direction: Direction.left,
     });
-    expect(getAnchors(relationship, 'focus').end).toMatchObject({
+    expect(getAnchors(relationship, 'flow').end).toMatchObject({
       x: 5_600,
       direction: Direction.left,
     });
-    expect(getAnchors(relationship, 'focus').end.y).toBeLessThan(-2_900);
+    expect(getAnchors(relationship, 'flow').end.y).toBeLessThan(-2_900);
   });
 });
 
-describe('the view sort hook with two views open', () => {
-  /** Each view sorts into its own channel: a Focus view opening over a Flow view leaves the Flow geometry as it stood. */
-  it('keeps the Flow view under a Focus view on its own channel, through the open and the close', async () => {
+describe('the view sort hook across the tab', () => {
+  it('sorts the view a move names, whichever view the redirect would reach', async () => {
     const store = createScene();
     await openFlow(store);
-    const relationship = relationshipOf(store);
-    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 28);
-
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
-      viewSetLayoutAction({ kind: ViewKind.focus, positions: FOCUS_POSITIONS })
-    );
-    await settle();
-
-    // Focus opens on the key rows, and the relationship row is one, so the
-    // box is a row taller than the Flow view's header and its side centre lower.
-    expect(sorts('focus')).toBe(1);
-    expect(sorts('flow')).toBe(0);
-    expect(getAnchors(relationship, 'focus').start.y).toBe(-3_000 + 40);
-    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 28);
-    clearSorts();
-
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
-    await settle();
-
-    expect(sorts('flow')).toBe(0);
-    expect(sorts('focus')).toBe(0);
-    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 28);
-    expect(getAnchors(relationship, 'focus')).toBe(relationship);
-    expect(sorts('document')).toBe(0);
-  });
-
-  it('sorts each view for an edit inside what it shows, and only that view', async () => {
-    const store = createScene();
-    await openFlow(store);
-    await openFocus(store);
-
-    store.dispatchSync(
-      shared(changeColumnNameAction({ id: 'c-t3', tableId: 't3', value: 'x' }))
-    );
-    await settle();
-    expect(sorts('flow')).toBe(1);
-    expect(sorts('focus')).toBe(0);
-
-    store.dispatchSync(
-      shared(changeColumnNameAction({ id: 'c-t2', tableId: 't2', value: 'y' }))
-    );
-    await settle();
-    expect(sorts('flow')).toBe(2);
-    expect(sorts('focus')).toBe(1);
-    expect(sorts('document')).toBe(2);
-  });
-
-  it('sorts the active view alone for a view move, which the redirect sends there', async () => {
-    const store = createScene();
-    await openFlow(store);
-    await openFocus(store);
-
-    store.dispatchSync(
-      viewMoveTableAction({ ids: ['t1'], movementX: 10, movementY: 0 })
-    );
-    await settle();
-
-    expect(sorts('focus')).toBe(1);
-    expect(sorts('flow')).toBe(0);
-  });
-
-  it('sorts the view a move names, the Flow view under a Focus overlay included', async () => {
-    const store = createScene();
-    await openFlow(store);
-    await openFocus(store);
 
     store.dispatchSync(
       viewMoveTableAction({
@@ -492,7 +427,6 @@ describe('the view sort hook with two views open', () => {
 
     expect(store.state.editor.views.flow!.positions.t1.x).toBe(1_010);
     expect(sorts('flow')).toBe(1);
-    expect(sorts('focus')).toBe(0);
     expect(sorts('document')).toBe(0);
   });
 

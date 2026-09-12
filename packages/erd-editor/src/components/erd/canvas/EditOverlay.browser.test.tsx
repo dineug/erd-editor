@@ -1461,22 +1461,22 @@ describe('the overlay under a view source', () => {
       `#table-${fixture.tableId}`
     );
 
-  /** Opens a Focus view over the fixture table, shown at a view point of its own. */
-  function openFocusView(fixture: Fixture) {
+  /** Opens a view on the fixture table, shown at a view point of its own. */
+  function openViewOn(fixture: Fixture) {
     fixture.app.store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: [fixture.tableId] }),
+      viewOpenAction({ kind: ViewKind.flow, centerIds: [fixture.tableId] }),
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { [fixture.tableId]: { x: 2000, y: 1000 } },
       })
     );
   }
 
-  it('opens no editing overlay under a focus provider', async () => {
-    const fixture = await setup('focus');
+  it('opens no editing overlay under a view provider', async () => {
+    const fixture = await setup('flow');
     const { store } = fixture.app;
 
-    openFocusView(fixture);
+    openViewOn(fixture);
     await editTableName(fixture);
     await whenDrawn();
 
@@ -1486,14 +1486,14 @@ describe('the overlay under a view source', () => {
     expect(store.state.editor.focusTable?.edit).toBe(true);
   });
 
-  it('opens no memo body editor under a focus provider', async () => {
-    const fixture = await setup('focus');
+  it('opens no memo body editor under a view provider', async () => {
+    const fixture = await setup('flow');
     const { store } = fixture.app;
 
     store.dispatchSync(addMemoAction$());
     const memoId = store.state.doc.memoIds[0];
     store.dispatchSync(editMemoAction({ id: memoId }));
-    openFocusView(fixture);
+    openViewOn(fixture);
     await flush();
     await whenDrawn();
 
@@ -1506,8 +1506,10 @@ describe('the overlay under a view source', () => {
     const fixture = await setup('document');
     const { store } = fixture.app;
 
-    openFocusView(fixture);
-    store.dispatchSync(viewScrollToAction({ originX: 30, originY: 70 }));
+    openViewOn(fixture);
+    store.dispatchSync(
+      viewScrollToAction({ originX: 30, originY: 70, kind: ViewKind.flow })
+    );
     await editTableName(fixture);
 
     const table = store.state.collections.tableEntities[fixture.tableId];

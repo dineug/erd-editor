@@ -12,7 +12,6 @@ import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
-import { leaveFocusView } from '@/components/focus-view/focusExit';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -657,31 +656,6 @@ describe('createScopeActions / table actions', () => {
     }
   );
 
-  /**
-   * The jump is redirected to an open view, so it is solved at the view's
-   * zoom: at the document's the landing point would be off by the ratio of
-   * the two, and the document's own origin never moves.
-   */
-  it('lands at the view zoom while a view is open and leaves the document origin alone', async () => {
-    setCanvasType(CanvasType.ERD);
-    const id = addTable('users', 100, 200);
-    app.store.dispatchSync(viewOpenAction({ kind: ViewKind.focus }));
-    app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
-    const document = { ...app.store.state.settings };
-
-    find(scope(), 'users').perform?.(app);
-    await flush();
-
-    const view = app.store.state.editor.views.focus!;
-    const table = app.store.state.collections.tableEntities[id];
-    const screen = toScreenPoint(view, table.ui);
-    expect(screen.x).toBeCloseTo(START_X * 0.5, 4);
-    expect(screen.y).toBeCloseTo(START_Y * 0.5, 4);
-    expect(app.store.state.settings.originX).toBe(document.originX);
-    expect(app.store.state.settings.originY).toBe(document.originY);
-    expect(app.store.state.settings.zoomLevel).toBe(document.zoomLevel);
-  });
-
   it('carries no icon on table actions', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
@@ -690,11 +664,8 @@ describe('createScopeActions / table actions', () => {
   });
 });
 
-describe('createScopeActions / focus actions', () => {
-  const focusActions = () =>
-    scope().filter(action => action.keywords === 'Focus');
-
-  /** Stands the reader in a Flow, which is the second place the Focus actions are offered from. */
+describe('createScopeActions / no focus actions', () => {
+  /** Stands the reader in a Flow, which is where the Focus rows used to be offered from. */
   const enterFlow = () => {
     setCanvasType(CanvasType.visualization);
     app.store.dispatchSync(
@@ -703,103 +674,35 @@ describe('createScopeActions / focus actions', () => {
     );
   };
 
-  it('appends one Focus action per table sorted by name ascending (AC-37)', () => {
-    setCanvasType(CanvasType.ERD);
-    addTable('zebra');
-    addTable('apple');
-    addTable('   ');
-
-    expect(names(focusActions())).toEqual([
-      'Focus on unnamed',
-      'Focus on apple',
-      'Focus on zebra',
-    ]);
-  });
-
-  it('opens the Focus view on the table performed (AC-37)', async () => {
-    setCanvasType(CanvasType.ERD);
-    const id = addTable('users');
-
-    find(scope(), 'Focus on users').perform?.(app);
-    await flush();
-
-    expect(app.store.state.editor.views.focus?.centerIds).toEqual([id]);
-    expect(app.store.state.editor.openMap.focus).toBe(true);
-  });
-
-  it('walks an open Focus view to the table performed rather than opening a second (AC-37)', async () => {
+  /** AC-52. The rows are gone from every tab and both visualization modes. */
+  it('offers no Focus action from any canvas type or visualization mode', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
-    const orders = addTable('orders');
 
-    find(scope(), 'Focus on users').perform?.(app);
-    await flush();
-    find(scope(), 'Focus on orders').perform?.(app);
-    await flush();
+    for (const canvasType of [
+      CanvasType.ERD,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.visualization,
+    ]) {
+      setCanvasType(canvasType);
+      expect(scope().filter(action => action.keywords === 'Focus')).toEqual([]);
+    }
 
-    const view = app.store.state.editor.views.focus!;
-    expect(view.centerIds).toEqual([orders]);
-    expect(view.history.entries).toHaveLength(2);
+    for (const value of [VisualizationMode.graph, VisualizationMode.flow]) {
+      setCanvasType(CanvasType.visualization);
+      app.store.dispatchSync(changeVisualizationModeAction({ value }));
+      expect(scope().filter(action => action.keywords === 'Focus')).toEqual([]);
+    }
   });
 
-  it('is offered from a Flow, and from no other visualization mode', () => {
-    setCanvasType(CanvasType.ERD);
-    addTable('users');
-    enterFlow();
-
-    expect(names(focusActions())).toEqual(['Focus on users']);
-
-    app.store.dispatchSync(
-      changeVisualizationModeAction({ value: VisualizationMode.graph })
-    );
-
-    expect(focusActions()).toEqual([]);
-  });
-
-  it('adds itself to a Flow and leaves the table jump actions out', () => {
+  it('offers the tab switch alone from a Flow, with no table row of any kind', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
     enterFlow();
 
     expect(
       names(scope().filter(action => action.filter?.(app) ?? true))
-    ).toEqual(['Tab', 'Focus on users']);
-  });
-
-  it('is offered from neither the schema SQL nor the generator code canvas', () => {
-    setCanvasType(CanvasType.ERD);
-    addTable('users');
-
-    for (const canvasType of [CanvasType.schemaSQL, CanvasType.generatorCode]) {
-      setCanvasType(canvasType);
-      expect(focusActions()).toEqual([]);
-    }
-  });
-
-  /**
-   * The tab it stands back on is the one change of the round: the close, the
-   * overlay flag and the selection are all outside ChangeActionTypes, and the
-   * center is on screen already so no scroll goes out with them.
-   */
-  it('opened from a Flow and left, makes the one change the host hears of the tab alone (AC-54)', async () => {
-    app.store.dispatchSync(changeViewportAction({ width: 1000, height: 600 }));
-    setCanvasType(CanvasType.ERD);
-    addTable('users', 100, 100);
-    enterFlow();
-
-    find(scope(), 'Focus on users').perform?.(app);
-    await flush();
-    expect(app.store.state.editor.views.focus).not.toBeNull();
-
-    const recorder = recordActions();
-    leaveFocusView(app.store);
-    await flush();
-    recorder.unsubscribe();
-
-    expect(app.store.state.editor.views.focus).toBeNull();
-    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
-    expect(
-      recorder.types().filter(type => ChangeActionTypes.includes(type as any))
-    ).toEqual(['settings.changeCanvasType']);
+    ).toEqual(['Tab']);
   });
 });

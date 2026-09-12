@@ -29,7 +29,7 @@ function pipe(getActiveView: () => SceneView | null) {
   return { source$, emitted };
 }
 
-const focus = () => createSceneView(ViewKind.focus, ['t1']);
+const openView = () => createSceneView(ViewKind.flow, ['t1']);
 
 describe('viewActionRedirect', () => {
   it('passes the batch through untouched, same array, while no view is active', () => {
@@ -46,7 +46,7 @@ describe('viewActionRedirect', () => {
   it.each(REDIRECTED)(
     'turns %s into %s while a view is active, keeping everything but the type',
     (from, to) => {
-      const { source$, emitted } = pipe(focus);
+      const { source$, emitted } = pipe(openView);
       const payload = { originX: 1, originY: 2, value: 3, movementX: 4 };
       const original = action(from, payload, { version: 7, meta: { a: 1 } });
 
@@ -61,7 +61,7 @@ describe('viewActionRedirect', () => {
   );
 
   it('leaves every other action as it is, by identity', () => {
-    const { source$, emitted } = pipe(focus);
+    const { source$, emitted } = pipe(openView);
     const others = [
       action('table.add'),
       action('editor.select'),
@@ -79,7 +79,7 @@ describe('viewActionRedirect', () => {
   });
 
   it('leaves a following or shared placement to the document', () => {
-    const { source$, emitted } = pipe(focus);
+    const { source$, emitted } = pipe(openView);
     const following = action('settings.scrollTo', {}, { tags: Tag.following });
     const shared = action('settings.changeZoomLevel', {}, { tags: Tag.shared });
     const both = action(
@@ -109,7 +109,7 @@ describe('viewActionRedirect', () => {
   });
 
   it('is pure: the same batch twice gives equal results and mutates nothing', () => {
-    const { source$, emitted } = pipe(focus);
+    const { source$, emitted } = pipe(openView);
     const batch = [
       action('settings.scrollTo', { originX: 1, originY: 2 }),
       action('table.add', { id: 't1' }),
@@ -132,7 +132,7 @@ describe('viewActionRedirect', () => {
 
   it('runs once per subscriber over a cold chain and both see the same result', () => {
     const source$ = new Subject<Array<AnyAction>>();
-    const getActiveView = vi.fn(focus);
+    const getActiveView = vi.fn(openView);
     const redirected$ = source$.pipe(viewActionRedirect(getActiveView));
     const first: Array<Array<AnyAction>> = [];
     const second: Array<Array<AnyAction>> = [];
@@ -151,7 +151,7 @@ describe('viewActionRedirect', () => {
     const { source$, emitted } = pipe(() => view);
 
     source$.next([action('settings.scrollTo')]);
-    view = focus();
+    view = openView();
     source$.next([action('settings.scrollTo')]);
     view = null;
     source$.next([action('settings.scrollTo')]);
@@ -166,7 +166,7 @@ describe('viewActionRedirect', () => {
   it('propagates errors and completion', () => {
     const error$ = new Subject<Array<AnyAction>>();
     const onError = vi.fn();
-    error$.pipe(viewActionRedirect(focus)).subscribe({ error: onError });
+    error$.pipe(viewActionRedirect(openView)).subscribe({ error: onError });
     const err = new Error('boom');
     error$.error(err);
     expect(onError).toHaveBeenCalledWith(err);
@@ -174,7 +174,7 @@ describe('viewActionRedirect', () => {
     const complete$ = new Subject<Array<AnyAction>>();
     const onComplete = vi.fn();
     complete$
-      .pipe(viewActionRedirect(focus))
+      .pipe(viewActionRedirect(openView))
       .subscribe({ complete: onComplete });
     complete$.complete();
     expect(onComplete).toHaveBeenCalledTimes(1);

@@ -101,25 +101,17 @@ export function getVisibleColumnIds(
     .map(column => column.id);
 }
 
-/** The tables within the given number of relationships of the centers, centers included. */
+/** The tables one relationship out from the centers, centers included. */
 function reach(
   centerIds: string[],
-  hop: number,
   relationships: Relationship[]
 ): Set<string> {
-  const reached = new Set(centerIds);
-  let frontier = reached;
+  const centers = new Set(centerIds);
+  const reached = new Set(centers);
 
-  for (let step = 0; step < hop && frontier.size; step++) {
-    const next = new Set<string>();
-
-    for (const { start, end } of relationships) {
-      if (frontier.has(start.tableId)) next.add(end.tableId);
-      if (frontier.has(end.tableId)) next.add(start.tableId);
-    }
-
-    frontier = new Set([...next].filter(id => !reached.has(id)));
-    frontier.forEach(id => reached.add(id));
+  for (const { start, end } of relationships) {
+    if (centers.has(start.tableId)) reached.add(end.tableId);
+    if (centers.has(end.tableId)) reached.add(start.tableId);
   }
 
   return reached;
@@ -127,7 +119,7 @@ function reach(
 
 /**
  * What a scene drawn from the source given shows: the whole document, or a
- * view's centers with their neighbours out to its hop while it stands on
+ * view's centers with their neighbours one relationship out while it stands on
  * centers and what its layout placed while it stands on none, with no memo and only the joining relationships.
  */
 export function getVisibleIds(
@@ -154,7 +146,7 @@ export function getVisibleIds(
   // observable proxy has no ownKeys trap. The layout reducer replaces the
   // object whole, which is what keeps a Flow scene redrawing; a per-key write would not.
   const shown = view.centerIds.length
-    ? reach(view.centerIds, view.hop, relationships)
+    ? reach(view.centerIds, relationships)
     : new Set(Object.keys(view.positions));
   const tableIds = doc.tableIds.filter(id => shown.has(id));
   const inView = new Set(tableIds);
@@ -186,8 +178,8 @@ const hoverView = new Map<string, SceneView>();
 
 /**
  * Takes the hover for the view of the source given, or drops it on null. A
- * null from a scene of another kind leaves the hover alone: a leave on the Flow
- * scene under a Focus overlay is not the Focus table leaving the pointer.
+ * null from a scene of another kind leaves the hover alone: a leave on the
+ * document scene beside it is not the view's table leaving the pointer.
  */
 export function setViewHoverTable(
   root: RootState,
@@ -243,9 +235,67 @@ export function getViewHoverTable(
 }
 
 /**
+ * The one table a reader has pinned in a view, keyed by editor id, observable
+ * so a scene that read it redraws when it moves. Local to the scene like the
+ * hover: no action carries it, so a pin never reaches the document, the history or a peer.
+ */
+const pinned = observable({ tableId: {} as Record<string, string> });
+
+/**
+ * The view each pin was taken in, beside the observable rather than inside it,
+ * for the same reason the hover keeps its view beside its own: the proxy would
+ * wrap the view on the way out, and the identity below compares it to the slot the reader's source names.
+ */
+const pinnedView = new Map<string, SceneView>();
+
+/**
+ * Pins the table in the view of the source given, or lets it go when it is
+ * the one already pinned. A second click on the same card is what releases it,
+ * so the gesture is its own toggle and nothing else has to clear the slot.
+ */
+export function setViewPinnedTable(
+  root: RootState,
+  tableId: string,
+  source: GeometrySource = 'document'
+): void {
+  const view = getSourceView(root, source);
+  if (!view) return;
+
+  const { id } = root.editor;
+  const held = pinnedView.get(id) === view ? pinned.tableId[id] : undefined;
+
+  if (held === tableId) {
+    pinnedView.delete(id);
+    Reflect.deleteProperty(pinned.tableId, id);
+    return;
+  }
+
+  pinnedView.set(id, view);
+  pinned.tableId[id] = tableId;
+}
+
+/**
+ * The pin the view of the source given holds. One taken in a view that has
+ * since closed fails the identity below and is never read, which is why the
+ * gesture is the only thing that ever clears the slot.
+ */
+export function getViewPinnedTable(
+  root: RootState,
+  source: GeometrySource = 'document'
+): string | null {
+  const { id } = root.editor;
+  const held = pinned.tableId[id];
+
+  return held !== undefined &&
+    pinnedView.get(id) === getSourceView(root, source)
+    ? held
+    : null;
+}
+
+/**
  * What the view of the source given lights: its centers, the table hovered,
- * and for each of those every shown relationship at it and the table at the
- * other end. A hover on a table the view does not show lights nothing, since it is stale.
+ * the table pinned, and for each of those every shown relationship at it and
+ * the table at the other end. A seed the view does not show lights nothing, since it is stale.
  */
 export function getHighlightIds(
   state: RootState,
@@ -259,8 +309,10 @@ export function getHighlightIds(
   const shown = getVisibleIds(state, source);
   const shownTables = new Set(shown.tableIds);
   const hovered = getViewHoverTable(state, source);
+  const held = getViewPinnedTable(state, source);
   const lit = new Set(view.centerIds.filter(id => shownTables.has(id)));
   if (hovered !== null && shownTables.has(hovered)) lit.add(hovered);
+  if (held !== null && shownTables.has(held)) lit.add(held);
 
   lit.forEach(id => tableIds.add(id));
 

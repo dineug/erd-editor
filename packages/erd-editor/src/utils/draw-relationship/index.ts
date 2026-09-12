@@ -221,13 +221,12 @@ const createSortChannel = (): SortChannel => ({
 });
 
 /**
- * One channel per source, so the document's sort and either view's never read
+ * One channel per source, so the document's sort and the view's never read
  * each other's routes nor retire each other's epoch when they run turn about.
  */
 const channels: Record<GeometrySource, SortChannel> = {
   document: createSortChannel(),
   flow: createSortChannel(),
-  focus: createSortChannel(),
 };
 
 /**
@@ -237,7 +236,6 @@ const channels: Record<GeometrySource, SortChannel> = {
  */
 const viewVersions: Record<ViewSource, WeakMap<Relationship, Version>> = {
   flow: new WeakMap(),
-  focus: new WeakMap(),
 };
 
 type Version = { version: number };

@@ -143,14 +143,14 @@ describe('relationshipSort incremental reuse', () => {
     const state = createScene();
 
     expect(getSortCache(state)).toBe(getSortCache(state, 'document'));
-    expect(getSortCache(state, 'focus')).not.toBe(getSortCache(state));
-    expect(getSortCache(state, 'focus')).toBe(getSortCache(state, 'focus'));
+    expect(getSortCache(state, 'flow')).not.toBe(getSortCache(state));
+    expect(getSortCache(state, 'flow')).toBe(getSortCache(state, 'flow'));
   });
 
   /** AC-56. A view sorting between the steps of a drag reads and writes a cache of its own. */
   it('draws a moved table as a sort from scratch while a view sorts between the steps', () => {
     const incremental = createScene();
-    const view = createSceneView(ViewKind.focus, ['A']);
+    const view = createSceneView(ViewKind.flow, ['A']);
     view.positions = {
       A: { x: 5_000, y: -3_000 },
       B: { x: 5_600, y: -3_000 },
@@ -158,9 +158,9 @@ describe('relationshipSort incremental reuse', () => {
       D: { x: 5_000, y: -2_600 },
       E: { x: 5_300, y: -2_800 },
     };
-    incremental.editor.views.focus = view;
+    incremental.editor.views.flow = view;
     relationshipSort(incremental);
-    relationshipSort(incremental, 'focus');
+    relationshipSort(incremental, 'flow');
 
     for (let step = 1; step <= 12; step++) {
       const table = incremental.collections.tableEntities.A;
@@ -168,7 +168,7 @@ describe('relationshipSort incremental reuse', () => {
       table.ui.y = step * 5;
       relationshipSort(incremental);
       view.positions.A = { x: 5_000 + step * 3, y: -3_000 - step * 2 };
-      relationshipSort(incremental, 'focus');
+      relationshipSort(incremental, 'flow');
     }
 
     const fresh = createScene({ x: 12 * 9, y: 12 * 5 });
@@ -179,10 +179,10 @@ describe('relationshipSort incremental reuse', () => {
     const { width } = tableToObjectPoint(
       incremental,
       incremental.collections.tableEntities.A,
-      'focus'
+      'flow'
     );
     expect(
-      getAnchors(incremental.collections.relationshipEntities.ab, 'focus').start
+      getAnchors(incremental.collections.relationshipEntities.ab, 'flow').start
     ).toMatchObject({ tableId: 'A', x: 5_000 + 36 + width });
   });
 });

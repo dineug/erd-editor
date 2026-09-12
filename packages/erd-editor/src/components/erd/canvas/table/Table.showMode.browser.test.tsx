@@ -1,8 +1,8 @@
 /** @jsxHost konva */
 
-// AC-1, AC-2, AC-3, AC-5, AC-27 and AC-45: what a table draws inside a view,
-// and what it refuses. The show mode picks the rows, the box is measured for
-// them, the type cell lights only where the view does, and no cell is edited.
+// AC-1, AC-2, AC-3, AC-5, AC-27, AC-44 and AC-45: what a table draws inside a
+// view, and what it refuses. The show mode picks the rows, the box is measured
+// for them, the type cell lights where the view does, and no cell is edited.
 
 import { createRef, useProvider } from '@dineug/r-html';
 import type { Container } from 'konva/lib/Container';
@@ -20,23 +20,33 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
+import {
+  CURSOR_INHERIT,
+  CURSOR_POINTER,
+} from '@/components/erd/canvas/sceneTokens';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { TABLE_BORDER } from '@/constants/layout';
-import { ColumnUIKey, RelationshipType } from '@/constants/schema';
+import { CanvasType, ColumnUIKey, RelationshipType } from '@/constants/schema';
 import {
   changeViewportAction,
   editTableAction,
   focusColumnAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType, ShowMode, ViewKind } from '@/engine/modules/editor/state';
 import {
-  viewChangeHopAction,
+  FocusType,
+  ShowMode,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
+import {
+  changeVisualizationModeAction,
   viewChangeShowModeAction,
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -47,6 +57,7 @@ import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { calcTableHeight } from '@/utils/calcTable';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 const WIDTH = 1000;
 const HEIGHT = 800;
@@ -113,9 +124,9 @@ function seedDocument(app: AppContext) {
     link('r1', ['a', []], ['b', ['b_fk']]),
     link('r2', ['b', ['b_ref']], ['c', ['c_fk']]),
     link('r3', ['a', []], ['d', []]),
-    // e is two hops out either way, so it is shown and left dark until a
-    // hover on c reaches it. That is the half of the highlight rule the
-    // centres cannot show, since every neighbour of a centre is lit already.
+    // e is two hops from a either way, so it is shown and left dark until a
+    // hover on c reaches it. That is the half of the highlight rule a
+    // narrowed view cannot show, since it lights everything it shows.
     link('r4', ['b', []], ['e', []]),
     link('r5', ['c', []], ['e', []])
   );
@@ -131,17 +142,20 @@ function seedDocument(app: AppContext) {
 type Mounted = { app: AppContext; stage: Stage };
 
 /**
- * The scene as the Focus overlay mounts one: a shell of its own carrying the
- * source, with the Stage container inside it.
+ * The scene the way a root mounts one: a shell of its own carrying the source,
+ * with the Stage container inside it. One store seeds both, since the provider
+ * is the only thing that decides which coordinate system a leaf is drawn from.
  */
-async function mountViewScene(): Promise<Mounted> {
+async function mountScene(source: GeometrySource): Promise<Mounted> {
   const app = createTestAppContext();
   seedDocument(app);
   app.store.dispatchSync(
     changeViewportAction({ width: WIDTH, height: HEIGHT }),
-    viewOpenAction({ kind: ViewKind.focus, centerIds: ['a'] }),
-    viewChangeHopAction({ value: 2 }),
-    viewSetLayoutAction({ kind: ViewKind.focus, positions: VIEW_POINTS })
+    changeCanvasTypeAction({ value: CanvasType.visualization }),
+    changeVisualizationModeAction({ value: VisualizationMode.flow }),
+    viewOpenAction({ kind: ViewKind.flow }),
+    viewChangeShowModeAction({ value: ShowMode.keysOnly, kind: ViewKind.flow }),
+    viewSetLayoutAction({ kind: ViewKind.flow, positions: VIEW_POINTS })
   );
 
   const $root = document.createElement('div');
@@ -153,7 +167,7 @@ async function mountViewScene(): Promise<Mounted> {
   // useProvider takes a bare element at runtime and types only a component
   // context, hence the cast; it is r-html's own, not a React hook.
   // oxlint-disable-next-line react-hooks/rules-of-hooks
-  const provider = useProvider(shell as any, sceneSourceContext, 'focus');
+  const provider = useProvider(shell as any, sceneSourceContext, source);
   const scene = renderScene({
     app,
     container,
@@ -175,6 +189,15 @@ async function mountViewScene(): Promise<Mounted> {
 
   return { app, stage: scene.stage };
 }
+
+/**
+ * The view standing on no centers, so it shows what its layout placed and
+ * lights only what a hover reaches.
+ */
+const mountViewScene = () => mountScene('flow');
+
+/** The same store and the same leaves under the document provider, which is the ERD tab's own. */
+const mountDocumentScene = () => mountScene('document');
 
 const settle = async () => {
   await flush();
@@ -276,11 +299,13 @@ describe('the rows a view draws', () => {
 });
 
 describe('the type cell a view lights', () => {
-  it('draws it on the centers and their neighbours alone', async () => {
+  it('draws it on the hovered table and its neighbours alone', async () => {
     const { stage } = await mountViewScene();
 
-    // Lit: the centre a, b across the first link and d across the third. The
-    // second hop, c and e, is shown at hop two and left dark.
+    await hoverTable(stage, 'a');
+
+    // Lit: a under the pointer, b across the first link and d across the
+    // third. What the hover does not reach, c and e, is shown and left dark.
     expect(typeOpacityOf(stage, 'a')).toEqual([1]);
     expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
     expect(typeOpacityOf(stage, 'c')).toEqual([0, 0]);
@@ -293,14 +318,15 @@ describe('the type cell a view lights', () => {
 
   it('lights a neighbour whose only rows every field brings back', async () => {
     const { app, stage } = await mountViewScene();
+    await hoverTable(stage, 'a');
 
     app.store.dispatchSync(
       viewChangeShowModeAction({ value: ShowMode.allFields })
     );
     await settle();
 
-    // d hangs off the centre and carries no key row, so the key row mode has
-    // nowhere to show that it is lit; every field gives it forty places.
+    // d hangs off the hovered table and carries no key row, so the key row
+    // mode has nowhere to show that it is lit; every field gives it forty places.
     expect(typeOpacityOf(stage, 'd')).toEqual(WIDE_COLUMNS.map(() => 1));
     expect(typeOpacityOf(stage, 'c')).toEqual([0, 0]);
   });
@@ -313,8 +339,7 @@ describe('the type cell a view lights', () => {
 
     expect(typeOpacityOf(stage, 'c')).toEqual([1, 1]);
     expect(bodyOf(stage, 'c').width()).toBe(dark);
-    // e is nobody's neighbour among the centres, so it is lit here by the
-    // hover's own hop and by nothing else.
+    // e is lit here by the hover's own hop and by nothing else.
     expect(typeOpacityOf(stage, 'e')).toEqual([1]);
   });
 
@@ -345,6 +370,39 @@ describe('the type cell a view lights', () => {
     expect(band.listening()).toBe(false);
     expect(header.find('.table-add-column')).toHaveLength(0);
     expect(header.find('.table-remove')).toHaveLength(0);
+  });
+});
+
+describe('the cursor a card body wears', () => {
+  /** AC-44's other half: the body is what a click pins the light on, so it asks for the hand. */
+  it('is the pointer under a view provider, and hands it back on the way out', async () => {
+    const { stage } = await mountViewScene();
+
+    fireScenePointer(bodyOf(stage, 'a'), 'mouseenter');
+    await settle();
+    expect(stage.container().style.cursor).toBe(CURSOR_POINTER);
+
+    fireScenePointer(bodyOf(stage, 'a'), 'mouseleave');
+    await settle();
+    expect(stage.container().style.cursor).toBe(CURSOR_INHERIT);
+  });
+
+  /**
+   * AC-61. The two handlers are on a leaf both scenes share, so the view guard
+   * is the whole of the separation: drop it and every table on the ERD canvas
+   * takes the hand, and a leave stamps over whatever a drag had set.
+   */
+  it('is left alone under a document provider, which takes no such click', async () => {
+    const { stage } = await mountDocumentScene();
+    stage.container().style.cursor = 'grab';
+
+    fireScenePointer(bodyOf(stage, 'a'), 'mouseenter');
+    await settle();
+    expect(stage.container().style.cursor).toBe('grab');
+
+    fireScenePointer(bodyOf(stage, 'a'), 'mouseleave');
+    await settle();
+    expect(stage.container().style.cursor).toBe('grab');
   });
 });
 

@@ -18,7 +18,7 @@ const action = (type: string, tags?: number): AnyAction => ({
   ...(tags === undefined ? {} : { tags }),
 });
 
-const focus = () => createSceneView(ViewKind.focus, ['t1']);
+const openView = () => createSceneView(ViewKind.flow, ['t1']);
 
 function pipe(getActiveView: () => SceneView | null, passTags?: number[]) {
   const source$ = new Subject<Array<AnyAction>>();
@@ -95,7 +95,7 @@ describe('viewIgnoreFilter', () => {
 
   // AC-48
   it('drops the document edits while a view is active and keeps the rest', () => {
-    const { source$, emitted } = pipe(focus);
+    const { source$, emitted } = pipe(openView);
     const select = action('editor.select');
     const canvasType = action('settings.changeCanvasType');
     const viewScroll = action('editor.viewScrollTo');
@@ -114,7 +114,7 @@ describe('viewIgnoreFilter', () => {
   });
 
   it('lets a document replacement through while a view is active', () => {
-    const { source$, emitted } = pipe(focus);
+    const { source$, emitted } = pipe(openView);
     const load = action('editor.loadJson');
     const clear = action('editor.clear');
 
@@ -124,7 +124,7 @@ describe('viewIgnoreFilter', () => {
   });
 
   it('does not emit when a view removes every action', () => {
-    const { source$, emitted } = pipe(focus);
+    const { source$, emitted } = pipe(openView);
 
     source$.next([action('table.add'), action('memo.add')]);
 
@@ -132,7 +132,7 @@ describe('viewIgnoreFilter', () => {
   });
 
   it('lets a dropped action through when it carries a pass tag', () => {
-    const { source$, emitted } = pipe(focus, [Tag.shared]);
+    const { source$, emitted } = pipe(openView, [Tag.shared]);
     const shared = action('table.add', Tag.shared);
     const sharedAndFollowing = action('column.add', Tag.shared | Tag.following);
     const localOnly = action('table.add', Tag.following);
@@ -144,7 +144,7 @@ describe('viewIgnoreFilter', () => {
   });
 
   it('drops a shared edit when no pass tag is given, as the history side does', () => {
-    const { source$, emitted } = pipe(focus);
+    const { source$, emitted } = pipe(openView);
 
     source$.next([action('table.add', Tag.shared)]);
 
@@ -156,7 +156,7 @@ describe('viewIgnoreFilter', () => {
     const { source$, emitted } = pipe(() => view);
 
     source$.next([action('table.add')]);
-    view = focus();
+    view = openView();
     source$.next([action('table.add')]);
     view = null;
     source$.next([action('table.add')]);
@@ -167,14 +167,16 @@ describe('viewIgnoreFilter', () => {
   it('propagates errors and completion', () => {
     const error$ = new Subject<Array<AnyAction>>();
     const onError = vi.fn();
-    error$.pipe(viewIgnoreFilter(focus)).subscribe({ error: onError });
+    error$.pipe(viewIgnoreFilter(openView)).subscribe({ error: onError });
     const err = new Error('boom');
     error$.error(err);
     expect(onError).toHaveBeenCalledWith(err);
 
     const complete$ = new Subject<Array<AnyAction>>();
     const onComplete = vi.fn();
-    complete$.pipe(viewIgnoreFilter(focus)).subscribe({ complete: onComplete });
+    complete$
+      .pipe(viewIgnoreFilter(openView))
+      .subscribe({ complete: onComplete });
     complete$.complete();
     expect(onComplete).toHaveBeenCalledTimes(1);
   });

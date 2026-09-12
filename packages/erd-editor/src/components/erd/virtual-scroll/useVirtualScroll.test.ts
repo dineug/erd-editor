@@ -116,22 +116,16 @@ const originY = () => app.store.state.settings.originY;
 
 /**
  * A Flow view placing the seeded tables and scrolled off the document's
- * origin, with a Focus view open over it standing far away, so the three
- * travels the store holds are all different.
+ * origin, so the two travels the store holds are different.
  */
-const openFlowUnderFocus = () => {
+const openFlowView = () => {
   app.store.dispatchSync(
     viewOpenAction({ kind: ViewKind.flow }),
     viewSetLayoutAction({
       kind: ViewKind.flow,
       positions: { near: { x: 0, y: 0 }, far: { x: 3_000, y: 500 } },
     }),
-    viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow }),
-    viewOpenAction({ kind: ViewKind.focus, centerIds: ['near'] }),
-    viewSetLayoutAction({
-      kind: ViewKind.focus,
-      positions: { near: { x: 40_000, y: 40_000 } },
-    })
+    viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow })
   );
 };
 
@@ -469,22 +463,19 @@ describe('useVirtualScroll', () => {
     expect(api.getHorizontalTrack().thumb).toBeGreaterThan(start.thumb);
   });
 
-  /** The overlay half of AC-61: a bar in a Flow scene is the Flow view's, whichever view is active. */
-  it('measures the Flow travel and scrolls the Flow view under a Flow provider, with a Focus view open over it', async () => {
+  /** The view half of AC-61: a bar in a Flow scene is the Flow view's, and the document's bars are not. */
+  it('measures the Flow travel and scrolls the Flow view under a Flow provider', async () => {
     seedContent();
-    openFlowUnderFocus();
+    openFlowView();
     mounted!.unmount();
     mounted = await mountAndFlush(
       html`<div><${FlowScope} .children=${html`<${Probe} />`} /></div>`,
       app
     );
-    const { flow, focus } = app.store.state.editor.views;
+    const { flow } = app.store.state.editor.views;
     const start = api.getHorizontalTrack();
 
     expect(start.range).toEqual(getScrollRanges(app.store.state, 'flow').left);
-    expect(start.range).not.toEqual(
-      getScrollRanges(app.store.state, 'focus').left
-    );
     expect(start.range).not.toEqual(ranges().left);
 
     pressHorizontal(100, 100);
@@ -492,13 +483,12 @@ describe('useVirtualScroll', () => {
     await flush();
 
     expect(isViewFrozen(app.store.state, 'flow')).toBe(true);
-    expect(isViewFrozen(app.store.state, 'focus')).toBe(false);
+    expect(isViewFrozen(app.store.state)).toBe(false);
     expect(flow!.originX).toBeCloseTo(
       -900 + dragToOrigin(10, start.range, DEFAULT_WIDTH),
       3
     );
     expect(flow!.originX).toBeLessThan(-900);
-    expect(focus).toMatchObject({ originX: 0, originY: 0 });
     expect(originX()).toBe(0);
 
     release();

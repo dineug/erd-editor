@@ -3,10 +3,8 @@ import { take } from 'rxjs';
 
 import type { AppContext } from '@/components/appContext';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
-import { type SceneView, ViewKind } from '@/engine/modules/editor/state';
-import { viewSetCentersAction } from '@/engine/modules/editor/view.actions';
-import { openFocusViewAction$ } from '@/engine/modules/editor/view.generator.actions';
 import type { Point, Table } from '@/internal-types';
+import { setViewPinnedTable } from '@/konva/scene/viewLayout';
 import { isMouseEvent } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { moveEnd$ } from '@/utils/globalEventObservable';
@@ -36,24 +34,17 @@ const isClick = (from: Point, to: Point) =>
 
 /**
  * The click a view scene takes on a table: pressed with the main button and
- * lifted without moving and without the modifier. In Focus it becomes the one
- * center, a step on the trail; in Flow it opens Focus. Documents take none.
+ * lifted without moving and without the modifier. It pins the highlight on
+ * that table, and a second click on the same one lets it go. Documents take none.
  *
  * @example
- * const walk = useFocusWalk(app, props, sourceRef);
+ * const pin = useViewPin(app, props, sourceRef);
  */
-export function useFocusWalk(
+export function useViewPin(
   app: Ref<AppContext>,
   props: { table: Table },
   source: Ref<GeometrySource>
 ) {
-  const walkTo = (view: SceneView, id: string) => {
-    const { store } = app.value;
-    if (view.centerIds.length === 1 && view.centerIds[0] === id) return;
-
-    store.dispatch(viewSetCentersAction({ tableIds: [id], push: true }));
-  };
-
   const onPress = (event: ScenePointerEvent) => {
     const { evt } = event;
     const kind = source.value;
@@ -82,9 +73,7 @@ export function useFocusWalk(
       const { store } = app.value;
       if (store.state.editor.views[kind] !== view) return;
 
-      kind === ViewKind.focus
-        ? walkTo(view, id)
-        : store.dispatch(openFocusViewAction$([id]));
+      setViewPinnedTable(store.state, id, kind);
     });
   };
 

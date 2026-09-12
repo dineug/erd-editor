@@ -242,20 +242,26 @@ describe('Toolbar', () => {
     it('shows the open view zoom, and the document zoom again once it closes', async () => {
       const { app } = await setup();
 
-      app.store.dispatchSync(viewOpenAction({ kind: ViewKind.focus }));
+      app.store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.visualization })
+      );
+      app.store.dispatchSync(
+        changeVisualizationModeAction({ value: VisualizationMode.flow })
+      );
+      app.store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
       app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
       await flush();
 
       expect(input('zoom level').value).toBe('50%');
       expect(app.store.state.settings.zoomLevel).toBe(1);
 
-      app.store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+      app.store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
       await flush();
 
       expect(input('zoom level').value).toBe('100%');
     });
 
-    it('shows the Flow zoom while the visualization tab is in Flow with no Focus open', async () => {
+    it('shows the Flow zoom while the visualization tab is in Flow', async () => {
       const { app } = await setup();
 
       app.store.dispatchSync(
@@ -394,7 +400,6 @@ describe('Toolbar', () => {
       Open.tableProperties,
       Open.diffViewer,
       Open.timeTravel,
-      Open.focus,
     ]) {
       it(`hides the group while ${open} is open`, async () => {
         const { app } = await setup();

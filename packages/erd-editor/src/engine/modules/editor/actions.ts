@@ -63,9 +63,7 @@ export const ActionType = {
   viewMoveTable: 'editor.viewMoveTable',
   viewSetLayout: 'editor.viewSetLayout',
   viewChangeShowMode: 'editor.viewChangeShowMode',
-  viewChangeHop: 'editor.viewChangeHop',
   viewSetCenters: 'editor.viewSetCenters',
-  viewHistoryMove: 'editor.viewHistoryMove',
   changeVisualizationMode: 'editor.changeVisualizationMode',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
@@ -170,7 +168,7 @@ export type ActionMap = {
   };
   [ActionType.viewOpen]: {
     kind: ViewKind;
-    /** The tables a Focus view opens on. A Flow view takes none. */
+    /** The tables the view opens narrowed to; none and it opens on the whole document. */
     centerIds?: string[];
   };
   [ActionType.viewClose]: {
@@ -208,18 +206,9 @@ export type ActionMap = {
     value: ShowMode;
     kind?: ViewKind;
   };
-  [ActionType.viewChangeHop]: {
-    value: number;
-  };
   [ActionType.viewSetCenters]: {
     tableIds: string[];
-    /** Whether the centers open a new history entry rather than rewriting the current one. */
-    push?: boolean;
     kind?: ViewKind;
-  };
-  [ActionType.viewHistoryMove]: {
-    /** How many entries to walk, negative for back. */
-    delta: number;
   };
   [ActionType.changeVisualizationMode]: {
     value: VisualizationMode;

@@ -28,7 +28,7 @@ import {
   MoveKey,
   SelectType,
 } from '@/engine/modules/editor/state';
-import { openFocusViewAction$ } from '@/engine/modules/editor/view.generator.actions';
+import { focusFlowTableAction$ } from '@/engine/modules/editor/view.generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeZoomLevelAction$,
@@ -199,7 +199,7 @@ export function useErdShortcut(ctx: Ctx) {
           .filter(([, selectType]) => selectType === SelectType.table)
           .map(([id]) => id);
 
-        store.dispatch(openFocusViewAction$(tableIds));
+        store.dispatch(focusFlowTableAction$(tableIds));
       }
 
       type === KeyBindingName.handTool &&

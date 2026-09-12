@@ -380,15 +380,15 @@ describe('VirtualScroll', () => {
     await flush();
     expect(app.store.state.settings.originX).toBe(0);
   });
-  // AC-61: a Focus overlay opens over this tab with a source of its own, so
-  // the bars beside the ERD go on measuring the document's travel however far
-  // the view has placed the same tables and wherever it stands over them.
+  // AC-61: a view has a source of its own, so the bars beside the ERD go on
+  // measuring the document's travel however far the view has placed the same
+  // tables and wherever it stands over them.
   it('measures the travel the document scrolls over while a view is open', async () => {
     app.store.dispatchSync(scrollToAction({ originX: -400, originY: -200 }));
     app.store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['near'] }),
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['near'] }),
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { near: { x: 40_000, y: 40_000 } },
       })
     );
@@ -397,7 +397,7 @@ describe('VirtualScroll', () => {
     const { left, top } = ranges();
     const [horizontalThumb, verticalThumb] = thumbs();
 
-    expect(left).not.toEqual(getScrollRanges(app.store.state, 'focus').left);
+    expect(left).not.toEqual(getScrollRanges(app.store.state, 'flow').left);
     expect(translateOf(horizontalThumb)[0]).toBeCloseTo(
       bar(left, DEFAULT_WIDTH).offsetAt(-400),
       6
@@ -408,8 +408,8 @@ describe('VirtualScroll', () => {
     );
   });
 
-  /** The overlay half of AC-61: the bars in a Flow scene are the Flow view's, whichever view is active. */
-  it('draws the Flow travel and jumps the Flow view under a Flow provider, with a Focus view open over it', async () => {
+  /** The view half of AC-61: the bars in a Flow scene are the Flow view's, and the document's bars are not. */
+  it('draws the Flow travel and jumps the Flow view under a Flow provider', async () => {
     mounted?.unmount();
     app.store.dispatchSync(
       viewOpenAction({ kind: ViewKind.flow }),
@@ -417,23 +417,17 @@ describe('VirtualScroll', () => {
         kind: ViewKind.flow,
         positions: { near: { x: 0, y: 0 }, far: { x: 3_000, y: 500 } },
       }),
-      viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow }),
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['near'] }),
-      viewSetLayoutAction({
-        kind: ViewKind.focus,
-        positions: { near: { x: 40_000, y: 40_000 } },
-      })
+      viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow })
     );
     mounted = await mountAndFlush(
       html`<div><${FlowScope} .children=${html`<${VirtualScroll} />`} /></div>`,
       app
     );
-    const { flow, focus } = app.store.state.editor.views;
+    const { flow } = app.store.state.editor.views;
     const { left, top } = getScrollRanges(app.store.state, 'flow');
     const [horizontalThumb, verticalThumb] = thumbs();
 
     expect(left).not.toEqual(ranges().left);
-    expect(left).not.toEqual(getScrollRanges(app.store.state, 'focus').left);
     expect(translateOf(horizontalThumb)[0]).toBeCloseTo(
       bar(left, DEFAULT_WIDTH).offsetAt(-900),
       6
@@ -448,7 +442,6 @@ describe('VirtualScroll', () => {
 
     expect(flow!.originX).toBeCloseTo(bar(left, DEFAULT_WIDTH).pressAt(600), 3);
     expect(flow!.originY).toBe(-100);
-    expect(focus).toMatchObject({ originX: 0, originY: 0 });
     expect(app.store.state.settings).toMatchObject({ originX: 0, originY: 0 });
   });
 });

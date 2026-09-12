@@ -137,7 +137,7 @@ describe('getAnchors', () => {
   });
 });
 
-/** Where a Focus view stands the two tables, far from the document's corner. */
+/** Where the view stands the two tables, far from the document's corner. */
 const VIEW_POSITIONS: Record<string, Point> = {
   A: { x: 5_000, y: -3_000 },
   B: { x: 5_600, y: -3_000 },
@@ -165,7 +165,7 @@ const contains = (outer: BBox, inner: BBox) =>
   inner.x + inner.width <= outer.x + outer.width &&
   inner.y + inner.height <= outer.y + outer.height;
 
-/** A and B joined by one connector, both in the document and placed by a Focus view on A. */
+/** A and B joined by one connector, both in the document and placed by a view standing on A. */
 function createScene(state: RootState = createState()) {
   for (const [id, x, y] of [
     ['A', 0, 0],
@@ -182,9 +182,9 @@ function createScene(state: RootState = createState()) {
   state.collections.relationshipEntities.ab = relationship;
   state.doc.relationshipIds.push('ab');
 
-  const view = createSceneView(ViewKind.focus, ['A']);
+  const view = createSceneView(ViewKind.flow, ['A']);
   view.positions = { ...VIEW_POSITIONS };
-  state.editor.views.focus = view;
+  state.editor.views.flow = view;
 
   return { state, relationship, view };
 }
@@ -202,7 +202,7 @@ function createState(): RootState {
 /** The bounding rect of the boxes the view draws, the area AC-62 measures against. */
 function viewBounds(state: RootState): BBox {
   const boxes = ['A', 'B'].map(id =>
-    tableToObjectPoint(state, state.collections.tableEntities[id], 'focus')
+    tableToObjectPoint(state, state.collections.tableEntities[id], 'flow')
   );
   return boxOf(
     boxes.flatMap(({ lt, rb }) => [lt, rb]),
@@ -215,9 +215,9 @@ describe('getAnchors across the two channels', () => {
   it('hands a view the anchors its sort wrote, and the document the entity', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
-    const view = getAnchors(relationship, 'focus');
+    const view = getAnchors(relationship, 'flow');
     const document = getAnchors(relationship, 'document');
 
     expect(document.start).toBe(relationship.start);
@@ -227,7 +227,7 @@ describe('getAnchors across the two channels', () => {
       tableId: 'A',
       x:
         5_000 +
-        tableToObjectPoint(state, state.collections.tableEntities.A, 'focus')
+        tableToObjectPoint(state, state.collections.tableEntities.A, 'flow')
           .width,
       y: -3_000 + 28,
       direction: Direction.right,
@@ -240,7 +240,7 @@ describe('getAnchors across the two channels', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
 
-    expect(getAnchors(relationship, 'focus')).toBe(relationship);
+    expect(getAnchors(relationship, 'flow')).toBe(relationship);
   });
 });
 
@@ -266,14 +266,14 @@ describe('getRouteBBox across the two channels', () => {
     );
     expect(routed).not.toEqual(fallback);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     expect(getRouteBBox(relationship)).toEqual(routed);
     expect(
       getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'document')
     ).toEqual(routed);
 
     relationshipSort(state);
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     relationshipSort(state);
     expect(getRouteBBox(relationship)).toEqual(routed);
   });
@@ -282,13 +282,13 @@ describe('getRouteBBox across the two channels', () => {
   it('builds a view box from the view route and the view anchors, inside the view bounds', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
-    const box = getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus');
-    const { start, end } = getAnchors(relationship, 'focus');
+    const box = getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow');
+    const { start, end } = getAnchors(relationship, 'flow');
 
     expect(box).toEqual(
-      boxOf([...(getRoute(relationship, 'focus') ?? []), start, end], PAD)
+      boxOf([...(getRoute(relationship, 'flow') ?? []), start, end], PAD)
     );
     expect(
       contains(
@@ -310,21 +310,21 @@ describe('getRouteBBox across the two channels', () => {
   it('falls back for a view that sorted the connector in an earlier epoch', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     const routed = getRouteBBox(
       relationship,
       RELATIONSHIP_STROKE_WIDTH,
-      'focus'
+      'flow'
     );
 
-    nextSortEpoch('focus');
+    nextSortEpoch('flow');
 
-    const { start, end } = getAnchors(relationship, 'focus');
+    const { start, end } = getAnchors(relationship, 'flow');
     expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus')
+      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
     ).toEqual(boxOf([start, end], PAD + MAX_STUB));
     expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus')
+      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
     ).not.toEqual(routed);
     expect(getRouteBBox(relationship)).toEqual(
       boxOf(
@@ -339,110 +339,15 @@ describe('getRouteBBox across the two channels', () => {
   });
 });
 
-/** Where a Flow view stands the two tables, on the far side of the document from the Focus view. */
-const FLOW_POSITIONS: Record<string, Point> = {
-  A: { x: -4_000, y: 2_000 },
-  B: { x: -3_400, y: 2_000 },
-};
-
-/** A Flow view open beside the Focus view of createScene, at its own points. */
-function openFlow(state: RootState) {
-  const view = createSceneView(ViewKind.flow);
-  view.positions = { ...FLOW_POSITIONS };
-  state.editor.views.flow = view;
-  return view;
-}
-
-describe('the three channels', () => {
+describe('the view channel and the document channel', () => {
   const stores: Store[] = [];
 
   afterEach(() => {
     stores.splice(0).forEach(store => store.destroy());
   });
 
-  /** One connector sorted three ways, each channel holding the anchors and the route of its own layout. */
-  it('holds each source the anchors and the route its own sort wrote', () => {
-    const { state, relationship } = createScene();
-    openFlow(state);
-    relationshipSort(state);
-    relationshipSort(state, 'flow');
-    relationshipSort(state, 'focus');
-
-    const flow = getAnchors(relationship, 'flow');
-    const focus = getAnchors(relationship, 'focus');
-
-    expect(relationship.start).toMatchObject({ x: 118, y: 28 });
-    expect(flow.start.x).toBeGreaterThan(-4_000);
-    expect(flow.start.x).toBeLessThan(-3_400);
-    expect(flow.end).toMatchObject({ x: -3_400, y: 2_000 + 28 });
-    expect(focus.start.x).toBeGreaterThan(5_000);
-    expect(focus.end).toMatchObject({ x: 5_600, y: -3_000 + 28 });
-    expect(flow).not.toBe(focus);
-
-    expect(getRoute(relationship, 'flow')).toBeDefined();
-    expect(getRoute(relationship, 'focus')).toBeDefined();
-    expect(getRoute(relationship, 'flow')).not.toEqual(
-      getRoute(relationship, 'focus')
-    );
-    expect(getRouteBBox(relationship).x).toBeLessThan(200);
-    expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow').x
-    ).toBeLessThan(-3_000);
-    expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus').x
-    ).toBeGreaterThan(4_000);
-  });
-
-  /** AC-62 across the kinds. A sort of one view opens that view's epoch and no other. */
-  it('retires a route box by the epoch of its own channel alone', () => {
-    const { state, relationship } = createScene();
-    openFlow(state);
-    relationshipSort(state);
-    relationshipSort(state, 'flow');
-    relationshipSort(state, 'focus');
-    const document = getRouteBBox(relationship);
-    const flow = getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow');
-    const focus = getRouteBBox(
-      relationship,
-      RELATIONSHIP_STROKE_WIDTH,
-      'focus'
-    );
-
-    nextSortEpoch('flow');
-
-    const { start, end } = getAnchors(relationship, 'flow');
-    expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
-    ).toEqual(boxOf([start, end], PAD + MAX_STUB));
-    expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
-    ).not.toEqual(flow);
-    expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus')
-    ).toEqual(focus);
-    expect(getRouteBBox(relationship)).toEqual(document);
-  });
-
-  it('empties one view channel and leaves the other as it stood', () => {
-    const { state, relationship } = createScene();
-    openFlow(state);
-    relationshipSort(state, 'flow');
-    relationshipSort(state, 'focus');
-    const flowAnchors = getAnchors(relationship, 'flow');
-    const flowRoute = getRoute(relationship, 'flow');
-    const flowSlots = getStubSlots(relationship, 'flow');
-
-    clearSortChannel([relationship], 'focus');
-
-    expect(getAnchors(relationship, 'focus')).toBe(relationship);
-    expect(getRoute(relationship, 'focus')).toBeUndefined();
-    expect(getAnchors(relationship, 'flow')).toBe(flowAnchors);
-    expect(getRoute(relationship, 'flow')).toBe(flowRoute);
-    expect(getStubSlots(relationship, 'flow')).toBe(flowSlots);
-  });
-
-  /** AC-63 per kind. Opening or closing a view of one kind empties that kind's channel and no other. */
-  it('is emptied by viewOpen and viewClose of its own kind alone', () => {
+  /** AC-63. Opening or closing the view empties the view's channel and leaves the document's. */
+  it('is emptied by viewOpen and viewClose, and the document channel is not', () => {
     const store = createStore({
       toWidth: text => text.length * 10,
       clock: new Clock(),
@@ -451,39 +356,31 @@ describe('the three channels', () => {
     store.state.settings.show = 0;
     createScene(store.state);
     const relationship = store.state.collections.relationshipEntities.ab;
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.flow }),
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['A'] })
-    );
-    store.state.editor.views.flow!.positions = { ...FLOW_POSITIONS };
-    store.state.editor.views.focus!.positions = { ...VIEW_POSITIONS };
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+    store.state.editor.views.flow!.positions = { ...VIEW_POSITIONS };
+    relationshipSort(store.state);
     relationshipSort(store.state, 'flow');
-    relationshipSort(store.state, 'focus');
-    const flowRoute = getRoute(relationship, 'flow');
-    expect(flowRoute).toBeDefined();
-    expect(getRoute(relationship, 'focus')).toBeDefined();
+    const documentRoute = getRoute(relationship);
+    expect(documentRoute).toBeDefined();
+    expect(getRoute(relationship, 'flow')).toBeDefined();
 
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
 
-    expect(getAnchors(relationship, 'focus')).toBe(relationship);
-    expect(getRoute(relationship, 'focus')).toBeUndefined();
-    expect(getRoute(relationship, 'flow')).toBe(flowRoute);
-    expect(getAnchors(relationship, 'flow')).not.toBe(relationship);
+    expect(getAnchors(relationship, 'flow')).toBe(relationship);
+    expect(getRoute(relationship, 'flow')).toBeUndefined();
+    expect(getRoute(relationship)).toBe(documentRoute);
 
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+    store.state.editor.views.flow!.positions = { ...VIEW_POSITIONS };
     relationshipSort(store.state, 'flow');
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['A'] })
-    );
-    store.state.editor.views.focus!.positions = { ...VIEW_POSITIONS };
-    relationshipSort(store.state, 'focus');
-    const focusRoute = getRoute(relationship, 'focus');
-    expect(focusRoute).toBeDefined();
+    const viewRoute = getRoute(relationship, 'flow');
+    expect(viewRoute).toBeDefined();
 
     store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
 
     expect(getRoute(relationship, 'flow')).toBeUndefined();
     expect(getAnchors(relationship, 'flow')).toBe(relationship);
-    expect(getRoute(relationship, 'focus')).toBe(focusRoute);
+    expect(getRoute(relationship)).toBe(documentRoute);
   });
 });
 
@@ -498,20 +395,20 @@ describe('clearSortChannel', () => {
   it('empties the view anchors, slots, routes and epoch, and leaves the document channel', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
-    relationshipSort(state, 'focus');
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
+    relationshipSort(state, 'flow');
     const documentBox = getRouteBBox(relationship);
-    expect(getStubSlots(relationship, 'focus')).not.toBe(
+    expect(getStubSlots(relationship, 'flow')).not.toBe(
       getStubSlots(relationship)
     );
 
-    clearSortChannel([relationship], 'focus');
+    clearSortChannel([relationship], 'flow');
 
-    expect(getAnchors(relationship, 'focus')).toBe(relationship);
-    expect(getStubSlots(relationship, 'focus')).toEqual([0, 0]);
-    expect(getRoute(relationship, 'focus')).toBeUndefined();
+    expect(getAnchors(relationship, 'flow')).toBe(relationship);
+    expect(getStubSlots(relationship, 'flow')).toEqual([0, 0]);
+    expect(getRoute(relationship, 'flow')).toBeUndefined();
     expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus')
+      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
     ).toEqual(boxOf([relationship.start, relationship.end], PAD + MAX_STUB));
     expect(getRoute(relationship)).toBeDefined();
     expect(getRouteBBox(relationship)).toEqual(documentBox);
@@ -522,30 +419,30 @@ describe('clearSortChannel', () => {
       { x: 5_200, y: -2_972 },
       { x: 5_500, y: -2_972 },
     ];
-    setRoute(relationship, points, 'focus');
+    setRoute(relationship, points, 'flow');
     expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus')
+      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
     ).toEqual(boxOf([...points, relationship.start, relationship.end], PAD));
-    nextSortEpoch('focus');
+    nextSortEpoch('flow');
     expect(
-      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'focus')
+      getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
     ).toEqual(boxOf([relationship.start, relationship.end], PAD + MAX_STUB));
   });
 
   it('empties the document channel by default', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
-    relationshipSort(state, 'focus');
-    const viewRoute = getRoute(relationship, 'focus');
+    relationshipSort(state, 'flow');
+    const viewRoute = getRoute(relationship, 'flow');
 
     clearSortChannel([relationship]);
 
     expect(getRoute(relationship)).toBeUndefined();
-    expect(getRoute(relationship, 'focus')).toBe(viewRoute);
+    expect(getRoute(relationship, 'flow')).toBe(viewRoute);
   });
 
   /**
-   * A store with the scene, a Focus view open on A at the view points, and
+   * A store with the scene, a view open on A at the view points, and
    * both sorts run. Read back through the store: its state is an observable
    * proxy, and the channels key on the object the sort reads, which is the proxied one.
    */
@@ -559,13 +456,13 @@ describe('clearSortChannel', () => {
     createScene(store.state);
     const relationship = store.state.collections.relationshipEntities.ab;
     store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['A'] })
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['A'] })
     );
-    store.state.editor.views.focus!.positions = { ...VIEW_POSITIONS };
+    store.state.editor.views.flow!.positions = { ...VIEW_POSITIONS };
     relationshipSort(store.state);
-    relationshipSort(store.state, 'focus');
-    expect(getAnchors(relationship, 'focus')).not.toBe(relationship);
-    expect(getRoute(relationship, 'focus')).toBeDefined();
+    relationshipSort(store.state, 'flow');
+    expect(getAnchors(relationship, 'flow')).not.toBe(relationship);
+    expect(getRoute(relationship, 'flow')).toBeDefined();
 
     return { store, relationship };
   }
@@ -575,12 +472,12 @@ describe('clearSortChannel', () => {
     const { store, relationship } = createSortedStore();
 
     store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['A'] })
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['A'] })
     );
 
-    expect(getAnchors(relationship, 'focus')).toBe(relationship);
-    expect(getStubSlots(relationship, 'focus')).toEqual([0, 0]);
-    expect(getRoute(relationship, 'focus')).toBeUndefined();
+    expect(getAnchors(relationship, 'flow')).toBe(relationship);
+    expect(getStubSlots(relationship, 'flow')).toEqual([0, 0]);
+    expect(getRoute(relationship, 'flow')).toBeUndefined();
     expect(getRoute(relationship)).toBeDefined();
     expect(getRouteBBox(relationship)).toEqual(
       boxOf(
@@ -598,26 +495,26 @@ describe('clearSortChannel', () => {
   it('leaves the view geometry of another store on the page alone when a view opens', () => {
     const first = createSortedStore();
     const second = createSortedStore();
-    const anchors = getAnchors(first.relationship, 'focus');
-    const route = getRoute(first.relationship, 'focus');
-    const slots = getStubSlots(first.relationship, 'focus');
+    const anchors = getAnchors(first.relationship, 'flow');
+    const route = getRoute(first.relationship, 'flow');
+    const slots = getStubSlots(first.relationship, 'flow');
     const box = getRouteBBox(
       first.relationship,
       RELATIONSHIP_STROKE_WIDTH,
-      'focus'
+      'flow'
     );
 
     second.store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['A'] })
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['A'] })
     );
 
-    expect(getAnchors(second.relationship, 'focus')).toBe(second.relationship);
-    expect(getRoute(second.relationship, 'focus')).toBeUndefined();
-    expect(getAnchors(first.relationship, 'focus')).toBe(anchors);
-    expect(getRoute(first.relationship, 'focus')).toBe(route);
-    expect(getStubSlots(first.relationship, 'focus')).toBe(slots);
+    expect(getAnchors(second.relationship, 'flow')).toBe(second.relationship);
+    expect(getRoute(second.relationship, 'flow')).toBeUndefined();
+    expect(getAnchors(first.relationship, 'flow')).toBe(anchors);
+    expect(getRoute(first.relationship, 'flow')).toBe(route);
+    expect(getStubSlots(first.relationship, 'flow')).toBe(slots);
     expect(
-      getRouteBBox(first.relationship, RELATIONSHIP_STROKE_WIDTH, 'focus')
+      getRouteBBox(first.relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
     ).toEqual(box);
   });
 });
@@ -644,37 +541,37 @@ describe('the view channel and its readers', () => {
   it('redraws a reader of the view anchors when a view sort moves them, and not when it does not', async () => {
     const { state, relationship, view } = createScene();
     relationshipSort(state);
-    const runs = watch(() => getAnchors(relationship, 'focus'));
+    const runs = watch(() => getAnchors(relationship, 'flow'));
     expect(runs()).toBe(1);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     await flush();
     expect(runs()).toBe(2);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     await flush();
     expect(runs()).toBe(2);
 
     view.positions.B = { x: 6_000, y: -3_000 };
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     await flush();
     expect(runs()).toBe(3);
-    expect(getAnchors(relationship, 'focus').end.x).toBe(6_000);
+    expect(getAnchors(relationship, 'flow').end.x).toBe(6_000);
   });
 
   it('redraws a reader of the view route and slots the same way', async () => {
     const { state, relationship, view } = createScene();
-    relationshipSort(state, 'focus');
-    const route = watch(() => getRoute(relationship, 'focus'));
-    const slots = watch(() => getStubSlots(relationship, 'focus'));
+    relationshipSort(state, 'flow');
+    const route = watch(() => getRoute(relationship, 'flow'));
+    const slots = watch(() => getStubSlots(relationship, 'flow'));
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     await flush();
     expect(route()).toBe(1);
     expect(slots()).toBe(1);
 
     view.positions.B = { x: 5_600, y: -2_600 };
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     await flush();
     expect(route()).toBe(2);
     expect(slots()).toBe(2);
@@ -682,8 +579,8 @@ describe('the view channel and its readers', () => {
 
   it('leaves a reader of the view channel alone while the document sorts', async () => {
     const { state, relationship } = createScene();
-    relationshipSort(state, 'focus');
-    const runs = watch(() => getAnchors(relationship, 'focus'));
+    relationshipSort(state, 'flow');
+    const runs = watch(() => getAnchors(relationship, 'flow'));
 
     state.collections.tableEntities.B.ui.x = 900;
     relationshipSort(state);
@@ -693,40 +590,20 @@ describe('the view channel and its readers', () => {
     expect(relationship.end.x).toBe(900);
   });
 
-  it('leaves a reader of one view channel alone while the other view sorts', async () => {
-    const { state, relationship, view } = createScene();
-    openFlow(state);
-    relationshipSort(state, 'flow');
-    relationshipSort(state, 'focus');
-    const flowRuns = watch(() => getAnchors(relationship, 'flow'));
-    const focusRuns = watch(() => getRoute(relationship, 'focus'));
-
-    view.positions.B = { x: 6_000, y: -3_000 };
-    relationshipSort(state, 'focus');
-    await flush();
-
-    expect(focusRuns()).toBe(2);
-    expect(flowRuns()).toBe(1);
-    expect(getAnchors(relationship, 'focus').end.x).toBe(6_000);
-    expect(getAnchors(relationship, 'flow').end.x).toBe(-3_400);
-  });
-
   it('wakes every reader of a connector the view channel forgets, and no reader of another', async () => {
     const { state, relationship } = createScene();
     const other = createScene();
-    relationshipSort(state, 'focus');
-    relationshipSort(other.state, 'focus');
-    const runs = watch(() => getAnchors(relationship, 'focus'));
-    const otherRuns = watch(() => getAnchors(other.relationship, 'focus'));
+    relationshipSort(state, 'flow');
+    relationshipSort(other.state, 'flow');
+    const runs = watch(() => getAnchors(relationship, 'flow'));
+    const otherRuns = watch(() => getAnchors(other.relationship, 'flow'));
 
-    clearSortChannel([relationship], 'focus');
+    clearSortChannel([relationship], 'flow');
     await flush();
 
     expect(runs()).toBe(2);
     expect(otherRuns()).toBe(1);
-    expect(getAnchors(relationship, 'focus')).toBe(relationship);
-    expect(getAnchors(other.relationship, 'focus')).not.toBe(
-      other.relationship
-    );
+    expect(getAnchors(relationship, 'flow')).toBe(relationship);
+    expect(getAnchors(other.relationship, 'flow')).not.toBe(other.relationship);
   });
 });

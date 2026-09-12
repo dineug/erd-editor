@@ -200,7 +200,7 @@ describe('the boxes a view lays out', () => {
     const state = createState(0);
     state.settings.columnOrder = [];
 
-    expect(getColumnCellSlots(state, WIDTHS, 'focus')).toEqual(VIEW_ROW);
+    expect(getColumnCellSlots(state, WIDTHS, 'flow')).toEqual(VIEW_ROW);
   });
 
   it('keeps that row whatever show bit is set and however the columns are ordered', () => {
@@ -225,7 +225,7 @@ describe('the boxes a view lays out', () => {
         const state = createState(show);
         state.settings.columnOrder = columnOrder;
 
-        expect(getColumnCellSlots(state, WIDTHS, 'focus')).toEqual(VIEW_ROW);
+        expect(getColumnCellSlots(state, WIDTHS, 'flow')).toEqual(VIEW_ROW);
         expect(getColumnCellSlots(state, WIDTHS, 'document')).toEqual(
           getColumnCellSlots(state, WIDTHS)
         );
@@ -240,7 +240,7 @@ describe('the boxes a view lays out', () => {
     entity.ui.widthName = 60;
     entity.ui.widthComment = 70;
 
-    expect(getHeaderCellSlots(state, entity, 'focus')).toEqual([
+    expect(getHeaderCellSlots(state, entity, 'flow')).toEqual([
       { focusType: FocusType.tableName, x: 0, width: 60 },
     ]);
     expect(getHeaderCellSlots(state, entity, 'document')).toHaveLength(2);

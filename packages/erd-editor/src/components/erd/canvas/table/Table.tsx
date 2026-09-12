@@ -79,9 +79,9 @@ import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 import { useFocusTable } from './useFocusTable';
-import { useFocusWalk } from './useFocusWalk';
 import { useMoveTable } from './useMoveTable';
 import { useSharedFocusTable } from './useSharedFocusTable';
+import { useViewPin } from './useViewPin';
 
 export type TableProps = {
   table: Table;
@@ -122,7 +122,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   );
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
   const { onMoveStart } = useMoveTable(ctx, props, sourceRef);
-  const walk = useFocusWalk(app, props, sourceRef);
+  const pin = useViewPin(app, props, sourceRef);
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     hover: false,
@@ -193,10 +193,10 @@ const Table: FC<TableProps> = (props, ctx) => {
       : theme.tableSelect;
   };
 
-  /** The press a table takes: its drag, and in a view scene the start of a click that focuses it. */
+  /** The press a table takes: its drag, and in a view scene the start of a click that pins it. */
   const handlePress = (event: ScenePointerEvent) => {
     onMoveStart(event);
-    walk.onPress(event);
+    pin.onPress(event);
   };
 
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
@@ -490,6 +490,12 @@ const Table: FC<TableProps> = (props, ctx) => {
           fill={theme.tableBackground}
           stroke={bodyStroke(theme, selected)}
           strokeWidth={TABLE_BORDER}
+          on:mouseenter={(event: SceneMouseEvent) => {
+            view && setSceneCursor(event, CURSOR_POINTER);
+          }}
+          on:mouseleave={(event: SceneMouseEvent) => {
+            view && setSceneCursor(event, CURSOR_INHERIT);
+          }}
         />
         {ringColor ? (
           <k-rect

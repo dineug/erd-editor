@@ -242,7 +242,7 @@ export const streamScrollToAction = createAction<
 /**
  * The scroll a scene dispatches lands where that scene reads: the document's
  * own for the document scene, and the view of the source's kind, named, for a
- * view scene, so a Flow scene under a Focus overlay never moves the overlay.
+ * view scene, so neither of two scenes on one page ever scrolls the other.
  */
 export const sceneScrollToAction = (
   source: GeometrySource,

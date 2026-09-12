@@ -15,14 +15,16 @@ import type { AppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/relationship-group/relationship/Relationship';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
-import { RelationshipType } from '@/constants/schema';
-import { ViewKind } from '@/engine/modules/editor/state';
+import { CanvasType, RelationshipType } from '@/constants/schema';
+import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
 import {
+  changeVisualizationModeAction,
   viewMoveTableAction,
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { Point, Relationship as RelationshipType_ } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
@@ -57,7 +59,7 @@ afterEach(async () => {
 
 /**
  * One store with two tables joined by a connector, sorted for the document,
- * and a Focus view on the first standing both far away, sorted for the view.
+ * and a view standing on the first, both placed far away, sorted for the view.
  * Both sorts are run here so the scene mounts onto settled geometry.
  */
 async function createApp(): Promise<{
@@ -76,14 +78,16 @@ async function createApp(): Promise<{
       start: { tableId: 't1', columnIds: [] },
       end: { tableId: 't2', columnIds: [] },
     }),
-    viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
-    viewSetLayoutAction({ kind: ViewKind.focus, positions: VIEW_POSITIONS })
+    changeCanvasTypeAction({ value: CanvasType.visualization }),
+    changeVisualizationModeAction({ value: VisualizationMode.flow }),
+    viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+    viewSetLayoutAction({ kind: ViewKind.flow, positions: VIEW_POSITIONS })
   );
   // The hooks sort both sources a few ms after the dispatch; waiting them out
   // means the sorts below are the last word rather than one overwritten later.
   await tick(50);
   relationshipSort(store.state);
-  relationshipSort(store.state, 'focus');
+  relationshipSort(store.state, 'flow');
 
   return { app, relationship: store.state.collections.relationshipEntities.r1 };
 }
@@ -175,7 +179,7 @@ function pointsOf(subpath: string): Point[] {
 function viewBounds(app: AppContext): Bounds {
   const { state } = app.store;
   const boxes = ['t1', 't2'].map(id =>
-    tableToObjectPoint(state, state.collections.tableEntities[id], 'focus')
+    tableToObjectPoint(state, state.collections.tableEntities[id], 'flow')
   );
 
   return {
@@ -193,13 +197,13 @@ describe('Relationship under a view provider', () => {
   /** AC-68. The hit band runs from the view's start anchor to its end anchor. */
   it('runs the pointer band between the anchors the view sort wrote', async () => {
     const { app, relationship } = await createApp();
-    const stage = mountShell(app, relationship, 'focus');
+    const stage = mountShell(app, relationship, 'flow');
     await flush();
     await whenDrawn();
 
     const [run] = subpaths(childNamed(stage, 'relationship-hit-area'));
     const numbers = numbersIn(run);
-    const { start, end } = getAnchors(relationship, 'focus');
+    const { start, end } = getAnchors(relationship, 'flow');
 
     expect(start.x).toBeGreaterThanOrEqual(5_000);
     expect(numbers.slice(0, 2)).toEqual([start.x, start.y]);
@@ -214,13 +218,13 @@ describe('Relationship under a view provider', () => {
 
   it('draws the route the view path finder produced', async () => {
     const { app, relationship } = await createApp();
-    const stage = mountShell(app, relationship, 'focus');
+    const stage = mountShell(app, relationship, 'flow');
     await flush();
     await whenDrawn();
 
     const route = childNamed(stage, 'relationship-route');
     const viewD = toPathD(
-      getRelationshipPath(relationship, 'focus').path.path.d()
+      getRelationshipPath(relationship, 'flow').path.path.d()
     );
     const documentD = toPathD(getRelationshipPath(relationship).path.path.d());
 
@@ -231,7 +235,7 @@ describe('Relationship under a view provider', () => {
   /** AC-56. Every point of the hit band, marker traces included, lies among the view's boxes. */
   it('keeps the whole hit path inside the bounding rect of the view boxes', async () => {
     const { app, relationship } = await createApp();
-    const stage = mountShell(app, relationship, 'focus');
+    const stage = mountShell(app, relationship, 'flow');
     await flush();
     await whenDrawn();
 
@@ -250,31 +254,36 @@ describe('Relationship under a view provider', () => {
   /** The view sort writes no observable entity, so the channel itself has to wake the leaf. */
   it('follows a view move through the hook, the sort and the channel with no other change', async () => {
     const { app, relationship } = await createApp();
-    const stage = mountShell(app, relationship, 'focus');
+    const stage = mountShell(app, relationship, 'flow');
     await flush();
     await whenDrawn();
-    const before = getAnchors(relationship, 'focus').end.x;
+    const before = getAnchors(relationship, 'flow').end.x;
 
     app.store.dispatchSync(
-      viewMoveTableAction({ ids: ['t2'], movementX: 400, movementY: 0 })
+      viewMoveTableAction({
+        ids: ['t2'],
+        movementX: 400,
+        movementY: 0,
+        kind: ViewKind.flow,
+      })
     );
     await tick(50);
     await flush();
     await whenDrawn();
 
-    const { end } = getAnchors(relationship, 'focus');
+    const { end } = getAnchors(relationship, 'flow');
     const [run] = subpaths(childNamed(stage, 'relationship-hit-area'));
     expect(end.x).toBe(before + 400);
     expect(numbersIn(run).slice(-2)).toEqual([end.x, end.y]);
     expect(childNamed(stage, 'relationship-route').getAttr('data')).toBe(
-      toPathD(getRelationshipPath(relationship, 'focus').path.path.d())
+      toPathD(getRelationshipPath(relationship, 'flow').path.path.d())
     );
     expect(relationship.end.x).toBeLessThan(1_000);
   });
 
   it('draws the same entity at the document anchors in a sibling with no provider', async () => {
     const { app, relationship } = await createApp();
-    const viewStage = mountShell(app, relationship, 'focus');
+    const viewStage = mountShell(app, relationship, 'flow');
     const documentStage = mountShell(app, relationship, null);
     await flush();
     await whenDrawn();

@@ -307,11 +307,11 @@ describe('collectObstacles', () => {
 
   it('reads the tables a view shows, where the view places them', () => {
     const state = createScene();
-    const view = createSceneView(ViewKind.focus, ['A']);
+    const view = createSceneView(ViewKind.flow, ['A']);
     view.positions = { A: { x: 5_000, y: -3_000 }, B: { x: 5_600, y: -3_000 } };
-    state.editor.views.focus = view;
+    state.editor.views.flow = view;
 
-    const obstacles = collectObstacles(state, 'focus');
+    const obstacles = collectObstacles(state, 'flow');
 
     // C has no connector to A and is not in the view, so nothing routes around it.
     expect(obstacles.ids).toEqual(['A', 'B']);
@@ -323,6 +323,6 @@ describe('collectObstacles', () => {
   it('reads no table for a view while none is open', () => {
     const state = createScene();
 
-    expect(collectObstacles(state, 'focus').ids).toEqual([]);
+    expect(collectObstacles(state, 'flow').ids).toEqual([]);
   });
 });

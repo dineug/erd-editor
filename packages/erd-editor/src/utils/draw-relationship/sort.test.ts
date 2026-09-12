@@ -386,11 +386,11 @@ describe('relationshipSort', () => {
     addTable(state, 'A', 0, 0);
     addTable(state, 'B', 400, 0);
     const relationship = addRelationship(state, 'r', 'A', 'B');
-    const view = createSceneView(ViewKind.focus, ['A']);
+    const view = createSceneView(ViewKind.flow, ['A']);
     view.positions = { A: { x: 5_000, y: -3_000 }, B: { x: 5_600, y: -3_000 } };
-    state.editor.views.focus = view;
+    state.editor.views.flow = view;
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
     relationshipSort(state);
 
     expect(relationship.start).toMatchObject({

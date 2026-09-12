@@ -50,7 +50,7 @@ const Probe: FC<{}> = (props, ctx) => {
 
 /** A view scene root the way an overlay mounts one: a wrapper of its own, the provider inside. */
 const ViewScope: FC<{ children: any }> = (props, ctx) => {
-  const provider = useProvider(ctx, sceneSourceContext, 'focus');
+  const provider = useProvider(ctx, sceneSourceContext, 'flow');
   const { addUnsubscribe } = useUnmounted();
   addUnsubscribe(() => provider.destroy());
 
@@ -96,7 +96,7 @@ afterEach(() => {
   mounted?.unmount();
   mounted = null;
   thawView(app.store.state);
-  thawView(app.store.state, 'focus');
+  thawView(app.store.state, 'flow');
 });
 
 /** A second table beside the pressed one, and both of them selected. */
@@ -147,16 +147,16 @@ describe('useMoveEntity', () => {
 
     api.onMoveStart(press());
 
-    expect(isEntityDragActive(app.store.state, 'focus')).toBe(true);
-    expect(isViewFrozen(app.store.state, 'focus')).toBe(true);
+    expect(isEntityDragActive(app.store.state, 'flow')).toBe(true);
+    expect(isViewFrozen(app.store.state, 'flow')).toBe(true);
     expect(isEntityDragActive(app.store.state)).toBe(false);
     expect(isViewFrozen(app.store.state)).toBe(false);
 
     releasePointer();
     await flush();
 
-    expect(isEntityDragActive(app.store.state, 'focus')).toBe(false);
-    expect(isViewFrozen(app.store.state, 'focus')).toBe(false);
+    expect(isEntityDragActive(app.store.state, 'flow')).toBe(false);
+    expect(isViewFrozen(app.store.state, 'flow')).toBe(false);
   });
 
   /**
@@ -251,12 +251,12 @@ describe('useMoveEntity', () => {
   it('moves the view placement from a view scene, and leaves the document points where they were', async () => {
     mounted?.unmount();
     app.store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { t1: { x: 10, y: 20 } },
       }),
-      viewChangeZoomLevelAction({ value: 0.5 })
+      viewChangeZoomLevelAction({ value: 0.5, kind: ViewKind.flow })
     );
     mounted = await mountAndFlush(
       html`<div><${ViewScope} .children=${html`<${Probe} />`} /></div>`,
@@ -268,7 +268,7 @@ describe('useMoveEntity', () => {
     movePointer(120, 60);
     await flush();
 
-    expect(app.store.state.editor.views.focus!.positions.t1).toEqual({
+    expect(app.store.state.editor.views.flow!.positions.t1).toEqual({
       x: 10 + 240,
       y: 20 + 120,
     });

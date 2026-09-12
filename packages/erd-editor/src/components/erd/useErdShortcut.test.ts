@@ -11,7 +11,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { useErdShortcut } from '@/components/erd/useErdShortcut';
 import { Open } from '@/constants/open';
-import { ColumnOption, RelationshipType } from '@/constants/schema';
+import { CanvasType, ColumnOption, RelationshipType } from '@/constants/schema';
 import { History } from '@/engine/history';
 import {
   changeOpenMapAction,
@@ -24,7 +24,11 @@ import {
   selectAllAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import {
+  FocusType,
+  SelectType,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
@@ -284,18 +288,20 @@ describe('useErdShortcut - table properties', () => {
 });
 
 describe('useErdShortcut - focus view', () => {
-  it('opens the Focus view on the one selected table (AC-36)', async () => {
+  it('stands the Flow view on the one selected table (AC-51)', async () => {
     const app = await setup();
     const tableId = seedTable(app);
 
     shortcut(app, KeyBindingName.focusView);
     await flush();
 
-    expect(app.store.state.editor.views.focus?.centerIds).toEqual([tableId]);
-    expect(app.store.state.editor.openMap[Open.focus]).toBe(true);
+    const { editor, settings } = app.store.state;
+    expect(settings.canvasType).toBe(CanvasType.visualization);
+    expect(editor.visualizationMode).toBe(VisualizationMode.flow);
+    expect(editor.views.flow?.centerIds).toEqual([tableId]);
   });
 
-  it('does nothing when nothing is selected (AC-36)', async () => {
+  it('does nothing when nothing is selected (AC-51)', async () => {
     const app = await setup();
     seedTable(app);
     app.store.dispatchSync(unselectAllAction());
@@ -303,11 +309,12 @@ describe('useErdShortcut - focus view', () => {
     shortcut(app, KeyBindingName.focusView);
     await flush();
 
-    expect(app.store.state.editor.views.focus).toBeNull();
-    expect(app.store.state.editor.openMap[Open.focus]).toBeFalsy();
+    const { editor, settings } = app.store.state;
+    expect(settings.canvasType).toBe(CanvasType.ERD);
+    expect(editor.views.flow).toBeNull();
   });
 
-  it('carries every selected table in as a center (AC-38)', async () => {
+  it('carries every selected table in as a center (AC-59)', async () => {
     const app = await setup();
     const ids = [seedTable(app), seedTable(app), seedTable(app)];
     app.store.dispatchSync(selectAllAction());
@@ -315,11 +322,11 @@ describe('useErdShortcut - focus view', () => {
     shortcut(app, KeyBindingName.focusView);
     await flush();
 
-    const centerIds = app.store.state.editor.views.focus?.centerIds ?? [];
+    const centerIds = app.store.state.editor.views.flow?.centerIds ?? [];
     expect([...centerIds].sort()).toEqual([...ids].sort());
   });
 
-  it('leaves a memo out of the centers it was handed (AC-38)', async () => {
+  it('leaves a memo out of the centers it was handed (AC-59)', async () => {
     const app = await setup();
     const tableId = seedTable(app);
     shortcut(app, KeyBindingName.addMemo);
@@ -329,7 +336,7 @@ describe('useErdShortcut - focus view', () => {
     shortcut(app, KeyBindingName.focusView);
     await flush();
 
-    expect(app.store.state.editor.views.focus?.centerIds).toEqual([tableId]);
+    expect(app.store.state.editor.views.flow?.centerIds).toEqual([tableId]);
   });
 });
 

@@ -67,8 +67,8 @@ function addRelationship(
 }
 
 /**
- * A, B and C in a corner of the document and Z two hops from A, so a Focus
- * view on A shows the first three and the connector to Z stays a document one.
+ * A, B and C in a corner of the document and Z two hops from A, so a view
+ * standing on A shows the first three and the connector to Z stays a document one.
  */
 function createScene(state: RootState) {
   addTable(state, 'A', 0, 0);
@@ -83,19 +83,19 @@ function createScene(state: RootState) {
   };
 }
 
-function openFocus(
+function openFocused(
   state: RootState,
   positions: Record<string, Point> = VIEW_POSITIONS,
   showMode: ShowMode = ShowMode.keysOnly
 ) {
-  const view = createSceneView(ViewKind.focus, ['A']);
+  const view = createSceneView(ViewKind.flow, ['A']);
   view.showMode = showMode;
   view.positions = positions;
-  state.editor.views.focus = view;
+  state.editor.views.flow = view;
   return view;
 }
 
-function openFlow(state: RootState, positions: Record<string, Point>) {
+function openWhole(state: RootState, positions: Record<string, Point>) {
   const view = createSceneView(ViewKind.flow);
   view.positions = positions;
   state.editor.views.flow = view;
@@ -131,7 +131,7 @@ function viewBoundsOf(state: RootState, tableIds: string[]): Bounds {
 
   for (const id of tableIds) {
     const table = state.collections.tableEntities[id];
-    const { lt, rb } = tableToObjectPoint(state, table, 'focus');
+    const { lt, rb } = tableToObjectPoint(state, table, 'flow');
     bounds.left = Math.min(bounds.left, lt.x);
     bounds.top = Math.min(bounds.top, lt.y);
     bounds.right = Math.max(bounds.right, rb.x);
@@ -168,9 +168,9 @@ describe('relationshipSort for a view', () => {
   it('leaves the document anchors on the entity where the document sort wrote them', () => {
     relationshipSort(state);
     const written = drawingOf(state, 'document');
-    openFocus(state);
+    openFocused(state);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
     expect(drawingOf(state, 'document')).toEqual(written);
     expect(ab.start).toMatchObject({
@@ -180,8 +180,8 @@ describe('relationshipSort for a view', () => {
     });
     expect(ab.end).toMatchObject({ x: 400, y: 28, direction: Direction.left });
     // The view placed its ends far away, and only its own reader sees them.
-    expect(getAnchors(ab, 'focus').start.x).toBeGreaterThanOrEqual(5_000);
-    expect(getAnchors(ab, 'focus')).not.toBe(ab);
+    expect(getAnchors(ab, 'flow').start.x).toBeGreaterThanOrEqual(5_000);
+    expect(getAnchors(ab, 'flow')).not.toBe(ab);
   });
 
   /** AC-56. What the document draws does not depend on a view being open or having sorted. */
@@ -190,10 +190,10 @@ describe('relationshipSort for a view', () => {
     createScene(alone);
     relationshipSort(alone);
 
-    openFocus(state);
-    relationshipSort(state, 'focus');
+    openFocused(state);
+    relationshipSort(state, 'flow');
     relationshipSort(state);
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
     expect(drawingOf(state, 'document')).toEqual(drawingOf(alone, 'document'));
   });
@@ -211,28 +211,28 @@ describe('relationshipSort for a view', () => {
   /** AC-56. Anchors, turning points, route and path ends of a view all lie among the view's boxes. */
   it('keeps every point a view draws inside the bounding rect of the boxes it shows', () => {
     relationshipSort(state);
-    openFocus(state);
+    openFocused(state);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
     const bounds = viewBoundsOf(state, ['A', 'B', 'C']);
     expect(bounds.left).toBe(5_000);
     expect(bounds.top).toBe(-3_000);
 
     for (const relationship of [ab, ac]) {
-      const { start, end } = getAnchors(relationship, 'focus');
-      const route = getRoute(relationship, 'focus') ?? [];
+      const { start, end } = getAnchors(relationship, 'flow');
+      const route = getRoute(relationship, 'flow') ?? [];
 
       expect(within(bounds, start)).toBe(true);
       expect(within(bounds, end)).toBe(true);
       expect(route.length).toBeGreaterThan(1);
       for (const point of route) expect(within(bounds, point)).toBe(true);
-      for (const point of pathEnds(relationship, 'focus')) {
+      for (const point of pathEnds(relationship, 'flow')) {
         expect(within(bounds, point)).toBe(true);
       }
       for (const [from, to] of getRelationshipPath(
         relationship,
-        'focus'
+        'flow'
       ).path.path.d()) {
         expect(within(bounds, from)).toBe(true);
         expect(within(bounds, to)).toBe(true);
@@ -246,42 +246,42 @@ describe('relationshipSort for a view', () => {
   });
 
   it('anchors the view ends on the facing edges of the view boxes', () => {
-    openFocus(state);
+    openFocused(state);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
     const a = tableToObjectPoint(
       state,
       state.collections.tableEntities.A,
-      'focus'
+      'flow'
     );
     const b = tableToObjectPoint(
       state,
       state.collections.tableEntities.B,
-      'focus'
+      'flow'
     );
     const c = tableToObjectPoint(
       state,
       state.collections.tableEntities.C,
-      'focus'
+      'flow'
     );
 
-    expect(getAnchors(ab, 'focus').start).toEqual({
+    expect(getAnchors(ab, 'flow').start).toEqual({
       tableId: 'A',
       ...a.right,
       direction: Direction.right,
     });
-    expect(getAnchors(ab, 'focus').end).toEqual({
+    expect(getAnchors(ab, 'flow').end).toEqual({
       tableId: 'B',
       ...b.left,
       direction: Direction.left,
     });
-    expect(getAnchors(ac, 'focus').start).toEqual({
+    expect(getAnchors(ac, 'flow').start).toEqual({
       tableId: 'A',
       ...a.bottom,
       direction: Direction.bottom,
     });
-    expect(getAnchors(ac, 'focus').end).toEqual({
+    expect(getAnchors(ac, 'flow').end).toEqual({
       tableId: 'C',
       ...c.top,
       direction: Direction.top,
@@ -289,11 +289,11 @@ describe('relationshipSort for a view', () => {
   });
 
   it('routes the view around the view boxes and nothing else', () => {
-    openFocus(state);
+    openFocused(state);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
-    const obstacles = collectObstacles(state, 'focus');
+    const obstacles = collectObstacles(state, 'flow');
     expect(obstacles.ids).toEqual(['A', 'B', 'C']);
     expect(Array.from(obstacles.left)).toEqual([5_002, 5_602, 5_002]);
     expect(Array.from(obstacles.top)).toEqual([-2_998, -2_998, -2_598]);
@@ -303,29 +303,29 @@ describe('relationshipSort for a view', () => {
     const a = tableToObjectPoint(
       state,
       state.collections.tableEntities.A,
-      'focus'
+      'flow'
     );
-    for (const { y } of getRoute(ab, 'focus') ?? []) expect(y).toBe(a.right.y);
-    for (const { x } of getRoute(ac, 'focus') ?? []) expect(x).toBe(a.bottom.x);
-    expect(getRoute(ab, 'focus')?.[0].y).toBe(-3_000 + 28);
+    for (const { y } of getRoute(ab, 'flow') ?? []) expect(y).toBe(a.right.y);
+    for (const { x } of getRoute(ac, 'flow') ?? []) expect(x).toBe(a.bottom.x);
+    expect(getRoute(ab, 'flow')?.[0].y).toBe(-3_000 + 28);
   });
 
   it('routes only the connectors between two tables the view shows', () => {
     relationshipSort(state);
-    openFocus(state);
+    openFocused(state);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
     expect(getRoute(bz, 'document')).toBeDefined();
-    expect(getRoute(bz, 'focus')).toBeUndefined();
-    expect(getStubSlots(bz, 'focus')).toEqual([0, 0]);
+    expect(getRoute(bz, 'flow')).toBeUndefined();
+    expect(getStubSlots(bz, 'flow')).toEqual([0, 0]);
     // A connector the view never sorted reads the document's anchors, as a
     // table the view has not placed stands at its document point.
-    expect(getAnchors(bz, 'focus')).toBe(bz);
+    expect(getAnchors(bz, 'flow')).toBe(bz);
   });
 
-  it('shows a Flow view the tables its layout placed', () => {
-    openFlow(state, { A: VIEW_POSITIONS.A, B: VIEW_POSITIONS.B });
+  it('shows a view standing on no centers the tables its layout placed', () => {
+    openWhole(state, { A: VIEW_POSITIONS.A, B: VIEW_POSITIONS.B });
 
     relationshipSort(state, 'flow');
 
@@ -333,30 +333,29 @@ describe('relationshipSort for a view', () => {
     expect(getRoute(ab, 'flow')).toBeDefined();
     expect(getRoute(ac, 'flow')).toBeUndefined();
     expect(getAnchors(ab, 'flow').start.x).toBeGreaterThanOrEqual(5_000);
-    expect(getRoute(ab, 'focus')).toBeUndefined();
   });
 
   /** AC-6. A name only box is its header, and the connector meets its edge. */
   it('anchors a name only box on its header edge', () => {
-    openFocus(state, VIEW_POSITIONS, ShowMode.nameOnly);
+    openFocused(state, VIEW_POSITIONS, ShowMode.nameOnly);
 
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
     const a = tableToObjectPoint(
       state,
       state.collections.tableEntities.A,
-      'focus'
+      'flow'
     );
     expect(a.height).toBe(56);
-    expect(getAnchors(ab, 'focus').start).toMatchObject({
+    expect(getAnchors(ab, 'flow').start).toMatchObject({
       x: 5_000 + a.width,
       y: -3_000 + 28,
     });
-    expect(getAnchors(ac, 'focus').start).toMatchObject({
+    expect(getAnchors(ac, 'flow').start).toMatchObject({
       x: 5_000 + a.width / 2,
       y: -3_000 + 56,
     });
-    expect(getAnchors(ac, 'focus').end).toMatchObject({
+    expect(getAnchors(ac, 'flow').end).toMatchObject({
       x: 5_000 + a.width / 2,
       y: -2_600,
     });
@@ -364,14 +363,14 @@ describe('relationshipSort for a view', () => {
 
   it('follows a view table the view moves, and leaves the document where it was', () => {
     relationshipSort(state);
-    const view = openFocus(state);
-    relationshipSort(state, 'focus');
-    const before = getAnchors(ab, 'focus').end.x;
+    const view = openFocused(state);
+    relationshipSort(state, 'flow');
+    const before = getAnchors(ab, 'flow').end.x;
 
     view.positions.B = { x: 6_000, y: -3_000 };
-    relationshipSort(state, 'focus');
+    relationshipSort(state, 'flow');
 
-    expect(getAnchors(ab, 'focus').end.x).toBe(before + 400);
+    expect(getAnchors(ab, 'flow').end.x).toBe(before + 400);
     expect(ab.end.x).toBe(400);
   });
 
@@ -379,9 +378,9 @@ describe('relationshipSort for a view', () => {
     relationshipSort(state);
     const written = drawingOf(state, 'document');
 
-    expect(() => relationshipSort(state, 'focus')).not.toThrow();
+    expect(() => relationshipSort(state, 'flow')).not.toThrow();
 
-    expect(getRoute(ab, 'focus')).toBeUndefined();
+    expect(getRoute(ab, 'flow')).toBeUndefined();
     expect(drawingOf(state, 'document')).toEqual(written);
   });
 });

@@ -25,7 +25,6 @@ type TableSize = { key: string; width: number; height: number };
 const tableSizeCaches: Record<GeometrySource, WeakMap<Table, TableSize>> = {
   document: new WeakMap(),
   flow: new WeakMap(),
-  focus: new WeakMap(),
 };
 
 /** A size's cache key, and the measure taken only when the key misses. */

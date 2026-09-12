@@ -34,7 +34,7 @@ import { createColumn } from '@/utils/collection/tableColumn.entity';
 
 /** The view widths for the rows the Focus view shows, which the function no longer looks up itself. */
 const viewWidths = (table: Table, state: RootState) =>
-  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'focus'));
+  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'flow'));
 
 function createState(): RootState {
   const state: RootState = {
@@ -97,14 +97,14 @@ describe('a table box in a view', () => {
     table = addTable(state, 'A', 120, 340);
     addColumn(state, table, 'c1');
     addColumn(state, table, 'c2');
-    const view = createSceneView(ViewKind.focus, ['A']);
+    const view = createSceneView(ViewKind.flow, ['A']);
     view.showMode = ShowMode.nameOnly;
     view.positions.A = { x: -900, y: 4_000 };
-    state.editor.views.focus = view;
+    state.editor.views.flow = view;
   });
 
   it('stands at the view point and is the size the view measures', () => {
-    expect(getTableRect(state, table, 'focus')).toEqual({
+    expect(getTableRect(state, table, 'flow')).toEqual({
       x: -900,
       y: 4_000,
       width: viewWidths(table, state).width,
@@ -122,16 +122,16 @@ describe('a table box in a view', () => {
   });
 
   it('lays its rows out against the view widths', () => {
-    expect(getTableWidths(state, table, 'focus')).toEqual(
+    expect(getTableWidths(state, table, 'flow')).toEqual(
       viewWidths(table, state)
     );
     expect(getTableWidths(state, table)).toEqual(calcTableWidths(table, state));
   });
 
   it('agrees with the box on the view widths while no view is open', () => {
-    state.editor.views.focus = null;
+    state.editor.views.flow = null;
 
-    const rect = getTableRect(state, table, 'focus');
+    const rect = getTableRect(state, table, 'flow');
 
     expect(rect).toEqual({
       x: 120,
@@ -139,11 +139,11 @@ describe('a table box in a view', () => {
       width: viewWidths(table, state).width,
       height: calcTableHeight(table),
     });
-    expect(getTableWidths(state, table, 'focus').width).toBe(rect.width);
+    expect(getTableWidths(state, table, 'flow').width).toBe(rect.width);
   });
 
   it('puts the first row of a view below the header at the view point', () => {
-    expect(getColumnRect(state, table, 0, 'focus')).toMatchObject({
+    expect(getColumnRect(state, table, 0, 'flow')).toMatchObject({
       x: -900 + TABLE_BORDER + TABLE_PADDING,
       y: 4_000 + TABLE_BORDER + TABLE_PADDING + TABLE_HEADER_HEIGHT,
       height: COLUMN_HEIGHT,

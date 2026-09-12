@@ -11,11 +11,9 @@ import {
 import { ViewKind } from '@/engine/modules/editor/state';
 import { getActiveView, isViewShown } from '@/engine/modules/editor/view';
 import {
-  viewChangeHopAction,
   viewChangeShowModeAction,
   viewChangeZoomLevelAction,
   viewCloseAction,
-  viewHistoryMoveAction,
   viewMoveTableAction,
   viewOpenAction,
   viewScrollToAction,
@@ -180,14 +178,14 @@ const idsOf = ({ ids }: { ids: string[] }) => ids;
 const tableIdOf = ({ tableId }: { tableId: string }) => [tableId];
 
 const kindOf = (_: RootState, { kind }: { kind: ViewSource }) => kind;
-const focusOnly = () => ViewKind.focus;
+const flowOnly = () => ViewKind.flow;
 const namedOrActiveKind = (state: RootState, { kind }: { kind?: ViewSource }) =>
   kind ?? getActiveView(state)?.kind ?? null;
 
 /**
- * The one view an action reaches: the kind it names, the Focus view for the
- * centers and the hop, and for a move or a show mode the kind named, else the
- * active view. A document action reaches whichever view shows what it names.
+ * The one view an action reaches: the kind it names, the Flow view for the
+ * centers, and for a move or a show mode the kind named, else the active
+ * view. A document action reaches whichever view shows what it names.
  */
 const aimedKind: Record<
   string,
@@ -196,9 +194,7 @@ const aimedKind: Record<
   [viewOpenAction.type]: kindOf,
   [viewCloseAction.type]: kindOf,
   [viewSetLayoutAction.type]: kindOf,
-  [viewChangeHopAction.type]: focusOnly,
-  [viewSetCentersAction.type]: focusOnly,
-  [viewHistoryMoveAction.type]: focusOnly,
+  [viewSetCentersAction.type]: flowOnly,
   [viewChangeShowModeAction.type]: namedOrActiveKind,
   [viewMoveTableAction.type]: namedOrActiveKind,
 };
@@ -251,7 +247,7 @@ function touchesView(
   return named(action.payload).some(id => shown.has(id) || lastRead.has(id));
 }
 
-const VIEW_SOURCES: ViewSource[] = [ViewKind.flow, ViewKind.focus];
+const VIEW_SOURCES: ViewSource[] = [ViewKind.flow];
 
 /**
  * Each view's own sort, into that view's channel, over the tables it shows at
@@ -261,7 +257,6 @@ const VIEW_SOURCES: ViewSource[] = [ViewKind.flow, ViewKind.focus];
 const viewRelationshipSortHook: HookEffect = (action$, getState) => {
   const lastRead: Record<ViewSource, Set<string>> = {
     flow: new Set(),
-    focus: new Set(),
   };
   const pending = new Set<ViewSource>();
 
@@ -345,9 +340,7 @@ const viewLayoutActions = [
   viewMoveTableAction,
   viewSetLayoutAction,
   viewChangeShowModeAction,
-  viewChangeHopAction,
   viewSetCentersAction,
-  viewHistoryMoveAction,
 ];
 
 export const hooks: Hook[] = [

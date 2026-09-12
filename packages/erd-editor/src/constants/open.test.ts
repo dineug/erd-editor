@@ -11,7 +11,6 @@ describe('Open', () => {
       themeBuilder: 'themeBuilder',
       diffViewer: 'diffViewer',
       timeTravel: 'timeTravel',
-      focus: 'focus',
     });
   });
 
@@ -30,7 +29,6 @@ describe('Open', () => {
       'themeBuilder',
       'diffViewer',
       'timeTravel',
-      'focus',
     ]);
   });
 

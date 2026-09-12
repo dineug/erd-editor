@@ -11,13 +11,13 @@ import {
 } from '../support/schema';
 import { Shortcut } from '../support/shortcuts';
 
-// The Visualization tab and the Focus overlay from the outside: which mode the
-// tab stands in, what ELK is asked for, where a walk lands, and what the host
-// hears while a reader is in a view over the document.
+// The Visualization tab from the outside: which mode the tab stands in, what
+// ELK is asked for, what an entry from the ERD narrows the view to, and what
+// the host hears while a reader stands in that view over the document.
 
 /**
  * ELK is megabytes of script the worker parses before it answers anything, and
- * every Focus open and every Flow entry waits on one.
+ * every Flow entry waits on one.
  */
 const PLACEMENT_TIMEOUT = 45_000;
 
@@ -239,35 +239,9 @@ function placementsOf(erd: ErdEditorPage, ids: string[]) {
   }, ids);
 }
 
-/** Where the scene layer of the newest stage stands, which is its pan and zoom. */
-function sceneTransform(erd: ErdEditorPage) {
-  return erd.page.evaluate(() => {
-    const stage: any = Reflect.get(window, '__erdStages')?.canvas;
-    const layer: any = stage?.findOne('.scene');
-
-    return layer
-      ? {
-          x: Math.round(layer.x()),
-          y: Math.round(layer.y()),
-          scale: layer.scaleX(),
-        }
-      : null;
-  });
-}
-
-/** The overlay's own scene, which is a second canvas over the tab's own. */
-const focusScene = (erd: ErdEditorPage) =>
-  erd.host.locator('.focus-view [data-testid="erd-canvas"] .scene-mirror');
-
-const focusBar = (erd: ErdEditorPage) => erd.host.locator('.focus-bar');
-const focusCenters = (erd: ErdEditorPage) => erd.host.locator('.focus-centers');
-const focusTable = (erd: ErdEditorPage, id: string) =>
-  focusScene(erd).locator(`.table[data-id="${id}"]`);
-
 /**
  * The tab's own scene while the Visualization tab stands in its Flow mode. The
- * ERD is cached out of the document by then, so the one canvas is the Flow's,
- * until a Focus overlay draws a second one over it.
+ * ERD is cached out of the document by then, so the one canvas is the Flow's.
  */
 const flowScene = (erd: ErdEditorPage) =>
   erd.host.locator('[data-testid="erd-canvas"] .scene-mirror');
@@ -295,10 +269,12 @@ async function landed(erd: ErdEditorPage, tableId: string) {
   await erd.whenDrawn();
 }
 
-/** Waits for the Focus overlay to be up with a placement under it. */
-async function focusPlaced(erd: ErdEditorPage, centerId: string) {
-  await expect(focusBar(erd)).toBeVisible({ timeout: PLACEMENT_TIMEOUT });
-  await expect(focusTable(erd, centerId)).toBeVisible({
+/** Waits for the Flow mode to be up, narrowed to the center, with a placement under it. */
+async function flowPlaced(erd: ErdEditorPage, centerId: string) {
+  await expect(modeButton(erd, 'Tidy Up')).toBeVisible({
+    timeout: PLACEMENT_TIMEOUT,
+  });
+  await expect(flowTable(erd, centerId)).toBeVisible({
     timeout: PLACEMENT_TIMEOUT,
   });
   await landed(erd, centerId);
@@ -315,21 +291,7 @@ async function enterFlow(erd: ErdEditorPage) {
   await landed(erd, 'customers');
 }
 
-/**
- * One row of the quick search list, named by the action and the keyword the
- * row draws beside it. The keyword is what tells the jump to a table from the
- * Focus on the same one, since the name of the second carries the first.
- */
-const searchRow = (
-  erd: ErdEditorPage,
-  name: string,
-  keyword: 'Table' | 'Focus'
-) =>
-  erd.host
-    .locator('.quick-search')
-    .getByText(`${name}${keyword}`, { exact: true });
-
-test.describe('the visualization tab and the focus view over the document', () => {
+test.describe('the visualization tab and the flow view over the document', () => {
   test.beforeEach(async () => {
     // Every test here waits on ELK at least once, and the worker parses a
     // script heavier than the editor before it answers the first.
@@ -478,64 +440,62 @@ test.describe('the visualization tab and the focus view over the document', () =
     expect((await erd.table('customers')).ui).toMatchObject({ x: 200, y: 200 });
   });
 
-  test('opens focus on the table a flow box is clicked on', async ({ erd }) => {
+  /** AC-44. The body click pins the highlight; it never narrows what the view shows. */
+  test('leaves the display set alone on a click of a flow box', async ({
+    erd,
+  }) => {
     await erd.seed(shop());
     await enterFlow(erd);
+    const before = await placementsOf(erd, ['customers', 'orders']);
 
     await flowTable(erd, 'orders').click();
-    await focusPlaced(erd, 'orders');
+    await erd.whenDrawn();
 
-    await expect(focusCenters(erd)).toHaveText('orders');
-    await expect(focusTable(erd, 'customers')).toBeVisible();
-    await expect(focusTable(erd, 'order_items')).toBeVisible();
-    await expect(focusTable(erd, 'addresses')).toHaveCount(0);
+    await expect(flowTable(erd, 'addresses')).toBeVisible();
+    await expect(flowTable(erd, 'products')).toBeVisible();
+    expect(await placementsOf(erd, ['customers', 'orders'])).toEqual(before);
   });
 
-  test('opens focus on the selected table with the chord, and on nothing with none selected', async ({
+  /** AC-51. The chord stands the tab in Flow, narrowed to the selection. */
+  test('stands the flow on the selected table with the chord, and on nothing with none selected', async ({
     erd,
   }) => {
     await erd.seed(shop());
 
     await erd.focusCanvas();
     await erd.press(Shortcut.focusView);
-    await expect(focusBar(erd)).toHaveCount(0);
+    await expect(modeButton(erd, 'Tidy Up')).toHaveCount(0);
+    expect((await erd.settings()).canvasType).toBe('ERD');
 
     await erd.clickTableHeader('orders');
     await erd.press(Shortcut.focusView);
-    await focusPlaced(erd, 'orders');
-    await expect(focusCenters(erd)).toHaveText('orders');
-    await expect(erd.host.locator('.focus-neighbours')).toHaveText(
-      '2 neighbours'
-    );
+    await flowPlaced(erd, 'orders');
+
+    expect((await erd.settings()).canvasType).toContain('visualization');
+    await expect(flowTable(erd, 'customers')).toBeVisible();
+    await expect(flowTable(erd, 'order_items')).toBeVisible();
+    await expect(flowTable(erd, 'addresses')).toHaveCount(0);
   });
 
-  test('opens the same view from the context menu and from quick search', async ({
-    erd,
-  }) => {
+  /** AC-51. The context menu is the second handle, and it lands the same view. */
+  test('stands the same view from the context menu', async ({ erd, page }) => {
+    await countElkAsks(page);
+    await erd.goto();
     await erd.seed(shop());
 
     await erd.clickAt(await erd.tableHeaderPoint('orders'), {
       button: 'right',
     });
     await erd.contextMenuItem('Focus on this table').click();
-    await focusPlaced(erd, 'orders');
-    await expect(focusCenters(erd)).toHaveText('orders');
-    const fromMenu = await placementsOf(erd, ['orders', 'customers']);
+    await flowPlaced(erd, 'orders');
 
-    await erd.press(Shortcut.stop);
-    await expect(focusBar(erd)).toHaveCount(0);
-
-    await erd.press(Shortcut.search);
-    const search = erd.host.locator('.quick-search');
-    await expect(search).toBeVisible();
-    await search.locator('input').fill('Focus on orders');
-    await searchRow(erd, 'Focus on orders', 'Focus').click();
-
-    await focusPlaced(erd, 'orders');
-    await expect(focusCenters(erd)).toHaveText('orders');
-    expect(await placementsOf(erd, ['orders', 'customers'])).toEqual(fromMenu);
+    await expect(flowTable(erd, 'customers')).toBeVisible();
+    await expect(flowTable(erd, 'addresses')).toHaveCount(0);
+    // The narrowed display set is what the one ask carried, not the document.
+    expect(await settledElkAsks(page)).toBe(1);
   });
 
+  /** AC-59. Every selected table comes in as a center, and the union is what it shows. */
   test('stands on three centers when three tables are selected', async ({
     erd,
   }) => {
@@ -547,55 +507,13 @@ test.describe('the visualization tab and the focus view over the document', () =
     await expect(erd.selectedTables()).toHaveCount(3);
 
     await erd.press(Shortcut.focusView);
-    await focusPlaced(erd, 'customers');
+    await flowPlaced(erd, 'customers');
 
-    await expect(focusCenters(erd)).toHaveText('customers and 2 more');
-    await expect(erd.host.locator('.focus-neighbours')).toHaveText(
-      '2 neighbours'
-    );
-    await expect(focusScene(erd).locator('.table[data-id]')).toHaveCount(5);
+    await expect(flowScene(erd).locator('.table[data-id]')).toHaveCount(5);
   });
 
-  test('walks orders to customers to addresses and leaves the reader standing on the last of them', async ({
-    erd,
-  }) => {
-    await erd.seed(shop());
-    const before = await erd.settings();
-
-    await erd.clickTableHeader('orders');
-    await erd.press(Shortcut.focusView);
-    await focusPlaced(erd, 'orders');
-
-    await focusTable(erd, 'customers').click();
-    await expect(focusCenters(erd)).toHaveText('customers');
-    await expect(focusTable(erd, 'addresses')).toBeVisible({
-      timeout: PLACEMENT_TIMEOUT,
-    });
-
-    await focusTable(erd, 'addresses').click();
-    await expect(focusCenters(erd)).toHaveText('addresses');
-    await erd.whenDrawn();
-
-    await erd.press(Shortcut.stop);
-    await expect(focusBar(erd)).toHaveCount(0);
-    await erd.whenDrawn();
-
-    const after = await erd.settings();
-    expect(after.canvasType).toBe('ERD');
-    expect(after.zoomLevel).toBe(before.zoomLevel);
-
-    await expect(erd.selectedTables()).toHaveCount(1);
-    await expect(erd.selectedTables()).toHaveAttribute('data-id', 'addresses');
-
-    const box = await erd.sceneBox('#table-addresses');
-    const viewport = erd.page.viewportSize()!;
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.y).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
-    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
-  });
-
-  test('says nothing to the host while the view is open, nor on the way out of one already on screen', async ({
+  /** AC-60. Nothing a reader does inside the view reaches the host. */
+  test('says nothing to the host while the reader stands in the view', async ({
     erd,
     page,
   }) => {
@@ -605,102 +523,20 @@ test.describe('the visualization tab and the focus view over the document', () =
     await recordActions(page);
 
     await erd.press(Shortcut.focusView);
-    await focusPlaced(erd, 'customers');
+    await flowPlaced(erd, 'customers');
 
-    await erd.press(Shortcut.zoomIn);
-    await erd.press(Shortcut.zoomIn);
-    await erd.hoverScene('#table-orders');
+    await flowTable(erd, 'orders').hover();
+    await flowTable(erd, 'orders').click();
     await erd.whenDrawn();
-    expect(await settledChanges(page)).toBe(0);
 
-    await erd.press(Shortcut.stop);
-    await expect(focusBar(erd)).toHaveCount(0);
-    expect(await settledChanges(page)).toBe(0);
-    expect(await recordedChanges(page)).toEqual([]);
+    // The tab coming up is the one thing the host hears; the hover, the pin
+    // and the placement inside the view reach it not at all.
+    expect(await settledChanges(page)).toBe(1);
+    expect(await recordedChanges(page)).toEqual(['settings.changeCanvasType']);
 
     const after = await erd.settings();
     expect(after.originX).toBe(0);
     expect(after.originY).toBe(0);
     expect(after.zoomLevel).toBe(1);
-  });
-
-  test('says one thing to the host on the way out to a center off screen, and it is the scroll', async ({
-    erd,
-    page,
-  }) => {
-    await erd.seed(shop());
-    const before = await erd.settings();
-    await countChanges(page);
-    await recordActions(page);
-
-    await erd.press(Shortcut.search);
-    const search = erd.host.locator('.quick-search');
-    await search.locator('input').fill('Focus on addresses');
-    await searchRow(erd, 'Focus on addresses', 'Focus').click();
-    await focusPlaced(erd, 'addresses');
-    expect(await settledChanges(page)).toBe(0);
-
-    await erd.press(Shortcut.stop);
-    await expect(focusBar(erd)).toHaveCount(0);
-    expect(await settledChanges(page)).toBe(1);
-    // The one change by name, not by the origin moving under it: two actions
-    // inside the debounce would leave the host hearing one all the same.
-    expect(await recordedChanges(page)).toEqual(['settings.scrollTo']);
-
-    const after = await erd.settings();
-    expect(after.canvasType).toBe('ERD');
-    expect(after.zoomLevel).toBe(before.zoomLevel);
-    expect(after.originX).not.toBe(before.originX);
-  });
-
-  test('says one thing to the host on the way out of a flow, and it is the tab', async ({
-    erd,
-    page,
-  }) => {
-    await erd.seed(shop());
-    await enterFlow(erd);
-    await countChanges(page);
-    await recordActions(page);
-
-    await flowTable(erd, 'customers').click();
-    await focusPlaced(erd, 'customers');
-    expect(await settledChanges(page)).toBe(0);
-
-    await erd.press(Shortcut.stop);
-    await expect(focusBar(erd)).toHaveCount(0);
-    expect(await settledChanges(page)).toBe(1);
-    expect(await recordedChanges(page)).toEqual(['settings.changeCanvasType']);
-
-    const after = await erd.settings();
-    expect(after.canvasType).toBe('ERD');
-    // Nothing scrolled: customers is on screen where the document keeps it, so
-    // the one thing the host heard was the tab coming back.
-    expect(after.originX).toBe(0);
-    expect(after.originY).toBe(0);
-  });
-
-  test('jumps to a table in view coordinates from quick search, leaving the document origin where it was', async ({
-    erd,
-  }) => {
-    await erd.seed(shop());
-    await erd.clickTableHeader('orders');
-    await erd.press(Shortcut.focusView);
-    await focusPlaced(erd, 'orders');
-
-    const before = await erd.settings();
-    const view = await sceneTransform(erd);
-
-    await erd.press(Shortcut.search);
-    const search = erd.host.locator('.quick-search');
-    await search.locator('input').fill('customers');
-    await searchRow(erd, 'customers', 'Table').click();
-    await erd.whenDrawn();
-
-    expect(await sceneTransform(erd)).not.toEqual(view);
-
-    const after = await erd.settings();
-    expect(after.originX).toBe(before.originX);
-    expect(after.originY).toBe(before.originY);
-    expect(after.zoomLevel).toBe(before.zoomLevel);
   });
 });

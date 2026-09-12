@@ -158,19 +158,23 @@ describe('ContentCompass', () => {
 
     await panTo(app, -5_000, -4_000);
     app.store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['users'] }),
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['users'] }),
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { users: { x: 9_000, y: 9_000 } },
       }),
-      viewScrollToAction({ originX: -9_000, originY: -9_000 })
+      viewScrollToAction({
+        originX: -9_000,
+        originY: -9_000,
+        kind: ViewKind.flow,
+      })
     );
     await flush();
 
     // The view's own screen holds the one table it reaches, so a compass on
     // that source draws nothing at all here while this one draws the gap.
     const compass = getContentCompass(app.store.state, 'document')!;
-    expect(getContentCompass(app.store.state, 'focus')).toBeNull();
+    expect(getContentCompass(app.store.state, 'flow')).toBeNull();
     expect(pill()).toBeTruthy();
     expect(label()).toBe(formatDistance(compass.distance));
   });

@@ -386,8 +386,8 @@ describe('createRxStore', () => {
   });
 
   describe('while a view is active', () => {
-    /** A store holding one table and one column, with a Focus view open on the table. */
-    function makeWithFocus() {
+    /** A store holding one table and one column, standing in a view on the table. */
+    function makeWithView() {
       const store = make(createContext());
       store.dispatchSync(
         addTable('t1'),
@@ -395,9 +395,13 @@ describe('createRxStore', () => {
         changeColumnNameAction({ tableId: 't1', id: 'c1', value: 'id' })
       );
       store.dispatchSync(
-        viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
+        changeCanvasTypeAction({ value: CanvasType.visualization }),
+        changeVisualizationModeAction({ value: VisualizationMode.flow })
+      );
+      store.dispatchSync(
+        viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
         viewSetLayoutAction({
-          kind: ViewKind.focus,
+          kind: ViewKind.flow,
           positions: { t1: { x: 0, y: 0 } },
         })
       );
@@ -423,7 +427,7 @@ describe('createRxStore', () => {
     // or the host's change stream.
     it('takes the scrolls and zooms into the view, leaving the document and change$ untouched', () => {
       vi.useFakeTimers();
-      const store = makeWithFocus();
+      const store = makeWithView();
       const before = documentPlacement(store);
       const { seen, subscription } = collectChanges(store);
 
@@ -439,10 +443,10 @@ describe('createRxStore', () => {
 
       expect(seen).toEqual([]);
       expect(documentPlacement(store)).toEqual(before);
-      expect(store.state.editor.views.focus).toMatchObject({
+      expect(store.state.editor.views.flow).toMatchObject({
         zoomLevel: 0.7,
       });
-      expect(store.state.editor.views.focus?.originX).not.toBe(0);
+      expect(store.state.editor.views.flow?.originX).not.toBe(0);
 
       subscription.unsubscribe();
     });
@@ -450,7 +454,7 @@ describe('createRxStore', () => {
     // AC-9: the document is closed to edits for as long as a view is open.
     it('drops the document edits before they reach the store', () => {
       vi.useFakeTimers();
-      const store = makeWithFocus();
+      const store = makeWithView();
       const before = documentPlacement(store);
       const { seen, subscription } = collectChanges(store);
 
@@ -481,7 +485,7 @@ describe('createRxStore', () => {
     // AC-10
     it('leaves the undo stack where it was after any view manipulation', () => {
       vi.useFakeTimers();
-      const store = makeWithFocus();
+      const store = makeWithView();
       const size = store.history.size;
       expect(size).toBeGreaterThan(0);
 
@@ -509,7 +513,9 @@ describe('createRxStore', () => {
       store.undo();
       expect(store.state.collections.tableEntities['t1'].name).toBe('');
       store.dispatchSync(
-        viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
+        changeCanvasTypeAction({ value: CanvasType.visualization }),
+        changeVisualizationModeAction({ value: VisualizationMode.flow }),
+        viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] })
       );
 
       store.undo();
@@ -519,7 +525,7 @@ describe('createRxStore', () => {
       expect(store.history.hasUndo()).toBe(true);
       expect(store.history.hasRedo()).toBe(true);
 
-      store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+      store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
       store.redo();
       expect(store.state.collections.tableEntities['t1'].name).toBe('users');
       store.undo();
@@ -529,7 +535,7 @@ describe('createRxStore', () => {
 
     // AC-48: a peer's edit reaches the document under the view, and never the history.
     it('applies a shared edit to the document without recording it', () => {
-      const store = makeWithFocus();
+      const store = makeWithView();
       const size = store.history.size;
 
       store.dispatchSync(attachActionTag(Tag.shared, addTable('t2')));
@@ -549,7 +555,7 @@ describe('createRxStore', () => {
     });
 
     it('leaves a following placement from a peer to the document', () => {
-      const store = makeWithFocus();
+      const store = makeWithView();
 
       store.dispatchSync(
         attachActionTag(
@@ -559,7 +565,7 @@ describe('createRxStore', () => {
       );
 
       expect(store.state.settings.originX).toBe(0);
-      expect(store.state.editor.views.focus?.originX).toBe(0);
+      expect(store.state.editor.views.flow?.originX).toBe(0);
     });
 
     // AC-48: the host replacing the document closes the view with it.
@@ -569,15 +575,15 @@ describe('createRxStore', () => {
         (store: RxStore) => loadJsonAction({ value: toJson(store.state) }),
       ],
       ['clear', () => clearAction()],
-    ])('lets %s through, and it empties the views', (_, replace) => {
+    ])('lets %s through, and it empties the view', (_, replace) => {
       vi.useFakeTimers();
-      const store = makeWithFocus();
+      const store = makeWithView();
       const { seen, subscription } = collectChanges(store);
 
       store.dispatchSync(replace(store));
       vi.advanceTimersByTime(250);
 
-      expect(store.state.editor.views).toEqual({ flow: null, focus: null });
+      expect(store.state.editor.views).toEqual({ flow: null });
       expect(getActiveView(store.state)).toBeNull();
       expect(seen).toHaveLength(1);
 
@@ -589,7 +595,7 @@ describe('createRxStore', () => {
 
     it('lets the tab change through, which is how a view is left from another tab', () => {
       vi.useFakeTimers();
-      const store = makeWithFocus();
+      const store = makeWithView();
       const { seen, subscription } = collectChanges(store);
 
       store.dispatchSync(
@@ -632,10 +638,10 @@ describe('createRxStore', () => {
     });
 
     it('classifies a batch by the state before it, so a close and a scroll travel apart', () => {
-      const store = makeWithFocus();
+      const store = makeWithView();
 
       store.dispatchSync(
-        viewCloseAction({ kind: ViewKind.focus }),
+        viewCloseAction({ kind: ViewKind.flow }),
         scrollToAction({ originX: 10, originY: 10 })
       );
       expect(store.state.settings.originX).toBe(0);

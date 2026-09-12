@@ -1,7 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { Open } from '@/constants/open';
 import {
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
@@ -23,13 +22,9 @@ import { getActiveView } from '@/engine/modules/editor/view';
 import {
   changeVisualizationModeAction,
   clearViews,
-  VIEW_HOP_MAX,
-  VIEW_HOP_MIN,
-  viewChangeHopAction,
   viewChangeShowModeAction,
   viewChangeZoomLevelAction,
   viewCloseAction,
-  viewHistoryMoveAction,
   viewMoveTableAction,
   viewOpenAction,
   viewScrollToAction,
@@ -62,16 +57,18 @@ function addTable(id: string, x = 200, y = 100) {
   return table;
 }
 
-function openFocus(centerIds: string[] = ['t1']) {
-  store.dispatchSync(viewOpenAction({ kind: ViewKind.focus, centerIds }));
-  return store.state.editor.views.focus!;
-}
-
 function showFlowTab() {
   store.dispatchSync(
     changeCanvasTypeAction({ value: CanvasType.visualization }),
     changeVisualizationModeAction({ value: VisualizationMode.flow })
   );
+}
+
+/** A view standing on the centers given, on the tab that makes it the active one. */
+function openFocused(centerIds: string[] = ['t1']) {
+  showFlowTab();
+  store.dispatchSync(viewOpenAction({ kind: ViewKind.flow, centerIds }));
+  return store.state.editor.views.flow!;
 }
 
 /** The document placement as it stood before a view acted, to hold it against. */
@@ -87,51 +84,45 @@ function documentPlacement() {
 }
 
 describe('editor.viewOpen / viewClose', () => {
-  it('opens a fresh Focus view in its slot and closes it back to null', () => {
-    const view = openFocus(['t1', 't2']);
+  it('opens a fresh view on the centers given and closes it back to null', () => {
+    const view = openFocused(['t1', 't2']);
 
-    expect(view.kind).toBe(ViewKind.focus);
+    expect(view.kind).toBe(ViewKind.flow);
     expect(view.showMode).toBe(ShowMode.keysOnly);
     expect(view.centerIds).toEqual(['t1', 't2']);
-    expect(view.history).toEqual({ entries: [['t1', 't2']], cursor: 0 });
-    expect(store.state.editor.views.flow).toBeNull();
-
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
-    expect(store.state.editor.views.focus).toBeNull();
-  });
-
-  it('opens a Flow view without centers and leaves the other slot alone', () => {
-    openFocus();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-
-    const { flow, focus } = store.state.editor.views;
-    expect(flow?.kind).toBe(ViewKind.flow);
-    expect(flow?.showMode).toBe(ShowMode.nameOnly);
-    expect(flow?.centerIds).toEqual([]);
-    expect(focus?.centerIds).toEqual(['t1']);
 
     store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
     expect(store.state.editor.views.flow).toBeNull();
-    expect(store.state.editor.views.focus).toBe(focus);
+  });
+
+  it('opens a view without centers on name boxes', () => {
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+
+    const { flow } = store.state.editor.views;
+    expect(flow?.kind).toBe(ViewKind.flow);
+    expect(flow?.showMode).toBe(ShowMode.nameOnly);
+    expect(flow?.centerIds).toEqual([]);
+
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
+    expect(store.state.editor.views.flow).toBeNull();
   });
 
   // AC-63: nothing of the previous session survives a reopen on the same centers.
-  it('reopening on the same centers starts from nothing placed, walked or zoomed', () => {
-    const first = openFocus(['t1']);
+  it('reopening on the same centers starts from nothing placed, moved or zoomed', () => {
+    const first = openFocused(['t1']);
     store.dispatchSync(
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { t1: { x: 1, y: 2 } },
       }),
       viewScrollToAction({ originX: 40, originY: 50 }),
       viewChangeZoomLevelAction({ value: 0.5 }),
-      viewChangeHopAction({ value: 2 }),
       viewChangeShowModeAction({ value: ShowMode.allFields }),
-      viewSetCentersAction({ tableIds: ['t2'], push: true })
+      viewSetCentersAction({ tableIds: ['t2'] })
     );
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
 
-    const second = openFocus(['t1']);
+    const second = openFocused(['t1']);
 
     expect(second).not.toBe(first);
     expect(second.positions).toEqual({});
@@ -139,35 +130,15 @@ describe('editor.viewOpen / viewClose', () => {
       originX: 0,
       originY: 0,
       zoomLevel: 1,
-      hop: 1,
       showMode: ShowMode.keysOnly,
       centerIds: ['t1'],
-      history: { entries: [['t1']], cursor: 0 },
     });
   });
 
   it('closing a slot that is already empty is a no-op', () => {
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
-
-    expect(store.state.editor.views).toEqual({ flow: null, focus: null });
-  });
-
-  // AC-43: the gates the overlay closes on the ERD read this flag, so it is
-  // written where the slot is, never apart from it.
-  it('raises the overlay flag with the Focus slot and lowers it with it, and a Flow view touches it not at all', () => {
-    const flagOf = () => store.state.editor.openMap[Open.focus];
-
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-    expect(flagOf()).toBeUndefined();
-
-    openFocus();
-    expect(flagOf()).toBe(true);
-
     store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
-    expect(flagOf()).toBe(true);
 
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
-    expect(flagOf()).toBe(false);
+    expect(store.state.editor.views).toEqual({ flow: null });
   });
 });
 
@@ -185,12 +156,12 @@ describe('the view placement reducers', () => {
       viewChangeShowModeAction({ value: ShowMode.allFields })
     );
 
-    expect(store.state.editor.views).toEqual({ flow: null, focus: null });
+    expect(store.state.editor.views).toEqual({ flow: null });
     expect(documentPlacement()).toEqual(before);
   });
 
   it('viewScrollTo takes the placement as it stands, rounded to four decimals', () => {
-    const view = openFocus();
+    const view = openFocused();
 
     store.dispatchSync(
       viewScrollToAction({ originX: 40_000.12341, originY: -40_000.98769 })
@@ -201,7 +172,7 @@ describe('the view placement reducers', () => {
   });
 
   it('viewStreamScrollTo adds the step, rounded to four decimals', () => {
-    const view = openFocus();
+    const view = openFocused();
     store.dispatchSync(viewScrollToAction({ originX: 10, originY: 20 }));
 
     store.dispatchSync(
@@ -213,7 +184,7 @@ describe('the view placement reducers', () => {
   });
 
   it('viewChangeZoomLevel and viewStreamZoomLevel clamp into the zoom range', () => {
-    const view = openFocus();
+    const view = openFocused();
 
     store.dispatchSync(viewChangeZoomLevelAction({ value: 0.456 }));
     expect(view.zoomLevel).toBe(0.46);
@@ -231,10 +202,10 @@ describe('the view placement reducers', () => {
   it('viewMoveTable moves the tables the view places and skips the ones it does not', () => {
     addTable('t1');
     addTable('t2');
-    const view = openFocus();
+    const view = openFocused();
     store.dispatchSync(
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { t1: { x: 100, y: 100 } },
       })
     );
@@ -251,7 +222,6 @@ describe('the view placement reducers', () => {
   });
 
   it('viewSetLayout replaces the placement of the named view with a copy', () => {
-    openFocus();
     store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
     const positions = { t1: { x: 1, y: 2 }, t2: { x: 3, y: 4 } };
 
@@ -263,29 +233,10 @@ describe('the view placement reducers', () => {
     );
     store.dispatchSync(viewSetLayoutAction({ kind: ViewKind.flow, positions }));
 
-    const { flow, focus } = store.state.editor.views;
+    const { flow } = store.state.editor.views;
     expect(flow?.positions).toEqual(positions);
     expect(flow?.positions).not.toBe(positions);
     expect(flow?.positions.t1).not.toBe(positions.t1);
-    expect(focus?.positions).toEqual({});
-  });
-
-  it('viewSetLayout lands in the named slot even while the other view is the active one', () => {
-    showFlowTab();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-    openFocus();
-
-    store.dispatchSync(
-      viewSetLayoutAction({
-        kind: ViewKind.flow,
-        positions: { t1: { x: 5, y: 6 } },
-      })
-    );
-
-    expect(store.state.editor.views.flow?.positions).toEqual({
-      t1: { x: 5, y: 6 },
-    });
-    expect(store.state.editor.views.focus?.positions).toEqual({});
   });
 
   it('viewSetLayout on an empty slot is a no-op', () => {
@@ -300,7 +251,7 @@ describe('the view placement reducers', () => {
   });
 
   it('viewChangeShowMode changes what the active view shows of each table', () => {
-    const view = openFocus();
+    const view = openFocused();
 
     store.dispatchSync(viewChangeShowModeAction({ value: ShowMode.allFields }));
     expect(view.showMode).toBe(ShowMode.allFields);
@@ -309,25 +260,22 @@ describe('the view placement reducers', () => {
     expect(view.showMode).toBe(ShowMode.keysOnly);
   });
 
-  it('address the active view: Focus over Flow, Flow alone once Focus closes', () => {
-    showFlowTab();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-    const flow = store.state.editor.views.flow!;
-    const focus = openFocus();
+  it('address the active view, and nothing at all once it closes', () => {
+    const view = openFocused();
 
     store.dispatchSync(viewScrollToAction({ originX: 1, originY: 2 }));
-    expect(focus).toMatchObject({ originX: 1, originY: 2 });
-    expect(flow).toMatchObject({ originX: 0, originY: 0 });
+    expect(view).toMatchObject({ originX: 1, originY: 2 });
 
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
     store.dispatchSync(viewScrollToAction({ originX: 3, originY: 4 }));
-    expect(flow).toMatchObject({ originX: 3, originY: 4 });
+    expect(view).toMatchObject({ originX: 1, originY: 2 });
+    expect(store.state.editor.views.flow).toBeNull();
   });
 
-  it('write the view named by kind, whichever is active, and skip a kind whose slot is empty', () => {
+  it('write the view named by kind, and skip a kind whose slot is empty', () => {
     addTable('t1', 200, 100);
-    showFlowTab();
     store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.ERD }),
       viewOpenAction({ kind: ViewKind.flow }),
       viewSetLayoutAction({
         kind: ViewKind.flow,
@@ -335,7 +283,6 @@ describe('the view placement reducers', () => {
       })
     );
     const flow = store.state.editor.views.flow!;
-    const focus = openFocus();
     const kind = ViewKind.flow;
 
     store.dispatchSync(
@@ -347,7 +294,9 @@ describe('the view placement reducers', () => {
       viewChangeShowModeAction({ value: ShowMode.allFields, kind })
     );
 
-    expect(getActiveView(store.state)).toBe(focus);
+    // The ERD tab is up, so no view is the active one and every write above
+    // landed only because it named the kind.
+    expect(getActiveView(store.state)).toBeNull();
     expect(flow).toMatchObject({
       originX: 11,
       originY: 22,
@@ -355,17 +304,10 @@ describe('the view placement reducers', () => {
       showMode: ShowMode.allFields,
       positions: { t1: { x: 5, y: 6 } },
     });
-    expect(focus).toMatchObject({
-      originX: 0,
-      originY: 0,
-      zoomLevel: 1,
-      showMode: ShowMode.keysOnly,
-      positions: {},
-    });
 
     store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
     store.dispatchSync(viewScrollToAction({ originX: 7, originY: 8, kind }));
-    expect(focus).toMatchObject({ originX: 0, originY: 0 });
+    expect(flow).toMatchObject({ originX: 11, originY: 22 });
   });
 
   // AC-7: the document's own placement is never what a view action writes.
@@ -376,10 +318,10 @@ describe('the view placement reducers', () => {
     store.state.settings.originY = 44;
     store.state.settings.zoomLevel = 0.8;
     const before = documentPlacement();
-    openFocus(['t1']);
+    openFocused(['t1']);
     store.dispatchSync(
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { t1: { x: 0, y: 0 }, t2: { x: 400, y: 0 } },
       })
     );
@@ -393,7 +335,7 @@ describe('the view placement reducers', () => {
     );
 
     expect(documentPlacement()).toEqual(before);
-    expect(store.state.editor.views.focus).toMatchObject({
+    expect(store.state.editor.views.flow).toMatchObject({
       zoomLevel: 0.5,
       originX: 500,
       originY: -500,
@@ -402,151 +344,46 @@ describe('the view placement reducers', () => {
   });
 });
 
-describe('the Focus walk reducers', () => {
-  it('viewChangeHop keeps the reach within its two values', () => {
-    const view = openFocus();
-
-    store.dispatchSync(viewChangeHopAction({ value: 2 }));
-    expect(view.hop).toBe(2);
-
-    store.dispatchSync(viewChangeHopAction({ value: 1 }));
-    expect(view.hop).toBe(1);
-
-    store.dispatchSync(viewChangeHopAction({ value: 7 }));
-    expect(view.hop).toBe(VIEW_HOP_MAX);
-
-    store.dispatchSync(viewChangeHopAction({ value: 0 }));
-    expect(view.hop).toBe(VIEW_HOP_MIN);
-
-    store.dispatchSync(viewChangeHopAction({ value: 1.9 }));
-    expect(view.hop).toBe(1);
-  });
-
-  it('viewSetCenters with push opens a history entry and drops the forward ones', () => {
-    const view = openFocus(['t1']);
-
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'], push: true }));
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3'], push: true }));
-    expect(view.centerIds).toEqual(['t3']);
-    expect(view.history).toEqual({
-      entries: [['t1'], ['t2'], ['t3']],
-      cursor: 2,
-    });
-
-    store.dispatchSync(viewHistoryMoveAction({ delta: -2 }));
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t4'], push: true }));
-    expect(view.centerIds).toEqual(['t4']);
-    expect(view.history).toEqual({ entries: [['t1'], ['t4']], cursor: 1 });
-  });
-
-  it('viewSetCenters without push rewrites the entry the view stands on', () => {
-    const view = openFocus(['t1', 't2']);
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3'], push: true }));
-
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3', 't4'] }));
-
-    expect(view.centerIds).toEqual(['t3', 't4']);
-    expect(view.history).toEqual({
-      entries: [
-        ['t1', 't2'],
-        ['t3', 't4'],
-      ],
-      cursor: 1,
-    });
-  });
-
-  it('viewSetCenters copies the ids it is handed', () => {
-    const view = openFocus();
+describe('editor.viewSetCenters', () => {
+  it('copies the ids it is handed', () => {
+    const view = openFocused();
     const tableIds = ['t2'];
 
-    store.dispatchSync(viewSetCentersAction({ tableIds, push: true }));
+    store.dispatchSync(viewSetCentersAction({ tableIds }));
     tableIds.push('t3');
 
     expect(view.centerIds).toEqual(['t2']);
-    expect(view.history.entries[1]).toEqual(['t2']);
-    expect(view.centerIds).not.toBe(view.history.entries[1]);
   });
 
-  it('viewSetCenters with no kind stands the active view on them, Flow or Focus', () => {
-    showFlowTab();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-    const flow = store.state.editor.views.flow!;
+  it('stands the active view on them when no kind is named', () => {
+    const view = openFocused(['t1']);
 
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
-    expect(flow.centerIds).toEqual(['t1']);
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2', 't3'] }));
 
-    const focus = openFocus(['t2']);
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3'] }));
-
-    expect(focus.centerIds).toEqual(['t3']);
-    expect(flow.centerIds).toEqual(['t1']);
+    expect(view.centerIds).toEqual(['t2', 't3']);
   });
 
-  it('viewSetCenters stands the slot the kind names on them, and not the active view', () => {
-    const focus = openFocus(['t1']);
-    showFlowTab();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-    const flow = store.state.editor.views.flow!;
+  it('stands the slot the kind names on them, whether or not it is the active view', () => {
+    store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.ERD }),
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] })
+    );
+    const view = store.state.editor.views.flow!;
 
     store.dispatchSync(
       viewSetCentersAction({ tableIds: ['t2'], kind: ViewKind.flow })
     );
 
-    expect(flow.centerIds).toEqual(['t2']);
-    expect(getActiveView(store.state)).toBe(focus);
-    expect(focus.centerIds).toEqual(['t1']);
-  });
-
-  // AC-46
-  it('walking from three centers to one and back restores the three', () => {
-    const view = openFocus(['t1', 't2', 't3']);
-
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t4'], push: true }));
-    expect(view.centerIds).toEqual(['t4']);
-
-    store.dispatchSync(viewHistoryMoveAction({ delta: -1 }));
-    expect(view.centerIds).toEqual(['t1', 't2', 't3']);
-    expect(view.history.cursor).toBe(0);
-
-    store.dispatchSync(viewHistoryMoveAction({ delta: 1 }));
-    expect(view.centerIds).toEqual(['t4']);
-    expect(view.history.cursor).toBe(1);
-  });
-
-  it('viewHistoryMove refuses a step past either end and hands back a copy of the entry', () => {
-    const view = openFocus(['t1']);
-    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'], push: true }));
-
-    store.dispatchSync(viewHistoryMoveAction({ delta: 1 }));
-    expect(view.history.cursor).toBe(1);
+    expect(getActiveView(store.state)).toBeNull();
     expect(view.centerIds).toEqual(['t2']);
-
-    store.dispatchSync(viewHistoryMoveAction({ delta: -5 }));
-    expect(view.history.cursor).toBe(1);
-
-    store.dispatchSync(viewHistoryMoveAction({ delta: -1 }));
-    expect(view.centerIds).toEqual(['t1']);
-    expect(view.centerIds).not.toBe(view.history.entries[0]);
-
-    store.dispatchSync(viewHistoryMoveAction({ delta: 0 }));
-    expect(view.history.cursor).toBe(0);
   });
 
-  it('the Focus half does nothing while no Focus view is open, and never lands on the Flow view instead', () => {
+  it('does nothing while no view is open', () => {
     showFlowTab();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-    const flow = store.state.editor.views.flow!;
 
-    store.dispatchSync(
-      viewChangeHopAction({ value: 2 }),
-      viewHistoryMoveAction({ delta: -1 }),
-      viewSetCentersAction({ tableIds: ['t1'], kind: ViewKind.focus })
-    );
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
 
-    expect(flow.hop).toBe(1);
-    expect(flow.centerIds).toEqual([]);
-    expect(flow.history).toEqual({ entries: [[]], cursor: 0 });
-    expect(getActiveView(store.state)).toBe(flow);
+    expect(store.state.editor.views.flow).toBeNull();
   });
 });
 
@@ -566,7 +403,7 @@ describe('editor.changeVisualizationMode', () => {
   });
 });
 
-// AC-48: a replaced document takes both views with it.
+// AC-48: a replaced document takes the view with it.
 describe('replacing the document', () => {
   const document = () => toJson(store.state);
 
@@ -575,22 +412,15 @@ describe('replacing the document', () => {
     ['initialLoadJson', () => initialLoadJsonAction({ value: document() })],
     ['clear', () => clearAction()],
     ['initialClear', () => initialClearAction()],
-  ])('%s drops both views', (_, replace) => {
+  ])('%s drops the view', (_, replace) => {
     addTable('t1');
-    showFlowTab();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-    openFocus(['t1']);
+    openFocused(['t1']);
     expect(getActiveView(store.state)).not.toBeNull();
-
-    expect(store.state.editor.openMap[Open.focus]).toBe(true);
 
     store.dispatchSync(replace());
 
-    expect(store.state.editor.views).toEqual({ flow: null, focus: null });
+    expect(store.state.editor.views).toEqual({ flow: null });
     expect(getActiveView(store.state)).toBeNull();
-    // The overlay is drawn off the slot and the ERD gates read the flag, so
-    // a flag left standing here would keep the ERD inert with no overlay in sight.
-    expect(store.state.editor.openMap[Open.focus]).toBe(false);
   });
 
   it("keeps the visualization mode, which is the session's and not the document's", () => {
@@ -601,14 +431,12 @@ describe('replacing the document', () => {
     expect(store.state.editor.visualizationMode).toBe(VisualizationMode.flow);
   });
 
-  it('clearViews empties both slots in place', () => {
-    openFocus();
-    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+  it('clearViews empties the slot in place', () => {
+    openFocused();
     const { editor } = store.state;
 
     clearViews(editor);
 
-    expect(editor.views).toEqual({ flow: null, focus: null });
-    expect(editor.openMap[Open.focus]).toBe(false);
+    expect(editor.views).toEqual({ flow: null });
   });
 });

@@ -130,14 +130,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const showTableProperties = editor.openMap[Open.tableProperties];
     const showTimeTravel = editor.openMap[Open.timeTravel];
     const showDiffViewer = editor.openMap[Open.diffViewer];
-    const showFocus = editor.openMap[Open.focus];
 
     return (
       showAutomaticTablePlacement ||
       showTableProperties ||
       showTimeTravel ||
-      showDiffViewer ||
-      showFocus
+      showDiffViewer
     );
   };
 

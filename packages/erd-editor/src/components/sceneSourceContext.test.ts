@@ -60,18 +60,18 @@ describe('sceneSourceContext', () => {
 
   it('hands a wrapped scene its source and leaves a sibling outside the wrapper the document', async () => {
     mounted = await mountAndFlush(html`
-      <${Scope} source="focus" .children=${html`<${Probe} name="inside" />`} />
+      <${Scope} source="flow" .children=${html`<${Probe} name="inside" />`} />
       <${Probe} name="beside" />
     `);
 
-    expect(sourceOf('inside')).toBe('focus');
+    expect(sourceOf('inside')).toBe('flow');
     expect(sourceOf('beside')).toBe('document');
   });
 
   it('lets the nearest scene root win, so a document opened over a view stays the document', async () => {
     mounted = await mountAndFlush(html`
       <${Scope}
-        source="focus"
+        source="flow"
         .children=${html`
           <${Probe} name="view-leaf" />
           <${Scope}
@@ -82,7 +82,7 @@ describe('sceneSourceContext', () => {
       />
     `);
 
-    expect(sourceOf('view-leaf')).toBe('focus');
+    expect(sourceOf('view-leaf')).toBe('flow');
     expect(sourceOf('document-leaf')).toBe('document');
   });
 
@@ -93,11 +93,11 @@ describe('sceneSourceContext', () => {
    */
   it('reaches every child of the parent it hangs on when mounted without a wrapper', async () => {
     mounted = await mountAndFlush(html`
-      <${Root} source="focus" .children=${html`<${Probe} name="own" />`} />
+      <${Root} source="flow" .children=${html`<${Probe} name="own" />`} />
       <${Probe} name="neighbour" />
     `);
 
-    expect(sourceOf('own')).toBe('focus');
-    expect(sourceOf('neighbour')).toBe('focus');
+    expect(sourceOf('own')).toBe('flow');
+    expect(sourceOf('neighbour')).toBe('flow');
   });
 });

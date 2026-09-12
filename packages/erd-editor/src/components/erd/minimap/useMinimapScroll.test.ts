@@ -73,22 +73,17 @@ const ranges = () => getScrollRanges(app.store.state);
 
 /**
  * A Flow view placing the seeded tables and scrolled off the document's
- * origin, with a Focus view open over it standing far away, so the three
- * maps the store holds are all different, and the probe mounted in the Flow scene.
+ * origin, so the two maps the store holds are different, and the probe
+ * mounted in the Flow scene.
  */
-const setupFlowUnderFocus = async () => {
+const setupFlowScene = async () => {
   app.store.dispatchSync(
     viewOpenAction({ kind: ViewKind.flow }),
     viewSetLayoutAction({
       kind: ViewKind.flow,
       positions: { near: { x: 0, y: 0 }, far: { x: 3_000, y: 500 } },
     }),
-    viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow }),
-    viewOpenAction({ kind: ViewKind.focus, centerIds: ['near'] }),
-    viewSetLayoutAction({
-      kind: ViewKind.focus,
-      positions: { near: { x: 40_000, y: 40_000 } },
-    })
+    viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow })
   );
   mounted!.unmount();
   mounted = mount(
@@ -220,14 +215,13 @@ describe('useMinimapScroll', () => {
     expect(Math.abs(settings.originY)).toBe(0);
   });
 
-  /** The overlay half of AC-61: a handle in a Flow scene is the Flow view's, whichever view is active. */
-  it('scrolls the Flow view by the Flow map under a Flow provider, with a Focus view open over it', async () => {
-    await setupFlowUnderFocus();
+  /** The view half of AC-61: a handle in a Flow scene is the Flow view's, and the document does not move with it. */
+  it('scrolls the Flow view by the Flow map under a Flow provider', async () => {
+    await setupFlowScene();
     const { state } = app.store;
-    const { flow, focus } = state.editor.views;
+    const { flow } = state.editor.views;
     const layout = getMinimapLayout(state, 'flow');
     const step = toScrollMovement(10, layout.ratio, flow!.zoomLevel);
-    expect(layout.map).not.toEqual(getMinimapLayout(state, 'focus').map);
     expect(layout.map).not.toEqual(getMinimapLayout(state).map);
     const { types, unsubscribe } = recordActions();
 
@@ -236,11 +230,10 @@ describe('useMinimapScroll', () => {
     await flush();
 
     expect(isViewFrozen(state, 'flow')).toBe(true);
-    expect(isViewFrozen(state, 'focus')).toBe(false);
+    expect(isViewFrozen(state)).toBe(false);
     expect(step).toBeLessThan(0);
     expect(flow!.originX).toBeCloseTo(-900 + step, 3);
     expect(flow!.originY).toBe(-100);
-    expect(focus).toMatchObject({ originX: 0, originY: 0 });
     expect(state.settings).toMatchObject({ originX: 0, originY: 0 });
     expect(types).toEqual(['editor.viewStreamScrollTo']);
 

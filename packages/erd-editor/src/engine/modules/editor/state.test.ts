@@ -115,7 +115,7 @@ describe('editor/state', () => {
       expect(editor.sharedSelectionTrackerMap).toEqual({});
       expect(editor.sharedDragSelectTrackerMap).toEqual({});
       expect(editor.dragSelect).toBeNull();
-      expect(editor.views).toEqual({ flow: null, focus: null });
+      expect(editor.views).toEqual({ flow: null });
       expect(editor.visualizationMode).toBe(VisualizationMode.graph);
     });
 

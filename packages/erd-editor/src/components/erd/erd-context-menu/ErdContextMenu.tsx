@@ -8,7 +8,7 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
-import { openFocusViewAction$ } from '@/engine/modules/editor/view.generator.actions';
+import { focusFlowTableAction$ } from '@/engine/modules/editor/view.generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -102,11 +102,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
-  const handleOpenFocusView = () => {
+  const handleFocusFlowTable = () => {
     if (!props.tableId) return;
 
     const { store } = app.value;
-    store.dispatch(openFocusViewAction$([props.tableId]));
+    store.dispatch(focusFlowTableAction$([props.tableId]));
     props.onClose();
   };
 
@@ -175,7 +175,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 }
               />
               <ContextMenu.Item
-                onClick={handleOpenFocusView}
+                onClick={handleFocusFlowTable}
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="waypoints" size={14} />}

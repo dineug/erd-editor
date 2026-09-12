@@ -14,7 +14,6 @@ import {
 } from '@/engine/modules/editor/view';
 import {
   changeVisualizationModeAction,
-  viewCloseAction,
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
@@ -43,7 +42,8 @@ function showFlowTab() {
 }
 
 describe('createSceneView', () => {
-  it('opens a Flow view on name boxes with nothing placed and a neutral placement', () => {
+  /** AC-50. The exact field list: hop and a walk history are gone, and must not come back. */
+  it('opens on name boxes with nothing placed and a neutral placement, and holds no more', () => {
     const view = createSceneView(ViewKind.flow);
 
     expect(view).toEqual({
@@ -54,46 +54,42 @@ describe('createSceneView', () => {
       originY: 0,
       zoomLevel: 1,
       centerIds: [],
-      hop: 1,
-      history: { entries: [[]], cursor: 0 },
     });
+    expect(Object.keys(view).sort()).toEqual([
+      'centerIds',
+      'kind',
+      'originX',
+      'originY',
+      'positions',
+      'showMode',
+      'zoomLevel',
+    ]);
   });
 
-  it('opens a Focus view on the key rows, standing on its centers as its first history entry', () => {
-    const view = createSceneView(ViewKind.focus, ['t1', 't2']);
+  /** Decision (h). The centers pick the first display: narrowed opens on the key rows. */
+  it('opens on the key rows when it is given centers, and on name boxes when it is not', () => {
+    const focused = createSceneView(ViewKind.flow, ['t1', 't2']);
 
-    expect(view.showMode).toBe(ShowMode.keysOnly);
-    expect(view.hop).toBe(1);
-    expect(view.centerIds).toEqual(['t1', 't2']);
-    expect(view.history).toEqual({ entries: [['t1', 't2']], cursor: 0 });
+    expect(focused.showMode).toBe(ShowMode.keysOnly);
+    expect(focused.centerIds).toEqual(['t1', 't2']);
+    expect(createSceneView(ViewKind.flow, []).showMode).toBe(ShowMode.nameOnly);
   });
 
   it('copies the centers it is given rather than sharing them', () => {
     const centers = ['t1'];
-    const view = createSceneView(ViewKind.focus, centers);
+    const view = createSceneView(ViewKind.flow, centers);
 
     centers.push('t2');
     view.centerIds.push('t3');
 
     expect(view.centerIds).toEqual(['t1', 't3']);
-    expect(view.history.entries[0]).toEqual(['t1']);
+    expect(centers).toEqual(['t1', 't2']);
   });
 });
 
 describe('getActiveView', () => {
   it('is null in a fresh editor', () => {
     expect(getActiveView(store.state)).toBeNull();
-  });
-
-  it('returns the Focus view over any tab', () => {
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
-    );
-
-    expect(getActiveView(store.state)).toBe(store.state.editor.views.focus);
-
-    store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.schemaSQL }));
-    expect(getActiveView(store.state)).toBe(store.state.editor.views.focus);
   });
 
   it('returns the Flow view only while the visualization tab shows Flow', () => {
@@ -126,8 +122,8 @@ describe('getActiveView', () => {
     expect(getActiveView(store.state)).toBeNull();
   });
 
-  // AC-44
-  it('hands Focus over Flow and Flow back when Focus closes, with the Flow placement kept', () => {
+  // AC-56: the view and its placement outlive a trip to another tab.
+  it('hands the Flow view back on the return to its tab, with its placement kept', () => {
     showFlowTab();
     store.dispatchSync(
       viewOpenAction({ kind: ViewKind.flow }),
@@ -139,68 +135,26 @@ describe('getActiveView', () => {
     const flow = store.state.editor.views.flow;
     expect(getActiveView(store.state)).toBe(flow);
 
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
-    );
-    expect(getActiveView(store.state)).toBe(store.state.editor.views.focus);
-    expect(getActiveView(store.state)?.kind).toBe(ViewKind.focus);
+    store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+    expect(getActiveView(store.state)).toBeNull();
     expect(store.state.editor.views.flow).toBe(flow);
-    expect(store.state.editor.views.flow?.positions).toEqual({
-      t1: { x: 10, y: 20 },
-      t2: { x: 300, y: 20 },
-    });
 
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+    showFlowTab();
     expect(getActiveView(store.state)).toBe(flow);
     expect(flow?.positions).toEqual({
       t1: { x: 10, y: 20 },
       t2: { x: 300, y: 20 },
     });
   });
-
-  it('reads the tab only while no Focus view is open', () => {
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.flow }),
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
-    );
-    const focus = store.state.editor.views.focus;
-
-    expect(getActiveView(store.state)).toBe(focus);
-
-    showFlowTab();
-    expect(getActiveView(store.state)).toBe(focus);
-  });
 });
 
 describe('isViewShown', () => {
-  it('shows a Focus view wherever it is open, and no view while none is', () => {
-    expect(isViewShown(store.state, ViewKind.focus)).toBe(false);
-    expect(isViewShown(store.state, ViewKind.flow)).toBe(false);
-
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
-    );
-    expect(isViewShown(store.state, ViewKind.focus)).toBe(true);
-
-    showFlowTab();
-    expect(isViewShown(store.state, ViewKind.focus)).toBe(true);
-
-    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
-    expect(isViewShown(store.state, ViewKind.focus)).toBe(false);
-  });
-
-  it('shows an open Flow view only while the tab is on Flow, a Focus view over it or not', () => {
+  /** AC-56. The one positive pin: an open view is shown exactly while its tab is on Flow. */
+  it('shows an open Flow view only while the tab is on Flow', () => {
     store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
     expect(isViewShown(store.state, ViewKind.flow)).toBe(false);
 
     showFlowTab();
-    expect(isViewShown(store.state, ViewKind.flow)).toBe(true);
-
-    // A Focus overlay takes the active slot and leaves the Flow scene under it mounted.
-    store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
-    );
-    expect(getActiveView(store.state)?.kind).toBe(ViewKind.focus);
     expect(isViewShown(store.state, ViewKind.flow)).toBe(true);
 
     store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));

@@ -1,6 +1,6 @@
-// The particles of a Focus view's lit connectors: six on each, from the PK
-// end toward the FK end, on a layer the commit gate never draws, moved by one
-// frame loop that stops with the overlay (AC-33, AC-35, AC-51, AC-70).
+// The particles of a Flow view's lit connectors: six on each, from the PK end
+// toward the FK end, on a layer the commit gate never draws, moved by one frame
+// loop that stops with the tab (AC-33, AC-51, AC-70).
 
 import { type AnyAction, useProvider } from '@dineug/r-html';
 import type { Group } from 'konva/lib/Group';
@@ -20,18 +20,19 @@ import {
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
-import FocusView from '@/components/focus-view/FocusView';
 import { themeContext } from '@/components/themeContext';
-import { RelationshipType } from '@/constants/schema';
+import Visualization from '@/components/visualization/Visualization';
+import { CanvasType, RelationshipType } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { ViewKind } from '@/engine/modules/editor/state';
+import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
 import {
-  viewChangeHopAction,
+  changeVisualizationModeAction,
   viewChangeZoomLevelAction,
+  viewOpenAction,
   viewScrollToAction,
 } from '@/engine/modules/editor/view.actions';
-import { openFocusViewAction$ } from '@/engine/modules/editor/view.generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -40,7 +41,6 @@ import {
 import { Tag } from '@/engine/tag';
 import { whenDrawn } from '@/konva/batchDraw';
 import { getAnchors } from '@/utils/draw-relationship';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { getParticleEdges } from './particleEdges';
 import { particleClock } from './particleLoop';
@@ -75,6 +75,9 @@ vi.mock('@/services/elk-layout', async importOriginal => {
 
 const VIEWPORT = { width: 1000, height: 630 };
 
+/** The slot the Flow scene reads, which is the one source these particles run in. */
+const SOURCE = ViewKind.flow;
+
 const teardowns: Array<() => void> = [];
 
 afterEach(async () => {
@@ -94,9 +97,9 @@ const link = (id: string, start: string, end: string) =>
   });
 
 /**
- * A chain t1 - t2 - t3 and a second neighbour t4 of t1, with t5 off on its
- * own: a Focus on t1 lights r12 and r14, shows r23 only at two hops and lights
- * it only under a hover of t2 or t3.
+ * A chain t1 - t2 - t3, a second neighbour t4 of t1 joined to t2, and t5 off
+ * on its own: a Flow narrowed to t1 lights r12 and r14, shows r24 unlit since
+ * neither end is a center, and leaves r23 and t5 out of the display set entirely.
  */
 function seed(app: AppContext) {
   app.store.dispatchSync(
@@ -109,7 +112,8 @@ function seed(app: AppContext) {
     addColumnAction({ id: 'c1', tableId: 't1' }),
     link('r12', 't1', 't2'),
     link('r23', 't2', 't3'),
-    link('r14', 't1', 't4')
+    link('r14', 't1', 't4'),
+    link('r24', 't2', 't4')
   );
 }
 
@@ -133,20 +137,20 @@ const settleAndPaint = async () => {
   await whenPainted();
 };
 
-async function mountOverlay(app: AppContext): Promise<Mounted> {
-  const mounted = mount(
-    <div
-      class="root"
-      style={{
-        position: 'relative',
-        width: `${VIEWPORT.width}px`,
-        height: `${VIEWPORT.height}px`,
-      }}
-    >
-      <FocusView />
-    </div>,
-    app
+/**
+ * The tab standing on Flow, narrowed to the centers given before the mount, so
+ * the one placement the mount asks for is that display set's. The mode is
+ * taken after the theme stands, or the circles would be built without a palette.
+ */
+async function mountFlow(
+  app: AppContext,
+  centerIds: string[]
+): Promise<Mounted> {
+  app.store.dispatchSync(
+    changeCanvasTypeAction({ value: CanvasType.visualization }),
+    viewOpenAction({ kind: SOURCE, centerIds })
   );
+  const mounted = mount(<Visualization />, app);
   // useProvider takes a bare element at runtime and types only a component
   // context, hence the cast; it is r-html's own, not a React hook.
   // oxlint-disable-next-line react-hooks/rules-of-hooks
@@ -156,23 +160,34 @@ async function mountOverlay(app: AppContext): Promise<Mounted> {
     createTestTheme()
   );
 
-  await settle();
+  app.store.dispatchSync(
+    changeVisualizationModeAction({ value: VisualizationMode.flow })
+  );
+  await settleAndPaint();
 
-  teardowns.push(() => {
+  const teardown = () => {
     mounted.unmount();
     themeProvider.destroy();
-  });
+  };
+  teardowns.push(teardown);
 
-  return mounted;
+  return {
+    ...mounted,
+    unmount: () => {
+      const at = teardowns.indexOf(teardown);
+      if (at !== -1) teardowns.splice(at, 1);
+      teardown();
+    },
+  };
 }
 
 const stageRegistry = (): Record<string, Stage> =>
   Reflect.get(globalThis, '__erdStages') ?? {};
 
-const focusStage = () => stageRegistry().canvas;
+const flowStage = () => stageRegistry().canvas;
 
 const particleLayer = () =>
-  focusStage().findOne<Layer>('.view-particles') as Layer;
+  flowStage().findOne<Layer>('.view-particles') as Layer;
 
 const groupsOf = () => particleLayer().find<Group>('.particle-edge');
 
@@ -186,7 +201,7 @@ const litIdsOf = () =>
     .sort();
 
 const tableOf = (id: string) =>
-  focusStage().findOne<Group>(`#table-${id}`) as Group;
+  flowStage().findOne<Group>(`#table-${id}`) as Group;
 
 const hover = async (id: string) => {
   fireScenePointer(tableOf(id), 'mouseenter');
@@ -198,14 +213,6 @@ const leave = async (id: string) => {
   await settleAndPaint();
 };
 
-const chord = (app: AppContext, type: KeyBindingName) =>
-  app.shortcut$.next({ type, event: new KeyboardEvent('keydown') });
-
-async function openOn(app: AppContext, tableIds: string[]) {
-  app.store.dispatchSync(openFocusViewAction$(tableIds));
-  await settleAndPaint();
-}
-
 /** Whether whenDrawn answers at all, which an open animation window would hold up. */
 const drawnAnswers = () =>
   Promise.race([
@@ -213,12 +220,11 @@ const drawnAnswers = () =>
     new Promise<boolean>(resolve => setTimeout(() => resolve(false), 300)),
   ]);
 
-describe('the particles of a Focus view', () => {
+describe('the particles of a Flow view', () => {
   it('runs six on every lit connector as the view opens, and none on a connector it shows unlit (AC-33)', async () => {
     const app = createTestAppContext();
     seed(app);
-    await mountOverlay(app);
-    await openOn(app, ['t1']);
+    await mountFlow(app, ['t1']);
 
     const theme = createTestTheme();
     expect(particleLayer()).toBeDefined();
@@ -233,26 +239,21 @@ describe('the particles of a Focus view', () => {
       });
     }
 
-    // Two hops shows r23, and shown is not lit: it carries no particle.
-    app.store.dispatchSync(viewChangeHopAction({ value: 2 }));
-    await settleAndPaint();
-
-    expect(focusStage().findOne('.r23')).toBeDefined();
-    expect(groupOf('r23')).toBeUndefined();
-    expect(litIdsOf()).toEqual(['r12', 'r14']);
-    expect(circlesOf()).toHaveLength(2 * PARTICLE_COUNT);
+    // r24 joins two neighbours and no center, so it is shown and not lit: it
+    // carries no particle.
+    expect(flowStage().findOne('.r24')).toBeDefined();
+    expect(groupOf('r24')).toBeUndefined();
   });
 
   it('carries each particle from the PK end toward the FK end, a sixth of the run a second (AC-33)', async () => {
     const app = createTestAppContext();
     seed(app);
-    await mountOverlay(app);
     const now = vi.spyOn(particleClock, 'now').mockReturnValue(0);
-    await openOn(app, ['t1']);
+    await mountFlow(app, ['t1']);
 
     const relationship = app.store.state.collections.relationshipEntities.r12;
-    const { start, end } = getAnchors(relationship, ViewKind.focus);
-    const [edge] = getParticleEdges(app.store.state, ViewKind.focus).filter(
+    const { start, end } = getAnchors(relationship, SOURCE);
+    const [edge] = getParticleEdges(app.store.state, SOURCE).filter(
       candidate => candidate.id === 'r12'
     );
     const circles = groupOf('r12')!.find<Circle>('Circle');
@@ -299,39 +300,35 @@ describe('the particles of a Focus view', () => {
   it('follows the hover: a lit connector takes its particles on with it and off with the leave (AC-33)', async () => {
     const app = createTestAppContext();
     seed(app);
-    await mountOverlay(app);
-    await openOn(app, ['t1']);
-    app.store.dispatchSync(viewChangeHopAction({ value: 2 }));
-    await settleAndPaint();
+    await mountFlow(app, ['t1']);
 
     await hover('t2');
-    expect(litIdsOf()).toEqual(['r12', 'r14', 'r23']);
+    expect(litIdsOf()).toEqual(['r12', 'r14', 'r24']);
     expect(circlesOf()).toHaveLength(3 * PARTICLE_COUNT);
 
     await leave('t2');
-    await hover('t3');
-    expect(litIdsOf()).toEqual(['r12', 'r14', 'r23']);
+    await hover('t4');
+    expect(litIdsOf()).toEqual(['r12', 'r14', 'r24']);
 
-    await leave('t3');
+    await leave('t4');
     expect(litIdsOf()).toEqual(['r12', 'r14']);
     expect(circlesOf()).toHaveLength(2 * PARTICLE_COUNT);
   });
 
-  it('stops with the overlay: the stop chord takes the layer down and asks for no frame again (AC-35)', async () => {
+  it('stops with the tab: leaving it takes the layer down and asks for no frame again', async () => {
     const app = createTestAppContext();
     seed(app);
-    await mountOverlay(app);
     const frames = vi.spyOn(particleClock, 'requestFrame');
-    await openOn(app, ['t1']);
+    const mounted = await mountFlow(app, ['t1']);
 
     expect(frames).toHaveBeenCalled();
     expect(circlesOf()).toHaveLength(2 * PARTICLE_COUNT);
 
-    chord(app, KeyBindingName.stop);
+    mounted.unmount();
+    app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
     await settle();
 
-    expect(app.store.state.editor.views.focus).toBeNull();
-    expect(focusStage()).toBeUndefined();
+    expect(flowStage()).toBeUndefined();
 
     const asked = frames.mock.calls.length;
     await whenPainted();
@@ -342,10 +339,7 @@ describe('the particles of a Focus view', () => {
   it('asks one frame at a time however often the hover moves, and whenDrawn answers while it runs (AC-51)', async () => {
     const app = createTestAppContext();
     seed(app);
-    await mountOverlay(app);
-    await openOn(app, ['t1']);
-    app.store.dispatchSync(viewChangeHopAction({ value: 2 }));
-    await settleAndPaint();
+    await mountFlow(app, ['t1']);
     const frames = vi.spyOn(particleClock, 'requestFrame');
 
     // One frame asked per frame painted: two rAFs pass, so two or three.
@@ -359,7 +353,7 @@ describe('the particles of a Focus view', () => {
     expect(baseline).toBeLessThanOrEqual(3);
 
     for (let round = 0; round < 10; round++) {
-      const id = round % 2 ? 't3' : 't2';
+      const id = round % 2 ? 't4' : 't2';
       fireScenePointer(tableOf(id), 'mouseenter');
       await flush();
       fireScenePointer(tableOf(id), 'mouseleave');
@@ -368,7 +362,7 @@ describe('the particles of a Focus view', () => {
     fireScenePointer(tableOf('t2'), 'mouseenter');
     await settleAndPaint();
 
-    expect(litIdsOf()).toEqual(['r12', 'r14', 'r23']);
+    expect(litIdsOf()).toEqual(['r12', 'r14', 'r24']);
     expect(await perPaint()).toBeLessThanOrEqual(3);
     expect(await drawnAnswers()).toBe(true);
   });
@@ -376,11 +370,10 @@ describe('the particles of a Focus view', () => {
   it('is committed at mount alone: the gate never draws it again while the scene commits around it, and the circles stay (AC-70)', async () => {
     const app = createTestAppContext();
     seed(app);
-    await mountOverlay(app);
-    await openOn(app, ['t1']);
+    await mountFlow(app, ['t1']);
 
     const particles = particleLayer();
-    const scene = focusStage().findOne<Layer>('.scene') as Layer;
+    const scene = flowStage().findOne<Layer>('.scene') as Layer;
     const particleDraw = vi.spyOn(particles, 'batchDraw');
     const sceneDraw = vi.spyOn(scene, 'batchDraw');
     const expectIntact = (lit: number) => {
@@ -391,27 +384,27 @@ describe('the particles of a Focus view', () => {
     };
 
     await hover('t2');
-    expectIntact(2);
+    expectIntact(3);
 
     app.store.dispatchSync(
-      viewScrollToAction({ kind: ViewKind.focus, originX: 40, originY: -30 })
+      viewScrollToAction({ kind: SOURCE, originX: 40, originY: -30 })
     );
     await settleAndPaint();
-    expectIntact(2);
+    expectIntact(3);
     expect(particles.position()).toEqual({ x: 40, y: -30 });
 
     app.store.dispatchSync(
-      viewChangeZoomLevelAction({ kind: ViewKind.focus, value: 0.5 })
+      viewChangeZoomLevelAction({ kind: SOURCE, value: 0.5 })
     );
     await settleAndPaint();
-    expectIntact(2);
+    expectIntact(3);
     expect(particles.scale()).toEqual({ x: 0.5, y: 0.5 });
 
     app.store.dispatchSync(
       shared(changeColumnNameAction({ tableId: 't1', id: 'c1', value: 'id' }))
     );
     await settleAndPaint();
-    expectIntact(2);
+    expectIntact(3);
 
     await leave('t2');
     expectIntact(2);

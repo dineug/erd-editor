@@ -13,27 +13,25 @@ const showsFlowTab = (state: RootState): boolean =>
   state.editor.visualizationMode === VisualizationMode.flow;
 
 /**
- * The view the reader stands in, or null in the document itself. Focus wins
- * over Flow, and Flow counts only while the visualization tab shows it, so the
- * short circuit reads the tab only while no Focus view is open.
+ * The view the reader stands in, or null in the document itself. A Flow view
+ * counts only while the visualization tab shows it, so one kept across tabs is
+ * open but not stood in.
  */
 export const getActiveView = (state: RootState): SceneView | null =>
-  state.editor.views.focus ??
-  (showsFlowTab(state) ? state.editor.views.flow : null);
+  showsFlowTab(state) ? state.editor.views.flow : null;
 
 /**
- * Whether a scene is drawing the view of the kind given: an open Focus view is
- * always on screen, and an open Flow view only while its tab shows Flow. A
- * Flow view kept across tabs is open but unseen, and nothing reads its geometry until it is back.
+ * Whether a scene is drawing the view of the kind given: an open Flow view
+ * only while its tab shows Flow. One kept across tabs is open but unseen, and
+ * nothing reads its geometry until it is back.
  */
 export const isViewShown = (state: RootState, kind: ViewSource): boolean =>
-  state.editor.views[kind] !== null &&
-  (kind === ViewKind.focus || showsFlowTab(state));
+  state.editor.views[kind] !== null && showsFlowTab(state);
 
 /**
  * The view a scene drawn from the source given reads, open or not: the slot
  * of that kind, and null for the document. A scene reads its own slot and
- * never the active one, so a Focus overlay leaves the Flow scene under it on Flow.
+ * never the active one, so an export of the document is never drawn from a view.
  */
 export const getSourceView = (
   state: RootState,
@@ -43,8 +41,8 @@ export const getSourceView = (
 
 /**
  * A view just opened: nothing placed yet, the neutral placement a fit will
- * replace, and the display a kind opens with. Flow draws name boxes, Focus
- * opens on the key rows and stands on the centers it was given.
+ * replace, and the display its centers ask for. Narrowed to a few tables it
+ * opens on the key rows; over the whole document it draws name boxes.
  */
 export function createSceneView(
   kind: ViewKind,
@@ -54,13 +52,11 @@ export function createSceneView(
 
   return {
     kind,
-    showMode: kind === ViewKind.flow ? ShowMode.nameOnly : ShowMode.keysOnly,
+    showMode: centers.length ? ShowMode.keysOnly : ShowMode.nameOnly,
     positions: {},
     originX: 0,
     originY: 0,
     zoomLevel: 1,
     centerIds: centers,
-    hop: 1,
-    history: { entries: [[...centers]], cursor: 0 },
   };
 }

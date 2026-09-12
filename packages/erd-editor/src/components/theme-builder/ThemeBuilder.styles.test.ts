@@ -33,8 +33,8 @@ describe('ThemeBuilder.styles', () => {
     expect(source).toContain('position: absolute');
     expect(source).toContain('top: 46px');
     expect(source).toContain('left: 16px');
-    // The Focus overlay before it in the root is raised one step; the same
-    // step here keeps the later sibling on top.
+    // A raised descendant of the tab wrapper would otherwise paint over this
+    // panel, which that wrapper holds in no stacking context of its own.
     expect(source).toContain('z-index: 1');
     expect(source).toContain('padding: 24px');
     expect(source).toContain('width: 360px');

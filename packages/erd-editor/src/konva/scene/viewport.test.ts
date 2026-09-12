@@ -805,12 +805,12 @@ describe('the placement a scene is drawn at', () => {
     return view;
   }
 
-  const openFocus = (
+  const openFlow = (
     state: RootState,
     originX: number,
     originY: number,
     zoomLevel: number
-  ) => openView(state, ViewKind.focus, originX, originY, zoomLevel);
+  ) => openView(state, ViewKind.flow, originX, originY, zoomLevel);
 
   it('is the document placement by default, whether or not a view is open', () => {
     const state = createState();
@@ -820,47 +820,31 @@ describe('the placement a scene is drawn at', () => {
 
     expect(getSceneTransform(state)).toBe(state.settings);
 
-    openFocus(state, 300, 200, 0.5);
+    openFlow(state, 300, 200, 0.5);
 
     expect(getSceneTransform(state)).toBe(state.settings);
     expect(getSceneTransform(state, 'document')).toBe(state.settings);
   });
 
+  /** Each scene reads the slot of its own source: a view never moves the document scene. */
   it('is the placement of its own kind for a view scene, and the document while that kind is not open', () => {
     const state = createState();
+    state.settings.canvasType = CanvasType.visualization;
+    state.editor.visualizationMode = VisualizationMode.flow;
 
-    expect(getSceneTransform(state, 'focus')).toBe(state.settings);
+    expect(getSceneTransform(state, 'flow')).toBe(state.settings);
     expect(getActiveTransform(state)).toBe(state.settings);
 
-    const view = openFocus(state, 300, 200, 0.5);
+    const view = openFlow(state, 300, 200, 0.5);
 
-    expect(getSceneTransform(state, 'focus')).toBe(view);
+    expect(getSceneTransform(state, 'flow')).toBe(view);
+    expect(getSceneTransform(state, 'document')).toBe(state.settings);
     expect(getActiveTransform(state)).toBe(view);
 
-    state.editor.views.focus = null;
+    state.editor.views.flow = null;
 
-    expect(getSceneTransform(state, 'focus')).toBe(state.settings);
+    expect(getSceneTransform(state, 'flow')).toBe(state.settings);
     expect(getActiveTransform(state)).toBe(state.settings);
-  });
-
-  /** Each scene reads the slot of its own kind: a Focus overlay never moves the Flow scene under it. */
-  it('reads each kind its own placement while both views are open, and the active one outside every scene', () => {
-    const state = createState();
-    state.settings.originX = -40;
-    state.settings.originY = 25;
-    state.settings.zoomLevel = 0.8;
-    const flow = openView(state, ViewKind.flow, 1_000, 500, 0.6);
-    const focus = openFocus(state, 300, 200, 0.5);
-
-    expect(getSceneTransform(state, 'flow')).toBe(flow);
-    expect(getSceneTransform(state, 'focus')).toBe(focus);
-    expect(getSceneTransform(state, 'document')).toBe(state.settings);
-    expect(getActiveTransform(state)).toBe(focus);
-
-    state.editor.views.focus = null;
-
-    expect(getSceneTransform(state, 'flow')).toBe(flow);
-    expect(getSceneTransform(state, 'focus')).toBe(state.settings);
   });
 
   it('reads the Flow placement for a Flow scene whichever tab is up, while the reader outside follows the tab', () => {
@@ -878,39 +862,13 @@ describe('the placement a scene is drawn at', () => {
     expect(getActiveTransform(state)).toBe(flow);
   });
 
-  it('culls each view scene around its own placement while both are open', () => {
-    const state = createState();
-    state.editor.viewport = { width: 1000, height: 800 };
-    openView(state, ViewKind.flow, 2_000, 1_500, 0.6);
-    openFocus(state, -5_000, -4_000, 0.5);
-
-    expect(getCullingRect(state, 'flow')).toEqual(
-      createCullingRect({
-        originX: 2_000,
-        originY: 1_500,
-        zoomLevel: 0.6,
-        viewportWidth: 1000,
-        viewportHeight: 800,
-      })
-    );
-    expect(getCullingRect(state, 'focus')).toEqual(
-      createCullingRect({
-        originX: -5_000,
-        originY: -4_000,
-        zoomLevel: 0.5,
-        viewportWidth: 1000,
-        viewportHeight: 800,
-      })
-    );
-  });
-
   it('culls a view scene around the view placement and the document scene around its own', () => {
     const state = createState();
     state.editor.viewport = { width: 1000, height: 800 };
     state.settings.originX = -100;
     state.settings.originY = -50;
     state.settings.zoomLevel = 1;
-    openFocus(state, -5_000, -4_000, 0.5);
+    openFlow(state, -5_000, -4_000, 0.5);
 
     expect(getCullingRect(state)).toEqual(
       createCullingRect({
@@ -921,7 +879,7 @@ describe('the placement a scene is drawn at', () => {
         viewportHeight: 800,
       })
     );
-    expect(getCullingRect(state, 'focus')).toEqual(
+    expect(getCullingRect(state, 'flow')).toEqual(
       createCullingRect({
         originX: -5_000,
         originY: -4_000,

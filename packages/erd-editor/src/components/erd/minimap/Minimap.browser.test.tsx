@@ -1032,8 +1032,8 @@ describe('the minimap under an open view', () => {
       addMemoAction({ id: 'm1', ui: { x: 100, y: 900, zIndex: 9 } }),
       link('r1', 't1', 't2'),
       link('r2', 't2', 't3'),
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
-      viewSetLayoutAction({ kind: ViewKind.focus, positions: VIEW_POINTS })
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+      viewSetLayoutAction({ kind: ViewKind.flow, positions: VIEW_POINTS })
     );
   }
 
@@ -1078,15 +1078,15 @@ describe('the minimap under an open view', () => {
       getMinimapLayout(app.store.state, 'document').map
     );
     expect(layoutOf(app).map).not.toEqual(
-      getMinimapLayout(app.store.state, 'focus').map
+      getMinimapLayout(app.store.state, 'flow').map
     );
   });
 });
 
 /**
- * The overlay half of AC-61 as the shell shows it: under a view provider the
- * map, its handle and a press on it are that view's, and with a Focus view
- * open over a Flow scene they are the Flow view's and never the active one's.
+ * The view half of AC-61 as the shell shows it: under a view provider the map,
+ * its handle and a press on it are that view's, whether it stands on the whole
+ * document or narrowed to one table, and never the document's.
  */
 describe('the minimap under a view provider', () => {
   const DOC_POINTS: Record<string, Point> = {
@@ -1101,15 +1101,14 @@ describe('the minimap under a view provider', () => {
     t3: { x: 2400, y: 0 },
   };
 
-  const FOCUS_POINTS: Record<string, Point> = {
+  const FOCUSED_POINTS: Record<string, Point> = {
     t1: { x: 4000, y: 4000 },
     t2: { x: 4800, y: 4000 },
   };
 
   const FLOW_ORIGIN = { originX: -300, originY: -150 };
 
-  /** Three tables and a memo in the document, a Flow view placing all three and scrolled, and a Focus view on t1 open over it. */
-  function seedFlowUnderFocus(app: AppContext) {
+  function seedDocument(app: AppContext) {
     const link = (id: string, start: string, end: string) =>
       addRelationshipAction({
         id,
@@ -1124,12 +1123,26 @@ describe('the minimap under a view provider', () => {
       ),
       addMemoAction({ id: 'm1', ui: { x: 100, y: 900, zIndex: 9 } }),
       link('r1', 't1', 't2'),
-      link('r2', 't2', 't3'),
+      link('r2', 't2', 't3')
+    );
+  }
+
+  /** The document, and a view over all of it placing the three tables and scrolled. */
+  function seedFlow(app: AppContext) {
+    seedDocument(app);
+    app.store.dispatchSync(
       viewOpenAction({ kind: ViewKind.flow }),
       viewSetLayoutAction({ kind: ViewKind.flow, positions: FLOW_POINTS }),
-      viewScrollToAction({ ...FLOW_ORIGIN, kind: ViewKind.flow }),
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] }),
-      viewSetLayoutAction({ kind: ViewKind.focus, positions: FOCUS_POINTS })
+      viewScrollToAction({ ...FLOW_ORIGIN, kind: ViewKind.flow })
+    );
+  }
+
+  /** The document, and a view narrowed to t1, which places the two tables it reaches. */
+  function seedFocused(app: AppContext) {
+    seedDocument(app);
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+      viewSetLayoutAction({ kind: ViewKind.flow, positions: FOCUSED_POINTS })
     );
   }
 
@@ -1138,13 +1151,12 @@ describe('the minimap under a view provider', () => {
 
   it('draws the Flow view at the Flow points, memos aside, on a box the Flow map sizes', async () => {
     const app = createTestAppContext();
-    seedFlowUnderFocus(app);
+    seedFlow(app);
     const mounted = await mountMinimap(app, 'flow');
     const stage = stageRegistry().minimap;
     const layout = flowLayoutOf(app);
     const { state } = app.store;
 
-    expect(layout.map).not.toEqual(getMinimapLayout(state, 'focus').map);
     expect(layout.map).not.toEqual(getMinimapLayout(state).map);
     expect(
       stage.find('.minimap-table').map(node => node.getAttr('tableId'))
@@ -1171,7 +1183,7 @@ describe('the minimap under a view provider', () => {
 
   it('draws the handle where the Flow view stands on the Flow map', async () => {
     const app = createTestAppContext();
-    seedFlowUnderFocus(app);
+    seedFlow(app);
     const mounted = await mountMinimap(app, 'flow');
     const { state } = app.store;
     const layout = flowLayoutOf(app);
@@ -1186,20 +1198,17 @@ describe('the minimap under a view provider', () => {
     expect(handle.width).toBeCloseTo(expected.width, 3);
     expect(handle.height).toBeCloseTo(expected.height, 3);
     expect(expected).not.toEqual(
-      getMinimapHandleRect(
-        getMinimapLayout(state, 'focus'),
-        getViewTransform(state, 'focus')
-      )
+      getMinimapHandleRect(getMinimapLayout(state), getViewTransform(state))
     );
   });
 
-  it('centres the Flow view on the point pressed, and leaves the Focus view and the document where they stand', async () => {
+  it('centres the Flow view on the point pressed, and leaves the document where it stands', async () => {
     const app = createTestAppContext();
-    seedFlowUnderFocus(app);
+    seedFlow(app);
     const mounted = await mountMinimap(app, 'flow');
     stubRect(10, 20);
     const { state } = app.store;
-    const { flow, focus } = state.editor.views;
+    const { flow } = state.editor.views;
     const layout = flowLayoutOf(app);
     const pixel = pixelIn(layout, 0.6, 0.5);
     const scene = fromMinimapPoint(layout, pixel);
@@ -1216,30 +1225,28 @@ describe('the minimap under a view provider', () => {
 
     expect(flow!.originX).toBeCloseTo(origin.x, 3);
     expect(flow!.originY).toBeCloseTo(origin.y, 3);
-    expect(focus).toMatchObject({ originX: 0, originY: 0 });
     expect(state.settings).toMatchObject({ originX: 0, originY: 0 });
     expect(flowLayoutOf(app)).toEqual(layout);
   });
 
   /**
-   * AC-30 and AC-64 for the overlay's own map: under a Focus provider it holds
-   * what the view reaches and nothing past it, at the Focus points, no memo,
-   * and a press on it moves the Focus view alone.
+   * AC-30 and AC-64 for a narrowed view's map: it holds what the view reaches
+   * and nothing past it, at that view's points, no memo, and a press on it
+   * moves the view alone.
    */
-  it('draws the Focus view under a Focus provider: the tables it reaches at the Focus points, and no memo (AC-30, AC-64)', async () => {
+  it('draws a narrowed view under a view provider: the tables it reaches at its own points, and no memo (AC-30, AC-64)', async () => {
     const app = createTestAppContext();
-    seedFlowUnderFocus(app);
-    const mounted = await mountMinimap(app, 'focus');
+    seedFocused(app);
+    const mounted = await mountMinimap(app, 'flow');
     const stage = stageRegistry().minimap;
     const { state } = app.store;
-    const layout = getMinimapLayout(state, 'focus');
+    const layout = flowLayoutOf(app);
 
     // t3 is two hops from t1, so a map of the reach holds t1 and t2 alone.
     expect(
       stage.find('.minimap-table').map(node => node.getAttr('tableId'))
     ).toEqual(['t1', 't2']);
     expect(stage.find('.minimap-memo')).toHaveLength(0);
-    expect(layout.map).not.toEqual(flowLayoutOf(app).map);
     expect(layout.map).not.toEqual(getMinimapLayout(state).map);
     expectStageSized(layout);
     expect(parseFloat(minimapOf(mounted).style.width)).toBeCloseTo(
@@ -1247,7 +1254,7 @@ describe('the minimap under a view provider', () => {
       6
     );
 
-    const t2 = getTableRect(state, state.collections.tableEntities.t2, 'focus');
+    const t2 = getTableRect(state, state.collections.tableEntities.t2, 'flow');
     const rect = getMinimapMarkRect(layout.ratio, t2);
     const mappedAt = toMinimapPoint(layout, {
       x: rect.x + TABLE_BORDER / 2,
@@ -1255,22 +1262,22 @@ describe('the minimap under a view provider', () => {
     });
     const drawnAt = stage.find('.minimap-table')[1].getAbsolutePosition();
 
-    expect({ x: t2.x, y: t2.y }).toEqual(FOCUS_POINTS.t2);
+    expect({ x: t2.x, y: t2.y }).toEqual(FOCUSED_POINTS.t2);
     expect(drawnAt.x).toBeCloseTo(mappedAt.x, 6);
     expect(drawnAt.y).toBeCloseTo(mappedAt.y, 6);
   });
 
-  it('centres the Focus view on the point pressed, and leaves the Flow view and the document where they stand (AC-30)', async () => {
+  it('centres a narrowed view on the point pressed, and leaves the document where it stands (AC-30)', async () => {
     const app = createTestAppContext();
-    seedFlowUnderFocus(app);
-    const mounted = await mountMinimap(app, 'focus');
+    seedFocused(app);
+    const mounted = await mountMinimap(app, 'flow');
     stubRect(10, 20);
     const { state } = app.store;
-    const { flow, focus } = state.editor.views;
-    const layout = getMinimapLayout(state, 'focus');
+    const { flow } = state.editor.views;
+    const layout = flowLayoutOf(app);
     const pixel = pixelIn(layout, 0.6, 0.5);
     const scene = fromMinimapPoint(layout, pixel);
-    const origin = getScrollToCenter(getViewTransform(state, 'focus'), scene);
+    const origin = getScrollToCenter(getViewTransform(state, 'flow'), scene);
 
     minimapOf(mounted).dispatchEvent(
       new MouseEvent('mousedown', {
@@ -1281,15 +1288,14 @@ describe('the minimap under a view provider', () => {
     );
     await flush();
 
-    expect(focus!.originX).toBeCloseTo(origin.x, 3);
-    expect(focus!.originY).toBeCloseTo(origin.y, 3);
-    expect(flow).toMatchObject(FLOW_ORIGIN);
+    expect(flow!.originX).toBeCloseTo(origin.x, 3);
+    expect(flow!.originY).toBeCloseTo(origin.y, 3);
     expect(state.settings).toMatchObject({ originX: 0, originY: 0 });
 
     // The press lands before the drag takes hold, so the map is laid out
     // again around the screen it sent the view to, and the pressed scene
     // point is what that screen is centred on.
-    const landed = toScreenPoint(focus!, scene);
+    const landed = toScreenPoint(flow!, scene);
     expect(landed.x).toBeCloseTo(state.editor.viewport.width / 2, 3);
     expect(landed.y).toBeCloseTo(state.editor.viewport.height / 2, 3);
   });

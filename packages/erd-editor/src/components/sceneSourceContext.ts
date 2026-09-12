@@ -5,8 +5,8 @@ import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /**
  * Which coordinate system the scene a component sits in is drawn from. Each
- * root that opens a scene provides its own inside its wrapper, so the ERD
- * under a view overlay keeps the document while the overlay reads the view.
+ * root that opens a scene provides its own inside its wrapper, so an export or
+ * a minimap of the document keeps it while a Flow scene beside them reads its view.
  */
 export const sceneSourceContext = createContext<GeometrySource>('document');
 

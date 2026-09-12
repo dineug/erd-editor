@@ -3,8 +3,9 @@ import { css } from '@dineug/r-html';
 import { fontSize5, typography } from '@/styles/typography.styles';
 
 /**
- * A root sibling after the Focus overlay, raised the same step the overlay
- * is, so its place in the root keeps it painting over the overlay rather than under it.
+ * A panel placed over whichever tab is up. The tab wrapper raises no stacking
+ * context of its own, so a raised descendant inside it would paint over an
+ * unraised sibling; the same step, later in the root, keeps this panel on top.
  */
 export const root = css`
   position: absolute;

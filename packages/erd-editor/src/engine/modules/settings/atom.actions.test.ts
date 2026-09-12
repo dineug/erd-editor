@@ -678,10 +678,9 @@ describe('settings/atom.actions', () => {
       ).toEqual(streamScrollToAction({ movementX: 3, movementY: 4 }));
     });
 
-    it('names the view of its kind from a view scene, so a Flow scene under a Focus overlay moves the Flow view alone', () => {
+    it('names the view of its kind from a view scene, so a view scene moves the view alone', () => {
       store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-      store.dispatchSync(viewOpenAction({ kind: ViewKind.focus }));
-      const { flow, focus } = store.state.editor.views;
+      const { flow } = store.state.editor.views;
 
       expect(sceneScrollToAction('flow', { originX: 1, originY: 2 })).toEqual(
         viewScrollToAction({ originX: 1, originY: 2, kind: ViewKind.flow })
@@ -693,7 +692,6 @@ describe('settings/atom.actions', () => {
       );
 
       expect(flow).toMatchObject({ originX: 4, originY: 6 });
-      expect(focus).toMatchObject({ originX: 0, originY: 0 });
       expect(store.state.settings).toMatchObject({ originX: 0, originY: 0 });
     });
   });
@@ -982,11 +980,15 @@ describe('settings/atom.actions', () => {
   });
 
   describe('the scroll range chain read for a view', () => {
-    /** A Focus view standing at its own origin and zoom, beside the document's. */
-    const openFocusAt = (originX: number, originY: number, zoom: number) => {
-      store.dispatchSync(viewOpenAction({ kind: ViewKind.focus }));
-      store.dispatchSync(viewScrollToAction({ originX, originY }));
-      store.dispatchSync(viewChangeZoomLevelAction({ value: zoom }));
+    /** A view standing at its own origin and zoom, beside the document's. */
+    const openViewAt = (originX: number, originY: number, zoom: number) => {
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      store.dispatchSync(
+        viewScrollToAction({ originX, originY, kind: ViewKind.flow })
+      );
+      store.dispatchSync(
+        viewChangeZoomLevelAction({ value: zoom, kind: ViewKind.flow })
+      );
     };
 
     it('reads the document ranges the same however the view stands', () => {
@@ -994,7 +996,7 @@ describe('settings/atom.actions', () => {
       const pure = getContentScrollRanges(store.state);
       const before = getScrollRanges(store.state);
 
-      openFocusAt(-40_000, 12_345, 0.5);
+      openViewAt(-40_000, 12_345, 0.5);
 
       expect(getContentScrollRanges(store.state)).toEqual(pure);
       expect(getScrollRanges(store.state)).toEqual(before);
@@ -1004,51 +1006,53 @@ describe('settings/atom.actions', () => {
     it('widens the view travel to the view origin and the document travel to its own', () => {
       seedTable(store, 't', 1_000, 1_000);
       store.dispatchSync(scrollToAction({ originX: -700, originY: -600 }));
-      openFocusAt(-40_000, 12_345, 0.5);
+      openViewAt(-40_000, 12_345, 0.5);
 
-      expect(getScrollRanges(store.state, 'focus').left.min).toBe(-40_000);
-      expect(getScrollRanges(store.state, 'focus').top.max).toBe(12_345);
+      expect(getScrollRanges(store.state, 'flow').left.min).toBe(-40_000);
+      expect(getScrollRanges(store.state, 'flow').top.max).toBe(12_345);
       expect(getScrollRanges(store.state).left.min).not.toBe(-40_000);
       expect(getScrollRanges(store.state).left.min).toBeLessThanOrEqual(-700);
       expect(getScrollRanges(store.state).top.max).not.toBe(12_345);
     });
 
     /**
-     * The overlay's minimap and scrollbar hold the view while they drag, and
-     * the ERD under the overlay keeps its own hull: a view origin far from the
-     * document's content must not widen the document's travel, nor the reverse.
+     * The view's minimap and scrollbar hold the view while they drag, and the
+     * ERD keeps its own hull: a view origin far from the document's content
+     * must not widen the document's travel, nor the reverse.
      */
     it('keeps the anchor a view drag holds out of the document hull, and the reverse', () => {
       seedTable(store, 't', 1_000, 1_000);
       store.dispatchSync(scrollToAction({ originX: 70_000, originY: 0 }));
-      openFocusAt(-40_000, 12_345, 0.5);
+      openViewAt(-40_000, 12_345, 0.5);
       const document = getScrollRanges(store.state);
 
-      freezeView(store.state, 'focus');
-      store.dispatchSync(viewScrollToAction({ originX: 0, originY: 0 }));
+      freezeView(store.state, 'flow');
+      store.dispatchSync(
+        viewScrollToAction({ originX: 0, originY: 0, kind: ViewKind.flow })
+      );
 
       expect(getScrollRanges(store.state)).toEqual(document);
-      expect(getScrollRanges(store.state, 'focus').left.min).toBe(-40_000);
-      expect(getScrollRanges(store.state, 'focus').top.max).toBe(12_345);
+      expect(getScrollRanges(store.state, 'flow').left.min).toBe(-40_000);
+      expect(getScrollRanges(store.state, 'flow').top.max).toBe(12_345);
 
-      thawView(store.state, 'focus');
-      expect(getScrollRanges(store.state, 'focus').left.min).not.toBe(-40_000);
+      thawView(store.state, 'flow');
+      expect(getScrollRanges(store.state, 'flow').left.min).not.toBe(-40_000);
 
       freezeView(store.state);
       expect(getScrollRanges(store.state).left.max).toBe(70_000);
-      expect(getScrollRanges(store.state, 'focus').left.max).not.toBe(70_000);
+      expect(getScrollRanges(store.state, 'flow').left.max).not.toBe(70_000);
     });
 
     it('cuts a view step against the view origin rather than the document one', () => {
       seedTable(store, 't', 1_000, 1_000);
       store.dispatchSync(scrollToAction({ originX: -700, originY: -600 }));
-      openFocusAt(0, 0, 1);
-      const { left, top } = getScrollRanges(store.state, 'focus');
+      openViewAt(0, 0, 1);
+      const { left, top } = getScrollRanges(store.state, 'flow');
 
       const step = clampScrollMovement(
         store.state,
         { movementX: 99_999, movementY: 99_999 },
-        'focus'
+        'flow'
       );
 
       expect(step).toEqual({ movementX: left.max, movementY: top.max });

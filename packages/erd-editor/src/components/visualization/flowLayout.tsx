@@ -253,10 +253,8 @@ async function requestFlowLayout(
   const [close, onClose] = closePromise();
   const entry = layoutsOf(view);
   let cancelled = false;
-  // The chord is the Focus overlay's to close while one is up over the tab,
-  // and the ask under it stays out so the Flow has its landing when the overlay is down.
   const subscription = shortcut$.subscribe(({ type }) => {
-    type === KeyBindingName.stop && !store.state.editor.views.focus && cancel();
+    type === KeyBindingName.stop && cancel();
   });
   // The ask is the view's until it lands, fails or is cancelled, and a later
   // ask for the same view takes its place, so each of these lets go only of

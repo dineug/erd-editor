@@ -397,8 +397,7 @@ describe('moveAllAction$', () => {
         kind: ViewKind.flow,
         positions: { t1: { x: 0, y: 0 } },
       }),
-      viewChangeZoomLevelAction({ value: 0.5, kind: ViewKind.flow }),
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
+      viewChangeZoomLevelAction({ value: 0.5, kind: ViewKind.flow })
     );
 
     expect(typesOf(store, moveAllAction$(10, 20, 'flow'))).toEqual([
@@ -411,7 +410,6 @@ describe('moveAllAction$', () => {
       x: 20,
       y: 40,
     });
-    expect(store.state.editor.views.focus!.positions).toEqual({});
     expect(tableOf(store, 't1').ui).toMatchObject({ x: 100, y: 100 });
     expect(memoOf(store, 'm1').ui).toMatchObject({ x: 200, y: 200 });
   });
@@ -493,15 +491,15 @@ describe('dragSelectAction$', () => {
     seedTable(store, 't2', 5000, 5000);
     seedMemo(store, 'm1', 0, 0);
     store.dispatchSync(
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1', 't2'] }),
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1', 't2'] }),
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: { t1: { x: 5000, y: 5000 }, t2: { x: 0, y: 0 } },
       })
     );
 
     store.dispatchSync(
-      dragSelectAction$({ x: 0, y: 0, w: 300, h: 300 }, 'focus')
+      dragSelectAction$({ x: 0, y: 0, w: 300, h: 300 }, 'flow')
     );
 
     // The document at the same rect would pick t1 and the memo under it.
@@ -1729,7 +1727,6 @@ describe('actions$', () => {
     expect(Object.keys(actions$).sort()).toEqual(
       [
         'changeColorAllAction$',
-        'closeFocusViewAction$',
         'columnKeyHoverEndAction$',
         'columnKeyHoverStartAction$',
         'dragSelectAction$',
@@ -1738,6 +1735,7 @@ describe('actions$', () => {
         'drawStartAddRelationshipAction$',
         'drawStartRelationshipAction$',
         'duplicateAction$',
+        'focusFlowTableAction$',
         'focusMoveTableAction$',
         'initialLoadJsonAction$',
         'loadJsonAction$',
@@ -1746,9 +1744,7 @@ describe('actions$', () => {
         'loadSchemaGraphQLAction$',
         'loadSchemaSQLAction$',
         'moveAllAction$',
-        'openFocusViewAction$',
         'pasteEntitiesAction$',
-        'refitFocusViewAction$',
         'removeSelectedAction$',
         'unselectAllAction$',
       ].sort()

@@ -16,7 +16,6 @@ import {
   ErdEditorElement,
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
-import * as toastStyles from '@/components/toast-container/ToastContainer.styles';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
@@ -24,12 +23,7 @@ import {
   changeOpenMapAction,
   changeZenModeAction,
 } from '@/engine/modules/editor/atom.actions';
-import {
-  closeFocusViewAction$,
-  openFocusViewAction$,
-} from '@/engine/modules/editor/view.generator.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
@@ -163,39 +157,6 @@ describe('<erd-editor>', () => {
     expect(root.getAttribute('tabindex')).toBe('-1');
     expect(root.classList.contains('dark')).toBe(true);
     expect(shadow.querySelector('.toolbar')).toBeTruthy();
-  });
-
-  it('mounts the Focus overlay at the root, before the toasts, whichever tab is up (AC-34)', async () => {
-    const { app, shadow, root } = await createEditor();
-    app.store.dispatchSync(
-      addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 1 } })
-    );
-    await flush();
-
-    expect(shadow.querySelector('.focus-view')).toBeNull();
-
-    app.store.dispatchSync(openFocusViewAction$(['t1']));
-    await flush();
-
-    const overlay = shadow.querySelector('.focus-view')!;
-    const toasts = shadow.querySelector(`.${String(toastStyles.root)}`)!;
-
-    expect(overlay.parentElement).toBe(root);
-    expect(
-      overlay.compareDocumentPosition(toasts) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-
-    for (const value of [CanvasType.schemaSQL, CanvasType.ERD]) {
-      app.store.dispatchSync(changeCanvasTypeAction({ value }));
-      await flush();
-
-      expect(shadow.querySelector('.focus-view')).toBe(overlay);
-    }
-
-    app.store.dispatchSync(closeFocusViewAction$());
-    await flush();
-
-    expect(shadow.querySelector('.focus-view')).toBeNull();
   });
 
   it('takes the toolbar away in zen mode, and only over the canvas it was entered from', async () => {

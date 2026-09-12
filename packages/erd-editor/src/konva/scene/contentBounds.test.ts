@@ -272,9 +272,9 @@ function seedView(state: RootState) {
   });
   state.doc.relationshipIds.push('ab');
 
-  const view = createSceneView(ViewKind.focus, ['a']);
+  const view = createSceneView(ViewKind.flow, ['a']);
   view.positions = { a: { x: 50_000, y: 50_000 }, b: { x: 50_400, y: 50_000 } };
-  state.editor.views.focus = view;
+  state.editor.views.flow = view;
 
   return { a, b, view };
 }
@@ -302,11 +302,11 @@ describe('getSceneContentRect', () => {
     const state = createState();
     const { a, b } = seedView(state);
     const boxes = [
-      getTableRect(state, a, 'focus'),
-      getTableRect(state, b, 'focus'),
+      getTableRect(state, a, 'flow'),
+      getTableRect(state, b, 'flow'),
     ];
 
-    const rect = getSceneContentRect(state, 'focus')!;
+    const rect = getSceneContentRect(state, 'flow')!;
 
     expect(rect).toEqual(boxes.reduce(unionRect));
     expect(rect.x).toBe(50_000);
@@ -323,10 +323,10 @@ describe('getSceneContentRect', () => {
     addTable(state, 'a', 100, 200);
     addMemo(state, 'm', -500, 900, 200, 100);
 
-    expect(getSceneContentRect(state, 'focus')).toBeNull();
+    expect(getSceneContentRect(state, 'flow')).toBeNull();
 
-    state.editor.views.focus = createSceneView(ViewKind.focus, ['gone']);
-    expect(getSceneContentRect(state, 'focus')).toBeNull();
+    state.editor.views.flow = createSceneView(ViewKind.flow, ['gone']);
+    expect(getSceneContentRect(state, 'flow')).toBeNull();
   });
 
   it('leaves the document rect where it was while the view is open', () => {
@@ -340,7 +340,7 @@ describe('getSceneContentRect', () => {
     expect(withView).toEqual(getSceneContentRect(state, 'document'));
     expect(withView!.x).toBe(-4_000);
     expect(right(withView!)).toBeGreaterThan(12_000);
-    expect(withView).not.toEqual(getSceneContentRect(state, 'focus'));
+    expect(withView).not.toEqual(getSceneContentRect(state, 'flow'));
   });
 });
 
@@ -350,11 +350,11 @@ describe('getContentRects for a view', () => {
     const state = createState();
     const { a, b } = seedView(state);
 
-    expect(getContentRects(state, [], 'focus')).toEqual([
-      getTableRect(state, a, 'focus'),
-      getTableRect(state, b, 'focus'),
+    expect(getContentRects(state, [], 'flow')).toEqual([
+      getTableRect(state, a, 'flow'),
+      getTableRect(state, b, 'flow'),
     ]);
-    expect(getContentRects(state, [], 'focus').map(box => box.x)).toEqual([
+    expect(getContentRects(state, [], 'flow').map(box => box.x)).toEqual([
       50_000, 50_400,
     ]);
   });
@@ -365,13 +365,13 @@ describe('getContentRects for a view', () => {
     const [rect] = getContentRects(
       state,
       [{ id: 'a', x: 900, y: -700 }],
-      'focus'
+      'flow'
     );
 
     expect([rect.x, rect.y]).toEqual([900, -700]);
     expect(view.positions.a).toEqual({ x: 50_000, y: 50_000 });
     expect(
-      getContentRectAfter(state, [{ id: 'a', x: 900, y: -700 }], 'focus')!.x
+      getContentRectAfter(state, [{ id: 'a', x: 900, y: -700 }], 'flow')!.x
     ).toBe(900);
   });
 });

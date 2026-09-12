@@ -45,45 +45,46 @@ function link(state: RootState, id: string, pkTable: string, fkTable: string) {
 }
 
 /**
- * A chain a - b - c spread out along a row, read through a Focus view on a
- * that reaches two hops, so b - c is shown and unlit until b is hovered.
+ * A triangle a - b - c, read through a view standing on a, so b and c are both
+ * one hop out and the connector between them is shown and unlit until b is hovered.
  */
-function seedFocus(state: RootState) {
+function seedFocused(state: RootState) {
   addTable(state, 'a', 0, 0);
   addTable(state, 'b', 600, 0);
   addTable(state, 'c', 1_200, 0);
   link(state, 'ab', 'a', 'b');
+  link(state, 'ac', 'a', 'c');
   link(state, 'bc', 'b', 'c');
 
-  const view = createSceneView(ViewKind.focus, ['a']);
-  view.hop = 2;
-  state.editor.views.focus = view;
-  relationshipSort(state, ViewKind.focus);
+  state.editor.views.flow = createSceneView(ViewKind.flow, ['a']);
+  relationshipSort(state, ViewKind.flow);
 }
 
 const idsOf = (state: RootState) =>
-  getParticleEdges(state, ViewKind.focus).map(edge => edge.id);
+  getParticleEdges(state, ViewKind.flow).map(edge => edge.id);
 
 describe('getParticleEdges', () => {
   it('measures nothing for the document, and nothing for a view that is not open', () => {
     const state = createState();
-    seedFocus(state);
+    seedFocused(state);
 
     expect(getParticleEdges(state)).toEqual([]);
     expect(getParticleEdges(state, 'document')).toEqual([]);
+
+    state.editor.views.flow = null;
     expect(getParticleEdges(state, ViewKind.flow)).toEqual([]);
   });
 
   it('measures one run per lit connector, from the PK anchor to the FK anchor the view placed (AC-33)', () => {
     const state = createState();
-    seedFocus(state);
+    seedFocused(state);
 
-    const edges = getParticleEdges(state, ViewKind.focus);
-    expect(edges.map(edge => edge.id)).toEqual(['ab']);
+    const edges = getParticleEdges(state, ViewKind.flow);
+    expect(edges.map(edge => edge.id)).toEqual(['ab', 'ac']);
 
     const [edge] = edges;
     const relationship = state.collections.relationshipEntities.ab;
-    const { start, end } = getAnchors(relationship, ViewKind.focus);
+    const { start, end } = getAnchors(relationship, ViewKind.flow);
     expect(relationship.start.tableId).toBe('a');
     expect(edge.path.points[0]).toEqual({ x: start.x, y: start.y });
     expect(edge.path.points.at(-1)).toEqual({ x: end.x, y: end.y });
@@ -99,16 +100,16 @@ describe('getParticleEdges', () => {
 
   it('takes a connector on with the hover that lights it, and off with the leave', () => {
     const state = createState();
-    seedFocus(state);
+    seedFocused(state);
 
-    setViewHoverTable(state, 'b', ViewKind.focus);
-    expect(idsOf(state)).toEqual(['ab', 'bc']);
+    setViewHoverTable(state, 'b', ViewKind.flow);
+    expect(idsOf(state)).toEqual(['ab', 'ac', 'bc']);
 
-    setViewHoverTable(state, 'c', ViewKind.focus);
-    expect(idsOf(state)).toEqual(['ab', 'bc']);
+    setViewHoverTable(state, 'c', ViewKind.flow);
+    expect(idsOf(state)).toEqual(['ab', 'ac', 'bc']);
 
-    setViewHoverTable(state, null, ViewKind.focus);
-    expect(idsOf(state)).toEqual(['ab']);
+    setViewHoverTable(state, null, ViewKind.flow);
+    expect(idsOf(state)).toEqual(['ab', 'ac']);
   });
 
   it('leaves the particles off past the cap of lit connectors, and lights them all up to it (AC-51)', () => {
@@ -118,14 +119,14 @@ describe('getParticleEdges', () => {
       addTable(state, `s${index}`, 600, index * 100);
       link(state, `r${index}`, 'hub', `s${index}`);
     }
-    state.editor.views.focus = createSceneView(ViewKind.focus, ['hub']);
-    relationshipSort(state, ViewKind.focus);
+    state.editor.views.flow = createSceneView(ViewKind.flow, ['hub']);
+    relationshipSort(state, ViewKind.flow);
 
     // Lit as before: only the particles stay off past the cap.
-    expect(getHighlightIds(state, ViewKind.focus).relationshipIds.size).toBe(
+    expect(getHighlightIds(state, ViewKind.flow).relationshipIds.size).toBe(
       PARTICLE_EDGE_MAX + 1
     );
-    expect(getParticleEdges(state, ViewKind.focus)).toEqual([]);
+    expect(getParticleEdges(state, ViewKind.flow)).toEqual([]);
 
     const last = `r${PARTICLE_EDGE_MAX + 1}`;
     state.doc.relationshipIds.splice(
@@ -134,17 +135,17 @@ describe('getParticleEdges', () => {
     );
     delete state.collections.relationshipEntities[last];
 
-    expect(getParticleEdges(state, ViewKind.focus)).toHaveLength(
+    expect(getParticleEdges(state, ViewKind.flow)).toHaveLength(
       PARTICLE_EDGE_MAX
     );
   });
 
   it('hands back fresh runs on every read, so the loop may keep the last one', () => {
     const state = createState();
-    seedFocus(state);
+    seedFocused(state);
 
-    const first = getParticleEdges(state, ViewKind.focus);
-    const second = getParticleEdges(state, ViewKind.focus);
+    const first = getParticleEdges(state, ViewKind.flow);
+    const second = getParticleEdges(state, ViewKind.flow);
 
     expect(second).toEqual(first);
     expect(second).not.toBe(first);

@@ -49,13 +49,6 @@ export const MINIMAP_MARGIN = 20;
 
 export const TOOLBAR_HEIGHT = 30;
 
-/**
- * The bar over the top of the Focus scene, drawn the toolbar's height. The
- * scene box under it keeps the viewport's size, so a fit reads this to keep
- * what it lands clear of the bar, and the map is set down by it.
- */
-export const FOCUS_BAR_HEIGHT = TOOLBAR_HEIGHT;
-
 export const DIFF_TREE_WIDTH = 200;
 
 /**

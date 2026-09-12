@@ -11,7 +11,7 @@ const LAYER_FILE = join(
   process.cwd(),
   'src',
   'components',
-  'focus-view',
+  'visualization',
   'particles',
   'ParticleLayer.tsx'
 );

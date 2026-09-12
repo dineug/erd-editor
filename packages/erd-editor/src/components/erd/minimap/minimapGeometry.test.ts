@@ -233,11 +233,11 @@ describe('getViewTransform', () => {
         viewportHeight: 600,
       },
     });
-    const focus = createSceneView(ViewKind.focus);
+    const focus = createSceneView(ViewKind.flow);
     Object.assign(focus, { originX: 5, originY: -6, zoomLevel: 0.4 });
-    state.editor.views.focus = focus;
+    state.editor.views.flow = focus;
 
-    expect(getViewTransform(state, 'focus')).toEqual({
+    expect(getViewTransform(state, 'flow')).toEqual({
       originX: 5,
       originY: -6,
       zoomLevel: 0.4,
@@ -427,14 +427,14 @@ describe('getMinimapLayout', () => {
     const state = stateOf({ tables: [{ x: 0, y: 0 }] });
     const before = getMinimapLayout(state);
 
-    freezeView(state, 'focus');
+    freezeView(state, 'flow');
     state.collections.tableEntities.t0.ui.x = 9000;
     const after = getMinimapLayout(state);
 
     expect(after).not.toEqual(before);
     expect(contains(after.map, getContentRect(state)!)).toBe(true);
 
-    thawView(state, 'focus');
+    thawView(state, 'flow');
   });
 
   /**

@@ -21,23 +21,31 @@ import {
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { themeContext } from '@/components/themeContext';
 import {
   PARTICLE_COUNT,
   PARTICLE_EDGE_MAX,
-} from '@/components/focus-view/particles/particlePath';
-import { themeContext } from '@/components/themeContext';
+} from '@/components/visualization/particles/particlePath';
 import Visualization from '@/components/visualization/Visualization';
 import { TABLE_BORDER } from '@/constants/layout';
-import { Open } from '@/constants/open';
-import { CanvasType, RelationshipType } from '@/constants/schema';
+import {
+  CANVAS_ZOOM_MAX,
+  CanvasType,
+  RelationshipType,
+} from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
-import { viewMoveTableAction } from '@/engine/modules/editor/view.actions';
 import {
-  closeFocusViewAction$,
-  openFocusViewAction$,
-} from '@/engine/modules/editor/view.generator.actions';
+  ShowMode,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
+import {
+  viewChangeShowModeAction,
+  viewMoveTableAction,
+  viewOpenAction,
+  viewSetCentersAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   addRelationshipAction,
   removeRelationshipAction,
@@ -47,16 +55,27 @@ import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnNameAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { Tag } from '@/engine/tag';
 import { whenDrawn } from '@/konva/batchDraw';
-import { DIM_OPACITY } from '@/konva/scene/viewLayout';
-import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
+import { getSceneContentRect } from '@/konva/scene/contentBounds';
+import { previewZoomLevel } from '@/konva/scene/fitZoom';
+import { getTableRect } from '@/konva/scene/metrics';
+import { DIM_OPACITY, getHighlightIds } from '@/konva/scene/viewLayout';
+import {
+  getSceneTransform,
+  toScenePoint,
+  toScreenPoint,
+} from '@/konva/scene/viewport';
 import { calcTableHeight } from '@/utils/calcTable';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const hoisted = vi.hoisted(() => ({
-  requests: [] as Array<{ placement: string; nodes: any[] }>,
+  requests: [] as Array<{ placement: string; nodes: any[]; edges: any[] }>,
   /** Set to hold the next answer back until the spec lets it go. */
   hold: false,
   release: [] as Array<() => void>,
@@ -141,6 +160,57 @@ function seed(app: AppContext) {
     addColumnAction({ id: 'a3', tableId: 'a' }),
     link('ab', 'a', 'b'),
     link('bc', 'b', 'c')
+  );
+}
+
+/**
+ * A chain t1 - t2 - t3, a table t4 nothing reaches, and a key on the first
+ * three tables so their key rows differ from all of their rows and a type cell
+ * can say whether a card is lit.
+ */
+function seedFields(app: AppContext) {
+  app.store.dispatchSync(
+    changeViewportAction(VIEWPORT),
+    addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 1 } }),
+    addTableAction({ id: 't2', ui: { x: 700, y: 100, zIndex: 2 } }),
+    addTableAction({ id: 't3', ui: { x: 400, y: 400, zIndex: 3 } }),
+    addTableAction({ id: 't4', ui: { x: 1300, y: 100, zIndex: 4 } }),
+    changeTableNameAction({ id: 't1', value: 'users' }),
+    changeTableNameAction({ id: 't2', value: 'orders' }),
+    changeTableNameAction({ id: 't3', value: 'items' }),
+    changeTableNameAction({ id: 't4', value: 'logs' }),
+    addColumnAction({ id: 'c1', tableId: 't1' }),
+    addColumnAction({ id: 'c2', tableId: 't1' }),
+    addColumnAction({ id: 'c3', tableId: 't2' }),
+    addColumnAction({ id: 'c4', tableId: 't2' }),
+    addColumnAction({ id: 'c5', tableId: 't3' }),
+    changeColumnNameAction({ tableId: 't1', id: 'c1', value: 'id' }),
+    changeColumnNameAction({ tableId: 't1', id: 'c2', value: 'name' }),
+    changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c1', value: true }),
+    changeColumnPrimaryKeyAction({ tableId: 't2', id: 'c3', value: true }),
+    changeColumnPrimaryKeyAction({ tableId: 't3', id: 'c5', value: true }),
+    link('r12', 't1', 't2'),
+    link('r23', 't2', 't3')
+  );
+}
+
+/**
+ * A triangle t1 - t2 - t3, so a view standing on t1 shows all three and the
+ * connector between the two neighbours is the one thing it leaves grey. No
+ * seed in the repository has that shape, and it is the subject of AC-42's negative half.
+ */
+function seedTriangle(app: AppContext) {
+  app.store.dispatchSync(
+    changeViewportAction(VIEWPORT),
+    addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 1 } }),
+    addTableAction({ id: 't2', ui: { x: 700, y: 100, zIndex: 2 } }),
+    addTableAction({ id: 't3', ui: { x: 400, y: 400, zIndex: 3 } }),
+    changeTableNameAction({ id: 't1', value: 'users' }),
+    changeTableNameAction({ id: 't2', value: 'orders' }),
+    changeTableNameAction({ id: 't3', value: 'items' }),
+    link('r12', 't1', 't2'),
+    link('r13', 't1', 't3'),
+    link('r23', 't2', 't3')
   );
 }
 
@@ -270,6 +340,66 @@ async function clickTable(id: string, init: MouseEventInit = {}) {
 
 const flowRootOf = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('[data-testid="erd-canvas"]')!;
+
+/**
+ * Enters Flow already narrowed to the tables given, on the key rows, which is
+ * the state an entry from the ERD leaves behind: the mount asks for the
+ * placement of that display set alone.
+ */
+async function enterFocused(mounted: Mounted, tableIds: string[]) {
+  const { app } = mounted;
+  app.store.dispatchSync(
+    viewOpenAction({ kind: ViewKind.flow, centerIds: tableIds }),
+    viewChangeShowModeAction({ value: ShowMode.keysOnly, kind: ViewKind.flow })
+  );
+  await enterFlow(mounted);
+}
+
+/** The tables the view lights, sorted, read off the state the scene renders from. */
+const litTableIds = (app: AppContext) =>
+  [...getHighlightIds(app.store.state, ViewKind.flow).tableIds].sort();
+
+/** The connectors the view lights, sorted, read off the same state. */
+const litRelationshipIds = (app: AppContext) =>
+  [...getHighlightIds(app.store.state, ViewKind.flow).relationshipIds].sort();
+
+const drawnTableIds = () =>
+  flowStage()
+    .find('.table')
+    .filter(node => node.visible())
+    .map(node => node.id().replace('table-', ''))
+    .sort();
+
+const drawnConnectorIds = (ids: string[]) =>
+  ids.filter(id => flowStage().findOne(`.${id}`) !== undefined);
+
+const rowCountOf = (id: string) => tableOf(id)!.find('.column-row').length;
+
+const typeOpacityOf = (id: string) =>
+  tableOf(id)!
+    .find('.columnDataType')
+    .map(node => node.opacity());
+
+/** Where the row ELK is stood in for by lands the tables given, in the order they were asked. */
+const landingOf = (ids: string[]) =>
+  Object.fromEntries(
+    ids.map((id, index) => [id, { x: index * 400, y: (index % 2) * 200 }])
+  );
+
+/** The corners of what the view shows, where they land on the screen. */
+function shownCornersOf(app: AppContext) {
+  const view = app.store.state.editor.views.flow!;
+  const content = getSceneContentRect(app.store.state, ViewKind.flow)!;
+
+  return {
+    content,
+    topLeft: toScreenPoint(view, { x: content.x, y: content.y }),
+    bottomRight: toScreenPoint(view, {
+      x: content.x + content.width,
+      y: content.y + content.height,
+    }),
+  };
+}
 
 describe('the Flow mode of the visualization tab', () => {
   it('opens on Graph, keeps Flow across a leave and a return, and a new session opens on Graph again', async () => {
@@ -441,38 +571,6 @@ describe('the Flow mode of the visualization tab', () => {
     expect(flowStage().find('.table')).toHaveLength(4);
   });
 
-  it('keeps the ask out through a stop chord that closes a Focus overlay over the tab', async () => {
-    const app = createTestAppContext();
-    seed(app);
-    hoisted.hold = true;
-    let mounted = await mountVisualization(app);
-
-    await enterFlow(mounted);
-    expect(hoisted.requests).toHaveLength(1);
-
-    app.store.dispatchSync(openFocusViewAction$(['a']));
-    app.shortcut$.next({
-      type: KeyBindingName.stop,
-      event: new KeyboardEvent('keydown', { key: 'Escape' }),
-    });
-    await flush();
-    app.store.dispatchSync(closeFocusViewAction$());
-    await flush();
-
-    // Still out: a return to the tab asks nothing more, and the answer lands.
-    mounted = await leaveAndReturn(mounted);
-    expect(hoisted.requests).toHaveLength(1);
-
-    hoisted.release.shift()?.();
-    await settle();
-    expect(Object.keys(positionsOf(app) ?? {}).sort()).toEqual([
-      'a',
-      'b',
-      'c',
-      'd',
-    ]);
-  });
-
   it('asks anew on a Tidy up while the first answer is out, and lands the later answer alone', async () => {
     const app = createTestAppContext();
     seed(app);
@@ -596,7 +694,46 @@ describe('the Flow mode of the visualization tab', () => {
     expect(tableOf('a')!.y()).toBe(landed.a.y);
   });
 
-  it('opens the Focus view on the box that was clicked (AC-20)', async () => {
+  /** AC-42. A hover lights that table and its one hop, and lets go on the leave. */
+  it('lights the hovered table and its one hop while the pointer rests on it', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    expect(litTableIds(app)).toEqual([]);
+
+    fireScenePointer(tableOf('a')!, 'mouseenter');
+    await settle();
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+
+    fireScenePointer(tableOf('a')!, 'mouseleave');
+    await settle();
+    expect(litTableIds(app)).toEqual([]);
+  });
+
+  /** AC-43. The click pins the light on that card, and the second click lets it go. */
+  it('pins the light on the box that was clicked and unpins it on the next click', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    await clickTable('a');
+    fireScenePointer(bodyOf('a'), 'mouseleave');
+    await settle();
+
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+
+    await clickTable('a');
+    fireScenePointer(bodyOf('a'), 'mouseleave');
+    await settle();
+
+    expect(litTableIds(app)).toEqual([]);
+  });
+
+  /** AC-44. The body click is a highlight and nothing else: it never narrows the display set. */
+  it('leaves the display set and the placement alone on a body click', async () => {
     const app = createTestAppContext();
     seed(app);
     const mounted = await mountVisualization(app);
@@ -605,14 +742,13 @@ describe('the Flow mode of the visualization tab', () => {
 
     await clickTable('a');
 
-    expect(app.store.state.editor.views.focus?.centerIds).toEqual(['a']);
-    expect(app.store.state.editor.openMap[Open.focus]).toBe(true);
-    expect(app.store.state.editor.views.flow).not.toBeNull();
+    expect(app.store.state.editor.views.flow?.centerIds).toEqual([]);
+    expect(drawnTableIds()).toEqual(['a', 'b', 'c', 'd']);
     expect(positionsOf(app)).toEqual(landed);
     expect(hoisted.requests).toHaveLength(1);
   });
 
-  it('opens nothing on a drag of a box, or on a click carrying the modifier (AC-20)', async () => {
+  it('pins nothing on a drag of a box, or on a click carrying the modifier', async () => {
     const app = createTestAppContext();
     seed(app);
     const mounted = await mountVisualization(app);
@@ -623,10 +759,12 @@ describe('the Flow mode of the visualization tab', () => {
     releasePointer();
     await settle();
 
-    expect(app.store.state.editor.views.focus).toBeNull();
+    expect(litTableIds(app)).toEqual([]);
 
     await clickTable('b', { ctrlKey: true, metaKey: true });
-    expect(app.store.state.editor.views.focus).toBeNull();
+    fireScenePointer(bodyOf('b'), 'mouseleave');
+    await settle();
+    expect(litTableIds(app)).toEqual([]);
   });
 
   it('lights the hovered table, its neighbours and the connectors between, and fades the rest', async () => {
@@ -818,5 +956,334 @@ describe('the Flow mode of the visualization tab', () => {
       PARTICLE_EDGE_MAX * PARTICLE_COUNT
     );
     expect(tableOf('lone')!.opacity()).toBe(DIM_OPACITY);
+  });
+});
+
+describe('the display set of the Flow view', () => {
+  /**
+   * AC-42's negative half. A connector whose two ends are both neighbours of
+   * the center touches nothing lit, so it stays out of the highlight and
+   * carries no particles, while the two that do touch the center carry theirs.
+   */
+  it('leaves a neighbour to neighbour connector unlit and without particles, and runs the lit two', async () => {
+    const app = createTestAppContext();
+    seedTriangle(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    await whenPainted();
+
+    expect(drawnTableIds()).toEqual(['t1', 't2', 't3']);
+    // The subject has to be drawn for its darkness to mean anything: a
+    // narrowed relationship filter would otherwise pass this for the wrong reason.
+    expect(drawnConnectorIds(['r12', 'r13', 'r23'])).toEqual([
+      'r12',
+      'r13',
+      'r23',
+    ]);
+    expect(litRelationshipIds(app)).toEqual(['r12', 'r13']);
+    expect(particleLayer().findOne('.r23')).toBeUndefined();
+
+    // The positive control: a loop that never ran would leave every group
+    // missing, and this half says the two lit connectors do carry theirs.
+    expect(particleIdsOf()).toEqual(['r12', 'r13']);
+    expect(particleLayer().find('Circle')).toHaveLength(2 * PARTICLE_COUNT);
+  });
+
+  it('shows one center, its neighbours a hop out and the connectors between them, and nothing else (AC-22)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+
+    expect(drawnTableIds()).toEqual(['t1', 't2']);
+    expect(drawnConnectorIds(['r12', 'r23'])).toEqual(['r12']);
+    expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
+  });
+
+  it('asks ELK for what it shows, at the size the key rows draw it, under the preset liam places with (AC-32)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    const { state } = app.store;
+
+    expect(hoisted.requests).toHaveLength(1);
+    const [request] = hoisted.requests;
+    expect(request.placement).toBe(TablePlacement.liamLayered);
+    expect(request.nodes.map(node => node.id)).toEqual(['t1', 't2']);
+    expect(request.nodes.every(node => !node.children)).toBe(true);
+    expect(request.edges.map(({ source, target }) => [source, target])).toEqual(
+      [['t1', 't2']]
+    );
+
+    const t1 = state.collections.tableEntities.t1;
+    expect(request.nodes[0].height).toBe(
+      getTableRect(state, t1, ViewKind.flow).height
+    );
+    expect(request.nodes[0].height).toBeLessThan(
+      getTableRect(state, t1).height
+    );
+  });
+
+  it('shows the union of what several centers reach (AC-24)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1', 't4']);
+
+    expect(drawnTableIds()).toEqual(['t1', 't2', 't4']);
+    expect(drawnConnectorIds(['r12', 'r23'])).toEqual(['r12']);
+    expect(hoisted.requests[0].nodes.map(node => node.id)).toEqual([
+      't1',
+      't2',
+      't4',
+    ]);
+    expect(positionsOf(app)).toEqual(landingOf(['t1', 't2', 't4']));
+  });
+
+  it('fits what it shows into the screen as it opens (AC-25)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1', 't4']);
+
+    const { content, topLeft, bottomRight } = shownCornersOf(app);
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBe(
+      previewZoomLevel(content, VIEWPORT, CANVAS_ZOOM_MAX)
+    );
+    expect(topLeft.x).toBeGreaterThanOrEqual(0);
+    expect(topLeft.y).toBeGreaterThanOrEqual(0);
+    expect(bottomRight.x).toBeLessThanOrEqual(VIEWPORT.width);
+    expect(bottomRight.y).toBeLessThanOrEqual(VIEWPORT.height);
+    expect(app.store.state.settings).toMatchObject({
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+    });
+  });
+
+  it('lights the type cells of the hovered table and its hop, and leaves the rest dark (AC-27)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    app.store.dispatchSync(
+      viewChangeShowModeAction({
+        value: ShowMode.keysOnly,
+        kind: ViewKind.flow,
+      })
+    );
+    await settle();
+
+    expect(drawnTableIds()).toEqual(['t1', 't2', 't3', 't4']);
+    expect(typeOpacityOf('t1')).toEqual([0]);
+    expect(typeOpacityOf('t2')).toEqual([0]);
+    expect(typeOpacityOf('t3')).toEqual([0]);
+
+    fireScenePointer(tableOf('t1')!, 'mouseenter');
+    await settle();
+
+    expect(typeOpacityOf('t1')).toEqual([1]);
+    expect(typeOpacityOf('t2')).toEqual([1]);
+    expect(typeOpacityOf('t3')).toEqual([0]);
+
+    fireScenePointer(tableOf('t1')!, 'mouseleave');
+    fireScenePointer(tableOf('t3')!, 'mouseenter');
+    await settle();
+
+    expect(typeOpacityOf('t3')).toEqual([1]);
+    expect(typeOpacityOf('t2')).toEqual([1]);
+    expect(typeOpacityOf('t1')).toEqual([0]);
+  });
+
+  it('places the view again when an edit changes what a center reaches, and not when it does not (AC-13)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    expect(hoisted.requests).toHaveLength(1);
+
+    app.store.dispatchSync(shared(link('r14', 't1', 't4')));
+    await settle();
+
+    expect(drawnTableIds()).toEqual(['t1', 't2', 't4']);
+    expect(hoisted.requests).toHaveLength(2);
+    expect(positionsOf(app)).toEqual(landingOf(['t1', 't2', 't4']));
+
+    app.store.dispatchSync(shared(removeRelationshipAction({ id: 'r12' })));
+    await settle();
+
+    expect(drawnTableIds()).toEqual(['t1', 't4']);
+    expect(hoisted.requests).toHaveLength(3);
+    expect(positionsOf(app)).toEqual(landingOf(['t1', 't4']));
+
+    app.store.dispatchSync(
+      shared(changeTableNameAction({ id: 't2', value: 'sales' }))
+    );
+    await settle();
+    expect(hoisted.requests).toHaveLength(3);
+  });
+
+  it('places the view anew on Tidy up, dropping what a drag moved (AC-31)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    const landing = landingOf(['t1', 't2']);
+
+    app.store.dispatchSync(
+      viewMoveTableAction({
+        ids: ['t2'],
+        movementX: 120,
+        movementY: 60,
+        kind: ViewKind.flow,
+      })
+    );
+    await settle();
+    expect(positionsOf(app)!.t2).toEqual({
+      x: landing.t2.x + 120,
+      y: landing.t2.y + 60,
+    });
+    expect(hoisted.requests).toHaveLength(1);
+
+    click(menuOf(mounted, 'Tidy Up'));
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(2);
+    expect(positionsOf(app)).toEqual(landing);
+    expect(tableOf('t2')!.position()).toEqual(landing.t2);
+  });
+
+  it('lands nothing from an ask still out once the display set it was asked for has changed', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    hoisted.hold = true;
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+    expect(positionsOf(app)).toEqual({});
+
+    app.store.dispatchSync(
+      viewSetCentersAction({ tableIds: ['t1'], kind: ViewKind.flow })
+    );
+    await settle();
+    expect(hoisted.requests).toHaveLength(2);
+
+    // The first answer was asked for the whole document, which the view no
+    // longer stands on, so it lands nowhere.
+    hoisted.release.shift()?.();
+    await settle();
+    expect(positionsOf(app)).toEqual({});
+
+    hoisted.release.shift()?.();
+    await settle();
+    expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
+  });
+
+  it('opens on the key rows and toggles to every field and back (AC-26)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+
+    expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.keysOnly);
+    expect(rowCountOf('t1')).toBe(1);
+    expect(hoisted.requests).toHaveLength(1);
+
+    // The rows it already shows: nothing placed anew.
+    app.store.dispatchSync(
+      viewChangeShowModeAction({
+        value: ShowMode.keysOnly,
+        kind: ViewKind.flow,
+      })
+    );
+    await settle();
+    expect(hoisted.requests).toHaveLength(1);
+
+    app.store.dispatchSync(
+      viewChangeShowModeAction({
+        value: ShowMode.allFields,
+        kind: ViewKind.flow,
+      })
+    );
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.showMode).toBe(
+      ShowMode.allFields
+    );
+    expect(rowCountOf('t1')).toBe(2);
+    // The card size comes from the show mode, so the placement is stale and
+    // the view is placed anew.
+    expect(hoisted.requests).toHaveLength(2);
+
+    app.store.dispatchSync(
+      viewChangeShowModeAction({
+        value: ShowMode.keysOnly,
+        kind: ViewKind.flow,
+      })
+    );
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.keysOnly);
+    expect(rowCountOf('t1')).toBe(1);
+  });
+
+  it('fits what the view shows into the screen at the zoom the view allows', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    const {
+      originX,
+      originY,
+      zoomLevel: documentZoom,
+    } = app.store.state.settings;
+
+    click(menuOf(mounted, 'Fit'));
+    await settle();
+
+    const view = app.store.state.editor.views.flow!;
+    const content = getSceneContentRect(app.store.state, ViewKind.flow)!;
+    const centre = toScreenPoint(view, {
+      x: content.x + content.width / 2,
+      y: content.y + content.height / 2,
+    });
+
+    expect(view.zoomLevel).toBe(
+      previewZoomLevel(content, VIEWPORT, CANVAS_ZOOM_MAX)
+    );
+    expect(centre.x).toBeCloseTo(VIEWPORT.width / 2, 3);
+    expect(centre.y).toBeCloseTo(VIEWPORT.height / 2, 3);
+    expect(app.store.state.settings).toMatchObject({
+      originX,
+      originY,
+      zoomLevel: documentZoom,
+    });
+  });
+
+  it('keeps the display set and the rows through a Tidy up', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+
+    app.store.dispatchSync(
+      viewChangeShowModeAction({
+        value: ShowMode.allFields,
+        kind: ViewKind.flow,
+      }),
+      viewSetCentersAction({ tableIds: ['t2'], kind: ViewKind.flow })
+    );
+    await settle();
+    const view = app.store.state.editor.views.flow!;
+
+    click(menuOf(mounted, 'Tidy Up'));
+    await settle();
+
+    expect(app.store.state.editor.views.flow).toBe(view);
+    expect(view).toMatchObject({
+      centerIds: ['t2'],
+      showMode: ShowMode.allFields,
+    });
   });
 });

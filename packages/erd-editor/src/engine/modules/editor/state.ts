@@ -42,9 +42,9 @@ export type Editor = {
   sharedDragSelectTrackerMap: Record<string, SharedDragSelectTracker>;
   dragSelect: Rect | null;
   /**
-   * The two scene views a reader can stand in over the one document: the Flow
-   * mode of the visualization tab and the Focus overlay. Each is null while it
-   * is not open. Local to this client, never the file, the history or a peer.
+   * The scene view a reader can stand in over the document: the Flow mode of
+   * the visualization tab, null while it is not open. Local to this client,
+   * never the file, the history or a peer.
    */
   views: EditorViews;
   /** Which of its two modes the visualization tab shows. Remembered for the session. */
@@ -125,7 +125,6 @@ export type ShowMode = ValuesType<typeof ShowMode>;
 
 export const ViewKind = {
   flow: 'flow',
-  focus: 'focus',
 } as const;
 export type ViewKind = ValuesType<typeof ViewKind>;
 
@@ -134,12 +133,6 @@ export const VisualizationMode = {
   flow: 'flow',
 } as const;
 export type VisualizationMode = ValuesType<typeof VisualizationMode>;
-
-/** The centers a Focus view has stood on, oldest first, and which one it stands on now. */
-export type ViewHistory = {
-  entries: string[][];
-  cursor: number;
-};
 
 /**
  * A scene drawn over the document in its own coordinates: the tables it places
@@ -153,16 +146,12 @@ export type SceneView = {
   originX: number;
   originY: number;
   zoomLevel: number;
-  /** The tables a Focus view is built around; a Flow view has none. */
+  /** The tables the view narrows to, and none while it shows the whole document. */
   centerIds: string[];
-  /** How many relationships out from a center a Focus view reaches, 1 or 2. */
-  hop: number;
-  history: ViewHistory;
 };
 
 export type EditorViews = {
   flow: SceneView | null;
-  focus: SceneView | null;
 };
 
 export const FocusType = {
@@ -230,6 +219,6 @@ export const createEditor = (): Editor => ({
   sharedSelectionTrackerMap: {},
   sharedDragSelectTrackerMap: {},
   dragSelect: null,
-  views: { flow: null, focus: null },
+  views: { flow: null },
   visualizationMode: VisualizationMode.graph,
 });

@@ -16,7 +16,6 @@ export const erdShortcutPerformCheck =
           const showTimeTravel = editor.openMap[Open.timeTravel];
           const showSearch = editor.openMap[Open.search];
           const showDiffViewer = editor.openMap[Open.diffViewer];
-          const showFocus = editor.openMap[Open.focus];
           const isCanvasType = settings.canvasType === CanvasType.ERD;
 
           const canPerform =
@@ -25,8 +24,7 @@ export const erdShortcutPerformCheck =
             !showTableProperties &&
             !showSearch &&
             !showDiffViewer &&
-            !showTimeTravel &&
-            !showFocus;
+            !showTimeTravel;
 
           if (canPerform) {
             subscriber.next(value);

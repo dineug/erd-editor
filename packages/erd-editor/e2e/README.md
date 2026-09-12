@@ -83,7 +83,7 @@ one drawn over it in coordinates the document never keeps:
 | Spec                            | What it holds down                                                |
 | ------------------------------- | ---------------------------------------------------------------- |
 | `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker   |
-| `focus-view.spec.ts`            | The visualization tab's two modes, and the Focus overlay's walk    |
+| `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

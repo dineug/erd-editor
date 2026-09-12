@@ -410,9 +410,9 @@ describe('DragSelect - scene source', () => {
     seedTable(app, 't3', 5000, 5000);
     app.store.dispatchSync(
       scrollToAction({ originX: -100, originY: -100 }),
-      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1', 't2', 't3'] }),
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1', 't2', 't3'] }),
       viewSetLayoutAction({
-        kind: ViewKind.focus,
+        kind: ViewKind.flow,
         positions: {
           t1: { x: 5000, y: 5000 },
           t2: { x: 0, y: 0 },
@@ -425,7 +425,7 @@ describe('DragSelect - scene source', () => {
 
   it('maps the rect through the view placement under a view provider', async () => {
     const app = createViewApp();
-    const mounted = await mountMarquee(app, 'focus');
+    const mounted = await mountMarquee(app, 'flow');
     await mounted.begin(0, 0);
 
     await moveTo(mounted.root, 300, 300);
@@ -439,13 +439,13 @@ describe('DragSelect - scene source', () => {
 
   it('selects the table the view placed under the marquee, by the view box', async () => {
     const app = createViewApp();
-    const mounted = await mountMarquee(app, 'focus');
+    const mounted = await mountMarquee(app, 'flow');
     await mounted.begin(0, 0);
 
     // Dragged over the box the view source measures for t2, which the document
     // places five thousand units away from that same spot.
     const table = app.store.state.collections.tableEntities.t2;
-    const rect = getTableRect(app.store.state, table, 'focus');
+    const rect = getTableRect(app.store.state, table, 'flow');
 
     await moveTo(
       mounted.root,
@@ -461,8 +461,10 @@ describe('DragSelect - scene source', () => {
 
   it('scales the rect by the view zoom, not the document zoom', async () => {
     const app = createViewApp();
-    app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
-    const mounted = await mountMarquee(app, 'focus');
+    app.store.dispatchSync(
+      viewChangeZoomLevelAction({ value: 0.5, kind: ViewKind.flow })
+    );
+    const mounted = await mountMarquee(app, 'flow');
     await mounted.begin(0, 0);
 
     await moveTo(mounted.root, 300, 300);
@@ -477,7 +479,7 @@ describe('DragSelect - scene source', () => {
 
   it('publishes no rect for a peer to draw while the scene is a view', async () => {
     const app = createViewApp();
-    const mounted = await mountMarquee(app, 'focus');
+    const mounted = await mountMarquee(app, 'flow');
     await mounted.begin(0, 0);
     const { rects, unsubscribe } = recordDragSelectRects(app);
 
@@ -498,7 +500,7 @@ describe('DragSelect - scene source', () => {
   it('opens in the scene the gesture names and leaves the other closed', async () => {
     const app = createViewApp();
     const documentScene = await mountMarquee(app);
-    const viewScene = await mountMarquee(app, 'focus');
+    const viewScene = await mountMarquee(app, 'flow');
 
     app.emitter.emit(dragSelectStartAction({ x: 0, y: 0, source: 'document' }));
     await flush();
@@ -511,7 +513,7 @@ describe('DragSelect - scene source', () => {
     await flush();
     await whenDrawn();
 
-    app.emitter.emit(dragSelectStartAction({ x: 0, y: 0, source: 'focus' }));
+    app.emitter.emit(dragSelectStartAction({ x: 0, y: 0, source: 'flow' }));
     await flush();
     await whenDrawn();
 

@@ -20,7 +20,7 @@ import {
 
 /** The view widths for the rows the Focus view shows, which the function no longer looks up itself. */
 const viewWidths = (table: Table, state: RootState) =>
-  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'focus'));
+  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'flow'));
 
 function createState(): RootState {
   return createStore({ toWidth: text => text.length * 10, clock: new Clock() })
@@ -150,10 +150,10 @@ describe('tableToObjectPoint for a view', () => {
       state,
       createTable({ id: 'table-a', columnIds, ui: { x: 100, y: 50 } })
     );
-    const view = createSceneView(ViewKind.focus, ['table-a']);
+    const view = createSceneView(ViewKind.flow, ['table-a']);
     view.showMode = showMode;
     view.positions['table-a'] = { x: 5_000, y: -3_000 };
-    state.editor.views.focus = view;
+    state.editor.views.flow = view;
 
     return { state, table, view };
   }
@@ -162,7 +162,7 @@ describe('tableToObjectPoint for a view', () => {
   it('measures a name only table as its header at the view point', () => {
     const { state, table } = seed(ShowMode.nameOnly);
 
-    const point = tableToObjectPoint(state, table, 'focus');
+    const point = tableToObjectPoint(state, table, 'flow');
 
     expect(point.height).toBe(56);
     expect(point.lt).toEqual({ x: 5_000, y: -3_000 });
@@ -173,7 +173,7 @@ describe('tableToObjectPoint for a view', () => {
   it('measures a keys only table by its key rows', () => {
     const { state, table } = seed(ShowMode.keysOnly);
 
-    expect(tableToObjectPoint(state, table, 'focus').height).toBe(56 + 24);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56 + 24);
   });
 
   /** AC-6. The four points the sort anchors against are the midpoints of the header box's edges. */
@@ -183,7 +183,7 @@ describe('tableToObjectPoint for a view', () => {
     const { width, top, bottom, left, right } = tableToObjectPoint(
       state,
       table,
-      'focus'
+      'flow'
     );
 
     expect(top).toEqual({ x: 5_000 + width / 2, y: -3_000 });
@@ -196,7 +196,7 @@ describe('tableToObjectPoint for a view', () => {
     const { state, table } = seed(ShowMode.nameOnly);
     const before = tableToObjectPoint(state, table);
 
-    const view = tableToObjectPoint(state, table, 'focus');
+    const view = tableToObjectPoint(state, table, 'flow');
     const after = tableToObjectPoint(state, table);
 
     expect(before.height).toBe(56 + 40 * 24);
@@ -211,16 +211,16 @@ describe('tableToObjectPoint for a view', () => {
    */
   it('measures every row the view way while no view is open, and keeps it once one is', () => {
     const { state, table, view } = seed(ShowMode.allFields);
-    state.editor.views.focus = null;
+    state.editor.views.flow = null;
 
-    const before = tableToObjectPoint(state, table, 'focus');
+    const before = tableToObjectPoint(state, table, 'flow');
     expect(before.height).toBe(56 + 40 * 24);
     expect(before.width).toBe(viewWidths(table, state).width);
     expect(before.width).not.toBe(tableToObjectPoint(state, table).width);
     expect(before.lt).toEqual({ x: 100, y: 50 });
 
-    state.editor.views.focus = view;
-    const after = tableToObjectPoint(state, table, 'focus');
+    state.editor.views.flow = view;
+    const after = tableToObjectPoint(state, table, 'flow');
     expect(after.width).toBe(viewWidths(table, state).width);
     expect(after.height).toBe(56 + 40 * 24);
     expect(after.lt).toEqual({ x: 5_000, y: -3_000 });
@@ -229,7 +229,7 @@ describe('tableToObjectPoint for a view', () => {
   /** AC-4. A view reads none of the show bits, so toggling one leaves its measure and its key alone. */
   it('does not remeasure a view when a document show bit changes', () => {
     const { state, table } = seed(ShowMode.keysOnly);
-    const before = tableToObjectPoint(state, table, 'focus');
+    const before = tableToObjectPoint(state, table, 'flow');
 
     // A wider type on the one shown row: a remeasure would pick it up, and
     // the key does not carry it, so only a show bit in the key could.
@@ -238,7 +238,7 @@ describe('tableToObjectPoint for a view', () => {
       .selectById('c0')!.ui.widthDataType += 500;
     state.settings.show = 0;
 
-    const after = tableToObjectPoint(state, table, 'focus');
+    const after = tableToObjectPoint(state, table, 'flow');
     expect(after).toEqual(before);
     expect(after.width).not.toBe(viewWidths(table, state).width);
   });
@@ -246,13 +246,13 @@ describe('tableToObjectPoint for a view', () => {
   it('follows the show mode from one read to the next', () => {
     const { state, table, view } = seed(ShowMode.nameOnly);
 
-    expect(tableToObjectPoint(state, table, 'focus').height).toBe(56);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56);
 
     view.showMode = ShowMode.allFields;
-    expect(tableToObjectPoint(state, table, 'focus').height).toBe(56 + 40 * 24);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56 + 40 * 24);
 
     view.showMode = ShowMode.keysOnly;
-    expect(tableToObjectPoint(state, table, 'focus').height).toBe(56 + 24);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56 + 24);
   });
 });
 

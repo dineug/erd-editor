@@ -84,7 +84,6 @@ export function getSortCache(
     record = {
       document: createSortCache(),
       flow: createSortCache(),
-      focus: createSortCache(),
     };
     caches.set(state, record);
   }

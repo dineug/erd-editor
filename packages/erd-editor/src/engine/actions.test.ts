@@ -203,9 +203,7 @@ describe('view action types', () => {
     'editor.viewMoveTable',
     'editor.viewSetLayout',
     'editor.viewChangeShowMode',
-    'editor.viewChangeHop',
     'editor.viewSetCenters',
-    'editor.viewHistoryMove',
     'editor.changeVisualizationMode',
   ];
 

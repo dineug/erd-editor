@@ -30,7 +30,7 @@ import { createColumn } from '@/utils/collection/tableColumn.entity';
 
 /** The view widths for the rows the Focus view shows, which the function no longer looks up itself. */
 const viewWidths = (table: Table, state: RootState) =>
-  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'focus'));
+  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'flow'));
 
 type StateOptions = {
   show?: number;
@@ -340,9 +340,9 @@ describe('calcViewTableWidths', () => {
     tableId: string,
     showMode: ShowMode = ShowMode.keysOnly
   ) {
-    const view = createSceneView(ViewKind.focus, [tableId]);
+    const view = createSceneView(ViewKind.flow, [tableId]);
     view.showMode = showMode;
-    state.editor.views.focus = view;
+    state.editor.views.flow = view;
     return view;
   }
 
