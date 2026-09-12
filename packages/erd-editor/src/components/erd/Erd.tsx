@@ -58,7 +58,11 @@ import {
 } from '@/konva/scene/contentBounds';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
-import { isMouseEvent, suppressSelection } from '@/utils/domEvent';
+import {
+  editorRootOf,
+  isMouseEvent,
+  suppressSelection,
+} from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
@@ -67,14 +71,6 @@ import { isMod } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';
-
-/**
- * The editor root, which is where a pan has to take the selection off: the top
- * toolbar is a sibling of this component, so suppressing it any lower leaves a
- * drag that reaches the toolbar free to select its text.
- */
-const editorRootOf = (el: HTMLElement) =>
-  el.closest<HTMLElement>('.root') ?? el;
 
 export type ErdProps = {
   isDarkMode: boolean;

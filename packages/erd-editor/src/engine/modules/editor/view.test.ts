@@ -7,7 +7,11 @@ import {
   ViewKind,
   VisualizationMode,
 } from '@/engine/modules/editor/state';
-import { createSceneView, getActiveView } from '@/engine/modules/editor/view';
+import {
+  createSceneView,
+  getActiveView,
+  isViewShown,
+} from '@/engine/modules/editor/view';
 import {
   changeVisualizationModeAction,
   viewCloseAction,
@@ -165,5 +169,54 @@ describe('getActiveView', () => {
 
     showFlowTab();
     expect(getActiveView(store.state)).toBe(focus);
+  });
+});
+
+describe('isViewShown', () => {
+  it('shows a Focus view wherever it is open, and no view while none is', () => {
+    expect(isViewShown(store.state, ViewKind.focus)).toBe(false);
+    expect(isViewShown(store.state, ViewKind.flow)).toBe(false);
+
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
+    );
+    expect(isViewShown(store.state, ViewKind.focus)).toBe(true);
+
+    showFlowTab();
+    expect(isViewShown(store.state, ViewKind.focus)).toBe(true);
+
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+    expect(isViewShown(store.state, ViewKind.focus)).toBe(false);
+  });
+
+  it('shows an open Flow view only while the tab is on Flow, a Focus view over it or not', () => {
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+    expect(isViewShown(store.state, ViewKind.flow)).toBe(false);
+
+    showFlowTab();
+    expect(isViewShown(store.state, ViewKind.flow)).toBe(true);
+
+    // A Focus overlay takes the active slot and leaves the Flow scene under it mounted.
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.focus, centerIds: ['t1'] })
+    );
+    expect(getActiveView(store.state)?.kind).toBe(ViewKind.focus);
+    expect(isViewShown(store.state, ViewKind.flow)).toBe(true);
+
+    store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+    expect(isViewShown(store.state, ViewKind.flow)).toBe(false);
+    expect(store.state.editor.views.flow).not.toBeNull();
+
+    store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.visualization }),
+      changeVisualizationModeAction({ value: VisualizationMode.graph })
+    );
+    expect(isViewShown(store.state, ViewKind.flow)).toBe(false);
+  });
+
+  it('shows nothing on the Flow tab while no Flow view has been opened', () => {
+    showFlowTab();
+
+    expect(isViewShown(store.state, ViewKind.flow)).toBe(false);
   });
 });

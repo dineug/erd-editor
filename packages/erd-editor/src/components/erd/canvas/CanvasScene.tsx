@@ -20,7 +20,7 @@ import { useSceneSource } from '@/components/sceneSourceContext';
 import { Show } from '@/constants/schema';
 import type { Relationship } from '@/internal-types';
 import { renderKonva } from '@/konva/host';
-import { getVisibleIds } from '@/konva/scene/viewLayout';
+import { getFadedIds, getVisibleIds } from '@/konva/scene/viewLayout';
 import {
   getCullingRect,
   getSceneOrigin,
@@ -136,6 +136,12 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       : [];
     const dragRelationships = dragging ? allRelationships.filter(isMoving) : [];
 
+    // What a Flow hover fades, decided here and handed down as a flag: only
+    // the tables and connectors whose flag flips redraw, where a leaf reading
+    // the hover itself would walk every link on every hover, once per table.
+    const faded = getFadedIds(state, source);
+    const isFadedTable = (id: string) => faded?.tableIds.has(id) ?? false;
+
     /**
      * A view draws its own spelling at every zoom: its rows are already the
      * few its show mode keeps, and the shrunk box a low zoom asks the document
@@ -170,7 +176,11 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
               list,
               table => table.id,
               table => (
-                <Table table={table} visible={drawnIds.has(table.id)} />
+                <Table
+                  table={table}
+                  visible={drawnIds.has(table.id)}
+                  faded={isFadedTable(table.id)}
+                />
               )
             )}
           </>
@@ -197,6 +207,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             <RelationshipGroup
               relationships={dragRelationships}
               viewport={cullingRect}
+              fadedIds={faded?.relationshipIds}
             />
           ) : null}
         </k-layer>
@@ -205,6 +216,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             <RelationshipGroup
               relationships={relationships}
               viewport={cullingRect}
+              fadedIds={faded?.relationshipIds}
             />
           ) : null}
           {source === 'document' && drawRelationship?.start ? (

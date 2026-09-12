@@ -1,15 +1,18 @@
 import '@/services/elk-layout/elkWorkerRealm';
 
-import type { ELK, ElkNode, ElkPort } from 'elkjs/lib/elk-api';
+import type { ELK, ElkNode, ElkPort, LayoutOptions } from 'elkjs/lib/elk-api';
 
 import type {
   ElkLayoutEdge,
+  ElkLayoutNode,
   ElkLayoutPoint,
   ElkLayoutRequest,
 } from './elkGraph';
 import {
   ELK_ALGORITHMS,
   elkLayoutOptions,
+  elkNodeLayoutOptions,
+  GROUP_NODE_OPTIONS,
   usesPorts,
 } from './elkLayoutOptions';
 
@@ -76,7 +79,11 @@ export function portsByNode(edges: ElkLayoutEdge[]): Map<string, ElkPort[]> {
   );
 }
 
-/** The graph ELK is handed, which is flat: an ERD nests no table in another. */
+/**
+ * The graph ELK is handed. An ERD nests no table in another, so the one node
+ * that ever holds children is the group a request packs its unrelated tables
+ * into, and every edge stays at the root whatever level its ends sit on.
+ */
 export function toElkGraph({
   placement,
   nodes,
@@ -87,25 +94,67 @@ export function toElkGraph({
   return {
     id: 'root',
     layoutOptions: elkLayoutOptions(placement),
-    children: nodes.map(({ id, width, height }) => ({
-      id,
-      width,
-      height,
-      // Only a node whose ports are fixed has ELK read the order they were
-      // listed in; left free it sorts them itself and the rows mean nothing.
-      ...(ports
-        ? {
-            layoutOptions: { 'elk.portConstraints': 'FIXED_ORDER' },
-            ports: ports.get(id) ?? [],
-          }
-        : {}),
-    })),
+    children: nodes.map(node => toElkChild(node, placement, ports)),
     edges: edges.map(({ source, target }, index) => ({
       id: `edge-${index}`,
       sources: [ports ? sourcePortId(index) : source],
       targets: [ports ? targetPortId(index) : target],
     })),
   };
+}
+
+/** One node of the graph: a table with its hint and ports, or a group holding tables. */
+function toElkChild(
+  { id, width, height, x, y, children }: ElkLayoutNode,
+  placement: ElkLayoutRequest['placement'],
+  ports: Map<string, ElkPort[]> | null
+): ElkNode {
+  if (children?.length) {
+    return {
+      id,
+      width,
+      height,
+      layoutOptions: { ...GROUP_NODE_OPTIONS },
+      children: children.map(child => toElkChild(child, placement, ports)),
+    };
+  }
+
+  const layoutOptions: LayoutOptions = {
+    ...elkNodeLayoutOptions(placement),
+    // Only a node whose ports are fixed has ELK read the order they were
+    // listed in; left free it sorts them itself and the rows mean nothing.
+    ...(ports ? { 'elk.portConstraints': 'FIXED_ORDER' } : {}),
+  };
+
+  return {
+    id,
+    width,
+    height,
+    ...(x === undefined ? {} : { x }),
+    ...(y === undefined ? {} : { y }),
+    ...(Object.keys(layoutOptions).length ? { layoutOptions } : {}),
+    ...(ports ? { ports: ports.get(id) ?? [] } : {}),
+  };
+}
+
+/**
+ * Every table of a laid out graph, at the coordinates the root works in. ELK
+ * answers a child of a group relative to that group, and a caller placing
+ * tables has no group to place them in.
+ */
+function toAbsolutePoints(
+  children: ElkNode[],
+  offsetX: number,
+  offsetY: number
+): ElkLayoutPoint[] {
+  return children.flatMap(({ id, x, y, children: nested }) => {
+    const absoluteX = offsetX + (x ?? 0);
+    const absoluteY = offsetY + (y ?? 0);
+
+    return nested?.length
+      ? toAbsolutePoints(nested, absoluteX, absoluteY)
+      : [{ id, x: absoluteX, y: absoluteY }];
+  });
 }
 
 let elk: Promise<ELK> | null = null;
@@ -144,10 +193,6 @@ export class ElkLayoutService {
   async layout(request: ElkLayoutRequest): Promise<ElkLayoutPoint[]> {
     const graph = await (await loadElk()).layout(toElkGraph(request));
 
-    return (graph.children ?? []).map(({ id, x, y }) => ({
-      id,
-      x: x ?? 0,
-      y: y ?? 0,
-    }));
+    return toAbsolutePoints(graph.children ?? [], 0, 0);
   }
 }

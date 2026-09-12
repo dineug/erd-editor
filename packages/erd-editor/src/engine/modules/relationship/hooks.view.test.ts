@@ -496,26 +496,41 @@ describe('the view sort hook with two views open', () => {
     expect(sorts('document')).toBe(0);
   });
 
-  /** A Flow view is kept across tabs, and kept sorted there, so its tab coming back has nothing to catch up on. */
-  it('keeps a Flow view sorted while its tab is away, and sorts nothing when the tab comes back', async () => {
+  /**
+   * A Flow view is kept across tabs and left alone while its tab is away: no
+   * scene draws it there, and the return stands it back on its landing, which
+   * is a layout of the view and sorts it whole.
+   */
+  it('leaves a Flow view alone while its tab is away, and sorts it on the layout its return stands it on', async () => {
     const store = createScene();
     await openFlow(store);
+    const relationship = relationshipOf(store);
     store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
     await settle();
     clearSorts();
 
     store.dispatchSync(
-      shared(changeColumnNameAction({ id: 'c-t1', tableId: 't1', value: 'x' }))
+      shared(changeColumnNameAction({ id: 'c-t1', tableId: 't1', value: 'x' })),
+      shared(moveTableAction({ ids: ['t1'], movementX: 10, movementY: 0 }))
     );
     await settle();
-    expect(sorts('flow')).toBe(1);
-    expect(getAnchors(relationshipOf(store), 'flow').start.y).toBe(1_000 + 28);
+    expect(sorts('flow')).toBe(0);
+    expect(sorts('document')).toBe(1);
+    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 28);
 
     store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.visualization })
     );
     await settle();
+    expect(sorts('flow')).toBe(0);
+
+    store.dispatchSync(
+      viewSetLayoutAction({ kind: ViewKind.flow, positions: FLOW_POSITIONS })
+    );
+    await settle();
 
     expect(sorts('flow')).toBe(1);
+    expect(sorts('document')).toBe(1);
+    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 28);
   });
 });

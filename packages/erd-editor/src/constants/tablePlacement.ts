@@ -1,15 +1,16 @@
 import { ValuesType } from '@/internal-types';
 
 /**
- * How the editor lays a document out when the author asks it to. Force is the
- * simulation the editor has always run, and the three below it are ELK
- * algorithms answered off the main thread.
+ * How a set of tables is laid out. Force is the simulation the editor has
+ * always run, the rest are ELK algorithms answered off the main thread, and
+ * liamLayered is the preset the views place with rather than one the author picks.
  */
 export const TablePlacement = {
   force: 'force',
   layeredHorizontal: 'layeredHorizontal',
   layeredVertical: 'layeredVertical',
   flow: 'flow',
+  liamLayered: 'liamLayered',
 } as const;
 export type TablePlacement = ValuesType<typeof TablePlacement>;
 

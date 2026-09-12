@@ -1,0 +1,624 @@
+// The Flow mode of the visualization tab: the mode kept for the session, every
+// table as a name box placed once by ELK and kept across a tab leave, a drag
+// that never reaches that landing, and the hover that fades the rest.
+
+import { useProvider } from '@dineug/r-html';
+import type { Group } from 'konva/lib/Group';
+import type { Rect } from 'konva/lib/shapes/Rect';
+import type { Stage } from 'konva/lib/Stage';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+
+import {
+  createTestAppContext,
+  createTestTheme,
+  fireScenePointer,
+  flush,
+  mount,
+  type Mounted,
+  movePointer,
+  releasePointer,
+} from '@/__test-utils__';
+import type { AppContext } from '@/components/appContext';
+import { themeContext } from '@/components/themeContext';
+import Visualization from '@/components/visualization/Visualization';
+import { TABLE_BORDER } from '@/constants/layout';
+import { CanvasType, RelationshipType } from '@/constants/schema';
+import { TablePlacement } from '@/constants/tablePlacement';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
+import { viewMoveTableAction } from '@/engine/modules/editor/view.actions';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  addTableAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
+import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { whenDrawn } from '@/konva/batchDraw';
+import { DIM_OPACITY } from '@/konva/scene/viewLayout';
+import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
+import { calcTableHeight } from '@/utils/calcTable';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
+
+const hoisted = vi.hoisted(() => ({
+  requests: [] as Array<{ placement: string; nodes: any[] }>,
+  /** Set to hold the next answer back until the spec lets it go. */
+  hold: false,
+  release: [] as Array<() => void>,
+}));
+
+/**
+ * ELK answers from a shared worker the spec does not wait on: the one call
+ * across that boundary is stood in for by a row, so a request is something the
+ * spec can count and the landing something it can predict.
+ */
+vi.mock('@/services/elk-layout', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services/elk-layout')>();
+  const flatten = (nodes: any[]): any[] =>
+    nodes.flatMap(node =>
+      node.children?.length ? flatten(node.children) : [node]
+    );
+
+  return {
+    ...actual,
+    createElkLayout: (request: any) => {
+      hoisted.requests.push(request);
+      const points = flatten(request.nodes).map((node, index) => ({
+        id: node.id,
+        x: index * 400,
+        y: (index % 2) * 200,
+      }));
+      if (!hoisted.hold) return Promise.resolve(points);
+
+      return new Promise(resolve => {
+        hoisted.release.push(() => resolve(points));
+      });
+    },
+  };
+});
+
+const VIEWPORT = { width: 1000, height: 600 };
+
+const teardowns: Array<() => void> = [];
+
+afterEach(async () => {
+  releasePointer();
+  teardowns.splice(0).forEach(teardown => teardown());
+  hoisted.requests.splice(0);
+  hoisted.hold = false;
+  hoisted.release.splice(0);
+  await whenDrawn();
+});
+
+const stageRegistry = (): Record<string, Stage> =>
+  Reflect.get(globalThis, '__erdStages') ?? {};
+
+const graphStage = () => stageRegistry().visualization;
+
+const flowStage = () => stageRegistry().canvas;
+
+const link = (id: string, start: string, end: string) =>
+  addRelationshipAction({
+    id,
+    relationshipType: RelationshipType.ZeroN,
+    start: { tableId: start, columnIds: [] },
+    end: { tableId: end, columnIds: [] },
+  });
+
+/**
+ * A chain a - b - c and a table d nothing reaches, spread far apart in the
+ * document so a Flow drawn there would be nothing like the row ELK answers,
+ * with a carrying rows a name box must not draw.
+ */
+function seed(app: AppContext) {
+  app.store.dispatchSync(
+    changeViewportAction(VIEWPORT),
+    addTableAction({ id: 'a', ui: { x: 0, y: 0, zIndex: 1 } }),
+    addTableAction({ id: 'b', ui: { x: 5000, y: 5000, zIndex: 2 } }),
+    addTableAction({ id: 'c', ui: { x: 100, y: 900, zIndex: 3 } }),
+    addTableAction({ id: 'd', ui: { x: 2000, y: 0, zIndex: 4 } }),
+    changeTableNameAction({ id: 'a', value: 'users' }),
+    changeTableNameAction({ id: 'b', value: 'orders' }),
+    changeTableNameAction({ id: 'c', value: 'items' }),
+    changeTableNameAction({ id: 'd', value: 'logs' }),
+    addColumnAction({ id: 'a1', tableId: 'a' }),
+    addColumnAction({ id: 'a2', tableId: 'a' }),
+    addColumnAction({ id: 'a3', tableId: 'a' }),
+    link('ab', 'a', 'b'),
+    link('bc', 'b', 'c')
+  );
+}
+
+async function mountVisualization(
+  app = createTestAppContext()
+): Promise<Mounted> {
+  app.store.dispatchSync(
+    changeCanvasTypeAction({ value: CanvasType.visualization })
+  );
+  const mounted = mount(<Visualization />, app);
+  // useProvider takes a bare element at runtime and types only a component
+  // context, hence the cast; it is r-html's own, not a React hook.
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const themeProvider = useProvider(
+    mounted.container as any,
+    themeContext,
+    createTestTheme()
+  );
+
+  await settle();
+
+  const teardown = () => {
+    mounted.unmount();
+    themeProvider.destroy();
+  };
+  teardowns.push(teardown);
+
+  return {
+    ...mounted,
+    unmount: () => {
+      const at = teardowns.indexOf(teardown);
+      if (at !== -1) teardowns.splice(at, 1);
+      teardown();
+    },
+  };
+}
+
+/** Two rounds: the layout lands in a microtask after the first, and the fit after it. */
+const settle = async () => {
+  await flush();
+  await whenDrawn();
+  await flush();
+  await whenDrawn();
+};
+
+const menuOf = (mounted: Mounted, title: string) =>
+  mounted.container.querySelector<HTMLElement>(
+    `.visualization-toolbar [title="${title}"]`
+  );
+
+const click = (el: Element | null) =>
+  el?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+async function enterFlow(mounted: Mounted) {
+  click(menuOf(mounted, 'Flow'));
+  await settle();
+}
+
+/** Leaves the tab and comes back, which unmounts the tab and mounts it again on the same store. */
+async function leaveAndReturn(mounted: Mounted): Promise<Mounted> {
+  const { app } = mounted;
+  mounted.unmount();
+  app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+  await flush();
+
+  return mountVisualization(app);
+}
+
+const tableOf = (id: string) =>
+  flowStage().findOne<Group>(`#table-${id}`) as Group | undefined;
+
+const bodyOf = (id: string) =>
+  tableOf(id)!.findOne<Rect>('.table-body') as Rect;
+
+const connectorOf = (id: string) =>
+  flowStage().findOne<Group>(`.${id}`) as Group;
+
+/** A plain copy of where the view stands each table, read off the observable. */
+const positionsOf = (app: AppContext) => {
+  const positions = app.store.state.editor.views.flow?.positions;
+  if (!positions) return null;
+
+  return Object.fromEntries(
+    Object.entries(positions).map(([id, { x, y }]) => [id, { x, y }])
+  );
+};
+
+/** Every table a request carries, the ones inside the group of unrelated tables included. */
+const tableIdsOf = ({ nodes }: { nodes: any[] }): string[] => {
+  const walk = (given: any[]): string[] =>
+    given.flatMap(node =>
+      node.children?.length ? walk(node.children) : [node.id]
+    );
+
+  return walk(nodes);
+};
+
+const flowRootOf = (mounted: Mounted) =>
+  mounted.container.querySelector<HTMLElement>('[data-testid="erd-canvas"]')!;
+
+describe('the Flow mode of the visualization tab', () => {
+  it('opens on Graph, keeps Flow across a leave and a return, and a new session opens on Graph again', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    let mounted = await mountVisualization(app);
+
+    expect(app.store.state.editor.visualizationMode).toBe(
+      VisualizationMode.graph
+    );
+    expect(graphStage()).toBeDefined();
+    expect(flowStage()).toBeUndefined();
+    expect(menuOf(mounted, 'Graph')?.className).toContain('active');
+    expect(menuOf(mounted, 'Fit')).toBeNull();
+
+    await enterFlow(mounted);
+
+    expect(app.store.state.editor.visualizationMode).toBe(
+      VisualizationMode.flow
+    );
+    expect(graphStage()).toBeUndefined();
+    expect(flowStage()).toBeDefined();
+    expect(menuOf(mounted, 'Flow')?.className).toContain('active');
+    expect(menuOf(mounted, 'Fit')).not.toBeNull();
+    expect(menuOf(mounted, 'Tidy Up')).not.toBeNull();
+
+    mounted = await leaveAndReturn(mounted);
+
+    expect(app.store.state.editor.visualizationMode).toBe(
+      VisualizationMode.flow
+    );
+    expect(flowStage()).toBeDefined();
+    expect(graphStage()).toBeUndefined();
+
+    click(menuOf(mounted, 'Graph'));
+    await settle();
+    expect(graphStage()).toBeDefined();
+    expect(flowStage()).toBeUndefined();
+
+    const fresh = createTestAppContext();
+    seed(fresh);
+    mounted.unmount();
+    await mountVisualization(fresh);
+
+    expect(fresh.store.state.editor.visualizationMode).toBe(
+      VisualizationMode.graph
+    );
+    expect(graphStage()).toBeDefined();
+  });
+
+  it('draws every table as a name box the height of its header', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    const drawn = flowStage()
+      .find<Group>('.table')
+      .map(node => node.id())
+      .sort();
+    expect(drawn).toEqual(['table-a', 'table-b', 'table-c', 'table-d']);
+    expect(flowStage().find('.column-row')).toHaveLength(0);
+
+    for (const id of ['a', 'b', 'c', 'd']) {
+      const table = app.store.state.collections.tableEntities[id];
+      expect({ id, height: bodyOf(id).height() + TABLE_BORDER }).toEqual({
+        id,
+        height: calcTableHeight(table, 0),
+      });
+    }
+    expect(bodyOf('a').height()).toBe(bodyOf('d').height());
+  });
+
+  it('asks ELK once on entry, and nothing on a return to the tab, standing where it stood', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    let mounted = await mountVisualization(app);
+    expect(hoisted.requests).toHaveLength(0);
+
+    await enterFlow(mounted);
+
+    expect(hoisted.requests).toHaveLength(1);
+    expect(hoisted.requests[0].placement).toBe(TablePlacement.liamLayered);
+    const landed = positionsOf(app);
+    expect(Object.keys(landed ?? {}).sort()).toEqual(['a', 'b', 'c', 'd']);
+    // Where ELK put them rather than where the document has them.
+    expect(landed?.b).not.toEqual({ x: 5000, y: 5000 });
+
+    // Moved off the landing first, so standing there again is something the
+    // return has to do rather than something nothing disturbed.
+    app.store.dispatchSync(
+      viewMoveTableAction({
+        kind: ViewKind.flow,
+        ids: ['b'],
+        movementX: 70,
+        movementY: -30,
+      })
+    );
+    expect(positionsOf(app)).not.toEqual(landed);
+
+    mounted = await leaveAndReturn(mounted);
+
+    expect(hoisted.requests).toHaveLength(1);
+    expect(positionsOf(app)).toEqual(landed);
+    expect(tableOf('b')).toBeDefined();
+  });
+
+  it('asks nothing more on a leave and a return while the first answer is still out', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    hoisted.hold = true;
+    let mounted = await mountVisualization(app);
+
+    await enterFlow(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+    expect(positionsOf(app)).toEqual({});
+
+    mounted = await leaveAndReturn(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+
+    hoisted.release.splice(0).forEach(release => release());
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(1);
+    expect(Object.keys(positionsOf(app) ?? {}).sort()).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
+    expect(flowStage().find('.table')).toHaveLength(4);
+
+    mounted = await leaveAndReturn(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+  });
+
+  it('asks again on a return to the tab once the ask was cancelled, and drops the cancelled answer', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    hoisted.hold = true;
+    let mounted = await mountVisualization(app);
+
+    await enterFlow(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+
+    app.shortcut$.next({
+      type: KeyBindingName.stop,
+      event: new KeyboardEvent('keydown', { key: 'Escape' }),
+    });
+    await flush();
+
+    mounted = await leaveAndReturn(mounted);
+    expect(hoisted.requests).toHaveLength(2);
+
+    // The first answer, cancelled, lands nowhere; the second is the landing.
+    hoisted.release.shift()?.();
+    await settle();
+    expect(positionsOf(app)).toEqual({});
+    expect(flowStage().find('.table')).toHaveLength(0);
+
+    hoisted.release.shift()?.();
+    await settle();
+    expect(Object.keys(positionsOf(app) ?? {}).sort()).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
+    expect(flowStage().find('.table')).toHaveLength(4);
+  });
+
+  it('asks anew on a Tidy up while the first answer is out, and lands the later answer alone', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    hoisted.hold = true;
+    let mounted = await mountVisualization(app);
+
+    await enterFlow(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+
+    mounted.unmount();
+    app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+    app.store.dispatchSync(
+      addTableAction({ id: 'e', ui: { x: 300, y: 300, zIndex: 5 } })
+    );
+    await flush();
+    mounted = await mountVisualization(app);
+    expect(hoisted.requests).toHaveLength(1);
+
+    click(menuOf(mounted, 'Tidy Up'));
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(2);
+    expect(tableIdsOf(hoisted.requests[1])).toContain('e');
+
+    // The first answer is the earlier ask's, over four tables, and lands nowhere.
+    hoisted.release.shift()?.();
+    await settle();
+    expect(positionsOf(app)).toEqual({});
+
+    hoisted.release.shift()?.();
+    await settle();
+    expect(Object.keys(positionsOf(app) ?? {}).sort()).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+    ]);
+    expect(tableOf('e')).toBeDefined();
+    expect(flowStage().find('.table')).toHaveLength(5);
+  });
+
+  it('fits the landing into the screen on the view alone', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    const view = app.store.state.editor.views.flow!;
+    // The row is wider than the screen, so the fit zooms out to hold it.
+    expect(view.zoomLevel).toBeLessThan(1);
+    expect(view.originX).not.toBe(0);
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
+  });
+
+  it('asks nothing for a table added to the document, and places it on Tidy up', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    let mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    // Added from the ERD tab, where the document takes edits, in a dispatch
+    // of its own: the gate reads a batch against the state before it, and a
+    // batch that leaves the tab is still classified under the Flow view.
+    mounted.unmount();
+    app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+    app.store.dispatchSync(
+      addTableAction({ id: 'e', ui: { x: 300, y: 300, zIndex: 5 } })
+    );
+    await flush();
+    expect(app.store.state.doc.tableIds).toContain('e');
+    mounted = await mountVisualization(app);
+
+    expect(hoisted.requests).toHaveLength(1);
+    expect(tableOf('e')).toBeUndefined();
+    expect(flowStage().find('.table')).toHaveLength(4);
+
+    click(menuOf(mounted, 'Tidy Up'));
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(2);
+    expect(tableOf('e')).toBeDefined();
+    expect(flowStage().find('.table')).toHaveLength(5);
+  });
+
+  it('stands a dragged table back on the landing on a return to the tab', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    let mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const landed = positionsOf(app)!;
+    const document = { ...app.store.state.collections.tableEntities.a.ui };
+
+    fireScenePointer(bodyOf('a'), 'mousedown', { clientX: 100, clientY: 100 });
+    movePointer(160, 180);
+    releasePointer();
+    await settle();
+
+    const moved = positionsOf(app)!;
+    expect(moved.a).not.toEqual(landed.a);
+    expect(moved.b).toEqual(landed.b);
+    expect(app.store.state.collections.tableEntities.a.ui.x).toBe(document.x);
+    expect(app.store.state.collections.tableEntities.a.ui.y).toBe(document.y);
+
+    mounted = await leaveAndReturn(mounted);
+
+    expect(positionsOf(app)).toEqual(landed);
+    expect(hoisted.requests).toHaveLength(1);
+    expect(tableOf('a')!.x()).toBe(landed.a.x);
+    expect(tableOf('a')!.y()).toBe(landed.a.y);
+  });
+
+  it('lights the hovered table, its neighbours and the connectors between, and fades the rest', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    const opacities = () => ({
+      a: tableOf('a')!.opacity(),
+      b: tableOf('b')!.opacity(),
+      c: tableOf('c')!.opacity(),
+      d: tableOf('d')!.opacity(),
+      ab: connectorOf('ab').opacity(),
+      bc: connectorOf('bc').opacity(),
+    });
+
+    expect(opacities()).toEqual({ a: 1, b: 1, c: 1, d: 1, ab: 1, bc: 1 });
+
+    fireScenePointer(tableOf('a')!, 'mouseenter');
+    await settle();
+
+    expect(opacities()).toEqual({
+      a: 1,
+      b: 1,
+      c: DIM_OPACITY,
+      d: DIM_OPACITY,
+      ab: 1,
+      bc: DIM_OPACITY,
+    });
+
+    fireScenePointer(tableOf('a')!, 'mouseleave');
+    fireScenePointer(tableOf('b')!, 'mouseenter');
+    await settle();
+
+    expect(opacities()).toEqual({
+      a: 1,
+      b: 1,
+      c: 1,
+      d: DIM_OPACITY,
+      ab: 1,
+      bc: 1,
+    });
+
+    fireScenePointer(tableOf('b')!, 'mouseleave');
+    await settle();
+
+    expect(opacities()).toEqual({ a: 1, b: 1, c: 1, d: 1, ab: 1, bc: 1 });
+  });
+
+  it('zooms the view about the pointer on a wheel, and the document not at all', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const root = flowRootOf(mounted);
+    const rect = root.getBoundingClientRect();
+    const point = { x: 200, y: 150 };
+    const before = toScenePoint(
+      getSceneTransform(app.store.state, 'flow'),
+      point
+    );
+    const zoomBefore = app.store.state.editor.views.flow!.zoomLevel;
+
+    root.dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + point.x,
+        clientY: rect.top + point.y,
+        deltaY: -100,
+      })
+    );
+    await settle();
+
+    const view = app.store.state.editor.views.flow!;
+    expect(view.zoomLevel).toBeGreaterThan(zoomBefore);
+    const after = toScenePoint(
+      getSceneTransform(app.store.state, 'flow'),
+      point
+    );
+    expect(after.x).toBeCloseTo(before.x, 2);
+    expect(after.y).toBeCloseTo(before.y, 2);
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+  });
+
+  it('pans the view on a drag over the background', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const { originX, originY } = app.store.state.editor.views.flow!;
+    const root = flowRootOf(mounted);
+    const rect = root.getBoundingClientRect();
+
+    root.dispatchEvent(
+      new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + 900,
+        clientY: rect.top + 500,
+      })
+    );
+    movePointer(rect.left + 930, rect.top + 550);
+    releasePointer();
+    await settle();
+
+    const view = app.store.state.editor.views.flow!;
+    expect(view.originX).toBe(originX + 30);
+    expect(view.originY).toBe(originY + 50);
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
+  });
+});

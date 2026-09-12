@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { TablePlacement } from '@/constants/tablePlacement';
 import type {
   ElkLayoutEdge,
+  ElkLayoutPoint,
   ElkLayoutRequest,
 } from '@/services/elk-layout/elkGraph';
 import {
@@ -343,5 +344,178 @@ describe('ElkLayoutService', () => {
         edges: [],
       })
     ).resolves.toEqual([]);
+  });
+});
+
+const NODE = { width: 200, height: 100 };
+
+/** Six tables the document draws in one row, five of them hanging off the first. */
+const documentRow = (scale: number): ElkLayoutRequest => ({
+  placement: TablePlacement.liamLayered,
+  nodes: Array.from({ length: 6 }, (_, index) => ({
+    id: `t${index}`,
+    ...NODE,
+    x: (index * 400) / scale,
+    y: 0,
+  })),
+  edges: Array.from({ length: 5 }, (_, index) => edge('t0', `t${index + 1}`)),
+});
+
+const boxesOf = (points: ElkLayoutPoint[]) =>
+  points.map(({ x, y }) => ({
+    left: x,
+    top: y,
+    right: x + NODE.width,
+    bottom: y + NODE.height,
+  }));
+
+function overlaps(points: ElkLayoutPoint[]): boolean {
+  const boxes = boxesOf(points);
+
+  return boxes.some((a, index) =>
+    boxes
+      .slice(index + 1)
+      .some(
+        b =>
+          a.left < b.right &&
+          b.left < a.right &&
+          a.top < b.bottom &&
+          b.top < a.bottom
+      )
+  );
+}
+
+describe('toElkGraph for the views preset', () => {
+  it('carries the coordinate hint of every node through, which INTERACTIVE reads', () => {
+    const graph = toElkGraph(documentRow(NODE.width));
+
+    expect(graph.children?.map(child => child.x)).toEqual([0, 2, 4, 6, 8, 10]);
+    expect(graph.children?.every(child => child.y === 0)).toBe(true);
+  });
+
+  it('leaves out the hint of a node the source never placed', () => {
+    const graph = toElkGraph({
+      placement: TablePlacement.liamLayered,
+      nodes: [box('t1')],
+      edges: [],
+    });
+
+    expect(graph.children?.[0]).not.toHaveProperty('x');
+    expect(graph.children?.[0]).not.toHaveProperty('y');
+  });
+
+  it('aligns every node left, which is what liam tells each of them', () => {
+    const graph = toElkGraph(documentRow(NODE.width));
+
+    expect(
+      graph.children?.every(
+        child => child.layoutOptions?.['elk.alignment'] === 'LEFT'
+      )
+    ).toBe(true);
+  });
+
+  it('gives a group node the ratio alone and keeps its children inside it', () => {
+    const graph = toElkGraph({
+      placement: TablePlacement.liamLayered,
+      nodes: [
+        box('t1'),
+        { id: 'group', width: 0, height: 0, children: [box('lone')] },
+      ],
+      edges: [],
+    });
+    const group = graph.children?.find(child => child.id === 'group');
+
+    expect(group?.layoutOptions).toEqual({ 'elk.aspectRatio': '0.5625' });
+    expect(group?.children?.map(child => child.id)).toEqual(['lone']);
+  });
+});
+
+// AC-60: the normalized hint is what keeps a row of tables from coming back as
+// one layer per table, so the layers follow the relationships instead.
+describe('ElkLayoutService under the views preset', () => {
+  it('lays a document row out in as many layers as the relationships are deep', async () => {
+    const points = await new ElkLayoutService().layout(documentRow(NODE.width));
+    const layers = new Set(points.map(point => point.x));
+
+    expect(layers.size).toBe(2);
+    expect(layers.size).toBeLessThan(points.length);
+  });
+
+  // What the normalization buys, measured against the coordinates it replaces:
+  // handed those, INTERACTIVE layering reads the row back one table per layer.
+  it('would read that row back layer for table off unnormalized coordinates', async () => {
+    const points = await new ElkLayoutService().layout(documentRow(1));
+
+    expect(new Set(points.map(point => point.x)).size).toBe(points.length);
+  });
+
+  it('overlaps no two boxes', async () => {
+    const points = await new ElkLayoutService().layout(documentRow(NODE.width));
+
+    expect(points).toHaveLength(6);
+    expect(overlaps(points)).toBe(false);
+  });
+
+  it('answers the same request with the same layout, twice running', async () => {
+    const service = new ElkLayoutService();
+    const request = documentRow(NODE.width);
+
+    expect(await service.layout(request)).toEqual(
+      await service.layout(request)
+    );
+  });
+
+  // AC-50: the group is a device for packing, so nothing downstream sees it —
+  // what comes back is one absolute corner per table and no group at all.
+  it('flattens a group away and answers its children in root coordinates', async () => {
+    const points = await new ElkLayoutService().layout({
+      placement: TablePlacement.liamLayered,
+      nodes: [
+        { id: 't1', ...NODE },
+        { id: 't2', ...NODE },
+        {
+          id: 'group',
+          width: 0,
+          height: 0,
+          children: [
+            { id: 'lone1', ...NODE },
+            { id: 'lone2', ...NODE },
+            { id: 'lone3', ...NODE },
+          ],
+        },
+      ],
+      edges: [edge('t1', 't2')],
+    });
+
+    expect(points.map(point => point.id).sort()).toEqual([
+      'lone1',
+      'lone2',
+      'lone3',
+      't1',
+      't2',
+    ]);
+    expect(overlaps(points)).toBe(false);
+  });
+
+  // Measured rather than read off the options, which is the look section G
+  // asks for by asking for liam's: a group with no algorithm of its own is
+  // laid out by the layered one around it, which stands its tables in one column.
+  it('stands the children of a group in one column, as liam does', async () => {
+    const lone = Array.from({ length: 8 }, (_, index) => ({
+      id: `lone${index}`,
+      ...NODE,
+    }));
+    const points = await new ElkLayoutService().layout({
+      placement: TablePlacement.liamLayered,
+      nodes: [{ id: 'group', width: 0, height: 0, children: lone }],
+      edges: [],
+    });
+    const columns = new Set(points.map(point => point.x));
+    const rows = new Set(points.map(point => point.y));
+
+    expect(points).toHaveLength(8);
+    expect(columns.size).toBe(1);
+    expect(rows.size).toBe(8);
+    expect(overlaps(points)).toBe(false);
   });
 });

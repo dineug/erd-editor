@@ -15,6 +15,8 @@ export type RelationshipGroupProps = {
   relationships: RelationshipType[];
   viewport?: CullingRect;
   strokeWidth?: number;
+  /** The connectors a Flow hover fades, decided once by the scene rather than by each leaf. */
+  fadedIds?: Set<string>;
 };
 
 /**
@@ -26,7 +28,7 @@ const RelationshipGroup: FC<RelationshipGroupProps> = (props, ctx) => {
   const sourceRef = useSceneSource(ctx);
 
   return () => {
-    const { relationships, viewport } = props;
+    const { relationships, viewport, fadedIds } = props;
     const source = sourceRef.value;
     const strokeWidth = props.strokeWidth ?? RELATIONSHIP_STROKE_WIDTH;
     const visible = viewport
@@ -44,6 +46,7 @@ const RelationshipGroup: FC<RelationshipGroupProps> = (props, ctx) => {
             <Relationship
               relationship={relationship}
               strokeWidth={strokeWidth}
+              faded={fadedIds?.has(relationship.id) ?? false}
             />
           )
         )}

@@ -9,6 +9,7 @@ import { RELATIONSHIP_HIT_STROKE_WIDTH } from '@/constants/layout';
 import { Direction, StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
 import { Point, Relationship as RelationshipType } from '@/internal-types';
+import { DIM_OPACITY } from '@/konva/scene/viewLayout';
 import { getSceneTransform } from '@/konva/scene/viewport';
 import {
   type Anchor,
@@ -132,6 +133,8 @@ function hitBandWidth(zoomLevel: number) {
 export type RelationshipProps = {
   relationship: RelationshipType;
   strokeWidth: number;
+  /** Drawn dim, which a Flow hover asks of every connector it does not light. */
+  faded?: boolean;
 };
 
 const Relationship: FC<RelationshipProps> = (props, ctx) => {
@@ -192,6 +195,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       <k-group
         name={`relationship ${relationship.id}`}
         kind="relationship"
+        opacity={props.faded ? DIM_OPACITY : 1}
         on:mouseenter={handleMouseenter}
         on:mouseleave={handleMouseleave}
       >

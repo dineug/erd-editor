@@ -177,3 +177,109 @@ describe('createElkLayout', () => {
     await expect(createElkLayout(request)).rejects.toThrow('no layout');
   });
 });
+
+// AC-59: a layout is the one call in the package that can run for minutes, so
+// it is on a deadline of its own and says so before the reader gives up on it.
+describe('createElkLayout on a slow worker', () => {
+  const never = () => new Promise<never>(() => {});
+
+  it('gives up on a layout that never comes back, at a minute', async () => {
+    vi.useFakeTimers();
+    mocks.remoteLayout.mockImplementation(never);
+    const { createElkLayout } = await importFresh();
+
+    const pending = createElkLayout(request);
+    const settled = expect(pending).rejects.toThrow('did not come back');
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    await settled;
+  });
+
+  it('waits the full minute before it does', async () => {
+    vi.useFakeTimers();
+    mocks.remoteLayout.mockImplementation(never);
+    const { createElkLayout } = await importFresh();
+    let rejected = false;
+
+    createElkLayout(request).catch(() => {
+      rejected = true;
+    });
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(rejected).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(rejected).toBe(true);
+  });
+
+  it('says the layout is slow six seconds in, and not before', async () => {
+    vi.useFakeTimers();
+    mocks.remoteLayout.mockImplementation(never);
+    const { createElkLayout, SLOW_LAYOUT_MS } = await importFresh();
+    const onSlow = vi.fn();
+
+    const pending = createElkLayout(request, onSlow);
+    pending.catch(() => {});
+    await vi.advanceTimersByTimeAsync(SLOW_LAYOUT_MS - 1);
+    expect(onSlow).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onSlow).toHaveBeenCalledTimes(1);
+    expect(SLOW_LAYOUT_MS).toBe(6_000);
+  });
+
+  // The wait the reader sees starts at the click, and on the first placement
+  // of a session most of it is the worker fetching and parsing ELK, which the
+  // handshake covers and a timer armed after it would say nothing about.
+  it('says a first placement is slow while the worker is still starting', async () => {
+    vi.useFakeTimers();
+    mocks.remoteReady.mockImplementation(never);
+    const { createElkLayout } = await importFresh();
+    const onSlow = vi.fn();
+
+    const pending = createElkLayout(request, onSlow);
+    pending.catch(() => {});
+    await vi.advanceTimersByTimeAsync(5_999);
+    expect(onSlow).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onSlow).toHaveBeenCalledTimes(1);
+    expect(mocks.remoteLayout).not.toHaveBeenCalled();
+  });
+
+  it('says nothing more once the worker has failed to start', async () => {
+    vi.useFakeTimers();
+    mocks.remoteReady.mockRejectedValue(new Error('boom'));
+    const { createElkLayout } = await importFresh();
+    const onSlow = vi.fn();
+
+    await expect(createElkLayout(request, onSlow)).rejects.toThrow('boom');
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(onSlow).not.toHaveBeenCalled();
+  });
+
+  // A message that appears as the layout lands and goes again is worse than
+  // none, so the timer is dropped rather than left to fire behind the answer.
+  it('says nothing about a layout that came back in time', async () => {
+    vi.useFakeTimers();
+    const { createElkLayout } = await importFresh();
+    const onSlow = vi.fn();
+
+    await createElkLayout(request, onSlow);
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(onSlow).not.toHaveBeenCalled();
+  });
+
+  it('says nothing more once a layout has failed', async () => {
+    vi.useFakeTimers();
+    mocks.remoteLayout.mockRejectedValue(new Error('no layout'));
+    const { createElkLayout } = await importFresh();
+    const onSlow = vi.fn();
+
+    await expect(createElkLayout(request, onSlow)).rejects.toThrow('no layout');
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(onSlow).not.toHaveBeenCalled();
+  });
+});

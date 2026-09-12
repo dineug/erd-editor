@@ -73,17 +73,21 @@ export const FIT_PADDING = 200;
 export const PREVIEW_ZOOM_MAX = 0.7;
 
 /**
- * The zoom the preview opens at: the content with its padding fitted into the
- * screen on both axes, rounded to the two places a zoom is kept to, and held
- * between the floor every zoom has and the ceiling above.
+ * The zoom a fit opens at: the content with its padding fitted into the screen
+ * on both axes, rounded to the two places a zoom is kept to, and held between
+ * the floor every zoom has and a ceiling, the preview's unless a view names its own.
  */
-export function previewZoomLevel(content: Rect, viewport: Viewport): number {
+export function previewZoomLevel(
+  content: Rect,
+  viewport: Viewport,
+  maxZoom = PREVIEW_ZOOM_MAX
+): number {
   const fit = Math.min(
     viewport.width / (content.width + FIT_PADDING),
     viewport.height / (content.height + FIT_PADDING)
   );
 
-  return clamp(round(fit, 2), CANVAS_ZOOM_MIN, PREVIEW_ZOOM_MAX);
+  return clamp(round(fit, 2), CANVAS_ZOOM_MIN, maxZoom);
 }
 
 /** What a document drawing nothing is fitted to, which is a point at the origin. */

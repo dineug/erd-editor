@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
+  editorRootOf,
   isMouseEvent,
   isTouchEvent,
   onNumberOnly,
@@ -125,5 +126,25 @@ describe('suppressSelection', () => {
     suppressSelection(el)();
 
     expect(el.style.userSelect).toBe('text');
+  });
+});
+
+describe('editorRootOf', () => {
+  it('is the nearest editor root above the element', () => {
+    const root = document.createElement('div');
+    root.className = 'root';
+    const scene = document.createElement('div');
+    const inner = document.createElement('div');
+    root.append(scene);
+    scene.append(inner);
+
+    expect(editorRootOf(inner)).toBe(root);
+    expect(editorRootOf(root)).toBe(root);
+  });
+
+  it('is the element itself where no root holds it', () => {
+    const el = document.createElement('div');
+
+    expect(editorRootOf(el)).toBe(el);
   });
 });

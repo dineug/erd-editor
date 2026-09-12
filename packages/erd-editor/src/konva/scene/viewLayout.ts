@@ -37,6 +37,13 @@ const NONE: VisibleIds = Object.freeze({
 });
 
 /**
+ * What a box, a connector, a dot or a name fades to while it sits outside
+ * the lit neighbourhood of a hovered table, so that neighbourhood reads on its
+ * own. One value for the graph and the Flow scene, which fade the same way.
+ */
+export const DIM_OPACITY = 0.2;
+
+/**
  * Where a table stands in the source given: its own placement in the
  * document, or the point the view of that kind placed it at. A view that has
  * not placed it yet shows it where the document has it, until a layout lands.
@@ -271,4 +278,32 @@ export function getHighlightIds(
   }
 
   return { tableIds, relationshipIds };
+}
+
+/**
+ * What a Flow scene fades while a table is hovered: every table it shows and
+ * every connector between them outside what the hover lights. Null while no
+ * shown table is hovered, and for any other scene, since only Flow reads as a whole graph.
+ */
+export function getFadedIds(
+  state: RootState,
+  source: GeometrySource = 'document'
+): HighlightIds | null {
+  const view = getSourceView(state, source);
+  if (!view || view.kind !== ViewKind.flow) return null;
+
+  const hovered = getViewHoverTable(state, source);
+  if (hovered === null) return null;
+
+  const shown = getVisibleIds(state, source);
+  if (!shown.tableIds.includes(hovered)) return null;
+
+  const lit = getHighlightIds(state, source);
+
+  return {
+    tableIds: new Set(shown.tableIds.filter(id => !lit.tableIds.has(id))),
+    relationshipIds: new Set(
+      shown.relationshipIds.filter(id => !lit.relationshipIds.has(id))
+    ),
+  };
 }

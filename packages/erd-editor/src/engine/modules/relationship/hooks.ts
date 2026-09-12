@@ -9,7 +9,7 @@ import {
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
 import { ViewKind } from '@/engine/modules/editor/state';
-import { getActiveView } from '@/engine/modules/editor/view';
+import { getActiveView, isViewShown } from '@/engine/modules/editor/view';
 import {
   viewChangeHopAction,
   viewChangeShowModeAction,
@@ -256,7 +256,7 @@ const VIEW_SOURCES: ViewSource[] = [ViewKind.flow, ViewKind.focus];
 /**
  * Each view's own sort, into that view's channel, over the tables it shows at
  * the points it places them. The document sort above is untouched: this runs
- * beside it for every view open, active or not, and only for what that view shows.
+ * beside it for every view a scene is drawing, active or not, and only for what that view shows.
  */
 const viewRelationshipSortHook: HookEffect = (action$, getState) => {
   const lastRead: Record<ViewSource, Set<string>> = {
@@ -272,7 +272,7 @@ const viewRelationshipSortHook: HookEffect = (action$, getState) => {
         let touched = false;
         for (const source of VIEW_SOURCES) {
           if (
-            state.editor.views[source] !== null &&
+            isViewShown(state, source) &&
             touchesView(state, action, lastRead[source], source)
           ) {
             pending.add(source);
@@ -289,7 +289,7 @@ const viewRelationshipSortHook: HookEffect = (action$, getState) => {
       pending.clear();
 
       for (const source of sources) {
-        if (state.editor.views[source] === null) continue;
+        if (!isViewShown(state, source)) continue;
 
         relationshipSort(state, source);
         const { tableIds, relationshipIds } = getVisibleIds(state, source);
@@ -332,8 +332,8 @@ const viewRowActions = [changeColumnPrimaryKeyAction];
 
 /**
  * What can open, close, re-center or re-lay a view. A tab switch is not one:
- * a Flow view kept across tabs is sorted into its own channel while its tab
- * is away, so it comes back with nothing to catch up on.
+ * a Flow view kept across tabs is left alone while its tab is away, and the
+ * layout its scene stands it back on when the tab returns is what sorts it again.
  */
 const viewLayoutActions = [
   viewOpenAction,

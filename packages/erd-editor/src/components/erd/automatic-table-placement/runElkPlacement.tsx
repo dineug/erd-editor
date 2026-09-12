@@ -21,9 +21,9 @@ type PlacingToastProps = {
 /**
  * The message up while ELK works, and the whole of what a one-shot placement
  * shows. There is no progress to follow and nothing to read off a layout that
- * does not exist yet, so Cancel is the only thing on it.
+ * does not exist yet, so Cancel is the only thing on it. A view placement shows it too.
  */
-const PlacingToast: FC<PlacingToastProps> = props => () => (
+export const PlacingToast: FC<PlacingToastProps> = props => () => (
   <Toast
     busy={true}
     description="Placing tables…"

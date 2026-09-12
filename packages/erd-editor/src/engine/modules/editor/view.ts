@@ -1,8 +1,16 @@
 import { CanvasType } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import type {
+  GeometrySource,
+  ViewSource,
+} from '@/utils/draw-relationship/geometrySource';
 
 import { SceneView, ShowMode, ViewKind, VisualizationMode } from './state';
+
+/** Whether the visualization tab is up and on Flow, which is where and only where a Flow scene is mounted. */
+const showsFlowTab = (state: RootState): boolean =>
+  state.settings.canvasType === CanvasType.visualization &&
+  state.editor.visualizationMode === VisualizationMode.flow;
 
 /**
  * The view the reader stands in, or null in the document itself. Focus wins
@@ -11,10 +19,16 @@ import { SceneView, ShowMode, ViewKind, VisualizationMode } from './state';
  */
 export const getActiveView = (state: RootState): SceneView | null =>
   state.editor.views.focus ??
-  (state.settings.canvasType === CanvasType.visualization &&
-  state.editor.visualizationMode === VisualizationMode.flow
-    ? state.editor.views.flow
-    : null);
+  (showsFlowTab(state) ? state.editor.views.flow : null);
+
+/**
+ * Whether a scene is drawing the view of the kind given: an open Focus view is
+ * always on screen, and an open Flow view only while its tab shows Flow. A
+ * Flow view kept across tabs is open but unseen, and nothing reads its geometry until it is back.
+ */
+export const isViewShown = (state: RootState, kind: ViewSource): boolean =>
+  state.editor.views[kind] !== null &&
+  (kind === ViewKind.focus || showsFlowTab(state));
 
 /**
  * The view a scene drawn from the source given reads, open or not: the slot

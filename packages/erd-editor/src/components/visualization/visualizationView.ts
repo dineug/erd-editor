@@ -9,6 +9,10 @@ import {
   type VisualizationNode,
 } from './createVisualization';
 
+// The one fade the graph shares with the Flow scene, kept beside the scene's
+// own highlight so the two views cannot drift apart on it.
+export { DIM_OPACITY } from '@/konva/scene/viewLayout';
+
 /** The most of a table name a label shows before it is cut. */
 export const NAME_MAX_LENGTH = 15;
 
@@ -49,12 +53,6 @@ export const COLUMN_RADIUS = 4;
 /** A table draws larger than the columns that hang off it. */
 export const nodeRadius = (group: Group): number =>
   group === Group.table ? TABLE_RADIUS : COLUMN_RADIUS;
-
-/**
- * What a dot, a line or a name fades to while it sits outside the lit
- * neighbourhood of a hovered table, so that neighbourhood reads on its own.
- */
-export const DIM_OPACITY = 0.2;
 
 /** The ids a hovered table lights up: nodes on one side, links on the other. */
 export type Highlight = {

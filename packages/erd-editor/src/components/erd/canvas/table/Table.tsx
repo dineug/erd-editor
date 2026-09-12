@@ -67,6 +67,7 @@ import {
 } from '@/konva/scene/metrics';
 import {
   clearViewHoverTable,
+  DIM_OPACITY,
   getHighlightIds,
   getVisibleColumnIds,
   setViewHoverTable,
@@ -90,6 +91,8 @@ export type TableProps = {
   editorFocused?: boolean;
   /** Off while the table is kept built but scrolled out of the culling rect. */
   visible?: boolean;
+  /** Drawn dim, which a Flow hover asks of every table outside its neighbourhood. */
+  faded?: boolean;
 };
 
 type HeaderCellOptions = {
@@ -457,6 +460,7 @@ const Table: FC<TableProps> = (props, ctx) => {
         name="table"
         kind="table"
         visible={props.visible ?? true}
+        opacity={props.faded ? DIM_OPACITY : 1}
         selected={selected}
         sharedFocus={sharedTableColor}
         sharedSelect={sharedSelected}

@@ -115,6 +115,7 @@ const OUTSIDE_REFERENCES = [
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
   'components/sceneSourceContext.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/themeContext.browser.test.tsx @/components/erd/canvas/memo/Memo',
+  'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/Canvas',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/memo/Memo',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/relationship-group/RelationshipGroup',
@@ -153,7 +154,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the thirteen references that own a reason to', () => {
+  it('is reached from outside by the fourteen references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>
