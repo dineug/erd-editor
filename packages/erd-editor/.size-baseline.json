@@ -6,8 +6,8 @@
     "dist (reachable from exports)": {
       "bytes": 1142812,
       "gzip": 276422,
-      "budgetGzip": 288702,
-      "budgetNote": "276,422 B measured at the first build with every runtime dependency external, both SharedWorkers emitted as files under dist/workers/ and no banner: dist/index.js, the chunk it shares with dist/engine/index.js, that entry and the two worker files, every script reachable from the exports map, concatenated. The export worker still carries its own copy of the scene, since a worker shares no module instance with the page. Plus a 12,280 B margin, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a second scene copy fails the round it lands in, while routine work and a small dependency do not."
+      "budgetGzip": 312461,
+      "budgetNote": "300,181 B measured after the Focus view and Flow mode landed (feat/visualization, 2026-09-12): the view seam, the sort channels, the Flow and Focus scenes and the particle loop all sit on the scene path, which the export worker carries a second time, so the feature cost 23.7 kB gzip over the previous measurement. Plus the same 12,280 B margin as before, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a third scene copy fails the round it lands in, while routine work does not."
     }
   }
 }
