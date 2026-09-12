@@ -16,6 +16,7 @@ import { createRetentionPool } from '@/components/erd/canvas/sceneRetention';
 import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedDragSelect';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
+import ParticleLayer from '@/components/focus-view/particles/ParticleLayer';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { Show } from '@/constants/schema';
 import type { Relationship } from '@/internal-types';
@@ -44,7 +45,7 @@ type Stacked = { ui: { zIndex: number } };
 const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
- * The layers of the canvas, four over the document and three under a view,
+ * The layers of the canvas, four over the document and four under a view,
  * plus the one a drag opens. Each carries the canvas transform but the
  * marquee, which stays in screen space where its own mousemove measures.
  */
@@ -231,6 +232,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             )
           )}
         </k-layer>
+        {source !== 'document' ? <ParticleLayer /> : null}
         {dragging ? (
           <k-layer
             name="drag-entity"

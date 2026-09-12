@@ -677,12 +677,13 @@ describe('a scene the context points at a view', () => {
     expect(focus.stage.find('.relationship')).toHaveLength(1);
   });
 
-  it('roots no presence layer, since a peer broadcasts document points', async () => {
+  it('roots a particle layer over the scene and no presence layer, since a peer broadcasts document points', async () => {
     const { stage } = await mountFocusScene();
 
     expect(stage.getLayers().map(layer => layer.name())).toEqual([
       'canvas-background',
       'scene',
+      'view-particles',
       'overlay-marquee',
     ]);
   });

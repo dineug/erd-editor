@@ -45,7 +45,7 @@ suite red.
 
 ## What is covered
 
-31 spec files. Nine of the groups exist because the DOM scene got their subject
+33 spec files. Nine of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -76,6 +76,14 @@ puts over it:
 | `cell-editor-underline.spec.ts` | The underline the two rasterisers have to agree on                |
 | `data-type-hint.spec.ts`        | The autocomplete DOM the stage cannot hit test                    |
 | `relationship-hover.spec.ts`    | Every part a connector draws, hovered one at a time               |
+
+Two more are the placements a worker computes, one landed in the document and
+one drawn over it in coordinates the document never keeps:
+
+| Spec                            | What it holds down                                                |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker   |
+| `focus-view.spec.ts`            | The visualization tab's two modes, and the Focus overlay's walk    |
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

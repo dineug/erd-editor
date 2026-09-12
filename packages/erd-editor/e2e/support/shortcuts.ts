@@ -24,6 +24,7 @@ export const Shortcut = {
   relationshipOneOnly: 'ControlOrMeta+Alt+Digit3',
   relationshipOneN: 'ControlOrMeta+Alt+Digit4',
   tableProperties: 'Alt+Space',
+  focusView: 'Alt+KeyF',
   zoomIn: 'ControlOrMeta+Equal',
   zoomOut: 'ControlOrMeta+Minus',
   zoomReset: 'ControlOrMeta+Digit0',

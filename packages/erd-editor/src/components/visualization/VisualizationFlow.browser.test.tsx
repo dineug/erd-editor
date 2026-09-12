@@ -2,8 +2,9 @@
 // table as a name box placed once by ELK and kept across a tab leave, a drag
 // that never reaches that landing, and the hover that fades the rest.
 
-import { useProvider } from '@dineug/r-html';
+import { type AnyAction, useProvider } from '@dineug/r-html';
 import type { Group } from 'konva/lib/Group';
+import type { Layer } from 'konva/lib/Layer';
 import type { Rect } from 'konva/lib/shapes/Rect';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -17,8 +18,13 @@ import {
   type Mounted,
   movePointer,
   releasePointer,
+  whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import {
+  PARTICLE_COUNT,
+  PARTICLE_EDGE_MAX,
+} from '@/components/focus-view/particles/particlePath';
 import { themeContext } from '@/components/themeContext';
 import Visualization from '@/components/visualization/Visualization';
 import { TABLE_BORDER } from '@/constants/layout';
@@ -32,13 +38,17 @@ import {
   closeFocusViewAction$,
   openFocusViewAction$,
 } from '@/engine/modules/editor/view.generator.actions';
-import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { Tag } from '@/engine/tag';
 import { whenDrawn } from '@/konva/batchDraw';
 import { DIM_OPACITY } from '@/konva/scene/viewLayout';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
@@ -207,6 +217,22 @@ const bodyOf = (id: string) =>
 
 const connectorOf = (id: string) =>
   flowStage().findOne<Group>(`.${id}`) as Group;
+
+const particleLayer = () =>
+  flowStage().findOne<Layer>('.view-particles') as Layer;
+
+/** The connectors carrying particles, by the id each group of six is named with. */
+const particleIdsOf = () =>
+  particleLayer()
+    .find<Group>('.particle-edge')
+    .map(group => group.name().replace('particle-edge ', ''))
+    .sort();
+
+/** A document edit the way a peer's arrives, which is the one way an edit reaches the store under a view. */
+const shared = (action: AnyAction): AnyAction => ({
+  ...action,
+  tags: Tag.shared,
+});
 
 /** A plain copy of where the view stands each table, read off the observable. */
 const positionsOf = (app: AppContext) => {
@@ -704,5 +730,84 @@ describe('the Flow mode of the visualization tab', () => {
     expect(view.originY).toBe(originY + 50);
     expect(app.store.state.settings.originX).toBe(0);
     expect(app.store.state.settings.originY).toBe(0);
+  });
+
+  it('runs particles on the connectors a hover lights, and none while nothing is hovered (AC-33)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    await whenPainted();
+
+    expect(particleLayer()).toBeDefined();
+    expect(particleLayer().find('Circle')).toHaveLength(0);
+
+    fireScenePointer(tableOf('a')!, 'mouseenter');
+    await settle();
+    await whenPainted();
+
+    expect(particleIdsOf()).toEqual(['ab']);
+    expect(particleLayer().find('Circle')).toHaveLength(PARTICLE_COUNT);
+
+    fireScenePointer(tableOf('a')!, 'mouseleave');
+    fireScenePointer(tableOf('b')!, 'mouseenter');
+    await settle();
+    await whenPainted();
+
+    expect(particleIdsOf()).toEqual(['ab', 'bc']);
+    expect(particleLayer().find('Circle')).toHaveLength(2 * PARTICLE_COUNT);
+
+    fireScenePointer(tableOf('b')!, 'mouseleave');
+    await settle();
+    await whenPainted();
+
+    expect(particleIdsOf()).toEqual([]);
+    expect(particleLayer().find('Circle')).toHaveLength(0);
+  });
+
+  it('leaves the particles off past sixty lit connectors, and keeps the fade and the highlight (AC-51)', async () => {
+    const app = createTestAppContext();
+    const spokes = PARTICLE_EDGE_MAX + 1;
+    const half = Math.floor(spokes / 2);
+    const spoke = (index: number) => [
+      addTableAction({ id: `s${index}`, ui: { x: 0, y: 0, zIndex: index } }),
+      link(`r${index}`, 'hub', `s${index}`),
+    ];
+    // The hub and the lone table sit mid-row, where the fit leaves them
+    // drawn, with the spokes spread to either side of them.
+    app.store.dispatchSync(
+      changeViewportAction(VIEWPORT),
+      ...Array.from({ length: half }, (_, at) => spoke(at + 1)).flat(),
+      addTableAction({ id: 'hub', ui: { x: 0, y: 0, zIndex: 100 } }),
+      addTableAction({ id: 'lone', ui: { x: 0, y: 0, zIndex: 101 } }),
+      ...Array.from({ length: spokes - half }, (_, at) =>
+        spoke(half + at + 1)
+      ).flat()
+    );
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    await whenPainted();
+
+    fireScenePointer(tableOf('hub')!, 'mouseenter');
+    await settle();
+    await whenPainted();
+
+    expect(particleLayer().find('Circle')).toHaveLength(0);
+    expect(tableOf('lone')!.opacity()).toBe(DIM_OPACITY);
+    expect(tableOf(`s${half}`)!.opacity()).toBe(1);
+    expect(connectorOf(`r${half}`).opacity()).toBe(1);
+
+    // One connector fewer is exactly the cap, and every one of them runs.
+    app.store.dispatchSync(
+      shared(removeRelationshipAction({ id: `r${spokes}` }))
+    );
+    await settle();
+    await whenPainted();
+
+    expect(particleIdsOf()).toHaveLength(PARTICLE_EDGE_MAX);
+    expect(particleLayer().find('Circle')).toHaveLength(
+      PARTICLE_EDGE_MAX * PARTICLE_COUNT
+    );
+    expect(tableOf('lone')!.opacity()).toBe(DIM_OPACITY);
   });
 });

@@ -44,6 +44,7 @@ request, so a comparison is always against a baseline someone chose.
 | `attribution.bench.ts` | Diagnostic: which painter owns the frame                        |
 | `scaling.bench.ts`     | Diagnostic: does cost track what changed, or what is on screen? |
 | `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG — this repo has no other visual check |
+| `view.bench.ts`        | Diagnostic: what the Flow and Focus views cost — a hover and a document edit |
 | `report.ts`            | The JSON report every bench but `routing.bench.ts` writes through |
 | `baselines/`           | Committed results that cannot be re-measured from the working tree |
 
@@ -271,6 +272,69 @@ in DOM it was the whole story). `no-relationship-paint` lands at 33.3ms with
 rasterisation rather than in the host's commit path. The lever is what the scene
 draws — a tighter culling rect than three screens each way, or cheaper shapes —
 and not how it is committed.
+
+## The scene views
+
+`view.bench.ts` measures the two scene views the visualization tab and the
+Focus overlay draw over the one document. Four rows, all through
+`installBench`, so the instruments are the drag bench's own:
+
+| Row          | What it stands in                                                |
+| ------------ | ---------------------------------------------------------------- |
+| `flow hover` | The Flow mode over 300 tables, its own corpus rather than `E2E_BENCH_CORPUS` |
+| `erd hover`  | The same hover pass on the ERD tab with no view open, on `E2E_BENCH_CORPUS` |
+| `erd edit`   | One document edit a frame, no view over it, on the 300-table corpus |
+| `flow edit`  | The same edit with a Flow standing over the document, so both sorts run |
+
+The two edit rows stand on the same 300 tables, because the second sort they
+are read for is a sort of the whole document and a pair is only a pair on one
+document. `erd hover` is the one row `E2E_BENCH_CORPUS` still picks.
+
+A hover walks the header strip of every box the scene has drawn, one box a
+frame, so every move is a hover that changes. An edit is a table move a peer
+sends, tagged shared: a view drops the edits the reader makes, and the tab a
+view is read from offers none, so that is the one edit that reaches the
+document from either tab. Writes are counted over every stage, because a tab
+change caches the ERD out without unmounting it and its scene keeps committing
+behind the Flow.
+
+The `ctx live/subs` column counts the scene leaves reading the scene source —
+the per-leaf cost the source argument added, one observable and a subscribe
+round trip each — as the number holding it now over the number that ever asked.
+Both are taken in the capture phase, before a provider stops the event it
+answers, and the context is pinned by the key of the first one seen with the
+source's default value rather than by that value, which a second context could
+take. The gap between the two numbers is leaves churned by culling.
+
+The frame is kept as p50, p95 and max, since a p50 clamped to one vsync says
+nothing about the frames a pass drops. Both hover controls are taken before the
+first hover: a pass leaves the box it last moved onto lit, a lit connector
+animates every frame, and an idle floor measured after one would have that
+animation subtracted out of the pass that caused it.
+
+First recording, on a workstation, 120 events a pass:
+
+| Row                        | tables | frame p50 | p95     | max      | busy/ev  | writes/ev | ctx live/subs |
+| -------------------------- | ------ | --------- | ------- | -------- | -------- | --------- | ------------- |
+| flow hover (238 on screen) | 300    | 16.7 ms   | 33.3 ms | 283.4 ms | 17.10 ms | 185.9     | 3469/3828     |
+| erd hover (7 on screen)    | 56     | 16.7 ms   | 18.0 ms | 33.3 ms  | 9.46 ms  | 10.0      | 474/474       |
+| erd edit                   | 300    | 33.3 ms   | 66.7 ms | 83.3 ms  | 25.56 ms | 16.9      | 1332/1332     |
+| flow edit                  | 300    | 18.2 ms   | 66.6 ms | 100.3 ms | 29.08 ms | 12.9      | 3518/3518     |
+
+A hover over a Flow of 300 boxes spends about one frame of main thread on the
+pass that lights it, which is the budget rather than a margin under it, and its
+p95 is two frames: the median hover holds 60fps and the tail does not.
+
+The second sort is real but small. One document edit under a Flow of 300 tables
+costs 29.08 ms against 25.56 ms for the same edit with no view, which is the
+routing of the whole document a second time less the drawing the document scene
+no longer does — a move of a table the Flow places by ELK moves nothing the
+Flow draws, and its writes fall from 16.9 to 12.9 accordingly. Neither row
+holds 60fps at that size: an edit a frame over 300 tables is past the budget
+before a view is opened at all, which is where the cost of that stream sits.
+
+The context count with a Flow up is the ERD's own leaves still mounted behind
+it plus the Flow's — 3518 against 1332 for the same document on the ERD tab.
 
 ## What the diagnostics found
 

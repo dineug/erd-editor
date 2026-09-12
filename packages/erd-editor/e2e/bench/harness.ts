@@ -103,6 +103,23 @@ type BenchHarness = {
     busyMs: number;
     attr: AttrCounts;
   }>;
+  hover(options: {
+    moves: number;
+    monitor: boolean;
+    observe: boolean;
+  }): Promise<{
+    frameMs: number[];
+    busyMs: number;
+    attr: AttrCounts;
+    targets: number;
+  }>;
+  edits(options: {
+    tableId: string;
+    moves: number;
+    monitor: boolean;
+    observe: boolean;
+  }): Promise<{ frameMs: number[]; busyMs: number; attr: AttrCounts }>;
+  sceneContexts(): { live: number; total: number };
 };
 
 /**
@@ -133,6 +150,8 @@ export async function installBench(page: Page) {
         height: number;
       };
       container(): HTMLElement;
+      content: HTMLElement;
+      find(selector: string): SceneNode[];
     };
 
     const stages = () =>
@@ -246,7 +265,12 @@ export async function installBench(page: Page) {
       return origin;
     };
 
-    const mouse = (type: string, x: number, y: number) =>
+    const mouse = (
+      type: string,
+      x: number,
+      y: number,
+      buttons = type === 'mouseup' ? 0 : 1
+    ) =>
       new MouseEvent(type, {
         bubbles: true,
         cancelable: true,
@@ -254,7 +278,7 @@ export async function installBench(page: Page) {
         clientX: x,
         clientY: y,
         button: 0,
-        buttons: type === 'mouseup' ? 0 : 1,
+        buttons,
       });
 
     /**
@@ -305,6 +329,66 @@ export async function installBench(page: Page) {
           return { blockedMs, ticks };
         },
       };
+    };
+
+    /**
+     * How many scene leaves are reading the scene source, and how many ever
+     * asked. r-html resolves a context by a bubbling event a provider stops
+     * once it answers, so both are counted in the capture phase, which runs before any provider does.
+     */
+    let sceneContextsLive = 0;
+    let sceneContextsTotal = 0;
+    let sceneContextKey: unknown = null;
+
+    /**
+     * Whether the event carries the scene source, pinned by the key of the
+     * first context seen with its default value: a key is a module symbol no
+     * page script can name, and a second context could take the same default.
+     */
+    const isSceneSource = (event: Event, pin: boolean) => {
+      const context = (event as CustomEvent).detail?.context;
+      if (!context) return false;
+      if (pin && sceneContextKey === null && context.value === 'document') {
+        sceneContextKey = context.key;
+      }
+      return sceneContextKey !== null && context.key === sceneContextKey;
+    };
+
+    document.addEventListener(
+      '@@r-html/context-subscribe',
+      (event: Event) => {
+        if (!isSceneSource(event, true)) return;
+        sceneContextsLive++;
+        sceneContextsTotal++;
+      },
+      true
+    );
+    document.addEventListener(
+      '@@r-html/context-unsubscribe',
+      (event: Event) => {
+        if (isSceneSource(event, false)) sceneContextsLive--;
+      },
+      true
+    );
+
+    /**
+     * The peer the edit passes send through, made once for the page. Every
+     * call builds another replication pipeline over the store and turns the
+     * mouse and presence trackers on, neither of which a document edit carries.
+     */
+    let peer: { dispatch(actions: unknown[]): void } | null = null;
+    const peerStore = () => {
+      const editor = host as HTMLElement & {
+        getSharedStore(config?: {
+          mouseTracker?: boolean;
+          focusTracker?: boolean;
+        }): { dispatch(actions: unknown[]): void };
+      };
+      peer ??= editor.getSharedStore({
+        mouseTracker: false,
+        focusTracker: false,
+      });
+      return peer;
     };
 
     const harness: BenchHarness = {
@@ -516,6 +600,167 @@ export async function installBench(page: Page) {
           attr,
         };
       },
+
+      sceneContexts() {
+        return { live: sceneContextsLive, total: sceneContextsTotal };
+      },
+
+      async hover({ moves, monitor: useMonitor, observe }) {
+        patch();
+        const stage = stageNamed('canvas');
+        const origin = stage.container().getBoundingClientRect();
+
+        // The header strip of every box the scene has drawn, in client
+        // coordinates. Culling decides the list, so a corpus larger than the
+        // screen is hovered over what is on it and never over what is not.
+        const points = stage
+          .find('.table')
+          .map(node => {
+            const box = node.getClientRect({ relativeTo: stage });
+            return {
+              x: origin.x + box.x + box.width / 2,
+              y: origin.y + box.y + 8,
+            };
+          })
+          .filter(
+            point =>
+              point.x >= origin.x &&
+              point.x <= origin.x + origin.width &&
+              point.y >= origin.y &&
+              point.y <= origin.y + origin.height
+          );
+
+        if (!points.length) throw new Error('no table box is drawn to hover');
+
+        const attr: AttrCounts = {
+          total: 0,
+          scene: 0,
+          minimap: 0,
+          detached: 0,
+        };
+        let queue: SceneNode[] = [];
+        const consume = () => {
+          const batch = queue;
+          queue = [];
+          for (const node of batch) {
+            attr.total++;
+            attr[originOf(node).owner]++;
+          }
+        };
+        if (observe) sink = node => queue.push(node);
+
+        const monitor = useMonitor ? blockingMonitor() : null;
+        const frameMs: number[] = [];
+
+        // One move a frame, each on the next box, so every move is a hover
+        // that changes rather than one the editor answers with nothing.
+        await new Promise<void>(resolve => {
+          let step = 0;
+          let previous = 0;
+          const tick = (now: number) => {
+            if (previous) frameMs.push(now - previous);
+            previous = now;
+            if (observe) consume();
+
+            if (step >= moves) {
+              resolve();
+              return;
+            }
+            const point = points[step % points.length];
+            step++;
+            stage.content.dispatchEvent(
+              mouse('mousemove', point.x, point.y, 0)
+            );
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+
+        const busy = monitor?.stop() ?? { blockedMs: 0 };
+        await settled();
+
+        if (observe) {
+          sink = null;
+          consume();
+        }
+
+        return {
+          frameMs,
+          busyMs: busy.blockedMs,
+          attr,
+          targets: points.length,
+        };
+      },
+
+      async edits({ tableId, moves, monitor: useMonitor, observe }) {
+        patch();
+        // A view drops an edit the reader makes, and the tab a view is read
+        // from offers none, so the edit arrives the way a peer's does: tagged
+        // shared, which is the one form the gate lets through either way.
+        const shared = peerStore();
+        const move = (sign: number) => [
+          {
+            type: 'table.move',
+            payload: {
+              ids: [tableId],
+              movementX: 4 * sign,
+              movementY: 3 * sign,
+            },
+            tags: 1,
+          },
+        ];
+
+        const attr: AttrCounts = {
+          total: 0,
+          scene: 0,
+          minimap: 0,
+          detached: 0,
+        };
+        let queue: SceneNode[] = [];
+        const consume = () => {
+          const batch = queue;
+          queue = [];
+          for (const node of batch) {
+            attr.total++;
+            attr[originOf(node).owner]++;
+          }
+        };
+        if (observe) sink = node => queue.push(node);
+
+        const monitor = useMonitor ? blockingMonitor() : null;
+        const frameMs: number[] = [];
+
+        // One edit a frame, alternating so the table walks back over its own
+        // ground: the sort throttle fires once per edit at that cadence.
+        await new Promise<void>(resolve => {
+          let step = 0;
+          let previous = 0;
+          const tick = (now: number) => {
+            if (previous) frameMs.push(now - previous);
+            previous = now;
+            if (observe) consume();
+
+            if (step >= moves) {
+              resolve();
+              return;
+            }
+            shared.dispatch(move(step % 2 === 0 ? 1 : -1));
+            step++;
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+
+        const busy = monitor?.stop() ?? { blockedMs: 0 };
+        await settled();
+
+        if (observe) {
+          sink = null;
+          consume();
+        }
+
+        return { frameMs, busyMs: busy.blockedMs, attr };
+      },
     };
 
     window.__erdBench = harness;
@@ -670,5 +915,218 @@ export async function runDragBench(
       perMove: framePass.attr.scene / resolved.moves,
     },
     moves: resolved.moves,
+  };
+}
+
+export type ViewBenchOptions = {
+  /** Table scrolled onto the screen before the pass, for a corpus wider than one. */
+  tableId?: string;
+  /** Events dispatched, one per animation frame. */
+  moves?: number;
+};
+
+export type HoverBenchResult = {
+  loadMs: number;
+  frame: Stats;
+  frameIdle: Stats;
+  /** Main-thread blocking per hover, with the idle floor already subtracted. */
+  busyMsPerMove: number;
+  busyRaw: { passMs: number; idleMs: number; clamped: boolean };
+  utilization: number;
+  attrWrites: AttrWrites;
+  /** Boxes the pass pointed at, which is how much of the scene it lit. */
+  targets: number;
+  /** Scene leaves reading the scene source now, and every subscribe ever made. */
+  sceneContexts: { live: number; total: number };
+  moves: number;
+};
+
+export type EditBenchResult = {
+  loadMs: number;
+  frame: Stats;
+  frameIdle: Stats;
+  /** Main-thread blocking per document edit, the idle floor subtracted. */
+  busyMsPerEdit: number;
+  busyRaw: { passMs: number; idleMs: number; clamped: boolean };
+  utilization: number;
+  attrWrites: AttrWrites;
+  /** Scene leaves reading the scene source now, and every subscribe ever made. */
+  sceneContexts: { live: number; total: number };
+  edits: number;
+};
+
+/**
+ * Loads the corpus and hands the page back before anything is measured, which
+ * is where a bench stands the reader in the view it means to measure.
+ */
+async function loadCorpus(
+  page: Page,
+  document: ErdDocument,
+  tableId: string | undefined,
+  beforeMeasure?: (page: Page) => Promise<void>
+) {
+  if (tableId) scrollToTable(document, tableId);
+
+  const loadMs = await page.evaluate(
+    json => window.__erdBench!.load(json),
+    JSON.stringify(document)
+  );
+  await beforeMeasure?.(page);
+
+  return loadMs;
+}
+
+/**
+ * What a hover costs over the scene as it stands: the frame pacing while the
+ * pointer walks the boxes, and the blocking under it. The two passes carry one
+ * instrument each, exactly as the drag bench does, and share one idle control.
+ *
+ * @example
+ * const result = await runHoverBench(page, corpus.document, { moves: 120 });
+ */
+export async function runHoverBench(
+  page: Page,
+  document: ErdDocument,
+  options: ViewBenchOptions = {},
+  beforeMeasure?: (page: Page) => Promise<void>
+): Promise<HoverBenchResult> {
+  const moves = options.moves ?? 120;
+  const loadMs = await loadCorpus(
+    page,
+    document,
+    options.tableId,
+    beforeMeasure
+  );
+
+  const idleFrames = await page.evaluate(
+    count => window.__erdBench!.idleFrames(count, false),
+    moves
+  );
+  // Both controls are taken before the first hover: a pass leaves the box it
+  // last moved onto lit, and a lit connector animates, which would put the
+  // animation into the floor that is subtracted from the pass that lights it.
+  const idleBusy = await page.evaluate(
+    count => window.__erdBench!.idleFrames(count, true),
+    moves
+  );
+  const framePass = await page.evaluate(
+    count =>
+      window.__erdBench!.hover({ moves: count, monitor: false, observe: true }),
+    moves
+  );
+  const busyPass = await page.evaluate(
+    count =>
+      window.__erdBench!.hover({ moves: count, monitor: true, observe: false }),
+    moves
+  );
+  const sceneContexts = await page.evaluate(() =>
+    window.__erdBench!.sceneContexts()
+  );
+
+  const aboveIdle = busyPass.busyMs - idleBusy.busyMs;
+  const frame = stats(framePass.frameMs);
+  const busyMsPerMove = Math.max(0, aboveIdle) / moves;
+
+  return {
+    loadMs,
+    frame,
+    frameIdle: stats(idleFrames.frameMs),
+    busyMsPerMove,
+    busyRaw: {
+      passMs: busyPass.busyMs,
+      idleMs: idleBusy.busyMs,
+      clamped: aboveIdle < 0,
+    },
+    utilization: frame.p50 > 0 ? busyMsPerMove / frame.p50 : 0,
+    attrWrites: {
+      total: framePass.attr.total,
+      scene: framePass.attr.scene,
+      minimap: framePass.attr.minimap,
+      detached: framePass.attr.detached,
+      perMove: framePass.attr.scene / moves,
+    },
+    targets: framePass.targets,
+    sceneContexts,
+    moves,
+  };
+}
+
+/**
+ * What one document edit costs where it lands. The edit is a table move a peer
+ * sends, which is the one edit that reaches the document while a view stands
+ * over it, so the same pass measures the tab with a view and the tab without one.
+ *
+ * @example
+ * const result = await runEditBench(page, corpus.document, { tableId: hub });
+ */
+export async function runEditBench(
+  page: Page,
+  document: ErdDocument,
+  options: ViewBenchOptions & { tableId: string },
+  beforeMeasure?: (page: Page) => Promise<void>
+): Promise<EditBenchResult> {
+  const edits = options.moves ?? 120;
+  const loadMs = await loadCorpus(
+    page,
+    document,
+    options.tableId,
+    beforeMeasure
+  );
+  const resolved = { tableId: options.tableId, moves: edits };
+
+  const idleFrames = await page.evaluate(
+    count => window.__erdBench!.idleFrames(count, false),
+    edits
+  );
+  const framePass = await page.evaluate(
+    argument =>
+      window.__erdBench!.edits({
+        ...argument,
+        monitor: false,
+        observe: true,
+      }),
+    resolved
+  );
+  const idleBusy = await page.evaluate(
+    count => window.__erdBench!.idleFrames(count, true),
+    edits
+  );
+  const busyPass = await page.evaluate(
+    argument =>
+      window.__erdBench!.edits({
+        ...argument,
+        monitor: true,
+        observe: false,
+      }),
+    resolved
+  );
+  const sceneContexts = await page.evaluate(() =>
+    window.__erdBench!.sceneContexts()
+  );
+
+  const aboveIdle = busyPass.busyMs - idleBusy.busyMs;
+  const frame = stats(framePass.frameMs);
+  const busyMsPerEdit = Math.max(0, aboveIdle) / edits;
+
+  return {
+    loadMs,
+    frame,
+    frameIdle: stats(idleFrames.frameMs),
+    busyMsPerEdit,
+    busyRaw: {
+      passMs: busyPass.busyMs,
+      idleMs: idleBusy.busyMs,
+      clamped: aboveIdle < 0,
+    },
+    utilization: frame.p50 > 0 ? busyMsPerEdit / frame.p50 : 0,
+    attrWrites: {
+      total: framePass.attr.total,
+      scene: framePass.attr.scene,
+      minimap: framePass.attr.minimap,
+      detached: framePass.attr.detached,
+      perMove: framePass.attr.scene / edits,
+    },
+    sceneContexts,
+    edits,
   };
 }
