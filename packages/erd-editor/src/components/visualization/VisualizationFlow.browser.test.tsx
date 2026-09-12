@@ -22,11 +22,16 @@ import type { AppContext } from '@/components/appContext';
 import { themeContext } from '@/components/themeContext';
 import Visualization from '@/components/visualization/Visualization';
 import { TABLE_BORDER } from '@/constants/layout';
+import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
 import { viewMoveTableAction } from '@/engine/modules/editor/view.actions';
+import {
+  closeFocusViewAction$,
+  openFocusViewAction$,
+} from '@/engine/modules/editor/view.generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import {
@@ -223,6 +228,20 @@ const tableIdsOf = ({ nodes }: { nodes: any[] }): string[] => {
   return walk(nodes);
 };
 
+/**
+ * A press and a lift on the same point of a box, the click the scene reads as
+ * one. The node is looked up again for the lift, since the press selects the
+ * table and the scene rebuilds it on another layer before the release lands.
+ */
+async function clickTable(id: string, init: MouseEventInit = {}) {
+  const at = { clientX: 10, clientY: 10, ...init };
+
+  fireScenePointer(bodyOf(id), 'mousedown', at);
+  await settle();
+  fireScenePointer(bodyOf(id), 'mouseup', at);
+  await settle();
+}
+
 const flowRootOf = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('[data-testid="erd-canvas"]')!;
 
@@ -396,6 +415,38 @@ describe('the Flow mode of the visualization tab', () => {
     expect(flowStage().find('.table')).toHaveLength(4);
   });
 
+  it('keeps the ask out through a stop chord that closes a Focus overlay over the tab', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    hoisted.hold = true;
+    let mounted = await mountVisualization(app);
+
+    await enterFlow(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+
+    app.store.dispatchSync(openFocusViewAction$(['a']));
+    app.shortcut$.next({
+      type: KeyBindingName.stop,
+      event: new KeyboardEvent('keydown', { key: 'Escape' }),
+    });
+    await flush();
+    app.store.dispatchSync(closeFocusViewAction$());
+    await flush();
+
+    // Still out: a return to the tab asks nothing more, and the answer lands.
+    mounted = await leaveAndReturn(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+
+    hoisted.release.shift()?.();
+    await settle();
+    expect(Object.keys(positionsOf(app) ?? {}).sort()).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
+  });
+
   it('asks anew on a Tidy up while the first answer is out, and lands the later answer alone', async () => {
     const app = createTestAppContext();
     seed(app);
@@ -508,6 +559,39 @@ describe('the Flow mode of the visualization tab', () => {
     expect(hoisted.requests).toHaveLength(1);
     expect(tableOf('a')!.x()).toBe(landed.a.x);
     expect(tableOf('a')!.y()).toBe(landed.a.y);
+  });
+
+  it('opens the Focus view on the box that was clicked (AC-20)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const landed = positionsOf(app)!;
+
+    await clickTable('a');
+
+    expect(app.store.state.editor.views.focus?.centerIds).toEqual(['a']);
+    expect(app.store.state.editor.openMap[Open.focus]).toBe(true);
+    expect(app.store.state.editor.views.flow).not.toBeNull();
+    expect(positionsOf(app)).toEqual(landed);
+    expect(hoisted.requests).toHaveLength(1);
+  });
+
+  it('opens nothing on a drag of a box, or on a click carrying the modifier (AC-20)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    fireScenePointer(bodyOf('a'), 'mousedown', { clientX: 100, clientY: 100 });
+    movePointer(160, 180);
+    releasePointer();
+    await settle();
+
+    expect(app.store.state.editor.views.focus).toBeNull();
+
+    await clickTable('b', { ctrlKey: true, metaKey: true });
+    expect(app.store.state.editor.views.focus).toBeNull();
   });
 
   it('lights the hovered table, its neighbours and the connectors between, and fades the rest', async () => {

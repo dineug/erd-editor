@@ -33,6 +33,9 @@ describe('ThemeBuilder.styles', () => {
     expect(source).toContain('position: absolute');
     expect(source).toContain('top: 46px');
     expect(source).toContain('left: 16px');
+    // The Focus overlay before it in the root is raised one step; the same
+    // step here keeps the later sibling on top.
+    expect(source).toContain('z-index: 1');
     expect(source).toContain('padding: 24px');
     expect(source).toContain('width: 360px');
     expect(source).toContain('border-radius: 6px');

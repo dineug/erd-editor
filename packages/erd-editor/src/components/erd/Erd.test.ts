@@ -511,6 +511,18 @@ describe('Erd - wheel', () => {
     expect(event.defaultPrevented).toBe(false);
     expect(app.store.state.settings.originX).toBe(0);
   });
+
+  it('is inert under the Focus overlay, which is drawn over the tab from the editor root', async () => {
+    const { app, root } = await setup();
+    app.store.dispatchSync(changeOpenMapAction({ [Open.focus]: true }));
+    await flush();
+
+    const event = wheel(root, { deltaX: 100, deltaY: 50 });
+    await flush();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(app.store.state.settings.originX).toBe(0);
+  });
 });
 
 describe('Erd - context menu', () => {

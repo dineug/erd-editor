@@ -1729,6 +1729,7 @@ describe('actions$', () => {
     expect(Object.keys(actions$).sort()).toEqual(
       [
         'changeColorAllAction$',
+        'closeFocusViewAction$',
         'columnKeyHoverEndAction$',
         'columnKeyHoverStartAction$',
         'dragSelectAction$',
@@ -1745,7 +1746,9 @@ describe('actions$', () => {
         'loadSchemaGraphQLAction$',
         'loadSchemaSQLAction$',
         'moveAllAction$',
+        'openFocusViewAction$',
         'pasteEntitiesAction$',
+        'refitFocusViewAction$',
         'removeSelectedAction$',
         'unselectAllAction$',
       ].sort()

@@ -15,6 +15,7 @@ import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import FocusView from '@/components/focus-view/FocusView';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import QuickSearch from '@/components/quick-search/QuickSearch';
@@ -369,6 +370,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
               <Settings />
             </div>
           ) : null}
+          <FocusView />
           <ToastContainer />
           {props.enableThemeBuilder ? (
             <ThemeBuilder theme={themeState.options} />

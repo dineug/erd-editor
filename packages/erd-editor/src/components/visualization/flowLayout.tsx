@@ -1,5 +1,4 @@
 import type { AppContext } from '@/components/appContext';
-import { previewZoomLevel } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import { PlacingToast } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import {
   getScrollToCenter,
@@ -20,6 +19,7 @@ import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
+import { previewZoomLevel } from '@/konva/scene/fitZoom';
 import {
   createElkLayout,
   createElkLayoutRequest,
@@ -158,8 +158,10 @@ async function requestFlowLayout(
 
   const [close, onClose] = closePromise();
   let cancelled = false;
+  // The chord is the Focus overlay's to close while one is up over the tab,
+  // and the ask under it stays out so the Flow has its landing when the overlay is down.
   const subscription = shortcut$.subscribe(({ type }) => {
-    type === KeyBindingName.stop && cancel();
+    type === KeyBindingName.stop && !store.state.editor.views.focus && cancel();
   });
   // The ask is the view's until it lands, fails or is cancelled, and a later
   // ask for the same view takes its place, so each of these lets go only of its own.

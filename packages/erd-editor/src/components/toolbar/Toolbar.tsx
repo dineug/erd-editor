@@ -102,6 +102,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showTableProperties = editor.openMap[Open.tableProperties];
     const showTimeTravel = editor.openMap[Open.timeTravel];
     const showDiffViewer = editor.openMap[Open.diffViewer];
+    const showFocus = editor.openMap[Open.focus];
 
     const showUndoRedo =
       settings.canvasType === CanvasType.ERD &&
@@ -109,6 +110,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
       !showTableProperties &&
       !showDiffViewer &&
       !showTimeTravel &&
+      !showFocus &&
       !props.readonly;
 
     return (

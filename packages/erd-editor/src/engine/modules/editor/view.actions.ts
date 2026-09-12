@@ -3,6 +3,7 @@ import { createAction } from '@dineug/r-html';
 import { clamp } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
+import { Open } from '@/constants/open';
 import { RootState } from '@/engine/state';
 import { clearSortChannel } from '@/utils/draw-relationship';
 import { zoomLevelInRange } from '@/utils/validation';
@@ -35,10 +36,20 @@ function clearViewGeometry({ collections }: RootState, kind: ViewKind): void {
 const getAimedView = (state: RootState, kind?: ViewKind): SceneView | null =>
   kind ? state.editor.views[kind] : getActiveView(state);
 
+/**
+ * Keeps the overlay flag the gates read true exactly while a Focus view is
+ * up. Written here alone, beside every write of the slot, so a document
+ * replaced under the overlay cannot leave the flag standing over a view that is gone.
+ */
+function syncFocusOpen(editor: Editor): void {
+  editor.openMap[Open.focus] = editor.views.focus !== null;
+}
+
 /** Drops both views, which is what any replacement of the document owes them. */
-export function clearViews({ views }: Editor): void {
-  views.flow = null;
-  views.focus = null;
+export function clearViews(editor: Editor): void {
+  editor.views.flow = null;
+  editor.views.focus = null;
+  syncFocusOpen(editor);
 }
 
 export const viewOpenAction = createAction<
@@ -51,6 +62,7 @@ const viewOpen: ReducerType<typeof ActionType.viewOpen> = (
 ) => {
   clearViewGeometry(state, kind);
   state.editor.views[kind] = createSceneView(kind, centerIds);
+  kind === ViewKind.focus && syncFocusOpen(state.editor);
 };
 
 export const viewCloseAction = createAction<
@@ -63,6 +75,7 @@ const viewClose: ReducerType<typeof ActionType.viewClose> = (
 ) => {
   clearViewGeometry(state, kind);
   state.editor.views[kind] = null;
+  kind === ViewKind.focus && syncFocusOpen(state.editor);
 };
 
 export const viewScrollToAction = createAction<

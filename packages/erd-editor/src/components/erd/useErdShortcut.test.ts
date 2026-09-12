@@ -21,6 +21,8 @@ import {
   editTableAction,
   focusColumnAction,
   focusTableAction,
+  selectAllAction,
+  unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
@@ -278,6 +280,56 @@ describe('useErdShortcut - table properties', () => {
     expect(
       app.store.state.editor.openMap[Open.tableProperties]
     ).toBeUndefined();
+  });
+});
+
+describe('useErdShortcut - focus view', () => {
+  it('opens the Focus view on the one selected table (AC-36)', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+
+    shortcut(app, KeyBindingName.focusView);
+    await flush();
+
+    expect(app.store.state.editor.views.focus?.centerIds).toEqual([tableId]);
+    expect(app.store.state.editor.openMap[Open.focus]).toBe(true);
+  });
+
+  it('does nothing when nothing is selected (AC-36)', async () => {
+    const app = await setup();
+    seedTable(app);
+    app.store.dispatchSync(unselectAllAction());
+
+    shortcut(app, KeyBindingName.focusView);
+    await flush();
+
+    expect(app.store.state.editor.views.focus).toBeNull();
+    expect(app.store.state.editor.openMap[Open.focus]).toBeFalsy();
+  });
+
+  it('carries every selected table in as a center (AC-38)', async () => {
+    const app = await setup();
+    const ids = [seedTable(app), seedTable(app), seedTable(app)];
+    app.store.dispatchSync(selectAllAction());
+
+    shortcut(app, KeyBindingName.focusView);
+    await flush();
+
+    const centerIds = app.store.state.editor.views.focus?.centerIds ?? [];
+    expect([...centerIds].sort()).toEqual([...ids].sort());
+  });
+
+  it('leaves a memo out of the centers it was handed (AC-38)', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    shortcut(app, KeyBindingName.addMemo);
+    await flush();
+    app.store.dispatchSync(selectAllAction());
+
+    shortcut(app, KeyBindingName.focusView);
+    await flush();
+
+    expect(app.store.state.editor.views.focus?.centerIds).toEqual([tableId]);
   });
 });
 
@@ -1166,6 +1218,7 @@ const BLOCKED_SHORTCUTS = [
   KeyBindingName.relationshipOneOnly,
   KeyBindingName.relationshipOneN,
   KeyBindingName.tableProperties,
+  KeyBindingName.focusView,
   KeyBindingName.zoomIn,
   KeyBindingName.zoomOut,
   KeyBindingName.zoomReset,
@@ -1203,6 +1256,8 @@ const snapshot = (app: AppContext) => {
       column.options,
     ]),
     selectedMap: { ...editor.selectedMap },
+    views: { ...editor.views },
+    openMap: { ...editor.openMap },
     editMemoId: editor.editMemoId,
     drawRelationship: editor.drawRelationship,
     zoomLevel: settings.zoomLevel,

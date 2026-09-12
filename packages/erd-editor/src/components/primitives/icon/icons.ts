@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   ArrowRight,
   Atom,
   Braces,
@@ -57,6 +58,7 @@ export type IconNodeChild = IconNode[number];
 // lucide's own kebab names, disjoint from the PascalCase notation ones, which
 // is what lets one flat namespace serve both.
 const LUCIDE_ICON = {
+  'arrow-left': ArrowLeft,
   'arrow-right': ArrowRight,
   atom: Atom,
   braces: Braces,

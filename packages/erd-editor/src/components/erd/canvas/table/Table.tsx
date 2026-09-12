@@ -18,6 +18,7 @@ import {
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
+  type ScenePointerEvent,
   setSceneCursor,
   TABLE_CORNER_RADIUS,
   TABLE_INSET,
@@ -78,6 +79,7 @@ import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 import { useFocusTable } from './useFocusTable';
+import { useFocusWalk } from './useFocusWalk';
 import { useMoveTable } from './useMoveTable';
 import { useSharedFocusTable } from './useSharedFocusTable';
 
@@ -120,6 +122,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   );
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
   const { onMoveStart } = useMoveTable(ctx, props, sourceRef);
+  const walk = useFocusWalk(app, props, sourceRef);
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     hover: false,
@@ -188,6 +191,12 @@ const Table: FC<TableProps> = (props, ctx) => {
     return props.editorFocused === false
       ? theme.placeholder
       : theme.tableSelect;
+  };
+
+  /** The press a table takes: its drag, and in a view scene the start of a click that focuses it. */
+  const handlePress = (event: ScenePointerEvent) => {
+    onMoveStart(event);
+    walk.onPress(event);
   };
 
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
@@ -466,8 +475,8 @@ const Table: FC<TableProps> = (props, ctx) => {
         sharedSelect={sharedSelected}
         x={rect.x}
         y={rect.y}
-        on:mousedown={onMoveStart}
-        on:touchstart={onMoveStart}
+        on:mousedown={handlePress}
+        on:touchstart={handlePress}
         on:mouseenter={handleMouseenter}
         on:mouseleave={handleMouseleave}
       >

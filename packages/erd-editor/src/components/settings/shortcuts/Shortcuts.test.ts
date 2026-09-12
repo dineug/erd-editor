@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
 import * as styles from '@/components/settings/shortcuts/Shortcuts.styles';
+import { KeyBindingNameList } from '@/utils/keyboard-shortcut';
 
 let mounted: Mounted | null = null;
 
@@ -31,6 +32,7 @@ const EXPECTED_COMMANDS = [
   'Relationship One Only',
   'Relationship One N',
   'Table Properties',
+  'Focus View',
   'Zoom In',
   'Zoom Out',
   'Zoom Reset',
@@ -72,6 +74,7 @@ describe('Shortcuts', () => {
   it('lists every keyBindingMap command in a fixed order', async () => {
     await setup();
 
+    expect(EXPECTED_COMMANDS).toHaveLength(KeyBindingNameList.length);
     expect(rows()).toHaveLength(EXPECTED_COMMANDS.length);
     expect(
       rows().map(row => row.querySelector('td')?.textContent?.trim())

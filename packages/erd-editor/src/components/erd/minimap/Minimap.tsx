@@ -161,7 +161,10 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
     // over its boundary colour rather than under it.
     return (
       <>
-        <div class={styles.border} style={borderStyleMap()}></div>
+        <div
+          class={['minimap-border', styles.border]}
+          style={borderStyleMap()}
+        ></div>
         <div
           class={['minimap', styles.minimap]}
           style={styleMap(layout)}

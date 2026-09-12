@@ -383,6 +383,7 @@ describe('ErdContextMenu / table type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'Primary KeyAlt + K',
       'Table PropertiesAlt + Space',
+      'Focus on this tableAlt + F',
       'Color',
     ]);
   });
@@ -430,6 +431,18 @@ describe('ErdContextMenu / table type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('opens the Focus view on the table the menu was raised over (AC-37)', async () => {
+    seedTable();
+    await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+    await click(findItem(rootItems(), 'Focus on this table'));
+    await flush();
+
+    expect(app.store.state.editor.views.focus?.centerIds).toEqual([TABLE_ID]);
+    expect(app.store.state.editor.openMap[Open.focus]).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('opens the color picker at the pointer position', async () => {
     seedTable();
     const openColorPicker = vi.fn();
@@ -470,6 +483,7 @@ describe('ErdContextMenu / table type', () => {
 
     expect(openColorPicker).not.toHaveBeenCalled();
     expect(openTableProperties).not.toHaveBeenCalled();
+    expect(app.store.state.editor.views.focus).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
   });
 });

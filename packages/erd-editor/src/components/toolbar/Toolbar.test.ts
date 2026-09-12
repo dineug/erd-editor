@@ -394,6 +394,7 @@ describe('Toolbar', () => {
       Open.tableProperties,
       Open.diffViewer,
       Open.timeTravel,
+      Open.focus,
     ]) {
       it(`hides the group while ${open} is open`, async () => {
         const { app } = await setup();

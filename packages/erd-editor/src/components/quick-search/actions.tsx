@@ -15,6 +15,9 @@ import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-contex
 import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
+import { ViewKind } from '@/engine/modules/editor/state';
+import { isViewShown } from '@/engine/modules/editor/view';
+import { openFocusViewAction$ } from '@/engine/modules/editor/view.generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeBracketTypeAction,
@@ -297,8 +300,13 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     ...createTableActions(app),
+    ...createFocusActions(app),
   ];
 }
+
+/** The name a table wears in this list, which a blank one wears as unnamed. */
+const labelOf = (table: { name: string }) =>
+  isEmpty(table.name.trim()) ? 'unnamed' : table.name;
 
 function createTableActions({ store }: AppContext): Action[] {
   const {
@@ -313,7 +321,7 @@ function createTableActions({ store }: AppContext): Action[] {
     .selectByIds(tableIds)
     .sort(orderByNameASC)
     .map<Action>(table => ({
-      name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
+      name: labelOf(table),
       keywords: 'Table',
       perform: ({ store }) => {
         // The zoom is the active view's while one is open, since the scroll
@@ -329,6 +337,35 @@ function createTableActions({ store }: AppContext): Action[] {
           scrollToAction({ originX: x, originY: y }),
           selectTableAction$(table.id, false)
         );
+      },
+    }));
+}
+
+/**
+ * One entry per table that opens the Focus view on it, offered from the ERD
+ * tab and from a Flow the reader is standing in. Asked for a table the open
+ * view already stands on it stands, and for another it walks there.
+ */
+function createFocusActions({ store }: AppContext): Action[] {
+  const {
+    settings,
+    doc: { tableIds },
+    collections,
+  } = store.state;
+  const stands =
+    settings.canvasType === CanvasType.ERD ||
+    isViewShown(store.state, ViewKind.flow);
+  if (!stands) return [];
+
+  return query(collections)
+    .collection('tableEntities')
+    .selectByIds(tableIds)
+    .sort(orderByNameASC)
+    .map<Action>(table => ({
+      name: `Focus on ${labelOf(table)}`,
+      keywords: 'Focus',
+      perform: ({ store }) => {
+        store.dispatch(openFocusViewAction$([table.id]));
       },
     }));
 }

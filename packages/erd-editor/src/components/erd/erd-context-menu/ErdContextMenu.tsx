@@ -8,6 +8,7 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import { openFocusViewAction$ } from '@/engine/modules/editor/view.generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -101,6 +102,14 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  const handleOpenFocusView = () => {
+    if (!props.tableId) return;
+
+    const { store } = app.value;
+    store.dispatch(openFocusViewAction$([props.tableId]));
+    props.onClose();
+  };
+
   const handleOpenColorPicker = (event: MouseEvent) => {
     if (!props.tableId) return;
 
@@ -161,6 +170,18 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                       <Kbd
                         shortcut={keyBindingMap.tableProperties[0]?.shortcut}
                       />
+                    }
+                  />
+                }
+              />
+              <ContextMenu.Item
+                onClick={handleOpenFocusView}
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="waypoints" size={14} />}
+                    name="Focus on this table"
+                    right={
+                      <Kbd shortcut={keyBindingMap.focusView[0]?.shortcut} />
                     }
                   />
                 }

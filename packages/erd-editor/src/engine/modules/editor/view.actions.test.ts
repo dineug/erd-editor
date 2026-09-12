@@ -1,6 +1,7 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
+import { Open } from '@/constants/open';
 import {
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
@@ -149,6 +150,24 @@ describe('editor.viewOpen / viewClose', () => {
     store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
 
     expect(store.state.editor.views).toEqual({ flow: null, focus: null });
+  });
+
+  // AC-43: the gates the overlay closes on the ERD read this flag, so it is
+  // written where the slot is, never apart from it.
+  it('raises the overlay flag with the Focus slot and lowers it with it, and a Flow view touches it not at all', () => {
+    const flagOf = () => store.state.editor.openMap[Open.focus];
+
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+    expect(flagOf()).toBeUndefined();
+
+    openFocus();
+    expect(flagOf()).toBe(true);
+
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
+    expect(flagOf()).toBe(true);
+
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.focus }));
+    expect(flagOf()).toBe(false);
   });
 });
 
@@ -533,10 +552,15 @@ describe('replacing the document', () => {
     openFocus(['t1']);
     expect(getActiveView(store.state)).not.toBeNull();
 
+    expect(store.state.editor.openMap[Open.focus]).toBe(true);
+
     store.dispatchSync(replace());
 
     expect(store.state.editor.views).toEqual({ flow: null, focus: null });
     expect(getActiveView(store.state)).toBeNull();
+    // The overlay is drawn off the slot and the ERD gates read the flag, so
+    // a flag left standing here would keep the ERD inert with no overlay in sight.
+    expect(store.state.editor.openMap[Open.focus]).toBe(false);
   });
 
   it("keeps the visualization mode, which is the session's and not the document's", () => {
@@ -555,5 +579,6 @@ describe('replacing the document', () => {
     clearViews(editor);
 
     expect(editor.views).toEqual({ flow: null, focus: null });
+    expect(editor.openMap[Open.focus]).toBe(false);
   });
 });

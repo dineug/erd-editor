@@ -87,6 +87,7 @@ import {
   isTableFocusType,
 } from './utils/focus';
 import { viewMoveTableAction } from './view.actions';
+import { viewActions$ } from './view.generator.actions';
 
 type SelectTypeIds = {
   tableIds: string[];
@@ -777,4 +778,5 @@ export const actions$ = {
   dragoverColumnAction$,
   columnKeyHoverStartAction$,
   columnKeyHoverEndAction$,
+  ...viewActions$,
 };

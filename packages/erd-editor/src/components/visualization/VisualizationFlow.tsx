@@ -11,7 +11,6 @@ import { useAppContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import * as styles from '@/components/erd/Erd.styles';
-import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
@@ -21,30 +20,10 @@ import {
   placeFlowView,
   restoreFlowLayout,
 } from '@/components/visualization/flowLayout';
-import { wheelZoomFactor } from '@/components/visualization/visualizationView';
-import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
+import { useViewGestures } from '@/components/visualization/useViewGestures';
 import { ViewKind } from '@/engine/modules/editor/state';
-import {
-  viewChangeZoomLevelAction,
-  viewScrollToAction,
-} from '@/engine/modules/editor/view.actions';
-import { sceneStreamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
-import {
-  getOriginToPlace,
-  getSceneTransform,
-  toScenePoint,
-} from '@/konva/scene/viewport';
-import {
-  editorRootOf,
-  isMouseEvent,
-  suppressSelection,
-} from '@/utils/domEvent';
-import { dragSelectStartAction } from '@/utils/emitter';
-import { drag$, DragMove } from '@/utils/globalEventObservable';
-import { isMod } from '@/utils/keyboard-shortcut';
-import { zoomLevelInRange } from '@/utils/validation';
 
 /** The Flow scene reads the flow slot, whichever view is active over it. */
 const SOURCE = ViewKind.flow;
@@ -94,78 +73,11 @@ const VisualizationFlow: FC<VisualizationFlowProps> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
 
-  const handleWheel = (event: WheelEvent) => {
-    event.preventDefault();
-
-    const { store } = app.value;
-    if (!store.state.editor.views.flow) return;
-
-    const rect = root.value.getBoundingClientRect();
-    const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    const transform = getSceneTransform(store.state, SOURCE);
-    const anchor = toScenePoint(transform, point);
-    const value = zoomLevelInRange(
-      transform.zoomLevel * wheelZoomFactor(event.deltaY, event.deltaMode)
-    );
-    const origin = getOriginToPlace(value, anchor, point);
-
-    store.dispatch(
-      viewChangeZoomLevelAction({ value, kind: SOURCE }),
-      viewScrollToAction({ originX: origin.x, originY: origin.y, kind: SOURCE })
-    );
-  };
-
-  const handleMove = ({ event, movementX, movementY }: DragMove) => {
-    event.type === 'mousemove' && event.preventDefault();
-    if (movementX === 0 && movementY === 0) return;
-
-    const { store } = app.value;
-    store.dispatch(sceneStreamScrollToAction(SOURCE, { movementX, movementY }));
-  };
-
-  /**
-   * A press on the background pans, or with the modifier opens the marquee of
-   * this scene; a press on a table is that table's own drag. The aids over the
-   * scene take their own presses, so none of them starts a pan.
-   */
-  const handleMousedown = (event: MouseEvent | TouchEvent) => {
-    const el = event.target as HTMLElement | null;
-    if (!el) return;
-
-    const onAid = Boolean(
-      el.closest('.minimap') ||
-      el.closest('.minimap-viewport') ||
-      el.closest('.virtual-scroll') ||
-      el.closest('.content-compass')
-    );
-    if (onAid) return;
-
-    const hit = sceneHit(canvas.value, event);
-    if (hit?.kind === 'table') return;
-
-    const { store, emitter } = app.value;
-    store.dispatch(unselectAllAction$());
-
-    if (isMouseEvent(event) && isMod(event)) {
-      event.preventDefault();
-      const { x, y } = root.value.getBoundingClientRect();
-      emitter.emit(
-        dragSelectStartAction({
-          x: event.clientX - x,
-          y: event.clientY - y,
-          source: SOURCE,
-        })
-      );
-      return;
-    }
-
-    // Before the first move: the selection a press starts is already there by
-    // the time a mousemove could preventDefault it, and the native drag it
-    // turns into is what eats the mouseup this ends on.
-    const restoreSelection = suppressSelection(editorRootOf(root.value));
-
-    drag$.subscribe({ next: handleMove }).add(restoreSelection);
-  };
+  const { handleWheel, handleMousedown } = useViewGestures(ctx, {
+    root,
+    canvas,
+    source: SOURCE,
+  });
 
   onMounted(() => {
     const { store } = app.value;

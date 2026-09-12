@@ -28,10 +28,23 @@ describe('keyboard-shortcut', () => {
       }
     });
 
-    it('lists all 23 binding names', () => {
-      expect(KeyBindingNameList).toHaveLength(23);
+    it('lists all 24 binding names', () => {
+      expect(KeyBindingNameList).toHaveLength(24);
       expect(KeyBindingNameList).toEqual(Object.values(KeyBindingName));
       expect(KeyBindingNameList).toContain('zenMode');
+      expect(KeyBindingNameList).toContain('focusView');
+    });
+
+    it('gives the Focus view a chord no other binding claims', () => {
+      const map = createKeyBindingMap();
+      const shortcuts = KeyBindingNameList.filter(
+        name => name !== KeyBindingName.focusView
+      ).flatMap(name => map[name].map(option => option.shortcut));
+
+      expect(map[KeyBindingName.focusView]).toEqual([
+        { shortcut: 'Alt+KeyF', preventDefault: true },
+      ]);
+      expect(shortcuts).not.toContain('Alt+KeyF');
     });
   });
 

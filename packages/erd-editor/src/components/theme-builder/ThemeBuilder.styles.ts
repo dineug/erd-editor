@@ -2,10 +2,15 @@ import { css } from '@dineug/r-html';
 
 import { fontSize5, typography } from '@/styles/typography.styles';
 
+/**
+ * A root sibling after the Focus overlay, raised the same step the overlay
+ * is, so its place in the root keeps it painting over the overlay rather than under it.
+ */
 export const root = css`
   position: absolute;
   top: 46px;
   left: 16px;
+  z-index: 1;
   padding: 24px;
   background-color: var(--context-menu-background);
   border: 1px solid var(--context-menu-border);

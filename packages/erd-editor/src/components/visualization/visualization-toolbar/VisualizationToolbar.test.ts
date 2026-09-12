@@ -8,7 +8,6 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { PREVIEW_ZOOM_MAX } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import * as styles from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import VisualizationToolbar from '@/components/visualization/visualization-toolbar/VisualizationToolbar';
 import { CANVAS_ZOOM_MAX } from '@/constants/schema';
@@ -21,6 +20,7 @@ import {
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { PREVIEW_ZOOM_MAX } from '@/konva/scene/fitZoom';
 
 const hoisted = vi.hoisted(() => ({ requests: 0 }));
 

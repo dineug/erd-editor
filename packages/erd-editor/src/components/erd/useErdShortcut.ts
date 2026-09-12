@@ -28,6 +28,7 @@ import {
   MoveKey,
   SelectType,
 } from '@/engine/modules/editor/state';
+import { openFocusViewAction$ } from '@/engine/modules/editor/view.generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeZoomLevelAction$,
@@ -80,7 +81,10 @@ const isRelationshipKeyBindingName = arrayHas<string>([
 ]);
 
 /** The zoom a document opens at, and the one the reset chord puts it back to. */
-const ZOOM_RESET = 1;
+export const ZOOM_RESET = 1;
+
+/** How far one zoom chord steps the zoom, in or out. */
+export const ZOOM_STEP = 0.04;
 
 const keyBindingNameToRelationshipType: Record<string, number> = {
   [KeyBindingName.relationshipZeroOne]: RelationshipType.ZeroOne,
@@ -190,15 +194,23 @@ export function useErdShortcut(ctx: Ctx) {
         }
       }
 
+      if (type === KeyBindingName.focusView) {
+        const tableIds = Object.entries(editor.selectedMap)
+          .filter(([, selectType]) => selectType === SelectType.table)
+          .map(([id]) => id);
+
+        store.dispatch(openFocusViewAction$(tableIds));
+      }
+
       type === KeyBindingName.handTool &&
         store.dispatch(changeHandToolAction({ value: !editor.handTool }));
       type === KeyBindingName.zenMode &&
         store.dispatch(changeZenModeAction({ value: !editor.zenMode }));
 
       type === KeyBindingName.zoomIn &&
-        store.dispatch(streamZoomLevelAction$(0.04));
+        store.dispatch(streamZoomLevelAction$(ZOOM_STEP));
       type === KeyBindingName.zoomOut &&
-        store.dispatch(streamZoomLevelAction$(-0.04));
+        store.dispatch(streamZoomLevelAction$(-ZOOM_STEP));
       // Absolute rather than a run of steps, so it holds the middle of the
       // screen the way the toolbar's own zoom does.
       type === KeyBindingName.zoomReset &&
