@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   FOCUS_BORDER_HEIGHT,
   getSceneFontMetrics,
+  TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
@@ -12,14 +13,23 @@ import {
   getCellTextBaseline,
   getCellTextHeight,
   getColumnCellSlots,
+  getColumnTextY,
+  getColumnUnderlineY,
   getHeaderCellSlots,
+  getHeaderCellsY,
   getWidthComment,
 } from '@/components/erd/canvas/table/cellLayout';
 import {
+  COLUMN_HEIGHT,
   COLUMN_NOT_NULL_WIDTH,
+  COLUMN_PADDING,
   COLUMN_UNIQUE_WIDTH,
+  HEADER_ICON_HEIGHT,
   INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
+  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_PADDING,
 } from '@/constants/layout';
 import { ColumnType, Show } from '@/constants/schema';
 import { createEditor, FocusType } from '@/engine/modules/editor/state';
@@ -244,6 +254,46 @@ describe('the boxes a view lays out', () => {
       { focusType: FocusType.tableName, x: 0, width: 60 },
     ]);
     expect(getHeaderCellSlots(state, entity, 'document')).toHaveLength(2);
+  });
+});
+
+/** AC-13, AC-14, AC-15. Every offset a cell is laid out at answers for the source it is asked about. */
+describe('the offsets a source lays its cells out at', () => {
+  it('hangs the header cells under the icon band only in the document', () => {
+    expect(getHeaderCellsY()).toBe(getHeaderCellsY('document'));
+    expect(getHeaderCellsY('document')).toBe(
+      TABLE_INSET + HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM
+    );
+    expect(getHeaderCellsY('flow')).toBe(TABLE_INSET);
+    expect(getHeaderCellsY('flow')).toBeLessThan(getHeaderCellsY('document'));
+  });
+
+  it('takes the row padding from the source that lays the row out', () => {
+    expect(getColumnTextY()).toBe(COLUMN_PADDING);
+    expect(getColumnTextY('flow')).toBe(VIEW_COLUMN_PADDING);
+  });
+
+  it('runs the row underline along the foot of that row own line box', () => {
+    expect(getColumnUnderlineY()).toBe(CELL_UNDERLINE_Y);
+    expect(getColumnUnderlineY('document')).toBe(
+      COLUMN_HEIGHT - COLUMN_PADDING * 2 - FOCUS_BORDER_HEIGHT
+    );
+    expect(getColumnUnderlineY('flow')).toBe(
+      VIEW_COLUMN_HEIGHT - VIEW_COLUMN_PADDING * 2 - FOCUS_BORDER_HEIGHT
+    );
+    expect(getColumnUnderlineY('flow')).toBeLessThan(getColumnUnderlineY());
+  });
+
+  it('leaves the underline and its border inside the row either way', () => {
+    for (const source of ['document', 'flow'] as const) {
+      const row = source === 'document' ? COLUMN_HEIGHT : VIEW_COLUMN_HEIGHT;
+
+      expect(
+        getColumnTextY(source) +
+          getColumnUnderlineY(source) +
+          FOCUS_BORDER_HEIGHT
+      ).toBeLessThanOrEqual(row);
+    }
   });
 });
 

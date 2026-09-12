@@ -14,6 +14,7 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_ICON_MARGIN_BOTTOM,
   TABLE_HEADER_PADDING,
+  VIEW_COLUMN_PADDING,
 } from '@/constants/layout';
 import { ColumnType, Show } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
@@ -21,7 +22,7 @@ import type { RootState } from '@/engine/state';
 import type { Table } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
-import type { ColumnWidth } from '@/utils/calcTable';
+import { type ColumnWidth, tableRowHeight } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** The four widths a column row measures from its table; the rest are fixed. */
@@ -43,15 +44,45 @@ export type ColumnCellSlot = CellSlot & {
 
 /** Where the header cell row starts inside a table group. */
 export const HEADER_CELLS_X = TABLE_INSET;
-export const HEADER_CELLS_Y =
-  TABLE_INSET + HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM;
 
-/** The text line inside a header cell and inside a column cell. */
+/**
+ * How far down a table group the header cells start. The document keeps the
+ * icon band above them; a view draws no icon there, so its cells begin at the
+ * inset itself.
+ */
+export function getHeaderCellsY(source: GeometrySource = 'document'): number {
+  return source === 'document'
+    ? TABLE_INSET + HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM
+    : TABLE_INSET;
+}
+
+/**
+ * The text line inside a header cell. One value for both sources: a view header
+ * is exactly the padded name box the document header ends with, which is what
+ * VIEW_TABLE_HEADER_HEIGHT says.
+ */
 export const HEADER_TEXT_Y = TABLE_HEADER_PADDING;
-export const COLUMN_TEXT_Y = COLUMN_PADDING;
 
-/** Where the scene runs its focus rect inside a cell, header and column both. */
+/** The text line inside a column cell, at the padding its own source lays rows out with. */
+export function getColumnTextY(source: GeometrySource = 'document'): number {
+  return source === 'document' ? COLUMN_PADDING : VIEW_COLUMN_PADDING;
+}
+
+/** Where the scene runs its focus rect inside a header cell. */
 export const CELL_UNDERLINE_Y = INPUT_HEIGHT - FOCUS_BORDER_HEIGHT;
+
+/**
+ * The same rect inside a column cell, along the foot of the line box the row
+ * leaves between its two paddings. The document row leaves the header's box, a
+ * view row a shorter one.
+ */
+export function getColumnUnderlineY(
+  source: GeometrySource = 'document'
+): number {
+  return (
+    tableRowHeight(source) - getColumnTextY(source) * 2 - FOCUS_BORDER_HEIGHT
+  );
+}
 
 /**
  * The paint that focus rect takes, header and column both: the input colour

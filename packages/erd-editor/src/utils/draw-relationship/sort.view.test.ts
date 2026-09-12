@@ -307,7 +307,7 @@ describe('relationshipSort for a view', () => {
     );
     for (const { y } of getRoute(ab, 'flow') ?? []) expect(y).toBe(a.right.y);
     for (const { x } of getRoute(ac, 'flow') ?? []) expect(x).toBe(a.bottom.x);
-    expect(getRoute(ab, 'flow')?.[0].y).toBe(-3_000 + 28);
+    expect(getRoute(ab, 'flow')?.[0].y).toBe(-3_000 + 21);
   });
 
   it('routes only the connectors between two tables the view shows', () => {
@@ -346,14 +346,14 @@ describe('relationshipSort for a view', () => {
       state.collections.tableEntities.A,
       'flow'
     );
-    expect(a.height).toBe(56);
+    expect(a.height).toBe(42);
     expect(getAnchors(ab, 'flow').start).toMatchObject({
       x: 5_000 + a.width,
-      y: -3_000 + 28,
+      y: -3_000 + 21,
     });
     expect(getAnchors(ac, 'flow').start).toMatchObject({
       x: 5_000 + a.width / 2,
-      y: -3_000 + 56,
+      y: -3_000 + 42,
     });
     expect(getAnchors(ac, 'flow').end).toMatchObject({
       x: 5_000 + a.width / 2,

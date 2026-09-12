@@ -23,12 +23,12 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
-  CELL_UNDERLINE_Y,
-  COLUMN_TEXT_Y,
   type ColumnCellSlot,
   focusBorderFill,
   getCellTextHeight,
   getColumnCellSlots,
+  getColumnTextY,
+  getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { useThemeContext } from '@/components/themeContext';
@@ -62,6 +62,7 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
+import { tableRowHeight } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -307,7 +308,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     >
       <k-text
         name="cell-text"
-        y={COLUMN_TEXT_Y}
+        y={getColumnTextY(props.source)}
         width={width}
         height={getCellTextHeight()}
         text={text}
@@ -318,12 +319,12 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         wrap="none"
         ellipsis={ellipsis}
         visible={!edit}
-        hitFunc={columnCellHit}
+        hitFunc={columnCellHit[props.source]}
       />
       {focus ? (
         <k-rect
           name="cell-focus-border"
-          y={COLUMN_TEXT_Y + CELL_UNDERLINE_Y}
+          y={getColumnTextY(props.source) + getColumnUnderlineY(props.source)}
           width={width}
           height={FOCUS_BORDER_HEIGHT}
           fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
@@ -333,7 +334,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       {sharedFocus ? (
         <k-rect
           name="cell-shared-focus-border"
-          y={COLUMN_HEIGHT - FOCUS_BORDER_HEIGHT}
+          y={tableRowHeight(props.source) - FOCUS_BORDER_HEIGHT}
           width={width + INPUT_MARGIN_RIGHT}
           height={FOCUS_BORDER_HEIGHT}
           fill={sharedFocus}
@@ -475,6 +476,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     const dragging = Boolean(editor.draggingColumnMap[column.id]);
     const contentWidth = width - TABLE_INSET * 2;
     const background = rowBackground(theme, selected, hover);
+    const rowHeight = tableRowHeight(props.source);
 
     return (
       <k-group
@@ -494,7 +496,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           name="column-row-background"
           x={TABLE_BORDER}
           width={width - TABLE_BORDER * 2}
-          height={COLUMN_HEIGHT}
+          height={rowHeight}
           fill={background}
         />
         {sceneIcon({
@@ -504,7 +506,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           size: COLUMN_KEY_WIDTH,
           color: keyFill(column.ui.keys, theme),
           x: TABLE_INSET,
-          y: (COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
+          y: (rowHeight - COLUMN_KEY_WIDTH) / 2,
           mouseenter: handleKeyMouseenter,
           mouseleave: handleKeyMouseleave,
         })}

@@ -3,17 +3,9 @@ import type { Ref } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import { sceneHit } from '@/components/erd/hitTest';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
-import {
-  viewChangeZoomLevelAction,
-  viewScrollToAction,
-} from '@/engine/modules/editor/view.actions';
 import { sceneStreamScrollToAction } from '@/engine/modules/settings/atom.actions';
+import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { Ctx } from '@/internal-types';
-import {
-  getOriginToPlace,
-  getSceneTransform,
-  toScenePoint,
-} from '@/konva/scene/viewport';
 import {
   editorRootOf,
   isMouseEvent,
@@ -23,9 +15,6 @@ import type { ViewSource } from '@/utils/draw-relationship/geometrySource';
 import { dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
-import { zoomLevelInRange } from '@/utils/validation';
-
-import { wheelZoomFactor } from './visualizationView';
 
 export type ViewGestureOptions = {
   /** The box the scene hangs in, which a press and a wheel are measured against. */
@@ -36,17 +25,12 @@ export type ViewGestureOptions = {
   source: ViewSource;
 };
 
-/** The aids drawn over a view scene, each of which takes its own presses. */
-const AID_SELECTORS = [
-  '.minimap',
-  '.minimap-viewport',
-  '.virtual-scroll',
-  '.content-compass',
-];
+/** How far one wheel notch carrying the modifier zooms, the step the ERD tab takes. */
+const WHEEL_ZOOM_STEP = 0.03;
 
 /**
- * The gestures a view scene takes on its box, one set for Flow and Focus: the
- * wheel zooms about the pointer, a press on the background pans, and with the
+ * The gestures a view scene takes on its box: the wheel moves the screen and
+ * with the modifier zooms it, a press on the background pans, and with the
  * modifier it opens the marquee of this scene. Every one lands in the view named.
  *
  * @example
@@ -58,24 +42,38 @@ export function useViewGestures(
 ) {
   const app = useAppContext(ctx);
 
+  /**
+   * The wheel the ERD tab reads, in the view named: it moves the screen, the
+   * shift swaps the axis it moves along, and the modifier zooms instead. The
+   * canvas has no end, so nothing here is clamped to one.
+   */
   const handleWheel = (event: WheelEvent) => {
-    event.preventDefault();
-
     const { store } = app.value;
     if (!store.state.editor.views[source]) return;
+    event.preventDefault();
 
-    const rect = root.value.getBoundingClientRect();
-    const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    const transform = getSceneTransform(store.state, source);
-    const anchor = toScenePoint(transform, point);
-    const value = zoomLevelInRange(
-      transform.zoomLevel * wheelZoomFactor(event.deltaY, event.deltaMode)
-    );
-    const origin = getOriginToPlace(value, anchor, point);
+    const $mod = isMod(event);
+    const isReverse =
+      event.shiftKey && event.deltaX === 0 && event.deltaY !== 0;
 
     store.dispatch(
-      viewChangeZoomLevelAction({ value, kind: source }),
-      viewScrollToAction({ originX: origin.x, originY: origin.y, kind: source })
+      $mod
+        ? streamZoomLevelAction$(
+            event.deltaY < 0 ? WHEEL_ZOOM_STEP : -WHEEL_ZOOM_STEP,
+            source
+          )
+        : sceneStreamScrollToAction(
+            source,
+            isReverse
+              ? {
+                  movementX: event.deltaY * -1,
+                  movementY: event.deltaX * -1,
+                }
+              : {
+                  movementX: event.deltaX * -1,
+                  movementY: event.deltaY * -1,
+                }
+          )
     );
   };
 
@@ -89,13 +87,12 @@ export function useViewGestures(
 
   /**
    * A press on the background pans, or with the modifier opens the marquee of
-   * this scene; a press on a table is that table's own drag. The aids over the
-   * scene take their own presses, so none of them starts a pan.
+   * this scene; a press on a table is that table's own drag. Nothing else is
+   * drawn over this scene, and the bar under the tab is its sibling rather than its child.
    */
   const handleMousedown = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
-    if (AID_SELECTORS.some(selector => el.closest(selector))) return;
 
     const hit = sceneHit(canvas.value, event);
     if (hit?.kind === 'table') return;

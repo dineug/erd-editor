@@ -7,10 +7,13 @@ import {
   type VisualizationNode,
 } from '@/components/visualization/createVisualization';
 import {
+  centerGraphView,
   COLUMN_RADIUS,
   createView,
   createVisualizationState,
   DIM_OPACITY,
+  fitGraphView,
+  graphCompass,
   hasName,
   type Highlight,
   highlightOf,
@@ -259,5 +262,151 @@ describe('createVisualizationState', () => {
       previewX: 0,
       previewY: 0,
     });
+  });
+});
+
+/** A dot of the graph at the point given, sized by the group it is in. */
+const node = (
+  id: string,
+  x: number,
+  y: number,
+  group: Group = Group.table
+): VisualizationNode => ({
+  id,
+  group,
+  name: id,
+  tableId: group === Group.table ? null : 't',
+  x,
+  y,
+  fx: null,
+  fy: null,
+});
+
+const VIEWPORT = { width: 800, height: 600 };
+
+describe('fitGraphView', () => {
+  it('centres the stage on a graph with nothing placed yet', () => {
+    expect(fitGraphView([], VIEWPORT)).toEqual(createView(800, 600));
+    expect(fitGraphView([node('a', NaN, NaN)], VIEWPORT)).toEqual(
+      createView(800, 600)
+    );
+  });
+
+  it('gives a stage with no size the view createView gives it', () => {
+    expect(fitGraphView([node('a', 0, 0)], { width: 0, height: 0 })).toEqual(
+      createView(0, 0)
+    );
+  });
+
+  it('holds the middle of the graph over the middle of the stage', () => {
+    const view = fitGraphView(
+      [node('a', -400, -100), node('b', 600, 300)],
+      VIEWPORT
+    );
+    const middle = { x: 100, y: 100 };
+
+    expect(middle.x * view.scale + view.x).toBeCloseTo(400, 6);
+    expect(middle.y * view.scale + view.y).toBeCloseTo(300, 6);
+  });
+
+  it('leaves the whole graph inside the stage, margin and all', () => {
+    const nodes = [node('a', -1_000, -800), node('b', 1_000, 800)];
+    const view = fitGraphView(nodes, VIEWPORT);
+
+    for (const each of nodes) {
+      const at = {
+        x: each.x * view.scale + view.x,
+        y: each.y * view.scale + view.y,
+      };
+      expect(at.x).toBeGreaterThanOrEqual(0);
+      expect(at.x).toBeLessThanOrEqual(VIEWPORT.width);
+      expect(at.y).toBeGreaterThanOrEqual(0);
+      expect(at.y).toBeLessThanOrEqual(VIEWPORT.height);
+    }
+  });
+
+  it('never zooms past the two ends the wheel is held to', () => {
+    const tiny = fitGraphView([node('a', 0, 0), node('b', 1, 0)], VIEWPORT);
+    const huge = fitGraphView(
+      [node('a', -1e6, -1e6), node('b', 1e6, 1e6)],
+      VIEWPORT
+    );
+
+    expect(tiny.scale).toBeLessThanOrEqual(ZOOM_MAX);
+    expect(huge.scale).toBeGreaterThanOrEqual(ZOOM_MIN);
+  });
+
+  it('measures a dot by the circle its group draws, not by its centre', () => {
+    const tables = fitGraphView(
+      [node('a', 0, 0), node('b', 1_000, 0)],
+      VIEWPORT
+    );
+    const columns = fitGraphView(
+      [node('a', 0, 0, Group.column), node('b', 1_000, 0, Group.column)],
+      VIEWPORT
+    );
+
+    // The same two centres span wider as tables than as columns, so the pair
+    // of tables is the one that has to fit at the smaller scale.
+    expect(tables.scale).toBeLessThan(columns.scale);
+    expect(TABLE_RADIUS).toBeGreaterThan(COLUMN_RADIUS);
+  });
+});
+
+describe('centerGraphView', () => {
+  it('puts the scene point given under the middle of the stage, at the scale it stands at', () => {
+    const view = { x: 10, y: 20, scale: 2 };
+    const next = centerGraphView(view, { x: 100, y: 50 }, VIEWPORT);
+
+    expect(next.scale).toBe(2);
+    expect(100 * next.scale + next.x).toBeCloseTo(400, 6);
+    expect(50 * next.scale + next.y).toBeCloseTo(300, 6);
+  });
+});
+
+describe('graphCompass', () => {
+  const centred = createView(VIEWPORT.width, VIEWPORT.height);
+
+  it('reports nothing while a dot is on the stage', () => {
+    expect(graphCompass(centred, [node('a', 0, 0)], VIEWPORT)).toBeNull();
+  });
+
+  it('reports nothing for a graph with no dot placed', () => {
+    expect(graphCompass(centred, [], VIEWPORT)).toBeNull();
+    expect(graphCompass(centred, [node('a', NaN, NaN)], VIEWPORT)).toBeNull();
+  });
+
+  it('reports nothing for a stage with no size', () => {
+    expect(
+      graphCompass(centred, [node('a', 9_000, 0)], { width: 0, height: 0 })
+    ).toBeNull();
+  });
+
+  it('points at the nearest dot off the stage and names its middle', () => {
+    const compass = graphCompass(
+      centred,
+      [node('a', 9_000, 0), node('b', 3_000, 0)],
+      VIEWPORT
+    );
+
+    expect(compass?.angle).toBeCloseTo(0, 6);
+    expect(compass?.target).toEqual({ x: 3_000, y: 0 });
+    expect(compass?.distance).toBeCloseTo(3_000 - TABLE_RADIUS - 400, 6);
+  });
+
+  it('measures the gap in scene units, so a zoomed out stage reaches further', () => {
+    const nodes = [node('a', 3_000, 0)];
+    const near = graphCompass({ ...centred, scale: 0.5 }, nodes, VIEWPORT);
+    const far = graphCompass(centred, nodes, VIEWPORT);
+
+    expect(near!.distance).toBeLessThan(far!.distance);
+  });
+
+  it('holds still under the view a press on it lands', () => {
+    const nodes = [node('a', 3_000, 400)];
+    const compass = graphCompass(centred, nodes, VIEWPORT)!;
+    const next = centerGraphView(centred, compass.target, VIEWPORT);
+
+    expect(graphCompass(next, nodes, VIEWPORT)).toBeNull();
   });
 });

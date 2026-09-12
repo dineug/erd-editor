@@ -16,6 +16,11 @@ import { renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
 
 import { createVisualization, type Visualization } from './createVisualization';
+import {
+  type GraphViewHandle,
+  registerGraphView,
+  unregisterGraphView,
+} from './graphViewHandle';
 import * as styles from './Visualization.styles';
 import { renderVisualizationScene } from './VisualizationScene';
 import {
@@ -65,7 +70,7 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
 
   onMounted(() => {
     const { store } = app.value;
-    const { viewport } = store.state.editor;
+    const { id, viewport } = store.state.editor;
     const $graph = createVisualization(store.state);
     const $stage = new Stage({
       container: canvas.value,
@@ -82,6 +87,21 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     registerStage(STAGE_NAME, $stage);
     renderVisualizationScene($stage, { graph: $graph, state });
 
+    // The bar is this graph's sibling and reaches neither its view nor where
+    // the forces put its dots, so the mount hands both over for as long as it stands.
+    const handle: GraphViewHandle = {
+      state,
+      nodes: () => {
+        // The dots are plain data the forces move in place; the tick is the
+        // observable that says they moved, so a reader of these positions is
+        // redrawn while the layout settles.
+        void state.tick;
+
+        return $graph.nodes;
+      },
+    };
+    registerGraphView(id, handle);
+
     addUnsubscribe(
       watch(viewport).subscribe(() => {
         $stage.size({ width: viewport.width, height: viewport.height });
@@ -89,6 +109,7 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
       () => {
         graph = null;
         stage = null;
+        unregisterGraphView(id, handle);
         $graph.simulation.stop();
         unregisterStage(STAGE_NAME, $stage);
         renderKonva($stage, null);

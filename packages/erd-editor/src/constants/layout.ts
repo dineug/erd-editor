@@ -36,6 +36,26 @@ export const COLUMN_AUTO_INCREMENT_WIDTH = 15;
 export const COLUMN_PADDING = 2;
 export const COLUMN_HEIGHT = INPUT_HEIGHT + COLUMN_PADDING * 2;
 
+/**
+ * The header a view card draws. The same padded name box the document header
+ * ends with, and none of the icon band above it, because a view offers no edit
+ * affordance there.
+ */
+export const VIEW_TABLE_HEADER_HEIGHT = TABLE_HEADER_INPUT_HEIGHT;
+
+/**
+ * The row a view card draws, written down rather than derived from
+ * INPUT_HEIGHT: a view row is a line of read only text, not the editable input
+ * box the document row is sized around.
+ */
+export const VIEW_COLUMN_HEIGHT = 22;
+
+/** The gap above and below the text in a view row. */
+export const VIEW_COLUMN_PADDING = 2;
+
+/** The size of a button in a view card's header. */
+export const VIEW_TABLE_HEADER_BUTTON_SIZE = 12;
+
 export const MEMO_BORDER = 1;
 export const MEMO_PADDING = 8;
 export const MEMO_HEADER_HEIGHT =

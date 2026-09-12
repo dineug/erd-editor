@@ -1,9 +1,4 @@
-import {
-  COLUMN_HEIGHT,
-  TABLE_BORDER,
-  TABLE_HEADER_HEIGHT,
-  TABLE_PADDING,
-} from '@/constants/layout';
+import { TABLE_BORDER, TABLE_PADDING } from '@/constants/layout';
 import { RootState } from '@/engine/state';
 import { Memo, Table } from '@/internal-types';
 import { getTablePoint, getVisibleColumnIds } from '@/konva/scene/viewLayout';
@@ -12,6 +7,8 @@ import {
   calcTableWidths,
   calcViewTableWidths,
   type ColumnWidth,
+  tableHeaderHeight,
+  tableRowHeight,
 } from '@/utils/calcTable';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
@@ -63,8 +60,8 @@ export function getTableWidths(
 
 /**
  * One column row, taken apart from the same sum calcTableHeight adds up: the
- * rows start below the header inside the table's inset, and each is one
- * COLUMN_HEIGHT tall.
+ * rows start below the header inside the table's inset, and each is one row
+ * height tall. Both of those come from the source, as they do in that sum.
  */
 export function getColumnRect(
   state: RootState,
@@ -73,12 +70,13 @@ export function getColumnRect(
   source: GeometrySource = 'document'
 ): Rect {
   const { x, y, width } = getTableRect(state, table, source);
+  const rowHeight = tableRowHeight(source);
 
   return {
     x: x + TABLE_INSET,
-    y: y + TABLE_INSET + TABLE_HEADER_HEIGHT + index * COLUMN_HEIGHT,
+    y: y + TABLE_INSET + tableHeaderHeight(source) + index * rowHeight,
     width: width - TABLE_INSET * 2,
-    height: COLUMN_HEIGHT,
+    height: rowHeight,
   };
 }
 

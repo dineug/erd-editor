@@ -3,6 +3,7 @@ import { onMounted } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import { Open } from '@/constants/open';
 import { RelationshipType } from '@/constants/schema';
+import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
 import {
   changeHandToolAction,
   changeOpenMapAction,
@@ -79,12 +80,6 @@ const isRelationshipKeyBindingName = arrayHas<string>([
   KeyBindingName.relationshipOneOnly,
   KeyBindingName.relationshipOneN,
 ]);
-
-/** The zoom a document opens at, and the one the reset chord puts it back to. */
-export const ZOOM_RESET = 1;
-
-/** How far one zoom chord steps the zoom, in or out. */
-export const ZOOM_STEP = 0.04;
 
 const keyBindingNameToRelationshipType: Record<string, number> = {
   [KeyBindingName.relationshipZeroOne]: RelationshipType.ZeroOne,

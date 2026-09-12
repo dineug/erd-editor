@@ -20,12 +20,20 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
+import { columnCellHit } from '@/components/erd/canvas/sceneHit';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
 } from '@/components/erd/canvas/sceneTokens';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
-import { TABLE_BORDER } from '@/constants/layout';
+import {
+  COLUMN_HEIGHT,
+  COLUMN_KEY_WIDTH,
+  HEADER_ICON_HEIGHT,
+  TABLE_BORDER,
+  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  VIEW_COLUMN_HEIGHT,
+} from '@/constants/layout';
 import { CanvasType, ColumnUIKey, RelationshipType } from '@/constants/schema';
 import {
   changeViewportAction,
@@ -260,7 +268,7 @@ describe('the rows a view draws', () => {
     expect(table.columnIds).toHaveLength(WIDE_COLUMNS.length);
     expect(rowIdsOf(stage, 'd')).toEqual([]);
     expect(bodyOf(stage, 'd').height()).toBe(
-      calcTableHeight(table, 0) - TABLE_BORDER
+      calcTableHeight(table, 0, 'flow') - TABLE_BORDER
     );
   });
 
@@ -276,7 +284,7 @@ describe('the rows a view draws', () => {
       const table = app.store.state.collections.tableEntities[id];
       expect(rowIdsOf(stage, id)).toEqual([]);
       expect(bodyOf(stage, id).height()).toBe(
-        calcTableHeight(table, 0) - TABLE_BORDER
+        calcTableHeight(table, 0, 'flow') - TABLE_BORDER
       );
     }
   });
@@ -370,6 +378,83 @@ describe('the type cell a view lights', () => {
     expect(band.listening()).toBe(false);
     expect(header.find('.table-add-column')).toHaveLength(0);
     expect(header.find('.table-remove')).toHaveLength(0);
+  });
+});
+
+const headerInputsOf = (stage: Stage, id: string) =>
+  tableOf(stage, id).findOne<KonvaNode>('.table-header-inputs') as KonvaNode;
+
+const rowsOf = (stage: Stage, id: string) =>
+  tableOf(stage, id).find<Container>('.column-row');
+
+const rowBackgroundHeights = (stage: Stage, id: string) =>
+  rowsOf(stage, id).map(row =>
+    (row.findOne<KonvaNode>('.column-row-background') as KonvaNode).height()
+  );
+
+const keyBadgeYs = (stage: Stage, id: string) =>
+  rowsOf(stage, id).map(row =>
+    (row.findOne<KonvaNode>('.column-key') as KonvaNode).y()
+  );
+
+/** The pitch the rows are laid on, which is the gap between one row's top and the next. */
+const rowPitches = (stage: Stage, id: string) =>
+  rowsOf(stage, id)
+    .map(row => row.y())
+    .slice(1)
+    .map((y, index) => y - rowsOf(stage, id)[index].y());
+
+/**
+ * AC-15's other half, on the scene rather than in the arithmetic: the source
+ * reaches every place a card is drawn from, so a call site that dropped it
+ * would draw a view card on the document's own header band and row pitch.
+ */
+describe('the source the drawn card is measured by', () => {
+  it('draws a view card on the view header and the view row', async () => {
+    const { stage } = await mountViewScene();
+
+    expect(headerInputsOf(stage, 'b').y()).toBe(0);
+    expect(rowBackgroundHeights(stage, 'b')).toEqual([
+      VIEW_COLUMN_HEIGHT,
+      VIEW_COLUMN_HEIGHT,
+      VIEW_COLUMN_HEIGHT,
+    ]);
+    expect(rowPitches(stage, 'b')).toEqual([
+      VIEW_COLUMN_HEIGHT,
+      VIEW_COLUMN_HEIGHT,
+    ]);
+    expect(keyBadgeYs(stage, 'b')).toEqual([
+      (VIEW_COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
+      (VIEW_COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
+      (VIEW_COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
+    ]);
+  });
+
+  it('draws a document card under its icon band, on the document row', async () => {
+    const { stage } = await mountDocumentScene();
+
+    expect(headerInputsOf(stage, 'b').y()).toBe(
+      HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM
+    );
+    expect(new Set(rowBackgroundHeights(stage, 'b'))).toEqual(
+      new Set([COLUMN_HEIGHT])
+    );
+    expect(new Set(rowPitches(stage, 'b'))).toEqual(new Set([COLUMN_HEIGHT]));
+    expect(new Set(keyBadgeYs(stage, 'b'))).toEqual(
+      new Set([(COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2])
+    );
+  });
+
+  it('gives a cell the hit box of the source it is drawn from', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+
+    expect(
+      cellTextOf(cellOf(view.stage, 'b', 'columnName')).getAttr('hitFunc')
+    ).toBe(columnCellHit.flow);
+    expect(
+      cellTextOf(cellOf(document.stage, 'b', 'columnName')).getAttr('hitFunc')
+    ).toBe(columnCellHit.document);
   });
 });
 

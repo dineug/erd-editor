@@ -465,7 +465,7 @@ describe('createElkLayoutRequest options', () => {
     });
     const document = createElkLayoutRequest(state, TablePlacement.liamLayered);
 
-    expect(view.nodes[0].height).toBe(calcTableHeight(table, 0));
+    expect(view.nodes[0].height).toBe(calcTableHeight(table, 0, 'flow'));
     expect(document.nodes[0].height).toBe(calcTableHeight(table));
     expect(view.nodes[0].height).toBeLessThan(document.nodes[0].height);
     expect(view.nodes[0].width).toBe(
@@ -480,13 +480,16 @@ describe('createElkLayoutRequest options', () => {
   });
 
   // getVisibleColumnIds shows every row where there is no view to ask, so a
-  // request built for a view before it is open measures document-sized boxes
-  // and comes back spaced for tables the view will not draw.
-  it('measures a view that is not open the way the document draws it', () => {
+  // request built for a view before it is open measures the view's own card
+  // with every row showing, spaced for tables the view will not draw.
+  it('measures a view that is not open at the view chrome, every row showing', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
     addColumns(app, 't1', ['c0', 'c1', 'c2']);
     const state = app.store.state;
+    const table = query(state.collections)
+      .collection('tableEntities')
+      .selectById('t1')!;
 
     const beforeOpen = createElkLayoutRequest(
       state,
@@ -497,7 +500,10 @@ describe('createElkLayoutRequest options', () => {
     );
     const document = createElkLayoutRequest(state, TablePlacement.liamLayered);
 
-    expect(beforeOpen.nodes[0].height).toBe(document.nodes[0].height);
+    expect(beforeOpen.nodes[0].height).toBe(
+      calcTableHeight(table, table.columnIds.length, 'flow')
+    );
+    expect(beforeOpen.nodes[0].height).toBeLessThan(document.nodes[0].height);
   });
 
   // AC-50, the request half: the tables no relationship reaches leave the

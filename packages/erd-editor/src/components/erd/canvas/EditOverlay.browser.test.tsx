@@ -24,12 +24,12 @@ import {
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
-  COLUMN_TEXT_Y,
   getCellTextBaseline,
   getCellTextHeight,
   getColumnCellSlots,
+  getColumnTextY,
+  getHeaderCellsY,
   HEADER_CELLS_X,
-  HEADER_CELLS_Y,
   HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
@@ -485,7 +485,10 @@ describe('the editing overlay', () => {
     const transform = transformOf(fixture.mounted);
 
     expect(transform.x).toBeCloseTo(rect.x + HEADER_CELLS_X, 5);
-    expect(transform.y).toBeCloseTo(rect.y + HEADER_CELLS_Y + HEADER_TEXT_Y, 5);
+    expect(transform.y).toBeCloseTo(
+      rect.y + getHeaderCellsY() + HEADER_TEXT_Y,
+      5
+    );
     expect(transform.scale).toBe(1);
   });
 
@@ -504,7 +507,7 @@ describe('the editing overlay', () => {
     const transform = transformOf(fixture.mounted);
 
     expect(transform.x).toBeCloseTo(rect.x + (slot?.x ?? 0), 5);
-    expect(transform.y).toBeCloseTo(columnRect.y + COLUMN_TEXT_Y, 5);
+    expect(transform.y).toBeCloseTo(columnRect.y + getColumnTextY(), 5);
     expect(transform.scale).toBe(1);
   });
 
@@ -530,7 +533,7 @@ describe('the editing overlay', () => {
       5
     );
     expect(transform.y).toBeCloseTo(
-      originY + (rect.y + HEADER_CELLS_Y + HEADER_TEXT_Y) * zoom,
+      originY + (rect.y + getHeaderCellsY() + HEADER_TEXT_Y) * zoom,
       5
     );
     expect(transform.scale).toBe(zoom);
@@ -1518,7 +1521,10 @@ describe('the overlay under a view source', () => {
 
     expect(inputOf(fixture.mounted)).toBeTruthy();
     expect(transform.x).toBeCloseTo(rect.x + HEADER_CELLS_X, 5);
-    expect(transform.y).toBeCloseTo(rect.y + HEADER_CELLS_Y + HEADER_TEXT_Y, 5);
+    expect(transform.y).toBeCloseTo(
+      rect.y + getHeaderCellsY() + HEADER_TEXT_Y,
+      5
+    );
     expect(transform.scale).toBe(1);
   });
 });

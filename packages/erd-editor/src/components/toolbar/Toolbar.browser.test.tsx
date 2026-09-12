@@ -124,7 +124,7 @@ const flowRoot = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('[data-testid="erd-canvas"]')!;
 
 describe('the toolbar zoom beside a Flow scene', () => {
-  it('shows the Flow zoom the fit landed on, follows a wheel on the scene, and leaves the document zoom alone', async () => {
+  it('shows the Flow zoom the fit landed on, follows a wheel zoom on the scene, and leaves the document zoom alone', async () => {
     const app = createTestAppContext();
     seed(app);
     const mounted = await mountEditor(app);
@@ -148,6 +148,9 @@ describe('the toolbar zoom beside a Flow scene', () => {
         clientX: rect.left + 100,
         clientY: rect.top + 100,
         deltaY: -100,
+        // A plain wheel moves the view now, so the zoom is the modified one.
+        ctrlKey: true,
+        metaKey: true,
       })
     );
     await settle();

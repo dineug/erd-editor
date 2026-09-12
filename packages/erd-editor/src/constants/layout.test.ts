@@ -36,6 +36,10 @@ import {
   TABLE_HEADER_PADDING,
   TABLE_PADDING,
   TOOLBAR_HEIGHT,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_PADDING,
+  VIEW_TABLE_HEADER_BUTTON_SIZE,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
 
 describe('layout constants', () => {
@@ -82,6 +86,25 @@ describe('layout constants', () => {
     expect(COLUMN_PADDING).toBe(2);
     expect(COLUMN_HEIGHT).toBe(24);
     expect(COLUMN_HEIGHT).toBe(INPUT_HEIGHT + COLUMN_PADDING * 2);
+  });
+
+  it('leaves the icon band out of the header a view card draws', () => {
+    expect(VIEW_TABLE_HEADER_HEIGHT).toBe(24);
+    expect(VIEW_TABLE_HEADER_HEIGHT).toBe(
+      TABLE_HEADER_HEIGHT - HEADER_ICON_HEIGHT - TABLE_HEADER_ICON_MARGIN_BOTTOM
+    );
+    expect(VIEW_TABLE_HEADER_HEIGHT).toBe(TABLE_HEADER_INPUT_HEIGHT);
+    expect(VIEW_TABLE_HEADER_HEIGHT).toBeLessThan(TABLE_HEADER_HEIGHT);
+  });
+
+  it('sizes a view row without deriving it from the input height', () => {
+    expect(VIEW_COLUMN_HEIGHT).toBe(22);
+    expect(VIEW_COLUMN_PADDING).toBe(2);
+    // The document row is an input box plus its padding; the view row is not,
+    // so the two sums differ and the view number stands on its own.
+    expect(VIEW_COLUMN_HEIGHT).not.toBe(INPUT_HEIGHT + VIEW_COLUMN_PADDING * 2);
+    expect(VIEW_COLUMN_HEIGHT).toBeLessThan(COLUMN_HEIGHT);
+    expect(VIEW_TABLE_HEADER_BUTTON_SIZE).toBe(12);
   });
 
   it('keeps the column option widths wide enough for their labels', () => {
@@ -155,6 +178,10 @@ describe('layout constants', () => {
       COLUMN_AUTO_INCREMENT_WIDTH,
       COLUMN_PADDING,
       COLUMN_HEIGHT,
+      VIEW_TABLE_HEADER_HEIGHT,
+      VIEW_COLUMN_HEIGHT,
+      VIEW_COLUMN_PADDING,
+      VIEW_TABLE_HEADER_BUTTON_SIZE,
       MEMO_BORDER,
       MEMO_PADDING,
       MEMO_HEADER_HEIGHT,

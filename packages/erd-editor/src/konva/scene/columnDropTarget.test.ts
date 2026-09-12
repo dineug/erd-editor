@@ -9,6 +9,8 @@ import {
   TABLE_BORDER,
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
 import { ColumnUIKey } from '@/constants/schema';
 import { createEditor, ViewKind } from '@/engine/modules/editor/state';
@@ -157,11 +159,16 @@ describe('the row a column drag drops on (AC-G5)', () => {
     view.positions.t1 = { x: 600, y: 400 };
     state.editor.views.flow = view;
 
-    // A Focus view opens on the key rows, so c3 is the one row and the first.
+    // A view opens on the key rows, so c3 is the one row and the first, and it
+    // sits under the view's own shorter header at the view's own row height.
     const rect = getTableRect(state, table, 'flow');
     const point = {
       x: rect.x + rect.width / 2,
-      y: rect.y + TABLE_INSET + TABLE_HEADER_HEIGHT + COLUMN_HEIGHT / 2,
+      y:
+        rect.y +
+        TABLE_INSET +
+        VIEW_TABLE_HEADER_HEIGHT +
+        VIEW_COLUMN_HEIGHT / 2,
     };
 
     expect(findColumnDropTarget(state, point, 'flow')).toEqual({

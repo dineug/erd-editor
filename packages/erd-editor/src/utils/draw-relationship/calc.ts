@@ -86,7 +86,7 @@ function viewTableSize(
     measure: () => ({
       key,
       width: calcViewTableWidths(table, state, columnIds).width,
-      height: calcTableHeight(table, columnIds.length),
+      height: calcTableHeight(table, columnIds.length, source),
     }),
   };
 }

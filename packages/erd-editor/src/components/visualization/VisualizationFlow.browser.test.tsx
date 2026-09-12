@@ -28,13 +28,17 @@ import {
 } from '@/components/visualization/particles/particlePath';
 import Visualization from '@/components/visualization/Visualization';
 import { TABLE_BORDER } from '@/constants/layout';
+import { Open } from '@/constants/open';
 import {
   CANVAS_ZOOM_MAX,
   CanvasType,
   RelationshipType,
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  changeViewportAction,
+} from '@/engine/modules/editor/atom.actions';
 import {
   ShowMode,
   ViewKind,
@@ -44,6 +48,7 @@ import {
   viewChangeShowModeAction,
   viewMoveTableAction,
   viewOpenAction,
+  viewScrollToAction,
   viewSetCentersAction,
 } from '@/engine/modules/editor/view.actions';
 import {
@@ -62,6 +67,7 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { Tag } from '@/engine/tag';
 import { whenDrawn } from '@/konva/batchDraw';
+import { MINIMAP_STAGE_NAME } from '@/konva/host';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
 import { getTableRect } from '@/konva/scene/metrics';
@@ -264,6 +270,13 @@ const menuOf = (mounted: Mounted, title: string) =>
 const click = (el: Element | null) =>
   el?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
+/** One keyboard chord, as the editor's own key handler would put it on the stream. */
+const chord = (app: AppContext, type: KeyBindingName) =>
+  app.shortcut$.next({
+    type,
+    event: new KeyboardEvent('keydown', { key: 'x' }),
+  });
+
 async function enterFlow(mounted: Mounted) {
   click(menuOf(mounted, 'Flow'));
   await settle();
@@ -341,6 +354,22 @@ async function clickTable(id: string, init: MouseEventInit = {}) {
 const flowRootOf = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('[data-testid="erd-canvas"]')!;
 
+/** One wheel notch over the middle of the Flow's box, with the modifiers given. */
+const wheelOver = (mounted: Mounted, init: WheelEventInit) => {
+  const root = flowRootOf(mounted);
+  const rect = root.getBoundingClientRect();
+
+  root.dispatchEvent(
+    new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      clientX: rect.left + 200,
+      clientY: rect.top + 150,
+      ...init,
+    })
+  );
+};
+
 /**
  * Enters Flow already narrowed to the tables given, on the key rows, which is
  * the state an entry from the ERD leaves behind: the mount asks for the
@@ -348,9 +377,10 @@ const flowRootOf = (mounted: Mounted) =>
  */
 async function enterFocused(mounted: Mounted, tableIds: string[]) {
   const { app } = mounted;
+  // The key rows are what a view opened with centers is seeded on, so the show
+  // mode is not driven here: the seed is part of what these cases stand on.
   app.store.dispatchSync(
-    viewOpenAction({ kind: ViewKind.flow, centerIds: tableIds }),
-    viewChangeShowModeAction({ value: ShowMode.keysOnly, kind: ViewKind.flow })
+    viewOpenAction({ kind: ViewKind.flow, centerIds: tableIds })
   );
   await enterFlow(mounted);
 }
@@ -413,7 +443,7 @@ describe('the Flow mode of the visualization tab', () => {
     expect(graphStage()).toBeDefined();
     expect(flowStage()).toBeUndefined();
     expect(menuOf(mounted, 'Graph')?.className).toContain('active');
-    expect(menuOf(mounted, 'Fit')).toBeNull();
+    expect(menuOf(mounted, 'Tidy Up')).toBeNull();
 
     await enterFlow(mounted);
 
@@ -467,7 +497,7 @@ describe('the Flow mode of the visualization tab', () => {
       const table = app.store.state.collections.tableEntities[id];
       expect({ id, height: bodyOf(id).height() + TABLE_BORDER }).toEqual({
         id,
-        height: calcTableHeight(table, 0),
+        height: calcTableHeight(table, 0, 'flow'),
       });
     }
     expect(bodyOf('a').height()).toBe(bodyOf('d').height());
@@ -815,40 +845,218 @@ describe('the Flow mode of the visualization tab', () => {
     expect(opacities()).toEqual({ a: 1, b: 1, c: 1, d: 1, ab: 1, bc: 1 });
   });
 
-  it('zooms the view about the pointer on a wheel, and the document not at all', async () => {
+  it('moves the screen on a plain wheel, and the document not at all (AC-39)', async () => {
     const app = createTestAppContext();
     seed(app);
     const mounted = await mountVisualization(app);
     await enterFlow(mounted);
-    const root = flowRootOf(mounted);
-    const rect = root.getBoundingClientRect();
-    const point = { x: 200, y: 150 };
-    const before = toScenePoint(
-      getSceneTransform(app.store.state, 'flow'),
-      point
-    );
+    const { originX, originY, zoomLevel } = app.store.state.editor.views.flow!;
+
+    wheelOver(mounted, { deltaX: 40, deltaY: 90 });
+    await settle();
+
+    const view = app.store.state.editor.views.flow!;
+    expect(view.originX).toBeCloseTo(originX - 40, 4);
+    expect(view.originY).toBeCloseTo(originY - 90, 4);
+    expect(view.zoomLevel).toBe(zoomLevel);
+    expect(app.store.state.settings).toMatchObject({
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+    });
+  });
+
+  it('zooms the view on a wheel carrying the modifier (AC-40)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
     const zoomBefore = app.store.state.editor.views.flow!.zoomLevel;
 
-    root.dispatchEvent(
-      new WheelEvent('wheel', {
-        bubbles: true,
-        cancelable: true,
-        clientX: rect.left + point.x,
-        clientY: rect.top + point.y,
-        deltaY: -100,
+    wheelOver(mounted, { deltaY: -100, ctrlKey: true, metaKey: true });
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBeGreaterThan(
+      zoomBefore
+    );
+
+    wheelOver(mounted, { deltaY: 100, ctrlKey: true, metaKey: true });
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBeCloseTo(
+      zoomBefore,
+      5
+    );
+    expect(app.store.state.settings).toMatchObject({
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+    });
+  });
+
+  it('swaps the axis a wheel moves along while shift is held (AC-41)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const { originX, originY } = app.store.state.editor.views.flow!;
+
+    wheelOver(mounted, { deltaY: 90, shiftKey: true });
+    await settle();
+
+    const view = app.store.state.editor.views.flow!;
+    expect(view.originX).toBeCloseTo(originX - 90, 4);
+    expect(view.originY).toBe(originY);
+    expect(app.store.state.settings).toMatchObject({
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+    });
+  });
+
+  it('zooms the Flow view on the zoom chords, and the document not at all', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const document = { ...app.store.state.settings };
+    const fitted = app.store.state.editor.views.flow!.zoomLevel;
+
+    chord(app, KeyBindingName.zoomIn);
+    chord(app, KeyBindingName.zoomIn);
+    await settle();
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBeCloseTo(
+      fitted + 0.08,
+      5
+    );
+
+    chord(app, KeyBindingName.zoomOut);
+    await settle();
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBeCloseTo(
+      fitted + 0.04,
+      5
+    );
+
+    chord(app, KeyBindingName.zoomReset);
+    await settle();
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBe(1);
+
+    expect(app.store.state.settings).toMatchObject({
+      zoomLevel: document.zoomLevel,
+      originX: document.originX,
+      originY: document.originY,
+    });
+  });
+
+  // The palette is the one overlay that stands over this tab, and the ERD
+  // suppresses the same chord under it, so the two tabs answer alike.
+  it('leaves the view alone on a zoom chord while quick search is open', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const fitted = app.store.state.editor.views.flow!.zoomLevel;
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.search]: true }));
+    chord(app, KeyBindingName.zoomIn);
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBe(fitted);
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.search]: false }));
+    chord(app, KeyBindingName.zoomIn);
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBeCloseTo(
+      fitted + 0.04,
+      5
+    );
+  });
+
+  it('leaves the display set and the tab where they stand on the stop chord (AC-49)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['a']);
+    const before = {
+      centerIds: [...app.store.state.editor.views.flow!.centerIds],
+      canvasType: app.store.state.settings.canvasType,
+      visualizationMode: app.store.state.editor.visualizationMode,
+      drawn: drawnTableIds(),
+    };
+    const asks = hoisted.requests.length;
+
+    chord(app, KeyBindingName.stop);
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(
+      before.centerIds
+    );
+    expect(app.store.state.settings.canvasType).toBe(before.canvasType);
+    expect(app.store.state.editor.visualizationMode).toBe(
+      before.visualizationMode
+    );
+    expect(drawnTableIds()).toEqual(before.drawn);
+    expect(hoisted.requests).toHaveLength(asks);
+  });
+
+  it('cancels the ask still out on the stop chord, and lands nothing from it (AC-49)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    hoisted.hold = true;
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    expect(hoisted.requests).toHaveLength(1);
+
+    chord(app, KeyBindingName.stop);
+    await settle();
+
+    hoisted.release.shift()?.();
+    await settle();
+
+    expect(positionsOf(app)).toEqual({});
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual([]);
+  });
+
+  it('hangs no minimap over the Flow scene (AC-10)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    // The DOM rather than the stage: the map is an element with a Stage of its
+    // own inside, and a query of the Flow's stage passes with it still mounted.
+    expect(mounted.container.querySelector('.minimap')).toBeNull();
+    expect(stageRegistry()[MINIMAP_STAGE_NAME]).toBeUndefined();
+  });
+
+  it('hangs no virtual scrollbar over the Flow scene (AC-11)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    expect(mounted.container.querySelector('.virtual-scroll')).toBeNull();
+  });
+
+  it('hangs no floating compass over the Flow scene (AC-12)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    app.store.dispatchSync(
+      viewScrollToAction({
+        originX: -90_000,
+        originY: -90_000,
+        kind: ViewKind.flow,
       })
     );
     await settle();
 
-    const view = app.store.state.editor.views.flow!;
-    expect(view.zoomLevel).toBeGreaterThan(zoomBefore);
-    const after = toScenePoint(
-      getSceneTransform(app.store.state, 'flow'),
-      point
-    );
-    expect(after.x).toBeCloseTo(before.x, 2);
-    expect(after.y).toBeCloseTo(before.y, 2);
-    expect(app.store.state.settings.zoomLevel).toBe(1);
+    // Panned clean off every table, which is the one state the pill stood in.
+    // The bar's own compass button is a different element and is there.
+    expect(mounted.container.querySelector('.content-compass')).toBeNull();
+    expect(menuOf(mounted, 'Go to content')).not.toBeNull();
   });
 
   it('pans the view on a drag over the background', async () => {
@@ -1180,52 +1388,68 @@ describe('the display set of the Flow view', () => {
     expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
   });
 
-  it('opens on the key rows and toggles to every field and back (AC-26)', async () => {
+  it('opens on the key rows and walks the three steps from the bar (AC-25, AC-26)', async () => {
     const app = createTestAppContext();
     seedFields(app);
     const mounted = await mountVisualization(app);
     await enterFocused(mounted, ['t1']);
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.keysOnly);
+    expect(menuOf(mounted, 'Keys only')?.className).toContain('active');
     expect(rowCountOf('t1')).toBe(1);
     expect(hoisted.requests).toHaveLength(1);
 
     // The rows it already shows: nothing placed anew.
-    app.store.dispatchSync(
-      viewChangeShowModeAction({
-        value: ShowMode.keysOnly,
-        kind: ViewKind.flow,
-      })
-    );
+    click(menuOf(mounted, 'Keys only'));
     await settle();
     expect(hoisted.requests).toHaveLength(1);
 
-    app.store.dispatchSync(
-      viewChangeShowModeAction({
-        value: ShowMode.allFields,
-        kind: ViewKind.flow,
-      })
-    );
+    click(menuOf(mounted, 'All fields'));
     await settle();
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(
       ShowMode.allFields
     );
+    expect(menuOf(mounted, 'All fields')?.className).toContain('active');
+    expect(menuOf(mounted, 'Keys only')?.className).not.toContain('active');
     expect(rowCountOf('t1')).toBe(2);
     // The card size comes from the show mode, so the placement is stale and
     // the view is placed anew.
     expect(hoisted.requests).toHaveLength(2);
 
-    app.store.dispatchSync(
-      viewChangeShowModeAction({
-        value: ShowMode.keysOnly,
-        kind: ViewKind.flow,
-      })
-    );
+    click(menuOf(mounted, 'Keys only'));
     await settle();
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.keysOnly);
     expect(rowCountOf('t1')).toBe(1);
+
+    click(menuOf(mounted, 'Name only'));
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.nameOnly);
+    expect(menuOf(mounted, 'Name only')?.className).toContain('active');
+    expect(rowCountOf('t1')).toBe(0);
+  });
+
+  it('walks the same three steps in the whole display set (AC-25)', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual([]);
+    expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.nameOnly);
+    expect(menuOf(mounted, 'Name only')?.className).toContain('active');
+    expect(rowCountOf('t1')).toBe(0);
+
+    click(menuOf(mounted, 'Keys only'));
+    await settle();
+    expect(rowCountOf('t1')).toBe(1);
+
+    click(menuOf(mounted, 'All fields'));
+    await settle();
+    expect(rowCountOf('t1')).toBe(2);
+    expect(menuOf(mounted, 'All fields')?.className).toContain('active');
   });
 
   it('fits what the view shows into the screen at the zoom the view allows', async () => {

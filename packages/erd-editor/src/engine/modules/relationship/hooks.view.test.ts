@@ -450,7 +450,7 @@ describe('the view sort hook across the tab', () => {
     await settle();
     expect(sorts('flow')).toBe(0);
     expect(sorts('document')).toBe(1);
-    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 28);
+    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 21);
 
     store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.visualization })
@@ -465,6 +465,6 @@ describe('the view sort hook across the tab', () => {
 
     expect(sorts('flow')).toBe(1);
     expect(sorts('document')).toBe(1);
-    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 28);
+    expect(getAnchors(relationship, 'flow').start.y).toBe(1_000 + 21);
   });
 });

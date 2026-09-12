@@ -1,6 +1,12 @@
 import { clamp } from 'es-toolkit';
 
+import {
+  type ContentCompass,
+  nearestContent,
+} from '@/components/erd/content-compass/compassGeometry';
+import type { Viewport } from '@/engine/modules/editor/state';
 import type { Point } from '@/internal-types';
+import type { Rect } from '@/konva/scene/metrics';
 
 import {
   Group,
@@ -142,6 +148,125 @@ export function zoomAt(
     y: point.y - (point.y - view.y) * ratio,
     scale,
   };
+}
+
+/** What a fitted graph leaves clear of the edges of the stage, on every side. */
+const FIT_MARGIN = 40;
+
+/** The box a dot takes on the scene, which is the circle its group is drawn at. */
+function rectOfNode(node: VisualizationNode): Rect {
+  const radius = nodeRadius(node.group);
+
+  return {
+    x: node.x - radius,
+    y: node.y - radius,
+    width: radius * 2,
+    height: radius * 2,
+  };
+}
+
+/** d3 lays an unplaced node on NaN until the first step, and nothing may be measured against that. */
+const isPlaced = (node: VisualizationNode): boolean =>
+  Number.isFinite(node.x) && Number.isFinite(node.y);
+
+/** The box every dot of the graph stands inside, or null while none of them is placed. */
+function boundsOf(nodes: VisualizationNode[]): Rect | null {
+  const rects = nodes.filter(isPlaced).map(rectOfNode);
+  if (!rects.length) return null;
+
+  const left = Math.min(...rects.map(rect => rect.x));
+  const top = Math.min(...rects.map(rect => rect.y));
+  const right = Math.max(...rects.map(rect => rect.x + rect.width));
+  const bottom = Math.max(...rects.map(rect => rect.y + rect.height));
+
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/** Where the graph shows the scene, in scene units: what the stage covers at its scale. */
+function visibleSceneRect(view: VisualizationView, viewport: Viewport): Rect {
+  const scale = view.scale || 1;
+
+  return {
+    x: -view.x / scale,
+    y: -view.y / scale,
+    width: viewport.width / scale,
+    height: viewport.height / scale,
+  };
+}
+
+/**
+ * The view that stands the whole graph in the middle of the stage, as large as
+ * the zoom allows with a margin clear of every edge. A graph with nothing
+ * placed yet gets the middle of the stage back, which is where the forces gather it.
+ *
+ * @example
+ * Object.assign(state, fitGraphView(nodes, viewport));
+ */
+export function fitGraphView(
+  nodes: VisualizationNode[],
+  viewport: Viewport
+): VisualizationView {
+  const bounds = boundsOf(nodes);
+  if (!bounds || viewport.width <= 0 || viewport.height <= 0) {
+    return createView(viewport.width, viewport.height);
+  }
+
+  const room = {
+    width: Math.max(viewport.width - FIT_MARGIN * 2, 1),
+    height: Math.max(viewport.height - FIT_MARGIN * 2, 1),
+  };
+  const scale = zoomInRange(
+    Math.min(
+      room.width / Math.max(bounds.width, 1),
+      room.height / Math.max(bounds.height, 1)
+    )
+  );
+
+  return centerGraphView(
+    { ...createView(viewport.width, viewport.height), scale },
+    { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
+    viewport
+  );
+}
+
+/**
+ * The view holding the scene point given under the middle of the stage, at the
+ * scale it already stands at. What a press on the compass moves the graph by.
+ *
+ * @example
+ * Object.assign(state, centerGraphView(state, compass.target, viewport));
+ */
+export function centerGraphView(
+  view: VisualizationView,
+  target: Point,
+  viewport: Viewport
+): VisualizationView {
+  return {
+    x: viewport.width / 2 - target.x * view.scale,
+    y: viewport.height / 2 - target.y * view.scale,
+    scale: view.scale,
+  };
+}
+
+/**
+ * Which way the nearest dot lies while the stage holds none of them, read the
+ * way the scene beside it reads its own. Null while the graph is empty, while
+ * the stage has no size, and while any dot reaches the stage.
+ *
+ * @example
+ * const compass = graphCompass(state, nodes, viewport);
+ */
+export function graphCompass(
+  view: VisualizationView,
+  nodes: VisualizationNode[],
+  viewport: Viewport
+): ContentCompass | null {
+  if (viewport.width <= 0 || viewport.height <= 0) return null;
+
+  return nearestContent(
+    nodes.filter(isPlaced).map(rectOfNode),
+    visibleSceneRect(view, viewport)
+  );
 }
 
 /** What one wheel unit is in px where a host reports lines or pages instead. */

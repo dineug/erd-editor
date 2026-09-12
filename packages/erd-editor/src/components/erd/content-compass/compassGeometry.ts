@@ -43,21 +43,21 @@ const middleOf = (rect: Rect): Point => ({
 });
 
 /**
- * Where the nearest entity stands when the screen shows none of them, measured
- * from the screen's own middle. Null while any table or memo reaches the screen,
- * touching it counting as reaching it, and null while nobody has measured one.
+ * Where the nearest of the rects stands when the screen holds none of them,
+ * measured from the screen's own middle. Null while any of them reaches the
+ * screen, touching it counting as reaching it, and null where there are none.
+ *
+ * @example
+ * const compass = nearestContent(getContentRects(state, [], source), screen);
  */
-export function getContentCompass(
-  state: RootState,
-  source: GeometrySource = 'document'
+export function nearestContent(
+  rects: Iterable<Rect>,
+  screen: Rect
 ): ContentCompass | null {
-  if (!hasViewport(state.editor.viewport)) return null;
-
-  const screen = getVisibleCanvasRect(getViewTransform(state, source));
   let nearest: Rect | null = null;
   let distance = Infinity;
 
-  for (const rect of getContentRects(state, [], source)) {
+  for (const rect of rects) {
     const gap = gapBetween(screen, rect);
     if (gap.x === 0 && gap.y === 0) return null;
 
@@ -78,6 +78,23 @@ export function getContentCompass(
     distance,
     target,
   };
+}
+
+/**
+ * Where the nearest entity stands when the screen shows none of them, in the
+ * scene the source names. Null while any table or memo reaches the screen and
+ * null while nobody has measured one.
+ */
+export function getContentCompass(
+  state: RootState,
+  source: GeometrySource = 'document'
+): ContentCompass | null {
+  if (!hasViewport(state.editor.viewport)) return null;
+
+  return nearestContent(
+    getContentRects(state, [], source),
+    getVisibleCanvasRect(getViewTransform(state, source))
+  );
 }
 
 /** The steps the label folds into, each a thousand of the one before it. */

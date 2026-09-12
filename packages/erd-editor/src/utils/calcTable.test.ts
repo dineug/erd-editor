@@ -7,6 +7,7 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
   TABLE_PADDING,
+  VIEW_COLUMN_HEIGHT,
 } from '@/constants/layout';
 import { ColumnType, ColumnUIKey, Show } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
@@ -319,6 +320,20 @@ describe('calcTableHeight', () => {
     expect(calcTableHeight(table, 0)).toBe(calcTableHeight(createTable()));
     expect(calcTableHeight(table, 2)).toBe(56 + 2 * COLUMN_HEIGHT);
     expect(calcTableHeight(table)).toBe(56 + 40 * COLUMN_HEIGHT);
+  });
+
+  /** AC-13, AC-14. A view card wears a shorter header and shorter rows than the document card. */
+  it('adds the view chrome and the view row for a view source', () => {
+    const table = createTable({ columnIds: ['a', 'b', 'c'] });
+
+    expect(calcTableHeight(table, 0, 'flow')).toBe(42);
+    expect(calcTableHeight(table, 2, 'flow')).toBe(42 + 2 * VIEW_COLUMN_HEIGHT);
+    expect(calcTableHeight(table, 0, 'flow')).toBeLessThan(
+      calcTableHeight(table, 0)
+    );
+    expect(calcTableHeight(table, 3, 'flow')).toBeLessThan(
+      calcTableHeight(table, 3, 'document')
+    );
   });
 });
 

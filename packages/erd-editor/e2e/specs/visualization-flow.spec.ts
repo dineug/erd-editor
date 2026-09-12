@@ -440,6 +440,54 @@ test.describe('the visualization tab and the flow view over the document', () =>
     expect((await erd.table('customers')).ui).toMatchObject({ x: 200, y: 200 });
   });
 
+  /**
+   * AC-39, AC-40, AC-41. The mirror of the ERD tab's own wheel case: the view
+   * reads a wheel the way the document does, and the document stands still
+   * through all three of them.
+   */
+  test('moves the flow view on a wheel, swaps the axis on shift and zooms it on the modifier', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+    const document = await erd.settings();
+    const at = (await placementsOf(erd, ['customers'])).customers!;
+    const fitted = (await flowTable(erd, 'customers').boundingBox())!;
+
+    // The zoom first, while the fit still holds every box on the screen: the
+    // pans below carry the point this notch is delivered over off it.
+    const modKey = await erd.pointerModKey();
+    await erd.wheel(-120, { at, modifiers: [modKey] });
+    await erd.whenDrawn();
+
+    await expect
+      .poll(
+        async () => (await flowTable(erd, 'customers').boundingBox())!.width
+      )
+      .toBeGreaterThan(fitted.width);
+
+    const zoomed = (await flowTable(erd, 'customers').boundingBox())!;
+    await erd.wheel(200, { at });
+    await erd.whenDrawn();
+
+    const movedY = (await flowTable(erd, 'customers').boundingBox())!;
+    expect(movedY.y).toBeLessThan(zoomed.y);
+    expect(movedY.x).toBeCloseTo(zoomed.x, 0);
+
+    await erd.wheel(200, { at, modifiers: ['Shift'] });
+    await erd.whenDrawn();
+
+    const movedX = (await flowTable(erd, 'customers').boundingBox())!;
+    expect(movedX.x).toBeLessThan(movedY.x);
+    expect(movedX.y).toBeCloseTo(movedY.y, 0);
+
+    expect(await erd.settings()).toMatchObject({
+      originX: document.originX,
+      originY: document.originY,
+      zoomLevel: document.zoomLevel,
+    });
+  });
+
   /** AC-44. The body click pins the highlight; it never narrows what the view shows. */
   test('leaves the display set alone on a click of a flow box', async ({
     erd,

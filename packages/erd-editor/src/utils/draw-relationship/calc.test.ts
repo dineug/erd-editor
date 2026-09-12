@@ -1,6 +1,10 @@
 import { query } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
+import {
+  VIEW_COLUMN_HEIGHT,
+  VIEW_TABLE_HEADER_HEIGHT,
+} from '@/constants/layout';
 import { ColumnUIKey } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { ShowMode, ViewKind } from '@/engine/modules/editor/state';
@@ -31,6 +35,9 @@ function addTable(state: RootState, table: Table): Table {
   query(state.collections).collection('tableEntities').addOne(table);
   return table;
 }
+
+/** The border, padding and header a view card carries whatever rows it draws. */
+const VIEW_CHROME = 1 + 8 + VIEW_TABLE_HEADER_HEIGHT + 8 + 1;
 
 describe('tableToObjectPoint', () => {
   it('derives the nine anchor points of an empty table', () => {
@@ -158,22 +165,27 @@ describe('tableToObjectPoint for a view', () => {
     return { state, table, view };
   }
 
-  /** AC-1 and AC-6. A name only box is the header alone, at the view point, edges included. */
+  /** AC-1 and AC-6. A name only box is the view header alone, at the view point, edges included. */
   it('measures a name only table as its header at the view point', () => {
     const { state, table } = seed(ShowMode.nameOnly);
 
     const point = tableToObjectPoint(state, table, 'flow');
 
-    expect(point.height).toBe(56);
+    expect(point.height).toBe(VIEW_CHROME);
     expect(point.lt).toEqual({ x: 5_000, y: -3_000 });
-    expect(point.rb).toEqual({ x: 5_000 + point.width, y: -3_000 + 56 });
-    expect(point.left).toEqual({ x: 5_000, y: -3_000 + 28 });
+    expect(point.rb).toEqual({
+      x: 5_000 + point.width,
+      y: -3_000 + VIEW_CHROME,
+    });
+    expect(point.left).toEqual({ x: 5_000, y: -3_000 + VIEW_CHROME / 2 });
   });
 
   it('measures a keys only table by its key rows', () => {
     const { state, table } = seed(ShowMode.keysOnly);
 
-    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56 + 24);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(
+      VIEW_CHROME + VIEW_COLUMN_HEIGHT
+    );
   });
 
   /** AC-6. The four points the sort anchors against are the midpoints of the header box's edges. */
@@ -187,9 +199,12 @@ describe('tableToObjectPoint for a view', () => {
     );
 
     expect(top).toEqual({ x: 5_000 + width / 2, y: -3_000 });
-    expect(bottom).toEqual({ x: 5_000 + width / 2, y: -3_000 + 56 });
-    expect(left).toEqual({ x: 5_000, y: -3_000 + 28 });
-    expect(right).toEqual({ x: 5_000 + width, y: -3_000 + 28 });
+    expect(bottom).toEqual({ x: 5_000 + width / 2, y: -3_000 + VIEW_CHROME });
+    expect(left).toEqual({ x: 5_000, y: -3_000 + VIEW_CHROME / 2 });
+    expect(right).toEqual({
+      x: 5_000 + width,
+      y: -3_000 + VIEW_CHROME / 2,
+    });
   });
 
   it('leaves the document measure as it was, before and after a view read', () => {
@@ -214,7 +229,7 @@ describe('tableToObjectPoint for a view', () => {
     state.editor.views.flow = null;
 
     const before = tableToObjectPoint(state, table, 'flow');
-    expect(before.height).toBe(56 + 40 * 24);
+    expect(before.height).toBe(VIEW_CHROME + 40 * VIEW_COLUMN_HEIGHT);
     expect(before.width).toBe(viewWidths(table, state).width);
     expect(before.width).not.toBe(tableToObjectPoint(state, table).width);
     expect(before.lt).toEqual({ x: 100, y: 50 });
@@ -222,7 +237,7 @@ describe('tableToObjectPoint for a view', () => {
     state.editor.views.flow = view;
     const after = tableToObjectPoint(state, table, 'flow');
     expect(after.width).toBe(viewWidths(table, state).width);
-    expect(after.height).toBe(56 + 40 * 24);
+    expect(after.height).toBe(VIEW_CHROME + 40 * VIEW_COLUMN_HEIGHT);
     expect(after.lt).toEqual({ x: 5_000, y: -3_000 });
   });
 
@@ -246,13 +261,17 @@ describe('tableToObjectPoint for a view', () => {
   it('follows the show mode from one read to the next', () => {
     const { state, table, view } = seed(ShowMode.nameOnly);
 
-    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(VIEW_CHROME);
 
     view.showMode = ShowMode.allFields;
-    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56 + 40 * 24);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(
+      VIEW_CHROME + 40 * VIEW_COLUMN_HEIGHT
+    );
 
     view.showMode = ShowMode.keysOnly;
-    expect(tableToObjectPoint(state, table, 'flow').height).toBe(56 + 24);
+    expect(tableToObjectPoint(state, table, 'flow').height).toBe(
+      VIEW_CHROME + VIEW_COLUMN_HEIGHT
+    );
   });
 });
 

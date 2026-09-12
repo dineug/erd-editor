@@ -1,6 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { COLUMN_HEIGHT } from '@/constants/layout';
 import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
@@ -44,10 +43,10 @@ export function findColumnDropTarget(
       point.y <= rect.y + rect.height;
     if (!inside) continue;
 
-    const firstRowY = getColumnRect(state, table, 0, source).y;
-    if (point.y < firstRowY) return null;
+    const firstRow = getColumnRect(state, table, 0, source);
+    if (point.y < firstRow.y) return null;
 
-    const index = Math.floor((point.y - firstRowY) / COLUMN_HEIGHT);
+    const index = Math.floor((point.y - firstRow.y) / firstRow.height);
     const columnId = getVisibleColumnIds(state, table, source)[index];
     if (!columnId) return null;
 

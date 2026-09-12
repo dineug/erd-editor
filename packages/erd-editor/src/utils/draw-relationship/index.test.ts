@@ -229,10 +229,10 @@ describe('getAnchors across the two channels', () => {
         5_000 +
         tableToObjectPoint(state, state.collections.tableEntities.A, 'flow')
           .width,
-      y: -3_000 + 28,
+      y: -3_000 + 21,
       direction: Direction.right,
     });
-    expect(view.end).toMatchObject({ tableId: 'B', x: 5_600, y: -3_000 + 28 });
+    expect(view.end).toMatchObject({ tableId: 'B', x: 5_600, y: -3_000 + 21 });
     expect(relationship.start).toMatchObject({ x: 118, y: 28 });
   });
 

@@ -6,6 +6,8 @@ import {
   TABLE_BORDER,
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
 import {
   createEditor,
@@ -108,7 +110,7 @@ describe('a table box in a view', () => {
       x: -900,
       y: 4_000,
       width: viewWidths(table, state).width,
-      height: calcTableHeight(table, 0),
+      height: calcTableHeight(table, 0, 'flow'),
     });
   });
 
@@ -137,17 +139,35 @@ describe('a table box in a view', () => {
       x: 120,
       y: 340,
       width: viewWidths(table, state).width,
-      height: calcTableHeight(table),
+      height: calcTableHeight(table, table.columnIds.length, 'flow'),
     });
     expect(getTableWidths(state, table, 'flow').width).toBe(rect.width);
   });
 
-  it('puts the first row of a view below the header at the view point', () => {
+  it('puts the first row of a view below the view header at the view point', () => {
     expect(getColumnRect(state, table, 0, 'flow')).toMatchObject({
       x: -900 + TABLE_BORDER + TABLE_PADDING,
-      y: 4_000 + TABLE_BORDER + TABLE_PADDING + TABLE_HEADER_HEIGHT,
-      height: COLUMN_HEIGHT,
+      y: 4_000 + TABLE_BORDER + TABLE_PADDING + VIEW_TABLE_HEADER_HEIGHT,
+      height: VIEW_COLUMN_HEIGHT,
     });
+  });
+
+  /**
+   * AC-15. Both offsets are written down here rather than read back out of the
+   * sum under test, so a change to the document arithmetic fails this case and
+   * a change to the view arithmetic alone does not.
+   */
+  it('drops the second row 71 units in the document and 55 in a view', () => {
+    // 9 of border and padding, then a 38 header over a 24 row in the document,
+    // and the same 9 over a 24 header and a 22 row in a view.
+    expect(
+      getColumnRect(state, table, 1, 'document').y -
+        getTableRect(state, table).y
+    ).toBe(71);
+    expect(
+      getColumnRect(state, table, 1, 'flow').y -
+        getTableRect(state, table, 'flow').y
+    ).toBe(55);
   });
 });
 

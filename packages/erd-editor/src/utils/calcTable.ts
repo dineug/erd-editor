@@ -12,12 +12,15 @@ import {
   TABLE_BORDER,
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { textInRange } from '@/utils/validation';
 
 /**
@@ -256,16 +259,35 @@ export function calcViewTableWidths(
   return columnWidth;
 }
 
+/**
+ * The header band a source draws above its rows. A view has no icon band over
+ * the name, so its card is that much shorter than the same table in the
+ * document.
+ */
+export function tableHeaderHeight(source: GeometrySource = 'document'): number {
+  return source === 'document' ? TABLE_HEADER_HEIGHT : VIEW_TABLE_HEADER_HEIGHT;
+}
+
+/**
+ * The height of one row a source draws. The document row is sized around the
+ * input box an editor opens in it and the view row around a line of read only
+ * text, so the two are independent numbers.
+ */
+export function tableRowHeight(source: GeometrySource = 'document'): number {
+  return source === 'document' ? COLUMN_HEIGHT : VIEW_COLUMN_HEIGHT;
+}
+
 /** The box height for the rows given, every row of the table unless a view shows fewer. */
 export function calcTableHeight(
   table: Table,
-  rowCount: number = table.columnIds.length
+  rowCount: number = table.columnIds.length,
+  source: GeometrySource = 'document'
 ): number {
   return (
     TABLE_BORDER +
     TABLE_PADDING +
-    TABLE_HEADER_HEIGHT +
-    rowCount * COLUMN_HEIGHT +
+    tableHeaderHeight(source) +
+    rowCount * tableRowHeight(source) +
     TABLE_PADDING +
     TABLE_BORDER
   );

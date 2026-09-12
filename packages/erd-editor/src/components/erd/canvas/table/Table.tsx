@@ -29,7 +29,7 @@ import {
   focusBorderFill,
   getCellTextHeight,
   getHeaderCellSlots,
-  HEADER_CELLS_Y,
+  getHeaderCellsY,
   HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
@@ -560,7 +560,10 @@ const Table: FC<TableProps> = (props, ctx) => {
                 y: 0,
                 click: handleRemoveTable,
               })}
-          <k-group name="table-header-inputs" y={HEADER_CELLS_Y - TABLE_INSET}>
+          <k-group
+            name="table-header-inputs"
+            y={getHeaderCellsY(source) - TABLE_INSET}
+          >
             {nameCell
               ? headerCell({
                   ...nameCell,
