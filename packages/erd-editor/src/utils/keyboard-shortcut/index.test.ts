@@ -42,7 +42,7 @@ describe('keyboard-shortcut', () => {
       ).flatMap(name => map[name].map(option => option.shortcut));
 
       expect(map[KeyBindingName.focusView]).toEqual([
-        { shortcut: 'Alt+KeyF', preventDefault: true },
+        { shortcut: 'Alt+KeyF', preventDefault: true, stopPropagation: true },
       ]);
       expect(shortcuts).not.toContain('Alt+KeyF');
     });

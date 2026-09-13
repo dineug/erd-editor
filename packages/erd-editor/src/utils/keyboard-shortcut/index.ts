@@ -90,7 +90,9 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.tableProperties]: [
     { shortcut: 'Alt+Space', preventDefault: true },
   ],
-  [KeyBindingName.focusView]: [{ shortcut: 'Alt+KeyF', preventDefault: true }],
+  [KeyBindingName.focusView]: [
+    { shortcut: 'Alt+KeyF', preventDefault: true, stopPropagation: true },
+  ],
   [KeyBindingName.zoomIn]: [
     { shortcut: '$mod+Equal', preventDefault: true, stopPropagation: true },
   ],
