@@ -33,6 +33,7 @@ import {
   SCENE_FONT_SIZE,
   SCENE_FONT_WEIGHT,
   TABLE_CORNER_RADIUS,
+  TABLE_INSET,
   TRANSPARENT,
   VIEW_CARD_GLOW_BLUR,
   VIEW_CARD_GLOW_OPACITY,
@@ -551,6 +552,11 @@ const rowBackgroundOf = (row: Container) =>
     'fill'
   );
 
+const cornerOf = (row: Container) =>
+  (row.findOne<KonvaNode>('.column-row-background') as KonvaNode).getAttr(
+    'cornerRadius'
+  );
+
 const dividerCountsOf = (stage: Stage, id: string) =>
   rowsOf(stage, id).map(row => row.find('.column-row-divider').length);
 
@@ -567,6 +573,40 @@ describe('the rows a view card rules and tints', () => {
       ).getAttr('stroke')
     ).toBe(theme.tableBorder);
     expect(new Set(dividerCountsOf(document.stage, 'b'))).toEqual(new Set([0]));
+  });
+
+  /**
+   * A view card draws no padding under its rows, so the last one meets the
+   * bottom border and takes the corners the card is rounded by. A square tint
+   * there would stand outside the body it is drawn in.
+   */
+  it('ends the card at its last row, on the corners the card is rounded by', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+
+    const rows = rowsOf(view.stage, 'b');
+    const last = rows[rows.length - 1];
+
+    expect(last.y() + VIEW_COLUMN_HEIGHT).toBe(
+      bodyOf(view.stage, 'b').height()
+    );
+    expect(cornerOf(last)).toEqual([
+      0,
+      0,
+      TABLE_CORNER_RADIUS,
+      TABLE_CORNER_RADIUS,
+    ]);
+    expect(rows.slice(0, -1).map(cornerOf)).toEqual([0, 0]);
+
+    // The document card keeps the padding it always drew under its rows, and
+    // rounds no row against a corner it never reaches.
+    const documentRows = rowsOf(document.stage, 'b');
+    const lastDocument = documentRows[documentRows.length - 1];
+
+    expect(lastDocument.y() + COLUMN_HEIGHT).toBe(
+      bodyOf(document.stage, 'b').height() - TABLE_PADDING
+    );
+    expect(new Set(documentRows.map(cornerOf))).toEqual(new Set([0]));
   });
 
   /** AC-21 and AC-22. The tint marks a relationship row and the hover outranks it. */
@@ -1078,6 +1118,21 @@ describe('the header a view card wears', () => {
     expect(nameTextOf(stage, 'b').width()).toBe(
       viewHeaderNameWidth(table.ui.widthName)
     );
+  });
+
+  /**
+   * The same title on the other axis. The gap under a view header holds it off
+   * the first row, so a card drawing no row leaves that gap out: the title is
+   * the card's one line of content, inside its padding, on the middle of the box.
+   */
+  it('centres it up and down on a card that draws no row', async () => {
+    const { stage } = await mountViewScene();
+    const height = bodyOf(stage, 'd').height() + TABLE_BORDER;
+    const above = TABLE_INSET + headerInputsOf(stage, 'd').y();
+
+    expect(rowIdsOf(stage, 'd')).toEqual([]);
+    expect(headerIconOf(stage, 'd')!.y()).toBe(0);
+    expect(above).toBe(height - above - VIEW_TABLE_HEADER_ICON_SIZE);
   });
 
   /** The one gap the reference draws between its header and its rows. */

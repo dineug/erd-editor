@@ -332,14 +332,36 @@ describe('calcTableHeight', () => {
   it('adds the view chrome and the view row for a view source', () => {
     const table = createTable({ columnIds: ['a', 'b', 'c'] });
 
-    expect(calcTableHeight(table, 0, 'flow')).toBe(42);
-    expect(calcTableHeight(table, 2, 'flow')).toBe(42 + 2 * VIEW_COLUMN_HEIGHT);
+    expect(calcTableHeight(table, 2, 'flow')).toBe(34 + 2 * VIEW_COLUMN_HEIGHT);
     expect(calcTableHeight(table, 0, 'flow')).toBeLessThan(
       calcTableHeight(table, 0)
     );
     expect(calcTableHeight(table, 3, 'flow')).toBeGreaterThan(
       calcTableHeight(table, 3, 'document')
     );
+  });
+
+  /**
+   * A view card ends at its last row: the gap its header keeps over the first
+   * one is the only padding it draws under the title, so a card with no row
+   * wears that gap as its own and stands the title on the middle of the box.
+   */
+  it('draws no padding under the rows of a view card', () => {
+    const table = createTable({ columnIds: ['a', 'b', 'c'] });
+    const rowless = calcTableHeight(table, 0, 'flow');
+    const above = TABLE_BORDER + TABLE_PADDING;
+
+    expect(rowless).toBe(34);
+    expect(above + VIEW_TABLE_HEADER_ICON_SIZE + above).toBe(rowless);
+    expect(calcTableHeight(table, 3, 'flow')).toBe(
+      rowless + 3 * VIEW_COLUMN_HEIGHT
+    );
+
+    // The document card keeps the padding it always drew under its rows.
+    expect(calcTableHeight(table, 3)).toBe(
+      calcTableHeight(table, 0) + 3 * COLUMN_HEIGHT
+    );
+    expect(calcTableHeight(table, 0)).toBe(56);
   });
 });
 

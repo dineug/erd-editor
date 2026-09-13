@@ -94,6 +94,10 @@ export const VIEW_TABLE_MIN_WIDTH = 172;
 /** The size of a button in a view card's header. */
 export const VIEW_TABLE_HEADER_BUTTON_SIZE = 12;
 
+/** The strip the two of them take along the right edge of that header. */
+export const VIEW_TABLE_HEADER_BUTTONS_WIDTH =
+  VIEW_TABLE_HEADER_BUTTON_SIZE * 2 + TABLE_HEADER_BUTTON_MARGIN_LEFT;
+
 export const MEMO_BORDER = 1;
 export const MEMO_PADDING = 8;
 export const MEMO_HEADER_HEIGHT =

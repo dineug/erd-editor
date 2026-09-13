@@ -313,12 +313,17 @@ export function calcTableHeight(
   rowCount: number = table.columnIds.length,
   source: GeometrySource = 'document'
 ): number {
+  // A view card ends at its last row. The gap its header keeps over the first
+  // row is the only padding it draws under the title, so a card with no row
+  // wears that gap as its own and stands the title on the middle of the box.
+  const trailing = source === 'document' ? TABLE_PADDING : 0;
+
   return (
     TABLE_BORDER +
     TABLE_PADDING +
     tableHeaderHeight(source) +
     rowCount * tableRowHeight(source) +
-    TABLE_PADDING +
+    trailing +
     TABLE_BORDER
   );
 }

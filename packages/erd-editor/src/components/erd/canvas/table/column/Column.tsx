@@ -21,6 +21,7 @@ import {
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
   setSceneCursor,
+  TABLE_CORNER_RADIUS,
   TABLE_INSET,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
@@ -91,6 +92,12 @@ export type ColumnProps = {
   litAlpha?: number;
   /** Whether a view rules a line under this row, which every row but the last does. */
   divider?: boolean;
+  /**
+   * Whether this is the row a view card ends at. A view draws no padding under
+   * its rows, so the last one meets the card's bottom border and takes the two
+   * corners it is rounded by, or its square tint would stand outside them.
+   */
+  last?: boolean;
   y: number;
   width: number;
   selected: boolean;
@@ -541,6 +548,11 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           x={TABLE_BORDER}
           width={width - TABLE_BORDER * 2}
           height={rowHeight}
+          cornerRadius={
+            view && props.last
+              ? [0, 0, TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS]
+              : 0
+          }
           fill={background}
         />
         {sceneIcon({

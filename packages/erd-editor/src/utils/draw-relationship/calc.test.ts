@@ -36,8 +36,12 @@ function addTable(state: RootState, table: Table): Table {
   return table;
 }
 
-/** The border, padding and header a view card carries whatever rows it draws. */
-const VIEW_CHROME = 1 + 8 + VIEW_TABLE_HEADER_HEIGHT + 8 + 1;
+/**
+ * The border, padding and header a view card carries over the rows it draws.
+ * It ends at its last row, so the gap the header keeps over the first one is
+ * the only padding under the title, and a card with no row is this and nothing else.
+ */
+const VIEW_CHROME = 1 + 8 + VIEW_TABLE_HEADER_HEIGHT + 1;
 
 describe('tableToObjectPoint', () => {
   it('derives the nine anchor points of an empty table', () => {
@@ -199,7 +203,10 @@ describe('tableToObjectPoint for a view', () => {
     );
 
     expect(top).toEqual({ x: 5_000 + width / 2, y: -3_000 });
-    expect(bottom).toEqual({ x: 5_000 + width / 2, y: -3_000 + VIEW_CHROME });
+    expect(bottom).toEqual({
+      x: 5_000 + width / 2,
+      y: -3_000 + VIEW_CHROME,
+    });
     expect(left).toEqual({ x: 5_000, y: -3_000 + VIEW_CHROME / 2 });
     expect(right).toEqual({
       x: 5_000 + width,

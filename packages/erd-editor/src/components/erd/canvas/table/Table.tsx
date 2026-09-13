@@ -62,6 +62,7 @@ import {
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
   TABLE_HEADER_INPUT_HEIGHT,
   VIEW_TABLE_HEADER_BUTTON_SIZE,
+  VIEW_TABLE_HEADER_BUTTONS_WIDTH,
   VIEW_TABLE_HEADER_FONT_SIZE,
   VIEW_TABLE_HEADER_HEIGHT,
   VIEW_TABLE_HEADER_ICON_SIZE,
@@ -727,10 +728,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 color: iconColor(theme, 'waypoints', hovered),
                 mouseenter: handleIconMouseenter('waypoints'),
                 mouseleave: handleIconMouseleave,
-                x:
-                  contentWidth -
-                  VIEW_TABLE_HEADER_BUTTON_SIZE * 2 -
-                  TABLE_HEADER_BUTTON_MARGIN_LEFT,
+                x: contentWidth - VIEW_TABLE_HEADER_BUTTONS_WIDTH,
                 y: headerButtonY,
                 click: handleRelated,
               })
@@ -761,6 +759,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 related={relatedIds?.has(column.id) ?? false}
                 litAlpha={litAlpha}
                 divider={view && index < columns.length - 1}
+                last={view && index === columns.length - 1}
                 y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}
                 selected={hasSelectColumn(column.id)}
