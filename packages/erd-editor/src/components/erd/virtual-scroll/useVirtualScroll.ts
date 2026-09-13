@@ -156,6 +156,20 @@ export function useVirtualScroll(ctx: Ctx) {
     return movementY;
   };
 
+  const scrollBy = (movementX: number, movementY: number) => {
+    const { store } = app.value;
+    const source = sourceRef.value;
+
+    // The reducer takes a step as it is, so the thumb is what keeps its drag
+    // inside the travel it is drawn over: the step is cut to the hull here.
+    store.dispatch(
+      sceneStreamScrollToAction(
+        source,
+        clampScrollMovement(store.state, { movementX, movementY }, source)
+      )
+    );
+  };
+
   const handleScroll = (dragMove: DragMove) => {
     const { event } = dragMove;
     event.type === 'mousemove' && event.preventDefault();
@@ -163,39 +177,11 @@ export function useVirtualScroll(ctx: Ctx) {
     const isHorizontal = state.selected === 'horizontal';
     const movementX = getMovementX(dragMove);
     const movementY = getMovementY(dragMove);
-    const { store } = app.value;
-    const source = sourceRef.value;
 
-    // The reducer takes a step as it is, so the thumb is what keeps its drag
-    // inside the travel it is drawn over: the step is cut to the hull here.
     if (isVertical && movementY !== 0) {
-      store.dispatch(
-        sceneStreamScrollToAction(
-          source,
-          clampScrollMovement(
-            store.state,
-            {
-              movementX: 0,
-              movementY: absoluteMovement(movementY, getHeightRatio()),
-            },
-            source
-          )
-        )
-      );
+      scrollBy(0, absoluteMovement(movementY, getHeightRatio()));
     } else if (isHorizontal && movementX !== 0) {
-      store.dispatch(
-        sceneStreamScrollToAction(
-          source,
-          clampScrollMovement(
-            store.state,
-            {
-              movementX: absoluteMovement(movementX, getWidthRatio()),
-              movementY: 0,
-            },
-            source
-          )
-        )
-      );
+      scrollBy(absoluteMovement(movementX, getWidthRatio()), 0);
     }
   };
 

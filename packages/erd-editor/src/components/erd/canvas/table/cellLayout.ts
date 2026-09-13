@@ -79,11 +79,10 @@ export function getHeaderTextY(source: GeometrySource = 'document'): number {
  * share one middle.
  */
 export function getHeaderTextHeight(
-  source: GeometrySource = 'document',
-  fontFamily?: string
+  source: GeometrySource = 'document'
 ): number {
   return source === 'document'
-    ? getCellTextHeight(fontFamily)
+    ? getCellTextHeight()
     : VIEW_TABLE_HEADER_ICON_SIZE;
 }
 
@@ -205,7 +204,7 @@ export function getHeaderCellSlots(
     },
   ];
 
-  if (source === 'document' && bHas(state.settings.show, Show.tableComment)) {
+  if (!view && bHas(state.settings.show, Show.tableComment)) {
     slots.push({
       focusType: FocusType.tableComment,
       x: table.ui.widthName + INPUT_MARGIN_RIGHT,

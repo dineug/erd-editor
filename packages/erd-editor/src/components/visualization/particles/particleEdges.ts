@@ -31,16 +31,14 @@ function connectorPoints(
   const { start, end } = getAnchors(relationship, source);
   const { path } = getRelationshipPath(relationship, source);
   const segments = path.path.d();
-  const from = { x: start.x, y: start.y };
-  const to = { x: end.x, y: end.y };
-  if (!segments.length) return [from, to];
+  if (!segments.length) return [start, end];
 
   return [
-    from,
+    start,
     { x: path.line.start.x2, y: path.line.start.y2 },
-    ...segments.map(([, point]) => ({ x: point.x, y: point.y })),
+    ...segments.map(([, point]) => point),
     { x: path.line.end.x2, y: path.line.end.y2 },
-    to,
+    end,
   ];
 }
 

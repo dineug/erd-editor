@@ -140,6 +140,15 @@ type HeaderCellOptions = {
  */
 const PIN_BLOCKED_KINDS = ['icon'];
 
+/**
+ * The fill a table name takes: the placeholder while it is blank, and the
+ * foreground in a view where the document draws it active.
+ */
+const nameFill = (theme: Theme, name: string, view: boolean) => {
+  if (!name.trim()) return theme.placeholder;
+  return view ? theme.foreground : theme.active;
+};
+
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
@@ -527,9 +536,11 @@ const Table: FC<TableProps> = (props, ctx) => {
     // How far the light has come up on this card, which is what every paint the
     // highlight owns is scaled by: one value, so they all arrive together.
     const litKey = transitionKey(editor.id, 'table', table.id);
-    view && transitionTo(litKey, lit ? 1 : 0);
-    const litAlpha = view ? progressOf(litKey) : 0;
-    const relatedIds = props.relatedColumnIds ?? null;
+    let litAlpha = 0;
+    if (view) {
+      transitionTo(litKey, lit ? 1 : 0);
+      litAlpha = progressOf(litKey);
+    }
 
     const columns = query(collections)
       .collection('tableColumnEntities')
@@ -698,11 +709,7 @@ const Table: FC<TableProps> = (props, ctx) => {
               ? headerCell({
                   ...nameCell,
                   text: table.name.trim() ? table.name : 'table',
-                  fill: !table.name.trim()
-                    ? theme.placeholder
-                    : view
-                      ? theme.foreground
-                      : theme.active,
+                  fill: nameFill(theme, table.name, view),
                   focus: hasFocus(FocusType.tableName),
                   edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,
@@ -756,7 +763,7 @@ const Table: FC<TableProps> = (props, ctx) => {
               <Column
                 column={column}
                 source={source}
-                related={relatedIds?.has(column.id) ?? false}
+                related={props.relatedColumnIds?.has(column.id) ?? false}
                 litAlpha={litAlpha}
                 divider={view && index < columns.length - 1}
                 last={view && index === columns.length - 1}

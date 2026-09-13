@@ -4,14 +4,13 @@ function channelsOf(color: string): number[] | null {
   const match = HEX.exec(color.trim());
   if (!match) return null;
 
-  const hex = match[1];
-  const wide = hex.length === 6;
+  const digits = match[1];
+  const hex =
+    digits.length === 6
+      ? digits
+      : [...digits].map(digit => `${digit}${digit}`).join('');
 
-  return [0, 1, 2].map(index =>
-    wide
-      ? parseInt(hex.slice(index * 2, index * 2 + 2), 16)
-      : parseInt(`${hex[index]}${hex[index]}`, 16)
-  );
+  return [0, 2, 4].map(offset => parseInt(hex.slice(offset, offset + 2), 16));
 }
 
 /**

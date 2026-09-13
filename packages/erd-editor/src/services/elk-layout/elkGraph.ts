@@ -2,7 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { getTableRect } from '@/konva/scene/metrics';
+import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 import { type ElkPlacement, usesCoordinateHints } from './elkLayoutOptions';
@@ -93,26 +93,19 @@ function rowOf(
  * of the box the source draws. Handed the raw coordinates instead, the
  * INTERACTIVE strategies read one document row back as one layer per table.
  */
-function toHints(
-  nodes: ElkLayoutNode[],
-  points: Map<string, { x: number; y: number }>
-): void {
-  const placed = nodes.filter(node => points.has(node.id));
-  if (!placed.length) return;
+function toHints(nodes: ElkLayoutNode[], rects: Rect[]): void {
+  if (!nodes.length) return;
 
   const scale =
-    placed.reduce((total, node) => total + node.width, 0) / placed.length;
+    nodes.reduce((total, node) => total + node.width, 0) / nodes.length;
   if (scale <= 0) return;
 
-  const xs = placed.map(node => points.get(node.id)!.x);
-  const ys = placed.map(node => points.get(node.id)!.y);
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
+  const minX = Math.min(...rects.map(({ x }) => x));
+  const minY = Math.min(...rects.map(({ y }) => y));
 
-  placed.forEach(node => {
-    const { x, y } = points.get(node.id)!;
-    node.x = (x - minX) / scale;
-    node.y = (y - minY) / scale;
+  nodes.forEach((node, index) => {
+    node.x = (rects[index].x - minX) / scale;
+    node.y = (rects[index].y - minY) / scale;
   });
 }
 
@@ -133,29 +126,23 @@ export function createElkLayoutRequest(
     groupUnrelated,
   }: ElkLayoutRequestOptions = {}
 ): ElkLayoutRequest {
-  const {
-    doc: { relationshipIds },
-    collections,
-  } = state;
-  const shown = tableIds ?? state.doc.tableIds;
+  const { doc, collections } = state;
   const tables = query(collections)
     .collection('tableEntities')
-    .selectByIds(shown);
+    .selectByIds(tableIds ?? doc.tableIds);
   const relationships = query(collections)
     .collection('relationshipEntities')
-    .selectByIds(relationshipIds);
+    .selectByIds(doc.relationshipIds);
 
   // The scene's own measurement, cached per source, rather than a second copy
   // of the same sums: a box ELK is given and the box the source draws cannot
   // then disagree about how tall a table under a show mode is.
-  const rects = new Map(
-    tables.map(table => [table.id, getTableRect(state, table, source)] as const)
-  );
-  const nodes = tables.map<ElkLayoutNode>(table => {
-    const { width, height } = rects.get(table.id)!;
-
-    return { id: table.id, width, height };
-  });
+  const rects = tables.map(table => getTableRect(state, table, source));
+  const nodes = tables.map<ElkLayoutNode>((table, index) => ({
+    id: table.id,
+    width: rects[index].width,
+    height: rects[index].height,
+  }));
 
   const nodeIdSet = new Set(nodes.map(node => node.id));
   const rowsByTable = new Map(tables.map(table => [table.id, table.columnIds]));
@@ -222,9 +209,7 @@ function boundsOfLayout(
   nodes: ElkLayoutNode[],
   points: ElkLayoutPoint[]
 ): { minX: number; minY: number; maxX: number; maxY: number } | null {
-  const sizeById = new Map(
-    flattenElkNodes(nodes).map(node => [node.id, node] as const)
-  );
+  const sizeById = new Map(flattenElkNodes(nodes).map(node => [node.id, node]));
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -264,6 +249,7 @@ export function toTablePoints(
     content.x + content.width / 2 - (bounds.minX + bounds.maxX) / 2;
   const offsetY =
     content.y + content.height / 2 - (bounds.minY + bounds.maxY) / 2;
+
   return offsetBy(nodes, points, offsetX, offsetY);
 }
 

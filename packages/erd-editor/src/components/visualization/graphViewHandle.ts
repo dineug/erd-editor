@@ -37,26 +37,13 @@ const RESTING: GraphViewHandle = {
   nodes: () => [],
 };
 
-const bump = (editorId: string) => {
-  registrations.version[editorId] = (registrations.version[editorId] ?? 0) + 1;
-};
-
-/**
- * The same signal on the way out, and the key with it: a host that mounts an
- * editor per document and drops it again would otherwise leave one entry
- * behind for every editor it ever opened.
- */
-const forget = (editorId: string) => {
-  delete registrations.version[editorId];
-};
-
 /** Hands the graph of the editor given to whatever reads it, for as long as it is mounted. */
 export function registerGraphView(
   editorId: string,
   handle: GraphViewHandle
 ): void {
   handles.set(editorId, handle);
-  bump(editorId);
+  registrations.version[editorId] = (registrations.version[editorId] ?? 0) + 1;
 }
 
 /**
@@ -70,7 +57,9 @@ export function unregisterGraphView(
   if (handles.get(editorId) !== handle) return;
 
   handles.delete(editorId);
-  forget(editorId);
+  // The key goes with the signal, or a host that mounts an editor per document
+  // and drops it again leaves one entry behind for every editor it ever opened.
+  delete registrations.version[editorId];
 }
 
 /**
@@ -82,9 +71,9 @@ export function unregisterGraphView(
  * const { state, nodes } = getGraphView(store.state.editor.id);
  */
 export function getGraphView(editorId: string): GraphViewHandle {
-  const version = registrations.version[editorId];
+  void registrations.version[editorId];
 
-  return version === undefined ? RESTING : (handles.get(editorId) ?? RESTING);
+  return handles.get(editorId) ?? RESTING;
 }
 
 /**

@@ -240,6 +240,23 @@ export const streamScrollToAction = createAction<
 >(ActionType.streamScrollTo);
 
 /**
+ * A step of a gesture, taken as it is: the wheel, the grab and the touch pan
+ * go anywhere, since an infinite canvas has no edge, and the hull the aids are
+ * drawn from follows the origin out rather than holding it back.
+ */
+const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
+  { settings },
+  { payload: { movementX, movementY }, tags }
+) => {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
+  settings.originX = round(settings.originX + movementX, 4);
+  settings.originY = round(settings.originY + movementY, 4);
+};
+
+/**
  * The scroll a scene dispatches lands where that scene reads: the document's
  * own for the document scene, and the view of the source's kind, named, for a
  * view scene, so neither of two scenes on one page ever scrolls the other.
@@ -259,23 +276,6 @@ export const sceneStreamScrollToAction = (
   source === 'document'
     ? streamScrollToAction(payload)
     : viewStreamScrollToAction({ ...payload, kind: source });
-
-/**
- * A step of a gesture, taken as it is: the wheel, the grab and the touch pan
- * go anywhere, since an infinite canvas has no edge, and the hull the aids are
- * drawn from follows the origin out rather than holding it back.
- */
-const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
-  { settings },
-  { payload: { movementX, movementY }, tags }
-) => {
-  if (!isNil(tags) && bHas(tags, Tag.following)) {
-    return;
-  }
-
-  settings.originX = round(settings.originX + movementX, 4);
-  settings.originY = round(settings.originY + movementY, 4);
-};
 
 export const changeShowAction = createAction<
   ActionMap[typeof ActionType.changeShow]

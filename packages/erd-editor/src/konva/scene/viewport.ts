@@ -21,8 +21,8 @@ export type CullingRectOptions = SceneTransform & {
 
 /**
  * The placement a reader standing outside every scene means: the active
- * view's while one is open, else the document's. A jump and the zoom
- * generators read it, since the redirect sends what they dispatch there too.
+ * view's while one is open, else the document's. The zoom generators read
+ * it, since the redirect sends what they dispatch there too.
  */
 export function getActiveTransform(state: RootState): SceneTransform {
   return getActiveView(state) ?? state.settings;

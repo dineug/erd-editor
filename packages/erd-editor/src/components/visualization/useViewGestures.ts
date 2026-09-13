@@ -111,8 +111,7 @@ export function useViewGestures(
    * drawn over this scene, and the bar under the tab is its sibling rather than its child.
    */
   const handleMousedown = (event: MouseEvent | TouchEvent) => {
-    const el = event.target as HTMLElement | null;
-    if (!el) return;
+    if (!event.target) return;
 
     const hit = sceneHit(canvas.value, event);
     if (hit?.kind === 'table') return;

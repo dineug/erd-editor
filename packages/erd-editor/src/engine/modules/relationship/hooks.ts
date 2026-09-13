@@ -223,6 +223,12 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [changeColumnPrimaryKeyAction.type]: tableIdOf,
 };
 
+/** The tables and connectors one view shows, as one set of ids. */
+function shownIds(state: RootState, source: ViewSource): Set<string> {
+  const { tableIds, relationshipIds } = getVisibleIds(state, source);
+  return new Set([...tableIds, ...relationshipIds]);
+}
+
 /**
  * Whether an action can change what one view's sort reads. A named table or
  * connector counts when that view shows it now or showed it at the last sort,
@@ -242,8 +248,7 @@ function touchesView(
   const named = namedIds[action.type];
   if (!named) return true;
 
-  const { tableIds, relationshipIds } = getVisibleIds(state, source);
-  const shown = new Set([...tableIds, ...relationshipIds]);
+  const shown = shownIds(state, source);
   return named(action.payload).some(id => shown.has(id) || lastRead.has(id));
 }
 
@@ -287,8 +292,7 @@ const viewRelationshipSortHook: HookEffect = (action$, getState) => {
         if (!isViewShown(state, source)) continue;
 
         relationshipSort(state, source);
-        const { tableIds, relationshipIds } = getVisibleIds(state, source);
-        lastRead[source] = new Set([...tableIds, ...relationshipIds]);
+        lastRead[source] = shownIds(state, source);
       }
     });
 };

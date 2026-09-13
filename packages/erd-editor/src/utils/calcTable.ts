@@ -138,12 +138,9 @@ export type ColumnWidth = {
   unique: number;
 };
 
-function calcMaxWidthColumn(
-  columns: Column[],
-  show: number,
-  maxWidthComment: number
-): ColumnWidth {
-  const columnWidth: ColumnWidth = {
+/** Every width at zero, for a measurement to raise. */
+function createColumnWidth(): ColumnWidth {
+  return {
     width: 0,
     name: 0,
     comment: 0,
@@ -153,6 +150,14 @@ function calcMaxWidthColumn(
     autoIncrement: 0,
     unique: 0,
   };
+}
+
+function calcMaxWidthColumn(
+  columns: Column[],
+  show: number,
+  maxWidthComment: number
+): ColumnWidth {
+  const columnWidth = createColumnWidth();
 
   for (const column of columns) {
     if (columnWidth.name < column.ui.widthName) {
@@ -223,16 +228,7 @@ export function calcViewTableWidths(
   state: RootState,
   columnIds: string[]
 ): ColumnWidth {
-  const columnWidth: ColumnWidth = {
-    width: 0,
-    name: 0,
-    comment: 0,
-    dataType: 0,
-    default: 0,
-    notNull: 0,
-    autoIncrement: 0,
-    unique: 0,
-  };
+  const columnWidth = createColumnWidth();
   const columns = query(state.collections)
     .collection('tableColumnEntities')
     .selectByIds(columnIds);

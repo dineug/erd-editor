@@ -15,7 +15,5 @@ export function focusFlowView(app: AppContext, tableIds: string[]): void {
 
 /** Widens the Flow view back to everything it placed, through that same one channel: state alone. */
 export function showAllFlowView(app: AppContext): void {
-  app.store.dispatchSync(
-    viewSetCentersAction({ tableIds: [], kind: ViewKind.flow })
-  );
+  focusFlowView(app, []);
 }

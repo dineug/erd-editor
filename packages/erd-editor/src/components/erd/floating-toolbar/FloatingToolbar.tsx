@@ -2,11 +2,10 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
-  COMPASS_ARROW_SIZE,
-  formatDistance,
   getContentCompass,
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
+import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
 import Icon from '@/components/primitives/icon/Icon';
 import { NotationIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -167,25 +166,11 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
             <Icon name="maximize" size={ICON_SIZE} />
           )}
         </div>
-        {compass ? (
-          <>
-            <div class={styles.divider}></div>
-            <div
-              class={['content-compass', styles.compass]}
-              title="Go to content"
-              on:click={handleCompass}
-            >
-              <Icon
-                name="arrow-right"
-                size={COMPASS_ARROW_SIZE}
-                rotate={compass.angle}
-              />
-              <span class={styles.compassDistance}>
-                {formatDistance(compass.distance)}
-              </span>
-            </div>
-          </>
-        ) : null}
+        {toolbarCompass({
+          compass,
+          className: 'content-compass',
+          onClick: handleCompass,
+        })}
       </div>
     );
   };

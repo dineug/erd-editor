@@ -10,13 +10,11 @@ import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import {
-  COMPASS_ARROW_SIZE,
-  type ContentCompass,
-  formatDistance,
   getContentCompass,
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
+import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
 import { showAllFlowView } from '@/components/flowCenters';
 import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
@@ -49,6 +47,7 @@ import {
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSceneTransform } from '@/konva/scene/viewport';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
+import { toZoomFormat } from '@/utils/validation';
 
 import * as styles from './VisualizationToolbar.styles';
 
@@ -233,7 +232,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
       : graph.state.scale;
     const showMode = showModeOf(view?.showMode);
     const showAll = flow && Boolean(view?.centerIds.length);
-    const compass: ContentCompass | null = flow
+    const compass = flow
       ? getContentCompass(store.state, ViewKind.flow)
       : graphCompass(graph.state, graph.nodes(), editor.viewport);
 
@@ -266,7 +265,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
             <Icon name="minus" size={ICON_SIZE} />
           </div>
           {/* prettier-ignore */}
-          <span class={['zoom-level', floating.readout]}>{`${Math.round(zoomLevel * 100)}%`}</span>
+          <span class={['zoom-level', floating.readout]}>{toZoomFormat(zoomLevel)}</span>
           <div
             class={floating.menu}
             title={title('Zoom in', KeyBindingName.zoomIn)}
@@ -279,12 +278,14 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
             <Icon name="fullscreen" size={ICON_SIZE} />
           </div>
           {flow ? (
-            <div class={floating.menu} title="Tidy Up" on:click={handleTidyUp}>
-              <Icon name="wand-sparkles" size={ICON_SIZE} />
-            </div>
-          ) : null}
-          {flow ? (
             <>
+              <div
+                class={floating.menu}
+                title="Tidy Up"
+                on:click={handleTidyUp}
+              >
+                <Icon name="wand-sparkles" size={ICON_SIZE} />
+              </div>
               <div class={floating.divider}></div>
               <div
                 use:ref={ref($trigger)}
@@ -309,25 +310,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
               </div>
             </>
           ) : null}
-          {compass ? (
-            <>
-              <div class={floating.divider}></div>
-              <div
-                class={floating.compass}
-                title="Go to content"
-                on:click={handleCompass}
-              >
-                <Icon
-                  name="arrow-right"
-                  size={COMPASS_ARROW_SIZE}
-                  rotate={compass.angle}
-                />
-                <span class={floating.compassDistance}>
-                  {formatDistance(compass.distance)}
-                </span>
-              </div>
-            </>
-          ) : null}
+          {toolbarCompass({ compass, onClick: handleCompass })}
         </div>
         {flow && state.showModeOpen ? (
           <div

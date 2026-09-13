@@ -194,19 +194,18 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       : relationship.identification
         ? theme.keyPFK
         : theme.keyFK;
-    const grey = hover ? theme.relationshipHover : base;
+    const unlit = hover ? theme.relationshipHover : base;
 
     // A view lights the connectors that reach what it lights, and the colour
     // walks between the two rather than jumping. The document has no light of
     // its own, so its route takes the colour it always took.
-    const lit = view && Boolean(props.lit);
     const litKey = transitionKey(editor.id, 'relationship', relationship.id);
-    view && transitionTo(litKey, lit ? 1 : 0);
-    const stroke = mixColor(
-      grey,
-      theme.accentColor9,
-      view ? progressOf(litKey) : 0
-    );
+    let litProgress = 0;
+    if (view) {
+      transitionTo(litKey, props.lit ? 1 : 0);
+      litProgress = progressOf(litKey);
+    }
+    const stroke = mixColor(unlit, theme.accentColor9, litProgress);
     const shape = relationshipShape(
       relationship.relationshipType,
       relationshipPath,

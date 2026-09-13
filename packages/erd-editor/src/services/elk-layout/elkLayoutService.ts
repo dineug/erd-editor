@@ -12,6 +12,7 @@ import {
   ELK_ALGORITHMS,
   elkLayoutOptions,
   elkNodeLayoutOptions,
+  type ElkPlacement,
   GROUP_NODE_OPTIONS,
   usesPorts,
 } from './elkLayoutOptions';
@@ -106,7 +107,7 @@ export function toElkGraph({
 /** One node of the graph: a table with its hint and ports, or a group holding tables. */
 function toElkChild(
   { id, width, height, x, y, children }: ElkLayoutNode,
-  placement: ElkLayoutRequest['placement'],
+  placement: ElkPlacement,
   ports: Map<string, ElkPort[]> | null
 ): ElkNode {
   if (children?.length) {

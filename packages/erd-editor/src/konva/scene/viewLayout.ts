@@ -74,10 +74,7 @@ function forEachRelationshipEnd(
 }
 
 /** The columns any relationship holds an end of on this table, whether or not they are flagged. */
-export function relationshipColumnIds(
-  state: RootState,
-  table: Table
-): Set<string> {
+function relationshipColumnIds(state: RootState, table: Table): Set<string> {
   const ids = new Set<string>();
 
   forEachRelationshipEnd(state, (tableId, columnIds) => {
@@ -210,6 +207,11 @@ const hover = observable({ tableId: {} as Record<string, string> });
  */
 const hoverView = new Map<string, SceneView>();
 
+function dropHover(editorId: string): void {
+  hoverView.delete(editorId);
+  Reflect.deleteProperty(hover.tableId, editorId);
+}
+
 /**
  * Takes the hover for the view of the source given, or drops it on null. A
  * null from a scene of another kind leaves the hover alone: a leave on the
@@ -224,10 +226,7 @@ export function setViewHoverTable(
   const { id } = root.editor;
 
   if (tableId === null || !view) {
-    if (hoverView.get(id)?.kind === source) {
-      hoverView.delete(id);
-      Reflect.deleteProperty(hover.tableId, id);
-    }
+    if (hoverView.get(id)?.kind === source) dropHover(id);
     return;
   }
 
@@ -252,8 +251,7 @@ export function clearViewHoverTable(
     return;
   }
 
-  hoverView.delete(id);
-  Reflect.deleteProperty(hover.tableId, id);
+  dropHover(id);
 }
 
 export function getViewHoverTable(
@@ -282,6 +280,11 @@ const pinned = observable({ tableId: {} as Record<string, string> });
  */
 const pinnedView = new Map<string, SceneView>();
 
+function dropPin(editorId: string): void {
+  pinnedView.delete(editorId);
+  Reflect.deleteProperty(pinned.tableId, editorId);
+}
+
 /**
  * Pins the table in the view of the source given, or lets it go when it is
  * the one already pinned. A second click on the same card is what releases it,
@@ -299,8 +302,7 @@ export function setViewPinnedTable(
   const held = pinnedView.get(id) === view ? pinned.tableId[id] : undefined;
 
   if (held === tableId) {
-    pinnedView.delete(id);
-    Reflect.deleteProperty(pinned.tableId, id);
+    dropPin(id);
     return;
   }
 
@@ -321,10 +323,7 @@ export function clearViewPinnedTable(
   if (!view) return;
 
   const { id } = root.editor;
-  if (pinnedView.get(id) !== view) return;
-
-  pinnedView.delete(id);
-  Reflect.deleteProperty(pinned.tableId, id);
+  if (pinnedView.get(id) === view) dropPin(id);
 }
 
 /**
@@ -354,10 +353,9 @@ export function getHighlightIds(
   state: RootState,
   source: GeometrySource = 'document'
 ): HighlightIds {
-  const tableIds = new Set<string>();
-  const relationshipIds = new Set<string>();
-  const view = getSourceView(state, source);
-  if (!view) return { tableIds, relationshipIds };
+  if (!getSourceView(state, source)) {
+    return { tableIds: new Set(), relationshipIds: new Set() };
+  }
 
   const shown = getVisibleIds(state, source);
   const shownTables = new Set(shown.tableIds);
@@ -367,8 +365,8 @@ export function getHighlightIds(
   if (hovered !== null && shownTables.has(hovered)) lit.add(hovered);
   if (held !== null && shownTables.has(held)) lit.add(held);
 
-  lit.forEach(id => tableIds.add(id));
-
+  const tableIds = new Set(lit);
+  const relationshipIds = new Set<string>();
   const relationships = query(state.collections)
     .collection('relationshipEntities')
     .selectByIds(shown.relationshipIds);

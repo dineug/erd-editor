@@ -8,10 +8,8 @@ import type { ElkLayoutService } from './elkLayoutService';
 
 export {
   createElkLayoutRequest,
-  type ElkLayoutNode,
   type ElkLayoutPoint,
   type ElkLayoutRequest,
-  type ElkLayoutRequestOptions,
   toTablePoints,
   toViewPoints,
 } from './elkGraph';

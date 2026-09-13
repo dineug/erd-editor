@@ -41,7 +41,7 @@ export const viewOpenAction = createAction<
 
 const viewOpen: ReducerType<typeof ActionType.viewOpen> = (
   state,
-  { payload: { kind, centerIds = [] } }
+  { payload: { kind, centerIds } }
 ) => {
   clearViewGeometry(state, kind);
   state.editor.views[kind] = createSceneView(kind, centerIds);

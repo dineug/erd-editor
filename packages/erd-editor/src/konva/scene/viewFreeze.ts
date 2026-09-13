@@ -19,11 +19,12 @@ type FrozenView = {
  */
 const state = observable({ frozen: {} as Record<string, FrozenView | null> });
 
-const keyOf = (root: RootState, source: GeometrySource) =>
+/** One scene among every store on the page: its editor's id and the source it draws from. */
+export const sceneKeyOf = (root: RootState, source: GeometrySource) =>
   `${root.editor.id}:${source}`;
 
 const frozenOf = (root: RootState, source: GeometrySource): FrozenView | null =>
-  state.frozen[keyOf(root, source)] ?? null;
+  state.frozen[sceneKeyOf(root, source)] ?? null;
 
 /**
  * Holds the content rect and the origin where they stand, so everything a drag
@@ -36,7 +37,7 @@ export function freezeView(
 ): void {
   const { originX, originY } = getSceneTransform(root, source);
 
-  state.frozen[keyOf(root, source)] = {
+  state.frozen[sceneKeyOf(root, source)] = {
     content: getSceneContentRect(root, source),
     origin: { x: originX, y: originY },
   };
@@ -46,7 +47,7 @@ export function thawView(
   root: RootState,
   source: GeometrySource = 'document'
 ): void {
-  Reflect.deleteProperty(state.frozen, keyOf(root, source));
+  Reflect.deleteProperty(state.frozen, sceneKeyOf(root, source));
 }
 
 export function isViewFrozen(

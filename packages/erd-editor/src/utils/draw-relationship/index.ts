@@ -187,6 +187,10 @@ export type Anchors = {
   end: Anchor;
 };
 
+export function copyAnchor({ tableId, x, y, direction }: Anchor): Anchor {
+  return { tableId, x, y, direction };
+}
+
 /**
  * Everything one source's sort keeps beside the document. A side channel
  * because none of it may reach the document, the register set or the history:
@@ -233,6 +237,8 @@ const channels: Record<GeometrySource, SortChannel> = {
   flow: createSortChannel(),
 };
 
+type Version = { version: number };
+
 /**
  * A version per connector of each view channel, observable so a render that
  * read a view's ends, slots or route is redrawn once that view's sort changes
@@ -241,8 +247,6 @@ const channels: Record<GeometrySource, SortChannel> = {
 const viewVersions: Record<ViewSource, WeakMap<Relationship, Version>> = {
   flow: new WeakMap(),
 };
-
-type Version = { version: number };
 
 function viewVersionOf(relationship: Relationship, source: ViewSource) {
   const versions = viewVersions[source];
@@ -386,11 +390,10 @@ export function getAnchors(
   relationship: Relationship,
   source: GeometrySource = 'document'
 ): Anchors {
-  if (source !== 'document') {
-    observeView(relationship, source);
-    return channels[source].anchors.get(relationship) ?? relationship;
-  }
-  return relationship;
+  if (source === 'document') return relationship;
+
+  observeView(relationship, source);
+  return channels[source].anchors.get(relationship) ?? relationship;
 }
 
 /**
@@ -403,34 +406,25 @@ export function setAnchors(
   { start, end }: Anchors,
   source: GeometrySource = 'document'
 ) {
-  if (source !== 'document') {
-    const seen = channels[source].anchors.get(relationship) ?? relationship;
-    if (!sameAnchor(seen.start, start) || !sameAnchor(seen.end, end)) {
-      bumpView(relationship, source);
-    }
-    channels[source].anchors.set(relationship, {
-      start: {
-        tableId: start.tableId,
-        x: start.x,
-        y: start.y,
-        direction: start.direction,
-      },
-      end: {
-        tableId: end.tableId,
-        x: end.x,
-        y: end.y,
-        direction: end.direction,
-      },
-    });
+  if (source === 'document') {
+    relationship.start.direction = start.direction;
+    relationship.start.x = start.x;
+    relationship.start.y = start.y;
+    relationship.end.direction = end.direction;
+    relationship.end.x = end.x;
+    relationship.end.y = end.y;
     return;
   }
 
-  relationship.start.direction = start.direction;
-  relationship.start.x = start.x;
-  relationship.start.y = start.y;
-  relationship.end.direction = end.direction;
-  relationship.end.x = end.x;
-  relationship.end.y = end.y;
+  const { anchors } = channels[source];
+  const seen = anchors.get(relationship) ?? relationship;
+  if (!sameAnchor(seen.start, start) || !sameAnchor(seen.end, end)) {
+    bumpView(relationship, source);
+  }
+  anchors.set(relationship, {
+    start: copyAnchor(start),
+    end: copyAnchor(end),
+  });
 }
 
 function aabb(points: Point[]): BBox {

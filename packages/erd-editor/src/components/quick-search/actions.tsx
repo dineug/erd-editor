@@ -29,7 +29,7 @@ import {
   addTableAction$,
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
-import { getActiveTransform, getOriginToPlace } from '@/konva/scene/viewport';
+import { getOriginToPlace } from '@/konva/scene/viewport';
 import { openAutomaticTablePlacementAction } from '@/utils/emitter';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
@@ -300,10 +300,6 @@ export function createScopeActions(app: AppContext): Action[] {
   ];
 }
 
-/** The name a table wears in this list, which a blank one wears as unnamed. */
-const labelOf = (table: { name: string }) =>
-  isEmpty(table.name.trim()) ? 'unnamed' : table.name;
-
 function createTableActions({ store }: AppContext): Action[] {
   const {
     settings,
@@ -317,12 +313,12 @@ function createTableActions({ store }: AppContext): Action[] {
     .selectByIds(tableIds)
     .sort(orderByNameASC)
     .map<Action>(table => ({
-      name: labelOf(table),
+      name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
       keywords: 'Table',
       perform: ({ store }) => {
-        // This list is built on the ERD tab alone and a view is active only
-        // on the visualization tab, so what comes back here is the document's own.
-        const { zoomLevel } = getActiveTransform(store.state);
+        const {
+          settings: { zoomLevel },
+        } = store.state;
         // The table parks a zoomed START_X, START_Y in from the corner: the
         // landing point the DOM scene had, kept so a jump looks the same.
         const { x, y } = getOriginToPlace(zoomLevel, table.ui, {

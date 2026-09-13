@@ -39,9 +39,7 @@ export function getSceneContentRect(
   state: RootState,
   source: GeometrySource = 'document'
 ): Rect | null {
-  return source === 'document'
-    ? getContentRect(state)
-    : getContentRectAfter(state, [], source);
+  return getContentRectAfter(state, [], source);
 }
 
 /**

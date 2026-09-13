@@ -98,7 +98,7 @@ export function createParticleLoop(
 
   const place = () => {
     if (layer.x() !== origin.x || layer.y() !== origin.y) {
-      layer.position({ x: origin.x, y: origin.y });
+      layer.position(origin);
     }
     if (layer.scaleX() !== zoomLevel || layer.scaleY() !== zoomLevel) {
       layer.scale({ x: zoomLevel, y: zoomLevel });

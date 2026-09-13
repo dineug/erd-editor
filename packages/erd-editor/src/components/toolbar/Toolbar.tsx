@@ -83,13 +83,8 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showTimeTravel = editor.openMap[Open.timeTravel];
     const showDiffViewer = editor.openMap[Open.diffViewer];
 
-    // The history group leaves on an open panel, and stands on the ERD tab
-    // alone: the zoom it sits beside went to the floating toolbar over the
-    // canvas, where the tools that drive that canvas are.
-    const isErd = settings.canvasType === CanvasType.ERD;
-
     const showUndoRedo =
-      isErd &&
+      settings.canvasType === CanvasType.ERD &&
       !showAutomaticTablePlacement &&
       !showTableProperties &&
       !showDiffViewer &&

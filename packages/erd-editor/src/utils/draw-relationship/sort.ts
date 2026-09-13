@@ -10,6 +10,7 @@ import {
   ANCHOR_EDGE_INSET,
   ANCHOR_MAX_PITCH,
   type Anchors,
+  copyAnchor,
   DirectionName,
   DirectionNameList,
   nextSortEpoch,
@@ -22,7 +23,10 @@ import {
   euclideanDistance,
   tableToObjectPoint,
 } from '@/utils/draw-relationship/calc';
-import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import type {
+  GeometrySource,
+  ViewSource,
+} from '@/utils/draw-relationship/geometrySource';
 import {
   boundsOfPoints,
   createDirtyLanes,
@@ -197,11 +201,10 @@ export function relationshipSort(
   }
 
   if (source === 'document') {
-    routeRelationships(state, changeMap, slotMap, source);
-    return;
+    routeRelationships(state, changeMap, slotMap);
+  } else {
+    stubRelationships(changeMap, slotMap, source);
   }
-
-  stubRelationships(changeMap, slotMap, source);
 }
 
 /**
@@ -212,7 +215,7 @@ export function relationshipSort(
 function stubRelationships(
   changeMap: Map<Relationship, ChangeRelationship>,
   slotMap: Map<string, SlotPair>,
-  source: GeometrySource
+  source: ViewSource
 ) {
   for (const [origin, change] of changeMap.entries()) {
     const { id, start, end } = change;
@@ -231,11 +234,10 @@ function stubRelationships(
 function routeRelationships(
   state: RootState,
   changeMap: Map<Relationship, ChangeRelationship>,
-  slotMap: Map<string, SlotPair>,
-  source: GeometrySource
+  slotMap: Map<string, SlotPair>
 ) {
-  const obstacles = collectObstacles(state, source);
-  const cache = getSortCache(state, source);
+  const obstacles = collectObstacles(state);
+  const cache = getSortCache(state);
   const moved = diffTableBoxes(cache, obstacles);
   const previous = cache.entries;
   const entries = new Map<string, RouteEntry>();
@@ -319,7 +321,7 @@ function routeRelationships(
 
   for (const [id, points] of routes) {
     const origin = origins.get(id);
-    if (origin) setRoute(origin, points, source);
+    if (origin) setRoute(origin, points);
   }
 
   cache.entries = entries;
@@ -440,24 +442,12 @@ function clamp(value: number, low: number, high: number) {
   return Math.min(Math.max(value, low), high);
 }
 
-function createChangeRelationship(
-  relationship: Relationship
-): ChangeRelationship {
-  return {
-    id: relationship.id,
-    start: {
-      tableId: relationship.start.tableId,
-      x: relationship.start.x,
-      y: relationship.start.y,
-      direction: relationship.start.direction,
-    },
-    end: {
-      tableId: relationship.end.tableId,
-      x: relationship.end.x,
-      y: relationship.end.y,
-      direction: relationship.end.direction,
-    },
-  };
+function createChangeRelationship({
+  id,
+  start,
+  end,
+}: Relationship): ChangeRelationship {
+  return { id, start: copyAnchor(start), end: copyAnchor(end) };
 }
 
 /**

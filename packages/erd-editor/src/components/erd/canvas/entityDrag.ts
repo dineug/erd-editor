@@ -1,7 +1,7 @@
 import { observable } from '@dineug/r-html';
 
 import { RootState } from '@/engine/state';
-import { freezeView, thawView } from '@/konva/scene/viewFreeze';
+import { freezeView, sceneKeyOf, thawView } from '@/konva/scene/viewFreeze';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /**
@@ -11,15 +11,12 @@ import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
  */
 const state = observable({ active: {} as Record<string, boolean> });
 
-const keyOf = (root: RootState, source: GeometrySource) =>
-  `${root.editor.id}:${source}`;
-
 /** Raises the flag and holds the scene's view as it stands until endEntityDrag. */
 export function beginEntityDrag(
   root: RootState,
   source: GeometrySource = 'document'
 ): void {
-  state.active[keyOf(root, source)] = true;
+  state.active[sceneKeyOf(root, source)] = true;
   freezeView(root, source);
 }
 
@@ -27,7 +24,7 @@ export function endEntityDrag(
   root: RootState,
   source: GeometrySource = 'document'
 ): void {
-  Reflect.deleteProperty(state.active, keyOf(root, source));
+  Reflect.deleteProperty(state.active, sceneKeyOf(root, source));
   thawView(root, source);
 }
 
@@ -36,5 +33,5 @@ export function isEntityDragActive(
   root: RootState,
   source: GeometrySource = 'document'
 ): boolean {
-  return state.active[keyOf(root, source)] === true;
+  return state.active[sceneKeyOf(root, source)] === true;
 }

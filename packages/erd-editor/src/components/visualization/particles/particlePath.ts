@@ -1,3 +1,5 @@
+import { clamp } from 'es-toolkit';
+
 import type { Point } from '@/internal-types';
 import { VIEW_BEZIER_SEGMENTS } from '@/utils/draw-relationship/bezier';
 
@@ -74,9 +76,8 @@ export function pointAlong(path: MeasuredPath, distance: number): Point {
   const { points, distances, length } = path;
   if (!points.length) return { x: 0, y: 0 };
 
-  const at = Math.min(Math.max(distance, 0), length);
-  let index = 1;
-  while (index < points.length && distances[index] < at) index++;
+  const at = clamp(distance, 0, length);
+  const index = runIndexAt(path, at);
   if (index >= points.length) {
     const { x, y } = points[points.length - 1];
     return { x, y };
@@ -160,7 +161,7 @@ export function withAlpha(color: string, alpha: number): string {
   const hex = /^#([0-9a-f]{6})$/i.exec(color);
   if (!hex) return color;
 
-  const channel = Math.round(Math.min(Math.max(alpha, 0), 1) * 255);
+  const channel = Math.round(clamp(alpha, 0, 1) * 255);
   return `#${hex[1]}${channel.toString(16).padStart(2, '0')}`;
 }
 
@@ -173,12 +174,19 @@ function runAngle(from: Point, to: Point): number | null {
   return (Math.atan2(y, x) * 180) / Math.PI;
 }
 
-/** The direction of the run a distance sits in, searched back then forward for one with a length. */
-function runAngleAt(path: MeasuredPath, distance: number): number {
-  const { points, distances, length } = path;
-  const at = Math.min(Math.max(distance, 0), length);
+/** The index of the point that ends the run a distance, already kept to the path, sits in. */
+function runIndexAt(path: MeasuredPath, at: number): number {
+  const { points, distances } = path;
   let index = 1;
   while (index < points.length && distances[index] < at) index++;
+
+  return index;
+}
+
+/** The direction of the run a distance sits in, searched back then forward for one with a length. */
+function runAngleAt(path: MeasuredPath, distance: number): number {
+  const { points } = path;
+  const index = runIndexAt(path, clamp(distance, 0, path.length));
 
   for (let step = Math.min(index, points.length - 1); step > 0; step--) {
     const angle = runAngle(points[step - 1], points[step]);

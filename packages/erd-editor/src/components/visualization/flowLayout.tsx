@@ -84,16 +84,13 @@ function layoutsOf(view: SceneView): FlowLayouts {
 const slotOf = (view: SceneView): FlowSlot =>
   view.centerIds.length ? 'focused' : 'full';
 
-/** The display set itself, named by its centers, which is the first term of the key below. */
-const centersOf = (view: SceneView): string => view.centerIds.join(' ');
-
 /**
  * How the view is framed: which tables it draws and how much of each card. A
  * change of either resizes the cards and spreads the layout differently, so
  * the screen has to follow it; the rest of the key below replaces the placement alone.
  */
 const framingOf = (view: SceneView): string =>
-  [centersOf(view), view.showMode].join('|');
+  [view.centerIds.join(' '), view.showMode].join('|');
 
 /**
  * What a placement was computed over: the centers, the show mode, and the
@@ -107,8 +104,7 @@ function placedKey(state: RootState): string {
   const { doc } = state;
 
   return [
-    centersOf(view),
-    view.showMode,
+    framingOf(view),
     doc.tableIds.join(' '),
     doc.relationshipIds.join(' '),
   ].join('|');
@@ -144,11 +140,12 @@ export function fitFlowView(store: RxStore): void {
  */
 function standFlowView(
   store: RxStore,
-  entry: FlowLayouts,
-  framing: string,
+  view: SceneView,
   positions: Record<string, Point>,
   forced: boolean
 ): void {
+  const entry = layoutsOf(view);
+  const framing = framingOf(view);
   const fits = forced || entry.stood !== framing;
   entry.stood = framing;
 
@@ -175,10 +172,8 @@ function landFlowLayout(
   const positions = Object.fromEntries(
     points.map(({ id, x, y }) => [id, { x, y }])
   );
-  const entry = layoutsOf(view);
-
-  entry[slot] = { positions, key };
-  standFlowView(store, entry, framingOf(view), positions, forced);
+  layoutsOf(view)[slot] = { positions, key };
+  standFlowView(store, view, positions, forced);
 }
 
 /**
@@ -233,7 +228,7 @@ export function ensureFlowPlaced(
 
   const landing = force ? null : entry[slot];
   if (landing?.key === key) {
-    standFlowView(store, entry, framingOf(view), landing.positions, false);
+    standFlowView(store, view, landing.positions, false);
 
     return Promise.resolve();
   }
@@ -355,10 +350,9 @@ export function keepFlowPlaced(app: AppContext): () => void {
     if (!view || isUnplacingBatch(actions)) return;
 
     const next = placedKey(store.state);
-    const replace = key !== next;
-    key = next;
-    if (!replace) return;
+    if (next === key) return;
 
+    key = next;
     ensureFlowPlaced(app);
   });
 }

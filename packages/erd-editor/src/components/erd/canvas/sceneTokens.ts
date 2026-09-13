@@ -31,18 +31,18 @@ export const SCENE_CODE_FONT_FAMILY = CodeFontFamily;
 /** The px behind font-size-1, which is what typography.paragraph resolves to. */
 export const SCENE_FONT_SIZE = CELL_FONT_SIZE;
 
-/** The css font shorthand konva builds for a cell's text, and measures it with. */
-export const SCENE_FONT = `normal normal ${SCENE_FONT_SIZE}px ${SCENE_FONT_FAMILY}`;
+/** The css font shorthand konva builds for a cell's text in the face given, and measures it with. */
+const sceneFontOf = (fontFamily: string) =>
+  `normal normal ${SCENE_FONT_SIZE}px ${fontFamily}`;
+
+/** That shorthand in the text face. */
+export const SCENE_FONT = sceneFontOf(SCENE_FONT_FAMILY);
 
 /** The weight every cell but a view card's header name is drawn at. */
 export const SCENE_FONT_WEIGHT = 'normal';
 
 /** The heavier weight a view card draws its header name at. */
 export const VIEW_HEADER_FONT_WEIGHT = '500';
-
-/** The same shorthand for any face the scene draws in, which is what a measure needs. */
-const sceneFontOf = (fontFamily: string) =>
-  `normal normal ${SCENE_FONT_SIZE}px ${fontFamily}`;
 
 /** The pair a canvas centres a drawn line by, which no line box is involved in. */
 export type SceneFontMetrics = {
