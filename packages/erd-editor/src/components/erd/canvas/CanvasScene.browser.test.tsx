@@ -679,13 +679,18 @@ describe('a scene the context points at a view', () => {
     expect(focus.stage.find('.relationship')).toHaveLength(1);
   });
 
-  it('roots a particle layer over the scene and no presence layer, since a peer broadcasts document points', async () => {
+  /**
+   * Under the scene, not over it: a card is opaque and hides the connectors
+   * that pass behind it, so a particle riding one goes behind it too. No
+   * presence layer, since a peer broadcasts document points.
+   */
+  it('roots a particle layer under the scene and no presence layer', async () => {
     const { stage } = await mountNarrowedScene();
 
     expect(stage.getLayers().map(layer => layer.name())).toEqual([
       'canvas-background',
-      'scene',
       'view-particles',
+      'scene',
       'overlay-marquee',
     ]);
   });

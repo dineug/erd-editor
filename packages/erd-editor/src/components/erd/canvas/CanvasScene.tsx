@@ -235,6 +235,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             />
           ) : null}
         </k-layer>
+        {source !== 'document' ? <ParticleLayer /> : null}
         <k-layer name="scene" x={x} y={y} scaleX={zoomLevel} scaleY={zoomLevel}>
           {showRelationship ? (
             <RelationshipGroup
@@ -255,7 +256,6 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             )
           )}
         </k-layer>
-        {source !== 'document' ? <ParticleLayer /> : null}
         {dragging ? (
           <k-layer
             name="drag-entity"

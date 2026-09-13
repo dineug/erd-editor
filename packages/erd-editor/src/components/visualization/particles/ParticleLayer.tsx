@@ -15,9 +15,9 @@ import { createParticleLoop } from './particleLoop';
 export type ParticleLayerProps = {};
 
 /**
- * The layer the particles of a view's lit connectors run on. Its template is
- * one empty layer with constant attributes, so the host commits it once at
- * mount and never marks it dirty again, and the loop is the only thing that draws it.
+ * The layer the particles of a view's lit connectors run on, under the scene,
+ * since a card hides the connectors behind it and a particle riding one goes
+ * with them. Its one empty layer is committed at mount and drawn by the loop alone.
  */
 const ParticleLayer: FC<ParticleLayerProps> = (props, ctx) => {
   const app = useAppContext(ctx);

@@ -501,6 +501,8 @@ describe('the particles of a Flow view', () => {
 
     expect(sceneDraw).toHaveBeenCalled();
     expect(particleDraw).not.toHaveBeenCalled();
-    expect(particles.getZIndex()).toBe(scene.getZIndex() + 1);
+    // Under the scene: a card is opaque and hides the connectors behind it, so
+    // a particle riding one is hidden with them rather than drawn over the card.
+    expect(particles.getZIndex()).toBe(scene.getZIndex() - 1);
   });
 });
