@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.7.0] - 2026-09-14
+
+### Added
+
+- Explore relationships in a new Flow mode on the Visualization tab. Tables are laid out as cards;
+  hover or click one to light it and its related tables, with particles running along the lines.
+  Pick Name only, Keys only or All fields, and use Tidy Up to lay it out again. Flow is a view only
+  and never changes the diagram; the existing graph stays as Graph mode.
+- Focus on tables with Alt+F or Focus on this table in the table context menu: Flow opens narrowed
+  to the selected tables and the tables related to them. Show all returns to the whole diagram.
+
+### Changed
+
+- The canvas tools, zoom, relationship notations and zen mode now share one toolbar at the bottom
+  of the canvas, instead of the top-left corner and the top menu bar.
+- Reset the zoom to 100% with Ctrl/Cmd+0 instead of Ctrl/Cmd+O.
+
 ## [2.6.0] - 2026-09-07
 
 ### Added
