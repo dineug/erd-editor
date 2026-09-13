@@ -13,10 +13,10 @@ import {
   type Mounted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import { themeContext } from '@/components/themeContext';
 import Toolbar from '@/components/toolbar/Toolbar';
 import Visualization from '@/components/visualization/Visualization';
-import * as vizStyles from '@/components/visualization/visualization-toolbar/VisualizationToolbar.styles';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -108,15 +108,10 @@ const settle = async () => {
   await whenDrawn();
 };
 
-const zoomInput = (mounted: Mounted) =>
-  mounted.container.querySelector<HTMLInputElement>(
-    '.toolbar input[title="zoom level"]'
-  );
-
 /** The zoom the Visualization tab's own bar prints, which is the view's. */
 const zoomReadout = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>(
-    `.visualization-toolbar .${String(vizStyles.readout)}`
+    `.visualization-toolbar .${String(floating.readout)}`
   )?.textContent;
 
 const click = (el: Element | null) =>
@@ -130,13 +125,16 @@ const flowMenu = (mounted: Mounted) =>
 const flowRoot = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('[data-testid="erd-canvas"]')!;
 
-describe('the top toolbar zoom, which the ERD tab alone carries', () => {
-  it('draws no field on the visualization tab, whatever zoom the Flow fit landed on', async () => {
+/*
+ * The two tabs print two zooms. This one mounts the top bar beside the
+ * Visualization tab, which is how the editor root places them, so what it can
+ * say is what the tab's own bar prints and what the document's zoom does under it.
+ */
+describe('the zoom the Visualization tab prints', () => {
+  it('prints the zoom the Flow fit landed on, and leaves the document at its own', async () => {
     const app = createTestAppContext();
     seed(app);
     const mounted = await mountEditor(app);
-
-    expect(zoomInput(mounted)).toBeNull();
 
     click(flowMenu(mounted));
     await settle();
@@ -144,12 +142,11 @@ describe('the top toolbar zoom, which the ERD tab alone carries', () => {
     const landed = app.store.state.editor.views.flow!.zoomLevel;
     // The row is wider than the screen, so the fit lands below the document's 100%.
     expect(landed).toBeLessThan(1);
-    expect(zoomInput(mounted)).toBeNull();
     expect(zoomReadout(mounted)).toBe(toZoomFormat(landed));
     expect(app.store.state.settings.zoomLevel).toBe(1);
   });
 
-  it('follows a wheel zoom on the scene in that bar, and never in the top one', async () => {
+  it('follows a wheel zoom on the scene, and never moves the document zoom', async () => {
     const app = createTestAppContext();
     seed(app);
     const mounted = await mountEditor(app);
@@ -176,40 +173,6 @@ describe('the top toolbar zoom, which the ERD tab alone carries', () => {
     const zoomed = app.store.state.editor.views.flow!.zoomLevel;
     expect(zoomed).toBeGreaterThan(landed);
     expect(zoomReadout(mounted)).toBe(toZoomFormat(zoomed));
-    expect(zoomInput(mounted)).toBeNull();
     expect(app.store.state.settings.zoomLevel).toBe(1);
-  });
-
-  /**
-   * The one field is back on the tab it belongs to, and the view it could once
-   * drive is standing open at another zoom: it shows neither that zoom nor
-   * sends what is typed into it there, the redirect ending at the document.
-   */
-  it('comes back on the ERD tab at the document zoom, and drives that alone', async () => {
-    const app = createTestAppContext();
-    seed(app);
-    const mounted = await mountEditor(app);
-
-    click(flowMenu(mounted));
-    await settle();
-    const landed = app.store.state.editor.views.flow!.zoomLevel;
-    expect(landed).toBeLessThan(1);
-
-    app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
-    await settle();
-
-    const input = zoomInput(mounted)!;
-    expect(input.value).toBe('100%');
-
-    const { originX, originY } = app.store.state.editor.views.flow!;
-    input.value = '80';
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    await settle();
-
-    expect(app.store.state.settings.zoomLevel).toBe(0.8);
-    expect(zoomInput(mounted)!.value).toBe('80%');
-    expect(app.store.state.editor.views.flow!.zoomLevel).toBe(landed);
-    expect(app.store.state.editor.views.flow!.originX).toBe(originX);
-    expect(app.store.state.editor.views.flow!.originY).toBe(originY);
   });
 });

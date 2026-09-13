@@ -58,7 +58,9 @@ const SUITES: Suite[] = [
   {
     path: 'components/erd/floating-toolbar/FloatingToolbar.styles.test.ts',
     pins: 'where the ERD floating toolbar stands',
-    cases: ['stands over the top left corner of the canvas, in a column'],
+    cases: [
+      'stands over the middle of the bottom edge of the canvas, in a row',
+    ],
   },
   {
     path: 'components/erd/canvas/table/column/Column.browser.test.tsx',

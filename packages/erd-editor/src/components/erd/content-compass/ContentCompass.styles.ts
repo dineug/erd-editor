@@ -3,9 +3,9 @@ import { css } from '@dineug/r-html';
 import { typography } from '@/styles/typography.styles';
 
 /*
- * The pill an empty screen carries, over the middle of the bottom edge: clear
- * of the scrollbar track under it and of the minimap in the far corner, and in
- * the one place a reader who has lost the document can always look for it.
+ * The pill an empty diff viewer carries, over the middle of the bottom edge:
+ * clear of the scrollbar track under it and of the minimap in the far corner.
+ * The editor's own tabs carry the same compass inside their bar instead.
  */
 export const compass = css`
   position: absolute;

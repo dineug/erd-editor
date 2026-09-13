@@ -97,7 +97,7 @@ async function setup(app: AppContext = createTestAppContext()) {
 const menus = (root: HTMLElement) =>
   Array.from(
     root.querySelectorAll<HTMLElement>(
-      [floating.menu, styles.showModeTrigger, styles.compass]
+      [floating.menu, styles.showModeTrigger, floating.compass]
         .map(name => `.${String(name)}`)
         .join(', ')
     )
@@ -107,13 +107,13 @@ const titles = (root: HTMLElement) =>
   menus(root).map(menu => menu.getAttribute('title'));
 
 const byTitle = (root: HTMLElement, name: string) =>
-  root.querySelector<HTMLElement>(`[title="${name}"]`);
+  root.querySelector<HTMLElement>(`[title^="${name}"]`);
 
 const readoutOf = (root: HTMLElement) =>
-  root.querySelector<HTMLElement>(`.${String(styles.readout)}`)?.textContent;
+  root.querySelector<HTMLElement>(`.${String(floating.readout)}`)?.textContent;
 
 const distanceOf = (root: HTMLElement) =>
-  root.querySelector<HTMLElement>(`.${String(styles.compassDistance)}`)
+  root.querySelector<HTMLElement>(`.${String(floating.compassDistance)}`)
     ?.textContent;
 
 /**
@@ -224,11 +224,15 @@ function seedFlow(app: AppContext, centerIds: string[] = []) {
 }
 
 describe('VisualizationToolbar', () => {
-  it('stands on its own style module, not the ERD toolbar root (AC-1)', async () => {
+  /**
+   * One bar in two places. The ERD toolbar declares where it stands and what
+   * it is made of, and this tab fills it with its own tools rather than
+   * restating the chrome, which is how the two tabs cannot drift apart.
+   */
+  it('stands on the bar the ERD toolbar declares (AC-1)', async () => {
     const { root } = await setup();
 
-    expect(root.className).toContain(String(styles.root));
-    expect(root.className).not.toContain(String(floating.root));
+    expect(root.className).toContain(String(floating.root));
   });
 
   it('draws the Graph order: modes, zoom, fit — and no Flow tool (AC-4, AC-5, AC-55)', async () => {
@@ -240,8 +244,8 @@ describe('VisualizationToolbar', () => {
     expect(titles(root)).toEqual([
       'Graph',
       'Flow',
-      'Zoom out',
-      'Zoom in',
+      expect.stringMatching(/^Zoom out/),
+      expect.stringMatching(/^Zoom in/),
       'Fit',
     ]);
     expect(isActive(byTitle(root, 'Graph'))).toBe(true);
@@ -279,8 +283,8 @@ describe('VisualizationToolbar', () => {
     expect(titles(root)).toEqual([
       'Graph',
       'Flow',
-      'Zoom out',
-      'Zoom in',
+      expect.stringMatching(/^Zoom out/),
+      expect.stringMatching(/^Zoom in/),
       'Fit',
       'Tidy Up',
       'Row display: Name only',
@@ -351,8 +355,8 @@ describe('VisualizationToolbar', () => {
     expect(titles(root)).toEqual([
       'Graph',
       'Flow',
-      'Zoom out',
-      'Zoom in',
+      expect.stringMatching(/^Zoom out/),
+      expect.stringMatching(/^Zoom in/),
       'Fit',
       'Tidy Up',
       'Row display: Keys only',
@@ -588,8 +592,8 @@ describe('VisualizationToolbar', () => {
     expect(titles(root)).toEqual([
       'Graph',
       'Flow',
-      'Zoom out',
-      'Zoom in',
+      expect.stringMatching(/^Zoom out/),
+      expect.stringMatching(/^Zoom in/),
       'Fit',
       'Tidy Up',
       'Row display: Name only',

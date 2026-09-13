@@ -140,14 +140,9 @@ test.describe('exporting the document as a png', () => {
   }) => {
     await erd.seed(document(spanFor(2160)));
 
-    // The toolbar box, which names one zoom rather than a run of notches.
-    const zoom = erd.toolbar.locator('input[title="zoom level"]');
-    await zoom.click();
-    await zoom.fill('50');
-    await zoom.press('Enter');
-    await expect
-      .poll(async () => (await erd.settings()).zoomLevel)
-      .toBeCloseTo(0.5, 5);
+    // Fifteen notches of the bar's own step button, which lands on 40%.
+    await erd.stepZoom(-15);
+    expect((await erd.settings()).zoomLevel).toBeCloseTo(0.4, 5);
 
     const download = erd.page.waitForEvent('download', {
       timeout: EXPORT_TIMEOUT,
@@ -157,7 +152,7 @@ test.describe('exporting the document as a png', () => {
 
     // The image holds the whole document either way. What the zoom decides is
     // how many image pixels one scene unit was drawn with.
-    expect(pngSize(await file.path())).toEqual({ width: 1080, height: 1080 });
+    expect(pngSize(await file.path())).toEqual({ width: 864, height: 864 });
   });
 
   test('says the png is being generated while it draws', async ({ erd }) => {

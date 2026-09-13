@@ -95,18 +95,6 @@ async function dragHold(
   }
 }
 
-/** The toolbar box, which asks for one zoom rather than a run of notches. */
-async function toolbarZoom(erd: ErdEditorPage, percent: number) {
-  const input = erd.toolbar.locator('input[title="zoom level"]');
-
-  await input.click();
-  await input.fill(String(percent));
-  await input.press('Enter');
-  await expect
-    .poll(async () => (await erd.settings()).zoomLevel)
-    .toBeCloseTo(percent / 100, 5);
-}
-
 const column = (id: string) => ({
   id,
   name: 'id',
@@ -605,9 +593,9 @@ test.describe('a canvas with no edges', () => {
 
     const before = await erd.settings();
 
-    for (const percent of [10, 150, 100]) {
-      await toolbarZoom(erd, percent);
-    }
+    await erd.stepZoom(-22);
+    await erd.stepZoom(34);
+    await erd.stepZoom(-12);
 
     // Every step holds the middle of the screen still and names the origin it
     // means, so the walk composes to the identity bar the rounding on each one.

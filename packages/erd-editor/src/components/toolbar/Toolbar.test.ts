@@ -82,11 +82,10 @@ describe('Toolbar', () => {
       expect(el.getAttribute('class')).toContain(String(styles.root));
     });
 
-    it('binds the two text inputs to the current settings', async () => {
+    it('binds the database name input to the current settings', async () => {
       await setup();
 
       expect(input('database name').value).toBe('');
-      expect(input('zoom level').value).toBe('100%');
     });
 
     it('offers no canvas size box, the document having no edge to size', async () => {
@@ -95,11 +94,12 @@ describe('Toolbar', () => {
       expect(input('canvas size')).toBeNull();
     });
 
-    it('sizes the database name input wider than the numeric one', async () => {
+    /* The zoom that stood beside it drives the canvas, and is on the floating toolbar over it now. */
+    it('carries the database name as its one text input', async () => {
       await setup();
 
       expect(input('database name').style.width).toBe('150px');
-      expect(input('zoom level').style.width).toBe('45px');
+      expect(input('zoom level')).toBeNull();
     });
 
     it('reflects seeded settings in the inputs', async () => {
@@ -180,100 +180,6 @@ describe('Toolbar', () => {
       expect(app.store.state.settings.databaseName).toBe('sakila');
     });
 
-    it('applies a committed zoom level as a percentage', async () => {
-      const { app } = await setup();
-      const el = input('zoom level');
-
-      el.value = '50';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('50%');
-      expect(app.store.state.settings.zoomLevel).toBe(0.5);
-    });
-
-    it('clamps the zoom level to the maximum of 150%', async () => {
-      const { app } = await setup();
-      const el = input('zoom level');
-
-      el.value = '500';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('150%');
-      expect(app.store.state.settings.zoomLevel).toBe(1.5);
-    });
-
-    it('takes a magnifying zoom typed into the toolbar', async () => {
-      const { app } = await setup();
-      const el = input('zoom level');
-
-      el.value = '150';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('150%');
-      expect(app.store.state.settings.zoomLevel).toBe(1.5);
-
-      el.value = '120';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('120%');
-      expect(app.store.state.settings.zoomLevel).toBe(1.2);
-    });
-
-    it('clamps the zoom level to the minimum of 10%', async () => {
-      const { app } = await setup();
-      const el = input('zoom level');
-
-      el.value = '1';
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      await flush();
-
-      expect(el.value).toBe('10%');
-      expect(app.store.state.settings.zoomLevel).toBe(0.1);
-    });
-
-    /**
-     * The field is the ERD tab's alone, so a Flow view left standing at
-     * another zoom on the visualization tab is neither shown in it nor driven
-     * by it, and the tab it belongs to shows the document's own zoom again.
-     */
-    it('draws no zoom field off the ERD tab, whatever zoom an open view stands at', async () => {
-      const { app } = await setup();
-
-      app.store.dispatchSync(
-        changeCanvasTypeAction({ value: CanvasType.visualization })
-      );
-      app.store.dispatchSync(
-        changeVisualizationModeAction({ value: VisualizationMode.flow })
-      );
-      app.store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-      app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
-      await flush();
-
-      expect(input('zoom level')).toBeNull();
-      expect(app.store.state.settings.zoomLevel).toBe(1);
-
-      app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
-      await flush();
-
-      expect(input('zoom level').value).toBe('100%');
-      expect(app.store.state.editor.views.flow?.zoomLevel).toBe(0.5);
-
-      app.store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
-      await flush();
-
-      expect(input('zoom level').value).toBe('100%');
-    });
-
-    it('stands the field immediately after the Time Travel button', async () => {
-      await setup();
-
-      expect(menu('Time Travel').nextElementSibling).toBe(input('zoom level'));
-    });
-
     it('ignores an input event that carries no target element', async () => {
       const { app } = await setup();
       const el = input('database name');
@@ -284,19 +190,6 @@ describe('Toolbar', () => {
       await flush();
 
       expect(app.store.state.settings.databaseName).toBe(before);
-    });
-
-    it('ignores a zoom level change event that carries no target element', async () => {
-      const { app } = await setup();
-      const el = input('zoom level');
-      const before = app.store.state.settings.zoomLevel;
-
-      el.value = '20';
-      el.dispatchEvent(withNullTarget(new Event('change')));
-      await flush();
-
-      expect(el.value).toBe('20');
-      expect(app.store.state.settings.zoomLevel).toBe(before);
     });
   });
 
@@ -399,38 +292,6 @@ describe('Toolbar', () => {
         expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
       });
     }
-
-    /**
-     * The zoom is gated on the canvas type alone, which the group is not: put
-     * inside the group it would leave with it, and the reader who opened Time
-     * Travel would lose the field the panel gives them nothing in place of.
-     */
-    it('keeps the zoom field standing where the group has gone', async () => {
-      const { app } = await setup();
-      app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
-      await flush();
-
-      expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
-      expect(input('zoom level').value).toBe('100%');
-    });
-
-    it('keeps the zoom field in readonly mode, which takes the group only', async () => {
-      await setup({ readonly: true });
-
-      expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
-      expect(input('zoom level').value).toBe('100%');
-    });
-
-    it('takes the zoom field off a non ERD canvas along with the group', async () => {
-      const { app } = await setup();
-      app.store.dispatchSync(
-        changeCanvasTypeAction({ value: CanvasType.schemaSQL })
-      );
-      await flush();
-
-      expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
-      expect(input('zoom level')).toBeNull();
-    });
 
     it('keeps the group inactive while there is no history', async () => {
       await setup();

@@ -11,14 +11,8 @@ import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
-import {
-  toNumString,
-  toZoomFormat,
-  zoomLevelInRange,
-} from '@/utils/validation';
 
 import * as styles from './Toolbar.styles';
 
@@ -36,16 +30,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
     const { store } = app.value;
     store.dispatch(changeDatabaseNameAction({ value: el.value }));
-  };
-
-  const handleZoomLevel = (event: Event) => {
-    const el = event.target as HTMLInputElement | null;
-    if (!el) return;
-
-    const zoomLevel = zoomLevelInRange(Number(toNumString(el.value)) / 100);
-    const { store } = app.value;
-    el.value = toZoomFormat(zoomLevel);
-    store.dispatch(changeZoomLevelAction$(zoomLevel));
   };
 
   const handleChangeCanvasType = (value: string) => {
@@ -99,9 +83,9 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showTimeTravel = editor.openMap[Open.timeTravel];
     const showDiffViewer = editor.openMap[Open.diffViewer];
 
-    // The zoom field and the history group stand on their own conditions: the
-    // group leaves on an open panel, while the field, drawn on the ERD tab
-    // alone where no view is ever active, shows and drives the document's zoom.
+    // The history group leaves on an open panel, and stands on the ERD tab
+    // alone: the zoom it sits beside went to the floating toolbar over the
+    // canvas, where the tools that drive that canvas are.
     const isErd = settings.canvasType === CanvasType.ERD;
 
     const showUndoRedo =
@@ -235,16 +219,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               <Icon name="rotate-ccw-clock" size={16} />
             </div>
           </>
-        ) : null}
-        {isErd ? (
-          <TextInput
-            title="zoom level"
-            placeholder="zoom level"
-            width={45}
-            value={toZoomFormat(settings.zoomLevel)}
-            numberOnly={true}
-            onChange={handleZoomLevel}
-          />
         ) : null}
         <div class={styles.tableCount}>Table: {doc.tableIds.length}</div>
       </div>

@@ -17,7 +17,7 @@ export type ContentCompassProps = {};
 /**
  * The one thing on a screen that has been panned off every table and memo: an
  * arrow at the nearest of them, how far off it lies, and a press that puts it
- * back in the middle of the screen.
+ * back in the middle. A pill of its own, for the diff viewer, which draws no bar to carry one.
  */
 const ContentCompass: FC<ContentCompassProps> = (props, ctx) => {
   const app = useAppContext(ctx);

@@ -140,7 +140,7 @@ const toScene = (x: number, y: number) => {
 
 const menuOf = (mounted: Mounted, title: string) =>
   mounted.container.querySelector<HTMLElement>(
-    `.visualization-toolbar [title="${title}"]`
+    `.visualization-toolbar [title^="${title}"]`
   );
 
 const showModeTriggerOf = (mounted: Mounted) =>

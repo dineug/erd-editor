@@ -15,7 +15,6 @@ import AutomaticTablePlacement, {
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
-import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import ErdContextMenu, {
   ErdContextMenuType,
@@ -474,7 +473,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <Canvas root={root} canvas={canvas} grabMove={handTool} />
         {zenMode ? null : <VirtualScroll />}
         {hasContent && !zenMode ? <Minimap /> : null}
-        <ContentCompass />
         <FloatingToolbar />
         {contextMenu.state.show ? (
           <ErdContextMenu

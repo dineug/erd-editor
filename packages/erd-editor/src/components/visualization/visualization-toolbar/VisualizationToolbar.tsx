@@ -48,7 +48,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSceneTransform } from '@/konva/scene/viewport';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 import * as styles from './VisualizationToolbar.styles';
 
@@ -221,8 +221,10 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   });
 
   return () => {
-    const { store } = app.value;
+    const { store, keyBindingMap } = app.value;
     const { editor } = store.state;
+    const title = (name: string, keyBindingName: KeyBindingName) =>
+      toShortcutTitle(keyBindingMap, name, keyBindingName);
     const flow = editor.visualizationMode === VisualizationMode.flow;
     const view = editor.views.flow;
     const graph = getGraphView(editor.id);
@@ -237,7 +239,10 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
 
     return (
       <>
-        <div use:ref={ref($bar)} class={['visualization-toolbar', styles.root]}>
+        <div
+          use:ref={ref($bar)}
+          class={['visualization-toolbar', floating.root]}
+        >
           <div
             class={[floating.menu, { active: !flow }]}
             title="Graph"
@@ -252,25 +257,24 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           >
             <Icon name="waypoints" size={ICON_SIZE} />
           </div>
-          <div class={styles.divider}></div>
+          <div class={floating.divider}></div>
           <div
             class={floating.menu}
-            title="Zoom out"
+            title={title('Zoom out', KeyBindingName.zoomOut)}
             on:click={handleZoom(-ZOOM_STEP)}
           >
             <Icon name="minus" size={ICON_SIZE} />
           </div>
-          <span
-            class={styles.readout}
-          >{`${Math.round(zoomLevel * 100)}%`}</span>
+          {/* prettier-ignore */}
+          <span class={['zoom-level', floating.readout]}>{`${Math.round(zoomLevel * 100)}%`}</span>
           <div
             class={floating.menu}
-            title="Zoom in"
+            title={title('Zoom in', KeyBindingName.zoomIn)}
             on:click={handleZoom(ZOOM_STEP)}
           >
             <Icon name="plus" size={ICON_SIZE} />
           </div>
-          <div class={styles.divider}></div>
+          <div class={floating.divider}></div>
           <div class={floating.menu} title="Fit" on:click={handleFit}>
             <Icon name="fullscreen" size={ICON_SIZE} />
           </div>
@@ -281,7 +285,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           ) : null}
           {flow ? (
             <>
-              <div class={styles.divider}></div>
+              <div class={floating.divider}></div>
               <div
                 use:ref={ref($trigger)}
                 class={[styles.showModeTrigger, { active: state.showModeOpen }]}
@@ -295,7 +299,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           ) : null}
           {showAll ? (
             <>
-              <div class={styles.divider}></div>
+              <div class={floating.divider}></div>
               <div
                 class={floating.menu}
                 title="Show all"
@@ -307,9 +311,9 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           ) : null}
           {compass ? (
             <>
-              <div class={styles.divider}></div>
+              <div class={floating.divider}></div>
               <div
-                class={styles.compass}
+                class={floating.compass}
                 title="Go to content"
                 on:click={handleCompass}
               >
@@ -318,7 +322,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
                   size={COMPASS_ARROW_SIZE}
                   rotate={compass.angle}
                 />
-                <span class={styles.compassDistance}>
+                <span class={floating.compassDistance}>
                   {formatDistance(compass.distance)}
                 </span>
               </div>

@@ -5,9 +5,14 @@ import {
   type Page,
 } from '@playwright/test';
 
-import { type ErdDocument, type LiveSettings } from './schema';
+import {
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
+  type ErdDocument,
+  type LiveSettings,
+} from './schema';
 import { SCENE_MIRROR_FLAG } from './sceneMirror';
-import { MOD_KEY, type Shortcut } from './shortcuts';
+import { MOD_KEY, type Shortcut, ZOOM_STEP } from './shortcuts';
 
 export const FIXTURE_URL = '/e2e/fixture/index.html';
 
@@ -51,6 +56,9 @@ export class ErdEditorPage {
   readonly host: Locator;
   readonly canvas: Locator;
   readonly toolbar: Locator;
+  /** The bar over the bottom of the canvas, which carries the zoom now. */
+  readonly floatingToolbar: Locator;
+  readonly zoomReadout: Locator;
   readonly minimap: Locator;
   readonly minimapViewport: Locator;
   readonly contentCompass: Locator;
@@ -62,6 +70,8 @@ export class ErdEditorPage {
     this.host = page.locator('erd-editor');
     this.canvas = this.host.locator(SCENE_ROOT);
     this.toolbar = this.host.locator('.toolbar');
+    this.floatingToolbar = this.host.locator('.floating-toolbar');
+    this.zoomReadout = this.floatingToolbar.locator('.zoom-level');
     this.minimap = this.host.locator('.minimap');
     this.minimapViewport = this.host.locator('.minimap-viewport');
     this.contentCompass = this.host.locator('.content-compass');
@@ -194,6 +204,35 @@ export class ErdEditorPage {
 
   async settings(): Promise<LiveSettings> {
     return (await this.value()).settings as LiveSettings;
+  }
+
+  /**
+   * The bar's own zoom notches, pressed one at a time. The absolute box the top
+   * bar used to carry is gone, so a spec reaches a zoom the way a reader does,
+   * and the range stops a run that would step past either end.
+   */
+  async stepZoom(notches: number) {
+    const step = notches > 0 ? ZOOM_STEP : -ZOOM_STEP;
+    const button = this.floatingToolbar.locator(
+      `[title^="Zoom ${notches > 0 ? 'in' : 'out'}"]`
+    );
+
+    for (let press = 0; press < Math.abs(notches); press++) {
+      const before = (await this.settings()).zoomLevel;
+      const landed = Number(
+        Math.min(
+          Math.max(before + step, CANVAS_ZOOM_MIN),
+          CANVAS_ZOOM_MAX
+        ).toFixed(2)
+      );
+      if (landed === before) return;
+
+      await button.click();
+      // streamZoomLevelAction$ batches, so a notch settles a tick after the press.
+      await expect
+        .poll(async () => (await this.settings()).zoomLevel)
+        .toBeCloseTo(landed, 5);
+    }
   }
 
   async columnIds(tableId: string) {

@@ -195,7 +195,7 @@ const pinnedTableOf = (app: AppContext) =>
 
 const menuOf = (mounted: Mounted, title: string) =>
   mounted.container.querySelector<HTMLElement>(
-    `.visualization-toolbar [title="${title}"]`
+    `.visualization-toolbar [title^="${title}"]`
   );
 
 /**

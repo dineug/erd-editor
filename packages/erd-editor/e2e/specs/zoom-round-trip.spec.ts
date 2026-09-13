@@ -36,18 +36,6 @@ function strandedWest(): ErdDocument {
   });
 }
 
-/** The toolbar box, which asks for one zoom rather than a run of notches. */
-async function toolbarZoom(erd: ErdEditorPage, percent: number) {
-  const input = erd.toolbar.locator('input[title="zoom level"]');
-
-  await input.click();
-  await input.fill(String(percent));
-  await input.press('Enter');
-  await expect
-    .poll(async () => (await erd.settings()).zoomLevel)
-    .toBeCloseTo(percent / 100, 5);
-}
-
 /** A run of $mod+wheel notches delivered without releasing the modifier. */
 async function wheelZoom(erd: ErdEditorPage, notches: number, deltaY: number) {
   const modKey = await erd.pointerModKey();
@@ -95,7 +83,7 @@ test.describe('a zoom out and back in', () => {
    * average the error out over, so this is where the reader saw it: a trip to
    * a tenth and straight back used to land hundreds of pixels away.
    */
-  test('returns the origin when the toolbar box does the zooming', async ({
+  test('returns the origin when the toolbar steps the zooming', async ({
     erd,
   }) => {
     await erd.seed(strandedWest());
@@ -103,11 +91,15 @@ test.describe('a zoom out and back in', () => {
 
     const before = await erd.settings();
 
-    for (const percent of [10, 40, 150]) {
-      await toolbarZoom(erd, percent);
-      await toolbarZoom(erd, 100);
+    // Down to a twelfth, to a third, then up half again, and the same run back
+    // each time. Every notch holds the middle of the screen, so a walk out and
+    // back has to compose to the identity bar the rounding on each step.
+    for (const notches of [22, 15, -12]) {
+      await erd.stepZoom(-notches);
+      await erd.stepZoom(notches);
 
       const after = await erd.settings();
+      expect(after.zoomLevel).toBeCloseTo(before.zoomLevel, 5);
       expect(Math.abs(after.originX - before.originX)).toBeLessThan(0.05);
       expect(Math.abs(after.originY - before.originY)).toBeLessThan(0.05);
     }
