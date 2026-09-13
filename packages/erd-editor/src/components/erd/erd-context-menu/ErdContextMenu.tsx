@@ -8,7 +8,10 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
-import { focusFlowTableAction$ } from '@/engine/modules/editor/view.generator.actions';
+import {
+  focusCentersOf,
+  focusFlowTableAction$,
+} from '@/engine/modules/editor/view.generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -102,11 +105,15 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  /** The Flow view on the table the menu was raised over, or on the whole selection it belongs to. */
   const handleFocusFlowTable = () => {
     if (!props.tableId) return;
 
     const { store } = app.value;
-    store.dispatch(focusFlowTableAction$([props.tableId]));
+    const { selectedMap } = store.state.editor;
+    store.dispatch(
+      focusFlowTableAction$(focusCentersOf(selectedMap, props.tableId))
+    );
     props.onClose();
   };
 
@@ -141,7 +148,10 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   });
 
   return () => {
-    const { keyBindingMap } = app.value;
+    const { keyBindingMap, store } = app.value;
+    const focusesGroup =
+      Boolean(props.tableId) &&
+      focusCentersOf(store.state.editor.selectedMap, props.tableId).length > 1;
 
     return (
       <ContextMenu.Root
@@ -179,7 +189,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="waypoints" size={14} />}
-                    name="Focus on this table"
+                    name={
+                      focusesGroup
+                        ? 'Focus on selected tables'
+                        : 'Focus on this table'
+                    }
                     right={
                       <Kbd shortcut={keyBindingMap.focusView[0]?.shortcut} />
                     }

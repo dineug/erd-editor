@@ -29,7 +29,10 @@ import {
   MoveKey,
   SelectType,
 } from '@/engine/modules/editor/state';
-import { focusFlowTableAction$ } from '@/engine/modules/editor/view.generator.actions';
+import {
+  focusCentersOf,
+  focusFlowTableAction$,
+} from '@/engine/modules/editor/view.generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeZoomLevelAction$,
@@ -190,11 +193,9 @@ export function useErdShortcut(ctx: Ctx) {
       }
 
       if (type === KeyBindingName.focusView) {
-        const tableIds = Object.entries(editor.selectedMap)
-          .filter(([, selectType]) => selectType === SelectType.table)
-          .map(([id]) => id);
-
-        store.dispatch(focusFlowTableAction$(tableIds));
+        store.dispatch(
+          focusFlowTableAction$(focusCentersOf(editor.selectedMap))
+        );
       }
 
       type === KeyBindingName.handTool &&

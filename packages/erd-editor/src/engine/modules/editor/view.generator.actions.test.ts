@@ -9,6 +9,7 @@ import { Clock } from '@/engine/clock';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { actions$ } from '@/engine/modules/editor/generator.actions';
 import {
+  SelectType,
   ShowMode,
   ViewKind,
   VisualizationMode,
@@ -19,7 +20,10 @@ import {
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
-import { focusFlowTableAction$ } from '@/engine/modules/editor/view.generator.actions';
+import {
+  focusCentersOf,
+  focusFlowTableAction$,
+} from '@/engine/modules/editor/view.generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
@@ -122,5 +126,29 @@ describe('focusFlowTableAction$', () => {
 
   it('is reachable through the action registry', () => {
     expect(actions$.focusFlowTableAction$).toBe(focusFlowTableAction$);
+  });
+});
+
+describe('focusCentersOf', () => {
+  const selection = {
+    t1: SelectType.table,
+    m1: SelectType.memo,
+    t2: SelectType.table,
+  };
+
+  it('takes every table the selection holds, and no memo, from a chord', () => {
+    expect(focusCentersOf(selection)).toEqual(['t1', 't2']);
+  });
+
+  it('takes the whole selection from a menu raised over a table it holds', () => {
+    expect(focusCentersOf(selection, 't2')).toEqual(['t1', 't2']);
+  });
+
+  it('takes the table a menu was raised over alone when the selection does not hold it', () => {
+    expect(focusCentersOf(selection, 't3')).toEqual(['t3']);
+  });
+
+  it('takes nothing from a chord over an empty selection', () => {
+    expect(focusCentersOf({})).toEqual([]);
   });
 });
