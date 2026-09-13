@@ -449,6 +449,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     // An empty document has no travel and draws no scrollbar; the map of it
     // would be as empty, so it is left out the same way.
     const hasContent = getContentRect(store.state) !== null;
+    // An open overlay stands a scene of its own over this canvas, so the tools
+    // that drive this one step aside rather than float over it.
+    const showFloatingToolbar = !getShowOverLayout();
 
     const cursor = handTool
       ? state.grabCursor
@@ -473,7 +476,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <Canvas root={root} canvas={canvas} grabMove={handTool} />
         {zenMode ? null : <VirtualScroll />}
         {hasContent && !zenMode ? <Minimap /> : null}
-        <FloatingToolbar />
+        {showFloatingToolbar ? <FloatingToolbar /> : null}
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

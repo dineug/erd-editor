@@ -331,6 +331,41 @@ describe('Erd - shell', () => {
     expect(root.querySelector('.floating-toolbar')).toBeTruthy();
   });
 
+  it.each([
+    ['time travel', Open.timeTravel],
+    ['diff viewer', Open.diffViewer],
+    ['automatic table placement', Open.automaticTablePlacement],
+  ])(
+    'takes the floating tools away while the %s is open, and gives them back',
+    async (_, overlay) => {
+      const app = appWithContent();
+      const { root } = await setup({}, app);
+
+      app.store.dispatchSync(changeOpenMapAction({ [overlay]: true }));
+      await flush(6);
+
+      expect(root.querySelector('.floating-toolbar')).toBeNull();
+
+      app.store.dispatchSync(changeOpenMapAction({ [overlay]: false }));
+      await flush(6);
+
+      expect(root.querySelector('.floating-toolbar')).toBeTruthy();
+    }
+  );
+
+  it('takes the floating tools away while the table properties are open', async () => {
+    const app = appWithContent();
+    const { root } = await setup({}, app);
+
+    app.emitter.emit(openTablePropertiesAction({ tableId: 'near' }));
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: true })
+    );
+    await flush(6);
+
+    expect(root.querySelector('.floating-toolbar')).toBeNull();
+  });
+
   it('takes the scrollbars and the map away in zen mode, and gives them back', async () => {
     const app = appWithContent();
     const { root } = await setup({}, app);
