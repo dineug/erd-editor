@@ -141,6 +141,11 @@ const menuOf = (mounted: Mounted, title: string) =>
     `.visualization-toolbar [title="${title}"]`
   );
 
+const showModeTriggerOf = (mounted: Mounted) =>
+  mounted.container.querySelector<HTMLElement>(
+    '.visualization-toolbar [title^="Row display"]'
+  );
+
 const readoutOf = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('.visualization-toolbar span')
     ?.textContent;
@@ -262,9 +267,18 @@ describe('the bar beside the graph', () => {
 
     expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t1']);
     expect(menuOf(mounted, 'Tidy Up')).toBeNull();
-    expect(menuOf(mounted, 'Keys only')).toBeNull();
+    expect(showModeTriggerOf(mounted)).toBeNull();
     expect(menuOf(mounted, 'Show all')).toBeNull();
     expect(menuOf(mounted, 'Fit')).not.toBeNull();
+
+    // The same selector, resolved: an absence asserted against a spelling
+    // nothing in this file ever matches would pass on the spelling alone.
+    click(menuOf(mounted, 'Flow'));
+    await settle();
+
+    expect(showModeTriggerOf(mounted)).not.toBeNull();
+    expect(menuOf(mounted, 'Tidy Up')).not.toBeNull();
+    expect(menuOf(mounted, 'Show all')).not.toBeNull();
   });
 });
 

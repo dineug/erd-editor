@@ -295,6 +295,34 @@ const menuOf = (mounted: Mounted, title: string) =>
 const click = (el: Element | null) =>
   el?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
+const showModeTriggerOf = (mounted: Mounted) =>
+  mounted.container.querySelector<HTMLElement>(
+    '.visualization-toolbar [title^="Row display"]'
+  );
+
+const showModeMenuOf = (mounted: Mounted) =>
+  mounted.container.querySelector<HTMLElement>(
+    '.visualization-show-mode-menu .context-menu-content'
+  );
+
+/** One option of the row display menu, named by what it prints. */
+const showModeOptionOf = (mounted: Mounted, title: string) =>
+  Array.from(showModeMenuOf(mounted)?.children ?? []).find(
+    option => option.textContent?.trim() === title
+  ) ?? null;
+
+/** Opens the row display menu from its trigger and picks one of the three. */
+async function chooseShowMode(mounted: Mounted, title: string) {
+  click(showModeTriggerOf(mounted));
+  await settle();
+  const option = showModeOptionOf(mounted, title);
+  // A press on nothing reads exactly like a pick that changed nothing, so a
+  // menu that never opened would leave the cases below asserting the default.
+  expect(option).not.toBeNull();
+  click(option);
+  await settle();
+}
+
 /** One keyboard chord, as the editor's own key handler would put it on the stream. */
 const chord = (app: AppContext, type: KeyBindingName) =>
   app.shortcut$.next({
@@ -1535,39 +1563,40 @@ describe('the display set of the Flow view', () => {
     await enterFocused(mounted, ['t1']);
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.keysOnly);
-    expect(menuOf(mounted, 'Keys only')?.className).toContain('active');
+    expect(showModeTriggerOf(mounted)?.getAttribute('title')).toBe(
+      'Row display: Keys only'
+    );
     expect(rowCountOf('t1')).toBe(1);
     expect(hoisted.requests).toHaveLength(1);
 
     // The rows it already shows: nothing placed anew.
-    click(menuOf(mounted, 'Keys only'));
-    await settle();
+    await chooseShowMode(mounted, 'Keys only');
     expect(hoisted.requests).toHaveLength(1);
 
-    click(menuOf(mounted, 'All fields'));
-    await settle();
+    await chooseShowMode(mounted, 'All fields');
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(
       ShowMode.allFields
     );
-    expect(menuOf(mounted, 'All fields')?.className).toContain('active');
-    expect(menuOf(mounted, 'Keys only')?.className).not.toContain('active');
+    expect(showModeTriggerOf(mounted)?.getAttribute('title')).toBe(
+      'Row display: All fields'
+    );
     expect(rowCountOf('t1')).toBe(2);
     // The card size comes from the show mode, so the placement is stale and
     // the view is placed anew.
     expect(hoisted.requests).toHaveLength(2);
 
-    click(menuOf(mounted, 'Keys only'));
-    await settle();
+    await chooseShowMode(mounted, 'Keys only');
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.keysOnly);
     expect(rowCountOf('t1')).toBe(1);
 
-    click(menuOf(mounted, 'Name only'));
-    await settle();
+    await chooseShowMode(mounted, 'Name only');
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.nameOnly);
-    expect(menuOf(mounted, 'Name only')?.className).toContain('active');
+    expect(showModeTriggerOf(mounted)?.getAttribute('title')).toBe(
+      'Row display: Name only'
+    );
     expect(rowCountOf('t1')).toBe(0);
   });
 
@@ -1579,17 +1608,19 @@ describe('the display set of the Flow view', () => {
 
     expect(app.store.state.editor.views.flow!.centerIds).toEqual([]);
     expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.nameOnly);
-    expect(menuOf(mounted, 'Name only')?.className).toContain('active');
+    expect(showModeTriggerOf(mounted)?.getAttribute('title')).toBe(
+      'Row display: Name only'
+    );
     expect(rowCountOf('t1')).toBe(0);
 
-    click(menuOf(mounted, 'Keys only'));
-    await settle();
+    await chooseShowMode(mounted, 'Keys only');
     expect(rowCountOf('t1')).toBe(1);
 
-    click(menuOf(mounted, 'All fields'));
-    await settle();
+    await chooseShowMode(mounted, 'All fields');
     expect(rowCountOf('t1')).toBe(2);
-    expect(menuOf(mounted, 'All fields')?.className).toContain('active');
+    expect(showModeTriggerOf(mounted)?.getAttribute('title')).toBe(
+      'Row display: All fields'
+    );
   });
 
   it('fits what the view shows into the screen at the zoom the view allows', async () => {

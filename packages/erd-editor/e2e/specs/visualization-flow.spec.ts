@@ -252,6 +252,19 @@ const flowTable = (erd: ErdEditorPage, id: string) =>
 const modeButton = (erd: ErdEditorPage, title: string) =>
   erd.host.locator(`.visualization-toolbar [title="${title}"]`);
 
+const showModeTrigger = (erd: ErdEditorPage) =>
+  erd.host.locator('.visualization-toolbar [title^="Row display"]');
+
+/** Opens the row display menu from the bar and picks one of its three options. */
+async function chooseShowMode(erd: ErdEditorPage, title: string) {
+  await showModeTrigger(erd).click();
+  await erd.host
+    .locator('.visualization-show-mode-menu .context-menu-content > div', {
+      hasText: title,
+    })
+    .click();
+}
+
 /**
  * Waits until the view has the placement ELK gave it, not merely a scene. A
  * view draws a table where the document keeps it until a layout lands, so a
@@ -638,6 +651,52 @@ test.describe('the visualization tab and the flow view over the document', () =>
   });
 
   /**
+   * AC-25. The menu is fixed to the page and shifted by half its width and all
+   * of its own height, which is the one thing about it a unit test measuring a
+   * happy-dom rect of zeros cannot answer for.
+   */
+  test('opens the row display menu over its trigger, and holds it there when the bar moves', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+
+    await showModeTrigger(erd).click();
+    const menu = erd.host.locator(
+      '.visualization-show-mode-menu .context-menu-content'
+    );
+    await expect(menu).toBeVisible();
+
+    const anchored = async () => {
+      const trigger = await showModeTrigger(erd).boundingBox();
+      const box = await menu.boundingBox();
+      if (!trigger || !box) return null;
+
+      return {
+        gap: Math.round(trigger.y - (box.y + box.height)),
+        offset: Math.round(
+          box.x + box.width / 2 - (trigger.x + trigger.width / 2)
+        ),
+      };
+    };
+
+    await expect.poll(anchored).toEqual({ gap: 8, offset: 0 });
+
+    // The bar is centred on the tab, so anything that changes the width it is
+    // centred in slides the trigger out from under an anchor taken once.
+    const size = page.viewportSize()!;
+    await page.setViewportSize({
+      width: size.width - 240,
+      height: size.height,
+    });
+    await erd.whenDrawn();
+
+    await expect(menu).toBeVisible();
+    await expect.poll(anchored).toEqual({ gap: 8, offset: 0 });
+  });
+
+  /**
    * AC-60. A whole session in the view, gesture by gesture: nothing a reader
    * does inside it is a document change, so the recorder started after the tab
    * came up hears nothing at all.
@@ -681,11 +740,11 @@ test.describe('the visualization tab and the flow view over the document', () =>
 
     const rows = flowScene(erd).locator('.column-row');
     await expect(rows).toHaveCount(0);
-    await modeButton(erd, 'All fields').click();
+    await chooseShowMode(erd, 'All fields');
     await expect
       .poll(() => rows.count(), { timeout: PLACEMENT_TIMEOUT })
       .toBeGreaterThan(0);
-    await modeButton(erd, 'Keys only').click();
+    await chooseShowMode(erd, 'Keys only');
     await erd.whenDrawn();
 
     await flowTable(erd, 'orders').hover();

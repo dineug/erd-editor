@@ -1,4 +1,11 @@
-import { FC } from '@dineug/r-html';
+import {
+  createRef,
+  FC,
+  observable,
+  onMounted,
+  onUpdated,
+  ref,
+} from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
@@ -9,6 +16,8 @@ import {
 } from '@/components/erd/content-compass/compassGeometry';
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import { showAllFlowView } from '@/components/flowCenters';
+import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
+import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
 import {
   ensureFlowPlaced,
@@ -24,6 +33,7 @@ import {
   graphCompass,
 } from '@/components/visualization/visualizationView';
 import { stepVisualizationZoom } from '@/components/visualization/zoomVisualization';
+import { Open } from '@/constants/open';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
   ShowMode,
@@ -34,20 +44,31 @@ import {
   changeVisualizationModeAction,
   viewChangeShowModeAction,
 } from '@/engine/modules/editor/view.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSceneTransform } from '@/konva/scene/viewport';
+import { mousedown$ } from '@/utils/globalEventObservable';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import * as styles from './VisualizationToolbar.styles';
 
 export type VisualizationToolbarProps = {};
 
 const ICON_SIZE = 16;
+const CHEVRON_SIZE = 12;
+const MENU_ICON_SIZE = 14;
 
-/** The three steps of a card, in the order the bar offers them. */
+/** Between the top of the trigger and the bottom of the menu it opens. */
+const MENU_GAP = 8;
+
+/** The three steps of a card, in the order the menu offers them. */
 const SHOW_MODES = [
   { value: ShowMode.nameOnly, title: 'Name only', icon: 'case-sensitive' },
   { value: ShowMode.keysOnly, title: 'Keys only', icon: 'key-round' },
   { value: ShowMode.allFields, title: 'All fields', icon: 'table' },
 ] as const;
+
+const showModeOf = (value?: ShowMode) =>
+  SHOW_MODES.find(mode => mode.value === value) ?? SHOW_MODES[0];
 
 /**
  * The bar over the bottom of the Visualization tab: which of the two modes is
@@ -56,12 +77,22 @@ const SHOW_MODES = [
  */
 const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const { addUnsubscribe } = useUnmounted();
+  const $trigger = createRef<HTMLDivElement>();
+  const $menu = createRef<HTMLDivElement>();
+
+  const state = observable({
+    showModeOpen: false,
+    menuX: 0,
+    menuY: 0,
+  });
 
   const isFlow = () =>
     app.value.store.state.editor.visualizationMode === VisualizationMode.flow;
 
   const handleMode = (value: VisualizationMode) => () => {
     const { store } = app.value;
+    state.showModeOpen = false;
     store.dispatch(changeVisualizationModeAction({ value }));
   };
 
@@ -87,9 +118,62 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
     ensureFlowPlaced(app.value, { force: true });
   };
 
+  /**
+   * Anchored to the trigger's own rect and drawn above it, since the bar stands
+   * at the bottom edge of the tab and a menu opening downwards from there would
+   * hang off the screen.
+   */
+  const moveMenuToTrigger = () => {
+    const trigger = $trigger.value;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top - MENU_GAP;
+
+    // Written only on a move, or the pass this runs after would schedule the
+    // next one and the two would hand the anchor back and forth for ever.
+    if (state.menuX !== x) state.menuX = x;
+    if (state.menuY !== y) state.menuY = y;
+  };
+
+  const handleShowModeTrigger = () => {
+    if (state.showModeOpen) {
+      state.showModeOpen = false;
+      return;
+    }
+
+    if (!$trigger.value) return;
+
+    moveMenuToTrigger();
+    state.showModeOpen = true;
+  };
+
   const handleShowMode = (value: ShowMode) => () => {
     const { store } = app.value;
+    state.showModeOpen = false;
     store.dispatch(viewChangeShowModeAction({ value, kind: ViewKind.flow }));
+  };
+
+  // The bar renders inside a shadow root, where a window listener reads the
+  // host as the target of every press, so the two elements a press may land on
+  // without closing the menu are looked for on the composed path instead.
+  const handlePress = (event: MouseEvent) => {
+    if (!state.showModeOpen) return;
+
+    const path = event.composedPath();
+    if (path.includes($menu.value) || path.includes($trigger.value)) return;
+
+    state.showModeOpen = false;
+  };
+
+  // Quick search is the one overlay that stands over this tab, and the chord
+  // typed into it belongs to the palette, which is what the tab's own gate
+  // says of the same stream.
+  const handleShortcut = ({ type }: { type: KeyBindingName }) => {
+    if (type !== KeyBindingName.stop) return;
+    if (app.value.store.state.editor.openMap[Open.search]) return;
+    state.showModeOpen = false;
   };
 
   const handleShowAll = () => {
@@ -114,6 +198,21 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
     });
   };
 
+  onMounted(() => {
+    addUnsubscribe(
+      app.value.shortcut$.subscribe(handleShortcut),
+      mousedown$.subscribe(handlePress)
+    );
+  });
+
+  // The bar is centred, so a tool joining or leaving it slides the trigger
+  // sideways under an open menu. Every such change comes through a pass of
+  // this component, which is where the anchor is taken again.
+  onUpdated(() => {
+    if (!state.showModeOpen) return;
+    moveMenuToTrigger();
+  });
+
   return () => {
     const { store } = app.value;
     const { editor } = store.state;
@@ -123,98 +222,139 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
     const zoomLevel = flow
       ? getSceneTransform(store.state, ViewKind.flow).zoomLevel
       : graph.state.scale;
+    const showMode = showModeOf(view?.showMode);
     const showAll = flow && Boolean(view?.centerIds.length);
     const compass: ContentCompass | null = flow
       ? getContentCompass(store.state, ViewKind.flow)
       : graphCompass(graph.state, graph.nodes(), editor.viewport);
 
     return (
-      <div class={['visualization-toolbar', styles.root]}>
-        <div
-          class={[floating.menu, { active: !flow }]}
-          title="Graph"
-          on:click={handleMode(VisualizationMode.graph)}
-        >
-          <Icon name="atom" size={ICON_SIZE} />
+      <>
+        <div class={['visualization-toolbar', styles.root]}>
+          <div
+            class={[floating.menu, { active: !flow }]}
+            title="Graph"
+            on:click={handleMode(VisualizationMode.graph)}
+          >
+            <Icon name="atom" size={ICON_SIZE} />
+          </div>
+          <div
+            class={[floating.menu, { active: flow }]}
+            title="Flow"
+            on:click={handleMode(VisualizationMode.flow)}
+          >
+            <Icon name="waypoints" size={ICON_SIZE} />
+          </div>
+          <div class={styles.divider}></div>
+          <div
+            class={floating.menu}
+            title="Zoom out"
+            on:click={handleZoom(-ZOOM_STEP)}
+          >
+            <Icon name="minus" size={ICON_SIZE} />
+          </div>
+          <span
+            class={styles.readout}
+          >{`${Math.round(zoomLevel * 100)}%`}</span>
+          <div
+            class={floating.menu}
+            title="Zoom in"
+            on:click={handleZoom(ZOOM_STEP)}
+          >
+            <Icon name="plus" size={ICON_SIZE} />
+          </div>
+          <div class={styles.divider}></div>
+          <div class={floating.menu} title="Fit" on:click={handleFit}>
+            <Icon name="fullscreen" size={ICON_SIZE} />
+          </div>
+          {flow ? (
+            <div class={floating.menu} title="Tidy Up" on:click={handleTidyUp}>
+              <Icon name="wand-sparkles" size={ICON_SIZE} />
+            </div>
+          ) : null}
+          {flow ? (
+            <>
+              <div class={styles.divider}></div>
+              <div
+                use:ref={ref($trigger)}
+                class={[styles.showModeTrigger, { active: state.showModeOpen }]}
+                title={`Row display: ${showMode.title}`}
+                on:click={handleShowModeTrigger}
+              >
+                <Icon name={showMode.icon} size={ICON_SIZE} />
+                <div class={styles.showModeLabel}>{showMode.title}</div>
+                <Icon name="chevron-up" size={CHEVRON_SIZE} />
+              </div>
+            </>
+          ) : null}
+          {showAll ? (
+            <>
+              <div class={styles.divider}></div>
+              <div
+                class={floating.menu}
+                title="Show all"
+                on:click={handleShowAll}
+              >
+                <Icon name="maximize" size={ICON_SIZE} />
+              </div>
+            </>
+          ) : null}
+          {compass ? (
+            <>
+              <div class={styles.divider}></div>
+              <div
+                class={floating.menu}
+                title="Go to content"
+                on:click={handleCompass}
+              >
+                <Icon
+                  name="arrow-right"
+                  size={COMPASS_ARROW_SIZE}
+                  rotate={compass.angle}
+                />
+              </div>
+            </>
+          ) : null}
         </div>
-        <div
-          class={[floating.menu, { active: flow }]}
-          title="Flow"
-          on:click={handleMode(VisualizationMode.flow)}
-        >
-          <Icon name="waypoints" size={ICON_SIZE} />
-        </div>
-        <div class={styles.divider}></div>
-        <div
-          class={floating.menu}
-          title="Zoom out"
-          on:click={handleZoom(-ZOOM_STEP)}
-        >
-          <Icon name="minus" size={ICON_SIZE} />
-        </div>
-        <span class={styles.readout}>{`${Math.round(zoomLevel * 100)}%`}</span>
-        <div
-          class={floating.menu}
-          title="Zoom in"
-          on:click={handleZoom(ZOOM_STEP)}
-        >
-          <Icon name="plus" size={ICON_SIZE} />
-        </div>
-        <div class={styles.divider}></div>
-        <div class={floating.menu} title="Fit" on:click={handleFit}>
-          <Icon name="fullscreen" size={ICON_SIZE} />
-        </div>
-        {flow ? (
-          <div class={floating.menu} title="Tidy Up" on:click={handleTidyUp}>
-            <Icon name="wand-sparkles" size={ICON_SIZE} />
+        {flow && state.showModeOpen ? (
+          <div
+            use:ref={ref($menu)}
+            class={['visualization-show-mode-menu', styles.showModeMenu]}
+          >
+            <ContextMenuContent
+              id="visualization-show-mode"
+              x={state.menuX}
+              y={state.menuY}
+              children={
+                <>
+                  {SHOW_MODES.map(mode => (
+                    <ContextMenu.Item
+                      onClick={handleShowMode(mode.value)}
+                      children={
+                        <ContextMenu.Menu
+                          icon={
+                            showMode.value === mode.value ? (
+                              <Icon name="check" size={MENU_ICON_SIZE} />
+                            ) : null
+                          }
+                          name={
+                            <ContextMenu.Menu
+                              icon={
+                                <Icon name={mode.icon} size={MENU_ICON_SIZE} />
+                              }
+                              name={mode.title}
+                            />
+                          }
+                        />
+                      }
+                    />
+                  ))}
+                </>
+              }
+            />
           </div>
         ) : null}
-        {flow ? (
-          <>
-            <div class={styles.divider}></div>
-            {SHOW_MODES.map(mode => (
-              <div
-                class={[
-                  floating.menu,
-                  { active: view?.showMode === mode.value },
-                ]}
-                title={mode.title}
-                on:click={handleShowMode(mode.value)}
-              >
-                <Icon name={mode.icon} size={ICON_SIZE} />
-              </div>
-            ))}
-          </>
-        ) : null}
-        {showAll ? (
-          <>
-            <div class={styles.divider}></div>
-            <div
-              class={floating.menu}
-              title="Show all"
-              on:click={handleShowAll}
-            >
-              <Icon name="maximize" size={ICON_SIZE} />
-            </div>
-          </>
-        ) : null}
-        {compass ? (
-          <>
-            <div class={styles.divider}></div>
-            <div
-              class={floating.menu}
-              title="Go to content"
-              on:click={handleCompass}
-            >
-              <Icon
-                name="arrow-right"
-                size={COMPASS_ARROW_SIZE}
-                rotate={compass.angle}
-              />
-            </div>
-          </>
-        ) : null}
-      </div>
+      </>
     );
   };
 };

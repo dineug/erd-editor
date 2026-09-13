@@ -67,6 +67,20 @@ const corpus = createCorpus(SCENE);
 const toolbarButton = (page: Page, title: string): Locator =>
   page.locator(`erd-editor .visualization-toolbar [title="${title}"]`);
 
+const showModeTrigger = (page: Page): Locator =>
+  page.locator('erd-editor .visualization-toolbar [title^="Row display"]');
+
+const showModeMenu = (page: Page): Locator =>
+  page.locator(
+    'erd-editor .visualization-show-mode-menu .context-menu-content'
+  );
+
+/** Opens the row display menu from the bar and picks one of its three options. */
+async function chooseShowMode(page: Page, title: string) {
+  await showModeTrigger(page).click();
+  await showModeMenu(page).locator('> div', { hasText: title }).click();
+}
+
 /** Seeds the corpus into the fixture and stands the reader on the graph. */
 async function openVisualization(page: Page) {
   await page.goto(FIXTURE_URL);
@@ -213,6 +227,26 @@ test('shot — flow over the whole document, and one card lit', async ({
       height: bar.height + CLOSEUP_MARGIN,
     });
   }
+
+  // The menu open is the only thing this change draws that the shots above do
+  // not, and where it lands over its trigger is the whole of what a reader
+  // judges here, so the frame holds the bar under it as well.
+  await showModeTrigger(page).click();
+  const menu = await showModeMenu(page).boundingBox();
+  if (bar && menu) {
+    await shoot(
+      page,
+      'row-display-menu',
+      'the row display menu open over its trigger',
+      {
+        x: Math.max(0, menu.x - CLOSEUP_MARGIN),
+        y: Math.max(0, menu.y - CLOSEUP_MARGIN),
+        width: menu.width + CLOSEUP_MARGIN * 2,
+        height: bar.y + bar.height + CLOSEUP_MARGIN - menu.y + CLOSEUP_MARGIN,
+      }
+    );
+  }
+  await showModeTrigger(page).click();
 });
 
 test('shot — the hub narrowed to itself and its hop, in three row modes', async ({
@@ -253,7 +287,7 @@ test('shot — the hub narrowed to itself and its hop, in three row modes', asyn
     ['Keys only', 'flow-focused-keys-only'],
     ['All fields', 'flow-focused-all-fields'],
   ] as const) {
-    await toolbarButton(page, title).click();
+    await chooseShowMode(page, title);
     // A row mode changes the size of every card, so the view is placed anew
     // and what was fitted no longer is. The Fit is the reader's own button,
     // pressed here so the frame holds the whole display set it is judged on.
