@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC, html, useProvider } from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -14,7 +14,14 @@ import {
   trackPointToScroll,
   useVirtualScroll,
 } from '@/components/erd/virtual-scroll/useVirtualScroll';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
+import { ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewOpenAction,
+  viewScrollToAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   changeZoomLevelAction,
   getScrollRanges,
@@ -22,6 +29,7 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { isViewFrozen, thawView } from '@/konva/scene/viewFreeze';
 
 type Api = ReturnType<typeof useVirtualScroll>;
@@ -36,6 +44,15 @@ const Probe: FC<{}> = (props, ctx) => {
       ${api.state.selected ?? 'none'}
     </div>
   `;
+};
+
+/** A Flow scene root the way the visualization tab mounts one: a wrapper of its own, the provider inside. */
+const FlowScope: FC<{ children: any }> = (props, ctx) => {
+  const provider = useProvider(ctx, sceneSourceContext, 'flow');
+  const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => provider.destroy());
+
+  return () => html`${props.children}`;
 };
 
 let mounted: Mounted | null = null;
@@ -98,6 +115,21 @@ const originX = () => app.store.state.settings.originX;
 const originY = () => app.store.state.settings.originY;
 
 /**
+ * A Flow view placing the seeded tables and scrolled off the document's
+ * origin, so the two travels the store holds are different.
+ */
+const openFlowView = () => {
+  app.store.dispatchSync(
+    viewOpenAction({ kind: ViewKind.flow }),
+    viewSetLayoutAction({
+      kind: ViewKind.flow,
+      positions: { near: { x: 0, y: 0 }, far: { x: 3_000, y: 500 } },
+    }),
+    viewScrollToAction({ originX: -900, originY: -100, kind: ViewKind.flow })
+  );
+};
+
+/**
  * What a drag pixel is worth, written out: the travel spread over the room the
  * thumb leaves on a track a viewport long, and the sign turned around because
  * the thumb moves with the pointer while the origin moves against it.
@@ -124,6 +156,7 @@ beforeEach(async () => {
 afterEach(() => {
   release();
   thawView(app.store.state);
+  thawView(app.store.state, 'flow');
   mounted?.unmount();
   mounted = null;
 });
@@ -428,6 +461,40 @@ describe('useVirtualScroll', () => {
     expect(isViewFrozen(app.store.state)).toBe(false);
     expect(api.getHorizontalTrack().range.max).toBe(originX());
     expect(api.getHorizontalTrack().thumb).toBeGreaterThan(start.thumb);
+  });
+
+  /** The view half of AC-61: a bar in a Flow scene is the Flow view's, and the document's bars are not. */
+  it('measures the Flow travel and scrolls the Flow view under a Flow provider', async () => {
+    seedContent();
+    openFlowView();
+    mounted!.unmount();
+    mounted = await mountAndFlush(
+      html`<div><${FlowScope} .children=${html`<${Probe} />`} /></div>`,
+      app
+    );
+    const { flow } = app.store.state.editor.views;
+    const start = api.getHorizontalTrack();
+
+    expect(start.range).toEqual(getScrollRanges(app.store.state, 'flow').left);
+    expect(start.range).not.toEqual(ranges().left);
+
+    pressHorizontal(100, 100);
+    dispatchMouse('mousemove', 110, 100);
+    await flush();
+
+    expect(isViewFrozen(app.store.state, 'flow')).toBe(true);
+    expect(isViewFrozen(app.store.state)).toBe(false);
+    expect(flow!.originX).toBeCloseTo(
+      -900 + dragToOrigin(10, start.range, DEFAULT_WIDTH),
+      3
+    );
+    expect(flow!.originX).toBeLessThan(-900);
+    expect(originX()).toBe(0);
+
+    release();
+    await flush();
+
+    expect(isViewFrozen(app.store.state, 'flow')).toBe(false);
   });
 
   it('lets the view go when unmounted in the middle of a scrollbar drag', async () => {

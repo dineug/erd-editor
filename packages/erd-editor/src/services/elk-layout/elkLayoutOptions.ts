@@ -21,6 +21,15 @@ export function usesPorts(placement: ElkPlacement): boolean {
 }
 
 /**
+ * Whether the placement reads the coordinate hint a node can carry. Only the
+ * views' preset layers and places interactively; the rest derive both from the
+ * edges alone, and a hint sent with one of those would be paid for and ignored.
+ */
+export function usesCoordinateHints(placement: ElkPlacement): boolean {
+  return placement === TablePlacement.viewLayered;
+}
+
+/**
  * Room left between two tables, between two layers of them, and between two
  * groups that share no relationship. A table is far wider than the boxes ELK's
  * own defaults were written for, so all three sit well above them.
@@ -30,6 +39,35 @@ const NODE_SPACING = 80;
 const LAYER_SPACING = 160;
 
 const COMPONENT_SPACING = 160;
+
+/**
+ * What the reference's own layout is told, copied option for option. The two
+ * INTERACTIVE strategies are why a node carries a coordinate hint at all, and
+ * the request normalizes that hint rather than reproducing what it measured.
+ */
+const VIEW_LAYERED: LayoutOptions = {
+  'elk.algorithm': 'layered',
+  'elk.layered.spacing.baseValue': '40',
+  'elk.spacing.componentComponent': '80',
+  'elk.layered.spacing.edgeNodeBetweenLayers': '120',
+  'elk.layered.considerModelOrder.strategy': 'PREFER_EDGES',
+  'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
+  'elk.layered.mergeEdges': 'true',
+  'elk.layered.nodePlacement.strategy': 'INTERACTIVE',
+  'elk.layered.layering.strategy': 'INTERACTIVE',
+};
+
+/** The reference aligns a node to the left of its layer, its one node level option. */
+const VIEW_NODE: LayoutOptions = { 'elk.alignment': 'LEFT' };
+
+/**
+ * The box the tables joined to nothing are gathered in, told what the
+ * reference tells its own and nothing besides: the ratio, under the layered
+ * algorithm around it, which stands them in one column. ELK places the box like any node.
+ */
+export const GROUP_NODE_OPTIONS: LayoutOptions = {
+  'elk.aspectRatio': '0.5625',
+};
 
 const COMMON: LayoutOptions = {
   'elk.spacing.nodeNode': `${NODE_SPACING}`,
@@ -51,7 +89,7 @@ const layered = (direction: 'RIGHT' | 'DOWN'): LayoutOptions => ({
 });
 
 /**
- * What ELK is told, for the placement the author picked.
+ * What ELK is told, for the placement it was asked for.
  *
  * @example
  * const graph = { id: 'root', layoutOptions: elkLayoutOptions(placement) };
@@ -71,7 +109,23 @@ export function elkLayoutOptions(placement: ElkPlacement): LayoutOptions {
         'elk.layered.nodePlacement.strategy': 'SIMPLE',
         'elk.layered.spacing.edgeNodeBetweenLayers': `${NODE_SPACING}`,
       };
+    case TablePlacement.viewLayered:
+      return { ...VIEW_LAYERED };
   }
+}
+
+/**
+ * What every node in a layout is told, before the ports a placement may add.
+ * Only the views' preset says anything at this level, so the rest hand ELK a
+ * bare box and let the algorithm's own defaults decide.
+ *
+ * @example
+ * const layoutOptions = elkNodeLayoutOptions(placement);
+ */
+export function elkNodeLayoutOptions(
+  placement: ElkPlacement
+): LayoutOptions | null {
+  return placement === TablePlacement.viewLayered ? { ...VIEW_NODE } : null;
 }
 
 /**

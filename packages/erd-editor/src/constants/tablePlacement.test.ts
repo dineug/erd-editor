@@ -12,6 +12,7 @@ describe('TablePlacement', () => {
       layeredHorizontal: 'layeredHorizontal',
       layeredVertical: 'layeredVertical',
       flow: 'flow',
+      viewLayered: 'viewLayered',
     });
   });
 

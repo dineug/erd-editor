@@ -14,14 +14,26 @@
        * suite can drive the real UI. Production code is untouched: nothing here
        * is bundled into `dist/`, and this inline script runs before the module
        * below, so the editor is registered after the patch is in place.
+       *
+       * With `?closedShadow=1` the mode is left exactly as production declares
+       * it and the root is published on `window.__erdShadowRoot` instead, so a
+       * spec can reach inside without changing what the boundary does to an
+       * event. That distinction is load-bearing: `composedPath()` read at a
+       * window listener stops at the host for a closed root and walks into the
+       * tree for an open one, so a reopened root hides every bug built on it.
        */
-      (function reopenShadowRoots() {
+      (function patchShadowRoots() {
+        var closed = new URLSearchParams(window.location.search).has(
+          'closedShadow'
+        );
         var attachShadow = Element.prototype.attachShadow;
         Element.prototype.attachShadow = function (init) {
-          return attachShadow.call(
+          var root = attachShadow.call(
             this,
-            Object.assign({}, init, { mode: 'open' })
+            closed ? init : Object.assign({}, init, { mode: 'open' })
           );
+          if (this.tagName === 'ERD-EDITOR') window.__erdShadowRoot = root;
+          return root;
         };
       })();
     </script>

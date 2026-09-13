@@ -20,15 +20,16 @@ import {
   SCENE_FONT_SIZE,
 } from '@/components/erd/canvas/sceneTokens';
 import {
-  COLUMN_TEXT_Y,
   getCellTextHeight,
   getColumnCellSlots,
+  getColumnTextY,
   getHeaderCellSlots,
+  getHeaderCellsY,
+  getHeaderTextY,
   HEADER_CELLS_X,
-  HEADER_CELLS_Y,
-  HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
 import EditInput from '@/components/primitives/edit-input/EditInput';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
 import {
   MEMO_BORDER,
@@ -156,7 +157,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
       tableId: table.id,
       columnId: null,
       x: rect.x + HEADER_CELLS_X + slot.x,
-      y: rect.y + HEADER_CELLS_Y + HEADER_TEXT_Y,
+      y: rect.y + getHeaderCellsY() + getHeaderTextY(),
       width: slot.width,
       value:
         slot.focusType === FocusType.tableName ? table.name : table.comment,
@@ -183,7 +184,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     tableId: table.id,
     columnId: column.id,
     x: rect.x + slot.x,
-    y: getColumnRect(state, table, index).y + COLUMN_TEXT_Y,
+    y: getColumnRect(state, table, index).y + getColumnTextY(),
     width: slot.width,
     value: getColumnValue(column, slot.focusType),
     placeholder,
@@ -335,6 +336,7 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
  */
 const EditOverlay: FC = (_, ctx) => {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
 
   const handleEditEnd = () => {
     const { store } = app.value;
@@ -403,6 +405,10 @@ const EditOverlay: FC = (_, ctx) => {
   };
 
   return () => {
+    // A view blocks every document edit, so this overlay is the document
+    // scene's alone rather than a second coordinate system over a view.
+    if (sourceRef.value !== 'document') return null;
+
     const { store } = app.value;
     const { settings } = store.state;
     const target = resolveEditTarget(store.state);

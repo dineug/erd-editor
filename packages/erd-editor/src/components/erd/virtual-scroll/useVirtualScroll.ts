@@ -2,15 +2,17 @@ import { observable } from '@dineug/r-html';
 import { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import {
   clampScrollMovement,
   getScrollRanges,
+  sceneStreamScrollToAction,
   ScrollRange,
-  streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Ctx } from '@/internal-types';
 import { freezeView, thawView } from '@/konva/scene/viewFreeze';
+import { getSceneTransform } from '@/konva/scene/viewport';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 
 /** The thumb never draws thinner than this, however long the travel behind it. */
@@ -73,6 +75,7 @@ export function trackPointToScroll(
 
 export function useVirtualScroll(ctx: Ctx) {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     selected: null as null | 'horizontal' | 'vertical',
@@ -85,28 +88,24 @@ export function useVirtualScroll(ctx: Ctx) {
 
   const getHorizontalTrack = (): ScrollbarTrack => {
     const { store } = app.value;
-    const {
-      settings,
-      editor: { viewport },
-    } = store.state;
+    const source = sourceRef.value;
+    const { viewport } = store.state.editor;
 
     return getScrollbarTrack(
-      getScrollRanges(store.state).left,
-      settings.originX,
+      getScrollRanges(store.state, source).left,
+      getSceneTransform(store.state, source).originX,
       viewport.width
     );
   };
 
   const getVerticalTrack = (): ScrollbarTrack => {
     const { store } = app.value;
-    const {
-      settings,
-      editor: { viewport },
-    } = store.state;
+    const source = sourceRef.value;
+    const { viewport } = store.state.editor;
 
     return getScrollbarTrack(
-      getScrollRanges(store.state).top,
-      settings.originY,
+      getScrollRanges(store.state, source).top,
+      getSceneTransform(store.state, source).originY,
       viewport.height
     );
   };
@@ -125,10 +124,11 @@ export function useVirtualScroll(ctx: Ctx) {
    */
   const getMovementX = ({ movementX, x }: DragMove) => {
     const { store } = app.value;
-    const { settings } = store.state;
-    const { min, max } = getScrollRanges(store.state).left;
+    const source = sourceRef.value;
+    const { originX } = getSceneTransform(store.state, source);
+    const { min, max } = getScrollRanges(store.state, source).left;
     const toLeft = movementX < 0;
-    const hasRoom = toLeft ? settings.originX < max : settings.originX > min;
+    const hasRoom = toLeft ? originX < max : originX > min;
     const behindPointer = toLeft ? x < clientX : x > clientX;
 
     if (!hasRoom || !behindPointer) {
@@ -141,10 +141,11 @@ export function useVirtualScroll(ctx: Ctx) {
 
   const getMovementY = ({ movementY, y }: DragMove) => {
     const { store } = app.value;
-    const { settings } = store.state;
-    const { min, max } = getScrollRanges(store.state).top;
+    const source = sourceRef.value;
+    const { originY } = getSceneTransform(store.state, source);
+    const { min, max } = getScrollRanges(store.state, source).top;
     const toTop = movementY < 0;
-    const hasRoom = toTop ? settings.originY < max : settings.originY > min;
+    const hasRoom = toTop ? originY < max : originY > min;
     const behindPointer = toTop ? y < clientY : y > clientY;
 
     if (!hasRoom || !behindPointer) {
@@ -155,6 +156,20 @@ export function useVirtualScroll(ctx: Ctx) {
     return movementY;
   };
 
+  const scrollBy = (movementX: number, movementY: number) => {
+    const { store } = app.value;
+    const source = sourceRef.value;
+
+    // The reducer takes a step as it is, so the thumb is what keeps its drag
+    // inside the travel it is drawn over: the step is cut to the hull here.
+    store.dispatch(
+      sceneStreamScrollToAction(
+        source,
+        clampScrollMovement(store.state, { movementX, movementY }, source)
+      )
+    );
+  };
+
   const handleScroll = (dragMove: DragMove) => {
     const { event } = dragMove;
     event.type === 'mousemove' && event.preventDefault();
@@ -162,28 +177,11 @@ export function useVirtualScroll(ctx: Ctx) {
     const isHorizontal = state.selected === 'horizontal';
     const movementX = getMovementX(dragMove);
     const movementY = getMovementY(dragMove);
-    const { store } = app.value;
 
-    // The reducer takes a step as it is, so the thumb is what keeps its drag
-    // inside the travel it is drawn over: the step is cut to the hull here.
     if (isVertical && movementY !== 0) {
-      store.dispatch(
-        streamScrollToAction(
-          clampScrollMovement(store.state, {
-            movementX: 0,
-            movementY: absoluteMovement(movementY, getHeightRatio()),
-          })
-        )
-      );
+      scrollBy(0, absoluteMovement(movementY, getHeightRatio()));
     } else if (isHorizontal && movementX !== 0) {
-      store.dispatch(
-        streamScrollToAction(
-          clampScrollMovement(store.state, {
-            movementX: absoluteMovement(movementX, getWidthRatio()),
-            movementY: 0,
-          })
-        )
-      );
+      scrollBy(absoluteMovement(movementX, getWidthRatio()), 0);
     }
   };
 
@@ -195,7 +193,8 @@ export function useVirtualScroll(ctx: Ctx) {
   const startDrag = (selected: 'horizontal' | 'vertical') => {
     const { store } = app.value;
     state.selected = selected;
-    freezeView(store.state);
+    const source = sourceRef.value;
+    freezeView(store.state, source);
 
     // A finalizer runs on the release and on an unmount mid-drag alike, where
     // a complete handler would run on the release alone and leave the view held.
@@ -203,7 +202,7 @@ export function useVirtualScroll(ctx: Ctx) {
     subscription.add(() => {
       if (drag === subscription) drag = null;
       state.selected = null;
-      thawView(store.state);
+      thawView(store.state, source);
     });
     drag = subscription;
   };

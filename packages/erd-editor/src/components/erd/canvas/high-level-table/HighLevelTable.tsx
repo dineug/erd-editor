@@ -19,10 +19,12 @@ import {
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
 import { useSharedFocusTable } from '@/components/erd/canvas/table/useSharedFocusTable';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_BORDER } from '@/constants/layout';
 import { Table } from '@/internal-types';
 import { getTableRect } from '@/konva/scene/metrics';
+import { getSceneTransform } from '@/konva/scene/viewport';
 import { openColorPickerAction } from '@/utils/emitter';
 
 export type HighLevelTableProps = {
@@ -49,9 +51,10 @@ const nameFontSize = (zoomLevel: number) => {
 const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const { sharedFocusTableColor } = useSharedFocusTable(ctx, props.table.id);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
-  const { onMoveStart } = useMoveTable(ctx, props);
+  const { onMoveStart } = useMoveTable(ctx, props, sourceRef);
 
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
     const { emitter } = app.value;
@@ -66,11 +69,13 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
-    const { editor, settings } = store.state;
+    const { editor } = store.state;
     const { table } = props;
     const theme = themeRef.value;
+    const source = sourceRef.value;
     const selected = Boolean(editor.selectedMap[table.id]);
-    const rect = getTableRect(store.state, table);
+    const rect = getTableRect(store.state, table, source);
+    const { zoomLevel } = getSceneTransform(store.state, source);
 
     const isEmptyName = isEmpty(table.name.trim());
     const sharedFocus = sharedFocusTableColor();
@@ -140,7 +145,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           text={isEmptyName ? 'unnamed' : table.name}
           fill={isEmptyName ? theme.placeholder : theme.active}
           fontFamily={SCENE_FONT_FAMILY}
-          fontSize={nameFontSize(settings.zoomLevel)}
+          fontSize={nameFontSize(zoomLevel)}
           fontStyle="bold"
           align="center"
           verticalAlign="middle"

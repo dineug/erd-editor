@@ -1,14 +1,17 @@
-import {
-  COLUMN_HEIGHT,
-  TABLE_BORDER,
-  TABLE_HEADER_HEIGHT,
-  TABLE_PADDING,
-} from '@/constants/layout';
+import { TABLE_BORDER, TABLE_PADDING } from '@/constants/layout';
 import { RootState } from '@/engine/state';
 import { Memo, Table } from '@/internal-types';
+import { getTablePoint, getVisibleColumnIds } from '@/konva/scene/viewLayout';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
-import { calcTableWidths, type ColumnWidth } from '@/utils/calcTable';
+import {
+  calcTableWidths,
+  calcViewTableWidths,
+  type ColumnWidth,
+  tableHeaderHeight,
+  tableRowHeight,
+} from '@/utils/calcTable';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 export type Rect = {
   x: number;
@@ -25,9 +28,13 @@ const TABLE_INSET = TABLE_BORDER + TABLE_PADDING;
  * relationship sort measures anchors against, so a scene node and the connectors
  * reaching it cannot disagree about where an edge is.
  */
-export function getTableRect(state: RootState, table: Table): Rect {
-  const { width, height } = tableToObjectPoint(state, table);
-  const { x, y } = table.ui;
+export function getTableRect(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): Rect {
+  const { width, height } = tableToObjectPoint(state, table, source);
+  const { x, y } = getTablePoint(state, table, source);
 
   return { x, y, width, height };
 }
@@ -37,27 +44,39 @@ export function getTableRect(state: RootState, table: Table): Rect {
  * width in getTableRect are the same sum reached by two routes, the box through
  * the sort's cache and this fresh, which is the split the DOM scene drew with.
  */
-export function getTableWidths(state: RootState, table: Table): ColumnWidth {
-  return calcTableWidths(table, state);
+export function getTableWidths(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): ColumnWidth {
+  return source === 'document'
+    ? calcTableWidths(table, state)
+    : calcViewTableWidths(
+        table,
+        state,
+        getVisibleColumnIds(state, table, source)
+      );
 }
 
 /**
  * One column row, taken apart from the same sum calcTableHeight adds up: the
- * rows start below the header inside the table's inset, and each is one
- * COLUMN_HEIGHT tall.
+ * rows start below the header inside the table's inset, and each is one row
+ * height tall. Both of those come from the source, as they do in that sum.
  */
 export function getColumnRect(
   state: RootState,
   table: Table,
-  index: number
+  index: number,
+  source: GeometrySource = 'document'
 ): Rect {
-  const { x, y, width } = getTableRect(state, table);
+  const { x, y, width } = getTableRect(state, table, source);
+  const rowHeight = tableRowHeight(source);
 
   return {
     x: x + TABLE_INSET,
-    y: y + TABLE_INSET + TABLE_HEADER_HEIGHT + index * COLUMN_HEIGHT,
+    y: y + TABLE_INSET + tableHeaderHeight(source) + index * rowHeight,
     width: width - TABLE_INSET * 2,
-    height: COLUMN_HEIGHT,
+    height: rowHeight,
   };
 }
 

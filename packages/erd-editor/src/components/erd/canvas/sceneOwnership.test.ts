@@ -106,6 +106,7 @@ const DOM_TAG = /<(div|svg)\b/;
  * still fails. Line numbers are left out because formatting moves them.
  */
 const OUTSIDE_REFERENCES = [
+  '__test-utils__/index.ts @/components/erd/canvas/highlightTransition',
   'components/erd/Erd.tsx @/components/erd/canvas/Canvas',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
   'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
@@ -113,7 +114,9 @@ const OUTSIDE_REFERENCES = [
   'components/erd/minimap/Minimap.browser.test.tsx @/components/erd/canvas/Canvas.styles',
   'components/erd/minimap/Minimap.tsx @/components/erd/canvas/Canvas.styles',
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
+  'components/sceneSourceContext.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/themeContext.browser.test.tsx @/components/erd/canvas/memo/Memo',
+  'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/Canvas',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/memo/Memo',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/relationship-group/RelationshipGroup',
@@ -152,7 +155,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the twelve references that own a reason to', () => {
+  it('is reached from outside by the fifteen references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

@@ -2,10 +2,16 @@ import { css } from '@dineug/r-html';
 
 import { fontSize5, typography } from '@/styles/typography.styles';
 
+/**
+ * A panel placed over whichever tab is up. The tab wrapper raises no stacking
+ * context of its own, so a raised descendant inside it would paint over an
+ * unraised sibling; the same step, later in the root, keeps this panel on top.
+ */
 export const root = css`
   position: absolute;
   top: 46px;
   left: 16px;
+  z-index: 1;
   padding: 24px;
   background-color: var(--context-menu-background);
   border: 1px solid var(--context-menu-border);

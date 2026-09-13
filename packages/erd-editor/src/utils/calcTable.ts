@@ -12,12 +12,22 @@ import {
   TABLE_BORDER,
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
+  VIEW_TABLE_HEADER_FONT_SCALE,
+  VIEW_TABLE_HEADER_HEIGHT,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_HEADER_WEIGHT_SCALE,
+  VIEW_TABLE_MIN_WIDTH,
 } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { textInRange } from '@/utils/validation';
 
 /**
@@ -128,12 +138,9 @@ export type ColumnWidth = {
   unique: number;
 };
 
-function calcMaxWidthColumn(
-  columns: Column[],
-  show: number,
-  maxWidthComment: number
-): ColumnWidth {
-  const columnWidth: ColumnWidth = {
+/** Every width at zero, for a measurement to raise. */
+function createColumnWidth(): ColumnWidth {
+  return {
     width: 0,
     name: 0,
     comment: 0,
@@ -143,6 +150,14 @@ function calcMaxWidthColumn(
     autoIncrement: 0,
     unique: 0,
   };
+}
+
+function calcMaxWidthColumn(
+  columns: Column[],
+  show: number,
+  maxWidthComment: number
+): ColumnWidth {
+  const columnWidth = createColumnWidth();
 
   for (const column of columns) {
     if (columnWidth.name < column.ui.widthName) {
@@ -203,13 +218,108 @@ function calcMaxWidthColumn(
   return columnWidth;
 }
 
-export function calcTableHeight(table: Table): number {
+/**
+ * The width a view draws a table at: the header name, or the key badge with
+ * the widest name and type among the rows given, whichever is wider. The rows
+ * are the caller's to name, and the show bits and the column order are the document's, read by no view.
+ */
+export function calcViewTableWidths(
+  table: Table,
+  state: RootState,
+  columnIds: string[]
+): ColumnWidth {
+  const columnWidth = createColumnWidth();
+  const columns = query(state.collections)
+    .collection('tableColumnEntities')
+    .selectByIds(columnIds);
+
+  // The type is counted whether or not it is drawn, so lighting a table
+  // never changes its width.
+  for (const column of columns) {
+    columnWidth.name = Math.max(columnWidth.name, column.ui.widthName);
+    columnWidth.dataType = Math.max(
+      columnWidth.dataType,
+      column.ui.widthDataType
+    );
+  }
+
+  const rowWidth = columns.length
+    ? VIEW_COLUMN_ICON_SIZE +
+      VIEW_COLUMN_ICON_GAP +
+      columnWidth.name +
+      INPUT_MARGIN_RIGHT +
+      columnWidth.dataType
+    : 0;
+  const chrome = (TABLE_BORDER + TABLE_PADDING) * 2;
+  const content = Math.max(
+    viewHeaderWidth(table),
+    rowWidth,
+    VIEW_TABLE_MIN_WIDTH - chrome
+  );
+
+  // Whatever the widest of the three leaves over goes to the name, so the type
+  // stands against the right edge on a card the header or the minimum widened.
+  if (columns.length) columnWidth.name += content - rowWidth;
+  columnWidth.width = chrome + content;
+
+  return columnWidth;
+}
+
+/**
+ * The width a view header's name takes. Every ui width was measured at the size
+ * and weight the rows are drawn in, and a header is drawn larger and heavier,
+ * so the measured width is scaled by both rather than measured a second time.
+ */
+export function viewHeaderNameWidth(widthName: number): number {
+  return Math.ceil(
+    widthName * VIEW_TABLE_HEADER_FONT_SCALE * VIEW_TABLE_HEADER_WEIGHT_SCALE
+  );
+}
+
+/** That name, with the table icon and the gap a view header sets beside it. */
+function viewHeaderWidth(table: Table): number {
+  return (
+    VIEW_TABLE_HEADER_ICON_SIZE +
+    VIEW_TABLE_HEADER_ICON_GAP +
+    viewHeaderNameWidth(table.ui.widthName)
+  );
+}
+
+/**
+ * The header band a source draws above its rows. A view has no icon band over
+ * the name, so its card is that much shorter than the same table in the
+ * document.
+ */
+export function tableHeaderHeight(source: GeometrySource = 'document'): number {
+  return source === 'document' ? TABLE_HEADER_HEIGHT : VIEW_TABLE_HEADER_HEIGHT;
+}
+
+/**
+ * The height of one row a source draws. The document row is sized around the
+ * input box an editor opens in it and the view row around a line of read only
+ * text, so the two are independent numbers.
+ */
+export function tableRowHeight(source: GeometrySource = 'document'): number {
+  return source === 'document' ? COLUMN_HEIGHT : VIEW_COLUMN_HEIGHT;
+}
+
+/** The box height for the rows given, every row of the table unless a view shows fewer. */
+export function calcTableHeight(
+  table: Table,
+  rowCount: number = table.columnIds.length,
+  source: GeometrySource = 'document'
+): number {
+  // A view card ends at its last row. The gap its header keeps over the first
+  // row is the only padding it draws under the title, so a card with no row
+  // wears that gap as its own and stands the title on the middle of the box.
+  const trailing = source === 'document' ? TABLE_PADDING : 0;
+
   return (
     TABLE_BORDER +
     TABLE_PADDING +
-    TABLE_HEADER_HEIGHT +
-    table.columnIds.length * COLUMN_HEIGHT +
-    TABLE_PADDING +
+    tableHeaderHeight(source) +
+    rowCount * tableRowHeight(source) +
+    trailing +
     TABLE_BORDER
   );
 }

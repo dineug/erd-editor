@@ -10,16 +10,24 @@ import {
   DEFAULT_WIDTH,
   RELATIONSHIP_STROKE_WIDTH,
 } from '@/constants/layout';
-import { createEditor } from '@/engine/modules/editor/state';
+import { CanvasType } from '@/constants/schema';
+import {
+  createEditor,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { getContentScrollRanges } from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { Memo, Point, Relationship } from '@/internal-types';
 import {
   createCullingRect,
   type CullingRect,
+  getActiveTransform,
   getCullingRect,
   getOriginToPlace,
   getSceneOrigin,
+  getSceneTransform,
   intersects,
   isMemoVisible,
   isRelationshipVisible,
@@ -779,5 +787,106 @@ describe('a relationship is kept for its whole reach (AC-G14)', () => {
 
     expect(thick.x).toBe(thin.x - extra);
     expect(thick.width).toBe(thin.width + extra * 2);
+  });
+});
+
+describe('the placement a scene is drawn at', () => {
+  /** A view of one kind standing at its own origin and zoom, beside the document's. */
+  function openView(
+    state: RootState,
+    kind: ViewKind,
+    originX: number,
+    originY: number,
+    zoomLevel: number
+  ) {
+    const view = createSceneView(kind);
+    Object.assign(view, { originX, originY, zoomLevel });
+    state.editor.views[kind] = view;
+    return view;
+  }
+
+  const openFlow = (
+    state: RootState,
+    originX: number,
+    originY: number,
+    zoomLevel: number
+  ) => openView(state, ViewKind.flow, originX, originY, zoomLevel);
+
+  it('is the document placement by default, whether or not a view is open', () => {
+    const state = createState();
+    state.settings.originX = -40;
+    state.settings.originY = 25;
+    state.settings.zoomLevel = 0.8;
+
+    expect(getSceneTransform(state)).toBe(state.settings);
+
+    openFlow(state, 300, 200, 0.5);
+
+    expect(getSceneTransform(state)).toBe(state.settings);
+    expect(getSceneTransform(state, 'document')).toBe(state.settings);
+  });
+
+  /** Each scene reads the slot of its own source: a view never moves the document scene. */
+  it('is the placement of its own kind for a view scene, and the document while that kind is not open', () => {
+    const state = createState();
+    state.settings.canvasType = CanvasType.visualization;
+    state.editor.visualizationMode = VisualizationMode.flow;
+
+    expect(getSceneTransform(state, 'flow')).toBe(state.settings);
+    expect(getActiveTransform(state)).toBe(state.settings);
+
+    const view = openFlow(state, 300, 200, 0.5);
+
+    expect(getSceneTransform(state, 'flow')).toBe(view);
+    expect(getSceneTransform(state, 'document')).toBe(state.settings);
+    expect(getActiveTransform(state)).toBe(view);
+
+    state.editor.views.flow = null;
+
+    expect(getSceneTransform(state, 'flow')).toBe(state.settings);
+    expect(getActiveTransform(state)).toBe(state.settings);
+  });
+
+  it('reads the Flow placement for a Flow scene whichever tab is up, while the reader outside follows the tab', () => {
+    const state = createState();
+    const flow = openView(state, ViewKind.flow, 1_000, 500, 0.6);
+
+    expect(state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(getSceneTransform(state, 'flow')).toBe(flow);
+    expect(getActiveTransform(state)).toBe(state.settings);
+
+    state.settings.canvasType = CanvasType.visualization;
+    state.editor.visualizationMode = VisualizationMode.flow;
+
+    expect(getSceneTransform(state, 'flow')).toBe(flow);
+    expect(getActiveTransform(state)).toBe(flow);
+  });
+
+  it('culls a view scene around the view placement and the document scene around its own', () => {
+    const state = createState();
+    state.editor.viewport = { width: 1000, height: 800 };
+    state.settings.originX = -100;
+    state.settings.originY = -50;
+    state.settings.zoomLevel = 1;
+    openFlow(state, -5_000, -4_000, 0.5);
+
+    expect(getCullingRect(state)).toEqual(
+      createCullingRect({
+        originX: -100,
+        originY: -50,
+        zoomLevel: 1,
+        viewportWidth: 1000,
+        viewportHeight: 800,
+      })
+    );
+    expect(getCullingRect(state, 'flow')).toEqual(
+      createCullingRect({
+        originX: -5_000,
+        originY: -4_000,
+        zoomLevel: 0.5,
+        viewportWidth: 1000,
+        viewportHeight: 800,
+      })
+    );
   });
 });

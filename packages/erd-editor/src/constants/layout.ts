@@ -9,6 +9,9 @@ const RATIO_HEIGHT = 9;
 export const DEFAULT_WIDTH = 1200;
 export const DEFAULT_HEIGHT = (DEFAULT_WIDTH / RATIO_WIDTH) * RATIO_HEIGHT;
 
+/** The px a table cell's text is drawn at, which the scene and the view header scale read. */
+export const CELL_FONT_SIZE = 12;
+
 export const INPUT_HEIGHT = 20;
 export const INPUT_MARGIN_RIGHT = 8;
 
@@ -36,6 +39,65 @@ export const COLUMN_AUTO_INCREMENT_WIDTH = 15;
 export const COLUMN_PADDING = 2;
 export const COLUMN_HEIGHT = INPUT_HEIGHT + COLUMN_PADDING * 2;
 
+/** The table icon a view card draws beside its name, at the reference's 1rem. */
+export const VIEW_TABLE_HEADER_ICON_SIZE = 16;
+
+/** The gap between that icon and the name, the reference's one unit of spacing. */
+export const VIEW_TABLE_HEADER_ICON_GAP = 4;
+
+/** The size a view card draws its header name at, over the size its rows take. */
+export const VIEW_TABLE_HEADER_FONT_SIZE = 14;
+
+/**
+ * How much wider a string is at that size than at the one it was measured with.
+ * A face advances a glyph in proportion to its size, so a measured width scales
+ * rather than having to be measured a second time.
+ */
+export const VIEW_TABLE_HEADER_FONT_SCALE =
+  VIEW_TABLE_HEADER_FONT_SIZE / CELL_FONT_SIZE;
+
+/**
+ * How much wider again the header name is at the medium weight a view draws it
+ * in, over the regular every ui width was measured with. A host with no medium
+ * of its own synthesises one wider still, so the slot carries the room for both.
+ */
+export const VIEW_TABLE_HEADER_WEIGHT_SCALE = 1.04;
+
+/**
+ * The header a view card draws: the icon line with the card's own padding under
+ * it, and none of the icon band the document header keeps above the name,
+ * because a view offers no edit affordance there.
+ */
+export const VIEW_TABLE_HEADER_HEIGHT =
+  VIEW_TABLE_HEADER_ICON_SIZE + TABLE_PADDING;
+
+/** The key badge a view row draws, at the size the reference gives a row icon. */
+export const VIEW_COLUMN_ICON_SIZE = 16;
+
+/** The gap between that badge and the name, the reference's one and a half units. */
+export const VIEW_COLUMN_ICON_GAP = 6;
+
+/** The gap above and below the content of a view row, the reference's two units. */
+export const VIEW_COLUMN_PADDING = 8;
+
+/**
+ * The row a view card draws, written down as that icon line inside that padding
+ * rather than derived from INPUT_HEIGHT: a view row is a line of read only
+ * text, not the editable input box the document row is sized around.
+ */
+export const VIEW_COLUMN_HEIGHT =
+  VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_PADDING * 2;
+
+/** The width a view card is never drawn under, which is the reference's node minimum. */
+export const VIEW_TABLE_MIN_WIDTH = 172;
+
+/** The size of a button in a view card's header. */
+export const VIEW_TABLE_HEADER_BUTTON_SIZE = 12;
+
+/** The strip the two of them take along the right edge of that header. */
+export const VIEW_TABLE_HEADER_BUTTONS_WIDTH =
+  VIEW_TABLE_HEADER_BUTTON_SIZE * 2 + TABLE_HEADER_BUTTON_MARGIN_LEFT;
+
 export const MEMO_BORDER = 1;
 export const MEMO_PADDING = 8;
 export const MEMO_HEADER_HEIGHT =
@@ -57,6 +119,13 @@ export const DIFF_TREE_WIDTH = 200;
  * two rows at partial alpha on a 1x display.
  */
 export const RELATIONSHIP_STROKE_WIDTH = 2;
+
+/**
+ * The same connector inside a view, at the reference's hairline. A particle
+ * riding a lit one is 2.4 units across, so a heavier line swallows it: what a
+ * reader sees moving is the bulge the particle makes over the stroke, not a colour of its own.
+ */
+export const VIEW_RELATIONSHIP_STROKE_WIDTH = 1;
 
 /**
  * The invisible band that catches the pointer for a connector, because

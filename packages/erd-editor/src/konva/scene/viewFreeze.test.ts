@@ -2,7 +2,8 @@ import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { getMinimapLayout } from '@/components/erd/minimap/minimapGeometry';
-import { createEditor } from '@/engine/modules/editor/state';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { getScrollRanges } from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { getContentRect } from '@/konva/scene/contentBounds';
@@ -92,6 +93,50 @@ describe('viewFreeze', () => {
 
     thawView(held);
     expect(isViewFrozen(held)).toBe(false);
+  });
+
+  /**
+   * A view is a second scene on the one store: a drag that holds the view's
+   * origin leaves the ERD reading its own live content and origin, and a drag
+   * on the ERD's own aids leaves the view's alone.
+   */
+  it('holds the document and a view of one store apart', () => {
+    const state = stateWith(0, 0);
+    state.settings.originX = -700;
+    state.editor.views.flow = createSceneView(ViewKind.flow);
+    state.editor.views.flow.originX = -40_000;
+    const documentRanges = getScrollRanges(state);
+
+    freezeView(state, 'flow');
+
+    expect(isViewFrozen(state, 'flow')).toBe(true);
+    expect(isViewFrozen(state)).toBe(false);
+    expect(getFrozenOrigin(state, 'flow')).toEqual({ x: -40_000, y: 0 });
+    expect(getFrozenOrigin(state)).toBeNull();
+    expect(getScrollRanges(state)).toEqual(documentRanges);
+    expect(getScrollRanges(state).left.min).not.toBe(-40_000);
+    expect(getScrollRanges(state, 'flow').left.min).toBe(-40_000);
+
+    state.collections.tableEntities.t.ui.x = 9_000;
+    expect(getViewContentRect(state)).toEqual(getContentRect(state));
+    expect(getViewContentRect(state, 'flow')).not.toEqual(
+      getContentRect(state)
+    );
+
+    freezeView(state);
+    expect(getFrozenOrigin(state)).toEqual({ x: -700, y: 0 });
+    expect(getFrozenOrigin(state, 'flow')).toEqual({ x: -40_000, y: 0 });
+
+    state.editor.views.flow.originX = 0;
+    expect(getScrollRanges(state, 'flow').left.min).toBe(-40_000);
+
+    thawView(state, 'flow');
+    expect(isViewFrozen(state, 'flow')).toBe(false);
+    expect(isViewFrozen(state)).toBe(true);
+    expect(getScrollRanges(state, 'flow').left.min).not.toBe(-40_000);
+
+    thawView(state);
+    expect(isViewFrozen(state)).toBe(false);
   });
 
   it('holds two stores at once and releases each on its own', () => {

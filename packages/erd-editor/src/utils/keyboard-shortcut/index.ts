@@ -28,6 +28,7 @@ export const KeyBindingName = {
   relationshipOneOnly: 'relationshipOneOnly',
   relationshipOneN: 'relationshipOneN',
   tableProperties: 'tableProperties',
+  focusView: 'focusView',
   zoomIn: 'zoomIn',
   zoomOut: 'zoomOut',
   zoomReset: 'zoomReset',
@@ -88,6 +89,9 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   ],
   [KeyBindingName.tableProperties]: [
     { shortcut: 'Alt+Space', preventDefault: true },
+  ],
+  [KeyBindingName.focusView]: [
+    { shortcut: 'Alt+KeyF', preventDefault: true, stopPropagation: true },
   ],
   [KeyBindingName.zoomIn]: [
     { shortcut: '$mod+Equal', preventDefault: true, stopPropagation: true },

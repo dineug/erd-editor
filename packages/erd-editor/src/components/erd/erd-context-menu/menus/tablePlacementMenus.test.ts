@@ -39,10 +39,13 @@ function listen(): TablePlacement[] {
 
 describe('tablePlacementMenus', () => {
   // Coverage rather than order: what the menu is ordered by is a reading of
-  // the list, and the names below are what pin that.
-  it('offers every placement the editor knows, once each', () => {
+  // the list, and the names below are what pin that. The views' own preset is
+  // not on it, because nothing asks the author to pick it.
+  it('offers every placement the author can pick, once each', () => {
     expect([...menus.map(menu => menu.placement)].sort()).toEqual(
-      [...Object.values(TablePlacement)].sort()
+      Object.values(TablePlacement)
+        .filter(placement => placement !== TablePlacement.viewLayered)
+        .sort()
     );
   });
 

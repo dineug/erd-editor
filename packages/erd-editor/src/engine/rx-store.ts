@@ -18,12 +18,15 @@ import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import { pushHistory } from '@/engine/history.actions';
 import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
+import { getActiveView } from '@/engine/modules/editor/view';
 import {
   actionsFilter,
   groupByStreamActions,
   ignoreTagFilter,
 } from '@/engine/rx-operators';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
+import { viewActionRedirect } from '@/engine/rx-operators/viewActionRedirect';
+import { viewIgnoreFilter } from '@/engine/rx-operators/viewIgnoreFilter';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
 import { Tag } from '@/engine/tag';
@@ -58,11 +61,17 @@ export function createRxStore(
   const history = getHistory?.(historyOptions) ?? createHistory(historyOptions);
   history.setLimit(HISTORY_LIMIT);
 
+  const getView = () => getActiveView(store.state);
+
   const dispatch$ = new Subject<Array<AnyAction>>();
-  const history$ = dispatch$.pipe(
+  // The one seam a view has: what is dispatched is read against the state as
+  // it stands, so a batch that opens or closes a view is classified before it.
+  const redirected$ = dispatch$.pipe(viewActionRedirect(getView));
+  const history$ = redirected$.pipe(
     actionsFilter(HistoryActionTypes),
     ignoreTagFilter([Tag.changeOnly, Tag.shared]),
     readonlyIgnoreFilter(getReadonly),
+    viewIgnoreFilter(getView),
     groupByStreamActions(StreamActionTypes, [
       ['@@move', StreamRegroupMoveActionTypes],
       ['@@scroll', StreamRegroupScrollActionTypes],
@@ -113,13 +122,15 @@ export function createRxStore(
     dispatch$.complete();
   };
 
+  // A replay reaches the store through historyOptions.dispatch, past the seam
+  // above, so an active view is refused here or the document moves under it.
   const undo = () => {
-    if (getReadonly()) return;
+    if (getReadonly() || getView()) return;
     history.undo();
   };
 
   const redo = () => {
-    if (getReadonly()) return;
+    if (getReadonly() || getView()) return;
     history.redo();
   };
 
@@ -132,8 +143,11 @@ export function createRxStore(
   subscriptionSet
     .add(history$.subscribe(pushHistory(store, history)))
     .add(
-      dispatch$
-        .pipe(readonlyIgnoreFilter(getReadonly, [Tag.shared]))
+      redirected$
+        .pipe(
+          readonlyIgnoreFilter(getReadonly, [Tag.shared]),
+          viewIgnoreFilter(getView, [Tag.shared])
+        )
         .subscribe(store.dispatchSync)
     )
     .add(mergeClock());

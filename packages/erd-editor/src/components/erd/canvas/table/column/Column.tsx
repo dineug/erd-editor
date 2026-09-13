@@ -9,26 +9,29 @@ import {
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { mixColor } from '@/components/erd/canvas/mixColor';
 import { columnCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
   FOCUS_BORDER_HEIGHT,
+  SCENE_CODE_FONT_FAMILY,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
   setSceneCursor,
+  TABLE_CORNER_RADIUS,
   TABLE_INSET,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
-  CELL_UNDERLINE_Y,
-  COLUMN_TEXT_Y,
   type ColumnCellSlot,
   focusBorderFill,
-  getCellTextHeight,
   getColumnCellSlots,
+  getColumnTextHeight,
+  getColumnTextY,
+  getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { useThemeContext } from '@/components/themeContext';
@@ -38,6 +41,7 @@ import {
   COLUMN_KEY_WIDTH,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
+  VIEW_COLUMN_ICON_SIZE,
 } from '@/constants/layout';
 import {
   ColumnOption as ColumnOptionType,
@@ -62,11 +66,38 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
+import { tableRowHeight } from '@/utils/calcTable';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 export type ColumnProps = {
   column: Column;
+  /**
+   * The source the table drawing this row reads, which picks the row's cells. A
+   * prop rather than useSceneSource, the one leaf to depart from it: the table
+   * resolved it already, and a context costs an observable and a subscription per row.
+   */
+  source: GeometrySource;
+  /**
+   * Whether a relationship ends on this column, which a view tints the row
+   * for. Decided by the scene, which walks the links once for every card.
+   */
+  related?: boolean;
+  /**
+   * How far the light has come up on the card this row is drawn in, which is
+   * what the row tint and the type cell above are both drawn at. One number, so
+   * the two of them come up over the one span of time and a document row reads none of it.
+   */
+  litAlpha?: number;
+  /** Whether a view rules a line under this row, which every row but the last does. */
+  divider?: boolean;
+  /**
+   * Whether this is the row a view card ends at. A view draws no padding under
+   * its rows, so the last one meets the card's bottom border and takes the two
+   * corners it is rounded by, or its square tint would stand outside them.
+   */
+  last?: boolean;
   y: number;
   width: number;
   selected: boolean;
@@ -117,6 +148,9 @@ type CellOptions = {
   edit: boolean;
   sharedFocus: string | null;
   ellipsis: boolean;
+  opacity?: number;
+  align?: 'center' | 'left' | 'right';
+  fontFamily?: string;
 };
 
 type ColumnOrderTpl = {
@@ -135,10 +169,24 @@ const keyFill = (keys: number, theme: Theme) => {
   return TRANSPARENT;
 };
 
-/** The fill a row takes, where a selection outranks a hover. */
-const rowBackground = (theme: Theme, selected: boolean, hover: boolean) => {
-  if (selected) return theme.columnSelect;
+/**
+ * The fill a row takes, where a selection outranks a hover and a hover outranks
+ * the tint a view puts on the rows a relationship ends at. A view paints no
+ * selection, since what the ERD tab has selected is no mark a reader of a view made.
+ */
+const rowBackground = (
+  theme: Theme,
+  view: boolean,
+  selected: boolean,
+  hover: boolean,
+  tint: number
+) => {
+  if (!view && selected) return theme.columnSelect;
   if (hover) return theme.columnHover;
+  // Mixed against the card rather than laid over it as a second rect, so the
+  // row keeps the one fill the hover and the selection already paint.
+  if (tint > 0)
+    return mixColor(theme.tableBackground, theme.accentColor3, tint);
   return TRANSPARENT;
 };
 
@@ -165,6 +213,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
    */
   const handleDragstart = (event: SceneMouseEvent) => {
     if (props.preview || props.ghost || event.evt.button !== 0) return;
+    // A view reorders no row, and a second subscriber to the pointer stream
+    // reads no movement, so an armed row would hold still the card it drags.
+    if (props.source !== 'document') return;
 
     endDrag();
     let started = false;
@@ -211,6 +262,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   };
 
   const handleFocus = (focusType: FocusType, event: SceneMouseEvent) => {
+    // A view holds no focus: the cell a reader presses there is not a cell of
+    // the document, and the underline it would light belongs to the ERD tab.
+    if (props.source !== 'document') return;
+
     const { store } = app.value;
     const { column } = props;
     store.dispatch(
@@ -226,6 +281,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
 
   const handleEdit = (focusType: FocusType, event: SceneMouseEvent) => {
     if (!doubleClick.isDouble(focusType, event)) return;
+    // A view edits nothing, and this is both halves of it: the document
+    // overlay on a text cell, and a write straight to the document on a flag.
+    if (props.source !== 'document') return;
 
     const { store } = app.value;
     const { column } = props;
@@ -258,7 +316,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   /**
    * One cell, laid out the way its div was: the text in the 20px input line,
    * answering a press for the whole box, and the two underlines at their own
-   * edge. The focus underline keeps its box while edited and paints nothing.
+   * edge. The focus underline is the document's alone and keeps its box while edited.
    */
   const cell = ({
     focusType,
@@ -270,6 +328,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     edit,
     sharedFocus,
     ellipsis,
+    opacity = 1,
+    align,
+    fontFamily = SCENE_FONT_FAMILY,
   }: CellOptions) => (
     <k-group
       name={`column-col ${focusType}`}
@@ -277,6 +338,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       sharedFocus={sharedFocus}
       x={x}
       y={0}
+      opacity={opacity}
+      listening={opacity > 0}
       on:mousedown={(event: SceneMouseEvent) => {
         handleFocus(focusType, event);
         doubleClick.track(focusType, event);
@@ -287,23 +350,24 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     >
       <k-text
         name="cell-text"
-        y={COLUMN_TEXT_Y}
+        y={getColumnTextY(props.source)}
         width={width}
-        height={getCellTextHeight()}
+        height={getColumnTextHeight(props.source, fontFamily)}
         text={text}
         fill={fill}
-        fontFamily={SCENE_FONT_FAMILY}
+        fontFamily={fontFamily}
         fontSize={SCENE_FONT_SIZE}
+        align={align}
         verticalAlign="middle"
         wrap="none"
         ellipsis={ellipsis}
         visible={!edit}
-        hitFunc={columnCellHit}
+        hitFunc={columnCellHit[props.source]}
       />
-      {focus ? (
+      {focus && props.source === 'document' ? (
         <k-rect
           name="cell-focus-border"
-          y={COLUMN_TEXT_Y + CELL_UNDERLINE_Y}
+          y={getColumnTextY(props.source) + getColumnUnderlineY()}
           width={width}
           height={FOCUS_BORDER_HEIGHT}
           fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
@@ -313,7 +377,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       {sharedFocus ? (
         <k-rect
           name="cell-shared-focus-border"
-          y={COLUMN_HEIGHT - FOCUS_BORDER_HEIGHT}
+          y={tableRowHeight(props.source) - FOCUS_BORDER_HEIGHT}
           width={width + INPUT_MARGIN_RIGHT}
           height={FOCUS_BORDER_HEIGHT}
           fill={sharedFocus}
@@ -332,6 +396,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   }: ColumnCellSlot): DOMTemplateLiterals | null => {
     const { column } = props;
     const theme = themeRef.value;
+    const view = props.source !== 'document';
 
     switch (columnType) {
       case ColumnType.columnName:
@@ -381,6 +446,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           edit: props.editDataType,
           sharedFocus: props.sharedFocusDataType,
           ellipsis: true,
+          opacity: view ? (props.litAlpha ?? 0) : 1,
+          align: view ? 'right' : undefined,
+          fontFamily: view ? SCENE_CODE_FONT_FAMILY : undefined,
         });
       case ColumnType.columnNotNull:
         return cell({
@@ -430,12 +498,16 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const getColumnOrder = (): ColumnOrderTpl[] => {
     const { store } = app.value;
 
-    return getColumnCellSlots(store.state, {
-      name: props.widthName,
-      comment: props.widthComment,
-      dataType: props.widthDataType,
-      default: props.widthDefault,
-    })
+    return getColumnCellSlots(
+      store.state,
+      {
+        name: props.widthName,
+        comment: props.widthComment,
+        dataType: props.widthDataType,
+        default: props.widthDefault,
+      },
+      props.source
+    )
       .map(slot => ({ columnType: slot.columnType, template: cellOf(slot) }))
       .filter(({ template }) => Boolean(template));
   };
@@ -449,7 +521,16 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     );
     const dragging = Boolean(editor.draggingColumnMap[column.id]);
     const contentWidth = width - TABLE_INSET * 2;
-    const background = rowBackground(theme, selected, hover);
+    const view = props.source !== 'document';
+    const background = rowBackground(
+      theme,
+      view,
+      selected,
+      hover,
+      view && props.related ? (props.litAlpha ?? 0) : 0
+    );
+    const rowHeight = tableRowHeight(props.source);
+    const keySize = view ? VIEW_COLUMN_ICON_SIZE : COLUMN_KEY_WIDTH;
 
     return (
       <k-group
@@ -469,17 +550,22 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           name="column-row-background"
           x={TABLE_BORDER}
           width={width - TABLE_BORDER * 2}
-          height={COLUMN_HEIGHT}
+          height={rowHeight}
+          cornerRadius={
+            view && props.last
+              ? [0, 0, TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS]
+              : 0
+          }
           fill={background}
         />
         {sceneIcon({
           icon: 'key-round',
           name: 'column-col column-key',
           kind: 'column-col',
-          size: COLUMN_KEY_WIDTH,
+          size: keySize,
           color: keyFill(column.ui.keys, theme),
           x: TABLE_INSET,
-          y: (COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
+          y: (rowHeight - keySize) / 2,
           mouseenter: handleKeyMouseenter,
           mouseleave: handleKeyMouseleave,
         })}
@@ -488,18 +574,29 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           ({ columnType }) => columnType,
           ({ template }) => template
         )}
-        {sceneIcon({
-          icon: 'x',
-          name: 'column-remove',
-          kind: 'icon',
-          size: COLUMN_DELETE_WIDTH,
-          color: removeIconColor(theme, hover),
-          x: TABLE_INSET + contentWidth - COLUMN_DELETE_WIDTH,
-          y: (COLUMN_HEIGHT - COLUMN_DELETE_WIDTH) / 2,
-          click: handleRemove,
-          mouseenter: handleRemoveMouseenter,
-          mouseleave: handleRemoveMouseleave,
-        })}
+        {view && props.divider ? (
+          <k-line
+            name="column-row-divider"
+            points={[TABLE_BORDER, rowHeight, width - TABLE_BORDER, rowHeight]}
+            stroke={theme.tableBorder}
+            strokeWidth={TABLE_BORDER}
+            listening={false}
+          />
+        ) : null}
+        {view
+          ? null
+          : sceneIcon({
+              icon: 'x',
+              name: 'column-remove',
+              kind: 'icon',
+              size: COLUMN_DELETE_WIDTH,
+              color: removeIconColor(theme, hover),
+              x: TABLE_INSET + contentWidth - COLUMN_DELETE_WIDTH,
+              y: (COLUMN_HEIGHT - COLUMN_DELETE_WIDTH) / 2,
+              click: handleRemove,
+              mouseenter: handleRemoveMouseenter,
+              mouseleave: handleRemoveMouseleave,
+            })}
       </k-group>
     );
   };

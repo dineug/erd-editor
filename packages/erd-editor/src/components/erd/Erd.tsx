@@ -4,6 +4,7 @@ import {
   observable,
   onMounted,
   ref,
+  useProvider,
   watch,
 } from '@dineug/r-html';
 import { filter, fromEvent, Subscription, throttleTime } from 'rxjs';
@@ -14,7 +15,6 @@ import AutomaticTablePlacement, {
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
-import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import ErdContextMenu, {
   ErdContextMenuType,
@@ -31,8 +31,10 @@ import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import {
   changeOpenMapAction,
   sharedMouseTrackerAction,
@@ -54,9 +56,14 @@ import {
   getContentRect,
   getContentRectAfter,
 } from '@/konva/scene/contentBounds';
-import { toScenePoint } from '@/konva/scene/viewport';
+import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
-import { isMouseEvent, suppressSelection } from '@/utils/domEvent';
+import {
+  editorRootOf,
+  isMouseEvent,
+  suppressSelection,
+} from '@/utils/domEvent';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
 import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
@@ -65,21 +72,21 @@ import { isMod } from '@/utils/keyboard-shortcut';
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';
 
-/**
- * The editor root, which is where a pan has to take the selection off: the top
- * toolbar is a sibling of this component, so suppressing it any lower leaves a
- * drag that reaches the toolbar free to select its text.
- */
-const editorRootOf = (el: HTMLElement) =>
-  el.closest<HTMLElement>('.root') ?? el;
-
 export type ErdProps = {
   isDarkMode: boolean;
   mouseTracking: boolean;
 };
 
+/**
+ * The ERD tab is the document's own scene. Said here rather than left to the
+ * context default, so a view overlay opened over it cannot hand its source down
+ * to this canvas, its map, its scrollbars or its compass.
+ */
+const SOURCE: GeometrySource = 'document';
+
 const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
+  const sceneSource = useProvider(ctx, sceneSourceContext, SOURCE);
   const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
@@ -100,6 +107,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   useErdShortcut(ctx);
 
   const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => sceneSource.destroy());
 
   const resetScroll = () => {
     // Defensive: the drag subscription outlives the render part, so root can
@@ -175,7 +183,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     store.dispatch(
       $mod
-        ? streamZoomLevelAction$(event.deltaY < 0 ? 0.03 : -0.03)
+        ? streamZoomLevelAction$(
+            event.deltaY < 0 ? WHEEL_ZOOM_STEP : -WHEEL_ZOOM_STEP
+          )
         : streamScrollToAction(
             isReverse
               ? {
@@ -251,6 +261,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         dragSelectStartAction({
           x: event.clientX - x,
           y: event.clientY - y,
+          source: SOURCE,
         })
       );
     } else {
@@ -287,14 +298,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
     const moves = tables.map(moveToTableAction);
-    const content = getContentRectAfter(store.state, tables);
+    const content = getContentRectAfter(store.state, tables, SOURCE);
 
     if (!content) {
       store.dispatch(moves);
       return;
     }
 
-    const origin = getScrollToCenter(getViewTransform(store.state), {
+    const origin = getScrollToCenter(getViewTransform(store.state, SOURCE), {
       x: content.x + content.width / 2,
       y: content.y + content.height / 2,
     });
@@ -342,10 +353,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       )
       .subscribe(event => {
         const rect = $root.getBoundingClientRect();
-        const scenePoint = toScenePoint(store.state.settings, {
-          x: event.clientX - rect.x,
-          y: event.clientY - rect.y,
-        });
+        const scenePoint = toScenePoint(
+          getSceneTransform(store.state, SOURCE),
+          {
+            x: event.clientX - rect.x,
+            y: event.clientY - rect.y,
+          }
+        );
 
         store.dispatch(sharedMouseTrackerAction(scenePoint));
       });
@@ -435,6 +449,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     // An empty document has no travel and draws no scrollbar; the map of it
     // would be as empty, so it is left out the same way.
     const hasContent = getContentRect(store.state) !== null;
+    // An open overlay stands a scene of its own over this canvas, so the tools
+    // that drive this one step aside rather than float over it.
+    const showFloatingToolbar = !getShowOverLayout();
 
     const cursor = handTool
       ? state.grabCursor
@@ -459,8 +476,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <Canvas root={root} canvas={canvas} grabMove={handTool} />
         {zenMode ? null : <VirtualScroll />}
         {hasContent && !zenMode ? <Minimap /> : null}
-        <ContentCompass />
-        <FloatingToolbar />
+        {showFloatingToolbar ? <FloatingToolbar /> : null}
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

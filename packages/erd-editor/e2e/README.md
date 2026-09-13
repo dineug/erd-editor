@@ -45,7 +45,7 @@ suite red.
 
 ## What is covered
 
-31 spec files. Nine of the groups exist because the DOM scene got their subject
+33 spec files. Nine of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -77,6 +77,14 @@ puts over it:
 | `data-type-hint.spec.ts`        | The autocomplete DOM the stage cannot hit test                    |
 | `relationship-hover.spec.ts`    | Every part a connector draws, hovered one at a time               |
 
+Two more are the placements a worker computes, one landed in the document and
+one drawn over it in coordinates the document never keeps:
+
+| Spec                            | What it holds down                                                |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker   |
+| `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
+
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
@@ -101,8 +109,18 @@ element. `e2e/fixture/index.html` patches `Element.prototype.attachShadow` to
 force `mode: 'open'` **before** the editor module registers the custom element.
 
 This is the fixture's one deliberate deviation from production. It changes
-reachability only — no editor behaviour depends on the mode flag. Production
-code and the published bundle are untouched.
+reachability, and one thing more: `composedPath()` read at a **window**
+listener stops at the host for a closed root and walks into the tree for an
+open one, so a reopened root hides every bug built on that difference — the row
+display menu closed itself on its own item's mousedown for exactly that reason,
+green suite and all. Production code and the published bundle are untouched.
+
+`erd.gotoClosedShadow()` loads the same fixture with `?closedShadow=1`, which
+leaves the mode as production declares it and publishes the root on
+`window.__erdShadowRoot` instead. No locator resolves inside it: reach elements
+through `erd.shadowBox(selector)` and drive them with `erd.clickInShadow(...)`
+or `page.mouse` at the box it returns. Use it whenever the subject is how an
+event reads from outside that boundary, and the open fixture for everything else.
 
 ### 2. The scene is a canvas, so a css locator resolves against a projection
 

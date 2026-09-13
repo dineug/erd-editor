@@ -20,6 +20,7 @@ import Canvas from '@/components/erd/canvas/Canvas';
 import Minimap from '@/components/erd/minimap/Minimap';
 import Button from '@/components/primitives/button/Button';
 import Slider from '@/components/primitives/slider/Slider';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
@@ -50,8 +51,12 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
   const { history } = store;
   const { addUnsubscribe } = useUnmounted();
   const provider = useProvider(ctx, appContext, app);
+  // A replayed history is a document of its own, so it names the document
+  // source rather than inheriting whatever scene it was opened over.
+  const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
 
   addUnsubscribe(() => {
+    sceneSource.destroy();
     provider.destroy();
   });
 

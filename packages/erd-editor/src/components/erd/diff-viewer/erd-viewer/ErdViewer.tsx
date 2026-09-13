@@ -7,6 +7,7 @@ import { Diff, DiffMap, getDiffStyle } from '@/components/erd/diff-viewer/diff';
 import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
@@ -30,6 +31,9 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
   const canvas = createRef<HTMLDivElement>();
   const app = props.app;
   const provider = useProvider(ctx, appContext, app);
+  // Each pane is a document of its own, so it names the document source
+  // rather than inheriting whatever scene the diff was opened over.
+  const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
   const state = observable({
     grabCursor: 'grab',
   });
@@ -38,6 +42,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
   const diffStyle = getDiffStyle(props.diff, props.diffMap);
 
   addUnsubscribe(() => {
+    sceneSource.destroy();
     provider.destroy();
   });
 

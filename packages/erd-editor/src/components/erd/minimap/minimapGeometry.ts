@@ -8,7 +8,12 @@ import { Point } from '@/internal-types';
 import { unionRect } from '@/konva/scene/contentBounds';
 import { type Rect } from '@/konva/scene/metrics';
 import { getViewContentRect } from '@/konva/scene/viewFreeze';
-import { getSceneOrigin, type SceneTransform } from '@/konva/scene/viewport';
+import {
+  getSceneOrigin,
+  getSceneTransform,
+  type SceneTransform,
+} from '@/konva/scene/viewport';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** The scene placement plus the screen looking at it, which is all a visible rect is read from. */
 export type ViewTransform = SceneTransform & {
@@ -61,12 +66,13 @@ const safeZoom = (zoomLevel: number) => (zoomLevel > 0 ? zoomLevel : 1);
 /** Negating a zero offset yields a signed zero, and the store compares with Object.is. */
 const unsigned = (value: number) => value + 0;
 
-/** The view as the store holds it, for every reader that maps the screen onto the thumbnail. */
-export function getViewTransform(state: RootState): ViewTransform {
-  const {
-    settings: { originX, originY, zoomLevel },
-    editor: { viewport },
-  } = state;
+/** The placement as the store holds it, for every reader that maps the screen onto the thumbnail. */
+export function getViewTransform(
+  state: RootState,
+  source: GeometrySource = 'document'
+): ViewTransform {
+  const { originX, originY, zoomLevel } = getSceneTransform(state, source);
+  const { viewport } = state.editor;
 
   return {
     originX,
@@ -147,13 +153,16 @@ export function getReachRect(
  * around it, snapped to the grid, then widened along its shorter side where
  * that would draw under MINIMAP_BOX_MIN_SIDE. A drag holds its content still.
  */
-export function getMinimapLayout(state: RootState): MinimapLayout {
-  const view = getViewTransform(state);
+export function getMinimapLayout(
+  state: RootState,
+  source: GeometrySource = 'document'
+): MinimapLayout {
+  const view = getViewTransform(state, source);
   // The travel holds the origin where it stands and, while a drag holds the
   // view, the one it began from: a handle drag is cut to it and leaves the map
   // still, and a wheel mid drag grows the map to keep the handle rather than cut it.
-  const reach = getReachRect(view, getScrollRanges(state));
-  const content = getViewContentRect(state);
+  const reach = getReachRect(view, getScrollRanges(state, source));
+  const content = getViewContentRect(state, source);
   const hull = content ? unionRect(content, reach) : reach;
   const snapped = snapOutward(
     inflate(hull, MINIMAP_MAP_MARGIN),

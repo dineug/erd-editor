@@ -1,5 +1,6 @@
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { type Obstacles } from '@/utils/draw-relationship/route';
 
 export type DirtyBox = {
@@ -62,15 +63,31 @@ const BUCKET = 64;
  */
 const MAX_MOVED_TABLES = 64;
 
-const caches = new WeakMap<RootState, SortCache>();
+const caches = new WeakMap<RootState, Record<GeometrySource, SortCache>>();
 
-export function getSortCache(state: RootState): SortCache {
-  let cache = caches.get(state);
-  if (!cache) {
-    cache = { boxes: new Map(), entries: new Map() };
-    caches.set(state, cache);
+const createSortCache = (): SortCache => ({
+  boxes: new Map(),
+  entries: new Map(),
+});
+
+/**
+ * What the last sort of one source over one store left for the next, a cache
+ * per source because the document's boxes and a view's are different layouts
+ * of the same tables, and a diff across them would re-route everything each turn.
+ */
+export function getSortCache(
+  state: RootState,
+  source: GeometrySource = 'document'
+): SortCache {
+  let record = caches.get(state);
+  if (!record) {
+    record = {
+      document: createSortCache(),
+      flow: createSortCache(),
+    };
+    caches.set(state, record);
   }
-  return cache;
+  return record[source];
 }
 
 function boxOf(obstacles: Obstacles, index: number): DirtyBox {

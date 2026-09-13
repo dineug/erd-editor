@@ -1,8 +1,15 @@
+import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { Direction } from '@/constants/schema';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
+import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
+import { createRelationship } from '@/utils/collection/relationship.entity';
+import { createTable } from '@/utils/collection/table.entity';
 import {
+  collectObstacles,
   countBlocked,
   type Obstacles,
   routeOrthogonal,
@@ -255,5 +262,67 @@ describe('routeOrthogonal', () => {
       { x: 400, y: 100 },
       { x: 400, y: 300 },
     ]);
+  });
+});
+
+/** Two connected tables and a third on its own, at 118 x 56 each with nothing shown. */
+function createScene(): RootState {
+  const state: RootState = {
+    ...schemaV3Parser({}),
+    editor: createEditor(),
+    lww: {},
+  };
+  state.settings.show = 0;
+
+  for (const [id, x, y] of [
+    ['A', 0, 0],
+    ['B', 400, 0],
+    ['C', 900, 900],
+  ] as const) {
+    state.collections.tableEntities[id] = createTable({ id, ui: { x, y } });
+    state.doc.tableIds.push(id);
+  }
+  state.collections.relationshipEntities.ab = createRelationship({
+    id: 'ab',
+    start: { tableId: 'A' },
+    end: { tableId: 'B' },
+  });
+  state.doc.relationshipIds.push('ab');
+
+  return state;
+}
+
+describe('collectObstacles', () => {
+  it('reads every document table by default, inset by two', () => {
+    const state = createScene();
+
+    const obstacles = collectObstacles(state);
+
+    expect(obstacles.ids).toEqual(['A', 'B', 'C']);
+    expect(Array.from(obstacles.left)).toEqual([2, 402, 902]);
+    expect(Array.from(obstacles.right)).toEqual([116, 516, 1016]);
+    expect(Array.from(obstacles.bottom)).toEqual([54, 54, 954]);
+    expect(obstacles).toEqual(collectObstacles(state, 'document'));
+  });
+
+  it('reads the tables a view shows, where the view places them', () => {
+    const state = createScene();
+    const view = createSceneView(ViewKind.flow, ['A']);
+    view.positions = { A: { x: 5_000, y: -3_000 }, B: { x: 5_600, y: -3_000 } };
+    state.editor.views.flow = view;
+
+    const obstacles = collectObstacles(state, 'flow');
+
+    // C has no connector to A and is not in the view, so nothing routes around it.
+    expect(obstacles.ids).toEqual(['A', 'B']);
+    expect(Array.from(obstacles.left)).toEqual([5_002, 5_602]);
+    expect(Array.from(obstacles.top)).toEqual([-2_998, -2_998]);
+    expect(collectObstacles(state).ids).toEqual(['A', 'B', 'C']);
+  });
+
+  it('reads no table for a view while none is open', () => {
+    const state = createScene();
+
+    expect(collectObstacles(state, 'flow').ids).toEqual([]);
   });
 });

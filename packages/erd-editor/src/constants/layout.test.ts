@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  CELL_FONT_SIZE,
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_DELETE_WIDTH,
   COLUMN_HEIGHT,
@@ -36,6 +37,18 @@ import {
   TABLE_HEADER_PADDING,
   TABLE_PADDING,
   TOOLBAR_HEIGHT,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
+  VIEW_COLUMN_PADDING,
+  VIEW_TABLE_HEADER_BUTTON_SIZE,
+  VIEW_TABLE_HEADER_FONT_SCALE,
+  VIEW_TABLE_HEADER_FONT_SIZE,
+  VIEW_TABLE_HEADER_HEIGHT,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_HEADER_WEIGHT_SCALE,
+  VIEW_TABLE_MIN_WIDTH,
 } from '@/constants/layout';
 
 describe('layout constants', () => {
@@ -82,6 +95,63 @@ describe('layout constants', () => {
     expect(COLUMN_PADDING).toBe(2);
     expect(COLUMN_HEIGHT).toBe(24);
     expect(COLUMN_HEIGHT).toBe(INPUT_HEIGHT + COLUMN_PADDING * 2);
+  });
+
+  it('builds the view header from its icon line and the card padding', () => {
+    expect(VIEW_TABLE_HEADER_ICON_SIZE).toBe(16);
+    expect(VIEW_TABLE_HEADER_ICON_GAP).toBe(4);
+    expect(VIEW_TABLE_HEADER_HEIGHT).toBe(24);
+    expect(VIEW_TABLE_HEADER_HEIGHT).toBe(
+      VIEW_TABLE_HEADER_ICON_SIZE + TABLE_PADDING
+    );
+    // The card's own top padding is the band's other half, so the icon line
+    // sits centred in the 32 the header takes from the top border down.
+    expect(TABLE_PADDING + VIEW_TABLE_HEADER_HEIGHT).toBe(
+      TABLE_PADDING * 2 + VIEW_TABLE_HEADER_ICON_SIZE
+    );
+    expect(VIEW_TABLE_HEADER_HEIGHT).toBeLessThan(TABLE_HEADER_HEIGHT);
+  });
+
+  it('draws the view header name larger than the rows under it', () => {
+    expect(CELL_FONT_SIZE).toBe(12);
+    expect(VIEW_TABLE_HEADER_FONT_SIZE).toBe(14);
+    expect(VIEW_TABLE_HEADER_FONT_SIZE).toBeGreaterThan(CELL_FONT_SIZE);
+    expect(VIEW_TABLE_HEADER_FONT_SCALE).toBe(14 / 12);
+  });
+
+  /**
+   * The name is drawn heavier as well as larger, and a medium face is wider
+   * than the regular it was measured at, so a slot scaled by the size alone
+   * would clip a long name the card was sized to hold.
+   */
+  it('leaves room for the weight the header name is drawn at too', () => {
+    expect(VIEW_TABLE_HEADER_WEIGHT_SCALE).toBeGreaterThan(1);
+    expect(VIEW_TABLE_HEADER_WEIGHT_SCALE).toBeLessThan(1.1);
+  });
+
+  it('sizes a view row from its icon line rather than the input height', () => {
+    expect(VIEW_COLUMN_ICON_SIZE).toBe(16);
+    expect(VIEW_COLUMN_ICON_GAP).toBe(6);
+    expect(VIEW_COLUMN_HEIGHT).toBe(32);
+    expect(VIEW_COLUMN_PADDING).toBe(8);
+    expect(VIEW_COLUMN_HEIGHT).toBe(
+      VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_PADDING * 2
+    );
+    // The document row is an input box plus its padding; the view row is not,
+    // so the two sums differ and the view number stands on its own.
+    expect(VIEW_COLUMN_HEIGHT).not.toBe(INPUT_HEIGHT + VIEW_COLUMN_PADDING * 2);
+    expect(VIEW_COLUMN_HEIGHT).toBeGreaterThan(COLUMN_HEIGHT);
+    expect(VIEW_TABLE_HEADER_BUTTON_SIZE).toBe(12);
+  });
+
+  it('never draws a view card under the minimum width', () => {
+    expect(VIEW_TABLE_MIN_WIDTH).toBe(172);
+    expect(VIEW_TABLE_MIN_WIDTH).toBeGreaterThan(
+      (TABLE_BORDER + TABLE_PADDING) * 2 +
+        VIEW_COLUMN_ICON_SIZE +
+        VIEW_COLUMN_ICON_GAP +
+        COLUMN_MIN_WIDTH
+    );
   });
 
   it('keeps the column option widths wide enough for their labels', () => {
@@ -155,6 +225,19 @@ describe('layout constants', () => {
       COLUMN_AUTO_INCREMENT_WIDTH,
       COLUMN_PADDING,
       COLUMN_HEIGHT,
+      CELL_FONT_SIZE,
+      VIEW_TABLE_HEADER_HEIGHT,
+      VIEW_TABLE_HEADER_ICON_SIZE,
+      VIEW_TABLE_HEADER_ICON_GAP,
+      VIEW_TABLE_HEADER_FONT_SIZE,
+      VIEW_TABLE_HEADER_FONT_SCALE,
+      VIEW_TABLE_HEADER_WEIGHT_SCALE,
+      VIEW_TABLE_HEADER_BUTTON_SIZE,
+      VIEW_TABLE_MIN_WIDTH,
+      VIEW_COLUMN_HEIGHT,
+      VIEW_COLUMN_ICON_SIZE,
+      VIEW_COLUMN_ICON_GAP,
+      VIEW_COLUMN_PADDING,
       MEMO_BORDER,
       MEMO_PADDING,
       MEMO_HEADER_HEIGHT,

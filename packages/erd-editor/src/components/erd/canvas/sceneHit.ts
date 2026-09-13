@@ -3,14 +3,16 @@ import type { Shape } from 'konva/lib/Shape';
 
 import { ICON_VIEW_SIZE } from '@/components/erd/canvas/sceneTokens';
 import {
-  COLUMN_TEXT_Y,
-  HEADER_TEXT_Y,
+  getColumnTextY,
+  getHeaderTextY,
 } from '@/components/erd/canvas/table/cellLayout';
 import {
-  COLUMN_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_INPUT_HEIGHT,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
+import { tableRowHeight } from '@/utils/calcTable';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** What konva calls to put a shape on the hit canvas, in the shape's own space. */
 export type HitFunc = (context: Context, shape: Shape) => void;
@@ -35,27 +37,50 @@ function hitBox(
  * the gap to the next cell, which is the div the dom scene put the input in.
  * The text carries it so the cell needs no shape that exists only to be hit.
  */
-export const columnCellHit: HitFunc = (context, shape) => {
-  hitBox(
-    context,
-    shape,
-    0,
-    -COLUMN_TEXT_Y,
-    shape.width() + INPUT_MARGIN_RIGHT,
-    COLUMN_HEIGHT
-  );
+function columnCellHitOf(source: GeometrySource): HitFunc {
+  return (context, shape) => {
+    hitBox(
+      context,
+      shape,
+      0,
+      -getColumnTextY(source),
+      shape.width() + INPUT_MARGIN_RIGHT,
+      tableRowHeight(source)
+    );
+  };
+}
+
+/**
+ * One of those per source, built once. A row is not the same height in a view
+ * as in the document, and konva reads this off an attribute, so a function
+ * built per render would mark every cell dirty every frame.
+ */
+export const columnCellHit: Record<GeometrySource, HitFunc> = {
+  document: columnCellHitOf('document'),
+  flow: columnCellHitOf('flow'),
 };
 
-/** The header cell's box, the same way, at the header input's own height. */
-export const headerCellHit: HitFunc = (context, shape) => {
-  hitBox(
-    context,
-    shape,
-    0,
-    -HEADER_TEXT_Y,
-    shape.width() + INPUT_MARGIN_RIGHT,
-    TABLE_HEADER_INPUT_HEIGHT
-  );
+/**
+ * The header cell's box, the same way: the document's padded input box, and in
+ * a view the whole band the card leaves above its rows, so a press anywhere on
+ * the header line lands on the name.
+ */
+function headerCellHitOf(source: GeometrySource): HitFunc {
+  const top = 0 - getHeaderTextY(source);
+  const height =
+    source === 'document'
+      ? TABLE_HEADER_INPUT_HEIGHT
+      : VIEW_TABLE_HEADER_HEIGHT;
+
+  return (context, shape) => {
+    hitBox(context, shape, 0, top, shape.width() + INPUT_MARGIN_RIGHT, height);
+  };
+}
+
+/** One of those per source, built once, for the reason columnCellHit is. */
+export const headerCellHit: Record<GeometrySource, HitFunc> = {
+  document: headerCellHitOf('document'),
+  flow: headerCellHitOf('flow'),
 };
 
 /**

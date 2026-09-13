@@ -2,10 +2,18 @@ import { Reducer } from '@dineug/r-html';
 
 import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
-import { type LWW, ValuesType } from '@/internal-types';
+import { type LWW, Point, ValuesType } from '@/internal-types';
 import { Rect } from '@/utils/dragSelect';
 
-import { FocusType, MoveKey, SelectType, SharedFocus } from './state';
+import {
+  FocusType,
+  MoveKey,
+  SelectType,
+  SharedFocus,
+  ShowMode,
+  ViewKind,
+  VisualizationMode,
+} from './state';
 
 export const ActionType = {
   changeHasHistory: 'editor.changeHasHistory',
@@ -46,6 +54,17 @@ export const ActionType = {
   validationIds: 'editor.validationIds',
   getLWW: 'editor.getLWW',
   mergeLWW: 'editor.mergeLWW',
+  viewOpen: 'editor.viewOpen',
+  viewClose: 'editor.viewClose',
+  viewScrollTo: 'editor.viewScrollTo',
+  viewStreamScrollTo: 'editor.viewStreamScrollTo',
+  viewChangeZoomLevel: 'editor.viewChangeZoomLevel',
+  viewStreamZoomLevel: 'editor.viewStreamZoomLevel',
+  viewMoveTable: 'editor.viewMoveTable',
+  viewSetLayout: 'editor.viewSetLayout',
+  viewChangeShowMode: 'editor.viewChangeShowMode',
+  viewSetCenters: 'editor.viewSetCenters',
+  changeVisualizationMode: 'editor.changeVisualizationMode',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -146,6 +165,53 @@ export type ActionMap = {
   [ActionType.getLWW]: void;
   [ActionType.mergeLWW]: {
     lww: LWW;
+  };
+  [ActionType.viewOpen]: {
+    kind: ViewKind;
+    /** The tables the view opens narrowed to; none and it opens on the whole document. */
+    centerIds?: string[];
+  };
+  [ActionType.viewClose]: {
+    kind: ViewKind;
+  };
+  [ActionType.viewScrollTo]: {
+    originX: number;
+    originY: number;
+    kind?: ViewKind;
+  };
+  [ActionType.viewStreamScrollTo]: {
+    movementX: number;
+    movementY: number;
+    kind?: ViewKind;
+  };
+  [ActionType.viewChangeZoomLevel]: {
+    value: number;
+    kind?: ViewKind;
+  };
+  [ActionType.viewStreamZoomLevel]: {
+    value: number;
+    kind?: ViewKind;
+  };
+  [ActionType.viewMoveTable]: {
+    ids: string[];
+    movementX: number;
+    movementY: number;
+    kind?: ViewKind;
+  };
+  [ActionType.viewSetLayout]: {
+    kind: ViewKind;
+    positions: Record<string, Point>;
+  };
+  [ActionType.viewChangeShowMode]: {
+    value: ShowMode;
+    kind?: ViewKind;
+  };
+  [ActionType.viewSetCenters]: {
+    tableIds: string[];
+    kind?: ViewKind;
+  };
+  [ActionType.changeVisualizationMode]: {
+    value: VisualizationMode;
   };
 };
 

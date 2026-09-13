@@ -4,11 +4,17 @@ import { clamp, isNil } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
 import { Viewport } from '@/engine/modules/editor/state';
+import {
+  viewScrollToAction,
+  viewStreamScrollToAction,
+} from '@/engine/modules/editor/view.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { Point } from '@/internal-types';
 import { getFrozenOrigin, getViewContentRect } from '@/konva/scene/viewFreeze';
+import { getSceneTransform } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import {
   hasBracketType,
   hasColumnType,
@@ -97,12 +103,13 @@ export const hasViewport = ({ width, height }: Viewport): boolean =>
  * edge meeting the near edge of the screen to its near edge meeting the far
  * one. An empty document and an unmeasured screen have no travel to offer.
  */
-export function getContentScrollRanges(state: RootState): ScrollRanges {
-  const {
-    settings: { originX, originY, zoomLevel },
-    editor: { viewport },
-  } = state;
-  const content = getViewContentRect(state);
+export function getContentScrollRanges(
+  state: RootState,
+  source: GeometrySource = 'document'
+): ScrollRanges {
+  const { originX, originY, zoomLevel } = getSceneTransform(state, source);
+  const { viewport } = state.editor;
+  const content = getViewContentRect(state, source);
 
   if (!content || !hasViewport(viewport)) {
     return { left: still(originX), top: still(originY) };
@@ -169,10 +176,13 @@ const hull = (range: ScrollRange, ...origins: number[]): ScrollRange => ({
  * content's own range widened to hold the origin where it stands and, while a
  * drag holds the view, the origin it started from, so it never shifts under the drag.
  */
-export function getScrollRanges(state: RootState): ScrollRanges {
-  const { originX, originY } = state.settings;
-  const { left, top } = getContentScrollRanges(state);
-  const anchor = getFrozenOrigin(state);
+export function getScrollRanges(
+  state: RootState,
+  source: GeometrySource = 'document'
+): ScrollRanges {
+  const { originX, originY } = getSceneTransform(state, source);
+  const { left, top } = getContentScrollRanges(state, source);
+  const anchor = getFrozenOrigin(state, source);
 
   return anchor
     ? { left: hull(left, originX, anchor.x), top: hull(top, originY, anchor.y) }
@@ -188,14 +198,15 @@ export type ScrollMovement = ActionMap[typeof ActionType.streamScrollTo];
  */
 export function clampScrollMovement(
   state: RootState,
-  { movementX, movementY }: ScrollMovement
+  { movementX, movementY }: ScrollMovement,
+  source: GeometrySource = 'document'
 ): ScrollMovement {
   if (!hasViewport(state.editor.viewport)) {
     return { movementX, movementY };
   }
 
-  const { originX, originY } = state.settings;
-  const { left, top } = getScrollRanges(state);
+  const { originX, originY } = getSceneTransform(state, source);
+  const { left, top } = getScrollRanges(state, source);
 
   return {
     movementX: clamp(originX + movementX, left.min, left.max) - originX,
@@ -244,6 +255,27 @@ const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
   settings.originX = round(settings.originX + movementX, 4);
   settings.originY = round(settings.originY + movementY, 4);
 };
+
+/**
+ * The scroll a scene dispatches lands where that scene reads: the document's
+ * own for the document scene, and the view of the source's kind, named, for a
+ * view scene, so neither of two scenes on one page ever scrolls the other.
+ */
+export const sceneScrollToAction = (
+  source: GeometrySource,
+  payload: ActionMap[typeof ActionType.scrollTo]
+) =>
+  source === 'document'
+    ? scrollToAction(payload)
+    : viewScrollToAction({ ...payload, kind: source });
+
+export const sceneStreamScrollToAction = (
+  source: GeometrySource,
+  payload: ScrollMovement
+) =>
+  source === 'document'
+    ? streamScrollToAction(payload)
+    : viewStreamScrollToAction({ ...payload, kind: source });
 
 export const changeShowAction = createAction<
   ActionMap[typeof ActionType.changeShow]

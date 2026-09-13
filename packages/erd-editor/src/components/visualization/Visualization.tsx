@@ -1,140 +1,68 @@
-import { query } from '@dineug/erd-editor-schema';
-import {
-  createRef,
-  FC,
-  observable,
-  onMounted,
-  ref,
-  watch,
-} from '@dineug/r-html';
-import { Stage } from 'konva/lib/Stage';
+import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import Table from '@/components/visualization/table/Table';
+import { Open } from '@/constants/open';
+import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
+import { VisualizationMode } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { renderKonva } from '@/konva/host';
-import { registerStage, unregisterStage } from '@/konva/testHandle';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import { createVisualization, type Visualization } from './createVisualization';
 import * as styles from './Visualization.styles';
-import { renderVisualizationScene } from './VisualizationScene';
+import VisualizationToolbar from './visualization-toolbar/VisualizationToolbar';
+import VisualizationFlow from './VisualizationFlow';
+import VisualizationGraph from './VisualizationGraph';
 import {
-  createView,
-  createVisualizationState,
-  wheelZoomFactor,
-  zoomAt,
-} from './visualizationView';
-
-/** The registry key a spec reads the graph's Stage back from. */
-const STAGE_NAME = 'visualization';
-
-/** How far right of the pointer the table preview opens. */
-const MARGIN = 20;
+  setVisualizationZoom,
+  stepVisualizationZoom,
+} from './zoomVisualization';
 
 export type VisualizationProps = {};
 
 /**
- * The dom shell around the graph: the Stage container, the wheel that zooms
- * it, and the table preview that opens over a hovered table dot. The layout,
- * the view and the hover live in one observable here and never reach the store.
+ * The tab, which mounts one of its two modes at a time and the toolbar that
+ * picks between them. Each mode builds its own Stage on mount, so the choice
+ * is which sibling stands here rather than a branch inside one of them.
  */
 const Visualization: FC<VisualizationProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
-  const canvas = createRef<HTMLDivElement>();
-  // The view is centred once the viewport is known, which is on mount; until
-  // then nothing reads it, because the scene is not rendered before that.
-  const state = observable(createVisualizationState(0, 0), { shallow: true });
-  let graph: Visualization | null = null;
-  let stage: Stage | null = null;
 
   /**
-   * Zooms about the pointer. There is no scroll here for a plain wheel to
-   * spend itself on, so the wheel is the zoom and a drag on the background is
-   * the pan, which is how the graph view it follows reads a wheel too.
+   * The three zoom chords, in the mode that is up. The stop chord is not here
+   * on purpose: it cancels an ELK ask and nothing else, and a reader pressing
+   * it must not find the display set they narrowed to widened under them.
    */
-  const handleWheel = (event: WheelEvent) => {
-    event.preventDefault();
+  const handleShortcut = ({ type }: { type: KeyBindingName }) => {
+    // Quick search is the one overlay that stands over this tab, and a chord
+    // typed into it belongs to the palette, which is what the ERD's own gate
+    // says of the same chord over its canvas.
+    if (app.value.store.state.editor.openMap[Open.search]) return;
 
-    const rect = canvas.value.getBoundingClientRect();
-    const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    const factor = wheelZoomFactor(event.deltaY, event.deltaMode);
-
-    Object.assign(state, zoomAt(state, point, factor));
+    type === KeyBindingName.zoomIn &&
+      stepVisualizationZoom(app.value, ZOOM_STEP);
+    type === KeyBindingName.zoomOut &&
+      stepVisualizationZoom(app.value, -ZOOM_STEP);
+    // Absolute rather than a run of steps, so it holds the middle of the
+    // screen the way the bar's own zoom does.
+    type === KeyBindingName.zoomReset &&
+      setVisualizationZoom(app.value, ZOOM_RESET);
   };
 
   onMounted(() => {
-    const { store } = app.value;
-    const { viewport } = store.state.editor;
-    const $graph = createVisualization(store.state);
-    const $stage = new Stage({
-      container: canvas.value,
-      width: viewport.width,
-      height: viewport.height,
-    });
-
-    graph = $graph;
-    stage = $stage;
-    Object.assign(state, createView(viewport.width, viewport.height));
-    $graph.simulation.on('tick', () => {
-      state.tick += 1;
-    });
-    registerStage(STAGE_NAME, $stage);
-    renderVisualizationScene($stage, { graph: $graph, state });
-
-    addUnsubscribe(
-      watch(viewport).subscribe(() => {
-        $stage.size({ width: viewport.width, height: viewport.height });
-      }),
-      () => {
-        graph = null;
-        stage = null;
-        $graph.simulation.stop();
-        unregisterStage(STAGE_NAME, $stage);
-        renderKonva($stage, null);
-        $stage.destroy();
-      }
-    );
+    addUnsubscribe(app.value.shortcut$.subscribe(handleShortcut));
   });
 
-  if (import.meta.hot) {
-    // The scene is the root of an imperative render rather than a value in this
-    // template, so r-html's own boundary cannot swap it. Rendering the root
-    // again here is what makes an edit to the scene show without a reload.
-    import.meta.hot.accept(
-      '@/components/visualization/VisualizationScene',
-      (mod: any) => {
-        if (!stage || !graph || !mod) return;
-        mod.renderVisualizationScene(stage, { graph, state });
-      }
-    );
-  }
-
   return () => {
-    const { store } = app.value;
-    const { collections } = store.state;
-    const { viewport } = store.state.editor;
-    const table = state.hoveredTableId
-      ? query(collections)
-          .collection('tableEntities')
-          .selectById(state.hoveredTableId)
-      : null;
-    const showPreview = table && !state.drag;
+    const { visualizationMode } = app.value.store.state.editor;
 
     return (
-      <div class={styles.root} on:wheel={handleWheel}>
-        <div
-          class={styles.stage}
-          data-testid="visualization-canvas"
-          use:ref={ref(canvas)}
-          style={{
-            width: `${viewport.width}px`,
-            height: `${viewport.height}px`,
-          }}
-        ></div>
-        {showPreview ? (
-          <Table table={table} x={state.previewX + MARGIN} y={state.previewY} />
-        ) : null}
+      <div class={styles.root}>
+        {visualizationMode === VisualizationMode.flow ? (
+          <VisualizationFlow />
+        ) : (
+          <VisualizationGraph />
+        )}
+        <VisualizationToolbar />
       </div>
     );
   };

@@ -14,6 +14,11 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_ICON_MARGIN_BOTTOM,
   TABLE_HEADER_PADDING,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
+  VIEW_COLUMN_PADDING,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
 import { ColumnType, Show } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
@@ -21,7 +26,12 @@ import type { RootState } from '@/engine/state';
 import type { Table } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
-import type { ColumnWidth } from '@/utils/calcTable';
+import {
+  type ColumnWidth,
+  tableRowHeight,
+  viewHeaderNameWidth,
+} from '@/utils/calcTable';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** The four widths a column row measures from its table; the rest are fixed. */
 export type ColumnCellWidths = Pick<
@@ -42,15 +52,74 @@ export type ColumnCellSlot = CellSlot & {
 
 /** Where the header cell row starts inside a table group. */
 export const HEADER_CELLS_X = TABLE_INSET;
-export const HEADER_CELLS_Y =
-  TABLE_INSET + HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM;
 
-/** The text line inside a header cell and inside a column cell. */
-export const HEADER_TEXT_Y = TABLE_HEADER_PADDING;
-export const COLUMN_TEXT_Y = COLUMN_PADDING;
+/**
+ * How far down a table group the header cells start. The document keeps the
+ * icon band above them; a view draws no icon there, so its cells begin at the
+ * inset itself.
+ */
+export function getHeaderCellsY(source: GeometrySource = 'document'): number {
+  return source === 'document'
+    ? TABLE_INSET + HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM
+    : TABLE_INSET;
+}
 
-/** Where the scene runs its focus rect inside a cell, header and column both. */
+/**
+ * The text line inside a header cell. The document pads its input box; a view
+ * starts its line at the top of the icon band, which the card's own padding has
+ * already put where the band wants it.
+ */
+export function getHeaderTextY(source: GeometrySource = 'document'): number {
+  return source === 'document' ? TABLE_HEADER_PADDING : 0;
+}
+
+/**
+ * The box that line is centred in. The document uses the box its editor opens
+ * an input in; a view centres on the icon beside the name instead, so the two
+ * share one middle.
+ */
+export function getHeaderTextHeight(
+  source: GeometrySource = 'document'
+): number {
+  return source === 'document'
+    ? getCellTextHeight()
+    : VIEW_TABLE_HEADER_ICON_SIZE;
+}
+
+/** The text line inside a column cell, at the padding its own source lays rows out with. */
+export function getColumnTextY(source: GeometrySource = 'document'): number {
+  return source === 'document' ? COLUMN_PADDING : VIEW_COLUMN_PADDING;
+}
+
+/**
+ * The box that line is centred in, the same split: the editor's input box in
+ * the document, and the row's own icon band in a view, which is what leaves the
+ * text on the badge's middle.
+ */
+export function getColumnTextHeight(
+  source: GeometrySource = 'document',
+  fontFamily?: string
+): number {
+  return source === 'document'
+    ? getCellTextHeight(fontFamily)
+    : VIEW_COLUMN_ICON_SIZE;
+}
+
+/** Where the scene runs its focus rect inside a header cell. */
 export const CELL_UNDERLINE_Y = INPUT_HEIGHT - FOCUS_BORDER_HEIGHT;
+
+/**
+ * The same rect inside a column cell, along the foot of the line box the row
+ * leaves between its two paddings. The document draws it alone, so the row it
+ * is measured against is the document's.
+ */
+export function getColumnUnderlineY(): number {
+  return (
+    tableRowHeight('document') -
+    getColumnTextY('document') * 2 -
+    FOCUS_BORDER_HEIGHT
+  );
+}
 
 /**
  * The paint that focus rect takes, header and column both: the input colour
@@ -72,35 +141,38 @@ const RAW_CELL_TEXT_HEIGHT = CELL_UNDERLINE_Y;
 
 /**
  * The baseline one line of cell text is drawn on, down from the top of the
- * cell. Blink puts a painted baseline on the device grid before the zoom scales
- * it, so only a whole pixel survives both rasterisers unchanged.
+ * cell, in the face named or the scene's own. Blink puts a painted baseline on
+ * the device grid before the zoom scales it, so only a whole pixel survives both rasterisers.
  *
  * @example
  * const baseline = getCellTextBaseline();
  */
-export function getCellTextBaseline(): number {
-  const { ascent, descent } = getSceneFontMetrics();
+export function getCellTextBaseline(fontFamily?: string): number {
+  const { ascent, descent } = getSceneFontMetrics(fontFamily);
 
   return Math.round(RAW_CELL_TEXT_HEIGHT / 2 + (ascent - descent) / 2);
 }
 
 /**
- * The box one line of cell text is centred in. The scene hands konva this
- * height with verticalAlign middle and the editor gives its input the same one,
- * which is what puts the two baselines on one whole pixel instead of two.
+ * The box one line of cell text is centred in, in the face named or the
+ * scene's own. The scene hands konva this height with verticalAlign middle and
+ * the editor gives its input the same one, which puts the two baselines on one whole pixel.
  *
  * @example
  * const height = getCellTextHeight();
  */
-export function getCellTextHeight(): number {
-  const { ascent, descent } = getSceneFontMetrics();
+export function getCellTextHeight(fontFamily?: string): number {
+  const { ascent, descent } = getSceneFontMetrics(fontFamily);
 
-  return (getCellTextBaseline() - (ascent - descent) / 2) * 2;
+  return (getCellTextBaseline(fontFamily) - (ascent - descent) / 2) * 2;
 }
 
-/** Where a column row's cells start, past the key badge. */
-export const COLUMN_CELLS_X =
-  TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT;
+/** Where a column row's cells start, past the key badge its own source sizes. */
+export function getColumnCellsX(source: GeometrySource = 'document'): number {
+  return source === 'document'
+    ? TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
+    : TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP;
+}
 
 /** The comment width a table draws at, clamped by the setting when it is set. */
 export function getWidthComment(state: RootState, table: Table): number {
@@ -114,14 +186,25 @@ export function getWidthComment(state: RootState, table: Table): number {
 /**
  * The name and comment boxes across a table header. One list feeds both the
  * scene that draws them and the overlay that edits them, so an editor can never
- * sit anywhere but on the text it replaces.
+ * sit anywhere but on the text it replaces. A view draws the name alone.
  */
-export function getHeaderCellSlots(state: RootState, table: Table): CellSlot[] {
+export function getHeaderCellSlots(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): CellSlot[] {
+  const view = source !== 'document';
   const slots: CellSlot[] = [
-    { focusType: FocusType.tableName, x: 0, width: table.ui.widthName },
+    {
+      focusType: FocusType.tableName,
+      x: view ? VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP : 0,
+      width: view
+        ? viewHeaderNameWidth(table.ui.widthName)
+        : table.ui.widthName,
+    },
   ];
 
-  if (bHas(state.settings.show, Show.tableComment)) {
+  if (!view && bHas(state.settings.show, Show.tableComment)) {
     slots.push({
       focusType: FocusType.tableComment,
       x: table.ui.widthName + INPUT_MARGIN_RIGHT,
@@ -182,24 +265,38 @@ const COLUMN_SLOTS: Array<{
   },
 ];
 
+/** The cells a view draws in every row, whatever the settings show or order. */
+const VIEW_COLUMN_ORDER: number[] = [
+  ColumnType.columnName,
+  ColumnType.columnDataType,
+];
+
 /**
  * The cells of one column row, in the order the settings put them and at the x
- * each lands on once the ones before it have taken their width.
+ * each lands on once the ones before it have taken their width. A view lays
+ * out the name and the type and reads neither the show bits nor the order.
  */
 export function getColumnCellSlots(
   state: RootState,
-  widths: ColumnCellWidths
+  widths: ColumnCellWidths,
+  source: GeometrySource = 'document'
 ): ColumnCellSlot[] {
   const { settings } = state;
   const slots: ColumnCellSlot[] = [];
-  let cursor = COLUMN_CELLS_X;
+  let cursor = getColumnCellsX(source);
+  const order =
+    source === 'document' ? settings.columnOrder : VIEW_COLUMN_ORDER;
 
-  for (const columnType of settings.columnOrder) {
+  for (const columnType of order) {
     const definition = COLUMN_SLOTS.find(
       slot => slot.columnType === columnType
     );
     if (!definition) continue;
-    if (definition.show !== null && !bHas(settings.show, definition.show)) {
+    if (
+      source === 'document' &&
+      definition.show !== null &&
+      !bHas(settings.show, definition.show)
+    ) {
       continue;
     }
 

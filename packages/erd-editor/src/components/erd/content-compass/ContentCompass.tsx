@@ -2,51 +2,34 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
+  COMPASS_ARROW_SIZE,
   formatDistance,
   getContentCompass,
+  scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
-import {
-  getScrollToCenter,
-  getViewTransform,
-} from '@/components/erd/minimap/minimapGeometry';
 import Icon from '@/components/primitives/icon/Icon';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import { useSceneSource } from '@/components/sceneSourceContext';
 
 import * as styles from './ContentCompass.styles';
 
 export type ContentCompassProps = {};
 
-/** Small enough to read as a mark beside the label rather than as a button. */
-const ARROW_SIZE = 14;
-
 /**
  * The one thing on a screen that has been panned off every table and memo: an
  * arrow at the nearest of them, how far off it lies, and a press that puts it
- * back in the middle of the screen.
+ * back in the middle. A pill of its own, for the diff viewer, which draws no bar to carry one.
  */
 const ContentCompass: FC<ContentCompassProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
 
-  /**
-   * Read again on the press rather than closed over: a wheel between the render
-   * that drew the arrow and the press moves the screen, and the entity that was
-   * nearest then may not be the one the arrow is pointing at now.
-   */
   const handleClick = () => {
-    const { store } = app.value;
-    const compass = getContentCompass(store.state);
-    if (!compass) return;
-
-    const origin = getScrollToCenter(
-      getViewTransform(store.state),
-      compass.target
-    );
-    store.dispatch(scrollToAction({ originX: origin.x, originY: origin.y }));
+    scrollToNearestContent(app.value.store, sourceRef.value);
   };
 
   return () => {
     const { store } = app.value;
-    const compass = getContentCompass(store.state);
+    const compass = getContentCompass(store.state, sourceRef.value);
 
     return (
       <>
@@ -56,7 +39,11 @@ const ContentCompass: FC<ContentCompassProps> = (props, ctx) => {
             title="go to the nearest content"
             on:click={handleClick}
           >
-            <Icon name="arrow-right" size={ARROW_SIZE} rotate={compass.angle} />
+            <Icon
+              name="arrow-right"
+              size={COMPASS_ARROW_SIZE}
+              rotate={compass.angle}
+            />
             <span class={styles.distance}>
               {formatDistance(compass.distance)}
             </span>

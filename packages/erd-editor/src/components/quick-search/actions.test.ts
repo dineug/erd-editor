@@ -25,6 +25,14 @@ import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-contex
 import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
+import { ChangeActionTypes } from '@/engine/actions';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
+import {
+  changeVisualizationModeAction,
+  viewChangeZoomLevelAction,
+  viewOpenAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   changeCanvasTypeAction,
   changeZoomLevelAction,
@@ -55,6 +63,24 @@ const find = (actions: Action[], name: string): Action => {
 };
 
 const names = (actions: Action[]) => actions.map(action => action.name);
+
+const visibleNames = () =>
+  names(scope().filter(action => action.filter?.(app) ?? true));
+
+/** Every row the ERD canvas offers, which is the whole of what its scope holds. */
+const ERD_TOOLBOX = [
+  'Tab',
+  'Database',
+  'Import',
+  'Export',
+  'New Table',
+  'New Memo',
+  'Zero One',
+  'Zero N',
+  'One Only',
+  'One N',
+  'Auto Layout',
+];
 
 const recordActions = () => {
   const dispatched: AnyAction[] = [];
@@ -199,23 +225,8 @@ describe('createScopeActions', () => {
 
   it('lists the full ERD toolbox in the ERD canvas', () => {
     setCanvasType(CanvasType.ERD);
-    const visible = names(
-      scope().filter(action => action.filter?.(app) ?? true)
-    );
 
-    expect(visible).toEqual([
-      'Tab',
-      'Database',
-      'Import',
-      'Export',
-      'New Table',
-      'New Memo',
-      'Zero One',
-      'Zero N',
-      'One Only',
-      'One N',
-      'Auto Layout',
-    ]);
+    expect(visibleNames()).toEqual(ERD_TOOLBOX);
   });
 
   it('keeps only Database and Bracket in the schema SQL canvas', () => {
@@ -242,6 +253,9 @@ describe('createScopeActions', () => {
   });
 
   it('keeps only the Tab action in the visualization and settings canvases', () => {
+    setCanvasType(CanvasType.ERD);
+    addTable('users');
+
     for (const canvasType of [CanvasType.visualization, CanvasType.settings]) {
       setCanvasType(canvasType);
       expect(
@@ -650,5 +664,53 @@ describe('createScopeActions / table actions', () => {
     addTable('users');
 
     expect(find(scope(), 'users').icon).toBeUndefined();
+  });
+});
+
+describe('createScopeActions / no focus actions', () => {
+  /** Stands the reader in a Flow, which is where the Focus rows used to be offered from. */
+  const enterFlow = () => {
+    setCanvasType(CanvasType.visualization);
+    app.store.dispatchSync(
+      changeVisualizationModeAction({ value: VisualizationMode.flow }),
+      viewOpenAction({ kind: ViewKind.flow })
+    );
+  };
+
+  /** AC-52. The rows are gone from every tab and both visualization modes. */
+  it('offers no Focus action from any canvas type or visualization mode', () => {
+    setCanvasType(CanvasType.ERD);
+    addTable('users');
+
+    // The toolbox and the one row the table itself is, which is the jump to it:
+    // a second row minted per table would stand in this list whatever keyword
+    // it carried, where the filter below only catches the one that was taken out.
+    expect(visibleNames()).toEqual([...ERD_TOOLBOX, 'users']);
+
+    for (const canvasType of [
+      CanvasType.ERD,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.visualization,
+    ]) {
+      setCanvasType(canvasType);
+      expect(scope().filter(action => action.keywords === 'Focus')).toEqual([]);
+    }
+
+    for (const value of [VisualizationMode.graph, VisualizationMode.flow]) {
+      setCanvasType(CanvasType.visualization);
+      app.store.dispatchSync(changeVisualizationModeAction({ value }));
+      expect(scope().filter(action => action.keywords === 'Focus')).toEqual([]);
+    }
+  });
+
+  it('offers the tab switch alone from a Flow, with no table row of any kind', () => {
+    setCanvasType(CanvasType.ERD);
+    addTable('users');
+    enterFlow();
+
+    expect(
+      names(scope().filter(action => action.filter?.(app) ?? true))
+    ).toEqual(['Tab']);
   });
 });

@@ -1,6 +1,9 @@
+import type { Ref } from '@dineug/r-html';
+
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import { SelectType } from '@/engine/modules/editor/state';
 import { Ctx, Memo } from '@/internal-types';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /**
  * Where a memo drag never starts. The colour bar opens the picker, the value is
@@ -9,10 +12,15 @@ import { Ctx, Memo } from '@/internal-types';
  */
 const BLOCKED_KINDS = ['memo-header-color', 'memo-textarea', 'icon', 'sash'];
 
-export function useMoveMemo(ctx: Ctx, props: { memo: Memo }) {
+export function useMoveMemo(
+  ctx: Ctx,
+  props: { memo: Memo },
+  source: Ref<GeometrySource>
+) {
   return useMoveEntity(ctx, {
     entityId: () => props.memo.id,
     selectType: SelectType.memo,
-    blockedKinds: BLOCKED_KINDS,
+    blockedKinds: () => BLOCKED_KINDS,
+    source,
   });
 }

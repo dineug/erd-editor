@@ -4,6 +4,7 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { getMinimapMarkRect } from '@/components/erd/minimap/minimapGeometry';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_BORDER } from '@/constants/layout';
 import type { Table } from '@/internal-types';
@@ -26,12 +27,16 @@ export type TableProps = {
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
 
   return () => {
     const { store } = app.value;
     const { table, ratio } = props;
     const theme = themeRef.value;
-    const rect = getMinimapMarkRect(ratio, getTableRect(store.state, table));
+    const rect = getMinimapMarkRect(
+      ratio,
+      getTableRect(store.state, table, sourceRef.value)
+    );
 
     return (
       <k-rect

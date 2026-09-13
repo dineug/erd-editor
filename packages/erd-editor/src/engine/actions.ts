@@ -159,6 +159,20 @@ export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
   ...ChangeActionTypes.filter(type => !hasReadonlyIgnore(type)),
 ];
 
+const hasViewIgnorePass = arrayHas<ActionType>([
+  'editor.loadJson',
+  'editor.clear',
+]);
+
+/**
+ * What a view keeps from the document while it is active: every edit a
+ * readonly host refuses, less the host replacing the document outright, which
+ * a view cannot stand in the way of and answers by closing.
+ */
+export const ViewIgnoreActionTypes: ReadonlyArray<ActionType> = [
+  ...ReadonlyIgnoreActionTypes.filter(type => !hasViewIgnorePass(type)),
+];
+
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
   'editor.sharedMouseTracker',
   'editor.sharedFocusTracker',

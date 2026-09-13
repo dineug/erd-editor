@@ -27,6 +27,15 @@ export function isTouchEvent(event: Event): event is TouchEvent {
 }
 
 /**
+ * The editor root, which is where a pan has to take the selection off: the top
+ * toolbar is a sibling of the scene that pans, so suppressing it any lower
+ * leaves a drag that reaches the toolbar free to select its text.
+ */
+export function editorRootOf(el: HTMLElement): HTMLElement {
+  return el.closest<HTMLElement>('.root') ?? el;
+}
+
+/**
  * Takes selection off an element for the length of a gesture and hands back the
  * undo. A press allowed to start one lets the browser promote the drag to a
  * native one, which swallows the mouseup the gesture was waiting for.

@@ -11,7 +11,9 @@ import {
   toMinimapPoint,
 } from '@/components/erd/minimap/minimapGeometry';
 import Table from '@/components/erd/minimap/table/Table';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { renderKonva } from '@/konva/host';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
 
 export type MinimapSceneProps = {};
 
@@ -20,19 +22,22 @@ type Stacked = { ui: { zIndex: number } };
 const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
- * The whole document on one layer, with no culling: a thumbnail that dropped
+ * The whole scene on one layer, with no culling: a thumbnail that dropped
  * what is off screen would stop being a map of where the rest of it is. Boxes
  * only, because a connector between two of them is noise at this size.
  */
 const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
 
   return () => {
     const { store } = app.value;
-    const {
-      doc: { tableIds, memoIds },
-      collections,
-    } = store.state;
+    const { doc, collections } = store.state;
+    const source = sourceRef.value;
+    // The document's two lists read directly, as the content rect reads them:
+    // the relationships getVisibleIds carries would be a dependency for nothing.
+    const { tableIds, memoIds } =
+      source === 'document' ? doc : getVisibleIds(store.state, source);
 
     const tables = query(collections)
       .collection('tableEntities')
@@ -47,7 +52,7 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
     // The map's ratio as the one scale and its corner as the one offset: scene
     // zero lands where the map puts it, and the centring in the minimap square
     // is the container's to do, so nothing here restates it.
-    const layout = getMinimapLayout(store.state);
+    const layout = getMinimapLayout(store.state, source);
     const place = toMinimapPoint(layout, { x: 0, y: 0 });
 
     return (

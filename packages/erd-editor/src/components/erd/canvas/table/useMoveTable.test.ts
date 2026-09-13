@@ -8,23 +8,30 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { Table } from '@/internal-types';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 type MoveStart = (event: ScenePointerEvent) => void;
 
 type HostProps = {
   table: Table;
+  /** The scene the table stands in, which is the document unless a spec names a view. */
+  source?: GeometrySource;
   capture: (onMoveStart: MoveStart) => void;
 };
 
 const Host: FC<HostProps> = (props, ctx) => {
-  const { onMoveStart } = useMoveTable(ctx, props);
+  const provided = useSceneSource(ctx);
+  const source = props.source ? { value: props.source } : provided;
+  const { onMoveStart } = useMoveTable(ctx, props, source);
   props.capture(onMoveStart);
 
   return () => html`<div class="host"></div>`;
@@ -82,7 +89,7 @@ type Fixture = {
   fire: (target: FakeNode, evt: Event) => Event;
 };
 
-async function setup(): Promise<Fixture> {
+async function setup(source: GeometrySource = 'document'): Promise<Fixture> {
   const app = createTestAppContext();
   const { store } = app;
 
@@ -97,6 +104,7 @@ async function setup(): Promise<Fixture> {
   mounted = mount(
     html`<${Host}
       table=${table}
+      source=${source}
       .capture=${(value: MoveStart) => (onMoveStart = value)}
     />`,
     app
@@ -250,6 +258,25 @@ describe('useMoveTable', () => {
     expect(table.ui.y).toBe(startY);
     // the selection still happens even though the drag does not
     expect(app.store.state.editor.selectedMap[table.id]).toBe(SelectType.table);
+  });
+
+  it.each([['table-header-color'], ['column-row'], ['input-padding']])(
+    'starts a view drag from a %s node, which a view card gives no gesture of its own',
+    async kind => {
+      const { app, fire } = await setup('flow');
+
+      fire(inside(kind), mousedown({ clientX: 0, clientY: 0 }));
+
+      expect(isEntityDragActive(app.store.state, 'flow')).toBe(true);
+    }
+  );
+
+  it('never starts a view drag from a header button', async () => {
+    const { app, fire } = await setup('flow');
+
+    fire(inside('icon'), mousedown({ clientX: 0, clientY: 0 }));
+
+    expect(isEntityDragActive(app.store.state, 'flow')).toBe(false);
   });
 
   it('never starts a drag from a shape nested inside a blocked node', async () => {

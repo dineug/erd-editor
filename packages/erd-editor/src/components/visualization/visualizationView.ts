@@ -1,6 +1,12 @@
 import { clamp } from 'es-toolkit';
 
+import {
+  type ContentCompass,
+  nearestContent,
+} from '@/components/erd/content-compass/compassGeometry';
+import type { Viewport } from '@/engine/modules/editor/state';
 import type { Point } from '@/internal-types';
+import type { Rect } from '@/konva/scene/metrics';
 
 import {
   Group,
@@ -8,6 +14,10 @@ import {
   type VisualizationLink,
   type VisualizationNode,
 } from './createVisualization';
+
+// The one fade the graph shares with the Flow scene, kept beside the scene's
+// own highlight so the two views cannot drift apart on it.
+export { DIM_OPACITY } from '@/konva/scene/viewLayout';
 
 /** The most of a table name a label shows before it is cut. */
 export const NAME_MAX_LENGTH = 15;
@@ -49,12 +59,6 @@ export const COLUMN_RADIUS = 4;
 /** A table draws larger than the columns that hang off it. */
 export const nodeRadius = (group: Group): number =>
   group === Group.table ? TABLE_RADIUS : COLUMN_RADIUS;
-
-/**
- * What a dot, a line or a name fades to while it sits outside the lit
- * neighbourhood of a hovered table, so that neighbourhood reads on its own.
- */
-export const DIM_OPACITY = 0.2;
 
 /** The ids a hovered table lights up: nodes on one side, links on the other. */
 export type Highlight = {
@@ -144,6 +148,142 @@ export function zoomAt(
     y: point.y - (point.y - view.y) * ratio,
     scale,
   };
+}
+
+/** What a fitted graph leaves clear of the edges of the stage, on every side. */
+const FIT_MARGIN = 40;
+
+/** The box a dot takes on the scene, which is the circle its group is drawn at. */
+function rectOfNode(node: VisualizationNode): Rect {
+  const radius = nodeRadius(node.group);
+
+  return {
+    x: node.x - radius,
+    y: node.y - radius,
+    width: radius * 2,
+    height: radius * 2,
+  };
+}
+
+/** d3 lays an unplaced node on NaN until the first step, and nothing may be measured against that. */
+const isPlaced = (node: VisualizationNode): boolean =>
+  Number.isFinite(node.x) && Number.isFinite(node.y);
+
+/**
+ * The boxes of the dots that stand somewhere, one at a time. A graph carries a
+ * dot per table and a dot per column, so a reader that stops on the first box
+ * it likes must not be handed an array of all of them first.
+ */
+function* placedRects(nodes: Iterable<VisualizationNode>): Generator<Rect> {
+  for (const node of nodes) {
+    if (isPlaced(node)) yield rectOfNode(node);
+  }
+}
+
+/** The box every dot of the graph stands inside, or null while none of them is placed. */
+function boundsOf(nodes: VisualizationNode[]): Rect | null {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+
+  for (const rect of placedRects(nodes)) {
+    left = Math.min(left, rect.x);
+    top = Math.min(top, rect.y);
+    right = Math.max(right, rect.x + rect.width);
+    bottom = Math.max(bottom, rect.y + rect.height);
+  }
+
+  if (left === Infinity) return null;
+
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/** Where the graph shows the scene, in scene units: what the stage covers at its scale. */
+function visibleSceneRect(view: VisualizationView, viewport: Viewport): Rect {
+  const scale = view.scale || 1;
+
+  return {
+    x: -view.x / scale,
+    y: -view.y / scale,
+    width: viewport.width / scale,
+    height: viewport.height / scale,
+  };
+}
+
+/**
+ * The view that stands the whole graph in the middle of the stage, as large as
+ * the zoom allows with a margin clear of every edge. A graph with nothing
+ * placed yet gets the middle of the stage back, which is where the forces gather it.
+ *
+ * @example
+ * Object.assign(state, fitGraphView(nodes, viewport));
+ */
+export function fitGraphView(
+  nodes: VisualizationNode[],
+  viewport: Viewport
+): VisualizationView {
+  const bounds = boundsOf(nodes);
+  if (!bounds || viewport.width <= 0 || viewport.height <= 0) {
+    return createView(viewport.width, viewport.height);
+  }
+
+  const room = {
+    width: Math.max(viewport.width - FIT_MARGIN * 2, 1),
+    height: Math.max(viewport.height - FIT_MARGIN * 2, 1),
+  };
+  const scale = zoomInRange(
+    Math.min(
+      room.width / Math.max(bounds.width, 1),
+      room.height / Math.max(bounds.height, 1)
+    )
+  );
+
+  return centerGraphView(
+    { ...createView(viewport.width, viewport.height), scale },
+    { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
+    viewport
+  );
+}
+
+/**
+ * The view holding the scene point given under the middle of the stage, at the
+ * scale it already stands at. What a press on the compass moves the graph by.
+ *
+ * @example
+ * Object.assign(state, centerGraphView(state, compass.target, viewport));
+ */
+export function centerGraphView(
+  view: VisualizationView,
+  target: Point,
+  viewport: Viewport
+): VisualizationView {
+  return {
+    x: viewport.width / 2 - target.x * view.scale,
+    y: viewport.height / 2 - target.y * view.scale,
+    scale: view.scale,
+  };
+}
+
+/**
+ * Which way the nearest dot lies while the stage holds none of them, read the
+ * way the scene beside it reads its own. Null while the graph is empty, while
+ * the stage has no size, and while any dot reaches the stage.
+ *
+ * @example
+ * const compass = graphCompass(state, nodes, viewport);
+ */
+export function graphCompass(
+  view: VisualizationView,
+  nodes: Iterable<VisualizationNode>,
+  viewport: Viewport
+): ContentCompass | null {
+  if (viewport.width <= 0 || viewport.height <= 0) return null;
+
+  // The bar reads this once a simulation step, so the boxes are walked lazily:
+  // the first dot that reaches the stage answers the question, and the rest of
+  // a graph of thousands is never built.
+  return nearestContent(placedRects(nodes), visibleSceneRect(view, viewport));
 }
 
 /** What one wheel unit is in px where a host reports lines or pages instead. */

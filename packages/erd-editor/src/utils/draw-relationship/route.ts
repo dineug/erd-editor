@@ -2,7 +2,9 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { isHorizontal, outwardSign } from '@/utils/draw-relationship/stub';
 
 /** Clearance kept between a route and the table boxes it passes. */
@@ -27,15 +29,16 @@ export type Obstacles = {
 };
 
 /**
- * Every table in the document, not only those carrying a relationship: a table
- * with no relationships at all still blocks the view.
+ * Every table the source shows, not only those carrying a relationship: a
+ * table with no relationships at all still blocks the view. For a view that is
+ * the tables it places, at the points it places them.
  */
-export function collectObstacles(state: RootState): Obstacles {
-  const {
-    doc: { tableIds },
-    collections,
-  } = state;
-  const tables = query(collections)
+export function collectObstacles(
+  state: RootState,
+  source: GeometrySource = 'document'
+): Obstacles {
+  const { tableIds } = getVisibleIds(state, source);
+  const tables = query(state.collections)
     .collection('tableEntities')
     .selectByIds(tableIds);
 
@@ -49,7 +52,7 @@ export function collectObstacles(state: RootState): Obstacles {
   };
 
   tables.forEach((table, index) => {
-    const point = tableToObjectPoint(state, table);
+    const point = tableToObjectPoint(state, table, source);
     obstacles.ids[index] = table.id;
     obstacles.left[index] = point.lt.x + OBSTACLE_INSET;
     obstacles.top[index] = point.lt.y + OBSTACLE_INSET;

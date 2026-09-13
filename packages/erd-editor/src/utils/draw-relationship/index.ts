@@ -1,6 +1,21 @@
-import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
-import { Point, Relationship, ValuesType } from '@/internal-types';
+import { observable } from '@dineug/r-html';
+
+import {
+  RELATIONSHIP_STROKE_WIDTH,
+  VIEW_RELATIONSHIP_STROKE_WIDTH,
+} from '@/constants/layout';
+import {
+  Point,
+  Relationship,
+  RelationshipPoint,
+  ValuesType,
+} from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
+import { curveReach } from '@/utils/draw-relationship/bezier';
+import type {
+  GeometrySource,
+  ViewSource,
+} from '@/utils/draw-relationship/geometrySource';
 
 export const DirectionName = {
   left: 'left',
@@ -157,45 +172,184 @@ export const ROUTE_CHAMFER = 8;
 
 const EMPTY_SLOTS: readonly [number, number] = [0, 0];
 
-/**
- * Which slot each end of a relationship took on its table side, recorded by
- * relationshipSort and read by getRelationshipPath. A side channel because a
- * slot index must not reach the document, the register set or the history.
- */
-const stubSlots = new WeakMap<Relationship, readonly [number, number]>();
-
-export function setStubSlots(
-  relationship: Relationship,
-  slots: readonly [number, number]
-) {
-  stubSlots.set(relationship, slots);
-}
-
-/** Falls back to slot zero, which reproduces the pre-stagger geometry. */
-export function getStubSlots(
-  relationship: Relationship
-): readonly [number, number] {
-  return stubSlots.get(relationship) ?? EMPTY_SLOTS;
-}
-
 type StoredRoute = {
   points: Point[];
   epoch: number;
 };
 
-/**
- * The routed polyline, from the first turning point to the last, stamped with
- * the sort that wrote it. Routing needs every table and every other route, so
- * it runs once per sort; with no entry a relationship falls back to two bends.
- */
-const routes = new WeakMap<Relationship, StoredRoute>();
+/** One end of a connector as the geometry reads it: which table, where on it, and which way out. */
+export type Anchor = Pick<RelationshipPoint, 'x' | 'y' | 'direction'> & {
+  tableId: string;
+};
 
-export function setRoute(relationship: Relationship, points: Point[]) {
-  routes.set(relationship, { points, epoch: sortEpoch });
+export type Anchors = {
+  start: Anchor;
+  end: Anchor;
+};
+
+export function copyAnchor({ tableId, x, y, direction }: Anchor): Anchor {
+  return { tableId, x, y, direction };
 }
 
-export function getRoute(relationship: Relationship): Point[] | undefined {
-  return routes.get(relationship)?.points;
+/**
+ * Everything one source's sort keeps beside the document. A side channel
+ * because none of it may reach the document, the register set or the history:
+ * a slot index, a route, an epoch stamp, or the anchors a view places its ends at.
+ */
+type SortChannel = {
+  /**
+   * Opened once per sort, retiring every route box the previous one wrote.
+   * Identity outlives a sort, so the stamp a route carries is what separates a
+   * box for the current routes from one the next sort has already replaced.
+   */
+  epoch: number;
+  /**
+   * Which slot each end of a relationship took on its table side, recorded by
+   * relationshipSort and read by getRelationshipPath.
+   */
+  stubSlots: WeakMap<Relationship, readonly [number, number]>;
+  /**
+   * The routed polyline, from the first turning point to the last, stamped with
+   * the sort that wrote it. Routing needs every table and every other route, so
+   * it runs once per sort; with no entry a relationship falls back to two bends.
+   */
+  routes: WeakMap<Relationship, StoredRoute>;
+  /**
+   * Where a view's sort put the two ends. The document has no entry here: its
+   * sort writes the entity, the one derived geometry the document carries.
+   */
+  anchors: WeakMap<Relationship, Anchors>;
+};
+
+const createSortChannel = (): SortChannel => ({
+  epoch: 0,
+  stubSlots: new WeakMap(),
+  routes: new WeakMap(),
+  anchors: new WeakMap(),
+});
+
+/**
+ * One channel per source, so the document's sort and the view's never read
+ * each other's routes nor retire each other's epoch when they run turn about.
+ */
+const channels: Record<GeometrySource, SortChannel> = {
+  document: createSortChannel(),
+  flow: createSortChannel(),
+};
+
+type Version = { version: number };
+
+/**
+ * A version per connector of each view channel, observable so a render that
+ * read a view's ends, slots or route is redrawn once that view's sort changes
+ * them. Keyed by the entity, not its id, so two stores on one document never wake each other.
+ */
+const viewVersions: Record<ViewSource, WeakMap<Relationship, Version>> = {
+  flow: new WeakMap(),
+};
+
+function viewVersionOf(relationship: Relationship, source: ViewSource) {
+  const versions = viewVersions[source];
+  let held = versions.get(relationship);
+  if (!held) {
+    held = observable({ version: 0 });
+    versions.set(relationship, held);
+  }
+  return held;
+}
+
+/** Registers the render in hand, if any, on the connector's version in that view. */
+function observeView(relationship: Relationship, source: ViewSource) {
+  return viewVersionOf(relationship, source).version;
+}
+
+/**
+ * Wakes every render that read this connector from that view's channel.
+ * Called only for a change, as the entity's own proxy only notifies a changed
+ * field, so a sort that moves one table redraws the connectors it moved and no other.
+ */
+function bumpView(relationship: Relationship, source: ViewSource) {
+  viewVersionOf(relationship, source).version += 1;
+}
+
+/**
+ * Forgets what a source's sorts wrote for these connectors, so a reader sees a
+ * source that never sorted them. Per connector, never the whole channel: the
+ * channels and their epochs are module-wide, and a page may host two stores.
+ */
+export function clearSortChannel(
+  relationships: Iterable<Relationship>,
+  source: GeometrySource = 'document'
+) {
+  const channel = channels[source];
+
+  for (const relationship of relationships) {
+    const hadSlots = channel.stubSlots.delete(relationship);
+    const hadRoute = channel.routes.delete(relationship);
+    const hadAnchors = channel.anchors.delete(relationship);
+    if (source !== 'document' && (hadSlots || hadRoute || hadAnchors)) {
+      bumpView(relationship, source);
+    }
+  }
+}
+
+const sameSlots = (
+  a: readonly [number, number],
+  b: readonly [number, number]
+) => a[0] === b[0] && a[1] === b[1];
+
+const sameAnchor = (a: Anchor, b: Anchor) =>
+  a.x === b.x && a.y === b.y && a.direction === b.direction;
+
+const samePoints = (a: Point[], b: Point[]) =>
+  a.length === b.length &&
+  a.every((point, index) => point.x === b[index].x && point.y === b[index].y);
+
+export function setStubSlots(
+  relationship: Relationship,
+  slots: readonly [number, number],
+  source: GeometrySource = 'document'
+) {
+  const channel = channels[source];
+  if (
+    source !== 'document' &&
+    !sameSlots(channel.stubSlots.get(relationship) ?? EMPTY_SLOTS, slots)
+  ) {
+    bumpView(relationship, source);
+  }
+  channel.stubSlots.set(relationship, slots);
+}
+
+/** Falls back to slot zero, which reproduces the pre-stagger geometry. */
+export function getStubSlots(
+  relationship: Relationship,
+  source: GeometrySource = 'document'
+): readonly [number, number] {
+  if (source !== 'document') observeView(relationship, source);
+  return channels[source].stubSlots.get(relationship) ?? EMPTY_SLOTS;
+}
+
+export function setRoute(
+  relationship: Relationship,
+  points: Point[],
+  source: GeometrySource = 'document'
+) {
+  const channel = channels[source];
+  if (source !== 'document') {
+    const held = channel.routes.get(relationship);
+    if (!held || !samePoints(held.points, points)) {
+      bumpView(relationship, source);
+    }
+  }
+  channel.routes.set(relationship, { points, epoch: channel.epoch });
+}
+
+export function getRoute(
+  relationship: Relationship,
+  source: GeometrySource = 'document'
+): Point[] | undefined {
+  if (source !== 'document') observeView(relationship, source);
+  return channels[source].routes.get(relationship)?.points;
 }
 
 /**
@@ -222,15 +376,55 @@ export type BBox = {
   height: number;
 };
 
-let sortEpoch = 0;
+/** Opens a sort on one source, retiring every route box that source's previous sort wrote. */
+export function nextSortEpoch(source: GeometrySource = 'document') {
+  channels[source].epoch += 1;
+}
 
 /**
- * Opens a sort, retiring every route box the previous one wrote. Identity
- * outlives a sort, so the stamp a route carries is what separates a box for the
- * current routes from one the next sort has already replaced.
+ * Where a connector's two ends sit, for a reader outside the sort. The
+ * document keeps them on the entity, where its sort wrote them; a view keeps
+ * its own in its channel, and one it has not sorted yet reads the document's.
  */
-export function nextSortEpoch() {
-  sortEpoch += 1;
+export function getAnchors(
+  relationship: Relationship,
+  source: GeometrySource = 'document'
+): Anchors {
+  if (source === 'document') return relationship;
+
+  observeView(relationship, source);
+  return channels[source].anchors.get(relationship) ?? relationship;
+}
+
+/**
+ * Where a sort leaves a connector's two ends: on the entity for the document,
+ * the one derived geometry written to it, and in the channel for a view, which
+ * writes nothing to the document. Copied, so the channel never aliases a caller's object.
+ */
+export function setAnchors(
+  relationship: Relationship,
+  { start, end }: Anchors,
+  source: GeometrySource = 'document'
+) {
+  if (source === 'document') {
+    relationship.start.direction = start.direction;
+    relationship.start.x = start.x;
+    relationship.start.y = start.y;
+    relationship.end.direction = end.direction;
+    relationship.end.x = end.x;
+    relationship.end.y = end.y;
+    return;
+  }
+
+  const { anchors } = channels[source];
+  const seen = anchors.get(relationship) ?? relationship;
+  if (!sameAnchor(seen.start, start) || !sameAnchor(seen.end, end)) {
+    bumpView(relationship, source);
+  }
+  anchors.set(relationship, {
+    start: copyAnchor(start),
+    end: copyAnchor(end),
+  });
 }
 
 function aabb(points: Point[]): BBox {
@@ -258,21 +452,45 @@ function inflate({ x, y, width, height }: BBox, padding: number): BBox {
   };
 }
 
+/** How thick a connector is drawn in the source given, markers and all. */
+export function relationshipStrokeWidth(
+  source: GeometrySource = 'document'
+): number {
+  return source === 'document'
+    ? RELATIONSHIP_STROKE_WIDTH
+    : VIEW_RELATIONSHIP_STROKE_WIDTH;
+}
+
 /**
  * Everywhere a relationship can be drawn, for a culling test that must not lose
- * a connector whose anchors are on screen and whose route is not. Without a
+ * a connector whose anchors are on screen and whose drawn run is not. Without a
  * route from this sort the stub ends are unknown, so the padding carries them.
  */
 export function getRouteBBox(
   relationship: Relationship,
-  strokeWidth: number = RELATIONSHIP_STROKE_WIDTH
+  strokeWidth: number = RELATIONSHIP_STROKE_WIDTH,
+  source: GeometrySource = 'document'
 ): BBox {
-  const { start, end } = relationship;
-  const entry = routes.get(relationship);
-  const routed = entry && entry.epoch === sortEpoch ? entry.points : null;
+  const channel = channels[source];
+  const { start, end } = getAnchors(relationship, source);
+  const entry = channel.routes.get(relationship);
+  const routed = entry && entry.epoch === channel.epoch ? entry.points : null;
+
+  const slack = routed ? 0 : MAX_STUB;
+
+  // A view curves between the two turning points and never follows the route,
+  // so only those two matter and the control point of an end the other lies
+  // behind leaves the box they make. No route, and the stubs come first.
+  if (source !== 'document') {
+    const turns = routed?.length ? [routed[0], routed[routed.length - 1]] : [];
+    const box = aabb([...turns, start, end]);
+    const reach = curveReach(Math.max(box.width, box.height) + 2 * slack);
+
+    return inflate(box, ROUTE_BBOX_REACH + strokeWidth + slack + reach);
+  }
 
   return inflate(
     aabb(routed ? [...routed, start, end] : [start, end]),
-    ROUTE_BBOX_REACH + strokeWidth + (routed ? 0 : MAX_STUB)
+    ROUTE_BBOX_REACH + strokeWidth + slack
   );
 }

@@ -11,14 +11,8 @@ import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
-import {
-  toNumString,
-  toZoomFormat,
-  zoomLevelInRange,
-} from '@/utils/validation';
 
 import * as styles from './Toolbar.styles';
 
@@ -36,16 +30,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
     const { store } = app.value;
     store.dispatch(changeDatabaseNameAction({ value: el.value }));
-  };
-
-  const handleZoomLevel = (event: Event) => {
-    const el = event.target as HTMLInputElement | null;
-    if (!el) return;
-
-    const zoomLevel = zoomLevelInRange(Number(toNumString(el.value)) / 100);
-    const { store } = app.value;
-    el.value = toZoomFormat(zoomLevel);
-    store.dispatch(changeZoomLevelAction$(zoomLevel));
   };
 
   const handleChangeCanvasType = (value: string) => {
@@ -119,14 +103,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           width={150}
           value={settings.databaseName}
           onInput={handleChangeDatabaseName}
-        />
-        <TextInput
-          title="zoom level"
-          placeholder="zoom level"
-          width={45}
-          value={toZoomFormat(settings.zoomLevel)}
-          numberOnly={true}
-          onChange={handleZoomLevel}
         />
         <div class={styles.vertical}></div>
         <div

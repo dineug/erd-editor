@@ -35,10 +35,13 @@ import {
 } from '@/engine/modules/table-column/generator.actions';
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
+import { getTableRect } from '@/konva/scene/metrics';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
+import { getSceneTransform } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
-import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { isOverlapPosition, Rect } from '@/utils/dragSelect';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { schemaAMLParserToSchemaJson } from '@/utils/schema-aml-parser';
 import { schemaDBMLParserToSchemaJson } from '@/utils/schema-dbml-parser';
 import { schemaGraphQLParserToSchemaJson } from '@/utils/schema-graphql-parser';
@@ -83,6 +86,8 @@ import {
   isLastTable,
   isTableFocusType,
 } from './utils/focus';
+import { viewMoveTableAction } from './view.actions';
+import { viewActions$ } from './view.generator.actions';
 
 type SelectTypeIds = {
   tableIds: string[];
@@ -120,14 +125,33 @@ export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
     yield initialLoadJsonAction({ value });
   };
 
+/**
+ * Moves the selection by a pointer step, scaled by the zoom of the scene the
+ * drag runs in. From a view scene the step goes to that view's own placement,
+ * which holds tables alone, and the document's placement is left where it is.
+ */
 export const moveAllAction$ = (
   movementX: number,
-  movementY: number
+  movementY: number,
+  source: GeometrySource = 'document'
 ): GeneratorAction =>
-  function* ({ editor: { selectedMap }, settings: { zoomLevel } }) {
-    const { tableIds, memoIds } = getSelectTypeIds(selectedMap);
+  function* (state) {
+    const { tableIds, memoIds } = getSelectTypeIds(state.editor.selectedMap);
+    const { zoomLevel } = getSceneTransform(state, source);
     const newMovementX = movementX / zoomLevel;
     const newMovementY = movementY / zoomLevel;
+
+    if (source !== 'document') {
+      if (tableIds.length) {
+        yield viewMoveTableAction({
+          ids: tableIds,
+          movementX: newMovementX,
+          movementY: newMovementY,
+          kind: source,
+        });
+      }
+      return;
+    }
 
     if (tableIds.length) {
       yield moveTableAction({
@@ -335,22 +359,27 @@ function toDuplicateInput(
   };
 }
 
-export const dragSelectAction$ = (dragRect: Rect): GeneratorAction =>
+/**
+ * Selects what the rect covers among what the source shows, each entity read
+ * at the point and the size that source draws it: a view places its tables
+ * and shows no memo, so a marquee drawn over it picks by the view, not the document.
+ */
+export const dragSelectAction$ = (
+  dragRect: Rect,
+  source: GeometrySource = 'document'
+): GeneratorAction =>
   function* (state) {
-    const {
-      doc: { tableIds, memoIds },
-      collections,
-    } = state;
+    const { collections } = state;
+    const { tableIds, memoIds } = getVisibleIds(state, source);
 
     const selectedMap: Record<string, SelectType> = {
       ...query(collections)
         .collection('tableEntities')
         .selectByIds(tableIds)
         .reduce<Record<string, SelectType>>((acc, table) => {
-          const width = calcTableWidths(table, state).width;
-          const height = calcTableHeight(table);
-          const x = table.ui.x + width / 2 - CENTER_BOX_SIZE;
-          const y = table.ui.y + height / 2 - CENTER_BOX_SIZE;
+          const rect = getTableRect(state, table, source);
+          const x = rect.x + rect.width / 2 - CENTER_BOX_SIZE;
+          const y = rect.y + rect.height / 2 - CENTER_BOX_SIZE;
 
           if (
             isOverlapPosition(dragRect, {
@@ -749,4 +778,5 @@ export const actions$ = {
   dragoverColumnAction$,
   columnKeyHoverStartAction$,
   columnKeyHoverEndAction$,
+  ...viewActions$,
 };

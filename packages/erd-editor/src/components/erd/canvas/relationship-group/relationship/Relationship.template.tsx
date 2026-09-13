@@ -2,7 +2,6 @@
 
 import { DOMTemplateLiterals } from '@dineug/r-html';
 
-import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { RelationshipType } from '@/constants/schema';
 import {
   Circle,
@@ -27,7 +26,8 @@ export const segment = ({ x1, y1, x2, y2 }: PointToPoint) => [x1, y1, x2, y2];
  */
 export function decorationLine(
   points: PointToPoint,
-  stroke: string
+  stroke: string,
+  strokeWidth: number
 ): DOMTemplateLiterals {
   return (
     <k-line
@@ -35,7 +35,7 @@ export function decorationLine(
       kind={DECORATION}
       points={segment(points)}
       stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+      strokeWidth={strokeWidth}
       listening={false}
     />
   );
@@ -44,7 +44,8 @@ export function decorationLine(
 /** The optional ring of a cardinality marker, at either anchor. */
 export function decorationRing(
   { cx, cy }: Circle,
-  stroke: string
+  stroke: string,
+  strokeWidth: number
 ): DOMTemplateLiterals {
   return (
     <k-circle
@@ -54,7 +55,7 @@ export function decorationRing(
       y={cy}
       radius={CIRCLE_RADIUS}
       stroke={stroke}
-      strokeWidth={RELATIONSHIP_STROKE_WIDTH}
+      strokeWidth={strokeWidth}
       listening={false}
     />
   );
@@ -90,16 +91,19 @@ const endShapeMap: Record<number, EndShape> = {
 export function relationshipShape(
   relationshipType: number,
   { path, line }: RelationshipPath,
-  stroke: string
+  stroke: string,
+  strokeWidth: number
 ): DOMTemplateLiterals | null {
   const endShape = endShapeMap[relationshipType];
   if (!endShape) return null;
 
   return (
     <>
-      {decorationLine(path.line.end, stroke)}
-      {endShape.ring ? decorationRing(line.circle, stroke) : null}
-      {endShape.ticks.map(tick => decorationLine(line.line.end[tick], stroke))}
+      {decorationLine(path.line.end, stroke, strokeWidth)}
+      {endShape.ring ? decorationRing(line.circle, stroke, strokeWidth) : null}
+      {endShape.ticks.map(tick =>
+        decorationLine(line.line.end[tick], stroke, strokeWidth)
+      )}
     </>
   );
 }

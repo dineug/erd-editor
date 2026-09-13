@@ -31,10 +31,22 @@ import {
   contextMenuRootContext,
 } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { Open } from '@/constants/open';
-import { ColumnOption, Database, RelationshipType } from '@/constants/schema';
+import {
+  CanvasType,
+  ColumnOption,
+  Database,
+  RelationshipType,
+} from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
-import { focusColumnAction } from '@/engine/modules/editor/atom.actions';
-import { FocusType } from '@/engine/modules/editor/state';
+import {
+  focusColumnAction,
+  selectAction,
+} from '@/engine/modules/editor/atom.actions';
+import {
+  FocusType,
+  SelectType,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
@@ -383,6 +395,7 @@ describe('ErdContextMenu / table type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'Primary KeyAlt + K',
       'Table PropertiesAlt + Space',
+      'Focus on this tableAlt + F',
       'Color',
     ]);
   });
@@ -430,6 +443,56 @@ describe('ErdContextMenu / table type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('stands the Flow view on the table the menu was raised over (AC-51)', async () => {
+    seedTable();
+    await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+    await click(findItem(rootItems(), 'Focus on this table'));
+    await flush();
+
+    const { editor, settings } = app.store.state;
+    expect(settings.canvasType).toBe(CanvasType.visualization);
+    expect(editor.visualizationMode).toBe(VisualizationMode.flow);
+    expect(editor.views.flow?.centerIds).toEqual([TABLE_ID]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('stands the Flow view on the whole selection a menu was raised over one of', async () => {
+    seedTable();
+    app.store.dispatchSync(
+      addTableAction({ id: 'table-2', ui: { x: 400, y: 0, zIndex: 2 } }),
+      selectAction({
+        [TABLE_ID]: SelectType.table,
+        'table-2': SelectType.table,
+      })
+    );
+    await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+    expect(labelsOf(rootItems())).toContain('Focus on selected tablesAlt + F');
+
+    await click(findItem(rootItems(), 'Focus on selected tables'));
+    await flush();
+
+    const centerIds = app.store.state.editor.views.flow?.centerIds ?? [];
+    expect([...centerIds].sort()).toEqual([TABLE_ID, 'table-2']);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('stands the Flow view on the table alone when the selection does not hold it', async () => {
+    seedTable();
+    app.store.dispatchSync(
+      addTableAction({ id: 'table-2', ui: { x: 400, y: 0, zIndex: 2 } }),
+      addTableAction({ id: 'table-3', ui: { x: 800, y: 0, zIndex: 3 } }),
+      selectAction({ 'table-2': SelectType.table, 'table-3': SelectType.table })
+    );
+    await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+    await click(findItem(rootItems(), 'Focus on this table'));
+    await flush();
+
+    expect(app.store.state.editor.views.flow?.centerIds).toEqual([TABLE_ID]);
+  });
+
   it('opens the color picker at the pointer position', async () => {
     seedTable();
     const openColorPicker = vi.fn();
@@ -470,6 +533,7 @@ describe('ErdContextMenu / table type', () => {
 
     expect(openColorPicker).not.toHaveBeenCalled();
     expect(openTableProperties).not.toHaveBeenCalled();
+    expect(app.store.state.editor.views.flow).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -14,14 +14,19 @@ import {
   releasePointer,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { formatDistance } from '@/components/erd/content-compass/compassGeometry';
 import { themeContext } from '@/components/themeContext';
+import { getGraphView } from '@/components/visualization/graphViewHandle';
 import Visualization from '@/components/visualization/Visualization';
 import {
   DIM_OPACITY,
+  graphCompass,
   ZOOM_MAX,
   ZOOM_MIN,
 } from '@/components/visualization/visualizationView';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { ViewKind } from '@/engine/modules/editor/state';
+import { viewOpenAction } from '@/engine/modules/editor/view.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -132,6 +137,164 @@ const toScene = (x: number, y: number) => {
     y: (y - layer.y()) / layer.scaleY(),
   };
 };
+
+const menuOf = (mounted: Mounted, title: string) =>
+  mounted.container.querySelector<HTMLElement>(
+    `.visualization-toolbar [title^="${title}"]`
+  );
+
+const showModeTriggerOf = (mounted: Mounted) =>
+  mounted.container.querySelector<HTMLElement>(
+    '.visualization-toolbar [title^="Row display"]'
+  );
+
+const readoutOf = (mounted: Mounted) =>
+  mounted.container.querySelector<HTMLElement>('.visualization-toolbar span')
+    ?.textContent;
+
+/**
+ * A press the way a person makes one: the three events a real mouse produces,
+ * in order, so a handler listening on the first is not stepped over by a spec
+ * that dispatches the last alone.
+ */
+const click = (el: Element | null) => {
+  for (const type of ['mousedown', 'mouseup', 'click']) {
+    el?.dispatchEvent(new MouseEvent(type, { bubbles: true }));
+  }
+};
+
+describe('the bar beside the graph', () => {
+  // The bar is the graph's sibling and reads its view across that boundary,
+  // which no pure unit can stand in for: this is the one case that says the
+  // subscription reaches it at all.
+  it('follows the graph zoom in its readout (AC-6)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+
+    expect(readoutOf(mounted)).toBe('100%');
+
+    wheel(mounted, 100, 50, -100);
+    await settle();
+
+    const scale = sceneOf().scaleX();
+    expect(scale).toBeGreaterThan(1);
+    expect(readoutOf(mounted)).toBe(`${Math.round(scale * 100)}%`);
+  });
+
+  it('steps the graph zoom on the two buttons (AC-6)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+
+    click(menuOf(mounted, 'Zoom in'));
+    await settle();
+    expect(sceneOf().scaleX()).toBeCloseTo(1.04, 6);
+    expect(readoutOf(mounted)).toBe('104%');
+
+    click(menuOf(mounted, 'Zoom out'));
+    await settle();
+    expect(sceneOf().scaleX()).toBeCloseTo(1, 6);
+  });
+
+  it('fits the whole graph into the stage on the fit button (AC-6)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+
+    for (let i = 0; i < 40; i++) wheel(mounted, 0, 0, -100);
+    await settle();
+    expect(sceneOf().scaleX()).toBe(ZOOM_MAX);
+
+    click(menuOf(mounted, 'Fit'));
+    await settle();
+
+    const { viewport } = app.store.state.editor;
+    const layer = sceneOf();
+    for (const id of ['t1', 'c1', 'c2']) {
+      const dot = dotOf(id);
+      const at = {
+        x: dot.x() * layer.scaleX() + layer.x(),
+        y: dot.y() * layer.scaleY() + layer.y(),
+      };
+      expect(at.x).toBeGreaterThanOrEqual(0);
+      expect(at.x).toBeLessThanOrEqual(viewport.width);
+      expect(at.y).toBeGreaterThanOrEqual(0);
+      expect(at.y).toBeLessThanOrEqual(viewport.height);
+    }
+  });
+
+  it('offers the compass once the stage holds no dot, and puts one back (AC-8)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+
+    expect(menuOf(mounted, 'Go to content')).toBeNull();
+
+    // Zoomed hard about the top left corner, which carries the dots gathered
+    // at the middle of the stage off it.
+    for (let i = 0; i < 40; i++) wheel(mounted, 0, 0, -100);
+    await settle();
+
+    const compass = menuOf(mounted, 'Go to content');
+    expect(compass).not.toBeNull();
+
+    const { state, nodes } = getGraphView(app.store.state.editor.id);
+    const away = graphCompass(state, nodes(), app.store.state.editor.viewport)!;
+    expect(compass!.textContent).toContain(formatDistance(away.distance));
+
+    click(compass);
+    await settle();
+
+    expect(menuOf(mounted, 'Go to content')).toBeNull();
+  });
+
+  // The dots stand where the forces put them and the view does not move with
+  // them, so the tick is the only thing that can tell the bar they have gone.
+  it('offers the compass once the dots are carried off the stage (AC-8)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+
+    expect(menuOf(mounted, 'Go to content')).toBeNull();
+
+    const { state, nodes } = getGraphView(app.store.state.editor.id);
+    for (const node of nodes()) {
+      node.x += 90_000;
+      node.y += 90_000;
+    }
+    state.tick += 1;
+    await settle();
+
+    expect(menuOf(mounted, 'Go to content')).not.toBeNull();
+  });
+
+  it('draws no Flow tool while the graph is up (AC-5)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    // Narrowed the Flow view first, so the mode is the only thing left
+    // holding the show all button off this bar.
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] })
+    );
+    const mounted = await mountVisualization(app);
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t1']);
+    expect(menuOf(mounted, 'Tidy Up')).toBeNull();
+    expect(showModeTriggerOf(mounted)).toBeNull();
+    expect(menuOf(mounted, 'Show all')).toBeNull();
+    expect(menuOf(mounted, 'Fit')).not.toBeNull();
+
+    // The same selector, resolved: an absence asserted against a spelling
+    // nothing in this file ever matches would pass on the spelling alone.
+    click(menuOf(mounted, 'Flow'));
+    await settle();
+
+    expect(showModeTriggerOf(mounted)).not.toBeNull();
+    expect(menuOf(mounted, 'Tidy Up')).not.toBeNull();
+    expect(menuOf(mounted, 'Show all')).not.toBeNull();
+  });
+});
 
 describe('the visualization shell', () => {
   it('hangs one Stage of two layers in the canvas box, at the viewport size', async () => {

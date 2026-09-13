@@ -806,6 +806,8 @@ describe('the header buttons a table owns', () => {
       theme.foreground,
       theme.foreground,
     ]);
+    // A hover in the document lights nothing and so fades nothing either.
+    expect(rootOf(stage).opacity()).toBe(1);
 
     fireScenePointer(rootOf(stage), 'mouseleave');
     await settle();

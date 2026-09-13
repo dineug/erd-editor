@@ -1,11 +1,23 @@
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { CANVAS_ZOOM_MAX, CANVAS_ZOOM_MIN } from '@/constants/schema';
+import {
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
+  CanvasType,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
+import {
+  changeVisualizationModeAction,
+  viewChangeZoomLevelAction,
+  viewOpenAction,
+  viewScrollToAction,
+} from '@/engine/modules/editor/view.actions';
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
+  changeCanvasTypeAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
@@ -19,12 +31,24 @@ import {
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Point } from '@/internal-types';
-import { getOriginToPlace, toScenePoint } from '@/konva/scene/viewport';
+import {
+  getOriginToPlace,
+  toScenePoint,
+  toScreenPoint,
+} from '@/konva/scene/viewport';
 
 const toWidth = (text: string) => text.length * 10;
 
 const VIEWPORT = { width: 1000, height: 800 };
 const SCREEN_CENTRE = { x: VIEWPORT.width / 2, y: VIEWPORT.height / 2 };
+
+/** The tab a Flow view is the active one on, which the no-kind actions below read. */
+function showFlowTab(store: Store) {
+  store.dispatchSync(
+    changeCanvasTypeAction({ value: CanvasType.visualization }),
+    changeVisualizationModeAction({ value: VisualizationMode.flow })
+  );
+}
 
 /**
  * Two tables spanning the corner to 2000 on each axis, which is what gives the
@@ -201,6 +225,119 @@ describe('settings/generator.actions', () => {
       store.dispatchSync(streamZoomLevelAction$(0.04));
 
       expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
+    });
+  });
+
+  /**
+   * The generators run before the redirect that carries their zoom and scroll
+   * to an open view, so the movement they solve has to hold the view's own
+   * centre still, not the document's.
+   */
+  describe('with a view open', () => {
+    it('solves the re-centring scroll against the view placement', () => {
+      store.dispatchSync(scrollToAction({ originX: -300, originY: -200 }));
+      showFlowTab(store);
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      store.dispatchSync(viewScrollToAction({ originX: -100, originY: -100 }));
+      const view = store.state.editor.views.flow!;
+      const anchor = toScenePoint(view, SCREEN_CENTRE);
+
+      const emitted = flatten(store, changeZoomLevelAction$(0.5));
+
+      const expected = getOriginToPlace(0.5, anchor, SCREEN_CENTRE);
+      expect(emitted[1].payload.originX).toBeCloseTo(expected.x, 6);
+      expect(emitted[1].payload.originY).toBeCloseTo(expected.y, 6);
+      expect(expected).not.toEqual(
+        getOriginToPlace(
+          0.5,
+          toScenePoint(store.state.settings, SCREEN_CENTRE),
+          SCREEN_CENTRE
+        )
+      );
+    });
+
+    it('steps the stream zoom from the view zoom', () => {
+      showFlowTab(store);
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
+      const view = store.state.editor.views.flow!;
+      const anchor = toScenePoint(view, SCREEN_CENTRE);
+      const screen = toScreenPoint({ ...view, zoomLevel: 0.25 }, anchor);
+
+      const emitted = flatten(store, streamZoomLevelAction$(-0.25));
+
+      expect(emitted[0]).toEqual(streamZoomLevelAction({ value: -0.25 }));
+      expect(emitted[1].payload.movementX).toBeCloseTo(
+        SCREEN_CENTRE.x - screen.x,
+        4
+      );
+      expect(emitted[1].payload.movementY).toBeCloseTo(
+        SCREEN_CENTRE.y - screen.y,
+        4
+      );
+      // Read off the document instead, the step to 0.75 would be the other way.
+      expect(store.state.settings.zoomLevel).toBe(1);
+    });
+
+    it('solves against the scene named and lands in that view by name, active or not', () => {
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      store.dispatchSync(
+        viewScrollToAction({
+          originX: -100,
+          originY: -100,
+          kind: ViewKind.flow,
+        })
+      );
+      const flow = store.state.editor.views.flow!;
+      const anchor = toScenePoint(flow, SCREEN_CENTRE);
+
+      const emitted = flatten(store, changeZoomLevelAction$(0.5, 'flow'));
+
+      const expected = getOriginToPlace(0.5, anchor, SCREEN_CENTRE);
+      expect(emitted[0]).toEqual(
+        viewChangeZoomLevelAction({ value: 0.5, kind: ViewKind.flow })
+      );
+      expect(emitted[1].type).toBe(viewScrollToAction.type);
+      expect(emitted[1].payload.kind).toBe(ViewKind.flow);
+      expect(emitted[1].payload.originX).toBeCloseTo(expected.x, 6);
+      expect(emitted[1].payload.originY).toBeCloseTo(expected.y, 6);
+
+      store.dispatchSync(
+        changeZoomLevelAction$(0.5, 'flow'),
+        streamZoomLevelAction$(-0.1, 'flow')
+      );
+
+      expect(flow.zoomLevel).toBeCloseTo(0.4, 6);
+      expect(store.state.settings.zoomLevel).toBe(1);
+    });
+
+    it('solves against the document for the document scene, view or no view', () => {
+      store.dispatchSync(scrollToAction({ originX: -300, originY: -200 }));
+      showFlowTab(store);
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
+      const anchor = toScenePoint(store.state.settings, SCREEN_CENTRE);
+
+      const emitted = flatten(store, changeZoomLevelAction$(0.5, 'document'));
+      const stepped = flatten(store, streamZoomLevelAction$(-0.25, 'document'));
+
+      const expected = getOriginToPlace(0.5, anchor, SCREEN_CENTRE);
+      expect(emitted[0]).toEqual(changeZoomLevelAction({ value: 0.5 }));
+      expect(emitted[1].type).toBe(ActionType.scrollTo);
+      expect(emitted[1].payload.originX).toBeCloseTo(expected.x, 6);
+      expect(emitted[1].payload.originY).toBeCloseTo(expected.y, 6);
+      expect(stepped.map(({ type }) => type)).toEqual([
+        ActionType.streamZoomLevel,
+        ActionType.streamScrollTo,
+      ]);
+      const screen = toScreenPoint(
+        { ...store.state.settings, zoomLevel: 0.75 },
+        anchor
+      );
+      expect(stepped[1].payload.movementX).toBeCloseTo(
+        SCREEN_CENTRE.x - screen.x,
+        4
+      );
     });
   });
 

@@ -21,7 +21,8 @@ import {
   type ViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
 import { MINIMAP_SIZE } from '@/constants/layout';
-import { createEditor } from '@/engine/modules/editor/state';
+import { createEditor, ViewKind } from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import {
   getContentScrollRanges,
   getScrollRanges,
@@ -221,6 +222,36 @@ describe('getViewTransform', () => {
       viewportHeight: 600,
     });
   });
+
+  it('reads the active view placement for a view scene, over the same screen', () => {
+    const state = stateOf({
+      view: {
+        originX: -12,
+        originY: 34,
+        zoomLevel: 0.7,
+        viewportWidth: 800,
+        viewportHeight: 600,
+      },
+    });
+    const focus = createSceneView(ViewKind.flow);
+    Object.assign(focus, { originX: 5, originY: -6, zoomLevel: 0.4 });
+    state.editor.views.flow = focus;
+
+    expect(getViewTransform(state, 'flow')).toEqual({
+      originX: 5,
+      originY: -6,
+      zoomLevel: 0.4,
+      viewportWidth: 800,
+      viewportHeight: 600,
+    });
+    expect(getViewTransform(state)).toEqual({
+      originX: -12,
+      originY: 34,
+      zoomLevel: 0.7,
+      viewportWidth: 800,
+      viewportHeight: 600,
+    });
+  });
 });
 
 describe('getMinimapLayout', () => {
@@ -390,6 +421,20 @@ describe('getMinimapLayout', () => {
 
     expect(after).not.toEqual(before);
     expect(contains(after.map, getContentRect(state)!)).toBe(true);
+  });
+
+  it('leaves the document map live while a view drag holds the view', () => {
+    const state = stateOf({ tables: [{ x: 0, y: 0 }] });
+    const before = getMinimapLayout(state);
+
+    freezeView(state, 'flow');
+    state.collections.tableEntities.t0.ui.x = 9000;
+    const after = getMinimapLayout(state);
+
+    expect(after).not.toEqual(before);
+    expect(contains(after.map, getContentRect(state)!)).toBe(true);
+
+    thawView(state, 'flow');
   });
 
   /**

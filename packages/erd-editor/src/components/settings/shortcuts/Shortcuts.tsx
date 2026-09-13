@@ -93,6 +93,10 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
         shortcuts: keyBindingMap.tableProperties,
       },
       {
+        command: 'Focus on this table',
+        shortcuts: keyBindingMap.focusView,
+      },
+      {
         command: 'Zoom In',
         shortcuts: keyBindingMap.zoomIn,
       },

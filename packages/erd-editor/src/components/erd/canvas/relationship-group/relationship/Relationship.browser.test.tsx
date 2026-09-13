@@ -230,18 +230,22 @@ describe('Relationship as konva nodes', () => {
     ).toEqual([]);
   });
 
-  it('applies the strokeWidth prop to the route only', async () => {
+  it('applies the strokeWidth prop to the route and every marker with it', async () => {
     const { group } = await mountRelationship(makeRelationship(), 7);
 
     expect(childNamed(group, 'relationship-route').getAttr('strokeWidth')).toBe(
       7
     );
 
-    // Every remaining painted node is a cardinality decoration, drawn at a
-    // fixed width.
-    for (const node of group.getChildren()) {
-      if (node.name() !== 'relationship-decoration') continue;
-      expect(node.getAttr('strokeWidth')).toBe(RELATIONSHIP_STROKE_WIDTH);
+    // A view draws the whole connector at its own hairline, so a marker left
+    // at the document's width would stand out as a thicker tick on a thinner line.
+    const decorations = group
+      .getChildren()
+      .filter(node => node.name() === 'relationship-decoration');
+
+    expect(decorations.length).toBeGreaterThan(0);
+    for (const node of decorations) {
+      expect(node.getAttr('strokeWidth')).toBe(7);
     }
   });
 

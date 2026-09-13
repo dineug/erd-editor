@@ -1,4 +1,4 @@
-import { FC, html } from '@dineug/r-html';
+import { FC, html, useProvider } from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -13,9 +13,19 @@ import { AppContext } from '@/components/appContext';
 import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
+import {
+  sceneSourceContext,
+  useSceneSource,
+} from '@/components/sceneSourceContext';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
+import { SelectType, ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewChangeZoomLevelAction,
+  viewOpenAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import {
   getViewContentRect,
@@ -31,10 +41,20 @@ const Probe: FC<{}> = (props, ctx) => {
   api = useMoveEntity(ctx, {
     entityId: () => 't1',
     selectType: SelectType.table,
-    blockedKinds: ['column'],
+    blockedKinds: () => ['column'],
+    source: useSceneSource(ctx),
   });
 
   return () => html`<div class="probe"></div>`;
+};
+
+/** A view scene root the way an overlay mounts one: a wrapper of its own, the provider inside. */
+const ViewScope: FC<{ children: any }> = (props, ctx) => {
+  const provider = useProvider(ctx, sceneSourceContext, 'flow');
+  const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => provider.destroy());
+
+  return () => html`${props.children}`;
 };
 
 /** A scene node an ancestor walk finds nothing blocked on. */
@@ -76,6 +96,7 @@ afterEach(() => {
   mounted?.unmount();
   mounted = null;
   thawView(app.store.state);
+  thawView(app.store.state, 'flow');
 });
 
 /** A second table beside the pressed one, and both of them selected. */
@@ -110,6 +131,32 @@ describe('useMoveEntity', () => {
     expect(isEntityDragActive(app.store.state)).toBe(true);
     expect(isViewFrozen(app.store.state)).toBe(true);
     expect(getViewContentRect(app.store.state)).toEqual(before);
+  });
+
+  /**
+   * A table dragged on a view overlay holds the view's origin, not the
+   * document's: the ERD under the overlay keeps its own scroll ranges and
+   * minimap live, and the drop releases the view alone.
+   */
+  it('holds the view a press landed in, and leaves the document live', async () => {
+    mounted?.unmount();
+    mounted = await mountAndFlush(
+      html`<div><${ViewScope} .children=${html`<${Probe} />`} /></div>`,
+      app
+    );
+
+    api.onMoveStart(press());
+
+    expect(isEntityDragActive(app.store.state, 'flow')).toBe(true);
+    expect(isViewFrozen(app.store.state, 'flow')).toBe(true);
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+    expect(isViewFrozen(app.store.state)).toBe(false);
+
+    releasePointer();
+    await flush();
+
+    expect(isEntityDragActive(app.store.state, 'flow')).toBe(false);
+    expect(isViewFrozen(app.store.state, 'flow')).toBe(false);
   });
 
   /**
@@ -198,6 +245,34 @@ describe('useMoveEntity', () => {
       x: before.t2.x + 120,
       y: before.t2.y + 60,
     });
+  });
+
+  /** The move lands where the press read: the view's own placement, by the view's zoom. */
+  it('moves the view placement from a view scene, and leaves the document points where they were', async () => {
+    mounted?.unmount();
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: { t1: { x: 10, y: 20 } },
+      }),
+      viewChangeZoomLevelAction({ value: 0.5, kind: ViewKind.flow })
+    );
+    mounted = await mountAndFlush(
+      html`<div><${ViewScope} .children=${html`<${Probe} />`} /></div>`,
+      app
+    );
+    const before = pointOf('t1');
+
+    api.onMoveStart(press());
+    movePointer(120, 60);
+    await flush();
+
+    expect(app.store.state.editor.views.flow!.positions.t1).toEqual({
+      x: 10 + 240,
+      y: 20 + 120,
+    });
+    expect(pointOf('t1')).toEqual(before);
   });
 
   it('leaves an entity the selection never held where it stands', async () => {

@@ -8,12 +8,12 @@ import { Shortcut, WHEEL_ZOOM_STEP, ZOOM_STEP } from '../support/shortcuts';
  * before it can go anywhere.
  */
 test.describe('zoom, scroll and overlays', () => {
-  test('$mod+wheel zooms out in 0.03 steps and the toolbar shows the percentage', async ({
+  test('$mod+wheel zooms out in 0.03 steps and the bar shows the percentage', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
-    const zoom = erd.toolbar.locator('input[title="zoom level"]');
-    await expect(zoom).toHaveValue('100%');
+    const zoom = erd.zoomReadout;
+    await expect(zoom).toHaveText('100%');
 
     const before = await erd.tableEl('users').boundingBox();
 
@@ -30,7 +30,7 @@ test.describe('zoom, scroll and overlays', () => {
     await expect
       .poll(async () => (await erd.settings()).zoomLevel)
       .toBeCloseTo(1 - 4 * WHEEL_ZOOM_STEP, 5);
-    await expect(zoom).toHaveValue('88%');
+    await expect(zoom).toHaveText('88%');
 
     // The canvas is scale()d, so the zoom is visible as a smaller table: the
     // box shrinks by exactly the zoom factor.
@@ -44,39 +44,39 @@ test.describe('zoom, scroll and overlays', () => {
   }) => {
     await erd.seed(twoTables());
     await erd.focusCanvas();
-    const zoom = erd.toolbar.locator('input[title="zoom level"]');
+    const zoom = erd.zoomReadout;
 
     // A fresh editor sits at 1.0, well under the 1.5 ceiling, so this press
     // has to go through. The zoomOut after it lands back on 100% rather than
     // 96%, which is what says the step before it was taken.
     await erd.press(Shortcut.zoomIn);
-    await expect(zoom).toHaveValue('104%');
+    await expect(zoom).toHaveText('104%');
     expect((await erd.settings()).zoomLevel).toBeCloseTo(1 + ZOOM_STEP, 5);
 
     await erd.press(Shortcut.zoomOut);
-    await expect(zoom).toHaveValue('100%');
+    await expect(zoom).toHaveText('100%');
     expect((await erd.settings()).zoomLevel).toBe(1);
 
     // From 1.0, 13 steps of 0.04 would land at 1.52; the range clamps to 1.5.
     for (let step = 0; step < 13; step++) {
       await erd.press(Shortcut.zoomIn);
     }
-    await expect(zoom).toHaveValue('150%');
+    await expect(zoom).toHaveText('150%');
     expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MAX);
 
     await erd.press(Shortcut.zoomIn);
-    await expect(zoom).toHaveValue('150%');
+    await expect(zoom).toHaveText('150%');
     expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MAX);
 
     // From 1.5, 36 steps of 0.04 would land at 0.06; the range clamps to 0.1.
     for (let step = 0; step < 36; step++) {
       await erd.press(Shortcut.zoomOut);
     }
-    await expect(zoom).toHaveValue('10%');
+    await expect(zoom).toHaveText('10%');
     expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MIN);
 
     await erd.press(Shortcut.zoomOut);
-    await expect(zoom).toHaveValue('10%');
+    await expect(zoom).toHaveText('10%');
     expect((await erd.settings()).zoomLevel).toBe(CANVAS_ZOOM_MIN);
   });
 
@@ -85,7 +85,7 @@ test.describe('zoom, scroll and overlays', () => {
   }) => {
     await erd.seed(twoTables());
     await erd.focusCanvas();
-    const zoom = erd.toolbar.locator('input[title="zoom level"]');
+    const zoom = erd.zoomReadout;
 
     // The table under the middle of the screen is the anchor: an absolute zoom
     // holds the scene point there, so the drawn box straddles the same pixel
@@ -109,11 +109,11 @@ test.describe('zoom, scroll and overlays', () => {
       for (let step = 0; step < Math.abs(steps); step++) {
         await erd.press(chord);
       }
-      await expect(zoom).toHaveValue(percent);
+      await expect(zoom).toHaveText(percent);
 
       await erd.press(Shortcut.zoomReset);
 
-      await expect(zoom).toHaveValue('100%');
+      await expect(zoom).toHaveText('100%');
       expect((await erd.settings()).zoomLevel).toBe(1);
       const back = middleOf((await erd.tableEl('users').boundingBox())!);
       expect(back.x).toBeCloseTo(home.x, 0);

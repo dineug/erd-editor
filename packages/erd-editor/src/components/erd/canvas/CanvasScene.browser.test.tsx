@@ -4,8 +4,10 @@
 // css one and the culling that keeps a table never seen out of the tree, and
 // hides one that scrolled off rather than building it again on the way back.
 
-import { createRef } from '@dineug/r-html';
+import { createRef, useProvider } from '@dineug/r-html';
+import type { Container } from 'konva/lib/Container';
 import type { Layer } from 'konva/lib/Layer';
+import type { Text } from 'konva/lib/shapes/Text';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -13,16 +15,24 @@ import {
   createTestAppContext,
   createTestTheme,
   flush,
+  moveScenePointer,
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { RelationshipType, Show } from '@/constants/schema';
 import {
   changeViewportAction,
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
 } from '@/engine/modules/editor/atom.actions';
+import { ViewKind } from '@/engine/modules/editor/state';
+import {
+  viewChangeZoomLevelAction,
+  viewOpenAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
@@ -31,8 +41,17 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addColumnAction,
+  changeColumnNameAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
+import { Tag } from '@/engine/tag';
+import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
+import { getViewHoverTable } from '@/konva/scene/viewLayout';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** A square viewport, so the culling arithmetic below reads the same per axis. */
 const VIEWPORT = 1000;
@@ -47,17 +66,37 @@ afterEach(async () => {
 type Mounted = {
   app: AppContext;
   stage: Stage;
+  /** Takes this scene down on its own, leaving a sibling mounted on one store. */
+  destroy: () => void;
 };
 
-async function mountScene(): Promise<Mounted> {
-  const $root = document.createElement('div');
-  const container = document.createElement('div');
-  document.body.append($root, container);
+type MountOptions = {
+  /** The store to draw, so two scenes can be mounted on one document. */
+  app?: AppContext;
+  /** Hung on the shell around the Stage, the way the editor mounts a scene. */
+  source?: GeometrySource;
+};
 
-  const app = createTestAppContext();
+async function mountScene({
+  app = createTestAppContext(),
+  source,
+}: MountOptions = {}): Promise<Mounted> {
+  const $root = document.createElement('div');
+  const shell = document.createElement('div');
+  const container = document.createElement('div');
+  shell.append(container);
+  document.body.append($root, shell);
+
   app.store.dispatchSync(
     changeViewportAction({ width: VIEWPORT, height: VIEWPORT })
   );
+
+  // useProvider takes a bare element at runtime and types only a component
+  // context, hence the cast; it is r-html's own, not a React hook.
+  const provider = source
+    ? // oxlint-disable-next-line react-hooks/rules-of-hooks
+      useProvider(shell as any, sceneSourceContext, source)
+    : null;
 
   const scene = renderScene({
     app,
@@ -71,13 +110,22 @@ async function mountScene(): Promise<Mounted> {
   await flush();
   await whenDrawn();
 
-  teardowns.push(() => {
+  const teardown = () => {
     scene.destroy();
-    container.remove();
+    provider?.destroy();
+    shell.remove();
     $root.remove();
-  });
+  };
+  teardowns.push(teardown);
 
-  return { app, stage: scene.stage };
+  const destroy = () => {
+    const at = teardowns.indexOf(teardown);
+    if (at !== -1) teardowns.splice(at, 1);
+
+    teardown();
+  };
+
+  return { app, stage: scene.stage, destroy };
 }
 
 const seedTable = (app: AppContext, id: string, x: number, zIndex = 2) => {
@@ -464,5 +512,230 @@ describe('the bottom layer', () => {
       scene.scaleX(),
       scene.scaleY(),
     ]);
+  });
+});
+
+/**
+ * AC-11, AC-12 and the scene halves of AC-61 and AC-64, the minimap, bars and
+ * compass of AC-61 being each in its own spec. The source the context names
+ * picks what a scene shows and which points it stands them at.
+ */
+describe('a scene the context points at a view', () => {
+  const DOC_POINTS: Record<string, Point> = {
+    t1: { x: 100, y: 100 },
+    t2: { x: 600, y: 100 },
+    t3: { x: 1100, y: 100 },
+  };
+
+  /** Nowhere near the document's own points, so a mixed up scene is obvious. */
+  const VIEW_POINTS: Record<string, Point> = {
+    t1: { x: 200, y: 500 },
+    t2: { x: 700, y: 500 },
+    t3: { x: 1200, y: 500 },
+  };
+
+  const ROWS = ['c1', 'c2', 'c3'];
+
+  /** A chain t1 - t2 - t3, one memo, and a primary key on the first row of t1. */
+  function seedDocument(app: AppContext) {
+    const link = (id: string, start: string, end: string) =>
+      addRelationshipAction({
+        id,
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: start, columnIds: [] },
+        end: { tableId: end, columnIds: [] },
+      });
+
+    app.store.dispatchSync(
+      ...Object.entries(DOC_POINTS).map(([id, point], index) =>
+        addTableAction({ id, ui: { ...point, zIndex: index + 1 } })
+      ),
+      ...ROWS.map(id => addColumnAction({ id, tableId: 't1' })),
+      changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c1', value: true }),
+      addMemoAction({ id: 'm1', ui: { x: 100, y: 700, zIndex: 1 } }),
+      link('r1', 't1', 't2'),
+      link('r2', 't2', 't3')
+    );
+  }
+
+  /** The display set a narrowing opens: t1 at the centre, its hop, key rows. */
+  function narrowView(app: AppContext) {
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+      viewSetLayoutAction({ kind: ViewKind.flow, positions: VIEW_POINTS })
+    );
+  }
+
+  async function mountNarrowedScene(): Promise<Mounted> {
+    const app = createTestAppContext();
+    seedDocument(app);
+    narrowView(app);
+
+    return mountScene({ app, source: 'flow' });
+  }
+
+  const tableOf = (stage: Stage, tableId: string) =>
+    stage.findOne<Container>(`#table-${tableId}`) as Container;
+
+  const rowIdsOf = (stage: Stage, tableId: string) =>
+    tableOf(stage, tableId)
+      .find('.column-row')
+      .map(node => node.getAttr('id'));
+
+  const nameTextsOf = (stage: Stage, tableId: string) =>
+    tableOf(stage, tableId)
+      .find<Container>('.columnName')
+      .map(node => (node.findOne('.cell-text') as Text).text());
+
+  it('shows what the view reaches, where the view stands it, and no memo', async () => {
+    const { stage } = await mountNarrowedScene();
+
+    expect(tableIdsOf(stage)).toEqual(['table-t1', 'table-t2']);
+    expect(tableOf(stage, 't1').x()).toBe(VIEW_POINTS.t1.x);
+    expect(tableOf(stage, 't1').y()).toBe(VIEW_POINTS.t1.y);
+    expect(stage.find('.memo')).toHaveLength(0);
+    // The show mode a narrowed view opens on: the key rows alone, which here
+    // is the one column carrying the primary key.
+    expect(rowIdsOf(stage, 't1')).toEqual(['column-c1']);
+  });
+
+  it('keeps its own spelling at a zoom the document would go high level at', async () => {
+    const { app, stage } = await mountNarrowedScene();
+
+    app.store.dispatchSync(
+      viewChangeZoomLevelAction({ value: 0.3, kind: ViewKind.flow })
+    );
+    await flush();
+
+    expect(stage.findOne<Layer>('.scene')!.scaleX()).toBe(0.3);
+    expect(stage.find('.high-level-table')).toHaveLength(0);
+    expect(stage.find('.table-header')).toHaveLength(2);
+  });
+
+  it('follows a rename that reaches the document while it is open', async () => {
+    const { app, stage } = await mountNarrowedScene();
+    expect(nameTextsOf(stage, 't1')).toEqual(['column']);
+
+    // The way an edit reaches a document under an open view: from a peer,
+    // which is what the view gate lets through.
+    app.store.dispatch({
+      ...changeColumnNameAction({ tableId: 't1', id: 'c1', value: 'order_id' }),
+      tags: Tag.shared,
+    });
+    await flush();
+
+    expect(nameTextsOf(stage, 't1')).toEqual(['order_id']);
+  });
+
+  it('leaves the scene under it drawing the whole document, document side up', async () => {
+    const app = createTestAppContext();
+    seedDocument(app);
+    const erd = await mountScene({ app });
+    narrowView(app);
+    const focus = await mountScene({ app, source: 'flow' });
+    await flush();
+
+    expect(tableIdsOf(erd.stage)).toEqual(['table-t1', 'table-t2', 'table-t3']);
+    expect(tableOf(erd.stage, 't1').x()).toBe(DOC_POINTS.t1.x);
+    expect(erd.stage.find('.memo')).toHaveLength(1);
+    expect(rowIdsOf(erd.stage, 't1')).toEqual(ROWS.map(id => `column-${id}`));
+    expect(rowIdsOf(focus.stage, 't1')).toEqual(['column-c1']);
+  });
+
+  it('keeps that scene high level at a document zoom the overlay does not take', async () => {
+    const app = createTestAppContext();
+    seedDocument(app);
+    // Set before the view opens, since a zoom dispatched while one is open is
+    // redirected to the view and the document's own is left where it stands.
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.3 }));
+    const erd = await mountScene({ app });
+    expect(erd.stage.find('.high-level-table')).toHaveLength(3);
+
+    narrowView(app);
+    const focus = await mountScene({ app, source: 'flow' });
+    await flush();
+
+    expect(erd.stage.find('.high-level-table')).toHaveLength(3);
+    expect(focus.stage.findOne<Layer>('.scene')!.scaleX()).toBe(1);
+    expect(focus.stage.find('.high-level-table')).toHaveLength(0);
+    expect(focus.stage.find('.table-header')).toHaveLength(2);
+  });
+
+  it('draws its links whatever the document hid its own connectors with', async () => {
+    const app = createTestAppContext();
+    seedDocument(app);
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.relationship, value: false })
+    );
+    narrowView(app);
+    const erd = await mountScene({ app });
+    const focus = await mountScene({ app, source: 'flow' });
+    await flush();
+
+    // The bit is the document scene's setting, and the links are what the
+    // view is read for, so hiding them in the ERD leaves the view alone.
+    expect(erd.stage.find('.relationship-group')).toHaveLength(0);
+    expect(focus.stage.find('.relationship-group')).toHaveLength(1);
+    expect(focus.stage.find('.relationship')).toHaveLength(1);
+  });
+
+  /**
+   * Under the scene, not over it: a card is opaque and hides the connectors
+   * that pass behind it, so a particle riding one goes behind it too. No
+   * presence layer, since a peer broadcasts document points.
+   */
+  it('roots a particle layer under the scene and no presence layer', async () => {
+    const { stage } = await mountNarrowedScene();
+
+    expect(stage.getLayers().map(layer => layer.name())).toEqual([
+      'canvas-background',
+      'view-particles',
+      'scene',
+      'overlay-marquee',
+    ]);
+  });
+
+  it('draws no relationship preview, which is the document scene alone', async () => {
+    const { app, stage } = await mountNarrowedScene();
+
+    app.store.dispatchSync(
+      drawStartRelationshipAction({
+        relationshipType: RelationshipType.ZeroOne,
+      }),
+      drawStartAddRelationshipAction({ tableId: 't1' })
+    );
+    await flush();
+
+    expect(app.store.state.editor.drawRelationship?.start).toBeTruthy();
+    expect(stage.find('.draw-relationship')).toHaveLength(0);
+  });
+
+  it('keeps the hover a view holds when the scene under it goes away', async () => {
+    const app = createTestAppContext();
+    seedDocument(app);
+    narrowView(app);
+    const erd = await mountScene({ app });
+    const focus = await mountScene({ app, source: 'flow' });
+    await flush();
+    await whenPainted();
+
+    // Skipping the shadow: a view card casts one and the rect would otherwise
+    // reach past the card, standing the pointer on ground no hit test answers.
+    const box = tableOf(focus.stage, 't1').getClientRect({
+      relativeTo: focus.stage,
+      skipShadow: true,
+    });
+    moveScenePointer(focus.stage, box.x + box.width / 2, box.y + 4);
+    await flush();
+    await whenDrawn();
+    expect(getViewHoverTable(app.store.state, 'flow')).toBe('t1');
+
+    // Both scenes stand on one editor id, and the ERD going away unmounts a
+    // t1 of its own that never held the hover; the pointer is still on the
+    // view's, which no mouseleave has reached.
+    erd.destroy();
+    await flush();
+
+    expect(getViewHoverTable(app.store.state, 'flow')).toBe('t1');
   });
 });

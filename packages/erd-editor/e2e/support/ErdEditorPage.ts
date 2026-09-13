@@ -5,9 +5,14 @@ import {
   type Page,
 } from '@playwright/test';
 
-import { type ErdDocument, type LiveSettings } from './schema';
+import {
+  CANVAS_ZOOM_MAX,
+  CANVAS_ZOOM_MIN,
+  type ErdDocument,
+  type LiveSettings,
+} from './schema';
 import { SCENE_MIRROR_FLAG } from './sceneMirror';
-import { MOD_KEY, type Shortcut } from './shortcuts';
+import { MOD_KEY, type Shortcut, ZOOM_STEP } from './shortcuts';
 
 export const FIXTURE_URL = '/e2e/fixture/index.html';
 
@@ -20,6 +25,13 @@ const SCENE_ROOT = '[data-testid="erd-canvas"] .scene-mirror';
 
 /** The fixture with the scene mirror on, which is what a spec drives. */
 const SPEC_URL = `${FIXTURE_URL}?${SCENE_MIRROR_FLAG}=1`;
+
+/**
+ * The fixture left standing on the closed shadow root production declares, so
+ * an event crossing that boundary is retargeted the way it is for a reader. No
+ * locator resolves inside it; the handle below is the only way in.
+ */
+const CLOSED_SHADOW_URL = `${FIXTURE_URL}?closedShadow=1`;
 
 export type Point = { x: number; y: number };
 
@@ -44,6 +56,9 @@ export class ErdEditorPage {
   readonly host: Locator;
   readonly canvas: Locator;
   readonly toolbar: Locator;
+  /** The bar over the bottom of the canvas, which carries the zoom now. */
+  readonly floatingToolbar: Locator;
+  readonly zoomReadout: Locator;
   readonly minimap: Locator;
   readonly minimapViewport: Locator;
   readonly contentCompass: Locator;
@@ -55,6 +70,8 @@ export class ErdEditorPage {
     this.host = page.locator('erd-editor');
     this.canvas = this.host.locator(SCENE_ROOT);
     this.toolbar = this.host.locator('.toolbar');
+    this.floatingToolbar = this.host.locator('.floating-toolbar');
+    this.zoomReadout = this.floatingToolbar.locator('.zoom-level');
     this.minimap = this.host.locator('.minimap');
     this.minimapViewport = this.host.locator('.minimap-viewport');
     this.contentCompass = this.host.locator('.content-compass');
@@ -66,6 +83,46 @@ export class ErdEditorPage {
   async goto() {
     await this.page.goto(SPEC_URL);
     await expect(this.canvas).toBeAttached();
+  }
+
+  /**
+   * Loads the fixture without reopening the shadow root, which is what a spec
+   * needs whenever the subject is how an event reads from outside that
+   * boundary. Everything driven off the host locator stops working here.
+   */
+  async gotoClosedShadow() {
+    await this.page.goto(CLOSED_SHADOW_URL);
+    await expect.poll(() => this.shadowBox('.root')).not.toBeNull();
+  }
+
+  /**
+   * The screen box of one element inside that closed root, read through the
+   * handle the fixture publishes. Null while the element is not there yet, so
+   * a poll can wait on it.
+   */
+  async shadowBox(selector: string): Promise<Box | null> {
+    return this.page.evaluate(target => {
+      const root = Reflect.get(window, '__erdShadowRoot') as
+        | ShadowRoot
+        | undefined;
+      const el = root?.querySelector(target);
+      if (!el) return null;
+
+      const { x, y, width, height } = el.getBoundingClientRect();
+      return { x, y, width, height };
+    }, selector);
+  }
+
+  /**
+   * A real pointer press, release and click at the centre of that element —
+   * the three events a person produces, each hit tested where the pointer
+   * stands, so a handler that removes the element on the press loses the click.
+   */
+  async clickInShadow(selector: string) {
+    const box = await this.shadowBox(selector);
+    if (!box) throw new Error(`no element inside the shadow root: ${selector}`);
+
+    await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   }
 
   /**
@@ -147,6 +204,35 @@ export class ErdEditorPage {
 
   async settings(): Promise<LiveSettings> {
     return (await this.value()).settings as LiveSettings;
+  }
+
+  /**
+   * The bar's own zoom notches, pressed one at a time. The absolute box the top
+   * bar used to carry is gone, so a spec reaches a zoom the way a reader does,
+   * and the range stops a run that would step past either end.
+   */
+  async stepZoom(notches: number) {
+    const step = notches > 0 ? ZOOM_STEP : -ZOOM_STEP;
+    const button = this.floatingToolbar.locator(
+      `[title^="Zoom ${notches > 0 ? 'in' : 'out'}"]`
+    );
+
+    for (let press = 0; press < Math.abs(notches); press++) {
+      const before = (await this.settings()).zoomLevel;
+      const landed = Number(
+        Math.min(
+          Math.max(before + step, CANVAS_ZOOM_MIN),
+          CANVAS_ZOOM_MAX
+        ).toFixed(2)
+      );
+      if (landed === before) return;
+
+      await button.click();
+      // streamZoomLevelAction$ batches, so a notch settles a tick after the press.
+      await expect
+        .poll(async () => (await this.settings()).zoomLevel)
+        .toBeCloseTo(landed, 5);
+    }
   }
 
   async columnIds(tableId: string) {
@@ -317,7 +403,9 @@ export class ErdEditorPage {
       for (const step of target) node = node?.findOne?.(step);
       if (!node || node === stage) return null;
 
-      const rect = node.getClientRect({ relativeTo: stage });
+      // The shadow a view card casts is left out: the rect is where the node
+      // is drawn, and no hit test answers for the ground its shadow reaches.
+      const rect = node.getClientRect({ relativeTo: stage, skipShadow: true });
       const origin = stage.container().getBoundingClientRect();
       return {
         x: origin.x + rect.x,
@@ -435,7 +523,12 @@ export class ErdEditorPage {
         (node: any) => node.isVisible()
       );
       return nodes.map((node: any) => {
-        const rect = node.getClientRect({ relativeTo: stage });
+        // The shadow a view card casts is left out: the rect is where the node
+        // is drawn, and no hit test answers for the ground its shadow reaches.
+        const rect = node.getClientRect({
+          relativeTo: stage,
+          skipShadow: true,
+        });
         return {
           x: origin.x + rect.x,
           y: origin.y + rect.y,

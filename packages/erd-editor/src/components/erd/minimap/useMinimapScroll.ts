@@ -6,15 +6,17 @@ import {
   getMinimapLayout,
   toScrollMovement,
 } from '@/components/erd/minimap/minimapGeometry';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import {
   clampScrollMovement,
   getScrollRanges,
+  sceneStreamScrollToAction,
   type ScrollRange,
-  streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Ctx } from '@/internal-types';
 import { freezeView, thawView } from '@/konva/scene/viewFreeze';
+import { getSceneTransform } from '@/konva/scene/viewport';
 import { isMouseEvent } from '@/utils/domEvent';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 
@@ -39,6 +41,7 @@ const takeMovement = (
 
 export function useMinimapScroll(ctx: Ctx) {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     selected: false,
@@ -56,23 +59,25 @@ export function useMinimapScroll(ctx: Ctx) {
    */
   const absoluteMovement = (movement: number) => {
     const { store } = app.value;
-    const { zoomLevel } = store.state.settings;
+    const source = sourceRef.value;
+    const { zoomLevel } = getSceneTransform(store.state, source);
 
     return toScrollMovement(
       movement,
-      getMinimapLayout(store.state).ratio,
+      getMinimapLayout(store.state, source).ratio,
       zoomLevel
     );
   };
 
   const getMovementX = ({ movementX, x }: DragMove) => {
     const { store } = app.value;
+    const source = sourceRef.value;
     const movement = takeMovement(
       movementX,
       x,
       clientX,
-      store.state.settings.originX,
-      getScrollRanges(store.state).left
+      getSceneTransform(store.state, source).originX,
+      getScrollRanges(store.state, source).left
     );
 
     clientX += movement;
@@ -81,12 +86,13 @@ export function useMinimapScroll(ctx: Ctx) {
 
   const getMovementY = ({ movementY, y }: DragMove) => {
     const { store } = app.value;
+    const source = sourceRef.value;
     const movement = takeMovement(
       movementY,
       y,
       clientY,
-      store.state.settings.originY,
-      getScrollRanges(store.state).top
+      getSceneTransform(store.state, source).originY,
+      getScrollRanges(store.state, source).top
     );
 
     clientY += movement;
@@ -106,12 +112,18 @@ export function useMinimapScroll(ctx: Ctx) {
     // The reducer takes a step as it is, so the handle is what keeps its drag
     // on the map it is drawn over: the step is cut to the hull here.
     const { store } = app.value;
+    const source = sourceRef.value;
     store.dispatch(
-      streamScrollToAction(
-        clampScrollMovement(store.state, {
-          movementX: absoluteMovement(movementX),
-          movementY: absoluteMovement(movementY),
-        })
+      sceneStreamScrollToAction(
+        source,
+        clampScrollMovement(
+          store.state,
+          {
+            movementX: absoluteMovement(movementX),
+            movementY: absoluteMovement(movementY),
+          },
+          source
+        )
       )
     );
   };
@@ -132,14 +144,15 @@ export function useMinimapScroll(ctx: Ctx) {
     clientX = isMouseEvent(event) ? event.clientX : event.touches[0].clientX;
     clientY = isMouseEvent(event) ? event.clientY : event.touches[0].clientY;
 
-    freezeView(store.state);
+    const source = sourceRef.value;
+    freezeView(store.state, source);
     // A finalizer runs on the release and on an unmount mid-drag alike, where
     // a complete handler would run on the release alone and leave the view held.
     const subscription = drag$.subscribe(handleScroll);
     subscription.add(() => {
       if (drag === subscription) drag = null;
       state.selected = false;
-      thawView(store.state);
+      thawView(store.state, source);
     });
     drag = subscription;
   };

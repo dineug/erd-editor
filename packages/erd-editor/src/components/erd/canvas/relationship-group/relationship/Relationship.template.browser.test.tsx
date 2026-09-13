@@ -14,6 +14,7 @@ import {
   DECORATION,
   relationshipShape,
 } from '@/components/erd/canvas/relationship-group/relationship/Relationship.template';
+import { VIEW_RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { Direction, RelationshipType } from '@/constants/schema';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderKonva } from '@/konva/host';
@@ -27,6 +28,9 @@ const ONE = 32;
 const N = 64;
 
 const STROKE = '#ff0000';
+
+/** The width a shape is asked for, which every node it draws is painted at. */
+const STROKE_WIDTH = 2;
 
 const createPath = (): RelationshipPath =>
   getRelationshipPath(
@@ -68,8 +72,12 @@ const layerOf = (shape: DOMTemplateLiterals | null) => (
   <k-layer name="scene">{shape}</k-layer>
 );
 
-async function renderShape(relationshipType: number, path: RelationshipPath) {
-  const shape = relationshipShape(relationshipType, path, STROKE);
+async function renderShape(
+  relationshipType: number,
+  path: RelationshipPath,
+  strokeWidth: number = STROKE_WIDTH
+) {
+  const shape = relationshipShape(relationshipType, path, STROKE, strokeWidth);
   const container = document.createElement('div');
   document.body.append(container);
   const stage = new Stage({ container, width: 800, height: 600 });
@@ -99,9 +107,9 @@ describe('relationshipShape as konva nodes', () => {
   it('returns null for a relationship type with no registered shape', () => {
     const path = createPath();
 
-    expect(relationshipShape(0, path, STROKE)).toBeNull();
-    expect(relationshipShape(3, path, STROKE)).toBeNull();
-    expect(relationshipShape(128, path, STROKE)).toBeNull();
+    expect(relationshipShape(0, path, STROKE, STROKE_WIDTH)).toBeNull();
+    expect(relationshipShape(3, path, STROKE, STROKE_WIDTH)).toBeNull();
+    expect(relationshipShape(128, path, STROKE, STROKE_WIDTH)).toBeNull();
   });
 
   it('renders the zero-one-n shape with a ring and left/center/right ticks', async () => {
@@ -212,14 +220,37 @@ describe('relationshipShape as konva nodes', () => {
   ] as const;
 
   for (const [name, relationshipType] of EVERY_SHAPE) {
-    it(`paints every segment of the ${name} shape at width 2 in the stroke it was given`, async () => {
+    it(`paints every segment of the ${name} shape in the stroke and width it was given`, async () => {
       const { nodes } = await renderShape(relationshipType, createPath());
 
       expect(nodes.length).toBeGreaterThan(0);
       for (const node of nodes) {
         expect(node.getAttr('stroke')).toBe(STROKE);
-        expect(node.getAttr('strokeWidth')).toBe(2);
+        expect(node.getAttr('strokeWidth')).toBe(STROKE_WIDTH);
       }
+    });
+  }
+
+  /**
+   * A view draws the same markers at its own hairline, so the width reaches
+   * every node of a shape rather than the route alone: a marker left at the
+   * document's width would stand out as a thicker tick on the end of a thinner line.
+   */
+  for (const [name, relationshipType] of EVERY_SHAPE) {
+    it(`paints every segment of the ${name} shape at the view's hairline`, async () => {
+      const { nodes } = await renderShape(
+        relationshipType,
+        createPath(),
+        VIEW_RELATIONSHIP_STROKE_WIDTH
+      );
+
+      expect(nodes.length).toBeGreaterThan(0);
+      for (const node of nodes) {
+        expect(node.getAttr('strokeWidth')).toBe(
+          VIEW_RELATIONSHIP_STROKE_WIDTH
+        );
+      }
+      expect(VIEW_RELATIONSHIP_STROKE_WIDTH).toBeLessThan(STROKE_WIDTH);
     });
   }
 

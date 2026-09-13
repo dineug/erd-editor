@@ -2,6 +2,8 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** The smallest box holding both. */
 export function unionRect(a: Rect, b: Rect): Rect {
@@ -29,33 +31,46 @@ export function getContentRect(state: RootState): Rect | null {
 }
 
 /**
- * One box per table and memo, each table at the point named for it. The reader
- * that asks which entity is nearest needs them apart, where the box below folds
- * them together, and both are the same pass over the document.
+ * The box the scene drawn from a source fits inside: the document's content
+ * rect, or for a view the tables it shows at their view points and no memo,
+ * since a view places none. A view showing nothing has no box.
+ */
+export function getSceneContentRect(
+  state: RootState,
+  source: GeometrySource = 'document'
+): Rect | null {
+  return getContentRectAfter(state, [], source);
+}
+
+/**
+ * One box per table and memo the source shows, each table at the point named
+ * for it. The reader that asks which entity is nearest needs them apart, where
+ * the box below folds them together, and both are the same pass over the scene.
  */
 export function getContentRects(
   state: RootState,
-  moves: ReadonlyArray<TableMove> = []
+  moves: ReadonlyArray<TableMove> = [],
+  source: GeometrySource = 'document'
 ): Rect[] {
-  const { doc, collections } = state;
+  const { collections, doc } = state;
+  // The document's two lists read directly: the third getVisibleIds carries,
+  // the relationships, is one an observer here would otherwise depend on for nothing.
+  const { tableIds, memoIds } =
+    source === 'document' ? doc : getVisibleIds(state, source);
   const moved = new Map(moves.map(move => [move.id, move]));
   const tables = query(collections)
     .collection('tableEntities')
-    .selectByIds(doc.tableIds);
+    .selectByIds(tableIds);
   const memos = query(collections)
     .collection('memoEntities')
-    .selectByIds(doc.memoIds);
+    .selectByIds(memoIds);
 
   return [
     ...tables.map(table => {
+      const rect = getTableRect(state, table, source);
       const move = moved.get(table.id);
 
-      return move
-        ? getTableRect(state, {
-            ...table,
-            ui: { ...table.ui, x: move.x, y: move.y },
-          })
-        : getTableRect(state, table);
+      return move ? { ...rect, x: move.x, y: move.y } : rect;
     }),
     ...memos.map(getMemoRect),
   ];
@@ -68,9 +83,10 @@ export function getContentRects(
  */
 export function getContentRectAfter(
   state: RootState,
-  moves: ReadonlyArray<TableMove>
+  moves: ReadonlyArray<TableMove>,
+  source: GeometrySource = 'document'
 ): Rect | null {
-  const boxes = getContentRects(state, moves);
+  const boxes = getContentRects(state, moves, source);
 
   return boxes.length ? boxes.reduce(unionRect) : null;
 }

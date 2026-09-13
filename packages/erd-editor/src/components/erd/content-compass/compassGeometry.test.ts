@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   formatDistance,
   getContentCompass,
+  nearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
 import {
   getViewTransform,
@@ -183,6 +184,41 @@ describe('getContentCompass', () => {
     });
 
     expect(getContentCompass(state)).toBeNull();
+  });
+});
+
+describe('nearestContent', () => {
+  // The measurement getContentCompass is made of, on the rects and the screen
+  // alone. The cases in the describe above run the same arithmetic through the
+  // state, so what is left to say here is what the state form cannot reach.
+
+  it('reports nothing where a rect only touches the screen', () => {
+    const screen = { x: 0, y: 0, width: 100, height: 100 };
+
+    expect(
+      nearestContent([{ x: 100, y: 40, width: 20, height: 20 }], screen)
+    ).toBeNull();
+    expect(
+      nearestContent([{ x: 40, y: -20, width: 20, height: 20 }], screen)
+    ).toBeNull();
+  });
+
+  it('reports nothing for no rects at all', () => {
+    expect(
+      nearestContent([], { x: 0, y: 0, width: 100, height: 100 })
+    ).toBeNull();
+  });
+
+  it('picks the nearest of the rects and points at its middle', () => {
+    const screen = { x: 0, y: 0, width: 100, height: 100 };
+    const near = { x: 300, y: 40, width: 20, height: 20 };
+    const far = { x: 900, y: 40, width: 20, height: 20 };
+
+    expect(nearestContent([far, near], screen)).toEqual({
+      angle: 0,
+      distance: 200,
+      target: { x: 310, y: 50 },
+    });
   });
 });
 

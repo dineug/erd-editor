@@ -84,6 +84,10 @@ interface KonvaShapeAttributes extends KonvaBaseAttributes {
   perfectDrawEnabled?: boolean;
   shadowBlur?: number;
   shadowColor?: string;
+  shadowForStrokeEnabled?: boolean;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
   stroke?: string;
   strokeWidth?: number;
 }

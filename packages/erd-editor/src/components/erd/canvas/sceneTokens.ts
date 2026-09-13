@@ -1,8 +1,12 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { ICON_VIEW_BOX } from '@/components/primitives/icon/icons';
-import { TABLE_BORDER, TABLE_PADDING } from '@/constants/layout';
-import { TextFontFamily } from '@/styles/fonts.styles';
+import {
+  CELL_FONT_SIZE,
+  TABLE_BORDER,
+  TABLE_PADDING,
+} from '@/constants/layout';
+import { CodeFontFamily, TextFontFamily } from '@/styles/fonts.styles';
 
 /** A pointer event as konva hands it to a listener bound on a scene node. */
 export type SceneMouseEvent = KonvaEventObject<MouseEvent>;
@@ -17,11 +21,28 @@ export type ScenePointerEvent = SceneMouseEvent | SceneTouchEvent;
  */
 export const SCENE_FONT_FAMILY = TextFontFamily;
 
-/** The px behind font-size-1, which is what typography.paragraph resolves to. */
-export const SCENE_FONT_SIZE = 12;
+/**
+ * The monospace face a view draws a type cell in, the same stack the code
+ * panels use. A second face on the scene, so the metrics below are kept per
+ * face rather than as the one pair the text face used to be the whole of.
+ */
+export const SCENE_CODE_FONT_FAMILY = CodeFontFamily;
 
-/** The css font shorthand konva builds for a cell's text, and measures it with. */
-export const SCENE_FONT = `normal normal ${SCENE_FONT_SIZE}px ${SCENE_FONT_FAMILY}`;
+/** The px behind font-size-1, which is what typography.paragraph resolves to. */
+export const SCENE_FONT_SIZE = CELL_FONT_SIZE;
+
+/** The css font shorthand konva builds for a cell's text in the face given, and measures it with. */
+const sceneFontOf = (fontFamily: string) =>
+  `normal normal ${SCENE_FONT_SIZE}px ${fontFamily}`;
+
+/** That shorthand in the text face. */
+export const SCENE_FONT = sceneFontOf(SCENE_FONT_FAMILY);
+
+/** The weight every cell but a view card's header name is drawn at. */
+export const SCENE_FONT_WEIGHT = 'normal';
+
+/** The heavier weight a view card draws its header name at. */
+export const VIEW_HEADER_FONT_WEIGHT = '500';
 
 /** The pair a canvas centres a drawn line by, which no line box is involved in. */
 export type SceneFontMetrics = {
@@ -31,24 +52,27 @@ export type SceneFontMetrics = {
 
 const NO_SCENE_FONT_METRICS: SceneFontMetrics = { ascent: 0, descent: 0 };
 
-let sceneFontMetrics: SceneFontMetrics | null = null;
+const sceneFontMetrics = new Map<string, SceneFontMetrics>();
 
 /**
  * The ascent and descent konva centres a drawn line by, read with the measure
- * call konva makes itself. A canvas has no line box to lean on, so this pair is
- * the whole of where a baseline lands, and the editor has to read the same one.
+ * call konva makes itself, and kept per face: the scene draws a type cell in
+ * the code face, whose overhang is not the text face's and whose baseline is its own.
  *
  * @example
  * const { ascent, descent } = getSceneFontMetrics();
  */
-export function getSceneFontMetrics(): SceneFontMetrics {
-  if (sceneFontMetrics) return sceneFontMetrics;
+export function getSceneFontMetrics(
+  fontFamily: string = SCENE_FONT_FAMILY
+): SceneFontMetrics {
+  const held = sceneFontMetrics.get(fontFamily);
+  if (held) return held;
   if (typeof document === 'undefined') return NO_SCENE_FONT_METRICS;
 
   const context = document.createElement('canvas').getContext('2d');
   if (!context) return NO_SCENE_FONT_METRICS;
 
-  context.font = SCENE_FONT;
+  context.font = sceneFontOf(fontFamily);
   const metrics = context.measureText('M');
   const ascent =
     metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent;
@@ -58,8 +82,9 @@ export function getSceneFontMetrics(): SceneFontMetrics {
     return NO_SCENE_FONT_METRICS;
   }
 
-  sceneFontMetrics = { ascent, descent };
-  return sceneFontMetrics;
+  const measured = { ascent, descent };
+  sceneFontMetrics.set(fontFamily, measured);
+  return measured;
 }
 
 /**
@@ -83,6 +108,28 @@ export const FOCUS_BORDER_HEIGHT = 1.5;
 
 /** What the ring outside a table box costs, as outline and box-shadow both do. */
 export const RING_WIDTH = 1;
+
+/**
+ * The drop shadow a view card sits on, which is what lifts it off the ground
+ * the ERD canvas draws flat. The alpha is the shadow's own, since the shadow
+ * colour token is opaque and the palette has no translucent spelling of it.
+ */
+export const VIEW_CARD_SHADOW_BLUR = 20;
+
+export const VIEW_CARD_SHADOW_OFFSET_X = 0;
+
+export const VIEW_CARD_SHADOW_OFFSET_Y = 2;
+
+export const VIEW_CARD_SHADOW_OPACITY = 0.4;
+
+/**
+ * The bloom a lit view card wears, drawn as a shadow on a stroke and never as
+ * a filled sibling: a fill behind the body would have to be reordered under it,
+ * and the ledger is the only thing allowed to order the scene.
+ */
+export const VIEW_CARD_GLOW_BLUR = 14;
+
+export const VIEW_CARD_GLOW_OPACITY = 0.55;
 
 /** The side of the square viewBox every icon is authored in. */
 export const ICON_VIEW_SIZE = Number(ICON_VIEW_BOX.split(' ')[2]);

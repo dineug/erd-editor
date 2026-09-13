@@ -41,6 +41,14 @@ export type Editor = {
   sharedSelectionTrackerMap: Record<string, SharedSelectionTracker>;
   sharedDragSelectTrackerMap: Record<string, SharedDragSelectTracker>;
   dragSelect: Rect | null;
+  /**
+   * The scene view a reader can stand in over the document: the Flow mode of
+   * the visualization tab, null while it is not open. Local to this client,
+   * never the file, the history or a peer.
+   */
+  views: EditorViews;
+  /** Which of its two modes the visualization tab shows. Remembered for the session. */
+  visualizationMode: VisualizationMode;
 };
 
 export type Viewport = {
@@ -108,6 +116,44 @@ export const SelectType = {
 } as const;
 export type SelectType = ValuesType<typeof SelectType>;
 
+export const ShowMode = {
+  nameOnly: 'nameOnly',
+  keysOnly: 'keysOnly',
+  allFields: 'allFields',
+} as const;
+export type ShowMode = ValuesType<typeof ShowMode>;
+
+export const ViewKind = {
+  flow: 'flow',
+} as const;
+export type ViewKind = ValuesType<typeof ViewKind>;
+
+export const VisualizationMode = {
+  graph: 'graph',
+  flow: 'flow',
+} as const;
+export type VisualizationMode = ValuesType<typeof VisualizationMode>;
+
+/**
+ * A scene drawn over the document in its own coordinates: the tables it places
+ * by id, the placement it is looked at through, and what it shows of each
+ * table. Memos are never placed, so a view draws none.
+ */
+export type SceneView = {
+  kind: ViewKind;
+  showMode: ShowMode;
+  positions: Record<string, Point>;
+  originX: number;
+  originY: number;
+  zoomLevel: number;
+  /** The tables the view narrows to, and none while it shows the whole document. */
+  centerIds: string[];
+};
+
+export type EditorViews = {
+  flow: SceneView | null;
+};
+
 export const FocusType = {
   tableName: 'tableName',
   tableComment: 'tableComment',
@@ -173,4 +219,6 @@ export const createEditor = (): Editor => ({
   sharedSelectionTrackerMap: {},
   sharedDragSelectTrackerMap: {},
   dragSelect: null,
+  views: { flow: null },
+  visualizationMode: VisualizationMode.graph,
 });

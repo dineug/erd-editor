@@ -1,19 +1,43 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { COLUMN_HEIGHT } from '@/constants/layout';
-import { Show } from '@/constants/schema';
+import {
+  COLUMN_HEIGHT,
+  COLUMN_KEY_WIDTH,
+  INPUT_MARGIN_RIGHT,
+  TABLE_BORDER,
+  TABLE_PADDING,
+  VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_MIN_WIDTH,
+} from '@/constants/layout';
+import { ColumnType, ColumnUIKey, Show } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
-import { createEditor } from '@/engine/modules/editor/state';
+import {
+  createEditor,
+  ShowMode,
+  ViewKind,
+} from '@/engine/modules/editor/state';
+import { createSceneView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
+import { getVisibleColumnIds } from '@/konva/scene/viewLayout';
 import {
   calcTableHeight,
   calcTableWidths,
+  calcViewTableWidths,
   recalculateTableWidth,
+  viewHeaderNameWidth,
 } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+
+/** The view widths for the rows a view shows, which the function no longer looks up itself. */
+const viewWidths = (table: Table, state: RootState) =>
+  calcViewTableWidths(table, state, getVisibleColumnIds(state, table, 'flow'));
 
 type StateOptions = {
   show?: number;
@@ -290,6 +314,260 @@ describe('calcTableHeight', () => {
     expect(calcTableHeight(createTable({ columnIds: ['a', 'b', 'c'] }))).toBe(
       128
     );
+  });
+
+  /** AC-1. A view showing fewer rows than the table has is that many rows tall, and none is the header alone. */
+  it('counts the rows it is given rather than the columns', () => {
+    const table = createTable({
+      columnIds: Array.from({ length: 40 }, (_, index) => `c${index}`),
+    });
+
+    expect(calcTableHeight(table, 0)).toBe(56);
+    expect(calcTableHeight(table, 0)).toBe(calcTableHeight(createTable()));
+    expect(calcTableHeight(table, 2)).toBe(56 + 2 * COLUMN_HEIGHT);
+    expect(calcTableHeight(table)).toBe(56 + 40 * COLUMN_HEIGHT);
+  });
+
+  /** AC-13, AC-14. A view card wears a shorter header than the document card, and taller rows. */
+  it('adds the view chrome and the view row for a view source', () => {
+    const table = createTable({ columnIds: ['a', 'b', 'c'] });
+
+    expect(calcTableHeight(table, 2, 'flow')).toBe(34 + 2 * VIEW_COLUMN_HEIGHT);
+    expect(calcTableHeight(table, 0, 'flow')).toBeLessThan(
+      calcTableHeight(table, 0)
+    );
+    expect(calcTableHeight(table, 3, 'flow')).toBeGreaterThan(
+      calcTableHeight(table, 3, 'document')
+    );
+  });
+
+  /**
+   * A view card ends at its last row: the gap its header keeps over the first
+   * one is the only padding it draws under the title, so a card with no row
+   * wears that gap as its own and stands the title on the middle of the box.
+   */
+  it('draws no padding under the rows of a view card', () => {
+    const table = createTable({ columnIds: ['a', 'b', 'c'] });
+    const rowless = calcTableHeight(table, 0, 'flow');
+    const above = TABLE_BORDER + TABLE_PADDING;
+
+    expect(rowless).toBe(34);
+    expect(above + VIEW_TABLE_HEADER_ICON_SIZE + above).toBe(rowless);
+    expect(calcTableHeight(table, 3, 'flow')).toBe(
+      rowless + 3 * VIEW_COLUMN_HEIGHT
+    );
+
+    // The document card keeps the padding it always drew under its rows.
+    expect(calcTableHeight(table, 3)).toBe(
+      calcTableHeight(table, 0) + 3 * COLUMN_HEIGHT
+    );
+    expect(calcTableHeight(table, 0)).toBe(56);
+  });
+});
+
+describe('calcViewTableWidths', () => {
+  const CHROME = (TABLE_BORDER + TABLE_PADDING) * 2;
+
+  /** The row width a name and a type take past the key badge, its gap included. */
+  const rowWidth = (name: number, dataType: number) =>
+    VIEW_COLUMN_ICON_SIZE +
+    VIEW_COLUMN_ICON_GAP +
+    name +
+    INPUT_MARGIN_RIGHT +
+    dataType;
+
+  /** The header width a table name takes past the table icon, at the size a view draws it. */
+  const headerWidth = (widthName: number) =>
+    VIEW_TABLE_HEADER_ICON_SIZE +
+    VIEW_TABLE_HEADER_ICON_GAP +
+    viewHeaderNameWidth(widthName);
+
+  /** A keys only view over the table, so the key rows are what it shows. */
+  function openKeysOnly(
+    state: RootState,
+    tableId: string,
+    showMode: ShowMode = ShowMode.keysOnly
+  ) {
+    const view = createSceneView(ViewKind.flow, [tableId]);
+    view.showMode = showMode;
+    state.editor.views.flow = view;
+    return view;
+  }
+
+  function keyedTable() {
+    const columns = [
+      createColumn({
+        id: 'key',
+        tableId: 'table-1',
+        ui: {
+          keys: ColumnUIKey.primaryKey,
+          widthName: 80,
+          widthDataType: 90,
+          widthComment: 500,
+          widthDefault: 500,
+        },
+      }),
+      createColumn({
+        id: 'plain',
+        tableId: 'table-1',
+        ui: { widthName: 300, widthDataType: 300 },
+      }),
+    ];
+    const table = createTable({
+      id: 'table-1',
+      columnIds: ['key', 'plain'],
+      ui: { widthName: 40, widthComment: 400 },
+    });
+
+    return { table, columns };
+  }
+
+  it('measures only the rows the view shows, the name and the type of each', () => {
+    const { table, columns } = keyedTable();
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    expect(viewWidths(table, state)).toEqual({
+      width: CHROME + rowWidth(80, 90),
+      name: 80,
+      comment: 0,
+      dataType: 90,
+      default: 0,
+      notNull: 0,
+      autoIncrement: 0,
+      unique: 0,
+    });
+  });
+
+  it('measures every row in an all fields view', () => {
+    const { table, columns } = keyedTable();
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id, ShowMode.allFields);
+
+    expect(viewWidths(table, state).width).toBe(CHROME + rowWidth(300, 300));
+  });
+
+  /** AC-4 and B.5. The document's show bits and column order say nothing about a view. */
+  it('reads neither the show bits nor the column order', () => {
+    const { table, columns } = keyedTable();
+    const shows = [
+      0,
+      Show.tableComment,
+      Show.columnComment,
+      Show.columnDataType,
+      Show.columnDefault,
+      Show.columnNotNull,
+      Show.columnAutoIncrement,
+      Show.columnUnique,
+      Show.relationship,
+      Object.values(Show).reduce((acc, bit) => acc | bit, 0),
+    ];
+    const orders = [
+      [ColumnType.columnName, ColumnType.columnDataType],
+      [ColumnType.columnDataType, ColumnType.columnName],
+      [ColumnType.columnName],
+      [],
+    ];
+    const widths = new Set<string>();
+
+    for (const show of shows) {
+      for (const columnOrder of orders) {
+        const state = createState({ show, tables: [table], columns });
+        state.settings.columnOrder = columnOrder;
+        state.settings.maxWidthComment = 10;
+        openKeysOnly(state, table.id);
+        widths.add(JSON.stringify(viewWidths(table, state)));
+      }
+    }
+
+    expect(widths.size).toBe(1);
+    expect(JSON.parse([...widths][0]).width).toBe(CHROME + rowWidth(80, 90));
+  });
+
+  /** AC-5. The type is counted into the width whether the table is lit or not. */
+  it('counts the type width whether or not the table is lit', () => {
+    const { table, columns } = keyedTable();
+    const lit = createState({ tables: [table], columns });
+    openKeysOnly(lit, table.id);
+    const unlit = createState({ tables: [table], columns });
+    openKeysOnly(unlit, 'some-other-table');
+
+    expect(viewWidths(table, lit)).toEqual(viewWidths(table, unlit));
+
+    columns[0].ui.widthDataType = 10;
+    // 16 + 6 + 80 + 8 + 10 is under the minimum, so the card takes that instead.
+    expect(viewWidths(table, unlit).width).toBe(VIEW_TABLE_MIN_WIDTH);
+  });
+
+  /**
+   * A 40 unit name and no row is 69 units of content, well under the minimum,
+   * so the card is drawn at the minimum instead and the name column, which has
+   * no row to widen, stays at nothing.
+   */
+  it('is the header name alone while the view shows no row', () => {
+    const { table, columns } = keyedTable();
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id, ShowMode.nameOnly);
+
+    expect(headerWidth(40)).toBe(69);
+    expect(viewWidths(table, state)).toEqual({
+      width: VIEW_TABLE_MIN_WIDTH,
+      name: 0,
+      comment: 0,
+      dataType: 0,
+      default: 0,
+      notNull: 0,
+      autoIncrement: 0,
+      unique: 0,
+    });
+  });
+
+  it('lets a header wider than any row set the width', () => {
+    const { table, columns } = keyedTable();
+    table.ui.widthName = 1_000;
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    expect(viewWidths(table, state).width).toBe(CHROME + headerWidth(1_000));
+  });
+
+  /**
+   * The reference gives its node a minimum, and a short name would otherwise
+   * leave a cramped box. What the minimum adds goes to the name column, so the
+   * type still stands against the right edge.
+   */
+  it('draws no card under the minimum, and gives the name what that adds', () => {
+    const { table, columns } = keyedTable();
+    columns[0].ui.widthName = 20;
+    columns[0].ui.widthDataType = 20;
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    const widths = viewWidths(table, state);
+
+    expect(rowWidth(20, 20)).toBe(70);
+    expect(widths.width).toBe(VIEW_TABLE_MIN_WIDTH);
+    expect(widths.name).toBe(20 + (VIEW_TABLE_MIN_WIDTH - CHROME - 70));
+    expect(rowWidth(widths.name, widths.dataType)).toBe(
+      VIEW_TABLE_MIN_WIDTH - CHROME
+    );
+  });
+
+  /**
+   * The same slack, from a header wider than the row rather than the minimum.
+   * The name absorbing it is what keeps one right edge for every row on a card
+   * whose width some other measurement set.
+   */
+  it('gives the name what a wide header adds too', () => {
+    const { table, columns } = keyedTable();
+    table.ui.widthName = 1_000;
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    const widths = viewWidths(table, state);
+
+    expect(widths.dataType).toBe(90);
+    expect(rowWidth(widths.name, widths.dataType)).toBe(headerWidth(1_000));
   });
 });
 

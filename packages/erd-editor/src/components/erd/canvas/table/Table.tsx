@@ -7,8 +7,15 @@ import type { Stage } from 'konva/lib/Stage';
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import {
+  progressOf,
+  transitionKey,
+  transitionTo,
+} from '@/components/erd/canvas/highlightTransition';
+import { mixColor } from '@/components/erd/canvas/mixColor';
 import { headerCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
+import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
@@ -17,24 +24,36 @@ import {
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
+  SCENE_FONT_WEIGHT,
   type SceneMouseEvent,
+  type ScenePointerEvent,
   setSceneCursor,
   TABLE_CORNER_RADIUS,
   TABLE_INSET,
   TRANSPARENT,
+  VIEW_CARD_GLOW_BLUR,
+  VIEW_CARD_GLOW_OPACITY,
+  VIEW_CARD_SHADOW_BLUR,
+  VIEW_CARD_SHADOW_OFFSET_X,
+  VIEW_CARD_SHADOW_OFFSET_Y,
+  VIEW_CARD_SHADOW_OPACITY,
+  VIEW_HEADER_FONT_WEIGHT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
   focusBorderFill,
-  getCellTextHeight,
   getHeaderCellSlots,
-  HEADER_CELLS_Y,
-  HEADER_TEXT_Y,
+  getHeaderCellsY,
+  getHeaderTextHeight,
+  getHeaderTextY,
 } from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
+import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { focusFlowView } from '@/components/flowCenters';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
   HEADER_ICON_HEIGHT,
@@ -42,6 +61,11 @@ import {
   TABLE_BORDER,
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
   TABLE_HEADER_INPUT_HEIGHT,
+  VIEW_TABLE_HEADER_BUTTON_SIZE,
+  VIEW_TABLE_HEADER_BUTTONS_WIDTH,
+  VIEW_TABLE_HEADER_FONT_SIZE,
+  VIEW_TABLE_HEADER_HEIGHT,
+  VIEW_TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
 import {
   dragendColumnAction,
@@ -64,6 +88,11 @@ import {
   getTableRect,
   getTableWidths,
 } from '@/konva/scene/metrics';
+import {
+  clearViewHoverTable,
+  getVisibleColumnIds,
+  setViewHoverTable,
+} from '@/konva/scene/viewLayout';
 import type { Theme } from '@/themes/tokens';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
@@ -72,6 +101,7 @@ import { isMod } from '@/utils/keyboard-shortcut';
 import { useFocusTable } from './useFocusTable';
 import { useMoveTable } from './useMoveTable';
 import { useSharedFocusTable } from './useSharedFocusTable';
+import { useViewPin } from './useViewPin';
 
 export type TableProps = {
   table: Table;
@@ -83,6 +113,13 @@ export type TableProps = {
   editorFocused?: boolean;
   /** Off while the table is kept built but scrolled out of the culling rect. */
   visible?: boolean;
+  /** Whether the view lights this card, decided by the scene it is drawn in. */
+  lit?: boolean;
+  /**
+   * The rows of this table a relationship ends on, which a view tints. Decided
+   * by the scene, which walks the document's links once for every card it draws.
+   */
+  relatedColumnIds?: Set<string> | null;
 };
 
 type HeaderCellOptions = {
@@ -96,9 +133,26 @@ type HeaderCellOptions = {
   sharedFocus: string | null;
 };
 
+/**
+ * Where a view press never pins. Both header buttons are drawn as icons, and
+ * each answers for the press that lands on it: Related narrows the view on it
+ * and Go to ERD leaves the tab, neither of which is a reader pinning a card.
+ */
+const PIN_BLOCKED_KINDS = ['icon'];
+
+/**
+ * The fill a table name takes: the placeholder while it is blank, and the
+ * foreground in a view where the document draws it active.
+ */
+const nameFill = (theme: Theme, name: string, view: boolean) => {
+  if (!name.trim()) return theme.placeholder;
+  return view ? theme.foreground : theme.active;
+};
+
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
   const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
     ctx,
     props.table.id
@@ -108,7 +162,8 @@ const Table: FC<TableProps> = (props, ctx) => {
     props.table.id
   );
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
-  const { onMoveStart } = useMoveTable(ctx, props);
+  const { onMoveStart } = useMoveTable(ctx, props, sourceRef);
+  const pin = useViewPin(app, props, sourceRef);
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     hover: false,
@@ -122,13 +177,35 @@ const Table: FC<TableProps> = (props, ctx) => {
   let dragLayerStage: Stage | null = null;
   let flip: KonvaFlip | null = null;
 
+  /**
+   * The hover a view lights by, taken beside the local one the icons read. It
+   * is scene state and carries no action, so what a reader points at never
+   * reaches the document, the history or a peer.
+   */
   const handleMouseenter = () => {
     state.hover = true;
+
+    if (sourceRef.value !== 'document') {
+      setViewHoverTable(app.value.store.state, props.table.id, sourceRef.value);
+    }
   };
 
   const handleMouseleave = () => {
     state.hover = false;
+
+    if (sourceRef.value !== 'document') {
+      setViewHoverTable(app.value.store.state, null, sourceRef.value);
+    }
   };
+
+  // Culling and a closing view take the node out from under the pointer, and
+  // neither sends a mouseleave, so the hover leaves with whatever held it. The
+  // document scene shares the editor id, so only a view table clears it.
+  addUnsubscribe(() => {
+    if (sourceRef.value === 'document') return;
+
+    clearViewHoverTable(app.value.store.state, props.table.id, sourceRef.value);
+  });
 
   /** What the header icons had as their hover colour and their pointer cursor. */
   const handleIconMouseenter =
@@ -157,6 +234,17 @@ const Table: FC<TableProps> = (props, ctx) => {
       : theme.tableSelect;
   };
 
+  /** The press a table takes: its drag, and in a view scene the start of a click that pins it. */
+  const handlePress = (event: ScenePointerEvent) => {
+    onMoveStart(event);
+    // A press that landed on a header button belongs to the button alone. The
+    // pin Related would take on the way past lights the hub and its one hop,
+    // which in the view it just narrowed to is every card it draws.
+    if (hasKindAncestor(event.target, PIN_BLOCKED_KINDS)) return;
+
+    pin.onPress(event);
+  };
+
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
     const { emitter } = app.value;
     emitter.emit(
@@ -178,13 +266,30 @@ const Table: FC<TableProps> = (props, ctx) => {
     store.dispatch(removeTableAction$(props.table.id));
   };
 
+  /** The Related button: the view narrows to this table and its one hop. */
+  const handleRelated = () => {
+    focusFlowView(app.value, [props.table.id]);
+  };
+
+  /** The Go to ERD button: the tab, then the scroll and the selection. */
+  const handleGoToErd = () => {
+    goToErdTable(app.value.store, props.table.id);
+  };
+
   const handleFocus = (focusType: FocusType) => {
+    // A view holds no focus, header cell included: the underline it would
+    // light is the ERD tab's mark on the document, not a mark a reader made here.
+    if (sourceRef.value !== 'document') return;
+
     const { store } = app.value;
     store.dispatch(focusTableAction({ tableId: props.table.id, focusType }));
   };
 
   const handleEdit = (focusType: FocusType, event: SceneMouseEvent) => {
     if (!doubleClick.isDouble(focusType, event)) return;
+    // A view edits nothing: the editor this would open is the document
+    // overlay's, which draws on the document placement and not on this cell.
+    if (sourceRef.value !== 'document') return;
 
     const { store } = app.value;
     store.dispatch(editTableAction());
@@ -208,7 +313,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     const point = toCanvasPoint(event);
     if (!point) return;
 
-    const target = findColumnDropTarget(store.state, point);
+    const target = findColumnDropTarget(store.state, point, sourceRef.value);
     if (!target) return;
 
     const {
@@ -245,6 +350,10 @@ const Table: FC<TableProps> = (props, ctx) => {
    */
   const handleDragstartColumn = (columnId: string, event: SceneMouseEvent) => {
     const { store } = app.value;
+    // A view reorders nothing: the gate drops what a drag would dispatch, so
+    // arming one here would only run the flip and the drop search for nothing.
+    if (sourceRef.value !== 'document') return;
+
     const {
       editor: { focusTable },
     } = store.state;
@@ -288,8 +397,8 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   /**
    * A header cell, laid out the way its input-padding div was: the text on the
-   * 20px input line, answering a press for the whole box, and the two underlines
-   * at their own edge. The focus underline keeps its box while edited.
+   * source's own header line, answering a press for the whole box, and the two
+   * underlines at their own edge. The focus underline keeps its box while edited.
    */
   const headerCell = ({
     focusType,
@@ -300,58 +409,64 @@ const Table: FC<TableProps> = (props, ctx) => {
     focus,
     edit,
     sharedFocus,
-  }: HeaderCellOptions) => (
-    <k-group
-      name={`input-padding ${focusType}`}
-      kind="input-padding"
-      sharedFocus={sharedFocus}
-      x={x}
-      y={0}
-      on:mousedown={(event: SceneMouseEvent) => {
-        handleFocus(focusType);
-        doubleClick.track(focusType, event);
-      }}
-      on:dblclick={(event: SceneMouseEvent) => {
-        handleEdit(focusType, event);
-      }}
-    >
-      <k-text
-        name="cell-text"
-        y={HEADER_TEXT_Y}
-        width={width}
-        height={getCellTextHeight()}
-        text={text}
-        fill={fill}
-        fontFamily={SCENE_FONT_FAMILY}
-        fontSize={SCENE_FONT_SIZE}
-        verticalAlign="middle"
-        wrap="none"
-        ellipsis={true}
-        visible={!edit}
-        hitFunc={headerCellHit}
-      />
-      {focus ? (
-        <k-rect
-          name="cell-focus-border"
-          y={HEADER_TEXT_Y + CELL_UNDERLINE_Y}
+  }: HeaderCellOptions) => {
+    const source = sourceRef.value;
+    const view = source !== 'document';
+
+    return (
+      <k-group
+        name={`input-padding ${focusType}`}
+        kind="input-padding"
+        sharedFocus={sharedFocus}
+        x={x}
+        y={0}
+        on:mousedown={(event: SceneMouseEvent) => {
+          handleFocus(focusType);
+          doubleClick.track(focusType, event);
+        }}
+        on:dblclick={(event: SceneMouseEvent) => {
+          handleEdit(focusType, event);
+        }}
+      >
+        <k-text
+          name="cell-text"
+          y={getHeaderTextY(source)}
           width={width}
-          height={FOCUS_BORDER_HEIGHT}
-          fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
-          listening={false}
+          height={getHeaderTextHeight(source)}
+          text={text}
+          fill={fill}
+          fontFamily={SCENE_FONT_FAMILY}
+          fontSize={view ? VIEW_TABLE_HEADER_FONT_SIZE : SCENE_FONT_SIZE}
+          fontStyle={view ? VIEW_HEADER_FONT_WEIGHT : SCENE_FONT_WEIGHT}
+          verticalAlign="middle"
+          wrap="none"
+          ellipsis={true}
+          visible={!edit}
+          hitFunc={headerCellHit[source]}
         />
-      ) : null}
-      {sharedFocus ? (
-        <k-rect
-          name="cell-shared-focus-border"
-          y={TABLE_HEADER_INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
-          width={width + INPUT_MARGIN_RIGHT}
-          height={FOCUS_BORDER_HEIGHT}
-          fill={sharedFocus}
-          listening={false}
-        />
-      ) : null}
-    </k-group>
-  );
+        {focus && !view ? (
+          <k-rect
+            name="cell-focus-border"
+            y={getHeaderTextY(source) + CELL_UNDERLINE_Y}
+            width={width}
+            height={FOCUS_BORDER_HEIGHT}
+            fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
+            listening={false}
+          />
+        ) : null}
+        {sharedFocus ? (
+          <k-rect
+            name="cell-shared-focus-border"
+            y={TABLE_HEADER_INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
+            width={width + INPUT_MARGIN_RIGHT}
+            height={FOCUS_BORDER_HEIGHT}
+            fill={sharedFocus}
+            listening={false}
+          />
+        ) : null}
+      </k-group>
+    );
+  };
 
   return () => {
     const { store } = app.value;
@@ -359,9 +474,15 @@ const Table: FC<TableProps> = (props, ctx) => {
     const { table } = props;
     const theme = themeRef.value;
     const selected = Boolean(editor.selectedMap[table.id]);
-    const tableWidths = getTableWidths(store.state, table);
-    const rect = getTableRect(store.state, table);
+    const source = sourceRef.value;
+    const tableWidths = getTableWidths(store.state, table, source);
+    const rect = getTableRect(store.state, table, source);
     const contentWidth = rect.width - TABLE_INSET * 2;
+    // The view header has no icon band above its name box, so its two buttons
+    // sit centred on the icon line and after the name, over the end of one that
+    // reaches them: konva paints and hit tests siblings in order.
+    const headerButtonY =
+      (VIEW_TABLE_HEADER_ICON_SIZE - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2;
 
     const hovered = Boolean(props.hovered || state.hover);
     const draggingColumnId = props.ghostColumnId ?? state.dragstartId;
@@ -376,7 +497,23 @@ const Table: FC<TableProps> = (props, ctx) => {
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
     const ringColor = sharedTableColor ?? sharedSelected;
 
-    const headerCells = getHeaderCellSlots(store.state, table);
+    // A view draws no affordance the width it is measured at has no room for,
+    // and the colour band is the same read only header, so it takes no click:
+    // the picker it opens sits over a view whose colour change the gate drops.
+    const view = source !== 'document';
+
+    // The two header buttons, on the hovered card of a view alone.
+    const viewButtons = view && hovered;
+
+    /**
+     * Whether a cell hands its text over to an editor. Only the document scene
+     * carries one, so a view keeps every cell drawn while the document is
+     * edited, and blanks nothing it has no input to put in the gap.
+     */
+    const cellEdit = (focusType: FocusType, columnId?: string) =>
+      !view && hasEdit(focusType, columnId);
+
+    const headerCells = getHeaderCellSlots(store.state, table, source);
     const nameCell = headerCells.find(
       slot => slot.focusType === FocusType.tableName
     );
@@ -384,11 +521,30 @@ const Table: FC<TableProps> = (props, ctx) => {
       slot => slot.focusType === FocusType.tableComment
     );
 
+    const columnIds = getVisibleColumnIds(store.state, table, source);
+
+    // A card showing no rows is its header and nothing else, so the band takes
+    // the whole box and all four corners. Stopping it under the header would
+    // leave the padding below it painted in the body's own colour.
+    const headerFillsCard = view && columnIds.length === 0;
+
+    // A view lights what a hover or a pin reaches, and nothing at rest. The
+    // card wears that as an accent border and a glow, and a table left unlit
+    // keeps its type column's width and draws nothing in it.
+    const lit = view && Boolean(props.lit);
+
+    // How far the light has come up on this card, which is what every paint the
+    // highlight owns is scaled by: one value, so they all arrive together.
+    const litKey = transitionKey(editor.id, 'table', table.id);
+    let litAlpha = 0;
+    if (view) {
+      transitionTo(litKey, lit ? 1 : 0);
+      litAlpha = progressOf(litKey);
+    }
+
     const columns = query(collections)
       .collection('tableColumnEntities')
-      .selectByIds(
-        ghostColumnId ? [...table.columnIds, ghostColumnId] : table.columnIds
-      );
+      .selectByIds(ghostColumnId ? [...columnIds, ghostColumnId] : columnIds);
 
     return (
       <k-group
@@ -401,8 +557,8 @@ const Table: FC<TableProps> = (props, ctx) => {
         sharedSelect={sharedSelected}
         x={rect.x}
         y={rect.y}
-        on:mousedown={onMoveStart}
-        on:touchstart={onMoveStart}
+        on:mousedown={handlePress}
+        on:touchstart={handlePress}
         on:mouseenter={handleMouseenter}
         on:mouseleave={handleMouseleave}
       >
@@ -414,9 +570,63 @@ const Table: FC<TableProps> = (props, ctx) => {
           height={rect.height - TABLE_BORDER}
           cornerRadius={TABLE_CORNER_RADIUS}
           fill={theme.tableBackground}
-          stroke={bodyStroke(theme, selected)}
+          stroke={mixColor(
+            bodyStroke(theme, selected),
+            theme.accentColor9,
+            litAlpha
+          )}
           strokeWidth={TABLE_BORDER}
+          shadowColor={view ? theme.minimapShadow : undefined}
+          shadowBlur={view ? VIEW_CARD_SHADOW_BLUR : undefined}
+          shadowOffsetX={view ? VIEW_CARD_SHADOW_OFFSET_X : undefined}
+          shadowOffsetY={view ? VIEW_CARD_SHADOW_OFFSET_Y : undefined}
+          shadowOpacity={view ? VIEW_CARD_SHADOW_OPACITY : undefined}
+          shadowForStrokeEnabled={view ? false : undefined}
+          on:mouseenter={(event: SceneMouseEvent) => {
+            view && setSceneCursor(event, CURSOR_POINTER);
+          }}
+          on:mouseleave={(event: SceneMouseEvent) => {
+            view && setSceneCursor(event, CURSOR_INHERIT);
+          }}
         />
+        {view ? (
+          <k-rect
+            name="table-header-band"
+            x={TABLE_BORDER}
+            y={TABLE_BORDER}
+            width={rect.width - TABLE_BORDER * 2}
+            height={
+              headerFillsCard
+                ? rect.height - TABLE_BORDER * 2
+                : TABLE_INSET + VIEW_TABLE_HEADER_HEIGHT - TABLE_BORDER
+            }
+            cornerRadius={
+              headerFillsCard
+                ? TABLE_CORNER_RADIUS
+                : [TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]
+            }
+            fill={theme.grayColor3}
+            listening={false}
+          />
+        ) : null}
+        {litAlpha > 0 ? (
+          <k-rect
+            name="table-glow"
+            x={-RING_WIDTH / 2}
+            y={-RING_WIDTH / 2}
+            width={rect.width + RING_WIDTH}
+            height={rect.height + RING_WIDTH}
+            cornerRadius={TABLE_CORNER_RADIUS}
+            opacity={litAlpha}
+            stroke={theme.accentColor9}
+            strokeWidth={TABLE_BORDER}
+            shadowColor={theme.accentColor9}
+            shadowBlur={VIEW_CARD_GLOW_BLUR}
+            shadowOpacity={VIEW_CARD_GLOW_OPACITY}
+            shadowForStrokeEnabled={true}
+            listening={false}
+          />
+        ) : null}
         {ringColor ? (
           <k-rect
             name="table-ring"
@@ -439,6 +649,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           height={HEADER_COLOR_HEIGHT}
           cornerRadius={[TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]}
           fill={table.ui.color}
+          listening={!view}
           on:click={handleOpenColorPicker}
           on:mouseenter={(event: SceneMouseEvent) => {
             setSceneCursor(event, CURSOR_POINTER);
@@ -448,41 +659,59 @@ const Table: FC<TableProps> = (props, ctx) => {
           }}
         />
         <k-group name="table-header" x={TABLE_INSET} y={TABLE_INSET}>
-          {sceneIcon({
-            icon: 'plus',
-            name: 'table-add-column',
-            kind: 'icon',
-            size: HEADER_ICON_HEIGHT,
-            color: iconColor(theme, 'plus', hovered),
-            mouseenter: handleIconMouseenter('plus'),
-            mouseleave: handleIconMouseleave,
-            x:
-              contentWidth -
-              HEADER_ICON_HEIGHT * 2 -
-              TABLE_HEADER_BUTTON_MARGIN_LEFT,
-            y: 0,
-            click: handleAddColumn,
-          })}
-          {sceneIcon({
-            icon: 'x',
-            name: 'table-remove',
-            kind: 'icon',
-            size: HEADER_ICON_HEIGHT,
-            color: iconColor(theme, 'x', hovered),
-            mouseenter: handleIconMouseenter('x'),
-            mouseleave: handleIconMouseleave,
-            x: contentWidth - HEADER_ICON_HEIGHT,
-            y: 0,
-            click: handleRemoveTable,
-          })}
-          <k-group name="table-header-inputs" y={HEADER_CELLS_Y - TABLE_INSET}>
+          {view
+            ? null
+            : sceneIcon({
+                icon: 'plus',
+                name: 'table-add-column',
+                kind: 'icon',
+                size: HEADER_ICON_HEIGHT,
+                color: iconColor(theme, 'plus', hovered),
+                mouseenter: handleIconMouseenter('plus'),
+                mouseleave: handleIconMouseleave,
+                x:
+                  contentWidth -
+                  HEADER_ICON_HEIGHT * 2 -
+                  TABLE_HEADER_BUTTON_MARGIN_LEFT,
+                y: 0,
+                click: handleAddColumn,
+              })}
+          {view
+            ? null
+            : sceneIcon({
+                icon: 'x',
+                name: 'table-remove',
+                kind: 'icon',
+                size: HEADER_ICON_HEIGHT,
+                color: iconColor(theme, 'x', hovered),
+                mouseenter: handleIconMouseenter('x'),
+                mouseleave: handleIconMouseleave,
+                x: contentWidth - HEADER_ICON_HEIGHT,
+                y: 0,
+                click: handleRemoveTable,
+              })}
+          <k-group
+            name="table-header-inputs"
+            y={getHeaderCellsY(source) - TABLE_INSET}
+          >
+            {view
+              ? sceneIcon({
+                  icon: 'table-2',
+                  name: 'table-header-icon',
+                  kind: 'table-header-icon',
+                  size: VIEW_TABLE_HEADER_ICON_SIZE,
+                  color: theme.foreground,
+                  x: 0,
+                  y: 0,
+                })
+              : null}
             {nameCell
               ? headerCell({
                   ...nameCell,
                   text: table.name.trim() ? table.name : 'table',
-                  fill: table.name.trim() ? theme.active : theme.placeholder,
+                  fill: nameFill(theme, table.name, view),
                   focus: hasFocus(FocusType.tableName),
-                  edit: hasEdit(FocusType.tableName),
+                  edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,
                 })
               : null}
@@ -492,11 +721,39 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: table.comment.trim() ? table.comment : 'comment',
                   fill: table.comment.trim() ? theme.active : theme.placeholder,
                   focus: hasFocus(FocusType.tableComment),
-                  edit: hasEdit(FocusType.tableComment),
+                  edit: cellEdit(FocusType.tableComment),
                   sharedFocus: sharedCommentColor,
                 })
               : null}
           </k-group>
+          {viewButtons
+            ? sceneIcon({
+                icon: 'waypoints',
+                name: 'table-related',
+                kind: 'icon',
+                size: VIEW_TABLE_HEADER_BUTTON_SIZE,
+                color: iconColor(theme, 'waypoints', hovered),
+                mouseenter: handleIconMouseenter('waypoints'),
+                mouseleave: handleIconMouseleave,
+                x: contentWidth - VIEW_TABLE_HEADER_BUTTONS_WIDTH,
+                y: headerButtonY,
+                click: handleRelated,
+              })
+            : null}
+          {viewButtons
+            ? sceneIcon({
+                icon: 'external-link',
+                name: 'table-go-to-erd',
+                kind: 'icon',
+                size: VIEW_TABLE_HEADER_BUTTON_SIZE,
+                color: iconColor(theme, 'external-link', hovered),
+                mouseenter: handleIconMouseenter('external-link'),
+                mouseleave: handleIconMouseleave,
+                x: contentWidth - VIEW_TABLE_HEADER_BUTTON_SIZE,
+                y: headerButtonY,
+                click: handleGoToErd,
+              })
+            : null}
         </k-group>
         <k-group name="table-columns">
           {repeat(
@@ -505,7 +762,12 @@ const Table: FC<TableProps> = (props, ctx) => {
             (column, index) => (
               <Column
                 column={column}
-                y={getColumnRect(store.state, table, index).y - rect.y}
+                source={source}
+                related={props.relatedColumnIds?.has(column.id) ?? false}
+                litAlpha={litAlpha}
+                divider={view && index < columns.length - 1}
+                last={view && index === columns.length - 1}
+                y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}
                 selected={hasSelectColumn(column.id)}
                 hovered={column.id === props.hoveredColumnId}
@@ -523,10 +785,10 @@ const Table: FC<TableProps> = (props, ctx) => {
                   FocusType.columnAutoIncrement,
                   column.id
                 )}
-                editName={hasEdit(FocusType.columnName, column.id)}
-                editDataType={hasEdit(FocusType.columnDataType, column.id)}
-                editDefault={hasEdit(FocusType.columnDefault, column.id)}
-                editComment={hasEdit(FocusType.columnComment, column.id)}
+                editName={cellEdit(FocusType.columnName, column.id)}
+                editDataType={cellEdit(FocusType.columnDataType, column.id)}
+                editDefault={cellEdit(FocusType.columnDefault, column.id)}
+                editComment={cellEdit(FocusType.columnComment, column.id)}
                 sharedFocusName={sharedFocusColor(
                   FocusType.columnName,
                   column.id

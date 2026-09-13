@@ -3,14 +3,19 @@ import { query } from '@dineug/erd-editor-schema';
 import { Direction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Point, Relationship, Table } from '@/internal-types';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { arrayHas } from '@/utils/arrayHas';
 import {
+  type Anchor,
   ANCHOR_EDGE_INSET,
   ANCHOR_MAX_PITCH,
+  type Anchors,
+  copyAnchor,
   DirectionName,
   DirectionNameList,
   nextSortEpoch,
   ObjectPoint,
+  setAnchors,
   setRoute,
   setStubSlots,
 } from '@/utils/draw-relationship';
@@ -18,6 +23,10 @@ import {
   euclideanDistance,
   tableToObjectPoint,
 } from '@/utils/draw-relationship/calc';
+import type {
+  GeometrySource,
+  ViewSource,
+} from '@/utils/draw-relationship/geometrySource';
 import {
   boundsOfPoints,
   createDirtyLanes,
@@ -48,18 +57,15 @@ type RelationshipGraph = {
   right: SideEntry[];
 };
 
-type ChangeRelationship = {
-  id: string;
-  start: Pick<Relationship['start'], 'x' | 'y' | 'direction' | 'tableId'>;
-  end: Pick<Relationship['start'], 'x' | 'y' | 'direction' | 'tableId'>;
-};
+/** The two ends as this sort places them, and the id they belong to. */
+type ChangeRelationship = Anchors & { id: string };
 
 /** One relationship end sitting on one table side, before it is given a slot. */
 type SideEntry = {
   id: string;
   /** True when the end on this side is the relationship's start. */
   isStart: boolean;
-  point: ChangeRelationship['start'];
+  point: Anchor;
   /**
    * Where the opposite table lies, as an angle around this table, normalised so
    * that walking the side clockwise means walking this key upwards.
@@ -112,16 +118,20 @@ const WALKS_BACKWARDS: Record<DirectionName, boolean> = {
   [DirectionName.left]: true,
 };
 
-export function relationshipSort(state: RootState) {
+export function relationshipSort(
+  state: RootState,
+  source: GeometrySource = 'document'
+) {
   // Every route box the last sort left behind answers for a route this one is
   // about to replace, and the connectors it skips over - self relationships,
   // and any whose end table left the document - never reach setRoute at all.
-  nextSortEpoch();
+  nextSortEpoch(source);
 
-  const {
-    doc: { tableIds, relationshipIds },
-    collections,
-  } = state;
+  // The whole document, or what the view shows: the tables it places and the
+  // connectors between two of them. Everything below is read at the source's
+  // points, sized as the source draws it, and written to the source's channel.
+  const { tableIds, relationshipIds } = getVisibleIds(state, source);
+  const { collections } = state;
   const isTableIds = arrayHas(tableIds);
   const tableCollection = query(collections).collection('tableEntities');
   const relationships = query(collections)
@@ -151,11 +161,11 @@ export function relationshipSort(state: RootState) {
     slotMap.set(relationshipShape.id, [0, 0]);
 
     if (start.tableId === end.tableId) {
-      const graph = getOrCreateGraph(state, graphMap, startTable);
+      const graph = getOrCreateGraph(state, graphMap, startTable, source);
       placeSelf(graph, relationshipShape);
     } else {
-      const startGraph = getOrCreateGraph(state, graphMap, startTable);
-      const endGraph = getOrCreateGraph(state, graphMap, endTable);
+      const startGraph = getOrCreateGraph(state, graphMap, startTable, source);
+      const endGraph = getOrCreateGraph(state, graphMap, endTable, source);
       const [startDirection, endDirection] = getAndSetDirection(
         startGraph.objectPoint,
         endGraph.objectPoint,
@@ -186,26 +196,45 @@ export function relationshipSort(state: RootState) {
   }
 
   for (const [origin, change] of changeMap.entries()) {
-    setStubSlots(origin, slotMap.get(change.id) ?? [0, 0]);
-    origin.start.direction = change.start.direction;
-    origin.start.x = change.start.x;
-    origin.start.y = change.start.y;
-    origin.end.direction = change.end.direction;
-    origin.end.x = change.end.x;
-    origin.end.y = change.end.y;
+    setStubSlots(origin, slotMap.get(change.id) ?? [0, 0], source);
+    setAnchors(origin, change, source);
   }
 
-  routeRelationships(state, changeMap);
+  if (source === 'document') {
+    routeRelationships(state, changeMap, slotMap);
+  } else {
+    stubRelationships(changeMap, slotMap, source);
+  }
+}
+
+/**
+ * A view draws one curve between the two turning points and reads no route, so
+ * its channel holds those two points and nothing else. Skipping the router
+ * also keeps a nudge that cannot move them from waking the renders that read them.
+ */
+function stubRelationships(
+  changeMap: Map<Relationship, ChangeRelationship>,
+  slotMap: Map<string, SlotPair>,
+  source: ViewSource
+) {
+  for (const [origin, change] of changeMap.entries()) {
+    const { id, start, end } = change;
+    if (start.tableId === end.tableId) continue;
+
+    const { m, l } = stubEnds(change, slotMap.get(id) ?? [0, 0]);
+    setRoute(origin, [m, l], source);
+  }
 }
 
 /**
  * Routes every relationship around the tables, then pulls apart the routes
- * sharing a channel. Runs after the anchors are written back, because a route
- * starts from a turning point that depends on the final anchor and its slot.
+ * sharing a channel. The document alone reaches it, and it reads the anchors
+ * and slots this sort just placed rather than the entity it has written them to.
  */
 function routeRelationships(
   state: RootState,
-  changeMap: Map<Relationship, ChangeRelationship>
+  changeMap: Map<Relationship, ChangeRelationship>,
+  slotMap: Map<string, SlotPair>
 ) {
   const obstacles = collectObstacles(state);
   const cache = getSortCache(state);
@@ -223,12 +252,12 @@ function routeRelationships(
   const endpoints = new Map<string, [string, string]>();
   const origins = new Map<string, Relationship>();
 
-  for (const origin of changeMap.keys()) {
-    const { start, end } = origin;
+  for (const [origin, change] of changeMap.entries()) {
+    const { id, start, end } = change;
     if (start.tableId === end.tableId) continue;
 
-    const { m, l } = stubEnds(origin);
-    const was = previous.get(origin.id);
+    const { m, l } = stubEnds(change, slotMap.get(id) ?? [0, 0]);
+    const was = previous.get(id);
 
     let pristine: Point[];
     let points: Point[];
@@ -252,15 +281,15 @@ function routeRelationships(
         end.tableId
       );
       pristine = clonePoints(points);
-      dirty.add(origin.id);
+      dirty.add(id);
       if (was) markRoute(lanes, was.nudged);
       markRoute(lanes, pristine);
     }
 
-    routes.set(origin.id, points);
-    endpoints.set(origin.id, [start.tableId, end.tableId]);
-    origins.set(origin.id, origin);
-    entries.set(origin.id, {
+    routes.set(id, points);
+    endpoints.set(id, [start.tableId, end.tableId]);
+    origins.set(id, origin);
+    entries.set(id, {
       mx: m.x,
       my: m.y,
       mDirection: start.direction,
@@ -323,8 +352,8 @@ function sameRouteInputs(
   was: RouteEntry,
   m: Point,
   l: Point,
-  start: Relationship['start'],
-  end: Relationship['end']
+  start: Anchor,
+  end: Anchor
 ) {
   return (
     was.mx === m.x &&
@@ -341,11 +370,12 @@ function sameRouteInputs(
 function getOrCreateGraph(
   state: RootState,
   graphMap: Map<string, RelationshipGraph>,
-  table: Table
+  table: Table,
+  source: GeometrySource
 ) {
   let graph = graphMap.get(table.id);
   if (!graph) {
-    const objectPoint = tableToObjectPoint(state, table);
+    const objectPoint = tableToObjectPoint(state, table, source);
     graph = {
       tableId: table.id,
       centerX: objectPoint.top.x,
@@ -412,24 +442,12 @@ function clamp(value: number, low: number, high: number) {
   return Math.min(Math.max(value, low), high);
 }
 
-function createChangeRelationship(
-  relationship: Relationship
-): ChangeRelationship {
-  return {
-    id: relationship.id,
-    start: {
-      tableId: relationship.start.tableId,
-      x: relationship.start.x,
-      y: relationship.start.y,
-      direction: relationship.start.direction,
-    },
-    end: {
-      tableId: relationship.end.tableId,
-      x: relationship.end.x,
-      y: relationship.end.y,
-      direction: relationship.end.direction,
-    },
-  };
+function createChangeRelationship({
+  id,
+  start,
+  end,
+}: Relationship): ChangeRelationship {
+  return { id, start: copyAnchor(start), end: copyAnchor(end) };
 }
 
 /**

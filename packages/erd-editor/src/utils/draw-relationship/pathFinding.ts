@@ -1,7 +1,9 @@
 import { Direction } from '@/constants/schema';
 import { Point, Relationship, RelationshipPoint } from '@/internal-types';
 import {
+  type Anchor,
   CIRCLE_HEIGHT,
+  getAnchors,
   getRoute,
   getStubSlots,
   Line,
@@ -13,19 +15,23 @@ import {
   RelationshipPath,
   ROUTE_CHAMFER,
 } from '@/utils/draw-relationship';
+import { bezierPolyline } from '@/utils/draw-relationship/bezier';
 import { chamferPolyline } from '@/utils/draw-relationship/chamfer';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import {
   clampStub,
   facingGap,
   isHorizontal,
+  outwardSign,
   stubFor,
 } from '@/utils/draw-relationship/stub';
 
 export function getRelationshipPath(
-  relationship: Relationship
+  relationship: Relationship,
+  source: GeometrySource = 'document'
 ): RelationshipPath {
-  const { start, end } = relationship;
-  const [startSlot, endSlot] = getStubSlots(relationship);
+  const { start, end } = getAnchors(relationship, source);
+  const [startSlot, endSlot] = getStubSlots(relationship, source);
   const gap = facingGap(start, end);
 
   return {
@@ -34,18 +40,20 @@ export function getRelationshipPath(
       end,
       clampStub(stubFor(startSlot), gap),
       clampStub(stubFor(endSlot), gap),
-      getRoute(relationship)
+      getRoute(relationship, source),
+      source
     ),
     line: getLine(start, end),
   };
 }
 
 function getPath(
-  start: Relationship['start'],
-  end: Relationship['end'],
+  start: Anchor,
+  end: Anchor,
   startStub: number,
   endStub: number,
-  route: Point[] | undefined
+  route: Point[] | undefined,
+  source: GeometrySource
 ): RelationshipPath['path'] {
   const line: PathLine = {
     start: {
@@ -73,6 +81,20 @@ function getPath(
             { x: this.L.x, y: this.L.y },
           ],
         ];
+      }
+
+      // A view draws one curve between the turning points and reads no route:
+      // the reference has none either, and a chamfered polyline still read as
+      // right angles however far its corners were cut back.
+      if (source !== 'document') {
+        return toSegments(
+          bezierPolyline(
+            this.M,
+            outwardOf(start.direction),
+            this.L,
+            outwardOf(end.direction)
+          )
+        );
       }
 
       const polyline =
@@ -334,6 +356,13 @@ function toSegments(points: Point[]): Array<[Point, Point]> {
     segments.push([points[index - 1], points[index]]);
   }
   return segments;
+}
+
+/** Which way a connector leaves an anchor, as the unit step its curve grows along. */
+function outwardOf(direction: number): Point {
+  const sign = outwardSign(direction);
+
+  return isHorizontal(direction) ? { x: sign, y: 0 } : { x: 0, y: sign };
 }
 
 /**

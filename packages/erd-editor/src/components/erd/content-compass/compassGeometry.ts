@@ -1,12 +1,18 @@
 import {
+  getScrollToCenter,
   getViewTransform,
   getVisibleCanvasRect,
 } from '@/components/erd/minimap/minimapGeometry';
-import { hasViewport } from '@/engine/modules/settings/atom.actions';
+import {
+  hasViewport,
+  sceneScrollToAction,
+} from '@/engine/modules/settings/atom.actions';
+import type { RxStore } from '@/engine/rx-store';
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
 import { getContentRects } from '@/konva/scene/contentBounds';
 import { type Rect } from '@/konva/scene/metrics';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** Which way the nearest entity lies and how far, while the screen holds none. */
 export type ContentCompass = {
@@ -42,18 +48,21 @@ const middleOf = (rect: Rect): Point => ({
 });
 
 /**
- * Where the nearest entity stands when the screen shows none of them, measured
- * from the screen's own middle. Null while any table or memo reaches the screen,
- * touching it counting as reaching it, and null while nobody has measured one.
+ * Where the nearest of the rects stands when the screen holds none of them,
+ * measured from the screen's own middle. Null while any of them reaches the
+ * screen, touching it counting as reaching it, and null where there are none.
+ *
+ * @example
+ * const compass = nearestContent(getContentRects(state, [], source), screen);
  */
-export function getContentCompass(state: RootState): ContentCompass | null {
-  if (!hasViewport(state.editor.viewport)) return null;
-
-  const screen = getVisibleCanvasRect(getViewTransform(state));
+export function nearestContent(
+  rects: Iterable<Rect>,
+  screen: Rect
+): ContentCompass | null {
   let nearest: Rect | null = null;
   let distance = Infinity;
 
-  for (const rect of getContentRects(state)) {
+  for (const rect of rects) {
     const gap = gapBetween(screen, rect);
     if (gap.x === 0 && gap.y === 0) return null;
 
@@ -74,6 +83,50 @@ export function getContentCompass(state: RootState): ContentCompass | null {
     distance,
     target,
   };
+}
+
+/**
+ * Where the nearest entity stands when the screen shows none of them, in the
+ * scene the source names. Null while any table or memo reaches the screen and
+ * null while nobody has measured one.
+ */
+export function getContentCompass(
+  state: RootState,
+  source: GeometrySource = 'document'
+): ContentCompass | null {
+  if (!hasViewport(state.editor.viewport)) return null;
+
+  return nearestContent(
+    getContentRects(state, [], source),
+    getVisibleCanvasRect(getViewTransform(state, source))
+  );
+}
+
+/** Small enough beside a label or a button to read as a mark rather than one. */
+export const COMPASS_ARROW_SIZE = 14;
+
+/**
+ * Puts the nearest entity in the middle of the screen of the source given, and
+ * does nothing while the screen holds one. Read on the press rather than closed
+ * over by the render that drew the arrow, since a wheel between the two moves the screen.
+ *
+ * @example
+ * scrollToNearestContent(store, ViewKind.flow);
+ */
+export function scrollToNearestContent(
+  store: RxStore,
+  source: GeometrySource = 'document'
+): void {
+  const compass = getContentCompass(store.state, source);
+  if (!compass) return;
+
+  const origin = getScrollToCenter(
+    getViewTransform(store.state, source),
+    compass.target
+  );
+  store.dispatch(
+    sceneScrollToAction(source, { originX: origin.x, originY: origin.y })
+  );
 }
 
 /** The steps the label folds into, each a thousand of the one before it. */
