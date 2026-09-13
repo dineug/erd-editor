@@ -213,6 +213,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
    */
   const handleDragstart = (event: SceneMouseEvent) => {
     if (props.preview || props.ghost || event.evt.button !== 0) return;
+    // A view reorders no row, and a second subscriber to the pointer stream
+    // reads no movement, so an armed row would hold still the card it drags.
+    if (props.source !== 'document') return;
 
     endDrag();
     let started = false;

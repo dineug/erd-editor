@@ -20,7 +20,7 @@ export function useMoveMemo(
   return useMoveEntity(ctx, {
     entityId: () => props.memo.id,
     selectType: SelectType.memo,
-    blockedKinds: BLOCKED_KINDS,
+    blockedKinds: () => BLOCKED_KINDS,
     source,
   });
 }

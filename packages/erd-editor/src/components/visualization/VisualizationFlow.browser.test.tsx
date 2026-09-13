@@ -5,6 +5,7 @@
 import { type AnyAction, useProvider } from '@dineug/r-html';
 import type { Group } from 'konva/lib/Group';
 import type { Layer } from 'konva/lib/Layer';
+import type { Shape } from 'konva/lib/Shape';
 import type { Rect } from 'konva/lib/shapes/Rect';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -922,6 +923,57 @@ describe('the Flow mode of the visualization tab', () => {
     expect(hoisted.requests).toHaveLength(1);
     expect(tableOf('a')!.x()).toBe(landed.a.x);
     expect(tableOf('a')!.y()).toBe(landed.a.y);
+  });
+
+  it.each([
+    ['its name', () => tableOf('a')!.findOne<Shape>('.cell-text')!],
+    [
+      'its table icon',
+      () =>
+        tableOf('a')!
+          .findOne<Group>('.table-header-icon')!
+          .getChildren()[0] as Shape,
+    ],
+    ['a row', () => tableOf('a')!.findOne<Shape>('.column-row-background')!],
+  ])('moves a card dragged by %s, as by its body', async (_, targetOf) => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    await chooseShowMode(mounted, 'All fields');
+    const landed = positionsOf(app)!;
+
+    fireScenePointer(targetOf(), 'mousedown', { clientX: 100, clientY: 100 });
+    movePointer(160, 180);
+    releasePointer();
+    await settle();
+
+    // The pointer travels in screen pixels and the card in scene units, so the
+    // step lands divided by the zoom the view was fitted at.
+    const { zoomLevel } = app.store.state.editor.views.flow!;
+    const moved = positionsOf(app)!;
+    expect(moved.a.x).toBeCloseTo(landed.a.x + 60 / zoomLevel);
+    expect(moved.a.y).toBeCloseTo(landed.a.y + 80 / zoomLevel);
+    expect(moved.b).toEqual(landed.b);
+  });
+
+  it('pins the light on a click of the table icon, which is no button', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const icon = tableOf('a')!
+      .findOne<Group>('.table-header-icon')!
+      .getChildren()[0] as Shape;
+
+    fireScenePointer(icon, 'mousedown', { clientX: 10, clientY: 10 });
+    await settle();
+    fireScenePointer(icon, 'mouseup', { clientX: 10, clientY: 10 });
+    await settle();
+    fireScenePointer(bodyOf('a'), 'mouseleave');
+    await settle();
+
+    expect(litTableIds(app)).toEqual(['a', 'b']);
   });
 
   /** AC-42. A hover lights that table and its one hop, and lets go on the leave. */

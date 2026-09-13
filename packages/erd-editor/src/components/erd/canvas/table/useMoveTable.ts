@@ -17,6 +17,13 @@ const BLOCKED_KINDS = [
   'input-padding',
 ];
 
+/**
+ * Where a view card's drag never starts: its two header buttons. A view draws
+ * no colour bar to press, reorders no row and focuses no cell, so everywhere
+ * else on the card is the card, and a reader takes it by any of it.
+ */
+const VIEW_BLOCKED_KINDS = ['icon'];
+
 export function useMoveTable(
   ctx: Ctx,
   props: { table: Table },
@@ -25,7 +32,8 @@ export function useMoveTable(
   return useMoveEntity(ctx, {
     entityId: () => props.table.id,
     selectType: SelectType.table,
-    blockedKinds: BLOCKED_KINDS,
+    blockedKinds: scene =>
+      scene === 'document' ? BLOCKED_KINDS : VIEW_BLOCKED_KINDS,
     source,
   });
 }

@@ -41,7 +41,7 @@ const Probe: FC<{}> = (props, ctx) => {
   api = useMoveEntity(ctx, {
     entityId: () => 't1',
     selectType: SelectType.table,
-    blockedKinds: ['column'],
+    blockedKinds: () => ['column'],
     source: useSceneSource(ctx),
   });
 

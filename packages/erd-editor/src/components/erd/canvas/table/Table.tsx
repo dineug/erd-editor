@@ -698,7 +698,7 @@ const Table: FC<TableProps> = (props, ctx) => {
               ? sceneIcon({
                   icon: 'table-2',
                   name: 'table-header-icon',
-                  kind: 'icon',
+                  kind: 'table-header-icon',
                   size: VIEW_TABLE_HEADER_ICON_SIZE,
                   color: theme.foreground,
                   x: 0,

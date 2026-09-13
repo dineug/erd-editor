@@ -21,8 +21,8 @@ export type MoveEntityOptions = {
   /** Read late, because repeat hands a component a new entity in place. */
   entityId: () => string;
   selectType: SelectType;
-  /** The scene kinds a drag never starts from, as closest read their classes. */
-  blockedKinds: readonly string[];
+  /** The scene kinds a drag never starts from in the scene pressed, as closest read their classes. */
+  blockedKinds: (source: GeometrySource) => readonly string[];
   /**
    * The scene the component already stands in, handed down rather than read
    * again here, so a leaf pays for one context subscription and not two.
@@ -51,7 +51,11 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
 
     const { store } = app.value;
     const entityId = options.entityId();
-    const canDrag = !hasKindAncestor(event.target, options.blockedKinds);
+    const source = options.source.value;
+    const canDrag = !hasKindAncestor(
+      event.target,
+      options.blockedKinds(source)
+    );
 
     // move$ is not share()d and mutates module-global prevX/prevY, so
     // a second concurrent drag$ subscriber always reads movementX === 0.
@@ -83,7 +87,6 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
       // The scene this drag holds and moves is the one the press landed in: a
       // view's drag freezes the view's origin and moves the view's placement,
       // the document's its own, and the same source releases it at the drop.
-      const source = options.source.value;
       beginEntityDrag(store.state, source);
       // The gesture belongs to the pointer, not to this component: the press
       // raises the entity's z-index and the scene rebuilds the node it started
