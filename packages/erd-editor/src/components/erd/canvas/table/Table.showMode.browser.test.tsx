@@ -32,6 +32,7 @@ import {
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   SCENE_FONT_WEIGHT,
+  TABLE_CORNER_RADIUS,
   TRANSPARENT,
   VIEW_CARD_GLOW_BLUR,
   VIEW_CARD_GLOW_OPACITY,
@@ -990,6 +991,42 @@ describe('the header a view card wears', () => {
       TABLE_BORDER + TABLE_PADDING + VIEW_TABLE_HEADER_HEIGHT - TABLE_BORDER
     );
     expect(band!.width()).toBe(body.width() - TABLE_BORDER);
+    expect(band!.getAttr('cornerRadius')).toEqual([
+      TABLE_CORNER_RADIUS,
+      TABLE_CORNER_RADIUS,
+      0,
+      0,
+    ]);
+  });
+
+  /**
+   * A card the show mode leaves without a row is its header and nothing else.
+   * A band stopping under the header leaves the padding below it painted in the
+   * body's colour, which reads as a strip of a second colour along the bottom.
+   */
+  it('fills a card that draws no row, all four corners with it', async () => {
+    const { app, stage } = await mountViewScene();
+
+    const rowless = (id: string) => {
+      const band = bandOf(stage, id);
+      const body = bodyOf(stage, id);
+
+      expect(rowIdsOf(stage, id)).toEqual([]);
+      expect(band!.y()).toBe(TABLE_BORDER);
+      expect(band!.height()).toBe(body.height() - TABLE_BORDER);
+      expect(band!.getAttr('cornerRadius')).toBe(TABLE_CORNER_RADIUS);
+    };
+
+    // d holds forty rows and no key among them, so the keys only mode the view
+    // opens on already leaves it with nothing to draw under its header.
+    rowless('d');
+
+    app.store.dispatchSync(
+      viewChangeShowModeAction({ value: ShowMode.nameOnly })
+    );
+    await settle();
+
+    for (const id of ['a', 'b', 'c', 'd', 'e']) rowless(id);
   });
 
   /**

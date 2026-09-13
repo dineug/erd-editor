@@ -152,8 +152,16 @@ const readoutOf = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('.visualization-toolbar span')
     ?.textContent;
 
-const click = (el: Element | null) =>
-  el?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+/**
+ * A press the way a person makes one: the three events a real mouse produces,
+ * in order, so a handler listening on the first is not stepped over by a spec
+ * that dispatches the last alone.
+ */
+const click = (el: Element | null) => {
+  for (const type of ['mousedown', 'mouseup', 'click']) {
+    el?.dispatchEvent(new MouseEvent(type, { bubbles: true }));
+  }
+};
 
 describe('the bar beside the graph', () => {
   // The bar is the graph's sibling and reads its view across that boundary,

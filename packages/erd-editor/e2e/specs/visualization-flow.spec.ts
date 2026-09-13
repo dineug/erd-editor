@@ -265,6 +265,34 @@ async function chooseShowMode(erd: ErdEditorPage, title: string) {
     .click();
 }
 
+/** How many rows the Flow cards draw between them, counted off the live stage. */
+const flowRowCount = (erd: ErdEditorPage) =>
+  erd.page.evaluate(() => {
+    const stage: any = Reflect.get(window, '__erdStages')?.canvas;
+    return stage ? stage.find('.column-row').length : 0;
+  });
+
+/**
+ * The box of the row display option printing this title, inside a shadow root
+ * no locator reaches. Null until the menu is up, so a poll can wait on it.
+ */
+const showModeOptionBox = (erd: ErdEditorPage, title: string) =>
+  erd.page.evaluate(name => {
+    const root = Reflect.get(window, '__erdShadowRoot') as
+      | ShadowRoot
+      | undefined;
+    const options = Array.from(
+      root?.querySelectorAll<HTMLElement>(
+        '.visualization-show-mode-menu .context-menu-content > div'
+      ) ?? []
+    );
+    const option = options.find(el => el.textContent?.trim() === name);
+    if (!option) return null;
+
+    const { x, y, width, height } = option.getBoundingClientRect();
+    return { x, y, width, height };
+  }, title);
+
 /**
  * Waits until the view has the placement ELK gave it, not merely a scene. A
  * view draws a table where the document keeps it until a layout lands, so a
@@ -771,5 +799,61 @@ test.describe('the visualization tab and the flow view over the document', () =>
     expect(after.originY).toBe(0);
     expect(after.zoomLevel).toBe(1);
     expect((await erd.table('customers')).ui).toMatchObject({ x: 200, y: 200 });
+  });
+
+  /**
+   * The one case standing on the shadow root production declares closed. What
+   * a press reads as outside is decided from an event crossing that boundary,
+   * so a suite reopening the root cannot answer for this control at all.
+   */
+  test('changes the rows the cards draw when a real mouse picks an option, through the closed shadow root', async ({
+    erd,
+  }) => {
+    await erd.gotoClosedShadow();
+    await erd.seed(shop());
+
+    await erd.clickInShadow('.toolbar [title^="Visualization"]');
+    await expect
+      .poll(() => erd.shadowBox('.visualization-toolbar [title="Flow"]'))
+      .not.toBeNull();
+    await erd.clickInShadow('.visualization-toolbar [title="Flow"]');
+    await expect
+      .poll(() => erd.shadowBox('.visualization-toolbar [title="Tidy Up"]'), {
+        timeout: PLACEMENT_TIMEOUT,
+      })
+      .not.toBeNull();
+    await landed(erd, 'customers');
+
+    expect(await flowRowCount(erd)).toBe(0);
+
+    await erd.clickInShadow('.visualization-toolbar [title^="Row display"]');
+    await expect
+      .poll(() => showModeOptionBox(erd, 'All fields'))
+      .not.toBeNull();
+
+    // A press, a release and a click, each hit tested where the pointer stands.
+    // A menu torn down on the press leaves the release to land on the canvas
+    // behind it, and the click on their common ancestor, which is not the item.
+    const option = (await showModeOptionBox(erd, 'All fields'))!;
+    await erd.page.mouse.click(
+      option.x + option.width / 2,
+      option.y + option.height / 2
+    );
+
+    await expect
+      .poll(() => flowRowCount(erd), { timeout: PLACEMENT_TIMEOUT })
+      .toBeGreaterThan(0);
+    await expect
+      .poll(async () =>
+        erd.page.evaluate(() => {
+          const root = Reflect.get(window, '__erdShadowRoot') as
+            | ShadowRoot
+            | undefined;
+          return root
+            ?.querySelector('.visualization-toolbar [title^="Row display"]')
+            ?.getAttribute('title');
+        })
+      )
+      .toBe('Row display: All fields');
   });
 });

@@ -21,6 +21,13 @@ const SCENE_ROOT = '[data-testid="erd-canvas"] .scene-mirror';
 /** The fixture with the scene mirror on, which is what a spec drives. */
 const SPEC_URL = `${FIXTURE_URL}?${SCENE_MIRROR_FLAG}=1`;
 
+/**
+ * The fixture left standing on the closed shadow root production declares, so
+ * an event crossing that boundary is retargeted the way it is for a reader. No
+ * locator resolves inside it; the handle below is the only way in.
+ */
+const CLOSED_SHADOW_URL = `${FIXTURE_URL}?closedShadow=1`;
+
 export type Point = { x: number; y: number };
 
 export type Box = { x: number; y: number; width: number; height: number };
@@ -66,6 +73,46 @@ export class ErdEditorPage {
   async goto() {
     await this.page.goto(SPEC_URL);
     await expect(this.canvas).toBeAttached();
+  }
+
+  /**
+   * Loads the fixture without reopening the shadow root, which is what a spec
+   * needs whenever the subject is how an event reads from outside that
+   * boundary. Everything driven off the host locator stops working here.
+   */
+  async gotoClosedShadow() {
+    await this.page.goto(CLOSED_SHADOW_URL);
+    await expect.poll(() => this.shadowBox('.root')).not.toBeNull();
+  }
+
+  /**
+   * The screen box of one element inside that closed root, read through the
+   * handle the fixture publishes. Null while the element is not there yet, so
+   * a poll can wait on it.
+   */
+  async shadowBox(selector: string): Promise<Box | null> {
+    return this.page.evaluate(target => {
+      const root = Reflect.get(window, '__erdShadowRoot') as
+        | ShadowRoot
+        | undefined;
+      const el = root?.querySelector(target);
+      if (!el) return null;
+
+      const { x, y, width, height } = el.getBoundingClientRect();
+      return { x, y, width, height };
+    }, selector);
+  }
+
+  /**
+   * A real pointer press, release and click at the centre of that element —
+   * the three events a person produces, each hit tested where the pointer
+   * stands, so a handler that removes the element on the press loses the click.
+   */
+  async clickInShadow(selector: string) {
+    const box = await this.shadowBox(selector);
+    if (!box) throw new Error(`no element inside the shadow root: ${selector}`);
+
+    await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   }
 
   /**

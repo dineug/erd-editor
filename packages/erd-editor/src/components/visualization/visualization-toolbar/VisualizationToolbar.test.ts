@@ -116,11 +116,19 @@ const distanceOf = (root: HTMLElement) =>
   root.querySelector<HTMLElement>(`.${String(styles.compassDistance)}`)
     ?.textContent;
 
-const click = (el: Element | null) =>
-  el?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+/**
+ * A press the way a person makes one: the three events a real mouse produces,
+ * in order, so a handler listening on the first is not stepped over by a spec
+ * that dispatches the last alone.
+ */
+const click = (el: Element | null) => {
+  for (const type of ['mousedown', 'mouseup', 'click']) {
+    el?.dispatchEvent(new MouseEvent(type, { bubbles: true }));
+  }
+};
 
-// The menu closes on a press rather than on a click, and the stream it listens
-// on is the window's, which a bubbling event from inside the bar reaches.
+// The menu closes on a press rather than on a click, read off the root the bar
+// stands in, which a bubbling event from anywhere in that tree reaches.
 const press = (el: Element | null) =>
   el?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 
@@ -186,9 +194,11 @@ const labelTextOf = (root: HTMLElement) =>
     `.${String(styles.showModeLabel)}`
   )?.textContent;
 
-/** The glyph the trigger leads with, which is the mode's own, not the chevron. */
-const glyphOf = (root: HTMLElement) =>
-  pathsOf(triggerOf(root)?.firstElementChild);
+/** Every glyph the trigger draws, which is the chevron and nothing before it. */
+const glyphsOf = (root: HTMLElement) => pathsOf(triggerOf(root));
+
+/** Every glyph one option draws, which is the check on the current one alone. */
+const optionGlyphsOf = (option: HTMLElement) => pathsOf(option);
 
 /** A Flow view over two tables, placed apart, with the viewport a fit is solved against. */
 function seedFlow(app: AppContext, centerIds: string[] = []) {
@@ -364,10 +374,10 @@ describe('VisualizationToolbar', () => {
     expect(triggerOf(root)?.getAttribute('title')).toBe(
       'Row display: Name only'
     );
-    // Printed on the bar rather than left to a tooltip, and led by the glyph
-    // the menu marks, so the closed bar states the mode it stands on.
+    // Printed on the bar rather than left to a tooltip, so the closed bar states
+    // the mode it stands on in words, with no glyph standing in for them.
     expect(labelTextOf(root)).toBe('Name only');
-    expect(glyphOf(root)).toEqual(iconPaths('case-sensitive'));
+    expect(glyphsOf(root)).toEqual(iconPaths('chevron-down'));
     expect(menuOf(container)).toBeNull();
 
     app.store.dispatchSync(
@@ -382,8 +392,33 @@ describe('VisualizationToolbar', () => {
       'Row display: All fields'
     );
     expect(labelTextOf(root)).toBe('All fields');
-    expect(glyphOf(root)).toEqual(iconPaths('table'));
-    expect(iconPaths('table')).not.toEqual(iconPaths('case-sensitive'));
+    expect(glyphsOf(root)).toEqual(iconPaths('chevron-down'));
+  });
+
+  /**
+   * The control is the mode's name, the tick beside the one in use and the
+   * chevron, and nothing else. The chevron points down however the menu opens,
+   * which is upward, because the bar stands at the bottom edge of the tab.
+   */
+  it('draws no glyph but the chevron on the trigger and the tick in the menu (AC-25)', async () => {
+    const app = seedFlow(createTestAppContext());
+    const { container, root } = await setup(app);
+
+    // Named rather than merely counted: the upward chevron this replaced would
+    // pass a count of one, and it left the registry with this change.
+    expect(glyphsOf(root)).toEqual(iconPaths('chevron-down'));
+
+    click(triggerOf(root));
+    await flush();
+
+    const options = optionsOf(container);
+    expect(options.map(labelOf)).toEqual([
+      'Name only',
+      'Keys only',
+      'All fields',
+    ]);
+    expect(options.map(optionGlyphsOf)).toEqual([iconPaths('check'), [], []]);
+    expect(markedOption(container)).toBe('Name only');
   });
 
   it('opens the three show modes from that trigger and marks the one in use (AC-25)', async () => {
@@ -418,7 +453,6 @@ describe('VisualizationToolbar', () => {
       'Row display: Keys only'
     );
     expect(labelTextOf(root)).toBe('Keys only');
-    expect(glyphOf(root)).toEqual(iconPaths('key-round'));
 
     click(triggerOf(root));
     await flush();

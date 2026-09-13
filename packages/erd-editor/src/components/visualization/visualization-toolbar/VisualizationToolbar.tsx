@@ -6,6 +6,7 @@ import {
   onUpdated,
   ref,
 } from '@dineug/r-html';
+import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import {
@@ -47,7 +48,6 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSceneTransform } from '@/konva/scene/viewport';
-import { mousedown$ } from '@/utils/globalEventObservable';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import * as styles from './VisualizationToolbar.styles';
@@ -63,9 +63,9 @@ const MENU_GAP = 8;
 
 /** The three steps of a card, in the order the menu offers them. */
 const SHOW_MODES = [
-  { value: ShowMode.nameOnly, title: 'Name only', icon: 'case-sensitive' },
-  { value: ShowMode.keysOnly, title: 'Keys only', icon: 'key-round' },
-  { value: ShowMode.allFields, title: 'All fields', icon: 'table' },
+  { value: ShowMode.nameOnly, title: 'Name only' },
+  { value: ShowMode.keysOnly, title: 'Keys only' },
+  { value: ShowMode.allFields, title: 'All fields' },
 ] as const;
 
 const showModeOf = (value?: ShowMode) =>
@@ -79,6 +79,7 @@ const showModeOf = (value?: ShowMode) =>
 const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
+  const $bar = createRef<HTMLDivElement>();
   const $trigger = createRef<HTMLDivElement>();
   const $menu = createRef<HTMLDivElement>();
 
@@ -156,14 +157,19 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
     store.dispatch(viewChangeShowModeAction({ value, kind: ViewKind.flow }));
   };
 
-  // The bar renders inside a shadow root, where a window listener reads the
-  // host as the target of every press, so the two elements a press may land on
-  // without closing the menu are looked for on the composed path instead.
-  const handlePress = (event: MouseEvent) => {
+  /**
+   * The press is read off the tree the bar stands in rather than off the
+   * window: the element's shadow root is closed, and a window listener is
+   * handed the host as the target of everything inside it, composed path included.
+   */
+  const handlePress = (event: Event) => {
     if (!state.showModeOpen) return;
 
-    const path = event.composedPath();
-    if (path.includes($menu.value) || path.includes($trigger.value)) return;
+    const target = event.target as Node | null;
+    if (!target) return;
+    if ($menu.value?.contains(target) || $trigger.value?.contains(target)) {
+      return;
+    }
 
     state.showModeOpen = false;
   };
@@ -202,7 +208,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   onMounted(() => {
     addUnsubscribe(
       app.value.shortcut$.subscribe(handleShortcut),
-      mousedown$.subscribe(handlePress)
+      fromEvent($bar.value.getRootNode(), 'mousedown').subscribe(handlePress)
     );
   });
 
@@ -231,7 +237,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
 
     return (
       <>
-        <div class={['visualization-toolbar', styles.root]}>
+        <div use:ref={ref($bar)} class={['visualization-toolbar', styles.root]}>
           <div
             class={[floating.menu, { active: !flow }]}
             title="Graph"
@@ -282,9 +288,8 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
                 title={`Row display: ${showMode.title}`}
                 on:click={handleShowModeTrigger}
               >
-                <Icon name={showMode.icon} size={ICON_SIZE} />
                 <div class={styles.showModeLabel}>{showMode.title}</div>
-                <Icon name="chevron-up" size={CHEVRON_SIZE} />
+                <Icon name="chevron-down" size={CHEVRON_SIZE} />
               </div>
             </>
           ) : null}
@@ -341,14 +346,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
                               <Icon name="check" size={MENU_ICON_SIZE} />
                             ) : null
                           }
-                          name={
-                            <ContextMenu.Menu
-                              icon={
-                                <Icon name={mode.icon} size={MENU_ICON_SIZE} />
-                              }
-                              name={mode.title}
-                            />
-                          }
+                          name={mode.title}
                         />
                       }
                     />

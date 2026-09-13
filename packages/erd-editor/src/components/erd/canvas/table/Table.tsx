@@ -513,6 +513,11 @@ const Table: FC<TableProps> = (props, ctx) => {
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
+    // A card showing no rows is its header and nothing else, so the band takes
+    // the whole box and all four corners. Stopping it under the header would
+    // leave the padding below it painted in the body's own colour.
+    const headerFillsCard = view && columnIds.length === 0;
+
     // A view lights what a hover or a pin reaches, and nothing at rest. The
     // card wears that as an accent border and a glow, and a table left unlit
     // keeps its type column's width and draws nothing in it.
@@ -578,8 +583,16 @@ const Table: FC<TableProps> = (props, ctx) => {
             x={TABLE_BORDER}
             y={TABLE_BORDER}
             width={rect.width - TABLE_BORDER * 2}
-            height={TABLE_INSET + VIEW_TABLE_HEADER_HEIGHT - TABLE_BORDER}
-            cornerRadius={[TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]}
+            height={
+              headerFillsCard
+                ? rect.height - TABLE_BORDER * 2
+                : TABLE_INSET + VIEW_TABLE_HEADER_HEIGHT - TABLE_BORDER
+            }
+            cornerRadius={
+              headerFillsCard
+                ? TABLE_CORNER_RADIUS
+                : [TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]
+            }
             fill={theme.grayColor3}
             listening={false}
           />

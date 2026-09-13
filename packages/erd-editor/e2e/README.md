@@ -109,8 +109,18 @@ element. `e2e/fixture/index.html` patches `Element.prototype.attachShadow` to
 force `mode: 'open'` **before** the editor module registers the custom element.
 
 This is the fixture's one deliberate deviation from production. It changes
-reachability only — no editor behaviour depends on the mode flag. Production
-code and the published bundle are untouched.
+reachability, and one thing more: `composedPath()` read at a **window**
+listener stops at the host for a closed root and walks into the tree for an
+open one, so a reopened root hides every bug built on that difference — the row
+display menu closed itself on its own item's mousedown for exactly that reason,
+green suite and all. Production code and the published bundle are untouched.
+
+`erd.gotoClosedShadow()` loads the same fixture with `?closedShadow=1`, which
+leaves the mode as production declares it and publishes the root on
+`window.__erdShadowRoot` instead. No locator resolves inside it: reach elements
+through `erd.shadowBox(selector)` and drive them with `erd.clickInShadow(...)`
+or `page.mouse` at the box it returns. Use it whenever the subject is how an
+event reads from outside that boundary, and the open fixture for everything else.
 
 ### 2. The scene is a canvas, so a css locator resolves against a projection
 

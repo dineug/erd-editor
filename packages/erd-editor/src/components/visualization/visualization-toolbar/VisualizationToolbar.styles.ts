@@ -48,9 +48,9 @@ export const readout = css`
 `;
 
 /*
- * The row display trigger, which spells its mode out between a glyph and a
- * chevron and so cannot hold the square pill's width. The pill is spliced in
- * rather than declared again, so this button and its neighbours stay one bar.
+ * The row display trigger, which spells its mode out before its chevron and so
+ * cannot hold the square pill's width. The pill is spliced in rather than
+ * declared again, so this button and its neighbours stay one bar.
  */
 export const showModeTrigger = css`
   ${floating.menu}
@@ -60,9 +60,9 @@ export const showModeTrigger = css`
 `;
 
 /*
- * The mode the trigger stands on, spelled out beside its glyph. Held at the
- * width of the longest of the three, so picking another does not slide the
- * centred bar under the reader's hand.
+ * The mode the trigger stands on, spelled out in words. Held at the width of
+ * the longest of the three, so picking another does not slide the centred bar
+ * under the reader's hand.
  */
 export const showModeLabel = css`
   ${typography.paragraph};
