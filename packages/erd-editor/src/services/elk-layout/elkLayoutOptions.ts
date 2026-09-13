@@ -26,7 +26,7 @@ export function usesPorts(placement: ElkPlacement): boolean {
  * edges alone, and a hint sent with one of those would be paid for and ignored.
  */
 export function usesCoordinateHints(placement: ElkPlacement): boolean {
-  return placement === TablePlacement.liamLayered;
+  return placement === TablePlacement.viewLayered;
 }
 
 /**
@@ -41,11 +41,11 @@ const LAYER_SPACING = 160;
 const COMPONENT_SPACING = 160;
 
 /**
- * What liam's own layout is told, copied option for option. The two
+ * What the reference's own layout is told, copied option for option. The two
  * INTERACTIVE strategies are why a node carries a coordinate hint at all, and
  * the request normalizes that hint rather than reproducing what it measured.
  */
-const LIAM_LAYERED: LayoutOptions = {
+const VIEW_LAYERED: LayoutOptions = {
   'elk.algorithm': 'layered',
   'elk.layered.spacing.baseValue': '40',
   'elk.spacing.componentComponent': '80',
@@ -57,13 +57,13 @@ const LIAM_LAYERED: LayoutOptions = {
   'elk.layered.layering.strategy': 'INTERACTIVE',
 };
 
-/** Liam aligns a node to the left of its layer, which is the one node level option. */
-const LIAM_NODE: LayoutOptions = { 'elk.alignment': 'LEFT' };
+/** The reference aligns a node to the left of its layer, its one node level option. */
+const VIEW_NODE: LayoutOptions = { 'elk.alignment': 'LEFT' };
 
 /**
- * The box the tables joined to nothing are gathered in, told what liam tells
- * its own and nothing besides: the ratio, under the layered algorithm around
- * it, which stands them in one column, as liam means it to. ELK places the box like any node.
+ * The box the tables joined to nothing are gathered in, told what the
+ * reference tells its own and nothing besides: the ratio, under the layered
+ * algorithm around it, which stands them in one column. ELK places the box like any node.
  */
 export const GROUP_NODE_OPTIONS: LayoutOptions = {
   'elk.aspectRatio': '0.5625',
@@ -109,8 +109,8 @@ export function elkLayoutOptions(placement: ElkPlacement): LayoutOptions {
         'elk.layered.nodePlacement.strategy': 'SIMPLE',
         'elk.layered.spacing.edgeNodeBetweenLayers': `${NODE_SPACING}`,
       };
-    case TablePlacement.liamLayered:
-      return { ...LIAM_LAYERED };
+    case TablePlacement.viewLayered:
+      return { ...VIEW_LAYERED };
   }
 }
 
@@ -125,7 +125,7 @@ export function elkLayoutOptions(placement: ElkPlacement): LayoutOptions {
 export function elkNodeLayoutOptions(
   placement: ElkPlacement
 ): LayoutOptions | null {
-  return placement === TablePlacement.liamLayered ? { ...LIAM_NODE } : null;
+  return placement === TablePlacement.viewLayered ? { ...VIEW_NODE } : null;
 }
 
 /**

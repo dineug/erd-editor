@@ -190,7 +190,7 @@ describe('the one authority that places the Flow view', () => {
     await settle();
 
     expect(hoisted.requests).toHaveLength(1);
-    expect(hoisted.requests[0].placement).toBe(TablePlacement.liamLayered);
+    expect(hoisted.requests[0].placement).toBe(TablePlacement.viewLayered);
     expect(tableIdsOf(hoisted.requests[0])).toEqual(['t1', 't2', 't3', 't4']);
     expect(positionsOf(app)).toEqual(landingOf(['t1', 't2', 't3', 't4']));
   });

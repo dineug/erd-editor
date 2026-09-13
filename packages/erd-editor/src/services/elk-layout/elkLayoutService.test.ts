@@ -351,7 +351,7 @@ const NODE = { width: 200, height: 100 };
 
 /** Six tables the document draws in one row, five of them hanging off the first. */
 const documentRow = (scale: number): ElkLayoutRequest => ({
-  placement: TablePlacement.liamLayered,
+  placement: TablePlacement.viewLayered,
   nodes: Array.from({ length: 6 }, (_, index) => ({
     id: `t${index}`,
     ...NODE,
@@ -395,7 +395,7 @@ describe('toElkGraph for the views preset', () => {
 
   it('leaves out the hint of a node the source never placed', () => {
     const graph = toElkGraph({
-      placement: TablePlacement.liamLayered,
+      placement: TablePlacement.viewLayered,
       nodes: [box('t1')],
       edges: [],
     });
@@ -404,7 +404,7 @@ describe('toElkGraph for the views preset', () => {
     expect(graph.children?.[0]).not.toHaveProperty('y');
   });
 
-  it('aligns every node left, which is what liam tells each of them', () => {
+  it('aligns every node left, which is what the reference tells each of them', () => {
     const graph = toElkGraph(documentRow(NODE.width));
 
     expect(
@@ -416,7 +416,7 @@ describe('toElkGraph for the views preset', () => {
 
   it('gives a group node the ratio alone and keeps its children inside it', () => {
     const graph = toElkGraph({
-      placement: TablePlacement.liamLayered,
+      placement: TablePlacement.viewLayered,
       nodes: [
         box('t1'),
         { id: 'group', width: 0, height: 0, children: [box('lone')] },
@@ -469,7 +469,7 @@ describe('ElkLayoutService under the views preset', () => {
   // what comes back is one absolute corner per table and no group at all.
   it('flattens a group away and answers its children in root coordinates', async () => {
     const points = await new ElkLayoutService().layout({
-      placement: TablePlacement.liamLayered,
+      placement: TablePlacement.viewLayered,
       nodes: [
         { id: 't1', ...NODE },
         { id: 't2', ...NODE },
@@ -498,15 +498,15 @@ describe('ElkLayoutService under the views preset', () => {
   });
 
   // Measured rather than read off the options, which is the look section G
-  // asks for by asking for liam's: a group with no algorithm of its own is
+  // asks for by asking for the view preset: a group with no algorithm of its own is
   // laid out by the layered one around it, which stands its tables in one column.
-  it('stands the children of a group in one column, as liam does', async () => {
+  it('stands the children of a group in one column, as the reference does', async () => {
     const lone = Array.from({ length: 8 }, (_, index) => ({
       id: `lone${index}`,
       ...NODE,
     }));
     const points = await new ElkLayoutService().layout({
-      placement: TablePlacement.liamLayered,
+      placement: TablePlacement.viewLayered,
       nodes: [{ id: 'group', width: 0, height: 0, children: lone }],
       edges: [],
     });

@@ -324,7 +324,7 @@ describe('createElkLayoutRequest hints', () => {
 
     const request = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered
+      TablePlacement.viewLayered
     );
 
     expect(request.nodes.every(node => Number.isFinite(node.x))).toBe(true);
@@ -340,7 +340,7 @@ describe('createElkLayoutRequest hints', () => {
 
     const request = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered
+      TablePlacement.viewLayered
     );
     const widths = request.nodes.map(node => node.width);
     const scale = (widths[0] + widths[1]) / 2;
@@ -383,7 +383,7 @@ describe('createElkLayoutRequest hints', () => {
     addTable(far, 't2', 'posts', { x: 90_400, y: -70_000 });
 
     const hints = (app: AppContext) =>
-      createElkLayoutRequest(app.store.state, TablePlacement.liamLayered).nodes;
+      createElkLayoutRequest(app.store.state, TablePlacement.viewLayered).nodes;
 
     expect(hints(far)).toEqual(hints(near));
   });
@@ -393,7 +393,7 @@ describe('createElkLayoutRequest hints', () => {
     addTable(app, 't1', 'users', { x: -820, y: 640 });
 
     expect(
-      createElkLayoutRequest(app.store.state, TablePlacement.liamLayered)
+      createElkLayoutRequest(app.store.state, TablePlacement.viewLayered)
         .nodes[0]
     ).toMatchObject({ x: 0, y: 0 });
   });
@@ -406,7 +406,7 @@ describe('createElkLayoutRequest hints', () => {
 
     const request = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered,
+      TablePlacement.viewLayered,
       { source: 'flow' }
     );
 
@@ -422,7 +422,7 @@ describe('createElkLayoutRequest hints', () => {
 
     const request = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered,
+      TablePlacement.viewLayered,
       { source: 'flow' }
     );
 
@@ -442,7 +442,7 @@ describe('createElkLayoutRequest options', () => {
 
     const request = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered,
+      TablePlacement.viewLayered,
       { tableIds: ['t1', 't2'] }
     );
 
@@ -460,10 +460,10 @@ describe('createElkLayoutRequest options', () => {
       .collection('tableEntities')
       .selectById('t1')!;
 
-    const view = createElkLayoutRequest(state, TablePlacement.liamLayered, {
+    const view = createElkLayoutRequest(state, TablePlacement.viewLayered, {
       source: 'flow',
     });
-    const document = createElkLayoutRequest(state, TablePlacement.liamLayered);
+    const document = createElkLayoutRequest(state, TablePlacement.viewLayered);
 
     expect(view.nodes[0].height).toBe(calcTableHeight(table, 0, 'flow'));
     expect(document.nodes[0].height).toBe(calcTableHeight(table));
@@ -493,12 +493,12 @@ describe('createElkLayoutRequest options', () => {
 
     const beforeOpen = createElkLayoutRequest(
       state,
-      TablePlacement.liamLayered,
+      TablePlacement.viewLayered,
       {
         source: 'flow',
       }
     );
-    const document = createElkLayoutRequest(state, TablePlacement.liamLayered);
+    const document = createElkLayoutRequest(state, TablePlacement.viewLayered);
 
     expect(beforeOpen.nodes[0].height).toBe(
       calcTableHeight(table, table.columnIds.length, 'flow')
@@ -520,7 +520,7 @@ describe('createElkLayoutRequest options', () => {
 
     const { nodes } = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered,
+      TablePlacement.viewLayered,
       { groupUnrelated: true }
     );
 
@@ -547,7 +547,7 @@ describe('createElkLayoutRequest options', () => {
 
     const { nodes } = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered
+      TablePlacement.viewLayered
     );
 
     expect(nodes.every(node => node.children === undefined)).toBe(true);
@@ -561,7 +561,7 @@ describe('createElkLayoutRequest options', () => {
 
     const { nodes } = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered,
+      TablePlacement.viewLayered,
       { groupUnrelated: true }
     );
 
@@ -570,8 +570,8 @@ describe('createElkLayoutRequest options', () => {
 });
 
 describe('toViewPoints', () => {
-  const liam = (state: RootState) =>
-    createElkLayoutRequest(state, TablePlacement.liamLayered);
+  const viewRequest = (state: RootState) =>
+    createElkLayoutRequest(state, TablePlacement.viewLayered);
 
   it('puts the corner of the layout at the origin of the view', () => {
     const app = createApp();
@@ -579,7 +579,7 @@ describe('toViewPoints', () => {
     addTable(app, 't2', 'posts', { x: 6_000, y: 5_000 });
     const state = app.store.state;
 
-    const placed = toViewPoints(liam(state), [
+    const placed = toViewPoints(viewRequest(state), [
       { id: 't1', x: 40, y: 90 },
       { id: 't2', x: 640, y: 90 },
     ]);
@@ -599,8 +599,8 @@ describe('toViewPoints', () => {
     addTable(far, 't1', 'users', { x: -50_000, y: 12_000 });
     const points: ElkLayoutPoint[] = [{ id: 't1', x: 33, y: 44 }];
 
-    expect(toViewPoints(liam(far.store.state), points)).toEqual(
-      toViewPoints(liam(near.store.state), points)
+    expect(toViewPoints(viewRequest(far.store.state), points)).toEqual(
+      toViewPoints(viewRequest(near.store.state), points)
     );
   });
 
@@ -612,7 +612,7 @@ describe('toViewPoints', () => {
     relate(app, 'r1', 't1', 't2');
     const request = createElkLayoutRequest(
       app.store.state,
-      TablePlacement.liamLayered,
+      TablePlacement.viewLayered,
       { groupUnrelated: true }
     );
 
@@ -629,6 +629,6 @@ describe('toViewPoints', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
 
-    expect(toViewPoints(liam(app.store.state), [])).toEqual([]);
+    expect(toViewPoints(viewRequest(app.store.state), [])).toEqual([]);
   });
 });

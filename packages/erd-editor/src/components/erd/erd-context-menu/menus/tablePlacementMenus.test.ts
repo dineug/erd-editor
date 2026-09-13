@@ -44,7 +44,7 @@ describe('tablePlacementMenus', () => {
   it('offers every placement the author can pick, once each', () => {
     expect([...menus.map(menu => menu.placement)].sort()).toEqual(
       Object.values(TablePlacement)
-        .filter(placement => placement !== TablePlacement.liamLayered)
+        .filter(placement => placement !== TablePlacement.viewLayered)
         .sort()
     );
   });

@@ -122,7 +122,7 @@ function toHints(
  * folds the tables no relationship reaches into one packed box.
  *
  * @example
- * createElkLayoutRequest(state, TablePlacement.liamLayered, { source: 'flow' });
+ * createElkLayoutRequest(state, TablePlacement.viewLayered, { source: 'flow' });
  */
 export function createElkLayoutRequest(
   state: RootState,

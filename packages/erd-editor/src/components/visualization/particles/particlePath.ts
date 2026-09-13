@@ -1,7 +1,7 @@
 import type { Point } from '@/internal-types';
 import { VIEW_BEZIER_SEGMENTS } from '@/utils/draw-relationship/bezier';
 
-/** How many particles ride one lit connector at a time, as liam draws them. */
+/** How many particles ride one lit connector at a time, as the reference draws them. */
 export const PARTICLE_COUNT = 6;
 
 /** How long one particle takes from the PK end to the FK end, in milliseconds. */

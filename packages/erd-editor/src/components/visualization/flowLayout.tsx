@@ -188,11 +188,11 @@ function landFlowLayout(
  */
 function flowLayoutRequest(state: RootState, slot: FlowSlot): ElkLayoutRequest {
   return slot === 'focused'
-    ? createElkLayoutRequest(state, TablePlacement.liamLayered, {
+    ? createElkLayoutRequest(state, TablePlacement.viewLayered, {
         tableIds: getVisibleIds(state, FLOW).tableIds,
         source: FLOW,
       })
-    : createElkLayoutRequest(state, TablePlacement.liamLayered, {
+    : createElkLayoutRequest(state, TablePlacement.viewLayered, {
         source: FLOW,
         groupUnrelated: true,
       });

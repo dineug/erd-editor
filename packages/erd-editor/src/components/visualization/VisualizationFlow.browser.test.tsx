@@ -620,7 +620,7 @@ describe('the Flow mode of the visualization tab', () => {
     await enterFlow(mounted);
 
     expect(hoisted.requests).toHaveLength(1);
-    expect(hoisted.requests[0].placement).toBe(TablePlacement.liamLayered);
+    expect(hoisted.requests[0].placement).toBe(TablePlacement.viewLayered);
     const landed = positionsOf(app);
     expect(Object.keys(landed ?? {}).sort()).toEqual(['a', 'b', 'c', 'd']);
     // Where ELK put them rather than where the document has them.
@@ -1499,7 +1499,7 @@ describe('the display set of the Flow view', () => {
     expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
   });
 
-  it('asks ELK for what it shows, at the size the key rows draw it, under the preset liam places with (AC-32)', async () => {
+  it('asks ELK for what it shows, at the size the key rows draw it, under the view preset (AC-32)', async () => {
     const app = createTestAppContext();
     seedFields(app);
     const mounted = await mountVisualization(app);
@@ -1508,7 +1508,7 @@ describe('the display set of the Flow view', () => {
 
     expect(hoisted.requests).toHaveLength(1);
     const [request] = hoisted.requests;
-    expect(request.placement).toBe(TablePlacement.liamLayered);
+    expect(request.placement).toBe(TablePlacement.viewLayered);
     expect(request.nodes.map(node => node.id)).toEqual(['t1', 't2']);
     expect(request.nodes.every(node => !node.children)).toBe(true);
     expect(request.edges.map(({ source, target }) => [source, target])).toEqual(

@@ -14,7 +14,7 @@ const transitionClock: TransitionClock = {
   cancelFrame: handle => cancelAnimationFrame(handle),
 };
 
-/** How long a highlight takes to come up or go out, which is the one liam gives its edges. */
+/** How long a highlight takes to come up or go out, the span the reference gives its edges. */
 export const TRANSITION_MS = 300;
 
 type Transition = { from: number; to: number; startedAt: number };

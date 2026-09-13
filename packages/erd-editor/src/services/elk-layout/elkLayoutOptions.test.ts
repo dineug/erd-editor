@@ -20,11 +20,11 @@ const ELK_PLACEMENTS: ElkPlacement[] = [
 ];
 
 /**
- * Section G of the spec, option for option, which is what liam's own
+ * Section G of the spec, option for option, which is what the reference's own
  * getElkLayout tells ELK. Written out rather than imported, so a change to the
- * preset has to be made twice and reads as a deliberate departure from liam.
+ * preset has to be made twice and reads as a deliberate departure from it.
  */
-const LIAM_LAYOUT_OPTIONS = {
+const VIEW_LAYOUT_OPTIONS = {
   'elk.algorithm': 'layered',
   'elk.layered.spacing.baseValue': '40',
   'elk.spacing.componentComponent': '80',
@@ -43,13 +43,13 @@ describe('isElkPlacement', () => {
     for (const placement of ELK_PLACEMENTS) {
       expect(isElkPlacement(placement)).toBe(true);
     }
-    expect(isElkPlacement(TablePlacement.liamLayered)).toBe(true);
+    expect(isElkPlacement(TablePlacement.viewLayered)).toBe(true);
   });
 
   // The lists above are written out, so this is what fails when a placement is
   // added and the specs below quietly stop covering it.
   it('names, with the views preset, every placement these specs cover', () => {
-    expect([...ELK_PLACEMENTS, TablePlacement.liamLayered].sort()).toEqual(
+    expect([...ELK_PLACEMENTS, TablePlacement.viewLayered].sort()).toEqual(
       Object.values(TablePlacement).filter(isElkPlacement).sort()
     );
   });
@@ -58,14 +58,14 @@ describe('isElkPlacement', () => {
 // AC-21 and AC-32: Flow and Focus both place with this preset, so what the two
 // of them ask ELK for is pinned once, here.
 describe('elkLayoutOptions for the views preset', () => {
-  it('tells ELK what liam tells it, option for option and nothing besides', () => {
-    expect(elkLayoutOptions(TablePlacement.liamLayered)).toEqual(
-      LIAM_LAYOUT_OPTIONS
+  it('tells ELK what the reference tells it, option for option and nothing besides', () => {
+    expect(elkLayoutOptions(TablePlacement.viewLayered)).toEqual(
+      VIEW_LAYOUT_OPTIONS
     );
   });
 
   it('gives a node its alignment, which is the one option at that level', () => {
-    expect(elkNodeLayoutOptions(TablePlacement.liamLayered)).toEqual({
+    expect(elkNodeLayoutOptions(TablePlacement.viewLayered)).toEqual({
       'elk.alignment': 'LEFT',
     });
   });
@@ -77,17 +77,17 @@ describe('elkLayoutOptions for the views preset', () => {
   });
 
   it('joins table to table, so it asks for no port', () => {
-    expect(usesPorts(TablePlacement.liamLayered)).toBe(false);
+    expect(usesPorts(TablePlacement.viewLayered)).toBe(false);
   });
 
   // Section G names the ratio and nothing else for the group; an algorithm
-  // of its own would pack the column liam stands these tables in.
-  it('gathers the tables no relationship reaches at the ratio liam gives the group, and nothing besides', () => {
+  // of its own would pack the column the reference stands these tables in.
+  it('gathers the tables no relationship reaches at the ratio the reference gives the group, and nothing besides', () => {
     expect(GROUP_NODE_OPTIONS).toEqual({ 'elk.aspectRatio': '0.5625' });
   });
 
   it('is the one placement that reads a coordinate hint', () => {
-    expect(usesCoordinateHints(TablePlacement.liamLayered)).toBe(true);
+    expect(usesCoordinateHints(TablePlacement.viewLayered)).toBe(true);
 
     for (const placement of ELK_PLACEMENTS) {
       expect(usesCoordinateHints(placement)).toBe(false);
@@ -102,7 +102,7 @@ describe('ELK_ALGORITHMS', () => {
   it('names every algorithm a placement asks for, once each', () => {
     expect([...ELK_ALGORITHMS].sort()).toEqual(['layered']);
 
-    for (const placement of [...ELK_PLACEMENTS, TablePlacement.liamLayered]) {
+    for (const placement of [...ELK_PLACEMENTS, TablePlacement.viewLayered]) {
       expect(ELK_ALGORITHMS).toContain(
         elkLayoutOptions(placement)['elk.algorithm']
       );
