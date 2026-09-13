@@ -1,6 +1,9 @@
 import { observable } from '@dineug/r-html';
 
-import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
+import {
+  RELATIONSHIP_STROKE_WIDTH,
+  VIEW_RELATIONSHIP_STROKE_WIDTH,
+} from '@/constants/layout';
 import {
   Point,
   Relationship,
@@ -453,6 +456,15 @@ function inflate({ x, y, width, height }: BBox, padding: number): BBox {
     width: width + padding * 2,
     height: height + padding * 2,
   };
+}
+
+/** How thick a connector is drawn in the source given, markers and all. */
+export function relationshipStrokeWidth(
+  source: GeometrySource = 'document'
+): number {
+  return source === 'document'
+    ? RELATIONSHIP_STROKE_WIDTH
+    : VIEW_RELATIONSHIP_STROKE_WIDTH;
 }
 
 /**

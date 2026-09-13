@@ -121,6 +121,13 @@ export const DIFF_TREE_WIDTH = 200;
 export const RELATIONSHIP_STROKE_WIDTH = 2;
 
 /**
+ * The same connector inside a view, at the reference's hairline. A particle
+ * riding a lit one is 2.4 units across, so a heavier line swallows it: what a
+ * reader sees moving is the bulge the particle makes over the stroke, not a colour of its own.
+ */
+export const VIEW_RELATIONSHIP_STROKE_WIDTH = 1;
+
+/**
  * The invisible band that catches the pointer for a connector, because
  * hit-testing follows the painted stroke. Narrower than NUDGE_GAP, so it stays
  * clear of the neighbouring corridor at the router's usual separation.

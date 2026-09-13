@@ -4,12 +4,12 @@ import { FC, repeat } from '@dineug/r-html';
 
 import Relationship from '@/components/erd/canvas/relationship-group/relationship/Relationship';
 import { useSceneSource } from '@/components/sceneSourceContext';
-import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { Relationship as RelationshipType } from '@/internal-types';
 import {
   type CullingRect,
   isRelationshipVisible,
 } from '@/konva/scene/viewport';
+import { relationshipStrokeWidth } from '@/utils/draw-relationship';
 
 export type RelationshipGroupProps = {
   relationships: RelationshipType[];
@@ -30,7 +30,7 @@ const RelationshipGroup: FC<RelationshipGroupProps> = (props, ctx) => {
   return () => {
     const { relationships, viewport, litIds } = props;
     const source = sourceRef.value;
-    const strokeWidth = props.strokeWidth ?? RELATIONSHIP_STROKE_WIDTH;
+    const strokeWidth = props.strokeWidth ?? relationshipStrokeWidth(source);
     const visible = viewport
       ? relationships.filter(relationship =>
           isRelationshipVisible(viewport, relationship, strokeWidth, source)

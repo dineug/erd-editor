@@ -210,7 +210,8 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     const shape = relationshipShape(
       relationship.relationshipType,
       relationshipPath,
-      stroke
+      stroke,
+      strokeWidth
     );
 
     return (
@@ -236,17 +237,17 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
           strokeWidth={strokeWidth}
           listening={false}
         />
-        {decorationLine(path.line.start, stroke)}
-        {decorationLine(line.line.start.base, stroke)}
+        {decorationLine(path.line.start, stroke, strokeWidth)}
+        {decorationLine(line.line.start.base, stroke, strokeWidth)}
         {relationship.startRelationshipType === StartRelationshipType.ring ? (
           <>
-            {decorationRing(line.startCircle, stroke)}
-            {decorationLine(line.line.start.center, stroke)}
+            {decorationRing(line.startCircle, stroke, strokeWidth)}
+            {decorationLine(line.line.start.center, stroke, strokeWidth)}
           </>
         ) : (
           <>
-            {decorationLine(line.line.start.base2, stroke)}
-            {decorationLine(line.line.start.center2, stroke)}
+            {decorationLine(line.line.start.base2, stroke, strokeWidth)}
+            {decorationLine(line.line.start.center2, stroke, strokeWidth)}
           </>
         )}
         {shape}

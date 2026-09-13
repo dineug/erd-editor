@@ -12,7 +12,10 @@ import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import RelationshipGroup from '@/components/erd/canvas/relationship-group/RelationshipGroup';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
-import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
+import {
+  RELATIONSHIP_STROKE_WIDTH,
+  VIEW_RELATIONSHIP_STROKE_WIDTH,
+} from '@/constants/layout';
 import { Direction, RelationshipType } from '@/constants/schema';
 import { ViewKind } from '@/engine/modules/editor/state';
 import {
@@ -264,6 +267,29 @@ describe('RelationshipGroup', () => {
     const group = await mountGroup({ relationships: [near()] });
 
     expect(routeOf(group, 'near').getAttr('strokeWidth')).toBe(
+      RELATIONSHIP_STROKE_WIDTH
+    );
+  });
+
+  /**
+   * A view draws the reference's hairline. The particles riding a lit
+   * connector are 2.4 units across, so a heavier line swallows the bulge that
+   * is the whole of what a reader sees moving, the particle being the colour of the line it rides.
+   */
+  it('draws a view connector at the hairline, and the document at its own width', async () => {
+    const view = await mountGroup({ relationships: [near()], source: 'flow' });
+    const document = await mountGroup({
+      relationships: [near()],
+      source: 'document',
+    });
+
+    expect(routeOf(view, 'near').getAttr('strokeWidth')).toBe(
+      VIEW_RELATIONSHIP_STROKE_WIDTH
+    );
+    expect(routeOf(document, 'near').getAttr('strokeWidth')).toBe(
+      RELATIONSHIP_STROKE_WIDTH
+    );
+    expect(VIEW_RELATIONSHIP_STROKE_WIDTH).toBeLessThan(
       RELATIONSHIP_STROKE_WIDTH
     );
   });
