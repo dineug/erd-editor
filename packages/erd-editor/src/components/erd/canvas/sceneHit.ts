@@ -4,11 +4,12 @@ import type { Shape } from 'konva/lib/Shape';
 import { ICON_VIEW_SIZE } from '@/components/erd/canvas/sceneTokens';
 import {
   getColumnTextY,
-  HEADER_TEXT_Y,
+  getHeaderTextY,
 } from '@/components/erd/canvas/table/cellLayout';
 import {
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_INPUT_HEIGHT,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
 import { tableRowHeight } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
@@ -60,19 +61,26 @@ export const columnCellHit: Record<GeometrySource, HitFunc> = {
 };
 
 /**
- * The header cell's box, the same way, at the header input's own height. One
- * value for both sources, because a view header is exactly that padded box
- * with no icon band over it.
+ * The header cell's box, the same way: the document's padded input box, and in
+ * a view the whole band the card leaves above its rows, so a press anywhere on
+ * the header line lands on the name.
  */
-export const headerCellHit: HitFunc = (context, shape) => {
-  hitBox(
-    context,
-    shape,
-    0,
-    -HEADER_TEXT_Y,
-    shape.width() + INPUT_MARGIN_RIGHT,
-    TABLE_HEADER_INPUT_HEIGHT
-  );
+function headerCellHitOf(source: GeometrySource): HitFunc {
+  const top = 0 - getHeaderTextY(source);
+  const height =
+    source === 'document'
+      ? TABLE_HEADER_INPUT_HEIGHT
+      : VIEW_TABLE_HEADER_HEIGHT;
+
+  return (context, shape) => {
+    hitBox(context, shape, 0, top, shape.width() + INPUT_MARGIN_RIGHT, height);
+  };
+}
+
+/** One of those per source, built once, for the reason columnCellHit is. */
+export const headerCellHit: Record<GeometrySource, HitFunc> = {
+  document: headerCellHitOf('document'),
+  flow: headerCellHitOf('flow'),
 };
 
 /**

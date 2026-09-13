@@ -12,7 +12,6 @@ import {
   changeDatabaseNameAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
-import { getActiveTransform } from '@/konva/scene/viewport';
 import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import {
@@ -91,9 +90,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   return () => {
     const { store, keyBindingMap } = app.value;
     const { settings, editor, doc } = store.state;
-    // The bar sits beside every scene rather than in one, so it shows the
-    // active view's zoom, the one the input's dispatch is redirected to.
-    const { zoomLevel } = getActiveTransform(store.state);
     const title = (name: string, keyBindingName: KeyBindingName) =>
       toShortcutTitle(keyBindingMap, name, keyBindingName);
 
@@ -103,8 +99,13 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showTimeTravel = editor.openMap[Open.timeTravel];
     const showDiffViewer = editor.openMap[Open.diffViewer];
 
+    // The zoom field and the history group stand on their own conditions: the
+    // group leaves on an open panel, while the field, drawn on the ERD tab
+    // alone where no view is ever active, shows and drives the document's zoom.
+    const isErd = settings.canvasType === CanvasType.ERD;
+
     const showUndoRedo =
-      settings.canvasType === CanvasType.ERD &&
+      isErd &&
       !showAutomaticTablePlacement &&
       !showTableProperties &&
       !showDiffViewer &&
@@ -123,14 +124,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           width={150}
           value={settings.databaseName}
           onInput={handleChangeDatabaseName}
-        />
-        <TextInput
-          title="zoom level"
-          placeholder="zoom level"
-          width={45}
-          value={toZoomFormat(zoomLevel)}
-          numberOnly={true}
-          onChange={handleZoomLevel}
         />
         <div class={styles.vertical}></div>
         <div
@@ -242,6 +235,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               <Icon name="rotate-ccw-clock" size={16} />
             </div>
           </>
+        ) : null}
+        {isErd ? (
+          <TextInput
+            title="zoom level"
+            placeholder="zoom level"
+            width={45}
+            value={toZoomFormat(settings.zoomLevel)}
+            numberOnly={true}
+            onChange={handleZoomLevel}
+          />
         ) : null}
         <div class={styles.tableCount}>Table: {doc.tableIds.length}</div>
       </div>

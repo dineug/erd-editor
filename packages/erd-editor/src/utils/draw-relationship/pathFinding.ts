@@ -14,15 +14,15 @@ import {
   PathPoint,
   RelationshipPath,
   ROUTE_CHAMFER,
-  VIEW_ROUTE_ARC,
 } from '@/utils/draw-relationship';
-import { arcPolyline } from '@/utils/draw-relationship/arcCorner';
+import { bezierPolyline } from '@/utils/draw-relationship/bezier';
 import { chamferPolyline } from '@/utils/draw-relationship/chamfer';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import {
   clampStub,
   facingGap,
   isHorizontal,
+  outwardSign,
   stubFor,
 } from '@/utils/draw-relationship/stub';
 
@@ -83,16 +83,26 @@ function getPath(
         ];
       }
 
+      // A view draws one curve between the turning points and reads no route:
+      // the reference has none either, and a chamfered polyline still read as
+      // right angles however far its corners were cut back.
+      if (source !== 'document') {
+        return toSegments(
+          bezierPolyline(
+            this.M,
+            outwardOf(start.direction),
+            this.L,
+            outwardOf(end.direction)
+          )
+        );
+      }
+
       const polyline =
         route && route.length > 1
           ? route
           : twoBend(this.M, this.L, start.direction);
 
-      return toSegments(
-        source === 'document'
-          ? chamferPolyline(polyline, ROUTE_CHAMFER)
-          : arcPolyline(polyline, VIEW_ROUTE_ARC)
-      );
+      return toSegments(chamferPolyline(polyline, ROUTE_CHAMFER));
     },
   };
 
@@ -346,6 +356,13 @@ function toSegments(points: Point[]): Array<[Point, Point]> {
     segments.push([points[index - 1], points[index]]);
   }
   return segments;
+}
+
+/** Which way a connector leaves an anchor, as the unit step its curve grows along. */
+function outwardOf(direction: number): Point {
+  const sign = outwardSign(direction);
+
+  return isHorizontal(direction) ? { x: sign, y: 0 } : { x: 0, y: sign };
 }
 
 /**

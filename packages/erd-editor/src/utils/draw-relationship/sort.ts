@@ -196,13 +196,37 @@ export function relationshipSort(
     setAnchors(origin, change, source);
   }
 
-  routeRelationships(state, changeMap, slotMap, source);
+  if (source === 'document') {
+    routeRelationships(state, changeMap, slotMap, source);
+    return;
+  }
+
+  stubRelationships(changeMap, slotMap, source);
+}
+
+/**
+ * A view draws one curve between the two turning points and reads no route, so
+ * its channel holds those two points and nothing else. Skipping the router
+ * also keeps a nudge that cannot move them from waking the renders that read them.
+ */
+function stubRelationships(
+  changeMap: Map<Relationship, ChangeRelationship>,
+  slotMap: Map<string, SlotPair>,
+  source: GeometrySource
+) {
+  for (const [origin, change] of changeMap.entries()) {
+    const { id, start, end } = change;
+    if (start.tableId === end.tableId) continue;
+
+    const { m, l } = stubEnds(change, slotMap.get(id) ?? [0, 0]);
+    setRoute(origin, [m, l], source);
+  }
 }
 
 /**
  * Routes every relationship around the tables, then pulls apart the routes
- * sharing a channel. Reads the anchors and slots this sort just placed, never
- * the entity: a view leaves the entity alone, and the document has written the same values to it.
+ * sharing a channel. The document alone reaches it, and it reads the anchors
+ * and slots this sort just placed rather than the entity it has written them to.
  */
 function routeRelationships(
   state: RootState,

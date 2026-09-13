@@ -34,10 +34,7 @@ import {
 import { ZOOM_STEP } from '@/constants/zoom';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { ShowMode, ViewKind } from '@/engine/modules/editor/state';
-import {
-  viewOpenAction,
-  viewScrollToAction,
-} from '@/engine/modules/editor/view.actions';
+import { viewScrollToAction } from '@/engine/modules/editor/view.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import {
@@ -52,7 +49,7 @@ import {
 import { whenDrawn } from '@/konva/batchDraw';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
-import { getHighlightIds } from '@/konva/scene/viewLayout';
+import { getHighlightIds, getViewPinnedTable } from '@/konva/scene/viewLayout';
 import { toScreenPoint } from '@/konva/scene/viewport';
 
 const hoisted = vi.hoisted(() => ({
@@ -164,7 +161,15 @@ const bodyOf = (id: string) => tableOf(id).findOne<Rect>('.table-body') as Rect;
 const rowCountOf = (id: string) => tableOf(id).find('.column-row').length;
 
 const buttonOf = (id: string, name: string) =>
-  tableOf(id).findOne(`.${name}`) ?? null;
+  tableOf(id).findOne<Group>(`.${name}`) ?? null;
+
+/**
+ * The shape a press on a header button lands on. Konva names the press for the
+ * shape under the pointer and bubbles it from there, so a case firing at the
+ * icon group would hand the card a press with no target and prove nothing.
+ */
+const buttonHitOf = (id: string, name: string) =>
+  buttonOf(id, name)?.getChildren()[0] ?? null;
 
 const particleLayer = () =>
   flowStage().findOne<Layer>('.view-particles') as Layer;
@@ -183,6 +188,10 @@ const litRelationshipIds = (app: AppContext) =>
 /** The tables the view lights, sorted, off the same state. */
 const litTableIds = (app: AppContext) =>
   [...getHighlightIds(app.store.state, ViewKind.flow).tableIds].sort();
+
+/** The one card the view holds lit with no pointer on it, or null while it holds none. */
+const pinnedTableOf = (app: AppContext) =>
+  getViewPinnedTable(app.store.state, ViewKind.flow);
 
 const menuOf = (mounted: Mounted, title: string) =>
   mounted.container.querySelector<HTMLElement>(
@@ -243,21 +252,27 @@ async function mountVisualization(app: AppContext): Promise<Mounted> {
 }
 
 /**
- * Stands the reader in the Flow mode on the display set given: narrowed to the
- * centers, or over the whole document where there are none. Both are one
- * screen and one slot, which is what the cases below are a table over.
+ * Stands the reader in the Flow mode on the display set given: over the whole
+ * document, or narrowed the way a reader narrows it, by pressing Related on
+ * the one card the centers name. Both are one screen and one slot.
  */
 async function enterDisplaySet(centerIds: string[]): Promise<Mounted> {
   const app = createTestAppContext();
   seed(app);
   const mounted = await mountVisualization(app);
 
-  if (centerIds.length) {
-    app.store.dispatchSync(viewOpenAction({ kind: ViewKind.flow, centerIds }));
-  }
-
   click(menuOf(mounted, 'Flow'));
   await settle();
+
+  // One center and one gesture, since one card's button is what a reader has:
+  // the press lands on the card as well as on the button, so an entry that
+  // dispatched the action instead would never meet what the press leaves behind.
+  const [centerId] = centerIds;
+  if (centerId) {
+    await hoverTable(centerId);
+    await pressRelated(centerId);
+    await leaveTable(centerId);
+  }
 
   return mounted;
 }
@@ -282,21 +297,40 @@ async function leaveTable(id: string) {
   await settle();
 }
 
+/**
+ * The press, the lift and the click a reader lands on the Related button of a
+ * hovered card, in the order the stage sends them, so the card sees the press
+ * that goes past it on the way.
+ */
+async function pressRelated(id: string) {
+  const at = { clientX: 20, clientY: 20 };
+  const shape = buttonHitOf(id, 'table-related');
+  // A press on nothing narrows nothing, which reads exactly like a view that
+  // was already narrowed, so an unhovered card would pass the cases below.
+  expect(shape).not.toBeNull();
+
+  fireScenePointer(shape!, 'mousedown', at);
+  await settle();
+  fireScenePointer(shape!, 'mouseup', at);
+  fireScenePointer(shape!, 'click', at);
+  await settle();
+}
+
 type DisplaySet = {
   name: string;
   centerIds: string[];
-  /** What the view lights with no pointer on it, which differs by display set on purpose. */
+  /** What the view lights with no pointer on it, which is nothing in either display set. */
   restLit: string[];
   /**
    * What it lights with the neighbour t2 under the pointer. A neighbour and
-   * never a center: hovering a center adds nothing in either display set, so a
-   * case measured that way is red against a correct build.
+   * never a center: the connector it adds runs between two neighbours, which
+   * no display set lights for its own sake.
    */
   hoverLit: string[];
   /**
-   * The cards lit before and after that hover. The narrowed set is saturated
-   * at rest and cannot grow, which is why the connectors above are what
-   * parity is measured on rather than these.
+   * The cards lit before and after that hover, which now match across the two
+   * display sets: neither rests lit, and the same three come up under the
+   * same pointer, so the cards measure the parity as squarely as the connectors do.
    */
   litCards: { rest: string[]; hover: string[] };
   /** The cards the display set draws, which is the other thing that differs. */
@@ -305,8 +339,8 @@ type DisplaySet = {
 
 /**
  * The two states, each with what it lights at rest and under the same hover.
- * A narrowed view is lit at rest by the ruling of spec B.2, so nothing here
- * opens on an unlit screen: the delta on a hovered neighbour is the measure.
+ * Neither rests lit: the centers seed nothing, so a narrowed view opens on the
+ * same dark screen the whole document does and the pointer is the whole of the light.
  */
 const DISPLAY_SETS: DisplaySet[] = [
   {
@@ -320,9 +354,9 @@ const DISPLAY_SETS: DisplaySet[] = [
   {
     name: 'one center and its hop',
     centerIds: ['t1'],
-    restLit: ['r12', 'r13'],
-    hoverLit: ['r12', 'r13', 'r23'],
-    litCards: { rest: ['t1', 't2', 't3'], hover: ['t1', 't2', 't3'] },
+    restLit: [],
+    hoverLit: ['r12', 'r23'],
+    litCards: { rest: [], hover: ['t1', 't2', 't3'] },
     shown: ['t1', 't2', 't3'],
   },
 ];
@@ -352,9 +386,9 @@ describe.each(DISPLAY_SETS)(
 
       await hoverTable('t2');
 
-      // The delta on the connectors is the measure. The two rests differ and
-      // the card set is already saturated in the narrowed view, so it is the
-      // connector the hover adds that says the same mechanism ran in both.
+      // Both display sets rest dark and both light the same two connectors and
+      // three cards under the same pointer, which is the parity: the narrowed
+      // view runs the mechanism the whole document runs, to the same degree.
       expect(litRelationshipIds(app)).toEqual(hoverLit);
       expect(hoverLit.length).toBeGreaterThan(restLit.length);
       expect(litTableIds(app)).toEqual(litCards.hover);
@@ -363,6 +397,28 @@ describe.each(DISPLAY_SETS)(
 
       expect(litRelationshipIds(app)).toEqual(restLit);
       expect(litTableIds(app)).toEqual(litCards.rest);
+    });
+
+    it('leaves the pin to the card body, which the Related press goes past', async () => {
+      const { app } = await enterDisplaySet(centerIds);
+
+      expect(pinnedTableOf(app)).toBeNull();
+
+      await hoverTable('t1');
+      await pressRelated('t1');
+      await leaveTable('t1');
+
+      // The press that narrows the view runs over the card that carries the
+      // button, and a pin taken there would light the hub and its one hop,
+      // which in the view it just opened is every card on the screen.
+      expect(pinnedTableOf(app)).toBeNull();
+      expect(litTableIds(app)).toEqual([]);
+
+      await clickTable('t1');
+      await leaveTable('t1');
+
+      expect(pinnedTableOf(app)).toBe('t1');
+      expect(litTableIds(app)).toEqual(['t1', 't2', 't3']);
     });
 
     it('pins that same set on a click of the neighbour and unpins it on the next', async () => {

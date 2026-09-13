@@ -107,8 +107,8 @@ const link = (id: string, start: string, end: string) =>
 
 /**
  * A chain t1 - t2 - t3, a second neighbour t4 of t1 joined to t2, and t5 off
- * on its own: a Flow narrowed to t1 lights r12 and r14, shows r24 unlit since
- * neither end is a center, and leaves r23 and t5 out of the display set entirely.
+ * on its own: a Flow narrowed to t1 lights r12 and r14 under a hover on t1,
+ * leaves r24 unlit there, and drops r23 and t5 from the display set entirely.
  */
 function seed(app: AppContext) {
   app.store.dispatchSync(
@@ -222,6 +222,28 @@ const leave = async (id: string) => {
   await settleAndPaint();
 };
 
+/**
+ * The way a reader narrows the view: hover a card, then press Related on its
+ * header. Konva names a press for the shape under the pointer and bubbles it
+ * from there, so the card sees the press that opens the view go past it.
+ */
+const narrowByRelated = async (id: string) => {
+  const at = { clientX: 20, clientY: 20 };
+
+  await hover(id);
+  const shape = tableOf(id).findOne<Group>('.table-related')?.getChildren()[0];
+  // A press on nothing narrows nothing, which reads like a view already
+  // narrowed, so an unhovered card would pass the case standing on this.
+  expect(shape).toBeDefined();
+
+  fireScenePointer(shape!, 'mousedown', at);
+  await settleAndPaint();
+  fireScenePointer(shape!, 'mouseup', at);
+  fireScenePointer(shape!, 'click', at);
+  await settleAndPaint();
+  await leave(id);
+};
+
 /** Whether whenDrawn answers at all, which an open animation window would hold up. */
 const drawnAnswers = () =>
   Promise.race([
@@ -230,13 +252,22 @@ const drawnAnswers = () =>
   ]);
 
 describe('the particles of a Flow view', () => {
-  it('runs six on every lit connector as the view opens, and none on a connector it shows unlit (AC-33)', async () => {
+  it('runs six on every connector a hover lights, none as the view opens, and none on one it shows unlit (AC-33)', async () => {
     const app = createTestAppContext();
     seed(app);
-    await mountFlow(app, ['t1']);
+    await mountFlow(app, []);
+    // Narrowed the way a reader narrows it, since the screen this case reads
+    // is the one the gesture leaves: the press that opens the view runs over
+    // the card, and a pin taken there would light every connector in it.
+    await narrowByRelated('t1');
 
     const theme = createTestTheme();
     expect(particleLayer()).toBeDefined();
+    expect(litIdsOf()).toEqual([]);
+    expect(circlesOf()).toHaveLength(0);
+
+    await hover('t1');
+
     expect(litIdsOf()).toEqual(['r12', 'r14']);
     expect(circlesOf()).toHaveLength(2 * PARTICLE_COUNT);
     for (const id of ['r12', 'r14']) {
@@ -248,8 +279,8 @@ describe('the particles of a Flow view', () => {
       });
     }
 
-    // r24 joins two neighbours and no center, so it is shown and not lit: it
-    // carries no particle.
+    // r24 joins two neighbours and not the hovered table, so it is shown and
+    // not lit: it carries no particle.
     expect(flowStage().findOne('.r24')).toBeDefined();
     expect(groupOf('r24')).toBeUndefined();
   });
@@ -259,6 +290,7 @@ describe('the particles of a Flow view', () => {
     seed(app);
     const now = vi.spyOn(particleClock, 'now').mockReturnValue(0);
     await mountFlow(app, ['t1']);
+    await hover('t1');
 
     const relationship = app.store.state.collections.relationshipEntities.r12;
     const { start, end } = getAnchors(relationship, SOURCE);
@@ -311,6 +343,7 @@ describe('the particles of a Flow view', () => {
     seed(app);
     vi.spyOn(particleClock, 'now').mockReturnValue(0);
     await mountFlow(app, ['t1']);
+    await hover('t1');
 
     const theme = createTestTheme();
     const [edge] = getParticleEdges(app.store.state, SOURCE).filter(
@@ -353,17 +386,19 @@ describe('the particles of a Flow view', () => {
     seed(app);
     await mountFlow(app, ['t1']);
 
+    expect(litIdsOf()).toEqual([]);
+
     await hover('t2');
-    expect(litIdsOf()).toEqual(['r12', 'r14', 'r24']);
-    expect(circlesOf()).toHaveLength(3 * PARTICLE_COUNT);
+    expect(litIdsOf()).toEqual(['r12', 'r24']);
+    expect(circlesOf()).toHaveLength(2 * PARTICLE_COUNT);
 
     await leave('t2');
     await hover('t4');
-    expect(litIdsOf()).toEqual(['r12', 'r14', 'r24']);
+    expect(litIdsOf()).toEqual(['r14', 'r24']);
 
     await leave('t4');
-    expect(litIdsOf()).toEqual(['r12', 'r14']);
-    expect(circlesOf()).toHaveLength(2 * PARTICLE_COUNT);
+    expect(litIdsOf()).toEqual([]);
+    expect(circlesOf()).toHaveLength(0);
   });
 
   it('stops with the tab: leaving it takes the layer down and asks for no frame again', async () => {
@@ -371,6 +406,7 @@ describe('the particles of a Flow view', () => {
     seed(app);
     const frames = vi.spyOn(particleClock, 'requestFrame');
     const mounted = await mountFlow(app, ['t1']);
+    await hover('t1');
 
     expect(frames).toHaveBeenCalled();
     expect(circlesOf()).toHaveLength(2 * PARTICLE_COUNT);
@@ -391,6 +427,7 @@ describe('the particles of a Flow view', () => {
     const app = createTestAppContext();
     seed(app);
     await mountFlow(app, ['t1']);
+    await hover('t1');
     const frames = vi.spyOn(particleClock, 'requestFrame');
 
     // One frame asked per frame painted: two rAFs pass, so two or three.
@@ -413,7 +450,7 @@ describe('the particles of a Flow view', () => {
     fireScenePointer(tableOf('t2'), 'mouseenter');
     await settleAndPaint();
 
-    expect(litIdsOf()).toEqual(['r12', 'r14', 'r24']);
+    expect(litIdsOf()).toEqual(['r12', 'r24']);
     expect(await perPaint()).toBeLessThanOrEqual(3);
     expect(await drawnAnswers()).toBe(true);
   });
@@ -437,30 +474,30 @@ describe('the particles of a Flow view', () => {
     };
 
     await hover('t2');
-    expectIntact(3);
+    expectIntact(2);
 
     app.store.dispatchSync(
       viewScrollToAction({ kind: SOURCE, originX: 40, originY: -30 })
     );
     await settleAndPaint();
-    expectIntact(3);
+    expectIntact(2);
     expect(particles.position()).toEqual({ x: 40, y: -30 });
 
     app.store.dispatchSync(
       viewChangeZoomLevelAction({ kind: SOURCE, value: 0.5 })
     );
     await settleAndPaint();
-    expectIntact(3);
+    expectIntact(2);
     expect(particles.scale()).toEqual({ x: 0.5, y: 0.5 });
 
     app.store.dispatchSync(
       shared(changeColumnNameAction({ tableId: 't1', id: 'c1', value: 'id' }))
     );
     await settleAndPaint();
-    expectIntact(3);
+    expectIntact(2);
 
     await leave('t2');
-    expectIntact(2);
+    expectIntact(0);
 
     expect(sceneDraw).toHaveBeenCalled();
     expect(particleDraw).not.toHaveBeenCalled();

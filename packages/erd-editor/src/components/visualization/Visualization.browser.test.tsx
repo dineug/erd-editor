@@ -14,11 +14,13 @@ import {
   releasePointer,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { formatDistance } from '@/components/erd/content-compass/compassGeometry';
 import { themeContext } from '@/components/themeContext';
 import { getGraphView } from '@/components/visualization/graphViewHandle';
 import Visualization from '@/components/visualization/Visualization';
 import {
   DIM_OPACITY,
+  graphCompass,
   ZOOM_MAX,
   ZOOM_MIN,
 } from '@/components/visualization/visualizationView';
@@ -228,6 +230,10 @@ describe('the bar beside the graph', () => {
 
     const compass = menuOf(mounted, 'Go to content');
     expect(compass).not.toBeNull();
+
+    const { state, nodes } = getGraphView(app.store.state.editor.id);
+    const away = graphCompass(state, nodes(), app.store.state.editor.viewport)!;
+    expect(compass!.textContent).toContain(formatDistance(away.distance));
 
     click(compass);
     await settle();

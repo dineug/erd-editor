@@ -11,6 +11,7 @@ import { useAppContext } from '@/components/appContext';
 import {
   COMPASS_ARROW_SIZE,
   type ContentCompass,
+  formatDistance,
   getContentCompass,
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
@@ -73,7 +74,7 @@ const showModeOf = (value?: ShowMode) =>
 /**
  * The bar over the bottom of the Visualization tab: which of the two modes is
  * up, the zoom, the placement tools of the Flow, how much of a card it draws,
- * the way back to the whole document, and where the content lies once the screen holds none.
+ * the way back to the whole document, and which way the content lies and how far once the screen holds none.
  */
 const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -303,7 +304,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
             <>
               <div class={styles.divider}></div>
               <div
-                class={floating.menu}
+                class={styles.compass}
                 title="Go to content"
                 on:click={handleCompass}
               >
@@ -312,6 +313,9 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
                   size={COMPASS_ARROW_SIZE}
                   rotate={compass.angle}
                 />
+                <span class={styles.compassDistance}>
+                  {formatDistance(compass.distance)}
+                </span>
               </div>
             </>
           ) : null}

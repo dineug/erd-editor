@@ -45,9 +45,9 @@ function connectorPoints(
 }
 
 /**
- * The connectors a view lights, measured for the particles to ride: those at
- * a center or the hovered table, in the order the view shows them. None for
- * the document, and none past the cap, where the fade and the highlight stand alone.
+ * The connectors a view lights, measured for the particles to ride: those the
+ * hover or the pin reaches, in the order the view shows them. None for the
+ * document, none at rest, and none past the cap, where the light stands alone.
  */
 export function getParticleEdges(
   state: RootState,

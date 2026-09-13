@@ -15,6 +15,7 @@ import {
 import { mixColor } from '@/components/erd/canvas/mixColor';
 import { headerCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
+import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
@@ -23,6 +24,7 @@ import {
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
+  SCENE_FONT_WEIGHT,
   type SceneMouseEvent,
   type ScenePointerEvent,
   setSceneCursor,
@@ -35,14 +37,15 @@ import {
   VIEW_CARD_SHADOW_OFFSET_X,
   VIEW_CARD_SHADOW_OFFSET_Y,
   VIEW_CARD_SHADOW_OPACITY,
+  VIEW_HEADER_FONT_WEIGHT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
   focusBorderFill,
-  getCellTextHeight,
   getHeaderCellSlots,
   getHeaderCellsY,
-  HEADER_TEXT_Y,
+  getHeaderTextHeight,
+  getHeaderTextY,
 } from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
@@ -59,7 +62,9 @@ import {
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
   TABLE_HEADER_INPUT_HEIGHT,
   VIEW_TABLE_HEADER_BUTTON_SIZE,
+  VIEW_TABLE_HEADER_FONT_SIZE,
   VIEW_TABLE_HEADER_HEIGHT,
+  VIEW_TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
 import {
   dragendColumnAction,
@@ -126,6 +131,13 @@ type HeaderCellOptions = {
   edit: boolean;
   sharedFocus: string | null;
 };
+
+/**
+ * Where a view press never pins. Both header buttons are drawn as icons, and
+ * each answers for the press that lands on it: Related narrows the view on it
+ * and Go to ERD leaves the tab, neither of which is a reader pinning a card.
+ */
+const PIN_BLOCKED_KINDS = ['icon'];
 
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -215,6 +227,11 @@ const Table: FC<TableProps> = (props, ctx) => {
   /** The press a table takes: its drag, and in a view scene the start of a click that pins it. */
   const handlePress = (event: ScenePointerEvent) => {
     onMoveStart(event);
+    // A press that landed on a header button belongs to the button alone. The
+    // pin Related would take on the way past lights the hub and its one hop,
+    // which in the view it just narrowed to is every card it draws.
+    if (hasKindAncestor(event.target, PIN_BLOCKED_KINDS)) return;
+
     pin.onPress(event);
   };
 
@@ -250,6 +267,10 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   const handleFocus = (focusType: FocusType) => {
+    // A view holds no focus, header cell included: the underline it would
+    // light is the ERD tab's mark on the document, not a mark a reader made here.
+    if (sourceRef.value !== 'document') return;
+
     const { store } = app.value;
     store.dispatch(focusTableAction({ tableId: props.table.id, focusType }));
   };
@@ -366,8 +387,8 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   /**
    * A header cell, laid out the way its input-padding div was: the text on the
-   * 20px input line, answering a press for the whole box, and the two underlines
-   * at their own edge. The focus underline keeps its box while edited.
+   * source's own header line, answering a press for the whole box, and the two
+   * underlines at their own edge. The focus underline keeps its box while edited.
    */
   const headerCell = ({
     focusType,
@@ -378,58 +399,64 @@ const Table: FC<TableProps> = (props, ctx) => {
     focus,
     edit,
     sharedFocus,
-  }: HeaderCellOptions) => (
-    <k-group
-      name={`input-padding ${focusType}`}
-      kind="input-padding"
-      sharedFocus={sharedFocus}
-      x={x}
-      y={0}
-      on:mousedown={(event: SceneMouseEvent) => {
-        handleFocus(focusType);
-        doubleClick.track(focusType, event);
-      }}
-      on:dblclick={(event: SceneMouseEvent) => {
-        handleEdit(focusType, event);
-      }}
-    >
-      <k-text
-        name="cell-text"
-        y={HEADER_TEXT_Y}
-        width={width}
-        height={getCellTextHeight()}
-        text={text}
-        fill={fill}
-        fontFamily={SCENE_FONT_FAMILY}
-        fontSize={SCENE_FONT_SIZE}
-        verticalAlign="middle"
-        wrap="none"
-        ellipsis={true}
-        visible={!edit}
-        hitFunc={headerCellHit}
-      />
-      {focus ? (
-        <k-rect
-          name="cell-focus-border"
-          y={HEADER_TEXT_Y + CELL_UNDERLINE_Y}
+  }: HeaderCellOptions) => {
+    const source = sourceRef.value;
+    const view = source !== 'document';
+
+    return (
+      <k-group
+        name={`input-padding ${focusType}`}
+        kind="input-padding"
+        sharedFocus={sharedFocus}
+        x={x}
+        y={0}
+        on:mousedown={(event: SceneMouseEvent) => {
+          handleFocus(focusType);
+          doubleClick.track(focusType, event);
+        }}
+        on:dblclick={(event: SceneMouseEvent) => {
+          handleEdit(focusType, event);
+        }}
+      >
+        <k-text
+          name="cell-text"
+          y={getHeaderTextY(source)}
           width={width}
-          height={FOCUS_BORDER_HEIGHT}
-          fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
-          listening={false}
+          height={getHeaderTextHeight(source)}
+          text={text}
+          fill={fill}
+          fontFamily={SCENE_FONT_FAMILY}
+          fontSize={view ? VIEW_TABLE_HEADER_FONT_SIZE : SCENE_FONT_SIZE}
+          fontStyle={view ? VIEW_HEADER_FONT_WEIGHT : SCENE_FONT_WEIGHT}
+          verticalAlign="middle"
+          wrap="none"
+          ellipsis={true}
+          visible={!edit}
+          hitFunc={headerCellHit[source]}
         />
-      ) : null}
-      {sharedFocus ? (
-        <k-rect
-          name="cell-shared-focus-border"
-          y={TABLE_HEADER_INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
-          width={width + INPUT_MARGIN_RIGHT}
-          height={FOCUS_BORDER_HEIGHT}
-          fill={sharedFocus}
-          listening={false}
-        />
-      ) : null}
-    </k-group>
-  );
+        {focus && !view ? (
+          <k-rect
+            name="cell-focus-border"
+            y={getHeaderTextY(source) + CELL_UNDERLINE_Y}
+            width={width}
+            height={FOCUS_BORDER_HEIGHT}
+            fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
+            listening={false}
+          />
+        ) : null}
+        {sharedFocus ? (
+          <k-rect
+            name="cell-shared-focus-border"
+            y={TABLE_HEADER_INPUT_HEIGHT - FOCUS_BORDER_HEIGHT}
+            width={width + INPUT_MARGIN_RIGHT}
+            height={FOCUS_BORDER_HEIGHT}
+            fill={sharedFocus}
+            listening={false}
+          />
+        ) : null}
+      </k-group>
+    );
+  };
 
   return () => {
     const { store } = app.value;
@@ -442,10 +469,10 @@ const Table: FC<TableProps> = (props, ctx) => {
     const rect = getTableRect(store.state, table, source);
     const contentWidth = rect.width - TABLE_INSET * 2;
     // The view header has no icon band above its name box, so its two buttons
-    // sit centred on the name line and after it, over the end of a name that
+    // sit centred on the icon line and after the name, over the end of one that
     // reaches them: konva paints and hit tests siblings in order.
     const headerButtonY =
-      (VIEW_TABLE_HEADER_HEIGHT - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2;
+      (VIEW_TABLE_HEADER_ICON_SIZE - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2;
 
     const hovered = Boolean(props.hovered || state.hover);
     const draggingColumnId = props.ghostColumnId ?? state.dragstartId;
@@ -486,9 +513,9 @@ const Table: FC<TableProps> = (props, ctx) => {
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
-    // A view lights its centers and what a hover reaches. The card wears that
-    // as an accent border and a glow, and a table it leaves unlit keeps its
-    // type column's width and draws nothing in it.
+    // A view lights what a hover or a pin reaches, and nothing at rest. The
+    // card wears that as an accent border and a glow, and a table left unlit
+    // keeps its type column's width and draws nothing in it.
     const lit = view && Boolean(props.lit);
 
     // How far the light has come up on this card, which is what every paint the
@@ -545,6 +572,18 @@ const Table: FC<TableProps> = (props, ctx) => {
             view && setSceneCursor(event, CURSOR_INHERIT);
           }}
         />
+        {view ? (
+          <k-rect
+            name="table-header-band"
+            x={TABLE_BORDER}
+            y={TABLE_BORDER}
+            width={rect.width - TABLE_BORDER * 2}
+            height={TABLE_INSET + VIEW_TABLE_HEADER_HEIGHT - TABLE_BORDER}
+            cornerRadius={[TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]}
+            fill={theme.grayColor3}
+            listening={false}
+          />
+        ) : null}
         {litAlpha > 0 ? (
           <k-rect
             name="table-glow"
@@ -630,11 +669,26 @@ const Table: FC<TableProps> = (props, ctx) => {
             name="table-header-inputs"
             y={getHeaderCellsY(source) - TABLE_INSET}
           >
+            {view
+              ? sceneIcon({
+                  icon: 'table-2',
+                  name: 'table-header-icon',
+                  kind: 'icon',
+                  size: VIEW_TABLE_HEADER_ICON_SIZE,
+                  color: theme.foreground,
+                  x: 0,
+                  y: 0,
+                })
+              : null}
             {nameCell
               ? headerCell({
                   ...nameCell,
                   text: table.name.trim() ? table.name : 'table',
-                  fill: table.name.trim() ? theme.active : theme.placeholder,
+                  fill: !table.name.trim()
+                    ? theme.placeholder
+                    : view
+                      ? theme.foreground
+                      : theme.active,
                   focus: hasFocus(FocusType.tableName),
                   edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,

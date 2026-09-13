@@ -288,25 +288,33 @@ describe('relationshipSort for a view', () => {
     });
   });
 
-  it('routes the view around the view boxes and nothing else', () => {
+  it('stores the two turning points of the view and routes nothing between them', () => {
     openFocused(state);
 
     relationshipSort(state, 'flow');
 
+    // The obstacle set a view would route around is still the view's own
+    // boxes; a view no longer asks for it, because its curve joins the two
+    // turning points and reads no route.
     const obstacles = collectObstacles(state, 'flow');
     expect(obstacles.ids).toEqual(['A', 'B', 'C']);
     expect(Array.from(obstacles.left)).toEqual([5_002, 5_602, 5_002]);
     expect(Array.from(obstacles.top)).toEqual([-2_998, -2_998, -2_598]);
 
-    // Straight runs between facing edges: the turning points are the stub
-    // ends and nothing between them bends.
     const a = tableToObjectPoint(
       state,
       state.collections.tableEntities.A,
       'flow'
     );
+    expect(getRoute(ab, 'flow')).toHaveLength(2);
+    expect(getRoute(ac, 'flow')).toHaveLength(2);
     for (const { y } of getRoute(ab, 'flow') ?? []) expect(y).toBe(a.right.y);
     for (const { x } of getRoute(ac, 'flow') ?? []) expect(x).toBe(a.bottom.x);
+    // The two points are the curve's own ends, which is what the culling box
+    // reads them as.
+    const { M, L } = getRelationshipPath(ab, 'flow').path.path;
+    expect(getRoute(ab, 'flow')?.[0]).toEqual({ x: M.x, y: M.y });
+    expect(getRoute(ab, 'flow')?.[1]).toEqual({ x: L.x, y: L.y });
     expect(getRoute(ab, 'flow')?.[0].y).toBe(-3_000 + 21);
   });
 

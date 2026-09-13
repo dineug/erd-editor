@@ -27,8 +27,8 @@ import {
 import {
   type ColumnCellSlot,
   focusBorderFill,
-  getCellTextHeight,
   getColumnCellSlots,
+  getColumnTextHeight,
   getColumnTextY,
   getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
@@ -40,6 +40,7 @@ import {
   COLUMN_KEY_WIDTH,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
+  VIEW_COLUMN_ICON_SIZE,
 } from '@/constants/layout';
 import {
   ColumnOption as ColumnOptionType,
@@ -163,16 +164,17 @@ const keyFill = (keys: number, theme: Theme) => {
 
 /**
  * The fill a row takes, where a selection outranks a hover and a hover outranks
- * the tint a view puts on the rows a relationship ends at. The tint is the
- * standing mark and the hover the passing one, so the passing one is on top.
+ * the tint a view puts on the rows a relationship ends at. A view paints no
+ * selection, since what the ERD tab has selected is no mark a reader of a view made.
  */
 const rowBackground = (
   theme: Theme,
+  view: boolean,
   selected: boolean,
   hover: boolean,
   tint: number
 ) => {
-  if (selected) return theme.columnSelect;
+  if (!view && selected) return theme.columnSelect;
   if (hover) return theme.columnHover;
   // Mixed against the card rather than laid over it as a second rect, so the
   // row keeps the one fill the hover and the selection already paint.
@@ -250,6 +252,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   };
 
   const handleFocus = (focusType: FocusType, event: SceneMouseEvent) => {
+    // A view holds no focus: the cell a reader presses there is not a cell of
+    // the document, and the underline it would light belongs to the ERD tab.
+    if (props.source !== 'document') return;
+
     const { store } = app.value;
     const { column } = props;
     store.dispatch(
@@ -300,7 +306,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   /**
    * One cell, laid out the way its div was: the text in the 20px input line,
    * answering a press for the whole box, and the two underlines at their own
-   * edge. The focus underline keeps its box while edited and paints nothing.
+   * edge. The focus underline is the document's alone and keeps its box while edited.
    */
   const cell = ({
     focusType,
@@ -336,7 +342,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         name="cell-text"
         y={getColumnTextY(props.source)}
         width={width}
-        height={getCellTextHeight(fontFamily)}
+        height={getColumnTextHeight(props.source, fontFamily)}
         text={text}
         fill={fill}
         fontFamily={fontFamily}
@@ -348,10 +354,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         visible={!edit}
         hitFunc={columnCellHit[props.source]}
       />
-      {focus ? (
+      {focus && props.source === 'document' ? (
         <k-rect
           name="cell-focus-border"
-          y={getColumnTextY(props.source) + getColumnUnderlineY(props.source)}
+          y={getColumnTextY(props.source) + getColumnUnderlineY()}
           width={width}
           height={FOCUS_BORDER_HEIGHT}
           fill={focusBorderFill(themeRef.value, edit, props.editorFocused)}
@@ -508,11 +514,13 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     const view = props.source !== 'document';
     const background = rowBackground(
       theme,
+      view,
       selected,
       hover,
       view && props.related ? (props.litAlpha ?? 0) : 0
     );
     const rowHeight = tableRowHeight(props.source);
+    const keySize = view ? VIEW_COLUMN_ICON_SIZE : COLUMN_KEY_WIDTH;
 
     return (
       <k-group
@@ -539,10 +547,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           icon: 'key-round',
           name: 'column-col column-key',
           kind: 'column-col',
-          size: COLUMN_KEY_WIDTH,
+          size: keySize,
           color: keyFill(column.ui.keys, theme),
           x: TABLE_INSET,
-          y: (rowHeight - COLUMN_KEY_WIDTH) / 2,
+          y: (rowHeight - keySize) / 2,
           mouseenter: handleKeyMouseenter,
           mouseleave: handleKeyMouseleave,
         })}

@@ -27,9 +27,11 @@ import { columnCellHit } from '@/components/erd/canvas/sceneHit';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
+  HEADER_COLOR_HEIGHT,
   SCENE_CODE_FONT_FAMILY,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
+  SCENE_FONT_WEIGHT,
   TRANSPARENT,
   VIEW_CARD_GLOW_BLUR,
   VIEW_CARD_GLOW_OPACITY,
@@ -37,6 +39,7 @@ import {
   VIEW_CARD_SHADOW_OFFSET_X,
   VIEW_CARD_SHADOW_OFFSET_Y,
   VIEW_CARD_SHADOW_OPACITY,
+  VIEW_HEADER_FONT_WEIGHT,
 } from '@/components/erd/canvas/sceneTokens';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import {
@@ -45,8 +48,15 @@ import {
   HEADER_ICON_HEIGHT,
   TABLE_BORDER,
   TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_PADDING,
   VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_ICON_SIZE,
   VIEW_TABLE_HEADER_BUTTON_SIZE,
+  VIEW_TABLE_HEADER_FONT_SIZE,
+  VIEW_TABLE_HEADER_HEIGHT,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_MIN_WIDTH,
 } from '@/constants/layout';
 import { CanvasType, ColumnUIKey, RelationshipType } from '@/constants/schema';
 import {
@@ -78,7 +88,7 @@ import {
 import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
-import { calcTableHeight } from '@/utils/calcTable';
+import { calcTableHeight, viewHeaderNameWidth } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 const WIDTH = 1000;
@@ -147,8 +157,8 @@ function seedDocument(app: AppContext) {
     link('r2', ['b', ['b_ref']], ['c', ['c_fk']]),
     link('r3', ['a', []], ['d', []]),
     // e is two hops from a either way, so it is shown and left dark until a
-    // hover on c reaches it. That is the half of the highlight rule a
-    // narrowed view cannot show, since it lights everything it shows.
+    // hover on c reaches it, which is the half of the highlight rule that
+    // needs a card the light does not reach.
     link('r4', ['b', []], ['e', []]),
     link('r5', ['c', []], ['e', []])
   );
@@ -270,6 +280,10 @@ const cellOf = (stage: Stage, id: string, focusType: string) =>
 
 const cellTextOf = (cell: Container) =>
   cell.findOne<KonvaNode>('.cell-text') as KonvaNode;
+
+/** The focus underline under one cell, or null where the source draws none. */
+const underlineOf = (stage: Stage, id: string, focusType: string) =>
+  cellOf(stage, id, focusType).findOne<KonvaNode>('.cell-focus-border') ?? null;
 
 const glowOf = (stage: Stage, id: string) =>
   tableOf(stage, id).find('.table-glow');
@@ -606,15 +620,178 @@ describe('the rows a view card rules and tints', () => {
       rowsOf(stage, 'b').map(() => TRANSPARENT)
     );
   });
+
+  /**
+   * A view is read only and the ERD tab's column selection is no mark its
+   * reader made, so the row carries the hover and never the selection fill.
+   * The document card beside it, on the same selection, still paints it.
+   */
+  it('paints no selection on a view row, and keeps the hover it has', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+    const select = focusColumnAction({
+      tableId: 'b',
+      columnId: 'b_pk',
+      focusType: FocusType.columnName,
+      $mod: false,
+      shiftKey: false,
+    });
+
+    view.app.store.dispatchSync(select);
+    document.app.store.dispatchSync(select);
+    await settle();
+
+    const [viewRow] = rowsOf(view.stage, 'b');
+    const [documentRow] = rowsOf(document.stage, 'b');
+    expect(documentRow.getAttr('id')).toBe(viewRow.getAttr('id'));
+    expect(rowBackgroundOf(documentRow)).toBe(theme.columnSelect);
+    expect(rowBackgroundOf(viewRow)).toBe(TRANSPARENT);
+
+    fireScenePointer(viewRow, 'mouseenter');
+    await settle();
+
+    expect(rowBackgroundOf(rowsOf(view.stage, 'b')[0])).toBe(theme.columnHover);
+  });
+
+  /**
+   * The other half of the same rule. The focus underline is the ERD tab's mark
+   * on the document, so a view draws none of it however the document came to
+   * hold one, header cell and row cell alike.
+   */
+  it('draws no focus underline on a view card, where the document draws one', async () => {
+    const view = await mountViewScene();
+    const documentScene = await mountDocumentScene();
+    const focus = focusColumnAction({
+      tableId: 'b',
+      columnId: 'b_pk',
+      focusType: FocusType.columnName,
+      $mod: false,
+      shiftKey: false,
+    });
+
+    view.app.store.dispatchSync(focus);
+    documentScene.app.store.dispatchSync(focus);
+    await settle();
+
+    expect(
+      underlineOf(documentScene.stage, 'b', FocusType.columnName)
+    ).not.toBeNull();
+    expect(underlineOf(view.stage, 'b', FocusType.columnName)).toBeNull();
+
+    view.app.store.dispatchSync(
+      focusTableAction({ tableId: 'b', focusType: FocusType.tableName })
+    );
+    documentScene.app.store.dispatchSync(
+      focusTableAction({ tableId: 'b', focusType: FocusType.tableName })
+    );
+    await settle();
+
+    expect(
+      underlineOf(documentScene.stage, 'b', FocusType.tableName)
+    ).not.toBeNull();
+    expect(underlineOf(view.stage, 'b', FocusType.tableName)).toBeNull();
+  });
+
+  /**
+   * And nothing inside a view puts one there. Pressing a card selects it in
+   * either source, but only the document carries the press on down onto the
+   * cell it landed on, and only the document draws the underline that focus is.
+   */
+  it('moves no cell focus when a cell of a view card is pressed', async () => {
+    const view = await mountViewScene();
+    const documentScene = await mountDocumentScene();
+
+    fireScenePointer(
+      cellOf(documentScene.stage, 'b', FocusType.columnName),
+      'mousedown'
+    );
+    fireScenePointer(
+      cellOf(view.stage, 'b', FocusType.columnName),
+      'mousedown'
+    );
+    await settle();
+
+    expect(documentScene.app.store.state.editor.focusTable).toMatchObject({
+      focusType: FocusType.columnName,
+      columnId: 'b_pk',
+    });
+    expect(view.app.store.state.editor.focusTable).toMatchObject({
+      focusType: FocusType.tableName,
+      columnId: null,
+    });
+
+    expect(underlineOf(view.stage, 'b', FocusType.columnName)).toBeNull();
+    expect(underlineOf(view.stage, 'b', FocusType.tableName)).toBeNull();
+  });
 });
 
-/** The drawn route of one connector, by the id its group carries beside its name. */
+/** The route node of one connector, by the id its group carries beside its name. */
+const routeNodeOf = (stage: Stage, id: string) =>
+  (stage.findOne<Container>(`.${id}`) as Container).findOne<KonvaNode>(
+    '.relationship-route'
+  ) as KonvaNode;
+
+/** The colour that node is drawn in. */
 const routeOf = (stage: Stage, id: string) =>
-  (
-    (stage.findOne<Container>(`.${id}`) as Container).findOne<KonvaNode>(
-      '.relationship-route'
-    ) as KonvaNode
-  ).getAttr('stroke');
+  routeNodeOf(stage, id).getAttr('stroke');
+
+/**
+ * AC-28's colour half. The reference draws every edge one neutral and tells
+ * the two kinds apart nowhere, so a view does neither, and the document keeps
+ * the pair of colours and the dash the identifying bit has always picked.
+ */
+describe('the colour a view rests a connector at', () => {
+  const identify = (mounted: Mounted, id: string) => {
+    mounted.app.store.state.collections.relationshipEntities[
+      id
+    ].identification = true;
+  };
+
+  it('paints both kinds one neutral, solid, where the document tells them apart', async () => {
+    const view = await mountViewScene();
+    const documentScene = await mountDocumentScene();
+    identify(view, 'r2');
+    identify(documentScene, 'r2');
+    await settle();
+
+    expect(routeOf(view.stage, 'r1')).toBe(theme.grayColor8);
+    expect(routeOf(view.stage, 'r2')).toBe(theme.grayColor8);
+    expect(routeNodeOf(view.stage, 'r1').getAttr('dash')).toEqual([]);
+    expect(routeNodeOf(view.stage, 'r2').getAttr('dash')).toEqual([]);
+
+    expect(routeOf(documentScene.stage, 'r1')).toBe(theme.keyFK);
+    expect(routeOf(documentScene.stage, 'r2')).toBe(theme.keyPFK);
+    expect(routeNodeOf(documentScene.stage, 'r1').getAttr('dash')).toEqual([
+      10, 10,
+    ]);
+    expect(routeNodeOf(documentScene.stage, 'r2').getAttr('dash')).toEqual([]);
+  });
+
+  it('carries that one neutral into every cardinality decoration it draws', async () => {
+    const { stage } = await mountViewScene();
+    const group = stage.findOne<Container>('.r1') as Container;
+    const painted = group
+      .getChildren()
+      .filter(node => node.name() !== 'relationship-hit-area');
+
+    // The route, the four decoration lines and the cardinality shape. Counted
+    // so that moving them into a sub group empties the loop instead of
+    // quietly narrowing it to the route alone.
+    expect(painted.length).toBeGreaterThan(5);
+    for (const node of painted) {
+      expect(node.getAttr('stroke')).toBe(theme.grayColor8);
+    }
+  });
+
+  it('walks that neutral to the accent, and never the kind colour', async () => {
+    const { stage } = await mountViewScene();
+
+    await enterTable(stage, 'b');
+
+    expect(routeOf(stage, 'r1')).toBe(theme.accentColor9);
+    expect(new Set([theme.grayColor8, theme.keyFK, theme.keyPFK]).size).toBe(3);
+  });
+});
 
 /**
  * AC-35, AC-36 and AC-37 on one fixture. Every paint the highlight owns is
@@ -762,6 +939,171 @@ const rowPitches = (stage: Stage, id: string) =>
     .slice(1)
     .map((y, index) => y - rowsOf(stage, id)[index].y());
 
+const bandOf = (stage: Stage, id: string) =>
+  tableOf(stage, id).findOne<KonvaNode>('.table-header-band') ?? null;
+
+const headerColorOf = (stage: Stage, id: string) =>
+  tableOf(stage, id).findOne<KonvaNode>('.table-header-color') as KonvaNode;
+
+const headerIconOf = (stage: Stage, id: string) =>
+  tableOf(stage, id).findOne<KonvaNode>('.table-header-icon') ?? null;
+
+const nameTextOf = (stage: Stage, id: string) =>
+  cellTextOf(cellOf(stage, id, 'tableName'));
+
+/**
+ * The two pieces of document a reader sets in the ERD tab and a view then has
+ * to draw. Written straight onto the entity, the way the fixture writes the
+ * foreign key bits, because the view gate drops an edit dispatched over a view.
+ */
+const paintTable = (
+  app: AppContext,
+  id: string,
+  name: string,
+  color: string
+) => {
+  const table = app.store.state.collections.tableEntities[id];
+  table.name = name;
+  table.ui.color = color;
+};
+
+const nameColumn = (app: AppContext, id: string, name: string) => {
+  app.store.state.collections.tableColumnEntities[id].name = name;
+};
+
+/**
+ * The card a view draws against the reference's node: a muted band across the
+ * header carrying a table icon and a larger, muted name, and a minimum width
+ * under the whole of it. The document card keeps every one of those unchanged.
+ */
+describe('the header a view card wears', () => {
+  it('lays a muted band from the top border down to the first row', async () => {
+    const { stage } = await mountViewScene();
+    const band = bandOf(stage, 'b');
+    const body = bodyOf(stage, 'b');
+
+    expect(band).not.toBeNull();
+    expect(band!.getAttr('fill')).toBe(theme.grayColor3);
+    expect(band!.getAttr('fill')).not.toBe(theme.tableBackground);
+    expect(band!.y()).toBe(TABLE_BORDER);
+    expect(band!.height()).toBe(
+      TABLE_BORDER + TABLE_PADDING + VIEW_TABLE_HEADER_HEIGHT - TABLE_BORDER
+    );
+    expect(band!.width()).toBe(body.width() - TABLE_BORDER);
+  });
+
+  /**
+   * The colour a reader painted is document information the view keeps, so the
+   * strip is drawn after the band and the two are stacked: the header carries
+   * both, rather than one of them standing in for the other.
+   */
+  it('keeps the colour a reader painted over that band', async () => {
+    const { app, stage } = await mountViewScene();
+    paintTable(app, 'b', 'users', '#ff0000');
+    await settle();
+
+    const strip = headerColorOf(stage, 'b');
+    const band = bandOf(stage, 'b');
+
+    expect(strip.getAttr('fill')).toBe('#ff0000');
+    expect(strip.height()).toBe(HEADER_COLOR_HEIGHT);
+    expect(strip.zIndex()).toBeGreaterThan(band!.zIndex());
+    expect(strip.y()).toBe(0);
+    expect(strip.y() + strip.height()).toBeLessThan(band!.height());
+  });
+
+  it('draws no band on a document card', async () => {
+    const { stage } = await mountDocumentScene();
+
+    expect(bandOf(stage, 'b')).toBeNull();
+    expect(headerColorOf(stage, 'b').height()).toBe(HEADER_COLOR_HEIGHT);
+  });
+
+  it('stands a table icon before the name, on the view alone', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+    const icon = headerIconOf(view.stage, 'b');
+
+    expect(icon).not.toBeNull();
+    expect(icon!.scaleX()).toBe(VIEW_TABLE_HEADER_ICON_SIZE / 24);
+    expect(icon!.x()).toBe(0);
+    expect(icon!.y()).toBe(0);
+    expect(headerIconOf(document.stage, 'b')).toBeNull();
+  });
+
+  it('leaves the name room past that icon, and no row cell with it', async () => {
+    const { app, stage } = await mountViewScene();
+    const table = app.store.state.collections.tableEntities.b;
+
+    expect(cellOf(stage, 'b', 'tableName').x()).toBe(
+      VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP
+    );
+    expect(nameTextOf(stage, 'b').width()).toBe(
+      viewHeaderNameWidth(table.ui.widthName)
+    );
+  });
+
+  /** The one gap the reference draws between its header and its rows. */
+  it('draws the name larger, heavier and muted against the rows', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+    paintTable(view.app, 'b', 'users', '');
+    paintTable(document.app, 'b', 'users', '');
+    nameColumn(view.app, 'b_pk', 'id');
+    nameColumn(document.app, 'b_pk', 'id');
+    await settle();
+
+    const name = nameTextOf(view.stage, 'b');
+    const row = cellTextOf(cellOf(view.stage, 'b', 'columnName'));
+
+    expect(name.getAttr('fontSize')).toBe(VIEW_TABLE_HEADER_FONT_SIZE);
+    expect(name.getAttr('fontStyle')).toBe(VIEW_HEADER_FONT_WEIGHT);
+    expect(name.getAttr('fill')).toBe(theme.foreground);
+
+    expect(row.getAttr('fontSize')).toBe(SCENE_FONT_SIZE);
+    expect(row.getAttr('fontStyle')).toBe(SCENE_FONT_WEIGHT);
+    expect(row.getAttr('fill')).toBe(theme.active);
+
+    // The document header is the loud one of the two, which is the split this
+    // reverses for a view: there the name outranks the rows it stands over.
+    const documentName = nameTextOf(document.stage, 'b');
+    expect(documentName.getAttr('fontSize')).toBe(SCENE_FONT_SIZE);
+    expect(documentName.getAttr('fontStyle')).toBe(SCENE_FONT_WEIGHT);
+    expect(documentName.getAttr('fill')).toBe(theme.active);
+  });
+
+  it('centres the name and the two buttons on the icon line', async () => {
+    const { stage } = await mountViewScene();
+    await enterTable(stage, 'b');
+
+    expect(nameTextOf(stage, 'b').y()).toBe(0);
+    expect(nameTextOf(stage, 'b').height()).toBe(VIEW_TABLE_HEADER_ICON_SIZE);
+    expect(buttonOf(stage, 'b', 'table-related')!.y()).toBe(
+      (VIEW_TABLE_HEADER_ICON_SIZE - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2
+    );
+    expect(buttonOf(stage, 'b', 'table-go-to-erd')!.y()).toBe(
+      (VIEW_TABLE_HEADER_ICON_SIZE - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2
+    );
+  });
+
+  /**
+   * The table with no key row is the narrow one: its header alone would leave a
+   * cramped box, so the minimum is what it is drawn at while the document card
+   * for the same table is measured by its forty columns.
+   */
+  it('draws no card under the minimum width', async () => {
+    const view = await mountViewScene();
+    const document = await mountDocumentScene();
+
+    expect(bodyOf(view.stage, 'd').width()).toBe(
+      VIEW_TABLE_MIN_WIDTH - TABLE_BORDER
+    );
+    expect(bodyOf(document.stage, 'd').width()).toBeGreaterThan(
+      VIEW_TABLE_MIN_WIDTH
+    );
+  });
+});
+
 /**
  * AC-15's other half, on the scene rather than in the arithmetic: the source
  * reaches every place a card is drawn from, so a call site that dropped it
@@ -782,9 +1124,9 @@ describe('the source the drawn card is measured by', () => {
       VIEW_COLUMN_HEIGHT,
     ]);
     expect(keyBadgeYs(stage, 'b')).toEqual([
-      (VIEW_COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
-      (VIEW_COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
-      (VIEW_COLUMN_HEIGHT - COLUMN_KEY_WIDTH) / 2,
+      (VIEW_COLUMN_HEIGHT - VIEW_COLUMN_ICON_SIZE) / 2,
+      (VIEW_COLUMN_HEIGHT - VIEW_COLUMN_ICON_SIZE) / 2,
+      (VIEW_COLUMN_HEIGHT - VIEW_COLUMN_ICON_SIZE) / 2,
     ]);
   });
 
@@ -817,7 +1159,26 @@ describe('the source the drawn card is measured by', () => {
 });
 
 const buttonOf = (stage: Stage, id: string, name: string) =>
-  tableOf(stage, id).findOne<KonvaNode>(`.${name}`) ?? null;
+  tableOf(stage, id).findOne<Container>(`.${name}`) ?? null;
+
+/**
+ * The press, the lift and the click a reader lands on a header button. Konva
+ * names a press for the shape under the pointer and bubbles it from there, so
+ * the card behind the button sees it go past, which is half of what it means.
+ */
+async function pressButton(stage: Stage, id: string, name: string) {
+  const at = { clientX: 20, clientY: 20 };
+  const shape = buttonOf(stage, id, name)?.getChildren()[0];
+  // A press on nothing reads like a button that did nothing, so an unhovered
+  // card would pass the cases below for the wrong reason.
+  expect(shape).toBeDefined();
+
+  fireScenePointer(shape!, 'mousedown', at);
+  await settle();
+  fireScenePointer(shape!, 'mouseup', at);
+  fireScenePointer(shape!, 'click', at);
+  await settle();
+}
 
 /** Every action type the store took from now on, which is what AC-60 counts. */
 function recordActions(app: AppContext): string[] {
@@ -873,8 +1234,7 @@ describe('the two buttons a view card header carries', () => {
     const { app, stage } = await mountViewScene();
     await enterTable(stage, 'a');
 
-    fireScenePointer(buttonOf(stage, 'a', 'table-related')!, 'click');
-    await settle();
+    await pressButton(stage, 'a', 'table-related');
 
     expect(app.store.state.editor.views.flow?.centerIds).toEqual(['a']);
     // a is the center, b across the first link and d across the third; c and
@@ -896,8 +1256,7 @@ describe('the two buttons a view card header carries', () => {
     await enterTable(stage, 'e');
     const types = recordActions(app);
 
-    fireScenePointer(buttonOf(stage, 'e', 'table-go-to-erd')!, 'click');
-    await settle();
+    await pressButton(stage, 'e', 'table-go-to-erd');
 
     const { settings, editor } = app.store.state;
     expect(settings.canvasType).toBe(CanvasType.ERD);
@@ -919,8 +1278,7 @@ describe('the two buttons a view card header carries', () => {
     await enterTable(stage, 'a');
     const types = recordActions(app);
 
-    fireScenePointer(buttonOf(stage, 'a', 'table-go-to-erd')!, 'click');
-    await settle();
+    await pressButton(stage, 'a', 'table-go-to-erd');
 
     expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
     expect(Boolean(app.store.state.editor.selectedMap.a)).toBe(true);

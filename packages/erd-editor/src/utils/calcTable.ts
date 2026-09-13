@@ -13,7 +13,14 @@ import {
   TABLE_HEADER_HEIGHT,
   TABLE_PADDING,
   VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
+  VIEW_TABLE_HEADER_FONT_SCALE,
   VIEW_TABLE_HEADER_HEIGHT,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_HEADER_WEIGHT_SCALE,
+  VIEW_TABLE_MIN_WIDTH,
 } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
@@ -241,22 +248,45 @@ export function calcViewTableWidths(
   }
 
   const rowWidth = columns.length
-    ? COLUMN_KEY_WIDTH +
-      INPUT_MARGIN_RIGHT +
+    ? VIEW_COLUMN_ICON_SIZE +
+      VIEW_COLUMN_ICON_GAP +
       columnWidth.name +
       INPUT_MARGIN_RIGHT +
-      columnWidth.dataType +
-      INPUT_MARGIN_RIGHT
+      columnWidth.dataType
     : 0;
-  const headerWidth = table.ui.widthName + INPUT_MARGIN_RIGHT;
-  columnWidth.width =
-    TABLE_BORDER +
-    TABLE_PADDING +
-    Math.max(headerWidth, rowWidth) +
-    TABLE_PADDING +
-    TABLE_BORDER;
+  const chrome = (TABLE_BORDER + TABLE_PADDING) * 2;
+  const content = Math.max(
+    viewHeaderWidth(table),
+    rowWidth,
+    VIEW_TABLE_MIN_WIDTH - chrome
+  );
+
+  // Whatever the widest of the three leaves over goes to the name, so the type
+  // stands against the right edge on a card the header or the minimum widened.
+  if (columns.length) columnWidth.name += content - rowWidth;
+  columnWidth.width = chrome + content;
 
   return columnWidth;
+}
+
+/**
+ * The width a view header's name takes. Every ui width was measured at the size
+ * and weight the rows are drawn in, and a header is drawn larger and heavier,
+ * so the measured width is scaled by both rather than measured a second time.
+ */
+export function viewHeaderNameWidth(widthName: number): number {
+  return Math.ceil(
+    widthName * VIEW_TABLE_HEADER_FONT_SCALE * VIEW_TABLE_HEADER_WEIGHT_SCALE
+  );
+}
+
+/** That name, with the table icon and the gap a view header sets beside it. */
+function viewHeaderWidth(table: Table): number {
+  return (
+    VIEW_TABLE_HEADER_ICON_SIZE +
+    VIEW_TABLE_HEADER_ICON_GAP +
+    viewHeaderNameWidth(table.ui.widthName)
+  );
 }
 
 /**

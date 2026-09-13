@@ -55,8 +55,8 @@ type FlowLayouts = {
 
 /**
  * What each Flow view has been placed as, one landing per display set, beside
- * the key of the ask still out for it and the display set it currently stands
- * on. A drag moves the view's own placement and never this; a view the document replaces takes its entry.
+ * the key of the ask still out for it and the framing it currently stands in.
+ * A drag moves the view's own placement and never this; a view the document replaces takes its entry.
  */
 const layouts = new WeakMap<SceneView, FlowLayouts>();
 
@@ -86,6 +86,14 @@ const slotOf = (view: SceneView): FlowSlot =>
 
 /** The display set itself, named by its centers, which is the first term of the key below. */
 const centersOf = (view: SceneView): string => view.centerIds.join(' ');
+
+/**
+ * How the view is framed: which tables it draws and how much of each card. A
+ * change of either resizes the cards and spreads the layout differently, so
+ * the screen has to follow it; the rest of the key below replaces the placement alone.
+ */
+const framingOf = (view: SceneView): string =>
+  [centersOf(view), view.showMode].join('|');
 
 /**
  * What a placement was computed over: the centers, the show mode, and the
@@ -131,18 +139,18 @@ export function fitFlowView(store: RxStore): void {
 
 /**
  * Stands the view on the positions given, and moves the screen to them only
- * where the reader asked to be moved: a first placement, a display set they
- * changed, a Tidy up. A return to the tab, a peer's edit and a show mode keep the viewport.
+ * where the reader asked to be moved: a first placement, a framing they
+ * changed, a Tidy up. A return to the tab and a peer's edit keep the viewport.
  */
 function standFlowView(
   store: RxStore,
   entry: FlowLayouts,
-  centers: string,
+  framing: string,
   positions: Record<string, Point>,
   forced: boolean
 ): void {
-  const fits = forced || entry.stood !== centers;
-  entry.stood = centers;
+  const fits = forced || entry.stood !== framing;
+  entry.stood = framing;
 
   store.dispatchSync(viewSetLayoutAction({ kind: FLOW, positions }));
   fits && fitFlowView(store);
@@ -170,7 +178,7 @@ function landFlowLayout(
   const entry = layoutsOf(view);
 
   entry[slot] = { positions, key };
-  standFlowView(store, entry, centersOf(view), positions, forced);
+  standFlowView(store, entry, framingOf(view), positions, forced);
 }
 
 /**
@@ -225,7 +233,7 @@ export function ensureFlowPlaced(
 
   const landing = force ? null : entry[slot];
   if (landing?.key === key) {
-    standFlowView(store, entry, centersOf(view), landing.positions, false);
+    standFlowView(store, entry, framingOf(view), landing.positions, false);
 
     return Promise.resolve();
   }

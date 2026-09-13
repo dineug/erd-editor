@@ -8,6 +8,7 @@ import {
   ValuesType,
 } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
+import { curveReach } from '@/utils/draw-relationship/bezier';
 import type {
   GeometrySource,
   ViewSource,
@@ -165,13 +166,6 @@ export const ANCHOR_EDGE_INSET = 12;
  * shorter run it touches, so a short run keeps its right angle.
  */
 export const ROUTE_CHAMFER = 8;
-
-/**
- * The radius a view rounds the same corner to. Larger than the document's cut
- * because an arc reads as a curve only once it is wide enough to see, and
- * clamped the same way, so a short run keeps its right angle here too.
- */
-export const VIEW_ROUTE_ARC = 12;
 
 const EMPTY_SLOTS: readonly [number, number] = [0, 0];
 
@@ -463,7 +457,7 @@ function inflate({ x, y, width, height }: BBox, padding: number): BBox {
 
 /**
  * Everywhere a relationship can be drawn, for a culling test that must not lose
- * a connector whose anchors are on screen and whose route is not. Without a
+ * a connector whose anchors are on screen and whose drawn run is not. Without a
  * route from this sort the stub ends are unknown, so the padding carries them.
  */
 export function getRouteBBox(
@@ -476,8 +470,21 @@ export function getRouteBBox(
   const entry = channel.routes.get(relationship);
   const routed = entry && entry.epoch === channel.epoch ? entry.points : null;
 
+  const slack = routed ? 0 : MAX_STUB;
+
+  // A view curves between the two turning points and never follows the route,
+  // so only those two matter and the control point of an end the other lies
+  // behind leaves the box they make. No route, and the stubs come first.
+  if (source !== 'document') {
+    const turns = routed?.length ? [routed[0], routed[routed.length - 1]] : [];
+    const box = aabb([...turns, start, end]);
+    const reach = curveReach(Math.max(box.width, box.height) + 2 * slack);
+
+    return inflate(box, ROUTE_BBOX_REACH + strokeWidth + slack + reach);
+  }
+
   return inflate(
     aabb(routed ? [...routed, start, end] : [start, end]),
-    ROUTE_BBOX_REACH + strokeWidth + (routed ? 0 : MAX_STUB)
+    ROUTE_BBOX_REACH + strokeWidth + slack
   );
 }

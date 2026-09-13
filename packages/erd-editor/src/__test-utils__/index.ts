@@ -213,9 +213,15 @@ export function moveTouch(clientX: number, clientY: number): Event {
   return event;
 }
 
-/** The global mouseup every drag$ subscription completes on. */
-export function releasePointer(): void {
-  window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+/**
+ * The global mouseup every drag$ subscription completes on. A lift is where
+ * the pointer stopped, so a gesture that measures the release against the
+ * press is only told apart from one that measures it against the last move here.
+ */
+export function releasePointer(clientX = 0, clientY = 0): void {
+  window.dispatchEvent(
+    new MouseEvent('mouseup', { bubbles: true, clientX, clientY })
+  );
 }
 
 /**

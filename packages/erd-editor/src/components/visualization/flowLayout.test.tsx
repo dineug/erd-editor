@@ -415,6 +415,33 @@ describe('the loop that keeps the Flow view placed', () => {
     expect(hoisted.requests).toHaveLength(3);
   });
 
+  // The contrast is the peer's edit below, which replaces the placement under
+  // a screen the reader set and leaves that screen where it was. A row display
+  // redraws every card at another size, so the screen follows it instead.
+  it('fits again on a change of the row display, which resizes every card it placed', async () => {
+    const app = seed();
+    mountFlow(app);
+    await settle();
+
+    app.store.dispatchSync(
+      viewChangeZoomLevelAction({ value: 1, kind: ViewKind.flow }),
+      viewScrollToAction({ originX: 300, originY: 200, kind: ViewKind.flow })
+    );
+    app.store.dispatchSync(
+      viewChangeShowModeAction({
+        value: ShowMode.allFields,
+        kind: ViewKind.flow,
+      })
+    );
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(2);
+    expect(flowOf(app)!.zoomLevel).toBe(fitZoomOf(app));
+    expect(flowOf(app)!.zoomLevel).not.toBe(1);
+    expect(flowOf(app)!.originX).not.toBe(300);
+    expect(flowOf(app)!.originY).not.toBe(200);
+  });
+
   it('asks again without a neighbour a peer removed', async () => {
     const app = seed();
     mountFlow(app);

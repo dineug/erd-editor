@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import * as compassStyles from '@/components/erd/content-compass/ContentCompass.styles';
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import * as styles from '@/components/visualization/visualization-toolbar/VisualizationToolbar.styles';
 import { typography } from '@/styles/typography.styles';
@@ -15,6 +16,8 @@ describe('VisualizationToolbar.styles', () => {
       styles.readout,
       styles.showModeTrigger,
       styles.showModeLabel,
+      styles.compass,
+      styles.compassDistance,
       styles.showModeMenu,
     ].map(String);
 
@@ -54,6 +57,8 @@ describe('VisualizationToolbar.styles', () => {
       'readout',
       'showModeTrigger',
       'showModeLabel',
+      'compass',
+      'compassDistance',
       'showModeMenu',
     ]);
   });
@@ -77,6 +82,28 @@ describe('VisualizationToolbar.styles', () => {
     expect(styles.showModeLabel.values).toContain(typography.paragraph);
     expect(text).toContain('min-width: 62px');
     expect(text).toContain('white-space: nowrap');
+  });
+
+  // The compass prints the gap as well as the heading, so it is the second
+  // button that cannot be 26px square. It splices the same pill in, and keeps
+  // the arrow and its label the 6px apart the ERD's own compass pill keeps.
+  it('widens that same pill for the compass too, at the ERD pill gap (AC-3)', () => {
+    const text = staticText(styles.compass);
+
+    expect(styles.compass.values).toEqual([floating.menu]);
+    expect(text).toContain('width: auto');
+    expect(text).toContain('gap: 6px');
+    expect(staticText(compassStyles.compass)).toContain('gap: 6px');
+    // A class of its own, or a helper keyed on one of the two would answer
+    // with the other: the identifier is the compiled text.
+    expect(String(styles.compass)).not.toBe(String(styles.showModeTrigger));
+  });
+
+  it('prints the gap in tabular figures, as the ERD pill prints it', () => {
+    const text = staticText(styles.compassDistance);
+
+    expect(styles.compassDistance.values).toContain(typography.paragraph);
+    expect(text).toContain('font-variant-numeric: tabular-nums');
   });
 
   it('opens the row display menu upwards, anchored to the trigger, over the bar', () => {

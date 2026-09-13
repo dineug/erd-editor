@@ -72,6 +72,25 @@ export const showModeLabel = css`
 `;
 
 /*
+ * The compass, which says how far the nearest content lies as well as which
+ * way, and so carries a label the square pill has no room for. The pill is
+ * spliced in the same way, at the gap the ERD's own compass keeps.
+ */
+export const compass = css`
+  ${floating.menu}
+  width: auto;
+  padding: 0 6px;
+  gap: 6px;
+`;
+
+/* Tabular figures, so the gap does not jitter as the digits change under a pan. */
+export const compassDistance = css`
+  ${typography.paragraph};
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+`;
+
+/*
  * The menu that trigger opens, over the bar rather than under it: the bar
  * stands at the bottom edge and a menu below it would open off the screen.
  * The content is anchored to the trigger and shifted by its own size.

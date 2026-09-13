@@ -203,9 +203,9 @@ function seedFields(app: AppContext) {
 }
 
 /**
- * A triangle t1 - t2 - t3, so a view standing on t1 shows all three and the
- * connector between the two neighbours is the one thing it leaves grey. No
- * seed in the repository has that shape, and it is the subject of AC-42's negative half.
+ * A triangle t1 - t2 - t3, so a view standing on t1 shows all three and, under
+ * a hover on t1, the connector between the two neighbours is the one thing it
+ * leaves grey. No seed here has that shape, and it is the subject of AC-42's negative half.
  */
 function seedTriangle(app: AppContext) {
   app.store.dispatchSync(
@@ -404,8 +404,55 @@ async function clickTable(id: string, init: MouseEventInit = {}) {
   await settle();
 }
 
+/**
+ * The way a reader narrows the view: hover a card, then press Related on its
+ * header. The press lands on the card as well as on the button, and the shape
+ * under the pointer is what konva names it for, so the card sees it go past.
+ */
+async function narrowByRelated(id: string) {
+  const at = { clientX: 20, clientY: 20 };
+
+  fireScenePointer(tableOf(id)!, 'mouseenter');
+  await settle();
+  const shape = tableOf(id)!.findOne<Group>('.table-related')?.getChildren()[0];
+  // A press on nothing narrows nothing, which reads like a view already
+  // narrowed, so an unhovered card would pass the case that stands on this.
+  expect(shape).toBeDefined();
+
+  fireScenePointer(shape!, 'mousedown', at);
+  await settle();
+  fireScenePointer(shape!, 'mouseup', at);
+  fireScenePointer(shape!, 'click', at);
+  await settle();
+  fireScenePointer(tableOf(id)!, 'mouseleave');
+  await settle();
+}
+
 const flowRootOf = (mounted: Mounted) =>
   mounted.container.querySelector<HTMLElement>('[data-testid="erd-canvas"]')!;
+
+/**
+ * A press and a lift on one point of the background, the click the box reads
+ * as one. The lift is dispatched on the window, which is where the gesture
+ * waits for it, and never travels, so a pan is what the caller has to add.
+ */
+async function clickBackground(mounted: Mounted, init: MouseEventInit = {}) {
+  const root = flowRootOf(mounted);
+  const rect = root.getBoundingClientRect();
+  const at = { clientX: rect.left + 900, clientY: rect.top + 500 };
+
+  root.dispatchEvent(
+    new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      ...at,
+      ...init,
+    })
+  );
+  await settle();
+  window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, ...at }));
+  await settle();
+}
 
 /** One wheel notch over the middle of the Flow's box, with the modifiers given. */
 const wheelOver = (mounted: Mounted, init: WheelEventInit) => {
@@ -942,6 +989,57 @@ describe('the Flow mode of the visualization tab', () => {
     expect(litTableIds(app)).toEqual([]);
   });
 
+  /** AC-43. A press on the empty canvas is the other way out of a pinned highlight. */
+  it('lets the pin go on a click of the background', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+
+    await clickTable('a');
+    fireScenePointer(bodyOf('a'), 'mouseleave');
+    await settle();
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+
+    await clickBackground(mounted);
+
+    expect(litTableIds(app)).toEqual([]);
+  });
+
+  it('keeps the pin through a pan of the background and through a marquee press', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const root = flowRootOf(mounted);
+    const rect = root.getBoundingClientRect();
+
+    await clickTable('a');
+    fireScenePointer(bodyOf('a'), 'mouseleave');
+    await settle();
+
+    root.dispatchEvent(
+      new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + 900,
+        clientY: rect.top + 500,
+      })
+    );
+    movePointer(rect.left + 930, rect.top + 550);
+    // The lift lands where the pointer stopped, which is what a real pan does
+    // and what a gesture measuring the release against the last move rather
+    // than against the press would read as a click.
+    releasePointer(rect.left + 930, rect.top + 550);
+    await settle();
+
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+
+    await clickBackground(mounted, { ctrlKey: true, metaKey: true });
+
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+  });
+
   /**
    * AC-19. A hover lights a neighbourhood and dims nothing: every card and
    * every connector the view shows stands at one, hover or no hover, which is
@@ -1249,8 +1347,11 @@ describe('the Flow mode of the visualization tab', () => {
     await settle();
 
     const view = app.store.state.editor.views.flow!;
-    expect(view.originX).toBe(originX + 30);
-    expect(view.originY).toBe(originY + 50);
+    // The reducer rounds the sum to four decimals and the fitted origin it
+    // starts from is no round number, so the two arithmetics part in the last
+    // bit. Any regression here moves the origin by whole pixels.
+    expect(view.originX).toBeCloseTo(originX + 30, 4);
+    expect(view.originY).toBeCloseTo(originY + 50, 4);
     expect(app.store.state.settings.originX).toBe(0);
     expect(app.store.state.settings.originY).toBe(0);
   });
@@ -1337,15 +1438,19 @@ describe('the Flow mode of the visualization tab', () => {
 
 describe('the display set of the Flow view', () => {
   /**
-   * AC-42's negative half. A connector whose two ends are both neighbours of
-   * the center touches nothing lit, so it stays out of the highlight and
-   * carries no particles, while the two that do touch the center carry theirs.
+   * AC-42's negative half. Under a hover on the center, a connector whose two
+   * ends are both neighbours touches nothing lit, so it stays out of the
+   * highlight and carries no particles while the two at the center carry theirs.
    */
   it('leaves a neighbour to neighbour connector unlit and without particles, and runs the lit two', async () => {
     const app = createTestAppContext();
     seedTriangle(app);
     const mounted = await mountVisualization(app);
-    await enterFocused(mounted, ['t1']);
+    await enterFlow(mounted);
+    // Narrowed the way a reader narrows it, since what this case is about is
+    // the screen the gesture leaves: the press that opens the view runs over
+    // the card, and a pin taken there would light every card it draws.
+    await narrowByRelated('t1');
     await whenPainted();
 
     expect(drawnTableIds()).toEqual(['t1', 't2', 't3']);
@@ -1356,6 +1461,16 @@ describe('the display set of the Flow view', () => {
       'r13',
       'r23',
     ]);
+
+    // A narrowed view rests as dark as the whole document, so the hover on the
+    // center is what draws the line between the two lit and the one unlit.
+    expect(litRelationshipIds(app)).toEqual([]);
+    expect(particleIdsOf()).toEqual([]);
+
+    fireScenePointer(tableOf('t1')!, 'mouseenter');
+    await settle();
+    await whenPainted();
+
     expect(litRelationshipIds(app)).toEqual(['r12', 'r13']);
     expect(particleLayer().findOne('.r23')).toBeUndefined();
 

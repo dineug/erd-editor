@@ -14,7 +14,11 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_ICON_MARGIN_BOTTOM,
   TABLE_HEADER_PADDING,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
   VIEW_COLUMN_PADDING,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
 import { ColumnType, Show } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
@@ -22,7 +26,11 @@ import type { RootState } from '@/engine/state';
 import type { Table } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
-import { type ColumnWidth, tableRowHeight } from '@/utils/calcTable';
+import {
+  type ColumnWidth,
+  tableRowHeight,
+  viewHeaderNameWidth,
+} from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /** The four widths a column row measures from its table; the rest are fixed. */
@@ -57,15 +65,45 @@ export function getHeaderCellsY(source: GeometrySource = 'document'): number {
 }
 
 /**
- * The text line inside a header cell. One value for both sources: a view header
- * is exactly the padded name box the document header ends with, which is what
- * VIEW_TABLE_HEADER_HEIGHT says.
+ * The text line inside a header cell. The document pads its input box; a view
+ * starts its line at the top of the icon band, which the card's own padding has
+ * already put where the band wants it.
  */
-export const HEADER_TEXT_Y = TABLE_HEADER_PADDING;
+export function getHeaderTextY(source: GeometrySource = 'document'): number {
+  return source === 'document' ? TABLE_HEADER_PADDING : 0;
+}
+
+/**
+ * The box that line is centred in. The document uses the box its editor opens
+ * an input in; a view centres on the icon beside the name instead, so the two
+ * share one middle.
+ */
+export function getHeaderTextHeight(
+  source: GeometrySource = 'document',
+  fontFamily?: string
+): number {
+  return source === 'document'
+    ? getCellTextHeight(fontFamily)
+    : VIEW_TABLE_HEADER_ICON_SIZE;
+}
 
 /** The text line inside a column cell, at the padding its own source lays rows out with. */
 export function getColumnTextY(source: GeometrySource = 'document'): number {
   return source === 'document' ? COLUMN_PADDING : VIEW_COLUMN_PADDING;
+}
+
+/**
+ * The box that line is centred in, the same split: the editor's input box in
+ * the document, and the row's own icon band in a view, which is what leaves the
+ * text on the badge's middle.
+ */
+export function getColumnTextHeight(
+  source: GeometrySource = 'document',
+  fontFamily?: string
+): number {
+  return source === 'document'
+    ? getCellTextHeight(fontFamily)
+    : VIEW_COLUMN_ICON_SIZE;
 }
 
 /** Where the scene runs its focus rect inside a header cell. */
@@ -73,14 +111,14 @@ export const CELL_UNDERLINE_Y = INPUT_HEIGHT - FOCUS_BORDER_HEIGHT;
 
 /**
  * The same rect inside a column cell, along the foot of the line box the row
- * leaves between its two paddings. The document row leaves the header's box, a
- * view row a shorter one.
+ * leaves between its two paddings. The document draws it alone, so the row it
+ * is measured against is the document's.
  */
-export function getColumnUnderlineY(
-  source: GeometrySource = 'document'
-): number {
+export function getColumnUnderlineY(): number {
   return (
-    tableRowHeight(source) - getColumnTextY(source) * 2 - FOCUS_BORDER_HEIGHT
+    tableRowHeight('document') -
+    getColumnTextY('document') * 2 -
+    FOCUS_BORDER_HEIGHT
   );
 }
 
@@ -130,9 +168,12 @@ export function getCellTextHeight(fontFamily?: string): number {
   return (getCellTextBaseline(fontFamily) - (ascent - descent) / 2) * 2;
 }
 
-/** Where a column row's cells start, past the key badge. */
-export const COLUMN_CELLS_X =
-  TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT;
+/** Where a column row's cells start, past the key badge its own source sizes. */
+export function getColumnCellsX(source: GeometrySource = 'document'): number {
+  return source === 'document'
+    ? TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
+    : TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP;
+}
 
 /** The comment width a table draws at, clamped by the setting when it is set. */
 export function getWidthComment(state: RootState, table: Table): number {
@@ -153,8 +194,15 @@ export function getHeaderCellSlots(
   table: Table,
   source: GeometrySource = 'document'
 ): CellSlot[] {
+  const view = source !== 'document';
   const slots: CellSlot[] = [
-    { focusType: FocusType.tableName, x: 0, width: table.ui.widthName },
+    {
+      focusType: FocusType.tableName,
+      x: view ? VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP : 0,
+      width: view
+        ? viewHeaderNameWidth(table.ui.widthName)
+        : table.ui.widthName,
+    },
   ];
 
   if (source === 'document' && bHas(state.settings.show, Show.tableComment)) {
@@ -236,7 +284,7 @@ export function getColumnCellSlots(
 ): ColumnCellSlot[] {
   const { settings } = state;
   const slots: ColumnCellSlot[] = [];
-  let cursor = COLUMN_CELLS_X;
+  let cursor = getColumnCellsX(source);
   const order =
     source === 'document' ? settings.columnOrder : VIEW_COLUMN_ORDER;
 

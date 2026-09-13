@@ -9,6 +9,9 @@ const RATIO_HEIGHT = 9;
 export const DEFAULT_WIDTH = 1200;
 export const DEFAULT_HEIGHT = (DEFAULT_WIDTH / RATIO_WIDTH) * RATIO_HEIGHT;
 
+/** The px a table cell's text is drawn at, which the scene and the view header scale read. */
+export const CELL_FONT_SIZE = 12;
+
 export const INPUT_HEIGHT = 20;
 export const INPUT_MARGIN_RIGHT = 8;
 
@@ -36,22 +39,57 @@ export const COLUMN_AUTO_INCREMENT_WIDTH = 15;
 export const COLUMN_PADDING = 2;
 export const COLUMN_HEIGHT = INPUT_HEIGHT + COLUMN_PADDING * 2;
 
-/**
- * The header a view card draws. The same padded name box the document header
- * ends with, and none of the icon band above it, because a view offers no edit
- * affordance there.
- */
-export const VIEW_TABLE_HEADER_HEIGHT = TABLE_HEADER_INPUT_HEIGHT;
+/** The table icon a view card draws beside its name, at the reference's 1rem. */
+export const VIEW_TABLE_HEADER_ICON_SIZE = 16;
+
+/** The gap between that icon and the name, the reference's one unit of spacing. */
+export const VIEW_TABLE_HEADER_ICON_GAP = 4;
+
+/** The size a view card draws its header name at, over the size its rows take. */
+export const VIEW_TABLE_HEADER_FONT_SIZE = 14;
 
 /**
- * The row a view card draws, written down rather than derived from
- * INPUT_HEIGHT: a view row is a line of read only text, not the editable input
- * box the document row is sized around.
+ * How much wider a string is at that size than at the one it was measured with.
+ * A face advances a glyph in proportion to its size, so a measured width scales
+ * rather than having to be measured a second time.
  */
-export const VIEW_COLUMN_HEIGHT = 22;
+export const VIEW_TABLE_HEADER_FONT_SCALE =
+  VIEW_TABLE_HEADER_FONT_SIZE / CELL_FONT_SIZE;
 
-/** The gap above and below the text in a view row. */
-export const VIEW_COLUMN_PADDING = 2;
+/**
+ * How much wider again the header name is at the medium weight a view draws it
+ * in, over the regular every ui width was measured with. A host with no medium
+ * of its own synthesises one wider still, so the slot carries the room for both.
+ */
+export const VIEW_TABLE_HEADER_WEIGHT_SCALE = 1.04;
+
+/**
+ * The header a view card draws: the icon line with the card's own padding under
+ * it, and none of the icon band the document header keeps above the name,
+ * because a view offers no edit affordance there.
+ */
+export const VIEW_TABLE_HEADER_HEIGHT =
+  VIEW_TABLE_HEADER_ICON_SIZE + TABLE_PADDING;
+
+/** The key badge a view row draws, at the size the reference gives a row icon. */
+export const VIEW_COLUMN_ICON_SIZE = 16;
+
+/** The gap between that badge and the name, the reference's one and a half units. */
+export const VIEW_COLUMN_ICON_GAP = 6;
+
+/** The gap above and below the content of a view row, the reference's two units. */
+export const VIEW_COLUMN_PADDING = 8;
+
+/**
+ * The row a view card draws, written down as that icon line inside that padding
+ * rather than derived from INPUT_HEIGHT: a view row is a line of read only
+ * text, not the editable input box the document row is sized around.
+ */
+export const VIEW_COLUMN_HEIGHT =
+  VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_PADDING * 2;
+
+/** The width a view card is never drawn under, which is the reference's node minimum. */
+export const VIEW_TABLE_MIN_WIDTH = 172;
 
 /** The size of a button in a view card's header. */
 export const VIEW_TABLE_HEADER_BUTTON_SIZE = 12;

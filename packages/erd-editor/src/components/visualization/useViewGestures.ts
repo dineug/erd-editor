@@ -7,6 +7,8 @@ import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { sceneStreamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { Ctx } from '@/internal-types';
+import { clearViewPinnedTable } from '@/konva/scene/viewLayout';
+import { isPlainPress, onClickRelease } from '@/utils/clickGesture';
 import {
   editorRootOf,
   isMouseEvent,
@@ -84,6 +86,26 @@ export function useViewGestures(
   };
 
   /**
+   * The press on the background that lets the pin go, read the way the card
+   * that took it reads its own second press: main button, no modifier, and
+   * lifted where it went down, so a pan and a marquee both leave the pin standing.
+   */
+  const unpinOnClick = (event: MouseEvent | TouchEvent) => {
+    if (!isPlainPress(event)) return;
+
+    const { store } = app.value;
+    const view = store.state.editor.views[source];
+    if (!view) return;
+
+    onClickRelease(event, () => {
+      const { store } = app.value;
+      if (store.state.editor.views[source] !== view) return;
+
+      clearViewPinnedTable(store.state, source);
+    });
+  };
+
+  /**
    * A press on the background pans, or with the modifier opens the marquee of
    * this scene; a press on a table is that table's own drag. Nothing else is
    * drawn over this scene, and the bar under the tab is its sibling rather than its child.
@@ -97,6 +119,7 @@ export function useViewGestures(
 
     const { store, emitter } = app.value;
     store.dispatch(unselectAllAction$());
+    unpinOnClick(event);
 
     if (isMouseEvent(event) && isMod(event)) {
       event.preventDefault();

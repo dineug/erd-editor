@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { Direction } from '@/constants/schema';
 import { Relationship } from '@/internal-types';
 import { createRelationship } from '@/utils/collection/relationship.entity';
+import { VIEW_BEZIER_SEGMENTS } from '@/utils/draw-relationship/bezier';
 import {
   getRelationshipPath,
   toPathD,
@@ -462,18 +463,35 @@ describe('the corner each source turns (AC-28, AC-29)', () => {
     return widest;
   };
 
-  it('spends one segment on each document corner and four on each view corner', () => {
+  it('cuts the document corners and spends the whole view run on one curve', () => {
     const document = pathOf('document');
     const flow = pathOf('flow');
 
     expect(document).toHaveLength(5);
-    expect(flow).toHaveLength(11);
+    expect(flow).toHaveLength(VIEW_BEZIER_SEGMENTS);
     expect(flow[0][0]).toEqual(document[0][0]);
     expect(flow[flow.length - 1][1]).toEqual(document[document.length - 1][1]);
   });
 
-  it('turns the document corner in one 45 degree step and the view corner in 22.5 degree ones', () => {
+  it('turns the document corner in one 45 degree step and the view in even small ones', () => {
     expect(sharpestTurn(pathOf('document'))).toBeCloseTo(45, 6);
-    expect(sharpestTurn(pathOf('flow'))).toBeCloseTo(22.5, 6);
+    expect(sharpestTurn(pathOf('flow'))).toBeCloseTo(6.971, 3);
+  });
+
+  it('leaves the straight line between the two ends, which is what a curve is', () => {
+    const flow = pathOf('flow');
+    const [from] = flow[0];
+    const to = flow[flow.length - 1][1];
+    const run = { x: to.x - from.x, y: to.y - from.y };
+    const length = Math.hypot(run.x, run.y);
+
+    const widest = flow.reduce((furthest, [point]) => {
+      const away =
+        Math.abs((point.x - from.x) * run.y - (point.y - from.y) * run.x) /
+        length;
+      return Math.max(furthest, away);
+    }, 0);
+
+    expect(widest).toBeCloseTo(24.015, 3);
   });
 });

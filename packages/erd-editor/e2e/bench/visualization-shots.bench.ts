@@ -16,7 +16,7 @@ import {
 } from './report';
 
 // The Visualization tab as a reader sees it, which the spec makes the gate this
-// redesign ends in: ten frames a person looks at. It measures nothing and
+// redesign ends in: twelve frames a person looks at. It measures nothing and
 // asserts only that it caught what it was pointed at.
 
 const SHOTS = join(BENCH_DIR, 'shots');
@@ -25,12 +25,12 @@ const SHOTS = join(BENCH_DIR, 'shots');
  * Bumped whenever a shot changes what it stands for rather than how it looks,
  * so a folder of PNGs taken across the bump is not read as one set.
  */
-const METRICS_VERSION = 1;
+const METRICS_VERSION = 2;
 
 /**
  * One hub carrying ten of the eighteen links, which is the screen the plan
- * makes mandatory: a narrowed view lights every card it draws, and the hub is
- * where that reads as a wall of glow if it is going to read as one anywhere.
+ * makes mandatory: a narrowed view rests quiet and lights only what a hover
+ * reaches, and the hub is where a wall of glow would show if it showed at all.
  */
 const SCENE: CorpusOptions = {
   name: 'shots',
@@ -249,7 +249,7 @@ test('shot — flow over the whole document, and one card lit', async ({
   await showModeTrigger(page).click();
 });
 
-test('shot — the hub narrowed to itself and its hop, in three row modes', async ({
+test('shot — the hub narrowed, at rest and hovered, in three row modes', async ({
   page,
 }) => {
   await openVisualization(page);
@@ -279,8 +279,17 @@ test('shot — the hub narrowed to itself and its hop, in three row modes', asyn
   await shoot(
     page,
     'flow-focused',
-    'the hub and its hop alone, every card of it lit'
+    'the hub and its hop alone, at rest with nothing lit'
   );
+
+  await hoverCard(page, corpus.hubTableId);
+  await shoot(
+    page,
+    'flow-focused-hover',
+    'the same narrowing hovered: one card, its hop and their lines'
+  );
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(800);
 
   for (const [title, shot] of [
     ['Name only', 'flow-focused-name-only'],

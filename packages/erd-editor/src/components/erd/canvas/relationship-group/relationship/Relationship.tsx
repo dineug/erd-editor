@@ -40,7 +40,7 @@ import {
 /** Ten on, ten off: what the svg route spelt as a single dasharray of 10. */
 const ROUTE_DASH = [10, 10];
 
-/** An identifying route is solid, and the empty list is konva for no dash. */
+/** An identifying route and every view route are solid; the empty list is konva for no dash. */
 const ROUTE_SOLID: number[] = [];
 
 /**
@@ -185,16 +185,20 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     // and the connector would then miss the change that flipped it.
     const mapHover = Boolean(editor.hoverRelationshipMap[relationship.id]);
     const hover = state.hover || mapHover;
-    const grey = hover
-      ? theme.relationshipHover
+    const view = source !== 'document';
+    // A view has one neutral for every connector, since the reference draws no
+    // distinction by kind. The document keeps the two colours and the dash the
+    // identifying bit has always picked between.
+    const base = view
+      ? theme.grayColor8
       : relationship.identification
         ? theme.keyPFK
         : theme.keyFK;
+    const grey = hover ? theme.relationshipHover : base;
 
     // A view lights the connectors that reach what it lights, and the colour
     // walks between the two rather than jumping. The document has no light of
     // its own, so its route takes the colour it always took.
-    const view = source !== 'document';
     const lit = view && Boolean(props.lit);
     const litKey = transitionKey(editor.id, 'relationship', relationship.id);
     view && transitionTo(litKey, lit ? 1 : 0);
@@ -227,7 +231,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
           name="relationship-route"
           kind="relationship-route"
           data={toPathD(lines)}
-          dash={relationship.identification ? ROUTE_SOLID : ROUTE_DASH}
+          dash={view || relationship.identification ? ROUTE_SOLID : ROUTE_DASH}
           stroke={stroke}
           strokeWidth={strokeWidth}
           listening={false}

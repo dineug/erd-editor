@@ -46,7 +46,8 @@ function link(state: RootState, id: string, pkTable: string, fkTable: string) {
 
 /**
  * A triangle a - b - c, read through a view standing on a, so b and c are both
- * one hop out and the connector between them is shown and unlit until b is hovered.
+ * one hop out. Nothing is lit until the pointer lands: the centers seed no
+ * light, so a narrowed view rests as dark as the whole document does.
  */
 function seedFocused(state: RootState) {
   addTable(state, 'a', 0, 0);
@@ -67,6 +68,8 @@ describe('getParticleEdges', () => {
   it('measures nothing for the document, and nothing for a view that is not open', () => {
     const state = createState();
     seedFocused(state);
+    setViewHoverTable(state, 'a', ViewKind.flow);
+    expect(idsOf(state)).toEqual(['ab', 'ac']);
 
     expect(getParticleEdges(state)).toEqual([]);
     expect(getParticleEdges(state, 'document')).toEqual([]);
@@ -78,6 +81,7 @@ describe('getParticleEdges', () => {
   it('measures one run per lit connector, from the PK anchor to the FK anchor the view placed (AC-33)', () => {
     const state = createState();
     seedFocused(state);
+    setViewHoverTable(state, 'a', ViewKind.flow);
 
     const edges = getParticleEdges(state, ViewKind.flow);
     expect(edges.map(edge => edge.id)).toEqual(['ab', 'ac']);
@@ -102,14 +106,16 @@ describe('getParticleEdges', () => {
     const state = createState();
     seedFocused(state);
 
+    expect(idsOf(state)).toEqual([]);
+
     setViewHoverTable(state, 'b', ViewKind.flow);
-    expect(idsOf(state)).toEqual(['ab', 'ac', 'bc']);
+    expect(idsOf(state)).toEqual(['ab', 'bc']);
 
     setViewHoverTable(state, 'c', ViewKind.flow);
-    expect(idsOf(state)).toEqual(['ab', 'ac', 'bc']);
+    expect(idsOf(state)).toEqual(['ac', 'bc']);
 
     setViewHoverTable(state, null, ViewKind.flow);
-    expect(idsOf(state)).toEqual(['ab', 'ac']);
+    expect(idsOf(state)).toEqual([]);
   });
 
   it('leaves the particles off past the cap of lit connectors, and lights them all up to it (AC-51)', () => {
@@ -121,8 +127,9 @@ describe('getParticleEdges', () => {
     }
     state.editor.views.flow = createSceneView(ViewKind.flow, ['hub']);
     relationshipSort(state, ViewKind.flow);
+    setViewHoverTable(state, 'hub', ViewKind.flow);
 
-    // Lit as before: only the particles stay off past the cap.
+    // The hover lights every one of them: only the particles stay off past the cap.
     expect(getHighlightIds(state, ViewKind.flow).relationshipIds.size).toBe(
       PARTICLE_EDGE_MAX + 1
     );
@@ -143,6 +150,7 @@ describe('getParticleEdges', () => {
   it('hands back fresh runs on every read, so the loop may keep the last one', () => {
     const state = createState();
     seedFocused(state);
+    setViewHoverTable(state, 'a', ViewKind.flow);
 
     const first = getParticleEdges(state, ViewKind.flow);
     const second = getParticleEdges(state, ViewKind.flow);

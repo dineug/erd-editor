@@ -157,9 +157,9 @@ describe('a table box in a view', () => {
    * sum under test, so a change to the document arithmetic fails this case and
    * a change to the view arithmetic alone does not.
    */
-  it('drops the second row 71 units in the document and 55 in a view', () => {
+  it('drops the second row 71 units in the document and 65 in a view', () => {
     // 9 of border and padding, then a 38 header over a 24 row in the document,
-    // and the same 9 over a 24 header and a 22 row in a view.
+    // and the same 9 over a 24 header and a 32 row in a view.
     expect(
       getColumnRect(state, table, 1, 'document').y -
         getTableRect(state, table).y
@@ -167,7 +167,7 @@ describe('a table box in a view', () => {
     expect(
       getColumnRect(state, table, 1, 'flow').y -
         getTableRect(state, table, 'flow').y
-    ).toBe(55);
+    ).toBe(65);
   });
 });
 

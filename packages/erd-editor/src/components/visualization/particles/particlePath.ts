@@ -1,6 +1,5 @@
 import type { Point } from '@/internal-types';
-import { VIEW_ROUTE_ARC } from '@/utils/draw-relationship';
-import { VIEW_ARC_SEGMENTS } from '@/utils/draw-relationship/arcCorner';
+import { VIEW_BEZIER_SEGMENTS } from '@/utils/draw-relationship/bezier';
 
 /** How many particles ride one lit connector at a time, as liam draws them. */
 export const PARTICLE_COUNT = 6;
@@ -32,12 +31,11 @@ export const PARTICLE_RY = 1.2;
 export const PARTICLE_EDGE_ALPHA = 0.4;
 
 /**
- * How far either side of a point the direction is measured over: one chord of
- * a bent corner, so a window always spans more than the run it sits in and the
- * angle turns through a bend instead of stepping at each of its points.
+ * How far either side of a point the direction is measured over, as a fraction
+ * of the whole run, guide lines included: about one chord of the curve, so a
+ * window spans a bend and the angle turns through it rather than stepping.
  */
-export const TANGENT_WINDOW =
-  2 * VIEW_ROUTE_ARC * Math.sin(Math.PI / (4 * VIEW_ARC_SEGMENTS));
+export const TANGENT_WINDOW = 1 / VIEW_BEZIER_SEGMENTS;
 
 /** Under this two points are one place, to the geometry every reader here works to. */
 const COINCIDENT = 1e-9;
@@ -117,11 +115,12 @@ export function particlePhase(elapsedMs: number, edgeLength: number): number[] {
 /**
  * Which way the path runs at a distance along it, in degrees, so a particle
  * lies along the run it rides. Measured between the points a window either
- * side, never off the one run the distance sits in, which steps at every bend.
+ * side of it, never off the one chord it sits in, which steps at every bend.
  */
 export function tangentAt(path: MeasuredPath, distance: number): number {
-  const before = pointAlong(path, distance - TANGENT_WINDOW);
-  const after = pointAlong(path, distance + TANGENT_WINDOW);
+  const reach = path.length * TANGENT_WINDOW;
+  const before = pointAlong(path, distance - reach);
+  const after = pointAlong(path, distance + reach);
   const angle = runAngle(before, after);
 
   // Both samples on one place is a path that doubles back inside the window.

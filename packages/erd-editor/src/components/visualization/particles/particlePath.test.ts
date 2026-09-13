@@ -4,8 +4,7 @@
 
 import { describe, expect, it } from 'vite-plus/test';
 
-import { VIEW_ROUTE_ARC } from '@/utils/draw-relationship';
-import { arcPolyline } from '@/utils/draw-relationship/arcCorner';
+import { bezierPolyline } from '@/utils/draw-relationship/bezier';
 
 import {
   ANIMATE_DURATION,
@@ -192,33 +191,37 @@ describe('measurePath and pointAlong (AC-71)', () => {
   });
 });
 
-/** The corner a view bends, measured: a run in, a quarter circle, a run out. */
+/**
+ * The curve a view draws, measured: out of one end heading right, into the
+ * other from above. Its control points land on 50,0 and 100,50, which makes
+ * the whole run symmetric about the diagonal it turns through.
+ */
 const BENT = measurePath(
-  arcPolyline(
-    [
-      { x: 0, y: 0 },
-      { x: 100, y: 0 },
-      { x: 100, y: 100 },
-    ],
-    VIEW_ROUTE_ARC
+  bezierPolyline(
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: -1 }
   )
 );
 
+/** One window in scene units, which the tangent takes from the run it is handed. */
+const WINDOW = BENT.length * TANGENT_WINDOW;
+
 describe('tangentAt (AC-30)', () => {
-  it('reads the direction of a straight run, either way round the corner', () => {
-    expect(tangentAt(BENT, 40)).toBeCloseTo(0, 9);
-    expect(tangentAt(BENT, BENT.length - 40)).toBeCloseTo(90, 9);
+  it('reads the way the curve leaves one end and arrives at the other', () => {
+    expect(tangentAt(BENT, 0)).toBeCloseTo(2.496, 3);
+    expect(tangentAt(BENT, BENT.length)).toBeCloseTo(87.504, 3);
+    expect(tangentAt(BENT, BENT.length / 2)).toBeCloseTo(45, 9);
   });
 
-  it('turns through the bend without one step of nothing, and none of them wide (AC-30)', () => {
-    // Thirty samples from one window before the arc to one window after it.
-    // Wider than that and a whole window falls inside a straight run, which
-    // reads the same twice over and would pass a per-run measurement too.
-    const from = BENT.distances[1] - TANGENT_WINDOW;
-    const to = BENT.distances[BENT.distances.length - 2] + TANGENT_WINDOW;
+  it('turns through the curve without one step of nothing, and none of them wide (AC-30)', () => {
+    // Thirty samples over the whole run, which is curve from end to end now
+    // that a view bends no corners. A window narrower than a chord would read
+    // one of them twice over and pass a per-chord measurement too.
     const samples: number[] = [];
     for (let index = 0; index < 30; index++) {
-      samples.push(tangentAt(BENT, from + ((to - from) * index) / 29));
+      samples.push(tangentAt(BENT, (BENT.length * index) / 29));
     }
 
     const steps: number[] = [];
@@ -226,34 +229,32 @@ describe('tangentAt (AC-30)', () => {
       steps.push(Math.abs(samples[index] - samples[index - 1]));
     }
 
-    // A per-run reading gives twenty-four exact zeros out of these twenty-nine
-    // and jumps 22.5 degrees between them. The window measures 4.708 degrees
-    // at its widest and 1.158 at its narrowest.
+    // A per-chord reading gives six exact zeros out of these twenty-nine and
+    // jumps 4.570 degrees between them. The window measures 3.695 degrees at
+    // its widest and 2.005 at its narrowest.
     expect(Math.min(...steps)).toBeGreaterThan(0);
     expect(Math.max(...steps)).toBeLessThan(8);
-    expect(Math.max(...steps)).toBeCloseTo(4.708, 2);
-    expect(Math.min(...steps)).toBeCloseTo(1.158, 2);
+    expect(Math.max(...steps)).toBeCloseTo(3.695, 2);
+    expect(Math.min(...steps)).toBeCloseTo(2.005, 2);
   });
 
   it('measures one window either side of the point, and reads the path alone', () => {
-    // At the first bend point, where the window is exactly one chord either
-    // side and lands on the two vertices around it: the quarter turn is cut
-    // into four, so the chord through them is the arc's own 22.5 degrees.
-    const bend = BENT.distances[2];
-    const before = pointAlong(BENT, bend - TANGENT_WINDOW);
-    const after = pointAlong(BENT, bend + TANGENT_WINDOW);
+    // At the middle vertex, where a window lands inside each of the two chords
+    // meeting there: the answer is the diagonal the symmetric curve turns
+    // through, and neither of the chords carries it.
+    const middle = BENT.distances[12];
+    const before = pointAlong(BENT, middle - WINDOW);
+    const after = pointAlong(BENT, middle + WINDOW);
     const snapshot = JSON.stringify(BENT);
 
-    const cut = pointAlong(BENT, BENT.distances[1]);
-    const third = pointAlong(BENT, BENT.distances[3]);
-    expect(before.x).toBeCloseTo(cut.x, 9);
-    expect(before.y).toBeCloseTo(cut.y, 9);
-    expect(after.x).toBeCloseTo(third.x, 9);
-    expect(after.y).toBeCloseTo(third.y, 9);
-    expect(tangentAt(BENT, bend)).toBeCloseTo(22.5, 6);
-    // A run reading answers one of the two chords meeting there instead.
-    expect(tangentAt(BENT, bend)).not.toBeCloseTo(11.25, 6);
-    expect(tangentAt(BENT, bend)).not.toBeCloseTo(33.75, 6);
+    expect(before.x).toBeGreaterThan(BENT.points[11].x);
+    expect(before.x).toBeLessThan(BENT.points[12].x);
+    expect(after.x).toBeGreaterThan(BENT.points[12].x);
+    expect(after.x).toBeLessThan(BENT.points[13].x);
+    expect(tangentAt(BENT, middle)).toBeCloseTo(45, 9);
+    // A chord reading answers one of the two meeting there instead.
+    expect(tangentAt(BENT, middle)).not.toBeCloseTo(43.408, 3);
+    expect(tangentAt(BENT, middle)).not.toBeCloseTo(46.592, 3);
     expect(JSON.stringify(BENT)).toBe(snapshot);
   });
 

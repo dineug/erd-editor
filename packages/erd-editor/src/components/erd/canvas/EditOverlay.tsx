@@ -25,8 +25,8 @@ import {
   getColumnTextY,
   getHeaderCellSlots,
   getHeaderCellsY,
+  getHeaderTextY,
   HEADER_CELLS_X,
-  HEADER_TEXT_Y,
 } from '@/components/erd/canvas/table/cellLayout';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -157,7 +157,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
       tableId: table.id,
       columnId: null,
       x: rect.x + HEADER_CELLS_X + slot.x,
-      y: rect.y + getHeaderCellsY() + HEADER_TEXT_Y,
+      y: rect.y + getHeaderCellsY() + getHeaderTextY(),
       width: slot.width,
       value:
         slot.focusType === FocusType.tableName ? table.name : table.comment,

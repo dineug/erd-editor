@@ -8,6 +8,11 @@ import {
   TABLE_BORDER,
   TABLE_PADDING,
   VIEW_COLUMN_HEIGHT,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_MIN_WIDTH,
 } from '@/constants/layout';
 import { ColumnType, ColumnUIKey, Show } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
@@ -25,6 +30,7 @@ import {
   calcTableWidths,
   calcViewTableWidths,
   recalculateTableWidth,
+  viewHeaderNameWidth,
 } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
@@ -322,7 +328,7 @@ describe('calcTableHeight', () => {
     expect(calcTableHeight(table)).toBe(56 + 40 * COLUMN_HEIGHT);
   });
 
-  /** AC-13, AC-14. A view card wears a shorter header and shorter rows than the document card. */
+  /** AC-13, AC-14. A view card wears a shorter header than the document card, and taller rows. */
   it('adds the view chrome and the view row for a view source', () => {
     const table = createTable({ columnIds: ['a', 'b', 'c'] });
 
@@ -331,7 +337,7 @@ describe('calcTableHeight', () => {
     expect(calcTableHeight(table, 0, 'flow')).toBeLessThan(
       calcTableHeight(table, 0)
     );
-    expect(calcTableHeight(table, 3, 'flow')).toBeLessThan(
+    expect(calcTableHeight(table, 3, 'flow')).toBeGreaterThan(
       calcTableHeight(table, 3, 'document')
     );
   });
@@ -340,14 +346,19 @@ describe('calcTableHeight', () => {
 describe('calcViewTableWidths', () => {
   const CHROME = (TABLE_BORDER + TABLE_PADDING) * 2;
 
-  /** The row width a name and a type take past the key badge, margins included. */
+  /** The row width a name and a type take past the key badge, its gap included. */
   const rowWidth = (name: number, dataType: number) =>
-    COLUMN_KEY_WIDTH +
-    INPUT_MARGIN_RIGHT +
+    VIEW_COLUMN_ICON_SIZE +
+    VIEW_COLUMN_ICON_GAP +
     name +
     INPUT_MARGIN_RIGHT +
-    dataType +
-    INPUT_MARGIN_RIGHT;
+    dataType;
+
+  /** The header width a table name takes past the table icon, at the size a view draws it. */
+  const headerWidth = (widthName: number) =>
+    VIEW_TABLE_HEADER_ICON_SIZE +
+    VIEW_TABLE_HEADER_ICON_GAP +
+    viewHeaderNameWidth(widthName);
 
   /** A keys only view over the table, so the key rows are what it shows. */
   function openKeysOnly(
@@ -462,16 +473,23 @@ describe('calcViewTableWidths', () => {
     expect(viewWidths(table, lit)).toEqual(viewWidths(table, unlit));
 
     columns[0].ui.widthDataType = 10;
-    expect(viewWidths(table, unlit).width).toBe(CHROME + rowWidth(80, 10));
+    // 16 + 6 + 80 + 8 + 10 is under the minimum, so the card takes that instead.
+    expect(viewWidths(table, unlit).width).toBe(VIEW_TABLE_MIN_WIDTH);
   });
 
+  /**
+   * A 40 unit name and no row is 69 units of content, well under the minimum,
+   * so the card is drawn at the minimum instead and the name column, which has
+   * no row to widen, stays at nothing.
+   */
   it('is the header name alone while the view shows no row', () => {
     const { table, columns } = keyedTable();
     const state = createState({ tables: [table], columns });
     openKeysOnly(state, table.id, ShowMode.nameOnly);
 
+    expect(headerWidth(40)).toBe(69);
     expect(viewWidths(table, state)).toEqual({
-      width: CHROME + 40 + INPUT_MARGIN_RIGHT,
+      width: VIEW_TABLE_MIN_WIDTH,
       name: 0,
       comment: 0,
       dataType: 0,
@@ -488,9 +506,46 @@ describe('calcViewTableWidths', () => {
     const state = createState({ tables: [table], columns });
     openKeysOnly(state, table.id);
 
-    expect(viewWidths(table, state).width).toBe(
-      CHROME + 1_000 + INPUT_MARGIN_RIGHT
+    expect(viewWidths(table, state).width).toBe(CHROME + headerWidth(1_000));
+  });
+
+  /**
+   * The reference gives its node a minimum, and a short name would otherwise
+   * leave a cramped box. What the minimum adds goes to the name column, so the
+   * type still stands against the right edge.
+   */
+  it('draws no card under the minimum, and gives the name what that adds', () => {
+    const { table, columns } = keyedTable();
+    columns[0].ui.widthName = 20;
+    columns[0].ui.widthDataType = 20;
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    const widths = viewWidths(table, state);
+
+    expect(rowWidth(20, 20)).toBe(70);
+    expect(widths.width).toBe(VIEW_TABLE_MIN_WIDTH);
+    expect(widths.name).toBe(20 + (VIEW_TABLE_MIN_WIDTH - CHROME - 70));
+    expect(rowWidth(widths.name, widths.dataType)).toBe(
+      VIEW_TABLE_MIN_WIDTH - CHROME
     );
+  });
+
+  /**
+   * The same slack, from a header wider than the row rather than the minimum.
+   * The name absorbing it is what keeps one right edge for every row on a card
+   * whose width some other measurement set.
+   */
+  it('gives the name what a wide header adds too', () => {
+    const { table, columns } = keyedTable();
+    table.ui.widthName = 1_000;
+    const state = createState({ tables: [table], columns });
+    openKeysOnly(state, table.id);
+
+    const widths = viewWidths(table, state);
+
+    expect(widths.dataType).toBe(90);
+    expect(rowWidth(widths.name, widths.dataType)).toBe(headerWidth(1_000));
   });
 });
 

@@ -8,15 +8,18 @@ import {
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
-  COLUMN_CELLS_X,
   type ColumnCellWidths,
   getCellTextBaseline,
   getCellTextHeight,
   getColumnCellSlots,
+  getColumnCellsX,
+  getColumnTextHeight,
   getColumnTextY,
   getColumnUnderlineY,
   getHeaderCellSlots,
   getHeaderCellsY,
+  getHeaderTextHeight,
+  getHeaderTextY,
   getWidthComment,
 } from '@/components/erd/canvas/table/cellLayout';
 import {
@@ -28,12 +31,17 @@ import {
   INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_ICON_MARGIN_BOTTOM,
-  VIEW_COLUMN_HEIGHT,
+  TABLE_HEADER_PADDING,
+  VIEW_COLUMN_ICON_GAP,
+  VIEW_COLUMN_ICON_SIZE,
   VIEW_COLUMN_PADDING,
+  VIEW_TABLE_HEADER_ICON_GAP,
+  VIEW_TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
 import { ColumnType, Show } from '@/constants/schema';
 import { createEditor, FocusType } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
+import { viewHeaderNameWidth } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 
 const WIDTHS: ColumnCellWidths = {
@@ -122,13 +130,13 @@ describe('the boxes a column row lays out', () => {
       {
         columnType: ColumnType.columnName,
         focusType: FocusType.columnName,
-        x: COLUMN_CELLS_X,
+        x: getColumnCellsX(),
         width: 60,
       },
       {
         columnType: ColumnType.columnDataType,
         focusType: FocusType.columnDataType,
-        x: COLUMN_CELLS_X + 60 + INPUT_MARGIN_RIGHT,
+        x: getColumnCellsX() + 60 + INPUT_MARGIN_RIGHT,
         width: 80,
       },
     ]);
@@ -149,13 +157,13 @@ describe('the boxes a column row lays out', () => {
       {
         columnType: ColumnType.columnName,
         focusType: FocusType.columnName,
-        x: COLUMN_CELLS_X,
+        x: getColumnCellsX(),
         width: 60,
       },
       {
         columnType: ColumnType.columnUnique,
         focusType: FocusType.columnUnique,
-        x: COLUMN_CELLS_X + 60 + INPUT_MARGIN_RIGHT,
+        x: getColumnCellsX() + 60 + INPUT_MARGIN_RIGHT,
         width: COLUMN_UNIQUE_WIDTH,
       },
     ]);
@@ -182,7 +190,7 @@ describe('the boxes a column row lays out', () => {
       {
         columnType: ColumnType.columnName,
         focusType: FocusType.columnName,
-        x: COLUMN_CELLS_X,
+        x: getColumnCellsX(),
         width: 60,
       },
     ]);
@@ -195,13 +203,13 @@ describe('the boxes a view lays out', () => {
     {
       columnType: ColumnType.columnName,
       focusType: FocusType.columnName,
-      x: COLUMN_CELLS_X,
+      x: getColumnCellsX('flow'),
       width: 60,
     },
     {
       columnType: ColumnType.columnDataType,
       focusType: FocusType.columnDataType,
-      x: COLUMN_CELLS_X + 60 + INPUT_MARGIN_RIGHT,
+      x: getColumnCellsX('flow') + 60 + INPUT_MARGIN_RIGHT,
       width: 80,
     },
   ];
@@ -251,9 +259,32 @@ describe('the boxes a view lays out', () => {
     entity.ui.widthComment = 70;
 
     expect(getHeaderCellSlots(state, entity, 'flow')).toEqual([
-      { focusType: FocusType.tableName, x: 0, width: 60 },
+      {
+        focusType: FocusType.tableName,
+        x: VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP,
+        width: viewHeaderNameWidth(60),
+      },
     ]);
     expect(getHeaderCellSlots(state, entity, 'document')).toHaveLength(2);
+  });
+
+  /**
+   * A view draws the name larger and heavier than every ui width was measured
+   * at, so the box it reserves has to be larger too or the name it was
+   * measured to hold would come out clipped.
+   */
+  it('reserves the wider box a view header draws that name in', () => {
+    const state = createState();
+    const entity = table();
+    entity.ui.widthName = 60;
+
+    const [view] = getHeaderCellSlots(state, entity, 'flow');
+    const [document] = getHeaderCellSlots(state, entity, 'document');
+
+    expect(view.width).toBe(73);
+    expect(view.width).toBeGreaterThan(document.width);
+    expect(view.x).toBe(20);
+    expect(document.x).toBe(0);
   });
 });
 
@@ -271,29 +302,42 @@ describe('the offsets a source lays its cells out at', () => {
   it('takes the row padding from the source that lays the row out', () => {
     expect(getColumnTextY()).toBe(COLUMN_PADDING);
     expect(getColumnTextY('flow')).toBe(VIEW_COLUMN_PADDING);
+    expect(getColumnTextY('flow')).toBeGreaterThan(getColumnTextY());
   });
 
-  it('runs the row underline along the foot of that row own line box', () => {
+  it('starts the cells past the badge its own source sizes', () => {
+    expect(getColumnCellsX()).toBe(getColumnCellsX('document'));
+    expect(getColumnCellsX('flow')).toBe(
+      TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP
+    );
+    expect(getColumnCellsX('flow')).toBeGreaterThan(getColumnCellsX());
+  });
+
+  /**
+   * Both boxes are the band their source's own icon stands in, which is what
+   * puts a line of text on that icon's middle. The document keeps the box its
+   * editor opens an input in, so its two baselines still meet.
+   */
+  it('centres a line in the band its source draws icons in', () => {
+    expect(getHeaderTextY()).toBe(TABLE_HEADER_PADDING);
+    expect(getHeaderTextY('flow')).toBe(0);
+    expect(getHeaderTextHeight()).toBe(getCellTextHeight());
+    expect(getHeaderTextHeight('flow')).toBe(VIEW_TABLE_HEADER_ICON_SIZE);
+    expect(getColumnTextHeight()).toBe(getCellTextHeight());
+    expect(getColumnTextHeight('flow')).toBe(VIEW_COLUMN_ICON_SIZE);
+  });
+
+  it('runs the row underline along the foot of the document row own line box', () => {
     expect(getColumnUnderlineY()).toBe(CELL_UNDERLINE_Y);
-    expect(getColumnUnderlineY('document')).toBe(
+    expect(getColumnUnderlineY()).toBe(
       COLUMN_HEIGHT - COLUMN_PADDING * 2 - FOCUS_BORDER_HEIGHT
     );
-    expect(getColumnUnderlineY('flow')).toBe(
-      VIEW_COLUMN_HEIGHT - VIEW_COLUMN_PADDING * 2 - FOCUS_BORDER_HEIGHT
-    );
-    expect(getColumnUnderlineY('flow')).toBeLessThan(getColumnUnderlineY());
   });
 
-  it('leaves the underline and its border inside the row either way', () => {
-    for (const source of ['document', 'flow'] as const) {
-      const row = source === 'document' ? COLUMN_HEIGHT : VIEW_COLUMN_HEIGHT;
-
-      expect(
-        getColumnTextY(source) +
-          getColumnUnderlineY(source) +
-          FOCUS_BORDER_HEIGHT
-      ).toBeLessThanOrEqual(row);
-    }
+  it('leaves the underline and its border inside the document row', () => {
+    expect(
+      getColumnTextY('document') + getColumnUnderlineY() + FOCUS_BORDER_HEIGHT
+    ).toBeLessThanOrEqual(COLUMN_HEIGHT);
   });
 });
 

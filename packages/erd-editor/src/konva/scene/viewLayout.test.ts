@@ -13,6 +13,7 @@ import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 import {
   clearViewHoverTable,
+  clearViewPinnedTable,
   getHighlightIds,
   getTablePoint,
   getViewHoverTable,
@@ -465,8 +466,8 @@ describe('the table a view hover rests on', () => {
     openFocused(state, ['a']);
     expect(getViewHoverTable(state, 'flow')).toBeNull();
     expect(getHighlightIds(state, 'flow')).toEqual({
-      tableIds: new Set(['a', 'b']),
-      relationshipIds: new Set(['ab']),
+      tableIds: new Set(),
+      relationshipIds: new Set(),
     });
   });
 
@@ -590,6 +591,25 @@ describe('the table a view pin holds', () => {
     expect(getViewPinnedTable(state, 'flow')).toBeNull();
   });
 
+  /** AC-43. The press on the background lets it go, and only in the view that took it. */
+  it('is let go whatever it holds, by the source that took it alone', () => {
+    const state = createState();
+    seedGraph(state);
+    openFocused(state, ['a']);
+    setViewPinnedTable(state, 'a', 'flow');
+
+    clearViewPinnedTable(state, 'document');
+    expect(getViewPinnedTable(state, 'flow')).toBe('a');
+
+    clearViewPinnedTable(state, 'flow');
+    expect(getViewPinnedTable(state, 'flow')).toBeNull();
+
+    // Nothing of the take is left behind, so the same table pins again rather
+    // than reading the stale entry as a release.
+    setViewPinnedTable(state, 'a', 'flow');
+    expect(getViewPinnedTable(state, 'flow')).toBe('a');
+  });
+
   /**
    * The whole cleanup story of the slot: a pin belongs to the view it was
    * taken in, so a close drops it and a reopen does not revive it. Nothing
@@ -607,8 +627,8 @@ describe('the table a view pin holds', () => {
     openFocused(state, ['b']);
     expect(getViewPinnedTable(state, 'flow')).toBeNull();
     expect(getHighlightIds(state, 'flow')).toEqual({
-      tableIds: new Set(['a', 'b', 'c']),
-      relationshipIds: new Set(['ab', 'bc']),
+      tableIds: new Set(),
+      relationshipIds: new Set(),
     });
   });
 
@@ -678,8 +698,8 @@ describe('the table a view pin holds', () => {
 
     expect(getViewPinnedTable(state, 'flow')).toBe('d');
     expect(getHighlightIds(state, 'flow')).toEqual({
-      tableIds: new Set(['a', 'b']),
-      relationshipIds: new Set(['ab']),
+      tableIds: new Set(),
+      relationshipIds: new Set(),
     });
   });
 });
@@ -696,12 +716,22 @@ describe('getHighlightIds', () => {
     });
   });
 
-  /** AC-27 and AC-42. The centers and their one hop light; a table two hops out is not even shown. */
-  it('lights the centers, their one hop and the relationships between', () => {
+  /**
+   * AC-27 and AC-42. A narrowed view seeds nothing from its centers: it rests
+   * unlit the way the whole document does, and a hover on the center is what
+   * lights the center, its one hop and the connector between.
+   */
+  it('rests unlit over a center, and lights its one hop once the center is hovered', () => {
     const state = createState();
     seedGraph(state);
     openFocused(state, ['a']);
 
+    expect(getHighlightIds(state, 'flow')).toEqual({
+      tableIds: new Set(),
+      relationshipIds: new Set(),
+    });
+
+    setViewHoverTable(state, 'a', 'flow');
     expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['a', 'b']),
       relationshipIds: new Set(['ab']),
@@ -709,8 +739,8 @@ describe('getHighlightIds', () => {
   });
 
   /**
-   * AC-42. A hover lights the hovered table and its one hop as well, which in
-   * a narrowed view is a connector between two neighbours that stood grey.
+   * AC-42. A hover lights the hovered table and its one hop, which on a
+   * neighbour of the center is the connector between two neighbours.
    */
   it('lights a neighbour to neighbour connector once one of its ends is hovered', () => {
     const state = createState();
@@ -719,15 +749,15 @@ describe('getHighlightIds', () => {
     openFocused(state, ['a']);
 
     expect(getHighlightIds(state, 'flow')).toEqual({
-      tableIds: new Set(['a', 'b', 'c']),
-      relationshipIds: new Set(['ab', 'ac']),
+      tableIds: new Set(),
+      relationshipIds: new Set(),
     });
 
     setViewHoverTable(state, 'b', 'flow');
 
     expect(getHighlightIds(state, 'flow')).toEqual({
       tableIds: new Set(['a', 'b', 'c']),
-      relationshipIds: new Set(['ab', 'ac', 'bc']),
+      relationshipIds: new Set(['ab', 'bc']),
     });
   });
 
@@ -739,8 +769,8 @@ describe('getHighlightIds', () => {
 
     // c is shown but d, its other neighbour, is not; a hover on c lights c and b only.
     expect(getHighlightIds(state, 'flow')).toEqual({
-      tableIds: new Set(['a', 'b', 'c']),
-      relationshipIds: new Set(['ab', 'bc']),
+      tableIds: new Set(['b', 'c']),
+      relationshipIds: new Set(['bc']),
     });
   });
 
@@ -751,12 +781,12 @@ describe('getHighlightIds', () => {
     setViewHoverTable(state, 'd', 'flow');
 
     expect(getHighlightIds(state, 'flow')).toEqual({
-      tableIds: new Set(['a', 'b']),
-      relationshipIds: new Set(['ab']),
+      tableIds: new Set(),
+      relationshipIds: new Set(),
     });
   });
 
-  /** AC-19. A Flow view has no center: only a hover lights, and nothing lights without one. */
+  /** AC-19. Whatever the display set, only a hover or a pin lights, and nothing lights without one. */
   it('lights only the hovered neighbourhood in a Flow view', () => {
     const state = createState();
     seedGraph(state);

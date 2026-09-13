@@ -309,9 +309,28 @@ export function setViewPinnedTable(
 }
 
 /**
+ * Lets go of whatever the view of the source given pinned. The press on the
+ * background that clears a highlight, beside the second press on the card that
+ * took it, both of which are the reader saying the same thing.
+ */
+export function clearViewPinnedTable(
+  root: RootState,
+  source: GeometrySource = 'document'
+): void {
+  const view = getSourceView(root, source);
+  if (!view) return;
+
+  const { id } = root.editor;
+  if (pinnedView.get(id) !== view) return;
+
+  pinnedView.delete(id);
+  Reflect.deleteProperty(pinned.tableId, id);
+}
+
+/**
  * The pin the view of the source given holds. One taken in a view that has
- * since closed fails the identity below and is never read, which is why the
- * gesture is the only thing that ever clears the slot.
+ * since closed fails the identity below and is never read, which is why only a
+ * reader's own gesture ever clears the slot.
  */
 export function getViewPinnedTable(
   root: RootState,
@@ -327,9 +346,9 @@ export function getViewPinnedTable(
 }
 
 /**
- * What the view of the source given lights: its centers, the table hovered,
- * the table pinned, and for each of those every shown relationship at it and
- * the table at the other end. A seed the view does not show lights nothing, since it is stale.
+ * What the view of the source given lights: the table hovered, the table
+ * pinned, and for each of those every shown relationship at it and the table
+ * at the other end. A narrowed view rests unlit like the whole document, since its centers seed nothing.
  */
 export function getHighlightIds(
   state: RootState,
@@ -344,7 +363,7 @@ export function getHighlightIds(
   const shownTables = new Set(shown.tableIds);
   const hovered = getViewHoverTable(state, source);
   const held = getViewPinnedTable(state, source);
-  const lit = new Set(view.centerIds.filter(id => shownTables.has(id)));
+  const lit = new Set<string>();
   if (hovered !== null && shownTables.has(hovered)) lit.add(hovered);
   if (held !== null && shownTables.has(held)) lit.add(held);
 

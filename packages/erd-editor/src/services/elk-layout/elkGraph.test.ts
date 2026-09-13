@@ -503,7 +503,9 @@ describe('createElkLayoutRequest options', () => {
     expect(beforeOpen.nodes[0].height).toBe(
       calcTableHeight(table, table.columnIds.length, 'flow')
     );
-    expect(beforeOpen.nodes[0].height).toBeLessThan(document.nodes[0].height);
+    expect(beforeOpen.nodes[0].height).toBeGreaterThan(
+      document.nodes[0].height
+    );
   });
 
   // AC-50, the request half: the tables no relationship reaches leave the

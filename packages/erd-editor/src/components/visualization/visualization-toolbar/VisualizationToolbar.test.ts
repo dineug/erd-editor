@@ -8,6 +8,10 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import {
+  formatDistance,
+  getContentCompass,
+} from '@/components/erd/content-compass/compassGeometry';
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import * as menuStyles from '@/components/primitives/context-menu/menu/Menu.styles';
 import { getIcon, type IconName } from '@/components/primitives/icon/icons';
@@ -87,12 +91,15 @@ async function setup(app: AppContext = createTestAppContext()) {
   return { app, container, root };
 }
 
-// The row display trigger wears a widened copy of the same pill rather than
-// the pill class itself, so the order the bar draws is read off both.
+// The row display trigger and the compass each wear a widened copy of the same
+// pill rather than the pill class itself, so the order the bar draws is read
+// off all three.
 const menus = (root: HTMLElement) =>
   Array.from(
     root.querySelectorAll<HTMLElement>(
-      `.${String(floating.menu)}, .${String(styles.showModeTrigger)}`
+      [floating.menu, styles.showModeTrigger, styles.compass]
+        .map(name => `.${String(name)}`)
+        .join(', ')
     )
   );
 
@@ -104,6 +111,10 @@ const byTitle = (root: HTMLElement, name: string) =>
 
 const readoutOf = (root: HTMLElement) =>
   root.querySelector<HTMLElement>(`.${String(styles.readout)}`)?.textContent;
+
+const distanceOf = (root: HTMLElement) =>
+  root.querySelector<HTMLElement>(`.${String(styles.compassDistance)}`)
+    ?.textContent;
 
 const click = (el: Element | null) =>
   el?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -555,6 +566,29 @@ describe('VisualizationToolbar', () => {
     await flush();
 
     expect(byTitle(root, 'Go to content')).toBeNull();
+  });
+
+  it('says how far that content lies as well as which way', async () => {
+    const app = seedFlow(createTestAppContext());
+    const { root } = await setup(app);
+
+    click(byTitle(root, 'Fit'));
+    await flush();
+    expect(distanceOf(root)).toBeUndefined();
+
+    app.store.dispatchSync(
+      viewScrollToAction({
+        originX: -90_000,
+        originY: -90_000,
+        kind: ViewKind.flow,
+      })
+    );
+    await flush();
+
+    const compass = getContentCompass(app.store.state, ViewKind.flow)!;
+    expect(compass).not.toBeNull();
+    expect(distanceOf(root)).toBe(formatDistance(compass.distance));
+    expect(distanceOf(root)).not.toBe('0');
   });
 
   it('asks ELK for the placement again on Tidy up, over every table of the document', async () => {

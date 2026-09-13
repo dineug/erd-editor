@@ -17,6 +17,7 @@ import {
   TABLE_HEADER_PADDING,
   VIEW_COLUMN_HEIGHT,
   VIEW_COLUMN_PADDING,
+  VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
 
 const CELL_WIDTH = 60;
@@ -61,11 +62,11 @@ describe('columnCellHit', () => {
   });
 
   /**
-   * A view row is shorter than the document's, and the box is the one thing
-   * that does not follow the drawn row on its own: left on the document height
-   * it would overhang the row below by the difference.
+   * A view row is taller than the document's, and the box is the one thing that
+   * does not follow the drawn row on its own: left on the document height it
+   * would stop short of the row's own foot by the difference.
    */
-  it('takes the shorter row a view draws, and no more', () => {
+  it('takes the taller row a view draws, and its own padding', () => {
     const view = boxOf(columnCellHit.flow, { width: CELL_WIDTH });
 
     expect(view).toEqual([
@@ -74,17 +75,31 @@ describe('columnCellHit', () => {
       CELL_WIDTH + INPUT_MARGIN_RIGHT,
       VIEW_COLUMN_HEIGHT,
     ]);
-    expect(view[3]).toBeLessThan(COLUMN_HEIGHT);
+    expect(view[3]).toBeGreaterThan(COLUMN_HEIGHT);
   });
 });
 
 describe('headerCellHit', () => {
-  it('takes the padded name box, which is the header a view draws whole', () => {
-    expect(boxOf(headerCellHit, { width: CELL_WIDTH })).toEqual([
+  it('takes the padded name box of the document header', () => {
+    expect(boxOf(headerCellHit.document, { width: CELL_WIDTH })).toEqual([
       0,
       -TABLE_HEADER_PADDING,
       CELL_WIDTH + INPUT_MARGIN_RIGHT,
       TABLE_HEADER_INPUT_HEIGHT,
+    ]);
+  });
+
+  /**
+   * A view header is a band the card's own padding sits inside rather than a
+   * padded input box, so the press box starts at the drawn line and runs the
+   * whole band down to the first row.
+   */
+  it('takes the whole band a view leaves above its rows', () => {
+    expect(boxOf(headerCellHit.flow, { width: CELL_WIDTH })).toEqual([
+      0,
+      0,
+      CELL_WIDTH + INPUT_MARGIN_RIGHT,
+      VIEW_TABLE_HEADER_HEIGHT,
     ]);
   });
 });

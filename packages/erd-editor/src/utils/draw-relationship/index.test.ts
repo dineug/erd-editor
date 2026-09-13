@@ -40,7 +40,9 @@ import {
   ROUTE_BBOX_REACH,
   setRoute,
 } from '@/utils/draw-relationship';
+import { curveReach } from '@/utils/draw-relationship/bezier';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
+import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 describe('DirectionName', () => {
@@ -145,17 +147,28 @@ const VIEW_POSITIONS: Record<string, Point> = {
 
 const PAD = ROUTE_BBOX_REACH + RELATIONSHIP_STROKE_WIDTH;
 
+/**
+ * How far past the points a view's curve can reach, which its box carries and
+ * the document's does not. The slack is the stub each end could still gain
+ * where no route has fixed where it turns.
+ */
+function viewReach(points: Point[], slack: number): number {
+  const { width, height } = boxOf(points, 0);
+
+  return curveReach(Math.max(width, height) + 2 * slack);
+}
+
 function boxOf(points: Point[], pad: number): BBox {
   const xs = points.map(({ x }) => x);
   const ys = points.map(({ y }) => y);
-  const x = Math.min(...xs) - pad;
-  const y = Math.min(...ys) - pad;
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
 
   return {
-    x,
-    y,
-    width: Math.max(...xs) + pad - x,
-    height: Math.max(...ys) + pad - y,
+    x: x - pad,
+    y: y - pad,
+    width: Math.max(...xs) - x + pad * 2,
+    height: Math.max(...ys) - y + pad * 2,
   };
 }
 
@@ -199,7 +212,7 @@ function createState(): RootState {
   return state;
 }
 
-/** The bounding rect of the boxes the view draws, the area AC-62 measures against. */
+/** The bounding rect of the boxes the view draws, the area a view box is measured against. */
 function viewBounds(state: RootState): BBox {
   const boxes = ['A', 'B'].map(id =>
     tableToObjectPoint(state, state.collections.tableEntities[id], 'flow')
@@ -245,7 +258,7 @@ describe('getAnchors across the two channels', () => {
 });
 
 describe('getRouteBBox across the two channels', () => {
-  /** AC-62. A view's sort opens the view's epoch, never the document's. */
+  /** A view's sort opens the view's epoch, never the document's. */
   it('keeps the document box on its route while a view sorts in between', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
@@ -278,18 +291,22 @@ describe('getRouteBBox across the two channels', () => {
     expect(getRouteBBox(relationship)).toEqual(routed);
   });
 
-  /** AC-62. The view box is the view route and the view anchors, within the view's boxes plus the reach. */
-  it('builds a view box from the view route and the view anchors, inside the view bounds', () => {
+  /** The view box is the two turning points, the view anchors and the curve's own reach. */
+  it('builds a view box from the turning points and the view anchors, inside the view bounds', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
     relationshipSort(state, 'flow');
 
     const box = getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow');
     const { start, end } = getAnchors(relationship, 'flow');
+    const route = getRoute(relationship, 'flow') ?? [];
+    const turns = [route[0], route[route.length - 1]];
+    const framed = [...turns, start, end];
+    const reach = viewReach(framed, 0);
 
-    expect(box).toEqual(
-      boxOf([...(getRoute(relationship, 'flow') ?? []), start, end], PAD)
-    );
+    expect(box).toEqual(boxOf(framed, PAD + reach));
+    // The route the view no longer draws is inside it, curve reach and all.
+    expect(contains(box, boxOf([...route, start, end], 0))).toBe(true);
     expect(
       contains(
         boxOf(
@@ -297,7 +314,7 @@ describe('getRouteBBox across the two channels', () => {
             { x: b.x, y: b.y },
             { x: b.x + b.width, y: b.y + b.height },
           ]),
-          PAD
+          PAD + reach
         ),
         box
       )
@@ -305,6 +322,30 @@ describe('getRouteBBox across the two channels', () => {
     // Nowhere near the document's box, which is what a leak would have shown.
     expect(box.x).toBeGreaterThan(4_000);
     expect(getRouteBBox(relationship).x).toBeLessThan(200);
+  });
+
+  /** The box a view culls by holds the curve it draws, which is no longer its route. */
+  it('holds every point of the curve a view draws, routed or not', () => {
+    const { state, relationship } = createScene();
+    relationshipSort(state);
+    relationshipSort(state, 'flow');
+
+    const drawn = () =>
+      getRelationshipPath(relationship, 'flow')
+        .path.path.d()
+        .flatMap(([from, to]) => [from, to]);
+
+    const holds = () =>
+      contains(
+        getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow'),
+        boxOf(drawn(), 0)
+      );
+
+    expect(drawn().length).toBeGreaterThan(2);
+    expect(holds()).toBe(true);
+
+    nextSortEpoch('flow');
+    expect(holds()).toBe(true);
   });
 
   it('falls back for a view that sorted the connector in an earlier epoch', () => {
@@ -322,7 +363,9 @@ describe('getRouteBBox across the two channels', () => {
     const { start, end } = getAnchors(relationship, 'flow');
     expect(
       getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
-    ).toEqual(boxOf([start, end], PAD + MAX_STUB));
+    ).toEqual(
+      boxOf([start, end], PAD + MAX_STUB + viewReach([start, end], MAX_STUB))
+    );
     expect(
       getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
     ).not.toEqual(routed);
@@ -346,7 +389,7 @@ describe('the view channel and the document channel', () => {
     stores.splice(0).forEach(store => store.destroy());
   });
 
-  /** AC-63. Opening or closing the view empties the view's channel and leaves the document's. */
+  /** Opening or closing the view empties the view's channel and leaves the document's. */
   it('is emptied by viewOpen and viewClose, and the document channel is not', () => {
     const store = createStore({
       toWidth: text => text.length * 10,
@@ -391,7 +434,7 @@ describe('clearSortChannel', () => {
     stores.splice(0).forEach(store => store.destroy());
   });
 
-  /** AC-63. Anchors, slots, routes and the epoch of one channel go, and the other channel keeps its own. */
+  /** Anchors, slots, routes and the epoch of one channel go, and the other channel keeps its own. */
   it('empties the view anchors, slots, routes and epoch, and leaves the document channel', () => {
     const { state, relationship } = createScene();
     relationshipSort(state);
@@ -409,7 +452,14 @@ describe('clearSortChannel', () => {
     expect(getRoute(relationship, 'flow')).toBeUndefined();
     expect(
       getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
-    ).toEqual(boxOf([relationship.start, relationship.end], PAD + MAX_STUB));
+    ).toEqual(
+      boxOf(
+        [relationship.start, relationship.end],
+        PAD +
+          MAX_STUB +
+          viewReach([relationship.start, relationship.end], MAX_STUB)
+      )
+    );
     expect(getRoute(relationship)).toBeDefined();
     expect(getRouteBBox(relationship)).toEqual(documentBox);
 
@@ -420,13 +470,21 @@ describe('clearSortChannel', () => {
       { x: 5_500, y: -2_972 },
     ];
     setRoute(relationship, points, 'flow');
+    const framed = [...points, relationship.start, relationship.end];
     expect(
       getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
-    ).toEqual(boxOf([...points, relationship.start, relationship.end], PAD));
+    ).toEqual(boxOf(framed, PAD + viewReach(framed, 0)));
     nextSortEpoch('flow');
     expect(
       getRouteBBox(relationship, RELATIONSHIP_STROKE_WIDTH, 'flow')
-    ).toEqual(boxOf([relationship.start, relationship.end], PAD + MAX_STUB));
+    ).toEqual(
+      boxOf(
+        [relationship.start, relationship.end],
+        PAD +
+          MAX_STUB +
+          viewReach([relationship.start, relationship.end], MAX_STUB)
+      )
+    );
   });
 
   it('empties the document channel by default', () => {
@@ -467,7 +525,7 @@ describe('clearSortChannel', () => {
     return { store, relationship };
   }
 
-  /** AC-63. Opening a view is what empties its channel, so a reopened view shows no anchors of the session before. */
+  /** Opening a view is what empties its channel, so a reopened view shows no anchors of the session before. */
   it('is what viewOpen does, so a reopened view starts with no anchors of the session before', () => {
     const { store, relationship } = createSortedStore();
 

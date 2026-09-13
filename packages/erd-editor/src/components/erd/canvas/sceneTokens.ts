@@ -1,7 +1,11 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { ICON_VIEW_BOX } from '@/components/primitives/icon/icons';
-import { TABLE_BORDER, TABLE_PADDING } from '@/constants/layout';
+import {
+  CELL_FONT_SIZE,
+  TABLE_BORDER,
+  TABLE_PADDING,
+} from '@/constants/layout';
 import { CodeFontFamily, TextFontFamily } from '@/styles/fonts.styles';
 
 /** A pointer event as konva hands it to a listener bound on a scene node. */
@@ -25,10 +29,16 @@ export const SCENE_FONT_FAMILY = TextFontFamily;
 export const SCENE_CODE_FONT_FAMILY = CodeFontFamily;
 
 /** The px behind font-size-1, which is what typography.paragraph resolves to. */
-export const SCENE_FONT_SIZE = 12;
+export const SCENE_FONT_SIZE = CELL_FONT_SIZE;
 
 /** The css font shorthand konva builds for a cell's text, and measures it with. */
 export const SCENE_FONT = `normal normal ${SCENE_FONT_SIZE}px ${SCENE_FONT_FAMILY}`;
+
+/** The weight every cell but a view card's header name is drawn at. */
+export const SCENE_FONT_WEIGHT = 'normal';
+
+/** The heavier weight a view card draws its header name at. */
+export const VIEW_HEADER_FONT_WEIGHT = '500';
 
 /** The same shorthand for any face the scene draws in, which is what a measure needs. */
 const sceneFontOf = (fontFamily: string) =>

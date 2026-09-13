@@ -236,10 +236,11 @@ describe('Toolbar', () => {
     });
 
     /**
-     * The bar is a sibling of every scene, so no scene source reaches it: it
-     * shows the zoom of the view the redirect sends its own input to.
+     * The field is the ERD tab's alone, so a Flow view left standing at
+     * another zoom on the visualization tab is neither shown in it nor driven
+     * by it, and the tab it belongs to shows the document's own zoom again.
      */
-    it('shows the open view zoom, and the document zoom again once it closes', async () => {
+    it('draws no zoom field off the ERD tab, whatever zoom an open view stands at', async () => {
       const { app } = await setup();
 
       app.store.dispatchSync(
@@ -252,8 +253,14 @@ describe('Toolbar', () => {
       app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.5 }));
       await flush();
 
-      expect(input('zoom level').value).toBe('50%');
+      expect(input('zoom level')).toBeNull();
       expect(app.store.state.settings.zoomLevel).toBe(1);
+
+      app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+      await flush();
+
+      expect(input('zoom level').value).toBe('100%');
+      expect(app.store.state.editor.views.flow?.zoomLevel).toBe(0.5);
 
       app.store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
       await flush();
@@ -261,27 +268,10 @@ describe('Toolbar', () => {
       expect(input('zoom level').value).toBe('100%');
     });
 
-    it('shows the Flow zoom while the visualization tab is in Flow', async () => {
-      const { app } = await setup();
+    it('stands the field immediately after the Time Travel button', async () => {
+      await setup();
 
-      app.store.dispatchSync(
-        changeCanvasTypeAction({ value: CanvasType.visualization })
-      );
-      app.store.dispatchSync(
-        changeVisualizationModeAction({ value: VisualizationMode.flow })
-      );
-      app.store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
-      app.store.dispatchSync(viewChangeZoomLevelAction({ value: 0.3 }));
-      await flush();
-
-      expect(input('zoom level').value).toBe('30%');
-
-      app.store.dispatchSync(
-        changeVisualizationModeAction({ value: VisualizationMode.graph })
-      );
-      await flush();
-
-      expect(input('zoom level').value).toBe('100%');
+      expect(menu('Time Travel').nextElementSibling).toBe(input('zoom level'));
     });
 
     it('ignores an input event that carries no target element', async () => {
@@ -409,6 +399,38 @@ describe('Toolbar', () => {
         expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
       });
     }
+
+    /**
+     * The zoom is gated on the canvas type alone, which the group is not: put
+     * inside the group it would leave with it, and the reader who opened Time
+     * Travel would lose the field the panel gives them nothing in place of.
+     */
+    it('keeps the zoom field standing where the group has gone', async () => {
+      const { app } = await setup();
+      app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
+      await flush();
+
+      expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
+      expect(input('zoom level').value).toBe('100%');
+    });
+
+    it('keeps the zoom field in readonly mode, which takes the group only', async () => {
+      await setup({ readonly: true });
+
+      expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
+      expect(input('zoom level').value).toBe('100%');
+    });
+
+    it('takes the zoom field off a non ERD canvas along with the group', async () => {
+      const { app } = await setup();
+      app.store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+      );
+      await flush();
+
+      expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
+      expect(input('zoom level')).toBeNull();
+    });
 
     it('keeps the group inactive while there is no history', async () => {
       await setup();
