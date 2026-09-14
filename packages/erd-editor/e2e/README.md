@@ -355,7 +355,8 @@ cost when you hit them blind.
   Poll for all four.
 - A column reorder plays a 0.3s FLIP tween on the scene (`FLIP_DURATION`).
   Assert the settled `columnIds` order or the settled projected order, never a
-  box taken straight after the drop.
+  box taken straight after the drop. A row the reorder adds to a table fades
+  in over the same span, so its opacity is only worth reading once it settles.
 
 **Gestures**
 
