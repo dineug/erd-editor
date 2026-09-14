@@ -42,7 +42,7 @@ import {
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
 } from '@/constants/layout';
-import { Show } from '@/constants/schema';
+import { Database, Show } from '@/constants/schema';
 import {
   editMemoAction,
   editMemoEndAction,
@@ -64,6 +64,7 @@ import {
   removeMemoAction$,
 } from '@/engine/modules/memo/generator.actions';
 import {
+  changeDatabaseAction,
   changeShowAction,
   changeZoomLevelAction,
   streamScrollToAction,
@@ -1124,6 +1125,28 @@ describe('the data type hint list over the scene', () => {
 
     expect(wheelsReachingCanvas(fixture, list, {})).toBe(1);
   });
+
+  // Styled, because a flex row that lays each highlighted piece out on a line
+  // of its own is what drops the space at a piece's edge.
+  it.each([
+    ['time', 'time with time zone'],
+    ['tim', 'timestamp with time zone'],
+  ])(
+    'keeps the spaces a highlight of %s splits a hint name at',
+    async (query, name) => {
+      const fixture = await setupStyled();
+      fixture.app.store.dispatchSync(
+        changeDatabaseAction({ value: Database.PostgreSQL })
+      );
+      await editColumnDataType(fixture);
+      await typeDataType(fixture, query);
+
+      const row = hintRowsOf(fixture.mounted).find(
+        candidate => hintNameOf(candidate) === name
+      );
+      expect(row?.innerText).toBe(name);
+    }
+  );
 });
 
 /** The pixel rows one crop of a canvas has ink in, dimmest sample first. */

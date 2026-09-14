@@ -200,10 +200,12 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
                 ]}
                 on:click={() => handleSelectHint(index)}
               >
-                <HighlightedText
-                  searchWords={[props.value]}
-                  textToHighlight={hint.name}
-                />
+                <span>
+                  <HighlightedText
+                    searchWords={[props.value]}
+                    textToHighlight={hint.name}
+                  />
+                </span>
                 <Kbd mini={true} shortcut="Tab" />
               </div>
             )
