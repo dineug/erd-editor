@@ -1,3 +1,4 @@
+import { recordConnectorDrift } from '../support/connectorDrift';
 import type { ErdEditorPage } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import { Shortcut } from '../support/shortcuts';
@@ -147,5 +148,29 @@ test.describe('automatic table placement through the elk worker', () => {
     await erd.press(Shortcut.undo);
 
     await expect.poll(() => cornersOf(erd)).toEqual(before);
+  });
+
+  // The frame after an undo keystroke runs before any timer, so a sort that
+  // waited for one drew every table back in place with its connectors still
+  // hanging where the placement had put them.
+  test('draws no connector off its tables in the frame a placement or its undo lands', async ({
+    erd,
+  }) => {
+    await erd.seed(chainedTables());
+    const before = await cornersOf(erd);
+    const drifts = await recordConnectorDrift(erd);
+
+    await place(erd, 'Flow');
+    await placed(erd, before);
+    const placedAt = await cornersOf(erd);
+    await erd.whenDrawn();
+    await erd.press(Shortcut.undo);
+    await expect.poll(() => cornersOf(erd)).toEqual(before);
+    await erd.whenDrawn();
+
+    expect(placedAt).not.toEqual(before);
+    const draws = await drifts();
+    expect(draws.length).toBeGreaterThan(0);
+    expect(draws.filter(drift => drift > 6)).toEqual([]);
   });
 });

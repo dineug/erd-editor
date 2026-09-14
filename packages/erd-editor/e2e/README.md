@@ -36,6 +36,7 @@ suite red.
 | `e2e/fixture/`                  | The page under test — a deterministic `<erd-editor>` mount        |
 | `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes    |
 | `e2e/support/graph.ts`          | A relationship or index read back by the names it joins           |
+| `e2e/support/connectorDrift.ts` | How far each scene draw puts a connector end off its own table    |
 | `e2e/support/sceneMirror.ts`    | Projects every live Konva stage into divs a css locator can name  |
 | `e2e/support/shortcuts.ts`      | Key strings mirroring `createKeyBindingMap()`, `MOD_KEY`, steps   |
 | `e2e/support/ErdEditorPage.ts`  | Page object: locators, scene coordinates, gesture helpers         |
@@ -45,7 +46,7 @@ suite red.
 
 ## What is covered
 
-33 spec files. Nine of the groups exist because the DOM scene got their subject
+34 spec files. Nine of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -84,6 +85,13 @@ one drawn over it in coordinates the document never keeps:
 | ------------------------------- | ---------------------------------------------------------------- |
 | `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker   |
 | `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
+
+One more holds a connector to its tables in the frame an edit lands, which a
+sort waiting on a timer loses to after a keystroke:
+
+| Spec                            | What it holds down                                                |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `connector-frames.spec.ts`      | No draw with a connector end off its table after an undo or redo  |
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
@@ -341,7 +349,8 @@ cost when you hit them blind.
   target; `el.value` is.
 - Relationship side effects land on later ticks: the FK `ui.keys` bit arrives on
   the next channel tick, `identification` / `startRelationshipType` on a 10ms
-  trailing throttle, and the relationship's start/end geometry on a 5ms one.
+  trailing throttle, and the relationship's start/end geometry on a 5ms one
+  after a dragged table or memo, or a microtask after anything else.
   Poll for all four.
 - A column reorder plays a 0.3s FLIP tween on the scene (`FLIP_DURATION`).
   Assert the settled `columnIds` order or the settled projected order, never a

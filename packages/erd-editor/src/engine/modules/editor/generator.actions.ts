@@ -34,6 +34,7 @@ import {
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
 import { RootState } from '@/engine/state';
+import { attachActionTag, Tag } from '@/engine/tag';
 import { Point } from '@/internal-types';
 import { getTableRect } from '@/konva/scene/metrics';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
@@ -143,30 +144,39 @@ export const moveAllAction$ = (
 
     if (source !== 'document') {
       if (tableIds.length) {
-        yield viewMoveTableAction({
-          ids: tableIds,
-          movementX: newMovementX,
-          movementY: newMovementY,
-          kind: source,
-        });
+        yield attachActionTag(
+          Tag.drag,
+          viewMoveTableAction({
+            ids: tableIds,
+            movementX: newMovementX,
+            movementY: newMovementY,
+            kind: source,
+          })
+        );
       }
       return;
     }
 
     if (tableIds.length) {
-      yield moveTableAction({
-        ids: tableIds,
-        movementX: newMovementX,
-        movementY: newMovementY,
-      });
+      yield attachActionTag(
+        Tag.drag,
+        moveTableAction({
+          ids: tableIds,
+          movementX: newMovementX,
+          movementY: newMovementY,
+        })
+      );
     }
 
     if (memoIds.length) {
-      yield moveMemoAction({
-        ids: memoIds,
-        movementX: newMovementX,
-        movementY: newMovementY,
-      });
+      yield attachActionTag(
+        Tag.drag,
+        moveMemoAction({
+          ids: memoIds,
+          movementX: newMovementX,
+          movementY: newMovementY,
+        })
+      );
     }
   };
 

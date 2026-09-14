@@ -11,6 +11,8 @@ export const Tag = {
   shared: 1,
   changeOnly: 2,
   following: 4,
+  /** A step a pointer drag streams, where an undo of the same move is one jump. */
+  drag: 8,
 } as const;
 
 export function attachActionTag(tag: number, action: AnyAction): AnyAction {

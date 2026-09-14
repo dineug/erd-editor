@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { Subject, Subscription } from 'rxjs';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   ColumnOption,
@@ -9,8 +9,11 @@ import {
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import type { HookEffect } from '@/engine/hooks';
+import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
+import { moveTableAction } from '@/engine/modules/table/atom.actions';
 import { createStore, Store } from '@/engine/store';
+import { Tag } from '@/engine/tag';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
@@ -19,6 +22,13 @@ import {
   collectObstacles,
   countBlocked,
 } from '@/utils/draw-relationship/route';
+import { relationshipSort } from '@/utils/draw-relationship/sort';
+
+vi.mock('@/utils/draw-relationship/sort', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/utils/draw-relationship/sort')>();
+  return { ...actual, relationshipSort: vi.fn(actual.relationshipSort) };
+});
 
 const [identificationHook, startRelationshipHook, relationshipSortHook] =
   hooks.map(([, effect]) => effect) as [HookEffect, HookEffect, HookEffect];
@@ -27,8 +37,12 @@ const stores: Store[] = [];
 const subscriptions: Subscription[] = [];
 
 const tick = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
-/** throttle window is 10ms (5ms for the sort hook) with trailing only. */
+/** throttle window is 10ms (5ms for a drag's sort) with trailing only. */
 const settle = () => tick(50);
+/** The microtasks a trigger queues and the ones those queue, with no task between. */
+const microtasks = async () => {
+  for (let index = 0; index < 5; index++) await Promise.resolve();
+};
 
 function createTestStore(): Store {
   const store = createStore({
@@ -45,7 +59,8 @@ async function run(effect: HookEffect, store: Store) {
   await tick();
 
   return {
-    fire: () => action$.next({ type: 'test.trigger', payload: undefined }),
+    fire: (type = 'test.trigger', tags?: number) =>
+      action$.next({ type, payload: undefined, tags }),
   };
 }
 
@@ -78,6 +93,7 @@ const rel = (store: Store, id: string) =>
 afterEach(() => {
   subscriptions.splice(0).forEach(subscription => subscription.unsubscribe());
   stores.splice(0).forEach(store => store.destroy());
+  vi.mocked(relationshipSort).mockClear();
 });
 
 describe('relationship/hooks registration', () => {
@@ -434,6 +450,86 @@ describe('relationship/hooks relationshipSortHook', () => {
     expect(rel(store, 'r1').start.x).not.toBe(0);
   });
 
+  it('sorts an action that is not a drag move before the task it came in ends', async () => {
+    // A timer loses to the frame after an undo or an add, and that frame would
+    // draw the tables where they now are with the connectors where they were.
+    const store = createTestStore();
+    const start = addTable(store, 't1', []);
+    const end = addTable(store, 't2', []);
+    start.ui.x = 0;
+    end.ui.x = 600;
+    addRelationship(store, {
+      id: 'r1',
+      start: { tableId: 't1', columnIds: [] },
+      end: { tableId: 't2', columnIds: [] },
+    });
+
+    const { fire } = await run(relationshipSortHook, store);
+    fire();
+    await microtasks();
+
+    expect(rel(store, 'r1').start.direction).toBe(Direction.right);
+    expect(rel(store, 'r1').end.x).toBe(600);
+  });
+
+  it.each([
+    ['table', moveTableAction.type],
+    ['memo', moveMemoAction.type],
+  ])(
+    'sorts a %s move no pointer streams before the task it came in ends',
+    async (_, type) => {
+      // The undo and redo of a drag replay its whole movement as one move of
+      // the same type, and the frame after that keystroke runs before any timer.
+      const store = createTestStore();
+      const start = addTable(store, 't1', []);
+      const end = addTable(store, 't2', []);
+      start.ui.x = 0;
+      end.ui.x = 600;
+      addRelationship(store, {
+        id: 'r1',
+        start: { tableId: 't1', columnIds: [] },
+        end: { tableId: 't2', columnIds: [] },
+      });
+
+      const { fire } = await run(relationshipSortHook, store);
+      fire(type);
+      await microtasks();
+
+      expect(rel(store, 'r1').start.direction).toBe(Direction.right);
+      expect(relationshipSort).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it.each([
+    ['table', moveTableAction.type],
+    ['memo', moveMemoAction.type],
+  ])(
+    'keeps a %s move a drag streams on the 5 ms window a drag sorts in',
+    async (_, type) => {
+      const store = createTestStore();
+      const start = addTable(store, 't1', []);
+      const end = addTable(store, 't2', []);
+      start.ui.x = 0;
+      end.ui.x = 600;
+      addRelationship(store, {
+        id: 'r1',
+        start: { tableId: 't1', columnIds: [] },
+        end: { tableId: 't2', columnIds: [] },
+      });
+
+      const { fire } = await run(relationshipSortHook, store);
+      fire(type, Tag.drag);
+      await microtasks();
+
+      expect(rel(store, 'r1').start.x).toBe(0);
+
+      await settle();
+
+      expect(rel(store, 'r1').start.direction).toBe(Direction.right);
+      expect(relationshipSort).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('routes around a table that appeared between the two ends', async () => {
     // Why table.add is on the subscription list. The route is recomputed from
     // every table in the document, so one arriving in the corridor invalidates
@@ -491,5 +587,6 @@ describe('relationship/hooks relationshipSortHook', () => {
     await settle();
 
     expect(rel(store, 'r1').start.direction).toBe(Direction.right);
+    expect(relationshipSort).toHaveBeenCalledTimes(1);
   });
 });

@@ -57,8 +57,9 @@ while idle. A trailing `!` means the drag came in *under* the idle floor, so the
 difference is noise and the number in front of it means nothing.
 
 It is not bracketed around the dispatch, and that is the whole point.
-`relationshipSortHook` is a 5ms trailing throttle, so the relationship update
-lands in a *later task* than the move that caused it. A probe that bracketed one
+`relationshipSortHook` holds a drag's moves on a 5ms trailing throttle (every
+other action sorts in a microtask), so the relationship update lands in a
+*later task* than the move that caused it. A probe that bracketed one
 dispatch saw 8 attribute writes and zero relationship groups touched on the
 large corpus — the routing work is simply not in that window.
 

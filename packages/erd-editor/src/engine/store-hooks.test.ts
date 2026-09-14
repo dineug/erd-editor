@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { ColumnOption, ColumnUIKey } from '@/constants/schema';
+import { ColumnOption, ColumnUIKey, Direction } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
@@ -95,6 +95,32 @@ describe('createHooks', () => {
     expect(bHas(column(store, 'c1')!.ui.keys, ColumnUIKey.foreignKey)).toBe(
       false
     );
+
+    hooks.destroy();
+  });
+
+  it('anchors a relationship it adds before the task that added it ends', async () => {
+    // An entity is created with both ends at the origin, and the frame after
+    // the add would draw it there if the sort waited for a timer.
+    const { store, hooks } = setup();
+    store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addTableAction({ id: 't2', ui: { x: 600, y: 0, zIndex: 2 } })
+    );
+
+    store.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: 4,
+        start: { tableId: 't1', columnIds: [] },
+        end: { tableId: 't2', columnIds: [] },
+      })
+    );
+    for (let index = 0; index < 5; index++) await Promise.resolve();
+
+    const { start, end } = store.state.collections.relationshipEntities.r1;
+    expect(start.direction).toBe(Direction.right);
+    expect(end).toMatchObject({ x: 600, direction: Direction.left });
 
     hooks.destroy();
   });

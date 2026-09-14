@@ -94,6 +94,7 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
+import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 import { createTable } from '@/utils/collection/table.entity';
 import {
@@ -383,6 +384,33 @@ describe('moveAllAction$', () => {
     store.dispatchSync(selectAction({ x1: 'unknown' as any }));
 
     expect(typesOf(store, moveAllAction$(1, 1))).toEqual([]);
+  });
+
+  it('tags every move it yields as a drag step, so an undo of the same move is not one', () => {
+    seedTable(store, 't1');
+    seedMemo(store, 'm1');
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow }),
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: { t1: { x: 0, y: 0 } },
+      })
+    );
+
+    const moves = [
+      ...flatten(store, moveAllAction$(1, 1)),
+      ...flatten(store, moveAllAction$(1, 1, 'flow')),
+    ];
+
+    expect(moves.map(({ type }) => type)).toEqual([
+      'table.move',
+      'memo.move',
+      'editor.viewMoveTable',
+    ]);
+    expect(moves.every(({ tags }) => bHas(tags ?? 0, Tag.drag))).toBe(true);
   });
 
   it('moves the placement of the view named from a view scene, by that view zoom, and leaves the document alone', () => {

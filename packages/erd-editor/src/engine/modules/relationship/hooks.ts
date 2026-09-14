@@ -1,6 +1,14 @@
 import { query } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
-import { filter, tap, throttleTime } from 'rxjs';
+import { isNil } from 'es-toolkit';
+import {
+  asapScheduler,
+  filter,
+  tap,
+  throttle,
+  throttleTime,
+  timer,
+} from 'rxjs';
 
 import { ColumnOption, StartRelationshipType } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
@@ -51,6 +59,7 @@ import {
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { RootState } from '@/engine/state';
+import { Tag } from '@/engine/tag';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
@@ -139,6 +148,14 @@ const isMoveOnly = arrayHas<string>([
   moveMemoAction.type,
 ]);
 
+/**
+ * How long a sort waits after the action that opens its window. A move a drag
+ * streams keeps 5 ms, so a drag sorts about once a frame; anything else, the
+ * undo of that drag included, sorts in a microtask, before the frame drawing it.
+ */
+const sortWindow = ({ tags }: AnyAction) =>
+  !isNil(tags) && bHas(tags, Tag.drag) ? timer(5) : timer(0, asapScheduler);
+
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
     .pipe(
@@ -148,7 +165,7 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
       tap(action => {
         if (!isMoveOnly(action.type)) invalidateTableWidths();
       }),
-      throttleTime(5, undefined, { leading: false, trailing: true })
+      throttle(sortWindow, { leading: false, trailing: true })
     )
     .subscribe(() => {
       relationshipSort(getState());
@@ -281,7 +298,7 @@ const viewRelationshipSortHook: HookEffect = (action$, getState) => {
         }
         return touched;
       }),
-      throttleTime(5, undefined, { leading: false, trailing: true })
+      throttle(sortWindow, { leading: false, trailing: true })
     )
     .subscribe(() => {
       const state = getState();
