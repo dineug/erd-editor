@@ -557,6 +557,46 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('converts a named UNIQUE INDEX in CREATE TABLE by its column count', () => {
+      const schema = parse(`
+        CREATE TABLE rental (
+          id INT,
+          code VARCHAR(10),
+          rental_date DATETIME,
+          inventory_id INT,
+          UNIQUE INDEX idx_code (code ASC),
+          UNIQUE INDEX idx_rental (rental_date ASC, inventory_id DESC)
+        );
+      `);
+      const rental = tableByName(schema, 'rental');
+      const [index] = indexesOf(schema);
+
+      expect(columnsOf(schema, rental).map(column => column.name)).toEqual([
+        'id',
+        'code',
+        'rental_date',
+        'inventory_id',
+      ]);
+      expect(
+        columnsOf(schema, rental).map(column =>
+          bHas(column.options, ColumnOption.unique)
+        )
+      ).toEqual([false, true, false, false]);
+      expect(indexesOf(schema)).toHaveLength(1);
+      expect(index.name).toBe('idx_rental');
+      expect(index.unique).toBe(true);
+      expect(
+        index.indexColumnIds.map(id => {
+          const { columnId, orderType } =
+            schema.collections.indexColumnEntities[id];
+          return [columnId, orderType];
+        })
+      ).toEqual([
+        [columnByName(schema, rental, 'rental_date').id, OrderType.ASC],
+        [columnByName(schema, rental, 'inventory_id').id, OrderType.DESC],
+      ]);
+    });
+
     it('skips index columns that do not resolve, keeping the rest', () => {
       const schema = parse(`
         CREATE TABLE posts (id INT);

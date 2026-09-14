@@ -36,6 +36,7 @@ import {
   isExistsValue,
   isForeignValue,
   isIfValue,
+  isIndexKind,
   isIndexValue,
   isIsValue,
   isKeyValue,
@@ -62,6 +63,7 @@ import {
   matchCreateTable,
   matchDataType,
   matchQualifiedName,
+  matchReferentialClause,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
@@ -257,6 +259,42 @@ describe('isCharacterSet', () => {
 
   it('rejects a position past the end of the token list', () => {
     expect(isCharacterSet(words('CHARACTER'))(0)).toBe(false);
+  });
+});
+
+describe('matchReferentialClause', () => {
+  it('spans ON DELETE or ON UPDATE together with its action', () => {
+    const span = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+
+    expect(span('ON DELETE SET NULL, b INT')).toBe(4);
+    expect(span('on update set default')).toBe(4);
+    expect(span('ON DELETE NO ACTION')).toBe(4);
+    expect(span('ON UPDATE CASCADE')).toBe(3);
+    expect(span('ON DELETE RESTRICT')).toBe(3);
+    expect(span('MATCH SIMPLE ON DELETE CASCADE')).toBe(2);
+  });
+
+  it('leaves a value that is no referential action to the caller', () => {
+    const span = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+
+    expect(span('ON UPDATE CURRENT_TIMESTAMP')).toBe(2);
+    expect(span('ON CONFLICT REPLACE')).toBe(0);
+    expect(span('MATCH INT')).toBe(0);
+  });
+
+  it('rejects a quoted ON, which names a column', () => {
+    expect(
+      matchReferentialClause([quoted('on'), ...words('DELETE', 'CASCADE')])(0)
+    ).toBe(0);
+  });
+});
+
+describe('isIndexKind', () => {
+  it('matches FULLTEXT or SPATIAL only before INDEX or KEY', () => {
+    expect(isIndexKind(words('FULLTEXT', 'INDEX'))(0)).toBe(true);
+    expect(isIndexKind(words('spatial', 'key'))(0)).toBe(true);
+    expect(isIndexKind(words('spatial', 'GEOMETRY'))(0)).toBe(false);
+    expect(isIndexKind([quoted('fulltext'), str('KEY')])(0)).toBe(false);
   });
 });
 

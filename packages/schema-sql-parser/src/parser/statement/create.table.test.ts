@@ -824,15 +824,270 @@ describe('createTableParser - table level constraints', () => {
     expect(ast.foreignKeys).toEqual([]);
   });
 
-  it('treats FOREIGN without KEY as a plain token sequence', () => {
+  // The item still opens with FOREIGN, so its words belong to that malformed
+  // constraint rather than to a column named REFERENCES.
+  it('drops a FOREIGN without KEY, and every word of its item', () => {
     const { ast } = parse(
       'CREATE TABLE t (a INT, FOREIGN (a) REFERENCES o (x));'
     );
 
     expect(ast.foreignKeys).toEqual([]);
+    expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
+  });
+});
+
+describe('createTableParser - constraint and index items', () => {
+  const idAndA = [
+    column({ name: 'id', dataType: 'INT' }),
+    column({ name: 'a_id', dataType: 'INT' }),
+  ];
+  const foreignKey = {
+    columnNames: ['a_id'],
+    refTableName: 'a',
+    refColumnNames: ['id'],
+  };
+
+  it('consumes the referential actions that trail a FOREIGN KEY', () => {
+    for (const actions of [
+      'ON DELETE RESTRICT ON UPDATE CASCADE',
+      'ON DELETE SET NULL',
+      'MATCH FULL ON DELETE CASCADE',
+    ]) {
+      const { ast } = parse(
+        `CREATE TABLE b (id INT, a_id INT, FOREIGN KEY (a_id) REFERENCES a (id) ${actions});`
+      );
+
+      expect(ast.columns).toEqual(idAndA);
+      expect(ast.foreignKeys).toEqual([foreignKey]);
+    }
+
+    const { ast } = parse(
+      'CREATE TABLE b (id INT, a_id INT, CONSTRAINT fk FOREIGN KEY (a_id) REFERENCES a (id) ON UPDATE NO ACTION ON DELETE SET DEFAULT, c INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      ...idAndA,
+      column({ name: 'c', dataType: 'INT' }),
+    ]);
+    expect(ast.foreignKeys).toEqual([foreignKey]);
+  });
+
+  it('keeps the data type of an inline REFERENCES with a SET NULL action', () => {
+    const { ast } = parse(
+      'CREATE TABLE b (id INT, a_id BIGINT REFERENCES a (id) ON DELETE SET NULL, c INTEGER REFERENCES a (id) ON DELETE SET NULL);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'INT' }),
+      column({ name: 'a_id', dataType: 'BIGINT' }),
+      column({ name: 'c', dataType: 'INTEGER' }),
+    ]);
+  });
+
+  it('still skips the value of an ON UPDATE that is no referential action', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, z INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'ts',
+        dataType: 'TIMESTAMP',
+        default: 'CURRENT_TIMESTAMP',
+      }),
+      column({ name: 'z', dataType: 'INT' }),
+    ]);
+  });
+
+  it('marks the column of a named single column UNIQUE INDEX', () => {
+    const { ast } = parse(
+      'CREATE TABLE b (id INT, code VARCHAR(10), UNIQUE INDEX idx_code (code ASC));'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'INT' }),
+      column({ name: 'code', dataType: 'VARCHAR(10)', unique: true }),
+    ]);
+    expect(ast.indexes).toEqual([]);
+  });
+
+  it('records a named UNIQUE INDEX over several columns as a unique index', () => {
+    const { ast } = parse(
+      'CREATE TABLE b (a INT, c INT, UNIQUE INDEX idx_ac (a ASC, c DESC));'
+    );
+
     expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'INT' }),
-      column({ name: 'REFERENCES' }),
+      column({ name: 'c', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes).toEqual([
+      {
+        name: 'idx_ac',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'c', sort: SortType.desc },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps the items after a UNIQUE INDEX whose key has a prefix length', () => {
+    const { ast } = parse(
+      'CREATE TABLE `b` (`id` INT, `email` VARCHAR(255), `a_id` INT, UNIQUE INDEX `email_UNIQUE` (`email`(191) ASC) VISIBLE, INDEX `fk_idx` (`a_id` ASC) VISIBLE, CONSTRAINT `fk` FOREIGN KEY (`a_id`) REFERENCES `a` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'INT' }),
+      column({ name: 'email', dataType: 'VARCHAR(255)', unique: true }),
+      column({ name: 'a_id', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes).toEqual([
+      {
+        name: 'fk_idx',
+        unique: false,
+        columns: [{ name: 'a_id', sort: SortType.asc }],
+      },
+    ]);
+    expect(ast.foreignKeys).toEqual([foreignKey]);
+  });
+
+  it('reads the column of each prefix length key part', () => {
+    const { ast } = parse(
+      'CREATE TABLE b (a TEXT, c TEXT, UNIQUE INDEX uq_ac (a(100), c(100) DESC), INDEX idx_c (c(10)), z INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'TEXT' }),
+      column({ name: 'c', dataType: 'TEXT' }),
+      column({ name: 'z', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes).toEqual([
+      {
+        name: 'uq_ac',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'c', sort: SortType.desc },
+        ],
+      },
+      {
+        name: 'idx_c',
+        unique: false,
+        columns: [{ name: 'c', sort: SortType.asc }],
+      },
+    ]);
+  });
+
+  it('records no key over a functional key part and keeps the items after it', () => {
+    const { ast } = parse(
+      'CREATE TABLE b (id INT, email VARCHAR(255), UNIQUE INDEX uq_lower ((lower(email))), UNIQUE INDEX uq_id_lower (id, (lower(email))), KEY idx_upper ((upper(email)) DESC), a_id INT, CONSTRAINT fk FOREIGN KEY (a_id) REFERENCES a (id));'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'INT' }),
+      column({ name: 'email', dataType: 'VARCHAR(255)' }),
+      column({ name: 'a_id', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes).toEqual([]);
+    expect(ast.foreignKeys).toEqual([foreignKey]);
+  });
+
+  it('records a FULLTEXT or SPATIAL index without a column for its kind', () => {
+    for (const kind of ['FULLTEXT INDEX', 'FULLTEXT KEY', 'SPATIAL INDEX']) {
+      const { ast } = parse(
+        `CREATE TABLE b (id INT, g TEXT, ${kind} idx_g (g));`
+      );
+
+      expect(ast.columns).toEqual([
+        column({ name: 'id', dataType: 'INT' }),
+        column({ name: 'g', dataType: 'TEXT' }),
+      ]);
+      expect(ast.indexes).toEqual([
+        { name: 'idx_g', unique: false, columns: [{ name: 'g', sort: 'ASC' }] },
+      ]);
+    }
+  });
+
+  it('still reads a quoted on or spatial and a bare spatial as columns', () => {
+    const { ast } = parse(
+      'CREATE TABLE b (`on` INT, `spatial` INT, "match" INT, spatial GEOMETRY, `fulltext` TEXT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'on', dataType: 'INT' }),
+      column({ name: 'spatial', dataType: 'INT' }),
+      column({ name: 'match', dataType: 'INT' }),
+      column({ name: 'spatial', dataType: 'GEOMETRY' }),
+      column({ name: 'fulltext', dataType: 'TEXT' }),
+    ]);
+  });
+
+  it('keeps the first data type of a column', () => {
+    const { ast } = parse(
+      'CREATE TABLE staff (password VARCHAR(40) BINARY NULL DEFAULT NULL);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'password', dataType: 'VARCHAR(40)', default: 'NULL' }),
+    ]);
+  });
+
+  it.each<[string, string, string[]]>([
+    [
+      'MySQL Workbench VISIBLE',
+      'CREATE TABLE `b` (`id` INT, `code` VARCHAR(10), UNIQUE INDEX `code_UNIQUE` (`code` ASC) VISIBLE, INDEX `fk_idx` (`id` ASC) VISIBLE);',
+      ['id INT', 'code VARCHAR(10)'],
+    ],
+    [
+      'Oracle ENABLE',
+      'CREATE TABLE "B" ("ID" NUMBER(10), "A_ID" NUMBER(10), CONSTRAINT "FK" FOREIGN KEY ("A_ID") REFERENCES "A" ("ID") ON DELETE CASCADE ENABLE);',
+      ['ID NUMBER(10)', 'A_ID NUMBER(10)'],
+    ],
+    [
+      'WITH PARSER',
+      'CREATE TABLE b (id INT, title TEXT, FULLTEXT INDEX ft (title) WITH PARSER ngram);',
+      ['id INT', 'title TEXT'],
+    ],
+    [
+      'USING BTREE',
+      'CREATE TABLE b (id INT, code INT, PRIMARY KEY (id) USING BTREE, KEY idx_code (code) USING BTREE);',
+      ['id INT', 'code INT'],
+    ],
+    [
+      'CHECK',
+      'CREATE TABLE b (id INT, price INT, CONSTRAINT chk_price CHECK (price > 0));',
+      ['id INT', 'price INT'],
+    ],
+    [
+      'SQLite ON CONFLICT',
+      'CREATE TABLE b (id INT, code TEXT, UNIQUE (code) ON CONFLICT REPLACE);',
+      ['id INT', 'code TEXT'],
+    ],
+  ])(
+    'reads no column out of the words that trail a constraint: %s',
+    (_, sql, expected) => {
+      const { ast } = parse(sql);
+
+      expect(
+        ast.columns.map(({ name, dataType }) => `${name} ${dataType}`)
+      ).toEqual(expected);
+    }
+  );
+
+  it('keeps the primary key of a SQL Server PRIMARY KEY CLUSTERED', () => {
+    const { ast } = parse(
+      'CREATE TABLE [dbo].[b] ([id] INT NOT NULL, [name] NVARCHAR(50), CONSTRAINT [PK_b] PRIMARY KEY CLUSTERED ([id] ASC) WITH (PAD_INDEX = OFF) ON [PRIMARY]) ON [PRIMARY];'
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'id',
+        dataType: 'INT',
+        nullable: false,
+        primaryKey: true,
+      }),
+      column({ name: 'name', dataType: 'NVARCHAR(50)' }),
     ]);
   });
 });

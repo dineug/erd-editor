@@ -17,7 +17,7 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 | --- | --- |
 | `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, statement types |
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, calls a statement parser, else advances |
-| `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType` and `matchNestedDataType` |
+| `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchNestedDataType` and `matchReferentialClause` |
 | `src/parser/statement/index.ts` | `Statement` union, `StatementType`, `SortType`, `RefPos`, AST node shapes |
 | `src/schema_sql_test_case.md` | 27 end-to-end fixture sections (`### ` heading + fenced `sql` + fenced `json`) |
 
@@ -51,7 +51,9 @@ rather than rejected, so a real dump imports partially instead of failing. Its o
 - `pnpm --filter @dineug/schema-sql-parser test:coverage` enforces `vitest.config.ts`'s per-file 80% thresholds (node env, `src/**/*.test.ts`, `src/internal-types/**` excluded); `test:dev` watches.
 - Specs import `describe` / `it` / `expect` / `test` from `vite-plus/test`, never from `vitest`.
 - New end-to-end cases are `### ` sections in `src/schema_sql_test_case.md` — `index.test.ts` pairs each section's
-  `sql` block with its `json` block and deep-equals `{ statements }`. The root `data/*.sql` dumps are manual only.
+  `sql` block with its `json` block and deep-equals `{ statements }`. The root `data/*.sql` dumps are manual only, except
+  `sakila.sql`, whose column, foreign key and index shape `index.test.ts` pins: a Workbench export is where table-level
+  constraint items used to read back as columns.
 
 ### Common Patterns
 
