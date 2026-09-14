@@ -27,6 +27,7 @@ import {
   getViewTransform,
   getVisibleCanvasRect,
 } from '@/components/erd/minimap/minimapGeometry';
+import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import { MINIMAP_MARGIN } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
@@ -354,6 +355,21 @@ describe('AutomaticTablePlacement', () => {
           el.textContent?.trim()
         )
       ).toEqual(['Apply', 'Cancel']);
+    });
+
+    it('makes Apply the solid button of that toast and Cancel the soft one', async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users');
+      const toasts = listenToasts(app);
+
+      await open(app, vi.fn());
+
+      const container = await renderToast(toasts[0]);
+      const [apply, cancel] = Array.from(container.querySelectorAll('button'));
+      expect(apply.textContent?.trim()).toBe('Apply');
+      expect(apply.classList).toContain(String(buttonStyles.solid));
+      expect(cancel.textContent?.trim()).toBe('Cancel');
+      expect(cancel.classList).toContain(String(buttonStyles.soft));
     });
 
     it('shows how far the placement has run as the simulation cools', async () => {

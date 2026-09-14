@@ -19,6 +19,7 @@ import {
 } from '@/components/erd/minimap/minimapGeometry';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import * as styles from '@/components/erd/time-travel/TimeTravel.styles';
+import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import * as sliderStyles from '@/components/primitives/slider/Slider.styles';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
@@ -205,6 +206,21 @@ describe('TimeTravel', () => {
       expect(
         container().querySelectorAll(`.${String(styles.vertical)}`)
       ).toHaveLength(1);
+    });
+
+    it('makes Apply the solid button and Cancel the soft one, in that order', async () => {
+      await setup();
+
+      expect(buttons().map(button => button.textContent?.trim())).toEqual([
+        'Apply',
+        'Cancel',
+      ]);
+      expect(buttonByText('Apply')?.classList).toContain(
+        String(buttonStyles.solid)
+      );
+      expect(buttonByText('Cancel')?.classList).toContain(
+        String(buttonStyles.soft)
+      );
     });
 
     it('mirrors the origin document into the isolated preview store', async () => {
