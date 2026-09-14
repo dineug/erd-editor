@@ -290,9 +290,112 @@ describe('TreeViewer', () => {
     expect(columnRows().map(labelOf)).toEqual(['unnamed']);
   });
 
-  it('reports nothing when a column is added to an otherwise untouched table', async () => {
-    // known gap: the added column never reaches the tree because the table
-    // itself has no diff entry and the insert branch skips matched names.
+  it('lists a column added to an otherwise untouched table under a plain row that moves both sides', async () => {
+    const { prevApp, app } = await mountTree(
+      [{ id: 'p1', name: 'users', columns: [{ id: 'pc1', name: 'id' }] }],
+      [
+        {
+          id: 'n1',
+          name: 'users',
+          columns: [
+            { id: 'nc1', name: 'id' },
+            { id: 'nc2', name: 'email' },
+          ],
+        },
+      ]
+    );
+
+    expect(tableRows().map(labelOf)).toEqual(['users']);
+    expect(tableRows().map(diffClassOf)).toEqual(['none']);
+    expect(columnRows().map(labelOf)).toEqual(['email']);
+    expect(columnRows().map(diffClassOf)).toEqual(['insert']);
+
+    tableRows()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await flush();
+
+    expect(prevApp.store.state.editor.selectedMap.p1).toBeTruthy();
+    expect(app.store.state.editor.selectedMap.n1).toBeTruthy();
+  });
+
+  it('lists a table once however many of its columns changed', async () => {
+    await mountTree(
+      [
+        {
+          id: 'p1',
+          name: 'users',
+          columns: [
+            { id: 'pc1', name: 'id', dataType: 'int' },
+            { id: 'pc2', name: 'name', dataType: 'varchar' },
+            { id: 'pc3', name: 'legacy' },
+          ],
+        },
+      ],
+      [
+        {
+          id: 'n1',
+          name: 'users',
+          columns: [
+            { id: 'nc1', name: 'id', dataType: 'bigint' },
+            { id: 'nc2', name: 'name', dataType: 'text' },
+            { id: 'nc3', name: 'email' },
+          ],
+        },
+      ]
+    );
+
+    expect(tableRows().map(labelOf)).toEqual(['users']);
+    expect(columnRows().map(labelOf)).toEqual([
+      'id',
+      'name',
+      'legacy',
+      'email',
+    ]);
+    expect(columnRows().map(diffClassOf)).toEqual([
+      'cross',
+      'cross',
+      'delete',
+      'insert',
+    ]);
+  });
+
+  it('lists a column moved between two tables under both of them', async () => {
+    await mountTree(
+      [
+        {
+          id: 'p1',
+          name: 'users',
+          columns: [
+            { id: 'pc1', name: 'id' },
+            { id: 'pc2', name: 'email' },
+          ],
+        },
+        { id: 'p2', name: 'orders', columns: [{ id: 'pc3', name: 'id' }] },
+      ],
+      [
+        { id: 'n1', name: 'users', columns: [{ id: 'nc1', name: 'id' }] },
+        {
+          id: 'n2',
+          name: 'orders',
+          columns: [
+            { id: 'nc3', name: 'id' },
+            { id: 'nc2', name: 'email' },
+          ],
+        },
+      ]
+    );
+
+    expect(tableRows().map(labelOf)).toEqual(['orders', 'users']);
+    expect(tableRows().map(diffClassOf)).toEqual(['none', 'none']);
+    expect(columnRows().map(labelOf)).toEqual(['email', 'email']);
+    expect(columnRows().map(diffClassOf)).toEqual(['insert', 'delete']);
+  });
+
+  /**
+   * Two current tables named alike share one name entry, the last of them, so
+   * a column added to the first finds a saved table whose twin changed nothing.
+   * A plain row with no column under it would say nothing and move to the twin.
+   */
+  it('draws no empty row for the unchanged twin of a table that gained a column', async () => {
     await mountTree(
       [{ id: 'p1', name: 'users', columns: [{ id: 'pc1', name: 'id' }] }],
       [
@@ -304,6 +407,7 @@ describe('TreeViewer', () => {
             { id: 'nc2', name: 'email' },
           ],
         },
+        { id: 'n2', name: 'users', columns: [{ id: 'nc3', name: 'id' }] },
       ]
     );
 
