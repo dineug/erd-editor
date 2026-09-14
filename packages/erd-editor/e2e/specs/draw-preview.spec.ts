@@ -51,6 +51,41 @@ function twoTablesAt(zoomLevel: number, scrollLeft = 0, scrollTop = 0) {
   });
 }
 
+/**
+ * Starts keeping the line end of every preview the scene layer paints, read as
+ * the layer finishes drawing, so a frame no attr read happens to catch counts too.
+ */
+async function recordPaintedEnds(erd: ErdEditorPage) {
+  await erd.page.evaluate(() => {
+    const layer = Reflect.get(window, '__erdStages')?.canvas.findOne('.scene');
+    const ends: string[] = [];
+    Reflect.set(window, '__paintedEnds', ends);
+
+    layer.on('draw.paintedEnds', () => {
+      const node = layer.findOne('.draw-relationship-preview');
+      if (!node?.isVisible()) return;
+
+      const match = /L\s+(-?[\d.]+)\s+(-?[\d.]+)\s*$/.exec(
+        node.getAttr('data')
+      );
+      ends.push(
+        match ? `${Math.round(+match[1])},${Math.round(+match[2])}` : ''
+      );
+    });
+  });
+}
+
+/** The line ends recordPaintedEnds has kept, one per painted frame, as x,y. */
+async function paintedEnds(erd: ErdEditorPage): Promise<string[]> {
+  return erd.page.evaluate(() => Reflect.get(window, '__paintedEnds'));
+}
+
+/** A header point on the pixel grid, the only place a browser delivers a pointer. */
+async function headerAim(erd: ErdEditorPage, id: string): Promise<Point> {
+  const header = await erd.tableHeaderPoint(id);
+  return { x: Math.round(header.x), y: Math.round(header.y) };
+}
+
 /** Arms a draw and picks the start table, leaving the preview in flight. */
 async function startDraw(erd: ErdEditorPage) {
   await erd.focusCanvas();
@@ -126,5 +161,60 @@ test.describe('relationship draw preview', () => {
 
     await expect(erd.drawPreview).toHaveCount(0);
     expect(await erd.relationshipIds()).toHaveLength(1);
+  });
+
+  test('the first preview painted already ends at the press', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(twoTablesAt(1));
+    await erd.focusCanvas();
+    await erd.press(Shortcut.relationshipOneN);
+
+    const aim = await headerAim(erd, 'users');
+    await erd.hoverAt(aim);
+    await recordPaintedEnds(erd);
+
+    // A still hand: the press mounts the preview and no move follows it, so
+    // the end it is drawn with can only have come from the press itself.
+    await page.mouse.down();
+    await page.mouse.up();
+    await erd.whenDrawn();
+
+    const origin = await erd.pointAt(0, 0);
+    const pressed = [aim.x - origin.x, aim.y - origin.y];
+    const end = await previewEnd(erd);
+    expect([Math.round(end.x), Math.round(end.y)]).toEqual(pressed);
+
+    const ends = await paintedEnds(erd);
+    expect(ends.length).toBeGreaterThan(0);
+    expect(new Set(ends)).toEqual(new Set([pressed.join(',')]));
+  });
+});
+
+test.describe('relationship draw preview under touch', () => {
+  test.use({ hasTouch: true });
+
+  test('a draw a tap started points at the tap, not the origin', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTablesAt(1));
+    await erd.focusCanvas();
+    await erd.press(Shortcut.relationshipOneN);
+
+    // A tap sends no mousemove, and the preview follows nothing else, so the
+    // end it takes at the press is the one it keeps until the second tap.
+    const aim = await headerAim(erd, 'users');
+    await erd.touchStart(aim);
+    await erd.touchEnd();
+    await expect(erd.drawPreview).toBeVisible();
+    await erd.whenDrawn();
+
+    const origin = await erd.pointAt(0, 0);
+    const end = await previewEnd(erd);
+    expect([Math.round(end.x), Math.round(end.y)]).toEqual([
+      aim.x - origin.x,
+      aim.y - origin.y,
+    ]);
   });
 });
