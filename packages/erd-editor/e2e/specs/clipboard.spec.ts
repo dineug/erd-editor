@@ -403,6 +403,31 @@ test.describe('clipboard paste ladder', () => {
     expect(names).toEqual(['id', 'email', 'created_at']);
   });
 
+  // The bottom rung: tab separated text and nothing else, the shape a text
+  // editor or a paste without formatting hands over. Excel ends its last row
+  // with CRLF as well, and that terminator is not a row of its own.
+  test('merges tab separated text/plain alone into the selected table', async ({
+    erd,
+  }) => {
+    await erd.seed(targetDocument());
+    await seedClipboard(erd, {
+      'text/plain': 'phone\tVARCHAR(20)\tYES\r\nzip\tVARCHAR(10)\tNULL\r\n',
+    });
+    await erd.clickTableHeader('orders');
+
+    const record = await paste(erd);
+    expect(record.types).toEqual(['text/plain']);
+    expect(record.defaultPrevented).toBe(true);
+
+    await expect.poll(() => erd.columnIds('orders')).not.toHaveLength(1);
+    const appended = (await erd.columnIds('orders')).slice(1);
+    const columns = await Promise.all(appended.map(id => erd.column(id)));
+    expect(columns.map(({ name, dataType }) => [name, dataType])).toEqual([
+      ['phone', 'VARCHAR(20)'],
+      ['zip', 'VARCHAR(10)'],
+    ]);
+  });
+
   // A payload from a release that has not shipped yet. The version check has to
   // stop the ladder dead, because the rung below is the html table we wrote
   // ourselves, which parses cleanly and would append to the selection.

@@ -1,3 +1,5 @@
+import { last } from 'es-toolkit';
+
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
@@ -26,7 +28,12 @@ export function tablePasteFromTextToColumns(
   { settings: { show, columnOrder } }: RootState,
   text: string
 ): Column[] {
-  const rows = text.split('\n').map(row => row.split('\t'));
+  const lines = text.split(/\r?\n/);
+  // Excel and LibreOffice end the last row with a line break too, which closes
+  // that row rather than opening an empty one.
+  if (lines.length > 1 && last(lines) === '') lines.pop();
+
+  const rows = lines.map(row => row.split('\t'));
   const showColumnOrder = getShowColumnOrder(show, columnOrder);
 
   return rows.map(row => {
