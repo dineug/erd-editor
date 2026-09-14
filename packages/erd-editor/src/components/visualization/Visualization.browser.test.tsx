@@ -11,6 +11,7 @@ import {
   flush,
   mount,
   type Mounted,
+  movePointer,
   releasePointer,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
@@ -515,6 +516,25 @@ describe('the visualization shell', () => {
       releasePointer();
       await settle();
       expect(previewOf(mounted)).toBeTruthy();
+    });
+
+    it('restores the preview where a drag let go, not where the dot was first hovered', async () => {
+      const app = createTestAppContext();
+      seed(app);
+      const mounted = await mountVisualization(app);
+
+      hover('t1', 10, 10);
+      await settle();
+      fireScenePointer(dotOf('t1'), 'mousedown', { clientX: 10, clientY: 10 });
+      movePointer(60, 40);
+      movePointer(120, 80);
+      releasePointer(120, 80);
+      await settle();
+
+      const preview = previewOf(mounted)!;
+      expect(preview.getAttribute('data-id')).toBe('t1');
+      expect(preview.style.left).toBe(`${120 + MARGIN}px`);
+      expect(preview.style.top).toBe('80px');
     });
 
     it('keeps the preview closed through a pan that crosses no dot', async () => {

@@ -4,6 +4,7 @@ import { FC } from '@dineug/r-html';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { useThemeContext } from '@/components/themeContext';
+import { captureDrag } from '@/components/visualization/captureDrag';
 import {
   Group,
   type Visualization,
@@ -14,7 +15,7 @@ import {
   nodeRadius,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
-import { drag$, type DragMove } from '@/utils/globalEventObservable';
+import type { DragMove } from '@/utils/globalEventObservable';
 
 export type GraphNodeProps = {
   node: VisualizationNode;
@@ -91,20 +92,30 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
     node.fy = (node.fy ?? node.y) + movementY / state.scale;
   };
 
-  const handleDragStart = () => {
+  // The hold keeps the dot hovered for the whole drag, so the preview opens
+  // again as it ends: where the pointer let go, not where it entered the dot.
+  const handleDragStart = (event: KonvaEventObject<Event>) => {
     const { node, graph, state } = props;
+    let last: DragMove | null = null;
 
     node.fx = node.x;
     node.fy = node.y;
     graph.simulation.alphaTarget(DRAG_ALPHA_TARGET).restart();
     state.drag = true;
 
-    drag$.subscribe({
-      next: handleMove,
+    captureDrag(event, {
+      next: move => {
+        handleMove(move);
+        last = move;
+      },
       complete: () => {
         node.fx = null;
         node.fy = null;
         graph.simulation.alphaTarget(0);
+        if (last) {
+          state.previewX = last.x;
+          state.previewY = last.y;
+        }
         state.drag = false;
       },
     });
