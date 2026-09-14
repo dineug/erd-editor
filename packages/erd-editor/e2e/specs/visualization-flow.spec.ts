@@ -295,18 +295,22 @@ const showModeOptionBox = (erd: ErdEditorPage, title: string) =>
 
 /**
  * Waits until the view has the placement ELK gave it, not merely a scene. A
- * view draws a table where the document keeps it until a layout lands, so a
- * coordinate read before the landing is the document's own.
+ * view draws no table before a layout lands, so the table has to be drawn at
+ * all, and off the corner the document keeps it at, which is what ELK moved.
  */
 async function landed(erd: ErdEditorPage, tableId: string) {
   const { ui } = await erd.table(tableId);
   const seeded = { x: Math.round(ui.x), y: Math.round(ui.y) };
 
   await expect
-    .poll(async () => (await placementsOf(erd, [tableId]))[tableId], {
-      timeout: PLACEMENT_TIMEOUT,
-    })
-    .not.toEqual(seeded);
+    .poll(
+      async () => {
+        const at = (await placementsOf(erd, [tableId]))[tableId];
+        return at !== null && (at.x !== seeded.x || at.y !== seeded.y);
+      },
+      { timeout: PLACEMENT_TIMEOUT }
+    )
+    .toBe(true);
   await erd.whenDrawn();
 }
 

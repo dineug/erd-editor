@@ -90,6 +90,7 @@ import {
 import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
+import { getReachedTableIds } from '@/konva/scene/viewLayout';
 import { calcTableHeight, viewHeaderNameWidth } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
@@ -1327,16 +1328,30 @@ describe('the two buttons a view card header carries', () => {
     await enterTable(stage, 'a');
 
     await pressButton(stage, 'a', 'table-related');
+    const drawn = () =>
+      stage
+        .find('.table')
+        .map(node => node.id().replace('table-', ''))
+        .sort();
 
     expect(app.store.state.editor.views.flow?.centerIds).toEqual(['a']);
     // a is the center, b across the first link and d across the third; c and
     // e are two hops out and leave the display set with it.
-    expect(
-      stage
-        .find('.table')
-        .map(node => node.id().replace('table-', ''))
-        .sort()
-    ).toEqual(['a', 'b', 'd']);
+    const reached = getReachedTableIds(app.store.state, ['a']);
+    expect(reached).toEqual(['a', 'b', 'd']);
+    // No placement loop runs under this scene, so the cards stay on the
+    // landing they had until the one for the narrowed set is landed here.
+    expect(drawn()).toEqual(['a', 'b', 'c', 'd', 'e']);
+
+    app.store.dispatchSync(
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: Object.fromEntries(reached.map(id => [id, VIEW_POINTS[id]])),
+      })
+    );
+    await settle();
+
+    expect(drawn()).toEqual(['a', 'b', 'd']);
   });
 
   /**

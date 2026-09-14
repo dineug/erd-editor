@@ -137,8 +137,8 @@ const drawnTables = (page: Page) =>
 
 /**
  * Stands the reader in the Flow with the placement ELK gave it under them. A
- * view draws every table where the document keeps it until the layout lands,
- * so the landing is where a card stops standing on its document corner.
+ * view draws no table until the layout lands, so the landing is where a card
+ * is drawn off its document corner.
  */
 async function enterFlow(page: Page) {
   const [table] = Object.values(corpus.document.collections.tableEntities);

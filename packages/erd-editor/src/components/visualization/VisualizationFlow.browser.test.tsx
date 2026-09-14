@@ -49,11 +49,13 @@ import {
 } from '@/engine/modules/editor/state';
 import {
   viewChangeShowModeAction,
+  viewCloseAction,
   viewMoveTableAction,
   viewOpenAction,
   viewScrollToAction,
   viewSetCentersAction,
 } from '@/engine/modules/editor/view.actions';
+import { focusFlowTableAction$ } from '@/engine/modules/editor/view.generator.actions';
 import {
   addRelationshipAction,
   removeRelationshipAction,
@@ -88,6 +90,8 @@ const hoisted = vi.hoisted(() => ({
   /** Set to hold the next answer back until the spec lets it go. */
   hold: false,
   release: [] as Array<() => void>,
+  /** Beside each held answer, the way to fail it instead, as a worker that never started does. */
+  fail: [] as Array<() => void>,
 }));
 
 /**
@@ -113,8 +117,9 @@ vi.mock('@/services/elk-layout', async importOriginal => {
       }));
       if (!hoisted.hold) return Promise.resolve(points);
 
-      return new Promise(resolve => {
+      return new Promise((resolve, reject) => {
         hoisted.release.push(() => resolve(points));
+        hoisted.fail.push(() => reject(new Error('no layout')));
       });
     },
   };
@@ -130,6 +135,7 @@ afterEach(async () => {
   hoisted.requests.splice(0);
   hoisted.hold = false;
   hoisted.release.splice(0);
+  hoisted.fail.splice(0);
   await whenDrawn();
 });
 
@@ -508,6 +514,27 @@ const drawnTableIds = () =>
     .filter(node => node.visible())
     .map(node => node.id().replace('table-', ''))
     .sort();
+
+/**
+ * The whole picture a Flow stage stands on, as one string two frames can be
+ * compared by: each card drawn with the point it stands at, and the placement
+ * of the layer under them. No stage yet reads as no card under no placement.
+ */
+const pictureOf = () => {
+  const stage = flowStage();
+  const layer = stage?.findOne<Layer>('.scene');
+  const cards = (stage?.find('.table') ?? [])
+    .filter(node => node.visible())
+    .map(node => `${node.id().replace('table-', '')}@${node.x()},${node.y()}`)
+    .sort();
+
+  return JSON.stringify({
+    cards,
+    x: layer?.x(),
+    y: layer?.y(),
+    scale: layer?.scaleX(),
+  });
+};
 
 const drawnConnectorIds = (ids: string[]) =>
   ids.filter(id => flowStage().findOne(`.${id}`) !== undefined);
@@ -1729,6 +1756,199 @@ describe('the display set of the Flow view', () => {
     hoisted.release.shift()?.();
     await settle();
     expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
+  });
+
+  /**
+   * An entry from the ERD opens a view with nothing placed, and ELK answers
+   * from a worker that may still be starting. Until it does the scene draws
+   * no card, as the whole document's entry does, rather than the document's own points.
+   */
+  it('draws no card on a cold entry from the ERD until its layout lands', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    hoisted.hold = true;
+    await mountVisualization(app);
+
+    const seen: string[] = [];
+    const stop = onBeforeFlush(() => seen.push(pictureOf()));
+    app.store.dispatchSync(focusFlowTableAction$(['t1']));
+    await settle();
+    const held = await sample(pictureOf, 5);
+    stop();
+
+    expect(flowStage()).toBeDefined();
+    expect(hoisted.requests).toHaveLength(1);
+    expect(tableIdsOf(hoisted.requests[0])).toEqual(['t1', 't2']);
+    expect(seen.length).toBeGreaterThan(0);
+    for (const picture of [...seen, ...held]) {
+      expect(JSON.parse(picture).cards).toEqual([]);
+    }
+
+    hoisted.release.shift()?.();
+    await settle();
+
+    expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
+    expect(JSON.parse(pictureOf()).cards).toEqual(['t1@0,0', 't2@400,200']);
+  });
+
+  /**
+   * A narrowing on a warm worker still waits a frame or two on the answer.
+   * The screen holds the landing it had under the fit it had, and then the new
+   * landing under its own fit, with no commit drawing any other picture.
+   */
+  it('keeps the last landing on a narrowing until the next one lands, and never draws a mix of the two', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    const before = pictureOf();
+    expect(JSON.parse(before).cards).toEqual(['t1@0,0', 't2@400,200']);
+
+    hoisted.hold = true;
+    const seen: string[] = [];
+    const stop = onBeforeFlush(() => seen.push(pictureOf()));
+    app.store.dispatchSync(
+      viewSetCentersAction({ tableIds: ['t3'], kind: ViewKind.flow })
+    );
+    await settle();
+    const held = await sample(pictureOf, 5);
+
+    expect(hoisted.requests).toHaveLength(2);
+    expect(tableIdsOf(hoisted.requests[1])).toEqual(['t2', 't3']);
+    expect([...new Set([...seen, ...held])]).toEqual([before]);
+
+    hoisted.release.shift()?.();
+    await settle();
+    const after = pictureOf();
+    const landed = await sample(pictureOf, 5);
+    stop();
+
+    expect(JSON.parse(after).cards).toEqual(['t2@0,0', 't3@400,200']);
+    expect(after).not.toBe(before);
+    expect([...new Set([before, ...seen, ...held, ...landed])]).toEqual([
+      before,
+      after,
+    ]);
+  });
+
+  it.each([
+    ['cancelled', (app: AppContext) => chord(app, KeyBindingName.stop)],
+    ['failed', () => hoisted.fail.shift()?.()],
+  ])(
+    'keeps drawing the last landing once a narrowing ask is %s, until the same focus asks again',
+    async (_, endAsk) => {
+      const app = createTestAppContext();
+      seedFields(app);
+      const mounted = await mountVisualization(app);
+      await enterFlow(mounted);
+      const whole = pictureOf();
+      expect(JSON.parse(whole).cards).toHaveLength(4);
+
+      hoisted.hold = true;
+      app.store.dispatchSync(
+        viewSetCentersAction({ tableIds: ['t1'], kind: ViewKind.flow })
+      );
+      await settle();
+      expect(hoisted.requests).toHaveLength(2);
+
+      endAsk(app);
+      await settle();
+      hoisted.release.splice(0).forEach(release => release());
+      await settle();
+
+      expect(positionsOf(app)).toEqual(landingOf(['t1', 't2', 't3', 't4']));
+      expect(pictureOf()).toBe(whole);
+
+      app.store.dispatchSync(focusFlowTableAction$(['t1']));
+      await settle();
+      expect(hoisted.requests).toHaveLength(3);
+      expect(pictureOf()).toBe(whole);
+
+      hoisted.release.shift()?.();
+      await settle();
+      expect(JSON.parse(pictureOf()).cards).toEqual(['t1@0,0', 't2@400,200']);
+    }
+  );
+
+  /**
+   * A cold entry whose ask is cancelled or failed has nothing to draw, and the
+   * key it was asked under is the one a second focus on those centers carries,
+   * so that focus is what asks again rather than a view left standing on nothing.
+   */
+  it.each([
+    ['cancelled', (app: AppContext) => chord(app, KeyBindingName.stop)],
+    ['failed', () => hoisted.fail.shift()?.()],
+  ])(
+    'places a cold entry on the same focus once its ask is %s',
+    async (_, endAsk) => {
+      const app = createTestAppContext();
+      seedFields(app);
+      hoisted.hold = true;
+      await mountVisualization(app);
+
+      app.store.dispatchSync(focusFlowTableAction$(['t1']));
+      await settle();
+      endAsk(app);
+      await settle();
+      hoisted.release.splice(0).forEach(release => release());
+      await settle();
+      expect(JSON.parse(pictureOf()).cards).toEqual([]);
+
+      // Any batch but a focus leaves it be, or a worker that keeps failing
+      // would be asked again on every one.
+      app.store.dispatchSync(
+        viewChangeShowModeAction({
+          value: ShowMode.keysOnly,
+          kind: ViewKind.flow,
+        })
+      );
+      await settle();
+      expect(hoisted.requests).toHaveLength(1);
+
+      app.store.dispatchSync(focusFlowTableAction$(['t1']));
+      await settle();
+      expect(hoisted.requests).toHaveLength(2);
+
+      hoisted.release.shift()?.();
+      await settle();
+      expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
+      expect(JSON.parse(pictureOf()).cards).toEqual(['t1@0,0', 't2@400,200']);
+    }
+  );
+
+  it('stands on the landing it has when the centers are set to the ones it already stands on', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    const landed = pictureOf();
+
+    app.store.dispatchSync(focusFlowTableAction$(['t1']));
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(1);
+    expect(pictureOf()).toBe(landed);
+  });
+
+  /**
+   * A view replaced by one on the same centers carries the same key the loop
+   * last asked under, and nothing is placed yet for it: a loop reading the key
+   * alone would leave the new view standing on nothing for good.
+   */
+  it('places a view reopened on the centers it stood on while the tab stays up', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    const landed = pictureOf();
+
+    app.store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
+    app.store.dispatchSync(focusFlowTableAction$(['t1']));
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(2);
+    expect(positionsOf(app)).toEqual(landingOf(['t1', 't2']));
+    expect(pictureOf()).toBe(landed);
   });
 
   it('opens on the key rows and walks the three steps from the bar (AC-25, AC-26)', async () => {

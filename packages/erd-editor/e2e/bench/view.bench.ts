@@ -63,8 +63,8 @@ const rows: Row[] = [];
 
 /**
  * Stands the reader in the Flow mode with the placement ELK gave it under
- * them. A Flow draws every table where the document keeps it until the layout
- * lands, so the landing is where a box stops standing on its document corner — a zoom is no landing, since the fit has no ceiling of 1.
+ * them. A Flow draws no table until the layout lands, so the landing is where
+ * a box is drawn off its document corner — a zoom is no landing, since the fit has no ceiling of 1.
  */
 function enterFlow(document: ErdDocument) {
   const [table] = Object.values(document.collections.tableEntities);
