@@ -60,6 +60,15 @@ describe('ColumnDataType.styles', () => {
     expect(text).toContain('white-space: nowrap');
   });
 
+  it('caps the hint popup at ten rows and scrolls the rest inside it', () => {
+    const text = ruleTextOf(`.${styles.hint}`);
+
+    // Ten 20px rows and the 1px border above and below them.
+    expect(text).toContain('max-height: 202px');
+    expect(text).toContain('overflow-y: auto');
+    expect(text).toContain('overscroll-behavior: contain');
+  });
+
   it('interpolates INPUT_HEIGHT into the hint template values', () => {
     expect(styles.hint.values[0]).toBe(INPUT_HEIGHT);
   });

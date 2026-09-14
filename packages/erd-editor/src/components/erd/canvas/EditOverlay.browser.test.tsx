@@ -1,5 +1,5 @@
 import { addCSSHost, createRef, render, useProvider } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
@@ -85,9 +85,22 @@ import {
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { focusEvent } from '@/utils/internalEvents';
 
+/** The platform a spec pins, and null for the one this browser reports. */
+const device = vi.hoisted(() => ({ apple: null as boolean | null }));
+
+vi.mock('@/utils/device-detect', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/utils/device-detect')>();
+
+  return {
+    ...actual,
+    hasAppleDevice: () => device.apple ?? actual.hasAppleDevice(),
+  };
+});
+
 const teardowns: Array<() => void> = [];
 
 afterEach(async () => {
+  device.apple = null;
   teardowns.splice(0).forEach(teardown => teardown());
   await whenDrawn();
 });
@@ -932,6 +945,28 @@ describe('the scroll the memo body editor shares with the scene', () => {
   });
 });
 
+const hintListOf = (mounted: Mounted) =>
+  cellOf(mounted).querySelector(`.${dataTypeStyles.hint}`) as HTMLElement;
+
+/** How many of one wheel notch over an element bubble out to the canvas. */
+function wheelsReachingCanvas(
+  fixture: Fixture,
+  target: HTMLElement,
+  init: WheelEventInit
+) {
+  let reached = 0;
+  const listen = () => {
+    reached += 1;
+  };
+  fixture.mounted.container.addEventListener('wheel', listen);
+  target.dispatchEvent(
+    new WheelEvent('wheel', { bubbles: true, deltaY: 120, ...init })
+  );
+  fixture.mounted.container.removeEventListener('wheel', listen);
+
+  return reached;
+}
+
 /**
  * The data type autocomplete, which is the one editor that opens dom of its
  * own beside the input. The list sits over the stage rather than in it, so the
@@ -981,6 +1016,113 @@ describe('the data type hint list over the scene', () => {
     fixture.mounted.container.removeEventListener('mousedown', listen);
 
     expect(reached).toBe(1);
+  });
+
+  // Styled, because the cap that gives the list something to scroll is css.
+  it('keeps a wheel that scrolls the hint list off the canvas below it', async () => {
+    const fixture = await setupStyled();
+    await editColumnDataType(fixture);
+    await typeDataType(fixture, 'i');
+
+    const list = hintListOf(fixture.mounted);
+    expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+
+    expect(wheelsReachingCanvas(fixture, list, {})).toBe(0);
+    expect(
+      wheelsReachingCanvas(fixture, list, { deltaX: 40, deltaY: -120 })
+    ).toBe(0);
+  });
+
+  it('hands the canvas a zoom chord over the hint list', async () => {
+    const fixture = await setupStyled();
+    await editColumnDataType(fixture);
+    await typeDataType(fixture, 'i');
+
+    // Both modifiers, so the chord is $mod whichever one this host reads.
+    const chord = { ctrlKey: true, metaKey: true };
+    expect(
+      wheelsReachingCanvas(fixture, hintListOf(fixture.mounted), chord)
+    ).toBe(1);
+  });
+
+  // A trackpad pinch arrives as a ctrl wheel, which on a Mac is no $mod, and
+  // left to the list it is prevented by nothing and zooms the page instead.
+  it.each([true, false])(
+    'hands the canvas a ctrl wheel over the hint list on an apple device: %s',
+    async apple => {
+      device.apple = apple;
+      const fixture = await setupStyled();
+      await editColumnDataType(fixture);
+      await typeDataType(fixture, 'i');
+
+      const list = hintListOf(fixture.mounted);
+      expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+
+      expect(wheelsReachingCanvas(fixture, list, { ctrlKey: true })).toBe(1);
+    }
+  );
+
+  // The list scrolls only up and down, so a sideways wheel it kept would
+  // scroll nothing and stop the canvas from panning under a trackpad swipe.
+  it.each([
+    ['sideways', { deltaX: 120, deltaY: 0 }],
+    ['shifted sideways', { shiftKey: true, deltaX: 120, deltaY: 0 }],
+    ['shifted vertical', { shiftKey: true, deltaX: 0, deltaY: 120 }],
+    ['mostly sideways', { deltaX: -120, deltaY: 40 }],
+  ])(
+    'hands the canvas a %s wheel over a hint list it can scroll',
+    async (_, init) => {
+      const fixture = await setupStyled();
+      await editColumnDataType(fixture);
+      await typeDataType(fixture, 'i');
+
+      const list = hintListOf(fixture.mounted);
+      expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+
+      expect(wheelsReachingCanvas(fixture, list, init)).toBe(1);
+    }
+  );
+
+  // A real wheel, because the scroll is the browser's default action and no
+  // dispatched event carries one.
+  it('scrolls the hint list under a real vertical wheel, not a sideways one', async () => {
+    const fixture = await setupStyled();
+    await editColumnDataType(fixture);
+    await typeDataType(fixture, 'i');
+
+    const list = hintListOf(fixture.mounted);
+    expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+
+    let reached = 0;
+    const listen = () => {
+      reached += 1;
+    };
+    const { container } = fixture.mounted;
+    container.addEventListener('wheel', listen);
+    teardowns.push(() => container.removeEventListener('wheel', listen));
+
+    await userEvent.wheel(list, { delta: { x: 120 } });
+    await expect.poll(() => reached).toBe(1);
+    expect(list.scrollTop).toBe(0);
+
+    const moved = scrolled(list);
+    await userEvent.wheel(list, { delta: { y: 120 } });
+    await moved;
+
+    expect(list.scrollTop).toBeGreaterThan(0);
+    expect(reached).toBe(1);
+  });
+
+  it('hands the canvas a wheel over a hint list with nothing to scroll', async () => {
+    const fixture = await setupStyled();
+    await editColumnDataType(fixture);
+    await typeDataType(fixture, 'dec');
+
+    const list = hintListOf(fixture.mounted);
+    expect(hintRowsOf(fixture.mounted).length).toBeGreaterThan(0);
+    expect(list.scrollHeight).toBe(list.clientHeight);
+
+    expect(wheelsReachingCanvas(fixture, list, {})).toBe(1);
   });
 });
 
