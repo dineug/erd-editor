@@ -2,11 +2,15 @@ import { AnyAction } from '@dineug/r-html';
 import { Subject, Subscription } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
+import { RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
   initialLoadJsonAction,
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
+import { removeTableAction } from '@/engine/modules/table/atom.actions';
 import { hooks } from '@/engine/modules/table/hooks';
 import { createStore, Store } from '@/engine/store';
 
@@ -21,8 +25,8 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const running: Subscription[] = [];
 
-function runHook(store: Store) {
-  const [, effect] = hooks[0];
+function runHook(store: Store, index = 0) {
+  const [, effect] = hooks[index];
   const action$ = new Subject<AnyAction>();
   running.push(effect(action$, () => store.state, store.context));
   return { action$ };
@@ -93,7 +97,7 @@ afterEach(() => {
 
 describe('table/hooks', () => {
   it('reacts to both loadJson variants', () => {
-    expect(hooks).toHaveLength(1);
+    expect(hooks).toHaveLength(2);
 
     const [pattern, effect] = hooks[0];
     expect(pattern).toEqual([loadJsonAction, initialLoadJsonAction]);
@@ -208,6 +212,46 @@ describe('table/hooks', () => {
     await delay(THROTTLE_WAIT);
 
     expect(calls).toBe(16);
+
+    store.destroy();
+  });
+});
+
+describe('table/hooks, a draw out of a removed table', () => {
+  /** A draw armed and started from TABLE_A, then one table removed. */
+  async function removeDuringDraw(tableId: string) {
+    const store = createFixture();
+    const { action$ } = runHook(store, 1);
+    store.dispatchSync(
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN }),
+      drawStartAddRelationshipAction({ tableId: TABLE_A })
+    );
+
+    const remove = removeTableAction({ id: tableId });
+    store.dispatchSync(remove);
+    action$.next(remove);
+    await delay(0);
+
+    return store;
+  }
+
+  it('reacts to a table removal', () => {
+    expect(hooks[1][0].map(String)).toEqual(['table.remove']);
+  });
+
+  it('ends the draw once the table it starts from is removed', async () => {
+    const store = await removeDuringDraw(TABLE_A);
+
+    expect(store.state.doc.tableIds).toEqual([TABLE_B]);
+    expect(store.state.editor.drawRelationship).toBeNull();
+
+    store.destroy();
+  });
+
+  it('leaves the draw armed when another table is removed', async () => {
+    const store = await removeDuringDraw(TABLE_B);
+
+    expect(store.state.editor.drawRelationship?.start?.tableId).toBe(TABLE_A);
 
     store.destroy();
   });

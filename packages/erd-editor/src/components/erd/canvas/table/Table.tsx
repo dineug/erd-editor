@@ -237,8 +237,16 @@ const Table: FC<TableProps> = (props, ctx) => {
       : theme.tableSelect;
   };
 
+  /**
+   * Whether the press under way found a relationship draw armed. The press
+   * closes or starts that draw, so the click konva ends it with on a button
+   * belongs to the draw, not to the button.
+   */
+  let pressDraws = false;
+
   /** The press a table takes: its drag, and in a view scene the start of a click that pins it. */
   const handlePress = (event: ScenePointerEvent) => {
+    pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
     onMoveStart(event);
     // A press that landed on a header button belongs to the button alone. The
     // pin Related would take on the way past lights the hub and its one hop,
@@ -249,6 +257,8 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
+    if (pressDraws) return;
+
     const { emitter } = app.value;
     emitter.emit(
       openColorPickerAction({
@@ -260,11 +270,15 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   const handleAddColumn = () => {
+    if (pressDraws) return;
+
     const { store } = app.value;
     store.dispatch(addColumnAction$(props.table.id));
   };
 
   const handleRemoveTable = () => {
+    if (pressDraws) return;
+
     const { store } = app.value;
     store.dispatch(removeTableAction$(props.table.id));
   };

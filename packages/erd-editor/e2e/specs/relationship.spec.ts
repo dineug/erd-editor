@@ -232,6 +232,142 @@ test.describe('relationship drawing', () => {
   });
 });
 
+/**
+ * The four buttons a document table carries, each with a click of its own. A
+ * press on one bubbles to the table, which closes or starts a draw, and konva
+ * then sends the click to the button the same press started on.
+ */
+const TABLE_BUTTONS = [
+  { name: 'header remove', selector: ['#table-posts', '.table-remove'] },
+  {
+    name: 'header add column',
+    selector: ['#table-posts', '.table-add-column'],
+  },
+  { name: 'colour bar', selector: ['#table-posts', '.table-header-color'] },
+  {
+    name: 'column remove',
+    selector: ['#column-posts_title', '.column-remove'],
+  },
+] as const;
+
+test.describe('a relationship draw and the buttons a table carries', () => {
+  for (const button of TABLE_BUTTONS) {
+    test(`a press on the ${button.name} closes the draw and does nothing else`, async ({
+      erd,
+      page,
+    }) => {
+      await erd.seed(twoTables());
+      await erd.focusCanvas();
+      await erd.press(Shortcut.relationshipOneN);
+      await erd.clickTableHeader('users');
+      await expect(erd.drawPreview).toBeVisible();
+
+      // Hovered the way a hand gets there, so the button is lit and answers.
+      const box = await erd.sceneBox(button.selector);
+      await erd.hoverAt(
+        { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+        12
+      );
+      await page.mouse.down();
+      await page.mouse.up();
+      await erd.whenDrawn();
+
+      const relationship = await erd.relationship(
+        only(await erd.relationshipIds())
+      );
+      expect(relationship.start.tableId).toBe('users');
+      expect(relationship.end.tableId).toBe('posts');
+      expect(await erd.tableIds()).toEqual(['users', 'posts']);
+      expect(await erd.columnIds('posts')).toEqual([
+        'posts_id',
+        'posts_title',
+        relationship.end.columnIds[0],
+      ]);
+      await expect(erd.colorPicker).toHaveCount(0);
+    });
+  }
+
+  test('a press on the colour bar of a zoomed out table closes the draw and does nothing else', async ({
+    erd,
+    page,
+  }) => {
+    // Below the swap zoom the scene draws the simplified table, whose one
+    // button is its colour bar.
+    const schema = twoTables();
+    schema.settings.zoomLevel = 0.5;
+    await erd.seed(schema);
+    await expect(erd.canvas.locator('.high-level-table')).toHaveCount(2);
+
+    await erd.focusCanvas();
+    await erd.press(Shortcut.relationshipOneN);
+    const users = await erd.sceneBox('#table-users');
+    await erd.clickAt({
+      x: users.x + users.width / 2,
+      y: users.y + users.height / 2,
+    });
+    await expect(erd.drawPreview).toBeVisible();
+
+    const bar = await erd.sceneBox(['#table-posts', '.table-header-color']);
+    await erd.hoverAt(
+      { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 },
+      12
+    );
+    await page.mouse.down();
+    await page.mouse.up();
+    await erd.whenDrawn();
+
+    const relationship = await erd.relationship(
+      only(await erd.relationshipIds())
+    );
+    expect(relationship.start.tableId).toBe('users');
+    expect(relationship.end.tableId).toBe('posts');
+    expect(await erd.tableIds()).toEqual(['users', 'posts']);
+    await expect(erd.colorPicker).toHaveCount(0);
+  });
+
+  test('a press on the start table remove button starts the draw and removes nothing', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.focusCanvas();
+    await erd.press(Shortcut.relationshipOneN);
+
+    const box = await erd.sceneBox(['#table-users', '.table-remove']);
+    await erd.hoverAt(
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      12
+    );
+    await page.mouse.down();
+    await page.mouse.up();
+
+    await expect(erd.drawPreview).toBeVisible();
+    expect(await erd.tableIds()).toEqual(['users', 'posts']);
+  });
+
+  test('a draw whose start table is removed closes on nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.focusCanvas();
+    await erd.press(Shortcut.relationshipOneN);
+    await erd.clickTableHeader('users');
+    await expect(erd.drawPreview).toBeVisible();
+
+    // The start press selected users, so the shortcut removes the table the
+    // draw would otherwise go on pointing a relationship out of.
+    await erd.press(Shortcut.removeTable);
+    await expect.poll(() => erd.tableIds()).toEqual(['posts']);
+    await expect(erd.drawPreview).toHaveCount(0);
+
+    await erd.clickTableHeader('posts');
+    await erd.whenDrawn();
+
+    expect(await erd.relationshipIds()).toEqual([]);
+    expect(await erd.columnIds('posts')).toEqual(['posts_id', 'posts_title']);
+  });
+});
+
 test.describe('inline editing', () => {
   test('commits a table name edit with Enter and returns to the display node', async ({
     erd,

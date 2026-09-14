@@ -241,6 +241,18 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     dragSubscription = subscription;
   };
 
+  /** Whether the press under way found a relationship draw, which it closes or starts. */
+  let pressDraws = false;
+
+  /**
+   * The row's press, read before the table it bubbles to dispatches anything.
+   * Its click on the remove button then belongs to the draw it met, if any.
+   */
+  const handlePress = (event: SceneMouseEvent) => {
+    pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
+    handleDragstart(event);
+  };
+
   const handleMouseenter = () => {
     state.hover = true;
   };
@@ -301,6 +313,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   };
 
   const handleRemove = () => {
+    if (pressDraws) return;
+
     const { store } = app.value;
     const { column } = props;
     store.dispatch(removeColumnAction$(column.tableId, [column.id]));
@@ -564,7 +578,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         y={props.y}
         opacity={dragging ? 0.5 : 1}
         visible={!props.ghost}
-        on:mousedown={handleDragstart}
+        on:mousedown={handlePress}
         on:mouseenter={handleMouseenter}
         on:mouseleave={handleMouseleave}
       >

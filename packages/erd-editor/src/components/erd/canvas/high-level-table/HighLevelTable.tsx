@@ -12,6 +12,7 @@ import {
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   type SceneMouseEvent,
+  type ScenePointerEvent,
   setSceneCursor,
   TABLE_CORNER_RADIUS,
   TABLE_INSET,
@@ -56,7 +57,21 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
   const { onMoveStart } = useMoveTable(ctx, props, sourceRef);
 
+  /**
+   * Whether the press under way found a relationship draw armed. The press
+   * closes or starts that draw, so the click konva ends it with on the colour
+   * bar belongs to the draw, not to the bar.
+   */
+  let pressDraws = false;
+
+  const handlePress = (event: ScenePointerEvent) => {
+    pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
+    onMoveStart(event);
+  };
+
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
+    if (pressDraws) return;
+
     const { emitter } = app.value;
     emitter.emit(
       openColorPickerAction({
@@ -93,8 +108,8 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
         sharedSelect={sharedSelected}
         x={rect.x}
         y={rect.y}
-        on:mousedown={onMoveStart}
-        on:touchstart={onMoveStart}
+        on:mousedown={handlePress}
+        on:touchstart={handlePress}
       >
         <k-rect
           name="table-body"
