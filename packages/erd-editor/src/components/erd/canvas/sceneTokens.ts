@@ -1,3 +1,4 @@
+import { noop } from 'es-toolkit';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { ICON_VIEW_BOX } from '@/components/primitives/icon/icons';
@@ -7,6 +8,7 @@ import {
   TABLE_PADDING,
 } from '@/constants/layout';
 import { CodeFontFamily, TextFontFamily } from '@/styles/fonts.styles';
+import { isMouseEvent } from '@/utils/domEvent';
 
 /** A pointer event as konva hands it to a listener bound on a scene node. */
 export type SceneMouseEvent = KonvaEventObject<MouseEvent>;
@@ -152,14 +154,58 @@ export const CURSOR_TEXT = 'text';
 /** What a node hands back on the way out, leaving the container its own cursor. */
 export const CURSOR_INHERIT = '';
 
+/** The last cursor a hover asked for under a held gesture, noted and not shown. */
+type SceneCursorHold = { requested: string };
+
+const sceneCursorHolds = new WeakMap<HTMLElement, SceneCursorHold>();
+
+const sceneContainerOf = (event: ScenePointerEvent) =>
+  event.target?.getStage()?.container();
+
 /**
  * Points the stage container at a cursor. A konva node carries none of its own,
  * so the container is where the css the dom scene put on an element now lives.
+ * Under a hold the cursor is only noted, for the release to write back.
  *
  * @example
  * on:mouseenter={(event) => setSceneCursor(event, CURSOR_POINTER)}
  */
 export function setSceneCursor(event: ScenePointerEvent, cursor: string): void {
-  const container = event.target?.getStage()?.container();
-  if (container) container.style.cursor = cursor;
+  const container = sceneContainerOf(event);
+  if (!container) return;
+
+  const hold = sceneCursorHolds.get(container);
+  if (hold) hold.requested = cursor;
+  else container.style.cursor = cursor;
+}
+
+/**
+ * Keeps the container on a cursor for a mouse gesture, whatever the pointer runs
+ * over, and hands back the release that shows what the last hover asked for. A
+ * touch has no cursor to keep, so its press holds nothing.
+ *
+ * @example
+ * drag$.subscribe(handleMove).add(holdSceneCursor(event, 'ew-resize'));
+ */
+export function holdSceneCursor(
+  event: ScenePointerEvent,
+  cursor: string
+): () => void {
+  const container = sceneContainerOf(event);
+  if (!container || !isMouseEvent(event.evt)) return noop;
+
+  // A press inside another one starts from what that one noted, because the
+  // container shows only the cursor the earlier press is holding it on.
+  const hold: SceneCursorHold = {
+    requested:
+      sceneCursorHolds.get(container)?.requested ?? container.style.cursor,
+  };
+  sceneCursorHolds.set(container, hold);
+  container.style.cursor = cursor;
+
+  return () => {
+    if (sceneCursorHolds.get(container) !== hold) return;
+    sceneCursorHolds.delete(container);
+    container.style.cursor = hold.requested;
+  };
 }
