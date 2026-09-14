@@ -533,6 +533,33 @@ about six jumps over a 240px drag of a hub table. Hysteresis was considered and
 is not worth its risk at that rate; the metric stays to catch a change that
 makes it worse.
 
+**A size change moves side choice more than a drag does, and that is kept.**
+`flips/move` only watches a drag. A unit run over the corpora as generated,
+growing one table at a time by one empty column (every third table on `x400`),
+changed the side pair of 6.5 / 7.4 / 5.9 / 2.5 / 3.5% of the relationships
+attached to the grown table on small / medium / large / x150 / x400, and took
+1 / 2 / 5 / 3 / 3 connectors from at most one turn to three or more. Two tables
+placed at random and grown by one column or 8px of width flipped 290 of 7525
+pairs, 3.9%, six of them from at most one turn to three or more.
+
+The worst of those lands on two facing sides closer than `2 * MIN_STUB`, where
+the two turning points pass each other and the only route doubles back. Taking
+such pairs out of `getAndSetDirection` was measured and not kept. Routes grew
+longer on every corpus (+2.3 / 4.1 / 1.3 / 0.9 / 0.2%), `cross-shared` rose on
+four of the five (x400 310 → 341), `node-cross` on four, collinear overlap on
+x150 and x400, small's `flips/move` went 0.00 → 0.03 (medium's 0.03 → 0.02),
+and the column-growth flips rose on every corpus (3 → 8 on small, 14 → 22 on
+large) while the corpus connectors pushed to three turns stayed exactly as many.
+The random pairs, the case it was aimed at, are where it helped: their flips
+rose 290 → 309, but the pairs pushed from at most one turn to three or more fell
+6 → 2 (those relieved the other way 5 → 2) and the share needing three turns
+3.03 → 2.87%. Apart from those pairs, only the segment count improved, 1–5%
+fewer; a penalty on such pairs in place of the exclusion was not measured.
+Excluding a pair moves the boundary the jump happens at rather than removing it.
+The short stair between two single anchors a few pixels off level is kept by
+design for the same reason — each anchor sits at the centre of its side, and
+snapping the two level would add a boundary of its own.
+
 **Cost tracks the fan-out, not the document.** Holding tables and hub degree
 fixed and varying only the total relationship count gives roughly
 `2.4ms + 0.63ms × relationships redrawn`. Culling what is off-screen would only
