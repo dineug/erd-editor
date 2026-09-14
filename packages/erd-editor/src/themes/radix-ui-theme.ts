@@ -128,8 +128,12 @@ import { identity } from 'es-toolkit';
 import { get, set } from 'es-toolkit/compat';
 
 import { ValuesType } from '@/internal-types';
-import { ThemeConfig } from '@/themes/radix-ui-theme.config';
+import {
+  NeutralAccentThemeConfig,
+  ThemeConfig,
+} from '@/themes/radix-ui-theme.config';
 import { Theme } from '@/themes/tokens';
+import { arrayHas } from '@/utils/arrayHas';
 
 export const Palette = {
   amber,
@@ -337,12 +341,19 @@ function createRadixUITheme({
 
 const ThemeKeys: ReadonlyArray<string> = Object.keys(ThemeConfig);
 
+const hasNeutralAccent = arrayHas<string>([
+  AccentColor.gray,
+  AccentColor.gold,
+  AccentColor.bronze,
+]);
+
 function toTheme(
   radixUITheme: ReturnType<typeof createRadixUITheme>,
-  appearance: Appearance
+  appearance: Appearance,
+  config: Theme
 ): Theme {
   return ThemeKeys.reduce((acc, key) => {
-    const colorKey: string = get(ThemeConfig, key);
+    const colorKey: string = get(config, key);
     const [type, color, alpha, customNum] = colorKey.split('-');
 
     if (type === 'override') {
@@ -381,5 +392,8 @@ export const createTheme = ({
       grayColor,
       accentColor,
     }),
-    appearance
+    appearance,
+    hasNeutralAccent(accentColor)
+      ? { ...ThemeConfig, ...NeutralAccentThemeConfig }
+      : ThemeConfig
   );

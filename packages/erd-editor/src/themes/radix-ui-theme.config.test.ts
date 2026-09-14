@@ -2,7 +2,10 @@ import { get } from 'es-toolkit/compat';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { Palette } from '@/themes/radix-ui-theme';
-import { ThemeConfig } from '@/themes/radix-ui-theme.config';
+import {
+  NeutralAccentThemeConfig,
+  ThemeConfig,
+} from '@/themes/radix-ui-theme.config';
 import { ThemeTokens } from '@/themes/tokens';
 
 const entries = Object.entries(ThemeConfig);
@@ -99,6 +102,12 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.active).toBe('gray-12');
     expect(ThemeConfig.focus).toBe('accent-8');
     expect(ThemeConfig.inputActive).toBe('accent-10');
+  });
+
+  it('selects a column row on accent-4, and on gray-6 under a neutral accent', () => {
+    expect(ThemeConfig.columnSelect).toBe('accent-4');
+    expect(ThemeConfig.columnHover).toBe('gray-4');
+    expect(NeutralAccentThemeConfig).toEqual({ columnSelect: 'gray-6' });
   });
 
   it('uses the alpha gray scale for the scrollbar track and the placeholder', () => {

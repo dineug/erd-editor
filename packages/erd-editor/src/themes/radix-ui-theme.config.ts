@@ -38,7 +38,7 @@ export const ThemeConfig: Theme = {
   memoSelect: 'accent-8',
   memoBorder: 'gray-6',
 
-  columnSelect: 'gray-5',
+  columnSelect: 'accent-4',
   columnHover: 'gray-4',
 
   relationshipHover: 'accent-8',
@@ -83,3 +83,11 @@ export const ThemeConfig: Theme = {
   diffDeleteForeground: `custom-red--11`,
   diffCrossForeground: `custom-blue--11`,
 } as const;
+
+/**
+ * What the gray, gold and bronze accents take instead: step 4 of those scales
+ * sits on or beside the gray-4 hover, so a selected row would read as a hovered one.
+ */
+export const NeutralAccentThemeConfig: Partial<Theme> = {
+  columnSelect: 'gray-6',
+};
