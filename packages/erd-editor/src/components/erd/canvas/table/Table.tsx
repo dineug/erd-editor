@@ -8,6 +8,11 @@ import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import {
+  beginColumnDragPointer,
+  endColumnDragPointer,
+  moveColumnDragPointer,
+} from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+import {
   progressOf,
   transitionKey,
   transitionTo,
@@ -338,6 +343,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     if (!point) return;
 
     const target = findColumnDropTarget(store.state, point, sourceRef.value);
+    moveColumnDragPointer(store.state, point, target !== null);
     if (!target) return;
 
     const {
@@ -363,6 +369,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     dragLayerStage = null;
     state.dragstartId = null;
 
+    endColumnDragPointer(store.state);
     store.dispatch(dragendColumnAction());
     emitter.emit(dragendColumnAllAction());
   };
@@ -391,7 +398,15 @@ const Table: FC<TableProps> = (props, ctx) => {
     state.dragstartId = columnId;
     flip ??= createKonvaFlip(() => stage.find<KonvaNode>('.column-row'));
 
-    store.dispatch(dragstartColumnAction$(isMod(event.evt)));
+    const $mod = isMod(event.evt);
+    const press = toCanvasPoint(event.evt);
+    press &&
+      beginColumnDragPointer(store.state, props.table, press, {
+        columnId,
+        columnIds: $mod ? focusTable.selectColumnIds : [columnId],
+      });
+
+    store.dispatch(dragstartColumnAction$($mod));
 
     dragoverSubscription = drag$.subscribe({
       next: ({ event: move }) => {
@@ -409,9 +424,11 @@ const Table: FC<TableProps> = (props, ctx) => {
         dragendColumnAll: () => {
           dragoverSubscription?.unsubscribe();
           dragoverSubscription = null;
+          endColumnDragPointer(app.value.store.state);
         },
       }),
       () => {
+        dragoverSubscription && endColumnDragPointer(app.value.store.state);
         dragoverSubscription?.unsubscribe();
         dragoverSubscription = null;
         flip?.cancel();

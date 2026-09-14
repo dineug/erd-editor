@@ -294,8 +294,10 @@ Column reordering is **not** native HTML5 drag-and-drop any more. `konva/jsx.d.t
 types `draggable` and every `on:drag*` as `never`, so the row runs on the same
 `drag$` stream as everything else: `Column.tsx` arms on mousedown and reports a
 start on the first move, and `Table.tsx` answers which row a drop landed on with
-`findColumnDropTarget`, arithmetic over the rects the scene laid out. Drive it
-with `page.mouse`, never `locator.dragTo()`. Two preconditions:
+`findColumnDropTarget`, arithmetic over the rects the scene laid out. Where the
+pointer is over no drop target, the rows it carries are drawn under it as
+`.column-drag-ghost` on the presence layer, hidden over a target and gone on
+release. Drive it with `page.mouse`, never `locator.dragTo()`. Two preconditions:
 
 - `dragstartColumnAction$` bails unless a column already holds focus. Click the
   cell first (`erd.focusCell`) — a drag from an unfocused row does nothing.

@@ -589,6 +589,29 @@ test.describe('mouse drag', () => {
     expect(await columnNames(erd, 'posts')).toEqual(['id', 'title', 'name']);
   });
 
+  test('a column dragged over bare canvas carries a ghost of its row under the pointer', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+
+    const source = await erd.columnPoint('users_name');
+    const bare = { x: source.x, y: source.y + 200 };
+    await holdAlong(erd, [source, bare]);
+
+    const ghost = erd.canvas.locator('.column-drag-ghost');
+    await expect(ghost).toContainText('varchar(255)');
+    const box = await erd.sceneBox('.column-drag-ghost');
+    expect(box.x).toBeLessThan(bare.x);
+    expect(box.x + box.width).toBeGreaterThan(bare.x);
+    expect(box.y).toBeLessThan(bare.y);
+    expect(box.y + box.height).toBeGreaterThan(bare.y);
+
+    await erd.page.mouse.up();
+    await expect(ghost).toHaveCount(0);
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+  });
+
   test('a column dragged into a table with no rows lands in it', async ({
     erd,
   }) => {
