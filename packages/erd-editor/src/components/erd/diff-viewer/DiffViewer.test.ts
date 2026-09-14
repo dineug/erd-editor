@@ -141,23 +141,6 @@ describe('DiffViewer', () => {
     expect(labels).toEqual(['members', 'users']);
   });
 
-  it('scopes the generated diff stylesheets to their own pane', async () => {
-    await mountDiffViewer({
-      origin: [{ id: 'n1', name: 'members' }],
-      initial: [{ id: 'p1', name: 'users' }],
-    });
-
-    const [deletePane, insertPane] = viewportsOf();
-    const deleteCss = deletePane.querySelector('style')?.textContent ?? '';
-    const insertCss = insertPane.querySelector('style')?.textContent ?? '';
-
-    expect(deleteCss).toContain('.diff-viewer-delete');
-    expect(deleteCss).toContain('var(--diff-delete-background)');
-    expect(insertCss).toContain('.diff-viewer-insert');
-    expect(insertCss).toContain('var(--diff-insert-background)');
-    expect(insertCss).toContain('[data-id="n1"]');
-  });
-
   it('emits an open toast on the origin app carrying a close action', async () => {
     const originApp = createOriginApp([{ id: 'n1', name: 'users' }]);
     const appRef = createRef<AppContext>(originApp);

@@ -34,6 +34,7 @@ import {
   getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
+import { diffFill, type DiffPaths } from '@/components/erd/diff-viewer/diff';
 import { useThemeContext } from '@/components/themeContext';
 import {
   COLUMN_DELETE_WIDTH,
@@ -84,6 +85,11 @@ export type ColumnProps = {
    * for. Decided by the scene, which walks the links once for every card.
    */
   related?: boolean;
+  /**
+   * What the diff pane this row is drawn in changed of its column, which tints
+   * those cells. A prop for the reason source is one, and null outside a pane.
+   */
+  diffPaths?: DiffPaths | null;
   /**
    * How far the light has come up on the card this row is drawn in, which is
    * what the row tint and the type cell above are both drawn at. One number, so
@@ -313,6 +319,21 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     store.dispatch(columnKeyHoverEndAction$());
   };
 
+  /** The tint a changed cell sits on in a diff pane, across its padded box. */
+  const diffBackground = (focusType: FocusType, width: number) => {
+    const fill = diffFill(themeRef.value, props.diffPaths, focusType);
+
+    return fill ? (
+      <k-rect
+        name="cell-diff-background"
+        width={width + INPUT_MARGIN_RIGHT}
+        height={tableRowHeight(props.source)}
+        fill={fill}
+        listening={false}
+      />
+    ) : null;
+  };
+
   /**
    * One cell, laid out the way its div was: the text in the 20px input line,
    * answering a press for the whole box, and the two underlines at their own
@@ -348,6 +369,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         handleEdit(focusType, event);
       }}
     >
+      {diffBackground(focusType, width)}
       <k-text
         name="cell-text"
         y={getColumnTextY(props.source)}

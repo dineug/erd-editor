@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext } from '@/__test-utils__/index';
+import { createTestAppContext, createTestTheme } from '@/__test-utils__/index';
 import {
   Diff,
+  diffFill,
   DiffMap,
   diffState,
-  getDiffStyle,
   getNameToTableMap,
 } from '@/components/erd/diff-viewer/diff';
 import {
@@ -338,99 +338,48 @@ describe('diffState', () => {
   });
 });
 
-describe('getDiffStyle', () => {
-  it('returns an empty style element for an empty diff map', () => {
-    const style = getDiffStyle(Diff.insert, new Map());
+describe('diffFill', () => {
+  const theme = createTestTheme();
 
-    expect(style.tagName).toBe('STYLE');
-    expect(style.textContent).toBe('');
-  });
+  it('paints an inserted path in the insert colour', () => {
+    const paths = new Map([['columnName', Diff.insert]]);
 
-  it('scopes insert rules under .diff-viewer-insert with the insert background', () => {
-    const diffMap: DiffMap = new Map([
-      ['c1', ['tableColumnEntities', new Map([['columnName', Diff.insert]])]],
-    ]);
-
-    const css = getDiffStyle(Diff.insert, diffMap).textContent ?? '';
-
-    expect(css).toContain('.diff-viewer-insert [data-id="c1"]');
-    expect(css).toContain('[data-type="columnName"]');
-    expect(css).toContain('background-color: var(--diff-insert-background)');
-    expect(css).not.toContain('--diff-delete-background');
-  });
-
-  it('scopes delete rules under .diff-viewer-delete with the delete background', () => {
-    const diffMap: DiffMap = new Map([
-      ['t1', ['tableEntities', new Map([['tableName', Diff.delete]])]],
-    ]);
-
-    const css = getDiffStyle(Diff.delete, diffMap).textContent ?? '';
-
-    expect(css).toContain('.diff-viewer-delete [data-id="t1"]');
-    expect(css).toContain('background-color: var(--diff-delete-background)');
-  });
-
-  it('falls back to the delete root class for any non insert diff', () => {
-    const diffMap: DiffMap = new Map([
-      ['t1', ['tableEntities', new Map([['tableName', Diff.delete]])]],
-    ]);
-
-    expect(getDiffStyle(0, diffMap).textContent).toContain(
-      '.diff-viewer-delete'
+    expect(diffFill(theme, paths, 'columnName')).toBe(
+      theme.diffInsertBackground
     );
   });
 
-  it('emits nothing for a path whose diff value is zero', () => {
-    const diffMap: DiffMap = new Map([
-      [
-        't1',
-        [
-          'tableEntities',
-          new Map([
-            ['tableName', 0],
-            ['tableComment', Diff.insert],
-          ]),
-        ],
-      ],
-    ]);
+  it('paints a deleted path in the delete colour', () => {
+    const paths = new Map([['tableName', Diff.delete]]);
 
-    const css = getDiffStyle(Diff.insert, diffMap).textContent ?? '';
-
-    expect(css).not.toContain('[data-type="tableName"]');
-    expect(css).toContain('[data-type="tableComment"]');
+    expect(diffFill(theme, paths, 'tableName')).toBe(
+      theme.diffDeleteBackground
+    );
   });
 
-  it('emits one rule per path across several entities', () => {
-    const diffMap: DiffMap = new Map<string, [string, Map<string, number>]>([
-      [
-        't1',
-        [
-          'tableEntities',
-          new Map([
-            ['tableName', Diff.insert],
-            ['tableComment', Diff.insert],
-          ]),
-        ],
-      ],
-      ['c1', ['tableColumnEntities', new Map([['columnName', Diff.insert]])]],
+  it('follows the flag on the path rather than the pane it is drawn in', () => {
+    const paths = new Map([
+      ['columnName', Diff.delete],
+      ['columnComment', Diff.insert],
     ]);
 
-    const css = getDiffStyle(Diff.insert, diffMap).textContent ?? '';
-
-    expect(css.match(/background-color:/g)?.length).toBe(3);
-    expect(css).toContain('[data-id="t1"]');
-    expect(css).toContain('[data-id="c1"]');
+    expect(diffFill(theme, paths, 'columnName')).toBe(
+      theme.diffDeleteBackground
+    );
+    expect(diffFill(theme, paths, 'columnComment')).toBe(
+      theme.diffInsertBackground
+    );
   });
 
-  it('renders a delete background for a delete flagged path inside an insert sheet', () => {
-    const diffMap: DiffMap = new Map([
-      ['t1', ['tableEntities', new Map([['tableName', Diff.delete]])]],
+  it('paints nothing for a path that did not change or an entity with no entry', () => {
+    const paths = new Map([
+      ['tableName', 0],
+      ['tableComment', Diff.insert],
     ]);
 
-    const css = getDiffStyle(Diff.insert, diffMap).textContent ?? '';
-
-    // the root class follows the sheet, the colour follows the per path flag
-    expect(css).toContain('.diff-viewer-insert');
-    expect(css).toContain('background-color: var(--diff-delete-background)');
+    expect(diffFill(theme, paths, 'tableName')).toBeNull();
+    expect(diffFill(theme, paths, 'columnName')).toBeNull();
+    expect(diffFill(theme, undefined, 'tableName')).toBeNull();
+    expect(diffFill(theme, null, 'tableName')).toBeNull();
   });
 });

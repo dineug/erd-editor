@@ -51,6 +51,8 @@ import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { diffFill } from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { focusFlowView } from '@/components/flowCenters';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -153,6 +155,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const diffMapRef = useDiffMap(ctx);
   const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
     ctx,
     props.table.id
@@ -412,6 +415,11 @@ const Table: FC<TableProps> = (props, ctx) => {
   }: HeaderCellOptions) => {
     const source = sourceRef.value;
     const view = source !== 'document';
+    const diffBackground = diffFill(
+      themeRef.value,
+      diffMapRef.value?.get(props.table.id)?.[1],
+      focusType
+    );
 
     return (
       <k-group
@@ -428,6 +436,15 @@ const Table: FC<TableProps> = (props, ctx) => {
           handleEdit(focusType, event);
         }}
       >
+        {diffBackground ? (
+          <k-rect
+            name="cell-diff-background"
+            width={width + INPUT_MARGIN_RIGHT}
+            height={TABLE_HEADER_INPUT_HEIGHT}
+            fill={diffBackground}
+            listening={false}
+          />
+        ) : null}
         <k-text
           name="cell-text"
           y={getHeaderTextY(source)}
@@ -764,6 +781,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 column={column}
                 source={source}
                 related={props.relatedColumnIds?.has(column.id) ?? false}
+                diffPaths={diffMapRef.value?.get(column.id)?.[1] ?? null}
                 litAlpha={litAlpha}
                 divider={view && index < columns.length - 1}
                 last={view && index === columns.length - 1}

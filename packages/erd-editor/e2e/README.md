@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-34 spec files. Nine of the groups exist because the DOM scene got their subject
+35 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -60,6 +60,7 @@ for free and the canvas has to draw and dispatch it itself:
 | `draw-preview.spec.ts`          | The dashed preview agreeing with the cursor every frame           |
 | `context-menu-cardinality.spec.ts` | A right click that finds a connector by hit-testing the scene  |
 | `virtual-viewport.spec.ts`      | Culling: what is off screen has no node, and the minimap keeps it |
+| `diff-viewer.spec.ts`           | The tint a changed cell sits on, on the canvas of both panes      |
 
 Ten more are the canvas's own geometry, and the DOM the editing overlay
 puts over it:
