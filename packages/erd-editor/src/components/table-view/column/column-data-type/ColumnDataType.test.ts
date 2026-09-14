@@ -226,6 +226,16 @@ describe('ColumnDataType', () => {
 
       expect(h.hintRows()).toHaveLength(0);
     });
+
+    it('closes the list once the text runs past a whole type name', async () => {
+      const h = await setup({ edit: true });
+
+      await type(h, 'VARCHAR');
+      expect(h.hintNames()).toContain('VARCHARACTER');
+
+      await type(h, 'VARCHAR(255)');
+      expect(h.hintRows()).toHaveLength(0);
+    });
   });
 
   describe('hint selection', () => {

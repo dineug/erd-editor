@@ -55,6 +55,24 @@ test.describe('data type autocomplete', () => {
     expect((await erd.column(COLUMN_ID)).dataType).toBe('INT');
   });
 
+  // A list left open under free input covered the row below, so the first press
+  // of a double-click there applied whichever hint was drawn over that cell.
+  test('opens the cell below free input on a double-click', async ({ erd }) => {
+    await erd.seed(oneTable());
+
+    const cell = erd.cell(erd.columnEl(COLUMN_ID), 'columnDataType');
+    await erd.editCell(cell, 'VARCHAR(255)');
+
+    const below = erd.cell(erd.columnEl('users_name'), 'columnDataType');
+    const point = await erd.centerOf(below);
+    await erd.page.mouse.move(point.x, point.y, { steps: 8 });
+    await erd.page.mouse.dblclick(point.x, point.y);
+
+    // The row below's own type, lower case, in the editor that opened on it.
+    await expect(erd.editInput()).toHaveValue('varchar(255)');
+    expect((await erd.column(COLUMN_ID)).dataType).toBe('VARCHAR(255)');
+  });
+
   test('keeps a long hint list inside the canvas and scrolls it', async ({
     erd,
   }) => {
