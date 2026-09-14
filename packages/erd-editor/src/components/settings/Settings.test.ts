@@ -447,6 +447,34 @@ describe('Settings', () => {
       expect(rect).toHaveBeenCalled();
     });
 
+    it('snaps the held row to its slot and slides only the rows it pushes', async () => {
+      await setup();
+      // Each row paints at its place in the list, and the flip's second half
+      // is held back, so what is read is the invert the reorder commits.
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          const slot = Array.from(this.parentElement?.children ?? []).indexOf(
+            this
+          );
+          return { top: slot * 32, left: 0 } as DOMRect;
+        }
+      );
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
+      const items = columnOrderItems();
+
+      fire(items[6], 'dragstart');
+      fire(items[0], 'dragover');
+      await wait(120);
+      await flush();
+
+      const [held, ...pushed] = columnOrderItems();
+      expect(held).toBe(items[6]);
+      expect(held.style.transform).toBe('');
+      expect(pushed.map(el => el.style.transform)).toEqual(
+        Array(6).fill('translate(0px,-32px)')
+      );
+    });
+
     it('does not reorder when dragged over itself', async () => {
       const { app } = await setup();
       const before = [...app.store.state.settings.columnOrder];

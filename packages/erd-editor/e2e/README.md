@@ -307,7 +307,10 @@ release. Drive it with `page.mouse`, never `locator.dragTo()`. Two preconditions
 Native drag-and-drop survives in the DOM panels only — the table-properties
 index column list and the settings column order — through `fromShadowDraggable`,
 which is `throttleTime(300)` then `debounceTime(50)`. `locator.dragTo()` drops
-too fast for it.
+too fast for it, and a real mouse sends a dragover only when it moves, so
+`support/listDrag.ts` drives such a list from inside the page, one dragover a
+frame, and reads back every painted frame. The held row takes no part in the
+list's flip: it snaps to its slot while the rows it pushes slide.
 
 ## Determinism rules
 

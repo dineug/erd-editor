@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { expect, test } from '../support/fixtures';
 import { ErdEditorPage } from '../support/ErdEditorPage';
+import { dragListInPage, framesOutOfOrder } from '../support/listDrag';
 import { createSchema } from '../support/schema';
 import { Shortcut } from '../support/shortcuts';
 
@@ -137,6 +138,35 @@ test.describe('table properties — indexes tab', () => {
 
     expect(indexColumnIds).toHaveLength(1);
     expect(indexColumn.columnId).toBe('student_id');
+  });
+
+  test('a fast drag paints the index columns in the order they hold on every frame', async ({
+    erd,
+    page,
+  }) => {
+    const { addIndex, indexNames, checkboxes, selectedColumns } =
+      await openIndexesTab(erd, page);
+
+    await addIndex.click();
+    await indexNames.nth(0).click();
+    for (let index = 0; index < 3; index++) {
+      await checkboxes.nth(index).click();
+      await expect(selectedColumns).toHaveCount(index + 1);
+    }
+
+    const run = await page.evaluate(dragListInPage, {
+      rows: '.table-properties [draggable="true"][data-id]',
+      from: 2,
+      to: 0,
+      travel: 200,
+      hold: 700,
+    });
+
+    expect(run.frames.at(-1)?.order).toEqual([
+      run.initial[2],
+      ...run.initial.slice(0, 2),
+    ]);
+    expect(framesOutOfOrder(run)).toHaveLength(0);
   });
 
   test('stops applying the index selection once the panel switches table', async ({

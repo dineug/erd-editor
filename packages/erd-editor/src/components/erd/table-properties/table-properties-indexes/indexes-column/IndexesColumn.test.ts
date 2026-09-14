@@ -1,5 +1,12 @@
 import { html } from '@dineug/r-html';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import {
   createTestAppContext,
@@ -99,6 +106,7 @@ afterEach(() => {
   mounted?.unmount();
   mounted = null;
   app.store.destroy();
+  vi.restoreAllMocks();
 });
 
 describe('IndexesColumn', () => {
@@ -300,6 +308,37 @@ describe('IndexesColumn', () => {
         INDEX_COLUMN_B,
         INDEX_COLUMN_A,
       ]);
+
+      fire(rows[1], 'dragend');
+    });
+
+    it('snaps the held row to its slot and slides only the row it pushes', async () => {
+      mounted = await mountAndFlush(
+        html`<${IndexesColumn} index=${index} />`,
+        app
+      );
+      // Each row paints at its place in the list, and the flip's second half
+      // is held back, so what is read is the invert the move commits.
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          const slot = Array.from(this.parentElement?.children ?? []).indexOf(
+            this
+          );
+          return { top: slot * 32, left: 0 } as DOMRect;
+        }
+      );
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
+      const rows = rowsOf(mounted);
+
+      fire(rows[1], 'dragstart');
+      fire(rows[0], 'dragover');
+      await wait(120);
+      await flush();
+
+      const [held, pushed] = rowsOf(mounted);
+      expect(held).toBe(rows[1]);
+      expect(held.style.transform).toBe('');
+      expect(pushed.style.transform).toBe('translate(0px,-32px)');
 
       fire(rows[1], 'dragend');
     });

@@ -25,9 +25,11 @@ export type IndexesColumnProps = {
 const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const root = createRef<HTMLDivElement>();
+  // The held row is left out: it snaps to its slot on each move, and only the
+  // row it pushes aside slides, so the list never paints out of order.
   const flipAnimation = new FlipAnimation(
     root,
-    `.${styles.row}`,
+    `.${styles.row}:not(.dragging)`,
     'index-column-order-move'
   );
 
