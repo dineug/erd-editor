@@ -16,6 +16,7 @@ const ContextMenuRoot: FC<ContextMenuRootProps> = (props, ctx) => {
         id="root"
         x={root.value.x}
         y={root.value.y}
+        fit={true}
         children={props.children}
       />
     ) : null;

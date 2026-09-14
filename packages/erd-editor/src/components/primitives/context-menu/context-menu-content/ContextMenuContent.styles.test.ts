@@ -28,6 +28,13 @@ describe('ContextMenuContent.styles', () => {
     expect(css).toContain('border: 1px solid var(--context-menu-border);');
   });
 
+  it('scrolls a menu taller than the window rather than running past its edge', () => {
+    const css = styles.content.strings.raw.join('');
+
+    expect(css).toContain('max-height: 100vh;');
+    expect(css).toContain('overflow-y: auto;');
+  });
+
   it('stacks every menu and submenu over the floating toolbar', () => {
     const bar = zIndexOf(floating.root);
 
