@@ -47,6 +47,19 @@ describe('FloatingToolbar.styles', () => {
     expect(text).toContain('color: var(--active)');
   });
 
+  /** The accent a menu item hovers on would outshine the gray-4 tool in use. */
+  it('hovers a tool on gray-3, under the tool in use rather than over it', () => {
+    const text = staticText(styles.menu);
+
+    expect(text).toMatch(
+      /&:hover \{\s*color: var\(--active\);\s*background-color: var\(--gray-color-3\);/
+    );
+    expect(text).toMatch(
+      /&\.active \{\s*color: var\(--active\);\s*background-color: var\(--context-menu-select\);/
+    );
+    expect(text).not.toContain('var(--context-menu-hover)');
+  });
+
   it('stands its divider on its side, the way a row of tools needs one', () => {
     const text = staticText(styles.divider);
 

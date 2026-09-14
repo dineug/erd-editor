@@ -330,6 +330,26 @@ describe('the selected column row fill', () => {
   });
 });
 
+describe('the gray-3 hover of a tab, a Settings item and a toolbar tool', () => {
+  /** The least CIE76 step an eye tells apart. */
+  const MIN_VISIBLE_DELTA_E = 2.3;
+
+  it('shows on its gray-2 surface yet stays under the gray-4 selection in every theme', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [theme.contextMenuBackground, theme.toastBackground].forEach(surface => {
+        const hover = deltaE(theme.grayColor3, surface);
+
+        expect(hover, labelOf(options)).toBeGreaterThan(MIN_VISIBLE_DELTA_E);
+        expect(hover, labelOf(options)).toBeLessThan(
+          deltaE(theme.contextMenuSelect, surface)
+        );
+      });
+    });
+  });
+});
+
 describe('createTheme with unusual config entries', () => {
   afterEach(() => {
     vi.doUnmock('@/themes/radix-ui-theme.config');

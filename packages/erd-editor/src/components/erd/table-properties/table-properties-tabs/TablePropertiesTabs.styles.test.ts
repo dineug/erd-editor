@@ -37,8 +37,17 @@ describe('TablePropertiesTabs.styles', () => {
 
     expect(text).toContain('&:hover');
     expect(text).toContain('&.selected');
-    expect(text).toContain('var(--context-menu-hover)');
     expect(text).toContain('var(--context-menu-select)');
     expect(text).toContain('color: var(--active)');
+  });
+
+  /** A menu item's accent hover would outshine the gray-4 tab that is selected. */
+  it('hovers a tab on gray-3, under the selected tab rather than over it', () => {
+    const text = staticText(styles.tab);
+
+    expect(text).toMatch(
+      /&:hover \{\s*background-color: var\(--gray-color-3\);/
+    );
+    expect(text).not.toContain('var(--context-menu-hover)');
   });
 });

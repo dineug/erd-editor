@@ -72,9 +72,17 @@ describe('TableProperties.styles', () => {
     expect(text).toContain('& > span');
     expect(text).toContain('text-overflow: ellipsis');
     expect(text).toContain('white-space: nowrap');
-    expect(text).toContain('var(--context-menu-hover)');
     expect(text).toContain('var(--context-menu-select)');
     expect(text).toContain('var(--active)');
+  });
+
+  it('hovers a table tab on gray-3, under the selected tab rather than over it', () => {
+    const text = staticText(styles.tab);
+
+    expect(text).toMatch(
+      /&:hover \{\s*background-color: var\(--gray-color-3\);/
+    );
+    expect(text).not.toContain('var(--context-menu-hover)');
   });
 
   it('gives the tab panel scope a minimum height', () => {

@@ -16,7 +16,7 @@ export const tab = css`
   white-space: nowrap;
 
   &:hover {
-    background-color: var(--context-menu-hover);
+    background-color: var(--gray-color-3);
     color: var(--active);
   }
 
