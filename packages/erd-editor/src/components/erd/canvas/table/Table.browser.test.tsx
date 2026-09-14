@@ -58,7 +58,10 @@ import {
   addTableAction$,
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
-import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import {
+  addColumnAction$,
+  removeColumnAction$,
+} from '@/engine/modules/table-column/generator.actions';
 import { Tag } from '@/engine/tag';
 import type { Table as TableEntity } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
@@ -1062,6 +1065,18 @@ async function moveOver(
 const columnIdsOf = (fixture: DragFixture, tableId: string) =>
   fixture.app.store.state.collections.tableEntities[tableId].columnIds;
 
+/** Moves the pointer into the padding under a table's rows and lets it land. */
+async function moveUnderRows(fixture: DragFixture, table: TableEntity) {
+  const rect = getTableRect(fixture.app.store.state, table);
+  const origin = fixture.stage.content.getBoundingClientRect();
+
+  movePointer(
+    origin.x + rect.x + rect.width / 2,
+    origin.y + rect.y + rect.height - TABLE_BORDER - 2
+  );
+  await settle();
+}
+
 describe('the column drag the table coordinates', () => {
   it('starts a column drag from a focused column row', async () => {
     const fixture = await setupDrag();
@@ -1197,6 +1212,52 @@ describe('the column drag the table coordinates', () => {
     expect(fixture.app.store.state.editor.draggableColumn?.tableId).toBe(
       target.id
     );
+  });
+
+  it('appends a column dragged under the last row of another table', async () => {
+    const fixture = await setupDrag({ tables: 2, columns: 2 });
+    const [source, target] = fixture.tables;
+    const columns = fixture.app.store.state.collections.tableColumnEntities;
+    const movedName = columns[source.columnIds[0]].name;
+    focusColumn(fixture, source, 0);
+
+    await pressRow(fixture, source, 0);
+    await moveUnderRows(fixture, target);
+
+    const ids = columnIdsOf(fixture, target.id);
+    expect(ids).toHaveLength(3);
+    expect(columns[ids[2]].name).toBe(movedName);
+    expect(fixture.app.store.state.editor.draggableColumn?.columnIds).toEqual([
+      ids[2],
+    ]);
+  });
+
+  it('appends a column dragged into a table with no rows', async () => {
+    const fixture = await setupDrag({ tables: 2, columns: 2 });
+    const [source, target] = fixture.tables;
+    fixture.app.store.dispatchSync(
+      removeColumnAction$(target.id, [...target.columnIds])
+    );
+    await settle();
+    focusColumn(fixture, source, 1);
+
+    await pressRow(fixture, source, 1);
+    await moveUnderRows(fixture, target);
+
+    expect(columnIdsOf(fixture, source.id)).toHaveLength(1);
+    expect(columnIdsOf(fixture, target.id)).toHaveLength(1);
+  });
+
+  it('moves a column under the last row of its own table to the end', async () => {
+    const fixture = await setupDrag();
+    const [table] = fixture.tables;
+    const [first, second, third] = table.columnIds;
+    focusColumn(fixture, table, 0);
+
+    await pressRow(fixture, table, 0);
+    await moveUnderRows(fixture, table);
+
+    expect(columnIdsOf(fixture, table.id)).toEqual([second, third, first]);
   });
 
   it('keeps a ghost row for a column dragged into another table', async () => {

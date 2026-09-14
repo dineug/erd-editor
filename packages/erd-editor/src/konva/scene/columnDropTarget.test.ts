@@ -16,7 +16,10 @@ import { ColumnUIKey } from '@/constants/schema';
 import { createEditor, ViewKind } from '@/engine/modules/editor/state';
 import { createSceneView } from '@/engine/modules/editor/view';
 import type { RootState } from '@/engine/state';
-import { findColumnDropTarget } from '@/konva/scene/columnDropTarget';
+import {
+  findColumnDropTarget,
+  isDropInPlace,
+} from '@/konva/scene/columnDropTarget';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScenePoint } from '@/konva/scene/viewport';
 import { createTable } from '@/utils/collection/table.entity';
@@ -113,11 +116,49 @@ describe('the row a column drag drops on (AC-G5)', () => {
     ).toBeNull();
   });
 
-  it('names nothing past the last row of a table', () => {
+  it('appends in the padding under the last row of a table', () => {
     const state = createState();
-    addTable(state, 't1', 100, 100, ['c1']);
+    const table = addTable(state, 't1', 100, 100, ['c1']);
+    const rect = getTableRect(state, table);
+    const lastRowBottom = rowCentre(state, 't1', 0).y + COLUMN_HEIGHT / 2;
 
-    expect(findColumnDropTarget(state, rowCentre(state, 't1', 1))).toBeNull();
+    // Both ends of the band, which is inside the box and past every row.
+    for (const y of [lastRowBottom + 1, rect.y + rect.height]) {
+      expect(findColumnDropTarget(state, { x: rect.x + 20, y })).toEqual({
+        tableId: 't1',
+        columnId: null,
+        index: 1,
+      });
+    }
+  });
+
+  it('appends under the header of a table with no rows, and names nothing over it', () => {
+    const state = createState();
+    const table = addTable(state, 't1', 100, 100, []);
+    const rect = getTableRect(state, table);
+    const x = rect.x + rect.width / 2;
+
+    expect(
+      findColumnDropTarget(state, { x, y: rect.y + rect.height - 1 })
+    ).toEqual({
+      tableId: 't1',
+      columnId: null,
+      index: 0,
+    });
+    expect(findColumnDropTarget(state, { x, y: rect.y + 4 })).toBeNull();
+  });
+
+  it('names nothing under the bottom edge of a table', () => {
+    const state = createState();
+    const table = addTable(state, 't1', 100, 100, ['c1']);
+    const rect = getTableRect(state, table);
+
+    expect(
+      findColumnDropTarget(state, {
+        x: rect.x + 20,
+        y: rect.y + rect.height + 1,
+      })
+    ).toBeNull();
   });
 
   it('takes the row of whichever table is drawn over the others there', () => {
@@ -177,6 +218,27 @@ describe('the row a column drag drops on (AC-G5)', () => {
       index: 0,
     });
     expect(findColumnDropTarget(state, point)).toBeNull();
+  });
+
+  it('keeps the drop in place over a dragged row and past a table the drag already ends', () => {
+    const state = createState();
+    addTable(state, 't1', 100, 100, ['c1', 'c2', 'c3']);
+    addTable(state, 't2', 600, 400, []);
+    const drag = { tableId: 't1', columnIds: ['c2', 'c3'] };
+    const append = (tableId: string) => ({ tableId, columnId: null, index: 0 });
+    const row = (columnId: string) => ({ tableId: 't1', columnId, index: 0 });
+
+    expect(isDropInPlace(state, drag, row('c3'))).toBe(true);
+    expect(isDropInPlace(state, drag, row('c1'))).toBe(false);
+    expect(isDropInPlace(state, drag, append('t1'))).toBe(true);
+    expect(isDropInPlace(state, drag, append('t2'))).toBe(false);
+    // The same two rows in the other order still have a move to make.
+    expect(
+      isDropInPlace(state, { ...drag, columnIds: ['c3', 'c2'] }, append('t1'))
+    ).toBe(false);
+    expect(
+      isDropInPlace(state, { ...drag, columnIds: ['c1'] }, append('t1'))
+    ).toBe(false);
   });
 
   it('never reads the hit canvas, which is a frame the bench measures', () => {

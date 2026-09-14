@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { cloneDeep, omit, uniq } from 'es-toolkit';
+import { cloneDeep, isEqual, omit, uniq } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 import { nanoid } from 'nanoid';
 
@@ -632,8 +632,35 @@ export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
     });
   };
 
+/**
+ * The moves that take the dragged columns to the end of their own table, in the
+ * order they are dragged: each goes after whichever column is last by then.
+ */
+function moveColumnsToEnd(
+  tableId: string,
+  order: string[],
+  columnIds: string[]
+) {
+  const ids = [...order];
+  const actions: ReturnType<typeof moveColumnAction>[] = [];
+
+  for (const id of columnIds) {
+    const index = ids.indexOf(id);
+    const targetId = ids[ids.length - 1];
+    if (index === -1) return [];
+    if (id === targetId) continue;
+
+    ids.splice(index, 1);
+    ids.push(id);
+    actions.push(moveColumnAction({ tableId, id, targetId }));
+  }
+
+  return isEqual(ids, order) ? [] : actions;
+}
+
+/** A null targetId drops past the last row, which appends. */
 export const dragoverColumnAction$ = (
-  targetId: string,
+  targetId: string | null,
   targetTableId: string
 ): GeneratorAction =>
   function* ({ editor: { draggableColumn }, collections }) {
@@ -649,6 +676,12 @@ export const dragoverColumnAction$ = (
     if (targetTableId === tableId) {
       const index = table.columnIds.indexOf(columnIds[0]);
       if (index === -1) return;
+
+      if (targetId === null) {
+        const actions = moveColumnsToEnd(tableId, table.columnIds, columnIds);
+        if (actions.length) yield actions;
+        return;
+      }
 
       const targetIndex = table.columnIds.indexOf(targetId);
       if (targetIndex === -1) return;
@@ -718,10 +751,10 @@ export const dragoverColumnAction$ = (
           ...payload,
           value: bHas(column.options, ColumnOption.autoIncrement),
         }),
-        moveColumnAction({
-          ...payload,
-          targetId,
-        }),
+        // An append keeps the end of the table, where addColumn put it.
+        ...(targetId === null
+          ? []
+          : [moveColumnAction({ ...payload, targetId })]),
         focusColumnAction({
           tableId: targetTableId,
           columnId: newColumnId,

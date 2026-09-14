@@ -1,5 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
+import { isEqual } from 'es-toolkit';
 
+import type { DraggableColumn } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
@@ -9,14 +11,15 @@ import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 export type ColumnDropTarget = {
   tableId: string;
-  columnId: string;
+  /** The row dropped on, or null past the last one, where a drop appends. */
+  columnId: string | null;
   index: number;
 };
 
 /**
  * The row a column drag would drop on, in canvas coordinates, or null over a
- * header, over bare canvas and past the last row. Arithmetic on the rects the
- * scene lays rows out with, never a hit canvas read, which costs a frame.
+ * header and over bare canvas. Past the last row a drop appends, as it does
+ * under the header of a table with none. Arithmetic, never a hit canvas read.
  */
 export function findColumnDropTarget(
   state: RootState,
@@ -47,11 +50,32 @@ export function findColumnDropTarget(
     if (point.y < firstRow.y) return null;
 
     const index = Math.floor((point.y - firstRow.y) / firstRow.height);
-    const columnId = getVisibleColumnIds(state, table, source)[index];
-    if (!columnId) return null;
+    const columnIds = getVisibleColumnIds(state, table, source);
+    if (index >= columnIds.length) {
+      return { tableId: table.id, columnId: null, index: columnIds.length };
+    }
 
-    return { tableId: table.id, columnId, index };
+    return { tableId: table.id, columnId: columnIds[index], index };
   }
 
   return null;
+}
+
+/**
+ * Whether a drop leaves the order as it stands: over a row the drag carries,
+ * or past the end of the table whose last rows are already the dragged ones.
+ */
+export function isDropInPlace(
+  { collections }: RootState,
+  { tableId, columnIds }: DraggableColumn,
+  target: ColumnDropTarget
+): boolean {
+  if (target.columnId !== null) return columnIds.includes(target.columnId);
+  if (target.tableId !== tableId) return false;
+
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(tableId);
+
+  return isEqual(table?.columnIds.slice(-columnIds.length), columnIds);
 }

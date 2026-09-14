@@ -83,7 +83,10 @@ import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Table } from '@/internal-types';
-import { findColumnDropTarget } from '@/konva/scene/columnDropTarget';
+import {
+  findColumnDropTarget,
+  isDropInPlace,
+} from '@/konva/scene/columnDropTarget';
 import { createKonvaFlip, type KonvaFlip } from '@/konva/scene/konvaFlip';
 import {
   getColumnRect,
@@ -342,7 +345,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     } = store.state;
     if (
       !draggableColumn ||
-      draggableColumn.columnIds.includes(target.columnId)
+      isDropInPlace(store.state, draggableColumn, target)
     ) {
       return;
     }
