@@ -66,9 +66,9 @@ const DEFAULT_PIXEL_RATIO = 1;
 const WORKER_NAME = `@dineug/erd-editor-export-png-worker?v${__APP_VERSION__}`;
 
 /**
- * How long a shared worker gets to answer its first call. A shared worker that
- * throws while evaluating reports it to the console and to nobody else: the
- * port stays open, onconnect never runs, and the call waits for ever.
+ * How long a shared worker gets to answer its first call. One that throws
+ * while evaluating fires error at the constructor that started it and at no
+ * other: its port stays open, onconnect never runs, and a call waits for ever.
  */
 const HANDSHAKE_MS = 10_000;
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import type { RefreshOptions } from './options';
 import { rHtmlRefresh } from './refresh';
@@ -25,7 +25,62 @@ const virtual = (options?: RefreshOptions) => {
   };
 };
 
+/**
+ * The callback a boundary accepts updates with, from its appended snippet run
+ * against a stand-in hot context. The import goes because no loader runs here.
+ */
+const acceptedCallback = async () => {
+  const source = `${COMPONENT}export default A;`;
+  const result = await run(source);
+  const snippet = (result?.code ?? '')
+    .slice(source.length)
+    .replace("import 'virtual:r-html-hmr';", '')
+    .replace(/import\.meta\.hot/g, 'hot');
+  let accepted: ((mod: unknown) => void) | undefined;
+  const hot = {
+    accept: (callback: (mod: unknown) => void) => {
+      accepted = callback;
+    },
+  };
+
+  new Function('hot', `${COMPONENT}${snippet}`)(hot);
+  return accepted;
+};
+
 describe('rHtmlRefresh', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('hands the swap to the global scope in a realm with no window, which is what a worker is', async () => {
+    const scope = new EventTarget();
+    const heard: CustomEvent[] = [];
+    scope.addEventListener('hmr:r-html', event => {
+      heard.push(event as CustomEvent);
+    });
+    vi.stubGlobal('addEventListener', scope.addEventListener.bind(scope));
+    vi.stubGlobal('dispatchEvent', scope.dispatchEvent.bind(scope));
+    const next = () => {};
+
+    (await acceptedCallback())?.({ default: next });
+
+    expect(typeof window).toBe('undefined');
+    expect(heard).toHaveLength(1);
+    expect(heard[0].detail.originComponent).toBeTypeOf('function');
+    expect(heard[0].detail.newComponent).toBe(next);
+  });
+
+  it('accepts an update and builds no event in a realm with no global event target', async () => {
+    const construct = vi.fn();
+    vi.stubGlobal('CustomEvent', construct);
+    const accept = await acceptedCallback();
+
+    expect(typeof globalThis.dispatchEvent).toBe('undefined');
+    expect(accept).toBeTypeOf('function');
+    expect(() => accept?.({ default: () => {} })).not.toThrow();
+    expect(construct).not.toHaveBeenCalled();
+  });
+
   it('accepts a module whose default export is a component identifier', async () => {
     const result = await run(`${COMPONENT}export default A;`);
     expect(result?.code).toContain('originComponent: A');

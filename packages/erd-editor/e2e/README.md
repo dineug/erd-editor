@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-35 spec files. Ten of the groups exist because the DOM scene got their subject
+37 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -93,6 +93,10 @@ sort waiting on a timer loses to after a keystroke:
 | Spec                            | What it holds down                                                |
 | ------------------------------- | ---------------------------------------------------------------- |
 | `connector-frames.spec.ts`      | No draw with a connector end off its table after an undo or redo  |
+
+`shared-workers.spec.ts` holds down what those two and every export stand on:
+that each of the four shared workers starts on the dev server, which serves a
+worker the same component boundaries, Vite client included, that it serves the page.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

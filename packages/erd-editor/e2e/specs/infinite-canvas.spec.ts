@@ -55,8 +55,8 @@ const MEMO_BOX = { width: 100, height: 100 };
 const memoWidth = MEMO_BOX.width + MEMO_FRAME_WIDTH;
 const memoHeight = MEMO_BOX.height + MEMO_FRAME_HEIGHT;
 
-/** Long enough for one export on the dev server, where the worker never starts. */
-const EXPORT_TIMEOUT = 45_000;
+/** Long enough for one export, the shared worker's first start included. */
+const EXPORT_TIMEOUT = 15_000;
 
 type Box = { x: number; y: number; width: number; height: number };
 

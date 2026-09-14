@@ -69,6 +69,7 @@ afterEach(() => {
   while (disposers.length) disposers.pop()?.();
   setCurrentInstance(null);
   BaseComponentPart.created = [];
+  vi.unstubAllGlobals();
 });
 
 describe('render/hmr', () => {
@@ -202,6 +203,49 @@ describe('render/hmr', () => {
         expect.any(Function)
       );
       removeEventListener.mockRestore();
+    });
+
+    it('swaps on the global scope in a realm with no window, which is what a worker is', () => {
+      const scope = new EventTarget();
+      vi.stubGlobal('window', undefined);
+      vi.stubGlobal('addEventListener', scope.addEventListener.bind(scope));
+      vi.stubGlobal(
+        'removeEventListener',
+        scope.removeEventListener.bind(scope)
+      );
+      activate();
+      const Origin = () => null;
+      const Next = () => null;
+      const instance = track(createInstance() as any) as any;
+
+      instance.commit([Origin]);
+      scope.dispatchEvent(
+        new CustomEvent('hmr:r-html', {
+          detail: { originComponent: Origin, newComponent: Next },
+        })
+      );
+
+      expect(instance.commits.at(-1)).toEqual([Next]);
+    });
+
+    it('stays inert in a realm with neither a window nor a global event target', () => {
+      vi.stubGlobal('window', undefined);
+      vi.stubGlobal('addEventListener', undefined);
+      vi.stubGlobal('removeEventListener', undefined);
+      const instance = track(createInstance() as any) as any;
+
+      expect(activate).not.toThrow();
+      const reload = (state: { count: number }) => {
+        setCurrentInstance(instance);
+        addHmrObservable(state);
+        hotReloadObservable(instance);
+        return state;
+      };
+      reload({ count: 0 }).count = 7;
+
+      expect(reload({ count: 0 }).count).toBe(0);
+      expect(disposers.at(-1)).toBeTypeOf('function');
+      expect(disposers.at(-1)).not.toThrow();
     });
   });
 

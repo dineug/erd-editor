@@ -18,15 +18,15 @@ const VIRTUAL_ID = 'virtual:r-html-hmr';
 const RESOLVED_VIRTUAL_ID = `\0${VIRTUAL_ID}`;
 
 /**
- * Appended, never prepended, so no line below it moves; a top-level import is
- * hoisted whatever its position. It sits outside the if because an import
- * declaration cannot live in a block.
+ * Appended, never prepended, so no line below it moves; an import is hoisted
+ * wherever it sits, provided no block holds it, so it stays outside the if.
+ * It dispatches on globalThis because a worker on a dev server has no window.
  */
 const hmr = (name: string) => `
 import '${VIRTUAL_ID}';
 if (${importMetaHot}) {
   ${importMetaHot}.accept((mod) => {
-    window.dispatchEvent(new CustomEvent('hmr:r-html', {
+    globalThis.dispatchEvent?.(new CustomEvent('hmr:r-html', {
       detail: {originComponent: ${name}, newComponent: mod?.default}
     }));
   });

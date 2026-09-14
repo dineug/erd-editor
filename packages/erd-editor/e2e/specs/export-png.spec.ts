@@ -37,11 +37,11 @@ const memoHeight = MEMO_BOX.height + MEMO_FRAME_HEIGHT;
 const spanFor = (size: number) => size - EXPORT_MARGIN * 2;
 
 /**
- * Long enough for one export on the dev server. The shared worker never starts
- * there, so every export spends the ten second handshake before the main
- * thread draws the image itself.
+ * Long enough for the heaviest export here, a square at the canvas ceiling,
+ * which the shared worker rasterises and encodes in about three seconds on a
+ * laptop and in a few times that on a shared runner.
  */
-const EXPORT_TIMEOUT = 45_000;
+const EXPORT_TIMEOUT = 30_000;
 
 /** Bare canvas clear of the memo at scene zero, high enough for the menu to fit. */
 const MENU_ORIGIN = { x: 400, y: 400 };
@@ -153,6 +153,33 @@ test.describe('exporting the document as a png', () => {
     // The image holds the whole document either way. What the zoom decides is
     // how many image pixels one scene unit was drawn with.
     expect(pngSize(await file.path())).toEqual({ width: 864, height: 864 });
+  });
+
+  test('draws every png in the shared worker, export after export', async ({
+    erd,
+  }) => {
+    // The main thread draws only after an [export-png] warning, so none means
+    // the worker drew every one. Time proves nothing: a connection given up on
+    // is cached, and every fallback after it is as quick as the worker.
+    const fallbacks: string[] = [];
+    erd.page.on('console', message => {
+      if (message.text().startsWith('[export-png]')) {
+        fallbacks.push(message.text());
+      }
+    });
+    await erd.seed(document(spanFor(1080)));
+
+    for (let run = 0; run < 3; run++) {
+      const download = erd.page.waitForEvent('download', {
+        timeout: EXPORT_TIMEOUT,
+      });
+      await exportPng(erd);
+      const file = await download;
+
+      expect(pngSize(await file.path())).toEqual({ width: 1080, height: 1080 });
+    }
+
+    expect(fallbacks).toEqual([]);
   });
 
   test('says the png is being generated while it draws', async ({ erd }) => {
