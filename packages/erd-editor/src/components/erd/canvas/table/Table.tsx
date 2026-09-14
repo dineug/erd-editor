@@ -136,11 +136,11 @@ type HeaderCellOptions = {
 };
 
 /**
- * Where a view press never pins. Both header buttons are drawn as icons, and
- * each answers for the press that lands on it: Related narrows the view on it
- * and Go to ERD leaves the tab, neither of which is a reader pinning a card.
+ * Where a view press belongs to a header button whole. Both are drawn as icons:
+ * Related narrows the view on the card and Go to ERD leaves the tab, so neither
+ * selects the card, raises it or pins it on the way past.
  */
-const PIN_BLOCKED_KINDS = ['icon'];
+const VIEW_PRESS_BLOCKED_KINDS = ['icon'];
 
 /**
  * The fill a table name takes: the placeholder while it is blank, and the
@@ -247,12 +247,16 @@ const Table: FC<TableProps> = (props, ctx) => {
   /** The press a table takes: its drag, and in a view scene the start of a click that pins it. */
   const handlePress = (event: ScenePointerEvent) => {
     pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
-    onMoveStart(event);
-    // A press that landed on a header button belongs to the button alone. The
-    // pin Related would take on the way past lights the hub and its one hop,
-    // which in the view it just narrowed to is every card it draws.
-    if (hasKindAncestor(event.target, PIN_BLOCKED_KINDS)) return;
+    // The document keeps its header icons part of the table, so a press on one
+    // still selects it there. A view hands the button the whole press.
+    if (
+      sourceRef.value !== 'document' &&
+      hasKindAncestor(event.target, VIEW_PRESS_BLOCKED_KINDS)
+    ) {
+      return;
+    }
 
+    onMoveStart(event);
     pin.onPress(event);
   };
 

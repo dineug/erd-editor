@@ -321,6 +321,50 @@ async function flowPlaced(erd: ErdEditorPage, centerId: string) {
   await landed(erd, centerId);
 }
 
+/** The tables the newest stage draws selected, read off each card's own attr. */
+const selectedIdsOf = (erd: ErdEditorPage) =>
+  erd.page.evaluate(() => {
+    const stage: any = Reflect.get(window, '__erdStages')?.canvas;
+    return (stage?.find('.table') ?? [])
+      .filter((node: any) => node.getAttr('selected'))
+      .map((node: any) => node.id().replace('table-', ''))
+      .sort() as string[];
+  });
+
+/** Every table's z-index as the document holds it. */
+async function zIndexesOf(erd: ErdEditorPage) {
+  const { doc, collections } = await erd.value();
+
+  return Object.fromEntries(
+    doc.tableIds.map(id => [id, collections.tableEntities[id].ui.zIndex])
+  );
+}
+
+/** A real press on a card, clear of its header buttons, with the modifier or not. */
+async function pressCard(erd: ErdEditorPage, id: string, mod = false) {
+  const box = await erd.sceneBox(`#table-${id}`);
+  const point = { x: box.x + box.width * 0.3, y: box.y + box.height * 0.6 };
+  await erd.hoverAt(point, 8);
+
+  if (mod) {
+    await erd.modClickAt(point);
+  } else {
+    await erd.clickAt(point);
+  }
+  await erd.whenDrawn();
+}
+
+/** Hovers a card so its header buttons are drawn, then presses one of them. */
+async function pressCardButton(erd: ErdEditorPage, id: string, name: string) {
+  await erd.hoverScene(`#table-${id}`);
+  await erd.whenDrawn();
+
+  const box = await erd.sceneBox([`#table-${id}`, `.${name}`]);
+  await erd.hoverAt({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  await erd.page.mouse.down();
+  await erd.page.mouse.up();
+}
+
 /** Stands the reader in the Flow mode of the Visualization tab, placed. */
 async function enterFlow(erd: ErdEditorPage) {
   await erd.toolbarButton('Visualization').click();
@@ -648,6 +692,46 @@ test.describe('the visualization tab and the flow view over the document', () =>
     expect(after.originX).not.toBe(before.originX);
     expect(after.originY).not.toBe(before.originY);
     await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  /** A card button owns its whole press, so Related narrows and selects or raises nothing. */
+  test('keeps the selection and every z-index through a press on Related', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+
+    // customers and order_items are both one hop from orders, so the narrowing
+    // keeps drawing them and a replaced selection cannot pass for a hidden one.
+    await pressCard(erd, 'customers');
+    await pressCard(erd, 'order_items', true);
+    await expect
+      .poll(() => selectedIdsOf(erd))
+      .toEqual(['customers', 'order_items']);
+    const zIndexes = await zIndexesOf(erd);
+
+    await pressCardButton(erd, 'orders', 'table-related');
+    await expect(flowTable(erd, 'products')).toHaveCount(0, {
+      timeout: PLACEMENT_TIMEOUT,
+    });
+    await landed(erd, 'orders');
+
+    expect(await selectedIdsOf(erd)).toEqual(['customers', 'order_items']);
+    expect(await zIndexesOf(erd)).toEqual(zIndexes);
+  });
+
+  /** AC-61. On the ERD tab a header icon is part of its table, so a press on one still selects it. */
+  test('still selects a table from a press on its add column icon on the ERD tab', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await erd.clickTableHeader('customers');
+    await expect.poll(() => selectedIdsOf(erd)).toEqual(['customers']);
+
+    await pressCardButton(erd, 'orders', 'table-add-column');
+
+    await expect.poll(() => selectedIdsOf(erd)).toEqual(['orders']);
+    await expect.poll(() => erd.columnIds('orders')).toHaveLength(3);
   });
 
   /** AC-60. Nothing a reader does inside the view reaches the host. */
