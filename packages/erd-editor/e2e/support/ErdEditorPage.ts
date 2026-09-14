@@ -127,8 +127,8 @@ export class ErdEditorPage {
 
   /**
    * Loads a document through the element's public setInitialValue, which
-   * dispatches straight to the store and therefore leaves undo history empty —
-   * a seeded editor starts with nothing to undo.
+   * clears undo history and records nothing — a seeded editor starts with
+   * nothing to undo, whatever the page did before.
    */
   async seed(document: ErdDocument) {
     const json = JSON.stringify(document);

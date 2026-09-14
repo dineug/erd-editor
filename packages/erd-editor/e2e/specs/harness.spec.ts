@@ -1,5 +1,6 @@
 import { expect, test } from '../support/fixtures';
 import { twoTables } from '../support/schema';
+import { Shortcut } from '../support/shortcuts';
 
 /**
  * Guards the assumptions every other spec is built on. If one of these fails,
@@ -28,6 +29,33 @@ test.describe('e2e harness', () => {
 
     await expect(erd.toolbarButton('Undo')).not.toHaveClass(/\bactive\b/);
     await expect(erd.toolbarButton('Redo')).not.toHaveClass(/\bactive\b/);
+  });
+
+  test('a seed over an import leaves nothing to undo', async ({
+    erd,
+    page,
+  }) => {
+    await page.evaluate(() => {
+      const editor = document.querySelector('erd-editor');
+      if (!editor) throw new Error('erd-editor is not mounted');
+      editor.setSchemaSQL('CREATE TABLE imported (id INT);');
+    });
+    await expect(erd.toolbarButton('Undo')).toHaveClass(/\bactive\b/);
+
+    await erd.seed(twoTables());
+
+    await expect(erd.toolbarButton('Undo')).not.toHaveClass(/\bactive\b/);
+    await expect(erd.toolbarButton('Redo')).not.toHaveClass(/\bactive\b/);
+    await expect(erd.toolbarButton('Time Travel')).not.toHaveClass(
+      /\bactive\b/
+    );
+
+    // focus() rather than a canvas click, which can land on the minimap and
+    // record a scroll of its own.
+    await page.evaluate(() => document.querySelector('erd-editor')?.focus());
+    await erd.press(Shortcut.undo);
+    await page.waitForTimeout(300);
+    expect(await erd.tableIds()).toEqual(['users', 'posts']);
   });
 
   test('the minimap mirrors the canvas without polluting canvas locators', async ({

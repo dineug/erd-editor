@@ -167,8 +167,8 @@ assertions should compare against — the scene is a projection of it. Pair a
 store assertion with a user-visible one wherever the visible result is
 meaningful; a spec that only reads `value` is a unit test wearing a costume.
 
-`setInitialValue()` dispatches straight to the store, so a seeded document
-starts with **empty undo history** and fires no `change` event. That is what
+`setInitialValue()` clears the undo history and records nothing, so a seeded
+document starts with **empty undo history** and fires no `change` event. That is what
 makes per-test isolation cheap. `erd.seed()` also waits for the scene to draw,
 so a coordinate taken straight after it is one the stage will answer.
 
