@@ -64,7 +64,7 @@ describe('createTableParser - table name', () => {
         autoIncrement: true,
         nullable: false,
       }),
-      column({ name: 'name', dataType: 'VARCHAR(50)', default: 'anon' }),
+      column({ name: 'name', dataType: 'VARCHAR(50)', default: "'anon'" }),
     ]);
     expect(ast.indexes).toEqual([]);
     expect(ast.foreignKeys).toEqual([]);
@@ -236,6 +236,45 @@ describe('createTableParser - column options', () => {
 
     expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'INT', nullable: true }),
+    ]);
+  });
+
+  it('keeps a quoted DEFAULT a SQL string literal and an unquoted one verbatim', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        " a VARCHAR(20) NOT NULL DEFAULT 'PENDING',\n" +
+        " b VARCHAR(20) DEFAULT '',\n" +
+        " c DATETIME DEFAULT '0000-00-00 00:00:00',\n" +
+        ' d VARCHAR(20) DEFAULT "x",\n' +
+        " e TINYINT DEFAULT '0',\n" +
+        " f VARCHAR(20) DEFAULT 'NULL',\n" +
+        ' g TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n' +
+        ' h INT DEFAULT 0,\n' +
+        ' i INT DEFAULT -1,\n' +
+        ' j VARCHAR(20) DEFAULT NULL\n' +
+        ');'
+    );
+
+    expect(ast.columns.map(column => column.default)).toEqual([
+      "'PENDING'",
+      "''",
+      "'0000-00-00 00:00:00'",
+      "'x'",
+      "'0'",
+      "'NULL'",
+      'CURRENT_TIMESTAMP',
+      '0',
+      '-1',
+      'NULL',
+    ]);
+    expect(ast.columns[0].nullable).toBe(false);
+  });
+
+  it('doubles a quote the DEFAULT string literal contains', () => {
+    const { ast } = parse('CREATE TABLE t (a VARCHAR(20) DEFAULT "it\'s");');
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'VARCHAR(20)', default: "'it''s'" }),
     ]);
   });
 

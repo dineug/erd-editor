@@ -738,7 +738,7 @@ CREATE TABLE a (
         {
           "name": "b",
           "dataType": "varchar(255)",
-          "default": "c",
+          "default": "'c'",
           "comment": "d",
           "primaryKey": true,
           "autoIncrement": true,

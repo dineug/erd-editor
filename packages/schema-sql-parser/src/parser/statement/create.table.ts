@@ -459,8 +459,12 @@ function createTableColumnsParser(
     if (isDefault($pos.value)) {
       token = tokens[++$pos.value];
 
+      // The default is a raw SQL expression. The lexer strips the quotes off a
+      // string literal, so they go back on -- PENDING would read as a name.
       if (isString($pos.value)) {
-        column.default = token.value;
+        column.default = token.quoted
+          ? `'${token.value.replaceAll("'", "''")}'`
+          : token.value;
         $pos.value++;
       }
 

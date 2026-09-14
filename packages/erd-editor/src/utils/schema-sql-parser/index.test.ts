@@ -178,7 +178,7 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(id.dataType).toBe('INT');
       expect(id.comment).toBe('pk column');
       expect(name.dataType).toBe('VARCHAR(50)');
-      expect(name.default).toBe('anon');
+      expect(name.default).toBe("'anon'");
     });
 
     it('sizes widths with toWidth clamped to the column minimum', () => {
@@ -192,7 +192,7 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(users.ui.widthComment).toBe(140);
       // 'VARCHAR(50)'.length * 10 === 110
       expect(name.ui.widthDataType).toBe(110);
-      // 'anon'.length * 10 === 40 -> clamped up to 60
+      // "'anon'".length * 10 === 60
       expect(name.ui.widthDefault).toBe(60);
       // empty comment -> clamped up to 60
       expect(name.ui.widthComment).toBe(60);
@@ -709,5 +709,75 @@ describe('schemaSQLParserToSchemaJson', () => {
         'id',
       ]);
     });
+  });
+
+  describe('default round trip', () => {
+    const defaults = {
+      status: "'PENDING'",
+      note: "''",
+      created_at: "'0000-00-00 00:00:00'",
+    };
+
+    function defaultedState(): RootState {
+      const state = {
+        ...schemaV3Parser({}),
+        editor: {},
+        lww: {},
+      } as unknown as RootState;
+      const columns = Object.entries(defaults).map(([name, value]) =>
+        createColumn({
+          id: `col-${name}`,
+          tableId: 'tbl-orders',
+          name,
+          dataType: name === 'created_at' ? 'DATETIME' : 'VARCHAR(20)',
+          default: value,
+          options: ColumnOption.notNull,
+        })
+      );
+
+      state.collections.tableColumnEntities = Object.fromEntries(
+        columns.map(column => [column.id, column])
+      );
+      state.collections.tableEntities = {
+        'tbl-orders': createTable({
+          id: 'tbl-orders',
+          name: 'orders',
+          columnIds: columns.map(column => column.id),
+        }),
+      };
+      state.doc.tableIds = ['tbl-orders'];
+
+      return state;
+    }
+
+    it.each([
+      Database.MySQL,
+      Database.MariaDB,
+      Database.PostgreSQL,
+      Database.MSSQL,
+      Database.Oracle,
+      Database.SQLite,
+      Database.Databricks,
+      Database.Snowflake,
+    ])(
+      'keeps the string literal defaults of a %s export when the SQL is imported back',
+      database => {
+        const sql = createSchemaSQL(defaultedState(), database);
+        const schema = parse(sql);
+        const orders = tableByName(schema, 'orders');
+
+        expect(sql).toContain("DEFAULT 'PENDING'");
+        expect(sql).toContain("DEFAULT ''");
+        expect(sql).toContain("DEFAULT '0000-00-00 00:00:00'");
+        expect(
+          Object.fromEntries(
+            columnsOf(schema, orders).map(column => [
+              column.name,
+              column.default,
+            ])
+          )
+        ).toEqual(defaults);
+      }
+    );
   });
 });
