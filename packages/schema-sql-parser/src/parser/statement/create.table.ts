@@ -414,7 +414,9 @@ function createTableColumnsParser(
         token = tokens[++$pos.value];
       }
 
-      if (isString($pos.value)) {
+      // Only a table constraint names its index. Inside a column definition the
+      // next word is another attribute -- NOT NULL, COMMENT, DEFAULT.
+      if (!column.name && isString($pos.value)) {
         token = tokens[++$pos.value];
       }
 

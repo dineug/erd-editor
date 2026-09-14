@@ -284,6 +284,60 @@ describe('createTableParser - column options', () => {
     ]);
   });
 
+  it('keeps the attribute that follows an inline UNIQUE', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        " a VARCHAR(255) NOT NULL UNIQUE COMMENT 'Login email',\n" +
+        " b VARCHAR(255) UNIQUE NOT NULL COMMENT 'Second',\n" +
+        ' c INT UNIQUE DEFAULT (0),\n' +
+        " d VARCHAR(255) UNIQUE          COMMENT 'Snowflake',\n" +
+        ' e INT UNIQUE PRIMARY KEY NOT NULL\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: 'VARCHAR(255)',
+        nullable: false,
+        unique: true,
+        comment: 'Login email',
+      }),
+      column({
+        name: 'b',
+        dataType: 'VARCHAR(255)',
+        nullable: false,
+        unique: true,
+        comment: 'Second',
+      }),
+      column({ name: 'c', dataType: 'INT', unique: true }),
+      column({
+        name: 'd',
+        dataType: 'VARCHAR(255)',
+        unique: true,
+        comment: 'Snowflake',
+      }),
+      column({
+        name: 'e',
+        dataType: 'INT',
+        unique: true,
+        primaryKey: true,
+        nullable: false,
+      }),
+    ]);
+  });
+
+  it('marks the column an inline UNIQUE CHECK belongs to', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a INT, b INT UNIQUE CHECK (a > 0));'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'b', dataType: 'INT', unique: true }),
+    ]);
+  });
+
   it('ignores PRIMARY when it is not followed by KEY', () => {
     const { ast } = parse('CREATE TABLE t (a INT PRIMARY);');
 
