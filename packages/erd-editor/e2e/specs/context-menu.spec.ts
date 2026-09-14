@@ -1,6 +1,8 @@
+import type { Box, ErdEditorPage, Point } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import {
   type ErdDocument,
+  oneTable,
   RelationshipType,
   twoTables,
 } from '../support/schema';
@@ -123,5 +125,69 @@ test.describe('context menu routing', () => {
 
     await erd.contextMenu.getByText('Delete', { exact: true }).click();
     await expect.poll(() => erd.relationshipIds()).toEqual([]);
+  });
+});
+
+/** The part two screen boxes share, or null where they do not meet. */
+function overlapOf(a: Box, b: Box): Box | null {
+  const x = Math.max(a.x, b.x);
+  const y = Math.max(a.y, b.y);
+  const right = Math.min(a.x + a.width, b.x + b.width);
+  const bottom = Math.min(a.y + a.height, b.y + b.height);
+
+  return right > x && bottom > y
+    ? { x, y, width: right - x, height: bottom - y }
+    : null;
+}
+
+/**
+ * Whether the element a pointer at this point would reach is inside a menu,
+ * asked of the shadow root, since the document answers with the host alone.
+ */
+const menuTakesPointAt = (erd: ErdEditorPage, point: Point) =>
+  erd.page.evaluate(({ x, y }) => {
+    const root = Reflect.get(window, '__erdShadowRoot') as ShadowRoot;
+    return Boolean(
+      root.elementFromPoint(x, y)?.closest('.context-menu-content')
+    );
+  }, point);
+
+/** The titles of the toolbar buttons standing active. */
+const activeTools = (erd: ErdEditorPage) =>
+  erd.floatingToolbar
+    .locator('.active')
+    .evaluateAll(els => els.map(el => el.getAttribute('title')));
+
+test.describe('context menu stacking', () => {
+  test('a menu opened over the floating toolbar takes the pointer where they cross', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(oneTable());
+    const bar = await erd.floatingToolbar.boundingBox();
+    if (!bar) throw new Error('the floating toolbar has no box');
+
+    const at = { x: bar.x + bar.width / 2, y: bar.y - 60 };
+    await erd.hoverAt(at);
+    await erd.clickAt(at, { button: 'right' });
+
+    const menu = erd.host.locator('.context-menu-content[data-id="root"]');
+    await expect(menu).toBeVisible();
+    const box = await menu.boundingBox();
+    const overlap = box && overlapOf(box, bar);
+    if (!overlap) throw new Error('the menu does not cross the toolbar');
+
+    const mid = {
+      x: overlap.x + overlap.width / 2,
+      y: overlap.y + overlap.height / 2,
+    };
+    expect(await menuTakesPointAt(erd, mid)).toBe(true);
+
+    const before = await activeTools(erd);
+    await page.mouse.move(mid.x, mid.y, { steps: 8 });
+    await page.mouse.down();
+    await page.mouse.up();
+
+    expect(await activeTools(erd)).toEqual(before);
   });
 });
