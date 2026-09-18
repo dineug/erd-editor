@@ -387,6 +387,75 @@ describe('the visualization shell', () => {
       expect(sceneOf().scaleX()).toBe(ZOOM_MAX);
     });
 
+    it('zooms a trackpad pinch by the scale the fingers made, about the pointer', async () => {
+      const app = createTestAppContext();
+      seed(app);
+      const mounted = await mountVisualization(app);
+      const before = toScene(120, 80);
+      const rect = canvasOf(mounted).getBoundingClientRect();
+
+      // A pinch reaches the page as a ctrl wheel of -100 ln(scale).
+      canvasOf(mounted).dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          clientX: rect.left + 120,
+          clientY: rect.top + 80,
+          deltaY: -100 * Math.log(1.08),
+          ctrlKey: true,
+        })
+      );
+      await settle();
+
+      expect(sceneOf().scaleX()).toBeCloseTo(1.08, 10);
+      expect(toScene(120, 80).x).toBeCloseTo(before.x, 8);
+      expect(toScene(120, 80).y).toBeCloseTo(before.y, 8);
+    });
+
+    it('zooms two fingers about their midpoint and pans as it travels', async () => {
+      const app = createTestAppContext();
+      seed(app);
+      const mounted = await mountVisualization(app);
+      const $canvas = canvasOf(mounted);
+      const rect = $canvas.getBoundingClientRect();
+      const fingers = (points: Array<[number, number]>) =>
+        points.map(
+          ([x, y], identifier) =>
+            new Touch({
+              identifier,
+              target: $canvas,
+              clientX: rect.left + x,
+              clientY: rect.top + y,
+            })
+        );
+      const before = toScene(200, 150);
+
+      $canvas.dispatchEvent(
+        new TouchEvent('touchstart', {
+          bubbles: true,
+          cancelable: true,
+          touches: fingers([
+            [150, 150],
+            [250, 150],
+          ]),
+        })
+      );
+      window.dispatchEvent(
+        new TouchEvent('touchmove', {
+          touches: fingers([
+            [160, 190],
+            [360, 190],
+          ]),
+        })
+      );
+      window.dispatchEvent(new TouchEvent('touchend', { touches: [] }));
+      await settle();
+
+      expect(sceneOf().scaleX()).toBeCloseTo(2, 10);
+      expect(toScene(260, 190).x).toBeCloseTo(before.x, 8);
+      expect(toScene(260, 190).y).toBeCloseTo(before.y, 8);
+    });
+
     it('leaves the view where it was when the wheel has no travel', async () => {
       const app = createTestAppContext();
       const mounted = await mountVisualization(app);

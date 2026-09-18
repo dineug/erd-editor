@@ -50,7 +50,7 @@
 ### Testing Requirements
 
 - `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test` (happy-dom).
-- **Coverage is CI-gated here**, unlike other packages: the `ci` job runs `pnpm --filter @dineug/r-html test:coverage`, so a file under `perFile` 80% fails CI.
+- **Coverage is CI-gated**, as in every package: the `ci` job runs each `test:coverage`, so a file under `perFile` 80% fails CI. It matters most here: the CSS compiler is reached through one narrow seam, so a whole rule class can stop being exercised without a test going red.
 - **The specs that predate the host seam are frozen**: they are the only proof the seam refactor preserved DOM behaviour. Add specs or cases freely, never change or delete an existing one. `git diff --numstat --diff-filter=MD 3a524e6e -- 'packages/r-html/src/**/*.test.ts'` must show zero deletions.
 - happy-dom has no style engine, so `vCSSStyleSheet.ts`'s `adoptedStyleSheets` behaviour is pinned only by the e2e specs: `pnpm --filter @dineug/r-html e2e` after touching it (`vp dev` on :5176, no build step; see `e2e/README.md`). CI runs it and `e2e:typecheck`, the only program covering `e2e/`.
 

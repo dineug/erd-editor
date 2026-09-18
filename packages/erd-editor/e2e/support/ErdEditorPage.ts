@@ -512,6 +512,27 @@ export class ErdEditorPage {
     return (await handle.jsonValue()) as Point;
   }
 
+  /** The canvas coordinate under a page point, pointAt read the other way. */
+  async scenePointAt(point: Point): Promise<Point> {
+    const handle = await this.page.waitForFunction(
+      ([pageX, pageY]) => {
+        const stage = Reflect.get(window, '__erdStages')?.canvas;
+        const layer = stage?.findOne('.scene');
+        if (!layer) return null;
+
+        const origin = stage.container().getBoundingClientRect();
+        return layer
+          .getAbsoluteTransform()
+          .copy()
+          .invert()
+          .point({ x: pageX - origin.x, y: pageY - origin.y });
+      },
+      [point.x, point.y]
+    );
+
+    return (await handle.jsonValue()) as Point;
+  }
+
   /** The screen boxes of every table and memo the scene currently draws. */
   async occupiedBoxes(): Promise<Box[]> {
     const handle = await this.page.waitForFunction(() => {
@@ -773,9 +794,9 @@ export class ErdEditorPage {
   }
 
   /**
-   * The travel half of a touch drag. Chromium stops delivering touchmove to a
-   * page that never opts out of scrolling, so the moves are dispatched on the
-   * window the editor's drag stream listens to and the press stays real.
+   * The travel half of a touch drag. A press on an entity reprojects the scene
+   * mirror and detaches the div the touch began on, where the browser keeps
+   * sending its moves, so they are dispatched on the window the drag listens to.
    */
   async touchTravel(points: Point[]) {
     await this.page.evaluate(steps => {
@@ -806,7 +827,7 @@ export class ErdEditorPage {
 
   /**
    * A whole touch drag: a real press through the stage, then the travel the
-   * browser withholds. The press is what proves the scene answers a touch, and
+   * mirror withholds. The press is what proves the scene answers a touch, and
    * the travel is the same window stream a mouse drag runs on.
    */
   async touchDrag(from: Point, to: Point, steps = 10) {
@@ -822,6 +843,34 @@ export class ErdEditorPage {
     points.push(to);
 
     await this.touchTravel(points);
+  }
+
+  /**
+   * A real two finger pinch: one finger down, then the other, both travelled
+   * in steps and lifted, every event delivered by the browser. Start it clear
+   * of every entity, whose press would detach the mirror div it lands on.
+   */
+  async touchPinch(from: [Point, Point], to: [Point, Point], steps = 10) {
+    const session = await this.cdp();
+    const fingersAt = (progress: number) =>
+      from.map((start, finger) => ({
+        x: start.x + (to[finger].x - start.x) * progress,
+        y: start.y + (to[finger].y - start.y) * progress,
+        id: finger + 1,
+      }));
+
+    await this.touchStart(from[0]);
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: fingersAt(0),
+    });
+    for (let step = 1; step <= steps; step++) {
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: fingersAt(step / steps),
+      });
+    }
+    await this.touchEnd();
   }
 
   /**

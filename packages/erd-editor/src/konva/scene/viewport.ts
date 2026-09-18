@@ -41,6 +41,18 @@ export function getSceneTransform(
 }
 
 /**
+ * The placement a zoom is solved against and lands in: the scene named, so a
+ * view scene zooms the view it draws whichever is active; with no scene named,
+ * the active view's else the document's, which is where the redirect sends the yield.
+ */
+export function getZoomTransform(
+  state: RootState,
+  source?: GeometrySource
+): SceneTransform {
+  return source ? getSceneTransform(state, source) : getActiveTransform(state);
+}
+
+/**
  * Where a scene layer sits on the stage, so screen equals scene times the zoom
  * plus this. The document stores it directly: settings.originX and originY are
  * the screen point scene (0, 0) lands on, and nothing else enters.

@@ -8,9 +8,9 @@ import {
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
 import { RootState } from '@/engine/state';
+import { Point } from '@/internal-types';
 import {
-  getActiveTransform,
-  getSceneTransform,
+  getZoomTransform,
   type SceneTransform,
   toScenePoint,
   toScreenPoint,
@@ -26,15 +26,25 @@ import {
 } from './atom.actions';
 
 /**
- * The placement a zoom is solved against and lands in: the scene named, so a
- * view scene zooms the view it draws whichever is active; with no scene named,
- * the active view's else the document's, which is where the redirect sends the yield.
+ * How far the scroll has to travel for the scene point given to land under the
+ * screen point given once the zoom changes, solved with the placement given.
  */
-const transformOf = (
-  state: RootState,
-  source: GeometrySource | undefined
-): SceneTransform =>
-  source ? getSceneTransform(state, source) : getActiveTransform(state);
+function getMovementToPlace(
+  transform: SceneTransform,
+  nextZoomLevel: number,
+  scene: Point,
+  screen: Point
+) {
+  const landed = toScreenPoint(
+    { ...transform, zoomLevel: nextZoomLevel },
+    scene
+  );
+
+  return {
+    movementX: round(screen.x - landed.x, 4),
+    movementY: round(screen.y - landed.y, 4),
+  };
+}
 
 /**
  * How far the scroll has to travel for the scene point under the middle of the
@@ -47,16 +57,13 @@ function getMovementScrollTo(
 ) {
   const { viewport } = state.editor;
   const center = { x: viewport.width / 2, y: viewport.height / 2 };
-  const anchor = toScenePoint(transform, center);
-  const screen = toScreenPoint(
-    { ...transform, zoomLevel: nextZoomLevel },
-    anchor
-  );
 
-  return {
-    movementX: round(center.x - screen.x, 4),
-    movementY: round(center.y - screen.y, 4),
-  };
+  return getMovementToPlace(
+    transform,
+    nextZoomLevel,
+    toScenePoint(transform, center),
+    center
+  );
 }
 
 /** The origin it adds the movement to is the one getMovementScrollTo solved against. */
@@ -65,7 +72,7 @@ export const changeZoomLevelAction$ = (
   source?: GeometrySource
 ): GeneratorAction =>
   function* (state) {
-    const transform = transformOf(state, source);
+    const transform = getZoomTransform(state, source);
     const { originX, originY } = transform;
     const nextZoomLevel = zoomLevelInRange(value);
     const { movementX, movementY } = getMovementScrollTo(
@@ -93,7 +100,7 @@ export const streamZoomLevelAction$ = (
   source?: GeometrySource
 ): GeneratorAction =>
   function* (state) {
-    const transform = transformOf(state, source);
+    const transform = getZoomTransform(state, source);
     const nextZoomLevel = zoomLevelInRange(transform.zoomLevel + value);
     const movement = getMovementScrollTo(state, transform, nextZoomLevel);
 
@@ -105,6 +112,50 @@ export const streamZoomLevelAction$ = (
 
     yield streamZoomLevelAction({ value });
     yield streamScrollToAction(movement);
+  };
+
+export type PinchZoom = {
+  /** The zoom the pinch has reached, which the store rounds as it lands. */
+  zoomLevel: number;
+  /** Where the pinch is centred now, in the scene box. */
+  screen: Point;
+  /** The scene point the pinch holds, else the one under screen. */
+  scene?: Point;
+};
+
+/**
+ * A step of a pinch: the zoom it has reached, with the scene point it holds put
+ * under where it is centred now, so two fingers zoom about their midpoint and
+ * pan as it travels. Streamed, so a whole pinch is one undo entry as a wheel is.
+ */
+export const pinchZoomAction$ = (
+  { zoomLevel, screen, scene }: PinchZoom,
+  source?: GeometrySource
+): GeneratorAction =>
+  function* (state) {
+    const transform = getZoomTransform(state, source);
+    const nextZoomLevel = zoomLevelInRange(zoomLevel);
+    const value = round(nextZoomLevel - transform.zoomLevel, 2);
+    const movement = getMovementToPlace(
+      transform,
+      nextZoomLevel,
+      scene ?? toScenePoint(transform, screen),
+      screen
+    );
+
+    const kind = source && source !== 'document' ? source : null;
+
+    // Only what moved, so a pinch that stands still pushes no undo entry.
+    if (value !== 0) {
+      yield kind
+        ? viewStreamZoomLevelAction({ value, kind })
+        : streamZoomLevelAction({ value });
+    }
+    if (movement.movementX !== 0 || movement.movementY !== 0) {
+      yield kind
+        ? viewStreamScrollToAction({ ...movement, kind })
+        : streamScrollToAction(movement);
+    }
   };
 
 export const actions$ = {

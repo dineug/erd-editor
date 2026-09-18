@@ -66,6 +66,6 @@ declarations-only `./jsx-runtime` entry: set `jsx: "preserve"` and
 
 ```sh
 pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test
-pnpm --filter @dineug/r-html test:coverage   # per-file 80%; CI gates this package on it
+pnpm --filter @dineug/r-html test:coverage   # per-file 80%; CI gates every package on it
 pnpm --filter @dineug/r-html e2e             # Playwright
 ```

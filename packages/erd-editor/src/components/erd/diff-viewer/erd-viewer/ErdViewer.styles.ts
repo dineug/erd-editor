@@ -6,4 +6,5 @@ export const root = css`
   height: 100%;
   overflow: hidden;
   position: relative;
+  touch-action: none;
 `;

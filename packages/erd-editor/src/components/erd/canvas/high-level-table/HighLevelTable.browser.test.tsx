@@ -22,11 +22,15 @@ import {
 import type { AppContext } from '@/components/appContext';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import {
+  CURSOR_INHERIT,
+  CURSOR_POINTER,
   HIGH_LEVEL_FONT_SIZES,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import { TABLE_BORDER } from '@/constants/layout';
+import { RelationshipType } from '@/constants/schema';
 import {
+  drawStartRelationshipAction,
   sharedFocusTrackerAction,
   sharedSelectionTrackerAction,
   unselectAllAction,
@@ -426,5 +430,41 @@ describe('what a simplified table pointer start owns', () => {
 
     expect(duplicateDragStart).toHaveBeenCalledOnce();
     expect(table.ui.x).toBe(startX);
+  });
+
+  it('leaves the color picker closed when the press it started on ends a relationship draw', async () => {
+    const { app, stage } = await setup();
+    const openColorPicker = vi.fn();
+    app.emitter.on({ openColorPicker });
+
+    app.store.dispatchSync(
+      drawStartRelationshipAction({
+        relationshipType: RelationshipType.ZeroN,
+      })
+    );
+
+    fireScenePointer(named(rootOf(stage), 'table-body'), 'mousedown', {
+      clientX: 0,
+      clientY: 0,
+    });
+    fireScenePointer(named(rootOf(stage), 'table-header-color'), 'click', {
+      clientX: 90,
+      clientY: 35,
+    });
+
+    expect(openColorPicker).not.toHaveBeenCalled();
+  });
+});
+
+describe('the cursor over a simplified table colour edge', () => {
+  it('turns to a pointer on hover and back once the pointer leaves', async () => {
+    const { stage } = await setup();
+    const colorEdge = named(rootOf(stage), 'table-header-color');
+
+    fireScenePointer(colorEdge, 'mouseenter');
+    expect(stage.container().style.cursor).toBe(CURSOR_POINTER);
+
+    fireScenePointer(colorEdge, 'mouseleave');
+    expect(stage.container().style.cursor).toBe(CURSOR_INHERIT);
   });
 });

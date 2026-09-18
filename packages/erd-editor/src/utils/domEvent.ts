@@ -26,6 +26,11 @@ export function isTouchEvent(event: Event): event is TouchEvent {
   return event instanceof TouchEvent;
 }
 
+/** A touch that puts a finger down beside another: a pinch, never a press of its own. */
+export function isMultiTouch(event: Event): boolean {
+  return ((event as Partial<TouchEvent>).touches?.length ?? 0) > 1;
+}
+
 /**
  * The editor root, which is where a pan has to take the selection off: the top
  * toolbar is a sibling of the scene that pans, so suppressing it any lower

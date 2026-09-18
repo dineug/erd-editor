@@ -83,4 +83,31 @@ describe('the release a press is read as a click by', () => {
     releasePointer(0, 0);
     expect(pointless).toEqual([]);
   });
+
+  it('reads no click off a pinch, whose fingers lift one at a time', () => {
+    const fingers = (type: string, points: Array<[number, number]>) =>
+      new TouchEvent(type, {
+        touches: points.map(([x, y]) => ({ clientX: x, clientY: y })) as any,
+      });
+
+    // The first finger held still while the second lifts, then lifts itself.
+    const still: string[] = [];
+    onClickRelease(fingers('touchstart', [[100, 100]]), () =>
+      still.push('click')
+    );
+    window.dispatchEvent(fingers('touchend', [[100, 100]]));
+    expect(still).toEqual([]);
+
+    // The second finger, whose press reads the first one's point.
+    const second: string[] = [];
+    onClickRelease(
+      fingers('touchstart', [
+        [100, 100],
+        [180, 100],
+      ]),
+      () => second.push('click')
+    );
+    window.dispatchEvent(fingers('touchend', []));
+    expect(second).toEqual([]);
+  });
 });

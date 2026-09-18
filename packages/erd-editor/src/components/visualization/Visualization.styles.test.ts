@@ -37,4 +37,8 @@ describe('Visualization.styles', () => {
     expect(text).toContain('top: 0');
     expect(text).toContain('left: 0');
   });
+
+  it('takes every touch on the stage, so a pinch zooms the graph and not the page', () => {
+    expect(staticText(styles.stage)).toContain('touch-action: none');
+  });
 });

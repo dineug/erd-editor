@@ -26,6 +26,7 @@ import {
 import {
   actions$,
   changeZoomLevelAction$,
+  pinchZoomAction$,
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
@@ -338,6 +339,129 @@ describe('settings/generator.actions', () => {
         SCREEN_CENTRE.x - screen.x,
         4
       );
+    });
+  });
+
+  describe('pinchZoomAction$', () => {
+    const POINTER = { x: 240, y: 610 };
+
+    it('streams the zoom and the scroll, so a pinch groups into one undo entry', () => {
+      const emitted = flatten(
+        store,
+        pinchZoomAction$({ zoomLevel: 0.5, screen: POINTER })
+      );
+
+      expect(emitted.map(({ type }) => type)).toEqual([
+        ActionType.streamZoomLevel,
+        ActionType.streamScrollTo,
+      ]);
+      expect(emitted[0]).toEqual(streamZoomLevelAction({ value: -0.5 }));
+    });
+
+    it('holds the scene point under the pinch where it is', () => {
+      store.dispatchSync(scrollToAction({ originX: -300, originY: -200 }));
+      store.dispatchSync(changeZoomLevelAction({ value: 0.8 }));
+      const anchor = toScenePoint(store.state.settings, POINTER);
+
+      store.dispatchSync(pinchZoomAction$({ zoomLevel: 1.2, screen: POINTER }));
+
+      const { settings } = store.state;
+      expect(settings.zoomLevel).toBe(1.2);
+      expect(toScreenPoint(settings, anchor).x).toBeCloseTo(POINTER.x, 3);
+      expect(toScreenPoint(settings, anchor).y).toBeCloseTo(POINTER.y, 3);
+    });
+
+    it('puts the scene point it holds under where the pinch has moved to', () => {
+      const scene = toScenePoint(store.state.settings, POINTER);
+      const moved = { x: POINTER.x + 50, y: POINTER.y - 30 };
+
+      store.dispatchSync(
+        pinchZoomAction$({ zoomLevel: 0.7, screen: moved, scene })
+      );
+
+      const { settings } = store.state;
+      expect(settings.zoomLevel).toBe(0.7);
+      expect(toScreenPoint(settings, scene).x).toBeCloseTo(moved.x, 3);
+      expect(toScreenPoint(settings, scene).y).toBeCloseTo(moved.y, 3);
+    });
+
+    it('solves the hold with the zoom the store rounds to and clamps at', () => {
+      const anchor = toScenePoint(store.state.settings, POINTER);
+
+      store.dispatchSync(
+        pinchZoomAction$({ zoomLevel: 0.73456, screen: POINTER })
+      );
+      expect(store.state.settings.zoomLevel).toBe(0.73);
+      expect(toScreenPoint(store.state.settings, anchor).x).toBeCloseTo(
+        POINTER.x,
+        3
+      );
+
+      store.dispatchSync(pinchZoomAction$({ zoomLevel: 40, screen: POINTER }));
+      expect(store.state.settings.zoomLevel).toBe(CANVAS_ZOOM_MAX);
+      expect(toScreenPoint(store.state.settings, anchor).y).toBeCloseTo(
+        POINTER.y,
+        3
+      );
+    });
+
+    it('yields the scroll alone for a pinch that pans at the zoom it began at', () => {
+      const scene = toScenePoint(store.state.settings, POINTER);
+
+      const emitted = flatten(
+        store,
+        pinchZoomAction$({
+          zoomLevel: 1,
+          screen: { x: POINTER.x + 30, y: POINTER.y },
+          scene,
+        })
+      );
+
+      expect(emitted.map(({ type }) => type)).toEqual([
+        ActionType.streamScrollTo,
+      ]);
+      expect(emitted[0].payload).toEqual({ movementX: 30, movementY: 0 });
+    });
+
+    it('yields nothing for a step the rounding leaves where it was', () => {
+      expect(
+        flatten(store, pinchZoomAction$({ zoomLevel: 1.004, screen: POINTER }))
+      ).toEqual([]);
+    });
+
+    it('lands in the view named and leaves the document alone', () => {
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      store.dispatchSync(
+        viewScrollToAction({ originX: -100, originY: -40, kind: ViewKind.flow })
+      );
+      const flow = store.state.editor.views.flow!;
+      const anchor = toScenePoint(flow, POINTER);
+
+      store.dispatchSync(
+        pinchZoomAction$({ zoomLevel: 1.4, screen: POINTER }, 'flow')
+      );
+
+      expect(flow.zoomLevel).toBe(1.4);
+      expect(toScreenPoint(flow, anchor).x).toBeCloseTo(POINTER.x, 3);
+      expect(toScreenPoint(flow, anchor).y).toBeCloseTo(POINTER.y, 3);
+      expect(store.state.settings.zoomLevel).toBe(1);
+      expect(store.state.settings.originX).toBe(0);
+    });
+
+    it('comes back to where it began once a pinch returns to its first zoom', () => {
+      store.dispatchSync(scrollToAction({ originX: -321, originY: 87 }));
+      const before = { ...store.state.settings };
+      const scene = toScenePoint(before, POINTER);
+
+      for (const zoomLevel of [0.9, 0.61, 0.33, 0.12, 0.5, 1.37, 1]) {
+        store.dispatchSync(
+          pinchZoomAction$({ zoomLevel, screen: POINTER, scene })
+        );
+      }
+
+      expect(store.state.settings.zoomLevel).toBe(1);
+      expect(store.state.settings.originX).toBeCloseTo(before.originX, 3);
+      expect(store.state.settings.originY).toBeCloseTo(before.originY, 3);
     });
   });
 

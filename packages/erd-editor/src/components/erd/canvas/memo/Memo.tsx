@@ -51,6 +51,7 @@ import type { Memo } from '@/internal-types';
 import { getMemoRect } from '@/konva/scene/metrics';
 import { openColorPickerAction } from '@/utils/emitter';
 import { isMod } from '@/utils/keyboard-shortcut';
+import { isPinchWheel } from '@/utils/pinch';
 
 /** The radius the memo box is rounded with. */
 const MEMO_CORNER_RADIUS = 6;
@@ -144,10 +145,11 @@ const Memo: FC<MemoProps> = (props, ctx) => {
 
   /**
    * Scrolls the body under a wheel and keeps the wheel from the canvas, as the
-   * textarea the dom scene kept on every memo did. A mod wheel is a zoom
-   * elsewhere and is held here unspent, which is what that textarea did too.
+   * textarea the dom scene kept on every memo did. A mod wheel is held here
+   * unspent, as it was there; a pinch goes on to zoom wherever the fingers are.
    */
   const handleValueWheel = (event: KonvaEventObject<WheelEvent>) => {
+    if (isPinchWheel(event.evt)) return;
     event.evt.stopPropagation();
     event.evt.preventDefault();
     if (props.preview || isMod(event.evt)) return;

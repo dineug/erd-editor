@@ -227,6 +227,30 @@ describe('ErdViewer', () => {
     expect(app.store.state.settings.zoomLevel).toBeCloseTo(1, 5);
   });
 
+  it('zooms a trackpad pinch about the pointer rather than a notch step', async () => {
+    const { app, root } = await mountViewer(Diff.insert);
+    const event = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaY: -100 * Math.log(1.08),
+    });
+    // happy-dom's WheelEvent constructor drops the modifier and the point.
+    Object.defineProperties(event, {
+      ctrlKey: { value: true },
+      clientX: { value: 100 },
+      clientY: { value: 60 },
+    });
+
+    root.dispatchEvent(event);
+    await flush();
+
+    const { originX, originY, zoomLevel } = app.store.state.settings;
+    expect(event.defaultPrevented).toBe(true);
+    expect(zoomLevel).toBe(1.08);
+    expect(originX).toBeCloseTo(100 - 100 * 1.08, 4);
+    expect(originY).toBeCloseTo(60 - 60 * 1.08, 4);
+  });
+
   it('unselects everything and closes the color picker on a bare mousedown', async () => {
     const app = createApp();
     app.store.dispatchSync(

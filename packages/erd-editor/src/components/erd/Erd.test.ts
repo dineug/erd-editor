@@ -516,10 +516,11 @@ describe('Erd - wheel', () => {
     expect(app.store.state.settings.originY).toBe(0);
   });
 
+  // A whole notch: one short of it under ctrl is a trackpad pinch, below.
   it('zooms out with the modifier key held', async () => {
     const { app, root } = await setup();
 
-    wheel(root, { deltaX: 0, deltaY: 10, ctrlKey: true, metaKey: true });
+    wheel(root, { deltaX: 0, deltaY: 100, ctrlKey: true, metaKey: true });
     await flush();
 
     expect(app.store.state.settings.zoomLevel).toBe(0.97);
@@ -529,7 +530,7 @@ describe('Erd - wheel', () => {
     const { app, root } = await setup();
     app.store.state.settings.zoomLevel = 0.8;
 
-    wheel(root, { deltaX: 0, deltaY: -10, ctrlKey: true, metaKey: true });
+    wheel(root, { deltaX: 0, deltaY: -100, ctrlKey: true, metaKey: true });
     await flush();
 
     expect(app.store.state.settings.zoomLevel).toBe(0.83);
@@ -545,6 +546,138 @@ describe('Erd - wheel', () => {
 
     expect(event.defaultPrevented).toBe(false);
     expect(app.store.state.settings.originX).toBe(0);
+  });
+});
+
+describe('Erd - pinch', () => {
+  const POINTER = { x: 300, y: 200 };
+
+  /** A trackpad pinch as a browser sends it: a ctrl wheel of -100 ln(scale). */
+  const pinchWheel = (target: EventTarget, scale: number) => {
+    const event = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaY: -100 * Math.log(scale),
+    });
+    // happy-dom's WheelEvent constructor drops these as it does the modifiers.
+    Object.defineProperties(event, {
+      ctrlKey: { value: true },
+      clientX: { value: POINTER.x },
+      clientY: { value: POINTER.y },
+    });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  type Finger = { x: number; y: number };
+
+  const touches = (type: string, fingers: Finger[]) =>
+    new TouchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      touches: fingers.map(({ x, y }) => ({ clientX: x, clientY: y })) as any,
+    });
+
+  /** The scene point under a screen point, read the way the canon reads it. */
+  const sceneUnder = (app: AppContext, { x, y }: Finger) => {
+    const { originX, originY, zoomLevel } = app.store.state.settings;
+    return { x: (x - originX) / zoomLevel, y: (y - originY) / zoomLevel };
+  };
+
+  it('zooms a trackpad pinch about the pointer', async () => {
+    const { app, root } = await setup({}, appWithContent());
+    app.store.dispatchSync(scrollToAction({ originX: -140, originY: -60 }));
+    const anchor = sceneUnder(app, POINTER);
+
+    const event = pinchWheel(root, 1.08);
+    await flush();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(app.store.state.settings.zoomLevel).toBe(1.08);
+    expect(sceneUnder(app, POINTER).x).toBeCloseTo(anchor.x, 3);
+    expect(sceneUnder(app, POINTER).y).toBeCloseTo(anchor.y, 3);
+  });
+
+  it('carries a slow pinch past the rounding of the zoom', async () => {
+    const { app, root } = await setup();
+    app.store.state.settings.zoomLevel = 0.3;
+
+    // Each is a sixth of a percent, which alone rounds back to 0.3.
+    for (let event = 0; event < 30; event++) {
+      pinchWheel(root, 1.0017);
+      await flush();
+    }
+
+    expect(app.store.state.settings.zoomLevel).toBe(0.32);
+  });
+
+  it('zooms two fingers about their midpoint and pans as it travels', async () => {
+    const { app, root } = await setup({}, appWithContent());
+    const midpoint = { x: 200, y: 150 };
+    const anchor = sceneUnder(app, midpoint);
+
+    root.dispatchEvent(
+      touches('touchstart', [
+        { x: 150, y: 150 },
+        { x: 250, y: 150 },
+      ])
+    );
+    // In steps, each landing before the next, as a browser delivers them: the
+    // scale is from where the pinch began, never from where the last step left it.
+    for (const step of [0.25, 0.5, 0.75, 1]) {
+      window.dispatchEvent(
+        touches('touchmove', [
+          { x: 150 + 10 * step, y: 150 + 40 * step },
+          { x: 250 - 40 * step, y: 150 + 40 * step },
+        ])
+      );
+      await flush();
+    }
+
+    const moved = { x: 185, y: 190 };
+    expect(app.store.state.settings.zoomLevel).toBe(0.5);
+    expect(sceneUnder(app, moved).x).toBeCloseTo(anchor.x, 3);
+    expect(sceneUnder(app, moved).y).toBeCloseTo(anchor.y, 3);
+  });
+
+  it('leaves the selection alone for the second finger of a pinch', async () => {
+    const { app, root, actions } = await setup({}, appWithContent());
+    actions.length = 0;
+
+    root.dispatchEvent(
+      touches('touchstart', [
+        { x: 150, y: 150 },
+        { x: 250, y: 150 },
+      ])
+    );
+    await flush();
+
+    expect(actions).toEqual([]);
+    expect(app.store.state.settings.originX).toBe(0);
+  });
+
+  it('zooms nothing under an open overlay, and holds the pinch off the page', async () => {
+    const { app, root } = await setup();
+    app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
+    await flush();
+
+    const event = pinchWheel(root, 1.08);
+    root.dispatchEvent(
+      touches('touchstart', [
+        { x: 150, y: 150 },
+        { x: 250, y: 150 },
+      ])
+    );
+    window.dispatchEvent(
+      touches('touchmove', [
+        { x: 100, y: 150 },
+        { x: 300, y: 150 },
+      ])
+    );
+    await flush();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(app.store.state.settings.zoomLevel).toBe(1);
   });
 });
 

@@ -184,4 +184,59 @@ describe('observeThemeOverrides', () => {
 
     expect(calls).toBe(0);
   });
+
+  // A host with no parent at all, never appended anywhere: the climb has
+  // nowhere to go past it, so only the host itself and head are watched.
+  it('watches only the host where it has no parent to climb to', async () => {
+    const host = document.createElement('div');
+    let calls = 0;
+    teardowns.push(observeThemeOverrides(host, () => calls++));
+
+    host.setAttribute('style', 'color: red');
+    await settle();
+
+    expect(calls).toBeGreaterThan(0);
+  });
+
+  // parentElementOf crosses a shadow boundary through its host, so a class
+  // swap outside the shadow root still reaches a component's own host inside it.
+  it('crosses a shadow boundary and fires on a change outside it', async () => {
+    const shadowHost = document.createElement('div');
+    document.body.append(track(shadowHost));
+    const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+    const insideHost = document.createElement('div');
+    shadowRoot.append(insideHost);
+
+    let calls = 0;
+    teardowns.push(observeThemeOverrides(insideHost, () => calls++));
+
+    shadowHost.classList.add('dark');
+    await settle();
+
+    expect(calls).toBeGreaterThan(0);
+  });
+
+  it('answers a no-op unsubscribe in a realm with no MutationObserver', async () => {
+    const theme = createTestTheme();
+    const host = mountThemedHost(theme);
+    const original = globalThis.MutationObserver;
+    // @ts-expect-error -- simulating a realm with no MutationObserver at all.
+    delete globalThis.MutationObserver;
+
+    try {
+      let calls = 0;
+      const unsubscribe = observeThemeOverrides(host, () => calls++);
+
+      expect(typeof unsubscribe).toBe('function');
+      expect(() => unsubscribe()).not.toThrow();
+
+      appendStyle('.theme-probe { --erd-editor-table-background: #abcdef; }');
+      host.setAttribute('style', 'color: red');
+      await settle();
+
+      expect(calls).toBe(0);
+    } finally {
+      globalThis.MutationObserver = original;
+    }
+  });
 });

@@ -93,13 +93,13 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 
 - `pnpm test` = `vp run -r test` over the nine packages with a `vitest.config.*` (a library's `test` task exists because of that file), each `tsc --noEmit` then Vitest, imported as `vite-plus/test`.
 - Vitest collects `src/**/*.test.ts` only (`erd-editor`: `.test.{ts,tsx}`); a spec named or placed otherwise never runs. `erd-editor`'s `browser` project (`*.browser.test.{ts,tsx}`, real Chromium) makes `pnpm test` need `pnpm --filter @dineug/erd-editor exec playwright install chromium`.
-- v8 coverage at `perFile` 80% gates `test:coverage` only; CI runs it for `r-html` alone.
+- v8 coverage at `perFile` 80% on all four metrics gates `test:coverage`, and `pnpm test` measures none. CI runs `pnpm -r --no-bail test:coverage`, so a file under 80% in any of the nine packages fails it. Cover a gap with a test; the one hint in `src/` is `/* v8 ignore next -- @preserve */` on `erd-editor`'s `if (import.meta.hot)` blocks.
 - **Not verified until `pnpm build` passes** — declaration emit, bundling and the packages with no `test` task are checked only there.
 - `pnpm check` = `vp check` (oxfmt + oxlint) + root `tsc --noEmit` + `node --test tools/vite-config.test.ts` + `check-task-inputs.mjs`.
 - `pnpm size`, after `pnpm build`: gzip of every script reachable from `erd-editor`'s `exports` vs `packages/erd-editor/.size-baseline.json`. `budgetGzip` is a regression watch; re-pin with `--set-budget --budget-gzip <bytes> --budget-note <why>`.
 - `pnpm --filter <pkg> e2e`, outside `pnpm test`: Playwright for `@dineug/erd-editor`, `@dineug/erd-editor-app`, `@dineug/r-html`; `@vscode/test-cli` for `vuerd-vscode` (`xvfb-run -a` on Linux). `app`'s has no CI job.
 - SQL-generation changes: `docker/<vendor>/` plus `data/*.sql` is the manual loop.
-- CI `ci.yml`: `check` (`pnpm check`, then builds `app`'s and `vuerd-vscode`'s dependencies for their `typecheck` scripts, which read siblings' `dist/**/*.d.ts`), `ci` (`pnpm test`, `r-html` coverage, `pnpm build`, `pnpm size`), `e2e`, `r-html-e2e`, `vscode-extension-e2e`.
+- CI `ci.yml`: `check` (`pnpm check`, then builds `app`'s and `vuerd-vscode`'s dependencies for their `typecheck` scripts, which read siblings' `dist/**/*.d.ts`), `ci` (`pnpm test`, every package's `test:coverage`, `pnpm build`, `pnpm size`), `e2e`, `r-html-e2e`, `vscode-extension-e2e`.
 - `intellij-plugin.yml` is separate so its `cancel-in-progress` never reaches `ci.yml`; a `gate` job stands in for a `paths` filter, which would leave the check Pending forever.
 - `setup-workspace` caches the pnpm store, never the Vite Task cache: a cold cache is what makes declared inputs do real work.
 

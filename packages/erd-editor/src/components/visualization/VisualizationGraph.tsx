@@ -14,6 +14,7 @@ import Table from '@/components/visualization/table/Table';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
+import { createPinch, isPinchWheel, pinchWheelScale } from '@/utils/pinch';
 
 import { createVisualization, type Visualization } from './createVisualization';
 import {
@@ -63,10 +64,34 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
 
     const rect = canvas.value.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    const factor = wheelZoomFactor(event.deltaY, event.deltaMode);
+    // A pinch carries the scale the fingers made, which is the zoom it asks for.
+    const factor = isPinchWheel(event)
+      ? pinchWheelScale(event)
+      : wheelZoomFactor(event.deltaY, event.deltaMode);
 
     Object.assign(state, zoomAt(state, point, factor));
   };
+
+  /**
+   * Zooms the view the pinch began on about the point it began at, and moves
+   * that point with the pinch, so two fingers pan the graph as they spread.
+   */
+  const pinch = createPinch(
+    () => canvas.value,
+    center => {
+      const from = { x: state.x, y: state.y, scale: state.scale };
+
+      return ({ scale, center: now }) => {
+        const view = zoomAt(from, center, scale);
+
+        Object.assign(state, {
+          ...view,
+          x: view.x + now.x - center.x,
+          y: view.y + now.y - center.y,
+        });
+      };
+    }
+  );
 
   onMounted(() => {
     const { store } = app.value;
@@ -86,6 +111,7 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     });
     registerStage(STAGE_NAME, $stage);
     renderVisualizationScene($stage, { graph: $graph, state });
+    addUnsubscribe(pinch.listen());
 
     // The bar is this graph's sibling and reaches neither its view nor where
     // the forces put its dots, so the mount hands both over for as long as it stands.
@@ -118,6 +144,7 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     );
   });
 
+  /* v8 ignore next -- @preserve */
   if (import.meta.hot) {
     // The scene is the root of an imperative render rather than a value in this
     // template, so r-html's own boundary cannot swap it. Rendering the root
@@ -143,7 +170,11 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     const showPreview = table && !state.drag;
 
     return (
-      <div class={styles.root} on:wheel={handleWheel}>
+      <div
+        class={styles.root}
+        on:touchstart={pinch.handleTouchstart}
+        on:wheel={handleWheel}
+      >
         <div
           class={styles.stage}
           data-testid="visualization-canvas"

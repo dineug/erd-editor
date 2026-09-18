@@ -1247,6 +1247,34 @@ describe('the Flow mode of the visualization tab', () => {
     });
   });
 
+  it('zooms the view about the pointer on a trackpad pinch, the document not at all', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const pointer = { x: 200, y: 150 };
+    const view = app.store.state.editor.views.flow!;
+    const anchor = toScenePoint(view, pointer);
+    const zoomBefore = view.zoomLevel;
+
+    // A pinch reaches the page as a ctrl wheel of -100 ln(scale).
+    wheelOver(mounted, { deltaY: -100 * Math.log(1.08), ctrlKey: true });
+    await settle();
+
+    const after = app.store.state.editor.views.flow!;
+    expect(after.zoomLevel).toBeCloseTo(
+      Math.round(zoomBefore * 1.08 * 100) / 100,
+      5
+    );
+    expect(toScreenPoint(after, anchor).x).toBeCloseTo(pointer.x, 3);
+    expect(toScreenPoint(after, anchor).y).toBeCloseTo(pointer.y, 3);
+    expect(app.store.state.settings).toMatchObject({
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+    });
+  });
+
   it('swaps the axis a wheel moves along while shift is held (AC-41)', async () => {
     const app = createTestAppContext();
     seed(app);

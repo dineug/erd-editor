@@ -56,9 +56,9 @@ import {
   getTableWidths,
 } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
-import { onStop } from '@/utils/domEvent';
 import { focusEvent } from '@/utils/internalEvents';
 import { isComposing } from '@/utils/keyboard-shortcut';
+import { isPinchWheel } from '@/utils/pinch';
 import { isHighLevelTable } from '@/utils/validation';
 
 import * as styles from './EditOverlay.styles';
@@ -267,6 +267,12 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
     );
   };
 
+  // The wheel scrolls the textarea and stays off the canvas; a pinch goes on
+  // to zoom it, as it does over the memo drawn when no editor is open.
+  const handleWheel = (event: WheelEvent) => {
+    if (!isPinchWheel(event)) event.stopPropagation();
+  };
+
   const handleKeydown = (event: KeyboardEvent) => {
     // While an IME is composing, Escape cancels the composition and the field
     // stays, which is what the same key does in any other textarea.
@@ -323,7 +329,7 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
       on:input={handleInput}
       on:keydown={handleKeydown}
       on:scroll={handleScroll}
-      on:wheel={onStop}
+      on:wheel={handleWheel}
       on:blur={handleBlur}
     ></textarea>
   );

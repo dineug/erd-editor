@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-37 spec files. Ten of the groups exist because the DOM scene got their subject
+38 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -62,12 +62,13 @@ for free and the canvas has to draw and dispatch it itself:
 | `virtual-viewport.spec.ts`      | Culling: what is off screen has no node, and the minimap keeps it |
 | `diff-viewer.spec.ts`           | The tint a changed cell sits on, on the canvas of both panes      |
 
-Eleven more are the canvas's own geometry, and the DOM the editing overlay
+Twelve more are the canvas's own geometry, and the DOM the editing overlay
 puts over it:
 
 | Spec                            | What it holds down                                                |
 | ------------------------------- | ---------------------------------------------------------------- |
 | `zoom-round-trip.spec.ts`       | A zoom out and back in that returns the reader's own view         |
+| `pinch-zoom.spec.ts`            | A trackpad and a two finger pinch, and the point each one holds   |
 | `infinite-canvas.spec.ts`       | The travel, thumbs, map, compass and image the content now decide |
 | `floating-toolbar.spec.ts`      | The two canvas tools, the notations and what zen mode takes away  |
 | `scroll-origin.spec.ts`         | The origin the scene draws with, and the legacy pair migrated once |
@@ -198,7 +199,8 @@ listeners on first subscribe, so nothing is armed until a gesture starts one.
 Everything the scene resolves — a click, a hover, a right click, a touch — is
 resolved from the **coordinates on the event**, by `stage.getIntersection`.
 Firing an event at a node never reaches it. Drive the real pointer:
-`page.mouse.*`, or the helpers `clickAt`, `hoverAt`, `hoverScene`, `touchDrag`.
+`page.mouse.*`, or the helpers `clickAt`, `hoverAt`, `hoverScene`, `touchDrag`,
+`touchPinch`.
 
 ## Scene mirror contract
 

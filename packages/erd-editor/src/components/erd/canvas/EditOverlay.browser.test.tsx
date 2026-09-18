@@ -817,6 +817,22 @@ describe('the memo body editor over the scene', () => {
     expect(reached).toBe(0);
   });
 
+  it('hands the canvas a pinch over the memo editor, which zooms it', async () => {
+    const fixture = await editMemo();
+    let reached = 0;
+    const listen = () => {
+      reached += 1;
+    };
+    fixture.mounted.container.addEventListener('wheel', listen);
+
+    memoTextareaOf(fixture.mounted).dispatchEvent(
+      new WheelEvent('wheel', { bubbles: true, deltaY: -3, ctrlKey: true })
+    );
+    fixture.mounted.container.removeEventListener('wheel', listen);
+
+    expect(reached).toBe(1);
+  });
+
   it('closes the memo editor once the memo is gone', async () => {
     const fixture = await editMemo();
     expect(memoTextareas(fixture.mounted).length).toBe(1);

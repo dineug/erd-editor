@@ -24,6 +24,7 @@ import {
 } from '@/components/visualization/visualizationView';
 import { renderKonva } from '@/konva/host';
 import { TextFontFamily } from '@/styles/fonts.styles';
+import { isMultiTouch } from '@/utils/domEvent';
 import type { DragMove } from '@/utils/globalEventObservable';
 
 export type VisualizationSceneProps = {
@@ -68,6 +69,8 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
   // A pan is a drag too: a dot the pointer crosses on the way would otherwise
   // open its preview under a hand that is busy moving the view.
   const handlePanStart = (event: KonvaEventObject<Event>) => {
+    if (isMultiTouch(event.evt)) return;
+
     const { state } = props;
 
     state.drag = true;

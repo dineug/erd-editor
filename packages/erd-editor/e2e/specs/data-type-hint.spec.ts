@@ -147,7 +147,7 @@ test.describe('data type autocomplete', () => {
     await erd.page.mouse.wheel(0, 120);
     await erd.page.keyboard.up('Control');
 
-    // A pan where Control is no $mod, a zoom where it is.
+    // A zoom either way: a pinch where Control is no $mod, a notch where it is.
     await expect
       .poll(async () => {
         const { originX, originY, zoomLevel } = await erd.settings();

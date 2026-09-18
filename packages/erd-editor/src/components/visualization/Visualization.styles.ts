@@ -11,9 +11,13 @@ export const root = css`
   background-color: var(--canvas-background);
 `;
 
-/** The Stage container, viewport sized, which konva fills with its own canvas. */
+/**
+ * The Stage container, viewport sized, which konva fills with its own canvas.
+ * It takes every touch itself, so a pinch on it zooms the graph and not the page.
+ */
 export const stage = css`
   position: relative;
   top: 0;
   left: 0;
+  touch-action: none;
 `;
