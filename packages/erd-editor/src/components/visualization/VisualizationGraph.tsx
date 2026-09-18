@@ -144,6 +144,7 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     );
   });
 
+  /* v8 ignore next -- @preserve */
   if (import.meta.hot) {
     // The scene is the root of an imperative render rather than a value in this
     // template, so r-html's own boundary cannot swap it. Rendering the root

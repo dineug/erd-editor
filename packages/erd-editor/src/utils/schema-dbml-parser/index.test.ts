@@ -196,6 +196,16 @@ Table orders { state status }`;
     it('produces an empty document for a file whose schema lives behind use', () => {
       expect(parse("use * from './base'").doc.tableIds).toEqual([]);
     });
+
+    // Every string degrades rather than throwing; only a source that is not a
+    // string at all, a caller not honouring the type, reaches parseDBMLModel's
+    // own catch and this empty model.
+    it('produces an empty document when the source itself is not a string', () => {
+      const schema = parse(null as unknown as string);
+
+      expect(schema.doc.tableIds).toEqual([]);
+      expect(schema.settings.width).toBe(CANVAS_SIZE_MIN);
+    });
   });
 
   describe('the spelling sql2dbml emits', () => {

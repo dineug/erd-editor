@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 const SOURCE_ROOT = join(process.cwd(), 'src');
 
@@ -40,6 +40,21 @@ describe('the realm stub runs before ELK does', () => {
 
     expect(typeof document).toBe('object');
     expect(stubbed).toBe(false);
+  });
+
+  it('stubs a document when the realm begins with none', async () => {
+    const original = Reflect.get(globalThis, 'document');
+    Reflect.deleteProperty(globalThis, 'document');
+    vi.resetModules();
+
+    try {
+      await import('@/services/elk-layout/elkWorkerRealm');
+
+      expect(Reflect.get(globalThis, 'document')).toEqual({});
+    } finally {
+      Reflect.set(globalThis, 'document', original);
+      vi.resetModules();
+    }
   });
 
   it('leaves no static ELK import in any shipped file', () => {

@@ -11,6 +11,7 @@ import { whenPainted } from '@/__test-utils__';
 import { iconHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import { ICON_VIEW_SIZE } from '@/components/erd/canvas/sceneTokens';
+import type { LucideIconName } from '@/components/primitives/icon/icons';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderKonva } from '@/konva/host';
 
@@ -120,5 +121,54 @@ describe('a lucide icon drawn as konva shapes', () => {
     expect(stage.getIntersection({ x: 11, y: 21 })).toBe(circle);
     expect(stage.getIntersection({ x: 21, y: 31 })).toBe(circle);
     expect(stage.getIntersection({ x: 9, y: 19 })).toBeNull();
+  });
+
+  it('answers a press anywhere in the icon box even when the circle leads', async () => {
+    // atom draws its centre dot before its two orbit paths, so this is the
+    // one lucide icon in the set whose first child is a circle rather than a path.
+    const stage = await mount(
+      sceneIcon({
+        icon: 'atom',
+        name: 'core',
+        kind: 'icon',
+        size: 12,
+        color: '#112233',
+        x: 30,
+        y: 40,
+      })
+    );
+    await whenPainted();
+    const [first, ...rest] = (
+      stage.findOne<Group>('.core') as Group
+    ).getChildren() as KonvaNode[];
+
+    expect(first.className).toBe('Circle');
+    expect(first.getAttr('hitFunc')).toBe(iconHit);
+    expect(rest.every(node => node.listening() === false)).toBe(true);
+
+    expect(stage.getIntersection({ x: 31, y: 41 })).toBe(first);
+    expect(stage.getIntersection({ x: 41, y: 51 })).toBe(first);
+    expect(stage.getIntersection({ x: 29, y: 39 })).toBeNull();
+    expect(stage.getIntersection({ x: 43, y: 53 })).toBeNull();
+  });
+});
+
+describe('a lucide icon lookup that finds nothing', () => {
+  it('draws nothing for an icon name lucide carries no definition for', () => {
+    // Built up rather than written as an icon: literal, so the fixture never
+    // reads as a real reference to icons.test.ts's own name scan.
+    const missingIconName = ['not', 'a', 'real', 'icon'].join('-');
+
+    expect(
+      sceneIcon({
+        icon: missingIconName as LucideIconName,
+        name: 'missing',
+        kind: 'icon',
+        size: 12,
+        color: '#112233',
+        x: 0,
+        y: 0,
+      })
+    ).toBeNull();
   });
 });
