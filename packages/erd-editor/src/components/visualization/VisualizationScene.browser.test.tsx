@@ -285,7 +285,7 @@ describe('the visualization scene', () => {
     expect(lines).toHaveLength(2);
     expect(lines[0].points()).toEqual([table.x, table.y, id.x, id.y]);
     expect(lines[1].points()).toEqual([table.x, table.y, unnamed.x, unnamed.y]);
-    expect(lines[0].stroke()).toBe(theme.grayColor7);
+    expect(lines[0].stroke()).toBe(theme.visualizationLink);
     expect(lines[0].opacity()).toBe(0.6);
     expect(lines[0].listening()).toBe(false);
   });
@@ -438,7 +438,7 @@ describe('the visualization scene', () => {
       expect(labelOf(stage, graph, 't4').opacity()).toBe(DIM_OPACITY);
 
       const unlit = lineOf(stage, graph, 't4', 'c3');
-      expect(unlit.stroke()).toBe(theme.grayColor7);
+      expect(unlit.stroke()).toBe(theme.visualizationLink);
       expect(unlit.opacity()).toBeCloseTo(0.6 * DIM_OPACITY, 10);
     });
 
@@ -469,7 +469,7 @@ describe('the visualization scene', () => {
         expect(dot.opacity()).toBe(1);
       }
       for (const line of linesOf(stage)) {
-        expect(line.stroke()).toBe(theme.grayColor7);
+        expect(line.stroke()).toBe(theme.visualizationLink);
         expect(line.opacity()).toBe(0.6);
       }
       expect(labelOf(stage, graph, 't4').opacity()).toBe(1);

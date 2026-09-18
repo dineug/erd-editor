@@ -796,8 +796,8 @@ describe('the colour a view rests a connector at', () => {
     identify(documentScene, 'r2');
     await settle();
 
-    expect(routeOf(view.stage, 'r1')).toBe(theme.grayColor8);
-    expect(routeOf(view.stage, 'r2')).toBe(theme.grayColor8);
+    expect(routeOf(view.stage, 'r1')).toBe(theme.visualizationRelationship);
+    expect(routeOf(view.stage, 'r2')).toBe(theme.visualizationRelationship);
     expect(routeNodeOf(view.stage, 'r1').getAttr('dash')).toEqual([]);
     expect(routeNodeOf(view.stage, 'r2').getAttr('dash')).toEqual([]);
 
@@ -821,7 +821,7 @@ describe('the colour a view rests a connector at', () => {
     // quietly narrowing it to the route alone.
     expect(painted.length).toBeGreaterThan(5);
     for (const node of painted) {
-      expect(node.getAttr('stroke')).toBe(theme.grayColor8);
+      expect(node.getAttr('stroke')).toBe(theme.visualizationRelationship);
     }
   });
 
@@ -831,7 +831,9 @@ describe('the colour a view rests a connector at', () => {
     await enterTable(stage, 'b');
 
     expect(routeOf(stage, 'r1')).toBe(theme.accentColor9);
-    expect(new Set([theme.grayColor8, theme.keyFK, theme.keyPFK]).size).toBe(3);
+    expect(
+      new Set([theme.visualizationRelationship, theme.keyFK, theme.keyPFK]).size
+    ).toBe(3);
   });
 });
 

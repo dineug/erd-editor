@@ -43,6 +43,10 @@ export type Theme = {
 
   relationshipHover: string;
 
+  visualizationLink: string;
+  visualizationColumn: string;
+  visualizationRelationship: string;
+
   toolbarBackground: string;
 
   contextMenuBackground: string;
@@ -126,6 +130,10 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'columnHover',
 
   'relationshipHover',
+
+  'visualizationLink',
+  'visualizationColumn',
+  'visualizationRelationship',
 
   'toolbarBackground',
 

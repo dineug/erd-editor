@@ -131,7 +131,9 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
                   <k-line
                     name="visualization-link"
                     points={[source.x, source.y, target.x, target.y]}
-                    stroke={lit ? theme.relationshipHover : theme.grayColor7}
+                    stroke={
+                      lit ? theme.relationshipHover : theme.visualizationLink
+                    }
                     strokeWidth={LINK_STROKE_WIDTH}
                     opacity={lit ? 1 : unlitLinkOpacity}
                     listening={false}

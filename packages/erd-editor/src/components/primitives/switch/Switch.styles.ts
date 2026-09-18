@@ -91,10 +91,18 @@ export const size3 = css`
   }
 `;
 
+/*
+ * The thumb is white in both appearances, so on the light track only its shadow
+ * outlines it. The black alphas are the radix blackA 1 to 3 steps.
+ */
 export const switchThumb = css`
   background-color: #fff;
   position: relative;
   border-radius: 9999px;
+  box-shadow:
+    0 0 1px 1px rgba(0, 0, 0, 0.1),
+    0 1px 1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.15);
   transition:
     transform 0.14s cubic-bezier(0.45, 0.05, 0.55, 0.95),
     box-shadow 0.14s ease-in-out;

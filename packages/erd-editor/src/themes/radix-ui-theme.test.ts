@@ -375,6 +375,39 @@ describe('the light appearance', () => {
     });
   });
 
+  it('draws every visualization stroke a gray step darker than dark does', () => {
+    lightThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+      const label = labelOf(options);
+
+      expect(theme.visualizationLink, label).toBe(theme.grayColor8);
+      expect(theme.visualizationColumn, label).toBe(theme.grayColor9);
+      expect(theme.visualizationRelationship, label).toBe(theme.grayColor9);
+    });
+  });
+
+  /** These strokes rest dimmed until a hover lights them, so dark sets their bar rather than 3:1. */
+  it('holds every visualization stroke level with its dark contrast', () => {
+    lightThemeOptions.forEach(options => {
+      const light = createTheme(options);
+      const dark = createTheme({ ...options, appearance: Appearance.dark });
+      const strokes = [
+        'visualizationLink',
+        'visualizationColumn',
+        'visualizationRelationship',
+      ] as const;
+
+      strokes.forEach(stroke => {
+        expect(
+          contrast(light[stroke], light.canvasBackground),
+          `${labelOf(options)} ${stroke}`
+        ).toBeGreaterThanOrEqual(
+          contrast(dark[stroke], dark.canvasBackground) * 0.95
+        );
+      });
+    });
+  });
+
   it('leaves every dark theme on the shared config', () => {
     everyThemeOptions
       .filter(options => options.appearance === Appearance.dark)
@@ -390,6 +423,9 @@ describe('the light appearance', () => {
         expect(theme.keyPK, label).toBe('#ffc53d');
         expect(theme.keyFK, label).toBe('#e54666');
         expect(theme.keyPFK, label).toBe('#00a2c7');
+        expect(theme.visualizationLink, label).toBe(theme.grayColor7);
+        expect(theme.visualizationColumn, label).toBe(theme.grayColor8);
+        expect(theme.visualizationRelationship, label).toBe(theme.grayColor8);
       });
   });
 });

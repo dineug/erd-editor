@@ -43,6 +43,10 @@ export const ThemeConfig: Theme = {
 
   relationshipHover: 'accent-8',
 
+  visualizationLink: 'gray-7',
+  visualizationColumn: 'gray-8',
+  visualizationRelationship: 'gray-8',
+
   toolbarBackground: 'gray-1',
 
   contextMenuBackground: 'gray-2',
@@ -106,4 +110,9 @@ export const LightThemeConfig: Partial<Theme> = {
   keyPK: 'custom-amber--11',
   keyFK: 'custom-ruby--11',
   keyPFK: 'custom-cyan--11',
+  // A step darker on the light canvas is what brings these strokes level with
+  // the contrast their dark steps already have.
+  visualizationLink: 'gray-8',
+  visualizationColumn: 'gray-9',
+  visualizationRelationship: 'gray-9',
 };

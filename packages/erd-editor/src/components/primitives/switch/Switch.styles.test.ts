@@ -127,5 +127,13 @@ describe('Switch.styles', () => {
       expect(text).toContain('transform: translateX(1px)');
       expect(text).toContain('cubic-bezier(0.45, 0.05, 0.55, 0.95)');
     });
+
+    it('casts a shadow, which is all that outlines the white thumb on a light track', () => {
+      const text = ruleOf(String(switchThumb));
+
+      expect(text).toContain('0 0 1px 1px rgba(0, 0, 0, 0.1)');
+      expect(text).toContain('0 1px 1px rgba(0, 0, 0, 0.05)');
+      expect(text).toContain('0 2px 4px -1px rgba(0, 0, 0, 0.15)');
+    });
   });
 });

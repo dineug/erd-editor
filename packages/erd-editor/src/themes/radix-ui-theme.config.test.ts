@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(65);
+    expect(entries).toHaveLength(68);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -118,6 +118,12 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.scrollbarThumbHover).toBe('gray-10');
   });
 
+  it('draws the visualization strokes on gray steps, the links one lighter', () => {
+    expect(ThemeConfig.visualizationLink).toBe('gray-7');
+    expect(ThemeConfig.visualizationColumn).toBe('gray-8');
+    expect(ThemeConfig.visualizationRelationship).toBe('gray-8');
+  });
+
   it('gives memo and table the same background/border/select treatment', () => {
     expect(ThemeConfig.memoBackground).toBe(ThemeConfig.tableBackground);
     expect(ThemeConfig.memoBorder).toBe(ThemeConfig.tableBorder);
@@ -144,7 +150,7 @@ describe('ThemeConfig', () => {
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the table and memo boxes, the minimap edge and the three keys only', () => {
+  it('overrides the boxes, the minimap edge, the keys and the visualization strokes only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
@@ -154,6 +160,9 @@ describe('LightThemeConfig', () => {
       keyPK: 'custom-amber--11',
       keyFK: 'custom-ruby--11',
       keyPFK: 'custom-cyan--11',
+      visualizationLink: 'gray-8',
+      visualizationColumn: 'gray-9',
+      visualizationRelationship: 'gray-9',
     });
   });
 
