@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(70);
+    expect(entries).toHaveLength(72);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -99,6 +99,7 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.canvasBackground).toBe('gray-3');
     expect(ThemeConfig.canvasBoundaryBackground).toBe('gray-1');
     expect(ThemeConfig.tableBackground).toBe('gray-2');
+    expect(ThemeConfig.tableHeaderBackground).toBe('gray-5');
     expect(ThemeConfig.tableSelect).toBe('accent-8');
     expect(ThemeConfig.tableBorder).toBe('gray-6');
     expect(ThemeConfig.foreground).toBe('gray-11');
@@ -107,10 +108,14 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.inputActive).toBe('accent-10');
   });
 
-  it('selects a column row on accent-4, and on gray-6 under a neutral accent', () => {
-    expect(ThemeConfig.columnSelect).toBe('accent-4');
+  it('selects a column row on accent-3 and lifts it to accent-4 under the pointer, on gray-6 and gray-5 under a neutral accent', () => {
+    expect(ThemeConfig.columnSelect).toBe('accent-3');
+    expect(ThemeConfig.columnSelectHover).toBe('accent-4');
     expect(ThemeConfig.columnHover).toBe('gray-4');
-    expect(NeutralAccentThemeConfig).toEqual({ columnSelect: 'gray-6' });
+    expect(NeutralAccentThemeConfig).toEqual({
+      columnSelect: 'gray-6',
+      columnSelectHover: 'gray-5',
+    });
   });
 
   it('uses the alpha gray scale for the scrollbar track and the placeholder', () => {

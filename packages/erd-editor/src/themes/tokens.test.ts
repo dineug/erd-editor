@@ -4,8 +4,8 @@ import { ThemeConfig } from '@/themes/radix-ui-theme.config';
 import { type Theme, ThemeTokens, themeToTokensString } from '@/themes/tokens';
 
 describe('ThemeTokens', () => {
-  it('lists 70 tokens with no duplicates', () => {
-    expect(ThemeTokens).toHaveLength(70);
+  it('lists 72 tokens with no duplicates', () => {
+    expect(ThemeTokens).toHaveLength(72);
     expect(new Set(ThemeTokens).size).toBe(ThemeTokens.length);
   });
 

@@ -281,25 +281,55 @@ describe('createTheme', () => {
 });
 
 describe('the selected column row fill', () => {
-  /** Step 4 of these accent scales sits on or beside the gray-4 hover. */
+  /** The low steps of these accent scales sit on or beside the gray-4 hover. */
   const neutralAccents: string[] = [
     AccentColor.gray,
     AccentColor.gold,
     AccentColor.bronze,
   ];
 
-  /** Twice the least visible CIE76 step. The gray-5 fill it replaced measured 2.5 to 3.4. */
-  const MIN_SELECT_HOVER_DELTA_E = 5;
+  /** Light brown on sand is the nearest pair, at 4.37. The gray-5 fill gray-6 replaced measured 2.5 to 3.4. */
+  const MIN_SELECT_HOVER_DELTA_E = 4;
 
-  it('takes accent-4, and gray-6 under the gray, gold and bronze accents', () => {
+  /** The least CIE76 step an eye tells apart. */
+  const MIN_VISIBLE_DELTA_E = 2.3;
+
+  it('takes accent-3, and gray-6 under the gray, gold and bronze accents', () => {
     everyThemeOptions.forEach(options => {
       const theme = createTheme(options);
 
       expect(theme.columnSelect, labelOf(options)).toBe(
         neutralAccents.includes(options.accentColor)
           ? theme.grayColor6
+          : theme.accentColor3
+      );
+    });
+  });
+
+  it('lifts a hovered selected row to accent-4, and eases it to gray-5 under a neutral accent', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(theme.columnSelectHover, labelOf(options)).toBe(
+        neutralAccents.includes(options.accentColor)
+          ? theme.grayColor5
           : theme.accentColor4
       );
+    });
+  });
+
+  it('shows the pointer on a selected row, apart from both the selection and a plain hover', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        deltaE(theme.columnSelectHover, theme.columnSelect),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_VISIBLE_DELTA_E);
+      expect(
+        deltaE(theme.columnSelectHover, theme.columnHover),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_VISIBLE_DELTA_E);
     });
   });
 
@@ -314,8 +344,8 @@ describe('the selected column row fill', () => {
     });
   });
 
-  /** Radix gray-11 on gray-6 in light measures 4.19 to 4.28, the one place short of AA. */
-  it('keeps gray-11 text at 4.5:1 on it, save the light gray-6 fallback', () => {
+  /** Radix gray-11 on gray-6 in light measures 4.19 to 4.28, and on gray-5 4.48 at the least, the places short of AA. */
+  it('keeps gray-11 text at 4.5:1 on it and under the pointer, save the light gray fallbacks', () => {
     everyThemeOptions.forEach(options => {
       const theme = createTheme(options);
       const fallbackInLight =
@@ -326,6 +356,41 @@ describe('the selected column row fill', () => {
         contrast(theme.grayColor11, theme.columnSelect),
         labelOf(options)
       ).toBeGreaterThanOrEqual(fallbackInLight ? 4.1 : 4.5);
+      expect(
+        contrast(theme.grayColor11, theme.columnSelectHover),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(fallbackInLight ? 4.4 : 4.5);
+    });
+  });
+});
+
+describe('the table header band', () => {
+  /** Twice the least visible CIE76 step. Light sand, the nearest to its canvas, measures 5.32. */
+  const MIN_BAND_DELTA_E = 5;
+
+  it('stands apart from both the canvas and the card body in every theme', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        deltaE(theme.tableHeaderBackground, theme.canvasBackground),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_BAND_DELTA_E);
+      expect(
+        deltaE(theme.tableHeaderBackground, theme.tableBackground),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_BAND_DELTA_E);
+    });
+  });
+
+  it('keeps the table name at 7:1 on it', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        contrast(theme.active, theme.tableHeaderBackground),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(7);
     });
   });
 });
