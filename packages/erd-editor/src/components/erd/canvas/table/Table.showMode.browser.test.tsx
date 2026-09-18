@@ -586,23 +586,19 @@ const dividerCountsOf = (stage: Stage, id: string) =>
   rowsOf(stage, id).map(row => row.find('.column-row-divider').length);
 
 describe('the rows a view card rules and tints', () => {
-  /** AC-20. A line runs under every row but the last, in a view and the document alike. */
-  it('rules a divider under every row but the last, in either source', async () => {
+  /** AC-20. A line runs under every row of a view card but the last. */
+  it('rules a divider under every view row but the last, and none in the document', async () => {
     const view = await mountViewScene();
     const document = await mountDocumentScene();
 
     // The view shows three of b's rows and the document all four.
-    for (const [{ stage }, rows] of [
-      [view, [1, 1, 0]],
-      [document, [1, 1, 1, 0]],
-    ] as const) {
-      expect(dividerCountsOf(stage, 'b')).toEqual(rows);
-      expect(
-        (
-          rowsOf(stage, 'b')[0].findOne('.column-row-divider') as KonvaNode
-        ).getAttr('stroke')
-      ).toBe(theme.tableBorder);
-    }
+    expect(dividerCountsOf(view.stage, 'b')).toEqual([1, 1, 0]);
+    expect(
+      (
+        rowsOf(view.stage, 'b')[0].findOne('.column-row-divider') as KonvaNode
+      ).getAttr('stroke')
+    ).toBe(theme.tableBorder);
+    expect(dividerCountsOf(document.stage, 'b')).toEqual([0, 0, 0, 0]);
   });
 
   /**

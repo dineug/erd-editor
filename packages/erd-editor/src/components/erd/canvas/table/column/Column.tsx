@@ -96,7 +96,10 @@ export type ColumnProps = {
    * the two of them come up over the one span of time and a document row reads none of it.
    */
   litAlpha?: number;
-  /** Whether the card rules a line under this row, which every row but the last does. */
+  /**
+   * Whether the card rules a line under this row. A view card rules one under
+   * every row but the last, and a document table rules none.
+   */
   divider?: boolean;
   /**
    * Whether this is the row a card ends at. A card draws no padding under its

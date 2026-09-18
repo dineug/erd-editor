@@ -783,8 +783,8 @@ describe('the column rows a table holds', () => {
     expect(root.find('.column-row')).toHaveLength(2);
     expect(ghost.visible()).toBe(false);
 
-    // The hidden row trails the card, so the real last row still ends it:
-    // the bottom corners, and no rule along the card's bottom border.
+    // The hidden row trails the card, so the real last row still takes the
+    // bottom corners.
     const [last] = root
       .find<Group>('.column-row')
       .filter(row => row.id() === `column-${table.columnIds[0]}`);
@@ -794,7 +794,6 @@ describe('the column rows a table holds', () => {
       TABLE_CORNER_RADIUS,
       TABLE_CORNER_RADIUS,
     ]);
-    expect(last.find('.column-row-divider')).toHaveLength(0);
   });
 });
 

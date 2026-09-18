@@ -806,7 +806,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 related={props.relatedColumnIds?.has(column.id) ?? false}
                 diffPaths={diffMapRef.value?.get(column.id)?.[1] ?? null}
                 litAlpha={litAlpha}
-                divider={index < columnIds.length - 1}
+                divider={view && index < columnIds.length - 1}
                 last={index === columnIds.length - 1}
                 y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}
