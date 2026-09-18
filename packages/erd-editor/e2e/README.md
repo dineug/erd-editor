@@ -208,8 +208,9 @@ The projection is interactive, not read-only. What it guarantees:
   `page.mouse.click` and `locator.click()` produce — passes the projection
   untouched and reaches the stage by bubbling through `stage.content`, where
   konva reads its `clientX`/`clientY`. Measured: a `locator.click()` on
-  `.table-header-color` arrives as `isTrusted: true` and opens the colour
-  picker. Nothing in the projection declares `pointer-events`, so it is `auto`
+  `div.table-header-color` arrives as `isTrusted: true` and opens the colour
+  picker — the element, since a projected path also carries its class on the
+  svg marker inside it. Nothing in the projection declares `pointer-events`, so it is `auto`
   by default and turns `none` with the canvas the moment grab-pan does.
 - **A dispatched event is re-aimed.** An untrusted `dispatchEvent` carries
   whatever coordinates it was given, which konva would hit-test literally. When
