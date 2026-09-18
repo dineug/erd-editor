@@ -14,10 +14,10 @@
     //
     // ⚠️ That is only safe where something polyfills them. `app` has core-js
     // through `@vitejs/plugin-legacy`, which derives its set from the same
-    // browser target. The nine published libraries do not, and cannot: a
-    // polyfill they inject would be imposed on every npm consumer. So an ES2022
-    // API reaching a library's `dist` is a bill handed to whoever installs it,
-    // and no gate here will say so.
+    // browser target. The library builds do not, and cannot: a polyfill they
+    // inject would be imposed on every npm consumer. So an ES2022 API reaching
+    // a library's `dist` is a bill handed to whoever installs it, and no gate
+    // here will say so.
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,

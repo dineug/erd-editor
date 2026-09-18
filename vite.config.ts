@@ -265,8 +265,8 @@ export default defineConfig({
     sortPackageJson: false,
     /**
      * Formatting stops at TypeScript. oxfmt handles seventeen languages, and
-     * an unscoped run rewrites the fifteen hand-maintained AGENTS.md files,
-     * which the repo treats as canonical. Widening this is its own decision.
+     * an unscoped run rewrites the hand-maintained AGENTS.md files, which
+     * the repo treats as canonical. Widening this is its own decision.
      */
     ignorePatterns: [
       // Everything oxfmt handles that Prettier was never pointed at. A deny

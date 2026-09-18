@@ -1,8 +1,8 @@
 /// <reference types="node" />
 
-// The editor registers <erd-editor> as it evaluates, and every other name it
-// exports is a type. A file that creates the element while importing the type
-// alone drops the import entirely and mounts an element nothing upgraded.
+// The editor registers <erd-editor> as it evaluates. A file that creates the
+// element while importing only the ErdEditorElement type drops the import
+// entirely and mounts an element nothing upgraded.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
