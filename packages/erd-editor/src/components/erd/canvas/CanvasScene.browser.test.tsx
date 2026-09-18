@@ -359,7 +359,9 @@ describe('the canvas scene', () => {
       seedTable(app, 'near', 100);
       await flush();
       await whenPainted();
-      const box = stage.findOne('#table-near')!.getClientRect();
+      const box = stage
+        .findOne('#table-near')!
+        .getClientRect({ skipShadow: true });
       const inside = { x: box.x + 10, y: box.y + 10 };
 
       expect(stage.getIntersection(inside)).toBeTruthy();

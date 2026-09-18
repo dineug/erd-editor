@@ -190,7 +190,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     // distinction by kind. The document keeps the two colours and the dash the
     // identifying bit has always picked between.
     const base = view
-      ? theme.grayColor8
+      ? theme.visualizationRelationship
       : relationship.identification
         ? theme.keyPFK
         : theme.keyFK;

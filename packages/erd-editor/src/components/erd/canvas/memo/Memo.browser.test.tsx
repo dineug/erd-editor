@@ -32,6 +32,10 @@ import {
 } from '@/components/erd/canvas/memo/memoText';
 import { iconHit } from '@/components/erd/canvas/sceneHit';
 import {
+  DOCUMENT_CARD_SHADOW_BLUR,
+  DOCUMENT_CARD_SHADOW_OFFSET_Y,
+} from '@/components/erd/canvas/sceneTokens';
+import {
   editMemoAction,
   editMemoEndAction,
   scrollMemoAction,
@@ -99,7 +103,8 @@ const apps = new Set<AppContext>();
 
 async function mountMemo(
   memo: MemoType = createProps(),
-  app: AppContext = createTestAppContext()
+  app: AppContext = createTestAppContext(),
+  sceneTheme: Theme = theme
 ): Promise<Stage> {
   const container = document.createElement('div');
   document.body.append(container);
@@ -115,7 +120,7 @@ async function mountMemo(
     ),
     width: 800,
     height: 600,
-    theme,
+    theme: sceneTheme,
   });
 
   teardowns.push(() => {
@@ -204,6 +209,26 @@ describe('the memo scene', () => {
       'memo-sash memo-sash-lb',
       'memo-sash memo-sash-rb',
     ]);
+  });
+
+  it('casts no shadow in the dark palette and the document shadow in the light one', async () => {
+    const dark = nodeNamed(await mountMemo(), 'memo-body');
+    expect(dark.getAttr('shadowColor')).toBeUndefined();
+    expect(dark.getAttr('shadowBlur')).toBe(0);
+
+    const lightTheme = createTheme({
+      appearance: Appearance.light,
+      grayColor: GrayColor.slate,
+      accentColor: AccentColor.indigo,
+    });
+    const light = nodeNamed(
+      await mountMemo(createProps(), createTestAppContext(), lightTheme),
+      'memo-body'
+    );
+    expect(light.getAttr('shadowColor')).toBe(lightTheme.memoShadow);
+    expect(light.getAttr('shadowBlur')).toBe(DOCUMENT_CARD_SHADOW_BLUR);
+    expect(light.getAttr('shadowOffsetY')).toBe(DOCUMENT_CARD_SHADOW_OFFSET_Y);
+    expect(light.getAttr('shadowForStrokeEnabled')).toBe(false);
   });
 
   it('draws the body inside its own border, rounded as the stylesheet was', async () => {

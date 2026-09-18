@@ -141,7 +141,7 @@ describe('a graph node', () => {
     expect(table.radius()).toBe(TABLE_RADIUS);
     expect(column.radius()).toBe(COLUMN_RADIUS);
     expect(table.fill()).toBe(theme.accentColor9);
-    expect(column.fill()).toBe(theme.grayColor8);
+    expect(column.fill()).toBe(theme.visualizationColumn);
     expect(table.getAttr('kind')).toBe('visualization-table');
     expect(column.getAttr('kind')).toBe('visualization-column');
   });

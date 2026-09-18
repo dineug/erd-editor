@@ -6,6 +6,7 @@ import {
   INPUT_HEIGHT,
   TABLE_BORDER,
 } from '@/constants/layout';
+import { floatingShadow } from '@/styles/elevation.styles';
 import { typography } from '@/styles/typography.styles';
 
 /** The rows the list shows at most, and its border above and below them. */
@@ -28,6 +29,7 @@ export const hint = css`
   color: var(--foreground);
   background-color: var(--table-background);
   border: ${TABLE_BORDER}px solid var(--table-border);
+  ${floatingShadow};
   white-space: nowrap;
   ${typography.paragraph};
 `;

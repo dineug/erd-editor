@@ -12,6 +12,12 @@ import {
   resolveHostTheme,
   resolveTheme,
 } from '@/konva/theme';
+import {
+  AccentColor,
+  Appearance,
+  createTheme,
+  GrayColor,
+} from '@/themes/radix-ui-theme';
 import { type Theme, themeToTokensString } from '@/themes/tokens';
 
 const teardowns: Array<() => void> = [];
@@ -97,6 +103,23 @@ describe('readThemeVariables', () => {
     appendStyle('.theme-probe { --erd-editor-table-background: #abcdef; }');
 
     expect(readThemeVariables(host)['--table-background']).toBe('#abcdef');
+  });
+
+  it('brings the shadow colours back exactly as each palette spells them', () => {
+    const options = {
+      grayColor: GrayColor.slate,
+      accentColor: AccentColor.indigo,
+    };
+    const dark = readThemeVariables(
+      mountThemedHost(createTheme({ ...options, appearance: Appearance.dark }))
+    );
+    const light = readThemeVariables(
+      mountThemedHost(createTheme({ ...options, appearance: Appearance.light }))
+    );
+
+    expect(dark['--table-shadow']).toBe('transparent');
+    expect(dark['--memo-shadow']).toBe('transparent');
+    expect(light['--table-shadow']).toBe('rgba(0, 0, 0, 0.18)');
   });
 });
 

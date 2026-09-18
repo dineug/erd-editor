@@ -135,7 +135,7 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
         x={x}
         y={y}
         radius={nodeRadius(node.group)}
-        fill={isTable ? theme.accentColor9 : theme.grayColor8}
+        fill={isTable ? theme.accentColor9 : theme.visualizationColumn}
         stroke={hovered ? theme.focus : theme.canvasBackground}
         strokeWidth={NODE_STROKE_WIDTH}
         opacity={dimmed ? DIM_OPACITY : 1}

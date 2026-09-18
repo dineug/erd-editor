@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/theme-builder/ThemeBuilder.styles';
+import { floatingShadow } from '@/styles/elevation.styles';
 import { fontSize5, typography } from '@/styles/typography.styles';
 
 describe('ThemeBuilder.styles', () => {
@@ -43,7 +44,7 @@ describe('ThemeBuilder.styles', () => {
       'background-color: var(--context-menu-background)'
     );
     expect(source).toContain('border: 1px solid var(--context-menu-border)');
-    expect(styles.root.values).toEqual([]);
+    expect(styles.root.values).toEqual([floatingShadow]);
   });
 
   it('renders the heading with the active color and the level 5 font size', () => {

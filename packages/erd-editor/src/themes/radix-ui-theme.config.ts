@@ -33,15 +33,21 @@ export const ThemeConfig: Theme = {
   tableBackground: 'gray-2',
   tableSelect: 'accent-8',
   tableBorder: 'gray-6',
+  tableShadow: 'override-transparent',
 
   memoBackground: 'gray-2',
   memoSelect: 'accent-8',
   memoBorder: 'gray-6',
+  memoShadow: 'override-transparent',
 
   columnSelect: 'accent-4',
   columnHover: 'gray-4',
 
   relationshipHover: 'accent-8',
+
+  visualizationLink: 'gray-7',
+  visualizationColumn: 'gray-8',
+  visualizationRelationship: 'gray-8',
 
   toolbarBackground: 'gray-1',
 
@@ -90,4 +96,27 @@ export const ThemeConfig: Theme = {
  */
 export const NeutralAccentThemeConfig: Partial<Theme> = {
   columnSelect: 'gray-6',
+};
+
+/**
+ * What the light appearance takes instead: its gray 1 to 3 sit too close to lift
+ * a table off the canvas, and a step 9 key or line reads under 3:1 on them, so
+ * the boxes go white with a gray-8 edge and the keys drop to step 11.
+ */
+export const LightThemeConfig: Partial<Theme> = {
+  tableBackground: 'override-#ffffff',
+  tableBorder: 'gray-8',
+  memoBackground: 'override-#ffffff',
+  memoBorder: 'gray-8',
+  tableShadow: 'override-rgba(0, 0, 0, 0.18)',
+  memoShadow: 'override-rgba(0, 0, 0, 0.18)',
+  minimapBorder: 'gray-7',
+  keyPK: 'custom-amber--11',
+  keyFK: 'custom-ruby--11',
+  keyPFK: 'custom-cyan--11',
+  // A step darker on the light canvas is what brings these strokes level with
+  // the contrast their dark steps already have.
+  visualizationLink: 'gray-8',
+  visualizationColumn: 'gray-9',
+  visualizationRelationship: 'gray-9',
 };

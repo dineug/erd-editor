@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { Palette } from '@/themes/radix-ui-theme';
 import {
+  LightThemeConfig,
   NeutralAccentThemeConfig,
   ThemeConfig,
 } from '@/themes/radix-ui-theme.config';
@@ -13,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(65);
+    expect(entries).toHaveLength(70);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -82,11 +83,13 @@ describe('ThemeConfig', () => {
     });
   });
 
-  it('only overrides with the literal black color', () => {
+  it('overrides with black for the minimap and transparent for the box shadows only', () => {
     const overrides = entries.filter(([, value]) =>
       value.startsWith('override-')
     );
     expect(overrides).toEqual([
+      ['tableShadow', 'override-transparent'],
+      ['memoShadow', 'override-transparent'],
       ['minimapBorder', 'override-black'],
       ['minimapShadow', 'override-black'],
     ]);
@@ -117,6 +120,12 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.scrollbarThumbHover).toBe('gray-10');
   });
 
+  it('draws the visualization strokes on gray steps, the links one lighter', () => {
+    expect(ThemeConfig.visualizationLink).toBe('gray-7');
+    expect(ThemeConfig.visualizationColumn).toBe('gray-8');
+    expect(ThemeConfig.visualizationRelationship).toBe('gray-8');
+  });
+
   it('gives memo and table the same background/border/select treatment', () => {
     expect(ThemeConfig.memoBackground).toBe(ThemeConfig.tableBackground);
     expect(ThemeConfig.memoBorder).toBe(ThemeConfig.tableBorder);
@@ -139,5 +148,38 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.diffInsertForeground).toBe('custom-green--11');
     expect(ThemeConfig.diffDeleteForeground).toBe('custom-red--11');
     expect(ThemeConfig.diffCrossForeground).toBe('custom-blue--11');
+  });
+});
+
+describe('LightThemeConfig', () => {
+  it('overrides the boxes and their shadows, the minimap edge, the keys and the visualization strokes only', () => {
+    expect(LightThemeConfig).toEqual({
+      tableBackground: 'override-#ffffff',
+      tableBorder: 'gray-8',
+      memoBackground: 'override-#ffffff',
+      memoBorder: 'gray-8',
+      tableShadow: 'override-rgba(0, 0, 0, 0.18)',
+      memoShadow: 'override-rgba(0, 0, 0, 0.18)',
+      minimapBorder: 'gray-7',
+      keyPK: 'custom-amber--11',
+      keyFK: 'custom-ruby--11',
+      keyPFK: 'custom-cyan--11',
+      visualizationLink: 'gray-8',
+      visualizationColumn: 'gray-9',
+      visualizationRelationship: 'gray-9',
+    });
+  });
+
+  it('keeps memo and table on the same treatment', () => {
+    expect(LightThemeConfig.memoBackground).toBe(
+      LightThemeConfig.tableBackground
+    );
+    expect(LightThemeConfig.memoBorder).toBe(LightThemeConfig.tableBorder);
+    expect(LightThemeConfig.memoShadow).toBe(LightThemeConfig.tableShadow);
+  });
+
+  it('spells its white as the hex the scene mixes a view tint against', () => {
+    // mixColor reads hex only, so a named colour would snap a tint instead of fading it
+    expect(LightThemeConfig.tableBackground).toMatch(/^override-#[0-9a-f]{6}$/);
   });
 });

@@ -22,8 +22,10 @@ import { headerCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import {
+  type CardShadow,
   CURSOR_INHERIT,
   CURSOR_POINTER,
+  documentCardShadow,
   FOCUS_BORDER_HEIGHT,
   HEADER_COLOR_HEIGHT,
   RING_WIDTH,
@@ -587,6 +589,15 @@ const Table: FC<TableProps> = (props, ctx) => {
     // card wears that as an accent border and a glow, and a table left unlit
     // keeps its type column's width and draws nothing in it.
     const lit = view && Boolean(props.lit);
+    const shadow: CardShadow | null = view
+      ? {
+          color: theme.minimapShadow,
+          blur: VIEW_CARD_SHADOW_BLUR,
+          offsetX: VIEW_CARD_SHADOW_OFFSET_X,
+          offsetY: VIEW_CARD_SHADOW_OFFSET_Y,
+          opacity: VIEW_CARD_SHADOW_OPACITY,
+        }
+      : documentCardShadow(theme.tableShadow);
 
     // How far the light has come up on this card, which is what every paint the
     // highlight owns is scaled by: one value, so they all arrive together.
@@ -631,12 +642,12 @@ const Table: FC<TableProps> = (props, ctx) => {
             litAlpha
           )}
           strokeWidth={TABLE_BORDER}
-          shadowColor={view ? theme.minimapShadow : undefined}
-          shadowBlur={view ? VIEW_CARD_SHADOW_BLUR : undefined}
-          shadowOffsetX={view ? VIEW_CARD_SHADOW_OFFSET_X : undefined}
-          shadowOffsetY={view ? VIEW_CARD_SHADOW_OFFSET_Y : undefined}
-          shadowOpacity={view ? VIEW_CARD_SHADOW_OPACITY : undefined}
-          shadowForStrokeEnabled={view ? false : undefined}
+          shadowColor={shadow?.color}
+          shadowBlur={shadow?.blur}
+          shadowOffsetX={shadow?.offsetX}
+          shadowOffsetY={shadow?.offsetY}
+          shadowOpacity={shadow?.opacity}
+          shadowForStrokeEnabled={shadow ? false : undefined}
           on:mouseenter={(event: SceneMouseEvent) => {
             view && setSceneCursor(event, CURSOR_POINTER);
           }}
