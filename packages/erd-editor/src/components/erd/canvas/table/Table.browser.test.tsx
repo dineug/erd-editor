@@ -185,7 +185,8 @@ const named = <T extends KonvaNode>(root: Group, name: string) =>
  */
 const hoverable = async (stage: Stage) => {
   await whenPainted();
-  return rootOf(stage).getClientRect({ relativeTo: stage });
+  // The box the table draws, not the blur its shadow spreads past it.
+  return rootOf(stage).getClientRect({ relativeTo: stage, skipShadow: true });
 };
 
 const strokesOf = (root: Group, name: string) =>

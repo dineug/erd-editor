@@ -408,6 +408,15 @@ describe('the light appearance', () => {
     });
   });
 
+  it('casts a table and memo shadow in a colour konva reads alpha from', () => {
+    lightThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(theme.tableShadow, labelOf(options)).toBe('rgba(0, 0, 0, 0.18)');
+      expect(theme.memoShadow, labelOf(options)).toBe(theme.tableShadow);
+    });
+  });
+
   it('leaves every dark theme on the shared config', () => {
     everyThemeOptions
       .filter(options => options.appearance === Appearance.dark)
@@ -420,6 +429,8 @@ describe('the light appearance', () => {
         expect(theme.memoBackground, label).toBe(theme.grayColor2);
         expect(theme.memoBorder, label).toBe(theme.grayColor6);
         expect(theme.minimapBorder, label).toBe('black');
+        expect(theme.tableShadow, label).toBe('transparent');
+        expect(theme.memoShadow, label).toBe('transparent');
         expect(theme.keyPK, label).toBe('#ffc53d');
         expect(theme.keyFK, label).toBe('#e54666');
         expect(theme.keyPFK, label).toBe('#00a2c7');

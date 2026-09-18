@@ -27,6 +27,8 @@ import { columnCellHit } from '@/components/erd/canvas/sceneHit';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
+  DOCUMENT_CARD_SHADOW_BLUR,
+  DOCUMENT_CARD_SHADOW_OFFSET_Y,
   HEADER_COLOR_HEIGHT,
   SCENE_CODE_FONT_FAMILY,
   SCENE_FONT_FAMILY,
@@ -91,6 +93,7 @@ import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { getReachedTableIds } from '@/konva/scene/viewLayout';
+import type { Theme } from '@/themes/tokens';
 import { calcTableHeight, viewHeaderNameWidth } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
@@ -181,7 +184,10 @@ type Mounted = { app: AppContext; stage: Stage };
  * with the Stage container inside it. One store seeds both, since the provider
  * is the only thing that decides which coordinate system a leaf is drawn from.
  */
-async function mountScene(source: GeometrySource): Promise<Mounted> {
+async function mountScene(
+  source: GeometrySource,
+  sceneTheme: Theme = createTestTheme()
+): Promise<Mounted> {
   const app = createTestAppContext();
   seedDocument(app);
   app.store.dispatchSync(
@@ -209,7 +215,7 @@ async function mountScene(source: GeometrySource): Promise<Mounted> {
     scene: <CanvasScene root={createRef<HTMLDivElement>($root)} />,
     width: WIDTH,
     height: HEIGHT,
-    theme: createTestTheme(),
+    theme: sceneTheme,
   });
 
   await flush();
@@ -232,7 +238,8 @@ async function mountScene(source: GeometrySource): Promise<Mounted> {
 const mountViewScene = () => mountScene('flow');
 
 /** The same store and the same leaves under the document provider, which is the ERD tab's own. */
-const mountDocumentScene = () => mountScene('document');
+const mountDocumentScene = (sceneTheme?: Theme) =>
+  mountScene('document', sceneTheme);
 
 /**
  * The ticker on a clock these cases wind. Vitest gives the file its own module
@@ -478,10 +485,13 @@ describe('the type cell a view lights', () => {
 });
 
 describe('the card a view draws', () => {
-  /** AC-17. The card sits on a shadow the ERD tab has never drawn under one. */
-  it('casts a shadow under the card, and casts none in the document', async () => {
+  /** AC-17. The card sits on a shadow a dark document, whose palette casts none, never draws. */
+  it('casts a shadow under the card, and casts none in a document that casts none', async () => {
     const view = await mountViewScene();
-    const document = await mountDocumentScene();
+    const document = await mountDocumentScene({
+      ...createTestTheme(),
+      tableShadow: TRANSPARENT,
+    });
     const card = bodyOf(view.stage, 'a');
 
     expect(card.getAttr('shadowColor')).toBe(theme.minimapShadow);
@@ -498,6 +508,17 @@ describe('the card a view draws', () => {
     expect(plain.getAttr('shadowBlur')).toBe(0);
     // AC-61. No glow either: the document card has no light to wear one for.
     expect(glowOf(document.stage, 'a')).toHaveLength(0);
+  });
+
+  it('casts the document shadow under a document table where the palette gives one', async () => {
+    const document = await mountDocumentScene();
+    const body = bodyOf(document.stage, 'a');
+
+    expect(body.getAttr('shadowColor')).toBe(theme.tableShadow);
+    expect(body.getAttr('shadowBlur')).toBe(DOCUMENT_CARD_SHADOW_BLUR);
+    expect(body.getAttr('shadowOffsetY')).toBe(DOCUMENT_CARD_SHADOW_OFFSET_Y);
+    expect(body.getAttr('shadowOpacity')).toBe(1);
+    expect(body.getAttr('shadowForStrokeEnabled')).toBe(false);
   });
 
   /**

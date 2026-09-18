@@ -112,9 +112,9 @@ export const FOCUS_BORDER_HEIGHT = 1.5;
 export const RING_WIDTH = 1;
 
 /**
- * The drop shadow a view card sits on, which is what lifts it off the ground
- * the ERD canvas draws flat. The alpha is the shadow's own, since the shadow
- * colour token is opaque and the palette has no translucent spelling of it.
+ * The drop shadow a view card sits on, deeper than any a document box casts.
+ * The alpha is the shadow's own, since the minimap shadow token it borrows is
+ * an opaque black.
  */
 export const VIEW_CARD_SHADOW_BLUR = 20;
 
@@ -123,6 +123,19 @@ export const VIEW_CARD_SHADOW_OFFSET_X = 0;
 export const VIEW_CARD_SHADOW_OFFSET_Y = 2;
 
 export const VIEW_CARD_SHADOW_OPACITY = 0.4;
+
+/** A drop shadow as the five konva shadow attrs a body sets from it. */
+export type CardShadow = {
+  color: string;
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+  opacity: number;
+};
+
+export const DOCUMENT_CARD_SHADOW_BLUR = 10;
+
+export const DOCUMENT_CARD_SHADOW_OFFSET_Y = 2;
 
 /**
  * The bloom a lit view card wears, drawn as a shadow on a stroke and never as
@@ -144,6 +157,32 @@ export const TRANSPARENT = 'transparent';
  * keeps the whole padded box clickable the way its div did.
  */
 export const HIT_FILL = TRANSPARENT;
+
+/**
+ * What asks a box for no shadow: the palette's transparent, and the none or the
+ * blank an override is likelier to write, which konva would paint black.
+ */
+const NO_SHADOW: ReadonlySet<string> = new Set([TRANSPARENT, 'none', '']);
+
+/**
+ * The shadow a document table or memo casts, in a colour carrying its alpha. No
+ * shadow sets no attr at all, so the canvas never spends a blur on nothing, and
+ * a scene with no theme above it reads every token as undefined.
+ */
+export function documentCardShadow(
+  color: string | undefined
+): CardShadow | null {
+  const value = (color ?? '').trim();
+  if (NO_SHADOW.has(value)) return null;
+
+  return {
+    color: value,
+    blur: DOCUMENT_CARD_SHADOW_BLUR,
+    offsetX: 0,
+    offsetY: DOCUMENT_CARD_SHADOW_OFFSET_Y,
+    opacity: 1,
+  };
+}
 
 /** The hand a clickable scene node asks for, as the dom scene spelt it in css. */
 export const CURSOR_POINTER = 'pointer';

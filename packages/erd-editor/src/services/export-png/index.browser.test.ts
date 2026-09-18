@@ -273,9 +273,11 @@ describe('renderDocumentScene', () => {
     try {
       const body = scene.stage.findOne('.table-body');
 
-      // No colour and no blur is konva for a shape that casts nothing at all.
-      expect(body?.getAttr('shadowColor')).toBeUndefined();
-      expect(body?.getAttr('shadowBlur')).toBe(0);
+      // The palette's document shadow, never the minimap black a view card
+      // sits on at a fraction of its alpha.
+      expect(body?.getAttr('shadowColor')).toBe(theme.tableShadow);
+      expect(body?.getAttr('shadowColor')).not.toBe(theme.minimapShadow);
+      expect(body?.getAttr('shadowOpacity')).toBe(1);
       expect(scene.stage.find('.table-glow')).toHaveLength(0);
     } finally {
       scene.destroy();

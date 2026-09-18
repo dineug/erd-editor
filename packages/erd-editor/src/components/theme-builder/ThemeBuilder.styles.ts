@@ -1,5 +1,6 @@
 import { css } from '@dineug/r-html';
 
+import { floatingShadow } from '@/styles/elevation.styles';
 import { fontSize5, typography } from '@/styles/typography.styles';
 
 /**
@@ -16,6 +17,7 @@ export const root = css`
   background-color: var(--context-menu-background);
   border: 1px solid var(--context-menu-border);
   border-radius: 6px;
+  ${floatingShadow};
   width: 360px;
 `;
 

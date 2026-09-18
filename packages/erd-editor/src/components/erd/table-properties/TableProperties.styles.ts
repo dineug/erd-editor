@@ -1,5 +1,7 @@
 import { css } from '@dineug/r-html';
 
+import { floatingShadow } from '@/styles/elevation.styles';
+
 export const root = css`
   position: absolute;
   inset: 0;
@@ -29,6 +31,7 @@ export const container = css`
   background-color: var(--context-menu-background);
   border: 1px solid var(--context-menu-border);
   border-radius: 6px;
+  ${floatingShadow};
   overflow: hidden;
 `;
 

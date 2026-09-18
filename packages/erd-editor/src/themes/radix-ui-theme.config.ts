@@ -33,10 +33,12 @@ export const ThemeConfig: Theme = {
   tableBackground: 'gray-2',
   tableSelect: 'accent-8',
   tableBorder: 'gray-6',
+  tableShadow: 'override-transparent',
 
   memoBackground: 'gray-2',
   memoSelect: 'accent-8',
   memoBorder: 'gray-6',
+  memoShadow: 'override-transparent',
 
   columnSelect: 'accent-4',
   columnHover: 'gray-4',
@@ -106,6 +108,8 @@ export const LightThemeConfig: Partial<Theme> = {
   tableBorder: 'gray-8',
   memoBackground: 'override-#ffffff',
   memoBorder: 'gray-8',
+  tableShadow: 'override-rgba(0, 0, 0, 0.18)',
+  memoShadow: 'override-rgba(0, 0, 0, 0.18)',
   minimapBorder: 'gray-7',
   keyPK: 'custom-amber--11',
   keyFK: 'custom-ruby--11',

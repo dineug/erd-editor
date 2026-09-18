@@ -24,6 +24,7 @@ import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
   CURSOR_TEXT,
+  documentCardShadow,
   HIT_FILL,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
@@ -166,6 +167,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const { memo } = props;
     const theme = themeRef.value;
     const selected = Boolean(editor.selectedMap[memo.id]);
+    const shadow = documentCardShadow(theme.memoShadow);
     const sharedSelected = sharedSelectColor();
     const editing = !props.preview && editor.editMemoId === memo.id;
     const value = layoutMemoLines(memo.value, memo.ui.width).join('\n');
@@ -213,6 +215,12 @@ const Memo: FC<MemoProps> = (props, ctx) => {
           fill={theme.memoBackground}
           stroke={selected ? theme.memoSelect : theme.memoBorder}
           strokeWidth={MEMO_BORDER}
+          shadowColor={shadow?.color}
+          shadowBlur={shadow?.blur}
+          shadowOffsetX={shadow?.offsetX}
+          shadowOffsetY={shadow?.offsetY}
+          shadowOpacity={shadow?.opacity}
+          shadowForStrokeEnabled={shadow ? false : undefined}
         />
         <k-group
           name="memo-container"

@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(68);
+    expect(entries).toHaveLength(70);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -83,11 +83,13 @@ describe('ThemeConfig', () => {
     });
   });
 
-  it('only overrides with the literal black color', () => {
+  it('overrides with black for the minimap and transparent for the box shadows only', () => {
     const overrides = entries.filter(([, value]) =>
       value.startsWith('override-')
     );
     expect(overrides).toEqual([
+      ['tableShadow', 'override-transparent'],
+      ['memoShadow', 'override-transparent'],
       ['minimapBorder', 'override-black'],
       ['minimapShadow', 'override-black'],
     ]);
@@ -150,12 +152,14 @@ describe('ThemeConfig', () => {
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the boxes, the minimap edge, the keys and the visualization strokes only', () => {
+  it('overrides the boxes and their shadows, the minimap edge, the keys and the visualization strokes only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
       memoBackground: 'override-#ffffff',
       memoBorder: 'gray-8',
+      tableShadow: 'override-rgba(0, 0, 0, 0.18)',
+      memoShadow: 'override-rgba(0, 0, 0, 0.18)',
       minimapBorder: 'gray-7',
       keyPK: 'custom-amber--11',
       keyFK: 'custom-ruby--11',
@@ -171,6 +175,7 @@ describe('LightThemeConfig', () => {
       LightThemeConfig.tableBackground
     );
     expect(LightThemeConfig.memoBorder).toBe(LightThemeConfig.tableBorder);
+    expect(LightThemeConfig.memoShadow).toBe(LightThemeConfig.tableShadow);
   });
 
   it('spells its white as the hex the scene mixes a view tint against', () => {

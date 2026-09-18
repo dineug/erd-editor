@@ -1,5 +1,7 @@
 import { css } from '@dineug/r-html';
 
+import { floatingShadow } from '@/styles/elevation.styles';
+
 /*
  * Every menu and submenu, stacked over the floating toolbar: the bar is a
  * positioned z-index: 1 in the same stacking context and would win at auto.
@@ -17,4 +19,5 @@ export const content = css`
   padding: 8px;
   background-color: var(--context-menu-background);
   border: 1px solid var(--context-menu-border);
+  ${floatingShadow};
 `;
