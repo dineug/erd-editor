@@ -62,7 +62,7 @@ for free and the canvas has to draw and dispatch it itself:
 | `virtual-viewport.spec.ts`      | Culling: what is off screen has no node, and the minimap keeps it |
 | `diff-viewer.spec.ts`           | The tint a changed cell sits on, on the canvas of both panes      |
 
-Ten more are the canvas's own geometry, and the DOM the editing overlay
+Eleven more are the canvas's own geometry, and the DOM the editing overlay
 puts over it:
 
 | Spec                            | What it holds down                                                |
@@ -87,16 +87,17 @@ one drawn over it in coordinates the document never keeps:
 | `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker   |
 | `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
 
-One more holds a connector to its tables in the frame an edit lands, which a
-sort waiting on a timer loses to after a keystroke:
+`shared-workers.spec.ts` holds down what those two and every export stand on:
+that each of the four shared workers starts on the dev server, which serves a
+worker the same component boundaries, Vite client included, that it serves the page.
+
+Two more hold down a frame the rest never look at, one on the canvas and one in
+a DOM panel the port left on native drag and drop:
 
 | Spec                            | What it holds down                                                |
 | ------------------------------- | ---------------------------------------------------------------- |
 | `connector-frames.spec.ts`      | No draw with a connector end off its table after an undo or redo  |
-
-`shared-workers.spec.ts` holds down what those two and every export stand on:
-that each of the four shared workers starts on the dev server, which serves a
-worker the same component boundaries, Vite client included, that it serves the page.
+| `settings-column-order.spec.ts` | The column order list painted in the order it holds, every frame  |
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
