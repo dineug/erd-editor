@@ -12,8 +12,7 @@ import {
   TABLE_BORDER,
   TABLE_HEADER_BUTTONS_WIDTH,
   TABLE_HEADER_HEIGHT,
-  TABLE_HEADER_ICON_GAP,
-  TABLE_HEADER_ICON_SIZE,
+  TABLE_HEADER_NAME_X,
   TABLE_PADDING,
   VIEW_COLUMN_HEIGHT,
   VIEW_COLUMN_ICON_GAP,
@@ -21,8 +20,7 @@ import {
   VIEW_TABLE_HEADER_BUTTONS_WIDTH,
   VIEW_TABLE_HEADER_FONT_SCALE,
   VIEW_TABLE_HEADER_HEIGHT,
-  VIEW_TABLE_HEADER_ICON_GAP,
-  VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_HEADER_NAME_X,
   VIEW_TABLE_HEADER_WEIGHT_SCALE,
   VIEW_TABLE_MIN_WIDTH,
 } from '@/constants/layout';
@@ -58,11 +56,7 @@ export function calcTableWidths(
   table: Table,
   { settings: { show, maxWidthComment }, collections }: RootState
 ): ColumnWidth {
-  let width =
-    TABLE_HEADER_ICON_SIZE +
-    TABLE_HEADER_ICON_GAP +
-    table.ui.widthName +
-    INPUT_MARGIN_RIGHT;
+  let width = TABLE_HEADER_NAME_X + table.ui.widthName + INPUT_MARGIN_RIGHT;
   if (bHas(show, Show.tableComment)) {
     const widthComment =
       maxWidthComment === -1
@@ -294,8 +288,7 @@ export function viewHeaderNameWidth(widthName: number): number {
  */
 function viewHeaderWidth(table: Table): number {
   return (
-    VIEW_TABLE_HEADER_ICON_SIZE +
-    VIEW_TABLE_HEADER_ICON_GAP +
+    VIEW_TABLE_HEADER_NAME_X +
     viewHeaderNameWidth(table.ui.widthName) +
     INPUT_MARGIN_RIGHT +
     VIEW_TABLE_HEADER_BUTTONS_WIDTH

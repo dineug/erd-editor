@@ -19,20 +19,23 @@ const whole = (value: number) =>
 const clampStart = (start: number, size: number, end: number) =>
   Math.max(0, Math.min(start, end - size));
 
+const flipStart = (box: MenuBox, viewWidth: number, flipRight: number) => {
+  const flipped = flipRight - box.width;
+  const leftOverflow = -flipped;
+  const rightOverflow = box.left + box.width - viewWidth;
+
+  return rightOverflow > 0 && leftOverflow < rightOverflow ? flipped : box.left;
+};
+
 /**
  * How far a menu drawn at box moves into the window: back from the right and
  * bottom edges, never past the left and top. A submenu the right edge cuts
  * flips to end at flipRight instead, unless the left edge would cut it more.
  */
 export function fitMenu(box: MenuBox, view: WindowSize, flipRight?: number) {
-  let left = clampStart(box.left, box.width, view.width);
-
-  if (!isNil(flipRight)) {
-    const flipped = flipRight - box.width;
-    const rightOverflow = box.left + box.width - view.width;
-    left = rightOverflow > 0 && -flipped < rightOverflow ? flipped : box.left;
-  }
-
+  const left = isNil(flipRight)
+    ? clampStart(box.left, box.width, view.width)
+    : flipStart(box, view.width, flipRight);
   const top = clampStart(box.top, box.height, view.height);
 
   return { dx: whole(left - box.left), dy: whole(top - box.top) };

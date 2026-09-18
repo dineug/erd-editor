@@ -63,6 +63,11 @@ export const TABLE_HEADER_ICON_SIZE = COLUMN_KEY_WIDTH;
 
 /** The gap after that icon, the one a key badge keeps, which lines the name up with the column names. */
 export const TABLE_HEADER_ICON_GAP = INPUT_MARGIN_RIGHT;
+
+/** Where the name starts along the header line, past that icon and its gap. */
+export const TABLE_HEADER_NAME_X =
+  TABLE_HEADER_ICON_SIZE + TABLE_HEADER_ICON_GAP;
+
 export const COLUMN_MIN_WIDTH = 60;
 export const COLUMN_NOT_NULL_WIDTH = 35;
 export const COLUMN_UNIQUE_WIDTH = 22;
@@ -75,6 +80,10 @@ export const VIEW_TABLE_HEADER_ICON_SIZE = 16;
 
 /** The gap between that icon and the name, the reference's one unit of spacing. */
 export const VIEW_TABLE_HEADER_ICON_GAP = 4;
+
+/** Where a view card's name starts along its header line, past that icon and gap. */
+export const VIEW_TABLE_HEADER_NAME_X =
+  VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP;
 
 /** The size a view card draws its header name at, over the size its rows take. */
 export const VIEW_TABLE_HEADER_FONT_SIZE = 14;

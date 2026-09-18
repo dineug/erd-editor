@@ -13,14 +13,13 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
   TABLE_HEADER_BAND_PADDING,
-  TABLE_HEADER_ICON_GAP,
-  TABLE_HEADER_ICON_SIZE,
+  TABLE_HEADER_NAME_X,
   TABLE_HEADER_PADDING,
   VIEW_COLUMN_ICON_GAP,
   VIEW_COLUMN_ICON_SIZE,
   VIEW_COLUMN_PADDING,
-  VIEW_TABLE_HEADER_ICON_GAP,
   VIEW_TABLE_HEADER_ICON_SIZE,
+  VIEW_TABLE_HEADER_NAME_X,
 } from '@/constants/layout';
 import { ColumnType, Show } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
@@ -196,9 +195,7 @@ export function getHeaderCellSlots(
   source: GeometrySource = 'document'
 ): CellSlot[] {
   const view = source !== 'document';
-  const nameX = view
-    ? VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP
-    : TABLE_HEADER_ICON_SIZE + TABLE_HEADER_ICON_GAP;
+  const nameX = view ? VIEW_TABLE_HEADER_NAME_X : TABLE_HEADER_NAME_X;
   const slots: CellSlot[] = [
     {
       focusType: FocusType.tableName,

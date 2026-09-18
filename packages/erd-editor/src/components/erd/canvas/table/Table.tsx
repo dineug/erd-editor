@@ -22,7 +22,6 @@ import { headerCellHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import {
-  type CardShadow,
   CURSOR_INHERIT,
   CURSOR_POINTER,
   documentCardShadow,
@@ -39,11 +38,8 @@ import {
   TRANSPARENT,
   VIEW_CARD_GLOW_BLUR,
   VIEW_CARD_GLOW_OPACITY,
-  VIEW_CARD_SHADOW_BLUR,
-  VIEW_CARD_SHADOW_OFFSET_X,
-  VIEW_CARD_SHADOW_OFFSET_Y,
-  VIEW_CARD_SHADOW_OPACITY,
   VIEW_HEADER_FONT_WEIGHT,
+  viewCardShadow,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
@@ -403,11 +399,12 @@ const Table: FC<TableProps> = (props, ctx) => {
 
     const $mod = isMod(event.evt);
     const press = toCanvasPoint(event.evt);
-    press &&
+    if (press) {
       beginColumnDragPointer(store.state, props.table, press, {
         columnId,
         columnIds: $mod ? focusTable.selectColumnIds : [columnId],
       });
+    }
 
     store.dispatch(dragstartColumnAction$($mod));
 
@@ -597,14 +594,8 @@ const Table: FC<TableProps> = (props, ctx) => {
     // card wears that as an accent border and a glow, and a table left unlit
     // keeps its type column's width and draws nothing in it.
     const lit = view && Boolean(props.lit);
-    const shadow: CardShadow | null = view
-      ? {
-          color: theme.minimapShadow,
-          blur: VIEW_CARD_SHADOW_BLUR,
-          offsetX: VIEW_CARD_SHADOW_OFFSET_X,
-          offsetY: VIEW_CARD_SHADOW_OFFSET_Y,
-          opacity: VIEW_CARD_SHADOW_OPACITY,
-        }
+    const shadow = view
+      ? viewCardShadow(theme.minimapShadow)
       : documentCardShadow(theme.tableShadow);
 
     // How far the light has come up on this card, which is what every paint the

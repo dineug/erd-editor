@@ -632,6 +632,8 @@ export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
     });
   };
 
+type MoveColumnAction = ReturnType<typeof moveColumnAction>;
+
 /**
  * The moves that take the dragged columns to the end of their own table, in the
  * order they are dragged: each goes after whichever column is last by then.
@@ -640,14 +642,15 @@ function moveColumnsToEnd(
   tableId: string,
   order: string[],
   columnIds: string[]
-) {
+): MoveColumnAction[] {
   const ids = [...order];
-  const actions: ReturnType<typeof moveColumnAction>[] = [];
+  const actions: MoveColumnAction[] = [];
 
   for (const id of columnIds) {
     const index = ids.indexOf(id);
-    const targetId = ids[ids.length - 1];
     if (index === -1) return [];
+
+    const targetId = ids[ids.length - 1];
     if (id === targetId) continue;
 
     ids.splice(index, 1);
@@ -678,8 +681,7 @@ export const dragoverColumnAction$ = (
       if (index === -1) return;
 
       if (targetId === null) {
-        const actions = moveColumnsToEnd(tableId, table.columnIds, columnIds);
-        if (actions.length) yield actions;
+        yield moveColumnsToEnd(tableId, table.columnIds, columnIds);
         return;
       }
 

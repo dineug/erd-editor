@@ -342,11 +342,22 @@ function createRadixUITheme({
 
 const ThemeKeys: ReadonlyArray<string> = Object.keys(ThemeConfig);
 
-const hasNeutralAccent = arrayHas<string>([
+const hasNeutralAccent = arrayHas<AccentColor>([
   AccentColor.gray,
   AccentColor.gold,
   AccentColor.bronze,
 ]);
+
+function themeConfigOf(
+  appearance: Appearance,
+  accentColor: AccentColor
+): Theme {
+  return {
+    ...ThemeConfig,
+    ...(appearance === Appearance.light ? LightThemeConfig : {}),
+    ...(hasNeutralAccent(accentColor) ? NeutralAccentThemeConfig : {}),
+  };
+}
 
 function toTheme(
   radixUITheme: ReturnType<typeof createRadixUITheme>,
@@ -394,9 +405,5 @@ export const createTheme = ({
       accentColor,
     }),
     appearance,
-    {
-      ...ThemeConfig,
-      ...(appearance === Appearance.light ? LightThemeConfig : {}),
-      ...(hasNeutralAccent(accentColor) ? NeutralAccentThemeConfig : {}),
-    }
+    themeConfigOf(appearance, accentColor)
   );

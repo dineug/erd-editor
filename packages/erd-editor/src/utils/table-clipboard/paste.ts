@@ -33,7 +33,7 @@ export function tablePasteFromTextToColumns(
   // that row rather than opening an empty one.
   if (lines.length > 1 && last(lines) === '') lines.pop();
 
-  const rows = lines.map(row => row.split('\t'));
+  const rows = lines.map(line => line.split('\t'));
   const showColumnOrder = getShowColumnOrder(show, columnOrder);
 
   return rows.map(row => {

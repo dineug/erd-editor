@@ -119,14 +119,16 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
    * the canvas reads as one, a zoom chord, a ctrl wheel and a short list reach it.
    */
   const handleHintWheel = (event: WheelEvent) => {
-    const el = hintList.value;
     if (isMod(event) || event.ctrlKey) return;
+
     const { deltaX, deltaY } = event;
     const sideways =
       deltaY === 0 ||
       Math.abs(deltaY) < Math.abs(deltaX) ||
       (event.shiftKey && deltaX === 0);
     if (sideways) return;
+
+    const el = hintList.value;
     if (!el || el.scrollHeight <= el.clientHeight) return;
 
     event.stopPropagation();

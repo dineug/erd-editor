@@ -5,7 +5,7 @@ import { TABLE_PADDING } from '@/constants/layout';
 import type { DraggableColumn } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
-import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
+import { getColumnRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import { getVisibleColumnIds, getVisibleIds } from '@/konva/scene/viewLayout';
 import { getCullingRect, isTableVisible } from '@/konva/scene/viewport';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
@@ -43,26 +43,23 @@ export function findColumnDropTarget(
     .selectByIds(getVisibleIds(state, source).tableIds)
     .filter(table => isTableVisible(cullingRect, state, table, source))
     .sort((a, b) => b.ui.zIndex - a.ui.zIndex);
-  const rects = tables.map(table => getTableRect(state, table, source));
-  const within = (index: number, band: number) => {
-    const rect = rects[index];
-    return (
-      point.x >= rect.x &&
-      point.x <= rect.x + rect.width &&
-      point.y >= rect.y &&
-      point.y <= rect.y + rect.height + band
-    );
-  };
+  const cards = tables.map(table => ({
+    table,
+    rect: getTableRect(state, table, source),
+  }));
+  const within = (rect: Rect, band: number) =>
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height + band;
 
   // A card under the pointer outranks the band under another one.
-  const onCard = tables.findIndex((_, index) => within(index, 0));
-  const found =
-    onCard === -1
-      ? tables.findIndex((_, index) => within(index, APPEND_BAND))
-      : onCard;
-  if (found === -1) return null;
+  const card =
+    cards.find(({ rect }) => within(rect, 0)) ??
+    cards.find(({ rect }) => within(rect, APPEND_BAND));
+  if (!card) return null;
 
-  const table = tables[found];
+  const { table } = card;
   const columnIds = getVisibleColumnIds(state, table, source);
   const append = { tableId: table.id, columnId: null, index: columnIds.length };
   if (!columnIds.length) return append;

@@ -62,11 +62,11 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
   const prevColumnIds: string[] = [];
   const columnIds: string[] = [];
 
-  Array.from(prevDiffMap).forEach(([key, [tag, pathMap]]) => {
+  Array.from(prevDiffMap).forEach(([key, [tag]]) => {
     tag === 'tableEntities' ? prevTableIds.add(key) : prevColumnIds.push(key);
   });
 
-  Array.from(diffMap).forEach(([key, [tag, pathMap]]) => {
+  Array.from(diffMap).forEach(([key, [tag]]) => {
     tag === 'tableEntities' ? tableIds.add(key) : columnIds.push(key);
   });
 

@@ -130,6 +130,17 @@ export type CardShadow = {
   opacity: number;
 };
 
+/** The shadow a view card casts, in the colour of the token it borrows. */
+export function viewCardShadow(color: string): CardShadow {
+  return {
+    color,
+    blur: VIEW_CARD_SHADOW_BLUR,
+    offsetX: VIEW_CARD_SHADOW_OFFSET_X,
+    offsetY: VIEW_CARD_SHADOW_OFFSET_Y,
+    opacity: VIEW_CARD_SHADOW_OPACITY,
+  };
+}
+
 export const DOCUMENT_CARD_SHADOW_BLUR = 10;
 
 export const DOCUMENT_CARD_SHADOW_OFFSET_Y = 2;

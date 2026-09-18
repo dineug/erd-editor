@@ -58,14 +58,11 @@ export function searchDataTypeHints(
   value: string
 ): DataTypeHint[] {
   const newValue = value.trim();
+  if (isEmpty(newValue) || isPastTypeName(hints, value)) return [];
 
-  return isEmpty(newValue) || isPastTypeName(hints, value)
-    ? []
-    : new Fues(hints, {
-        keys: ['name'],
-      })
-        .search(newValue)
-        .map(result => result.item);
+  return new Fues(hints, { keys: ['name'] })
+    .search(newValue)
+    .map(result => result.item);
 }
 
 /**
