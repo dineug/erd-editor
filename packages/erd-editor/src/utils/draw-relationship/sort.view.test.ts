@@ -174,11 +174,11 @@ describe('relationshipSort for a view', () => {
 
     expect(drawingOf(state, 'document')).toEqual(written);
     expect(ab.start).toMatchObject({
-      x: 118,
-      y: 28,
+      x: 134,
+      y: 15,
       direction: Direction.right,
     });
-    expect(ab.end).toMatchObject({ x: 400, y: 28, direction: Direction.left });
+    expect(ab.end).toMatchObject({ x: 400, y: 15, direction: Direction.left });
     // The view placed its ends far away, and only its own reader sees them.
     expect(getAnchors(ab, 'flow').start.x).toBeGreaterThanOrEqual(5_000);
     expect(getAnchors(ab, 'flow')).not.toBe(ab);

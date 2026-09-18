@@ -410,9 +410,11 @@ describe('table/atom.actions sortTable', () => {
 
     store.dispatchSync(sortTableAction());
 
+    // One table a row, each dropped by the height above plus the 80 margin:
+    // 50 + (30 + 80) = 160, then 160 + (30 + 24 + 80) = 294.
     expect(table(TABLE_B).ui).toMatchObject({ x: 50, y: 50 });
-    expect(table(TABLE_C).ui).toMatchObject({ x: 50, y: 186 });
-    expect(table(TABLE_A).ui).toMatchObject({ x: 50, y: 346 });
+    expect(table(TABLE_C).ui).toMatchObject({ x: 50, y: 160 });
+    expect(table(TABLE_A).ui).toMatchObject({ x: 50, y: 294 });
   });
 
   it('keeps the row height when a later table in the row is not taller', () => {

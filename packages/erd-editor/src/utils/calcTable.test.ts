@@ -6,10 +6,13 @@ import {
   COLUMN_KEY_WIDTH,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
+  TABLE_HEADER_BAND_PADDING,
+  TABLE_HEADER_INPUT_HEIGHT,
   TABLE_PADDING,
   VIEW_COLUMN_HEIGHT,
   VIEW_COLUMN_ICON_GAP,
   VIEW_COLUMN_ICON_SIZE,
+  VIEW_TABLE_HEADER_BUTTONS_WIDTH,
   VIEW_TABLE_HEADER_ICON_GAP,
   VIEW_TABLE_HEADER_ICON_SIZE,
   VIEW_TABLE_MIN_WIDTH,
@@ -72,9 +75,10 @@ describe('calcTableWidths', () => {
     const table = createTable({ id: 'table-1' });
     const state = createState({ show: 0, tables: [table] });
 
-    // 12 + 8 + 60 + 8 + 12 = 100 -> 1 + 8 + 100 + 8 + 1
+    // The header line outgrows the default columns (12 + 8 + 60 + 8 + 12 = 100):
+    // 12 + 8 + 60 + 8 + 28 = 116 -> 1 + 8 + 116 + 8 + 1
     expect(calcTableWidths(table, state)).toEqual({
-      width: 118,
+      width: 134,
       name: 0,
       comment: 0,
       dataType: 0,
@@ -92,8 +96,8 @@ describe('calcTableWidths', () => {
     });
     const state = createState({ show: Show.tableComment, tables: [table] });
 
-    // (100 + 8) + (70 + 8) = 186 -> 1 + 8 + 186 + 8 + 1
-    expect(calcTableWidths(table, state).width).toBe(204);
+    // 12 + 8 + (100 + 8) + (70 + 8) + 28 = 234 -> 1 + 8 + 234 + 8 + 1
+    expect(calcTableWidths(table, state).width).toBe(252);
   });
 
   it('clamps the table comment width to maxWidthComment', () => {
@@ -111,7 +115,7 @@ describe('calcTableWidths', () => {
           tables: [table],
         })
       ).width
-    ).toBe(199);
+    ).toBe(247);
   });
 
   it('keeps the table comment width when maxWidthComment is larger', () => {
@@ -129,7 +133,7 @@ describe('calcTableWidths', () => {
           tables: [table],
         })
       ).width
-    ).toBe(204);
+    ).toBe(252);
   });
 
   it('collects the max width of every shown column field', () => {
@@ -297,22 +301,23 @@ describe('calcTableWidths', () => {
       columns: [column],
     });
 
-    // (500 + 8) -> 1 + 8 + 508 + 8 + 1
-    expect(calcTableWidths(table, state).width).toBe(526);
+    // 12 + 8 + (500 + 8) + 28 = 556 -> 1 + 8 + 556 + 8 + 1
+    expect(calcTableWidths(table, state).width).toBe(574);
   });
 });
 
 describe('calcTableHeight', () => {
   it('returns only the chrome for a table without columns', () => {
-    expect(calcTableHeight(createTable())).toBe(56);
+    // 1 + 8 + 20 + 1, the header band and nothing under it
+    expect(calcTableHeight(createTable())).toBe(30);
   });
 
   it('adds one column height per column id', () => {
     expect(calcTableHeight(createTable({ columnIds: ['a', 'b', 'c'] }))).toBe(
-      56 + 3 * COLUMN_HEIGHT
+      30 + 3 * COLUMN_HEIGHT
     );
     expect(calcTableHeight(createTable({ columnIds: ['a', 'b', 'c'] }))).toBe(
-      128
+      102
     );
   });
 
@@ -322,18 +327,18 @@ describe('calcTableHeight', () => {
       columnIds: Array.from({ length: 40 }, (_, index) => `c${index}`),
     });
 
-    expect(calcTableHeight(table, 0)).toBe(56);
+    expect(calcTableHeight(table, 0)).toBe(30);
     expect(calcTableHeight(table, 0)).toBe(calcTableHeight(createTable()));
-    expect(calcTableHeight(table, 2)).toBe(56 + 2 * COLUMN_HEIGHT);
-    expect(calcTableHeight(table)).toBe(56 + 40 * COLUMN_HEIGHT);
+    expect(calcTableHeight(table, 2)).toBe(30 + 2 * COLUMN_HEIGHT);
+    expect(calcTableHeight(table)).toBe(30 + 40 * COLUMN_HEIGHT);
   });
 
-  /** AC-13, AC-14. A view card wears a shorter header than the document card, and taller rows. */
+  /** AC-13, AC-14. A view card wears a taller header than the document's one line, and taller rows. */
   it('adds the view chrome and the view row for a view source', () => {
     const table = createTable({ columnIds: ['a', 'b', 'c'] });
 
     expect(calcTableHeight(table, 2, 'flow')).toBe(34 + 2 * VIEW_COLUMN_HEIGHT);
-    expect(calcTableHeight(table, 0, 'flow')).toBeLessThan(
+    expect(calcTableHeight(table, 0, 'flow')).toBeGreaterThan(
       calcTableHeight(table, 0)
     );
     expect(calcTableHeight(table, 3, 'flow')).toBeGreaterThan(
@@ -342,11 +347,11 @@ describe('calcTableHeight', () => {
   });
 
   /**
-   * A view card ends at its last row: the gap its header keeps over the first
-   * one is the only padding it draws under the title, so a card with no row
-   * wears that gap as its own and stands the title on the middle of the box.
+   * A card ends at its last row: the gap its header keeps over the first one
+   * is the only padding it draws under the title, so a card with no row wears
+   * that gap as its own and stands the title on the middle of the box.
    */
-  it('draws no padding under the rows of a view card', () => {
+  it('draws no padding under the rows of a card, in a view or the document', () => {
     const table = createTable({ columnIds: ['a', 'b', 'c'] });
     const rowless = calcTableHeight(table, 0, 'flow');
     const above = TABLE_BORDER + TABLE_PADDING;
@@ -357,11 +362,17 @@ describe('calcTableHeight', () => {
       rowless + 3 * VIEW_COLUMN_HEIGHT
     );
 
-    // The document card keeps the padding it always drew under its rows.
+    // The document card is the same shape at its own line and row heights.
     expect(calcTableHeight(table, 3)).toBe(
       calcTableHeight(table, 0) + 3 * COLUMN_HEIGHT
     );
-    expect(calcTableHeight(table, 0)).toBe(56);
+    expect(calcTableHeight(table, 0)).toBe(
+      TABLE_BORDER +
+        TABLE_HEADER_BAND_PADDING +
+        TABLE_HEADER_INPUT_HEIGHT +
+        TABLE_HEADER_BAND_PADDING +
+        TABLE_BORDER
+    );
   });
 });
 
@@ -376,11 +387,16 @@ describe('calcViewTableWidths', () => {
     INPUT_MARGIN_RIGHT +
     dataType;
 
-  /** The header width a table name takes past the table icon, at the size a view draws it. */
+  /**
+   * The header width a table name takes past the table icon, at the size a
+   * view draws it, with the room its two buttons keep after it.
+   */
   const headerWidth = (widthName: number) =>
     VIEW_TABLE_HEADER_ICON_SIZE +
     VIEW_TABLE_HEADER_ICON_GAP +
-    viewHeaderNameWidth(widthName);
+    viewHeaderNameWidth(widthName) +
+    INPUT_MARGIN_RIGHT +
+    VIEW_TABLE_HEADER_BUTTONS_WIDTH;
 
   /** A keys only view over the table, so the key rows are what it shows. */
   function openKeysOnly(
@@ -500,16 +516,17 @@ describe('calcViewTableWidths', () => {
   });
 
   /**
-   * A 40 unit name and no row is 69 units of content, well under the minimum,
-   * so the card is drawn at the minimum instead and the name column, which has
-   * no row to widen, stays at nothing.
+   * A 40 unit name, its buttons' room and no row is 105 units of content, under
+   * the minimum, so the card is drawn at the minimum instead and the name
+   * column, which has no row to widen, stays at nothing.
    */
   it('is the header name alone while the view shows no row', () => {
     const { table, columns } = keyedTable();
     const state = createState({ tables: [table], columns });
     openKeysOnly(state, table.id, ShowMode.nameOnly);
 
-    expect(headerWidth(40)).toBe(69);
+    // 16 + 4 + 49 + 8 + 28
+    expect(headerWidth(40)).toBe(105);
     expect(viewWidths(table, state)).toEqual({
       width: VIEW_TABLE_MIN_WIDTH,
       name: 0,

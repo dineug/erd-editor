@@ -128,10 +128,8 @@ const ACTIVE = 'rgb(4, 5, 6)';
 type IconPlacement = {
   /** The row that goes color: transparent at rest and --foreground on hover. */
   row: string;
-  /** The class carrying the --active hover rule. */
+  /** The class carrying the --active hover rule, on the .icon itself. */
   button: string;
-  /** Whether button sits on a wrapper around the .icon, or on the .icon itself. */
-  wraps: boolean;
 };
 
 /**
@@ -139,7 +137,7 @@ type IconPlacement = {
  * no pointer, so hover is applied by re-adopting the component's own hover rules
  * last, which is where a hovered element's declarations land in any case.
  */
-function iconColors({ row, button, wraps }: IconPlacement) {
+function iconColors({ row, button }: IconPlacement) {
   const read = (hovered: string[]) => {
     const host = createHost();
 
@@ -167,18 +165,11 @@ function iconColors({ row, button, wraps }: IconPlacement) {
     const rowElement = document.createElement('div');
     rowElement.className = row;
     const icon = document.createElement('div');
-    icon.className = wraps ? 'icon' : `icon ${button}`;
+    icon.className = `icon ${button}`;
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 
     icon.append(svg);
-    if (wraps) {
-      const wrap = document.createElement('div');
-      wrap.className = button;
-      wrap.append(icon);
-      rowElement.append(wrap);
-    } else {
-      rowElement.append(icon);
-    }
+    rowElement.append(icon);
     themed.append(rowElement);
     host.append(themed);
 
@@ -195,17 +186,6 @@ function iconColors({ row, button, wraps }: IconPlacement) {
 describe('hide-until-hover', () => {
   const placements: Array<[string, () => Promise<IconPlacement>]> = [
     [
-      'table header',
-      async () => {
-        const styles = await import('@/components/table-view/Table.styles');
-        return {
-          row: String(styles.root),
-          button: String(styles.headerButtonWrap),
-          wraps: true,
-        };
-      },
-    ],
-    [
       'index row',
       async () => {
         const styles =
@@ -213,7 +193,6 @@ describe('hide-until-hover', () => {
         return {
           row: String(styles.row),
           button: String(styles.iconButton),
-          wraps: false,
         };
       },
     ],

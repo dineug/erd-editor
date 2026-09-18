@@ -117,14 +117,14 @@ describe('the minimap table box', () => {
     // border + padding + default column widths + padding + border, less the
     // stroke the rect centres on its own edge
     expect(box.width()).toBe(365 - TABLE_BORDER);
-    // border + padding + header + 0 columns + padding + border
-    expect(box.height()).toBe(56 - TABLE_BORDER);
+    // border + the 28 header band + 0 columns + border, the card ending at its last row
+    expect(box.height()).toBe(30 - TABLE_BORDER);
   });
 
   it('grows the height by one column row per column id', async () => {
     const stage = await mountTable(createTable({}, ['c1', 'c2', 'c3']));
 
-    expect(boxOf(stage).height()).toBe(56 + 3 * 24 - TABLE_BORDER);
+    expect(boxOf(stage).height()).toBe(30 + 3 * 24 - TABLE_BORDER);
   });
 
   it('narrows the box when the store hides the comment columns', async () => {
@@ -188,11 +188,11 @@ describe('the minimap table box', () => {
     const box = boxOf(stage);
     const mark = MINIMAP_MARK_MIN / ratio;
 
-    expect(56 * ratio).toBeLessThan(MINIMAP_MARK_MIN);
+    expect(30 * ratio).toBeLessThan(MINIMAP_MARK_MIN);
     expect(365 * ratio).toBeLessThan(MINIMAP_MARK_MIN);
     expect(box.width() + TABLE_BORDER).toBeCloseTo(mark, 9);
     expect(box.height() + TABLE_BORDER).toBeCloseTo(mark, 9);
     expect(box.x() - TABLE_BORDER / 2 + mark / 2).toBeCloseTo(11 + 365 / 2, 9);
-    expect(box.y() - TABLE_BORDER / 2 + mark / 2).toBeCloseTo(22 + 56 / 2, 9);
+    expect(box.y() - TABLE_BORDER / 2 + mark / 2).toBeCloseTo(22 + 30 / 2, 9);
   });
 });

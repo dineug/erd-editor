@@ -3,6 +3,7 @@
 import { type DOMTemplateLiterals } from '@dineug/r-html';
 import { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
+import type { Path } from 'konva/lib/shapes/Path';
 import { Rect } from 'konva/lib/shapes/Rect';
 import { Text } from 'konva/lib/shapes/Text';
 import { Stage } from 'konva/lib/Stage';
@@ -22,12 +23,19 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
-  HEADER_COLOR_HEIGHT,
+  TABLE_CORNER_RADIUS,
   TABLE_INSET,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import Table from '@/components/erd/canvas/table/Table';
-import { INPUT_MARGIN_RIGHT, TABLE_BORDER } from '@/constants/layout';
+import {
+  INPUT_MARGIN_RIGHT,
+  TABLE_BORDER,
+  TABLE_COLOR_WIDTH,
+  TABLE_HEADER_ICON_GAP,
+  TABLE_HEADER_ICON_SIZE,
+  TABLE_PADDING,
+} from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import {
   dragendColumnAction,
@@ -464,7 +472,7 @@ describe('the table body and its rings', () => {
 });
 
 describe('the table header', () => {
-  it('draws the colour bar with the table colour and its own kind', async () => {
+  it('draws the colour down the left edge with the table colour and its own kind', async () => {
     const { app, stage, table } = await setup();
 
     app.store.dispatchSync(
@@ -472,11 +480,22 @@ describe('the table header', () => {
     );
     await settle();
 
-    const bar = named<Rect>(rootOf(stage), 'table-header-color');
+    const root = rootOf(stage);
+    const edge = named<Path>(root, 'table-header-color');
+    const box = edge.getClientRect({ relativeTo: root });
 
-    expect(bar.fill()).toBe('#ff00aa');
-    expect(bar.getAttr('kind')).toBe('table-header-color');
-    expect(bar.height()).toBe(HEADER_COLOR_HEIGHT);
+    expect(edge.fill()).toBe('#ff00aa');
+    expect(edge.getAttr('kind')).toBe('table-header-color');
+    // The strip's inner side meets each rounded corner half a unit in from
+    // the card's top and bottom, so its box is the card's height less one.
+    expect(box.x).toBeCloseTo(0, 5);
+    expect(box.width).toBeCloseTo(TABLE_COLOR_WIDTH, 5);
+    expect(box.height).toBeCloseTo(
+      getTableRect(app.store.state, table).height - 1,
+      1
+    );
+    // Last, so no band or row tint paints over it.
+    expect(root.children.at(-1)).toBe(edge);
   });
 
   it('hides the header icons until the table is hovered', async () => {
@@ -565,11 +584,16 @@ describe('the table header', () => {
     expect(root.findOne('.tableName')).toBeTruthy();
   });
 
-  it('places the comment cell one name width and one gap along', async () => {
+  it('places the comment cell past the table icon, one name width and one gap along', async () => {
     const { stage, table } = await setup();
     const comment = named<Group>(rootOf(stage), 'tableComment');
 
-    expect(comment.x()).toBe(table.ui.widthName + INPUT_MARGIN_RIGHT);
+    expect(comment.x()).toBe(
+      TABLE_HEADER_ICON_SIZE +
+        TABLE_HEADER_ICON_GAP +
+        table.ui.widthName +
+        INPUT_MARGIN_RIGHT
+    );
   });
 
   it.each([
@@ -758,6 +782,19 @@ describe('the column rows a table holds', () => {
 
     expect(root.find('.column-row')).toHaveLength(2);
     expect(ghost.visible()).toBe(false);
+
+    // The hidden row trails the card, so the real last row still ends it:
+    // the bottom corners, and no rule along the card's bottom border.
+    const [last] = root
+      .find<Group>('.column-row')
+      .filter(row => row.id() === `column-${table.columnIds[0]}`);
+    expect(named<Rect>(last, 'column-row-background').cornerRadius()).toEqual([
+      0,
+      0,
+      TABLE_CORNER_RADIUS,
+      TABLE_CORNER_RADIUS,
+    ]);
+    expect(last.find('.column-row-divider')).toHaveLength(0);
   });
 });
 
@@ -888,7 +925,7 @@ describe('the move a table pointer start owns', () => {
     expect(table.ui.x).toBe(startX);
   });
 
-  it('never starts a drag from the colour bar, an icon, a header cell or a row', async () => {
+  it('never starts a drag from the colour edge, an icon or a row', async () => {
     const { app, stage, table } = await setup({ columns: 1 });
     const root = rootOf(stage);
     const startX = table.ui.x;
@@ -896,7 +933,6 @@ describe('the move a table pointer start owns', () => {
     for (const name of [
       'table-header-color',
       'table-add-column',
-      'tableName',
       'column-row',
     ]) {
       fireScenePointer(named(root, name), 'mousedown', {
@@ -911,6 +947,26 @@ describe('the move a table pointer start owns', () => {
     expect(table.ui.x).toBe(startX);
     // the blocked areas still select, exactly as they did in the dom scene
     expect(app.store.state.editor.selectedMap[table.id]).toBe(SelectType.table);
+  });
+
+  it('carries the table from a header cell, and focuses the cell on the way', async () => {
+    const { app, stage, table } = await setup();
+    const startX = table.ui.x;
+
+    for (const name of ['tableName', 'tableComment']) {
+      fireScenePointer(named(rootOf(stage), name), 'mousedown', {
+        clientX: 0,
+        clientY: 0,
+      });
+      movePointer(40, 0);
+      await settle();
+      releasePointer();
+    }
+
+    expect(table.ui.x).toBe(startX + 80);
+    expect(app.store.state.editor.focusTable?.focusType).toBe(
+      FocusType.tableComment
+    );
   });
 
   it('focuses the cell a header mousedown lands on', async () => {
@@ -1071,9 +1127,10 @@ async function moveUnderRows(fixture: DragFixture, table: TableEntity) {
   const rect = getTableRect(fixture.app.store.state, table);
   const origin = fixture.stage.content.getBoundingClientRect();
 
+  // Into the band a drop appends in, just under the card's bottom edge.
   movePointer(
     origin.x + rect.x + rect.width / 2,
-    origin.y + rect.y + rect.height - TABLE_BORDER - 2
+    origin.y + rect.y + rect.height + TABLE_PADDING / 2
   );
   await settle();
 }

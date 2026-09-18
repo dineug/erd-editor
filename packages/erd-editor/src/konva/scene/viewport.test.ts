@@ -49,10 +49,10 @@ import {
 } from '@/utils/draw-relationship';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-// A table with no columns and every show flag disabled is 118 x 56, which is
+// A table with no columns and every show flag disabled is 134 x 30, which is
 // the same measurement sort.test.ts pins.
-const TABLE_WIDTH = 118;
-const TABLE_HEIGHT = 56;
+const TABLE_WIDTH = 134;
+const TABLE_HEIGHT = 30;
 
 const PAD = ROUTE_BBOX_REACH + RELATIONSHIP_STROKE_WIDTH;
 
@@ -705,7 +705,7 @@ describe('a relationship is kept for its whole reach (AC-G14)', () => {
   });
 
   it('keeps one whose routed points are all off screen while its anchor is on it', () => {
-    const rect: CullingRect = rectAt(60, 0, 70, 60);
+    const rect: CullingRect = rectAt(76, 0, 70, 60);
     const route = getRoute(relationship) ?? [];
 
     expect(intersects(rect, boxOf(route, PAD))).toBe(false);

@@ -10,11 +10,15 @@ import {
   COLUMN_UNIQUE_WIDTH,
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
+  TABLE_HEADER_BUTTONS_WIDTH,
   TABLE_HEADER_HEIGHT,
+  TABLE_HEADER_ICON_GAP,
+  TABLE_HEADER_ICON_SIZE,
   TABLE_PADDING,
   VIEW_COLUMN_HEIGHT,
   VIEW_COLUMN_ICON_GAP,
   VIEW_COLUMN_ICON_SIZE,
+  VIEW_TABLE_HEADER_BUTTONS_WIDTH,
   VIEW_TABLE_HEADER_FONT_SCALE,
   VIEW_TABLE_HEADER_HEIGHT,
   VIEW_TABLE_HEADER_ICON_GAP,
@@ -54,7 +58,11 @@ export function calcTableWidths(
   table: Table,
   { settings: { show, maxWidthComment }, collections }: RootState
 ): ColumnWidth {
-  let width = table.ui.widthName + INPUT_MARGIN_RIGHT;
+  let width =
+    TABLE_HEADER_ICON_SIZE +
+    TABLE_HEADER_ICON_GAP +
+    table.ui.widthName +
+    INPUT_MARGIN_RIGHT;
   if (bHas(show, Show.tableComment)) {
     const widthComment =
       maxWidthComment === -1
@@ -64,6 +72,9 @@ export function calcTableWidths(
           : table.ui.widthComment;
     width += widthComment + INPUT_MARGIN_RIGHT;
   }
+  // The two buttons share the header line, so the line keeps their room past
+  // the last cell and a long name ends before them rather than under them.
+  width += TABLE_HEADER_BUTTONS_WIDTH;
 
   const defaultWidthColumns = calcDefaultWidthColumns(show);
   if (width < defaultWidthColumns) {
@@ -276,20 +287,22 @@ export function viewHeaderNameWidth(widthName: number): number {
   );
 }
 
-/** That name, with the table icon and the gap a view header sets beside it. */
+/**
+ * That name, with the table icon and the gap a view header sets beside it, and
+ * the room its two buttons take past the name on a hovered card, so the name
+ * ends before them rather than running under them.
+ */
 function viewHeaderWidth(table: Table): number {
   return (
     VIEW_TABLE_HEADER_ICON_SIZE +
     VIEW_TABLE_HEADER_ICON_GAP +
-    viewHeaderNameWidth(table.ui.widthName)
+    viewHeaderNameWidth(table.ui.widthName) +
+    INPUT_MARGIN_RIGHT +
+    VIEW_TABLE_HEADER_BUTTONS_WIDTH
   );
 }
 
-/**
- * The header band a source draws above its rows. A view has no icon band over
- * the name, so its card is that much shorter than the same table in the
- * document.
- */
+/** The header band a source draws above its rows, each at its own line height. */
 export function tableHeaderHeight(source: GeometrySource = 'document'): number {
   return source === 'document' ? TABLE_HEADER_HEIGHT : VIEW_TABLE_HEADER_HEIGHT;
 }
@@ -309,17 +322,14 @@ export function calcTableHeight(
   rowCount: number = table.columnIds.length,
   source: GeometrySource = 'document'
 ): number {
-  // A view card ends at its last row. The gap its header keeps over the first
-  // row is the only padding it draws under the title, so a card with no row
-  // wears that gap as its own and stands the title on the middle of the box.
-  const trailing = source === 'document' ? TABLE_PADDING : 0;
-
+  // A card ends at its last row. The gap its header keeps over the first row
+  // is the only padding it draws under the title, so a card with no row wears
+  // that gap as its own and stands the title on the middle of the box.
   return (
     TABLE_BORDER +
     TABLE_PADDING +
     tableHeaderHeight(source) +
     rowCount * tableRowHeight(source) +
-    trailing +
     TABLE_BORDER
   );
 }

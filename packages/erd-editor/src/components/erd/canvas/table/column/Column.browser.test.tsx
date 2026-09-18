@@ -252,13 +252,13 @@ describe('what the row background says about state', () => {
     );
   });
 
-  it('lets selection win over hover', async () => {
+  it('lifts a selected row a step under the pointer rather than dropping to the hover', async () => {
     const { stage, theme, rerender } = await setup();
 
     await rerender({ hovered: true, selected: true });
 
     expect(named<Rect>(rowOf(stage), 'column-row-background').fill()).toBe(
-      theme.columnSelect
+      theme.columnSelectHover
     );
   });
 

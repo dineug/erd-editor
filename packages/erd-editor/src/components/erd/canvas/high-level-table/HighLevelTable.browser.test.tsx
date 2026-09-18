@@ -3,6 +3,7 @@
 import { type DOMTemplateLiterals } from '@dineug/r-html';
 import { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
+import type { Path } from 'konva/lib/shapes/Path';
 import { Rect } from 'konva/lib/shapes/Rect';
 import { Text } from 'konva/lib/shapes/Text';
 import { Stage } from 'konva/lib/Stage';
@@ -155,7 +156,7 @@ describe('the simplified table a zoomed out canvas swaps in', () => {
     expect(rootOf(stage).find('.column-row')).toEqual([]);
   });
 
-  it('keeps the body box and the colour bar the full table draws', async () => {
+  it('keeps the body box and the colour edge the full table draws', async () => {
     const { app, stage, table, theme } = await setup(2);
     const rect = getTableRect(app.store.state, table);
     const root = rootOf(stage);
@@ -164,7 +165,7 @@ describe('the simplified table a zoomed out canvas swaps in', () => {
     expect(root.x()).toBe(rect.x);
     expect(body.width()).toBe(rect.width - TABLE_BORDER);
     expect(body.fill()).toBe(theme.tableBackground);
-    expect(named<Rect>(root, 'table-header-color').fill()).toBe(table.ui.color);
+    expect(named<Path>(root, 'table-header-color').fill()).toBe(table.ui.color);
   });
 
   it('switches the border to the select colour once selected', async () => {
@@ -376,7 +377,7 @@ describe('what a simplified table pointer start owns', () => {
     expect(table.ui.x).toBe(startX + 35);
   });
 
-  it('does not drag when the mousedown lands on the color bar', async () => {
+  it('does not drag when the mousedown lands on the colour edge', async () => {
     const { app, stage, table } = await setup();
     const startX = table.ui.x;
 

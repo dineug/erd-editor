@@ -102,9 +102,6 @@ export const TABLE_INSET = TABLE_BORDER + TABLE_PADDING;
 /** The radius Table.styles rounds a table box with. */
 export const TABLE_CORNER_RADIUS = 6;
 
-/** The min-height Table.styles gives the colour bar across a table header. */
-export const HEADER_COLOR_HEIGHT = 4;
-
 /** The 1.5px underline EditInput draws for a focused, edited or shared cell. */
 export const FOCUS_BORDER_HEIGHT = 1.5;
 

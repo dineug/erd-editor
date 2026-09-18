@@ -41,6 +41,8 @@ import {
   MEMO_BORDER,
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
+  TABLE_HEADER_ICON_GAP,
+  TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
 import { Database, Show } from '@/constants/schema';
 import {
@@ -85,6 +87,9 @@ import {
 } from '@/konva/scene/metrics';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { focusEvent } from '@/utils/internalEvents';
+
+/** Where the name cell starts inside the header line, past the table icon and its gap. */
+const NAME_X = TABLE_HEADER_ICON_SIZE + TABLE_HEADER_ICON_GAP;
 
 /** The platform a spec pins, and null for the one this browser reports. */
 const device = vi.hoisted(() => ({ apple: null as boolean | null }));
@@ -498,7 +503,7 @@ describe('the editing overlay', () => {
     const rect = getTableRect(store.state, table);
     const transform = transformOf(fixture.mounted);
 
-    expect(transform.x).toBeCloseTo(rect.x + HEADER_CELLS_X, 5);
+    expect(transform.x).toBeCloseTo(rect.x + HEADER_CELLS_X + NAME_X, 5);
     expect(transform.y).toBeCloseTo(
       rect.y + getHeaderCellsY() + getHeaderTextY(),
       5
@@ -543,7 +548,7 @@ describe('the editing overlay', () => {
     const transform = transformOf(fixture.mounted);
 
     expect(transform.x).toBeCloseTo(
-      originX + (rect.x + HEADER_CELLS_X) * zoom,
+      originX + (rect.x + HEADER_CELLS_X + NAME_X) * zoom,
       5
     );
     expect(transform.y).toBeCloseTo(
@@ -1685,7 +1690,7 @@ describe('the overlay under a view source', () => {
     const transform = transformOf(fixture.mounted);
 
     expect(inputOf(fixture.mounted)).toBeTruthy();
-    expect(transform.x).toBeCloseTo(rect.x + HEADER_CELLS_X, 5);
+    expect(transform.x).toBeCloseTo(rect.x + HEADER_CELLS_X + NAME_X, 5);
     expect(transform.y).toBeCloseTo(
       rect.y + getHeaderCellsY() + getHeaderTextY(),
       5

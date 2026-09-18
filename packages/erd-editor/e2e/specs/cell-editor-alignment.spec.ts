@@ -127,18 +127,25 @@ async function profileOf(page: Page, clip: Clip): Promise<Profile> {
       // of where the caret waits at the end of the value.
       const reach = Math.max(1, Math.round(height * reachShare));
       const rows: number[] = [];
-      const band: number[] = [];
+      const runs: Array<{ y: number; ink: number }> = [];
       for (let y = 0; y < height; y++) {
         let sum = 0;
         let covered = 0;
+        let across = 0;
         for (let x = 0; x < width; x++) {
           const ink = inkAt(x, y);
           if (x < reach) sum += ink;
           if (ink > 0.06) covered++;
+          across += ink;
         }
         rows.push(sum);
-        if (covered > width * 0.95) band.push(y);
+        if (covered > width * 0.95) runs.push({ y, ink: across });
       }
+      // A row the line only grazes is antialiased, and whether its faint ink
+      // clears the bar depends on the colour, which the editor changes. Only a
+      // row carrying half the ink of the strongest one is spanned whole.
+      const peak = Math.max(0, ...runs.map(run => run.ink));
+      const band = runs.filter(run => run.ink >= peak / 2).map(run => run.y);
 
       const glyphEnd = band.length ? band[0] - 1 : height - 1;
       const cols: number[] = [];
@@ -369,7 +376,7 @@ const CELL_CASES: CellCase[] = [
 ];
 
 /** A table and a zoom whose product puts the cell off the whole pixel. */
-const OFF_PIXEL = { x: 401, y: 401, zoomLevel: 1.25 };
+const OFF_PIXEL = { x: 401, y: 402, zoomLevel: 1.25 };
 
 /**
  * Both device grids, because the two rasterisers round a baseline by the device

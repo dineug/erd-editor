@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/table-view/Table.styles';
 import {
-  HEADER_ICON_HEIGHT,
   INPUT_MARGIN_RIGHT,
-  TABLE_HEADER_BUTTON_MARGIN_LEFT,
-  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_HEADER_BAND_PADDING,
+  TABLE_HEADER_ICON_GAP,
   TABLE_HEADER_INPUT_HEIGHT,
   TABLE_HEADER_PADDING,
   TABLE_PADDING,
@@ -25,7 +24,6 @@ describe('Table.styles', () => {
   it('exports every class the Table template composes', () => {
     expect(Object.keys(styles).sort()).toEqual([
       'header',
-      'headerButtonWrap',
       'headerColor',
       'headerInputWrap',
       'root',
@@ -84,45 +82,49 @@ describe('Table.styles', () => {
     expect(source).toContain('transition: transform 0.3s');
   });
 
-  it('drives the root padding from TABLE_PADDING and inherits the paragraph typography', () => {
-    expect(styles.root.values).toEqual([TABLE_PADDING, typography.paragraph]);
+  it('pads nothing around the card, which ends at its last row, and inherits the paragraph typography', () => {
+    const source = sourceOf(styles.root);
+
+    expect(source).not.toMatch(/^\s*padding:/m);
+    expect(styles.root.values).toEqual([typography.paragraph]);
   });
 
-  it('stacks the header contents and pads them by TABLE_PADDING', () => {
+  it('rules a line under every row but the last, without growing the row', () => {
+    const source = sourceOf(styles.root);
+
+    expect(source).toContain('.column-row:not(:last-child)');
+    expect(source).toContain('box-shadow: inset 0 -1px 0 var(--table-border)');
+  });
+
+  it('bands the header in its own token and sets the icon beside the name', () => {
     const source = sourceOf(styles.header);
 
     expect(source).toContain('display: flex');
-    expect(source).toContain('flex-direction: column');
-    expect(source).toContain('position: relative');
-    expect(styles.header.values).toEqual([TABLE_PADDING]);
+    expect(source).toContain('align-items: center');
+    expect(source).toContain(
+      'background-color: var(--table-header-background)'
+    );
+    expect(source).toContain('border-radius: 5px 5px 0 0');
+    expect(source).toContain('&:last-child');
+    expect(source).toContain('& > .icon');
+    expect(styles.header.values).toEqual([
+      TABLE_HEADER_ICON_GAP,
+      TABLE_HEADER_BAND_PADDING,
+      TABLE_PADDING,
+    ]);
   });
 
-  it('pins the color bar above the header and marks it clickable', () => {
+  it('runs the colour edge down the left border, cut from a box wide enough to round its corners', () => {
     const source = sourceOf(styles.headerColor);
 
     expect(source).toContain('position: absolute');
-    expect(source).toContain('left: 0');
-    expect(source).toContain('width: 100%');
-    expect(source).toContain('min-height: 4px');
-    expect(source).toContain('border-radius: 6px 6px 0 0');
-    expect(source).toContain('cursor: pointer');
-    expect(styles.headerColor.values).toEqual([TABLE_PADDING + 1]);
-  });
-
-  it('right aligns the header buttons and highlights icons on hover', () => {
-    const source = sourceOf(styles.headerButtonWrap);
-
-    expect(source).toContain('justify-content: flex-end');
-    expect(source).toContain('cursor: move');
-    expect(source).toContain('& > .icon');
-    expect(source).toContain('& > .icon:last-child');
-    expect(source).toContain('& > .icon:hover');
-    expect(source).toContain('color: var(--active)');
-    expect(styles.headerButtonWrap.values).toEqual([
-      HEADER_ICON_HEIGHT,
-      TABLE_HEADER_ICON_MARGIN_BOTTOM,
-      TABLE_HEADER_BUTTON_MARGIN_LEFT,
-    ]);
+    expect(source).toContain('top: -1px');
+    expect(source).toContain('bottom: -1px');
+    expect(source).toContain('left: -1px');
+    expect(source).toContain('border-radius: 6px 0 0 6px');
+    expect(source).toContain('clip-path: inset(0');
+    // A 12 unit box cut back by 8 leaves the 4 unit strip the scene draws.
+    expect(styles.headerColor.values).toEqual([12, 8]);
   });
 
   it('centers the header inputs and pads each input-padding wrapper', () => {

@@ -1,20 +1,22 @@
 import { css } from '@dineug/r-html';
 
 import {
-  HEADER_ICON_HEIGHT,
   INPUT_MARGIN_RIGHT,
-  TABLE_HEADER_BUTTON_MARGIN_LEFT,
-  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_COLOR_WIDTH,
+  TABLE_HEADER_BAND_PADDING,
+  TABLE_HEADER_ICON_GAP,
   TABLE_HEADER_INPUT_HEIGHT,
   TABLE_HEADER_PADDING,
   TABLE_PADDING,
 } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
+/** The box that edge is cut from, wider than the 6px corner it has to round. */
+const TABLE_COLOR_EDGE_BOX = 12;
+
 export const root = css`
   position: absolute;
   background-color: var(--table-background);
-  padding: ${TABLE_PADDING}px 0;
   border-radius: 6px;
   border: 1px solid var(--table-border);
   color: transparent;
@@ -44,43 +46,45 @@ export const root = css`
   .column-row-move {
     transition: transform 0.3s;
   }
+
+  .column-row:not(:last-child) {
+    box-shadow: inset 0 -1px 0 var(--table-border);
+  }
 `;
 
+/** The band the name stands in, one input line and its room as in the scene. */
 export const header = css`
   display: flex;
-  flex-direction: column;
-  position: relative;
-  padding: 0 ${TABLE_PADDING}px;
-`;
+  align-items: center;
+  gap: ${TABLE_HEADER_ICON_GAP}px;
+  padding: ${TABLE_HEADER_BAND_PADDING}px ${TABLE_PADDING}px;
+  background-color: var(--table-header-background);
+  border-radius: 5px 5px 0 0;
 
-export const headerColor = css`
-  position: absolute;
-  top: -${TABLE_PADDING + 1}px;
-  left: 0;
-  width: 100%;
-  min-height: 4px;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-`;
-
-export const headerButtonWrap = css`
-  display: flex;
-  height: ${HEADER_ICON_HEIGHT}px;
-  justify-content: flex-end;
-  margin-bottom: ${TABLE_HEADER_ICON_MARGIN_BOTTOM}px;
-  cursor: move;
+  &:last-child {
+    border-radius: 5px;
+  }
 
   & > .icon {
-    cursor: pointer;
+    flex-shrink: 0;
+    color: var(--foreground);
   }
+`;
 
-  & > .icon:last-child {
-    margin-left: ${TABLE_HEADER_BUTTON_MARGIN_LEFT}px;
-  }
-
-  & > .icon:hover {
-    color: var(--active);
-  }
+/**
+ * The colour along the left edge, over the border. The box is wider than the
+ * corner it rounds and cut back to the strip, since a radius wider than its
+ * own box is scaled down to fit and would no longer follow the card's.
+ */
+export const headerColor = css`
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: ${TABLE_COLOR_EDGE_BOX}px;
+  border-radius: 6px 0 0 6px;
+  clip-path: inset(0 ${TABLE_COLOR_EDGE_BOX - TABLE_COLOR_WIDTH}px 0 0);
+  pointer-events: none;
 `;
 
 export const headerInputWrap = css`

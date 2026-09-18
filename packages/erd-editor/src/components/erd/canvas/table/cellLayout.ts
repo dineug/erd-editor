@@ -9,10 +9,12 @@ import {
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_PADDING,
   COLUMN_UNIQUE_WIDTH,
-  HEADER_ICON_HEIGHT,
   INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
-  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_BORDER,
+  TABLE_HEADER_BAND_PADDING,
+  TABLE_HEADER_ICON_GAP,
+  TABLE_HEADER_ICON_SIZE,
   TABLE_HEADER_PADDING,
   VIEW_COLUMN_ICON_GAP,
   VIEW_COLUMN_ICON_SIZE,
@@ -54,13 +56,13 @@ export type ColumnCellSlot = CellSlot & {
 export const HEADER_CELLS_X = TABLE_INSET;
 
 /**
- * How far down a table group the header cells start. The document keeps the
- * icon band above them; a view draws no icon there, so its cells begin at the
- * inset itself.
+ * How far down a table group the header cells start. The document band starts
+ * at the top border, over the card's top padding, and keeps its own room over
+ * the line; a view sets its icon line inside that padding instead.
  */
 export function getHeaderCellsY(source: GeometrySource = 'document'): number {
   return source === 'document'
-    ? TABLE_INSET + HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM
+    ? TABLE_BORDER + TABLE_HEADER_BAND_PADDING
     : TABLE_INSET;
 }
 
@@ -184,9 +186,9 @@ export function getWidthComment(state: RootState, table: Table): number {
 }
 
 /**
- * The name and comment boxes across a table header. One list feeds both the
- * scene that draws them and the overlay that edits them, so an editor can never
- * sit anywhere but on the text it replaces. A view draws the name alone.
+ * The name and comment boxes past a header's table icon. One list feeds the
+ * scene that draws them and the overlay that edits them, so an editor never
+ * sits anywhere but on the text it replaces. A view draws the name alone.
  */
 export function getHeaderCellSlots(
   state: RootState,
@@ -194,10 +196,13 @@ export function getHeaderCellSlots(
   source: GeometrySource = 'document'
 ): CellSlot[] {
   const view = source !== 'document';
+  const nameX = view
+    ? VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP
+    : TABLE_HEADER_ICON_SIZE + TABLE_HEADER_ICON_GAP;
   const slots: CellSlot[] = [
     {
       focusType: FocusType.tableName,
-      x: view ? VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP : 0,
+      x: nameX,
       width: view
         ? viewHeaderNameWidth(table.ui.widthName)
         : table.ui.widthName,
@@ -207,7 +212,7 @@ export function getHeaderCellSlots(
   if (!view && bHas(state.settings.show, Show.tableComment)) {
     slots.push({
       focusType: FocusType.tableComment,
-      x: table.ui.widthName + INPUT_MARGIN_RIGHT,
+      x: nameX + table.ui.widthName + INPUT_MARGIN_RIGHT,
       width: getWidthComment(state, table),
     });
   }

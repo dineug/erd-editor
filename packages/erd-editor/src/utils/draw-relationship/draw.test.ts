@@ -9,11 +9,11 @@ import { createTable } from '@/utils/collection/table.entity';
 import { getDraw } from '@/utils/draw-relationship/draw';
 
 // The default show flags plus the default 60px name/comment widths make an
-// empty table exactly 365 x 56, so table-a at (0, 0) has these anchors:
+// empty table exactly 365 x 30, so table-a at (0, 0) has these anchors:
 const TABLE_WIDTH = 365;
-const TABLE_HEIGHT = 56;
+const TABLE_HEIGHT = 30;
 const CENTER_X = TABLE_WIDTH / 2; // 182.5
-const CENTER_Y = TABLE_HEIGHT / 2; // 28
+const CENTER_Y = TABLE_HEIGHT / 2; // 15
 
 function createState(): RootState {
   const state = createStore({
@@ -80,7 +80,7 @@ describe('getDraw', () => {
       });
       expect(result.path.path.M).toEqual({ x: CENTER_X, y: TABLE_HEIGHT + 50 });
       expect(result.path.path.L).toEqual({ x: CENTER_X, y: 500 });
-      expect(result.path.path.d()).toBe('M 182.5 106 L 182.5 500');
+      expect(result.path.path.d()).toBe('M 182.5 80 L 182.5 500');
     });
 
     it('offsets the crow foot lines below the bottom anchor', () => {
@@ -187,7 +187,7 @@ describe('getDraw', () => {
       });
       expect(result.path.path.M).toEqual({ x: -50, y: CENTER_Y });
       expect(result.path.path.L).toEqual({ x: -500, y: CENTER_Y });
-      expect(result.path.path.d()).toBe('M -50 28 L -500 28');
+      expect(result.path.path.d()).toBe('M -50 15 L -500 15');
       expect(result.line.start.base).toEqual({
         x1: -11,
         y1: CENTER_Y - 7,
@@ -237,7 +237,7 @@ describe('getDraw', () => {
         y: CENTER_Y,
       });
       expect(result.path.path.L).toEqual({ x: 900, y: CENTER_Y });
-      expect(result.path.path.d()).toBe('M 415 28 L 900 28');
+      expect(result.path.path.d()).toBe('M 415 15 L 900 15');
       expect(result.line.start.base).toEqual({
         x1: TABLE_WIDTH + 11,
         y1: CENTER_Y - 7,

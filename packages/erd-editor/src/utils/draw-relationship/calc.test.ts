@@ -54,20 +54,20 @@ describe('tableToObjectPoint', () => {
     const point = tableToObjectPoint(state, table);
 
     // default widths (60) + default show flags => 365 wide,
-    // no columns => 1 + 8 + 38 + 0 + 8 + 1 = 56 high
+    // no columns => 1 + 8 + 20 + 0 + 1 = 30 high
     expect(point.width).toBe(365);
-    expect(point.height).toBe(56);
+    expect(point.height).toBe(30);
     expect(point).toEqual({
       width: 365,
-      height: 56,
+      height: 30,
       top: { x: 282.5, y: 50 },
-      bottom: { x: 282.5, y: 106 },
-      left: { x: 100, y: 78 },
-      right: { x: 465, y: 78 },
+      bottom: { x: 282.5, y: 80 },
+      left: { x: 100, y: 65 },
+      right: { x: 465, y: 65 },
       lt: { x: 100, y: 50 },
       rt: { x: 465, y: 50 },
-      lb: { x: 100, y: 106 },
-      rb: { x: 465, y: 106 },
+      lb: { x: 100, y: 80 },
+      rb: { x: 465, y: 80 },
     });
   });
 
@@ -95,12 +95,12 @@ describe('tableToObjectPoint', () => {
 
     const point = tableToObjectPoint(state, table);
 
-    expect(point.height).toBe(56 + 2 * 24);
+    expect(point.height).toBe(30 + 2 * 24);
     expect(point.width).toBe(505);
     expect(point.top).toEqual({ x: 252.5, y: 0 });
-    expect(point.bottom).toEqual({ x: 252.5, y: 104 });
-    expect(point.left).toEqual({ x: 0, y: 52 });
-    expect(point.right).toEqual({ x: 505, y: 52 });
+    expect(point.bottom).toEqual({ x: 252.5, y: 78 });
+    expect(point.left).toEqual({ x: 0, y: 39 });
+    expect(point.right).toEqual({ x: 505, y: 39 });
   });
 
   it('keeps the corner points consistent with the edge midpoints', () => {
@@ -135,8 +135,9 @@ describe('tableToObjectPoint', () => {
     const withoutComment = tableToObjectPoint(state, table).width;
 
     expect(withComment).toBe(365);
-    // only the base column layout remains: 1 + 8 + 100 + 8 + 1
-    expect(withoutComment).toBe(118);
+    // the header line outgrows the base column layout of 100:
+    // 1 + 8 + (12 + 8 + 60 + 8 + 28) + 8 + 1 = 134
+    expect(withoutComment).toBe(134);
     expect(withoutComment).toBeLessThan(withComment);
   });
 });
@@ -221,7 +222,7 @@ describe('tableToObjectPoint for a view', () => {
     const view = tableToObjectPoint(state, table, 'flow');
     const after = tableToObjectPoint(state, table);
 
-    expect(before.height).toBe(56 + 40 * 24);
+    expect(before.height).toBe(30 + 40 * 24);
     expect(before.lt).toEqual({ x: 100, y: 50 });
     expect(after).toEqual(before);
     expect(view.height).not.toBe(before.height);

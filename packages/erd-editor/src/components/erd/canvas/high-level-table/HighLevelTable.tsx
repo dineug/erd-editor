@@ -7,7 +7,6 @@ import { useAppContext } from '@/components/appContext';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
-  HEADER_COLOR_HEIGHT,
   HIGH_LEVEL_FONT_SIZES,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
@@ -17,6 +16,7 @@ import {
   TABLE_CORNER_RADIUS,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
+import { getColorEdgePath } from '@/components/erd/canvas/table/colorEdge';
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
 import { useSharedFocusTable } from '@/components/erd/canvas/table/useSharedFocusTable';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
@@ -60,7 +60,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   /**
    * Whether the press under way found a relationship draw armed. The press
    * closes or starts that draw, so the click konva ends it with on the colour
-   * bar belongs to the draw, not to the bar.
+   * edge belongs to the draw, not to the edge.
    */
   let pressDraws = false;
 
@@ -134,23 +134,6 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
             strokeWidth={RING_WIDTH}
           />
         ) : null}
-        <k-rect
-          name="table-header-color"
-          kind="table-header-color"
-          x={TABLE_BORDER}
-          y={0}
-          width={rect.width - TABLE_BORDER * 2}
-          height={HEADER_COLOR_HEIGHT}
-          cornerRadius={[TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]}
-          fill={table.ui.color}
-          on:click={handleOpenColorPicker}
-          on:mouseenter={(event: SceneMouseEvent) => {
-            setSceneCursor(event, CURSOR_POINTER);
-          }}
-          on:mouseleave={(event: SceneMouseEvent) => {
-            setSceneCursor(event, CURSOR_INHERIT);
-          }}
-        />
         <k-text
           name="high-level-table-name"
           x={TABLE_BORDER}
@@ -165,6 +148,19 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           align="center"
           verticalAlign="middle"
           wrap="char"
+        />
+        <k-path
+          name="table-header-color"
+          kind="table-header-color"
+          data={getColorEdgePath(rect.height)}
+          fill={table.ui.color}
+          on:click={handleOpenColorPicker}
+          on:mouseenter={(event: SceneMouseEvent) => {
+            setSceneCursor(event, CURSOR_POINTER);
+          }}
+          on:mouseleave={(event: SceneMouseEvent) => {
+            setSceneCursor(event, CURSOR_INHERIT);
+          }}
         />
       </k-group>
     );

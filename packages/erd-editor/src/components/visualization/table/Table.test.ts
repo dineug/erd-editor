@@ -119,7 +119,7 @@ describe('visualization Table', () => {
   });
 
   describe('header', () => {
-    it('paints the color bar from the table ui color', async () => {
+    it('paints the colour edge from the table ui color, along the card rather than inside the header', async () => {
       app.store.dispatchSync(
         changeTableColorAction({
           id: TABLE_ID,
@@ -134,6 +134,7 @@ describe('visualization Table', () => {
 
       expect(bar).toBeTruthy();
       expect(bar.classList.contains(String(styles.headerColor))).toBe(true);
+      expect(bar.parentElement).toBe(rootOf(mounted));
       expect(bar.style.backgroundColor).toBe('#ff0000');
     });
 
@@ -169,14 +170,14 @@ describe('visualization Table', () => {
       expect(headerInputs(mounted)).toHaveLength(1);
     });
 
-    it('leaves the header button area empty in the preview', async () => {
+    it('sets the table icon before the name and no button in the preview', async () => {
       mounted = await mountAndFlush(tableTemplate(table), app);
-      const buttons = rootOf(mounted).querySelector(
-        `.${String(styles.headerButtonWrap)}`
+      const header = rootOf(mounted).querySelector(
+        `.${String(styles.header)}`
       ) as HTMLElement;
 
-      expect(buttons).toBeTruthy();
-      expect(buttons.children).toHaveLength(0);
+      expect(header.querySelectorAll('.icon')).toHaveLength(1);
+      expect(header.firstElementChild?.classList.contains('icon')).toBe(true);
     });
   });
 

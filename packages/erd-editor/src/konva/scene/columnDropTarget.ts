@@ -1,6 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { isEqual } from 'es-toolkit';
 
+import { TABLE_PADDING } from '@/constants/layout';
 import type { DraggableColumn } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
@@ -17,9 +18,15 @@ export type ColumnDropTarget = {
 };
 
 /**
+ * How far under a card's bottom edge a drop still appends to it. A card ends
+ * at its last row, so the padding it used to keep under them is kept here.
+ */
+const APPEND_BAND = TABLE_PADDING;
+
+/**
  * The row a column drag would drop on, in canvas coordinates, or null over a
- * header and over bare canvas. Past the last row a drop appends, as it does
- * under the header of a table with none. Arithmetic, never a hit canvas read.
+ * header and over bare canvas. A drop appends in a band under a card and
+ * anywhere on a table with no rows. Arithmetic, never a hit canvas read.
  */
 export function findColumnDropTarget(
   state: RootState,
@@ -36,29 +43,37 @@ export function findColumnDropTarget(
     .selectByIds(getVisibleIds(state, source).tableIds)
     .filter(table => isTableVisible(cullingRect, state, table, source))
     .sort((a, b) => b.ui.zIndex - a.ui.zIndex);
-
-  for (const table of tables) {
-    const rect = getTableRect(state, table, source);
-    const inside =
+  const rects = tables.map(table => getTableRect(state, table, source));
+  const within = (index: number, band: number) => {
+    const rect = rects[index];
+    return (
       point.x >= rect.x &&
       point.x <= rect.x + rect.width &&
       point.y >= rect.y &&
-      point.y <= rect.y + rect.height;
-    if (!inside) continue;
+      point.y <= rect.y + rect.height + band
+    );
+  };
 
-    const firstRow = getColumnRect(state, table, 0, source);
-    if (point.y < firstRow.y) return null;
+  // A card under the pointer outranks the band under another one.
+  const onCard = tables.findIndex((_, index) => within(index, 0));
+  const found =
+    onCard === -1
+      ? tables.findIndex((_, index) => within(index, APPEND_BAND))
+      : onCard;
+  if (found === -1) return null;
 
-    const index = Math.floor((point.y - firstRow.y) / firstRow.height);
-    const columnIds = getVisibleColumnIds(state, table, source);
-    if (index >= columnIds.length) {
-      return { tableId: table.id, columnId: null, index: columnIds.length };
-    }
+  const table = tables[found];
+  const columnIds = getVisibleColumnIds(state, table, source);
+  const append = { tableId: table.id, columnId: null, index: columnIds.length };
+  if (!columnIds.length) return append;
 
-    return { tableId: table.id, columnId: columnIds[index], index };
-  }
+  const firstRow = getColumnRect(state, table, 0, source);
+  if (point.y < firstRow.y) return null;
 
-  return null;
+  const index = Math.floor((point.y - firstRow.y) / firstRow.height);
+  if (index >= columnIds.length) return append;
+
+  return { tableId: table.id, columnId: columnIds[index], index };
 }
 
 /**

@@ -243,7 +243,7 @@ const TABLE_BUTTONS = [
     name: 'header add column',
     selector: ['#table-posts', '.table-add-column'],
   },
-  { name: 'colour bar', selector: ['#table-posts', '.table-header-color'] },
+  { name: 'colour edge', selector: ['#table-posts', '.table-header-color'] },
   {
     name: 'column remove',
     selector: ['#column-posts_title', '.column-remove'],
@@ -287,12 +287,12 @@ test.describe('a relationship draw and the buttons a table carries', () => {
     });
   }
 
-  test('a press on the colour bar of a zoomed out table closes the draw and does nothing else', async ({
+  test('a press on the colour edge of a zoomed out table closes the draw and does nothing else', async ({
     erd,
     page,
   }) => {
     // Below the swap zoom the scene draws the simplified table, whose one
-    // button is its colour bar.
+    // button is its colour edge.
     const schema = twoTables();
     schema.settings.zoomLevel = 0.5;
     await erd.seed(schema);

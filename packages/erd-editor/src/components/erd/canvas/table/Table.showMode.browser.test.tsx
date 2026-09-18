@@ -29,7 +29,6 @@ import {
   CURSOR_POINTER,
   DOCUMENT_CARD_SHADOW_BLUR,
   DOCUMENT_CARD_SHADOW_OFFSET_Y,
-  HEADER_COLOR_HEIGHT,
   SCENE_CODE_FONT_FAMILY,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
@@ -51,7 +50,11 @@ import {
   COLUMN_KEY_WIDTH,
   HEADER_ICON_HEIGHT,
   TABLE_BORDER,
-  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_COLOR_WIDTH,
+  TABLE_HEADER_BAND_PADDING,
+  TABLE_HEADER_HEIGHT,
+  TABLE_HEADER_ICON_SIZE,
+  TABLE_HEADER_INPUT_HEIGHT,
   TABLE_PADDING,
   VIEW_COLUMN_HEIGHT,
   VIEW_COLUMN_ICON_SIZE,
@@ -583,56 +586,54 @@ const dividerCountsOf = (stage: Stage, id: string) =>
   rowsOf(stage, id).map(row => row.find('.column-row-divider').length);
 
 describe('the rows a view card rules and tints', () => {
-  /** AC-20. A line runs under every row but the last, and under none in the document. */
-  it('rules a divider under every row but the last, and none in the document', async () => {
+  /** AC-20. A line runs under every row but the last, in a view and the document alike. */
+  it('rules a divider under every row but the last, in either source', async () => {
     const view = await mountViewScene();
     const document = await mountDocumentScene();
 
-    expect(dividerCountsOf(view.stage, 'b')).toEqual([1, 1, 0]);
-    expect(
-      (
-        rowsOf(view.stage, 'b')[0].findOne('.column-row-divider') as KonvaNode
-      ).getAttr('stroke')
-    ).toBe(theme.tableBorder);
-    expect(new Set(dividerCountsOf(document.stage, 'b'))).toEqual(new Set([0]));
+    // The view shows three of b's rows and the document all four.
+    for (const [{ stage }, rows] of [
+      [view, [1, 1, 0]],
+      [document, [1, 1, 1, 0]],
+    ] as const) {
+      expect(dividerCountsOf(stage, 'b')).toEqual(rows);
+      expect(
+        (
+          rowsOf(stage, 'b')[0].findOne('.column-row-divider') as KonvaNode
+        ).getAttr('stroke')
+      ).toBe(theme.tableBorder);
+    }
   });
 
   /**
-   * A view card draws no padding under its rows, so the last one meets the
-   * bottom border and takes the corners the card is rounded by. A square tint
-   * there would stand outside the body it is drawn in.
+   * A card draws no padding under its rows, so the last one meets the bottom
+   * border and takes the corners the card is rounded by. A square tint there
+   * would stand outside the body it is drawn in.
    */
   it('ends the card at its last row, on the corners the card is rounded by', async () => {
     const view = await mountViewScene();
     const document = await mountDocumentScene();
 
-    const rows = rowsOf(view.stage, 'b');
-    const last = rows[rows.length - 1];
+    for (const [{ stage }, rowHeight] of [
+      [view, VIEW_COLUMN_HEIGHT],
+      [document, COLUMN_HEIGHT],
+    ] as const) {
+      const rows = rowsOf(stage, 'b');
+      const last = rows[rows.length - 1];
 
-    expect(last.y() + VIEW_COLUMN_HEIGHT).toBe(
-      bodyOf(view.stage, 'b').height()
-    );
-    expect(cornerOf(last)).toEqual([
-      0,
-      0,
-      TABLE_CORNER_RADIUS,
-      TABLE_CORNER_RADIUS,
-    ]);
-    expect(rows.slice(0, -1).map(cornerOf)).toEqual([0, 0]);
-
-    // The document card keeps the padding it always drew under its rows, and
-    // rounds no row against a corner it never reaches.
-    const documentRows = rowsOf(document.stage, 'b');
-    const lastDocument = documentRows[documentRows.length - 1];
-
-    expect(lastDocument.y() + COLUMN_HEIGHT).toBe(
-      bodyOf(document.stage, 'b').height() - TABLE_PADDING
-    );
-    expect(new Set(documentRows.map(cornerOf))).toEqual(new Set([0]));
+      expect(last.y() + rowHeight).toBe(bodyOf(stage, 'b').height());
+      expect(cornerOf(last)).toEqual([
+        0,
+        0,
+        TABLE_CORNER_RADIUS,
+        TABLE_CORNER_RADIUS,
+      ]);
+      expect(new Set(rows.slice(0, -1).map(cornerOf))).toEqual(new Set([0]));
+    }
   });
 
-  /** AC-21 and AC-22. The tint marks a relationship row and the hover outranks it. */
-  it('tints the rows a relationship ends at and lets a hover paint over the tint', async () => {
+  /** AC-21 and AC-22. The tint marks a relationship row, and a hover lifts it a step rather than replacing it. */
+  it('tints the rows a relationship ends at and lets a hover lift the tint', async () => {
     const { stage } = await mountViewScene();
     // The tint is one of the paints the highlight brings up, so the card is
     // lit for it: b is where the two ends of two links land.
@@ -649,7 +650,7 @@ describe('the rows a view card rules and tints', () => {
     await settle();
 
     expect(rowBackgroundOf(pk)).toBe(theme.columnHover);
-    expect(rowBackgroundOf(fk)).toBe(theme.columnHover);
+    expect(rowBackgroundOf(fk)).toBe(theme.accentColor4);
   });
 
   /**
@@ -1039,7 +1040,7 @@ const nameColumn = (app: AppContext, id: string, name: string) => {
 /**
  * The card a view draws against the reference's node: a muted band across the
  * header carrying a table icon and a larger, muted name, and a minimum width
- * under the whole of it. The document card keeps every one of those unchanged.
+ * under the whole of it. The document card wears the band and icon at its own sizes.
  */
 describe('the header a view card wears', () => {
   it('lays a muted band from the top border down to the first row', async () => {
@@ -1048,7 +1049,7 @@ describe('the header a view card wears', () => {
     const body = bodyOf(stage, 'b');
 
     expect(band).not.toBeNull();
-    expect(band!.getAttr('fill')).toBe(theme.grayColor3);
+    expect(band!.getAttr('fill')).toBe(theme.tableHeaderBackground);
     expect(band!.getAttr('fill')).not.toBe(theme.tableBackground);
     expect(band!.y()).toBe(TABLE_BORDER);
     expect(band!.height()).toBe(
@@ -1094,42 +1095,59 @@ describe('the header a view card wears', () => {
   });
 
   /**
-   * The colour a reader painted is document information the view keeps, so the
-   * strip is drawn after the band and the two are stacked: the header carries
+   * The colour a reader painted is document information the view keeps, so it
+   * runs down the card's left edge over the band and the rows: the card wears
    * both, rather than one of them standing in for the other.
    */
-  it('keeps the colour a reader painted over that band', async () => {
+  it('keeps the colour a reader painted down the left edge, over that band', async () => {
     const { app, stage } = await mountViewScene();
     paintTable(app, 'b', 'users', '#ff0000');
     await settle();
 
-    const strip = headerColorOf(stage, 'b');
+    const table = tableOf(stage, 'b');
+    const edge = headerColorOf(stage, 'b');
+    const band = bandOf(stage, 'b');
+    const box = edge.getClientRect({ relativeTo: table });
+
+    expect(edge.getAttr('fill')).toBe('#ff0000');
+    expect(edge.zIndex()).toBeGreaterThan(band!.zIndex());
+    expect(box.x).toBeCloseTo(0, 5);
+    expect(box.width).toBeCloseTo(TABLE_COLOR_WIDTH, 5);
+    expect(box.height).toBeGreaterThan(band!.height());
+  });
+
+  it('draws the band on a document card too, over its own header line', async () => {
+    const { stage } = await mountDocumentScene();
     const band = bandOf(stage, 'b');
 
-    expect(strip.getAttr('fill')).toBe('#ff0000');
-    expect(strip.height()).toBe(HEADER_COLOR_HEIGHT);
-    expect(strip.zIndex()).toBeGreaterThan(band!.zIndex());
-    expect(strip.y()).toBe(0);
-    expect(strip.y() + strip.height()).toBeLessThan(band!.height());
+    expect(band).not.toBeNull();
+    expect(band!.getAttr('fill')).toBe(theme.tableHeaderBackground);
+    expect(band!.height()).toBe(
+      TABLE_INSET + TABLE_HEADER_HEIGHT - TABLE_BORDER
+    );
+    expect(band!.height()).toBe(
+      TABLE_HEADER_INPUT_HEIGHT + TABLE_HEADER_BAND_PADDING * 2
+    );
   });
 
-  it('draws no band on a document card', async () => {
-    const { stage } = await mountDocumentScene();
-
-    expect(bandOf(stage, 'b')).toBeNull();
-    expect(headerColorOf(stage, 'b').height()).toBe(HEADER_COLOR_HEIGHT);
-  });
-
-  it('stands a table icon before the name, on the view alone', async () => {
+  it('stands a table icon before the name, at the size each source draws it', async () => {
     const view = await mountViewScene();
     const document = await mountDocumentScene();
     const icon = headerIconOf(view.stage, 'b');
+    const documentIcon = headerIconOf(document.stage, 'b');
 
     expect(icon).not.toBeNull();
     expect(icon!.scaleX()).toBe(VIEW_TABLE_HEADER_ICON_SIZE / 24);
     expect(icon!.x()).toBe(0);
     expect(icon!.y()).toBe(0);
-    expect(headerIconOf(document.stage, 'b')).toBeNull();
+
+    // The document centres its smaller icon on the input line the name sits in.
+    expect(documentIcon).not.toBeNull();
+    expect(documentIcon!.scaleX()).toBe(TABLE_HEADER_ICON_SIZE / 24);
+    expect(documentIcon!.x()).toBe(0);
+    expect(documentIcon!.y()).toBe(
+      (TABLE_HEADER_INPUT_HEIGHT - TABLE_HEADER_ICON_SIZE) / 2
+    );
   });
 
   it('leaves the name room past that icon, and no row cell with it', async () => {
@@ -1246,11 +1264,12 @@ describe('the source the drawn card is measured by', () => {
     ]);
   });
 
-  it('draws a document card under its icon band, on the document row', async () => {
+  it('runs a document header band from the top border, over the card padding, on the document row', async () => {
     const { stage } = await mountDocumentScene();
 
+    // The header group sits at the inset, so the line climbs back to the border.
     expect(headerInputsOf(stage, 'b').y()).toBe(
-      HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM
+      TABLE_BORDER + TABLE_HEADER_BAND_PADDING - TABLE_INSET
     );
     expect(new Set(rowBackgroundHeights(stage, 'b'))).toEqual(
       new Set([COLUMN_HEIGHT])
