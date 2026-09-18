@@ -859,10 +859,7 @@ export class ErdEditorPage {
         id: finger + 1,
       }));
 
-    await session.send('Input.dispatchTouchEvent', {
-      type: 'touchStart',
-      touchPoints: fingersAt(0).slice(0, 1),
-    });
+    await this.touchStart(from[0]);
     await session.send('Input.dispatchTouchEvent', {
       type: 'touchStart',
       touchPoints: fingersAt(0),
@@ -873,10 +870,7 @@ export class ErdEditorPage {
         touchPoints: fingersAt(step / steps),
       });
     }
-    await session.send('Input.dispatchTouchEvent', {
-      type: 'touchEnd',
-      touchPoints: [],
-    });
+    await this.touchEnd();
   }
 
   /**

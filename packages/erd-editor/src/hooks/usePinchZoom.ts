@@ -1,15 +1,13 @@
 import { onMounted, type Ref } from '@dineug/r-html';
-import { clamp } from 'es-toolkit';
 
 import type { AppContext } from '@/components/appContext';
-import { CANVAS_ZOOM_MAX, CANVAS_ZOOM_MIN } from '@/constants/schema';
 import { pinchZoomAction$ } from '@/engine/modules/settings/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Point } from '@/internal-types';
 import { getZoomTransform, toScenePoint } from '@/konva/scene/viewport';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { createPinch, isPinchWheel, pinchWheelScale } from '@/utils/pinch';
-import { zoomLevelInRange } from '@/utils/validation';
+import { zoomInRange, zoomLevelInRange } from '@/utils/validation';
 
 export type PinchZoomOptions = {
   /** The editor whose store the zoom lands in. */
@@ -85,11 +83,7 @@ export function usePinchZoom({
 
     const { zoomLevel } = transformOf();
     const from = reached.stored === zoomLevel ? reached.exact : zoomLevel;
-    const exact = clamp(
-      from * pinchWheelScale(event),
-      CANVAS_ZOOM_MIN,
-      CANVAS_ZOOM_MAX
-    );
+    const exact = zoomInRange(from * pinchWheelScale(event));
 
     reached = { exact, stored: zoomLevelInRange(exact) };
     zoomTo(exact, pointIn(event));

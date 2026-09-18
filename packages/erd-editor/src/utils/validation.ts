@@ -24,7 +24,7 @@ export const toNumString = (value: string) => value.replace(NOT_NUM, '');
 const canvasInRange = (value: number) =>
   clamp(value, CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
 
-const zoomInRange = (value: number) =>
+export const zoomInRange = (value: number) =>
   clamp(value, CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
 
 export const maxWidthCommentInRange = (value: number) =>

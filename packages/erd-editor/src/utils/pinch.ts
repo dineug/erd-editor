@@ -61,7 +61,8 @@ type TouchPoints = ArrayLike<Pick<Touch, 'clientX' | 'clientY'>>;
 function spreadOf(touches: TouchPoints, box: DOMRect): Spread | null {
   if (touches.length < 2) return null;
 
-  const [a, b] = [touches[0], touches[1]];
+  const a = touches[0];
+  const b = touches[1];
 
   return {
     center: {
@@ -149,24 +150,15 @@ export function createPinch(box: () => HTMLElement, start: PinchStart) {
   /** Listens for the gestures on the box; the teardown ends a pinch still going too. */
   const listen = (): Subscription => {
     const $box = box();
+    const gesture$ = (type: string) => fromEvent<GestureEvent>($box, type);
     const subscription = new Subscription(() => {
       touch?.unsubscribe();
       gestureStep = null;
     });
 
-    subscription.add(
-      fromEvent<GestureEvent>($box, 'gesturestart').subscribe(
-        handleGesturestart
-      )
-    );
-    subscription.add(
-      fromEvent<GestureEvent>($box, 'gesturechange').subscribe(
-        handleGesturechange
-      )
-    );
-    subscription.add(
-      fromEvent<GestureEvent>($box, 'gestureend').subscribe(handleGestureend)
-    );
+    subscription.add(gesture$('gesturestart').subscribe(handleGesturestart));
+    subscription.add(gesture$('gesturechange').subscribe(handleGesturechange));
+    subscription.add(gesture$('gestureend').subscribe(handleGestureend));
 
     return subscription;
   };
