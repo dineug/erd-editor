@@ -6,8 +6,8 @@
     "dist (reachable from exports)": {
       "bytes": 1142812,
       "gzip": 276422,
-      "budgetGzip": 312461,
-      "budgetNote": "300,181 B measured after the Focus view and Flow mode landed (feat/visualization, 2026-09-12): the view seam, the sort channels, the Flow and Focus scenes and the particle loop all sit on the scene path, which the export worker carries a second time, so the feature cost 23.7 kB gzip over the previous measurement. Plus the same 12,280 B margin as before, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a third scene copy fails the round it lands in, while routine work does not."
+      "budgetGzip": 325028,
+      "budgetNote": "312,748 B measured after pinch zoom landed (feat/pinch-zoom, 2026-09-19): the trackpad, two finger and Safari gesture pinch on the ERD, Flow, Graph and diff viewer scenes cost 1,697 B gzip over the 311,051 B before it, a few bytes of it twice through the scene memo the export worker carries. Plus the same 12,280 B margin as before, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a third scene copy fails the round it lands in, while routine work does not."
     }
   }
 }
