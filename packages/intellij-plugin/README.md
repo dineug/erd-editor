@@ -57,12 +57,18 @@ Editing marks the tab dirty like any other file; the diagram is written to disk 
 - The IDE must be running on the JetBrains Runtime. The editor is a JCEF webview, which is
   unavailable when the IDE is started on an alternative OpenJDK build.
 
-## Links
+## Documentation
 
-- [Editing guide](https://docs.erd-editor.io/docs/category/guides) — editing, import and export,
+- [Editing Guide](https://docs.erd-editor.io/docs/category/guides) — editing, import and export,
   relationships, quick search, visualization, code generation, settings
 - [Documentation](https://docs.erd-editor.io)
-- [Web app](https://erd-editor.io)
+
+## Also available
+
+- [Web app](https://erd-editor.io) — installable PWA with real-time collaboration
+- [VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
+- [`@dineug/erd-editor`](https://www.npmjs.com/package/@dineug/erd-editor) — the editor as a
+  custom element for your own app
 <!-- Plugin description end -->
 
 ## Development
