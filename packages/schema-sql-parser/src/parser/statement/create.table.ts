@@ -232,6 +232,15 @@ function createTableColumnsParser(
 
   const isToken = () => $pos.value < tokens.length;
 
+  const opensConstraintItem = (pos: number) =>
+    isConstraint(pos) ||
+    isPrimary(pos) ||
+    isForeign(pos) ||
+    isUnique(pos) ||
+    isIndex(pos) ||
+    isKey(pos) ||
+    indexKind(pos);
+
   // Reads a key list from its ( through its ), each column with its sort.
   const indexColumnsParser = () => {
     const indexColumns: IndexColumn[] = [];
@@ -275,7 +284,7 @@ function createTableColumnsParser(
       $pos.value++;
     }
 
-    if (!indexColumns.includes(indexColumn) && indexColumn.name !== '') {
+    if (indexColumn.name !== '') {
       indexColumns.push(indexColumn);
     }
 
@@ -333,16 +342,7 @@ function createTableColumnsParser(
       continue;
     }
 
-    if (
-      !column.name &&
-      (isConstraint($pos.value) ||
-        isPrimary($pos.value) ||
-        isForeign($pos.value) ||
-        isUnique($pos.value) ||
-        isIndex($pos.value) ||
-        isKey($pos.value) ||
-        indexKind($pos.value))
-    ) {
+    if (!column.name && opensConstraintItem($pos.value)) {
       constraintItem = true;
     }
 
@@ -355,12 +355,6 @@ function createTableColumnsParser(
       isString($pos.value) &&
       !constraintItem &&
       !column.name &&
-      !isConstraint($pos.value) &&
-      !isPrimary($pos.value) &&
-      !isForeign($pos.value) &&
-      !isUnique($pos.value) &&
-      !isIndex($pos.value) &&
-      !isKey($pos.value) &&
       !isNot($pos.value) &&
       !constraintState($pos.value)
     ) {
