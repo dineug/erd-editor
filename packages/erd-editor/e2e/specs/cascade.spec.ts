@@ -123,7 +123,7 @@ test.describe('cascade invariants', () => {
     // The picker's markup is built by the upstream library at runtime, so its sheet is the one
     // that had to stay unscoped when it moved from a tree <style> to css.global. Opening it
     // is what proves the selectors still match the class names that library writes.
-    await erd.tableEl('users').locator('.table-header-color').click();
+    await erd.tableEl('users').locator('div.table-header-color').click();
     const picker = page.locator('erd-editor .easylogic-colorpicker');
     await expect(picker).toBeVisible();
 

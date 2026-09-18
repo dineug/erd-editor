@@ -4,6 +4,12 @@ export const START_ADD = 50;
 
 export const DUPLICATE_MIN_MOVE = 4;
 
+/**
+ * How far, in screen px, a press on a cell that also takes a click travels
+ * before it carries its entity, so a double click that wobbles still edits.
+ */
+export const CLICK_DRAG_MIN_MOVE = 4;
+
 const RATIO_WIDTH = 16;
 const RATIO_HEIGHT = 9;
 export const DEFAULT_WIDTH = 1200;
@@ -27,17 +33,36 @@ export const HEADER_ICON_MARGIN_BOTTOM = 4;
 export const TABLE_BORDER = 1;
 export const TABLE_PADDING = 8;
 export const TABLE_HEADER_PADDING = 2;
-export const TABLE_HEADER_ICON_MARGIN_BOTTOM = 2;
 export const TABLE_HEADER_INPUT_HEIGHT =
   INPUT_HEIGHT + TABLE_HEADER_PADDING * 2;
+
+/** The room a table's header band keeps above and below its input line. */
+export const TABLE_HEADER_BAND_PADDING = 2;
+
+/**
+ * What a table's header adds under the card's top padding. The band starts at
+ * the top border instead, over that padding: one input line and its own room,
+ * a little taller than a row, holding the add column and remove buttons too.
+ */
 export const TABLE_HEADER_HEIGHT =
-  HEADER_ICON_HEIGHT +
-  TABLE_HEADER_ICON_MARGIN_BOTTOM +
-  TABLE_HEADER_INPUT_HEIGHT;
+  TABLE_HEADER_INPUT_HEIGHT + TABLE_HEADER_BAND_PADDING * 2 - TABLE_PADDING;
 export const TABLE_HEADER_BUTTON_MARGIN_LEFT = 4;
+
+/** How wide the colour a table wears along its left edge is drawn. */
+export const TABLE_COLOR_WIDTH = 4;
+
+/** The strip the two header buttons take along the right end of the header line. */
+export const TABLE_HEADER_BUTTONS_WIDTH =
+  HEADER_ICON_HEIGHT * 2 + TABLE_HEADER_BUTTON_MARGIN_LEFT;
 
 export const COLUMN_DELETE_WIDTH = 12;
 export const COLUMN_KEY_WIDTH = 12;
+
+/** The table icon before the name, at the key badge's size so the two stand in one column. */
+export const TABLE_HEADER_ICON_SIZE = COLUMN_KEY_WIDTH;
+
+/** The gap after that icon, the one a key badge keeps, which lines the name up with the column names. */
+export const TABLE_HEADER_ICON_GAP = INPUT_MARGIN_RIGHT;
 export const COLUMN_MIN_WIDTH = 60;
 export const COLUMN_NOT_NULL_WIDTH = 35;
 export const COLUMN_UNIQUE_WIDTH = 22;
@@ -69,11 +94,7 @@ export const VIEW_TABLE_HEADER_FONT_SCALE =
  */
 export const VIEW_TABLE_HEADER_WEIGHT_SCALE = 1.04;
 
-/**
- * The header a view card draws: the icon line with the card's own padding under
- * it, and none of the icon band the document header keeps above the name,
- * because a view offers no edit affordance there.
- */
+/** The header a view card draws: the icon line with the card's own padding under it. */
 export const VIEW_TABLE_HEADER_HEIGHT =
   VIEW_TABLE_HEADER_ICON_SIZE + TABLE_PADDING;
 

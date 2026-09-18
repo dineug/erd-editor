@@ -246,7 +246,7 @@ describe('getAnchors across the two channels', () => {
       direction: Direction.right,
     });
     expect(view.end).toMatchObject({ tableId: 'B', x: 5_600, y: -3_000 + 17 });
-    expect(relationship.start).toMatchObject({ x: 118, y: 28 });
+    expect(relationship.start).toMatchObject({ x: 134, y: 15 });
   });
 
   it('reads the document anchors for a view that has not sorted the connector', () => {

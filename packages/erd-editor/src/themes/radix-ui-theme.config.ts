@@ -31,6 +31,9 @@ export const ThemeConfig: Theme = {
   canvasBoundaryBackground: 'gray-1',
 
   tableBackground: 'gray-2',
+  // A step past the gray-3 canvas on the side away from the body, lighter in
+  // dark and darker in light, so the header never reads as the canvas.
+  tableHeaderBackground: 'gray-5',
   tableSelect: 'accent-8',
   tableBorder: 'gray-6',
   tableShadow: 'override-transparent',
@@ -40,7 +43,8 @@ export const ThemeConfig: Theme = {
   memoBorder: 'gray-6',
   memoShadow: 'override-transparent',
 
-  columnSelect: 'accent-4',
+  columnSelect: 'accent-3',
+  columnSelectHover: 'accent-4',
   columnHover: 'gray-4',
 
   relationshipHover: 'accent-8',
@@ -91,11 +95,13 @@ export const ThemeConfig: Theme = {
 } as const;
 
 /**
- * What the gray, gold and bronze accents take instead: step 4 of those scales
- * sits on or beside the gray-4 hover, so a selected row would read as a hovered one.
+ * What the gray, gold and bronze accents take instead: their low steps sit on
+ * the gray-4 hover, so a selected row stays on gray-6 and a hovered one eases
+ * back to gray-5, as gray-7 would take gray-11 text in light down to 3.76:1.
  */
 export const NeutralAccentThemeConfig: Partial<Theme> = {
   columnSelect: 'gray-6',
+  columnSelectHover: 'gray-5',
 };
 
 /**

@@ -27,10 +27,12 @@ import {
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_PADDING,
   COLUMN_UNIQUE_WIDTH,
-  HEADER_ICON_HEIGHT,
   INPUT_HEIGHT,
   INPUT_MARGIN_RIGHT,
-  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_BORDER,
+  TABLE_HEADER_BAND_PADDING,
+  TABLE_HEADER_ICON_GAP,
+  TABLE_HEADER_ICON_SIZE,
   TABLE_HEADER_PADDING,
   VIEW_COLUMN_ICON_GAP,
   VIEW_COLUMN_ICON_SIZE,
@@ -93,14 +95,25 @@ describe('the comment width a table draws at', () => {
 });
 
 describe('the boxes a table header lays out', () => {
-  it('carries the name alone while the comment is hidden', () => {
+  it('carries the name alone, past the table icon, while the comment is hidden', () => {
     const state = createState();
     const entity = table();
     entity.ui.widthName = 60;
 
     expect(getHeaderCellSlots(state, entity)).toEqual([
-      { focusType: FocusType.tableName, x: 0, width: 60 },
+      {
+        focusType: FocusType.tableName,
+        x: TABLE_HEADER_ICON_SIZE + TABLE_HEADER_ICON_GAP,
+        width: 60,
+      },
     ]);
+  });
+
+  it('lines the header name up with the column names under it', () => {
+    const state = createState();
+    const [name] = getHeaderCellSlots(state, table());
+
+    expect(TABLE_INSET + name.x).toBe(getColumnCellsX());
   });
 
   it('puts the comment past the name and its margin', () => {
@@ -112,7 +125,11 @@ describe('the boxes a table header lays out', () => {
 
     expect(getHeaderCellSlots(state, entity)[1]).toEqual({
       focusType: FocusType.tableComment,
-      x: 60 + INPUT_MARGIN_RIGHT,
+      x:
+        TABLE_HEADER_ICON_SIZE +
+        TABLE_HEADER_ICON_GAP +
+        60 +
+        INPUT_MARGIN_RIGHT,
       width: 70,
     });
   });
@@ -284,19 +301,18 @@ describe('the boxes a view lays out', () => {
     expect(view.width).toBe(73);
     expect(view.width).toBeGreaterThan(document.width);
     expect(view.x).toBe(20);
-    expect(document.x).toBe(0);
+    expect(document.x).toBe(20);
   });
 });
 
 /** AC-13, AC-14, AC-15. Every offset a cell is laid out at answers for the source it is asked about. */
 describe('the offsets a source lays its cells out at', () => {
-  it('hangs the header cells under the icon band only in the document', () => {
+  it('runs the document header band from the top border, and a view header inside the padding', () => {
     expect(getHeaderCellsY()).toBe(getHeaderCellsY('document'));
     expect(getHeaderCellsY('document')).toBe(
-      TABLE_INSET + HEADER_ICON_HEIGHT + TABLE_HEADER_ICON_MARGIN_BOTTOM
+      TABLE_BORDER + TABLE_HEADER_BAND_PADDING
     );
     expect(getHeaderCellsY('flow')).toBe(TABLE_INSET);
-    expect(getHeaderCellsY('flow')).toBeLessThan(getHeaderCellsY('document'));
   });
 
   it('takes the row padding from the source that lays the row out', () => {

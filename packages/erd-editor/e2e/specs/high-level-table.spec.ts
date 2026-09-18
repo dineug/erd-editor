@@ -89,7 +89,7 @@ test.describe('simplified table', () => {
     await expect(erd.selectedTables()).toHaveCount(2);
   });
 
-  test('the colour bar on a simplified table opens the picker and never drags', async ({
+  test('the colour edge on a simplified table opens the picker and never drags', async ({
     erd,
   }) => {
     await erd.seed(zoomedOut());

@@ -20,7 +20,9 @@ function withMemo(): ErdDocument {
 }
 
 test.describe('entity colour', () => {
-  test('the colour bar opens the picker under the pointer', async ({ erd }) => {
+  test('the colour edge opens the picker under the pointer', async ({
+    erd,
+  }) => {
     await erd.seed(twoTables());
 
     await expect(erd.colorPicker).toHaveCount(0);

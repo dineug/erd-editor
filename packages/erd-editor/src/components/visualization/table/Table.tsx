@@ -3,8 +3,10 @@ import { FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
+import Icon from '@/components/primitives/icon/Icon';
 import * as styles from '@/components/table-view/Table.styles';
 import Column from '@/components/visualization/table/column/Column';
+import { TABLE_HEADER_ICON_SIZE } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import type { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
@@ -42,14 +44,14 @@ const Table: FC<TableProps> = (props, ctx) => {
         }}
         data-id={table.id}
       >
+        <div
+          class={['table-header-color', styles.headerColor]}
+          style={{
+            'background-color': table.ui.color,
+          }}
+        ></div>
         <div class={styles.header}>
-          <div
-            class={['table-header-color', styles.headerColor]}
-            style={{
-              'background-color': table.ui.color,
-            }}
-          ></div>
-          <div class={styles.headerButtonWrap}></div>
+          <Icon name="table-2" size={TABLE_HEADER_ICON_SIZE} />
           <div class={styles.headerInputWrap}>
             <div class="input-padding">
               <EditInput
@@ -69,21 +71,23 @@ const Table: FC<TableProps> = (props, ctx) => {
             ) : null}
           </div>
         </div>
-        <div>
-          {repeat(
-            columns,
-            column => column.id,
-            column => (
-              <Column
-                column={column}
-                widthName={tableWidths.name}
-                widthDataType={tableWidths.dataType}
-                widthDefault={tableWidths.default}
-                widthComment={tableWidths.comment}
-              />
-            )
-          )}
-        </div>
+        {columns.length ? (
+          <div>
+            {repeat(
+              columns,
+              column => column.id,
+              column => (
+                <Column
+                  column={column}
+                  widthName={tableWidths.name}
+                  widthDataType={tableWidths.dataType}
+                  widthDefault={tableWidths.default}
+                  widthComment={tableWidths.comment}
+                />
+              )
+            )}
+          </div>
+        ) : null}
       </div>
     );
   };

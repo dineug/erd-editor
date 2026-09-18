@@ -30,9 +30,12 @@ import {
   START_X,
   START_Y,
   TABLE_BORDER,
+  TABLE_HEADER_BAND_PADDING,
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
+  TABLE_HEADER_BUTTONS_WIDTH,
   TABLE_HEADER_HEIGHT,
-  TABLE_HEADER_ICON_MARGIN_BOTTOM,
+  TABLE_HEADER_ICON_GAP,
+  TABLE_HEADER_ICON_SIZE,
   TABLE_HEADER_INPUT_HEIGHT,
   TABLE_HEADER_PADDING,
   TABLE_PADDING,
@@ -71,11 +74,10 @@ describe('layout constants', () => {
     expect(HEADER_ICON_MARGIN_BOTTOM).toBe(4);
   });
 
-  it('composes the table header height from icon row + padded input', () => {
+  it('composes the table header from one padded input line and its band room', () => {
     expect(TABLE_BORDER).toBe(1);
     expect(TABLE_PADDING).toBe(8);
     expect(TABLE_HEADER_PADDING).toBe(2);
-    expect(TABLE_HEADER_ICON_MARGIN_BOTTOM).toBe(2);
     expect(TABLE_HEADER_BUTTON_MARGIN_LEFT).toBe(4);
 
     expect(TABLE_HEADER_INPUT_HEIGHT).toBe(24);
@@ -83,11 +85,23 @@ describe('layout constants', () => {
       INPUT_HEIGHT + TABLE_HEADER_PADDING * 2
     );
 
-    expect(TABLE_HEADER_HEIGHT).toBe(38);
+    expect(TABLE_HEADER_BAND_PADDING).toBe(2);
+    expect(TABLE_HEADER_HEIGHT).toBe(20);
     expect(TABLE_HEADER_HEIGHT).toBe(
-      HEADER_ICON_HEIGHT +
-        TABLE_HEADER_ICON_MARGIN_BOTTOM +
-        TABLE_HEADER_INPUT_HEIGHT
+      TABLE_HEADER_INPUT_HEIGHT + TABLE_HEADER_BAND_PADDING * 2 - TABLE_PADDING
+    );
+    // The band starts at the top border, over the card's top padding: the line
+    // and its room, 28 from the border down, a little taller than a row.
+    expect(TABLE_PADDING + TABLE_HEADER_HEIGHT).toBe(28);
+    expect(TABLE_PADDING + TABLE_HEADER_HEIGHT).toBeGreaterThan(COLUMN_HEIGHT);
+  });
+
+  it('sets the header icon in the key column and reserves the header buttons their strip', () => {
+    expect(TABLE_HEADER_ICON_SIZE).toBe(COLUMN_KEY_WIDTH);
+    expect(TABLE_HEADER_ICON_GAP).toBe(INPUT_MARGIN_RIGHT);
+    expect(TABLE_HEADER_BUTTONS_WIDTH).toBe(28);
+    expect(TABLE_HEADER_BUTTONS_WIDTH).toBe(
+      HEADER_ICON_HEIGHT * 2 + TABLE_HEADER_BUTTON_MARGIN_LEFT
     );
   });
 
@@ -109,7 +123,10 @@ describe('layout constants', () => {
     expect(TABLE_PADDING + VIEW_TABLE_HEADER_HEIGHT).toBe(
       TABLE_PADDING * 2 + VIEW_TABLE_HEADER_ICON_SIZE
     );
-    expect(VIEW_TABLE_HEADER_HEIGHT).toBeLessThan(TABLE_HEADER_HEIGHT);
+    // A view pads its icon line inside a taller band than the document's line.
+    expect(TABLE_PADDING + VIEW_TABLE_HEADER_HEIGHT).toBeGreaterThan(
+      TABLE_PADDING + TABLE_HEADER_HEIGHT
+    );
   });
 
   it('draws the view header name larger than the rows under it', () => {
@@ -213,10 +230,13 @@ describe('layout constants', () => {
       TABLE_BORDER,
       TABLE_PADDING,
       TABLE_HEADER_PADDING,
-      TABLE_HEADER_ICON_MARGIN_BOTTOM,
       TABLE_HEADER_INPUT_HEIGHT,
+      TABLE_HEADER_BAND_PADDING,
       TABLE_HEADER_HEIGHT,
       TABLE_HEADER_BUTTON_MARGIN_LEFT,
+      TABLE_HEADER_BUTTONS_WIDTH,
+      TABLE_HEADER_ICON_SIZE,
+      TABLE_HEADER_ICON_GAP,
       COLUMN_DELETE_WIDTH,
       COLUMN_KEY_WIDTH,
       COLUMN_MIN_WIDTH,

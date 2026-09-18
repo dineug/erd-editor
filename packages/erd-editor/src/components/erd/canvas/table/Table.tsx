@@ -27,7 +27,6 @@ import {
   CURSOR_POINTER,
   documentCardShadow,
   FOCUS_BORDER_HEIGHT,
-  HEADER_COLOR_HEIGHT,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
@@ -54,6 +53,7 @@ import {
   getHeaderTextHeight,
   getHeaderTextY,
 } from '@/components/erd/canvas/table/cellLayout';
+import { getColorEdgePath } from '@/components/erd/canvas/table/colorEdge';
 import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
@@ -69,11 +69,11 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
   TABLE_HEADER_BUTTON_MARGIN_LEFT,
+  TABLE_HEADER_ICON_SIZE,
   TABLE_HEADER_INPUT_HEIGHT,
   VIEW_TABLE_HEADER_BUTTON_SIZE,
   VIEW_TABLE_HEADER_BUTTONS_WIDTH,
   VIEW_TABLE_HEADER_FONT_SIZE,
-  VIEW_TABLE_HEADER_HEIGHT,
   VIEW_TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
 import {
@@ -106,6 +106,7 @@ import {
   setViewHoverTable,
 } from '@/konva/scene/viewLayout';
 import type { Theme } from '@/themes/tokens';
+import { tableHeaderHeight } from '@/utils/calcTable';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -535,11 +536,6 @@ const Table: FC<TableProps> = (props, ctx) => {
     const tableWidths = getTableWidths(store.state, table, source);
     const rect = getTableRect(store.state, table, source);
     const contentWidth = rect.width - TABLE_INSET * 2;
-    // The view header has no icon band above its name box, so its two buttons
-    // sit centred on the icon line and after the name, over the end of one that
-    // reaches them: konva paints and hit tests siblings in order.
-    const headerButtonY =
-      (VIEW_TABLE_HEADER_ICON_SIZE - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2;
 
     const hovered = Boolean(props.hovered || state.hover);
     const draggingColumnId = props.ghostColumnId ?? state.dragstartId;
@@ -554,10 +550,23 @@ const Table: FC<TableProps> = (props, ctx) => {
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
     const ringColor = sharedTableColor ?? sharedSelected;
 
-    // A view draws no affordance the width it is measured at has no room for,
-    // and the colour band is the same read only header, so it takes no click:
-    // the picker it opens sits over a view whose colour change the gate drops.
+    // A view draws no affordance its measured width has no room for, and its
+    // colour edge takes no click, since the gate drops what the picker changes.
+    // The edge is the card's last child, so no band or row tint covers it.
     const view = source !== 'document';
+
+    // The header line, inside the header group the card's inset places. Both
+    // sources keep the two buttons centred on it, in the room past the name
+    // the width sum reserves for them.
+    const headerLineY = getHeaderCellsY(source) - TABLE_INSET;
+    const headerButtonY =
+      headerLineY +
+      (view
+        ? (VIEW_TABLE_HEADER_ICON_SIZE - VIEW_TABLE_HEADER_BUTTON_SIZE) / 2
+        : (TABLE_HEADER_INPUT_HEIGHT - HEADER_ICON_HEIGHT) / 2);
+    const headerIconSize = view
+      ? VIEW_TABLE_HEADER_ICON_SIZE
+      : TABLE_HEADER_ICON_SIZE;
 
     // The two header buttons, on the hovered card of a view alone.
     const viewButtons = view && hovered;
@@ -581,9 +590,8 @@ const Table: FC<TableProps> = (props, ctx) => {
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
     // A card showing no rows is its header and nothing else, so the band takes
-    // the whole box and all four corners. Stopping it under the header would
-    // leave the padding below it painted in the body's own colour.
-    const headerFillsCard = view && columnIds.length === 0;
+    // the whole box and rounds all four corners rather than the top two.
+    const headerFillsCard = columnIds.length === 0;
 
     // A view lights what a hover or a pin reaches, and nothing at rest. The
     // card wears that as an accent border and a glow, and a table left unlit
@@ -655,26 +663,24 @@ const Table: FC<TableProps> = (props, ctx) => {
             view && setSceneCursor(event, CURSOR_INHERIT);
           }}
         />
-        {view ? (
-          <k-rect
-            name="table-header-band"
-            x={TABLE_BORDER}
-            y={TABLE_BORDER}
-            width={rect.width - TABLE_BORDER * 2}
-            height={
-              headerFillsCard
-                ? rect.height - TABLE_BORDER * 2
-                : TABLE_INSET + VIEW_TABLE_HEADER_HEIGHT - TABLE_BORDER
-            }
-            cornerRadius={
-              headerFillsCard
-                ? TABLE_CORNER_RADIUS
-                : [TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]
-            }
-            fill={theme.grayColor3}
-            listening={false}
-          />
-        ) : null}
+        <k-rect
+          name="table-header-band"
+          x={TABLE_BORDER}
+          y={TABLE_BORDER}
+          width={rect.width - TABLE_BORDER * 2}
+          height={
+            headerFillsCard
+              ? rect.height - TABLE_BORDER * 2
+              : TABLE_INSET + tableHeaderHeight(source) - TABLE_BORDER
+          }
+          cornerRadius={
+            headerFillsCard
+              ? TABLE_CORNER_RADIUS
+              : [TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]
+          }
+          fill={theme.tableHeaderBackground}
+          listening={false}
+        />
         {litAlpha > 0 ? (
           <k-rect
             name="table-glow"
@@ -706,71 +712,17 @@ const Table: FC<TableProps> = (props, ctx) => {
             listening={false}
           />
         ) : null}
-        <k-rect
-          name="table-header-color"
-          kind="table-header-color"
-          x={TABLE_BORDER}
-          y={0}
-          width={rect.width - TABLE_BORDER * 2}
-          height={HEADER_COLOR_HEIGHT}
-          cornerRadius={[TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]}
-          fill={table.ui.color}
-          listening={!view}
-          on:click={handleOpenColorPicker}
-          on:mouseenter={(event: SceneMouseEvent) => {
-            setSceneCursor(event, CURSOR_POINTER);
-          }}
-          on:mouseleave={(event: SceneMouseEvent) => {
-            setSceneCursor(event, CURSOR_INHERIT);
-          }}
-        />
         <k-group name="table-header" x={TABLE_INSET} y={TABLE_INSET}>
-          {view
-            ? null
-            : sceneIcon({
-                icon: 'plus',
-                name: 'table-add-column',
-                kind: 'icon',
-                size: HEADER_ICON_HEIGHT,
-                color: iconColor(theme, 'plus', hovered),
-                mouseenter: handleIconMouseenter('plus'),
-                mouseleave: handleIconMouseleave,
-                x:
-                  contentWidth -
-                  HEADER_ICON_HEIGHT * 2 -
-                  TABLE_HEADER_BUTTON_MARGIN_LEFT,
-                y: 0,
-                click: handleAddColumn,
-              })}
-          {view
-            ? null
-            : sceneIcon({
-                icon: 'x',
-                name: 'table-remove',
-                kind: 'icon',
-                size: HEADER_ICON_HEIGHT,
-                color: iconColor(theme, 'x', hovered),
-                mouseenter: handleIconMouseenter('x'),
-                mouseleave: handleIconMouseleave,
-                x: contentWidth - HEADER_ICON_HEIGHT,
-                y: 0,
-                click: handleRemoveTable,
-              })}
-          <k-group
-            name="table-header-inputs"
-            y={getHeaderCellsY(source) - TABLE_INSET}
-          >
-            {view
-              ? sceneIcon({
-                  icon: 'table-2',
-                  name: 'table-header-icon',
-                  kind: 'table-header-icon',
-                  size: VIEW_TABLE_HEADER_ICON_SIZE,
-                  color: theme.foreground,
-                  x: 0,
-                  y: 0,
-                })
-              : null}
+          <k-group name="table-header-inputs" y={headerLineY}>
+            {sceneIcon({
+              icon: 'table-2',
+              name: 'table-header-icon',
+              kind: 'table-header-icon',
+              size: headerIconSize,
+              color: theme.foreground,
+              x: 0,
+              y: view ? 0 : (TABLE_HEADER_INPUT_HEIGHT - headerIconSize) / 2,
+            })}
             {nameCell
               ? headerCell({
                   ...nameCell,
@@ -792,6 +744,37 @@ const Table: FC<TableProps> = (props, ctx) => {
                 })
               : null}
           </k-group>
+          {view
+            ? null
+            : sceneIcon({
+                icon: 'plus',
+                name: 'table-add-column',
+                kind: 'icon',
+                size: HEADER_ICON_HEIGHT,
+                color: iconColor(theme, 'plus', hovered),
+                mouseenter: handleIconMouseenter('plus'),
+                mouseleave: handleIconMouseleave,
+                x:
+                  contentWidth -
+                  HEADER_ICON_HEIGHT * 2 -
+                  TABLE_HEADER_BUTTON_MARGIN_LEFT,
+                y: headerButtonY,
+                click: handleAddColumn,
+              })}
+          {view
+            ? null
+            : sceneIcon({
+                icon: 'x',
+                name: 'table-remove',
+                kind: 'icon',
+                size: HEADER_ICON_HEIGHT,
+                color: iconColor(theme, 'x', hovered),
+                mouseenter: handleIconMouseenter('x'),
+                mouseleave: handleIconMouseleave,
+                x: contentWidth - HEADER_ICON_HEIGHT,
+                y: headerButtonY,
+                click: handleRemoveTable,
+              })}
           {viewButtons
             ? sceneIcon({
                 icon: 'waypoints',
@@ -832,8 +815,8 @@ const Table: FC<TableProps> = (props, ctx) => {
                 related={props.relatedColumnIds?.has(column.id) ?? false}
                 diffPaths={diffMapRef.value?.get(column.id)?.[1] ?? null}
                 litAlpha={litAlpha}
-                divider={view && index < columns.length - 1}
-                last={view && index === columns.length - 1}
+                divider={index < columnIds.length - 1}
+                last={index === columnIds.length - 1}
                 y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}
                 selected={hasSelectColumn(column.id)}
@@ -893,6 +876,20 @@ const Table: FC<TableProps> = (props, ctx) => {
             )
           )}
         </k-group>
+        <k-path
+          name="table-header-color"
+          kind="table-header-color"
+          data={getColorEdgePath(rect.height)}
+          fill={table.ui.color}
+          listening={!view}
+          on:click={handleOpenColorPicker}
+          on:mouseenter={(event: SceneMouseEvent) => {
+            setSceneCursor(event, CURSOR_POINTER);
+          }}
+          on:mouseleave={(event: SceneMouseEvent) => {
+            setSceneCursor(event, CURSOR_INHERIT);
+          }}
+        />
       </k-group>
     );
   };

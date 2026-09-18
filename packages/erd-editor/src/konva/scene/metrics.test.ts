@@ -157,17 +157,17 @@ describe('a table box in a view', () => {
    * sum under test, so a change to the document arithmetic fails this case and
    * a change to the view arithmetic alone does not.
    */
-  it('drops the second row 71 units in the document and 65 in a view', () => {
-    // 9 of border and padding, then a 38 header over a 24 row in the document,
-    // and the same 9 over a 24 header and a 32 row in a view.
+  it('drops the third row 77 units in the document and 97 in a view', () => {
+    // 9 of border and padding, then a 20 header over two 24 rows in the
+    // document, and the same 9 over a 24 header and two 32 rows in a view.
     expect(
-      getColumnRect(state, table, 1, 'document').y -
+      getColumnRect(state, table, 2, 'document').y -
         getTableRect(state, table).y
-    ).toBe(71);
+    ).toBe(77);
     expect(
-      getColumnRect(state, table, 1, 'flow').y -
+      getColumnRect(state, table, 2, 'flow').y -
         getTableRect(state, table, 'flow').y
-    ).toBe(65);
+    ).toBe(97);
   });
 });
 
@@ -201,13 +201,11 @@ describe('a column row sits inside the table it belongs to', () => {
     expect(second.width).toBe(first.width);
   });
 
-  it('ends where the table ends, less its border and padding', () => {
+  it('ends where the table ends, less its border', () => {
     const { y, height } = getTableRect(state, table);
     const last = getColumnRect(state, table, table.columnIds.length - 1);
 
-    expect(last.y + last.height).toBe(
-      y + height - (TABLE_BORDER + TABLE_PADDING)
-    );
+    expect(last.y + last.height).toBe(y + height - TABLE_BORDER);
   });
 });
 

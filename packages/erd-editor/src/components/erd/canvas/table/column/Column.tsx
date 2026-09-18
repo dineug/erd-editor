@@ -96,11 +96,11 @@ export type ColumnProps = {
    * the two of them come up over the one span of time and a document row reads none of it.
    */
   litAlpha?: number;
-  /** Whether a view rules a line under this row, which every row but the last does. */
+  /** Whether the card rules a line under this row, which every row but the last does. */
   divider?: boolean;
   /**
-   * Whether this is the row a view card ends at. A view draws no padding under
-   * its rows, so the last one meets the card's bottom border and takes the two
+   * Whether this is the row a card ends at. A card draws no padding under its
+   * rows, so the last one meets the card's bottom border and takes the two
    * corners it is rounded by, or its square tint would stand outside them.
    */
   last?: boolean;
@@ -176,9 +176,9 @@ const keyFill = (keys: number, theme: Theme) => {
 };
 
 /**
- * The fill a row takes, where a selection outranks a hover and a hover outranks
- * the tint a view puts on the rows a relationship ends at. A view paints no
- * selection, since what the ERD tab has selected is no mark a reader of a view made.
+ * The fill a row takes. A hover lifts whatever the row already wears a step
+ * rather than replacing it, so a selected row or one a view tints keeps its hue
+ * under the pointer. A view paints no selection, which is the ERD tab's mark.
  */
 const rowBackground = (
   theme: Theme,
@@ -187,13 +187,17 @@ const rowBackground = (
   hover: boolean,
   tint: number
 ) => {
-  if (!view && selected) return theme.columnSelect;
-  if (hover) return theme.columnHover;
+  if (!view && selected) {
+    return hover ? theme.columnSelectHover : theme.columnSelect;
+  }
   // Mixed against the card rather than laid over it as a second rect, so the
   // row keeps the one fill the hover and the selection already paint.
-  if (tint > 0)
-    return mixColor(theme.tableBackground, theme.accentColor3, tint);
-  return TRANSPARENT;
+  if (tint > 0) {
+    return hover
+      ? mixColor(theme.columnHover, theme.accentColor4, tint)
+      : mixColor(theme.tableBackground, theme.accentColor3, tint);
+  }
+  return hover ? theme.columnHover : TRANSPARENT;
 };
 
 const Column: FC<ColumnProps> = (props, ctx) => {
@@ -588,9 +592,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           width={width - TABLE_BORDER * 2}
           height={rowHeight}
           cornerRadius={
-            view && props.last
-              ? [0, 0, TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS]
-              : 0
+            props.last ? [0, 0, TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS] : 0
           }
           fill={background}
         />
@@ -610,7 +612,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           ({ columnType }) => columnType,
           ({ template }) => template
         )}
-        {view && props.divider ? (
+        {props.divider ? (
           <k-line
             name="column-row-divider"
             points={[TABLE_BORDER, rowHeight, width - TABLE_BORDER, rowHeight]}

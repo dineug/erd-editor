@@ -116,14 +116,18 @@ describe('the row a column drag drops on (AC-G5)', () => {
     ).toBeNull();
   });
 
-  it('appends in the padding under the last row of a table', () => {
+  it('appends in the band of one padding under the bottom edge of a table', () => {
     const state = createState();
     const table = addTable(state, 't1', 100, 100, ['c1']);
     const rect = getTableRect(state, table);
-    const lastRowBottom = rowCentre(state, 't1', 0).y + COLUMN_HEIGHT / 2;
+    const bottom = rect.y + rect.height;
 
-    // Both ends of the band, which is inside the box and past every row.
-    for (const y of [lastRowBottom + 1, rect.y + rect.height]) {
+    // The card ends at its last row, so the band is past every row and past
+    // the card too: both of its ends, and the border between them.
+    expect(rowCentre(state, 't1', 0).y + COLUMN_HEIGHT / 2).toBe(
+      bottom - TABLE_BORDER
+    );
+    for (const y of [bottom, bottom + 1, bottom + TABLE_PADDING]) {
       expect(findColumnDropTarget(state, { x: rect.x + 20, y })).toEqual({
         tableId: 't1',
         columnId: null,
@@ -132,23 +136,26 @@ describe('the row a column drag drops on (AC-G5)', () => {
     }
   });
 
-  it('appends under the header of a table with no rows, and names nothing over it', () => {
+  it('appends anywhere on a table with no rows, header and band alike', () => {
     const state = createState();
     const table = addTable(state, 't1', 100, 100, []);
     const rect = getTableRect(state, table);
     const x = rect.x + rect.width / 2;
 
-    expect(
-      findColumnDropTarget(state, { x, y: rect.y + rect.height - 1 })
-    ).toEqual({
-      tableId: 't1',
-      columnId: null,
-      index: 0,
-    });
-    expect(findColumnDropTarget(state, { x, y: rect.y + 4 })).toBeNull();
+    for (const y of [
+      rect.y + 4,
+      rect.y + rect.height / 2,
+      rect.y + rect.height + 4,
+    ]) {
+      expect(findColumnDropTarget(state, { x, y })).toEqual({
+        tableId: 't1',
+        columnId: null,
+        index: 0,
+      });
+    }
   });
 
-  it('names nothing under the bottom edge of a table', () => {
+  it('names nothing past that band', () => {
     const state = createState();
     const table = addTable(state, 't1', 100, 100, ['c1']);
     const rect = getTableRect(state, table);
@@ -156,9 +163,35 @@ describe('the row a column drag drops on (AC-G5)', () => {
     expect(
       findColumnDropTarget(state, {
         x: rect.x + 20,
-        y: rect.y + rect.height + 1,
+        y: rect.y + rect.height + TABLE_PADDING + 1,
       })
     ).toBeNull();
+  });
+
+  it('leaves a card under the pointer ahead of the band under a card drawn over it', () => {
+    const state = createState();
+    const upper = addTable(state, 't1', 100, 100, ['c1']);
+    const upperRect = getTableRect(state, upper);
+    // Its header starts inside the band under t1, which is drawn on top.
+    const lower = addTable(
+      state,
+      't2',
+      100,
+      upperRect.y + upperRect.height + 2,
+      ['x1']
+    );
+    upper.ui.zIndex = 2;
+    lower.ui.zIndex = 1;
+    const lowerRect = getTableRect(state, lower);
+
+    expect(
+      findColumnDropTarget(state, { x: lowerRect.x + 20, y: lowerRect.y + 2 })
+    ).toBeNull();
+    expect(findColumnDropTarget(state, rowCentre(state, 't2', 0))).toEqual({
+      tableId: 't2',
+      columnId: 'x1',
+      index: 0,
+    });
   });
 
   it('takes the row of whichever table is drawn over the others there', () => {

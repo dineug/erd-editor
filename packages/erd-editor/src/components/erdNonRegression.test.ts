@@ -46,7 +46,7 @@ const SUITES: Suite[] = [
     path: 'constants/layout.test.ts',
     pins: 'the header and row heights the document draws at',
     cases: [
-      'composes the table header height from icon row + padded input',
+      'composes the table header from one padded input line and its band room',
       'composes the column row height from the padded input',
     ],
   },

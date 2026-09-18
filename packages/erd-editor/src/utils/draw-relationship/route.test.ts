@@ -265,7 +265,7 @@ describe('routeOrthogonal', () => {
   });
 });
 
-/** Two connected tables and a third on its own, at 118 x 56 each with nothing shown. */
+/** Two connected tables and a third on its own, at 134 x 30 each with nothing shown. */
 function createScene(): RootState {
   const state: RootState = {
     ...schemaV3Parser({}),
@@ -300,8 +300,8 @@ describe('collectObstacles', () => {
 
     expect(obstacles.ids).toEqual(['A', 'B', 'C']);
     expect(Array.from(obstacles.left)).toEqual([2, 402, 902]);
-    expect(Array.from(obstacles.right)).toEqual([116, 516, 1016]);
-    expect(Array.from(obstacles.bottom)).toEqual([54, 54, 954]);
+    expect(Array.from(obstacles.right)).toEqual([132, 532, 1032]);
+    expect(Array.from(obstacles.bottom)).toEqual([28, 28, 928]);
     expect(obstacles).toEqual(collectObstacles(state, 'document'));
   });
 

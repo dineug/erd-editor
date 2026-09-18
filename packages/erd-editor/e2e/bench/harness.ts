@@ -283,8 +283,8 @@ export async function installBench(page: Page) {
 
     /**
      * The point a drag grips a table by, in client coordinates. Same strip the
-     * interaction specs use: the middle of the header, above the colour bar and
-     * clear of the column rows onMoveStart opts out of.
+     * interaction specs use: the middle of the header, clear of the colour edge
+     * and of the column rows onMoveStart opts out of.
      */
     const grip = (tableId: string) => {
       const stage = stageNamed('canvas');

@@ -31,6 +31,7 @@ export type Theme = {
   canvasBoundaryBackground: string;
 
   tableBackground: string;
+  tableHeaderBackground: string;
   tableSelect: string;
   tableBorder: string;
   tableShadow: string;
@@ -41,6 +42,7 @@ export type Theme = {
   memoShadow: string;
 
   columnSelect: string;
+  columnSelectHover: string;
   columnHover: string;
 
   relationshipHover: string;
@@ -121,6 +123,7 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'canvasBoundaryBackground',
 
   'tableBackground',
+  'tableHeaderBackground',
   'tableSelect',
   'tableBorder',
   'tableShadow',
@@ -131,6 +134,7 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'memoShadow',
 
   'columnSelect',
+  'columnSelectHover',
   'columnHover',
 
   'relationshipHover',

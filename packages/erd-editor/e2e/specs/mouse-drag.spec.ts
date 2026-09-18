@@ -96,10 +96,13 @@ async function columnNames(erd: ErdEditorPage, tableId: string) {
   );
 }
 
-/** A viewport point in the padding under a table's last row. */
+/**
+ * A viewport point in the band just under a table's bottom edge, where a drop
+ * appends: the card ends at its last row, so the band is outside it.
+ */
 async function underRows(erd: ErdEditorPage, tableId: string): Promise<Point> {
   const box = await erd.sceneBox(`#table-${tableId}`);
-  return { x: box.x + box.width / 2, y: box.y + box.height - 4 };
+  return { x: box.x + box.width / 2, y: box.y + box.height + 4 };
 }
 
 /**
@@ -570,8 +573,8 @@ test.describe('mouse drag', () => {
     const source = await erd.columnPoint('users_name');
     const under = await underRows(erd, 'posts');
     const posts = await erd.sceneBox('#table-posts');
-    // Round the rows of posts and up into its padding from below, so the one
-    // place the drag ever meets that table is past its last row.
+    // Round the rows of posts and up into the band under it from below, so the
+    // one place the drag ever meets that table is past its last row.
     const below = posts.y + posts.height + 40;
     await holdAlong(erd, [
       source,

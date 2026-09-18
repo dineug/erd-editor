@@ -12,6 +12,7 @@ import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
 import { useSceneSource } from '@/components/sceneSourceContext';
+import { CLICK_DRAG_MIN_MOVE } from '@/constants/layout';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
@@ -239,25 +240,73 @@ describe('useMoveTable', () => {
     expect(move.defaultPrevented).toBe(false);
   });
 
-  it.each([
-    ['table-header-color'],
-    ['column-row'],
-    ['icon'],
-    ['input-padding'],
-  ])('never starts a drag from a %s node', async kind => {
-    const { app, table, fire } = await setup();
+  it.each([['table-header-color'], ['column-row'], ['icon']])(
+    'never starts a drag from a %s node',
+    async kind => {
+      const { app, table, fire } = await setup();
+
+      const startX = table.ui.x;
+      const startY = table.ui.y;
+
+      fire(inside(kind), mousedown({ clientX: 0, clientY: 0 }));
+      mousemove(80, 90);
+      await flush();
+
+      expect(table.ui.x).toBe(startX);
+      expect(table.ui.y).toBe(startY);
+      // the selection still happens even though the drag does not
+      expect(app.store.state.editor.selectedMap[table.id]).toBe(
+        SelectType.table
+      );
+    }
+  );
+
+  it('carries the table from a header cell, whose editor a double click opens', async () => {
+    const { table, fire } = await setup();
 
     const startX = table.ui.x;
     const startY = table.ui.y;
+    const text = node('cell-text', inside('input-padding'));
 
-    fire(inside(kind), mousedown({ clientX: 0, clientY: 0 }));
+    fire(text, mousedown({ clientX: 0, clientY: 0 }));
     mousemove(80, 90);
     await flush();
 
+    expect(table.ui.x).toBe(startX + 80);
+    expect(table.ui.y).toBe(startY + 90);
+  });
+
+  /**
+   * The drag layer a drag lifts the table into is off the hit canvas, so a
+   * header press that lifted it at once would send the second click of a
+   * double click to the stage and the cell would never open its editor.
+   */
+  it('keeps a header cell press on the cell until the pointer travels, then carries the whole of it', async () => {
+    const { app, table, fire } = await setup();
+
+    const startX = table.ui.x;
+    const text = node('cell-text', inside('input-padding'));
+
+    fire(text, mousedown({ clientX: 0, clientY: 0 }));
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+
+    mousemove(CLICK_DRAG_MIN_MOVE - 1, 0);
+    await flush();
+    expect(isEntityDragActive(app.store.state)).toBe(false);
     expect(table.ui.x).toBe(startX);
-    expect(table.ui.y).toBe(startY);
-    // the selection still happens even though the drag does not
-    expect(app.store.state.editor.selectedMap[table.id]).toBe(SelectType.table);
+
+    mousemove(CLICK_DRAG_MIN_MOVE, 0);
+    await flush();
+    expect(isEntityDragActive(app.store.state)).toBe(true);
+    expect(table.ui.x).toBe(startX + CLICK_DRAG_MIN_MOVE);
+  });
+
+  it('lifts the table at the press anywhere else on it', async () => {
+    const { app, fire } = await setup();
+
+    fire(inside('table-body'), mousedown({ clientX: 0, clientY: 0 }));
+
+    expect(isEntityDragActive(app.store.state)).toBe(true);
   });
 
   it.each([['table-header-color'], ['column-row'], ['input-padding']])(
@@ -283,7 +332,7 @@ describe('useMoveTable', () => {
     const { table, fire } = await setup();
 
     const startX = table.ui.x;
-    const cell = node('cell-text', inside('input-padding'));
+    const cell = node('cell-text', inside('column-row'));
 
     fire(cell, mousedown({ clientX: 0, clientY: 0 }));
     mousemove(80, 0);
