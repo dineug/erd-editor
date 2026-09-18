@@ -22,6 +22,10 @@ describe('Erd.styles', () => {
     expect(styles.root.strings.raw.join('')).toContain('position: relative');
   });
 
+  it('takes every touch itself, so a pinch zooms the scene and not the page', () => {
+    expect(styles.root.strings.raw.join('')).toContain('touch-action: none');
+  });
+
   it('resolves to a stable non-empty class identifier', () => {
     const identifier = String(styles.root);
 

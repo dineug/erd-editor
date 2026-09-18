@@ -51,6 +51,7 @@ import {
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
+import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import {
   getContentRect,
@@ -139,6 +140,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     );
   };
 
+  const pinch = usePinchZoom({
+    app: () => app.value,
+    root,
+    enabled: () => !getShowOverLayout(),
+  });
+
   const handleContextmenu = (event: MouseEvent) => {
     if (!event.target || getShowOverLayout()) return;
 
@@ -173,7 +180,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const handleWheel = (event: WheelEvent) => {
-    if (getShowOverLayout()) return;
+    if (pinch.handleWheel(event) || getShowOverLayout()) return;
     event.preventDefault();
 
     const $mod = isMod(event);
@@ -212,7 +219,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   const handleDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
-    if (!el) return;
+    if (!el || pinch.handleTouchstart(event)) return;
 
     const showOverLayout = getShowOverLayout();
     const canHideColorPicker = !el.closest('.color-picker');

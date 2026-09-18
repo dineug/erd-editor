@@ -14,6 +14,7 @@ import { SelectType } from '@/engine/modules/editor/state';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import type { Ctx } from '@/internal-types';
+import { isMultiTouch } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -54,7 +55,8 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     };
 
   const onMoveStart = (event: ScenePointerEvent) => {
-    if (!event?.target) return;
+    // A second finger is a pinch's, which neither selects nor lifts what it lands on.
+    if (!event?.target || isMultiTouch(event.evt)) return;
 
     const { store } = app.value;
     const entityId = options.entityId();

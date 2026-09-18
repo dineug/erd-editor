@@ -17,6 +17,10 @@ describe('ErdViewer.styles', () => {
     expect(source).toContain('position: relative');
   });
 
+  it('takes every touch itself, so a pinch zooms the pane and not the page', () => {
+    expect(styles.root.strings.join('')).toContain('touch-action: none');
+  });
+
   it('interpolates no runtime values', () => {
     expect(styles.root.values).toEqual([]);
   });

@@ -1,7 +1,7 @@
 import { take } from 'rxjs';
 
 import type { Point } from '@/internal-types';
-import { isMouseEvent } from '@/utils/domEvent';
+import { isMouseEvent, isMultiTouch } from '@/utils/domEvent';
 import { moveEnd$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
@@ -20,8 +20,14 @@ export function pointOf(evt: Event): Point | null {
   return touch ? { x: touch.clientX, y: touch.clientY } : null;
 }
 
-/** The end of a gesture that is a lift, as against a native drag, a cancelled pointer or a blurred window. */
-const isLift = ({ type }: Event) => type === 'mouseup' || type === 'touchend';
+/**
+ * The end of a gesture that is a lift, as against a native drag, a cancelled
+ * pointer or a blurred window. A touch lifts once its last finger does, since
+ * a finger still down means a pinch, whose lift is no click.
+ */
+const isLift = (evt: Event) =>
+  evt.type === 'mouseup' ||
+  (evt.type === 'touchend' && !(evt as TouchEvent).touches?.length);
 
 /** Whether a release landed near enough to the press to read as a click rather than a drag. */
 export function isClick(from: Point, to: Point): boolean {
@@ -46,7 +52,7 @@ export function isPlainPress(evt: MouseEvent | TouchEvent): boolean {
  */
 export function onClickRelease(evt: Event, done: () => void): void {
   const from = pointOf(evt);
-  if (!from) return;
+  if (!from || isMultiTouch(evt)) return;
 
   moveEnd$.pipe(take(1)).subscribe(end => {
     const to = isLift(end) ? pointOf(end) : null;

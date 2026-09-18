@@ -6,6 +6,7 @@ import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { sceneStreamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { Ctx } from '@/internal-types';
 import { clearViewPinnedTable } from '@/konva/scene/viewLayout';
 import { isPlainPress, onClickRelease } from '@/utils/clickGesture';
@@ -30,8 +31,8 @@ export type ViewGestureOptions = {
 
 /**
  * The gestures a view scene takes on its box: the wheel moves the screen and
- * with the modifier zooms it, a press on the background pans, and with the
- * modifier it opens the marquee of this scene. Every one lands in the view named.
+ * with the modifier zooms it, as a pinch does, a press on the background pans,
+ * and with the modifier it opens the marquee. Every one lands in the view named.
  *
  * @example
  * const { handleWheel, handleMousedown } = useViewGestures(ctx, { root, canvas, source });
@@ -41,6 +42,12 @@ export function useViewGestures(
   { root, canvas, source }: ViewGestureOptions
 ) {
   const app = useAppContext(ctx);
+  const pinch = usePinchZoom({
+    app: () => app.value,
+    root,
+    source,
+    enabled: () => Boolean(app.value.store.state.editor.views[source]),
+  });
 
   /**
    * The wheel the ERD tab reads, in the view named: it moves the screen, the
@@ -49,7 +56,7 @@ export function useViewGestures(
    */
   const handleWheel = (event: WheelEvent) => {
     const { store } = app.value;
-    if (!store.state.editor.views[source]) return;
+    if (pinch.handleWheel(event) || !store.state.editor.views[source]) return;
     event.preventDefault();
 
     const $mod = isMod(event);
@@ -111,7 +118,7 @@ export function useViewGestures(
    * drawn over this scene, and the bar under the tab is its sibling rather than its child.
    */
   const handleMousedown = (event: MouseEvent | TouchEvent) => {
-    if (!event.target) return;
+    if (!event.target || pinch.handleTouchstart(event)) return;
 
     const hit = sceneHit(canvas.value, event);
     if (hit?.kind === 'table') return;

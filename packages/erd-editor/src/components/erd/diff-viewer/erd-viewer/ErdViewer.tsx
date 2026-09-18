@@ -12,6 +12,7 @@ import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { onPrevent } from '@/utils/domEvent';
@@ -41,6 +42,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     grabCursor: 'grab',
   });
   const { addUnsubscribe } = useUnmounted();
+  const pinch = usePinchZoom({ app: () => props.app, root });
 
   addUnsubscribe(() => {
     diffMap.destroy();
@@ -58,6 +60,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
 
   const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
+    if (pinch.handleWheel(event)) return;
 
     const $mod = isMod(event);
     const { store } = app;
@@ -84,7 +87,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
 
   const handleDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
-    if (!el) return;
+    if (!el || pinch.handleTouchstart(event)) return;
 
     const canHideColorPicker = !el.closest('.color-picker');
     const hit = sceneHit(canvas.value, event);

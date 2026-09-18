@@ -295,4 +295,24 @@ describe('useMoveEntity', () => {
     expect(isEntityDragActive(app.store.state)).toBe(false);
     expect(isViewFrozen(app.store.state)).toBe(false);
   });
+
+  it('neither selects nor lifts for the second finger of a pinch', async () => {
+    app.store.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 900, y: 200, zIndex: 3 } })
+    );
+    app.store.dispatchSync(selectAction({ t2: SelectType.table }));
+    const evt = new TouchEvent('touchstart', {
+      touches: [
+        { clientX: 0, clientY: 0 },
+        { clientX: 80, clientY: 0 },
+      ] as any,
+    });
+
+    api.onMoveStart({ target: sceneNode(), evt } as ScenePointerEvent);
+    await flush();
+
+    expect(selectedIds()).toEqual(['t2']);
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+    expect(isViewFrozen(app.store.state)).toBe(false);
+  });
 });

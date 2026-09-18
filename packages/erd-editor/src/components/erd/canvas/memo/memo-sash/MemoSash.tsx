@@ -18,7 +18,7 @@ import {
 } from '@/constants/layout';
 import { resizeMemoAction } from '@/engine/modules/memo/atom.actions';
 import type { Memo, ValuesType } from '@/internal-types';
-import { isMouseEvent } from '@/utils/domEvent';
+import { isMouseEvent, isMultiTouch } from '@/utils/domEvent';
 import { DirectionName } from '@/utils/draw-relationship';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 
@@ -247,6 +247,8 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     event: ScenePointerEvent,
     position: MemoSashPosition
   ) => {
+    if (isMultiTouch(event.evt)) return;
+
     const pointer = pointerOf(event);
     clientX = pointer.x;
     clientY = pointer.y;
