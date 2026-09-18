@@ -14,6 +14,9 @@ export const FLIP_DURATION = 0.3;
  */
 const CLOSE_TIMEOUT = FLIP_DURATION * 1000 + 200;
 
+/** The private attr a fade tweens, and the event namespace it listens under. */
+const FADE = 'flipFade';
+
 export type KonvaFlip = {
   /**
    * Records where the nodes are now and arms the invert for the commit that
@@ -25,6 +28,8 @@ export type KonvaFlip = {
 };
 
 type Snapshot = { node: KonvaNode; x: number; y: number };
+
+type Running = Map<KonvaNode, () => void>;
 
 /**
  * The offset a node carries to look like it is still where it was. A konva
@@ -47,15 +52,23 @@ function invertOffset(node: KonvaNode, before: Snapshot) {
  * finish, reset, cancel, timeout — hands that authority back exactly once.
  */
 export function createKonvaFlip(nodes: () => KonvaNode[]): KonvaFlip {
-  const running = new Map<KonvaNode, () => void>();
+  const moving: Running = new Map();
+  const fading: Running = new Map();
   let snapshots: Snapshot[] | null = null;
   let unlisten: (() => void) | null = null;
 
-  const start = (node: KonvaNode, layer: Layer, x: number, y: number) => {
-    running.get(node)?.();
-
-    node.offsetX(x);
-    node.offsetY(y);
+  /**
+   * Tweens attrs of a node inside a draw window, where running holds the stop
+   * of its kind. However the tween ends, settle puts the node at rest first.
+   */
+  const run = (
+    running: Running,
+    node: KonvaNode,
+    layer: Layer,
+    attrs: Record<string, number>,
+    settle: () => void,
+    onUpdate?: () => void
+  ) => {
     beginAnimation(layer);
 
     let closed = false;
@@ -66,28 +79,71 @@ export function createKonvaFlip(nodes: () => KonvaNode[]): KonvaFlip {
       closed = true;
       clearTimeout(timerId);
       running.delete(node);
+      settle();
       endAnimation(layer);
     };
 
     const tween = new Tween({
       node,
-      offsetX: 0,
-      offsetY: 0,
+      ...attrs,
       duration: FLIP_DURATION,
       easing: Easings.EaseInOut,
       onFinish: close,
       onReset: close,
     });
+    tween.onUpdate = onUpdate;
 
     running.set(node, () => {
       tween.destroy();
-      node.offsetX(0);
-      node.offsetY(0);
       close();
     });
 
     timerId = setTimeout(() => running.get(node)?.(), CLOSE_TIMEOUT);
     tween.play();
+  };
+
+  const start = (node: KonvaNode, layer: Layer, x: number, y: number) => {
+    moving.get(node)?.();
+
+    node.offsetX(x);
+    node.offsetY(y);
+
+    run(moving, node, layer, { offsetX: 0, offsetY: 0 }, () => {
+      node.offsetX(0);
+      node.offsetY(0);
+    });
+  };
+
+  /**
+   * Brings a node the commit added up from nothing. Its opacity stays the
+   * scene's to write meanwhile, so the tween runs on a private attr and every
+   * frame scales whichever opacity the scene wrote last.
+   */
+  const fade = (node: KonvaNode, layer: Layer) => {
+    fading.get(node)?.();
+
+    let opacity = node.opacity();
+    let writing = false;
+
+    const apply = () => {
+      writing = true;
+      node.opacity(opacity * (node.getAttr(FADE) ?? 1));
+      writing = false;
+    };
+
+    node.on(`opacityChange.${FADE}`, () => {
+      if (!writing) opacity = node.opacity();
+    });
+    node.setAttr(FADE, 0);
+    apply();
+
+    const settle = () => {
+      node.off(`opacityChange.${FADE}`);
+      node.setAttr(FADE, undefined);
+      apply();
+    };
+
+    run(fading, node, layer, { [FADE]: 1 }, settle, apply);
   };
 
   /** Drops the armed snapshot and its flush hook, handing back what was armed. */
@@ -113,6 +169,16 @@ export function createKonvaFlip(nodes: () => KonvaNode[]): KonvaFlip {
 
       start(node, layer, x, y);
     }
+
+    // A node the commit added has no place it was, so it fades in where it
+    // lands rather than being drawn whole under the rows sliding past it.
+    const known = new Set(taken.map(({ node }) => node));
+    for (const node of nodes()) {
+      const layer = node.getLayer();
+      if (known.has(node) || !layer || !node.getStage()) continue;
+
+      fade(node, layer);
+    }
   };
 
   return {
@@ -128,7 +194,7 @@ export function createKonvaFlip(nodes: () => KonvaNode[]): KonvaFlip {
     },
     cancel() {
       disarm();
-      [...running.values()].forEach(stop => stop());
+      [...moving.values(), ...fading.values()].forEach(stop => stop());
     },
   };
 }

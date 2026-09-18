@@ -15,6 +15,12 @@ export const CELL_FONT_SIZE = 12;
 export const INPUT_HEIGHT = 20;
 export const INPUT_MARGIN_RIGHT = 8;
 
+/** The height of one row in the data type autocomplete list. */
+export const DATA_TYPE_HINT_ROW_HEIGHT = 20;
+
+/** How many of those rows the list shows before it scrolls the rest. */
+export const DATA_TYPE_HINT_MAX_ROWS = 10;
+
 export const HEADER_ICON_HEIGHT = 12;
 export const HEADER_ICON_MARGIN_BOTTOM = 4;
 

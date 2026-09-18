@@ -74,6 +74,8 @@ export const isIdentityValue = createValueEqual('IDENTITY');
 export const isFunctionValue = createValueEqual('FUNCTION');
 export const isClusterValue = createValueEqual('CLUSTER');
 export const isByValue = createValueEqual('BY');
+export const isFulltextValue = createValueEqual('FULLTEXT');
+export const isSpatialValue = createValueEqual('SPATIAL');
 
 // What a constraint may carry after its key list, from Databricks' NOT
 // ENFORCED RELY to ANSI's DEFERRABLE INITIALLY DEFERRED. The column branch runs
@@ -95,6 +97,49 @@ export const isConstraintState = (tokens: Token[]) => {
     isInitially(pos) ||
     isDeferred(pos) ||
     isImmediate(pos);
+};
+
+const ReferentialActions: ReadonlyArray<ReadonlyArray<string>> = [
+  ['SET', 'NULL'],
+  ['SET', 'DEFAULT'],
+  ['NO', 'ACTION'],
+  ['CASCADE'],
+  ['RESTRICT'],
+];
+const MatchKinds: ReadonlyArray<string> = ['FULL', 'PARTIAL', 'SIMPLE'];
+
+// How many tokens a reference's trailing clause spans: ON DELETE SET NULL,
+// MATCH FULL. The action is optional, so MySQL's ON UPDATE CURRENT_TIMESTAMP
+// spans two and leaves its value to be skipped.
+export const matchReferentialClause = (tokens: Token[]) => {
+  const word = (pos: number) => {
+    const token = tokens[pos];
+    return token && token.type === TokenType.string && !token.quoted
+      ? token.value.toUpperCase()
+      : '';
+  };
+
+  return (pos: number) => {
+    if (word(pos) === 'ON' && ['DELETE', 'UPDATE'].includes(word(pos + 1))) {
+      const action = ReferentialActions.find(words =>
+        words.every((value, index) => word(pos + 2 + index) === value)
+      );
+      return 2 + (action?.length ?? 0);
+    }
+
+    return word(pos) === 'MATCH' && MatchKinds.includes(word(pos + 1)) ? 2 : 0;
+  };
+};
+
+// MySQL's FULLTEXT and SPATIAL qualify an index the way UNIQUE does. Only
+// before INDEX or KEY: spatial is not reserved, and a column may carry it.
+export const isIndexKind = (tokens: Token[]) => {
+  const isFulltext = isFulltextValue(tokens);
+  const isSpatial = isSpatialValue(tokens);
+  const isIndex = isIndexValue(tokens);
+  const isKey = isKeyValue(tokens);
+  return (pos: number) =>
+    (isFulltext(pos) || isSpatial(pos)) && (isIndex(pos + 1) || isKey(pos + 1));
 };
 
 // Angle brackets are not break characters, so a nested type arrives glued to

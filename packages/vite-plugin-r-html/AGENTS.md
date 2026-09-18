@@ -70,7 +70,10 @@ file carries the host pragma.
   self-accept, and Vite stops propagating: the parent's `accept` never runs and scene HMR dies with no
   error anywhere.
 - Boundary modules import `virtual:r-html-hmr`, whose module calls `hmr()` once; `apply: 'serve'` is
-  the dev/production switch.
+  the dev/production switch. Both halves meet on `globalThis`, not `window` — `hmr()` listens there
+  and the `accept` dispatches there — so a worker the dev server hands the same boundaries swaps its
+  components on a hot edit as a page does. A realm with no `addEventListener` gets a no-op `hmr()`,
+  and an `accept` that finds no `dispatchEvent` builds no event.
 - The root `tsconfig.json` maps this package to `src/index.ts` so the `check` CI job can typecheck
   `erd-editor/vite.config.ts` without building; `types` still points into `dist/`.
 

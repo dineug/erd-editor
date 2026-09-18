@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { html } from '@dineug/r-html';
+import { FC, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -12,6 +12,7 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
@@ -130,15 +131,27 @@ describe('ErdViewer', () => {
     expect(root.classList.contains('diff-viewer-insert')).toBe(false);
   });
 
-  it('injects the generated diff stylesheet into the viewer', async () => {
-    const { root } = await mountViewer(Diff.insert, diffMapOf());
+  it('provides its diff map where it is mounted, and writes no stylesheet', async () => {
+    const diffMap = diffMapOf();
+    let seen: DiffMap | null = null;
+    const Probe: FC = (props, ctx) => {
+      const diffMapRef = useDiffMap(ctx);
+      return () => {
+        seen = diffMapRef.value;
+        return html``;
+      };
+    };
 
-    const style = root.querySelector('style');
-    expect(style).toBeTruthy();
-    expect(style?.textContent).toContain('.diff-viewer-insert [data-id="t1"]');
-    expect(style?.textContent).toContain(
-      'background-color: var(--diff-insert-background)'
+    mounted = await mountAndFlush(
+      html`<${ErdViewer}
+          app=${createApp()}
+          diff=${Diff.insert}
+          diffMap=${diffMap}
+        /><${Probe} />`
     );
+
+    expect(seen).toBe(diffMap);
+    expect(mounted.container.querySelector('style')).toBeNull();
   });
 
   it('renders the canvas, the virtual scroll and the minimap', async () => {

@@ -43,7 +43,8 @@ describe('SettingsLnb.styles', () => {
     expect(css).toContain('border-radius: 4px');
     expect(css).toContain('cursor: default');
     expect(css).toContain('&:hover');
-    expect(css).toContain('background-color: var(--context-menu-hover)');
+    expect(css).toContain('background-color: var(--gray-color-3)');
+    expect(css).not.toContain('var(--context-menu-hover)');
     expect(css).toContain('&.selected');
     expect(css).toContain('background-color: var(--context-menu-select)');
     expect(css).toContain('color: var(--active)');

@@ -41,8 +41,8 @@ export const DIM_OPACITY = 0.2;
 
 /**
  * Where a table stands in the source given: its own placement in the
- * document, or the point the view of that kind placed it at. A view that has
- * not placed it yet shows it where the document has it, until a layout lands.
+ * document, or the point the view of that kind placed it at. One the view has
+ * not placed is measured where the document has it, and drawn by no view.
  */
 export function getTablePoint(
   state: RootState,
@@ -149,9 +149,26 @@ function reach(
 }
 
 /**
- * What a scene drawn from the source given shows: the whole document, or a
- * view's centers with their neighbours one relationship out while it stands on
- * centers and what its layout placed while it stands on none, with no memo and only the joining relationships.
+ * The tables a view standing on the centers given is laid out over, placed or
+ * not: those centers and their neighbours one relationship out, in document order.
+ */
+export function getReachedTableIds(
+  state: RootState,
+  centerIds: string[]
+): string[] {
+  const { doc, collections } = state;
+  const relationships = query(collections)
+    .collection('relationshipEntities')
+    .selectByIds(doc.relationshipIds);
+  const reached = reach(centerIds, relationships);
+
+  return doc.tableIds.filter(id => reached.has(id));
+}
+
+/**
+ * What a scene drawn from the source given shows: the whole document, or the
+ * tables a view's last layout landed whatever its centers reach now, so a
+ * narrowing draws the last landing until its own lands. No memo, and only the joining relationships.
  */
 export function getVisibleIds(
   state: RootState,
@@ -176,9 +193,7 @@ export function getVisibleIds(
   // Object.keys registers no trigger on the positions object, since the
   // observable proxy has no ownKeys trap. The layout reducer replaces the
   // object whole, which is what keeps a Flow scene redrawing; a per-key write would not.
-  const shown = view.centerIds.length
-    ? reach(view.centerIds, relationships)
-    : new Set(Object.keys(view.positions));
+  const shown = new Set(Object.keys(view.positions));
   const tableIds = doc.tableIds.filter(id => shown.has(id));
   const inView = new Set(tableIds);
 

@@ -24,7 +24,7 @@ import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
-import { getVisibleIds } from '@/konva/scene/viewLayout';
+import { getReachedTableIds } from '@/konva/scene/viewLayout';
 import {
   createElkLayout,
   createElkLayoutRequest,
@@ -181,10 +181,16 @@ function landFlowLayout(
  * centers reach, every one of them joined to a center so nothing is grouped,
  * or the whole document with the tables nothing reaches gathered into a group.
  */
-function flowLayoutRequest(state: RootState, slot: FlowSlot): ElkLayoutRequest {
+function flowLayoutRequest(
+  state: RootState,
+  view: SceneView,
+  slot: FlowSlot
+): ElkLayoutRequest {
+  // What it reaches rather than what it shows: a view draws only what landed,
+  // so its shown set is the last display set's, or nothing before a first landing.
   return slot === 'focused'
     ? createElkLayoutRequest(state, TablePlacement.viewLayered, {
-        tableIds: getVisibleIds(state, FLOW).tableIds,
+        tableIds: getReachedTableIds(state, view.centerIds),
         source: FLOW,
       })
     : createElkLayoutRequest(state, TablePlacement.viewLayered, {
@@ -245,7 +251,7 @@ async function requestFlowLayout(
   forced: boolean
 ): Promise<void> {
   const { store, emitter, shortcut$ } = app;
-  const request = flowLayoutRequest(store.state, slot);
+  const request = flowLayoutRequest(store.state, view, slot);
 
   if (!request.nodes.length) {
     landFlowLayout(store, view, slot, key, [], forced);
@@ -332,6 +338,25 @@ const isUnplacingBatch = (actions: AnyAction[]) =>
   actions.every(({ type }) => isUnplacing(type));
 
 /**
+ * A focus on the centers the view already stands on that has nothing landed
+ * or asked for under the key given, which is what a cancelled or failed ask
+ * leaves: the reader asking again, where any other batch would retry a failing worker.
+ */
+function isRefocusBatch(
+  actions: AnyAction[],
+  view: SceneView,
+  key: string
+): boolean {
+  const entry = layoutsOf(view);
+
+  return (
+    actions.some(({ type }) => type === ActionType.viewSetCenters) &&
+    entry[slotOf(view)]?.key !== key &&
+    entry.pending?.key !== key
+  );
+}
+
+/**
  * Keeps the Flow view placed for as long as the tab draws it: placed again
  * after any batch that changed what it is placed over, and never at the
  * subscription itself, which the mount has asked for already. Returns the teardown.
@@ -342,6 +367,7 @@ const isUnplacingBatch = (actions: AnyAction[]) =>
 export function keepFlowPlaced(app: AppContext): () => void {
   const { store } = app;
   let key = placedKey(store.state);
+  let placed = store.state.editor.views.flow;
 
   // The ask outlives this loop on purpose: the view is the session's and the
   // tab is not, so a leave while ELK answers leaves the ask out for the return.
@@ -349,10 +375,15 @@ export function keepFlowPlaced(app: AppContext): () => void {
     const view = store.state.editor.views.flow;
     if (!view || isUnplacingBatch(actions)) return;
 
+    // A view shows only what landed, so one reopened on the same centers, or
+    // focused on them again once their ask ended unlanded, carries the old key
+    // and still has to be asked for.
     const next = placedKey(store.state);
-    if (next === key) return;
+    const unchanged = next === key && view === placed;
+    if (unchanged && !isRefocusBatch(actions, view, next)) return;
 
     key = next;
+    placed = view;
     ensureFlowPlaced(app);
   });
 }

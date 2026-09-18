@@ -77,6 +77,32 @@ async function dragHold(
 }
 
 /**
+ * Presses at the first point and walks the held button through the rest, one
+ * straight leg at a time, so a column drag can go round the rows it must not
+ * cross on its way. The caller owns the mouse.up().
+ */
+async function holdAlong(erd: ErdEditorPage, points: Point[], steps = 8) {
+  const [from, ...legs] = points;
+  await erd.page.mouse.move(from.x, from.y);
+  await erd.page.mouse.down();
+  for (const to of legs) await erd.page.mouse.move(to.x, to.y, { steps });
+}
+
+/** Column names of one table, in the order the store holds them. */
+async function columnNames(erd: ErdEditorPage, tableId: string) {
+  const document = await erd.value();
+  return document.collections.tableEntities[tableId].columnIds.map(
+    id => document.collections.tableColumnEntities[id].name
+  );
+}
+
+/** A viewport point in the padding under a table's last row. */
+async function underRows(erd: ErdEditorPage, tableId: string): Promise<Point> {
+  const box = await erd.sceneBox(`#table-${tableId}`);
+  return { x: box.x + box.width / 2, y: box.y + box.height - 4 };
+}
+
+/**
  * Mousedown on a table header, the strip that starts a move drag. Holding the
  * modifier opens the context menu on some hosts and not others, harmlessly, so
  * nothing in this file may assert on its presence or absence.
@@ -533,6 +559,97 @@ test.describe('mouse drag', () => {
     expect(await domOrder()).toEqual(['users_name', 'users_id']);
     // The table still owns both columns — a reorder is not a move.
     expect(await erd.tableIds()).toEqual(['users']);
+  });
+
+  test('a column dragged under the last row of another table is appended to it', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+
+    const source = await erd.columnPoint('users_name');
+    const under = await underRows(erd, 'posts');
+    const posts = await erd.sceneBox('#table-posts');
+    // Round the rows of posts and up into its padding from below, so the one
+    // place the drag ever meets that table is past its last row.
+    const below = posts.y + posts.height + 40;
+    await holdAlong(erd, [
+      source,
+      { x: source.x, y: below },
+      { x: under.x, y: below },
+      under,
+    ]);
+
+    await expect
+      .poll(() => columnNames(erd, 'posts'))
+      .toEqual(['id', 'title', 'name']);
+    expect(await columnNames(erd, 'users')).toEqual(['id']);
+
+    await erd.page.mouse.up();
+    expect(await columnNames(erd, 'posts')).toEqual(['id', 'title', 'name']);
+  });
+
+  test('a column dragged over bare canvas carries a ghost of its row under the pointer', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+
+    const source = await erd.columnPoint('users_name');
+    const bare = { x: source.x, y: source.y + 200 };
+    await holdAlong(erd, [source, bare]);
+
+    const ghost = erd.canvas.locator('.column-drag-ghost');
+    await expect(ghost).toContainText('varchar(255)');
+    const box = await erd.sceneBox('.column-drag-ghost');
+    expect(box.x).toBeLessThan(bare.x);
+    expect(box.x + box.width).toBeGreaterThan(bare.x);
+    expect(box.y).toBeLessThan(bare.y);
+    expect(box.y + box.height).toBeGreaterThan(bare.y);
+
+    await erd.page.mouse.up();
+    await expect(ghost).toHaveCount(0);
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+  });
+
+  test('a column dragged into a table with no rows lands in it', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'users',
+            name: 'users',
+            x: 160,
+            y: 160,
+            columns: [
+              { id: 'users_id', name: 'id', dataType: 'int' },
+              { id: 'users_name', name: 'name', dataType: 'varchar(255)' },
+            ],
+          },
+          { id: 'tags', name: 'tags', x: 760, y: 160, columns: [] },
+        ],
+      })
+    );
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+
+    const source = await erd.columnPoint('users_name');
+    const under = await underRows(erd, 'tags');
+    const tags = await erd.sceneBox('#table-tags');
+    const below = tags.y + tags.height + 40;
+    await holdAlong(erd, [
+      source,
+      { x: source.x, y: below },
+      { x: under.x, y: below },
+      under,
+    ]);
+
+    await expect.poll(() => columnNames(erd, 'tags')).toEqual(['name']);
+    expect(await columnNames(erd, 'users')).toEqual(['id']);
+
+    await erd.page.mouse.up();
+    expect(await columnNames(erd, 'tags')).toEqual(['name']);
   });
 
   test('a whole move drag collapses into a single undo step', async ({

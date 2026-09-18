@@ -30,6 +30,11 @@ function createOffscreenCanvasElement() {
 }
 
 const documentStub = {
+  // On a dev server the scene's component boundaries bring Vite's client into
+  // this realm, and that client takes any global document for a page's and
+  // queries it as it loads.
+  querySelector: () => null,
+  querySelectorAll: () => [],
   createElement: (tagName: string) =>
     tagName === 'canvas'
       ? createOffscreenCanvasElement()

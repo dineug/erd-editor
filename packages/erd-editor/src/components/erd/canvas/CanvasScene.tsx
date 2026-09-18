@@ -5,6 +5,7 @@ import { cache, FC, Ref, repeat } from '@dineug/r-html';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
+import ColumnDragGhost from '@/components/erd/canvas/column-drag-ghost/ColumnDragGhost';
 import DragSelect from '@/components/erd/canvas/drag-select/DragSelect';
 import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRelationship';
 import DuplicateGhost from '@/components/erd/canvas/duplicate-ghost/DuplicateGhost';
@@ -172,9 +173,9 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
      */
     const highLevel = source === 'document' && isHighLevelTable(zoomLevel);
 
-    // A peer broadcasts document points and the ghost an alt drag carries
-    // reads the document zoom, so the presence layer is the document scene's
-    // alone; a view would stand the same cursors somewhere unrelated.
+    // A peer broadcasts document points, and the ghosts an alt drag and a
+    // column drag carry are document drags, so the presence layer is the
+    // document scene's alone; a view would stand them somewhere unrelated.
     const presence = source === 'document';
 
     /** The tables of one layer, in whichever spelling the zoom asks for. */
@@ -289,6 +290,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             <SharedMouseTracker />
             <SharedDragSelect />
             <DuplicateGhost />
+            <ColumnDragGhost />
           </k-layer>
         ) : null}
       </>

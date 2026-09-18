@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
-import { FC, onMounted, Ref } from '@dineug/r-html';
+import { FC, observable, onMounted, Ref } from '@dineug/r-html';
+import { type Stage, stages } from 'konva/lib/Stage';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
@@ -26,16 +27,47 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const { addUnsubscribe } = useUnmounted();
+  // Hidden until a pointer places the end, which until then is the placeholder
+  // the draw was armed with: the scene origin, where no pointer ever was.
+  const state = observable({ placed: false });
+
+  /**
+   * Places the end at the press that mounted the preview. A draw started off
+   * the canvas has no pointer the stage still holds, and waits for a move.
+   */
+  const placeAtPress = (stage: Stage) => {
+    // Not getPointerPosition, which warns without a pointer and falls back to
+    // the last one that left the stage, a point no longer under anything.
+    const [pointer] = stage.getPointersPositions();
+    if (!pointer) return;
+
+    const container = stage.container().getBoundingClientRect();
+    const root = props.root.value.getBoundingClientRect();
+
+    state.placed = true;
+    app.value.store.dispatchSync(
+      drawRelationshipAction({
+        x: pointer.x + container.x - root.x,
+        y: pointer.y + container.y - root.y,
+      })
+    );
+  };
 
   onMounted(() => {
     const $root = props.root.value;
     const { store } = app.value;
+
+    // The group reaches its stage only at the commit after this mount, while the
+    // host already resolves the container it commits into, which names the stage.
+    const stage = stages.find(candidate => candidate.container() === ctx.host);
+    stage && placeAtPress(stage);
 
     addUnsubscribe(
       fromEvent<MouseEvent>($root, 'mousemove').subscribe(event => {
         event.preventDefault();
         const { x, y } = $root.getBoundingClientRect();
 
+        state.placed = true;
         store.dispatch(
           drawRelationshipAction({
             x: event.clientX - x,
@@ -62,6 +94,7 @@ const DrawRelationship: FC<DrawRelationshipProps> = (props, ctx) => {
         id="draw-relationship"
         name="draw-relationship"
         kind="draw-relationship"
+        visible={state.placed}
         listening={false}
       >
         <k-path

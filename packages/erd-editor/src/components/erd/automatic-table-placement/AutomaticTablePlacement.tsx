@@ -96,8 +96,13 @@ const PlacementToast: FC<PlacementToastProps> = props => () => (
     description={placementDescription(props.state)}
     action={
       <>
-        <Button variant="soft" size="1" text="Apply" onClick={props.onApply} />
-        <Button size="1" text="Cancel" onClick={props.onCancel} />
+        <Button size="1" text="Apply" onClick={props.onApply} />
+        <Button
+          variant="soft"
+          size="1"
+          text="Cancel"
+          onClick={props.onCancel}
+        />
       </>
     }
   />

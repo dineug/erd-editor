@@ -138,7 +138,7 @@ erd-editor {
 
 | Method | Description |
 | --- | --- |
-| `setInitialValue(value: string)` | Load the initial document. Does not create a history entry. |
+| `setInitialValue(value: string)` | Load the initial document. Does not create a history entry, and clears the undo history, so nothing done before the load can be undone or redone onto it. |
 | `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `Snowflake`, `SQLite`; omit it to use the document's own setting. |
 | `setSchemaSQL(value: string)` | Parse a DDL string and **replace** the current document with it. Lands in the undo history; an empty string is ignored. |
 | `setSchemaGraphQL(value: string)` | Parse a GraphQL SDL string and **replace** the current document with it. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. |

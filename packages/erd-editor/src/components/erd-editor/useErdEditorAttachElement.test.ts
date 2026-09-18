@@ -45,6 +45,10 @@ import {
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import {
+  changeTableNameAction,
+  moveTableAction,
+} from '@/engine/modules/table/atom.actions';
 import { AccentColor, Appearance, GrayColor } from '@/themes/radix-ui-theme';
 import {
   openDiffViewerAction,
@@ -72,6 +76,26 @@ type Harness = {
 };
 
 let harnesses: Harness[] = [];
+
+/** A one-table document with a known id, placed at the x given. */
+const loadedDocument = (x = 0) =>
+  JSON.stringify({
+    version: '3.0.0',
+    doc: { tableIds: ['t1'] },
+    collections: {
+      tableEntities: {
+        t1: {
+          id: 't1',
+          name: 'loaded',
+          comment: '',
+          columnIds: [],
+          seqColumnIds: [],
+          ui: { x, y: 0, zIndex: 2, widthName: 60, widthComment: 60 },
+          meta: { updateAt: 1, createAt: 1 },
+        },
+      },
+    },
+  });
 
 async function setup(initialProps: Partial<ErdEditorProps> = {}) {
   const app = createTestAppContext();
@@ -282,6 +306,74 @@ describe('useErdEditorAttachElement', () => {
 
     expect(app.store.state.settings.databaseName).toBe('seeded');
     expect(schemaGC).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the history of the document setInitialValue replaces', async () => {
+    const { app, ctx } = await setup();
+    const { store } = app;
+
+    ctx.setSchemaSQL('CREATE TABLE imported (id INT);');
+    await flush();
+    expect(store.history.size).toBe(1);
+    expect(store.state.editor.hasUndo).toBe(true);
+
+    ctx.setInitialValue(loadedDocument());
+    await flush();
+
+    expect(store.history.size).toBe(0);
+    expect(store.state.editor.hasUndo).toBe(false);
+    expect(store.state.editor.hasRedo).toBe(false);
+
+    store.undo();
+    store.redo();
+    expect(store.state.doc.tableIds).toEqual(['t1']);
+
+    store.dispatchSync(changeTableNameAction({ id: 't1', value: 'renamed' }));
+    await flush();
+    expect(store.state.editor.hasUndo).toBe(true);
+
+    store.undo();
+    expect(store.state.collections.tableEntities['t1'].name).toBe('loaded');
+  });
+
+  it('leaves no redo that brings the replaced document back', async () => {
+    const { app, ctx } = await setup();
+    const { store } = app;
+
+    ctx.setSchemaSQL('CREATE TABLE imported (id INT);');
+    store.undo();
+    await flush();
+    expect(store.state.editor.hasRedo).toBe(true);
+
+    ctx.setInitialValue(loadedDocument());
+    await flush();
+    expect(store.state.editor.hasRedo).toBe(false);
+
+    store.redo();
+    expect(store.state.doc.tableIds).toEqual(['t1']);
+  });
+
+  it('keeps a drag still being grouped out of the loaded history', async () => {
+    vi.useFakeTimers();
+    try {
+      const { app, ctx } = await setup();
+      const { store } = app;
+      ctx.setInitialValue(loadedDocument(0));
+
+      store.dispatchSync(
+        moveTableAction({ ids: ['t1'], movementX: 60, movementY: 0 })
+      );
+      ctx.setInitialValue(loadedDocument(500));
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(store.history.size).toBe(0);
+      expect(store.state.editor.hasUndo).toBe(false);
+
+      store.undo();
+      expect(store.state.collections.tableEntities['t1'].ui.x).toBe(500);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('falls back to an empty document when the initial value is not a string', async () => {

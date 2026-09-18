@@ -1,11 +1,23 @@
-import { createRef, FC, onUnmounted, Ref, ref, repeat } from '@dineug/r-html';
+import {
+  createRef,
+  FC,
+  onMounted,
+  onUnmounted,
+  Ref,
+  ref,
+  repeat,
+  watch,
+} from '@dineug/r-html';
 
 import { AppContext, useAppContext } from '@/components/appContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { useColumnCell } from '@/components/table-view/column/useColumnCell';
+import { DATA_TYPE_HINT_ROW_HEIGHT } from '@/constants/layout';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import { lastCursorFocus } from '@/utils/focus';
+import { isMod } from '@/utils/keyboard-shortcut';
 
 import * as styles from './ColumnDataType.styles';
 
@@ -29,6 +41,8 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     app
   );
   const root = createRef<HTMLDivElement>();
+  const hintList = createRef<HTMLDivElement>();
+  const { addUnsubscribe } = useUnmounted();
 
   let currentFocus = false;
   let timerId: any = -1;
@@ -99,6 +113,54 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     event.stopPropagation();
   };
 
+  /**
+   * Keeps a wheel the list scrolls by off the canvas, which would pan the
+   * scene out from under the editor. A sideways wheel, the shifted spelling
+   * the canvas reads as one, a zoom chord, a ctrl wheel and a short list reach it.
+   */
+  const handleHintWheel = (event: WheelEvent) => {
+    const el = hintList.value;
+    if (isMod(event) || event.ctrlKey) return;
+    const { deltaX, deltaY } = event;
+    const sideways =
+      deltaY === 0 ||
+      Math.abs(deltaY) < Math.abs(deltaX) ||
+      (event.shiftKey && deltaX === 0);
+    if (sideways) return;
+    if (!el || el.scrollHeight <= el.clientHeight) return;
+
+    event.stopPropagation();
+  };
+
+  /**
+   * Keeps the row the keyboard selects in view by the list's own scrollTop. The
+   * overlay above clips the list, so scrollIntoView would scroll that too and
+   * carry the input off the cell it edits. A new list opens at its top.
+   */
+  const handleHintState = (propName: PropertyKey) => {
+    const el = hintList.value;
+    if (!el) return;
+
+    if (propName === 'hints') {
+      el.scrollTop = 0;
+      return;
+    }
+    if (propName !== 'index' || state.index === -1) return;
+
+    const top = state.index * DATA_TYPE_HINT_ROW_HEIGHT;
+    const bottom = top + DATA_TYPE_HINT_ROW_HEIGHT;
+
+    if (top < el.scrollTop) {
+      el.scrollTop = top;
+    } else if (bottom > el.scrollTop + el.clientHeight) {
+      el.scrollTop = bottom - el.clientHeight;
+    }
+  };
+
+  onMounted(() => {
+    addUnsubscribe(watch(state).subscribe(handleHintState));
+  });
+
   return () => (
     <div
       class={styles.root}
@@ -121,8 +183,10 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
       {props.edit ? (
         <div
           class={['data-type-hint', styles.hint]}
+          use:ref={ref(hintList)}
           on:mousedown={handleHintMousedown}
           on:touchstart={handleHintTouchstart}
+          on:wheel={handleHintWheel}
         >
           {repeat(
             state.hints,
@@ -136,10 +200,12 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
                 ]}
                 on:click={() => handleSelectHint(index)}
               >
-                <HighlightedText
-                  searchWords={[props.value]}
-                  textToHighlight={hint.name}
-                />
+                <span>
+                  <HighlightedText
+                    searchWords={[props.value]}
+                    textToHighlight={hint.name}
+                  />
+                </span>
                 <Kbd mini={true} shortcut="Tab" />
               </div>
             )

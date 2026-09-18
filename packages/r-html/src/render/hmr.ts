@@ -33,13 +33,19 @@ function handler(event: any) {
   }
 }
 
+/**
+ * Starts listening for hot swaps on the global scope: the window on a page, and
+ * the worker's own scope in a worker a dev server hands the same boundaries.
+ */
 export function hmr() {
+  if (typeof globalThis.addEventListener !== 'function') return () => {};
+
   active = true;
-  window.addEventListener('hmr:r-html', handler);
+  globalThis.addEventListener('hmr:r-html', handler);
 
   return () => {
     active = false;
-    window.removeEventListener('hmr:r-html', handler);
+    globalThis.removeEventListener('hmr:r-html', handler);
   };
 }
 

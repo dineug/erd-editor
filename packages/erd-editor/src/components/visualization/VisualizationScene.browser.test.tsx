@@ -16,7 +16,9 @@ import {
   fireScenePointer,
   flush,
   movePointer,
+  moveScenePointer,
   releasePointer,
+  whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
@@ -173,6 +175,52 @@ const lineOf = (
   );
   return linesOf(stage)[index];
 };
+
+/**
+ * Stands every dot on its own spot of one row through the middle of the stage,
+ * far enough apart that a pointer travelling beside one crosses no other, and
+ * paints the hit graph a pointer is tested against.
+ */
+async function spread(fixture: Fixture) {
+  const { graph, state, settle } = fixture;
+  const middle = (graph.nodes.length - 1) / 2;
+
+  graph.nodes.forEach((node, index) => {
+    node.x = (index - middle) * 100;
+    node.y = 0;
+  });
+  state.tick += 1;
+  await settle();
+  await whenPainted();
+}
+
+/** Where a dot stands on the stage, which is where a pointer over it is. */
+const stagePointOf = (stage: Stage, id: string) =>
+  dotOf(stage, id).getAbsolutePosition();
+
+/** A press the way a browser delivers one to a Stage, so konva names the shape. */
+function pressScenePointer(stage: Stage, x: number, y: number) {
+  const origin = stage.content.getBoundingClientRect();
+
+  stage.content.dispatchEvent(
+    new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      clientX: origin.left + x,
+      clientY: origin.top + y,
+    })
+  );
+}
+
+/** The pointer konva named the last press on the stage by. */
+function pressedPointerIdOf(stage: Stage): () => number | undefined {
+  let pointerId: number | undefined;
+  stage.on('mousedown', event => {
+    pointerId = event.pointerId;
+  });
+
+  return () => pointerId;
+}
 
 /** The label under a table's dot, matched by position rather than text. */
 const labelOf = (stage: Stage, graph: Visualization, id: string) => {
@@ -483,6 +531,114 @@ describe('the visualization scene', () => {
       await settle();
 
       expect(state.x).toBe(x + 40);
+    });
+  });
+
+  /**
+   * Konva tests a move against the hit graph the last draw painted, so a step
+   * longer than a dot's radius lands off it however closely each draw follows
+   * the pointer. The press holds the shape it was made on until the lift.
+   */
+  describe('a held pointer', () => {
+    const STEP = 15;
+
+    it('keeps a dragged table lit on every draw while the pointer outruns its dot', async () => {
+      const fixture = await setup(seedRelated);
+      const { stage, graph, state, theme, settle } = fixture;
+      await spread(fixture);
+      const node = graph.nodes.find(({ id }) => id === 't1')!;
+      const start = stagePointOf(stage, 't1');
+
+      moveScenePointer(stage, start.x, start.y);
+      pressScenePointer(stage, start.x, start.y);
+      graph.simulation.stop();
+      await settle();
+
+      const draws: Array<{ ring: string; far: number; joined: number }> = [];
+      sceneOf(stage).on('draw', () => {
+        draws.push({
+          ring: String(dotOf(stage, 't1').stroke()),
+          far: dotOf(stage, 't2').opacity(),
+          joined: dotOf(stage, 't3').opacity(),
+        });
+      });
+
+      for (let step = 1; step <= 5; step++) {
+        moveScenePointer(stage, start.x + step * STEP, start.y);
+        // Each draw catches the dot up with the pointer, the closest a layout
+        // step can follow it, and the next move still lands a step beyond.
+        node.x = node.fx!;
+        state.tick += 1;
+        await settle();
+        await whenPainted();
+      }
+
+      expect(draws.length).toBeGreaterThanOrEqual(5);
+      expect(state.hoveredTableId).toBe('t1');
+      for (const draw of draws) {
+        expect(draw).toEqual({
+          ring: theme.focus,
+          far: DIM_OPACITY,
+          joined: 1,
+        });
+      }
+    });
+
+    it('keeps every dot at rest through a pan that passes beside one', async () => {
+      const fixture = await setup(seedRelated);
+      const { stage, state, settle } = fixture;
+      await spread(fixture);
+      const dot = stagePointOf(stage, 't1');
+      // Twelve px off the dot is outside its ring, and a step of twelve toward
+      // it lands on where the last draw still has it while the view moves on.
+      const start = { x: dot.x - 12, y: dot.y };
+
+      moveScenePointer(stage, start.x, start.y);
+      pressScenePointer(stage, start.x, start.y);
+      await settle();
+
+      const draws: number[] = [];
+      sceneOf(stage).on('draw', () => {
+        draws.push(dotOf(stage, 't2').opacity());
+      });
+
+      for (let step = 1; step <= 5; step++) {
+        moveScenePointer(stage, start.x + step * 12, start.y);
+        await settle();
+        await whenPainted();
+      }
+
+      expect(draws.length).toBeGreaterThanOrEqual(5);
+      expect(state.hoveredTableId).toBeNull();
+      expect(draws.every(opacity => opacity === 1)).toBe(true);
+    });
+
+    it.each([
+      ['a dot', (stage: Stage) => stagePointOf(stage, 't1')],
+      ['the background', () => ({ x: 20, y: 20 })],
+    ])('lets go of %s on a lift outside the stage', async (_, pointOf) => {
+      const fixture = await setup(seedRelated);
+      const { stage, settle } = fixture;
+      await spread(fixture);
+      const pressedPointerId = pressedPointerIdOf(stage);
+      const at = pointOf(stage);
+
+      moveScenePointer(stage, at.x, at.y);
+      pressScenePointer(stage, at.x, at.y);
+      await settle();
+      const pointerId = pressedPointerId()!;
+      const held = stage.getIntersection(at)!;
+
+      expect(pointerId).toBeDefined();
+      expect(held.hasPointerCapture(pointerId)).toBe(true);
+
+      // Konva lets go on a lift over its own content alone, and every stage
+      // on the page shares what it holds, so the window lift is the one here.
+      movePointer(-500, -500);
+      releasePointer(-500, -500);
+      await settle();
+
+      expect(held.hasPointerCapture(pointerId)).toBe(false);
     });
   });
 });

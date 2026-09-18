@@ -4,7 +4,14 @@ import {
   compositionActionsFlat,
 } from '@dineug/r-html';
 import { isFunction, isNil } from 'es-toolkit';
-import { debounceTime, Observable, Subject, Subscription } from 'rxjs';
+import {
+  debounceTime,
+  Observable,
+  startWith,
+  Subject,
+  Subscription,
+  switchMap,
+} from 'rxjs';
 
 import {
   ChangeActionTypes,
@@ -36,6 +43,7 @@ export type RxStore = Store & {
   undo: () => void;
   redo: () => void;
   history: History;
+  resetHistory: () => void;
   change$: Observable<Array<AnyAction>>;
 };
 
@@ -67,16 +75,22 @@ export function createRxStore(
   // The one seam a view has: what is dispatched is read against the state as
   // it stands, so a batch that opens or closes a view is classified before it.
   const redirected$ = dispatch$.pipe(viewActionRedirect(getView));
-  const history$ = redirected$.pipe(
-    actionsFilter(HistoryActionTypes),
-    ignoreTagFilter([Tag.changeOnly, Tag.shared]),
-    readonlyIgnoreFilter(getReadonly),
-    viewIgnoreFilter(getView),
-    groupByStreamActions(StreamActionTypes, [
-      ['@@move', StreamRegroupMoveActionTypes],
-      ['@@scroll', StreamRegroupScrollActionTypes],
-      ['@@color', StreamRegroupColorActionTypes],
-    ])
+  // An undo entry reads the state its batch has not reached yet, so the history
+  // holds one subscription ahead of the reducer and a reset swaps only the
+  // stream grouping behind it, which drops what that grouping still buffers.
+  const historyInput$ = new Subject<Array<AnyAction>>();
+  const historyReset$ = new Subject<void>();
+  const history$ = historyReset$.pipe(
+    startWith(undefined),
+    switchMap(() =>
+      historyInput$.pipe(
+        groupByStreamActions(StreamActionTypes, [
+          ['@@move', StreamRegroupMoveActionTypes],
+          ['@@scroll', StreamRegroupScrollActionTypes],
+          ['@@color', StreamRegroupColorActionTypes],
+        ])
+      )
+    )
   );
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
@@ -122,6 +136,12 @@ export function createRxStore(
     dispatch$.complete();
   };
 
+  /** Empties both stacks, dropping a stream burst still being grouped as well. */
+  const resetHistory = () => {
+    historyReset$.next();
+    history.clear();
+  };
+
   // A replay reaches the store through historyOptions.dispatch, past the seam
   // above, so an active view is refused here or the document moves under it.
   const undo = () => {
@@ -145,6 +165,16 @@ export function createRxStore(
     .add(
       redirected$
         .pipe(
+          actionsFilter(HistoryActionTypes),
+          ignoreTagFilter([Tag.changeOnly, Tag.shared]),
+          readonlyIgnoreFilter(getReadonly),
+          viewIgnoreFilter(getView)
+        )
+        .subscribe(historyInput$)
+    )
+    .add(
+      redirected$
+        .pipe(
           readonlyIgnoreFilter(getReadonly, [Tag.shared]),
           viewIgnoreFilter(getView, [Tag.shared])
         )
@@ -160,6 +190,7 @@ export function createRxStore(
     undo,
     redo,
     history,
+    resetHistory,
     change$,
   });
 }

@@ -6,6 +6,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { Layer } from 'konva/lib/Layer';
 import type { Node as KonvaNode } from 'konva/lib/Node';
+import { Rect } from 'konva/lib/shapes/Rect';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -21,6 +22,11 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
+import {
+  CURSOR_INHERIT,
+  CURSOR_TEXT,
+  setSceneCursor,
+} from '@/components/erd/canvas/sceneTokens';
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import {
   addMemoAction,
@@ -111,6 +117,15 @@ const sashes = (stage: Stage) =>
 
 const sashAt = (stage: Stage, position: SashPosition) =>
   stage.findOne(`.memo-sash-${position}`) as KonvaNode;
+
+/** A node asking for the caret on enter, the way the memo's text body does. */
+const standInForText = (stage: Stage) => {
+  const body = new Rect({ name: 'text-stand-in', width: 100, height: 100 });
+  body.on('mouseenter', event => setSceneCursor(event, CURSOR_TEXT));
+  body.on('mouseleave', event => setSceneCursor(event, CURSOR_INHERIT));
+  (stage.findOne<Layer>('.scene') as Layer).add(body);
+  return body;
+};
 
 const box = (stage: Stage, position: SashPosition) => {
   const { attrs } = sashAt(stage, position);
@@ -243,6 +258,54 @@ describe('the pointer a sash asks the stage for', () => {
     expect(container.style.cursor).toBe('');
 
     fireScenePointer(sashAt(stage, 'bottom'), 'mouseenter');
+    expect(container.style.cursor).toBe('ns-resize');
+  });
+
+  it('holds the resize cursor for the whole drag, and hands back what the pointer ended over', async () => {
+    const { stage } = await mountSash();
+    const container = stage.container();
+    const body = standInForText(stage);
+
+    fireScenePointer(sashAt(stage, 'right'), 'mouseenter');
+    fireScenePointer(sashAt(stage, 'right'), 'mousedown', {
+      clientX: 0,
+      clientY: 0,
+    });
+    fireScenePointer(sashAt(stage, 'right'), 'mouseleave');
+    expect(container.style.cursor).toBe('ew-resize');
+
+    fireScenePointer(body, 'mouseenter');
+    movePointer(-60, 0);
+    await flush();
+    expect(container.style.cursor).toBe('ew-resize');
+
+    releasePointer(-60, 0);
+    expect(container.style.cursor).toBe(CURSOR_TEXT);
+  });
+
+  it('holds nothing for a touch press, which has no cursor to keep', async () => {
+    const { stage } = await mountSash();
+    const container = stage.container();
+
+    fireScenePointer(sashAt(stage, 'right'), 'mouseenter');
+    fireSceneTouch(sashAt(stage, 'right'), 'touchstart', 0, 0);
+    fireScenePointer(sashAt(stage, 'right'), 'mouseleave');
+
+    expect(container.style.cursor).toBe('');
+  });
+
+  it('seeds a second press from the first, so its release restores no stale cursor', async () => {
+    const { stage } = await mountSash();
+    const container = stage.container();
+
+    fireScenePointer(sashAt(stage, 'right'), 'mouseenter');
+    fireScenePointer(sashAt(stage, 'right'), 'mousedown');
+    fireScenePointer(sashAt(stage, 'right'), 'mouseleave');
+    fireScenePointer(sashAt(stage, 'bottom'), 'mouseenter');
+    fireScenePointer(sashAt(stage, 'bottom'), 'mousedown', { button: 2 });
+    expect(container.style.cursor).toBe('ns-resize');
+
+    releasePointer();
     expect(container.style.cursor).toBe('ns-resize');
   });
 });

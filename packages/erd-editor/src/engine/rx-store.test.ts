@@ -228,6 +228,58 @@ describe('createRxStore', () => {
     expect(store.state.collections.tableEntities['t1'].ui.x).toBe(200);
   });
 
+  it('resetHistory empties both stacks and reports it', async () => {
+    const store = make(createContext());
+
+    store.dispatchSync(addTable('t1'));
+    store.dispatchSync(addTable('t2'));
+    store.undo();
+    await tick();
+    expect(store.state.editor.hasUndo).toBe(true);
+    expect(store.state.editor.hasRedo).toBe(true);
+
+    store.resetHistory();
+    await tick();
+
+    expect(store.history.size).toBe(0);
+    expect(store.state.editor.hasUndo).toBe(false);
+    expect(store.state.editor.hasRedo).toBe(false);
+    store.redo();
+    expect(store.state.doc.tableIds).toEqual(['t1']);
+  });
+
+  it('resetHistory drops a stream burst still being grouped', () => {
+    vi.useFakeTimers();
+    const store = make(createContext());
+    store.dispatchSync(addTable('t1'));
+    store.resetHistory();
+
+    store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 60, movementY: 0 })
+    );
+    store.resetHistory();
+    store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 40, movementY: 0 })
+    );
+    vi.advanceTimersByTime(300);
+
+    expect(store.history.size).toBe(1);
+    store.undo();
+    expect(store.state.collections.tableEntities['t1'].ui.x).toBe(260);
+  });
+
+  it('records an entry after resetHistory against the state before its batch', () => {
+    const store = make(createContext());
+    store.dispatchSync(addTable('t1'));
+    store.dispatchSync(changeTableNameAction({ id: 't1', value: 'users' }));
+
+    store.resetHistory();
+    store.dispatchSync(changeTableNameAction({ id: 't1', value: 'members' }));
+    store.undo();
+
+    expect(store.state.collections.tableEntities['t1'].name).toBe('users');
+  });
+
   it('does not push history for actions tagged changeOnly', () => {
     const store = make(createContext());
 

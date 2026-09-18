@@ -45,6 +45,21 @@ function link(state: RootState, id: string, pkTable: string, fkTable: string) {
 }
 
 /**
+ * A view standing on the centers given with its layout landed, which is what a
+ * view draws: every table the document holds placed where the document has it.
+ */
+function openLanded(state: RootState, centerIds: string[]) {
+  const view = createSceneView(ViewKind.flow, centerIds);
+  view.positions = Object.fromEntries(
+    state.doc.tableIds.map(id => {
+      const { x, y } = state.collections.tableEntities[id].ui;
+      return [id, { x, y }];
+    })
+  );
+  state.editor.views.flow = view;
+}
+
+/**
  * A triangle a - b - c, read through a view standing on a, so b and c are both
  * one hop out. Nothing is lit until the pointer lands: the centers seed no
  * light, so a narrowed view rests as dark as the whole document does.
@@ -57,7 +72,7 @@ function seedFocused(state: RootState) {
   link(state, 'ac', 'a', 'c');
   link(state, 'bc', 'b', 'c');
 
-  state.editor.views.flow = createSceneView(ViewKind.flow, ['a']);
+  openLanded(state, ['a']);
   relationshipSort(state, ViewKind.flow);
 }
 
@@ -125,7 +140,7 @@ describe('getParticleEdges', () => {
       addTable(state, `s${index}`, 600, index * 100);
       link(state, `r${index}`, 'hub', `s${index}`);
     }
-    state.editor.views.flow = createSceneView(ViewKind.flow, ['hub']);
+    openLanded(state, ['hub']);
     relationshipSort(state, ViewKind.flow);
     setViewHoverTable(state, 'hub', ViewKind.flow);
 

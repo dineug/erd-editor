@@ -36,6 +36,7 @@ suite red.
 | `e2e/fixture/`                  | The page under test — a deterministic `<erd-editor>` mount        |
 | `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes    |
 | `e2e/support/graph.ts`          | A relationship or index read back by the names it joins           |
+| `e2e/support/connectorDrift.ts` | How far each scene draw puts a connector end off its own table    |
 | `e2e/support/sceneMirror.ts`    | Projects every live Konva stage into divs a css locator can name  |
 | `e2e/support/shortcuts.ts`      | Key strings mirroring `createKeyBindingMap()`, `MOD_KEY`, steps   |
 | `e2e/support/ErdEditorPage.ts`  | Page object: locators, scene coordinates, gesture helpers         |
@@ -45,7 +46,7 @@ suite red.
 
 ## What is covered
 
-33 spec files. Nine of the groups exist because the DOM scene got their subject
+37 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -59,8 +60,9 @@ for free and the canvas has to draw and dispatch it itself:
 | `draw-preview.spec.ts`          | The dashed preview agreeing with the cursor every frame           |
 | `context-menu-cardinality.spec.ts` | A right click that finds a connector by hit-testing the scene  |
 | `virtual-viewport.spec.ts`      | Culling: what is off screen has no node, and the minimap keeps it |
+| `diff-viewer.spec.ts`           | The tint a changed cell sits on, on the canvas of both panes      |
 
-Ten more are the canvas's own geometry, and the DOM the editing overlay
+Eleven more are the canvas's own geometry, and the DOM the editing overlay
 puts over it:
 
 | Spec                            | What it holds down                                                |
@@ -84,6 +86,18 @@ one drawn over it in coordinates the document never keeps:
 | ------------------------------- | ---------------------------------------------------------------- |
 | `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker   |
 | `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
+
+`shared-workers.spec.ts` holds down what those two and every export stand on:
+that each of the four shared workers starts on the dev server, which serves a
+worker the same component boundaries, Vite client included, that it serves the page.
+
+Two more hold down a frame the rest never look at, one on the canvas and one in
+a DOM panel the port left on native drag and drop:
+
+| Spec                            | What it holds down                                                |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `connector-frames.spec.ts`      | No draw with a connector end off its table after an undo or redo  |
+| `settings-column-order.spec.ts` | The column order list painted in the order it holds, every frame  |
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
@@ -167,8 +181,8 @@ assertions should compare against — the scene is a projection of it. Pair a
 store assertion with a user-visible one wherever the visible result is
 meaningful; a spec that only reads `value` is a unit test wearing a costume.
 
-`setInitialValue()` dispatches straight to the store, so a seeded document
-starts with **empty undo history** and fires no `change` event. That is what
+`setInitialValue()` clears the undo history and records nothing, so a seeded
+document starts with **empty undo history** and fires no `change` event. That is what
 makes per-test isolation cheap. `erd.seed()` also waits for the scene to draw,
 so a coordinate taken straight after it is one the stage will answer.
 
@@ -285,8 +299,10 @@ Column reordering is **not** native HTML5 drag-and-drop any more. `konva/jsx.d.t
 types `draggable` and every `on:drag*` as `never`, so the row runs on the same
 `drag$` stream as everything else: `Column.tsx` arms on mousedown and reports a
 start on the first move, and `Table.tsx` answers which row a drop landed on with
-`findColumnDropTarget`, arithmetic over the rects the scene laid out. Drive it
-with `page.mouse`, never `locator.dragTo()`. Two preconditions:
+`findColumnDropTarget`, arithmetic over the rects the scene laid out. Where the
+pointer is over no drop target, the rows it carries are drawn under it as
+`.column-drag-ghost` on the presence layer, hidden over a target and gone on
+release. Drive it with `page.mouse`, never `locator.dragTo()`. Two preconditions:
 
 - `dragstartColumnAction$` bails unless a column already holds focus. Click the
   cell first (`erd.focusCell`) — a drag from an unfocused row does nothing.
@@ -296,7 +312,10 @@ with `page.mouse`, never `locator.dragTo()`. Two preconditions:
 Native drag-and-drop survives in the DOM panels only — the table-properties
 index column list and the settings column order — through `fromShadowDraggable`,
 which is `throttleTime(300)` then `debounceTime(50)`. `locator.dragTo()` drops
-too fast for it.
+too fast for it, and a real mouse sends a dragover only when it moves, so
+`support/listDrag.ts` drives such a list from inside the page, one dragover a
+frame, and reads back every painted frame. The held row takes no part in the
+list's flip: it snaps to its slot while the rows it pushes slide.
 
 ## Determinism rules
 
@@ -341,11 +360,13 @@ cost when you hit them blind.
   target; `el.value` is.
 - Relationship side effects land on later ticks: the FK `ui.keys` bit arrives on
   the next channel tick, `identification` / `startRelationshipType` on a 10ms
-  trailing throttle, and the relationship's start/end geometry on a 5ms one.
+  trailing throttle, and the relationship's start/end geometry on a 5ms one
+  after a dragged table or memo, or a microtask after anything else.
   Poll for all four.
 - A column reorder plays a 0.3s FLIP tween on the scene (`FLIP_DURATION`).
   Assert the settled `columnIds` order or the settled projected order, never a
-  box taken straight after the drop.
+  box taken straight after the drop. A row the reorder adds to a table fades
+  in over the same span, so its opacity is only worth reading once it settles.
 
 **Gestures**
 

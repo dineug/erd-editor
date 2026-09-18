@@ -62,8 +62,12 @@ const FLOW_POSITIONS: Record<string, Point> = {
 const stores: RxStore[] = [];
 
 const tick = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
-/** Both sort hooks throttle at 5 ms, trailing only. */
+/** Both sort hooks throttle trailing only, a drag move at 5 ms. */
 const settle = () => tick(50);
+/** The microtasks a dispatch queues and the ones those queue, with no task between. */
+const microtasks = async () => {
+  for (let index = 0; index < 5; index++) await Promise.resolve();
+};
 
 /** How many sorts each source has had since the count was last cleared. */
 const sorts = (source: GeometrySource) =>
@@ -228,7 +232,7 @@ describe('the view sort hook on the view actions', () => {
     expect(sorts('document')).toBe(0);
   });
 
-  /** AC-66. The window is 5 ms, trailing only. */
+  /** AC-66. The window is trailing only. */
   it('collapses a burst into one trailing view sort', async () => {
     const store = createScene();
     await openFocused(store);
@@ -236,6 +240,33 @@ describe('the view sort hook on the view actions', () => {
     store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
     store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
     store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    expect(sorts('flow')).toBe(0);
+    await settle();
+
+    expect(sorts('flow')).toBe(1);
+  });
+
+  it('sorts the view for an action that is not a drag move before the task it came in ends', async () => {
+    const store = createScene();
+    await openFocused(store);
+
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    await microtasks();
+
+    expect(sorts('flow')).toBe(1);
+  });
+
+  it('keeps a view drag move on the 5 ms window a drag sorts in', async () => {
+    const store = createScene();
+    await openFocused(store);
+
+    store.dispatchSync(
+      attachActionTag(
+        Tag.drag,
+        viewMoveTableAction({ ids: ['t2'], movementX: 10, movementY: 0 })
+      )
+    );
+    await microtasks();
     expect(sorts('flow')).toBe(0);
     await settle();
 

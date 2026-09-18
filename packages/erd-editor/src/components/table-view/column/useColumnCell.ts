@@ -26,6 +26,48 @@ const hasAutocompleteKey = arrayHas([
   'Enter',
 ]);
 
+/** A character that carries a word of a type name on; anything else ends it. */
+const NAME_CHAR = /[a-z0-9_]/;
+
+/**
+ * Whether the text has gone past a whole type name into what follows it, as in
+ * VARCHAR(255) or BIGINT UNSIGNED, with no name going on from the text itself.
+ * A list offered there only covers the rows below with names already left behind.
+ */
+function isPastTypeName(hints: DataTypeHint[], value: string): boolean {
+  const typed = value.trimStart().toLowerCase();
+  const names = hints.map(hint => hint.name.toLowerCase());
+
+  return (
+    !names.some(name => name.startsWith(typed)) &&
+    names.some(
+      name =>
+        typed.length > name.length &&
+        typed.startsWith(name) &&
+        !NAME_CHAR.test(typed[name.length])
+    )
+  );
+}
+
+/**
+ * The hints a typed data type offers: a fuzzy match over the names, or none
+ * for blank text and for text that has gone past a whole name.
+ */
+export function searchDataTypeHints(
+  hints: DataTypeHint[],
+  value: string
+): DataTypeHint[] {
+  const newValue = value.trim();
+
+  return isEmpty(newValue) || isPastTypeName(hints, value)
+    ? []
+    : new Fues(hints, {
+        keys: ['name'],
+      })
+        .search(newValue)
+        .map(result => result.item);
+}
+
 /**
  * Data type autocomplete state and key handling for a column cell, shared by
  * the DOM cell and by the Konva cell that replaces it.
@@ -41,16 +83,9 @@ export function useColumnCell(props: ColumnCellProps, app: Ref<AppContext>) {
     const { store } = app.value;
     const { settings } = store.state;
     const hints = DatabaseHintMap[settings.database] ?? [];
-    const newValue = value.trim();
 
     state.index = -1;
-    state.hints = isEmpty(newValue)
-      ? []
-      : new Fues(hints, {
-          keys: ['name'],
-        })
-          .search(newValue)
-          .map(result => result.item);
+    state.hints = searchDataTypeHints(hints, value);
   };
 
   const handleSelectHint = (index: number) => {

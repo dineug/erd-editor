@@ -16,6 +16,12 @@ describe('ContextMenuItem.styles', () => {
     expect(css).toContain('cursor: default;');
   });
 
+  it('holds the row at its height when a menu cut to the window scrolls', () => {
+    const css = styles.item.strings.raw.join('');
+
+    expect(css).toContain('flex-shrink: 0;');
+  });
+
   it('declares hover and selected states backed by custom properties', () => {
     const css = styles.item.strings.raw.join('');
 

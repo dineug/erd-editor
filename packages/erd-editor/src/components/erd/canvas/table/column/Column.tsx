@@ -34,6 +34,7 @@ import {
   getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
+import { diffFill, type DiffPaths } from '@/components/erd/diff-viewer/diff';
 import { useThemeContext } from '@/components/themeContext';
 import {
   COLUMN_DELETE_WIDTH,
@@ -84,6 +85,11 @@ export type ColumnProps = {
    * for. Decided by the scene, which walks the links once for every card.
    */
   related?: boolean;
+  /**
+   * What the diff pane this row is drawn in changed of its column, which tints
+   * those cells. A prop for the reason source is one, and null outside a pane.
+   */
+  diffPaths?: DiffPaths | null;
   /**
    * How far the light has come up on the card this row is drawn in, which is
    * what the row tint and the type cell above are both drawn at. One number, so
@@ -235,6 +241,18 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     dragSubscription = subscription;
   };
 
+  /** Whether the press under way found a relationship draw, which it closes or starts. */
+  let pressDraws = false;
+
+  /**
+   * The row's press, read before the table it bubbles to dispatches anything.
+   * Its click on the remove button then belongs to the draw it met, if any.
+   */
+  const handlePress = (event: SceneMouseEvent) => {
+    pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
+    handleDragstart(event);
+  };
+
   const handleMouseenter = () => {
     state.hover = true;
   };
@@ -295,6 +313,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   };
 
   const handleRemove = () => {
+    if (pressDraws) return;
+
     const { store } = app.value;
     const { column } = props;
     store.dispatch(removeColumnAction$(column.tableId, [column.id]));
@@ -311,6 +331,21 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const handleKeyMouseleave = () => {
     const { store } = app.value;
     store.dispatch(columnKeyHoverEndAction$());
+  };
+
+  /** The tint a changed cell sits on in a diff pane, across its padded box. */
+  const diffBackground = (focusType: FocusType, width: number) => {
+    const fill = diffFill(themeRef.value, props.diffPaths, focusType);
+
+    return fill ? (
+      <k-rect
+        name="cell-diff-background"
+        width={width + INPUT_MARGIN_RIGHT}
+        height={tableRowHeight(props.source)}
+        fill={fill}
+        listening={false}
+      />
+    ) : null;
   };
 
   /**
@@ -348,6 +383,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         handleEdit(focusType, event);
       }}
     >
+      {diffBackground(focusType, width)}
       <k-text
         name="cell-text"
         y={getColumnTextY(props.source)}
@@ -542,7 +578,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         y={props.y}
         opacity={dragging ? 0.5 : 1}
         visible={!props.ghost}
-        on:mousedown={handleDragstart}
+        on:mousedown={handlePress}
         on:mouseenter={handleMouseenter}
         on:mouseleave={handleMouseleave}
       >

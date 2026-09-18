@@ -49,9 +49,11 @@ export type SettingsProps = {};
 const Settings: FC<SettingsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const root = createRef<HTMLDivElement>();
+  // The held row is left out: it snaps to its slot on each reorder, and only
+  // the rows it pushes aside slide, so the list never paints out of order.
   const flipAnimation = new FlipAnimation(
     root,
-    `.${styles.columnOrderItem}`,
+    `.${styles.columnOrderItem}:not(.dragging)`,
     'column-order-move'
   );
 

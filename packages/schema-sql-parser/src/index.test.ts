@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it, test } from 'vite-plus/test';
 
-import { schemaSQLParser, SortType, StatementType } from '@/index';
+import { CreateTable, schemaSQLParser, SortType, StatementType } from '@/index';
 
 type TestCase = [string, string, string];
 const testCaseList: Array<TestCase> = [];
@@ -125,6 +125,47 @@ describe('public entry surface', () => {
       columns: [
         { name: 'a', sort: SortType.asc },
         { name: 'b', sort: SortType.desc },
+      ],
+    });
+  });
+});
+
+// MySQL Workbench's sakila export, whose constraint items once read back as
+// 25 columns: an ON per referential action, two index names and a FULLTEXT.
+describe('data/sakila.sql', () => {
+  const tables = schemaSQLParser(
+    fs.readFileSync(path.join(__dirname, '../../../data/sakila.sql'), 'utf8')
+  ).filter(
+    (statement): statement is CreateTable =>
+      statement.type === StatementType.createTable
+  );
+  const table = (name: string) => tables.find(table => table.name === name);
+
+  it('imports the 89 columns the dump declares and nothing else', () => {
+    const columns = tables.flatMap(table => table.columns);
+
+    expect(tables).toHaveLength(16);
+    expect(columns).toHaveLength(89);
+    expect(columns.filter(column => !column.dataType)).toEqual([]);
+    expect(tables.flatMap(table => table.foreignKeys)).toHaveLength(22);
+  });
+
+  it('keeps what the constraint items declare', () => {
+    expect(
+      table('staff')?.columns.find(column => column.name === 'password')
+        ?.dataType
+    ).toBe('VARCHAR(40)');
+    expect(
+      table('store')?.columns.find(column => column.name === 'manager_staff_id')
+        ?.unique
+    ).toBe(true);
+    expect(table('rental')?.indexes[0]).toEqual({
+      name: 'idx_rental',
+      unique: true,
+      columns: [
+        { name: 'rental_date', sort: SortType.asc },
+        { name: 'inventory_id', sort: SortType.asc },
+        { name: 'customer_id', sort: SortType.asc },
       ],
     });
   });

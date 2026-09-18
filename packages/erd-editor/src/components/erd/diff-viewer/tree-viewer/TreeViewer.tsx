@@ -57,36 +57,39 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
     'tableColumnEntities'
   );
 
-  const prevTableIds: string[] = [];
-  const tableIds: string[] = [];
+  const prevTableIds = new Set<string>();
+  const tableIds = new Set<string>();
   const prevColumnIds: string[] = [];
   const columnIds: string[] = [];
 
   Array.from(prevDiffMap).forEach(([key, [tag, pathMap]]) => {
-    tag === 'tableEntities' ? prevTableIds.push(key) : prevColumnIds.push(key);
+    tag === 'tableEntities' ? prevTableIds.add(key) : prevColumnIds.push(key);
   });
 
   Array.from(diffMap).forEach(([key, [tag, pathMap]]) => {
-    tag === 'tableEntities' ? tableIds.push(key) : columnIds.push(key);
+    tag === 'tableEntities' ? tableIds.add(key) : columnIds.push(key);
   });
 
-  const hasPrevTableIds = arrayHas(prevTableIds);
-  const hasTableIds = arrayHas(tableIds);
   const hasPrevColumnIds = arrayHas(prevColumnIds);
   const hasColumnIds = arrayHas(columnIds);
 
   prevColumnCollection.selectByIds(prevColumnIds).forEach(column => {
-    if (hasPrevTableIds(column.tableId)) return;
-    prevTableIds.push(column.tableId);
+    prevTableIds.add(column.tableId);
   });
 
+  // A changed column lists the saved table of its own table's name too, which
+  // is the only row a table that just gained columns gets, and what lets a
+  // click on it move the saved pane along with the current one.
   columnCollection.selectByIds(columnIds).forEach(column => {
-    if (hasTableIds(column.tableId)) return;
-    tableIds.push(column.tableId);
+    tableIds.add(column.tableId);
+
+    const table = tableCollection.selectById(column.tableId);
+    const prevTable = table && prevNameToTableMap.get(table.name)?.table;
+    prevTable && prevTableIds.add(prevTable.id);
   });
 
-  const prevTables = prevTableCollection.selectByIds(prevTableIds);
-  const tables = tableCollection.selectByIds(tableIds);
+  const prevTables = prevTableCollection.selectByIds([...prevTableIds]);
+  const tables = tableCollection.selectByIds([...tableIds]);
 
   const diffTables: DiffTable[] = [];
 
@@ -171,7 +174,11 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
       });
   });
 
-  diffTables.sort(orderByNameASC);
+  // Two current tables of one name share its entry, so a column added to one
+  // can find a saved table whose twin changed nothing: a row that says nothing.
+  const listedTables = diffTables
+    .filter(table => table.diff !== 0 || table.columns.length !== 0)
+    .sort(orderByNameASC);
 
   const move = ({ store }: AppContext, tableId: string) => {
     const {
@@ -202,7 +209,7 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
 
   return () => (
     <div class={styles.root}>
-      {diffTables.map(table => {
+      {listedTables.map(table => {
         const tableName = table.name.trim() ? table.name : 'unnamed';
         const isInsert = bHas(table.diff, Diff.insert);
         const isDelete = bHas(table.diff, Diff.delete);

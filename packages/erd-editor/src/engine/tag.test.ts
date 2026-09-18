@@ -20,9 +20,11 @@ describe('Tag', () => {
     expect(Tag.shared).toBe(1);
     expect(Tag.changeOnly).toBe(2);
     expect(Tag.following).toBe(4);
+    expect(Tag.drag).toBe(8);
     expect(Tag.shared & Tag.changeOnly).toBe(0);
     expect(Tag.shared & Tag.following).toBe(0);
     expect(Tag.changeOnly & Tag.following).toBe(0);
+    expect((Tag.shared | Tag.changeOnly | Tag.following) & Tag.drag).toBe(0);
   });
 });
 

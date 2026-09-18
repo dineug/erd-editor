@@ -3,12 +3,18 @@
 // P3-30 and P3-34: the draw preview as konva nodes. The mousemove stream stays
 // on the DOM shell the shell owns (C-I3); what changed is the shapes it feeds.
 
-import { createRef, type DOMTemplateLiterals, type Ref } from '@dineug/r-html';
+import {
+  createRef,
+  type DOMTemplateLiterals,
+  type FC,
+  type Ref,
+} from '@dineug/r-html';
 import type { Container } from 'konva/lib/Container';
+import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
-import { type AppContext } from '@/components/appContext';
+import { type AppContext, useAppContext } from '@/components/appContext';
 import DrawRelationship from '@/components/erd/canvas/draw-relationship/DrawRelationship';
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { RelationshipType } from '@/constants/schema';
@@ -51,16 +57,36 @@ const sceneOf = (
   </k-layer>
 );
 
+/** The preview mounted the way the canvas mounts it: once the draw has a start. */
+const StartedDraw: FC<{ root: Ref<HTMLDivElement> }> = (props, ctx) => {
+  const app = useAppContext(ctx);
+
+  return () => {
+    const { drawRelationship } = app.value.store.state.editor;
+
+    return (
+      <k-group name="started-draw">
+        {drawRelationship?.start ? (
+          <DrawRelationship root={props.root} draw={drawRelationship} />
+        ) : null}
+      </k-group>
+    );
+  };
+};
+
 type Mounted = {
   app: AppContext;
   group: Container;
+  stage: Stage;
   $root: HTMLDivElement;
   destroy: () => void;
 };
 
 async function mountDraw(
   draw: DrawRelationshipType,
-  rect: Partial<DOMRect> = {}
+  rect: Partial<DOMRect> = {},
+  scene: (root: Ref<HTMLDivElement>) => DOMTemplateLiterals = root =>
+    sceneOf(root, draw)
 ): Promise<Mounted> {
   const $root = document.createElement('div');
   document.body.append($root);
@@ -83,7 +109,7 @@ async function mountDraw(
   const rendered = renderScene({
     app,
     container,
-    scene: sceneOf(createRef<HTMLDivElement>($root), draw),
+    scene: scene(createRef<HTMLDivElement>($root)),
     width: 800,
     height: 600,
     theme: THEME,
@@ -106,8 +132,27 @@ async function mountDraw(
     app,
     $root,
     destroy,
+    stage: rendered.stage,
     group: rendered.stage.findOne<Container>('.draw-relationship') as Container,
   };
+}
+
+/** A store with a table to start from and a draw armed, but no start picked yet. */
+async function mountArmedDraw() {
+  const mounted = await mountDraw(createDraw(), { x: 40, y: 25 }, root => (
+    <k-layer name="scene">
+      <StartedDraw root={root} />
+    </k-layer>
+  ));
+  const { store } = mounted.app;
+
+  store.dispatchSync(
+    addTableAction({ id: 't1', ui: { x: 200, y: 100, zIndex: 2 } }),
+    drawStartRelationshipAction({ relationshipType: RelationshipType.ZeroOne })
+  );
+  await flush();
+
+  return mounted;
 }
 
 const lineAt = (group: Container, index: number) =>
@@ -211,6 +256,55 @@ describe('DrawRelationship as konva nodes', () => {
     $root.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('places the end at the press that started the draw, before any move', async () => {
+    const { app, stage } = await mountArmedDraw();
+    const { store } = app;
+    const container = stage.container().getBoundingClientRect();
+
+    // What konva records for the press on the start table, ahead of the
+    // handler that picks that table and so mounts the preview.
+    stage.setPointersPositions(
+      new MouseEvent('mousedown', {
+        clientX: container.x + 300,
+        clientY: container.y + 225,
+      })
+    );
+    store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+    await flush();
+
+    expect(store.state.editor.drawRelationship?.end).toEqual({
+      x: container.x + 260,
+      y: container.y + 200,
+    });
+    expect(stage.findOne('.draw-relationship')?.isVisible()).toBe(true);
+  });
+
+  it('stays hidden, and off the origin, when no press on the canvas started it', async () => {
+    const warn = vi.spyOn(console, 'warn');
+    const { app, stage, $root } = await mountArmedDraw();
+    const { store } = app;
+
+    // Quick search, the tree viewer and Go to ERD start a draw with no pointer
+    // over the stage, so the end keeps its placeholder until a move.
+    store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+    await flush();
+
+    const group = stage.findOne('.draw-relationship');
+    expect(group).toBeDefined();
+    expect(group?.isVisible()).toBe(false);
+    expect(store.state.editor.drawRelationship?.end).toEqual({ x: 0, y: 0 });
+    expect(warn).not.toHaveBeenCalled();
+
+    $root.dispatchEvent(mousemove(300, 225));
+    await flush();
+
+    expect(store.state.editor.drawRelationship?.end).toEqual({
+      x: 260,
+      y: 200,
+    });
+    expect(group?.isVisible()).toBe(true);
   });
 
   it('stops tracking mousemove once the scene is destroyed', async () => {

@@ -3,6 +3,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
+import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 
 /**
@@ -10,7 +11,10 @@ import { bHas } from '@/utils/bit';
  */
 export type DiffMap = Map<string, DiffTuple>;
 
-type DiffTuple = [string, Map<string, number>];
+/** Map<path, diff> for one entity, each path spelled as the FocusType of the cell showing it. */
+export type DiffPaths = Map<string, number>;
+
+type DiffTuple = [string, DiffPaths];
 
 type NameToTableMap = Map<
   string,
@@ -166,32 +170,17 @@ function getDiffValue<T>(diff: number, value: T, prev: T): number {
   return value === prev ? 0 : diff;
 }
 
-export function getDiffStyle(diff: number, diffMap: DiffMap) {
-  const style = document.createElement('style');
-  const rootClass =
-    diff === Diff.insert ? '.diff-viewer-insert' : '.diff-viewer-delete';
-
-  const diffStyle = Array.from(diffMap)
-    .map(([id, [tag, pathMap]]) => {
-      const selector = `${rootClass} [data-id="${id}"]`;
-      return Array.from(pathMap)
-        .map(([path, diff]) =>
-          diff !== 0
-            ? /* css */ `
-              ${selector} [data-type="${path}"] {
-                background-color: ${
-                  diff === Diff.insert
-                    ? 'var(--diff-insert-background)'
-                    : 'var(--diff-delete-background)'
-                };
-              }
-            `
-            : ''
-        )
-        .join('\n');
-    })
-    .join('\n');
-
-  style.textContent = diffStyle;
-  return style;
+/**
+ * The background a cell of one entity sits on in a diff pane: the insert or the
+ * delete colour its own path carries, and null for a path that did not change.
+ */
+export function diffFill(
+  theme: Theme,
+  paths: DiffPaths | null | undefined,
+  path: string
+): string | null {
+  const diff = paths?.get(path);
+  if (diff === Diff.insert) return theme.diffInsertBackground;
+  if (diff === Diff.delete) return theme.diffDeleteBackground;
+  return null;
 }

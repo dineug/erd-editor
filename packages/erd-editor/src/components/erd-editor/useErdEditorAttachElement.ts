@@ -268,6 +268,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     store.dispatchSync(
       initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
     );
+    store.resetHistory();
     emitter.emit(schemaGCAction());
   };
 

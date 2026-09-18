@@ -260,6 +260,97 @@ describe('the column reorder flip', () => {
     flip.cancel();
   });
 
+  it('fades a node the commit added in over the tween, where it lands', async () => {
+    const stage = createStage();
+    const layer = new Layer();
+    stage.add(layer);
+    const first = createRow(layer, 0);
+    const rows = [first];
+
+    const flip = createKonvaFlip(() => rows);
+    flip.snapshot();
+
+    const added = createRow(layer, 0);
+    first.y(24);
+    rows.unshift(added);
+    markDirty(layer);
+    await settled();
+
+    // The row that was already there travels, and the one that was not has
+    // nowhere to travel from, so it comes up out of nothing on its own place.
+    expect(added.opacity()).toBe(0);
+    expect(added.offsetY()).toBe(0);
+    expect(first.opacity()).toBe(1);
+
+    await wait(FLIP_DURATION * 1000 + 150);
+    expect(added.opacity()).toBe(1);
+    await settled(200);
+  });
+
+  it('fades up to the opacity the scene gave the node, and follows a later one', async () => {
+    const stage = createStage();
+    const layer = new Layer();
+    stage.add(layer);
+    const rows: Rect[] = [];
+
+    const flip = createKonvaFlip(() => rows);
+    flip.snapshot();
+
+    const added = createRow(layer, 0);
+    added.opacity(0.5);
+    rows.push(added);
+    markDirty(layer);
+    await settled();
+
+    await wait((FLIP_DURATION * 1000) / 2);
+    expect(added.opacity()).toBeGreaterThan(0);
+    expect(added.opacity()).toBeLessThan(0.5);
+
+    // The drag the half opacity marks ends while the fade is still running.
+    added.opacity(1);
+    await wait(FLIP_DURATION * 1000);
+    expect(added.opacity()).toBe(1);
+    await settled(200);
+  });
+
+  it('puts the opacity back when a running fade is cancelled', async () => {
+    const stage = createStage();
+    const layer = new Layer();
+    stage.add(layer);
+    const rows: Rect[] = [];
+
+    const flip = createKonvaFlip(() => rows);
+    flip.snapshot();
+    rows.push(createRow(layer, 0));
+    markDirty(layer);
+    await settled();
+
+    expect(rows[0].opacity()).toBe(0);
+    flip.cancel();
+
+    expect(rows[0].opacity()).toBe(1);
+    await settled(200);
+  });
+
+  it('puts the opacity back after a stage a fade was running on is gone', async () => {
+    const stage = createStage();
+    const layer = new Layer();
+    stage.add(layer);
+    const rows: Rect[] = [];
+
+    const flip = createKonvaFlip(() => rows);
+    flip.snapshot();
+    rows.push(createRow(layer, 0));
+    markDirty(layer);
+    await settled();
+
+    stage.destroy();
+
+    await wait(FLIP_DURATION * 1000 + 400);
+    expect(rows[0].opacity()).toBe(1);
+    await settled(200);
+  });
+
   it('replaces a running flip rather than stacking a second one on a node', async () => {
     const stage = createStage();
     const layer = new Layer();

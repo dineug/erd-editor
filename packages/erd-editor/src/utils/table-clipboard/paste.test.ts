@@ -179,6 +179,52 @@ describe('tablePasteFromTextToColumns', () => {
     expect(columns[0].name).toBe('');
     expect(columns[0].options).toBe(0);
   });
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n'],
+  ])('reads a trailing %s as the end of the last row', (_, eol) => {
+    const columns = tablePasteFromTextToColumns(
+      createState(),
+      `phone\tVARCHAR(20)\tYES${eol}zip\tVARCHAR(10)\tNULL${eol}`
+    );
+
+    expect(columns.map(column => column.name)).toEqual(['phone', 'zip']);
+    expect(columns.map(column => column.dataType)).toEqual([
+      'VARCHAR(20)',
+      'VARCHAR(10)',
+    ]);
+    expect(
+      columns.map(column => bHas(column.options, ColumnOption.notNull))
+    ).toEqual([true, false]);
+  });
+
+  it('reads a single row with a trailing line break as one column', () => {
+    const columns = tablePasteFromTextToColumns(
+      createState(),
+      'phone\tVARCHAR(20)\tYES\r\n'
+    );
+
+    expect(columns.map(column => column.name)).toEqual(['phone']);
+  });
+
+  it('drops only the one terminator, keeping an empty last row', () => {
+    const columns = tablePasteFromTextToColumns(
+      createState(ALL_SHOW, [ColumnType.columnName]),
+      'a\r\nb\r\n\r\n'
+    );
+
+    expect(columns.map(column => column.name)).toEqual(['a', 'b', '']);
+  });
+
+  it('keeps a default column for a blank line between rows', () => {
+    const columns = tablePasteFromTextToColumns(
+      createState(ALL_SHOW, [ColumnType.columnName]),
+      'phone\n\nzip'
+    );
+
+    expect(columns.map(column => column.name)).toEqual(['phone', '', 'zip']);
+  });
 });
 
 describe('tablePasteFromHtmlToColumns', () => {

@@ -12,6 +12,7 @@ import {
   isDescValue,
   isEqualToken,
   isForeignValue,
+  isIndexKind,
   isIndexValue,
   isKeyValue,
   isLeftParentToken,
@@ -28,6 +29,7 @@ import {
   matchCreateTable,
   matchDataType,
   matchNestedDataType,
+  matchReferentialClause,
 } from '@/parser/helper';
 import {
   Column,
@@ -225,8 +227,63 @@ function createTableColumnsParser(
   const constraintState = isConstraintState(tokens);
   const dataType = matchDataType(tokens);
   const nestedDataType = matchNestedDataType(tokens);
+  const referentialClause = matchReferentialClause(tokens);
+  const indexKind = isIndexKind(tokens);
 
   const isToken = () => $pos.value < tokens.length;
+
+  // Reads a key list from its ( through its ), each column with its sort.
+  const indexColumnsParser = () => {
+    const indexColumns: IndexColumn[] = [];
+    let indexColumn: IndexColumn = {
+      name: '',
+      sort: SortType.asc,
+    };
+    let expression = false;
+    $pos.value++;
+
+    while (isToken() && !isRightParent($pos.value)) {
+      // A prefix length, email(191), or a functional key part, ((a + b)), is a
+      // group of its own: its ) closes no list, and its words name no column.
+      if (isLeftParent($pos.value)) {
+        expression ||= !indexColumn.name;
+        let depth = 0;
+
+        while (isToken()) {
+          if (isLeftParent($pos.value)) {
+            depth++;
+          } else if (isRightParent($pos.value) && --depth === 0) {
+            break;
+          }
+
+          $pos.value++;
+        }
+      }
+      if (isString($pos.value) && !isDesc($pos.value) && !isAsc($pos.value)) {
+        indexColumn.name = tokens[$pos.value].value;
+      }
+      if (isDesc($pos.value)) {
+        indexColumn.sort = SortType.desc;
+      }
+      if (isComma($pos.value)) {
+        indexColumns.push(indexColumn);
+        indexColumn = {
+          name: '',
+          sort: SortType.asc,
+        };
+      }
+      $pos.value++;
+    }
+
+    if (!indexColumns.includes(indexColumn) && indexColumn.name !== '') {
+      indexColumns.push(indexColumn);
+    }
+
+    $pos.value++;
+    // Without its expression the key is another one, and a unique key left
+    // with a single column would mark that column unique.
+    return expression ? [] : indexColumns;
+  };
 
   const columns: Column[] = [];
   const indexes: Index[] = [];
@@ -244,6 +301,9 @@ function createTableColumnsParser(
     unique: false,
     nullable: true,
   };
+  // Set while the item is a table constraint or index: until its comma no word
+  // may become a column name or a data type -- USING BTREE, ON [PRIMARY].
+  let constraintItem = false;
 
   while (isToken()) {
     let token = tokens[$pos.value];
@@ -266,8 +326,34 @@ function createTableColumnsParser(
       continue;
     }
 
+    const referentialLength = referentialClause($pos.value);
+
+    if (referentialLength) {
+      $pos.value += referentialLength;
+      continue;
+    }
+
+    if (
+      !column.name &&
+      (isConstraint($pos.value) ||
+        isPrimary($pos.value) ||
+        isForeign($pos.value) ||
+        isUnique($pos.value) ||
+        isIndex($pos.value) ||
+        isKey($pos.value) ||
+        indexKind($pos.value))
+    ) {
+      constraintItem = true;
+    }
+
+    if (constraintItem && indexKind($pos.value)) {
+      $pos.value++;
+      continue;
+    }
+
     if (
       isString($pos.value) &&
+      !constraintItem &&
       !column.name &&
       !isConstraint($pos.value) &&
       !isPrimary($pos.value) &&
@@ -323,6 +409,11 @@ function createTableColumnsParser(
       if (isKey($pos.value)) {
         token = tokens[++$pos.value];
 
+        // SQL Server names the clustering before the key list.
+        if (constraintItem && isString($pos.value)) {
+          token = tokens[++$pos.value];
+        }
+
         if (isLeftParent($pos.value)) {
           token = tokens[++$pos.value];
 
@@ -357,40 +448,10 @@ function createTableColumnsParser(
 
       if (isString($pos.value)) {
         const name = token.value;
-        const indexColumns: IndexColumn[] = [];
         token = tokens[++$pos.value];
 
         if (isLeftParent($pos.value)) {
-          token = tokens[++$pos.value];
-          let indexColumn: IndexColumn = {
-            name: '',
-            sort: SortType.asc,
-          };
-
-          while (isToken() && !isRightParent($pos.value)) {
-            if (
-              isString($pos.value) &&
-              !isDesc($pos.value) &&
-              !isAsc($pos.value)
-            ) {
-              indexColumn.name = token.value;
-            }
-            if (isDesc($pos.value)) {
-              indexColumn.sort = SortType.desc;
-            }
-            if (isComma($pos.value)) {
-              indexColumns.push(indexColumn);
-              indexColumn = {
-                name: '',
-                sort: SortType.asc,
-              };
-            }
-            token = tokens[++$pos.value];
-          }
-
-          if (!indexColumns.includes(indexColumn) && indexColumn.name !== '') {
-            indexColumns.push(indexColumn);
-          }
+          const indexColumns = indexColumnsParser();
 
           if (indexColumns.length) {
             indexes.push({
@@ -399,8 +460,6 @@ function createTableColumnsParser(
               columns: indexColumns,
             });
           }
-
-          $pos.value++;
         }
       }
 
@@ -409,13 +468,35 @@ function createTableColumnsParser(
 
     if (isUnique($pos.value)) {
       token = tokens[++$pos.value];
+      const uniqueIndex = isIndex($pos.value);
 
-      if (isKey($pos.value)) {
+      if (isKey($pos.value) || uniqueIndex) {
         token = tokens[++$pos.value];
       }
 
-      if (isString($pos.value)) {
+      // Only a table constraint names its index. Inside a column definition the
+      // next word is another attribute -- NOT NULL, COMMENT, DEFAULT.
+      let name = '';
+
+      if (!column.name && isString($pos.value)) {
+        name = token.value;
         token = tokens[++$pos.value];
+      }
+
+      // Several columns under one named UNIQUE INDEX are one composite key;
+      // marking each column unique would export a stricter one.
+      if (uniqueIndex && name && isLeftParent($pos.value)) {
+        const indexColumns = indexColumnsParser();
+
+        if (indexColumns.length > 1) {
+          indexes.push({ name, unique: true, columns: indexColumns });
+        } else {
+          uniqueColumnNames.push(
+            ...indexColumns.map(indexColumn => indexColumn.name.toUpperCase())
+          );
+        }
+
+        continue;
       }
 
       if (isLeftParent($pos.value)) {
@@ -457,8 +538,12 @@ function createTableColumnsParser(
     if (isDefault($pos.value)) {
       token = tokens[++$pos.value];
 
+      // The default is a raw SQL expression. The lexer strips the quotes off a
+      // string literal, so they go back on -- PENDING would read as a name.
       if (isString($pos.value)) {
-        column.default = token.value;
+        column.default = token.quoted
+          ? `'${token.value.replaceAll("'", "''")}'`
+          : token.value;
         $pos.value++;
       }
 
@@ -515,6 +600,13 @@ function createTableColumnsParser(
 
     const dataTypeLength = dataType($pos.value);
 
+    // A column keeps its first type: the BINARY of VARCHAR(40) BINARY is an
+    // attribute, and a constraint item has no type at all.
+    if (dataTypeLength && (constraintItem || column.dataType)) {
+      $pos.value += dataTypeLength;
+      continue;
+    }
+
     if (dataTypeLength) {
       const end = $pos.value + dataTypeLength;
       let value = '';
@@ -567,6 +659,7 @@ function createTableColumnsParser(
         unique: false,
         nullable: true,
       };
+      constraintItem = false;
       $pos.value++;
       continue;
     }

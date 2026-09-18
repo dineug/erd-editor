@@ -558,11 +558,16 @@ describe('a scene the context points at a view', () => {
     );
   }
 
-  /** The display set a narrowing opens: t1 at the centre, its hop, key rows. */
+  /**
+   * The display set a narrowing opens: t1 at the centre, its hop, key rows, and
+   * the layout that set asks for landed, since a view draws what landed alone.
+   */
   function narrowView(app: AppContext) {
+    const { t1, t2 } = VIEW_POINTS;
+
     app.store.dispatchSync(
       viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
-      viewSetLayoutAction({ kind: ViewKind.flow, positions: VIEW_POINTS })
+      viewSetLayoutAction({ kind: ViewKind.flow, positions: { t1, t2 } })
     );
   }
 

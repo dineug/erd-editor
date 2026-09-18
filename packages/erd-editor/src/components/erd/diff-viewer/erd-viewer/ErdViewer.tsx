@@ -3,7 +3,8 @@ import { createRef, FC, observable, ref, useProvider } from '@dineug/r-html';
 import { AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import ContentCompass from '@/components/erd/content-compass/ContentCompass';
-import { Diff, DiffMap, getDiffStyle } from '@/components/erd/diff-viewer/diff';
+import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
+import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
@@ -34,14 +35,15 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
   // Each pane is a document of its own, so it names the document source
   // rather than inheriting whatever scene the diff was opened over.
   const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
+  // The pane's changes reach the cells the scene draws, which tint by them.
+  const diffMap = useProvider(ctx, diffContext, props.diffMap);
   const state = observable({
     grabCursor: 'grab',
   });
   const { addUnsubscribe } = useUnmounted();
 
-  const diffStyle = getDiffStyle(props.diff, props.diffMap);
-
   addUnsubscribe(() => {
+    diffMap.destroy();
     sceneSource.destroy();
     provider.destroy();
   });
@@ -144,7 +146,6 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
         on:touchstart={handleDragSelect}
         on:wheel={handleWheel}
       >
-        {diffStyle}
         <Canvas root={root} canvas={canvas} grabMove={true} />
         <VirtualScroll />
         {hasContent ? <Minimap /> : null}

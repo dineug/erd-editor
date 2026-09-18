@@ -27,6 +27,56 @@ const darkGrayBlue: ThemeOptions = {
   accentColor: AccentColor.blue,
 };
 
+const everyThemeOptions: ThemeOptions[] = AppearanceList.flatMap(appearance =>
+  GrayColorList.flatMap(grayColor =>
+    AccentColorList.map(accentColor => ({ appearance, grayColor, accentColor }))
+  )
+);
+
+const labelOf = ({ appearance, grayColor, accentColor }: ThemeOptions) =>
+  `${appearance}/${grayColor}/${accentColor}`;
+
+/** The 0..1 linear-light channels of an opaque #rrggbb radix step. */
+function toLinearRgb(hex: string): number[] {
+  expect(hex).toMatch(/^#[0-9a-f]{6}$/);
+  return [1, 3, 5].map(index => {
+    const channel = parseInt(hex.slice(index, index + 2), 16) / 255;
+    return channel <= 0.04045
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+}
+
+const luminance = (hex: string) => {
+  const [r, g, b] = toLinearRgb(hex);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/** The WCAG contrast ratio between two opaque colours. */
+const contrast = (first: string, second: string) => {
+  const [lighter, darker] = [luminance(first), luminance(second)].sort(
+    (a, b) => b - a
+  );
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+/** CIE Lab under the D65 white point. */
+function toLab(hex: string): number[] {
+  const [r, g, b] = toLinearRgb(hex);
+  const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+  const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+/** The CIE76 colour difference, where about 2.3 is the least an eye tells apart. */
+const deltaE = (first: string, second: string) => {
+  const [l1, a1, b1] = toLab(first);
+  const [l2, a2, b2] = toLab(second);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+};
+
 describe('enums', () => {
   it('exposes both appearances', () => {
     expect(Appearance).toEqual({ dark: 'dark', light: 'light' });
@@ -227,6 +277,76 @@ describe('createTheme', () => {
     expect(Object.keys(createTheme(lightGrayBlue)).sort()).toEqual(
       Object.keys(ThemeConfig).sort()
     );
+  });
+});
+
+describe('the selected column row fill', () => {
+  /** Step 4 of these accent scales sits on or beside the gray-4 hover. */
+  const neutralAccents: string[] = [
+    AccentColor.gray,
+    AccentColor.gold,
+    AccentColor.bronze,
+  ];
+
+  /** Twice the least visible CIE76 step. The gray-5 fill it replaced measured 2.5 to 3.4. */
+  const MIN_SELECT_HOVER_DELTA_E = 5;
+
+  it('takes accent-4, and gray-6 under the gray, gold and bronze accents', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(theme.columnSelect, labelOf(options)).toBe(
+        neutralAccents.includes(options.accentColor)
+          ? theme.grayColor6
+          : theme.accentColor4
+      );
+    });
+  });
+
+  it('stands apart from the hovered row fill in every theme', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        deltaE(theme.columnSelect, theme.columnHover),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_SELECT_HOVER_DELTA_E);
+    });
+  });
+
+  /** Radix gray-11 on gray-6 in light measures 4.19 to 4.28, the one place short of AA. */
+  it('keeps gray-11 text at 4.5:1 on it, save the light gray-6 fallback', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+      const fallbackInLight =
+        options.appearance === Appearance.light &&
+        neutralAccents.includes(options.accentColor);
+
+      expect(
+        contrast(theme.grayColor11, theme.columnSelect),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(fallbackInLight ? 4.1 : 4.5);
+    });
+  });
+});
+
+describe('the gray-3 hover of a tab, a Settings item and a toolbar tool', () => {
+  /** The least CIE76 step an eye tells apart. */
+  const MIN_VISIBLE_DELTA_E = 2.3;
+
+  it('shows on its gray-2 surface yet stays under the gray-4 selection in every theme', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [theme.contextMenuBackground, theme.toastBackground].forEach(surface => {
+        const hover = deltaE(theme.grayColor3, surface);
+
+        expect(hover, labelOf(options)).toBeGreaterThan(MIN_VISIBLE_DELTA_E);
+        expect(hover, labelOf(options)).toBeLessThan(
+          deltaE(theme.contextMenuSelect, surface)
+        );
+      });
+    });
   });
 });
 

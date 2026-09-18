@@ -6,6 +6,7 @@ import { useAppContext } from '@/components/appContext';
 import {
   CURSOR_INHERIT,
   HIT_FILL,
+  holdSceneCursor,
   type ScenePointerEvent,
   setSceneCursor,
 } from '@/components/erd/canvas/sceneTokens';
@@ -51,9 +52,9 @@ const SashShape = {
 type SashShape = ValuesType<typeof SashShape>;
 
 /**
- * The pointer a sash asks the stage container for while it is under one. Sash
- * styles gave the sides theirs through a class and each corner one of its own,
- * and a konva node has no cursor of its own to carry them.
+ * The pointer a sash asks the stage container for under it, and holds for its
+ * drag. Sash styles gave the sides theirs through a class and each corner one
+ * of its own, and a konva node has no cursor of its own to carry them.
  */
 const CURSORS: Record<MemoSashPosition, string> = {
   left: 'ew-resize',
@@ -249,7 +250,10 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     const pointer = pointerOf(event);
     clientX = pointer.x;
     clientY = pointer.y;
-    drag$.subscribe(dragMove => handleMove(dragMove, position));
+    // The pointer outruns the thin hit area and the minimum stops the edge
+    // under it, so the stage's own hover would hand the cursor away mid drag.
+    const release = holdSceneCursor(event, CURSORS[position]);
+    drag$.subscribe(dragMove => handleMove(dragMove, position)).add(release);
   };
 
   return () => {

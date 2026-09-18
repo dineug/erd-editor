@@ -1,10 +1,12 @@
 /** @jsxHost konva */
 
 import { FC, repeat } from '@dineug/r-html';
+import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import { useThemeContext } from '@/components/themeContext';
+import { captureDrag } from '@/components/visualization/captureDrag';
 import {
   Group,
   linkEnds,
@@ -22,7 +24,7 @@ import {
 } from '@/components/visualization/visualizationView';
 import { renderKonva } from '@/konva/host';
 import { TextFontFamily } from '@/styles/fonts.styles';
-import { drag$, type DragMove } from '@/utils/globalEventObservable';
+import type { DragMove } from '@/utils/globalEventObservable';
 
 export type VisualizationSceneProps = {
   graph: Visualization;
@@ -65,11 +67,11 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
 
   // A pan is a drag too: a dot the pointer crosses on the way would otherwise
   // open its preview under a hand that is busy moving the view.
-  const handlePanStart = () => {
+  const handlePanStart = (event: KonvaEventObject<Event>) => {
     const { state } = props;
 
     state.drag = true;
-    drag$.subscribe({
+    captureDrag(event, {
       next: handleMove,
       complete: () => {
         state.drag = false;

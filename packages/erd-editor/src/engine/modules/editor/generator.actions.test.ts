@@ -91,9 +91,11 @@ import {
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
+  moveColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
+import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 import { createTable } from '@/utils/collection/table.entity';
 import {
@@ -383,6 +385,33 @@ describe('moveAllAction$', () => {
     store.dispatchSync(selectAction({ x1: 'unknown' as any }));
 
     expect(typesOf(store, moveAllAction$(1, 1))).toEqual([]);
+  });
+
+  it('tags every move it yields as a drag step, so an undo of the same move is not one', () => {
+    seedTable(store, 't1');
+    seedMemo(store, 'm1');
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow }),
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: { t1: { x: 0, y: 0 } },
+      })
+    );
+
+    const moves = [
+      ...flatten(store, moveAllAction$(1, 1)),
+      ...flatten(store, moveAllAction$(1, 1, 'flow')),
+    ];
+
+    expect(moves.map(({ type }) => type)).toEqual([
+      'table.move',
+      'memo.move',
+      'editor.viewMoveTable',
+    ]);
+    expect(moves.every(({ tags }) => bHas(tags ?? 0, Tag.drag))).toBe(true);
   });
 
   it('moves the placement of the view named from a view scene, by that view zoom, and leaves the document alone', () => {
@@ -1069,6 +1098,46 @@ describe('dragoverColumnAction$', () => {
     store.dispatchSync(dragoverColumnAction$('c1', 't1'));
 
     expect(tableOf(store, 't1').columnIds).toEqual(['c3', 'c1', 'c2', 'c4']);
+  });
+
+  it('carries the dragged columns to the end of their own table on an append', () => {
+    seedFourColumnTable();
+    store.dispatchSync(
+      dragstartColumnAction({ tableId: 't1', columnIds: ['c4', 'c1'] })
+    );
+
+    store.dispatchSync(dragoverColumnAction$(null, 't1'));
+
+    expect(tableOf(store, 't1').columnIds).toEqual(['c2', 'c3', 'c4', 'c1']);
+  });
+
+  it('emits nothing on an append the dragged columns already end', () => {
+    seedFourColumnTable();
+    store.dispatchSync(
+      dragstartColumnAction({ tableId: 't1', columnIds: ['c3', 'c4'] })
+    );
+
+    expect(typesOf(store, dragoverColumnAction$(null, 't1'))).toEqual([]);
+  });
+
+  it('appends into another table without moving the column after it lands', () => {
+    seedTable(store, 't1');
+    seedColumn(store, 't1', 'c1');
+    seedTable(store, 't2');
+    store.dispatchSync(
+      dragstartColumnAction({ tableId: 't1', columnIds: ['c1'] })
+    );
+
+    const types = typesOf(store, dragoverColumnAction$(null, 't2'));
+    store.dispatchSync(dragoverColumnAction$(null, 't2'));
+
+    expect(types).not.toContain(moveColumnAction.type);
+    expect(tableOf(store, 't1').columnIds).toEqual([]);
+    expect(tableOf(store, 't2').columnIds).toHaveLength(1);
+    expect(store.state.editor.draggableColumn).toEqual({
+      tableId: 't2',
+      columnIds: tableOf(store, 't2').columnIds,
+    });
   });
 
   it('emits nothing when the target table is unknown', () => {

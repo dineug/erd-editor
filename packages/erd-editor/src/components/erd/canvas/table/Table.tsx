@@ -8,6 +8,11 @@ import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import {
+  beginColumnDragPointer,
+  endColumnDragPointer,
+  moveColumnDragPointer,
+} from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+import {
   progressOf,
   transitionKey,
   transitionTo,
@@ -51,6 +56,8 @@ import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { diffFill } from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { focusFlowView } from '@/components/flowCenters';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -81,7 +88,10 @@ import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Table } from '@/internal-types';
-import { findColumnDropTarget } from '@/konva/scene/columnDropTarget';
+import {
+  findColumnDropTarget,
+  isDropInPlace,
+} from '@/konva/scene/columnDropTarget';
 import { createKonvaFlip, type KonvaFlip } from '@/konva/scene/konvaFlip';
 import {
   getColumnRect,
@@ -134,11 +144,11 @@ type HeaderCellOptions = {
 };
 
 /**
- * Where a view press never pins. Both header buttons are drawn as icons, and
- * each answers for the press that lands on it: Related narrows the view on it
- * and Go to ERD leaves the tab, neither of which is a reader pinning a card.
+ * Where a view press belongs to a header button whole. Both are drawn as icons:
+ * Related narrows the view on the card and Go to ERD leaves the tab, so neither
+ * selects the card, raises it or pins it on the way past.
  */
-const PIN_BLOCKED_KINDS = ['icon'];
+const VIEW_PRESS_BLOCKED_KINDS = ['icon'];
 
 /**
  * The fill a table name takes: the placeholder while it is blank, and the
@@ -153,6 +163,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const diffMapRef = useDiffMap(ctx);
   const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
     ctx,
     props.table.id
@@ -234,18 +245,32 @@ const Table: FC<TableProps> = (props, ctx) => {
       : theme.tableSelect;
   };
 
+  /**
+   * Whether the press under way found a relationship draw armed. The press
+   * closes or starts that draw, so the click konva ends it with on a button
+   * belongs to the draw, not to the button.
+   */
+  let pressDraws = false;
+
   /** The press a table takes: its drag, and in a view scene the start of a click that pins it. */
   const handlePress = (event: ScenePointerEvent) => {
-    onMoveStart(event);
-    // A press that landed on a header button belongs to the button alone. The
-    // pin Related would take on the way past lights the hub and its one hop,
-    // which in the view it just narrowed to is every card it draws.
-    if (hasKindAncestor(event.target, PIN_BLOCKED_KINDS)) return;
+    pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
+    // The document keeps its header icons part of the table, so a press on one
+    // still selects it there. A view hands the button the whole press.
+    if (
+      sourceRef.value !== 'document' &&
+      hasKindAncestor(event.target, VIEW_PRESS_BLOCKED_KINDS)
+    ) {
+      return;
+    }
 
+    onMoveStart(event);
     pin.onPress(event);
   };
 
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
+    if (pressDraws) return;
+
     const { emitter } = app.value;
     emitter.emit(
       openColorPickerAction({
@@ -257,11 +282,15 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   const handleAddColumn = () => {
+    if (pressDraws) return;
+
     const { store } = app.value;
     store.dispatch(addColumnAction$(props.table.id));
   };
 
   const handleRemoveTable = () => {
+    if (pressDraws) return;
+
     const { store } = app.value;
     store.dispatch(removeTableAction$(props.table.id));
   };
@@ -314,6 +343,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     if (!point) return;
 
     const target = findColumnDropTarget(store.state, point, sourceRef.value);
+    moveColumnDragPointer(store.state, point, target !== null);
     if (!target) return;
 
     const {
@@ -321,7 +351,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     } = store.state;
     if (
       !draggableColumn ||
-      draggableColumn.columnIds.includes(target.columnId)
+      isDropInPlace(store.state, draggableColumn, target)
     ) {
       return;
     }
@@ -339,6 +369,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     dragLayerStage = null;
     state.dragstartId = null;
 
+    endColumnDragPointer(store.state);
     store.dispatch(dragendColumnAction());
     emitter.emit(dragendColumnAllAction());
   };
@@ -367,7 +398,15 @@ const Table: FC<TableProps> = (props, ctx) => {
     state.dragstartId = columnId;
     flip ??= createKonvaFlip(() => stage.find<KonvaNode>('.column-row'));
 
-    store.dispatch(dragstartColumnAction$(isMod(event.evt)));
+    const $mod = isMod(event.evt);
+    const press = toCanvasPoint(event.evt);
+    press &&
+      beginColumnDragPointer(store.state, props.table, press, {
+        columnId,
+        columnIds: $mod ? focusTable.selectColumnIds : [columnId],
+      });
+
+    store.dispatch(dragstartColumnAction$($mod));
 
     dragoverSubscription = drag$.subscribe({
       next: ({ event: move }) => {
@@ -385,9 +424,11 @@ const Table: FC<TableProps> = (props, ctx) => {
         dragendColumnAll: () => {
           dragoverSubscription?.unsubscribe();
           dragoverSubscription = null;
+          endColumnDragPointer(app.value.store.state);
         },
       }),
       () => {
+        dragoverSubscription && endColumnDragPointer(app.value.store.state);
         dragoverSubscription?.unsubscribe();
         dragoverSubscription = null;
         flip?.cancel();
@@ -412,6 +453,11 @@ const Table: FC<TableProps> = (props, ctx) => {
   }: HeaderCellOptions) => {
     const source = sourceRef.value;
     const view = source !== 'document';
+    const diffBackground = diffFill(
+      themeRef.value,
+      diffMapRef.value?.get(props.table.id)?.[1],
+      focusType
+    );
 
     return (
       <k-group
@@ -428,6 +474,15 @@ const Table: FC<TableProps> = (props, ctx) => {
           handleEdit(focusType, event);
         }}
       >
+        {diffBackground ? (
+          <k-rect
+            name="cell-diff-background"
+            width={width + INPUT_MARGIN_RIGHT}
+            height={TABLE_HEADER_INPUT_HEIGHT}
+            fill={diffBackground}
+            listening={false}
+          />
+        ) : null}
         <k-text
           name="cell-text"
           y={getHeaderTextY(source)}
@@ -764,6 +819,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 column={column}
                 source={source}
                 related={props.relatedColumnIds?.has(column.id) ?? false}
+                diffPaths={diffMapRef.value?.get(column.id)?.[1] ?? null}
                 litAlpha={litAlpha}
                 divider={view && index < columns.length - 1}
                 last={view && index === columns.length - 1}

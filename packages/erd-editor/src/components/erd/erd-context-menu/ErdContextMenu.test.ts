@@ -286,7 +286,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('changes the database from the database submenu', async () => {
+  it('changes the database from the database submenu: a choice keeps the menu open, an action closes it', async () => {
     app.store.dispatchSync(changeDatabaseAction({ value: Database.MySQL }));
     await mountMenu();
 
@@ -307,6 +307,7 @@ describe('ErdContextMenu / ERD type', () => {
     await click(findItem(items, 'Oracle'));
 
     expect(app.store.state.settings.database).toBe(Database.Oracle);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('requests a json import from the import submenu', async () => {
@@ -562,7 +563,7 @@ describe('ErdContextMenu / relationship type', () => {
     expect(labelsOf(rootItems())).toEqual(['Relationship Type', 'Delete']);
   });
 
-  it('changes the relationship type from the submenu', async () => {
+  it('changes the relationship type from the submenu: a choice keeps the menu open, an action closes it', async () => {
     seedRelationship();
     await mountMenu({
       type: ErdContextMenuType.relationship,
@@ -585,6 +586,7 @@ describe('ErdContextMenu / relationship type', () => {
       .collection('relationshipEntities')
       .selectById(RELATIONSHIP_ID);
     expect(relationship?.relationshipType).toBe(RelationshipType.OneN);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('renders an empty relationship type submenu without a relationship id', async () => {

@@ -36,7 +36,7 @@ export const menu = css`
 
   &:hover {
     color: var(--active);
-    background-color: var(--context-menu-hover);
+    background-color: var(--gray-color-3);
   }
 
   &.active {

@@ -31,6 +31,7 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
     show: false,
     x: 0,
     y: 0,
+    flipX: 0,
   });
   const { addUnsubscribe } = useUnmounted();
 
@@ -38,6 +39,7 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
     const { width, x, y } = $div.value.getBoundingClientRect();
     state.x = width + x;
     state.y = y - 8;
+    state.flipX = x;
     state.show = true;
 
     const parentId = $div.value.parentElement?.dataset.id;
@@ -80,6 +82,8 @@ const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
           id={id}
           x={state.x}
           y={state.y}
+          fit={true}
+          flipX={state.flipX}
           children={props.subChildren}
         />
       ) : null}

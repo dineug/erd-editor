@@ -15,6 +15,7 @@ import {
   clearViewHoverTable,
   clearViewPinnedTable,
   getHighlightIds,
+  getReachedTableIds,
   getTablePoint,
   getViewHoverTable,
   getViewPinnedTable,
@@ -116,8 +117,18 @@ function seedGraph(state: RootState) {
   addRelationship(state, 'cd', ['c', ['c.id']], ['d', ['d.c_id']]);
 }
 
+/**
+ * A view standing on the centers given once their layout has landed: every
+ * table they reach placed along one row, which is how a view comes to show anything.
+ */
 function openFocused(state: RootState, centerIds: string[]) {
   const view = createSceneView(ViewKind.flow, centerIds);
+  view.positions = Object.fromEntries(
+    getReachedTableIds(state, centerIds).map((id, index) => [
+      id,
+      { x: index * 100, y: 0 },
+    ])
+  );
   state.editor.views.flow = view;
   return view;
 }
@@ -161,7 +172,7 @@ describe('getTablePoint', () => {
 
     expect(getTablePoint(state, table, 'flow')).toEqual({ x: 120, y: 340 });
 
-    openFocused(state, ['t']);
+    state.editor.views.flow = createSceneView(ViewKind.flow, ['t']);
     expect(getTablePoint(state, table, 'flow')).toEqual({ x: 120, y: 340 });
   });
 });
@@ -383,16 +394,29 @@ describe('getVisibleIds', () => {
     });
   });
 
-  it('shows a Flow view standing on centers those and their one hop, placed or not', () => {
+  /** A first entry narrowed from the ERD draws nothing until ELK answers, as the whole document's does. */
+  it('shows nothing of a view opened on centers until a layout lands', () => {
+    const state = createState();
+    seedGraph(state);
+    state.editor.views.flow = createSceneView(ViewKind.flow, ['b']);
+
+    expect(getVisibleIds(state, 'flow')).toEqual({
+      tableIds: [],
+      memoIds: [],
+      relationshipIds: [],
+    });
+  });
+
+  it('shows a Flow view moved onto other centers the landing it had, until theirs lands', () => {
     const state = createState();
     seedGraph(state);
     const view = openFlow(state, ['a', 'b', 'c']);
     view.centerIds = ['d'];
 
     expect(getVisibleIds(state, 'flow')).toEqual({
-      tableIds: ['c', 'd'],
+      tableIds: ['a', 'b', 'c'],
       memoIds: [],
-      relationshipIds: ['cd'],
+      relationshipIds: ['ab', 'bc'],
     });
   });
 
@@ -412,16 +436,40 @@ describe('getVisibleIds', () => {
     expect(getActiveView(state)).toBeNull();
   });
 
-  it('keeps the placement it landed while the centers narrow what it shows', () => {
+  it('keeps the placement it landed while the centers narrow what it is laid out over', () => {
     const state = createState();
     seedGraph(state);
     const view = openFlow(state, ['a', 'b', 'c', 'd', 'e']);
     view.centerIds = ['d'];
 
-    expect(getVisibleIds(state, 'flow').tableIds).toEqual(['c', 'd']);
+    expect(getVisibleIds(state, 'flow').tableIds).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+    ]);
     expect(
       getTablePoint(state, state.collections.tableEntities.d, 'flow')
     ).toEqual({ x: 300, y: 0 });
+  });
+});
+
+describe('getReachedTableIds', () => {
+  /** What ELK is asked to place for a narrowed view, which has to be there before anything is placed. */
+  it('reaches the centers and their one hop, in document order, placed or not', () => {
+    const state = createState();
+    seedGraph(state);
+
+    expect(getReachedTableIds(state, ['c'])).toEqual(['b', 'c', 'd']);
+    expect(getReachedTableIds(state, ['e', 'a'])).toEqual(['a', 'b', 'e']);
+  });
+
+  it('leaves out a center the document no longer holds', () => {
+    const state = createState();
+    seedGraph(state);
+
+    expect(getReachedTableIds(state, ['gone', 'a'])).toEqual(['a', 'b']);
   });
 });
 

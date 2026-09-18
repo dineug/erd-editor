@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import * as styles from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent.styles';
+
+const zIndexOf = (literals: { strings: TemplateStringsArray }) =>
+  Number(/z-index:\s*(\d+)/.exec([...literals.strings].join(' '))?.[1]);
 
 describe('ContextMenuContent.styles', () => {
   it('exports content as a css template literal resolving to a class name', () => {
@@ -22,5 +26,19 @@ describe('ContextMenuContent.styles', () => {
 
     expect(css).toContain('background-color: var(--context-menu-background);');
     expect(css).toContain('border: 1px solid var(--context-menu-border);');
+  });
+
+  it('scrolls a menu taller than the window rather than running past its edge', () => {
+    const css = styles.content.strings.raw.join('');
+
+    expect(css).toContain('max-height: 100vh;');
+    expect(css).toContain('overflow-y: auto;');
+  });
+
+  it('stacks every menu and submenu over the floating toolbar', () => {
+    const bar = zIndexOf(floating.root);
+
+    expect(Number.isInteger(bar)).toBe(true);
+    expect(zIndexOf(styles.content)).toBeGreaterThan(bar);
   });
 });
