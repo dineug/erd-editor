@@ -1,68 +1,53 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-07 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
 
 # intellij-webview
 
 ## Purpose
 
-The HTML/JS bundle embedded by the IntelliJ ERD Editor plugin, whose Kotlin/JVM side is `packages/intellij-plugin`.
-Same `<erd-editor>` element and same `@dineug/erd-editor-webview-bridge` protocol as `vscode-webview`, but webview→host is
-`window.cefQuery` with a JSON string, so payloads must survive `JSON.stringify`/`parse` and binary data is base64-encoded first.
+The bundle the IntelliJ plugin (`packages/intellij-plugin`) embeds. `src/main.ts` is a host adapter over `mountWebview` from `webview-client`: webview → host is `window.cefQuery` with a JSON string, host → webview arrives as `window.postMessage` from `WebviewScripts.kt`. It builds into `../intellij-plugin/src/main/resources/assets`, which the plugin serves from its classpath over a custom CEF scheme.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `src/main.ts` | The host adapter: a `window.cefQuery` transport handed to `mountWebview` from `@dineug/erd-editor-webview-client`, and the worker name |
+| `src/main.ts` | The adapter: a `cefQuery` `dispatch` and the replica worker's name — no `importFile`, no `resolveAppearance` |
 | `src/env.d.ts` | Ambient `window.cefQuery` / `cefQueryCancel` types and `declare module '*.css'` |
-| `index.html` | Build entry at the package root; `publicDir: false`, so no static asset dir sits beside it |
-| `vite.config.ts` | The one output path, the `stripCrossorigin` plugin, the `worker` block, `run.tasks` |
-
-## Subdirectories
-
-| Directory | Purpose |
-| --- | --- |
-| `src/utils/` | `toWidth` canvas text measurement |
+| `src/webview.css` | Body sizing and the `prefers-color-scheme` background shown before the editor mounts |
+| `index.html` | Build entry at the package root (`publicDir: false`) |
+| `vite.config.ts` | `base: '/'`, the out-of-package `outDir`, `sourcemap: false`, `stripCrossorigin`, the `worker` block, `run.tasks.build` |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- **`build` writes outside this package**, `emptyOutDir: true` into `../intellij-plugin/src/main/resources/assets`. There is no configured production `dist/` and nothing here imports this package; a local dev command may still leave a generated `dist/`, but it is not the shipped output. The task declares the plugin asset directory as its `output`; drop that and a cache hit replays the log without restoring the bundle, which ships as a blank editor. A replay also restores without emptying the directory first, so a tree that has seen several builds can hold two generations; `pnpm cache:clear` and a rebuild before packaging locally leaves one, and CI starts from a clean checkout.
-- Gradle `buildPlugin` and `runIde` verify that the asset bundle exists but do not invoke `buildWebview`; the IntelliJ workflow runs the pnpm webview build before Gradle. Run `./gradlew buildWebview` explicitly after webview changes when working locally.
-- **`base` stays `/`, only `.html`/`.js`/`.css` may be emitted, `sourcemap: false`** — the plugin's CEF
-  `SchemeHandlerFactory` maps the URL path onto the classpath and types those three extensions, nothing else.
-- **Do not restore `crossorigin` on injected tags.** `stripCrossorigin` removes it: the scheme handler sends no CORS headers, so the module script is refused and the panel stays blank.
-- **Every worker loads from its URL, and none is written here.** The plugin serves `index.html` and every asset from one origin, `https://<DOMAIN>`, through its scheme handler, so the `new Worker(new URL('./workers/…', import.meta.url))` that `@dineug/erd-editor` and `@dineug/erd-editor-replication-store-worker` ship resolves same-origin and Vite emits each as `static/js/<name>.<hash>.js` — a `.js` the handler's whitelist admits. Nothing is inlined, unlike `vscode-webview`. The replica worker that used to live under `src/services/` is that shared package now.
-- **The `worker` block repeats the output naming** because workers do not inherit `build.rolldownOptions.output`, and `worker.format: 'es'`
-  matches `main.ts` building its worker as `{ type: 'module' }`. `codeSplitting: false` is there because a worker's dynamic import fails with a network error in the IDE — the ELK bundle the layout worker splits never arrives and the layout never runs, so each worker ships as a single file. No `build.target` is set — JCEF's Chromium is the only browser here.
+- **`build` writes outside this package** (`emptyOutDir: true`) into the plugin's gitignored `src/main/resources/assets`. The task's `output` names that directory — drop it and a cache hit replays the log without restoring the bundle, which ships a blank editor. A replay also does not empty it (root `AGENTS.md`): `pnpm cache:clear` and rebuild before packaging.
+- Gradle does not run this build: `buildPlugin` and `runIde` only check the bundle exists. After a webview change run the build below or `./gradlew buildWebview`.
+- **`base` stays `/`, only `.html` / `.js` / `.css` may be emitted, `sourcemap: false`** — the plugin's scheme handler serves the URL path from `/assets` on the classpath and sets a MIME type for those three extensions only.
+- **Keep `stripCrossorigin`**: the scheme handler sends no CORS headers, so a `crossorigin` module script is refused and the panel stays blank.
+- **Workers load from their URLs.** The page and every asset share one origin (`https://erd-editor-jetbrains-plugin`), so the editor's four SharedWorkers and the replica worker are emitted as `static/js/<name>.<hash>.js` and constructed from those URLs — no blob rebuild, unlike `vscode-webview`.
+- **The `worker` block**: workers inherit no `build.rolldownOptions.output`, so the naming is repeated; `format: 'es'` because they are module workers and the iife default code-splits through `importScripts`; `codeSplitting: false` because a worker's dynamic import fails with a network error in the IDE, so ELK's split chunk never arrives and layout never runs.
+- **What this host leaves unset**: no `importFile`, so the editor's own file input imports (`ErdEditor.kt` no-ops `hostImportFileCommand`); no `resolveAppearance`, so `'auto'` means dark. `cefQuery`'s `onFailure` is a no-op — a command the plugin rejects vanishes here and shows only in `idea.log`.
+- No `build.target`: JCEF's Chromium is the only browser.
 
 ### Testing Requirements
 
-No `test` task and no test files, so `pnpm test` walks past this package; the build is the gate, and it runs
-`tsc --noEmit` first. `cefQuery` is undefined in a plain browser — host round trips need a sandbox IDE.
+No `test` task; the build, `tsc --noEmit` first, is the gate. `cefQuery` is undefined in a plain browser, so under `pnpm --filter @dineug/erd-editor-intellij-webview dev` `mountWebview` throws on its first dispatch; host round trips need the sandbox IDE.
 
 ```
 pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build
 pnpm --filter @dineug/erd-editor-intellij-webview typecheck
-pnpm --filter @dineug/erd-editor-intellij-webview dev
-cd ../intellij-plugin && ./gradlew runIde
+cd packages/intellij-plugin && ./gradlew runIde
 ```
-
-### Common Patterns
-
-- Mirror of `packages/vscode-webview/src/index.ts` — diff both when either moves. The same two gaps: no `setImportFileCallback`, so the element's own file input is what imports here and the mirrored `webviewImportFileCommand` handler goes unreached while `ErdEditor.kt` no-ops `ImportFile`; and `auto` appearance resolves to dark instead of following the host.
-- Register commands up front, collecting disposers with `Bridge.mergeRegister`; a new command belongs in the bridge package, not a fork.
-- The shared store is created with `mouseTracker: false, focusTracker: false` — it exists for host replication only.
 
 ## Dependencies
 
 ### Internal
 
-`@dineug/erd-editor-webview-client`, which brings the editor, the bridge and the replica worker with it; the editor carries its own four workers, the Shiki one included.
+`@dineug/erd-editor-webview-client` only — the editor, the bridge and the replica worker come through it.
 
 ### External
 
-`core-js@^3.36.1` is imported for side effects; export blobs reach the string channel as base64 through `webview-client`.
+`core-js/stable`, imported for side effects.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

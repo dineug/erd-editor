@@ -1,75 +1,63 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
 
 # intellij-plugin
 
 ## Purpose
 
-The Kotlin/JVM half of the JetBrains plugin: a thin host layer that registers a `FileEditor` for `.erd` / `.erd.json`, runs a JCEF webview, and bridges it to the IDE. All editing logic lives in the bundle `packages/intellij-webview` builds into `src/main/resources/assets`, which this package puts on the classpath and serves over a custom CEF scheme. It is the one Gradle project in the workspace; pnpm sees a `private` package.json with no `vite.config.ts`, so `pnpm build` and `pnpm test` walk past it.
+The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd` / `.erd.json` running a JCEF browser bridged to the IDE. All editing logic is the bundle `intellij-webview` builds into `src/main/resources/assets`, served over a custom CEF scheme. pnpm sees only a `private` package.json; `pnpm build` and `pnpm test` skip it.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `build.gradle.kts` | IntelliJ Platform Gradle Plugin 2.x. Injects the README's `<!-- Plugin description -->` section and the changelog into the manifest; `buildWebview` shells out to `vp run … build`, `verifyWebviewAssets` fails the build when the bundle is absent |
-| `gradle.properties` | Single source for `pluginVersion`, `platformVersion`, `pluginSinceBuild` (252), `javaVersion` (21); `plugin.xml` carries neither a version nor a repository URL |
-| `README.md` | The Marketplace listing. Removing the `<!-- Plugin description -->` markers is a `GradleException`; the screenshot line is stripped by exact string match, so leave its absolute URL alone |
-| `CHANGELOG.md` | Keep a Changelog. `versionPrefix` is `intellij-plugin-v` — the monorepo's own `v*` tags belong to the editor |
+| `build.gradle.kts` | Manifest from README and changelog, `buildWebview`, `verifyWebviewAssets`, Verifier range |
+| `gradle.properties` | `pluginVersion`, `platformVersion` (2026.1.4), `pluginSinceBuild` (252), `javaVersion` (21), `gradleVersion` |
+| `README.md` | Marketplace listing: the `<!-- Plugin description -->` markers are required, and the screenshot line is stripped by exact match — leave its URL alone |
+| `CHANGELOG.md` | `versionPrefix` is `intellij-plugin-v`; bare `v*` tags belong to the editor |
+| `.run/*.run.xml` | Run configs pinned to `IU-2026.1.4` — bump with `platformVersion` |
 
 ## Subdirectories
 
 | Directory | Purpose |
 | --- | --- |
-| `src/main/kotlin/…/editor/` | `FileEditor`, JCEF webview, scheme handler, host↔webview bridge |
-| `src/main/kotlin/…/files\|settings/` | `.erd` / `.erd.json` recognition and icon; theme persistence over the message bus |
-| `src/main/resources/` | The manifest, icons and message bundle, plus the generated `assets/` bundle |
+| `src/main/kotlin/…/editor/` | Provider, `ErdEditor`, JCEF panel, scheme handler, `WebviewBridge` / `WebviewScripts` |
+| `src/main/kotlin/…/files/`, `…/settings/` | File recognition and icon; theme persistence over the message bus |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- **Gradle only, and always from this directory** — `cd packages/intellij-plugin && ./gradlew <task>`. There is no `run.tasks` block and no package.json script, by the workspace's one-command-surface rule.
+- **Gradle only, from this directory**: `./gradlew buildWebview` (the pnpm webview build), `buildPlugin` (zip in `build/distributions/`), `runIde`, `verifyPlugin` (the 252 floor and the latest release), `check`. `buildPlugin` and `runIde` never build the webview (`verifyWebviewAssets` only checks it exists), so run `buildWebview` first on a fresh tree or after a webview change.
+- **Publishing is manual**: bump `pluginVersion`, fill its `CHANGELOG.md` section, upload the zip.
+- **Libraries come from the platform** (Jackson, coroutines, `org.cef.*`); adding one invites classloader conflicts. `apiVersion = KOTLIN_2_1` and no bundled stdlib keep to what the 2025.2 floor ships; use `intellijIdea(...)`, never `intellijIdeaCommunity(...)`.
+- **Bridge `type` strings match `packages/webview-bridge` by hand.** A host command Jackson cannot map is dropped with only a WARN in `idea.log`; a `webview*` type the page does not register vanishes with no log at all. A new host command also needs its `@JsonSubTypes` entry.
+- **Host → webview goes through `WebviewScripts.postMessageScript`**: JSON as a JS string literal, never a template literal, where a backtick in any name kills the script and `${…}` executes (`WebviewScriptsTest`).
+- **Threading**: file writes inside `readAndEdtWriteAction { writeAction { … } }`, file dialogs on the EDT via `invokeLater`. **Disposable chain** `ErdEditor` → `WebviewPanel` → `Webview` → `JBCefBrowser`: register new resources into it and guard async callbacks with the `isDisposed` flags.
+- **Saves**: `SaveValue` is debounced and `ErdEditor.dispose()` flushes the pending value before cancelling its scope — reversed, the last edit is lost. `SaveReplication` reaches other tabs on the same file only through `WebviewPanel.dispatchBroadcast` over `docToEditorsMap`.
+- Pre-commit (`vp staged`) never sees Kotlin, and the root `.gitignore` has a bare `build`, so a Kotlin package named `build` would stay untracked.
 
-  | Task | What it does |
-  | --- | --- |
-  | `buildWebview` | `vp run --filter @dineug/erd-editor-intellij-webview build` from the workspace root |
-  | `buildPlugin` | Distributable zip → `build/distributions/` |
-  | `runIde` | Sandbox IDE with the plugin loaded |
-  | `verifyPlugin` | Plugin Verifier against the `pluginSinceBuild` floor and the newest release |
+### JCEF Gotchas
 
-- `buildWebview` is intentionally separate from `buildPlugin`: the Gradle packaging task only runs `verifyWebviewAssets`. CI and a fresh local build must run `./gradlew buildWebview` or the equivalent pnpm task first.
-
-- **Publishing is manual.** No token or signing key lives in this repository: build the zip and upload it. Bump `pluginVersion` and fill the matching `CHANGELOG.md` section first.
-- **Dependencies come from the platform** — Jackson, `kotlinx.coroutines` and `org.cef.*` are all bundled, and adding a library here invites classloader conflicts. The build uses Kotlin 2.3.21, but `apiVersion = KOTLIN_2_1` limits compiled code to the Kotlin 2.1 API surface bundled by the 2025.2 floor, and `kotlin.stdlib.default.dependency = false` prevents shipping another stdlib copy. That floor is also why it resolves `intellijIdea(...)` and never `intellijIdeaCommunity(...)`: the separate IC distribution ended after 2025.2.
-- **Bridge command `type` strings must match `packages/webview-bridge` exactly.** Change one side only and messages are dropped in silence.
-- **Threading:** file writes go inside `readAndEdtWriteAction { writeAction { … } }` (the older `readAndWriteAction` is deprecated), file dialogs open on the EDT through `invokeLater`.
-- `vp staged` globs `**/*.{ts,mts,tsx}`, so a Kotlin-only commit passes pre-commit unchecked. The root `.gitignore` also carries a bare `build` pattern — a Kotlin package named `build` would be untracked while compiling fine locally.
+- `plugin.xml` depends on `com.intellij.modules.jcef` optionally (`jcef.xml`): mandatory stops loading on 2025.2/2025.3, absent kills the editor on 2026.2+ with `NoClassDefFoundError: JBCefApp`. The Verifier says `Compatible` either way; only a real install shows it.
+- `SchemeHandlerFactory` extends `CefResourceHandlerAdapter`, never `CefResourceHandler` directly: the interface's abstract methods grew in 2026.2's JCEF, and a direct implementation compiled against the floor is binary-incompatible there.
+- `WebviewPanel` init order is load-bearing: `JBCefApp.getInstance()` → register the scheme handler once per app → build `Webview` and `loadURL`. Registering after `loadURL` gives `DNS_PROBE_FINISHED_NXDOMAIN`; raw `CefApp.getInstance()` first gives "JCEF is not supported in this env". Never call the global `CefApp.clearSchemeHandlerFactories()`.
+- macOS `⌥`+letter reaches the webview as a wrong `KeyboardEvent.code` (`KeyA`) and fires another shortcut; bind nothing to `Alt`+letter. The IDE keymap takes `⌘Z` / `⌘⇧Z` first.
 
 ### Testing Requirements
 
-`./gradlew check` runs 14 plain JVM tests: five bridge-serialization, six script-encoding and three extension-matching tests. JCEF cannot run headless, so **the eye is the only gate on the webview**: `./gradlew runIde`, open any project, create an empty `foo.erd.json`, and confirm the canvas renders. Compilation and a `Compatible` Verifier verdict both pass on a blank panel. `verifyPluginProjectConfiguration` warns that since-build 252 sits below the 261 target; that is the intended range. Sandbox logs are at `.intellijPlatform/sandbox/erd-editor-intellij-plugin/IU-<version>/log/idea.log` — a path the `.run/*.run.xml` configs pin to `IU-2026.1.4`, so bump those with `platformVersion`. The default appender drops DEBUG, so a missing `thisLogger().debug` line is not evidence; webview `console.*` is raised to INFO by `WebviewPanel`. For DevTools, enable `ide.browser.jcef.contextMenu.devTools.enabled` in the Registry and reopen the tab — `Webview.kt` disables the menu item, but the platform ORs it with that key.
-
-### Common Patterns
-
-- **Disposable chain** — `ErdEditor` → `WebviewPanel` → `Webview` → `JBCefBrowser`. Register new resources into it so they die with the tab, and guard async callbacks with the existing `isDisposed` flags.
-- One `CoroutineScope(SupervisorJob() + CoroutineName(…))` per editor; saves debounce through `MutableStateFlow` + `debounce(100.milliseconds)` + `collectLatest`; `dispatchBroadcast` replicates to the other tabs on the same file via `docToEditorsMap`.
-- Bridge commands are a sealed hierarchy with `JsonTypeInfo.As.EXISTING_PROPERTY`; register a new one in `@JsonSubTypes` as well.
-
-### Gotchas
-
-- **JCEF left the core in 2026.2.** `plugin.xml` declares `<depends optional="true" config-file="jcef.xml">com.intellij.modules.jcef</depends>`: mandatory breaks loading on 2025.2/2025.3, where that plugin does not exist, and declaring nothing kills the editor on 2026.2+ with `NoClassDefFoundError: JBCefApp`. The Verifier reports `Compatible` either way — it does not model per-module classloader isolation, and the sandbox runs the build target. Only a real install shows it. The unresolved-optional-dependency warning on 252–261 is expected.
-- **`SchemeHandlerFactory` extends `CefResourceHandlerAdapter` rather than implementing `CefResourceHandler`.** The interface widened in the JCEF that 2026.2 bundles (4 abstract methods → 7); an anonymous class compiled against the floor would be binary-incompatible there. The adapter exists on every supported build and fills in the compatibility sentinels. For the same reason `ErdEditorProvider` stays on `FileEditorProvider` — `AsyncFileEditorProvider` inherits an `@Experimental` `createFileEditor` even when unwritten, and the Verifier counts it.
-- **The JCEF init order in `WebviewPanel` is load-bearing:** `JBCefApp.getInstance()` → register the scheme handler once per app → build `Webview` and `loadURL`. Registering after `loadURL` makes out-of-process Chromium resolve the scheme host through DNS (`DNS_PROBE_FINISHED_NXDOMAIN`); touching raw `CefApp.getInstance()` first throws `JCEF is not supported in this env`. `CefApp.clearSchemeHandlerFactories()` is global — never call it.
-- **macOS `⌥`+letter shortcuts reach the webview corrupted.** JCEF derives the native keycode from the *character*, and the Option layer of a Latin layout produces non-ASCII, which falls back to `0` = `kVK_ANSI_A` — so `KeyboardEvent.code` arrives as a plausible-but-wrong `"KeyA"` and a different shortcut fires. Korean input sources keep roman characters on that layer, which is why it reads as an IME bug. No registry flag or webview-side fallback exists; rebind away from `Alt`+letter. Unaffected: no modifier, `Shift`, `⌘`, `⇧⌘`, and the ~40 VK special keys. Separately, `⌘Z`/`⌘⇧Z` are eaten by the IDE keymap before the webview sees them.
+- `./gradlew check` runs the JVM tests (bridge serialization, script encoding, file matching) and Kover.
+- JCEF cannot run headless, so the webview's only gate is the eye: `./gradlew runIde`, create an empty `foo.erd.json`, confirm the canvas renders — compilation and a `Compatible` verdict both pass on a blank panel. The since-build 252 and unresolved-optional-dependency warnings are expected.
+- Sandbox log, with the webview's console: `.intellijPlatform/sandbox/erd-editor-intellij-plugin/IU-<version>/log/idea.log`. DevTools: Registry `ide.browser.jcef.contextMenu.devTools.enabled`, then reopen the tab.
 
 ## Dependencies
 
 ### Internal
 
-`@dineug/erd-editor-intellij-webview` produces `src/main/resources/assets`; the `@dineug/erd-editor-webview-bridge` command definitions are the contract `WebviewBridge.kt` mirrors.
+`intellij-webview` (the assets); `webview-bridge` (the commands `WebviewBridge.kt` mirrors).
 
 ### External
 
-IntelliJ Platform 2026.1.4 (`FileEditor`, JCEF, VFS, message bus, `PersistentStateComponent`), Kotlin 2.3.21 + coroutines and Jackson — all from the platform. Build side: IntelliJ Platform Gradle Plugin 2.18.1 with the wrapper pinned to Gradle 9.1.0, gradle-changelog-plugin 2.5.0, Kover 0.9.9, Qodana 2026.2.0 (configured, not wired into CI).
+The IntelliJ Platform and what it bundles; JUnit 4. Versions in `gradle/libs.versions.toml`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

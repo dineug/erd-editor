@@ -1,79 +1,44 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
 
 # replication-store-worker
 
 ## Purpose
 
-Runs a headless replica of the editor document off the main thread, so the VSCode host can persist
-`.erd` files without serializing on the UI thread. The webview forwards the raw action stream in; the
-worker feeds it to `createReplicationStore` from `@dineug/erd-editor/engine.js` and emits the
-serialized document back only when the store reports a `change`. Consumed by both IDE webviews,
-`vscode-webview` and `intellij-webview`, through `mountWebview` in `webview-client`, which calls `createReplicationStoreWorker`;
-the VSCode one inlines the worker file in its own build, the IntelliJ one loads it from its URL.
-`private: true`.
+A headless replica of the open document in a dedicated module `Worker`, so the IDE host receives the serialized value without stringifying on the UI thread. `mountWebview` in `webview-client` spawns it, feeds it `webviewInitialValueCommand` and every editor action as `webviewReplicationCommand`, and relays the `hostSaveValueCommand` it posts after each store `change` — the value both IDE hosts write to disk. `private: true`.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Exports `createReplicationStoreWorker(options)`, which is `new Worker(new URL('./services/replicationStore.worker.ts', import.meta.url), { type: 'module', name })` |
-| `src/services/replicationStore.worker.ts` | Worker body — builds the store, registers the two inbound commands, and dispatches `hostSaveValueCommand` after a replica change |
-| `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, workers: true })` — the standard factory plus its worker half, so `dist/` is `index.js` and `workers/replicationStore.worker.js`, and the URL in `index.js` is the relative spelling `tools/vite/worker-url.ts` writes |
-
-## Subdirectories
-
-| Directory | Purpose |
-| --- | --- |
-| `src/services/` | The worker entry itself |
-| `src/utils/` | `toWidth`, the text-metrics function handed to the engine context |
+| `src/index.ts` | `createReplicationStoreWorker({ name })` — `new Worker(new URL('./services/replicationStore.worker.ts', import.meta.url), { type: 'module', name })` |
+| `src/services/replicationStore.worker.ts` | Worker body: a store from `createReplicationStore`, the two inbound commands, `hostSaveValueCommand` on `change` |
+| `src/utils/text.ts` | `toWidth`, the text measurement handed to the store |
+| `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, workers: true })` → `dist/index.js` plus `dist/workers/replicationStore.worker.js`, referenced by the relative url `tools/vite/worker-url.ts` writes |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- **The worker is a file; the VSCode webview inlines it, IntelliJ loads it.** `dist/workers/replicationStore.worker.js`
-  imports `@dineug/erd-editor/engine.js` and the bridge bare, because both are `dependencies` and the
-  worker build keeps the page's external list; a consumer's bundler treats it as an entry of its own,
-  and `vscode-webview`, which cannot load a worker across its two origins, turns the URL back into an
-  inline worker through `tools/vite/inline-worker.ts`.
-- Import `@dineug/erd-editor/engine.js` (DOM-free), never the package root, which registers custom
-  elements and throws in a worker. `tsconfig.json` replaces the inherited `lib` with
-  `["ES2022", "WebWorker"]`, so `document` does not typecheck here.
-- `toWidth` measures with a lazy `OffscreenCanvas(0, 0)` 2d context at `400 12px`, falling back to
-  `text.length * 10`. It is the one copy both IDE webviews replicate with — a divergent font or
-  `TEXT_PADDING` drifts replicated column widths in both.
-- Three commands cross this boundary: in `webviewInitialValueCommand` and
-  `webviewReplicationCommand`, out `hostSaveValueCommand`. A fourth means editing `webview-bridge`
-  and `vscode-webview` too.
-- The webview sends both the initial value and raw editor actions into this worker. The worker's
-  `change` callback serializes the current value and sends it back to the host; it does not own the
-  VSCode document or perform transport-level replication.
+- **Import `@dineug/erd-editor/engine.js` (DOM-free), never the package root**, which registers custom elements and throws in a worker. `tsconfig.json` sets `lib: ["ES2022", "WebWorker"]`, so `document` does not typecheck.
+- **Keep the one constructor spelling** `new Worker(new URL(…, import.meta.url), …)` in `src/index.ts`: Vite bundles a worker only from that literal shape, `tools/vite/worker-url.ts` rewrites Vite's output back into it, and `vscode-webview`'s same-origin rewrite matches it in `dist/`. The worker file imports `engine.js` and the bridge bare (both `dependencies`), and each webview's bundler builds it as its own entry — see those packages for how each host loads it.
+- **`toWidth` must stay in step with `packages/erd-editor/src/utils/text.ts`** (`400 12px` over the same font stack, `TEXT_PADDING` 2). The replica recomputes `ui.width*` with it when it replays an edit, and its value is what the host saves. Without `OffscreenCanvas` it falls back to `text.length * 10`, where the page measures a hidden span instead.
+- The replica serializes and reports; it does not own the file or talk to other tabs — the host does both.
 
 ### Testing Requirements
 
-- No test task and no scripts. Verify with
-  `pnpm exec vp run --filter @dineug/erd-editor-replication-store-worker --fail-if-no-match build` (`tsc --noEmit`, then `vp build`).
-- Nothing automated exercises the worker at runtime. Real verification is the VSCode Extension Host:
-  open a `.erd` file, edit, confirm the file on disk changes — failure is silent, edits never persist.
-- Changing `createReplicationStore`'s signature also breaks `app` — `pnpm build`; `intellij-webview` reaches it through this package.
+- No test task and no scripts; the gate is `pnpm exec vp run --filter @dineug/erd-editor-replication-store-worker --fail-if-no-match build`.
+- Nothing runs the worker in CI, and its failure is silent: edits never persist. Verify in an IDE — open a `.erd`, edit, confirm the file on disk changes.
 
 ### Common Patterns
 
-- Messaging is raw `globalThis.postMessage` / `addEventListener('message')` plus `Bridge`, not Comlink.
-- Both listeners destructure their payload straight into `store.setInitialValue` / `store.dispatch`;
-  the disposer `Bridge.mergeRegister` returns is dropped — the worker lives as long as the page.
+- Raw `globalThis.postMessage` / `addEventListener('message')` plus `Bridge`, not Comlink.
+- The `Bridge.mergeRegister` disposer is dropped on purpose; the worker lives as long as the page, and `mountWebview`'s `dispose` terminates it.
 
 ## Dependencies
 
 ### Internal
 
-`@dineug/erd-editor` (the `engine.js` entry) and `@dineug/erd-editor-webview-bridge` are `dependencies`,
-so the worker file imports them bare and the consuming webview resolves them once for page and worker
-alike.
-
-### External
-
-Build-only: `vite-plugin-dts` with `@typescript/typescript6`.
+`@dineug/erd-editor` (the `engine.js` entry) and `@dineug/erd-editor-webview-bridge` — `dependencies`, left external in both the page and the worker build.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

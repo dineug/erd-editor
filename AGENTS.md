@@ -1,140 +1,128 @@
-<!-- Generated: 2026-08-27 | Updated: 2026-09-12 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
 
 # erd-editor
 
 ## Purpose
 
-`@dineug/erd-editor-monorepo` is a pnpm + Vite+ workspace building an Entity-Relationship Diagram editor, shipped through four surfaces: the web app at erd-editor.io, a VSCode extension, an IntelliJ plugin, and the standalone `<erd-editor>` custom element on npm. The editor core is framework-free, built on the in-house `@dineug/r-html` framework — authored in JSX, compiled back to that framework's tagged templates at build time. Its state lives in a Redux-like store whose actions carry a Lamport-style clock and merge through an LWW register set, which is what lets collaboration, cross-tab sync and undo/redo share one mechanism.
+`@dineug/erd-editor-monorepo` is a pnpm + Vite+ workspace for an Entity-Relationship Diagram editor shipped four ways: erd-editor.io, a VSCode extension, an IntelliJ plugin and the `<erd-editor>` custom element on npm. The framework-free editor core is JSX compiled to the in-house `@dineug/r-html` tagged templates. Its store's actions carry a Lamport-style clock and merge through an LWW register set — the one mechanism behind collaboration, cross-tab sync and undo/redo.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `vite.config.ts` | The repo's only `lint` / `fmt` / `staged` block — no package config declares one, and there is deliberately no `.oxlintrc.json` / `.oxfmtrc.json`; the `oxc.oxc-vscode` LSP shims read this file too |
-| `package.json` | Root scripts (`build`, `test`, `check`, `format`, `lint`, `size`, `cache:clear`); pins pnpm 10.34.3 via `packageManager` |
-| `pnpm-workspace.yaml` | `packages/*`, the catalog aliasing `vite` → `@voidzero-dev/vite-plus-core@0.2.9`, and the `typescript: 7.0.2` override |
-| `tsconfig.app.json` | Base config every package extends — ES2022 `target` and `lib`, strict, bundler resolution |
-| `tsconfig.json` | Typechecks the root tooling plus every `vite.config.*` / `vite.umd.config.ts` / `vitest.config.*`, which sit in no package program |
-| `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor, consumed by the library config factory, the one bespoke library config, its umd config and `app` |
-| `tools/eslint-rules/index.js` | The `local` oxlint plugin — the four comment rules `vite.config.ts` enables; the directory is itself lint-exempt |
-| `tools/vite/library-config.ts` | Typed factory for the seven standard library builds, the `preserveModules` / `minify: false` pair the internal libraries take, the `workers: true` half a library that spawns one adds, and the shared task builder used by all eight library-mode packages |
-| `tools/vite/package-metadata.ts` | Derives task inputs and runtime externals from JSONC tsconfig files and workspace manifests |
-| `scripts/check-task-inputs.mjs` | Independently verifies exact task/cache contracts and workspace declaration inputs during `pnpm check` |
-| `scripts/check-bundle-size.mjs` | The `pnpm size` gate — walks every script reachable from `packages/erd-editor`'s `exports` map (static and dynamic imports, worker urls), concatenates them in path order, gzips that at level 9 and checks it against `packages/erd-editor/.size-baseline.json`. It reads a build artifact, so it runs after `pnpm build` in CI and never inside `pnpm check` |
-| `erd-editor.code-workspace` | Multi-root workspace; sets `oxc.oxc-vscode` as the formatter per language so the editor matches `vp fmt` |
-| `CLAUDE.md` | Two-line alias to this file; `AGENTS.md` is the canonical repository guidance |
+| `vite.config.ts` | The only `lint` / `fmt` / `staged` config; deliberately no `.oxlintrc.json` / `.oxfmtrc.json` |
+| `package.json` | Root scripts (`build`, `test`, `check`, `format`, `lint`, `size`, `cache:clear`) |
+| `pnpm-workspace.yaml` | `packages/*`, the catalog (`vite` → `@voidzero-dev/vite-plus-core`, Vitest), the `typescript` override |
+| `tsconfig.app.json` | Base every TS package extends (ES2022, strict, bundler resolution) except `vscode-extension`, a Node config |
+| `tsconfig.json` | Root program: `tools/` and every package's Vite / Vitest config, which no package program covers |
+| `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor for every library build and `app` |
+| `tools/vite/library-config.ts` | `defineLibraryConfig` (seven standard builds), `createLibraryTasks` (task contract of all eight library packages) |
+| `tools/vite/package-metadata.ts` | Task inputs derived from tsconfig files and manifests; `createExternal` |
+| `tools/vite/worker-url.ts`, `same-origin-worker.ts`, `inline-worker.ts` | The worker plugins, tested with the factory in `tools/vite-config.test.ts` |
+| `tools/eslint-rules/` | The `local` oxlint plugin — the four comment rules; itself lint-exempt |
+| `scripts/check-task-inputs.mjs` | Recomputes library tasks; matches bespoke tasks' `.d.ts` globs to declared deps; pins the 8 / 7 library-config counts a new library must update |
+| `scripts/check-bundle-size.mjs` | The `pnpm size` gate |
+| `erd-editor.code-workspace` | Multi-root workspace, formatting through `oxc.oxc-vscode` |
 
 ## Subdirectories
 
 | Directory | Purpose |
 | --- | --- |
-| `packages/` | The 13 workspace packages; each carries its own `AGENTS.md` |
-| `data/` | Importer fixtures for hand-testing, `sakila.sql` also read by `schema-sql-parser`'s `index.test.ts`: SQL dumps (`sakila`, `OKKY`, `GNUBOARD5`, `YOUNGCART5`, `Magento2-sales`), GraphQL SDL (`bookstore` directive-free, `hasura-blog` for the generated-type pruning path), DBML (`bookstore` hand-written dbdiagram style, `sql2dbml-shop` for the fully quoted multi-schema machine dialect), AML (`bookstore` hand-written v2, `azimutt-full` and `azimutt-full-legacy` for the exhaustive v2 and v1 spellings) and `test.json` |
-| `docker/` | Per-vendor `docker-compose.yml` (mysql, mariadb, mssql, oracle, postgres, sqlite) for validating generated DDL; Databricks and Snowflake have no entry |
-| `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents; `erd-editor-schema` stamps its URL into every parsed document |
-| `.github/` | `workflows/ci.yml` and `workflows/intellij-plugin.yml`, the `setup-workspace` composite action, two issue templates |
-| `.vite-hooks/` | `pre-commit` runs `vp staged`, `commit-msg` runs commitlint; only the generated `_/` dispatcher is gitignored |
+| `packages/` | The 13 workspace packages, each with its own `AGENTS.md` |
+| `data/` | Import fixtures for hand-testing (SQL, GraphQL SDL, DBML, AML v1/v2, `test.json`); `schema-sql-parser`'s tests read `sakila.sql` |
+| `docker/` | A `docker-compose.yml` per SQL vendor for running generated DDL; Databricks and Snowflake are cloud-only and have none |
+| `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents (see Contracts) |
+| `.github/` | The two workflows (see Testing), the `setup-workspace` action |
+| `.vite-hooks/` | `pre-commit` runs `vp staged`, `commit-msg` runs commitlint; only the generated `_/` is gitignored |
 
 ## Package Map
 
-Build order is derived from workspace dependencies: the leaves are `r-html`, `vite-plugin-r-html`, `schema-sql-parser`, `erd-editor-schema` and `webview-bridge`, and `erd-editor` sits on the first four. `app` depends on `erd-editor` directly; the two webviews reach it through `webview-client`, which sits on `erd-editor`, `replication-store-worker` and `webview-bridge`; `vscode-extension` reaches it only through `vscode-webview`, which is the longest chain — `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `intellij-plugin` sits outside that graph: a Gradle project whose only pnpm presence is a `private` package.json, fed by `intellij-webview`'s build output.
+Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `intellij-plugin` is Gradle, outside the graph, fed by `intellij-webview`'s build.
 
-| Package | npm name | Kind | |
-| --- | --- | --- | --- |
-| `packages/r-html` | `@dineug/r-html` | Library | tagged-template rendering framework + store |
-| `packages/vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | Build tool | JSX → tagged templates, and HMR boundaries |
-| `packages/schema-sql-parser` | `@dineug/schema-sql-parser` | Library | permissive DDL parser for SQL import |
-| `packages/erd-editor-schema` | `@dineug/erd-editor-schema` | Library | v2/v3 document schema, parsing, LWW operators |
-| `packages/erd-editor` | `@dineug/erd-editor` | Library | **editor core** — the `<erd-editor>` element (published, 3.8.0). The Konva scene draws two things: the document and the Visualization tab's Flow mode, which stands either over the whole document or narrowed to a few tables and the ones a relationship out from them; that view is the reader's own and never reaches the file |
-| `packages/webview-bridge` | `@dineug/erd-editor-webview-bridge` | Library | typed host↔webview command protocol |
-| `packages/webview-client` | `@dineug/erd-editor-webview-client` | Library | `mountWebview(host)` — the editor in an IDE webview with the whole host protocol wired; both webviews are thin adapters over it |
-| `packages/replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | Worker | headless document replica spawned by both IDE webviews |
-| `packages/vscode-webview` | `@dineug/erd-editor-vscode-webview` | App | bundle inside the VSCode webview iframe |
-| `packages/vscode-extension` | `vuerd-vscode` | App | the published VSCode extension (2.7.0) |
-| `packages/intellij-webview` | `@dineug/erd-editor-intellij-webview` | App | bundle for the IntelliJ plugin, over `window.cefQuery` |
-| `packages/intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | App | the published IntelliJ plugin — Kotlin/Gradle, no TS (0.7.0) |
-| `packages/app` | `@dineug/erd-editor-app` | App | the React PWA at erd-editor.io |
-
-## CODE MAP
-
-The TypeScript LSP is configured but unavailable in this checkout; the rows below come from the indexed code graph and manifest/config inspection.
-
-| Symbol | Location | Graph signal | Role |
-| --- | --- | --- | --- |
-| `defineLibraryConfig` | `tools/vite/library-config.ts:110` | 7 callers | Standard library Vite configs; delegates to `createLibraryConfig` and the generated task graph |
-| `createLibraryTasks` | `tools/vite/library-config.ts:42` | 4 callers | Shared `tsc --noEmit` → build/test task contract, including the one bespoke library config |
-| `createReplicationStore` | `packages/erd-editor/src/engine/replication-store.ts:44` | 7 callers | DOM-free document replica consumed by the engine entry, app IndexedDB, and both IDE workers |
-| `Bridge` | `packages/webview-bridge/src/bridge.ts:23` | host/webview/worker/IntelliJ surfaces | Transport-neutral command registry and dispatch boundary |
+| `packages/` | npm name | |
+| --- | --- | --- |
+| `r-html` | `@dineug/r-html` | tagged-template rendering framework + store |
+| `vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | JSX → tagged templates, HMR |
+| `schema-sql-parser` | `@dineug/schema-sql-parser` | permissive DDL parser for SQL import |
+| `erd-editor-schema` | `@dineug/erd-editor-schema` | v2/v3 document schema, parsing, LWW operators |
+| `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.8.0): `<erd-editor>`, its Konva scene, and `engine.js` (`createReplicationStore`) |
+| `webview-bridge` | `@dineug/erd-editor-webview-bridge` | `Bridge`, the typed host↔webview command protocol |
+| `webview-client` | `@dineug/erd-editor-webview-client` | `mountWebview(host)` — all host wiring both webviews share |
+| `replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | headless replica `webview-client` spawns |
+| `vscode-webview` | `@dineug/erd-editor-vscode-webview` | VSCode webview bundle |
+| `vscode-extension` | `vuerd-vscode` | VSCode extension host, published (2.7.0) |
+| `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
+| `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published (0.7.0) |
+| `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- **pnpm only.** Cross-package deps are `workspace:*`; import a sibling by package name (`@dineug/erd-editor-schema`), never a relative path into its `src/`.
-- **Command surface split.** A name lives in `run.tasks` or in package.json `scripts`, never both — no package.json here declares a `build` or `test` script.
+- **pnpm only.** Cross-package deps are `workspace:*`; import a sibling by package name, never through a relative path into its `src/`.
+- **Command surface split.** A name lives in `run.tasks` or in package.json `scripts`, never both.
 
   | Target | Invocation |
   | --- | --- |
-  | task (`build`, `test`) | `vp run --filter <pkg> --fail-if-no-match <task>`, or `vp run -r <task>` for all |
+  | task (`build`, `test`) | `vp run --filter <pkg> --fail-if-no-match <task>`, or `vp run -r <task>` |
   | script (`dev`, `e2e`, `typecheck`, `test:coverage`) | `pnpm --filter <pkg> <script>` |
-  | Gradle (`intellij-plugin` only) | `cd packages/intellij-plugin && ./gradlew <task>` — it declares neither of the above |
+  | Gradle (`intellij-plugin`) | `cd packages/intellij-plugin && ./gradlew <task>` |
 
-  Selection flags go before the task name: `vp run -r build` is recursive, while `vp run build -r` forwards `-r` as a task argument instead of enabling recursion. `vp build` and `vp test` are built-ins that skip `run.tasks`, its `tsc --noEmit` gate and `dependsOn`. A `--filter` matching no package exits 0, so pass `--fail-if-no-match` or a rename leaves CI green while building nothing.
-- **`erd-editor` publishes over external dependencies.** Its `dependencies` list is exactly the third-party packages its shipped `src/` imports, plus `stylis` for the inlined `r-html`; the lib build externalizes that list and inlines the private workspace libraries. Its four SharedWorkers, like the private `replication-store-worker`'s worker (`defineLibraryConfig(..., { workers: true })`), are files under `dist/workers/`, constructed as `new SharedWorker(new URL('./workers/x.js', import.meta.url), { type: 'module' })` — `tools/vite/worker-url.ts` rewrites Vite's page-shaped URL into that spelling, the one webpack, Rspack and Vite all bundle from inside a dependency — and `vscode-webview` alone has the document read those files and build each worker from a blob through `tools/vite/same-origin-worker.ts`, because that host serves its scripts from an origin other than the document's and a worker constructor refuses a script URL across that line before it fetches; `intellij-webview` serves everything from one origin and loads them from their URLs. There is no CDN build, so a consumer needs a bundler, and there is deliberately no `sideEffects` field: `packages/erd-editor/AGENTS.md` says why.
-- **TypeScript 7.0.2 everywhere.** Its `tsc` is a native binary Vite Task cannot trace, so every task declares `input` explicitly. The eight library-mode packages derive those inputs from their tsconfig and workspace manifests; bespoke app tasks still own their lists locally.
-- **One bundler.** Eight libraries build in Vite library mode with `vite-plugin-dts`; `app`, `intellij-webview`, `vscode-webview` and `vscode-extension` build an entry. Match the neighbouring package. The six private libraries another bundler consumes — `r-html`, `erd-editor-schema`, `schema-sql-parser`, `webview-bridge`, `webview-client`, `vite-plugin-r-html` — build unminified with `preserveModules` (one output module per source file) and declare `sideEffects: false`, so the consuming build prunes at file granularity and the final minifier is the only one; the one published package keeps chunked output, and `packages/erd-editor/AGENTS.md` says why. It also runs a second, script-tag build (`vite.umd.config.ts`, appended to its `build` task through `createLibraryTasks`'s `build` option): one UMD file with every dependency and all four workers inside, named by `unpkg` / `jsdelivr` and never by `exports`.
-- **`@/*` → `<package>/src/*`** is in all 12 TypeScript packages' `tsconfig.json` `paths`. The seven standard library builds receive the matching Vite alias from `tools/vite/library-config.ts`; bespoke build and test configs still declare it locally.
-- **Formatting covers `.{ts,mts,tsx}` only** — `fmt.ignorePatterns` excludes Markdown, so `pnpm format` never rewrites the 14 AGENTS.md files. oxlint does not read `.gitignore`; its ignore list is in the root `vite.config.ts`, so gitignoring a path does not un-lint it.
-- **Comments are lint-enforced, repo-wide.** Four rules in `tools/eslint-rules/`, enabled as `error` in the root `vite.config.ts` — global rather than under the `**/src/**` overrides, because the longest prose here lives in the configs, the e2e harnesses and the specs. What no longer fits a comment goes to a package `AGENTS.md`, becomes a test, or is left to git history.
+  Flags go before the task: `vp run build -r` forwards `-r` to the task. A `--filter` matching nothing exits 0. `vp build` / `vp test` are built-ins that skip `run.tasks`, the `tsc --noEmit` gate and `dependsOn`. There is no `vite` binary.
+- **TypeScript 7.0.2's native `tsc` is invisible to Vite Task**, so every task declares `input`. Library packages derive it in `package-metadata.ts` and `check-task-inputs.mjs` recomputes it; app tasks list their own, and the check only matches their sibling `dist/**/*.d.ts` globs to declared dependencies. A task with no `output` restores nothing on a cache hit. `@typescript/typescript6` is only for `vite-plugin-dts`.
+- **Library builds.** Six private libraries (`r-html`, `vite-plugin-r-html`, `schema-sql-parser`, `erd-editor-schema`, `webview-bridge`, `webview-client`) build `minify: false` + `preserveModules: true` with `sideEffects: false`, so the consumer prunes per file and minifies once. `erd-editor` keeps chunks and no `sideEffects` field (its `AGENTS.md` says why).
+- **Externals decide what ships.** `createExternal` keeps `dependencies` + `peerDependencies` as bare imports and inlines the rest. `erd-editor` lists the private libraries as devDependencies so they inline; moving one into `dependencies` ships an import of a package not on npm.
+- **Workers.** `erd-editor`'s four SharedWorkers and the replica Worker ship as `dist/workers/*.js`, spawned from `new URL('./workers/x.js', import.meta.url)` — the spelling `worker-url.ts` writes, which webpack, Rspack and Vite all bundle from a dependency. `vscode-webview` rebuilds them as same-origin blobs (`same-origin-worker.ts`), `intellij-webview` loads them by URL, the UMD build inlines them (`inline-worker.ts`).
+- **A cache replay does not empty a task's `output` directory**, so a tree that has seen several builds holds stale chunks beside live ones. `pnpm cache:clear` and rebuild before packaging or publishing.
+- **`@/*` → `<package>/src/*`** in every TS package's `tsconfig.json`, mirrored by a Vite alias in the factory and in each Vitest config — a new config needs it too.
+- **Formatting is TypeScript only**: `fmt.ignorePatterns` lists every other extension, because oxfmt does not re-include after a global exclude; that spelling formats nothing and still passes. oxlint ignores `.gitignore`; its ignore list is in `vite.config.ts`.
+- **Lint scope.** The rule overrides, import sort included, cover `**/src/**/*.{ts,tsx}`; the comment rules are global. Type-aware lint is off. Most `typescript/*` strictness rules are off on purpose; leave them off in unrelated changes.
+- **Comments are lint-enforced** (`tools/eslint-rules/`); what no longer fits goes to an `AGENTS.md` or a test.
 
   | Rule | Bound |
   | --- | --- |
-  | `local/jsdoc-prose-limit` | One prose paragraph, three lines. `@example` and `@tag` lines do not count |
-  | `local/comment-run-limit` | Three consecutive line comments that open their line; a bare `//` separator counts |
-  | `local/jsdoc-attached` | A JSDoc block describes the declaration below it — never an import, a re-export, or another block. A tags-only block such as `@type` is machine-read and exempt |
-  | `local/no-comment-markdown` | No emphasis, backticks, fences, tables or lists in comment prose — nothing renders it. `@example` bodies are exempt, and it auto-fixes the paired forms |
+  | `local/jsdoc-prose-limit` | One prose paragraph, three lines; `@example` / `@tag` lines do not count |
+  | `local/comment-run-limit` | Three consecutive line comments that open their line; a bare `//` counts |
+  | `local/jsdoc-attached` | A JSDoc block sits on a declaration — not an import, re-export or another block; tags-only blocks exempt |
+  | `local/no-comment-markdown` | No emphasis, backticks, fences, tables or lists in comment prose; `@example` exempt |
 
-  `no-comment-markdown --fix` mis-pairs where a code span itself contains backticks or `${…}`; review those hunks rather than taking the fix. Lint reaches `.{ts,tsx,js,mjs}` only, so the `.github/` YAML follows the same bounds by hand — the `**bold**` in `ISSUE_TEMPLATE/` is the exception, since GitHub renders it.
-- Commit messages are linted by commitlint (Conventional Commits); `subject-case` is off because this repo capitalizes subjects.
+  `no-comment-markdown --fix` mis-pairs spans containing backticks or `${…}`; review those hunks. `.github/` YAML keeps the bounds by hand.
+- **Commits**: Conventional Commits via commitlint, `subject-case` off (subjects are capitalized), header and body lines ≤ 100 chars.
 
 ### Testing Requirements
 
-- `pnpm test` = `vp run -r test`. Nine packages define a `test` task — `r-html`, `schema-sql-parser`, `erd-editor-schema`, `erd-editor`, `webview-bridge`, `webview-client`, `vite-plugin-r-html`, `app`, `vscode-extension`; the other four no-op. Each runs `tsc --noEmit` before Vitest.
-- Eight Vitest configs use `include: ['src/**/*.test.ts']`. `erd-editor` is the exception: it declares two `projects` — `unit` (happy-dom, `src/**/*.test.{ts,tsx}`) and `browser` (a real headless Chromium through `@vitest/browser-playwright`, `src/**/*.browser.test.{ts,tsx}`), because its ERD scene is a Konva canvas that means nothing without one. The `.browser.` infix is the only thing that routes a spec to the second project. **`pnpm test` therefore needs a browser binary now**, which is why the `ci` job installs Chromium before running it. A test outside `src/` is never collected, and all nine configs have a v8 coverage block at `perFile` 80%. Those thresholds gate `pnpm --filter <pkg> test:coverage` only; `pnpm test` and CI do not enforce them.
-- **A change is not verified until `pnpm build` passes.** Every `build` task runs `tsc --noEmit` first, so a green `pnpm test` proves nothing about the types of what ships.
-- `pnpm check` = `vp check` (oxfmt + oxlint in one pass) + the root `tsc --noEmit` + the library config contract tests + `scripts/check-task-inputs.mjs`. `pnpm format` is the writing half.
-- Out-of-process suites, none of them in `pnpm test`: `pnpm --filter <pkg> e2e` for `erd-editor`, `app` and `r-html` (Playwright), and `vscode-extension` (`@vscode/test-cli`; needs `xvfb-run -a` on Linux). `app`'s is the one with no CI job.
-- `ci.yml` runs five jobs on push/PR/dispatch: `check` (`pnpm check`, then a build of `app`'s and `vuerd-vscode`'s dependencies, then those two `typecheck` scripts and `app`'s `e2e:typecheck`), `ci` (install Chromium, `pnpm test`, r-html `test:coverage`, `pnpm build`, `pnpm size`), `e2e`, `r-html-e2e`, `vscode-extension-e2e`. `intellij-plugin.yml` is separate so its `cancel-in-progress` does not reach those five; a `gate` job there decides whether the Gradle jobs run, because a job skipped by `paths` at workflow level leaves its check Pending forever. That build step in `check` is load-bearing: those typechecks resolve siblings through `dist/**/*.d.ts`, so dropping it passes locally and fails only on a runner.
-- `pnpm size` sits outside `pnpm check` on purpose: it reads `packages/erd-editor/dist/`, which does not exist until `pnpm build` has run. The one measurement is every script reachable from the `exports` map, concatenated and gzipped: the two entries, the chunk they share and the four worker files. Reachability rather than a glob, because a cache replay restores `dist/` without emptying it, and the stale chunk it leaves beside the live one would otherwise count. `.size-baseline.json` keeps the measurement taken at `baseCommit`, so every run also prints the delta since then; `budgetGzip` is a separate field and a regression watch rather than a cap — wide enough to absorb ordinary work, narrow enough that a dependency the size of rxjs or konva that stops being external, or a second copy of the scene, fails the round it lands in; a small one, or a new external dependency, which adds one import specifier, cannot move it. Re-pin it with `--set-budget --budget-gzip <bytes> --budget-note <why>`; `--update-baseline` rewrites the recorded measurement and throws the delta away.
-- Lint scope is `**/src/**/*.{ts,tsx}` — e2e specs, config files and `vscode-extension/test/**` are outside it. For SQL-generation changes, `docker/<vendor>/` plus `data/*.sql` is the manual loop — except Databricks and Snowflake, proprietary managed cloud services with no local container, so there is no `docker/databricks/` or `docker/snowflake/` and there will not be one.
+- `pnpm test` = `vp run -r test` over the nine packages with a `vitest.config.*` (a library's `test` task exists because of that file), each `tsc --noEmit` then Vitest, imported as `vite-plus/test`.
+- Vitest collects `src/**/*.test.ts` only (`erd-editor`: `.test.{ts,tsx}`); a spec named or placed otherwise never runs. `erd-editor`'s `browser` project (`*.browser.test.{ts,tsx}`, real Chromium) makes `pnpm test` need `pnpm --filter @dineug/erd-editor exec playwright install chromium`.
+- v8 coverage at `perFile` 80% gates `test:coverage` only; CI runs it for `r-html` alone.
+- **Not verified until `pnpm build` passes** — declaration emit, bundling and the packages with no `test` task are checked only there.
+- `pnpm check` = `vp check` (oxfmt + oxlint) + root `tsc --noEmit` + `node --test tools/vite-config.test.ts` + `check-task-inputs.mjs`.
+- `pnpm size`, after `pnpm build`: gzip of every script reachable from `erd-editor`'s `exports` vs `packages/erd-editor/.size-baseline.json`. `budgetGzip` is a regression watch; re-pin with `--set-budget --budget-gzip <bytes> --budget-note <why>`.
+- `pnpm --filter <pkg> e2e`, outside `pnpm test`: Playwright for `@dineug/erd-editor`, `@dineug/erd-editor-app`, `@dineug/r-html`; `@vscode/test-cli` for `vuerd-vscode` (`xvfb-run -a` on Linux). `app`'s has no CI job.
+- SQL-generation changes: `docker/<vendor>/` plus `data/*.sql` is the manual loop.
+- CI `ci.yml`: `check` (`pnpm check`, then builds `app`'s and `vuerd-vscode`'s dependencies for their `typecheck` scripts, which read siblings' `dist/**/*.d.ts`), `ci` (`pnpm test`, `r-html` coverage, `pnpm build`, `pnpm size`), `e2e`, `r-html-e2e`, `vscode-extension-e2e`.
+- `intellij-plugin.yml` is separate so its `cancel-in-progress` never reaches `ci.yml`; a `gate` job stands in for a `paths` filter, which would leave the check Pending forever.
+- `setup-workspace` caches the pnpm store, never the Vite Task cache: a cold cache is what makes declared inputs do real work.
 
 ### Common Patterns
 
-- **`erd-editor` is authored in JSX** (`.tsx`), compiled to `html`/`svg` tagged templates by `rHtml()` before any JS transform sees the file; `packages/r-html` itself stays tagged-template, and its ~180 sites are the format that transform targets. Sigils survive as JSX namespaces — `bool:`, `on:`, `prop:`, `use:` — and every component attribute is emitted with a leading dot, so a prop named `onFoo` is not read as an event. `packages/erd-editor/AGENTS.md` carries the full mapping. A `.tsx` file may instead open with a `/** @jsxHost konva */` pragma, which sends the same transform at a second render host — `erd-editor`'s Konva scene, whose intrinsics are `k-*` rather than DOM tags. One file, one host; mixing them is a compile error either way.
-- Named exports, except that component modules default-export their component — every `export default` in the workspace is under `erd-editor/src/components/` or `app/src/components|routes/`. Imports and exports are sorted by `simple-import-sort`, bridged into oxlint through `lint.jsPlugins`.
-- Barrel `index.ts` per feature directory; a package's root `src/index.ts` is the public surface — named re-exports in most, blanket `export *` in `r-html` and `webview-bridge`.
-- The nine ESM library packages are `"type": "module"` with an `exports` map of `types` + `default`, and point `main` / `module` / `types` at `dist/`.
-- Most `typescript/*` strictness rules are deliberately off in the root `vite.config.ts` (`no-explicit-any`, `no-unused-vars`, …); don't reintroduce them inside an unrelated change.
+- **`erd-editor` is authored in JSX** that `rHtml()` compiles to r-html templates (or, under `/** @jsxHost konva */`, to the Konva scene host); `r-html` itself stays tagged-template. See `packages/erd-editor` and `packages/vite-plugin-r-html`.
+- Named exports; a component module default-exports its component. `simple-import-sort` orders imports and exports.
+- A barrel `index.ts` per feature directory; `src/index.ts` is a package's public surface.
 
 ## Dependencies
 
 ### External
 
-- **Vite+ 0.2.9** — tasks, lint, format, test and commit hooks in one toolchain; `tools/vite/worker-url.ts`, `tools/vite/same-origin-worker.ts` and `tools/vite/inline-worker.ts` are the three plugins its worker handling needs for a library, for the VSCode webview and for the UMD build, all unit-tested from `tools/vite-config.test.ts`; `vp toolchain` is what prints the bundled tool versions. The catalog aliases `vite` to `@voidzero-dev/vite-plus-core`, so there is no `node_modules/.bin/vite` to invoke.
-- **pnpm 10.34.3** (`packageManager`) and **Node 22.23.2** (`.nvmrc` / `.node-version`, same content). The pin to 10 existed so the separate IntelliJ plugin repo's pnpm 10 could read the lockfile; that repo is now `packages/intellij-plugin`, so nothing outside this tree constrains it.
-- **TypeScript 7.0.2**, plus **`@typescript/typescript6` 6.0.2** in the eight declaration-emitting packages — `vite-plugin-dts` needs the compiler API TS7 removed.
-- **Vitest 4** (imported as `vite-plus/test`); **Playwright `^1.62.1`** across all three Playwright suites and `erd-editor`'s browser-mode Vitest project, so one browser download serves all four; **`@vscode/test-cli`** for the Extension Host suite.
-- **konva `^10.3.2`** — the ERD scene renderer in `erd-editor`, imported only through `konva/lib/*` deep paths (the root barrel costs 3.3 kB gzipped for nothing) and left external like every other `dependencies` entry there, so a consumer's bundler resolves it. It replaced **`html-to-image`**, which left with the DOM scene. **`@chenglou/pretext` 0.0.8** arrived with it, for the multi-line memo text a `<textarea>` used to lay out.
-- **elkjs `^0.12.0`** — the layered and flow table placements in `erd-editor`, beside the d3-force simulation that predates them. Flow is the layered one handed a port per relationship endpoint, ordered by the column row it leaves a table at, under `portConstraints: FIXED_ORDER` and the `SIMPLE` node placement that centres a branch point over what it feeds. Reached only from `services/elk-layout/`'s shared worker, because the bundle is 1.6 MB of transpiled Java and a second copy of it is what an in-process fallback would cost every build that splits no chunk off.
-- **shiki `^4.4.3`** with **`@shikijs/langs`** and **`@shikijs/themes`** — the highlighter behind the SQL and code-generation panels, reached only from `services/shiki/`'s shared worker so the nine grammars stay out of the page chunk. `createHighlighterCore` over the fine-grained grammar and theme entries rather than shiki's default entry, which would pull every grammar in, and `createJavaScriptRegexEngine({ forgiving: true })` rather than oniguruma, so no host CSP needs `wasm-unsafe-eval`. **comlink `^4.4.2`** is the rpc on both sides of all four of the editor's worker boundaries.
-- **rxjs 7** — the editor's store/action pipeline and DOM interaction streams. **es-toolkit `^1.50.0`** — the utility belt in `erd-editor`, `erd-editor-schema`, `webview-bridge` and `app`, and since the `@dineug/shared` package was dissolved also the home of every type guard (`isString`, `isNil`, `isPlainObject`, …) and of `clamp`; `isEmpty`, `get`, `set` and `round` come from `es-toolkit/compat`, and `packages/erd-editor/AGENTS.md` says why. **nanoid `^5.1.3`** — ids in `erd-editor`, `erd-editor-schema` and `app`, imported directly now that every runtime has `globalThis.crypto`; the wrapper that once picked a random source for old Node left with `shared`. The two helpers es-toolkit has no shape for, `arrayHas` and `safeCallback`, live in the packages that call them. **lucide `^1.35.0`** — the icon set in `erd-editor`, a `dependency` the consumer's bundler tree-shakes by lucide's own `sideEffects: false`.
-- **React 19** with `@radix-ui/themes` 3 — `app` only, as is `dexie` `^3.2.7`, the one dependency held back on purpose; `packages/app/AGENTS.md` carries the reason.
-- **`eslint-plugin-simple-import-sort`** (bridged into oxlint through `lint.jsPlugins`) and **commitlint 20** (run from `.vite-hooks/commit-msg`) — the two things Vite+ has no equivalent for.
+- Toolchain: **Vite+ 0.2.9** (`vp`), **pnpm 10.34.3**, **Node 22.23.2** (`.nvmrc` = `.node-version`), **TypeScript 7.0.2** (+ `@typescript/typescript6` 6.0.2), **Vitest 4.1.10**, **Playwright `^1.62.1`** everywhere, `@vscode/test-cli`, `eslint-plugin-simple-import-sort`, commitlint 20.
+- Editor runtime (konva, elkjs, shiki, comlink, rxjs, es-toolkit, nanoid, lucide, `@chenglou/pretext`): `packages/erd-editor/AGENTS.md`. React 19, Radix Themes, `dexie` `^3`: `app` only.
 
 ### Contracts Outside This Repo
 
 | What | Who reads it |
 | --- | --- |
-| JetBrains Marketplace | the plugin `<id>`, its signing certificate and the listing text extracted from `packages/intellij-plugin/README.md`. Publishing is manual — no token or key is in this repository, and no workflow uploads anything |
+| JetBrains Marketplace | the plugin `<id>`, its signing certificate and the listing text from `packages/intellij-plugin/README.md` |
+| `json-schema/schema.json` on `main` | the `$schema` of every saved `.erd` / `.vuerd` file: `erd-editor-schema` stamps its raw GitHub URL, so moving or renaming it leaves existing files pointing at a dead URL |
+
+Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`) — is manual: no token or key is in the repository and no workflow uploads anything.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

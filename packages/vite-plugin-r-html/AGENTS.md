@@ -1,115 +1,55 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-01 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
 
 # vite-plugin-r-html
 
 ## Purpose
 
-`rHtml()` is a private, dev-only factory returning two Vite plugin halves. It is never published.
-`vite:r-html-refresh` marks a module an HMR _boundary_ when every named export is component-shaped
-(uppercase first letter), appending an `import.meta.hot.accept` that dispatches `hmr:r-html` with
-`{ originComponent, newComponent }` for `r-html`'s `hmr.ts` to swap on, plus an
-`import 'virtual:r-html-hmr'` — the module that calls `hmr()`. `vite:r-html-jsx` compiles `.tsx`
-into the `html`/`svg` tagged templates the runtime already reads, or into `konva` ones when the
-file carries the host pragma.
+`rHtml(options)` (private) returns two Vite plugins. `vite:r-html-jsx` compiles `.tsx` into the `html` / `svg` tagged templates `@dineug/r-html` reads, or into `konva` ones for a file carrying the host pragma. `vite:r-html-refresh` (serve only) makes component modules HMR boundaries whose `accept` dispatches `hmr:r-html` for r-html's `hmr.ts` to swap components in place.
 
 ## Key Files
 
-| File                 | Description                                                                                           |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
-| `src/index.ts`       | `rHtml(options)` plus `transformJsxToTagged` and the `Options`/`JsxOptions`/`RefreshOptions` types |
-| `src/refresh.ts`     | The HMR half: boundary detection, the injected snippet, and the `virtual:r-html-hmr` module           |
-| `src/jsx/codegen.ts` | JSX AST → tagged-template source; owns the attribute mapping, the SVG namespace call, the `@jsxHost` pragma and the escaping |
-| `src/jsx/plugin.ts`  | `rHtmlJsx(options)` — `enforce: 'pre'`, `.tsx` only, injects `html`/`svg`/`konva` under aliases        |
-| `src/options.ts`     | `Options`, `JsxOptions` (`importSource`, `konvaImportSource`) and `RefreshOptions`                     |
-| `vite.config.mts`    | `run.tasks` (`build`, `test`) plus the standard ES lib build (`minify: false`, `preserveModules`, so `dist/` mirrors `src/`) with dts; the manifest is `type: module` with an `exports` map and says `sideEffects: false` |
-| `vitest.config.mts`  | Node tests over `src/**/*.test.ts`; v8 per-file 80% thresholds for coverage runs |
+| File | Description |
+| --- | --- |
+| `src/index.ts` | `rHtml(options)`, `transformJsxToTagged`, the option types |
+| `src/options.ts` | `Options`, `JsxOptions` (`importSource`, `konvaImportSource`), `RefreshOptions` |
+| `src/jsx/plugin.ts` | The JSX half — `enforce: 'pre'`, `.tsx` only |
+| `src/jsx/codegen.ts` | JSX AST → tagged-template source: attribute mapping, SVG namespace, the `@jsxHost` pragma, escaping, every compile error |
+| `src/refresh.ts` | The HMR half: boundary detection, the appended snippet, the `virtual:r-html-hmr` module that calls `hmr()` |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- It runs inside Vite's Node process as an ES module, like the configs that load it: `erd-editor`'s
-  `vite.config.ts` reaches it through a dynamic `import()` and its `vitest.config.ts` through a static
-  one. `@babel/core` is CommonJS underneath, which Node's named-export detection handles, and
-  `@rollup/pluginutils` ships an `import` condition. The public API is named exports.
-- Shared `include`, `exclude`, and `importSource` options are passed to both halves; nested `jsx` or
-  `refresh` options override them, and either half can be disabled with `false`.
-- The injected snippet assembles `import.meta.hot` from string fragments
-  (`` `${'import'}.${'meta'}.${'hot'}` ``) so Vite's own scanner does not rewrite it before injection.
-- The JSX half filters `.tsx` and parses Babel `typescript` + `jsx`; the refresh half has no extension
-  restriction, skips `node_modules`, and parses with no plugins. **That makes the
-  two orderings opposite** — the JSX half is `enforce: 'pre'` because it needs raw JSX, the refresh
-  half must not be, because it can only parse once `vite:oxc` has stripped the types ahead of it.
-- Codegen emits `html`/`svg` aliases, preserves source line count, normalizes JSX whitespace, and
-  escapes template delimiters, backslashes and quotes. Direct codegen returns `null` when no JSX exists;
-  the Vite hook returns `{ code, map: null }`.
-- **One file, one host.** The host is picked from a file-level `/** @jsxHost konva */` pragma, never
-  from a root tag: `isComponentName` resolves every component root, `emitExpr` recurses into a
-  `repeat(...)` argument as an independent root, and a component's `.children` wrapper is emitted with
-  no intrinsic in sight — none of the three can see a `k-*` name. A konva file emits every template
-  under `__rKonva`, imported from the `konvaImportSource` option; there is no default, so a pragma with
-  that option unset is a compile error. So are, each with a `codegen.test.ts` case: a DOM tag in a konva
-  file, a `k-*` tag in a file without the pragma, a string or number child under `k-*`, and
-  `{...spread}` / `class` / `style` / `zIndex` on a `k-*` tag. Component tags stand in either host,
-  spread included — a spread there lands on props, not on a node. A file with no pragma compiles byte
-  for byte the way it did before the pragma existed, which the inline snapshot in `codegen.test.ts` pins.
-- **Writing the pragma** is bound by two of the repo's comment rules (`tools/eslint-rules/jsdoc-attached.js`).
-  It has to be a **tags-only** block: `/** @jsxHost konva */` passes, `/** Konva scene. @jsxHost konva */`
-  is a lint error, because `carriesProse()` exempts a block only when every non-blank line starts with `@`.
-  And **no other JSDoc may sit between the pragma and the first declaration**: the `stacked` check groups
-  blocks by the next code token and only the last one attaches, so the pragma is the one reported. The
-  compiler reads it from a block comment above the first statement only — later in the file, in a line
-  comment, or with a value other than `dom`/`konva`, it is a compile error rather than a silent miss.
-- The `accept` block is appended only when the module also has a named `export default`; every named
-  export must be component-shaped (uppercase first letter), and a nameless default is declined.
-  **That test is the reason a scene root is exported in lower case.** `erd-editor`'s
-  `renderCanvasScene` / `renderMinimapScene` render imperatively into a Konva Stage, so their parents
-  hand-roll `import.meta.hot.accept` for those modules. Capitalize either name — or remove it, leaving
-  the export list all component-shaped — and this half classes the module a boundary, injects a
-  self-accept, and Vite stops propagating: the parent's `accept` never runs and scene HMR dies with no
-  error anywhere.
-- Boundary modules import `virtual:r-html-hmr`, whose module calls `hmr()` once; `apply: 'serve'` is
-  the dev/production switch. Both halves meet on `globalThis`, not `window` — `hmr()` listens there
-  and the `accept` dispatches there — so a worker the dev server hands the same boundaries swaps its
-  components on a hot edit as a page does. A realm with no `addEventListener` gets a no-op `hmr()`,
-  and an `accept` that finds no `dispatchEvent` builds no event.
-- The root `tsconfig.json` maps this package to `src/index.ts` so the `check` CI job can typecheck
-  `erd-editor/vite.config.ts` without building; `types` still points into `dist/`.
+- **The two halves order oppositely.** The JSX half is `enforce: 'pre'` because it needs raw JSX; the refresh half must not be, because its Babel parse has no TypeScript plugin and only works after `vite:oxc` strips types. `rHtml()` wires both, so compose through it.
+- Shared `include` / `exclude` / `importSource` reach both halves; nested `jsx` / `refresh` options override them, and `false` disables a half.
+- **One file, one host**, chosen only by a `/** @jsxHost konva */` block comment above the first statement. A pragma elsewhere, in a line comment, or with a value other than `dom` / `konva` is a compile error, as is a DOM tag in a konva file, a `k-*` tag without the pragma, a string or number child under `k-*`, and a spread, `class`, `style` or `zIndex` on `k-*`. Each has a case in `codegen.test.ts`.
+- **The pragma must satisfy `local/jsdoc-attached`** (`tools/eslint-rules/jsdoc-attached.js`): a tags-only block — `/** Konva scene. @jsxHost konva */` is a lint error — and no second JSDoc block before the same statement, or the pragma is the one reported as stacked.
+- **`konvaImportSource` has no default**; a konva file compiled without it is a compile error. Every erd-editor config that compiles `.tsx` passes `jsx: { konvaImportSource: '@/konva/host' }`: `vite.config.ts` (in `plugins` and again in `worker.plugins`, which inherits nothing), `vite.umd.config.ts` and `vitest.config.ts` (with `refresh: false`). A new one must too.
+- **A module is a boundary only when every named export is component-shaped** (uppercase first letter) and it has a named `export default`; an anonymous default is declined. That is why erd-editor's imperative scene roots export in lower case, and why renaming one silently breaks scene HMR — see `packages/erd-editor/AGENTS.md`.
+- **HMR meets on `globalThis`, not `window`**: `hmr()` listens there and the `accept` dispatches there, so a dev-server worker swaps components too. Keep both sides on `globalThis`.
+- The snippet spells `import.meta.hot` from string fragments so Vite's scanner does not rewrite it before injection, and is appended so no source line moves.
+- The root `tsconfig.json` maps this package to `src/index.ts`, so the root typecheck reads erd-editor's configs without a build.
 
 ### Testing Requirements
 
-- `vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match test` — `tsc --noEmit` then Vitest
-  over `src/**/*.test.ts` in the `node` env. Both halves' hooks are called directly.
-- The codegen suite is the transform's spec — every attribute mapping, rejected construct and
-  escaping case. DOM parity against hand-written `html` lives in `packages/erd-editor`. The one
-  inline snapshot is the byte-invariance witness for pragma-less files; regenerate it only when the DOM
-  half is meant to change, never to make a konva change go green.
-- Boundary selection is tested; the swap itself is not. That stays manual:
-  `pnpm --filter @dineug/erd-editor dev`, edit a component, watch it swap in place.
+- `pnpm exec vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match test` — `node` environment; both halves' hooks are called directly.
+- `codegen.test.ts` is the transform's spec. Its one inline snapshot witnesses that pragma-less files compile unchanged: regenerate it only when the DOM output is meant to change, never to turn a konva change green.
+- Output parity with hand-written templates is gated in `packages/erd-editor/src/__jsx-parity__/` (`parity.test.tsx`, `parity.konva.browser.test.tsx`); after a codegen change also run `pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match test`.
+- Boundary selection is tested, the swap is not: check it by hand with `pnpm --filter @dineug/erd-editor dev` and an edited component.
 
 ### Common Patterns
 
-- `// @ts-ignore` on the Babel import and AST access is intentional — no `@babel/core` types, and
-  new runtime deps go in `dependencies`, from which the build's `external` RegExp derives.
+- `// @ts-ignore` on the Babel import and AST access is intentional — `@babel/core` ships no types.
 
 ## Dependencies
 
 ### Internal
 
-None. Pairs with `@dineug/r-html`'s `hmr.ts` by event contract only; it imports nothing from it.
+None. Pairs with `@dineug/r-html`'s `hmr.ts` by event contract only; `@dineug/erd-editor` is the sole consumer.
 
 ### External
 
-`@babel/core` (AST) and `@rollup/pluginutils` (`createFilter`) are runtime deps; `vite` and
-`vite-plugin-dts` are dev-only.
-
-### Consumers
-
-`@dineug/erd-editor` only. Its `vite.config.ts` loads the plugin through `lazyPlugins`, and its
-`vitest.config.ts` imports it directly with `{ refresh: false }` — repeated per project, because
-Vitest inherits neither config. **Both pass `jsx: { konvaImportSource: '@/konva/host' }`**, so adding
-a third entry point that compiles `.tsx` means adding it there too, or every `@jsxHost konva` file in
-the package becomes a compile error. Its `build`/`test` tasks track this `dist/**/*.d.ts`.
+`@babel/core` (parsing) and `@rollup/pluginutils` (`createFilter`) are runtime `dependencies`, which the build leaves external.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

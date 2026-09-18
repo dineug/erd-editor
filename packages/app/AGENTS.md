@@ -1,74 +1,67 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-07 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
 
 # app
 
 ## Purpose
 
-The React PWA at erd-editor.io (`@dineug/erd-editor-app`, `private: true`) — the only React package in the workspace.
-It wraps the `<erd-editor>` custom element in a shell: saved diagrams in IndexedDB via a Comlink worker, cross-tab
-sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted peer-to-peer collaboration, no backend.
+`@dineug/erd-editor-app` (private) is the React PWA at erd-editor.io and the workspace's only React package. It wraps `<erd-editor>` in a backend-free shell: IndexedDB behind a Comlink worker, cross-tab sync over BroadcastChannel, a Workbox service worker, and end-to-end-encrypted peer-to-peer collaboration.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `src/main.tsx` | Entry — `Sentry.init` and `registerSW()` in production only, the `react-router` route table, jotai `Provider` |
-| `src/store.ts` | The jotai store plus the `bridge.on({...})` handlers applying other tabs' schema and session mutations |
-| `src/sw.ts` | Service worker — `CacheFirst` for same-origin js/css/media whose name matches `/\.[0-9a-f]{8,}\./`, `StaleWhileRevalidate` for the un-hashed images/fonts and the Google Fonts stylesheets |
-| `src/registerSW.ts` | Production-only Workbox registration; reloads when an updated service worker activates |
-| `src/utils/broadcastChannel.ts` | `BridgeActionType` and its action creators — the cross-tab protocol. `dispatch` does not echo to the posting tab, `dispatchAll` does |
-| `src/utils/crypto.ts` | AES-GCM 128 over `crypto.subtle`; `encryptToJson` / `decryptFromJson` keep relays carrying ciphertext only |
-| `vite.config.ts` | react/PWA/legacy plugins, the `gtag` HTML transform, `static/**` output names, a separate `worker` output block, `run.tasks` |
-| `vitest.setup.ts` | Installs Node `webcrypto` — happy-dom's `crypto` stub has no `subtle` |
+| `src/main.tsx` | Entry — route table (`/`, lazy `/live`, catch-all → `/`), jotai `Provider`; `Sentry.init` and `registerSW()` in production only |
+| `src/store.ts` | The jotai store and the `bridge.on` handlers applying other tabs' mutations |
+| `src/sw.ts` | Service worker — `CacheFirst` for same-origin files matching `/\.[0-9a-f]{8,}\./`; `registerSW.ts` reloads when an update activates |
+| `src/utils/broadcastChannel.ts` | The cross-tab protocol: `dispatch` does not echo to the posting tab, `dispatchAll` does |
+| `src/utils/crypto.ts` | AES-GCM over `crypto.subtle`, so relays carry ciphertext only |
+| `vite.config.ts` | react / PWA / legacy plugins, `static/**` output names, the `worker` output block, this package's own `run.tasks` |
 
 ## Subdirectories
 
 | Directory | Purpose |
 | --- | --- |
 | `src/atoms/modules/` | jotai state — `schema`, `sidebar`, `sidebar-sash`, `collaborative`, `theme` |
-| `src/components/` | `app/`, `sidebar/`, `sidebar-sash/`, `viewer/` (the React↔custom-element boundary), `live-collaborative/` (the `/live` guest view) |
-| `src/routes/root/` | `Root.tsx` — the Radix `Theme` shell, Emotion `Global`, and the router `Outlet` |
-| `src/services/collaborative/` | Main-thread WebRTC transport — `room.ts` (trystero, `APP_ID`, `STRATEGIES`), `host.ts`, `guest.ts`, `leader.ts` |
-| `src/services/indexeddb/` | Dexie service plus the `SharedWorker` → `Worker` → in-thread selection in `index.ts` |
-| `src/utils/` | The cross-tab bridge and crypto above, plus `clipboard.ts`, `text.ts`, `errors.ts` |
-| `e2e/` | Playwright specs (`collaboration`, `leadership`, `live-errors`), `support/AppPage.ts`, `support/relay.mjs` (a local nostr relay) |
+| `src/components/` | `viewer/` is the React↔custom-element boundary, `live-collaborative/` the `/live` guest view |
+| `src/services/collaborative/` | Main-thread WebRTC transport — `room.ts`, `host.ts`, `guest.ts`, `leader.ts` |
+| `src/services/indexeddb/` | Dexie service; `index.ts` picks `SharedWorker`, then `Worker`, then in-thread |
+| `e2e/` | Playwright specs, `support/AppPage.ts`, `support/relay.mjs` (a local nostr relay) |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- **The editor is a custom element, not a React component.** `Editor.tsx` creates it via refs and drives it through element methods; props never reach its internals.
-- **`import '@dineug/erd-editor';` on its own line is what registers `<erd-editor>`.** Every other name the package exports is a type now that highlighting needs no callback, so a file that names only `ErdEditorElement` loses the whole import to type elision and `createElement('erd-editor')` returns an unupgraded `HTMLElement` — `getSharedStore is not a function` at mount, past `tsc` and past the build. `src/erdEditorRegistration.test.ts` pins the side-effect import beside every caller.
-- The router serves the editor at `/` and the lazy live collaboration view at `/live`; the catch-all route redirects back to `/`.
-- `VitePWA` uses `injectManifest` with `registerType: 'prompt'`, but `registerSW.ts` reloads on an update activation. The service worker keeps hashed JS/CSS in `static`, other images/fonts in `assets`, and Google Fonts in separate caches.
-- **Collaboration cannot move into a worker** — `RTCPeerConnection` is window-only. `leader.ts` elects one tab via `navigator.locks`; `atoms/modules/sidebar/index.ts` routes every batch as `collaborativeDispatch`, `bridge.emit` in the leader and `dispatch` elsewhere, because BroadcastChannel never echoes to the poster.
-- **Join rooms only via `joinCollaborativeRoom`.** trystero returns one room object per `appId`+`roomId`, so a bare `joinRoom` lets one caller's `leave()` destroy another's peers.
-- **The secret key stays in the URL fragment** (`/live/#<roomId>,<secretKey>`, read in `LiveCollaborative.tsx`) — it doubles as the trystero password, so a query string would put it in server logs and referrers.
-- **Hex `[hash:8]` output names are a contract with `sw.ts`**, repeated under `worker` because workers do not inherit them; base64 hashes stop matching `CacheFirst` silently.
+- **The editor is a custom element, not a React component**: `viewer/editor/Editor.tsx` creates it and drives it through its methods.
+- **`import '@dineug/erd-editor';` on its own line registers `<erd-editor>`.** A file importing only the `ErdEditorElement` type loses the import to type elision and mounts an unupgraded element (`getSharedStore is not a function`), past `tsc` and the build. `erdEditorRegistration.test.ts` pins it beside every caller.
+- **Collaboration stays on the main thread** — `RTCPeerConnection` is window-only. `leader.ts` elects one tab via `navigator.locks`; `atoms/modules/sidebar/index.ts` sends each batch as `collaborativeDispatch`, through `bridge.emit` in the leader and `dispatch` elsewhere, because BroadcastChannel never echoes to the poster.
+- **Join rooms only via `joinCollaborativeRoom`**: it ref-counts one trystero room per strategy and room id, so a bare `joinRoom` lets one caller's `leave()` destroy another's peers.
+- **The secret key stays in the URL fragment** (`/live/#<roomId>,<secretKey>`, read in `LiveCollaborative.tsx`): it doubles as the trystero password, and a query string would leak it to server logs and referrers.
+- **Hex `[hash:8]` output names are a contract with `sw.ts`**, repeated under `worker` because workers inherit no `build` output options; base64 hashes silently stop matching `CacheFirst`.
+- Take `RouterProvider` from `react-router/dom`; the root export of the same name lacks the `flushSync` wiring and still typechecks.
+- `run.tasks` is bespoke: its inputs name `packages/erd-editor/dist/**/*.d.ts` by hand, so a newly typechecked sibling goes into that list.
 
 ### Testing Requirements
 
-- `vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — `src/**/*.test.ts`, happy-dom, `tsc --noEmit` first. `erdEditorRegistration.test.ts` reads source rather than mounting anything: it is the one gate in CI for the element registration above, since the e2e suite that would catch it never runs there. `test:coverage` enforces 80% per file over `services/collaborative/**`, `services/indexeddb/modules/collaborative/**`, `utils/broadcastChannel.ts` and `utils/crypto.ts`.
-- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor`, then runs one Chromium worker against `vp dev` (:5175) and the in-memory nostr relay (`e2e/support/relay.mjs`, :5176). WebRTC requires the two launch flags in `playwright.config.ts`. Never runs in CI.
-- CI's `check` job runs `typecheck` (`tsconfig.json`, `include: ["src"]`) and `e2e:typecheck` (`e2e/tsconfig.json`) — the only program covering `e2e/` and `playwright.config.ts`.
+- `pnpm exec vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — happy-dom; `vitest.setup.ts` installs Node `webcrypto` for `crypto.subtle`. `test:coverage` gates only the collaboration code (`include` in `vitest.config.mts`).
+- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor`, then runs one Chromium worker against `vp dev` (:5175) and the local relay (:5176, also r-html's e2e port — run them apart or set `E2E_RELAY_PORT`). WebRTC needs the two launch flags in `playwright.config.ts`. No CI job runs it.
+- CI's `check` job runs `typecheck` and `e2e:typecheck`; only the latter covers `e2e/` and `playwright.config.ts`.
 
 ### Common Patterns
 
-- `Component.tsx` beside a `Component.styles.ts`; Emotion `css` prop, Radix Themes for widgets.
-- jotai modules keep their write-only `atom(null, …)` action atoms private and expose them only as `use*` hooks; the immer state atoms (`schemaEntitiesAtom`, `collaborativeAtom`, `themeAtom`, `sidebarSashAtom`) are exported directly.
-- Action-type maps are `as const` objects paired with a same-named type via `ValuesType` (`src/internal-types/`).
+- `Component.tsx` beside `Component.styles.ts`; Emotion `css` prop, Radix Themes for widgets.
+- jotai modules export their state atoms but keep write-only `atom(null, …)` action atoms private behind `use*` hooks.
 
 ## Dependencies
 
 ### Internal
 
-`@dineug/erd-editor` (the element, plus the `engine.js` subpath for the headless `createReplicationStore()` the IndexedDB worker runs) — one dependency now that highlighting is inside it. Type guards come from `es-toolkit`, ids from `nanoid`, and `safeCallback` is local (`src/utils/safeCallback.ts`).
+`@dineug/erd-editor` — the element, plus the `engine.js` subpath whose `createReplicationStore()` the IndexedDB service runs headless.
 
 ### External
 
-- `react` 19 / `react-router` 8 — take `RouterProvider` from `react-router/dom`; the root export of the same name omits the `flushSync` wiring and typechecks clean.
-- `jotai` + `jotai-immer` + `immer`; `@radix-ui/themes` 3 + `@emotion/react`; `dexie` at `^3` on purpose (data migration); `comlink` for worker RPC.
-- `@trystero-p2p/nostr` + `@trystero-p2p/mqtt`, both dynamically imported; `src/utils/base64.ts` (`btoa` / `atob`) for ciphertext transport; `workbox-*` + `vite-plugin-pwa`; `@sentry/react`; `@vitejs/plugin-legacy` for modern polyfills only; `es-toolkit` (`omit` from the main entry, `isEmpty` from `/compat`). `luxon` is declared but unused in `src/`.
+- `dexie` stays at `^3` on purpose: it owns users' stored documents, so a major upgrade is its own verified change.
+- `@trystero-p2p/nostr` / `mqtt` load dynamically; `ERD_EDITOR_NOSTR_RELAY_URLS` at build time points nostr at private relays.
+- `luxon` and `@types/luxon` are declared but nothing imports them.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

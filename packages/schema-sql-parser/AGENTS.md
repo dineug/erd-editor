@@ -1,64 +1,49 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-08-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
 
 # schema-sql-parser
 
 ## Purpose
 
-`@dineug/schema-sql-parser` is a private, hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of
-any dialect and returns a flat `Statement[]` of seven kinds — `create.table`, `create.index`,
-`alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped
-rather than rejected, so a real dump imports partially instead of failing. Its only consumer is `@dineug/erd-editor`, whose
-`src/utils/schema-sql-parser/` folds the AST into an `ERDEditorSchemaV3` document, not into editor actions.
+`@dineug/schema-sql-parser` (private) is a hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of any dialect into a flat `Statement[]` of seven kinds — `create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped, so a real dump imports partially instead of failing. Its only consumer is `packages/erd-editor/src/utils/schema-sql-parser/`, which folds the statements into an `ERDEditorSchemaV3` document.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, statement types |
-| `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, calls a statement parser, else advances |
-| `src/parser/helper.ts` | Curried token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchNestedDataType` and `matchReferentialClause` |
-| `src/parser/statement/index.ts` | `Statement` union, `StatementType`, `SortType`, `RefPos`, AST node shapes |
-| `src/schema_sql_test_case.md` | 27 end-to-end fixture sections (`### ` heading + fenced `sql` + fenced `json`) |
-
-## Subdirectories
-
-| Directory | Purpose |
-| --- | --- |
-| `src/parser/` | `tokenizer.ts` (lexer — bracket, quote and backtick forms emit one quoted `string`; an unpaired `]` emits `rightBracket`), matchers, dispatch loop |
-| `src/parser/statement/` | One parser file per statement kind, plus the AST type module |
-| `src/parser/dataType/` | Per-vendor keyword lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite, Databricks, Snowflake |
+| `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, the statement types; everything else is internal |
+| `src/parser/tokenizer.ts` | Lexer — `"x"`, `'x'`, `` `x` `` and `[x]` each become one `string` token, delimiters stripped, marked `quoted`; an unpaired `]` emits `rightBracket` |
+| `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, runs a statement parser, else advances one token |
+| `src/parser/helper.ts` | Token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchNestedDataType`, `matchReferentialClause` |
+| `src/parser/statement/` | One parser per statement kind; `index.ts` holds `Statement`, `StatementType`, `SortType`, `RefPos` |
+| `src/parser/dataType/` | Per-vendor type lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite, Databricks, Snowflake |
+| `src/schema_sql_test_case.md` | End-to-end fixtures read by `index.test.ts` |
 
 ## For AI Agents
 
 ### Working In This Directory
 
-- The build is the standard factory with `minify: false` and `preserveModules`, so `dist/` mirrors `src/` one module per file, and the manifest says `sideEffects: false`; the consuming bundler prunes at file granularity and minifies once.
-- **Never throw on unrecognized SQL** — the loop advances `$pos` and continues; bailing turns a partial import into a failed one.
-- The public API is only `schemaSQLParser`, `StatementType`, `SortType`, and statement types; tokenizer, matchers, and dialect lists remain internal. The sole workspace consumer is `packages/erd-editor/src/utils/schema-sql-parser/`.
-- **`$pos` (`RefPos = { value: number }`) is a shared mutable cursor.** Each parser must leave it just past what it
-  consumed — off-by-one either loops forever or swallows a statement.
+- **Never throw on unrecognised SQL** — the loop advances `$pos` and continues; bailing turns a partial import into a failed one.
+- **`$pos` (`RefPos = { value: number }`) is a shared mutable cursor.** Each parser leaves it just past what it consumed; off by one either loops forever or swallows a statement.
 - Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in `parser/helper.ts`, a branch in `parser/index.ts`.
-- `helper.ts` merges all eight `dataType/` lists into one deduped uppercase set, so adding a type to one vendor widens every dialect.
-- **A type name is matched word by word, longest first**, so multi-word names are written in full (`TIMESTAMP WITHOUT TIME ZONE`, not `TIMESTAMP WITHOUT`) and `matchDataType` returns the token span — argument lists included, wherever they sit (`TIMESTAMP(3) WITH TIME ZONE`). Each name is mirrored in `erd-editor/src/constants/sql/dataType/` with a `primitiveType`; the two lists hold the same names and change together.
-- **The `CREATE ... TABLE` header is measured, not counted.** `matchCreateTable` returns its token span, because `OR REPLACE` and a table kind (`TRANSIENT`, `HYBRID`, …) sit between the two words; the statement parser adds that span to reach the name. The modifier list is a whitelist — scanning to the next `TABLE` would also claim `CREATE OR REPLACE VIEW v AS SELECT ... FROM TABLE(...)`. `matchQualifiedName` does the same job for an `ALTER TABLE db.schema.t ADD` target.
-- **Angle-bracket generics are recovered in the parser, not the lexer**: `<` / `>` are not break characters, so `MAP<STRING, INT>` arrives as `MAP<STRING`, `,`, `INT>` and `matchNestedDataType` rebalances the span for `ARRAY` / `MAP` / `STRUCT`, keeping that comma from reading as a column separator.
+- **Keywords are unquoted `string` tokens compared case-insensitively**; every `is*Value` matcher refuses a `quoted` token, so `` `key` `` is a column and `KEY` an index. `--` and `/* */` comments never become tokens.
+- **A quoted `DEFAULT` goes back into quotes** (`'...'`, inner quotes doubled): `column.default` is raw SQL that every exporter writes after `DEFAULT`, and the lexer has stripped the quotes.
+- **A table constraint or index item yields no column**: `opensConstraintItem` in `statement/create.table.ts` names the tokens that open one; a new opener goes there.
+- `helper.ts` merges all eight `dataType/` lists into one deduplicated uppercase set, so a type added to one vendor widens every dialect.
+- **Type names match word by word, longest first**: write multi-word names in full (`TIMESTAMP WITHOUT TIME ZONE`); `matchDataType` returns the token span, argument lists included. Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`; no test pins the parity, so change both lists together.
+- **The `CREATE ... TABLE` header is measured, not counted**: `matchCreateTable` returns its span over a whitelist of modifiers (`OR REPLACE`, `TRANSIENT`, …), since scanning to the next `TABLE` would claim `CREATE VIEW ... FROM TABLE(...)`. `matchQualifiedName` does the same for an `ALTER TABLE db.schema.t` target.
+- **Angle-bracket generics are rebalanced in the parser**: `<` / `>` are not break characters, so `matchNestedDataType` rejoins `ARRAY` / `MAP` / `STRUCT` spans and keeps their inner commas from ending the column.
 
 ### Testing Requirements
 
-- `pnpm exec vp run --filter @dineug/schema-sql-parser --fail-if-no-match test` — `tsc --noEmit` then `vp test run`.
-  That gate reads `tsconfig.json` (`include: ["src"]`), so specs typecheck too.
-- `pnpm --filter @dineug/schema-sql-parser test:coverage` enforces `vitest.config.ts`'s per-file 80% thresholds (node env, `src/**/*.test.ts`, `src/internal-types/**` excluded); `test:dev` watches.
-- Specs import `describe` / `it` / `expect` / `test` from `vite-plus/test`, never from `vitest`.
-- New end-to-end cases are `### ` sections in `src/schema_sql_test_case.md` — `index.test.ts` pairs each section's
-  `sql` block with its `json` block and deep-equals `{ statements }`. The root `data/*.sql` dumps are manual only, except
-  `sakila.sql`, whose column, foreign key and index shape `index.test.ts` pins: a Workbench export is where table-level
-  constraint items used to read back as columns.
+- `pnpm exec vp run --filter @dineug/schema-sql-parser --fail-if-no-match test` — `node` environment.
+- A new end-to-end case is a `### ` section in `src/schema_sql_test_case.md` with a fenced `sql` block and a fenced `json` block; `index.test.ts` deep-equals `{ statements }`.
+- `index.test.ts` also parses the root `data/sakila.sql` and pins its column, foreign key and index shape; the other `data/*.sql` dumps are manual only.
 
 ### Common Patterns
 
-- No keyword token exists, and `--` / `/* */` comments are dropped by the lexer rather than emitted: keywords are `string` tokens compared case-insensitively by value, and `"x"`, `'x'`, `` `x` `` and `[x]` all collapse to one `string` token with delimiters stripped — but marked `quoted`, which every `is*Value` matcher refuses, so `` `key` `` is a column and `KEY` is an index.
-- AST nodes are fully populated with `''` and `[]` rather than optional fields; qualified names are reduced to their final table name by the editor consumer.
+- AST nodes are fully populated with `''` and `[]` rather than optional fields.
+- A qualified table name (`db.schema.t`) keeps its last segment in every statement parser except `create.index`, which takes the schema as `tableName` and records no columns — `create.index.test.ts` pins that current behaviour.
 
 ## Dependencies
 
@@ -68,6 +53,6 @@ None — leaf package.
 
 ### External
 
-No runtime dependencies. Build-only: `vite-plugin-dts` `^5.0.3` with `@typescript/typescript6` 6.0.2; the shared library factory supplies the browser target and task inputs.
+No runtime dependencies.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
