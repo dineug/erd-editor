@@ -129,6 +129,7 @@ import { get, set } from 'es-toolkit/compat';
 
 import { ValuesType } from '@/internal-types';
 import {
+  LightThemeConfig,
   NeutralAccentThemeConfig,
   ThemeConfig,
 } from '@/themes/radix-ui-theme.config';
@@ -393,7 +394,9 @@ export const createTheme = ({
       accentColor,
     }),
     appearance,
-    hasNeutralAccent(accentColor)
-      ? { ...ThemeConfig, ...NeutralAccentThemeConfig }
-      : ThemeConfig
+    {
+      ...ThemeConfig,
+      ...(appearance === Appearance.light ? LightThemeConfig : {}),
+      ...(hasNeutralAccent(accentColor) ? NeutralAccentThemeConfig : {}),
+    }
   );

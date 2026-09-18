@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { Palette } from '@/themes/radix-ui-theme';
 import {
+  LightThemeConfig,
   NeutralAccentThemeConfig,
   ThemeConfig,
 } from '@/themes/radix-ui-theme.config';
@@ -139,5 +140,32 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.diffInsertForeground).toBe('custom-green--11');
     expect(ThemeConfig.diffDeleteForeground).toBe('custom-red--11');
     expect(ThemeConfig.diffCrossForeground).toBe('custom-blue--11');
+  });
+});
+
+describe('LightThemeConfig', () => {
+  it('overrides the table and memo boxes, the minimap edge and the three keys only', () => {
+    expect(LightThemeConfig).toEqual({
+      tableBackground: 'override-#ffffff',
+      tableBorder: 'gray-8',
+      memoBackground: 'override-#ffffff',
+      memoBorder: 'gray-8',
+      minimapBorder: 'gray-7',
+      keyPK: 'custom-amber--11',
+      keyFK: 'custom-ruby--11',
+      keyPFK: 'custom-cyan--11',
+    });
+  });
+
+  it('keeps memo and table on the same treatment', () => {
+    expect(LightThemeConfig.memoBackground).toBe(
+      LightThemeConfig.tableBackground
+    );
+    expect(LightThemeConfig.memoBorder).toBe(LightThemeConfig.tableBorder);
+  });
+
+  it('spells its white as the hex the scene mixes a view tint against', () => {
+    // mixColor reads hex only, so a named colour would snap a tint instead of fading it
+    expect(LightThemeConfig.tableBackground).toMatch(/^override-#[0-9a-f]{6}$/);
   });
 });

@@ -91,3 +91,19 @@ export const ThemeConfig: Theme = {
 export const NeutralAccentThemeConfig: Partial<Theme> = {
   columnSelect: 'gray-6',
 };
+
+/**
+ * What the light appearance takes instead: its gray 1 to 3 sit too close to lift
+ * a table off the canvas, and a step 9 key or line reads under 3:1 on them, so
+ * the boxes go white with a gray-8 edge and the keys drop to step 11.
+ */
+export const LightThemeConfig: Partial<Theme> = {
+  tableBackground: 'override-#ffffff',
+  tableBorder: 'gray-8',
+  memoBackground: 'override-#ffffff',
+  memoBorder: 'gray-8',
+  minimapBorder: 'gray-7',
+  keyPK: 'custom-amber--11',
+  keyFK: 'custom-ruby--11',
+  keyPFK: 'custom-cyan--11',
+};

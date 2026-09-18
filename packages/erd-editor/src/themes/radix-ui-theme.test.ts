@@ -126,7 +126,9 @@ describe('createTheme', () => {
     expect(theme.grayColor12).toBe('#202020');
     expect(theme.canvasBackground).toBe('#f0f0f0');
     expect(theme.canvasBoundaryBackground).toBe('#fcfcfc');
-    expect(theme.tableBorder).toBe('#d9d9d9');
+    expect(theme.tableBackground).toBe('#ffffff');
+    expect(theme.tableBorder).toBe('#bbbbbb');
+    expect(theme.minimapBorder).toBe('#cecece');
     expect(theme.foreground).toBe('#646464');
     expect(theme.active).toBe('#202020');
     expect(theme.accentColor4).toBe('#d5efff');
@@ -155,7 +157,6 @@ describe('createTheme', () => {
   });
 
   it('passes override tokens through as the literal color name', () => {
-    expect(createTheme(lightGrayBlue).minimapBorder).toBe('black');
     expect(createTheme(lightGrayBlue).minimapShadow).toBe('black');
     expect(createTheme(darkGrayBlue).minimapBorder).toBe('black');
     expect(createTheme(darkGrayBlue).minimapShadow).toBe('black');
@@ -165,10 +166,9 @@ describe('createTheme', () => {
     const light = createTheme(lightGrayBlue);
     const dark = createTheme(darkGrayBlue);
 
-    expect(light.keyPK).toBe('#ffc53d');
-    expect(light.keyFK).toBe('#e54666');
-    expect(light.keyPFK).toBe('#00a2c7');
-    // step 9 is the only radix step that is identical in light and dark
+    expect(light.keyPK).toBe('#ab6400');
+    expect(light.keyFK).toBe('#ca244d');
+    expect(light.keyPFK).toBe('#107d98');
     expect(dark.keyPK).toBe('#ffc53d');
     expect(dark.keyFK).toBe('#e54666');
     expect(dark.keyPFK).toBe('#00a2c7');
@@ -330,6 +330,70 @@ describe('the selected column row fill', () => {
   });
 });
 
+describe('the light appearance', () => {
+  const lightThemeOptions = everyThemeOptions.filter(
+    options => options.appearance === Appearance.light
+  );
+
+  /** WCAG 1.4.11 asks this of a graphic that carries meaning, as a key and a line do. */
+  const MIN_GRAPHIC_CONTRAST = 3;
+
+  it('keeps every key icon at 3:1 on the table it sits in', () => {
+    lightThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [theme.keyPK, theme.keyFK, theme.keyPFK].forEach(key => {
+        expect(
+          contrast(key, theme.tableBackground),
+          labelOf(options)
+        ).toBeGreaterThanOrEqual(MIN_GRAPHIC_CONTRAST);
+      });
+    });
+  });
+
+  it('keeps both relationship colours at 3:1 on the canvas', () => {
+    lightThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [theme.keyFK, theme.keyPFK].forEach(line => {
+        expect(
+          contrast(line, theme.canvasBackground),
+          labelOf(options)
+        ).toBeGreaterThanOrEqual(MIN_GRAPHIC_CONTRAST);
+      });
+    });
+  });
+
+  it('edges a table more sharply against the canvas than the shared gray-6 did', () => {
+    lightThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        contrast(theme.tableBorder, theme.canvasBackground),
+        labelOf(options)
+      ).toBeGreaterThan(contrast(theme.grayColor6, theme.canvasBackground));
+    });
+  });
+
+  it('leaves every dark theme on the shared config', () => {
+    everyThemeOptions
+      .filter(options => options.appearance === Appearance.dark)
+      .forEach(options => {
+        const theme = createTheme(options);
+        const label = labelOf(options);
+
+        expect(theme.tableBackground, label).toBe(theme.grayColor2);
+        expect(theme.tableBorder, label).toBe(theme.grayColor6);
+        expect(theme.memoBackground, label).toBe(theme.grayColor2);
+        expect(theme.memoBorder, label).toBe(theme.grayColor6);
+        expect(theme.minimapBorder, label).toBe('black');
+        expect(theme.keyPK, label).toBe('#ffc53d');
+        expect(theme.keyFK, label).toBe('#e54666');
+        expect(theme.keyPFK, label).toBe('#00a2c7');
+      });
+  });
+});
+
 describe('the gray-3 hover of a tab, a Settings item and a toolbar tool', () => {
   /** The least CIE76 step an eye tells apart. */
   const MIN_VISIBLE_DELTA_E = 2.3;
@@ -360,6 +424,8 @@ describe('createTheme with unusual config entries', () => {
     vi.resetModules();
     vi.doMock('@/themes/radix-ui-theme.config', () => ({
       ThemeConfig: config,
+      LightThemeConfig: {},
+      NeutralAccentThemeConfig: {},
     }));
     return await import('@/themes/radix-ui-theme');
   };
