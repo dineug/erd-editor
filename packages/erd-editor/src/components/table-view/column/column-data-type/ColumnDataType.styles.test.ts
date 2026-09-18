@@ -83,6 +83,13 @@ describe('ColumnDataType.styles', () => {
     expect(text).toContain('line-height: var(--line-height-1)');
   });
 
+  it('casts the shadow every panel floating over the canvas casts', () => {
+    const text = ruleTextOf(`.${styles.hint}`);
+
+    expect(text).toContain('0 10px 38px -10px rgba(14, 18, 22, 0.35)');
+    expect(text).toContain('0 10px 20px -15px rgba(14, 18, 22, 0.2)');
+  });
+
   it('lays each hint row out as a clickable 20px flex row', () => {
     const text = ruleTextOf(`.${styles.hintItem}`);
 
