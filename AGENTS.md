@@ -45,14 +45,14 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | JSX → tagged templates, HMR |
 | `schema-sql-parser` | `@dineug/schema-sql-parser` | permissive DDL parser for SQL import |
 | `erd-editor-schema` | `@dineug/erd-editor-schema` | v2/v3 document schema, parsing, LWW operators |
-| `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.8.0): `<erd-editor>`, its Konva scene, and `engine.js` (`createReplicationStore`) |
+| `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.9.0): `<erd-editor>`, its Konva scene, and `engine.js` (`createReplicationStore`) |
 | `webview-bridge` | `@dineug/erd-editor-webview-bridge` | `Bridge`, the typed host↔webview command protocol |
 | `webview-client` | `@dineug/erd-editor-webview-client` | `mountWebview(host)` — all host wiring both webviews share |
 | `replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | headless replica `webview-client` spawns |
 | `vscode-webview` | `@dineug/erd-editor-vscode-webview` | VSCode webview bundle |
-| `vscode-extension` | `vuerd-vscode` | VSCode extension host, published (2.7.0) |
+| `vscode-extension` | `vuerd-vscode` | VSCode extension host, published (2.8.0) |
 | `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
-| `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published (0.7.0) |
+| `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published (0.8.0) |
 | `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io |
 
 ## For AI Agents

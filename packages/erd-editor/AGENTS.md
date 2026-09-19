@@ -5,7 +5,7 @@
 
 ## Purpose
 
-The editor core and the workspace's one npm package (3.8.0): the framework-free `<erd-editor>` custom element on `@dineug/r-html`, with a Redux-like store whose actions carry a Lamport clock version and merge through the LWW registers in `@dineug/erd-editor-schema`. `app`, `webview-client` and `replication-store-worker` depend on it; `app` and `replication-store-worker` also import the DOM-free `engine.js` entry.
+The editor core and the workspace's one npm package (3.9.0): the framework-free `<erd-editor>` custom element on `@dineug/r-html`, with a Redux-like store whose actions carry a Lamport clock version and merge through the LWW registers in `@dineug/erd-editor-schema`. `app`, `webview-client` and `replication-store-worker` depend on it; `app` and `replication-store-worker` also import the DOM-free `engine.js` entry.
 
 The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/konva/`); toolbar, panels, menus and the editing overlay stay DOM. The same scene components also draw the one **view**, the Visualization tab's Flow mode — the reader's own placement, zoom and rows, never in the file, the history or a peer — told which through a `GeometrySource`.
 

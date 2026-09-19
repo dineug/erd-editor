@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.8.0] - 2026-09-19
+
+### Added
+
+- Zoom with a trackpad pinch, or with two fingers on a touch screen, on the ERD canvas, the Diff
+  Viewer and the Visualization tab. The zoom follows the point you pinch at.
+- Drop a column below a table's last row to move it to the end, or into a table with no columns.
+
+### Changed
+
+- Tables have a new look: a header band with a table icon, and the table colour down the left
+  edge. A long table name no longer runs under the header buttons.
+- The light theme is easier to read: tables and memos are white with a darker border and a soft
+  shadow, and keys, relationship lines, the Visualization graph and switches that are off stand out
+  from the background.
+- Context menus, table properties, quick search and the other floating panels cast a shadow.
+- A selected column row, tab or toolbar tool now stands out from the one under the pointer.
+- Apply is the primary button on the Time Travel and automatic placement bars.
+- Dragging columns shows the dragged rows under the pointer, and reordering animates smoothly.
+
+### Fixed
+
+- Context menus and their submenus stay inside the window, scroll when taller than it, and open
+  above the bottom toolbar.
+- Data type hints show at most ten rows and scroll, close once a full type is typed (such as
+  VARCHAR(255)), and keep the spaces in names such as DOUBLE PRECISION.
+- Drawing a relationship: the preview line starts at the table you pressed, and ending it on a
+  table's button no longer also presses that button.
+- Relationship lines no longer flash out of place for a frame after an undo, a redo, an Auto
+  Layout or a new relationship.
+- The Diff Viewer highlights added and removed items again, and lists a table whose only change is
+  added columns.
+- SQL import: index and constraint clauses (ON DELETE, USING BTREE, index names and the like) no
+  longer turn into extra columns, quoted DEFAULT values keep their quotes, and a COMMENT or NOT NULL
+  written after UNIQUE is kept.
+- Pasting tab-separated text without formatting no longer adds an empty column.
+- Flow: Related and Go to ERD leave your table selection alone, and narrowing the view no longer
+  shows the cards in the wrong place first.
+- Graph mode: a dragged dot stays under the pointer, and a document saved on the Visualization tab
+  opens with the graph centred.
+- A memo keeps its resize cursor for the whole resize.
+
 ## [2.7.0] - 2026-09-14
 
 ### Added
