@@ -1,5 +1,5 @@
-import { ReloadIcon } from '@radix-ui/react-icons';
 import { Button, Flex, Text } from '@radix-ui/themes';
+import { RotateCw } from 'lucide-react';
 import { useRouteError } from 'react-router';
 
 import {
@@ -30,8 +30,13 @@ const LiveCollaborativeError: React.FC<LiveCollaborativeErrorProps> = () => {
       ) : isNotFoundHostError ? (
         <>
           <Text size="6">Host not found.</Text>
-          <Button css={styles.button} onClick={handleRefresh}>
-            <ReloadIcon width="16" height="16" /> Refresh
+          <Button
+            css={styles.button}
+            color="gray"
+            highContrast
+            onClick={handleRefresh}
+          >
+            <RotateCw size={16} /> Refresh
           </Button>
         </>
       ) : isHostStopSessionError ? (

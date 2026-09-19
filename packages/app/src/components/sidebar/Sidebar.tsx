@@ -8,7 +8,13 @@ import {
   TextField,
 } from '@radix-ui/themes';
 import { useAtom, useAtomValue } from 'jotai';
-import { Download, EllipsisVertical, FileUp, Search } from 'lucide-react';
+import {
+  Download,
+  EllipsisVertical,
+  FileUp,
+  Search,
+  SquarePen,
+} from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useUpdateCollaborativeSessionAll } from '@/atoms/modules/collaborative';
@@ -109,11 +115,14 @@ const Sidebar: React.FC<SidebarProps> = () => {
             <Flex align="center" gap="1">
               <Button
                 css={styles.addButton}
-                size="3"
-                variant="soft"
+                size="2"
+                variant="ghost"
+                color="gray"
+                highContrast
                 onClick={handleStartEditing}
               >
-                New Schema
+                <SquarePen size={16} />
+                New schema
               </Button>
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger>

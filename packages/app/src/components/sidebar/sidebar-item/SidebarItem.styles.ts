@@ -32,7 +32,7 @@ export const item = css`
 
 export const hover = css`
   &:hover {
-    background-color: var(--accent-7);
+    background-color: var(--gray-a3);
 
     & > .item-menu {
       visibility: visible;

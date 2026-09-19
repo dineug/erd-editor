@@ -1,4 +1,3 @@
-import { ClipboardIcon, LightningBoltIcon } from '@radix-ui/react-icons';
 import {
   Badge,
   Button,
@@ -9,6 +8,7 @@ import {
   TextField,
 } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
+import { Clipboard, Zap } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 
 import {
@@ -88,7 +88,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
           aria-describedby={guestCount ? countId : undefined}
           data-active={hasCollaborative}
         >
-          <LightningBoltIcon width="16" height="16" />
+          <Zap size={16} />
           {guestCount ? (
             <span
               id={countId}
@@ -136,11 +136,10 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
                 value={link}
                 readOnly
               >
-                <TextField.Slot pr="3">
-                  <ClipboardIcon
-                    color={copyState ? 'var(--accent-9)' : undefined}
-                    width="16"
-                    height="16"
+                <TextField.Slot>
+                  <Clipboard
+                    color={copyState ? 'var(--accent-9)' : 'currentColor'}
+                    size={16}
                   />
                 </TextField.Slot>
               </TextField.Root>
@@ -186,12 +185,17 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
           </Dialog.Close>
           {hasCollaborative ? (
             <Dialog.Close onClick={handleStopSession}>
-              <Button variant="solid" color="red">
+              <Button variant="outline" color="red">
                 Stop session
               </Button>
             </Dialog.Close>
           ) : (
-            <Button variant="solid" onClick={handleStartSession}>
+            <Button
+              variant="solid"
+              color="gray"
+              highContrast
+              onClick={handleStartSession}
+            >
               Start session
             </Button>
           )}

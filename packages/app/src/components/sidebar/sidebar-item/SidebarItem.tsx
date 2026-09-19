@@ -1,4 +1,3 @@
-import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import {
   DropdownMenu,
   Flex,
@@ -8,7 +7,7 @@ import {
 } from '@radix-ui/themes';
 import { isEmpty } from 'es-toolkit/compat';
 import { useAtom } from 'jotai';
-import { Copy, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Ellipsis, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import {
@@ -224,7 +223,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
             tabIndex={tabStop ? undefined : -1}
             aria-label={`Actions for ${entity.name}`}
           >
-            <DotsHorizontalIcon width="16" height="16" />
+            <Ellipsis size={16} />
           </IconButton>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content onCloseAutoFocus={handleMenuCloseAutoFocus}>

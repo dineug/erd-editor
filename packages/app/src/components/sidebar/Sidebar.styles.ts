@@ -1,5 +1,7 @@
 import { css } from '@emotion/react';
 
+import { rowButton } from '@/components/sidebar/sidebar-item/SidebarItem.styles';
+
 export const root = css`
   width: 260px;
   min-width: 260px;
@@ -17,10 +19,11 @@ export const hide = css`
 
 export const header = css`
   padding: 0 12px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 `;
 
 export const addButton = css`
+  ${rowButton};
   flex: 1 1 auto;
 `;
 
