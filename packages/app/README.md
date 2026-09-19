@@ -4,11 +4,16 @@
 
 ## [erd-editor.io](https://erd-editor.io)
 
-- PWA support (works offline).
-- Real-time collaboration (experimental).
+- PWA support (works offline), with a prompt when a new version is ready instead of a reload.
+- Real-time collaboration (experimental), with a list of who is in the session and their nicknames.
 - End-to-end encryption.
 - Local-first support (autosaves to the browser).
 - Real-time synchronization between browser tabs.
+- A schema list ordered by last edit, grouped by date (Today, Yesterday, Previous 7 Days, …), with search.
+- A trash that keeps deleted schemas until you empty it.
+- Backup export and import of every schema, plus import of `.erd`, `.vuerd`, `.json`, SQL, DBML, AML and GraphQL files, from the menu or by dropping them anywhere.
+- A link per schema: the open one is in the URL as `/?schema=<id>`.
+- Light, dark or system theme.
 
 The React shell around the `<erd-editor>` custom element: diagrams are stored in IndexedDB
 through a Comlink worker, tabs stay in sync over a BroadcastChannel, a Workbox service worker

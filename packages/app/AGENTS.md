@@ -11,22 +11,32 @@
 
 | File | Description |
 | --- | --- |
-| `src/main.tsx` | Entry — route table (`/`, lazy `/live`, catch-all → `/`), jotai `Provider`; `Sentry.init` and `registerSW()` in production only |
+| `src/main.tsx` | Entry — route table (`/`, lazy `/live`, catch-all → `/`), jotai `Provider`; `Sentry.init` (`tracesSampleRate: 0.1`) and `registerSW()` in production only |
 | `src/store.ts` | The jotai store and the `bridge.on` handlers applying other tabs' mutations |
-| `src/sw.ts` | Service worker — `CacheFirst` for same-origin files matching `/\.[0-9a-f]{8,}\./`; `registerSW.ts` reloads when an update activates |
+| `src/sw.ts` | Service worker — `CacheFirst` for same-origin files matching `/\.[0-9a-f]{8,}\./`; takes over only on a `SKIP_WAITING` message |
+| `src/registerSW.ts` | The update flow: a waiting worker → `app-update` state → `AppUpdatePrompt`; update checks hourly and when the tab becomes visible |
+| `src/services/indexeddb/modules/schema/service.ts` | `SchemaService` — the replica per open schema and the content fingerprint that decides `updateAt` |
+| `src/components/app/useSchemaSearchParam.ts` | The `?schema=<id>` ↔ selected schema contract |
+| `src/atoms/modules/schema-import/index.ts` | Import (files, drops, the sample) and backup export |
+| `src/utils/convertSource.ts` | SQL / DBML / AML / GraphQL → editor document, through a detached `<erd-editor>` |
+| `src/utils/reportError.ts` | `reportError`, `settleReported` / `useSettleReported` for fire-and-forget actions |
+| `src/utils/schemaList.ts` | Sort, search filter, date groups and relative times of the list (luxon) |
+| `src/utils/backup.ts`, `src/utils/importFile.ts` | The backup format; what an imported file is, by extension or content |
+| `src/utils/theme.ts`, `index.html` | Theme preference parsing and resolving; the inline pre-paint script that mirrors it |
 | `src/utils/broadcastChannel.ts` | The cross-tab protocol: `dispatch` does not echo to the posting tab, `dispatchAll` does |
 | `src/utils/crypto.ts` | AES-GCM over `crypto.subtle`, so relays carry ciphertext only |
+| `src/assets/bookstore.dbml` | The "Open sample" schema, imported `?raw` on demand |
 | `vite.config.ts` | react / PWA / legacy plugins, `static/**` output names, the `worker` output block, this package's own `run.tasks` |
 
 ## Subdirectories
 
 | Directory | Purpose |
 | --- | --- |
-| `src/atoms/modules/` | jotai state — `schema`, `sidebar`, `sidebar-sash`, `collaborative`, `theme` |
-| `src/components/` | `viewer/` is the React↔custom-element boundary, `live-collaborative/` the `/live` guest view |
-| `src/services/collaborative/` | Main-thread WebRTC transport — `room.ts`, `host.ts`, `guest.ts`, `leader.ts` |
+| `src/atoms/modules/` | jotai state — `schema`, `schema-import`, `sidebar`, `sidebar-sash`, `collaborative`, `theme`, `app-update` |
+| `src/components/` | `app/` the `/` shell (drop overlay, import notice, URL sync), `sidebar/` the list, trash and theme control, `viewer/` the React↔custom-element boundary, `live-collaborative/` the `/live` guest view, `app-update-prompt/` |
+| `src/services/collaborative/` | Main-thread WebRTC transport — `room.ts`, `host.ts`, `guest.ts`, `leader.ts`, `participants.ts` |
 | `src/services/indexeddb/` | Dexie service; `index.ts` picks `SharedWorker`, then `Worker`, then in-thread |
-| `e2e/` | Playwright specs, `support/AppPage.ts`, `support/relay.mjs` (a local nostr relay) |
+| `e2e/` | Playwright specs, `support/AppPage.ts`, `support/backup.ts` (seed files), `support/relay.mjs` (a local nostr relay) |
 
 ## For AI Agents
 
@@ -34,23 +44,47 @@
 
 - **The editor is a custom element, not a React component**: `viewer/editor/Editor.tsx` creates it and drives it through its methods.
 - **`import '@dineug/erd-editor';` on its own line registers `<erd-editor>`.** A file importing only the `ErdEditorElement` type loses the import to type elision and mounts an unupgraded element (`getSharedStore is not a function`), past `tsc` and the build. `erdEditorRegistration.test.ts` pins it beside every caller.
+- **`updateAt` moves on content edits only**, peer edits and imports included. `SchemaService` compares a fingerprint of `{ doc, collections, settings.databaseName }` on every replica `change`; zoom, scroll and other view state still persist `value` but no `updateAt`. The baseline is taken one microtask after `setInitialValue`, past the tombstone collection the engine queues on every load. A bump reaches the tabs as `updateSchemaEntity` over the service's own `BroadcastChannel('@@bridge')`.
+- **The fingerprint leaves out what the engine derives and rewrites after a load without an action**, or opening a document saved on another machine or build would count its first zoom as an edit: table and column `ui.width*` (`recalculateTableWidthHook`, this machine's fonts), relationship `start` / `end` `x`, `y`, `direction` (`relationshipSort`), `identification` and `startRelationshipType` (read off the end columns' key and not-null flags), and the foreign key bit of column `ui.keys` (kept in step with the relationships; that hook runs before the baseline today). Each has its source in the fingerprint. A new engine hook that writes persisted state after a load joins this list, with a case in `service.test.ts`.
+- **Nothing else bumps it**: `updateSchemaEntity` in `modules/schema` writes only the fields given, and rename, move to trash, restore, open and select never pass `updateAt`. The list sorts on it, so a stray bump reorders the sidebar.
+- **The trash is `deletedAt` on the entity** (not indexed, so no Dexie version bump). A trashed schema leaves the list, is deselected, has its collaboration session stopped, and cannot be opened. Only the user empties it: no automatic purge.
+- **The selected schema lives in the URL as `/?schema=<id>`** — a query string, so the static host needs no SPA fallback. Selecting pushes an entry, deselecting replaces it, back and forward switch schemas, and an unknown or trashed id clears the parameter. The tab title is `<name> · erd-editor`, else `erd-editor`.
+- **A backup is `{ format: 'erd-editor-app-backup', version: 1, exportedAt, schemas: [{ name, value, createAt, updateAt }] }`**, trash excluded, recognised by `format` whatever the file is called. Importing one always adds new copies under new ids, keeping their times, and never overwrites. A time outside 0–8.64e15 (what a `Date` holds) skips its schema; one after the import is taken as the import time, so it cannot pin the schema to the top of the list.
+- **SQL, DBML, AML and GraphQL are converted before their schema is stored**: the app has no parser, so `convertSource` creates an `<erd-editor>` it never attaches, calls `setSchemaSQL` / `DBML` / `AML` / `GraphQL` and reads `value` at once. The layout is synchronous; connector anchors and relationship flags follow from hooks milliseconds later, so the stored value lacks them until the first open derives them, which the fingerprint leaves out and so saves without an `updateAt` (a `service.test.ts` case and `import-export.spec.ts` pin it). The element is destroyed in a `finally`. The module is imported on demand, since it brings in the whole editor. A source it throws on counts as an invalid file.
+- **An import stores everything in one `importSchemaEntities` call** and opens the last document or source, unless the selection changed while it ran. `.erd` / `.vuerd` / editor `.json` are stored as they are, but only in a shape the editor recognises (`isEditorDocument`: version `3.0.0` with `doc`, or v2 with `canvas` and `table`), since its parser takes any object as an empty schema. Source extensions are an own-key `Map` lookup.
+- **An import reads no file over 64 MB** (`MAX_IMPORT_FILE_SIZE`) and says so in the notice. A document takes about 600 bytes a column (the `data/` fixtures), so 1,000 tables are some 14 MB and a backup of several fits; `file.text()` of a larger stray file risks the tab.
+- **File drops are taken only when `dataTransfer.types` includes `Files`** (`useFileDrop.ts`); the editor's own drags of tables and columns carry none and must keep passing through.
+- **A new service worker waits for the user.** `registerSW.ts` turns `waiting` into the prompt (mounted in `Root`, so `/live` has it too); taking it sends `SKIP_WAITING` through `messageSkipWaiting()`, and only that tab reloads on `controlling` — the others show "reload to finish". Nothing reloads unasked. The first deploy of this flow meets tabs still running the old worker's code, which has no prompt, so the new worker waits until every tab is closed.
+- **A chunk that fails to load prompts a reload** (`outdated`): after a deploy the new worker has dropped the old precache and the server the old files, so a tab on old code, `updatedElsewhere` ones included, cannot load its lazy chunks. Vite dispatches `vite:preloadError` for every failed dynamic import of a build; `watchStaleChunks` leaves it unprevented, so the import still rejects to its caller. A waiting worker found later replaces `outdated` with `available`.
+- **Action hooks settle instead of rejecting.** Components call them without waiting, so each `use*` action is wrapped in `useSettleReported`: a failure is logged and sent to Sentry (a no-op outside production, where `main.tsx` never initialises it), after the atom has rolled back what it showed early. A failed update puts back exactly the fields it set, deleting those the entity lacked. Import and export failures also show in the import notice. A new action hook follows suit.
+- **`addSchemaEntity` carries the list entry, not the document**: the other tabs keep no values. `store.ts` still drops a `value` a tab on an older build sends.
+- **Known limitation, the per-tab fallbacks**: where `SharedWorker` is missing, each tab runs its own `SchemaService` (a dedicated `Worker`, or in-thread), and a replica it cached once stays in memory. Another tab's edits reach IndexedDB but not that replica (the shared store passes no remote action on to its subscribers), so this tab's backup export, duplicate and reopen of the schema read the stale replica, and its next edit there saves the replica over the other tab's edits. Not addressed; it needs replicas evicted, or fed the other tabs' batches.
 - **Collaboration stays on the main thread** — `RTCPeerConnection` is window-only. `leader.ts` elects one tab via `navigator.locks`; `atoms/modules/sidebar/index.ts` sends each batch as `collaborativeDispatch`, through `bridge.emit` in the leader and `dispatch` elsewhere, because BroadcastChannel never echoes to the poster.
 - **Join rooms only via `joinCollaborativeRoom`**: it ref-counts one trystero room per strategy and room id, so a bare `joinRoom` lets one caller's `leave()` destroy another's peers.
+- **Send through `sendQuietly`** (`room.ts`), never a bare `action.send`: a send rejects when a data channel closes as its peer leaves, and an unhandled rejection lands in Sentry.
+- **Participants**: `hello` carries `{ role, nickname? }`, and a peer that sends a `nickname`, even an empty one, reads the list. The host keeps `peerId → nickname` per session and sends the whole list, itself first, as the encrypted `participants` action — only to guests that sent a nickname, because trystero buffers a message for an action the receiver never registered forever. A guest takes a list only from a peer that said hello as host. That guards against a buggy guest, not a hostile one: every peer holds the key, can claim to be host, and can edit the document anyway. The leader tab publishes `collaborativeParticipants` over the bridge, and a newly opened tab asks with `collaborativeParticipantsRequest`.
 - **The secret key stays in the URL fragment** (`/live/#<roomId>,<secretKey>`, read in `LiveCollaborative.tsx`): it doubles as the trystero password, and a query string would leak it to server logs and referrers.
+- **Theme**: `appearance` is `'dark' | 'light' | 'system'`, default `dark`; `system` is opt-in and follows `matchMedia`. The inline script in `index.html` applies a stored preference before first paint with the rules of `parseThemeState` / `resolveAppearance`, and `theme.test.ts` runs that script against them — change both together, and keep the script inline.
+- **Icons are `lucide-react`**; brand marks, which lucide 1.x does not ship, are inline SVG (the GitHub mark in `Viewer.tsx`).
+- **The sidebar is `<nav aria-label="Schemas">`** with one roving Tab stop across the date groups: arrows, Home and End move, Enter and Space open, F2 renames, Delete or Backspace moves to the trash. A row's collaboration and menu buttons show on hover or focus and take Tab on the focused row only, since a running session keeps its trigger on screen. The e2e locators rely on these names and labels.
 - **Hex `[hash:8]` output names are a contract with `sw.ts`**, repeated under `worker` because workers inherit no `build` output options; base64 hashes silently stop matching `CacheFirst`.
 - Take `RouterProvider` from `react-router/dom`; the root export of the same name lacks the `flushSync` wiring and still typechecks.
 - `run.tasks` is bespoke: its inputs name `packages/erd-editor/dist/**/*.d.ts` by hand, so a newly typechecked sibling goes into that list.
 
 ### Testing Requirements
 
-- `pnpm exec vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — happy-dom; `vitest.setup.ts` installs Node `webcrypto` for `crypto.subtle`. `test:coverage` gates only the collaboration code (`include` in `vitest.config.mts`).
-- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor`, then runs one Chromium worker against `vp dev` (:5175) and the local relay (:5176, also r-html's e2e port — run them apart or set `E2E_RELAY_PORT`). WebRTC needs the two launch flags in `playwright.config.ts`. No CI job runs it.
+- `pnpm exec vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — happy-dom; `vitest.setup.ts` installs Node `webcrypto` for `crypto.subtle`. `test:coverage` gates the collaboration services, `indexeddb/modules/{collaborative,schema}` and the utilities in `include` of `vitest.config.mts` (`backup`, `broadcastChannel`, `convertSource`, `crypto`, `importFile`, `reportError`, `schemaList`, `theme`); a new pure module joins that list. The React shell and worker plumbing are left to e2e. `convertSource` is unit-tested against a stub element, since the real one needs a browser; its parsing is checked by `import-export.spec.ts`.
+- The `schema` and `schema-import` atoms are tested through their hooks: `__test-utils__/renderHook.ts` mounts one under a jotai `Provider`, with `@/services/indexeddb`, `@sentry/react` and `@/utils/convertSource` mocked.
+- A test that expects a rejection to be handled needs a plain function where the rejection starts (`rejectSends` in `__test-utils__/room.ts`): a Vitest mock settles the promise it returns and so hides an unhandled one.
+- `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor`, then runs one Chromium worker against `vp dev` (:5175) and the local relay (:5176, also r-html's e2e port — run them apart or set `E2E_RELAY_PORT`). WebRTC needs the two launch flags in `playwright.config.ts`. CI runs it in the `app-e2e` job; `e2e/README.md` lists what each spec covers.
 - CI's `check` job runs `typecheck` and `e2e:typecheck`; only the latter covers `e2e/` and `playwright.config.ts`.
 
 ### Common Patterns
 
-- `Component.tsx` beside `Component.styles.ts`; Emotion `css` prop, Radix Themes for widgets.
+- `Component.tsx` beside `Component.styles.ts`; Emotion `css` prop, Radix Themes for widgets, `lucide-react` for icons.
+- **Buttons are gray-first, size 2** (size 1 inside the compact update-prompt card). The one primary action of a screen or dialog is `solid` `color="gray"` `highContrast` (New schema in the empty viewer, Start session, Reload, Refresh); a destructive one is `outline` red (Empty trash, a confirmation's Delete, Stop session), or ghost red in a row, never solid: red-9 under a white label reads 3.9:1. Secondaries are `outline` gray, a dialog's Close / Cancel `soft` gray. The sidebar's New schema and Trash are ghost gray rows (`rowButton` in `SidebarItem.styles.ts`) with their icon on the list's text edge. Solid jade is avoided: its white label reads 3.15:1.
 - jotai modules export their state atoms but keep write-only `atom(null, …)` action atoms private behind `use*` hooks.
+- Dates and relative times go through luxon, in the `en` locale like the rest of the UI copy.
 
 ## Dependencies
 
@@ -62,6 +96,6 @@
 
 - `dexie` stays at `^3` on purpose: it owns users' stored documents, so a major upgrade is its own verified change.
 - `@trystero-p2p/nostr` / `mqtt` load dynamically; `ERD_EDITOR_NOSTR_RELAY_URLS` at build time points nostr at private relays.
-- `luxon` and `@types/luxon` are declared but nothing imports them.
+- `luxon` does all date work: the list's date groups, the "Edited …" and "Deleted …" times, the backup file name.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
