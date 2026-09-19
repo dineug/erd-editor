@@ -65,6 +65,10 @@ export default defineConfig({
         test: {
           name: 'browser',
           include: [browserSpecs],
+          // A shared runner is slower and noisier than a laptop, so CI alone
+          // retries a spec, as the e2e configs do; locally a flake fails loud.
+          testTimeout: process.env.CI ? 15_000 : undefined,
+          retry: process.env.CI ? 2 : 0,
           browser: {
             enabled: true,
             provider: playwright(),
