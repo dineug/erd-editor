@@ -4,6 +4,7 @@ import { useAtom } from 'jotai';
 import { Outlet } from 'react-router';
 
 import { themeAtom } from '@/atoms/modules/theme';
+import AppUpdatePrompt from '@/components/app-update-prompt/AppUpdatePrompt';
 
 import * as styles from './Root.styles';
 
@@ -25,6 +26,7 @@ const Root: React.FC<RootProps> = () => {
         panelBackground="translucent"
       >
         <Outlet />
+        <AppUpdatePrompt />
       </Theme>
     </>
   );
