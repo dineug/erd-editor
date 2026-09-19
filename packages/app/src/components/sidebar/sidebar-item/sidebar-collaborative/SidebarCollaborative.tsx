@@ -1,5 +1,13 @@
 import { ClipboardIcon, LightningBoltIcon } from '@radix-ui/react-icons';
-import { Badge, Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes';
+import {
+  Badge,
+  Button,
+  Dialog,
+  Flex,
+  IconButton,
+  Text,
+  TextField,
+} from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { useRef, useState } from 'react';
 
@@ -16,10 +24,13 @@ import * as styles from './SidebarCollaborative.styles';
 
 interface SidebarCollaborativeProps {
   entity: Omit<SchemaEntity, 'value'>;
+  /** Whether Tab reaches the trigger, which a running session keeps on screen. */
+  tabStop: boolean;
 }
 
 const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
   entity,
+  tabStop,
 }) => {
   const collaborativeMap = useCollaborativeMap();
   const startSession = useStartSession();
@@ -56,13 +67,18 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <div
+        <IconButton
           className="collaborative"
           css={styles.collaborative}
+          size="1"
+          variant="ghost"
+          color="gray"
+          tabIndex={tabStop ? undefined : -1}
+          aria-label={`Collaboration for ${entity.name}`}
           data-active={hasCollaborative}
         >
           <LightningBoltIcon width="16" height="16" />
-        </div>
+        </IconButton>
       </Dialog.Trigger>
 
       <Dialog.Content style={{ maxWidth: 450 }}>

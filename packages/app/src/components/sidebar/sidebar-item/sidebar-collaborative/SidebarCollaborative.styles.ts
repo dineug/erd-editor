@@ -1,10 +1,9 @@
 import { css } from '@emotion/react';
 
 export const collaborative = css`
+  flex: none;
+  margin: 0;
   color: var(--gray-a10);
-  display: flex;
-  cursor: pointer;
-  margin-left: auto;
 
   &[data-active='true'] {
     color: var(--gray-12);

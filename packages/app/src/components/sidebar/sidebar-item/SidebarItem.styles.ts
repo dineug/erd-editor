@@ -1,17 +1,19 @@
 import { css } from '@emotion/react';
 
+// The row's buttons stay hidden, and so out of the Tab order, until the row is
+// hovered, holds focus or has its menu open.
 export const item = css`
   border-radius: var(--radius-2);
   cursor: default;
   height: 32px;
+  padding-right: var(--space-2);
 
   &[data-selected='true'] {
     background-color: var(--gray-4);
   }
 
-  & > svg {
-    cursor: pointer;
-    margin-left: 4px;
+  & > .item-menu {
+    margin: 0 0 0 4px;
     visibility: hidden;
   }
 
@@ -19,8 +21,10 @@ export const item = css`
     visibility: hidden;
   }
 
+  &:focus-within,
   &[data-open-menu='true'] {
-    & > svg {
+    & > .item-menu,
+    & > .collaborative {
       visibility: visible;
     }
   }
@@ -30,7 +34,7 @@ export const hover = css`
   &:hover {
     background-color: var(--accent-7);
 
-    & > svg {
+    & > .item-menu {
       visibility: visible;
     }
 
@@ -40,12 +44,30 @@ export const hover = css`
   }
 `;
 
-export const padding = css`
-  padding: 0 var(--space-3);
+export const select = css`
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-radius: var(--radius-2);
+  cursor: default;
+
+  &:focus-visible {
+    outline: 2px solid var(--focus-8);
+    outline-offset: -2px;
+  }
 `;
 
-export const inputPadding = css`
-  padding: 0 var(--space-1);
+export const menuTrigger = css`
+  flex: none;
+`;
+
+export const input = css`
+  margin-left: var(--space-1);
 `;
 
 export const text = css`

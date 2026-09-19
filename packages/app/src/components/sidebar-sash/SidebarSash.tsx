@@ -1,6 +1,6 @@
-import { ChevronLeftIcon, ChevronRightIcon } from '@radix-ui/react-icons';
-import { IconButton, Tooltip } from '@radix-ui/themes';
+import { Tooltip } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 
@@ -10,6 +10,7 @@ interface SidebarSashProps {}
 
 const SidebarSash: React.FC<SidebarSashProps> = () => {
   const [sashState, setSashState] = useAtom(sidebarSashAtom);
+  const label = sashState.open ? 'Close sidebar' : 'Open sidebar';
 
   const handleToggleSash = () => {
     setSashState(draft => {
@@ -18,20 +19,22 @@ const SidebarSash: React.FC<SidebarSashProps> = () => {
   };
 
   return (
-    <Tooltip
-      content={sashState.open ? 'Close sidebar' : 'Open sidebar'}
-      side="right"
-      sideOffset={20}
-    >
-      <div css={styles.sash(sashState.open)} onClick={handleToggleSash}>
-        <IconButton css={styles.icon(sashState.open)} variant="ghost" size="1">
+    <Tooltip content={label} side="right" sideOffset={20}>
+      <button
+        css={styles.sash(sashState.open)}
+        type="button"
+        aria-label={label}
+        aria-expanded={sashState.open}
+        onClick={handleToggleSash}
+      >
+        <span css={styles.icon}>
           {sashState.open ? (
-            <ChevronLeftIcon width={16} height={16} />
+            <ChevronLeft size={16} />
           ) : (
-            <ChevronRightIcon width={16} height={16} />
+            <ChevronRight size={16} />
           )}
-        </IconButton>
-      </div>
+        </span>
+      </button>
     </Tooltip>
   );
 };
