@@ -10,6 +10,7 @@ import {
   dispatch,
   updateSchemaEntityAction,
 } from '@/utils/broadcastChannel';
+import { useSettleReported } from '@/utils/reportError';
 
 export const schemaEntitiesAtom = atomWithImmer<
   Array<Omit<SchemaEntity, 'value'>>
@@ -111,8 +112,13 @@ const deleteSchemaEntityAtom = atom(null, async (get, set, id: string) => {
 });
 
 export const useSchemaEntities = () => useAtomValue(schemaEntitiesAtom);
+// Callers fire these and forget them, so a failure is reported rather than
+// rejected, after the actions that show a change early have rolled it back.
 export const useUpdateSchemaEntities = () =>
-  useSetAtom(updateSchemaEntitiesAtom);
-export const useAddSchemaEntity = () => useSetAtom(addSchemaEntityAtom);
-export const useUpdateSchemaEntity = () => useSetAtom(updateSchemaEntityAtom);
-export const useDeleteSchemaEntity = () => useSetAtom(deleteSchemaEntityAtom);
+  useSettleReported(useSetAtom(updateSchemaEntitiesAtom));
+export const useAddSchemaEntity = () =>
+  useSettleReported(useSetAtom(addSchemaEntityAtom));
+export const useUpdateSchemaEntity = () =>
+  useSettleReported(useSetAtom(updateSchemaEntityAtom));
+export const useDeleteSchemaEntity = () =>
+  useSettleReported(useSetAtom(deleteSchemaEntityAtom));

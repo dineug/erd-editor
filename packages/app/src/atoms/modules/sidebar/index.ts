@@ -10,6 +10,7 @@ import {
   dispatch,
   replicationSchemaEntityAction,
 } from '@/utils/broadcastChannel';
+import { reportError, useSettleReported } from '@/utils/reportError';
 
 export const selectedSchemaIdAtom = atom<string | null>(null);
 
@@ -44,7 +45,7 @@ const replicationSchemaEntityAtom = atom(
     const service = getAppDatabaseService();
     if (!service) throw new Error('Database service is not initialized');
 
-    service.replicationSchemaEntity(id, actions);
+    service.replicationSchemaEntity(id, actions).catch(reportError);
     dispatch(
       replicationSchemaEntityAction({
         id,
@@ -68,4 +69,4 @@ const replicationSchemaEntityAtom = atom(
 
 export const useSchemaEntity = () => useAtomValue(schemaEntityAtom);
 export const useReplicationSchemaEntity = () =>
-  useSetAtom(replicationSchemaEntityAtom);
+  useSettleReported(useSetAtom(replicationSchemaEntityAtom));

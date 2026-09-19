@@ -10,6 +10,7 @@ import {
   startSessionAction,
   stopSessionAction,
 } from '@/utils/broadcastChannel';
+import { useSettleReported } from '@/utils/reportError';
 
 type SchemaId = string;
 type RoomId = string;
@@ -57,9 +58,11 @@ const stopSessionAtom = atom(null, async (get, set, schemaId: string) => {
 
 export const useCollaborativeMap = () => useAtomValue(collaborativeAtom);
 export const useUpdateCollaborativeSessionAll = () =>
-  useSetAtom(updateCollaborativeSessionAllAtom);
-export const useStartSession = () => useSetAtom(startSessionAtom);
-export const useStopSession = () => useSetAtom(stopSessionAtom);
+  useSettleReported(useSetAtom(updateCollaborativeSessionAllAtom));
+export const useStartSession = () =>
+  useSettleReported(useSetAtom(startSessionAtom));
+export const useStopSession = () =>
+  useSettleReported(useSetAtom(stopSessionAtom));
 
 /**
  * Drives the main-thread collaboration host. The service elects one tab to own the

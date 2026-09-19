@@ -23,6 +23,7 @@ export default defineConfig({
         'src/services/indexeddb/modules/collaborative/**/*.ts',
         'src/utils/broadcastChannel.ts',
         'src/utils/crypto.ts',
+        'src/utils/reportError.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
       thresholds: {
