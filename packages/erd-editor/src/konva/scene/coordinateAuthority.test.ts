@@ -933,6 +933,13 @@ export function analyze(file: string, source: string): Violation[] {
   return violations;
 }
 
+/**
+ * The words a file must spell for any rule above to fire: each needs an origin
+ * read or a getSceneOrigin call, and an alias starts from an origin read. The
+ * scan parses only files that match, a tenth of the source it would otherwise.
+ */
+const CAN_VIOLATE = /originX|originY|getSceneOrigin/;
+
 function collect(dir: string, files: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
@@ -1113,6 +1120,21 @@ describe('nobody outside the authority spells the transform', () => {
     expect(analyze('jump.ts', JUMP_THROUGH_CANON)).toEqual([]);
   });
 
+  it('parses every source any rule fires on, so the skip hides no violation', () => {
+    const firing = [
+      OLD_HIDE_SIGN,
+      RENAMED_ORIGIN,
+      TOP_LEVEL_ORIGIN,
+      OVERLAY_IN_JSX,
+      JUMP_BY_HAND,
+    ];
+
+    for (const source of firing) {
+      expect(analyze('probe.tsx', source)).not.toEqual([]);
+      expect(CAN_VIOLATE.test(source)).toBe(true);
+    }
+  });
+
   it('leaves the transform to the files that own it', () => {
     const allowed = new Set([...AUTHORITY, ...QUARANTINE]);
     const reported: string[] = [];
@@ -1121,7 +1143,10 @@ describe('nobody outside the authority spells the transform', () => {
       const name = relative(SRC_ROOT, full).split(sep).join('/');
       if (allowed.has(name)) continue;
 
-      for (const violation of analyze(full, readFileSync(full, 'utf8'))) {
+      const source = readFileSync(full, 'utf8');
+      if (!CAN_VIOLATE.test(source)) continue;
+
+      for (const violation of analyze(full, source)) {
         reported.push(
           `src/${name}:${violation.line} [${violation.rule}] ${violation.detail}. Remedy: ${violation.remedy}.`
         );
