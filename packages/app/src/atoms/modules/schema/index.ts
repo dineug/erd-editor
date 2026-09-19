@@ -40,6 +40,12 @@ export const schemaListAtom = atom(get =>
   )
 );
 
+/** The open schema's list entry, which follows renames from any tab. */
+export const selectedSchemaListEntityAtom = atom(get => {
+  const id = get(selectedSchemaIdAtom);
+  return id ? get(schemaListAtom).find(entity => entity.id === id) : undefined;
+});
+
 /** The trash, most recently deleted first. */
 export const trashedSchemaEntitiesAtom = atom(get =>
   get(schemaEntitiesAtom)
@@ -218,6 +224,8 @@ const emptyTrashAtom = atom(null, async (get, set) => {
 });
 
 export const useSchemaEntities = () => useAtomValue(schemaListAtom);
+export const useSelectedSchemaListEntity = () =>
+  useAtomValue(selectedSchemaListEntityAtom);
 export const useTrashedSchemaEntities = () =>
   useAtomValue(trashedSchemaEntitiesAtom);
 // Callers fire these and forget them, so a failure is reported rather than
