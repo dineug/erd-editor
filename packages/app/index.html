@@ -4,6 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
+    <script>
+      // Pre-paint: the markup defaults to dark for no-JS. A stored light or
+      // system preference is applied here, before first paint, with the rules
+      // of parseThemeState and resolveAppearance in src/utils/theme.ts.
+      (function () {
+        try {
+          var appearance = JSON.parse(localStorage.getItem('@theme')).appearance;
+          if (appearance === 'system') {
+            appearance = matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+          }
+          if (appearance === 'light') {
+            var root = document.documentElement;
+            root.classList.remove('dark-theme');
+            root.classList.add('light-theme');
+            root.style.colorScheme = 'light';
+          }
+        } catch (error) {}
+      })();
+    </script>
     <title>erd-editor</title>
     <meta name="description" content="Entity-Relationship Diagram Editor App" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />

@@ -28,6 +28,7 @@ import {
 } from '@/atoms/modules/sidebar';
 import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
+import SidebarAppearance from '@/components/sidebar/sidebar-appearance/SidebarAppearance';
 import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
 import { focusSchemaItem } from '@/components/sidebar/sidebar-item/sidebarItemFocus';
 import SidebarTrash from '@/components/sidebar/sidebar-trash/SidebarTrash';
@@ -207,6 +208,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
             <div css={styles.footerTrash}>
               <SidebarTrash />
             </div>
+            <SidebarAppearance />
           </Flex>
         </nav>
       </Flex>

@@ -1,12 +1,12 @@
 import '@dineug/erd-editor';
 
 import type { ErdEditorElement } from '@dineug/erd-editor';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { useLayoutEffect, useRef } from 'react';
 
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
 import { useReplicationSchemaEntity } from '@/atoms/modules/sidebar';
-import { themeAtom } from '@/atoms/modules/theme';
+import { useApplyPresetTheme, useResolvedTheme } from '@/atoms/modules/theme';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
 import { bridge } from '@/utils/broadcastChannel';
 
@@ -19,7 +19,8 @@ interface EditorProps {
 const Editor: React.FC<EditorProps> = props => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ErdEditorElement | null>(null);
-  const [theme, setTheme] = useAtom(themeAtom);
+  const theme = useResolvedTheme();
+  const applyPresetTheme = useApplyPresetTheme();
   const replicationSchemaEntity = useReplicationSchemaEntity();
   const nickname = useAtomValue(nicknameStorageAtom);
   const nicknameRef = useRef(nickname);
@@ -58,13 +59,7 @@ const Editor: React.FC<EditorProps> = props => {
       );
 
     const handleChangePresetTheme = (event: Event) => {
-      const e = event as CustomEvent;
-
-      setTheme(draft => {
-        draft.appearance = e.detail.appearance;
-        draft.accentColor = e.detail.accentColor;
-        draft.grayColor = e.detail.grayColor;
-      });
+      applyPresetTheme((event as CustomEvent).detail);
     };
 
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
@@ -78,14 +73,19 @@ const Editor: React.FC<EditorProps> = props => {
       editor.destroy();
       editorRef.current = null;
     };
-  }, [setTheme, replicationSchemaEntity, props.entity.id, props.entity.value]);
+  }, [
+    applyPresetTheme,
+    replicationSchemaEntity,
+    props.entity.id,
+    props.entity.value,
+  ]);
 
   useLayoutEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
 
     editor.setPresetTheme({
-      appearance: theme.appearance as any,
+      appearance: theme.appearance,
       accentColor: theme.accentColor,
       grayColor: theme.grayColor as any,
     });

@@ -2,12 +2,12 @@ import '@dineug/erd-editor';
 
 import type { ErdEditorElement } from '@dineug/erd-editor';
 import { Flex, Text } from '@radix-ui/themes';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
-import { themeAtom } from '@/atoms/modules/theme';
+import { useApplyPresetTheme, useResolvedTheme } from '@/atoms/modules/theme';
 import LiveParticipants from '@/components/live-collaborative/live-participants/LiveParticipants';
 import {
   CollaborativeGuest,
@@ -45,7 +45,8 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ErdEditorElement | null>(null);
   const guestRef = useRef<CollaborativeGuest | null>(null);
-  const [theme, setTheme] = useAtom(themeAtom);
+  const theme = useResolvedTheme();
+  const applyPresetTheme = useApplyPresetTheme();
   const nickname = useAtomValue(nicknameStorageAtom);
   const nicknameRef = useRef(nickname);
   nicknameRef.current = nickname;
@@ -152,13 +153,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       );
 
       const handleChangePresetTheme = (event: Event) => {
-        const e = event as CustomEvent;
-
-        setTheme(draft => {
-          draft.appearance = e.detail.appearance;
-          draft.accentColor = e.detail.accentColor;
-          draft.grayColor = e.detail.grayColor;
-        });
+        applyPresetTheme((event as CustomEvent).detail);
       };
 
       editor.addEventListener('changePresetTheme', handleChangePresetTheme);
@@ -183,7 +178,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     } catch (error) {
       setError(error);
     }
-  }, [roomId, secretKey, setTheme]);
+  }, [roomId, secretKey, applyPresetTheme]);
 
   useEffect(() => {
     guestRef.current?.setNickname(nickname);
@@ -194,7 +189,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     if (!editor) return;
 
     editor.setPresetTheme({
-      appearance: theme.appearance as any,
+      appearance: theme.appearance,
       accentColor: theme.accentColor,
       grayColor: theme.grayColor as any,
     });

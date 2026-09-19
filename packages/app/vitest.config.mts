@@ -29,6 +29,7 @@ export default defineConfig({
         'src/utils/importFile.ts',
         'src/utils/reportError.ts',
         'src/utils/schemaList.ts',
+        'src/utils/theme.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
       thresholds: {
