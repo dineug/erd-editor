@@ -91,6 +91,9 @@ importers:
       jotai-immer:
         specifier: ^0.4.3
         version: 0.4.3(immer@11.1.17)(jotai@2.20.2(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))
+      lucide-react:
+        specifier: ^1.47.0
+        version: 1.47.0(react@19.2.8)
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
@@ -6076,6 +6079,11 @@ packages:
   lru-cache@6.0.0:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
+
+  lucide-react@1.47.0:
+    resolution: {integrity: sha512-o8C23aXpNQypRY73W7fW02EyvWJinEMXgKeGjFoKym0zj3Q73hD97A1IQps1g8C14HTGsOpZL0Am+xjfgFZAbg==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   lucide@1.35.0:
     resolution: {integrity: sha512-wsO/gl+aXKQ5SHuQB2t0O2b5t8Qw6q8I2qltdSh40UzGYrnG+5tDp+sHYbtN76ZCYHnus5q3xaAFjP9QLmj/1Q==}
@@ -13070,6 +13078,10 @@ snapshots:
     dependencies:
       yallist: 4.0.0
     optional: true
+
+  lucide-react@1.47.0(react@19.2.8):
+    dependencies:
+      react: 19.2.8
 
   lucide@1.35.0: {}
 
