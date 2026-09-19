@@ -1,24 +1,20 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
-import {
-  AlertDialog,
-  Button,
-  DropdownMenu,
-  Flex,
-  Quote,
-  Text,
-  TextField,
-} from '@radix-ui/themes';
+import { DropdownMenu, Flex, Text, TextField } from '@radix-ui/themes';
 import { isEmpty } from 'es-toolkit/compat';
 import { useAtom } from 'jotai';
+import { Copy, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import {
-  useDeleteSchemaEntity,
+  useDuplicateSchemaEntity,
+  useMoveSchemaEntityToTrash,
+  useNow,
   useUpdateSchemaEntity,
 } from '@/atoms/modules/schema';
 import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
 import SidebarCollaborative from '@/components/sidebar/sidebar-item/sidebar-collaborative/SidebarCollaborative';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
+import { formatRelativeTime } from '@/utils/schemaList';
 
 import * as styles from './SidebarItem.styles';
 
@@ -31,8 +27,10 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ entity }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const updateSchemaEntity = useUpdateSchemaEntity();
-  const deleteSchemaEntity = useDeleteSchemaEntity();
+  const duplicateSchemaEntity = useDuplicateSchemaEntity();
+  const moveSchemaEntityToTrash = useMoveSchemaEntityToTrash();
   const [schemaId, setSchemaId] = useAtom(selectedSchemaIdAtom);
+  const now = useNow();
   const selected = schemaId === entity.id;
 
   const handleStartEditing = () => {
@@ -72,6 +70,13 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ entity }) => {
     setName(event.target.value);
   };
 
+  const handleSelect = (event: React.MouseEvent<HTMLDivElement>) => {
+    // React bubbles clicks out of portals, so a menu item or dialog of this row
+    // would select it too, reopening a schema just moved to the trash.
+    if (!event.currentTarget.contains(event.target as Node)) return;
+    setSchemaId(entity.id);
+  };
+
   return (
     <Flex
       css={[
@@ -80,9 +85,14 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ entity }) => {
         styles.item,
       ]}
       align="center"
+      title={
+        isEditing
+          ? undefined
+          : `Edited ${formatRelativeTime(entity.updateAt, now)}`
+      }
       data-selected={selected && !isEditing}
       data-open-menu={open}
-      onClick={() => setSchemaId(entity.id)}
+      onClick={handleSelect}
     >
       {isEditing ? (
         <TextField.Root
@@ -106,41 +116,29 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ entity }) => {
 
       <SidebarCollaborative entity={entity} />
 
-      <AlertDialog.Root>
-        <DropdownMenu.Root open={open} onOpenChange={setOpen}>
-          <DropdownMenu.Trigger>
-            <DotsHorizontalIcon width="16" height="16" />
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content>
-            <DropdownMenu.Item onClick={handleStartEditing}>
-              Rename
-            </DropdownMenu.Item>
-            <AlertDialog.Trigger>
-              <DropdownMenu.Item color="red">Delete</DropdownMenu.Item>
-            </AlertDialog.Trigger>
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
-
-        <AlertDialog.Content style={{ maxWidth: 450 }}>
-          <AlertDialog.Title>Delete</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            Are you sure? <Quote>{entity.name}</Quote>
-          </AlertDialog.Description>
-
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">
-                Cancel
-              </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action onClick={() => deleteSchemaEntity(entity.id)}>
-              <Button variant="solid" color="red">
-                Delete
-              </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
+      <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+        <DropdownMenu.Trigger>
+          <DotsHorizontalIcon width="16" height="16" />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item onClick={handleStartEditing}>
+            <Pencil size={16} />
+            Rename
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onClick={() => duplicateSchemaEntity(entity.id)}>
+            <Copy size={16} />
+            Duplicate
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item
+            color="red"
+            onClick={() => moveSchemaEntityToTrash(entity.id)}
+          >
+            <Trash2 size={16} />
+            Move to trash
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
     </Flex>
   );
 };

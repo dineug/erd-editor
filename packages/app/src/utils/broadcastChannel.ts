@@ -20,12 +20,13 @@ type BridgeActionMap = {
     id: string;
     actions: any;
   };
+  /** The list entry of a schema another tab added, without its document. */
   [BridgeActionType.addSchemaEntity]: {
-    value: SchemaEntity;
+    value: Omit<SchemaEntity, 'value'>;
   };
   [BridgeActionType.updateSchemaEntity]: {
     id: string;
-    entityValue: Partial<{ name: string }>;
+    entityValue: Partial<Pick<SchemaEntity, 'name' | 'updateAt' | 'deletedAt'>>;
   };
   [BridgeActionType.deleteSchemaEntity]: {
     id: string;

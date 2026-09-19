@@ -24,11 +24,42 @@ export const addButton = css`
   width: 100%;
 `;
 
+export const scrollArea = css`
+  flex: 1 1 0;
+  min-height: 0;
+`;
+
 export const contentArea = css`
   width: 260px;
   min-width: 260px;
   padding: 0 12px;
-  height: 100%;
+`;
+
+export const group = css`
+  & + & {
+    margin-top: 16px;
+  }
+`;
+
+export const groupLabel = css`
+  padding: 0 var(--space-3);
+  margin-bottom: 4px;
+  font-weight: 500;
+`;
+
+export const noResults = css`
+  padding: 0 var(--space-3);
+`;
+
+export const footer = css`
+  padding: 12px 12px 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--gray-6);
+`;
+
+export const footerTrash = css`
+  flex: 1 1 auto;
+  min-width: 0;
 `;
 
 export const empty = css`

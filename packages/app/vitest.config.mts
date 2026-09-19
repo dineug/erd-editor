@@ -15,15 +15,17 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      // Scoped to the collaboration transport and the utilities it builds on —
-      // the React shell and the Dexie/worker plumbing are verified by hand
-      // (see AGENTS.md "Testing Requirements").
+      // Scoped to the collaboration transport, the schema service with its
+      // edit fingerprint, and the pure utilities they and the list build on —
+      // the React shell and the worker plumbing are checked by hand.
       include: [
         'src/services/collaborative/**/*.ts',
         'src/services/indexeddb/modules/collaborative/**/*.ts',
+        'src/services/indexeddb/modules/schema/**/*.ts',
         'src/utils/broadcastChannel.ts',
         'src/utils/crypto.ts',
         'src/utils/reportError.ts',
+        'src/utils/schemaList.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
       thresholds: {

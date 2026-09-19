@@ -1,6 +1,13 @@
-import { atom, useAtomValue, useSetAtom } from 'jotai';
+import { omit } from 'es-toolkit';
+import { atom, useAtomValue, useSetAtom, useStore } from 'jotai';
 import { atomWithImmer } from 'jotai-immer';
+import { DateTime } from 'luxon';
+import { useCallback, useMemo } from 'react';
 
+import {
+  collaborativeAtom,
+  useStopSession,
+} from '@/atoms/modules/collaborative';
 import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
 import { getAppDatabaseService } from '@/services/indexeddb';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
@@ -11,21 +18,59 @@ import {
   updateSchemaEntityAction,
 } from '@/utils/broadcastChannel';
 import { useSettleReported } from '@/utils/reportError';
+import { sortSchemaEntities } from '@/utils/schemaList';
 
-export const schemaEntitiesAtom = atomWithImmer<
-  Array<Omit<SchemaEntity, 'value'>>
->([]);
+type SchemaListEntity = Omit<SchemaEntity, 'value'>;
+type EntityValue = Partial<
+  Pick<SchemaEntity, 'name' | 'updateAt' | 'deletedAt'>
+>;
+
+const MINUTE = 60_000;
+
+const isTrashed = (entity: SchemaListEntity) =>
+  typeof entity.deletedAt === 'number';
+
+/** Every schema this tab knows of, trash included, in no particular order. */
+export const schemaEntitiesAtom = atomWithImmer<Array<SchemaListEntity>>([]);
+
+/** The sidebar list: schemas outside the trash, newest edit first. */
+export const schemaListAtom = atom(get =>
+  sortSchemaEntities(
+    get(schemaEntitiesAtom).filter(entity => !isTrashed(entity))
+  )
+);
+
+/** The trash, most recently deleted first. */
+export const trashedSchemaEntitiesAtom = atom(get =>
+  get(schemaEntitiesAtom)
+    .filter(isTrashed)
+    .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+);
+
+/**
+ * The time the list's date groups and relative labels are read against, taken
+ * again every minute and whenever the tab comes back into view, so an open tab
+ * rolls over at midnight.
+ */
+export const nowAtom = atom(Date.now());
+nowAtom.onMount = setNow => {
+  const tick = () => setNow(Date.now());
+  const timer = window.setInterval(tick, MINUTE);
+
+  tick();
+  document.addEventListener('visibilitychange', tick);
+
+  return () => {
+    window.clearInterval(timer);
+    document.removeEventListener('visibilitychange', tick);
+  };
+};
 
 const updateSchemaEntitiesAtom = atom(null, async (get, set) => {
   const service = getAppDatabaseService();
   if (!service) throw new Error('Database service is not initialized');
 
   const entities = await service.getSchemaEntities();
-  entities.sort((a, b) => {
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
-  });
   set(schemaEntitiesAtom, entities);
 });
 
@@ -36,16 +81,40 @@ const addSchemaEntityAtom = atom(
     if (!service) throw new Error('Database service is not initialized');
 
     const result = await service.addSchemaEntity(entityValue);
+    const entity = omit(result, ['value']);
 
     set(schemaEntitiesAtom, draft => {
-      draft.push(result);
+      draft.push(entity);
     });
     set(selectedSchemaIdAtom, result.id);
-    dispatch(addSchemaEntityAction({ value: result }));
+    dispatch(addSchemaEntityAction({ value: entity }));
 
     return result;
   }
 );
+
+const duplicateSchemaEntityAtom = atom(null, async (get, set, id: string) => {
+  const service = getAppDatabaseService();
+  if (!service) throw new Error('Database service is not initialized');
+
+  const source = get(schemaEntitiesAtom).find(item => item.id === id);
+  if (!source) return;
+
+  const result = await service.duplicateSchemaEntity(id, {
+    name: `${source.name} copy`,
+  });
+  if (!result) return;
+
+  const entity = omit(result, ['value']);
+
+  set(schemaEntitiesAtom, draft => {
+    draft.push(entity);
+  });
+  set(selectedSchemaIdAtom, result.id);
+  dispatch(addSchemaEntityAction({ value: entity }));
+
+  return result;
+});
 
 const updateSchemaEntityAtom = atom(
   null,
@@ -54,43 +123,71 @@ const updateSchemaEntityAtom = atom(
     set,
     payload: {
       id: string;
-      entityValue: Partial<{ name: string }>;
+      entityValue: EntityValue;
     }
   ) => {
     const service = getAppDatabaseService();
     if (!service) throw new Error('Database service is not initialized');
 
     const { id, entityValue } = payload;
-    const entities = get(schemaEntitiesAtom);
-    const prev = entities.find(item => item.id === id);
+    const prev = get(schemaEntitiesAtom).find(item => item.id === id);
+    const keys = Object.keys(entityValue) as Array<keyof EntityValue>;
 
-    const update = (newValue?: Partial<{ name: string }>) => {
+    set(schemaEntitiesAtom, draft => {
+      const value = draft.find(item => item.id === id);
+      if (value) Object.assign(value, entityValue);
+    });
+
+    // Puts back exactly the fields this update set, taking away the ones the
+    // entity did not have, and leaves the rest to whatever changed them since.
+    const rollback = () => {
       set(schemaEntitiesAtom, draft => {
         const value = draft.find(item => item.id === id);
-        if (!value || !newValue) return;
-        Object.assign(value, newValue);
+        if (!value || !prev) return;
+
+        for (const key of keys) {
+          key in prev
+            ? Object.assign(value, { [key]: prev[key] })
+            : Reflect.deleteProperty(value, key);
+        }
       });
     };
-
-    update(entityValue);
 
     try {
       const result = await service.updateSchemaEntity(id, entityValue);
 
-      result ? dispatch(updateSchemaEntityAction(payload)) : update(prev);
+      result ? dispatch(updateSchemaEntityAction(payload)) : rollback();
       return result;
     } catch (error) {
-      update(prev);
+      rollback();
       throw error;
     }
   }
 );
 
+const moveSchemaEntityToTrashAtom = atom(null, async (get, set, id: string) => {
+  if (get(selectedSchemaIdAtom) === id) {
+    set(selectedSchemaIdAtom, null);
+  }
+
+  return await set(updateSchemaEntityAtom, {
+    id,
+    entityValue: { deletedAt: Date.now() },
+  });
+});
+
+const restoreSchemaEntityAtom = atom(null, async (get, set, id: string) => {
+  return await set(updateSchemaEntityAtom, {
+    id,
+    entityValue: { deletedAt: null },
+  });
+});
+
 const deleteSchemaEntityAtom = atom(null, async (get, set, id: string) => {
   const service = getAppDatabaseService();
   if (!service) throw new Error('Database service is not initialized');
 
-  const prev = get(schemaEntitiesAtom);
+  const prev = get(schemaEntitiesAtom).find(item => item.id === id);
   const selectedSchemaId = get(selectedSchemaIdAtom);
 
   set(schemaEntitiesAtom, draft => {
@@ -106,19 +203,62 @@ const deleteSchemaEntityAtom = atom(null, async (get, set, id: string) => {
     }
     dispatch(deleteSchemaEntityAction({ id }));
   } catch (error) {
-    set(schemaEntitiesAtom, prev);
+    if (prev) {
+      set(schemaEntitiesAtom, draft => {
+        draft.push(prev);
+      });
+    }
     throw error;
   }
 });
 
-export const useSchemaEntities = () => useAtomValue(schemaEntitiesAtom);
+const emptyTrashAtom = atom(null, async (get, set) => {
+  const ids = get(trashedSchemaEntitiesAtom).map(entity => entity.id);
+  await Promise.all(ids.map(id => set(deleteSchemaEntityAtom, id)));
+});
+
+export const useSchemaEntities = () => useAtomValue(schemaListAtom);
+export const useTrashedSchemaEntities = () =>
+  useAtomValue(trashedSchemaEntitiesAtom);
 // Callers fire these and forget them, so a failure is reported rather than
 // rejected, after the actions that show a change early have rolled it back.
 export const useUpdateSchemaEntities = () =>
   useSettleReported(useSetAtom(updateSchemaEntitiesAtom));
 export const useAddSchemaEntity = () =>
   useSettleReported(useSetAtom(addSchemaEntityAtom));
+export const useDuplicateSchemaEntity = () =>
+  useSettleReported(useSetAtom(duplicateSchemaEntityAtom));
 export const useUpdateSchemaEntity = () =>
   useSettleReported(useSetAtom(updateSchemaEntityAtom));
+export const useRestoreSchemaEntity = () =>
+  useSettleReported(useSetAtom(restoreSchemaEntityAtom));
 export const useDeleteSchemaEntity = () =>
   useSettleReported(useSetAtom(deleteSchemaEntityAtom));
+export const useEmptyTrash = () =>
+  useSettleReported(useSetAtom(emptyTrashAtom));
+
+/** Moves a schema to the trash, ending its collaboration session if one is running. */
+export const useMoveSchemaEntityToTrash = () => {
+  const store = useStore();
+  const moveToTrash = useSetAtom(moveSchemaEntityToTrashAtom);
+  const stopSession = useStopSession();
+
+  return useSettleReported(
+    useCallback(
+      async (id: string) => {
+        const result = await moveToTrash(id);
+
+        if (result && store.get(collaborativeAtom)[id]) {
+          await stopSession(id);
+        }
+        return result;
+      },
+      [store, moveToTrash, stopSession]
+    )
+  );
+};
+
+export const useNow = () => {
+  const now = useAtomValue(nowAtom);
+  return useMemo(() => DateTime.fromMillis(now), [now]);
+};

@@ -23,6 +23,9 @@ const asyncSchemaEntityAtom = atom(async get => {
 
   const result = await service.getSchemaEntity(id);
   if (!result) throw new Error('not found schema entity');
+  if (typeof result.deletedAt === 'number') {
+    throw new Error('schema entity is in the trash');
+  }
 
   return result;
 });

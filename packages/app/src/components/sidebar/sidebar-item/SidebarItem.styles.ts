@@ -57,3 +57,14 @@ export const ellipsis = css`
   overflow: hidden;
   text-overflow: ellipsis;
 `;
+
+// A ghost button drawn as a list row, its icon where the names start; Radix
+// would pull it out by its padding and fit its height to the label.
+export const rowButton = css`
+  box-sizing: border-box;
+  height: 32px;
+  margin: 0;
+  padding: 0 var(--space-3);
+  gap: var(--space-2);
+  justify-content: flex-start;
+`;
