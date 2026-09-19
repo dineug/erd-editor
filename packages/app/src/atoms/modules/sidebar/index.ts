@@ -2,6 +2,7 @@ import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { loadable } from 'jotai/utils';
 
 import { collaborativeAtom } from '@/atoms/modules/collaborative';
+import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import { isLeader } from '@/services/collaborative/leader';
 import { getAppDatabaseService } from '@/services/indexeddb';
 import {
@@ -13,6 +14,9 @@ import {
 import { reportError, useSettleReported } from '@/utils/reportError';
 
 export const selectedSchemaIdAtom = atom<string | null>(null);
+
+/** Whether the sidebar shows the name field of a schema about to be added. */
+export const addingSchemaAtom = atom(false);
 
 const asyncSchemaEntityAtom = atom(async get => {
   const id = get(selectedSchemaIdAtom);
@@ -70,6 +74,14 @@ const replicationSchemaEntityAtom = atom(
   }
 );
 
+const startAddingSchemaAtom = atom(null, (get, set) => {
+  set(sidebarSashAtom, draft => {
+    draft.open = true;
+  });
+  set(addingSchemaAtom, true);
+});
+
 export const useSchemaEntity = () => useAtomValue(schemaEntityAtom);
+export const useStartAddingSchema = () => useSetAtom(startAddingSchemaAtom);
 export const useReplicationSchemaEntity = () =>
   useSettleReported(useSetAtom(replicationSchemaEntityAtom));

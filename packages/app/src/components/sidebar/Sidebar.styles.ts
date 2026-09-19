@@ -21,7 +21,13 @@ export const header = css`
 `;
 
 export const addButton = css`
-  width: 100%;
+  flex: 1 1 auto;
+`;
+
+// Radix pulls a ghost button out by its padding; here it keeps its 28px box.
+export const menuButton = css`
+  flex: none;
+  margin: 0;
 `;
 
 export const scrollArea = css`

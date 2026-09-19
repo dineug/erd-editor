@@ -1,14 +1,101 @@
 import { GitHubLogoIcon } from '@radix-ui/react-icons';
-import { Flex, Link, Text } from '@radix-ui/themes';
-import { lazy, Suspense } from 'react';
+import { Button, Flex, Link, Text } from '@radix-ui/themes';
+import { BookOpen, FileUp, Plus } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
 
-import { useSchemaEntity } from '@/atoms/modules/sidebar';
+import {
+  useOpenImportDialog,
+  useOpenSample,
+} from '@/atoms/modules/schema-import';
+import { useSchemaEntity, useStartAddingSchema } from '@/atoms/modules/sidebar';
 
 import * as styles from './Viewer.styles';
 
 interface ViewerProps {}
 
 const LazyEditor = lazy(() => import('@/components/viewer/editor/Editor'));
+
+const EmptyViewer: React.FC = () => {
+  const startAddingSchema = useStartAddingSchema();
+  const openImportDialog = useOpenImportDialog();
+  const openSample = useOpenSample();
+  const [openingSample, setOpeningSample] = useState(false);
+
+  const handleOpenSample = () => {
+    setOpeningSample(true);
+    openSample().finally(() => setOpeningSample(false));
+  };
+
+  return (
+    <Flex css={styles.empty} direction="column" align="center" gap="5">
+      <Flex direction="column" align="center" gap="1">
+        <Text size="5" weight="medium">
+          No schema open
+        </Text>
+        <Text size="2" color="gray">
+          Pick one from the sidebar, or start one here. You can also drop files
+          anywhere to import them.
+        </Text>
+      </Flex>
+      <Flex css={styles.actions} gap="2" justify="center" wrap="wrap">
+        <Button
+          size="2"
+          color="gray"
+          highContrast
+          onClick={() => startAddingSchema()}
+        >
+          <Plus size={16} />
+          New schema
+        </Button>
+        <Button
+          size="2"
+          variant="outline"
+          color="gray"
+          onClick={() => openImportDialog()}
+        >
+          <FileUp size={16} />
+          Import…
+        </Button>
+        <Button
+          size="2"
+          variant="outline"
+          color="gray"
+          loading={openingSample}
+          onClick={handleOpenSample}
+        >
+          <BookOpen size={16} />
+          Open sample
+        </Button>
+      </Flex>
+      <Flex gap="4" align="center">
+        <Link
+          href="https://docs.erd-editor.io/docs/category/guides"
+          target="_blank"
+          underline="hover"
+          size="2"
+          color="gray"
+        >
+          Editing Guide
+        </Link>
+        <span css={styles.separator} aria-hidden="true">
+          ·
+        </span>
+        <Link
+          href="https://github.com/dineug/erd-editor"
+          target="_blank"
+          underline="hover"
+          size="2"
+          color="gray"
+        >
+          <Flex align="center" gap="1">
+            <GitHubLogoIcon width="14" height="14" />
+            GitHub
+          </Flex>
+        </Link>
+      </Flex>
+    </Flex>
+  );
+};
 
 const Viewer: React.FC<ViewerProps> = () => {
   const value = useSchemaEntity();
@@ -17,29 +104,7 @@ const Viewer: React.FC<ViewerProps> = () => {
   return (
     <Flex css={styles.root} direction="column" align="center" justify="center">
       {value.state === 'hasError' ? (
-        <>
-          <Text css={styles.description} size="4">
-            Select or create a schema.
-          </Text>
-          <Link
-            css={styles.link}
-            href="https://docs.erd-editor.io/docs/category/guides"
-            target="_blank"
-            underline="hover"
-          >
-            Editing Guide
-          </Link>
-          <Link
-            href="https://github.com/dineug/erd-editor"
-            target="_blank"
-            underline="hover"
-          >
-            <Flex align="center">
-              <GitHubLogoIcon width="16" height="16" />
-              <Text css={styles.iconGap}>GitHub</Text>
-            </Flex>
-          </Link>
-        </>
+        <EmptyViewer />
       ) : value.state === 'loading' ? (
         loading
       ) : (

@@ -15,9 +15,9 @@ export type SchemaEntityPatch = Partial<
   Pick<SchemaEntity, 'name' | 'value' | 'updateAt' | 'deletedAt'>
 >;
 
-/** A schema to store under a new id; a copy brings its own value. */
+/** A schema to store under a new id; an import brings its own value and times. */
 export type NewSchemaEntity = Pick<SchemaEntity, 'name'> &
-  Partial<Pick<SchemaEntity, 'value'>>;
+  Partial<Pick<SchemaEntity, 'value' | 'createAt' | 'updateAt'>>;
 
 function createSchemaEntity(
   entityValue: NewSchemaEntity,
@@ -27,8 +27,8 @@ function createSchemaEntity(
     id: nanoid(),
     name: entityValue.name,
     value: entityValue.value ?? '',
-    createAt: now,
-    updateAt: now,
+    createAt: entityValue.createAt ?? now,
+    updateAt: entityValue.updateAt ?? now,
   };
 }
 
@@ -41,6 +41,20 @@ export async function addSchemaEntity(
 
   await table.add(entity);
   return entity;
+}
+
+export async function addSchemaEntities(
+  db: AppDatabase,
+  list: NewSchemaEntity[]
+): Promise<SchemaEntity[]> {
+  const table = db.table<SchemaEntity>('schemas');
+  const now = Date.now();
+  const entities = list.map(entityValue =>
+    createSchemaEntity(entityValue, now)
+  );
+
+  await table.bulkAdd(entities);
+  return entities;
 }
 
 /** Writes the given fields only; a caller that means an edit passes updateAt itself. */

@@ -1,6 +1,14 @@
-import { Button, Flex, ScrollArea, Text, TextField } from '@radix-ui/themes';
-import { useAtomValue } from 'jotai';
-import { Search } from 'lucide-react';
+import {
+  Button,
+  DropdownMenu,
+  Flex,
+  IconButton,
+  ScrollArea,
+  Text,
+  TextField,
+} from '@radix-ui/themes';
+import { useAtom, useAtomValue } from 'jotai';
+import { Download, EllipsisVertical, FileUp, Search } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 
 import { useUpdateCollaborativeSessionAll } from '@/atoms/modules/collaborative';
@@ -10,6 +18,11 @@ import {
   useSchemaEntities,
   useUpdateSchemaEntities,
 } from '@/atoms/modules/schema';
+import {
+  useExportBackup,
+  useOpenImportDialog,
+} from '@/atoms/modules/schema-import';
+import { addingSchemaAtom } from '@/atoms/modules/sidebar';
 import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
 import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
@@ -25,7 +38,9 @@ const Sidebar: React.FC<SidebarProps> = () => {
   const updateSchemaEntities = useUpdateSchemaEntities();
   const updateCollaborativeSessionAll = useUpdateCollaborativeSessionAll();
   const addSchemaEntity = useAddSchemaEntity();
-  const [isEditing, setIsEditing] = useState(false);
+  const openImportDialog = useOpenImportDialog();
+  const exportBackup = useExportBackup();
+  const [isEditing, setIsEditing] = useAtom(addingSchemaAtom);
   const [query, setQuery] = useState('');
   const sashState = useAtomValue(sidebarSashAtom);
   const groupId = useId();
@@ -69,14 +84,42 @@ const Sidebar: React.FC<SidebarProps> = () => {
         direction="column"
       >
         <Flex css={styles.header} direction="column" gap="2">
-          <Button
-            css={styles.addButton}
-            size="3"
-            variant="soft"
-            onClick={handleStartEditing}
-          >
-            New Schema
-          </Button>
+          <Flex align="center" gap="1">
+            <Button
+              css={styles.addButton}
+              size="3"
+              variant="soft"
+              onClick={handleStartEditing}
+            >
+              New Schema
+            </Button>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger>
+                <IconButton
+                  css={styles.menuButton}
+                  size="2"
+                  variant="ghost"
+                  color="gray"
+                  aria-label="Import and export"
+                >
+                  <EllipsisVertical size={16} />
+                </IconButton>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content align="end">
+                <DropdownMenu.Item onSelect={() => openImportDialog()}>
+                  <FileUp size={16} />
+                  Import…
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  disabled={!schemaEntities.length}
+                  onSelect={() => exportBackup()}
+                >
+                  <Download size={16} />
+                  Export backup
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+          </Flex>
           <TextField.Root
             type="search"
             value={query}

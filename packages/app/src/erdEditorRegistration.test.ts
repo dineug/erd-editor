@@ -20,6 +20,7 @@ const SIDE_EFFECT_IMPORT = /^import '@dineug\/erd-editor';$/m;
 const CALLERS = [
   'components/live-collaborative/LiveCollaborative.tsx',
   'components/viewer/editor/Editor.tsx',
+  'utils/convertSource.ts',
 ];
 
 function sourceFiles(dir: string): string[] {

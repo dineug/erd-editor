@@ -27,6 +27,9 @@ function createFakeDatabase() {
       rows.set(entity.id, structuredClone(entity));
       return entity.id;
     },
+    bulkAdd: async (entities: SchemaEntity[]) => {
+      entities.forEach(entity => rows.set(entity.id, structuredClone(entity)));
+    },
     update: async (id: string, changes: Partial<SchemaEntity>) => {
       const row = rows.get(id);
       if (!row) return 0;
@@ -177,6 +180,26 @@ function withForeignFields(
 ) {
   const json = JSON.parse(value);
   changes.forEach(change => change(json.collections));
+  return JSON.stringify(json);
+}
+
+/**
+ * The document as an import converts a source: laid out, but read before the
+ * engine's hooks place its connectors and set the flags read off its columns,
+ * so every relationship still holds what the parser created it with.
+ */
+function asConverted(value: string) {
+  const json = JSON.parse(value);
+  const unplaced = { x: 0, y: 0, direction: 8 };
+
+  for (const relationship of Object.values<any>(
+    json.collections.relationshipEntities
+  )) {
+    Object.assign(relationship.start, unplaced);
+    Object.assign(relationship.end, unplaced);
+    relationship.identification = false;
+    relationship.startRelationshipType = 2;
+  }
   return JSON.stringify(json);
 }
 
@@ -519,6 +542,24 @@ describe('SchemaService', () => {
       expect(rows.get(result.id)).toEqual(result);
     });
 
+    it('keeps a value and times it is given', async () => {
+      const value = valueOf([renameDatabase('shop')]);
+      const result = await service.add({
+        name: 'Blog',
+        value,
+        createAt: CREATED,
+        updateAt: CREATED + DAY,
+      });
+
+      expect(rows.get(result.id)).toEqual({
+        id: result.id,
+        name: 'Blog',
+        value,
+        createAt: CREATED,
+        updateAt: CREATED + DAY,
+      });
+    });
+
     it('lists schemas without their values', async () => {
       const row = seed(rows);
 
@@ -530,6 +571,91 @@ describe('SchemaService', () => {
           updateAt: CREATED,
         },
       ]);
+    });
+  });
+
+  describe('import', () => {
+    it('stores every schema under a new id, times kept or stamped now', async () => {
+      const value = valueOf([renameDatabase('shop')]);
+
+      const result = await service.import([
+        { name: 'Orders', value, createAt: CREATED, updateAt: CREATED + DAY },
+        { name: 'Blog' },
+      ]);
+
+      expect(result).toEqual([
+        {
+          id: expect.any(String),
+          name: 'Orders',
+          value,
+          createAt: CREATED,
+          updateAt: CREATED + DAY,
+        },
+        {
+          id: expect.any(String),
+          name: 'Blog',
+          value: '',
+          createAt: OPENED,
+          updateAt: OPENED,
+        },
+      ]);
+      expect(result[0].id).not.toBe(result[1].id);
+      expect(Array.from(rows.values())).toEqual(result);
+    });
+
+    it('derives on first open what a converted source left out, as no edit, and stamps the next edit', async () => {
+      const settled = await settledValueOf(usersAndOrders);
+      const converted = asConverted(settled);
+      expect(converted).not.toBe(settled);
+      const [imported] = await service.import([
+        { name: 'Orders', value: converted },
+      ]);
+
+      await service.get(imported.id);
+      await settle();
+      await service.replication(imported.id, zoomAndScroll);
+      await settle();
+
+      const saved = rows.get(imported.id)!;
+      expect(JSON.parse(saved.value).collections).toEqual(
+        JSON.parse(settled).collections
+      );
+      expect(saved.updateAt).toBe(imported.updateAt);
+      expect(postMessage).not.toHaveBeenCalled();
+
+      vi.setSystemTime(OPENED + DAY);
+      await service.replication(imported.id, [
+        { type: 'table.changeName', payload: { id: 'orders', value: 'sales' } },
+      ]);
+      await settle();
+
+      const edited = rows.get(imported.id)!;
+      expect(edited.updateAt).toBeGreaterThanOrEqual(OPENED + DAY);
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      expect(postMessage).toHaveBeenCalledWith(
+        updateSchemaEntityAction({
+          id: imported.id,
+          entityValue: { updateAt: edited.updateAt },
+        })
+      );
+    });
+
+    it('does not count opening an imported schema as an edit', async () => {
+      const [imported] = await service.import([
+        {
+          name: 'Orders',
+          value: valueOf([renameDatabase('shop')]),
+          createAt: CREATED,
+          updateAt: CREATED,
+        },
+      ]);
+
+      await service.get(imported.id);
+      await service.replication(imported.id, zoomAndScroll);
+      await settle();
+
+      expect(rows.get(imported.id)!.updateAt).toBe(CREATED);
+      expect(postMessage).not.toHaveBeenCalled();
     });
   });
 

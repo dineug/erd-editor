@@ -29,6 +29,10 @@ export class AppDatabaseService {
     return await this.#schemaService.add(entityValue);
   }
 
+  async importSchemaEntities(list: NewSchemaEntity[]) {
+    return await this.#schemaService.import(list);
+  }
+
   async duplicateSchemaEntity(
     id: string,
     entityValue: Pick<SchemaEntity, 'name'>
@@ -50,6 +54,10 @@ export class AppDatabaseService {
 
   async getSchemaEntities() {
     return await this.#schemaService.getAll();
+  }
+
+  async exportSchemaEntities() {
+    return await this.#schemaService.getAllWithValue();
   }
 
   async replicationSchemaEntity(id: string, actions: any) {

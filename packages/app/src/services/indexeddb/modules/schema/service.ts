@@ -6,6 +6,7 @@ import { mapValues, omit } from 'es-toolkit';
 
 import { type AppDatabase } from '@/services/indexeddb/appDatabaseService';
 import {
+  addSchemaEntities,
   addSchemaEntity,
   deleteSchemaEntity,
   getSchemaEntities,
@@ -140,6 +141,11 @@ export class SchemaService {
 
     this.createCache(result);
     return result;
+  }
+
+  /** Stores imported schemas as given, leaving their replicas to the first open. */
+  async import(list: NewSchemaEntity[]) {
+    return await addSchemaEntities(this.db, list);
   }
 
   /** A new schema holding the source's latest value, the replica's when it has one. */
