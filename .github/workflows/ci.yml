@@ -92,6 +92,27 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  # Its own runner, since its local relay takes the port r-html's suite also
+  # binds. The e2e script builds erd-editor first, which the dev server resolves
+  # to its dist/; the check job already typechecks these specs.
+  app-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-workspace
+      - name: Install Playwright browsers
+        run: pnpm --filter @dineug/erd-editor-app exec playwright install --with-deps chromium
+      - run: pnpm --filter @dineug/erd-editor-app e2e
+      - uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          name: app-playwright-report
+          path: packages/app/e2e/.report
+          # Same trap as the reports above: a dot-prefixed folder is skipped
+          # unless the action is told otherwise.
+          include-hidden-files: true
+          retention-days: 7
+
   # Its own job because it needs a browser download, and unlike the erd-editor
   # suite it needs no dist/ at all. It earns a CI slot because vCSSStyleSheet.ts
   # rests on two facts about a real engine happy-dom will never contradict.
