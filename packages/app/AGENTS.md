@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-20 -->
 
 # app
 
@@ -21,6 +21,7 @@
 | `src/utils/convertSource.ts` | SQL / DBML / AML / GraphQL → editor document, through a detached `<erd-editor>` |
 | `src/utils/reportError.ts` | `reportError`, `settleReported` / `useSettleReported` for fire-and-forget actions |
 | `src/utils/schemaList.ts` | Sort, search filter, date groups and relative times of the list (luxon) |
+| `src/utils/trash.ts` | The 30-day rule of the trash (`isTrashExpired`) and the days a trashed schema has left (luxon) |
 | `src/utils/backup.ts`, `src/utils/importFile.ts` | The backup format; what an imported file is, by extension or content |
 | `src/utils/theme.ts`, `index.html` | Theme preference parsing and resolving; the inline pre-paint script that mirrors it |
 | `src/utils/broadcastChannel.ts` | The cross-tab protocol: `dispatch` does not echo to the posting tab, `dispatchAll` does |
@@ -47,7 +48,7 @@
 - **`updateAt` moves on content edits only**, peer edits and imports included. `SchemaService` compares a fingerprint of `{ doc, collections, settings.databaseName }` on every replica `change`; zoom, scroll and other view state still persist `value` but no `updateAt`. The baseline is taken one microtask after `setInitialValue`, past the tombstone collection the engine queues on every load. A bump reaches the tabs as `updateSchemaEntity` over the service's own `BroadcastChannel('@@bridge')`.
 - **The fingerprint leaves out what the engine derives and rewrites after a load without an action**, or opening a document saved on another machine or build would count its first zoom as an edit: table and column `ui.width*` (`recalculateTableWidthHook`, this machine's fonts), relationship `start` / `end` `x`, `y`, `direction` (`relationshipSort`), `identification` and `startRelationshipType` (read off the end columns' key and not-null flags), and the foreign key bit of column `ui.keys` (kept in step with the relationships; that hook runs before the baseline today). Each has its source in the fingerprint. A new engine hook that writes persisted state after a load joins this list, with a case in `service.test.ts`.
 - **Nothing else bumps it**: `updateSchemaEntity` in `modules/schema` writes only the fields given, and rename, move to trash, restore, open and select never pass `updateAt`. The list sorts on it, so a stray bump reorders the sidebar.
-- **The trash is `deletedAt` on the entity** (not indexed, so no Dexie version bump). A trashed schema leaves the list, is deselected, has its collaboration session stopped, and cannot be opened. Only the user empties it: no automatic purge.
+- **The trash is `deletedAt` on the entity** (not indexed, so no Dexie version bump). A trashed schema leaves the list, is deselected, has its collaboration session stopped, and cannot be opened. **After 30 days in the trash it is deleted for good** (the user's call on 2026-09-20, replacing keep-until-emptied). `isTrashExpired` counts calendar days in the local zone, so a DST change moves the deadline by no hour, and a `deletedAt` ahead of the clock waits its full 30 days. Each open tab purges when its list loads, when it is shown again, and on the first `now` tick of a new day (`usePurgeExpiredTrash`, from `Sidebar`; no timer of its own), through `deleteSchemaEntityAtom` like Delete permanently, so IndexedDB, the worker's replica and the other tabs (`deleteSchemaEntity`) follow. Tabs purging one schema at once are harmless: deleting a missing row resolves, and a tab drops an id it no longer lists without a word. Between the deadline and the next purge the dialog says "deletes today".
 - **The selected schema lives in the URL as `/?schema=<id>`** — a query string, so the static host needs no SPA fallback. Selecting pushes an entry, deselecting replaces it, back and forward switch schemas, and an unknown or trashed id clears the parameter. The tab title is `<name> · erd-editor`, else `erd-editor`.
 - **A backup is `{ format: 'erd-editor-app-backup', version: 1, exportedAt, schemas: [{ name, value, createAt, updateAt }] }`**, trash excluded, recognised by `format` whatever the file is called. Importing one always adds new copies under new ids, keeping their times, and never overwrites. A time outside 0–8.64e15 (what a `Date` holds) skips its schema; one after the import is taken as the import time, so it cannot pin the schema to the top of the list.
 - **SQL, DBML, AML and GraphQL are converted before their schema is stored**: the app has no parser, so `convertSource` creates an `<erd-editor>` it never attaches, calls `setSchemaSQL` / `DBML` / `AML` / `GraphQL` and reads `value` at once. The layout is synchronous; connector anchors and relationship flags follow from hooks milliseconds later, so the stored value lacks them until the first open derives them, which the fingerprint leaves out and so saves without an `updateAt` (a `service.test.ts` case and `import-export.spec.ts` pin it). The element is destroyed in a `finally`. The module is imported on demand, since it brings in the whole editor. A source it throws on counts as an invalid file.
@@ -73,7 +74,7 @@
 
 ### Testing Requirements
 
-- `pnpm exec vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — happy-dom; `vitest.setup.ts` installs Node `webcrypto` for `crypto.subtle`. `test:coverage` gates the collaboration services, `indexeddb/modules/{collaborative,schema}` and the utilities in `include` of `vitest.config.mts` (`backup`, `broadcastChannel`, `convertSource`, `crypto`, `importFile`, `reportError`, `schemaList`, `theme`); a new pure module joins that list. The React shell and worker plumbing are left to e2e. `convertSource` is unit-tested against a stub element, since the real one needs a browser; its parsing is checked by `import-export.spec.ts`.
+- `pnpm exec vp run --filter @dineug/erd-editor-app --fail-if-no-match test` — happy-dom; `vitest.setup.ts` installs Node `webcrypto` for `crypto.subtle`. `test:coverage` gates the collaboration services, `indexeddb/modules/{collaborative,schema}` and the utilities in `include` of `vitest.config.mts` (`backup`, `broadcastChannel`, `convertSource`, `crypto`, `importFile`, `reportError`, `schemaList`, `theme`, `trash`); a new pure module joins that list. The React shell and worker plumbing are left to e2e. `convertSource` is unit-tested against a stub element, since the real one needs a browser; its parsing is checked by `import-export.spec.ts`.
 - The `schema` and `schema-import` atoms are tested through their hooks: `__test-utils__/renderHook.ts` mounts one under a jotai `Provider`, with `@/services/indexeddb`, `@sentry/react` and `@/utils/convertSource` mocked.
 - A test that expects a rejection to be handled needs a plain function where the rejection starts (`rejectSends` in `__test-utils__/room.ts`): a Vitest mock settles the promise it returns and so hides an unhandled one.
 - `pnpm --filter @dineug/erd-editor-app e2e` builds `erd-editor`, then runs one Chromium worker against `vp dev` (:5175) and the local relay (:5176, also r-html's e2e port — run them apart or set `E2E_RELAY_PORT`). WebRTC needs the two launch flags in `playwright.config.ts`. CI runs it in the `app-e2e` job; `e2e/README.md` lists what each spec covers.
@@ -96,6 +97,6 @@
 
 - `dexie` stays at `^3` on purpose: it owns users' stored documents, so a major upgrade is its own verified change.
 - `@trystero-p2p/nostr` / `mqtt` load dynamically; `ERD_EDITOR_NOSTR_RELAY_URLS` at build time points nostr at private relays.
-- `luxon` does all date work: the list's date groups, the "Edited …" and "Deleted …" times, the backup file name.
+- `luxon` does all date work: the list's date groups, the "Edited …" and "Deleted …" times, the trash's 30 days, the backup file name.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

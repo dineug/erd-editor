@@ -1,6 +1,6 @@
 import { expect, type Locator, test } from '@playwright/test';
 
-import { AppPage } from '../support/AppPage';
+import { AppPage, type StoredSchema } from '../support/AppPage';
 import { backupFile, dateGroupLabel, daysAgo } from '../support/backup';
 
 /** A row of the trash dialog, by the exact name, which "Deleted …" never is. */
@@ -8,6 +8,19 @@ function trashRow(trash: Locator, name: string) {
   return trash
     .getByRole('listitem')
     .filter({ has: trash.page().getByText(name, { exact: true }) });
+}
+
+/** A schema a past session moved to the trash, at local noon some days ago. */
+function trashedSchema(name: string, days: number, now: Date): StoredSchema {
+  const deletedAt = daysAgo(days, now);
+  return {
+    id: `trashed-${days}`,
+    name,
+    value: '',
+    createAt: deletedAt,
+    updateAt: deletedAt,
+    deletedAt,
+  };
 }
 
 test.describe('the schema list', () => {
@@ -94,7 +107,9 @@ test.describe('the schema list', () => {
     // The dialog is modal, so the sidebar behind it is read once it closes.
     let trash = await app.openTrash();
     await expect(trash.getByRole('listitem')).toHaveCount(3);
-    await expect(trashRow(trash, 'restored')).toContainText('Deleted just now');
+    await expect(trashRow(trash, 'restored')).toContainText(
+      'Deleted just now · deletes in 30 days'
+    );
 
     await trashRow(trash, 'restored')
       .getByRole('button', { name: 'Restore' })
@@ -140,5 +155,39 @@ test.describe('the schema list', () => {
       'kept',
       'restored',
     ]);
+  });
+
+  test('deletes a schema for good once it has been in the trash for 30 days', async ({
+    context,
+  }) => {
+    const now = new Date();
+    const app = await AppPage.open(context);
+    // The import has the app create its database, which the seed writes to.
+    await app.importFiles([
+      backupFile([{ name: 'kept', updateAt: now.getTime() }]),
+    ]);
+    await app.storeSchemas([
+      trashedSchema('expired', 31, now),
+      trashedSchema('expiring', 29, now),
+    ]);
+
+    await app.page.reload();
+
+    await expect
+      .poll(async () => (await app.storedSchemas()).map(({ name }) => name))
+      .not.toContain('expired');
+    expect((await app.storedSchemas()).map(({ name }) => name).sort()).toEqual([
+      'expiring',
+      'kept',
+    ]);
+    await expect(app.trashButton()).toHaveText('Trash (1)');
+    expect(await app.schemaNames()).toEqual(['kept']);
+
+    const trash = await app.openTrash();
+    await expect(trash).toContainText(
+      'Schemas in the trash are deleted permanently after 30 days.'
+    );
+    await expect(trash.getByRole('listitem')).toHaveCount(1);
+    await expect(trashRow(trash, 'expiring')).toContainText('deletes tomorrow');
   });
 });

@@ -21,6 +21,7 @@ import { useUpdateCollaborativeSessionAll } from '@/atoms/modules/collaborative'
 import {
   useAddSchemaEntity,
   useNow,
+  usePurgeExpiredTrash,
   useSchemaEntities,
   useUpdateSchemaEntities,
 } from '@/atoms/modules/schema';
@@ -102,6 +103,8 @@ const Sidebar: React.FC<SidebarProps> = () => {
     updateSchemaEntities();
     updateCollaborativeSessionAll();
   }, [updateSchemaEntities, updateCollaborativeSessionAll]);
+
+  usePurgeExpiredTrash();
 
   return (
     <>

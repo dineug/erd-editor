@@ -2,7 +2,7 @@ import { omit } from 'es-toolkit';
 import { atom, useAtomValue, useSetAtom, useStore } from 'jotai';
 import { atomWithImmer } from 'jotai-immer';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import {
   collaborativeAtom,
@@ -19,6 +19,7 @@ import {
 } from '@/utils/broadcastChannel';
 import { useSettleReported } from '@/utils/reportError';
 import { sortSchemaEntities } from '@/utils/schemaList';
+import { isTrashExpired } from '@/utils/trash';
 
 type SchemaListEntity = Omit<SchemaEntity, 'value'>;
 type EntityValue = Partial<
@@ -72,12 +73,14 @@ nowAtom.onMount = setNow => {
   };
 };
 
+/** Loads the list, then purges what it finds has sat in the trash for 30 days. */
 const updateSchemaEntitiesAtom = atom(null, async (get, set) => {
   const service = getAppDatabaseService();
   if (!service) throw new Error('Database service is not initialized');
 
   const entities = await service.getSchemaEntities();
   set(schemaEntitiesAtom, entities);
+  await set(purgeExpiredTrashAtom);
 });
 
 const addSchemaEntityAtom = atom(
@@ -223,6 +226,20 @@ const emptyTrashAtom = atom(null, async (get, set) => {
   await Promise.all(ids.map(id => set(deleteSchemaEntityAtom, id)));
 });
 
+/**
+ * Deletes for good what has sat in the trash for 30 days, the way Delete
+ * permanently does. Tabs purging at once are harmless: deleting a missing row
+ * resolves, and the other tabs drop an id they no longer list without a word.
+ */
+const purgeExpiredTrashAtom = atom(null, async (get, set) => {
+  const now = DateTime.now();
+  const ids = get(trashedSchemaEntitiesAtom)
+    .filter(entity => isTrashExpired(entity.deletedAt, now))
+    .map(entity => entity.id);
+
+  await Promise.all(ids.map(id => set(deleteSchemaEntityAtom, id)));
+});
+
 export const useSchemaEntities = () => useAtomValue(schemaListAtom);
 export const useSelectedSchemaListEntity = () =>
   useAtomValue(selectedSchemaListEntityAtom);
@@ -269,4 +286,29 @@ export const useMoveSchemaEntityToTrash = () => {
 export const useNow = () => {
   const now = useAtomValue(nowAtom);
   return useMemo(() => DateTime.fromMillis(now), [now]);
+};
+
+/**
+ * Purges the trash on the first tick of now in each new day and whenever the
+ * tab is shown again. Loading the list purges it first, so the run on mount,
+ * before the list is in, finds nothing.
+ */
+export const usePurgeExpiredTrash = () => {
+  const purge = useSettleReported(useSetAtom(purgeExpiredTrashAtom));
+  const today = useNow().toISODate();
+
+  useEffect(() => {
+    purge();
+  }, [today, purge]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') purge();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [purge]);
 };

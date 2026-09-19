@@ -17,6 +17,7 @@ import {
   useTrashedSchemaEntities,
 } from '@/atoms/modules/schema';
 import { formatRelativeTime } from '@/utils/schemaList';
+import { formatTrashDeletion, TRASH_RETENTION_DAYS } from '@/utils/trash';
 
 import * as styles from './SidebarTrash.styles';
 
@@ -76,7 +77,8 @@ const SidebarTrash: React.FC<SidebarTrashProps> = () => {
       <Dialog.Content style={{ maxWidth: 480 }}>
         <Dialog.Title>Trash</Dialog.Title>
         <Dialog.Description size="2" mb="4">
-          Schemas stay in the trash until you delete them.
+          Schemas in the trash are deleted permanently after{' '}
+          {TRASH_RETENTION_DAYS} days.
         </Dialog.Description>
 
         {entities.length ? (
@@ -97,8 +99,13 @@ const SidebarTrash: React.FC<SidebarTrashProps> = () => {
                           {entity.name}
                         </Text>
                         <Text size="1" color="gray">
-                          Deleted{' '}
-                          {formatRelativeTime(entity.deletedAt ?? 0, now)}
+                          <span css={styles.nowrap}>
+                            Deleted{' '}
+                            {formatRelativeTime(entity.deletedAt ?? 0, now)} ·
+                          </span>{' '}
+                          <span css={styles.nowrap}>
+                            {formatTrashDeletion(entity.deletedAt ?? 0, now)}
+                          </span>
                         </Text>
                       </Flex>
                       <Button

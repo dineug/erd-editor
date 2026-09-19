@@ -738,6 +738,17 @@ describe('SchemaService', () => {
 
       expect(rows.has(row.id)).toBe(false);
     });
+
+    it('takes the same schema from two tabs purging the trash at once', async () => {
+      const row = seed(rows, { deletedAt: CREATED });
+      await service.get(row.id);
+
+      await Promise.all([service.delete(row.id), service.delete(row.id)]);
+      await service.delete(row.id);
+
+      expect(rows.has(row.id)).toBe(false);
+      await expect(service.get(row.id)).resolves.toBeUndefined();
+    });
   });
 
   it('ignores replication for a schema that is not stored', async () => {

@@ -50,3 +50,8 @@ export const ellipsis = css`
   overflow: hidden;
   text-overflow: ellipsis;
 `;
+
+// Each half of a row's times stays whole, so a narrow row breaks at the dot.
+export const nowrap = css`
+  white-space: nowrap;
+`;

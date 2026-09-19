@@ -30,6 +30,7 @@ export default defineConfig({
         'src/utils/reportError.ts',
         'src/utils/schemaList.ts',
         'src/utils/theme.ts',
+        'src/utils/trash.ts',
       ],
       exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
       thresholds: {

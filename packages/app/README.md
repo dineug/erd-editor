@@ -10,7 +10,7 @@
 - Local-first support (autosaves to the browser).
 - Real-time synchronization between browser tabs.
 - A schema list ordered by last edit, grouped by date (Today, Yesterday, Previous 7 Days, …), with search.
-- A trash that keeps deleted schemas until you empty it.
+- A trash that deletes schemas permanently after 30 days, or when you empty it.
 - Backup export and import of every schema, plus import of `.erd`, `.vuerd`, `.json`, SQL, DBML, AML and GraphQL files, from the menu or by dropping them anywhere.
 - A link per schema: the open one is in the URL as `/?schema=<id>`.
 - Light, dark or system theme.

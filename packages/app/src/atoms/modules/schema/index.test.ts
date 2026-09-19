@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/react';
 import { createStore } from 'jotai';
+import { DateTime } from 'luxon';
+import { act } from 'react';
 import {
   afterEach,
   beforeEach,
@@ -19,6 +21,7 @@ import {
   useDuplicateSchemaEntity,
   useEmptyTrash,
   useMoveSchemaEntityToTrash,
+  usePurgeExpiredTrash,
   useRestoreSchemaEntity,
   useUpdateSchemaEntities,
   useUpdateSchemaEntity,
@@ -36,6 +39,8 @@ vi.mock('@sentry/react', () => ({ captureException: vi.fn() }));
 
 const CREATED = Date.UTC(2026, 8, 1, 9);
 const FAILURE = new Error('IndexedDB is gone');
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
 
 type Store = ReturnType<typeof createStore>;
 type ListEntity = Omit<SchemaEntity, 'value'>;
@@ -57,6 +62,13 @@ async function fail(): Promise<never> {
 function listed(store: Store, id = 'schema-1') {
   return store.get(schemaEntitiesAtom).find(item => item.id === id);
 }
+
+const trashedDaysAgo = (id: string, days: number) =>
+  entity({
+    id,
+    name: id,
+    deletedAt: DateTime.now().minus({ days }).toMillis(),
+  });
 
 describe('schema list actions', () => {
   let store: Store;
@@ -196,6 +208,127 @@ describe('schema list actions', () => {
       expect(postMessage).toHaveBeenCalledWith({
         type: 'addSchemaEntity',
         payload: { value: entity({ id: 'schema-2', name: 'Orders copy' }) },
+      });
+    });
+  });
+
+  describe('the 30-day trash purge', () => {
+    it('deletes what the loaded list has had in the trash for 30 days, and tells the other tabs', async () => {
+      const expired = trashedDaysAgo('expired', 31);
+      const expiring = trashedDaysAgo('expiring', 29);
+      const kept = entity({ id: 'kept' });
+      const deleted: string[] = [];
+      service.getSchemaEntities = async () => [expired, expiring, kept];
+      service.deleteSchemaEntity = async id => {
+        deleted.push(id);
+      };
+      const { result } = renderHook(useUpdateSchemaEntities, store);
+
+      await result.current();
+
+      expect(deleted).toEqual(['expired']);
+      expect(store.get(schemaEntitiesAtom)).toEqual([expiring, kept]);
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      expect(postMessage).toHaveBeenCalledWith({
+        type: 'deleteSchemaEntity',
+        payload: { id: 'expired' },
+      });
+    });
+
+    it('lets two tabs purge the same schema at once', async () => {
+      const expired = trashedDaysAgo('expired', 31);
+      const rows = new Map([[expired.id, expired]]);
+      service.getSchemaEntities = async () => Array.from(rows.values());
+      service.deleteSchemaEntity = async id => {
+        rows.delete(id);
+      };
+      const tabs = [store, createStore()];
+      const loads = tabs.map(tab => renderHook(useUpdateSchemaEntities, tab));
+
+      await Promise.all(loads.map(({ result }) => result.current()));
+
+      expect(rows.size).toBe(0);
+      for (const tab of tabs) {
+        expect(tab.get(schemaEntitiesAtom)).toEqual([]);
+      }
+      expect(postMessage).toHaveBeenCalledTimes(2);
+      expect(Sentry.captureException).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it('puts back a schema whose purge failed, and reports it', async () => {
+      const expired = trashedDaysAgo('expired', 31);
+      service.getSchemaEntities = async () => [expired];
+      service.deleteSchemaEntity = fail;
+      const { result } = renderHook(useUpdateSchemaEntities, store);
+
+      const reasons = await collectUnhandledRejections(async () => {
+        await expect(result.current()).resolves.toBeUndefined();
+      });
+
+      expect(reasons).toEqual([]);
+      expect(store.get(schemaEntitiesAtom)).toEqual([expired]);
+      expect(postMessage).not.toHaveBeenCalled();
+      expect(Sentry.captureException).toHaveBeenCalledWith(FAILURE);
+    });
+
+    describe('in a tab left open', () => {
+      const local = (month: number, day: number, hour: number, minute = 0) =>
+        DateTime.local(2026, month, day, hour, minute).toMillis();
+      const advance = (ms: number) =>
+        act(async () => {
+          await vi.advanceTimersByTimeAsync(ms);
+        });
+      let deleted: string[];
+
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+        vi.setSystemTime(local(9, 20, 12));
+        deleted = [];
+        service.deleteSchemaEntity = async id => {
+          deleted.push(id);
+        };
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('purges on the first tick of a new day, and on no tick before it', async () => {
+        // Due at 18:00 today, after the purge this tab last ran.
+        store.set(schemaEntitiesAtom, [
+          entity({ id: 'due', deletedAt: local(8, 21, 18) }),
+        ]);
+        const { unmount } = renderHook(usePurgeExpiredTrash, store);
+
+        await advance(12 * HOUR - MINUTE);
+        expect(deleted).toEqual([]);
+
+        await advance(MINUTE);
+        expect(deleted).toEqual(['due']);
+        expect(store.get(schemaEntitiesAtom)).toEqual([]);
+        unmount();
+      });
+
+      it('purges when the tab is shown again, not when it is hidden', async () => {
+        store.set(schemaEntitiesAtom, [
+          entity({ id: 'due', deletedAt: local(8, 21, 12, 30) }),
+        ]);
+        const { unmount } = renderHook(usePurgeExpiredTrash, store);
+        const visibility = vi.spyOn(document, 'visibilityState', 'get');
+        const changeVisibility = (state: DocumentVisibilityState) =>
+          act(() => {
+            visibility.mockReturnValue(state);
+            document.dispatchEvent(new Event('visibilitychange'));
+          });
+
+        await advance(HOUR);
+        changeVisibility('hidden');
+        expect(deleted).toEqual([]);
+
+        changeVisibility('visible');
+        expect(deleted).toEqual(['due']);
+        unmount();
       });
     });
   });

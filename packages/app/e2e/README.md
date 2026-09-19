@@ -32,7 +32,8 @@ here at all.
 `updateAt` values, since an import keeps the times it is given, and works out the
 expected date groups with `Date`, apart from the app's luxon, from the test's own
 clock. `AppPage` reads IndexedDB directly to know a change has been stored before
-asserting that the list did not move.
+asserting that the list did not move, and writes to it to seed a trash an earlier
+session left, since a backup carries no `deletedAt`.
 
 **A reopened shadow root.** `<erd-editor>` is defined with `shadow: 'closed'`.
 `support/AppPage.ts` patches `Element.prototype.attachShadow` through
@@ -47,7 +48,7 @@ Production code is untouched.
 | `leadership.spec.ts`    | Cross-tab session visibility, a follower's edits relayed by the leader, lock handover  |
 | `live-errors.spec.ts`   | Malformed invite links and the "host not found" path                                   |
 | `participants.spec.ts`  | Who is in, and nicknames, on both sides, across tabs and a handover; cursor labels     |
-| `schema-list.spec.ts`   | An edit moves a schema to the top while zoom and rename do not; date groups; the trash |
+| `schema-list.spec.ts`   | An edit moves a schema up while zoom and rename do not; date groups; the 30-day trash  |
 | `schema-url.spec.ts`    | `?schema=` follows the selection, survives a reload, back and forward; bad ids cleared |
 | `import-export.spec.ts` | Sources stored parsed, kept on reload, opened without a bump; a backup round trip      |
 | `theme.spec.ts`         | Dark by default on a light system, the System option, no dark flash on reload          |

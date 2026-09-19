@@ -81,6 +81,34 @@ async function storedSchemas(page: Page): Promise<StoredSchema[]> {
 }
 
 /**
+ * Writes rows straight into IndexedDB, as an earlier session would have left
+ * them. The app has to have created its database first; the guard keeps this
+ * from creating an empty one in its place.
+ */
+async function storeSchemas(page: Page, schemas: StoredSchema[]) {
+  await page.evaluate(
+    schemas =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('erd-editor-app');
+        request.onupgradeneeded = () => request.transaction?.abort();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction('schemas', 'readwrite');
+          const store = transaction.objectStore('schemas');
+          schemas.forEach(schema => store.put(schema));
+          transaction.onerror = () => reject(transaction.error);
+          transaction.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+        };
+      }),
+    schemas
+  );
+}
+
+/**
  * The participants list under scope, a row per peer: its name, then "(you)"
  * and "Host" where the row shows them, so a whole list compares in one go.
  */
@@ -250,6 +278,10 @@ export class AppPage {
 
   async storedSchemas() {
     return await storedSchemas(this.page);
+  }
+
+  async storeSchemas(schemas: StoredSchema[]) {
+    await storeSchemas(this.page, schemas);
   }
 
   /** The one stored schema of that name. */
