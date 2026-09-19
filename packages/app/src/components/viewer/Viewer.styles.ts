@@ -8,14 +8,18 @@ export const root = css`
   background-color: var(--gray-3);
 `;
 
-export const iconGap = css`
-  margin-left: 8px;
+export const empty = css`
+  max-width: 100%;
+  padding: 0 16px;
+  text-align: center;
 `;
 
-export const description = css`
-  margin-bottom: 8px;
+export const actions = css`
+  max-width: 100%;
 `;
 
-export const link = css`
-  margin-bottom: 4px;
+export const separator = css`
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-2);
+  color: var(--gray-9);
 `;

@@ -104,5 +104,12 @@ registerRoute(
   'GET'
 );
 
-self.skipWaiting();
+// The new worker waits for the prompt in registerSW.ts; workbox-window's
+// messageSkipWaiting() is what sends this.
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 clientsClaim();

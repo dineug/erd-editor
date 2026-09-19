@@ -26,9 +26,9 @@ const SidebarAddItem: React.FC<SidebarAddItemProps> = props => {
       return;
     }
 
-    if (event.code === 'Enter') {
+    if (event.key === 'Enter') {
       handleStopEditing();
-    } else if (event.code === 'Escape') {
+    } else if (event.key === 'Escape') {
       handleCancelEditing();
     }
   };
@@ -38,11 +38,12 @@ const SidebarAddItem: React.FC<SidebarAddItemProps> = props => {
   };
 
   return (
-    <Flex css={[itemStyles.inputPadding, itemStyles.item]} align="center">
+    <Flex css={itemStyles.item} align="center">
       <TextField.Root
-        css={itemStyles.text}
+        css={[itemStyles.text, itemStyles.input]}
         value={name}
         placeholder="schema name"
+        aria-label="New schema name"
         autoFocus
         onChange={handleChange}
         onBlur={handleStopEditing}

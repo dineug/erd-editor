@@ -12,6 +12,14 @@ export {
 } from '@/services/collaborative/host';
 export { isLeader, requestLeadership } from '@/services/collaborative/leader';
 export {
+  NICKNAME_ANNOUNCE_DELAY,
+  NICKNAME_MAX_LENGTH,
+  type Participant,
+  participantName,
+  readNickname,
+  readParticipants,
+} from '@/services/collaborative/participants';
+export {
   type CollaborativeRoom,
   type HelloPayload,
   joinCollaborativeRoom,

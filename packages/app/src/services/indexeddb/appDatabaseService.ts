@@ -1,7 +1,11 @@
 import Dexie, { Table } from 'dexie';
 
 import { CollaborativeService } from '@/services/indexeddb/modules/collaborative/service';
-import { SchemaEntity } from '@/services/indexeddb/modules/schema';
+import {
+  NewSchemaEntity,
+  SchemaEntity,
+  SchemaEntityPatch,
+} from '@/services/indexeddb/modules/schema';
 import { SchemaService } from '@/services/indexeddb/modules/schema/service';
 
 export class AppDatabase extends Dexie {
@@ -21,14 +25,22 @@ export class AppDatabaseService {
   #schemaService = new SchemaService(this.#db);
   #collaborativeService = new CollaborativeService();
 
-  async addSchemaEntity(entityValue: Pick<SchemaEntity, 'name'>) {
+  async addSchemaEntity(entityValue: NewSchemaEntity) {
     return await this.#schemaService.add(entityValue);
   }
 
-  async updateSchemaEntity(
+  async importSchemaEntities(list: NewSchemaEntity[]) {
+    return await this.#schemaService.import(list);
+  }
+
+  async duplicateSchemaEntity(
     id: string,
-    entityValue: Partial<Pick<SchemaEntity, 'value' | 'name'>>
+    entityValue: Pick<SchemaEntity, 'name'>
   ) {
+    return await this.#schemaService.duplicate(id, entityValue);
+  }
+
+  async updateSchemaEntity(id: string, entityValue: SchemaEntityPatch) {
     return await this.#schemaService.update(id, entityValue);
   }
 
@@ -42,6 +54,10 @@ export class AppDatabaseService {
 
   async getSchemaEntities() {
     return await this.#schemaService.getAll();
+  }
+
+  async exportSchemaEntities() {
+    return await this.#schemaService.getAllWithValue();
   }
 
   async replicationSchemaEntity(id: string, actions: any) {

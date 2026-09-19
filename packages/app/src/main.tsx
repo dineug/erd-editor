@@ -20,7 +20,7 @@ if (import.meta.env.MODE === 'production') {
   Sentry.init({
     dsn: 'https://77d8b1a5cdead25c1dea4978fba38a70@o245231.ingest.us.sentry.io/4506887372668928',
     integrations: [Sentry.browserTracingIntegration()],
-    tracesSampleRate: 1.0,
+    tracesSampleRate: 0.1,
   });
 }
 

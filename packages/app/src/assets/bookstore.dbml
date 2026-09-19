@@ -1,0 +1,150 @@
+// Hand-written dbdiagram.io style: bare identifiers, inline refs, an Enum, a
+// composite primary key stated as an index, and the elements the importer reads
+// and discards (Project, TableGroup, a sticky Note).
+
+Project bookstore {
+  database_type: 'PostgreSQL'
+  Note: 'A small store, written the way dbdiagram.io writes one.'
+}
+
+Enum order_status {
+  pending [note: 'Awaiting payment']
+  paid
+  shipped
+  cancelled
+}
+
+Enum member_tier {
+  bronze
+  silver
+  gold
+}
+
+Table authors as A {
+  id int [pk, increment]
+  name varchar(120) [not null]
+  born date
+  homepage varchar(255)
+  bio text [note: 'Free-form, shown on the author page']
+
+  Note: 'People who wrote something we sell'
+
+  Indexes {
+    name [name: 'idx_authors_name']
+  }
+}
+
+Table publishers {
+  id int [pk, increment]
+  name varchar(120) [not null, unique]
+  country_code char(2) [not null, default: 'KR']
+}
+
+Table books {
+  id int [pk, increment]
+  publisher_id int [not null, ref: > publishers.id]
+  isbn char(13) [not null, unique, note: 'ISBN-13, no dashes']
+  title varchar(255) [not null]
+  subtitle varchar(255)
+  price decimal(10,2) [not null, default: 0]
+  published_on date
+  page_count smallint
+  in_print boolean [not null, default: true]
+  created_at timestamp [not null, default: `now()`]
+
+  Note: '''
+    One row per edition.
+    A reprint with a new ISBN is a new row.
+  '''
+
+  Indexes {
+    (publisher_id, published_on) [name: 'idx_books_publisher_published']
+    title
+  }
+}
+
+// The join table between books and authors, written out rather than left to a
+// `<>` ref, so the importer has both spellings to read in one file.
+Table book_authors {
+  book_id int [ref: > books.id]
+  author_id int [ref: > A.id]
+  position smallint [not null, default: 1, note: 'Order on the cover']
+
+  Indexes {
+    (book_id, author_id) [pk]
+  }
+}
+
+Table members {
+  id int [pk, increment]
+  email varchar(255) [not null, unique]
+  display_name varchar(60) [not null]
+  tier member_tier [not null, default: 'bronze']
+  joined_at timestamp [not null, default: `now()`]
+  newsletter boolean [not null, default: false]
+}
+
+Table member_profiles {
+  member_id int [pk, ref: - members.id]
+  phone varchar(30)
+  address varchar(255)
+  birthday date
+}
+
+Table orders {
+  id int [pk, increment]
+  member_id int [not null]
+  status order_status [not null, default: 'pending']
+  total decimal(10,2) [not null, default: 0]
+  placed_at timestamp [not null, default: `now()`]
+  note text
+
+  Indexes {
+    (member_id, placed_at) [name: 'idx_orders_member_placed']
+    status
+  }
+}
+
+Table order_lines {
+  order_id int
+  line_no smallint
+  book_id int [not null, ref: > books.id]
+  quantity smallint [not null, default: 1]
+  unit_price decimal(10,2) [not null]
+
+  Indexes {
+    (order_id, line_no) [pk]
+  }
+}
+
+Table reviews {
+  id int [pk, increment]
+  book_id int [not null, ref: > books.id]
+  member_id int [not null, ref: > members.id]
+  rating smallint [not null, note: '1 to 5']
+  body text
+  posted_at timestamp [not null, default: `now()`]
+
+  Indexes {
+    (book_id, member_id) [unique, name: 'uq_reviews_book_member']
+  }
+}
+
+Ref: members.id < orders.member_id
+Ref: orders.id < order_lines.order_id
+
+TableGroup catalog {
+  authors
+  publishers
+  books
+  book_authors
+}
+
+TableGroup sales {
+  orders
+  order_lines
+}
+
+Note release_note {
+  'Sticky notes are read and discarded — the diagram has no place to put one.'
+}

@@ -7,9 +7,12 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { collectUnhandledRejections } from '@/__test-utils__/rejections';
+import { createFakeRoom, rejectSends } from '@/__test-utils__/room';
 import {
   joinCollaborativeRoom,
   Role,
+  sendQuietly,
   STRATEGIES,
   Strategy,
 } from '@/services/collaborative/room';
@@ -33,9 +36,11 @@ const mqttJoinRoom = vi.fn((config: any, roomId: string) => createRoom());
 
 vi.mock('@trystero-p2p/nostr', () => ({
   joinRoom: (config: any, roomId: string) => nostrJoinRoom(config, roomId),
+  selfId: 'self-nostr',
 }));
 vi.mock('@trystero-p2p/mqtt', () => ({
   joinRoom: (config: any, roomId: string) => mqttJoinRoom(config, roomId),
+  selfId: 'self-mqtt',
 }));
 
 /** Room state is module-level, so every test works in its own room. */
@@ -84,7 +89,7 @@ describe('joinCollaborativeRoom', () => {
     room.leave();
   });
 
-  it('registers the hello/schema/dispatch actions on both sides of a session', async () => {
+  it('registers the hello/schema/dispatch/participants actions on both sides of a session', async () => {
     const room = await joinCollaborativeRoom(
       Strategy.nostr,
       nextRoomId(),
@@ -95,8 +100,27 @@ describe('joinCollaborativeRoom', () => {
       'hello',
       'schema',
       'dispatch',
+      'participants',
     ]);
     room.leave();
+  });
+
+  it('carries the peer id trystero gives this page on that relay', async () => {
+    const nostr = await joinCollaborativeRoom(
+      Strategy.nostr,
+      nextRoomId(),
+      'secret'
+    );
+    const mqtt = await joinCollaborativeRoom(
+      Strategy.mqtt,
+      nextRoomId(),
+      'secret'
+    );
+
+    expect(nostr.selfId).toBe('self-nostr');
+    expect(mqtt.selfId).toBe('self-mqtt');
+    nostr.leave();
+    mqtt.leave();
   });
 
   it("keeps every action name inside trystero's 32-byte limit", async () => {
@@ -124,6 +148,7 @@ describe('joinCollaborativeRoom', () => {
     room.hello.onMessage = vi.fn();
     room.schema.onMessage = vi.fn();
     room.dispatch.onMessage = vi.fn();
+    room.participants.onMessage = vi.fn();
 
     room.leave();
 
@@ -132,6 +157,7 @@ describe('joinCollaborativeRoom', () => {
     expect(room.hello.onMessage).toBeNull();
     expect(room.schema.onMessage).toBeNull();
     expect(room.dispatch.onMessage).toBeNull();
+    expect(room.participants.onMessage).toBeNull();
     expect(leave).toHaveBeenCalledTimes(1);
   });
 
@@ -266,5 +292,37 @@ describe('joinCollaborativeRoom', () => {
 
       expect(strategies).toEqual([Strategy.nostr]);
     });
+  });
+});
+
+describe('sendQuietly', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('hands the payload and the options to the action', () => {
+    const { hello } = createFakeRoom(Strategy.nostr);
+
+    sendQuietly(hello, { role: Role.host }, { target: 'peer-1' });
+
+    expect(hello.send).toHaveBeenCalledWith(
+      { role: Role.host },
+      { target: 'peer-1' }
+    );
+  });
+
+  it('logs a send that fails as its data channel closes, instead of leaving it unhandled', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const closed = new Error('data channel closed');
+    const { hello } = createFakeRoom(Strategy.nostr);
+    const calls = rejectSends(hello, closed);
+
+    const unhandled = await collectUnhandledRejections(async () => {
+      sendQuietly(hello, { role: Role.host });
+    });
+
+    expect(calls).toHaveBeenCalledWith({ role: Role.host });
+    expect(unhandled).toEqual([]);
+    expect(debug).toHaveBeenCalledWith(expect.any(String), closed);
   });
 });

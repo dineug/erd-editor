@@ -1,16 +1,22 @@
 import { Global } from '@emotion/react';
 import { Theme } from '@radix-ui/themes';
-import { useAtom } from 'jotai';
+import { useLayoutEffect } from 'react';
 import { Outlet } from 'react-router';
 
-import { themeAtom } from '@/atoms/modules/theme';
+import { useResolvedTheme } from '@/atoms/modules/theme';
+import AppUpdatePrompt from '@/components/app-update-prompt/AppUpdatePrompt';
+import { applyDocumentAppearance } from '@/utils/theme';
 
 import * as styles from './Root.styles';
 
 interface RootProps {}
 
 const Root: React.FC<RootProps> = () => {
-  const [theme] = useAtom(themeAtom);
+  const theme = useResolvedTheme();
+
+  useLayoutEffect(() => {
+    applyDocumentAppearance(document.documentElement, theme.appearance);
+  }, [theme.appearance]);
 
   return (
     <>
@@ -25,6 +31,7 @@ const Root: React.FC<RootProps> = () => {
         panelBackground="translucent"
       >
         <Outlet />
+        <AppUpdatePrompt />
       </Theme>
     </>
   );

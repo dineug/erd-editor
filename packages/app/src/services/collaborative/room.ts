@@ -1,4 +1,4 @@
-import type { MessageAction, Room } from '@trystero-p2p/nostr';
+import type { DataPayload, MessageAction, Room } from '@trystero-p2p/nostr';
 
 import { ValuesType } from '@/internal-types';
 import { EncryptJson } from '@/utils/crypto';
@@ -14,6 +14,7 @@ const ActionName = {
   hello: 'hello',
   schema: 'schema',
   dispatch: 'dispatch',
+  participants: 'participants',
 } as const;
 
 export const Strategy = {
@@ -28,8 +29,14 @@ export const Role = {
 } as const;
 export type Role = ValuesType<typeof Role>;
 
+/**
+ * A peer that sends a nickname, even an empty one, also reads the participants
+ * action. A build from before the list sends the role alone and is never sent
+ * one, since trystero keeps a message for an unregistered action forever.
+ */
 export type HelloPayload = {
   role: Role;
+  nickname?: string;
 };
 
 /**
@@ -60,21 +67,43 @@ type JoinRoom = (
   roomId: string
 ) => Room;
 
-const joinRoomLoaders: Record<Strategy, () => Promise<JoinRoom>> = {
-  [Strategy.nostr]: () =>
-    import('@trystero-p2p/nostr').then(module => module.joinRoom),
-  [Strategy.mqtt]: () =>
-    import('@trystero-p2p/mqtt').then(module => module.joinRoom),
+type Relay = {
+  joinRoom: JoinRoom;
+  selfId: string;
+};
+
+const relayLoaders: Record<Strategy, () => Promise<Relay>> = {
+  [Strategy.nostr]: () => import('@trystero-p2p/nostr'),
+  [Strategy.mqtt]: () => import('@trystero-p2p/mqtt'),
 };
 
 export type CollaborativeRoom = {
   strategy: Strategy;
+  /**
+   * The peer id the others see for this page. Both relays share one trystero
+   * core, so it is the same over nostr and mqtt.
+   */
+  selfId: string;
   room: Room;
   hello: MessageAction<HelloPayload>;
   schema: MessageAction<EncryptJson>;
   dispatch: MessageAction<EncryptJson>;
+  participants: MessageAction<EncryptJson>;
   leave: () => void;
 };
+
+/**
+ * Sends without waiting on delivery. A send rejects when a data channel closes
+ * under it, as one does while its peer leaves, and nobody is left to retry for.
+ */
+export function sendQuietly<T extends DataPayload>(
+  action: MessageAction<T>,
+  ...args: Parameters<MessageAction<T>['send']>
+) {
+  action.send(...args).catch(error => {
+    console.debug('A collaboration message was not delivered', error);
+  });
+}
 
 type OpenRoom = Omit<CollaborativeRoom, 'strategy' | 'leave'>;
 
@@ -97,7 +126,7 @@ async function open(
   roomId: string,
   secretKey: string
 ): Promise<OpenRoom> {
-  const joinRoom = await joinRoomLoaders[strategy]();
+  const { joinRoom, selfId } = await relayLoaders[strategy]();
   const room = joinRoom(
     {
       appId: APP_ID,
@@ -110,10 +139,12 @@ async function open(
   );
 
   return {
+    selfId,
     room,
     hello: room.makeAction<HelloPayload>(ActionName.hello),
     schema: room.makeAction<EncryptJson>(ActionName.schema),
     dispatch: room.makeAction<EncryptJson>(ActionName.dispatch),
+    participants: room.makeAction<EncryptJson>(ActionName.participants),
   };
 }
 
@@ -123,6 +154,7 @@ function detach(openRoom: OpenRoom) {
   openRoom.hello.onMessage = null;
   openRoom.schema.onMessage = null;
   openRoom.dispatch.onMessage = null;
+  openRoom.participants.onMessage = null;
 }
 
 /**

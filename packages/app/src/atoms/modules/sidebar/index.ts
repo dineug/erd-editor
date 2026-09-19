@@ -2,6 +2,7 @@ import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { loadable } from 'jotai/utils';
 
 import { collaborativeAtom } from '@/atoms/modules/collaborative';
+import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import { isLeader } from '@/services/collaborative/leader';
 import { getAppDatabaseService } from '@/services/indexeddb';
 import {
@@ -10,8 +11,12 @@ import {
   dispatch,
   replicationSchemaEntityAction,
 } from '@/utils/broadcastChannel';
+import { reportError, useSettleReported } from '@/utils/reportError';
 
 export const selectedSchemaIdAtom = atom<string | null>(null);
+
+/** Whether the sidebar shows the name field of a schema about to be added. */
+export const addingSchemaAtom = atom(false);
 
 const asyncSchemaEntityAtom = atom(async get => {
   const id = get(selectedSchemaIdAtom);
@@ -22,6 +27,9 @@ const asyncSchemaEntityAtom = atom(async get => {
 
   const result = await service.getSchemaEntity(id);
   if (!result) throw new Error('not found schema entity');
+  if (typeof result.deletedAt === 'number') {
+    throw new Error('schema entity is in the trash');
+  }
 
   return result;
 });
@@ -44,7 +52,7 @@ const replicationSchemaEntityAtom = atom(
     const service = getAppDatabaseService();
     if (!service) throw new Error('Database service is not initialized');
 
-    service.replicationSchemaEntity(id, actions);
+    service.replicationSchemaEntity(id, actions).catch(reportError);
     dispatch(
       replicationSchemaEntityAction({
         id,
@@ -66,6 +74,14 @@ const replicationSchemaEntityAtom = atom(
   }
 );
 
+const startAddingSchemaAtom = atom(null, (get, set) => {
+  set(sidebarSashAtom, draft => {
+    draft.open = true;
+  });
+  set(addingSchemaAtom, true);
+});
+
 export const useSchemaEntity = () => useAtomValue(schemaEntityAtom);
+export const useStartAddingSchema = () => useSetAtom(startAddingSchemaAtom);
 export const useReplicationSchemaEntity = () =>
-  useSetAtom(replicationSchemaEntityAtom);
+  useSettleReported(useSetAtom(replicationSchemaEntityAtom));

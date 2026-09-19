@@ -1,5 +1,7 @@
 import { css } from '@emotion/react';
 
+import { rowButton } from '@/components/sidebar/sidebar-item/SidebarItem.styles';
+
 export const root = css`
   width: 260px;
   min-width: 260px;
@@ -17,18 +19,56 @@ export const hide = css`
 
 export const header = css`
   padding: 0 12px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 `;
 
 export const addButton = css`
-  width: 100%;
+  ${rowButton};
+  flex: 1 1 auto;
+`;
+
+// Radix pulls a ghost button out by its padding; here it keeps its 28px box.
+export const menuButton = css`
+  flex: none;
+  margin: 0;
+`;
+
+export const scrollArea = css`
+  flex: 1 1 0;
+  min-height: 0;
 `;
 
 export const contentArea = css`
   width: 260px;
   min-width: 260px;
   padding: 0 12px;
-  height: 100%;
+`;
+
+export const group = css`
+  & + & {
+    margin-top: 16px;
+  }
+`;
+
+export const groupLabel = css`
+  padding: 0 var(--space-3);
+  margin-bottom: 4px;
+  font-weight: 500;
+`;
+
+export const noResults = css`
+  padding: 0 var(--space-3);
+`;
+
+export const footer = css`
+  padding: 12px 12px 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--gray-6);
+`;
+
+export const footerTrash = css`
+  flex: 1 1 auto;
+  min-width: 0;
 `;
 
 export const empty = css`
