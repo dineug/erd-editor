@@ -58,6 +58,9 @@ export default defineConfig({
           // grew past the default when the scene landed in it. The bound suits
           // a machine running the other packages' suites beside this one.
           hookTimeout: 60_000,
+          // CI measures coverage with every package's suite running beside
+          // this one, which takes a spec that is quick on a laptop past 5 s.
+          testTimeout: process.env.CI ? 15_000 : undefined,
         },
       },
       {
