@@ -1,5 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { bufferCircuitBreaker } from '@/engine/rx-operators/bufferCircuitBreaker';
@@ -124,5 +124,43 @@ describe('bufferCircuitBreaker', () => {
 
     expect(emitted).toEqual([[action('a')]]);
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards a source error', () => {
+    const source$ = new Subject<Array<AnyAction>>();
+    const onError = vi.fn();
+    source$
+      .pipe(bufferCircuitBreaker(new Subject<void>(), new Subject<void>()))
+      .subscribe({ error: onError });
+
+    source$.error(new Error('boom'));
+
+    expect(onError).toHaveBeenCalledWith(new Error('boom'));
+  });
+
+  it('subscribes a cold source once, so its own timers cannot strand the last batch', () => {
+    vi.useFakeTimers();
+    try {
+      let subscriptions = 0;
+      // Each subscription runs its own timer, the way a debounced upstream does.
+      const source$ = new Observable<Array<AnyAction>>(subscriber => {
+        const delay = ++subscriptions === 1 ? 20 : 10;
+        const id = setTimeout(() => subscriber.next([action('a')]), delay);
+        return () => clearTimeout(id);
+      });
+      const opening$ = new Subject<void>();
+      const emitted: Array<Array<AnyAction>> = [];
+
+      source$
+        .pipe(bufferCircuitBreaker(opening$, new Subject<void>()))
+        .subscribe(actions => emitted.push(actions));
+      opening$.next();
+      vi.advanceTimersByTime(20);
+
+      expect(subscriptions).toBe(1);
+      expect(emitted).toEqual([[action('a')]]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -1,41 +1,53 @@
 import { AnyAction } from '@dineug/r-html';
-import { buffer, map, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 
-import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
-
+/**
+ * Holds the source's batches while the circuit is open, flushes them when it
+ * closes and lets batches straight through until it opens again. The source is
+ * subscribed once, so a cold upstream's timers cannot flush ahead of its value.
+ */
 export const bufferCircuitBreaker = (
   openingNotifier$: Observable<any>,
   closingNotifier$: Observable<any>
 ) => {
   return (source$: Observable<Array<AnyAction>>) =>
-    source$.pipe(
-      buffer(
-        new Observable(subscriber => {
-          let isConnection = false;
+    new Observable<Array<AnyAction>>(subscriber => {
+      let isConnection = false;
+      let pending: Array<Array<AnyAction>> = [];
 
-          const subscription = source$.subscribe(() => {
-            isConnection && subscriber.next();
-          });
+      const flush = () => {
+        const actions = pending.flat();
+        pending = [];
+        actions.length && subscriber.next(actions);
+      };
 
-          subscription.add(
-            openingNotifier$.subscribe(() => {
-              if (isConnection) return;
+      const subscription = source$.subscribe({
+        next: actions => {
+          pending.push(actions);
+          isConnection && flush();
+        },
+        error: error => subscriber.error(error),
+        complete: () => {
+          flush();
+          subscriber.complete();
+        },
+      });
 
-              isConnection = true;
-              subscriber.next();
-            })
-          );
+      subscription.add(
+        openingNotifier$.subscribe(() => {
+          if (isConnection) return;
 
-          subscription.add(
-            closingNotifier$.subscribe(() => {
-              isConnection = false;
-            })
-          );
-
-          return subscription;
+          isConnection = true;
+          flush();
         })
-      ),
-      map(buff => buff.flat()),
-      notEmptyActions
-    );
+      );
+
+      subscription.add(
+        closingNotifier$.subscribe(() => {
+          isConnection = false;
+        })
+      );
+
+      return subscription;
+    });
 };
