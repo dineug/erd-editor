@@ -9,14 +9,20 @@ import {
   TextField,
 } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import {
   nicknameStorageAtom,
   useCollaborativeMap,
+  useCollaborativeParticipants,
   useStartSession,
   useStopSession,
 } from '@/atoms/modules/collaborative';
+import {
+  NICKNAME_MAX_LENGTH,
+  participantName,
+  Role,
+} from '@/services/collaborative';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
 import { copyToClipboard } from '@/utils/clipboard';
 
@@ -35,10 +41,14 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
   const collaborativeMap = useCollaborativeMap();
   const startSession = useStartSession();
   const stopSession = useStopSession();
+  const participants = useCollaborativeParticipants(entity.id);
   const collaborative = collaborativeMap[entity.id];
   const hasCollaborative = Boolean(collaborative);
+  const guestCount = hasCollaborative ? participants.length : 0;
   const [roomId, secretKey] = hasCollaborative ? collaborative : ['', ''];
   const link = `${location.origin}/live/#${roomId},${secretKey}`;
+
+  const countId = useId();
 
   const [nickname, setNickname] = useAtom(nicknameStorageAtom);
   const [copyState, setCopyState] = useState(false);
@@ -75,9 +85,19 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
           color="gray"
           tabIndex={tabStop ? undefined : -1}
           aria-label={`Collaboration for ${entity.name}`}
+          aria-describedby={guestCount ? countId : undefined}
           data-active={hasCollaborative}
         >
           <LightningBoltIcon width="16" height="16" />
+          {guestCount ? (
+            <span
+              id={countId}
+              css={styles.count}
+              aria-label={`${guestCount} ${guestCount === 1 ? 'guest' : 'guests'} connected`}
+            >
+              {guestCount}
+            </span>
+          ) : null}
         </IconButton>
       </Dialog.Trigger>
 
@@ -102,7 +122,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
               <TextField.Root
                 placeholder="Your nickname"
                 value={nickname}
-                maxLength={30}
+                maxLength={NICKNAME_MAX_LENGTH}
                 onChange={handleChangeNickname}
               />
             </label>
@@ -125,6 +145,36 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
                 </TextField.Slot>
               </TextField.Root>
             </label>
+            <div>
+              <Text as="div" size="2" mb="1" weight="bold">
+                Participants
+              </Text>
+              <ul css={styles.participants} aria-label="Participants">
+                <li css={styles.participant}>
+                  <Text size="2" css={styles.name}>
+                    {participantName({ role: Role.host, nickname })}
+                  </Text>
+                  <Text size="2" color="gray">
+                    (you)
+                  </Text>
+                  <Badge color="gray" radius="full">
+                    Host
+                  </Badge>
+                </li>
+                {participants.map(participant => (
+                  <li key={participant.peerId} css={styles.participant}>
+                    <Text size="2" css={styles.name}>
+                      {participantName(participant)}
+                    </Text>
+                  </li>
+                ))}
+              </ul>
+              {participants.length ? null : (
+                <Text as="div" size="1" color="gray" mt="1">
+                  No one else has joined yet.
+                </Text>
+              )}
+            </div>
           </Flex>
         ) : null}
 

@@ -7,11 +7,21 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { createFakeRoom, FakeCollaborativeRoom } from '@/__test-utils__/room';
+import { collectUnhandledRejections } from '@/__test-utils__/rejections';
+import {
+  createFakeRoom,
+  FakeCollaborativeRoom,
+  rejectSends,
+} from '@/__test-utils__/room';
 import { CollaborativeHostService } from '@/services/collaborative/host';
+import { NICKNAME_ANNOUNCE_DELAY } from '@/services/collaborative/participants';
 import { joinCollaborativeRoom, Strategy } from '@/services/collaborative/room';
 import { getAppDatabaseService } from '@/services/indexeddb';
-import { bridge, collaborativeDispatchAction } from '@/utils/broadcastChannel';
+import {
+  bridge,
+  collaborativeDispatchAction,
+  collaborativeParticipantsRequestAction,
+} from '@/utils/broadcastChannel';
 import {
   decryptFromJson,
   encryptToJson,
@@ -183,7 +193,7 @@ describe('CollaborativeHostService', () => {
     });
 
     expect(nostr.hello.send).toHaveBeenCalledWith(
-      { role: 'host' },
+      { role: 'host', nickname: '' },
       { target: 'guest-1' }
     );
 
@@ -282,6 +292,45 @@ describe('CollaborativeHostService', () => {
     expect(nostr.dispatch.send).not.toHaveBeenCalled();
   });
 
+  it('lets a send fail quietly when its data channel closes as a guest leaves', async () => {
+    const [nostr, mqtt] = await openRooms();
+    const closed = new Error('data channel closed');
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const hello = rejectSends(nostr.hello, closed);
+    const schema = rejectSends(nostr.schema, closed);
+    const participants = rejectSends(nostr.participants, closed);
+    const dispatch = rejectSends(nostr.dispatch, closed);
+    const forwarded = rejectSends(mqtt.dispatch, closed);
+
+    const unhandled = await collectUnhandledRejections(async () => {
+      nostr.room.onPeerJoin?.('guest-1');
+      nostr.hello.onMessage?.(
+        { role: 'guest', nickname: 'Ann' },
+        { peerId: 'guest-1' }
+      );
+      await nostr.dispatch.onMessage?.(await encryptToJson('[]', key), {
+        peerId: 'guest-1',
+      });
+      bridge.emit(
+        collaborativeDispatchAction({ schemaId: 'schema-1', actions: [] })
+      );
+
+      await vi.waitFor(
+        () => {
+          expect(schema).toHaveBeenCalled();
+          expect(participants).toHaveBeenCalled();
+          expect(dispatch).toHaveBeenCalled();
+          expect(forwarded).toHaveBeenCalledTimes(2);
+        },
+        { interval: 5 }
+      );
+    });
+
+    expect(hello).toHaveBeenCalled();
+    expect(unhandled).toEqual([]);
+    expect(debug).toHaveBeenCalledTimes(6);
+  });
+
   it('leaves every relay when the session is stopped', async () => {
     const [nostr, mqtt] = await openRooms();
 
@@ -365,5 +414,297 @@ describe('CollaborativeHostService', () => {
     service.start();
 
     expect(requestLeadershipMock).toHaveBeenCalledTimes(2);
+  });
+
+  describe('participants', () => {
+    let published: Array<{ schemaId: string; participants: any[] }>;
+    let unsubscribe: () => void;
+
+    const hello = (
+      room: FakeCollaborativeRoom,
+      peerId: string,
+      payload: Record<string, unknown>
+    ) => room.hello.onMessage?.(payload as any, { peerId });
+
+    const sentList = async (room: FakeCollaborativeRoom, call = 0) => {
+      const [value, options] = room.participants.send.mock.calls[call];
+      return {
+        list: JSON.parse(await decryptFromJson(value, key)),
+        target: options.target,
+        value,
+      };
+    };
+
+    const lastPublished = () => published[published.length - 1];
+
+    beforeEach(() => {
+      published = [];
+      unsubscribe = bridge.on({
+        collaborativeParticipants: ({ payload }) => {
+          published.push(payload);
+        },
+      });
+    });
+
+    afterEach(() => {
+      unsubscribe();
+      vi.useRealTimers();
+    });
+
+    it('publishes an empty list the moment a session opens, clearing a gone leader', async () => {
+      await openRooms();
+
+      expect(published).toEqual([{ schemaId: 'schema-1', participants: [] }]);
+    });
+
+    it('lists a guest from its hello and tells every tab', async () => {
+      const [nostr] = await openRooms();
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: ' Ann ' });
+
+      expect(lastPublished()).toEqual({
+        schemaId: 'schema-1',
+        participants: [{ peerId: 'guest-1', role: 'guest', nickname: 'Ann' }],
+      });
+    });
+
+    it('does not list a peer that announces itself as anything but a guest', async () => {
+      const [nostr] = await openRooms();
+      published = [];
+
+      hello(nostr, 'host-2', { role: 'host', nickname: 'Other' });
+      hello(nostr, 'peer-3', { nickname: 'No role' });
+
+      expect(published).toEqual([]);
+    });
+
+    it('sends guests the whole list, itself first, encrypted', async () => {
+      service.setNickname('Hana');
+      const [nostr] = await openRooms();
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      await vi.waitFor(
+        () => expect(nostr.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+
+      const { list, target, value } = await sentList(nostr);
+      expect(JSON.stringify(value)).not.toContain('Ann');
+      expect(target).toEqual(['guest-1']);
+      expect(list).toEqual([
+        { peerId: 'self', role: 'host', nickname: 'Hana' },
+        { peerId: 'guest-1', role: 'guest', nickname: 'Ann' },
+      ]);
+    });
+
+    it('lists a guest on an old build but never sends it the list', async () => {
+      const [nostr] = await openRooms();
+
+      hello(nostr, 'old-guest', { role: 'guest' });
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(nostr.participants.send).not.toHaveBeenCalled();
+      expect(lastPublished().participants).toEqual([
+        { peerId: 'old-guest', role: 'guest', nickname: undefined },
+      ]);
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: '' });
+      await vi.waitFor(
+        () => expect(nostr.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+
+      const { list, target } = await sentList(nostr);
+      expect(target).toEqual(['guest-1']);
+      expect(list).toEqual([
+        { peerId: 'self', role: 'host', nickname: '' },
+        { peerId: 'old-guest', role: 'guest' },
+        { peerId: 'guest-1', role: 'guest', nickname: '' },
+      ]);
+    });
+
+    it('sends only the newest list when changes land back to back', async () => {
+      const [nostr] = await openRooms();
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      hello(nostr, 'guest-2', { role: 'guest', nickname: 'Bob' });
+      await vi.waitFor(
+        () => expect(nostr.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(nostr.participants.send).toHaveBeenCalledTimes(1);
+      const { list, target } = await sentList(nostr);
+      expect(target).toEqual(['guest-1', 'guest-2']);
+      expect(list.map((item: any) => item.peerId)).toEqual([
+        'self',
+        'guest-1',
+        'guest-2',
+      ]);
+    });
+
+    it('sends each guest the list once, over the first relay it said hello on', async () => {
+      const [nostr, mqtt] = await openRooms();
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      hello(mqtt, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      hello(mqtt, 'guest-2', { role: 'guest', nickname: 'Bob' });
+      await vi.waitFor(
+        () => expect(mqtt.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      const fromNostr = await sentList(
+        nostr,
+        nostr.participants.send.mock.calls.length - 1
+      );
+      const fromMqtt = await sentList(
+        mqtt,
+        mqtt.participants.send.mock.calls.length - 1
+      );
+      expect(fromNostr.target).toEqual(['guest-1']);
+      expect(fromMqtt.target).toEqual(['guest-2']);
+      expect(fromMqtt.value).toEqual(fromNostr.value);
+    });
+
+    it('takes a changed nickname from a second hello, and only a changed one', async () => {
+      const [nostr] = await openRooms();
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      const count = published.length;
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      expect(published).toHaveLength(count);
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Annie' });
+      expect(lastPublished().participants).toEqual([
+        { peerId: 'guest-1', role: 'guest', nickname: 'Annie' },
+      ]);
+    });
+
+    it('drops a guest that leaves and tells the ones that stay', async () => {
+      const [nostr] = await openRooms();
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      hello(nostr, 'guest-2', { role: 'guest', nickname: 'Bob' });
+      await vi.waitFor(
+        () => expect(nostr.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+      nostr.participants.send.mockClear();
+
+      nostr.room.onPeerLeave?.('guest-2');
+
+      expect(lastPublished().participants).toEqual([
+        { peerId: 'guest-1', role: 'guest', nickname: 'Ann' },
+      ]);
+      await vi.waitFor(
+        () => expect(nostr.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+      const { list, target } = await sentList(nostr);
+      expect(target).toEqual(['guest-1']);
+      expect(list.map((item: any) => item.peerId)).toEqual(['self', 'guest-1']);
+    });
+
+    it('keeps a guest seen on both relays until the last one lets go', async () => {
+      const [nostr, mqtt] = await openRooms();
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      hello(mqtt, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      const count = published.length;
+
+      nostr.room.onPeerLeave?.('guest-1');
+      expect(published).toHaveLength(count);
+
+      mqtt.room.onPeerLeave?.('guest-1');
+      expect(lastPublished().participants).toEqual([]);
+    });
+
+    it('ignores a leave from a peer that never said hello', async () => {
+      const [nostr] = await openRooms();
+      published = [];
+
+      nostr.room.onPeerLeave?.('stranger');
+
+      expect(published).toEqual([]);
+    });
+
+    it('greets a joining guest with its nickname', async () => {
+      service.setNickname('Hana');
+      const [nostr] = await openRooms();
+
+      nostr.room.onPeerJoin?.('guest-1');
+
+      expect(nostr.hello.send).toHaveBeenCalledWith(
+        { role: 'host', nickname: 'Hana' },
+        { target: 'guest-1' }
+      );
+    });
+
+    it('re-sends the list once a nickname change settles', async () => {
+      const [nostr] = await openRooms();
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      await vi.waitFor(
+        () => expect(nostr.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+      nostr.participants.send.mockClear();
+
+      vi.useFakeTimers();
+      service.setNickname('H');
+      service.setNickname('Ha');
+      service.setNickname('Ha');
+      vi.advanceTimersByTime(NICKNAME_ANNOUNCE_DELAY);
+      vi.useRealTimers();
+
+      await vi.waitFor(
+        () => expect(nostr.participants.send).toHaveBeenCalled(),
+        { interval: 5 }
+      );
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(nostr.participants.send).toHaveBeenCalledTimes(1);
+      const { list } = await sentList(nostr);
+      expect(list[0]).toEqual({ peerId: 'self', role: 'host', nickname: 'Ha' });
+    });
+
+    it('does not send a list for a session that closed while it was encrypted', async () => {
+      const [nostr] = await openRooms();
+
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      service.setSessions({});
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(nostr.participants.send).not.toHaveBeenCalled();
+      expect(lastPublished()).toEqual({
+        schemaId: 'schema-1',
+        participants: [],
+      });
+    });
+
+    it('answers a tab asking for the lists with every session it holds', async () => {
+      const [nostr] = await openRooms();
+      hello(nostr, 'guest-1', { role: 'guest', nickname: 'Ann' });
+      published = [];
+
+      bridge.emit(collaborativeParticipantsRequestAction());
+
+      expect(published).toEqual([
+        {
+          schemaId: 'schema-1',
+          participants: [{ peerId: 'guest-1', role: 'guest', nickname: 'Ann' }],
+        },
+      ]);
+    });
+
+    it('has nothing to answer with while another tab leads', async () => {
+      leader = false;
+      service.start();
+      service.setSessions({ 'schema-1': ['room-1', secretKey] });
+
+      bridge.emit(collaborativeParticipantsRequestAction());
+
+      expect(published).toEqual([]);
+    });
   });
 });

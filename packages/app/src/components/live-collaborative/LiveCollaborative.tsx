@@ -2,15 +2,19 @@ import '@dineug/erd-editor';
 
 import type { ErdEditorElement } from '@dineug/erd-editor';
 import { Flex, Text } from '@radix-ui/themes';
-import { useAtom } from 'jotai';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useAtom, useAtomValue } from 'jotai';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 
+import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
 import { themeAtom } from '@/atoms/modules/theme';
+import LiveParticipants from '@/components/live-collaborative/live-participants/LiveParticipants';
 import {
+  CollaborativeGuest,
   createCollaborativeGuest,
   RELAY_TIMEOUT,
 } from '@/services/collaborative/guest';
+import { Participant } from '@/services/collaborative/participants';
 import { STRATEGIES } from '@/services/collaborative/room';
 import {
   HostStopSessionError,
@@ -27,6 +31,11 @@ const INITIALIZATION_TIMEOUT = RELAY_TIMEOUT * (STRATEGIES.length + 1);
 const HOST_LEAVE_LOADING_DELAY = 1000 * 3;
 const HOST_LEAVE_TIMEOUT = 1000 * 15;
 
+type ParticipantsView = {
+  participants: Participant[];
+  selfId: string;
+};
+
 const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   const location = useLocation();
   const [roomId, secretKey] = useMemo(
@@ -35,7 +44,13 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   );
   const viewerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ErdEditorElement | null>(null);
+  const guestRef = useRef<CollaborativeGuest | null>(null);
   const [theme, setTheme] = useAtom(themeAtom);
+  const nickname = useAtomValue(nicknameStorageAtom);
+  const nicknameRef = useRef(nickname);
+  nicknameRef.current = nickname;
+  const [participantsView, setParticipantsView] =
+    useState<ParticipantsView | null>(null);
   const [error, setError] = useState<unknown | null>(null);
   const [initializationLoading, setInitializationLoading] = useState(true);
   const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
@@ -50,7 +65,9 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     try {
       const unsubscribeSet = new Set<() => void>();
       const editor = document.createElement('erd-editor');
-      const sharedStore = editor.getSharedStore();
+      const sharedStore = editor.getSharedStore({
+        getNickname: () => nicknameRef.current,
+      });
       editorRef.current = editor;
       editor.enableThemeBuilder = true;
       // Nothing leaves this guest until a host has actually answered.
@@ -121,7 +138,12 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         onError: error => {
           readyReject ? readyReject(error) : setError(error);
         },
+        onParticipants: (participants, selfId) => {
+          setParticipantsView({ participants, selfId });
+        },
       });
+      guest.setNickname(nicknameRef.current);
+      guestRef.current = guest;
 
       unsubscribeSet.add(
         sharedStore.subscribe(actions => {
@@ -143,6 +165,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
 
       return () => {
         guest.close();
+        guestRef.current = null;
         clearInitializationTimer();
         clearHostLeaveTimer();
         if ($viewer === editor.parentElement) {
@@ -162,6 +185,10 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     }
   }, [roomId, secretKey, setTheme]);
 
+  useEffect(() => {
+    guestRef.current?.setNickname(nickname);
+  }, [nickname]);
+
   useLayoutEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -176,6 +203,12 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   return (
     <Flex css={styles.root} direction="column" align="center" justify="center">
       <div css={styles.scope} ref={viewerRef} />
+      {!initializationLoading && !hostLeaveLoading && participantsView ? (
+        <LiveParticipants
+          participants={participantsView.participants}
+          selfId={participantsView.selfId}
+        />
+      ) : null}
       {initializationLoading ? (
         <Flex
           css={styles.overlay}

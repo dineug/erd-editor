@@ -1,6 +1,7 @@
 import { isPlainObject } from 'es-toolkit';
 
 import { AnyAction, ReducerRecord, ValuesType } from '@/internal-types';
+import { Participant } from '@/services/collaborative/participants';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
 import { safeCallback } from '@/utils/safeCallback';
 
@@ -12,6 +13,8 @@ const BridgeActionType = {
   startSession: 'startSession',
   stopSession: 'stopSession',
   collaborativeDispatch: 'collaborativeDispatch',
+  collaborativeParticipants: 'collaborativeParticipants',
+  collaborativeParticipantsRequest: 'collaborativeParticipantsRequest',
 } as const;
 type BridgeActionType = ValuesType<typeof BridgeActionType>;
 
@@ -43,6 +46,12 @@ type BridgeActionMap = {
     schemaId: string;
     actions: any;
   };
+  /** The guests the leader tab is connected to, the whole list every time. */
+  [BridgeActionType.collaborativeParticipants]: {
+    schemaId: string;
+    participants: Participant[];
+  };
+  [BridgeActionType.collaborativeParticipantsRequest]: void;
 };
 
 function createAction<P = void>(type: string) {
@@ -123,3 +132,11 @@ export const stopSessionAction = createAction<
 export const collaborativeDispatchAction = createAction<
   BridgeActionMap[typeof BridgeActionType.collaborativeDispatch]
 >(BridgeActionType.collaborativeDispatch);
+
+export const collaborativeParticipantsAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.collaborativeParticipants]
+>(BridgeActionType.collaborativeParticipants);
+
+export const collaborativeParticipantsRequestAction = createAction<
+  BridgeActionMap[typeof BridgeActionType.collaborativeParticipantsRequest]
+>(BridgeActionType.collaborativeParticipantsRequest);
