@@ -25,6 +25,7 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from '@/components/visualization/visualizationView';
+import { setVisualizationZoom } from '@/components/visualization/zoomVisualization';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { ViewKind } from '@/engine/modules/editor/state';
 import { viewOpenAction } from '@/engine/modules/editor/view.actions';
@@ -351,6 +352,53 @@ describe('the visualization shell', () => {
     expect(stageOf().height()).toBe(600);
     expect(canvasOf(mounted).style.width).toBe('800px');
     expect(canvasOf(mounted).style.height).toBe('600px');
+  });
+
+  it('centres the view on the first measured viewport when it mounted on none', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    await mountVisualization(app);
+
+    expect(sceneOf().x()).toBe(0);
+
+    app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+    await settle();
+
+    expect(sceneOf().x()).toBe(400);
+    expect(sceneOf().y()).toBe(300);
+    expect(sceneOf().scaleX()).toBe(1);
+
+    app.store.dispatchSync(changeViewportAction({ width: 1000, height: 700 }));
+    await settle();
+
+    expect(sceneOf().x()).toBe(400);
+    expect(sceneOf().y()).toBe(300);
+  });
+
+  it('keeps a zoom asked for before the first measured viewport', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    await mountVisualization(app);
+
+    setVisualizationZoom(app, 2);
+    app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+    await settle();
+
+    expect(sceneOf().x()).toBe(400);
+    expect(sceneOf().y()).toBe(300);
+    expect(sceneOf().scaleX()).toBe(2);
+  });
+
+  it('leaves the view where it is on a resize after a measured mount', async () => {
+    const app = createTestAppContext();
+    await mountVisualization(app);
+    const { width, height } = app.store.state.editor.viewport;
+
+    app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+    await settle();
+
+    expect(sceneOf().x()).toBe(width / 2);
+    expect(sceneOf().y()).toBe(height / 2);
   });
 
   describe('wheel', () => {

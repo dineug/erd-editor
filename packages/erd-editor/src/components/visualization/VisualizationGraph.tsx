@@ -11,6 +11,7 @@ import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import Table from '@/components/visualization/table/Table';
+import { hasViewport } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
@@ -48,8 +49,8 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
   const canvas = createRef<HTMLDivElement>();
-  // The view is centred once the viewport is known, which is on mount; until
-  // then nothing reads it, because the scene is not rendered before that.
+  // The view is centred once the viewport is known, which is on mount or, for
+  // a document opened on this tab, the first frame the host measures.
   const state = observable(createVisualizationState(0, 0), { shallow: true });
   let graph: Visualization | null = null;
   let stage: Stage | null = null;
@@ -106,6 +107,10 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     graph = $graph;
     stage = $stage;
     Object.assign(state, createView(viewport.width, viewport.height));
+    // A load hands the tab over before the host measures anything, and the
+    // middle of an empty screen is its corner, so the first real one centres
+    // it again; every later resize leaves the view where the reader put it.
+    let centred = hasViewport(viewport);
     $graph.simulation.on('tick', () => {
       state.tick += 1;
     });
@@ -131,6 +136,13 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     addUnsubscribe(
       watch(viewport).subscribe(() => {
         $stage.size({ width: viewport.width, height: viewport.height });
+        if (centred || !hasViewport(viewport)) return;
+
+        // The origin alone: a zoom chord that came first held the corner, which
+        // is the middle it asked for once the screen has one.
+        centred = true;
+        const { x, y } = createView(viewport.width, viewport.height);
+        Object.assign(state, { x, y });
       }),
       () => {
         graph = null;
