@@ -63,7 +63,7 @@ const EmptyViewer: React.FC = () => {
           onClick={() => openImportDialog()}
         >
           <FileUp size={16} />
-          Import…
+          Import files
         </Button>
         <Button
           size="2"

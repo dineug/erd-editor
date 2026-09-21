@@ -142,7 +142,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
                 <DropdownMenu.Content align="end">
                   <DropdownMenu.Item onSelect={() => openImportDialog()}>
                     <FileUp size={16} />
-                    Import…
+                    Import files
                   </DropdownMenu.Item>
                   <DropdownMenu.Item
                     disabled={!schemaEntities.length}

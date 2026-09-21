@@ -345,7 +345,7 @@ export class AppPage {
   async importFiles(files: FilePayload[]) {
     const menu = await this.importMenu();
     const chooser = this.page.waitForEvent('filechooser');
-    await menu.getByRole('menuitem', { name: 'Import…' }).click();
+    await menu.getByRole('menuitem', { name: 'Import files' }).click();
     await (await chooser).setFiles(files);
     await expect(this.importNotice()).toBeVisible();
   }
