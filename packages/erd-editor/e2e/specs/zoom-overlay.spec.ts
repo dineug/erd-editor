@@ -121,6 +121,28 @@ test.describe('zoom, scroll and overlays', () => {
     }
   });
 
+  test('a press on the readout puts the zoom back to 100%, as the reset chord does', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    const zoom = erd.zoomReadout;
+
+    await expect(zoom).toHaveAttribute('title', /^Reset zoom/);
+
+    for (const [notches, percent] of [
+      [5, '120%'],
+      [-4, '84%'],
+    ] as Array<[number, string]>) {
+      await erd.stepZoom(notches);
+      await expect(zoom).toHaveText(percent);
+
+      await zoom.click();
+
+      await expect(zoom).toHaveText('100%');
+      expect((await erd.settings()).zoomLevel).toBe(1);
+    }
+  });
+
   test('a plain wheel scrolls the canvas, Shift+wheel scrolls it sideways, and the editor consumes the event', async ({
     erd,
   }) => {

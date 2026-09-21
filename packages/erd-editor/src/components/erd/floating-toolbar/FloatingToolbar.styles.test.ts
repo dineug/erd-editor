@@ -76,6 +76,15 @@ describe('FloatingToolbar.styles', () => {
     expect(text).toContain('font-variant-numeric: tabular-nums');
   });
 
+  /** It is the reset button too, so it hovers the way the tools beside it do. */
+  it('widens that same pill for the zoom readout rather than declaring another', () => {
+    const text = staticText(styles.readout);
+
+    expect(styles.readout.values).toEqual([styles.menu, typography.paragraph]);
+    expect(text).toContain('width: auto');
+    expect(String(styles.readout)).not.toBe(String(styles.menu));
+  });
+
   /*
    * The compass prints the gap as well as the heading, so it is the one button
    * that cannot be 26px square. It splices the same pill in rather than

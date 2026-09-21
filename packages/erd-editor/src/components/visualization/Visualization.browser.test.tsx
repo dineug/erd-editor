@@ -151,8 +151,9 @@ const showModeTriggerOf = (mounted: Mounted) =>
   );
 
 const readoutOf = (mounted: Mounted) =>
-  mounted.container.querySelector<HTMLElement>('.visualization-toolbar span')
-    ?.textContent;
+  mounted.container.querySelector<HTMLElement>(
+    '.visualization-toolbar .zoom-level'
+  )?.textContent;
 
 /**
  * A press the way a person makes one: the three events a real mouse produces,
@@ -197,6 +198,21 @@ describe('the bar beside the graph', () => {
     click(menuOf(mounted, 'Zoom out'));
     await settle();
     expect(sceneOf().scaleX()).toBeCloseTo(1, 6);
+  });
+
+  it('puts the graph zoom back to 100% from the readout (AC-6)', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+
+    for (let i = 0; i < 5; i++) click(menuOf(mounted, 'Zoom in'));
+    await settle();
+    expect(readoutOf(mounted)).toBe('120%');
+
+    click(menuOf(mounted, 'Reset zoom'));
+    await settle();
+    expect(sceneOf().scaleX()).toBeCloseTo(1, 6);
+    expect(readoutOf(mounted)).toBe('100%');
   });
 
   it('fits the whole graph into the stage on the fit button (AC-6)', async () => {

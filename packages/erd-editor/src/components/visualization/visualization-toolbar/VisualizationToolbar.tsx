@@ -32,9 +32,12 @@ import {
   fitGraphView,
   graphCompass,
 } from '@/components/visualization/visualizationView';
-import { stepVisualizationZoom } from '@/components/visualization/zoomVisualization';
+import {
+  setVisualizationZoom,
+  stepVisualizationZoom,
+} from '@/components/visualization/zoomVisualization';
 import { Open } from '@/constants/open';
-import { ZOOM_STEP } from '@/constants/zoom';
+import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
 import {
   ShowMode,
   ViewKind,
@@ -99,6 +102,10 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
 
   const handleZoom = (step: number) => () => {
     stepVisualizationZoom(app.value, step);
+  };
+
+  const handleZoomReset = () => {
+    setVisualizationZoom(app.value, ZOOM_RESET);
   };
 
   const handleFit = () => {
@@ -264,8 +271,13 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           >
             <Icon name="minus" size={ICON_SIZE} />
           </div>
-          {/* prettier-ignore */}
-          <span class={['zoom-level', floating.readout]}>{toZoomFormat(zoomLevel)}</span>
+          <div
+            class={['zoom-level', floating.readout]}
+            title={title('Reset zoom', KeyBindingName.zoomReset)}
+            on:click={handleZoomReset}
+          >
+            {toZoomFormat(zoomLevel)}
+          </div>
           <div
             class={floating.menu}
             title={title('Zoom in', KeyBindingName.zoomIn)}

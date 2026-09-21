@@ -332,6 +332,27 @@ describe('VisualizationToolbar', () => {
     expect(app.store.state.settings.zoomLevel).toBe(1);
   });
 
+  it('puts the Flow zoom back to 100% from the readout, on the view alone', async () => {
+    const app = seedFlow(createTestAppContext());
+    const { root } = await setup(app);
+    const readout = byTitle(root, 'Reset zoom');
+
+    expect(readout?.className).toContain(String(floating.readout));
+
+    for (let press = 0; press < 5; press++) click(byTitle(root, 'Zoom out'));
+    await flush();
+
+    expect(readoutOf(root)).toBe('80%');
+
+    click(readout);
+    await flush();
+
+    expect(app.store.state.editor.views.flow!.zoomLevel).toBe(1);
+    expect(readoutOf(root)).toBe('100%');
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+    expect(app.store.state.settings.originX).toBe(0);
+  });
+
   it('holds the Graph readout at rest while no graph is mounted beside it', async () => {
     const app = createTestAppContext();
     app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));

@@ -46,15 +46,17 @@ export const menu = css`
 `;
 
 /*
- * The zoom, as a percentage. Tabular figures at a width the three digits
- * always fit, so the buttons either side of it do not shift under a zoom run.
+ * The zoom, as a percentage, and the button that puts it back to 100%. The pill
+ * is spliced in and widened to a width the three digits always fit, in tabular
+ * figures, so the buttons either side of it do not shift under a zoom run.
  */
 export const readout = css`
+  ${menu}
   ${typography.paragraph};
+  width: auto;
   min-width: 44px;
   padding: 0 2px;
   text-align: center;
-  color: var(--foreground);
   font-variant-numeric: tabular-nums;
   user-select: none;
 `;

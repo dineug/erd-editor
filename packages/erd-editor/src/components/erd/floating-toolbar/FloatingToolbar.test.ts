@@ -14,6 +14,7 @@ import { RelationshipType } from '@/constants/schema';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
   changeHandToolAction,
+  changeViewportAction,
   drawStartRelationshipAction,
 } from '@/engine/modules/editor/atom.actions';
 import { ViewKind } from '@/engine/modules/editor/state';
@@ -23,6 +24,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 
 let mounted: Mounted | null = null;
 
@@ -157,6 +159,42 @@ describe('FloatingToolbar', () => {
 
     expect(app.store.state.settings.zoomLevel).toBeCloseTo(1, 5);
     expect(zoom(root)).toBe('100%');
+  });
+
+  it('puts the zoom back to 100% from the readout, as the reset chord does', async () => {
+    const { app, root } = await setup();
+    const readout = byTitle(root, 'Reset zoom');
+
+    expect(readout.getAttribute('title')).toMatch(/^Reset zoom \(.*0\)$/);
+
+    for (let press = 0; press < 5; press++) click(byTitle(root, 'Zoom in'));
+    await flush();
+
+    expect(zoom(root)).toBe('120%');
+
+    click(readout);
+    await flush();
+
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+    expect(zoom(root)).toBe('100%');
+  });
+
+  it('holds the scene point in the middle of the screen through that reset', async () => {
+    const { app, root } = await setup();
+    app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+    const middle = { x: 400, y: 300 };
+    const sceneAtMiddle = () =>
+      toScenePoint(getSceneTransform(app.store.state), middle);
+    const before = sceneAtMiddle();
+
+    for (let press = 0; press < 5; press++) click(byTitle(root, 'Zoom out'));
+    await flush();
+    click(byTitle(root, 'Reset zoom'));
+    await flush();
+
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+    expect(sceneAtMiddle().x).toBeCloseTo(before.x, 2);
+    expect(sceneAtMiddle().y).toBeCloseTo(before.y, 2);
   });
 
   it('stops the run at either end of the range the document holds', async () => {

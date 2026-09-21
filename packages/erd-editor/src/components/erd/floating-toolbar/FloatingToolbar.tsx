@@ -10,13 +10,16 @@ import Icon from '@/components/primitives/icon/Icon';
 import { NotationIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { RelationshipType } from '@/constants/schema';
-import { ZOOM_STEP } from '@/constants/zoom';
+import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
 import {
   changeHandToolAction,
   changeZenModeAction,
 } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
-import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import {
+  changeZoomLevelAction$,
+  streamZoomLevelAction$,
+} from '@/engine/modules/settings/generator.actions';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import { toZoomFormat } from '@/utils/validation';
 
@@ -91,6 +94,12 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
     store.dispatch(streamZoomLevelAction$(step));
   };
 
+  // Absolute, the way the reset chord is, so it holds the middle of the screen.
+  const handleZoomReset = () => {
+    const { store } = app.value;
+    store.dispatch(changeZoomLevelAction$(ZOOM_RESET));
+  };
+
   const handleCompass = () => {
     scrollToNearestContent(app.value.store, sourceRef.value);
   };
@@ -132,8 +141,13 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
         >
           <Icon name="minus" size={ICON_SIZE} />
         </div>
-        {/* prettier-ignore */}
-        <span class={['zoom-level', styles.readout]}>{toZoomFormat(settings.zoomLevel)}</span>
+        <div
+          class={['zoom-level', styles.readout]}
+          title={title('Reset zoom', KeyBindingName.zoomReset)}
+          on:click={handleZoomReset}
+        >
+          {toZoomFormat(settings.zoomLevel)}
+        </div>
         <div
           class={styles.menu}
           title={title('Zoom in', KeyBindingName.zoomIn)}
