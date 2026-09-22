@@ -16,13 +16,17 @@ import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  sortTableAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   actions$,
   addTableAction$,
   pasteTableAction$,
   removeTableAction$,
   selectTableAction$,
+  sortTablesToMoveAction$,
 } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction,
@@ -593,6 +597,63 @@ describe('pasteTableAction$', () => {
   });
 });
 
+describe('sortTablesToMoveAction$', () => {
+  function seedSortable() {
+    seedTable(store, 'wide', 900, 900);
+    seedColumn(store, 'wide', 'w1');
+    seedColumn(store, 'wide', 'w2');
+    seedTable(store, 'narrow', 700, 700);
+    seedTable(store, 'gone', 10, 10);
+    store.dispatchSync(removeTableAction$('gone'));
+  }
+
+  it('places every live table with an absolute move, never a replayed sort', () => {
+    seedSortable();
+
+    expect(typesOf(store, sortTablesToMoveAction$())).toEqual([
+      'table.moveTo',
+      'table.moveTo',
+    ]);
+    // In document order; the removed table is no longer in it.
+    expect(
+      flatten(store, sortTablesToMoveAction$()).map(({ payload: { id } }) => id)
+    ).toEqual(['wide', 'narrow']);
+  });
+
+  it('lands the tables where the sort reducer puts them', () => {
+    seedSortable();
+    const sorted = createTestStore();
+    seedTable(sorted, 'wide', 900, 900);
+    seedColumn(sorted, 'wide', 'w1');
+    seedColumn(sorted, 'wide', 'w2');
+    seedTable(sorted, 'narrow', 700, 700);
+    sorted.dispatchSync(sortTableAction());
+
+    store.dispatchSync(sortTablesToMoveAction$());
+
+    for (const id of ['wide', 'narrow']) {
+      expect([tableOf(store, id).ui.x, tableOf(store, id).ui.y]).toEqual([
+        tableOf(sorted, id).ui.x,
+        tableOf(sorted, id).ui.y,
+      ]);
+    }
+    expect(tableOf(store, 'narrow').ui).toMatchObject({ x: 50, y: 50 });
+  });
+
+  it('measures on copies, so the live tables stay put until the moves land', () => {
+    seedSortable();
+
+    flatten(store, sortTablesToMoveAction$());
+
+    expect(tableOf(store, 'wide').ui).toMatchObject({ x: 900, y: 900 });
+    expect(tableOf(store, 'narrow').ui).toMatchObject({ x: 700, y: 700 });
+  });
+
+  it('emits nothing for a document with no table', () => {
+    expect(typesOf(store, sortTablesToMoveAction$())).toEqual([]);
+  });
+});
+
 describe('actions$', () => {
   it('exposes every generator action of the table module', () => {
     expect(Object.keys(actions$).sort()).toEqual([
@@ -600,6 +661,7 @@ describe('actions$', () => {
       'pasteTableAction$',
       'removeTableAction$',
       'selectTableAction$',
+      'sortTablesToMoveAction$',
     ]);
   });
 });

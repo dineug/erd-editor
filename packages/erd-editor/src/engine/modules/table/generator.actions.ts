@@ -37,10 +37,13 @@ import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { getShowColumnOrder } from '@/utils/table-clipboard';
 
+import { ActionType } from './actions';
 import {
   addTableAction,
   changeZIndexAction,
+  moveToTableAction,
   removeTableAction,
+  tableReducers,
 } from './atom.actions';
 
 export const addTableAction$ = (): GeneratorAction =>
@@ -378,9 +381,40 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
     }
   };
 
+/**
+ * Runs the engine's sort once, on copies of the live tables, and places each
+ * table at the point it found. A replayed table.sort measures each replica's
+ * own text, so only the placed points come out the same everywhere.
+ */
+export const sortTablesToMoveAction$ = (): GeneratorAction =>
+  function* (state, context) {
+    const { doc, collections } = state;
+    const copies = query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds)
+      .map(table => ({ ...table, ui: { ...table.ui } }));
+
+    tableReducers[ActionType.sortTable](
+      {
+        ...state,
+        collections: {
+          ...collections,
+          tableEntities: Object.fromEntries(
+            copies.map(table => [table.id, table])
+          ),
+        },
+      },
+      { type: ActionType.sortTable, payload: undefined },
+      context
+    );
+
+    yield copies.map(({ id, ui: { x, y } }) => moveToTableAction({ id, x, y }));
+  };
+
 export const actions$ = {
   addTableAction$,
   removeTableAction$,
   selectTableAction$,
   pasteTableAction$,
+  sortTablesToMoveAction$,
 };

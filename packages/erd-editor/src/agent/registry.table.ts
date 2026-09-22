@@ -3,17 +3,16 @@ import { query } from '@dineug/erd-editor-schema';
 import type { ActionTool, ToolArg } from '@/agent/registry';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
-import { ActionType } from '@/engine/modules/table/actions';
 import {
   changeTableColorAction,
   changeTableCommentAction,
   changeTableNameAction,
   moveToTableAction,
-  tableReducers,
 } from '@/engine/modules/table/atom.actions';
 import {
   addTableAction$,
   removeTableAction$,
+  sortTablesToMoveAction$,
 } from '@/engine/modules/table/generator.actions';
 
 const TABLE_ID: ToolArg = {
@@ -44,36 +43,6 @@ const changeTableColorAction$ = (id: string, color: string): GeneratorAction =>
       color,
       prevColor: table?.ui.color ?? '',
     });
-  };
-
-/**
- * Runs the engine's sort once, on copies of the live tables, and places each
- * table at the point it found. A replayed table.sort measures each replica's
- * own text, so only the placed points come out the same everywhere.
- */
-const sortTablesAction$ = (): GeneratorAction =>
-  function* (state, context) {
-    const { doc, collections } = state;
-    const copies = query(collections)
-      .collection('tableEntities')
-      .selectByIds(doc.tableIds)
-      .map(table => ({ ...table, ui: { ...table.ui } }));
-
-    tableReducers[ActionType.sortTable](
-      {
-        ...state,
-        collections: {
-          ...collections,
-          tableEntities: Object.fromEntries(
-            copies.map(table => [table.id, table])
-          ),
-        },
-      },
-      { type: ActionType.sortTable, payload: undefined },
-      context
-    );
-
-    yield copies.map(({ id, ui: { x, y } }) => moveToTableAction({ id, x, y }));
   };
 
 export const tableTools: readonly ActionTool[] = [
@@ -159,7 +128,7 @@ export const tableTools: readonly ActionTool[] = [
     name: 'erd_move_table',
     kind: 'atom',
     atomReason:
-      'No generator places one table at a point: moveAllAction$ drags the selection by a relative step.',
+      'No generator places one named table at a point: moveAllAction$ drags the selection by a relative step, and sortTablesToMoveAction$ places every table where the sort puts it.',
     actionTypes: ['table.moveTo'],
     undoable: true,
     stream: false,
@@ -178,9 +147,7 @@ export const tableTools: readonly ActionTool[] = [
   },
   {
     name: 'erd_sort_tables',
-    kind: 'atom',
-    atomReason:
-      'No generator sorts the tables on its own, and table.sort reruns the layout on every replica against its own text widths, so the tool computes the layout once and places each live table with this atom.',
+    kind: 'generator',
     actionTypes: ['table.moveTo'],
     undoable: true,
     stream: false,
@@ -189,6 +156,6 @@ export const tableTools: readonly ActionTool[] = [
     expectedHistory: { min: 0, max: 1 },
     snapshotPaths: ['tables'],
     args: [],
-    toActions: () => [sortTablesAction$()],
+    toActions: () => [sortTablesToMoveAction$()],
   },
 ];

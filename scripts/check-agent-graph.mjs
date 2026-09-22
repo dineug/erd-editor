@@ -4,6 +4,7 @@
 // process, so those files may hold no browser token and import few packages.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(import.meta.dirname, '..');
 const packageDir = path.join(root, 'packages', 'erd-editor');
@@ -62,11 +63,11 @@ function agentEntry() {
 }
 
 /**
- * Every script reachable from the agent entry through its static and dynamic
- * imports and the worker files it names. A stale chunk a cache replay left
- * beside the live one is unreachable and so never read.
+ * Every script reachable from an entry through its static and dynamic imports
+ * and the worker files it names; a stale chunk a cache replay left beside the
+ * live one is unreachable. measure-engine-footprint.mjs walks ./engine.js too.
  */
-function filesOf(entry) {
+export function filesOf(entry) {
   const reached = new Set();
   const pending = [entry];
 
@@ -149,9 +150,19 @@ function verify() {
   return 0;
 }
 
-try {
-  process.exitCode = verify();
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
+const realpathOf = file => fs.realpathSync(path.resolve(file));
+
+// Run as the gate only, so importing filesOf judges nothing. Both sides go
+// through realpath: the loader resolves symlinks in import.meta.url and not in
+// argv, so a linked path such as macOS /tmp would otherwise skip the gate.
+if (
+  process.argv[1] !== undefined &&
+  realpathOf(process.argv[1]) === realpathOf(fileURLToPath(import.meta.url))
+) {
+  try {
+    process.exitCode = verify();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
 }

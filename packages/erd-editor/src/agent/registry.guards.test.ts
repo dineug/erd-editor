@@ -7,10 +7,10 @@ import { createSeedValue, SEED } from '@/__test-utils__/agentSeed';
 import { AgentToolError, AgentToolErrorCode } from '@/agent/errors';
 import { createAgentPeer } from '@/agent/peer';
 import { toolByName } from '@/agent/registry';
-import { defaultToWidth } from '@/agent/toWidth';
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { OrderType, Show } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
+import { defaultToWidth } from '@/engine/to-width';
 
 const context = createEngineContext({ toWidth: defaultToWidth });
 const empty = createAgentPeer({ nickname: 'agent', presence: false });

@@ -7,13 +7,13 @@ import { TOOL_SCENARIOS } from '@/__test-utils__/agentScenarios';
 import { createSeedValue } from '@/__test-utils__/agentSeed';
 import { type AgentPeer, createAgentPeer } from '@/agent/peer';
 import { actionTools } from '@/agent/registry';
-import { defaultToWidth } from '@/agent/toWidth';
 import { validateToolArgs } from '@/agent/validate';
 import { createEngineContext } from '@/engine/context';
 import { pushUndoHistoryMap } from '@/engine/history.actions';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { createRxStore } from '@/engine/rx-store';
+import { defaultToWidth } from '@/engine/to-width';
 
 const cleanups: Array<() => void> = [];
 

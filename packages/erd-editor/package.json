@@ -18,6 +18,10 @@
     "./agent.js": {
       "types": "./dist/agent/index.d.ts",
       "default": "./dist/agent/index.js"
+    },
+    "./peer.js": {
+      "types": "./dist/peer/index.d.ts",
+      "default": "./dist/peer/index.js"
     }
   },
   "unpkg": "./dist/erd-editor.umd.js",

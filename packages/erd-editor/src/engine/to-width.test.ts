@@ -2,19 +2,20 @@
 
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { createSeedValue, SEED, settle } from '@/__test-utils__/agentSeed';
-import { type AgentPeer, createAgentPeer } from '@/agent/peer';
-import { defaultToWidth } from '@/agent/toWidth';
+import { play, renameTable } from '@/__test-utils__/peerScenarios';
+import { createSeedValue, SEED, settle } from '@/__test-utils__/peerSeed';
+import { createPeerStore, type PeerStore } from '@/engine/peer-store';
+import { defaultToWidth } from '@/engine/to-width';
 import { textInRange } from '@/utils/validation';
 
-const peers: AgentPeer[] = [];
+const peers: PeerStore[] = [];
 
 afterEach(() => {
   peers.splice(0).forEach(peer => peer.destroy());
 });
 
 function peerOf(toWidth?: (text: string) => number) {
-  const peer = createAgentPeer({ nickname: 'agent', presence: false, toWidth });
+  const peer = createPeerStore({ nickname: 'agent', presence: false, toWidth });
   peers.push(peer);
   return peer;
 }
@@ -28,29 +29,23 @@ describe('default text width (AC-P8)', () => {
     expect(defaultToWidth('users')).toBe(52);
   });
 
-  it('is what a peer measures with unless another is injected', async () => {
+  it('is what a peer measures with unless another is injected', () => {
     const peer = peerOf();
     peer.setInitialValue(createSeedValue());
 
-    await peer.runTool('erd_change_table_name', {
-      tableId: SEED.users,
-      value: LONG_NAME,
-    });
+    play(peer, renameTable(SEED.users, LONG_NAME));
 
     expect(peer.state.collections.tableEntities[SEED.users].ui.widthName).toBe(
       textInRange(defaultToWidth(LONG_NAME))
     );
   });
 
-  it('takes an injected measure', async () => {
+  it('takes an injected measure', () => {
     const wide = (text: string) => text.length * 20;
     const peer = peerOf(wide);
     peer.setInitialValue(createSeedValue());
 
-    await peer.runTool('erd_change_table_name', {
-      tableId: SEED.users,
-      value: LONG_NAME,
-    });
+    play(peer, renameTable(SEED.users, LONG_NAME));
 
     expect(peer.state.collections.tableEntities[SEED.users].ui.widthName).toBe(
       wide(LONG_NAME)
@@ -60,10 +55,7 @@ describe('default text width (AC-P8)', () => {
   it('is recalculated in full when the headless file is loaded again', async () => {
     const writer = peerOf();
     writer.setInitialValue(createSeedValue());
-    await writer.runTool('erd_change_table_name', {
-      tableId: SEED.users,
-      value: LONG_NAME,
-    });
+    play(writer, renameTable(SEED.users, LONG_NAME));
     const written = writer.value;
 
     const wide = (text: string) => text.length * 20;

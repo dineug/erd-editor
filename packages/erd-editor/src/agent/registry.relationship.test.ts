@@ -7,10 +7,10 @@ import { createSeedValue, SEED } from '@/__test-utils__/agentSeed';
 import { AgentToolError, AgentToolErrorCode } from '@/agent/errors';
 import { type AgentPeer, createAgentPeer } from '@/agent/peer';
 import { toolByName } from '@/agent/registry';
-import { defaultToWidth } from '@/agent/toWidth';
 import { validateToolArgs } from '@/agent/validate';
 import { ColumnOption, RelationshipType } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
+import { defaultToWidth } from '@/engine/to-width';
 import { bHas } from '@/utils/bit';
 
 const context = createEngineContext({ toWidth: defaultToWidth });

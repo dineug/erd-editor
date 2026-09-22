@@ -3,8 +3,6 @@
 import type { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { createStreamFlusher } from '@/agent/streamFlush';
-import { defaultToWidth } from '@/agent/toWidth';
 import { createEngineContext } from '@/engine/context';
 import {
   addMemoAction,
@@ -16,6 +14,8 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { createRxStore, type RxStore } from '@/engine/rx-store';
 import { createSharedStore, type SharedStore } from '@/engine/shared-store';
+import { createStreamFlusher } from '@/engine/stream-flush';
+import { defaultToWidth } from '@/engine/to-width';
 
 const stores: Array<{ destroy: () => void }> = [];
 

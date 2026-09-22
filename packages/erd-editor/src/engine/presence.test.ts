@@ -3,15 +3,22 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
+  addTable,
+  moveTable,
+  play,
+  renameColumn,
+  renameTable,
+} from '@/__test-utils__/peerScenarios';
+import {
   createSeedValue,
   createSession,
   SEED,
   type Session,
   settle,
-} from '@/__test-utils__/agentSeed';
-import { createAgentPeer } from '@/agent/peer';
-import { createFocusPresence, FOCUS_HEARTBEAT_MS } from '@/agent/presence';
+} from '@/__test-utils__/peerSeed';
 import { SHARED_FOCUS_TRACKER_TIMEOUT } from '@/engine/modules/editor/atom.actions';
+import { createPeerStore } from '@/engine/peer-store';
+import { createFocusPresence, FOCUS_HEARTBEAT_MS } from '@/engine/presence';
 
 const cleanups: Array<() => void> = [];
 
@@ -39,11 +46,7 @@ async function quietSession(): Promise<Session> {
 async function focusedSession(): Promise<Session> {
   const session = await quietSession();
 
-  await session.peer.runTool('erd_change_column_name', {
-    tableId: SEED.users,
-    columnId: SEED.userName,
-    value: 'full_name',
-  });
+  play(session.peer, renameColumn(SEED.users, SEED.userName, 'full_name'));
   await Promise.resolve();
   await Promise.resolve();
   return session;
@@ -54,7 +57,7 @@ const focusBatches = ({ sent }: Session) =>
     actions.some(({ type }) => type === 'editor.sharedFocusTracker')
   );
 
-describe('agent focus presence (AC-E10)', () => {
+describe('peer focus presence (AC-E10)', () => {
   it('shows the focused cell on the user side, sent under the nickname', async () => {
     const session = await focusedSession();
 
@@ -94,7 +97,7 @@ describe('agent focus presence (AC-E10)', () => {
     const before = focusBatches(session).length;
     vi.advanceTimersByTime(150);
 
-    session.peer.dispatch({
+    session.peer.receive({
       type: 'editor.getLWW',
       payload: undefined,
       version: 0,
@@ -108,12 +111,8 @@ describe('agent focus presence (AC-E10)', () => {
 
   it('never sends a mouse, selection or drag selection tracker', async () => {
     const session = await focusedSession();
-    await session.peer.runTool('erd_add_table', {});
-    await session.peer.runTool('erd_move_table', {
-      tableId: SEED.orders,
-      x: 10,
-      y: 10,
-    });
+    play(session.peer, addTable());
+    play(session.peer, moveTable(SEED.orders, 10, 10));
     vi.advanceTimersByTime(FOCUS_HEARTBEAT_MS * 2);
     await Promise.resolve();
 
@@ -124,17 +123,14 @@ describe('agent focus presence (AC-E10)', () => {
     expect(types.has('editor.sharedDragSelectTracker')).toBe(false);
   });
 
-  it('goes out on its own batch, which the call’s batch count leaves out', async () => {
+  it('goes out on its own batch, which the dispatch’s batch count leaves out', async () => {
     const session = await quietSession();
     const before = focusBatches(session).length;
 
-    const run = await session.peer.runTool('erd_change_table_name', {
-      tableId: SEED.orders,
-      value: 'purchases',
-    });
+    const report = play(session.peer, renameTable(SEED.orders, 'purchases'));
     await Promise.resolve();
 
-    expect(run.batches).toBe(1);
+    expect(report.batches).toBe(1);
     expect(focusBatches(session)).toHaveLength(before + 1);
     expect(focusBatches(session)[before].map(({ type }) => type)).toEqual([
       'editor.sharedFocusTracker',
@@ -146,10 +142,7 @@ describe('agent focus presence (AC-E10)', () => {
     cleanups.push(session.destroy);
     await settle();
 
-    await session.peer.runTool('erd_change_table_name', {
-      tableId: SEED.orders,
-      value: 'purchases',
-    });
+    play(session.peer, renameTable(SEED.orders, 'purchases'));
     await settle();
 
     expect(focusBatches(session)).toEqual([]);
@@ -159,7 +152,7 @@ describe('agent focus presence (AC-E10)', () => {
     vi.useFakeTimers();
     const interval = vi.spyOn(globalThis, 'setInterval');
     const clear = vi.spyOn(globalThis, 'clearInterval');
-    const peer = createAgentPeer({ nickname: 'agent' });
+    const peer = createPeerStore({ nickname: 'agent' });
     peer.setInitialValue(createSeedValue());
     const sent: unknown[] = [];
     peer.subscribe(actions => sent.push(actions));
@@ -167,10 +160,7 @@ describe('agent focus presence (AC-E10)', () => {
       ms === FOCUS_HEARTBEAT_MS ? [interval.mock.results[index].value] : []
     );
 
-    await peer.runTool('erd_change_table_name', {
-      tableId: SEED.users,
-      value: 'members',
-    });
+    play(peer, renameTable(SEED.users, 'members'));
     peer.destroy();
     const after = sent.length;
     vi.advanceTimersByTime(FOCUS_HEARTBEAT_MS * 3);

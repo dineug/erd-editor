@@ -6,7 +6,6 @@ import { afterAll, describe, expect, it } from 'vite-plus/test';
 import { createSeedValue, SEED } from '@/__test-utils__/agentSeed';
 import { createAgentPeer } from '@/agent/peer';
 import { actionTools, toolByName } from '@/agent/registry';
-import { defaultToWidth } from '@/agent/toWidth';
 import { RelationshipType } from '@/constants/schema';
 import { ChangeActionTypes } from '@/engine/actions';
 import { createEngineContext } from '@/engine/context';
@@ -19,6 +18,7 @@ import { actions$ as relationshipActions$ } from '@/engine/modules/relationship/
 import { actions$ as settingsActions$ } from '@/engine/modules/settings/generator.actions';
 import { actions$ as tableActions$ } from '@/engine/modules/table/generator.actions';
 import { actions$ as tableColumnActions$ } from '@/engine/modules/table-column/generator.actions';
+import { defaultToWidth } from '@/engine/to-width';
 
 const peer = createAgentPeer({ nickname: 'agent', presence: false });
 peer.setInitialValue(createSeedValue());
@@ -56,6 +56,7 @@ const CENSUS: Census = {
       peer.state.collections.tableColumnEntities[SEED.userName],
     ]),
   ],
+  sortTablesToMoveAction$: () => [tableActions$.sortTablesToMoveAction$()],
   addColumnAction$: () => [tableColumnActions$.addColumnAction$(SEED.empty)],
   removeColumnAction$: () => [
     tableColumnActions$.removeColumnAction$(SEED.orders, [

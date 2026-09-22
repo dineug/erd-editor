@@ -3,11 +3,11 @@
 import type { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { createSeedValue, SEED } from '@/__test-utils__/agentSeed';
-import { type AgentPeer, createAgentPeer } from '@/agent/peer';
+import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
+import { createPeerStore, type PeerStore } from '@/engine/peer-store';
 import { Tag } from '@/engine/tag';
 
-const peers: AgentPeer[] = [];
+const peers: PeerStore[] = [];
 
 afterEach(() => {
   peers.splice(0).forEach(peer => peer.destroy());
@@ -37,7 +37,7 @@ function remoteBatch(editorId: string): AnyAction[] {
   ];
 }
 
-function trackerMaps({ state: { editor } }: AgentPeer) {
+function trackerMaps({ state: { editor } }: PeerStore) {
   return [
     editor.sharedMouseTrackerMap,
     editor.sharedFocusTrackerMap,
@@ -46,13 +46,13 @@ function trackerMaps({ state: { editor } }: AgentPeer) {
   ];
 }
 
-function trackerTimers(peer: AgentPeer, editorId: string) {
+function trackerTimers(peer: PeerStore, editorId: string) {
   return trackerMaps(peer).map(trackers => trackers[editorId]?.timeoutId);
 }
 
 async function livePeer() {
   vi.useFakeTimers();
-  const peer = createAgentPeer({ nickname: 'agent' });
+  const peer = createPeerStore({ nickname: 'agent' });
   peers.push(peer);
   peer.setInitialValue(createSeedValue());
   peer.subscribe(() => {});
@@ -61,21 +61,21 @@ async function livePeer() {
   return peer;
 }
 
-describe('agent peer remote trackers', () => {
+describe('peer store remote trackers', () => {
   it('holds an expiry timer for each tracker another editor sends', async () => {
     const peer = await livePeer();
     const baseline = vi.getTimerCount();
 
-    peer.dispatch(remoteBatch('vscode-user'));
+    peer.receive(remoteBatch('vscode-user'));
 
     expect(trackerTimers(peer, 'vscode-user')).not.toContain(undefined);
     expect(vi.getTimerCount()).toBe(baseline + 4);
   });
 
-  it('clears every tracker timer on destroy, so a closed MCP process can exit', async () => {
+  it('clears every tracker timer on destroy, so a closed Node process can exit', async () => {
     const peer = await livePeer();
-    peer.dispatch(remoteBatch('vscode-user'));
-    peer.dispatch(remoteBatch('intellij-user'));
+    peer.receive(remoteBatch('vscode-user'));
+    peer.receive(remoteBatch('intellij-user'));
     const timers = [
       ...trackerTimers(peer, 'vscode-user'),
       ...trackerTimers(peer, 'intellij-user'),
@@ -100,7 +100,7 @@ describe('agent peer remote trackers', () => {
     const peer = await livePeer();
     peer.destroy();
 
-    peer.dispatch(remoteBatch('vscode-user'));
+    peer.receive(remoteBatch('vscode-user'));
     peer.destroy();
 
     expect(trackerTimers(peer, 'vscode-user')).toEqual([

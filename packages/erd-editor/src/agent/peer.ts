@@ -1,17 +1,6 @@
-import { toJson } from '@dineug/erd-editor-schema';
-import {
-  type AnyAction,
-  type CompositionActions,
-  compositionActionsFlat,
-} from '@dineug/r-html';
-import { isEmpty } from 'es-toolkit/compat';
+import type { AnyAction } from '@dineug/r-html';
 
 import { AgentToolError, AgentToolErrorCode } from '@/agent/errors';
-import {
-  clearSharedTrackers,
-  createFocusPresence,
-  type FocusPresence,
-} from '@/agent/presence';
 import { readDocument, type ReadFormat } from '@/agent/read';
 import {
   type ActionTool,
@@ -19,36 +8,19 @@ import {
   type ToolArgValues,
   toolByName,
 } from '@/agent/registry';
-import { createStreamFlusher } from '@/agent/streamFlush';
-import { defaultToWidth } from '@/agent/toWidth';
 import { validateToolArgs } from '@/agent/validate';
-import { ChangeActionTypes, StreamActionTypes } from '@/engine/actions';
-import { createEngineContext } from '@/engine/context';
-import { createHistory, type History } from '@/engine/history';
 import {
-  changeViewportAction,
-  focusColumnAction,
-  focusTableAction,
-  focusTableEndAction,
-  getLWWAction,
-} from '@/engine/modules/editor/atom.actions';
-import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-import { createRxStore } from '@/engine/rx-store';
-import { createSharedStore } from '@/engine/shared-store';
+  createPeerStore,
+  type DispatchFocus,
+  PeerStoreError,
+  PeerStoreErrorCode,
+  type PeerStoreOptions,
+  type RevertResult,
+} from '@/engine/peer-store';
 import type { RootState } from '@/engine/state';
 import type { Unsubscribe } from '@/internal-types';
-import { arrayHas } from '@/utils/arrayHas';
-import { safeCallback } from '@/utils/safeCallback';
-import { toSafeString } from '@/utils/validation';
 
-export type AgentPeerOptions = {
-  nickname: string;
-  toWidth?: (text: string) => number;
-  /** Sends the focused cell to the other peers. A headless session turns it off. */
-  presence?: boolean;
-  /** Refuses every tool call, undo and redo, as a readonly document does. */
-  readonly?: boolean;
-};
+export type AgentPeerOptions = PeerStoreOptions;
 
 export type ToolRun = {
   tool: string;
@@ -97,21 +69,6 @@ export type AgentPeer = {
   destroy: () => void;
 };
 
-type ToolRecord = { name: string; historyEntries: number };
-
-const hasChangeActionTypes = arrayHas<string>(ChangeActionTypes);
-const hasStreamActionTypes = arrayHas<string>(StreamActionTypes);
-
-/** The creations whose ids an agent needs back, since the generators draw them inside. */
-const hasCreateActionTypes = arrayHas<string>([
-  'table.add',
-  'column.add',
-  'memo.add',
-  'index.add',
-  'indexColumn.add',
-  'relationship.add',
-]);
-
 const inRange = (count: number, expected: ExpectedCount) =>
   typeof expected === 'number'
     ? count === expected
@@ -122,182 +79,50 @@ const formatCount = (expected: ExpectedCount) =>
     ? String(expected)
     : `${expected.min}..${expected.max}`;
 
-/**
- * Counts the entries pushed rather than reading the cursor, which stops moving
- * once the history is at its limit. An undo replays past the history's input,
- * so push is reached only by a batch the history took in.
- */
-function createCountingHistory(history: History) {
-  let pushes = 0;
-  // Zero is the history's own word for no limit.
-  let limit = 0;
+const refusal = (code: PeerStoreErrorCode, name: string) =>
+  new AgentToolError(code, name, new PeerStoreError(code, name).message);
 
-  const counting: History = Object.freeze({
-    get cursor() {
-      return history.cursor;
-    },
-    get size() {
-      return history.size;
-    },
-    hasUndo: history.hasUndo,
-    hasRedo: history.hasRedo,
-    undo: history.undo,
-    redo: history.redo,
-    push: command => {
-      pushes++;
-      history.push(command);
-    },
-    clear: history.clear,
-    setLimit: newLimit => {
-      limit = newLimit;
-      history.setLimit(newLimit);
-    },
-    clone: history.clone,
-  });
-
-  return {
-    history: counting,
-    getPushes: () => pushes,
-    getLimit: () => limit,
-  };
+/** Reports a peer store refusal as the tool error the MCP server answers with. */
+function asAgentError<T>(name: string, call: () => T): T {
+  try {
+    return call();
+  } catch (error) {
+    if (error instanceof PeerStoreError) throw refusal(error.code, name);
+    throw error;
+  }
 }
 
-function focusActions(
+function toFocus(
   tool: ActionTool,
   values: ToolArgValues
-): CompositionActions {
+): DispatchFocus | undefined {
   const { focus } = tool;
-  if (!focus) return [];
+  if (!focus) return undefined;
 
   const tableId = values[focus.tableArg];
+  const { focusType } = focus;
 
-  if (focus.kind === 'column' && focus.columnArg) {
-    return [
-      focusColumnAction({
-        tableId,
-        columnId: values[focus.columnArg],
-        focusType: focus.focusType,
-        $mod: false,
-        shiftKey: false,
-      }),
-    ];
-  }
-
-  return [focusTableAction({ tableId, focusType: focus.focusType })];
+  return focus.kind === 'column' && focus.columnArg
+    ? { tableId, columnId: values[focus.columnArg], focusType }
+    : { tableId, focusType };
 }
 
+const toUndoResult = ({ label, entries, skipped }: RevertResult) => ({
+  toolName: label,
+  entries,
+  skipped,
+});
+
 /**
- * A collaborating editor with no screen: the element's store pipeline, driven
- * by registry tools instead of a pointer. Stream buffers close when a call
- * ends rather than after a quiet period, so one call is one outbound batch.
+ * The registry's tools over a peer store: one tool per call as one dispatch,
+ * refused in the order destroyed, unknown tool, readonly, arguments, with the
+ * measured counts held against the declared ones.
  */
-export function createAgentPeer({
-  nickname,
-  toWidth = defaultToWidth,
-  presence = true,
-  readonly = false,
-}: AgentPeerOptions): AgentPeer {
-  let counter: ReturnType<typeof createCountingHistory> | null = null;
-  const rxStore = createRxStore(createEngineContext({ toWidth }), {
-    manualStreamFlush: true,
-    observable: false,
-    getHistory: options => {
-      counter = createCountingHistory(createHistory(options));
-      return counter.history;
-    },
-  });
-  const getPushes = () => counter?.getPushes() ?? 0;
-  const getLimit = () => counter?.getLimit() ?? 0;
-  const sharedStore = createSharedStore(
-    rxStore,
-    { getNickname: () => nickname },
-    { manualStreamFlush: true }
-  );
-  const flusher = createStreamFlusher(rxStore, sharedStore);
-  const subscribers = new Set<(actions: AnyAction[]) => void>();
-  const editorId = rxStore.state.editor.id;
-
-  let isReadonly = readonly;
-  let destroyed = false;
-  let sinkUnsubscribe: Unsubscribe | null = null;
-  let externalSubscribed = false;
-  let batches = 0;
-  let toolLog: ToolRecord[] = [];
-  let redoStack: ToolRecord[] = [];
-
-  // A peer has no screen. Reported empty before any load, the origin stays
-  // where the file put it, and the load never reaches the pull's frozen view
-  // lookup, whose reactive proxy throws in Node for want of the DOM Node global.
-  rxStore.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
-
-  const focusPresence: FocusPresence | null = presence
-    ? createFocusPresence(rxStore)
-    : null;
-
-  /**
-   * The one subscription the shared store ever gets. It opens the circuit, so
-   * a headless session with nobody listening still drains the outbound pipe,
-   * and it counts the batches that carry document changes.
-   */
-  const openSink = () => {
-    if (sinkUnsubscribe) return;
-
-    sinkUnsubscribe = sharedStore.subscribe(actions => {
-      if (actions.some(action => hasChangeActionTypes(action.type))) {
-        batches++;
-      }
-
-      for (const fn of Array.from(subscribers)) {
-        safeCallback(fn, actions);
-      }
-    });
-  };
+export function createAgentPeer(options: AgentPeerOptions): AgentPeer {
+  const store = createPeerStore(options);
 
   const assertUsable = (name: string) => {
-    if (destroyed) {
-      throw new AgentToolError(
-        AgentToolErrorCode.destroyed,
-        name,
-        'this document session was closed; open the document again'
-      );
-    }
-  };
-
-  const assertWritable = (name: string) => {
-    assertUsable(name);
-    if (isReadonly) {
-      throw new AgentToolError(
-        AgentToolErrorCode.readonly,
-        name,
-        'the document is readonly, so no edit was made'
-      );
-    }
-  };
-
-  /**
-   * Lets go of the oldest records once the history has dropped their entries
-   * at its limit, so an undo never names a call it can no longer revert, then
-   * of the oldest calls that made no entry, so the records stay bounded too.
-   */
-  const trimToolLog = () => {
-    const limit = getLimit();
-    if (!limit) return;
-
-    let entries = toolLog.reduce(
-      (sum, { historyEntries }) => sum + historyEntries,
-      0
-    );
-    while (entries > limit) {
-      entries -= toolLog.shift()!.historyEntries;
-    }
-    // More records than the limit, with no more entries than it, means some
-    // records made no entry, and the oldest of those is the one let go.
-    while (toolLog.length > limit) {
-      toolLog.splice(
-        toolLog.findIndex(({ historyEntries }) => !historyEntries),
-        1
-      );
-    }
+    if (store.isDestroyed) throw refusal(PeerStoreErrorCode.destroyed, name);
   };
 
   const runTool = async (name: string, args?: unknown): Promise<ToolRun> => {
@@ -310,32 +135,19 @@ export function createAgentPeer({
         `no tool is named ${name}`
       );
     }
-    assertWritable(name);
+    if (store.isReadonly) throw refusal(PeerStoreErrorCode.readonly, name);
 
-    const values = validateToolArgs(tool, args, rxStore.state);
-    openSink();
-
-    const batchesBefore = batches;
-    const pushesBefore = getPushes();
-    const actions = compositionActionsFlat(rxStore.state, rxStore.context, [
-      ...focusActions(tool, values),
-      ...tool.toActions(values),
-    ]);
-
-    rxStore.dispatchSync(actions);
-
-    if (actions.some(action => hasStreamActionTypes(action.type))) {
-      flusher.flush();
-    }
-
+    const values = validateToolArgs(tool, args, store.state);
+    const report = store.dispatch(tool.toActions(values), {
+      label: name,
+      focus: toFocus(tool, values),
+    });
     const run: ToolRun = {
       tool: name,
-      actions: actions.filter(action => hasChangeActionTypes(action.type)),
-      createdIds: actions
-        .filter(action => hasCreateActionTypes(action.type))
-        .map(action => action.payload.id),
-      batches: batches - batchesBefore,
-      historyEntries: getPushes() - pushesBefore,
+      actions: report.actions,
+      createdIds: report.createdIds,
+      batches: report.batches,
+      historyEntries: report.historyEntries,
     };
 
     if (
@@ -348,151 +160,34 @@ export function createAgentPeer({
       };
     }
 
-    toolLog.push({ name, historyEntries: run.historyEntries });
-    // The history drops its redo side only when an entry is pushed, so the
-    // records that mirror it do the same.
-    if (run.historyEntries) {
-      redoStack = [];
-    }
-    trimToolLog();
-
     return run;
   };
 
-  const replay = (record: ToolRecord, step: () => void) => {
-    for (let i = 0; i < record.historyEntries; i++) {
-      step();
-    }
-    // A reverted color is a stream action again, held back until flushed.
-    flusher.flush();
-  };
-
-  const undo = async (): Promise<UndoResult> => {
-    assertWritable('undo');
-    openSink();
-
-    const skipped: string[] = [];
-    let record = toolLog.pop();
-
-    while (record && !record.historyEntries) {
-      skipped.push(record.name);
-      record = toolLog.pop();
-    }
-
-    if (!record) {
-      return { toolName: null, entries: 0, skipped };
-    }
-
-    replay(record, rxStore.undo);
-    redoStack.push(record);
-
-    return {
-      toolName: record.name,
-      entries: record.historyEntries,
-      skipped,
-    };
-  };
-
-  const redo = async (): Promise<UndoResult> => {
-    assertWritable('redo');
-    openSink();
-
-    const record = redoStack.pop();
-    if (!record) {
-      return { toolName: null, entries: 0, skipped: [] };
-    }
-
-    replay(record, rxStore.redo);
-    toolLog.push(record);
-
-    return {
-      toolName: record.name,
-      entries: record.historyEntries,
-      skipped: [],
-    };
-  };
-
-  const setInitialValue = (value: string) => {
-    assertUsable('setInitialValue');
-    const safeValue = toSafeString(value);
-
-    rxStore.dispatchSync(
-      focusTableEndAction(),
-      initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
-    );
-    rxStore.resetHistory();
-    toolLog = [];
-    redoStack = [];
-  };
-
-  const subscribe = (fn: (actions: AnyAction[]) => void): Unsubscribe => {
-    assertUsable('subscribe');
-    subscribers.add(fn);
-
-    if (!externalSubscribed) {
-      externalSubscribed = true;
-      if (sinkUnsubscribe) {
-        // A headless call opened the sink first, and the shared store sends
-        // its handshake only to its first subscriber, so ask again for this one.
-        rxStore.dispatchSync(getLWWAction());
-      } else {
-        openSink();
-      }
-    }
-
-    return () => {
-      subscribers.delete(fn);
-    };
-  };
-
-  const dispatch = (actions: AnyAction[] | AnyAction) => {
-    if (destroyed) return;
-    sharedStore.dispatchSync(actions);
-  };
-
-  const destroy = () => {
-    if (destroyed) return;
-
-    destroyed = true;
-    focusPresence?.destroy();
-    sinkUnsubscribe?.();
-    sinkUnsubscribe = null;
-    subscribers.clear();
-    sharedStore.destroy();
-    rxStore.destroy();
-    // Only now, when no action reaches a reducer, can no new expiry be set.
-    clearSharedTrackers(rxStore.state.editor);
-    toolLog = [];
-    redoStack = [];
-  };
-
   return Object.freeze({
-    editorId,
+    editorId: store.editorId,
     get value() {
-      return toJson(rxStore.state);
+      return store.value;
     },
     get state() {
-      return rxStore.state;
+      return store.state;
     },
     read: (format: ReadFormat, vendor?: string) => {
       assertUsable('erd_read');
-      return readDocument(rxStore.state, format, vendor);
+      return readDocument(store.state, format, vendor);
     },
     get isReadonly() {
-      return isReadonly;
+      return store.isReadonly;
     },
-    setReadonly: (value: boolean) => {
-      isReadonly = value;
-    },
-    setInitialValue,
-    mergeClock: (version: number) => {
-      rxStore.context.clock.merge(version);
-    },
+    setReadonly: store.setReadonly,
+    setInitialValue: (value: string) =>
+      asAgentError('setInitialValue', () => store.setInitialValue(value)),
+    mergeClock: store.mergeClock,
     runTool,
-    undo,
-    redo,
-    subscribe,
-    dispatch,
-    destroy,
+    undo: async () => toUndoResult(asAgentError('undo', store.undo)),
+    redo: async () => toUndoResult(asAgentError('redo', store.redo)),
+    subscribe: (fn: (actions: AnyAction[]) => void) =>
+      asAgentError('subscribe', () => store.subscribe(fn)),
+    dispatch: store.receive,
+    destroy: store.destroy,
   });
 }

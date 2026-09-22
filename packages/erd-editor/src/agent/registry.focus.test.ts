@@ -7,9 +7,9 @@ import { TOOL_SCENARIOS } from '@/__test-utils__/agentScenarios';
 import { createSeedValue } from '@/__test-utils__/agentSeed';
 import { type AgentPeer, createAgentPeer } from '@/agent/peer';
 import { actionTools } from '@/agent/registry';
-import { defaultToWidth } from '@/agent/toWidth';
 import { validateToolArgs } from '@/agent/validate';
 import { createEngineContext } from '@/engine/context';
+import { defaultToWidth } from '@/engine/to-width';
 
 const FOCUS_TYPES = new Set([
   'editor.focusTable',
