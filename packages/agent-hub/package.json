@@ -2,6 +2,9 @@
   "name": "@dineug/erd-editor-agent-hub",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

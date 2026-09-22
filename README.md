@@ -148,7 +148,8 @@ coding agent such as Claude Code or Codex edit diagrams. Everything else is inte
 
 ## Development
 
-Requires Node 22 (`.nvmrc` pins `22.23.2`) and pnpm `10.34.3`, which `packageManager` pins for you.
+Requires Node 22 (`.nvmrc` pins `22.23.2`, which CI runs; Vite+ needs 22.18 or later) and pnpm
+`10.34.3`, which `packageManager` pins for you. The published MCP server needs Node 22.12 or later.
 The IntelliJ plugin additionally needs a JDK; Gradle's toolchain resolver fetches JDK 21 if your
 machine has none.
 

@@ -10,7 +10,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.12.0"
   },
   "publishConfig": {
     "access": "public"
@@ -42,7 +42,7 @@
     "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-agent-hub": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@types/node": "^20.19.0",
+    "@types/node": "^22.20.1",
     "@vitest/coverage-v8": "catalog:",
     "typescript": "7.0.2",
     "vite": "catalog:",

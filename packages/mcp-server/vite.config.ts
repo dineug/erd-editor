@@ -43,9 +43,9 @@ export default defineConfig({
 
   build: {
     // ssr puts Rolldown in Node resolution mode: no browser field and no
-    // import.meta.env shimming. node20 matches engines.node.
+    // import.meta.env shimming. node22 matches engines.node, the root floor.
     ssr: true,
-    target: 'node20',
+    target: 'node22',
     outDir: 'dist',
     emptyOutDir: true,
     // npx downloads the tarball on every cold start, so it ships no map and
