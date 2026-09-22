@@ -1,5 +1,4 @@
 import { builtinModules } from 'node:module';
-import { relative } from 'node:path';
 
 import { defineConfig } from 'vite-plus';
 
@@ -37,9 +36,13 @@ export default defineConfig({
     target: 'node22',
     outDir: 'dist',
     emptyOutDir: true,
-    // Vite defaults this to false. The VSIX has always carried a 32KB map and
-    // the Extension Host reads it when a stack trace crosses this file.
-    sourcemap: true,
+    // Effect inlines here from the hub rewrite on, and unminified most of the
+    // bundle is its JSDoc. A map of the minified bundle measures about 18x the
+    // bundle, so 2.9.0 is the first release whose VSIX carries none.
+    sourcemap: false,
+    // Vite leaves an ssr build unminified; this alone strips it, and adding
+    // rolldownOptions.output.minify as mcp-server does emits the same bytes.
+    minify: true,
     lib: {
       entry: './src/extension.ts',
       formats: ['cjs'],
@@ -47,16 +50,6 @@ export default defineConfig({
     },
     rolldownOptions: {
       external,
-      output: {
-        // Map sources stay relative to the package rather than to dist/, so a
-        // stack trace still points at src/extension.ts from wherever the VSIX
-        // is unpacked.
-        sourcemapPathTransform: (source, map) =>
-          relative(
-            import.meta.dirname,
-            new URL(source, `file://${map}`).pathname
-          ),
-      },
     },
   },
 

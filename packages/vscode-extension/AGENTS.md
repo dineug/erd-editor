@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-22 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-23 -->
 
 # vscode-extension
 
@@ -21,7 +21,7 @@ The published VSCode extension (`vuerd-vscode`, publisher `dineug`) — the Node
 | `src/erd-editor-provider.ts`, `src/erd-document.ts` | The `CustomEditorProvider` (registers documents and panels with the `DocumentRegistry`, tracks the active panel) and the `CustomDocument` owning the bytes |
 | `src/editor.ts` | Abstract `Editor` — the `Bridge`, `buildHtmlForWebview` (`{{extension-base-url}}`), `readonly` through `isReadonlyUri` |
 | `src/erd-editor.ts` | `ErdEditor` — every host-side command: initial value, save, replication broadcast, import/export dialogs, theme push |
-| `vite.config.ts` | CJS lib build to `dist/extension.js` (`ssr`, `ssr.noExternal: true`, `target: 'node22'`, only `vscode` and builtins external) plus `run.tasks`. `publicDir: false`, or Vite copies `public/` into `dist/` and the VSIX ships the webview twice |
+| `vite.config.ts` | CJS lib build to `dist/extension.js` (`ssr`, `ssr.noExternal: true`, `target: 'node22'`, `minify: true`, `sourcemap: false`, only `vscode` and builtins external) plus `run.tasks`. `publicDir: false`, or Vite copies `public/` into `dist/` and the VSIX ships the webview twice |
 | `tsconfig.unit.json` | The type gate over `src`, specs and the stub. `exclude: []` is load-bearing: inheriting the parent's typechecks zero specs and still exits 0 |
 
 ## Subdirectories
@@ -39,6 +39,7 @@ The published VSCode extension (`vuerd-vscode`, publisher `dineug`) — the Node
 - `package.json` is the manifest. Its src ↔ manifest invariants are unit-asserted: `src/constants/viewType.test.ts`, the defaults check in `src/configuration.test.ts`, the commands and menu entries in `src/extension.test.ts`, the `agentHub.enabled` key and default in `src/hub/config.test.ts`, and in `src/hub/autoOpen.test.ts` `ERD_FILE_EXTENSIONS` against `customEditors[].selector` and `ERD_FILE_GLOB` against `activationEvents`.
 - `engines.vscode` (`^1.101.0`, the first release running on Node 22) is the floor. `.vscode-test.mjs` derives its `minimum-supported` run from it; `build.target: 'node22'`, `@types/node` `^22` and `@types/vscode` `^1.101` are raised by hand with it, and nothing gates them.
 - **`dist/extension.js` is a contract**: `main` is `./dist/extension`, so a `.cjs` emit never activates. Everything but `vscode` and builtins inlines because the VSIX ships no `node_modules` (`--no-dependencies`); a bare `require` left in the bundle fails activation.
+- **Minified, and the VSIX carries no map from 2.9.0 on.** Vite writes no map unless asked and leaves an `ssr` build unminified, so `build.minify: true` is what strips this bundle and `build.sourcemap` is now `false`; `rolldownOptions.output.minify` on top emits the same bytes (sha256 equal, measured 2026-09-23), so only the one option is set. The reason is Effect: `@dineug/erd-editor-agent-hub` pulls it in and the bundle went 72,473 B → 424,302 B unminified, where minification brings it to 116,599 B (gzip-9 38,494 B) and a map of that would be 2,082,178 B. The VSIX went 1,851,779 → 1,378,150 B, 18 files → 17. `.vscodeignore` holds `dist/**/*.map` so that stays true structurally: the build task's `tsc` step snapshots `dist/**` before `vp build` empties it, so an entry recorded while maps were on restores one beside the minified bundle on every later cache hit, and `vsce` packs whatever sits in `dist/` (measured 2026-09-23: 17 files with such a map present). A stack trace from the Extension Host therefore names `dist/extension.js` and a column on one of its few lines: reproduce with such a local build rather than reading the shipped trace.
 - File support lives in two manifest places — `activationEvents` (`workspaceContains:**/*.{erd,vuerd,erd.json,vuerd.json}`) and `customEditors[].selector` — and their extension sets must stay equal: the hub's lock exists only once the extension is active. Until 2.9.0 the glob was `**/*.{erd,vuerd}`, so a folder holding only `.erd.json` / `.vuerd.json` files never activated the extension and wrote no lock; the `erd-json-only` Extension Host run asserts it now does.
 - The hub serves only while `isHubEnabled()` (`src/hub/config.ts`): the window is trusted and `dineug.erd-editor.agentHub.enabled` (default `true`) is not off. It re-applies on `onDidGrantWorkspaceTrust` and on a change to that setting; off or untrusted, it still writes a `hub: false` lock.
 - The hub never throws at the editor: every failure goes to `console.warn` under `[erd-editor hub]`, and `activate` starts it last, inside a `try`. It listens before its lock names the pipe and rewrites the lock to `hub: false` before closing the pipe. A hub that cannot listen still writes a `hub: false` lock (empty `pipe`), because a window with no lock invites headless writes over its open editors.
@@ -64,7 +65,7 @@ The published VSCode extension (`vuerd-vscode`, publisher `dineug`) — the Node
 - `agent-hub.test.ts` prints one `[agent-hub e2e] vscode <version>` line per timed spec (join, applyActions, applyToDirty, save, applyToOtherPeer); applyToDirty is the replica round trip that `join` and `save` wait on, about 210–225 ms on 1.90.0 and 1.138.0 (measured on 1.90.0 when it was the floor; history now), against their 500 ms and 2 s caps.
 - The replica round trip runs in a real Extension Host: measured 2026-09-22, each of two webviews answered an injected batch with `hostSaveValueCommand` 209–239 ms later, `document.content` grew 900 → 1936 B, the tab turned dirty at 256 ms, and the `Tag.shared` batch never came back through `hostSaveReplicationCommand`.
 - Build: `pnpm exec vp run --filter vuerd-vscode --fail-if-no-match build`; `dependsOn` builds `vscode-webview` first, which fills `public/`.
-- Manual: F5 `Launch Extension` from this folder builds the dependencies once (`build:deps`), then watches the extension only — rebuild the webview after changing it.
+- Manual: F5 `Launch Extension` from this folder builds the dependencies once (`build:deps`), then watches the extension only — rebuild the webview after changing it. The watch build is the shipping one, so it is minified and mapless too: `launch.json`'s `outFiles` still finds `dist/extension.js`, but a breakpoint belongs in it and not in `src/`. Flip `build.sourcemap` to `true` for a debugging session, and do not commit that.
 
 ## Dependencies
 
