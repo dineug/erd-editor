@@ -25,7 +25,7 @@
 | `src/tools/copy.ts` | Every word an agent reads: `TOOL_COPY`, `ARG_COPY`, `SERVER_INSTRUCTIONS` |
 | `src/tools/schema.ts` | `ToolArgKind` → zod, exhaustive by a `never` default |
 | `src/tools/register.ts`, `result.ts` | Registration with annotations; results as compact JSON, refusals as `isError` results carrying `{ code, message }` |
-| `src/__test-utils__/` | `memoryIo`, `fakeHub`, `mcp` (in-memory client), `documents` — out of coverage |
+| `src/__test-utils__/` | `memoryIo`, `fakeHub`, `mcp` (in-memory client), `documents`, `toolSurface` (the normalizer and the recorded 0.1.0 surface) — out of coverage |
 | `vite.config.ts` | The SSR single-file build and the `build` / `test` tasks |
 
 ## For AI Agents
