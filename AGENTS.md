@@ -4,7 +4,7 @@
 
 ## Purpose
 
-`@dineug/erd-editor-monorepo` is a pnpm + Vite+ workspace for an Entity-Relationship Diagram editor shipped four ways: erd-editor.io, a VSCode extension, an IntelliJ plugin and the `<erd-editor>` custom element on npm. The framework-free editor core is JSX compiled to the in-house `@dineug/r-html` tagged templates. Its store's actions carry a Lamport-style clock and merge through an LWW register set — the one mechanism behind collaboration, cross-tab sync and undo/redo.
+`@dineug/erd-editor-monorepo` is a pnpm + Vite+ workspace for an Entity-Relationship Diagram editor shipped four ways: erd-editor.io, a VSCode extension, an IntelliJ plugin and the `<erd-editor>` custom element on npm. The framework-free editor core is JSX compiled to the in-house `@dineug/r-html` tagged templates. Its store's actions carry a Lamport-style clock and merge through an LWW register set — the one mechanism behind collaboration, cross-tab sync and undo/redo. The same mechanism lets `@dineug/erd-editor-mcp`, a stdio MCP server also on npm, put a coding agent into a VS Code editing session as one more collaborator.
 
 ## Key Files
 
@@ -28,7 +28,7 @@
 
 | Directory | Purpose |
 | --- | --- |
-| `packages/` | The 14 workspace packages, each with its own `AGENTS.md` |
+| `packages/` | The 15 workspace packages, each with its own `AGENTS.md` |
 | `data/` | Import fixtures for hand-testing (SQL, GraphQL SDL, DBML, AML v1/v2, `test.json`); `schema-sql-parser`'s tests read `sakila.sql` |
 | `docker/` | A `docker-compose.yml` per SQL vendor for running generated DDL; Databricks and Snowflake are cloud-only and have none |
 | `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents (see Contracts) |
@@ -55,6 +55,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
 | `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published (0.8.0) |
 | `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io |
+| `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published (0.1.0): one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
 
 ## For AI Agents
 
@@ -92,9 +93,9 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 
 ### Testing Requirements
 
-- `pnpm test` = `vp run -r test` over the ten packages with a `vitest.config.*` (a library's `test` task exists because of that file), each `tsc --noEmit` then Vitest, imported as `vite-plus/test`.
+- `pnpm test` = `vp run -r test` over the eleven packages with a `vitest.config.*` (a library's `test` task exists because of that file), each `tsc --noEmit` then Vitest, imported as `vite-plus/test`.
 - Vitest collects `src/**/*.test.ts` only (`erd-editor`: `.test.{ts,tsx}`); a spec named or placed otherwise never runs. `erd-editor`'s `browser` project (`*.browser.test.{ts,tsx}`, real Chromium) makes `pnpm test` need `pnpm --filter @dineug/erd-editor exec playwright install chromium`.
-- v8 coverage at `perFile` 80% on all four metrics gates `test:coverage`, and `pnpm test` measures none. CI runs `pnpm -r --no-bail test:coverage`, so a file under 80% in any of the ten packages fails it. Cover a gap with a test; the one hint in `src/` is `/* v8 ignore next -- @preserve */` on `erd-editor`'s `if (import.meta.hot)` blocks.
+- v8 coverage at `perFile` 80% on all four metrics gates `test:coverage`, and `pnpm test` measures none. CI runs `pnpm -r --no-bail test:coverage`, so a file under 80% in any of the eleven packages fails it. Cover a gap with a test; the one hint in `src/` is `/* v8 ignore next -- @preserve */` on `erd-editor`'s `if (import.meta.hot)` blocks.
 - **Not verified until `pnpm build` passes** — declaration emit, bundling and the packages with no `test` task are checked only there.
 - `pnpm check` = `vp check` (oxfmt + oxlint) + root `tsc --noEmit` + `node --test tools/vite-config.test.ts` + `check-task-inputs.mjs`.
 - `pnpm size`, after `pnpm build`: gzip of every script reachable from `erd-editor`'s `exports` vs `packages/erd-editor/.size-baseline.json`. `budgetGzip` is a regression watch; re-pin with `--set-budget --budget-gzip <bytes> --budget-note <why>`.
@@ -124,6 +125,6 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | JetBrains Marketplace | the plugin `<id>`, its signing certificate and the listing text from `packages/intellij-plugin/README.md` |
 | `json-schema/schema.json` on `main` | the `$schema` of every saved `.erd` / `.vuerd` file: `erd-editor-schema` stamps its raw GitHub URL, so moving or renaming it leaves existing files pointing at a dead URL |
 
-Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`) — is manual: no token or key is in the repository and no workflow uploads anything.
+Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`, `@dineug/erd-editor-mcp`) — is manual: no token or key is in the repository and no workflow uploads anything.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

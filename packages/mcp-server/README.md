@@ -1,0 +1,91 @@
+# @dineug/erd-editor-mcp
+
+> An MCP server that lets a coding agent edit [erd-editor](https://github.com/dineug/erd-editor)
+> diagrams, live in VS Code or straight on disk
+
+Claude Code, Codex and any other client of the [Model Context Protocol](https://modelcontextprotocol.io)
+get one tool per editing operation on an `.erd.json` document: add a table, rename a column,
+relate two tables, import a DDL dump, read the schema back as SQL. When the document is open in
+the [ERD Editor VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode),
+the agent joins the editor as a collaborator: every call shows up on the canvas as it happens, with
+the agent's focus on the cell it is editing. With no editor around, the same tools edit the file
+itself.
+
+The package is one self-contained file with no runtime dependencies. It needs Node.js 20.19 or
+later.
+
+## Install
+
+### Claude Code
+
+```sh
+claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+```
+
+### Codex
+
+Add to `~/.codex/config.toml`, or to `.codex/config.toml` in a trusted project:
+
+```toml
+[mcp_servers.erd-editor]
+command = "npx"
+args = ["-y", "@dineug/erd-editor-mcp"]
+```
+
+### Any other MCP client
+
+Run `npx -y @dineug/erd-editor-mcp` as a stdio server. It resolves relative document paths
+against its working directory, so start it in your project.
+
+## Live and headless
+
+For every edit the server looks for a VS Code window that holds the document, through the lock
+files the extension keeps in `~/.erd-editor/ide/`:
+
+| What it finds | What an edit does |
+| --- | --- |
+| A window whose workspace contains the document, or that has it open | **Live.** Opens the document in the ERD editor if needed, joins the editing session and applies the change there. Edits appear at once and stay unsaved until the agent calls `erd_save` (or you save). The agent's `erd_undo` reverts only its own edits. |
+| No window | **Headless.** Loads the file, applies the change and replaces the file atomically. `erd_save` has nothing to do. |
+| A window with its hub off | **Refused.** Reads still work, from disk. Writing the file under an open editor would be overwritten by its next save, so the server does not. |
+
+The live hub runs in trusted workspaces and is on by default. Turn it off with the VS Code setting
+`dineug.erd-editor.agentHub.enabled`; the window then still guards its documents from headless
+writes. The extension activates in workspaces that contain `.erd`, `.erd.json`, `.vuerd` or
+`.vuerd.json` files.
+
+The server never falls back to the file on its own while a window holds a document: if the
+connection drops it reconnects, and only when that window has exited does it edit the file and say
+so in the result.
+
+## Documents
+
+New documents are `.erd.json`: `erd_open_document` with `create` adds the extension to a name that
+has none. Existing `.erd`, `.vuerd` and `.vuerd.json` files open too. A file that is not an ERD
+document the editor can read, such as one left with merge conflict markers, is refused with
+`invalidDocument` and left as it is, never loaded as an empty diagram and written back.
+
+An agent should read a document with `erd_read` in the `snapshot` format, which lists every table,
+column, relationship, index and memo with its id, and pass those ids to the edit tools. The `sql`
+format generates DDL for any of the eight supported databases; the `json` format is the raw file.
+Editing the JSON file by hand is not supported.
+
+## Tools
+
+| Group | Tools |
+| --- | --- |
+| Session | `erd_list_documents`, `erd_open_document`, `erd_read`, `erd_save`, `erd_undo`, `erd_redo` |
+| Tables | `erd_add_table`, `erd_remove_table`, `erd_change_table_name`, `erd_change_table_comment`, `erd_change_table_color`, `erd_move_table`, `erd_sort_tables` |
+| Columns | `erd_add_column`, `erd_remove_columns`, `erd_change_column_name`, `erd_change_column_data_type`, `erd_change_column_default`, `erd_change_column_comment`, `erd_set_column_primary_key`, `erd_set_column_unique`, `erd_set_column_not_null`, `erd_set_column_auto_increment`, `erd_move_column` |
+| Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type` |
+| Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
+| Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
+| Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_language`, `erd_set_table_name_case`, `erd_set_column_name_case`, `erd_set_bracket_type`, `erd_set_relationship_data_type_sync`, `erd_set_relationship_optimization`, `erd_set_column_order`, `erd_set_max_width_comment`, `erd_set_ignore_save_settings`, `erd_set_show` |
+| Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |
+
+Every edit tool takes the document `path`. Settings other than `erd_set_show`, and
+`erd_resize_memo`, make no undo entry in the editor, so `erd_undo` passes over them and the result
+says so.
+
+## License
+
+[MIT](https://github.com/dineug/erd-editor/blob/main/LICENSE)

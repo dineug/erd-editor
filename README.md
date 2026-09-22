@@ -118,12 +118,13 @@ flowchart TB
 
 ## Packages
 
-This is a pnpm workspace. The one package published to npm is
+This is a pnpm workspace. Two packages are published to npm:
 [`@dineug/erd-editor`](./packages/erd-editor), the editor itself, syntax highlighting
-included. Everything else is internal.
+included, and [`@dineug/erd-editor-mcp`](./packages/mcp-server), the MCP server that lets a
+coding agent such as Claude Code or Codex edit diagrams. Everything else is internal.
 
 <details>
-<summary>All 13 packages</summary>
+<summary>All 15 packages</summary>
 
 | Package | Description |
 | --- | --- |
@@ -140,6 +141,8 @@ included. Everything else is internal.
 | [`replication-store-worker`](./packages/replication-store-worker) | Headless document replica for the VS Code host |
 | [`intellij-webview`](./packages/intellij-webview) | The bundle inside the IntelliJ plugin's editor panel |
 | [`intellij-plugin`](./packages/intellij-plugin) | The published IntelliJ plugin — Kotlin and Gradle, not TypeScript |
+| [`agent-hub`](./packages/agent-hub) | The protocol between an IDE window and a coding agent's MCP server: messages, lock files, framing |
+| [`mcp-server`](./packages/mcp-server) | The published MCP server — one tool per editing operation, live in VS Code or headless on disk |
 
 </details>
 
