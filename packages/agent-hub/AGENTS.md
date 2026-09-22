@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`@dineug/erd-editor-agent-hub` is the one specification of the document hub that lets a coding agent's MCP server join an IDE window's collaboration stream: the protocol version and message types, the lock file schema and where it lives, JSON lines framing, path authorization and hub discovery. It is pure functions over strings; each side puts its own net / fs adapter on top. `private: true`, no dependencies.
+`@dineug/erd-editor-agent-hub` is the one specification of the document hub that lets a coding agent's MCP server join an IDE window's collaboration stream: the protocol version and message types, the lock file schema and where it lives, JSON lines framing, path authorization and hub discovery. It is pure functions over strings; each side puts its own net / fs adapter on top. `private: true`; `effect` is its one peer dependency.
 
 ## Key Files
 
@@ -54,6 +54,6 @@
 
 ### External
 
-None at runtime. Consumers list it as a devDependency and bundle it inline, as `vuerd-vscode` does.
+`effect` (`catalog:`) as a peerDependency, which `createExternal` keeps a bare import, plus a devDependency for this package's own build and specs. Consumers list this package as a devDependency and bundle it inline, as `vuerd-vscode` does, and list `effect` beside it so one copy resolves for both.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

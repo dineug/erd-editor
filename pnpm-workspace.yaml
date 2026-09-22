@@ -6,6 +6,8 @@ catalog:
   vite-plus: 0.2.9
   '@vitest/browser-playwright': 4.1.10
   '@vitest/coverage-v8': 4.1.10
+  effect: 4.0.0-rc.117
+  '@effect/platform-node': 4.0.0-rc.117
 overrides:
   # Was `resolutions` in the root package.json, which pnpm reads but does not
   # document; this is the field it actually specifies for the job.
@@ -19,3 +21,11 @@ peerDependencyRules:
   allowedVersions:
     vite: '*'
     vitest: '*'
+packageExtensions:
+  # redis backs only platform-node's Redis layers, which nothing here imports.
+  # Left required, auto-install-peers would lock redis, five @redis/* packages
+  # and cluster-key-slot.
+  '@effect/platform-node':
+    peerDependenciesMeta:
+      redis:
+        optional: true

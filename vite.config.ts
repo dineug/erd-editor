@@ -106,6 +106,13 @@ export default defineConfig({
           'no-prototype-builtins': 'error',
           'no-redeclare': 'off',
           'no-regex-spaces': 'error',
+          // Effect by subpath only: platform-node's root barrel reaches undici,
+          // ws and two literal dynamic imports; effect's re-exports every core
+          // module. Exact names, so effect/Schema and the like stay legal.
+          'no-restricted-imports': [
+            'error',
+            { paths: ['effect', '@effect/platform-node'] },
+          ],
           'no-self-assign': 'error',
           'no-setter-return': 'off',
           'no-shadow-restricted-names': 'error',

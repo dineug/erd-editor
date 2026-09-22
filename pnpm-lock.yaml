@@ -6,12 +6,18 @@ settings:
 
 catalogs:
   default:
+    '@effect/platform-node':
+      specifier: 4.0.0-rc.117
+      version: 4.0.0-rc.117
     '@vitest/browser-playwright':
       specifier: 4.1.10
       version: 4.1.10
     '@vitest/coverage-v8':
       specifier: 4.1.10
       version: 4.1.10
+    effect:
+      specifier: 4.0.0-rc.117
+      version: 4.0.0-rc.117
     vite-plus:
       specifier: 0.2.9
       version: 0.2.9
@@ -20,6 +26,8 @@ overrides:
   typescript: 7.0.2
   vite: npm:@voidzero-dev/vite-plus-core@0.2.9
   vitest: 4.1.10
+
+packageExtensionsChecksum: sha256-szM874KBbSxTYSFw7iIzEUKof84HNiD4esRjMM2jF0w=
 
 importers:
 
@@ -55,6 +63,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.117
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -406,6 +417,9 @@ importers:
       '@dineug/erd-editor-agent-hub':
         specifier: workspace:*
         version: link:../agent-hub
+      '@effect/platform-node':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.117(effect@4.0.0-rc.117)
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.6.5)
@@ -415,6 +429,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.117
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -565,6 +582,9 @@ importers:
       '@dineug/erd-editor-webview-bridge':
         specifier: workspace:*
         version: link:../webview-bridge
+      '@effect/platform-node':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.117(effect@4.0.0-rc.117)
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
@@ -583,6 +603,9 @@ importers:
       '@vscode/test-electron':
         specifier: ^3.1.0
         version: 3.1.0
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.117
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -1860,6 +1883,22 @@ packages:
 
   '@easylogic/colorpicker@1.10.11':
     resolution: {integrity: sha512-CHN/WTk0d1LH7Jzep7fjPkUe73XjZ6zQCFH/rhpHf1e06TDJQ0D9lRfJgtBjLsEZqKfAIP6C8q9MEt9cxh3Y/A==}
+
+  '@effect/platform-node-shared@4.0.0-rc.117':
+    resolution: {integrity: sha512-GyRkEfLBG49MwJe+/XDPiXYcQ44RA9p2z0AurlsWhR1cd1PqOUMEZU1pORL+/R5hR8aH6ZuqoJYD8lAc6h+wlA==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      effect: ^4.0.0-rc.117
+
+  '@effect/platform-node@4.0.0-rc.117':
+    resolution: {integrity: sha512-WbPcvQDkqXFnCeG6LohJ9eVNapCDhZbCpezhYKxm0IsZEk7swakRh7RkC1t2CXzd3hGmszTv2k9e/pXyZuL+wQ==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      effect: ^4.0.0-rc.117
+      redis: '>=5.0.0 <7.0.0'
+    peerDependenciesMeta:
+      redis:
+        optional: true
 
   '@egjs/agent@2.4.3':
     resolution: {integrity: sha512-XvksSENe8wPeFlEVouvrOhKdx8HMniJ3by7sro2uPF3M6QqWwjzVcmvwoPtdjiX8O1lfRoLhQMp1a7NGlVTdIA==}
@@ -5211,6 +5250,9 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
+  effect@4.0.0-rc.117:
+    resolution: {integrity: sha512-UUyi9QiOW4nySFIBM3KnYbNMd9EZliOdKfBcyLD0mPMPheO2fkuXS5y0opjWc9oqzlJxPQICEGm8gGw3kh9j/w==}
+
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
     engines: {node: '>=0.10.0'}
@@ -7352,6 +7394,10 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
+  undici@8.11.0:
+    resolution: {integrity: sha512-AdzuGcAkzhbha3GgCSoUBx2P0quwym6qdFNCQz/fDGZc8w9XJ741wHUbt2kTmfPz+ZIOMkySFkiY7RXmiDDC8w==}
+    engines: {node: '>=22.19.0'}
+
   unicode-canonical-property-names-ecmascript@2.0.0:
     resolution: {integrity: sha512-yY5PpDlfVIU5+y/BSCxAJRBIS1Zc2dDG3Ujq+sR0U+JjUevW2JhocOF+soROYDSaAezOzOKuyyixhD6mBknSmQ==}
     engines: {node: '>=4'}
@@ -9329,6 +9375,24 @@ snapshots:
       pathe: 2.0.3
 
   '@easylogic/colorpicker@1.10.11': {}
+
+  '@effect/platform-node-shared@4.0.0-rc.117(effect@4.0.0-rc.117)':
+    dependencies:
+      '@types/ws': 8.18.1
+      effect: 4.0.0-rc.117
+      ws: 8.21.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@effect/platform-node@4.0.0-rc.117(effect@4.0.0-rc.117)':
+    dependencies:
+      '@effect/platform-node-shared': 4.0.0-rc.117(effect@4.0.0-rc.117)
+      effect: 4.0.0-rc.117
+      undici: 8.11.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@egjs/agent@2.4.3': {}
 
@@ -12374,6 +12438,8 @@ snapshots:
 
   ee-first@1.1.1: {}
 
+  effect@4.0.0-rc.117: {}
+
   ejs@3.1.10:
     dependencies:
       jake: 10.8.7
@@ -14889,6 +14955,8 @@ snapshots:
       which-boxed-primitive: 1.1.1
 
   undici-types@6.21.0: {}
+
+  undici@8.11.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.0: {}
 

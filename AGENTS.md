@@ -38,7 +38,7 @@
 
 ## Package Map
 
-Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `mcp-server` joins only its tail (`mcp-server` → `erd-editor` → `erd-editor-schema`), and its other dependency, `agent-hub`, which `vuerd-vscode` inlines too, depends on nothing. `intellij-plugin` is Gradle, outside the graph, fed by `intellij-webview`'s build.
+Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `mcp-server` joins only its tail (`mcp-server` → `erd-editor` → `erd-editor-schema`), and its other dependency, `agent-hub`, which `vuerd-vscode` inlines too, depends on no workspace package. `intellij-plugin` is Gradle, outside the graph, fed by `intellij-webview`'s build.
 
 | `packages/` | npm name | |
 | --- | --- | --- |
