@@ -1,0 +1,54 @@
+export {
+  type DiscoveryResult,
+  type LockCandidate,
+  type LockFile,
+  selectHub,
+  type StaleLock,
+} from './discovery';
+export {
+  createFrameDecoder,
+  encodeFrame,
+  type FrameDecoder,
+  MAX_FRAME_BYTES,
+} from './framing';
+export {
+  LOCK_DIR_MODE,
+  LOCK_FILE_MODE,
+  lockDirPath,
+  lockFilePath,
+  lockFilePid,
+  type LockRecord,
+  MAX_PIPE_PATH_BYTES,
+  parseLock,
+  pipePath,
+  pipePathFits,
+  serializeLock,
+} from './lock';
+export {
+  assertAuthorized,
+  isAuthorized,
+  isInside,
+  isSamePath,
+  longestPrefixIndex,
+  type Platform,
+  toSegments,
+} from './paths';
+export {
+  type DocumentInfo,
+  HUB_NOTIFICATION_METHODS,
+  HUB_PROTOCOL_VERSION,
+  HUB_REQUEST_METHODS,
+  type HubError,
+  HubErrorCode,
+  type HubMethod,
+  type HubNotification,
+  type HubNotificationMethod,
+  type HubNotificationParams,
+  type HubRequest,
+  HubRequestError,
+  type HubRequestParams,
+  type HubResponse,
+  type HubResultMap,
+  type JoinResult,
+  protocolMismatchMessage,
+} from './protocol';

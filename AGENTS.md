@@ -16,11 +16,11 @@
 | `tsconfig.app.json` | Base every TS package extends (ES2022, strict, bundler resolution) except `vscode-extension`, a Node config |
 | `tsconfig.json` | Root program: `tools/` and every package's Vite / Vitest config, which no package program covers |
 | `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor for every library build and `app` |
-| `tools/vite/library-config.ts` | `defineLibraryConfig` (seven standard builds), `createLibraryTasks` (task contract of all eight library packages) |
+| `tools/vite/library-config.ts` | `defineLibraryConfig` (eight standard builds), `createLibraryTasks` (task contract of all nine library packages) |
 | `tools/vite/package-metadata.ts` | Task inputs derived from tsconfig files and manifests; `createExternal` |
 | `tools/vite/worker-url.ts`, `same-origin-worker.ts`, `inline-worker.ts` | The worker plugins, tested with the factory in `tools/vite-config.test.ts` |
 | `tools/eslint-rules/` | The `local` oxlint plugin — the four comment rules; itself lint-exempt |
-| `scripts/check-task-inputs.mjs` | Recomputes library tasks; matches bespoke tasks' `.d.ts` globs to declared deps; pins the 8 / 7 library-config counts a new library must update |
+| `scripts/check-task-inputs.mjs` | Recomputes library tasks; matches bespoke tasks' `.d.ts` globs to declared deps; pins the 9 / 8 library-config counts a new library must update |
 | `scripts/check-bundle-size.mjs` | The `pnpm size` gate |
 | `erd-editor.code-workspace` | Multi-root workspace, formatting through `oxc.oxc-vscode` |
 
@@ -28,7 +28,7 @@
 
 | Directory | Purpose |
 | --- | --- |
-| `packages/` | The 13 workspace packages, each with its own `AGENTS.md` |
+| `packages/` | The 14 workspace packages, each with its own `AGENTS.md` |
 | `data/` | Import fixtures for hand-testing (SQL, GraphQL SDL, DBML, AML v1/v2, `test.json`); `schema-sql-parser`'s tests read `sakila.sql` |
 | `docker/` | A `docker-compose.yml` per SQL vendor for running generated DDL; Databricks and Snowflake are cloud-only and have none |
 | `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents (see Contracts) |
@@ -47,6 +47,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `erd-editor-schema` | `@dineug/erd-editor-schema` | v2/v3 document schema, parsing, LWW operators |
 | `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.9.0): `<erd-editor>`, its Konva scene, and `engine.js` (`createReplicationStore`) |
 | `webview-bridge` | `@dineug/erd-editor-webview-bridge` | `Bridge`, the typed host↔webview command protocol |
+| `agent-hub` | `@dineug/erd-editor-agent-hub` | the IDE ↔ coding-agent hub protocol: messages, lock file, JSON lines framing, path authorization, discovery |
 | `webview-client` | `@dineug/erd-editor-webview-client` | `mountWebview(host)` — all host wiring both webviews share |
 | `replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | headless replica `webview-client` spawns |
 | `vscode-webview` | `@dineug/erd-editor-vscode-webview` | VSCode webview bundle |
@@ -70,7 +71,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 
   Flags go before the task: `vp run build -r` forwards `-r` to the task. A `--filter` matching nothing exits 0. `vp build` / `vp test` are built-ins that skip `run.tasks`, the `tsc --noEmit` gate and `dependsOn`. There is no `vite` binary.
 - **TypeScript 7.0.2's native `tsc` is invisible to Vite Task**, so every task declares `input`. Library packages derive it in `package-metadata.ts` and `check-task-inputs.mjs` recomputes it; app tasks list their own, and the check only matches their sibling `dist/**/*.d.ts` globs to declared dependencies. A task with no `output` restores nothing on a cache hit. `@typescript/typescript6` is only for `vite-plugin-dts`.
-- **Library builds.** Six private libraries (`r-html`, `vite-plugin-r-html`, `schema-sql-parser`, `erd-editor-schema`, `webview-bridge`, `webview-client`) build `minify: false` + `preserveModules: true` with `sideEffects: false`, so the consumer prunes per file and minifies once. `erd-editor` keeps chunks and no `sideEffects` field (its `AGENTS.md` says why).
+- **Library builds.** Seven private libraries (`r-html`, `vite-plugin-r-html`, `schema-sql-parser`, `erd-editor-schema`, `webview-bridge`, `webview-client`, `agent-hub`) build `minify: false` + `preserveModules: true` with `sideEffects: false`, so the consumer prunes per file and minifies once. `erd-editor` keeps chunks and no `sideEffects` field (its `AGENTS.md` says why).
 - **Externals decide what ships.** `createExternal` keeps `dependencies` + `peerDependencies` as bare imports and inlines the rest. `erd-editor` lists the private libraries as devDependencies so they inline; moving one into `dependencies` ships an import of a package not on npm.
 - **Workers.** `erd-editor`'s four SharedWorkers and the replica Worker ship as `dist/workers/*.js`, spawned from `new URL('./workers/x.js', import.meta.url)` — the spelling `worker-url.ts` writes, which webpack, Rspack and Vite all bundle from a dependency. `vscode-webview` rebuilds them as same-origin blobs (`same-origin-worker.ts`), `intellij-webview` loads them by URL, the UMD build inlines them (`inline-worker.ts`).
 - **A cache replay does not empty a task's `output` directory**, so a tree that has seen several builds holds stale chunks beside live ones. `pnpm cache:clear` and rebuild before packaging or publishing.
@@ -91,9 +92,9 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 
 ### Testing Requirements
 
-- `pnpm test` = `vp run -r test` over the nine packages with a `vitest.config.*` (a library's `test` task exists because of that file), each `tsc --noEmit` then Vitest, imported as `vite-plus/test`.
+- `pnpm test` = `vp run -r test` over the ten packages with a `vitest.config.*` (a library's `test` task exists because of that file), each `tsc --noEmit` then Vitest, imported as `vite-plus/test`.
 - Vitest collects `src/**/*.test.ts` only (`erd-editor`: `.test.{ts,tsx}`); a spec named or placed otherwise never runs. `erd-editor`'s `browser` project (`*.browser.test.{ts,tsx}`, real Chromium) makes `pnpm test` need `pnpm --filter @dineug/erd-editor exec playwright install chromium`.
-- v8 coverage at `perFile` 80% on all four metrics gates `test:coverage`, and `pnpm test` measures none. CI runs `pnpm -r --no-bail test:coverage`, so a file under 80% in any of the nine packages fails it. Cover a gap with a test; the one hint in `src/` is `/* v8 ignore next -- @preserve */` on `erd-editor`'s `if (import.meta.hot)` blocks.
+- v8 coverage at `perFile` 80% on all four metrics gates `test:coverage`, and `pnpm test` measures none. CI runs `pnpm -r --no-bail test:coverage`, so a file under 80% in any of the ten packages fails it. Cover a gap with a test; the one hint in `src/` is `/* v8 ignore next -- @preserve */` on `erd-editor`'s `if (import.meta.hot)` blocks.
 - **Not verified until `pnpm build` passes** — declaration emit, bundling and the packages with no `test` task are checked only there.
 - `pnpm check` = `vp check` (oxfmt + oxlint) + root `tsc --noEmit` + `node --test tools/vite-config.test.ts` + `check-task-inputs.mjs`.
 - `pnpm size`, after `pnpm build`: gzip of every script reachable from `erd-editor`'s `exports` vs `packages/erd-editor/.size-baseline.json`. `budgetGzip` is a regression watch; re-pin with `--set-budget --budget-gzip <bytes> --budget-note <why>`.
