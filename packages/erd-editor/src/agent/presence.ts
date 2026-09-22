@@ -3,6 +3,7 @@ import {
   SHARED_FOCUS_TRACKER_TIMEOUT,
   sharedFocusTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
+import type { Editor } from '@/engine/modules/editor/state';
 import type { RxStore } from '@/engine/rx-store';
 import { toSharedFocus, toSharedFocusKey } from '@/utils/focus';
 
@@ -17,6 +18,31 @@ export type FocusPresence = {
 const release = (timer: unknown) => {
   (timer as { unref?: () => void } | null)?.unref?.();
 };
+
+const SHARED_TRACKER_MAPS = [
+  'sharedMouseTrackerMap',
+  'sharedFocusTrackerMap',
+  'sharedSelectionTrackerMap',
+  'sharedDragSelectTrackerMap',
+] as const;
+
+type SharedTrackerMaps = Pick<Editor, (typeof SHARED_TRACKER_MAPS)[number]>;
+
+/**
+ * Clears the expiry the engine set on every tracker another peer sent, and the
+ * trackers with it. A pending expiry is a Node timer the reducer never releases,
+ * so a closed MCP process would wait up to 90 seconds for it.
+ */
+export function clearSharedTrackers(editor: SharedTrackerMaps) {
+  for (const key of SHARED_TRACKER_MAPS) {
+    const trackers: Record<string, { timeoutId: unknown }> = editor[key];
+
+    for (const id of Object.keys(trackers)) {
+      clearTimeout(trackers[id].timeoutId as ReturnType<typeof setTimeout>);
+      Reflect.deleteProperty(trackers, id);
+    }
+  }
+}
 
 /**
  * The focus half of the element's presence tracker: the focused cell goes out

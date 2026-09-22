@@ -46,6 +46,9 @@ function responses(stdout: PassThrough) {
   return lines;
 }
 
+/** How long the engine keeps another editor's focused cell without a new beat. */
+const FOCUS_EXPIRY_MS = 90_000;
+
 const until = async (check: () => boolean) => {
   for (let i = 0; i < 200 && !check(); i++) {
     await new Promise(resolve => setTimeout(resolve, 5));
@@ -127,6 +130,84 @@ describe('the server', () => {
     expect(erd.manager.paths()).toEqual([]);
     await erd.close();
     expect(closeAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves no tracker expiry behind when stdin ends after another editor sent its focus', async () => {
+    const stdin = new PassThrough();
+    const stdout = new PassThrough();
+    const io = createMemoryIo();
+    const path = '/work/a.erd.json';
+    io.put(path, emptyDocument());
+    const hub = createFakeHub(io, { pid: 5757, workspaceFolders: ['/work'] });
+    const lines = responses(stdout);
+    const erd = await startStdioServer({ stdin, stdout, io });
+    const send = (message: object) =>
+      stdin.write(`${JSON.stringify(message)}\n`);
+    send({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-06-18',
+        capabilities: {},
+        clientInfo: { name: 'stdio-test', version: '1' },
+      },
+    });
+    send({ jsonrpc: '2.0', method: 'notifications/initialized' });
+    send({
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: { name: 'erd_add_table', arguments: { path } },
+    });
+    await until(() => lines.length >= 2);
+    expect(JSON.parse(lines[1].result.content[0].text).mode).toBe('live');
+
+    // The agent's own focus reaches the editor on a 100 ms throttle; let it land first.
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const set = vi.spyOn(globalThis, 'setTimeout');
+    const clear = vi.spyOn(globalThis, 'clearTimeout');
+    const editorSide = () =>
+      Object.values(hub.webview(path).state.editor.sharedFocusTrackerMap).map(
+        ({ timeoutId }) => timeoutId
+      );
+    const expiries = () =>
+      set.mock.calls.flatMap(([, ms], index) => {
+        const timer = set.mock.results[index].value;
+        return ms === FOCUS_EXPIRY_MS && !editorSide().includes(timer)
+          ? [timer]
+          : [];
+      });
+    for (const peer of hub.documents.get(path)!.peers) {
+      peer.notify({
+        method: 'actions',
+        params: {
+          path,
+          actions: [
+            {
+              type: 'editor.sharedFocusTracker',
+              payload: {
+                focus: { tableId: 'x', columnId: null, focusType: 'tableName' },
+              },
+              version: 1,
+              tags: 1,
+              meta: { editorId: 'vscode-user', nickname: 'user' },
+            },
+          ],
+        },
+      });
+    }
+    await until(() => expiries().length > 0);
+    expect(expiries()).toHaveLength(1);
+    expect(clear).not.toHaveBeenCalledWith(expiries()[0]);
+
+    stdin.end();
+    await until(() => erd.manager.paths().length === 0);
+    await erd.close();
+
+    expect(erd.manager.paths()).toEqual([]);
+    expect(clear).toHaveBeenCalledWith(expiries()[0]);
+    hub.destroy();
   });
 
   it('sweeps idle sessions on a timer and logs a sweep that fails', async () => {

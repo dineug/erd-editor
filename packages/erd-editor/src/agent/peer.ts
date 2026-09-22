@@ -7,7 +7,11 @@ import {
 import { isEmpty } from 'es-toolkit/compat';
 
 import { AgentToolError, AgentToolErrorCode } from '@/agent/errors';
-import { createFocusPresence, type FocusPresence } from '@/agent/presence';
+import {
+  clearSharedTrackers,
+  createFocusPresence,
+  type FocusPresence,
+} from '@/agent/presence';
 import { readDocument, type ReadFormat } from '@/agent/read';
 import {
   type ActionTool,
@@ -456,6 +460,8 @@ export function createAgentPeer({
     subscribers.clear();
     sharedStore.destroy();
     rxStore.destroy();
+    // Only now, when no action reaches a reducer, can no new expiry be set.
+    clearSharedTrackers(rxStore.state.editor);
     toolLog = [];
     redoStack = [];
   };
