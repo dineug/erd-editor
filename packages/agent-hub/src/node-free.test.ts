@@ -16,6 +16,11 @@ const sources: Record<string, string> = {
 
 const NODE_IMPORT = /\b(?:from|import|require)\s*\(?\s*['"]node:/;
 const SPECIFIER = /\b(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g;
+/** Effect by subpath only: the bare effect barrel stays out, as the root lint rule has it. */
+const ALLOWED_BARE = /^effect\//;
+
+const isTestCode = (path: string) =>
+  path.endsWith('.test.ts') || path.startsWith('./__test-utils__/');
 
 describe('agent-hub stays free of node builtins', () => {
   it('scans every TypeScript file under src, tests included', () => {
@@ -28,6 +33,7 @@ describe('agent-hub stays free of node builtins', () => {
         './paths.ts',
         './protocol.ts',
         './node-free.test.ts',
+        './__test-utils__/effect.ts',
       ])
     );
   });
@@ -40,20 +46,38 @@ describe('agent-hub stays free of node builtins', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('imports only its own modules outside tests, so no bare builtin slips in either', () => {
+  it('imports only its own modules and effect subpaths outside tests, so no bare builtin slips in either', () => {
     const bare = Object.entries(sources)
-      .filter(([path]) => !path.endsWith('.test.ts'))
+      .filter(([path]) => !isTestCode(path))
       .flatMap(([path, source]) =>
         [...source.matchAll(SPECIFIER)]
           .map(match => match[1])
           .filter(
             specifier =>
-              !specifier.startsWith('./') && !specifier.startsWith('@/')
+              !specifier.startsWith('./') &&
+              !specifier.startsWith('@/') &&
+              !ALLOWED_BARE.test(specifier)
           )
           .map(specifier => `${path}: ${specifier}`)
       );
 
     expect(bare).toEqual([]);
+  });
+
+  it('allows effect subpaths only, never the bare effect barrel', () => {
+    for (const specifier of [
+      'effect/Schema',
+      'effect/unstable/encoding/Ndjson',
+    ]) {
+      expect(ALLOWED_BARE.test(specifier)).toBe(true);
+    }
+    for (const specifier of [
+      'effect',
+      'effect-schema',
+      '@effect/platform-node',
+    ]) {
+      expect(ALLOWED_BARE.test(specifier)).toBe(false);
+    }
   });
 
   it('recognizes every import form it guards against', () => {

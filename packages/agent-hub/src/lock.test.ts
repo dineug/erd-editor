@@ -155,6 +155,7 @@ describe('parseLock', () => {
     ['version', 2],
     ['protocolVersion', '1'],
     ['protocolVersion', 1.5],
+    ['protocolVersion', 2 ** 53],
     ['token', null],
     ['hub', 'true'],
     ['hub', 1],
@@ -164,6 +165,51 @@ describe('parseLock', () => {
 });
 
 describe('serializeLock', () => {
+  it('writes the exact bytes of a lock file, two-space indent and a final newline', () => {
+    expect(serializeLock(record)).toBe(
+      [
+        '{',
+        '  "pipe": "/home/me/.erd-editor/ide/4242.sock",',
+        '  "workspaceFolders": [',
+        '    "/home/me/ws"',
+        '  ],',
+        '  "documents": [',
+        '    "/home/me/ws/model.erd.json",',
+        '    "/tmp/scratch.erd"',
+        '  ],',
+        '  "ide": "vscode",',
+        '  "version": "2.9.0",',
+        '  "protocolVersion": 1,',
+        '  "token": "6f1c2c1e-6a53-4a55-9d7e-3b8f3f0d6a10",',
+        '  "hub": true',
+        '}',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it.each([
+    ['a live lock', record],
+    [
+      'a hub-false lock',
+      { ...record, pipe: '', workspaceFolders: [], documents: [], hub: false },
+    ],
+    [
+      'non-ASCII and escaped paths',
+      {
+        ...record,
+        workspaceFolders: ['/홈/작업', 'C:\\Users\\me'],
+        documents: ['/a "b"\n c'],
+      },
+    ],
+  ])('reads back %s as the same bytes', (_, lock) => {
+    const text = serializeLock(lock);
+    const parsed = parseLock(text);
+
+    expect(parsed).not.toBeNull();
+    expect(serializeLock(parsed!)).toBe(text);
+  });
+
   it('writes the fields in a fixed order, indented, with a final newline', () => {
     const shuffled = Object.fromEntries(
       Object.entries(record).reverse()

@@ -1,7 +1,18 @@
+import * as ByteSize from 'effect/ByteSize';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
+import * as Option from 'effect/Option';
+import * as PlatformError from 'effect/PlatformError';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { type LockFile, selectHub } from '@/discovery';
-import { type LockRecord, serializeLock } from '@/lock';
+import { itEffect } from '@/__test-utils__/effect';
+import { type LockFile, readLockDirectory, selectHub } from '@/discovery';
+import {
+  lockDirPath,
+  lockFilePath,
+  type LockRecord,
+  serializeLock,
+} from '@/lock';
 
 type LockInit = Partial<LockRecord> & { pid: number; mtimeMs?: number };
 
@@ -238,4 +249,196 @@ describe('selectHub', () => {
       { pid: 42, reason: 'malformed' },
     ]);
   });
+});
+
+const HOME = '/home/me';
+
+type MemoryFile = { text: string; mtime: Option.Option<Date> };
+
+const missing = (method: string, path: string) =>
+  PlatformError.systemError({
+    module: 'FileSystem',
+    method,
+    _tag: 'NotFound',
+    description: 'No such file or directory',
+    pathOrDescriptor: path,
+  });
+
+function fileInfo(file: MemoryFile): FileSystem.File.Info {
+  return {
+    type: 'File',
+    mtime: file.mtime,
+    atime: Option.none(),
+    birthtime: Option.none(),
+    dev: 0,
+    ino: Option.none(),
+    mode: 0o600,
+    nlink: Option.none(),
+    uid: Option.none(),
+    gid: Option.none(),
+    rdev: Option.none(),
+    size: ByteSize.bytes(file.text.length),
+    blksize: Option.none(),
+    blocks: Option.none(),
+  };
+}
+
+/**
+ * A lock directory held in a map: readDirectory lists the direct children of
+ * a path in insertion order, and a path missing from the map is NotFound.
+ */
+function memoryFileSystem(
+  files: Map<string, MemoryFile>,
+  overrides: Partial<FileSystem.FileSystem> = {}
+) {
+  const get = (method: string, path: string) => {
+    const file = files.get(path);
+    return file ? Effect.succeed(file) : Effect.fail(missing(method, path));
+  };
+  return FileSystem.layerNoop({
+    readDirectory: path => {
+      const prefix = `${path}/`;
+      const names = [...files.keys()]
+        .filter(key => key.startsWith(prefix))
+        .map(key => key.slice(prefix.length));
+      return names.length > 0
+        ? Effect.succeed(names)
+        : Effect.fail(missing('readDirectory', path));
+    },
+    readFileString: path =>
+      Effect.map(get('readFileString', path), file => file.text),
+    stat: path => Effect.map(get('stat', path), fileInfo),
+    ...overrides,
+  });
+}
+
+function lockEntry(pid: number, mtimeMs = 1000): [string, MemoryFile] {
+  return [
+    lockFilePath(HOME, pid),
+    { text: lock({ pid }).raw, mtime: Option.some(new Date(mtimeMs)) },
+  ];
+}
+
+describe('readLockDirectory', () => {
+  itEffect('reads no locks when the lock directory is missing', () =>
+    Effect.gen(function* () {
+      const locks = yield* readLockDirectory(HOME).pipe(
+        Effect.provide(FileSystem.layerNoop({}))
+      );
+      expect(locks).toEqual([]);
+    })
+  );
+
+  itEffect(
+    'reads every lock file unparsed, with its mtime, in listing order',
+    () =>
+      Effect.gen(function* () {
+        const files = new Map([
+          lockEntry(42, 1500.9),
+          lockEntry(7, 2000),
+          [
+            lockFilePath(HOME, 9),
+            { text: '{"pipe":', mtime: Option.some(new Date(3)) },
+          ],
+        ]);
+        const locks = yield* readLockDirectory(`${HOME}/`).pipe(
+          Effect.provide(memoryFileSystem(files))
+        );
+
+        expect(locks).toEqual([
+          { pid: 42, raw: lock({ pid: 42 }).raw, mtimeMs: 1500 },
+          { pid: 7, raw: lock({ pid: 7 }).raw, mtimeMs: 2000 },
+          { pid: 9, raw: '{"pipe":', mtimeMs: 3 },
+        ]);
+      })
+  );
+
+  itEffect(
+    'skips every name that is not a lock file, temp files included',
+    () =>
+      Effect.gen(function* () {
+        const dir = lockDirPath(HOME);
+        const other = { text: 'x', mtime: Option.some(new Date(1)) };
+        const files = new Map([
+          [`${lockFilePath(HOME, 6)}.tmp`, other],
+          [`${dir}/6.sock`, other],
+          [`${dir}/notes.txt`, other],
+          [`${dir}/0.json`, other],
+          lockEntry(6),
+        ]);
+        const locks = yield* readLockDirectory(HOME).pipe(
+          Effect.provide(memoryFileSystem(files))
+        );
+
+        expect(locks.map(({ pid }) => pid)).toEqual([6]);
+      })
+  );
+
+  itEffect(
+    'skips a lock deleted between listing and reading, or one it cannot stat',
+    () =>
+      Effect.gen(function* () {
+        const files = new Map([lockEntry(1), lockEntry(2), lockEntry(3)]);
+        const locks = yield* readLockDirectory(HOME).pipe(
+          Effect.provide(
+            memoryFileSystem(files, {
+              readFileString: path =>
+                path === lockFilePath(HOME, 1)
+                  ? Effect.fail(missing('readFileString', path))
+                  : Effect.succeed(files.get(path)?.text ?? ''),
+              stat: path =>
+                path === lockFilePath(HOME, 2)
+                  ? Effect.fail(missing('stat', path))
+                  : Effect.succeed(fileInfo(files.get(path)!)),
+            })
+          )
+        );
+
+        expect(locks.map(({ pid }) => pid)).toEqual([3]);
+      })
+  );
+
+  itEffect('counts a lock whose file system keeps no mtime as the oldest', () =>
+    Effect.gen(function* () {
+      const files = new Map([
+        [
+          lockFilePath(HOME, 5),
+          { text: lock({ pid: 5 }).raw, mtime: Option.none() },
+        ],
+      ]);
+      const locks = yield* readLockDirectory(HOME).pipe(
+        Effect.provide(memoryFileSystem(files))
+      );
+
+      expect(locks).toEqual([
+        { pid: 5, raw: lock({ pid: 5 }).raw, mtimeMs: 0 },
+      ]);
+    })
+  );
+
+  itEffect('hands selectHub what it needs to pick a window', () =>
+    Effect.gen(function* () {
+      const files = new Map<string, MemoryFile>([
+        [
+          lockFilePath(HOME, 11),
+          {
+            text: lock({ pid: 11, workspaceFolders: ['/ws'] }).raw,
+            mtime: Option.some(new Date(10)),
+          },
+        ],
+        [
+          lockFilePath(HOME, 12),
+          {
+            text: lock({ pid: 12, workspaceFolders: ['/ws'] }).raw,
+            mtime: Option.some(new Date(20)),
+          },
+        ],
+      ]);
+      const locks = yield* readLockDirectory(HOME).pipe(
+        Effect.provide(memoryFileSystem(files))
+      );
+
+      expect(selectedPid(pick(locks, '/ws/x.erd'))).toBe(12);
+    })
+  );
 });

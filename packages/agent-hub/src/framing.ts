@@ -1,3 +1,7 @@
+import * as Effect from 'effect/Effect';
+import * as Schema from 'effect/Schema';
+import * as Stream from 'effect/Stream';
+
 /**
  * The largest frame either side accepts, in UTF-8 bytes without the newline.
  * A join result carries a whole document as one JSON string, hence the room;
@@ -12,18 +16,30 @@ export type FrameDecoder = {
   readonly pending: number;
 };
 
+/**
+ * Why decodeFrames gave up on a stream: a frame over MAX_FRAME_BYTES, a line
+ * that is not JSON, or a JSON value the message schema refuses.
+ */
+export class FrameError extends Schema.TaggedError<FrameError>()('FrameError', {
+  reason: Schema.Literals(['tooLarge', 'notJson', 'invalid']),
+  message: Schema.String,
+}) {}
+
 const encoder = new TextEncoder();
 
 function byteLength(text: string): number {
   return encoder.encode(text).length;
 }
 
+function sizeProblem(bytes: number): string | null {
+  return bytes > MAX_FRAME_BYTES
+    ? `A frame of ${bytes} bytes exceeds the ${MAX_FRAME_BYTES} byte limit`
+    : null;
+}
+
 function assertFrameSize(bytes: number): void {
-  if (bytes > MAX_FRAME_BYTES) {
-    throw new RangeError(
-      `A frame of ${bytes} bytes exceeds the ${MAX_FRAME_BYTES} byte limit`
-    );
-  }
+  const problem = sizeProblem(bytes);
+  if (problem) throw new RangeError(problem);
 }
 
 /** One JSON value on one line. JSON.stringify escapes newlines, so the frame has exactly one. */
@@ -75,4 +91,81 @@ export function createFrameDecoder(): FrameDecoder {
       return bufferBytes;
     },
   };
+}
+
+/** The unterminated tail of the text read so far and its UTF-8 bytes. */
+type Unterminated = { readonly text: string; readonly bytes: number };
+
+const tooLarge = (problem: string) =>
+  new FrameError({ reason: 'tooLarge', message: problem });
+
+/** The lines a chunk completes; the size check runs before a line is buffered. */
+function splitChunk(
+  tail: Unterminated,
+  chunk: string
+): Effect.Effect<readonly [Unterminated, string[]], FrameError> {
+  const lines: string[] = [];
+  let { text, bytes } = tail;
+  let start = 0;
+  let end = chunk.indexOf('\n');
+
+  while (end !== -1) {
+    const segment = chunk.slice(start, end);
+    const problem = sizeProblem(bytes + byteLength(segment));
+    if (problem) return Effect.fail(tooLarge(problem));
+
+    lines.push(text + segment);
+    text = '';
+    bytes = 0;
+    start = end + 1;
+    end = chunk.indexOf('\n', start);
+  }
+
+  const rest = chunk.slice(start);
+  const restBytes = bytes + byteLength(rest);
+  const problem = sizeProblem(restBytes);
+  if (problem) return Effect.fail(tooLarge(problem));
+  return Effect.succeed([{ text: text + rest, bytes: restBytes }, lines]);
+}
+
+const parseLine = (line: string) =>
+  Effect.try({
+    try: (): unknown => JSON.parse(line),
+    catch: error =>
+      new FrameError({
+        reason: 'notJson',
+        message: `A frame is not JSON: ${String(error)}`,
+      }),
+  });
+
+/**
+ * Turns a text stream into its messages: one JSON value per newline-ended line,
+ * blank lines skipped, an unterminated tail dropped at the end, each value
+ * decoded by schema. The first bad frame fails the stream with a FrameError.
+ */
+export function decodeFrames<S extends Schema.Constraint>(schema: S) {
+  const decode = Schema.decodeUnknownEffect(schema);
+  const decodeLine = (line: string) =>
+    Effect.flatMap(parseLine(line), value =>
+      Effect.mapError(
+        decode(value),
+        error =>
+          new FrameError({
+            reason: 'invalid',
+            message: `A frame does not match the message schema: ${error.message}`,
+          })
+      )
+    );
+
+  return <E, R>(
+    text: Stream.Stream<string, E, R>
+  ): Stream.Stream<S['Type'], E | FrameError, R | S['DecodingServices']> =>
+    text.pipe(
+      Stream.mapAccumEffect(
+        (): Unterminated => ({ text: '', bytes: 0 }),
+        splitChunk
+      ),
+      Stream.filter(line => line.trim() !== ''),
+      Stream.mapEffect(decodeLine)
+    );
 }

@@ -13,27 +13,40 @@ describe('public api surface', () => {
       [
         'assertAuthorized',
         'createFrameDecoder',
+        'decodeFrames',
+        'DocumentInfo',
         'encodeFrame',
+        'FrameError',
         'HUB_NOTIFICATION_METHODS',
         'HUB_PROTOCOL_VERSION',
         'HUB_REQUEST_METHODS',
+        'HubError',
         'HubErrorCode',
+        'HubErrorCodeSchema',
+        'HubNotification',
+        'HubRequest',
         'HubRequestError',
+        'HubResponse',
+        'HubToPeerMessage',
         'isAuthorized',
         'isInside',
         'isSamePath',
+        'JoinResult',
         'LOCK_DIR_MODE',
         'LOCK_FILE_MODE',
         'lockDirPath',
         'lockFilePath',
         'lockFilePid',
+        'LockRecord',
         'longestPrefixIndex',
         'MAX_FRAME_BYTES',
         'MAX_PIPE_PATH_BYTES',
         'parseLock',
+        'PeerToHubMessage',
         'pipePath',
         'pipePathFits',
         'protocolMismatchMessage',
+        'readLockDirectory',
         'selectHub',
         'serializeLock',
         'toSegments',
@@ -44,6 +57,8 @@ describe('public api surface', () => {
   it('re-exports the message types, direction types included', () => {
     expectTypeOf<publicApi.PeerToHubMessage>().toEqualTypeOf<protocol.PeerToHubMessage>();
     expectTypeOf<publicApi.HubToPeerMessage>().toEqualTypeOf<protocol.HubToPeerMessage>();
+    expectTypeOf<publicApi.LockRecord>().toEqualTypeOf<lock.LockRecord>();
+    expectTypeOf<publicApi.LockFile>().toEqualTypeOf<discovery.LockFile>();
     expectTypeOf<publicApi.HubRequestParams['applyActions']>().toEqualTypeOf<
       protocol.HubRequestParams['applyActions']
     >();

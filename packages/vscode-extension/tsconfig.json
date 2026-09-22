@@ -6,6 +6,10 @@
     // Node 22.15, which supports ES2022 in full.
     "target": "ES2022",
     "lib": ["ES2022"],
+    // agent-hub's declarations import effect, whose own declarations name DOM
+    // types lib ES2022 lacks (`TextDecoderOptions` in `Channel.d.ts`). The
+    // root `tsconfig.app.json` skips library checks the same way.
+    "skipLibCheck": true,
     "outDir": "out",
     "sourceMap": true,
     // `moduleResolution` is deliberately absent. TypeScript 7 removed

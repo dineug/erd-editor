@@ -1,4 +1,15 @@
-import { type LockRecord, parseLock } from '@/lock';
+import * as Arr from 'effect/Array';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
+import * as Option from 'effect/Option';
+
+import {
+  lockDirPath,
+  lockFilePath,
+  lockFilePid,
+  type LockRecord,
+  parseLock,
+} from '@/lock';
 import {
   isSamePath,
   longestPrefixIndex,
@@ -8,6 +19,47 @@ import {
 
 /** A lock file as read from the lock directory, its text left unparsed. */
 export type LockFile = { pid: number; raw: string; mtimeMs: number };
+
+/** One lock file's text and mtime, or none when it went away or cannot be read. */
+function readLockFile(
+  fs: FileSystem.FileSystem,
+  homeDir: string,
+  pid: number
+): Effect.Effect<Option.Option<LockFile>> {
+  const path = lockFilePath(homeDir, pid);
+  return Effect.all([fs.readFileString(path), fs.stat(path)], {
+    concurrency: 2,
+  }).pipe(
+    Effect.map(([raw, info]) => ({
+      pid,
+      raw,
+      mtimeMs: Option.match(info.mtime, {
+        onNone: () => 0,
+        onSome: mtime => mtime.getTime(),
+      }),
+    })),
+    Effect.option
+  );
+}
+
+/**
+ * Every lock file of the lock directory under homeDir, unparsed, in listing
+ * order. A missing directory reads as none, a name lockFilePid refuses is
+ * skipped, and so is a lock deleted or unreadable between listing and reading.
+ */
+export const readLockDirectory = Effect.fn('readLockDirectory')(function* (
+  homeDir: string
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const names = yield* fs
+    .readDirectory(lockDirPath(homeDir))
+    .pipe(Effect.orElseSucceed((): string[] => []));
+  const pids = names.map(lockFilePid).filter(pid => pid !== null);
+  const files = yield* Effect.forEach(pids, pid =>
+    readLockFile(fs, homeDir, pid)
+  );
+  return Arr.getSomes(files);
+});
 
 export type LockCandidate = {
   pid: number;

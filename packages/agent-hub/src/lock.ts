@@ -1,18 +1,30 @@
+import * as Result from 'effect/Result';
+import * as Schema from 'effect/Schema';
+
 import { type Platform } from '@/paths';
 
-export type LockRecord = {
+const Paths = Schema.mutable(Schema.Array(Schema.String));
+
+/** The fields serializeLock writes, in the order it writes them. */
+export const LockRecord = Schema.Struct({
   /** The socket or named pipe to connect to; empty when hub is false. */
-  pipe: string;
-  workspaceFolders: string[];
+  pipe: Schema.String,
+  workspaceFolders: Paths,
   /** Absolute paths of the documents open in an ERD editor, rewritten on every open and close. */
-  documents: string[];
-  ide: string;
-  version: string;
-  protocolVersion: number;
-  token: string;
+  documents: Paths,
+  ide: Schema.String,
+  version: Schema.String,
+  protocolVersion: Schema.Int,
+  token: Schema.String,
   /** False when the window is untrusted or the hub is turned off: no pipe, but it still guards its paths. */
-  hub: boolean;
-};
+  hub: Schema.Boolean,
+});
+export type LockRecord = typeof LockRecord.Type;
+
+/** A lock file's text: LockRecord as JSON indented by two spaces. */
+const LockJson = Schema.fromJsonString(LockRecord, { space: 2 });
+const decodeLock = Schema.decodeUnknownResult(LockJson);
+const encodeLock = Schema.encodeSync(LockJson);
 
 export const LOCK_DIR_MODE = 0o700;
 export const LOCK_FILE_MODE = 0o600;
@@ -60,62 +72,12 @@ export function lockFilePid(fileName: string): number | null {
   return Number.isSafeInteger(pid) ? pid : null;
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(item => typeof item === 'string');
-}
-
 /** A lock with every field of the right type, unknown fields dropped, or null. */
 export function parseLock(raw: string): LockRecord | null {
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-  const { pipe, workspaceFolders, documents, ide, version } = record;
-  const { protocolVersion, token, hub } = record;
-  if (
-    typeof pipe !== 'string' ||
-    !isStringArray(workspaceFolders) ||
-    !isStringArray(documents) ||
-    typeof ide !== 'string' ||
-    typeof version !== 'string' ||
-    typeof protocolVersion !== 'number' ||
-    !Number.isInteger(protocolVersion) ||
-    typeof token !== 'string' ||
-    typeof hub !== 'boolean'
-  ) {
-    return null;
-  }
-
-  return {
-    pipe,
-    workspaceFolders,
-    documents,
-    ide,
-    version,
-    protocolVersion,
-    token,
-    hub,
-  };
+  return Result.getOrNull(decodeLock(raw));
 }
 
 /** Fixed key order and only the LockRecord fields, so equal records write equal bytes. */
 export function serializeLock(record: LockRecord): string {
-  const ordered: LockRecord = {
-    pipe: record.pipe,
-    workspaceFolders: record.workspaceFolders,
-    documents: record.documents,
-    ide: record.ide,
-    version: record.version,
-    protocolVersion: record.protocolVersion,
-    token: record.token,
-    hub: record.hub,
-  };
-  return `${JSON.stringify(ordered, null, 2)}\n`;
+  return `${encodeLock(record)}\n`;
 }

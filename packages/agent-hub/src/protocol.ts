@@ -1,56 +1,7 @@
+import * as Schema from 'effect/Schema';
+
 /** Bumped on any wire change; hello carries it and the hub refuses a mismatch. */
 export const HUB_PROTOCOL_VERSION = 1;
-
-export type DocumentInfo = {
-  path: string;
-  open: boolean;
-  active: boolean;
-  dirty: boolean;
-  readonly: boolean;
-};
-
-/**
- * What a peer seeds itself from on join. snapshotVersion is the highest action
- * version the hub had seen when it captured initialValue.
- */
-export type JoinResult = {
-  initialValue: string;
-  snapshotVersion: number;
-  readonly: boolean;
-};
-
-/** What a peer asks of the hub; every peer to hub message is one of these. */
-export type HubRequestParams = {
-  hello: { token: string; protocolVersion: number; client: string };
-  listDocuments: Record<string, never>;
-  openDocument: { path: string; create?: boolean; initialValue?: string };
-  join: { path: string };
-  /** A batch of the peer's own actions for every webview and every other peer. */
-  applyActions: { path: string; actions: unknown[] };
-  leave: { path: string };
-  save: { path: string };
-};
-
-export type HubResultMap = {
-  hello: { protocolVersion: number; ide: string; version: string };
-  listDocuments: { documents: DocumentInfo[] };
-  /**
-   * Sent once the first webview of the document reports ready. opened is false
-   * when a ready editor already showed the document and nothing was opened.
-   */
-  openDocument: { path: string; opened: boolean; webviews: number };
-  join: JoinResult;
-  /** How many ready webviews the batch was handed to. */
-  applyActions: { webviews: number };
-  leave: Record<string, never>;
-  save: { saved: boolean };
-};
-
-export type HubMethod = keyof HubRequestParams;
-
-export type HubRequest<M extends HubMethod = HubMethod> = M extends HubMethod
-  ? { id: number; method: M; params: HubRequestParams[M] }
-  : never;
 
 export const HubErrorCode = {
   protocolMismatch: 'protocolMismatch',
@@ -67,69 +18,242 @@ export const HubErrorCode = {
 } as const;
 export type HubErrorCode = (typeof HubErrorCode)[keyof typeof HubErrorCode];
 
-export type HubError = {
-  code: HubErrorCode;
-  message: string;
-  hubProtocolVersion?: number;
-  clientProtocolVersion?: number;
-};
+/** The values of the HubErrorCode map as literals; any other code fails to decode. */
+export const HubErrorCodeSchema = Schema.Literals(Object.values(HubErrorCode));
+
+export const HubError = Schema.Struct({
+  code: HubErrorCodeSchema,
+  message: Schema.String,
+  hubProtocolVersion: Schema.optionalKey(Schema.Number),
+  clientProtocolVersion: Schema.optionalKey(Schema.Number),
+});
+export type HubError = typeof HubError.Type;
+
+export const DocumentInfo = Schema.Struct({
+  path: Schema.String,
+  open: Schema.Boolean,
+  active: Schema.Boolean,
+  dirty: Schema.Boolean,
+  readonly: Schema.Boolean,
+});
+export type DocumentInfo = typeof DocumentInfo.Type;
+
+/**
+ * What a peer seeds itself from on join. snapshotVersion is the highest action
+ * version the hub had seen when it captured initialValue.
+ */
+export const JoinResult = Schema.Struct({
+  initialValue: Schema.String,
+  snapshotVersion: Schema.Int,
+  readonly: Schema.Boolean,
+});
+export type JoinResult = typeof JoinResult.Type;
+
+/**
+ * Params or a result no reader looks at: any object decodes with whatever fields
+ * it has, so a field a newer writer adds gets through, as it does a struct.
+ */
+const OpenRecord = Schema.Record(Schema.String, Schema.Unknown);
+
+const Actions = Schema.mutable(Schema.Array(Schema.Unknown));
+
+const PathParams = Schema.Struct({ path: Schema.String });
+
+/**
+ * Sent once the first webview of the document reports ready. opened is false
+ * when a ready editor already showed the document and nothing was opened.
+ */
+const OpenDocumentResult = Schema.Struct({
+  path: Schema.String,
+  opened: Schema.Boolean,
+  webviews: Schema.Int,
+});
+
+function request<const M extends string, P extends Schema.Constraint>(
+  method: M,
+  params: P
+) {
+  return Schema.Struct({
+    id: Schema.Int,
+    method: Schema.Literal(method),
+    params,
+  });
+}
+
+/** Both answers a request can get, each naming the method it answers. */
+function response<const M extends string, R extends Schema.Constraint>(
+  method: M,
+  result: R
+) {
+  return [
+    Schema.Struct({
+      id: Schema.Int,
+      ok: Schema.Literal(true),
+      method: Schema.Literal(method),
+      result,
+    }),
+    Schema.Struct({
+      id: Schema.Int,
+      ok: Schema.Literal(false),
+      method: Schema.Literal(method),
+      error: HubError,
+    }),
+  ] as const;
+}
+
+function notification<const M extends string, P extends Schema.Constraint>(
+  method: M,
+  params: P
+) {
+  return Schema.Struct({ method: Schema.Literal(method), params });
+}
+
+/** What a peer asks of the hub; every peer to hub frame is one of these. */
+export const HubRequest = Schema.Union([
+  request(
+    'hello',
+    Schema.Struct({
+      token: Schema.String,
+      protocolVersion: Schema.Int,
+      client: Schema.String,
+    })
+  ),
+  request('listDocuments', OpenRecord),
+  request(
+    'openDocument',
+    Schema.Struct({
+      path: Schema.String,
+      create: Schema.optionalKey(Schema.Boolean),
+      initialValue: Schema.optionalKey(Schema.String),
+    })
+  ),
+  request('join', PathParams),
+  request(
+    'applyActions',
+    Schema.Struct({
+      path: Schema.String,
+      /** A batch of the peer's own actions for every webview and every other peer. */
+      actions: Actions,
+    })
+  ),
+  request('leave', PathParams),
+  request('save', PathParams),
+]);
+
+/** Distributes over the method, so narrowing on method also narrows params. */
+export type HubRequest<M extends HubMethod = HubMethod> = Extract<
+  typeof HubRequest.Type,
+  { method: M }
+>;
+export type HubMethod = (typeof HubRequest.Type)['method'];
+export type HubRequestParams = { [M in HubMethod]: HubRequest<M>['params'] };
+
+export const HubResponse = Schema.Union([
+  ...response(
+    'hello',
+    Schema.Struct({
+      protocolVersion: Schema.Int,
+      ide: Schema.String,
+      version: Schema.String,
+    })
+  ),
+  ...response(
+    'listDocuments',
+    Schema.Struct({ documents: Schema.mutable(Schema.Array(DocumentInfo)) })
+  ),
+  ...response('openDocument', OpenDocumentResult),
+  ...response('join', JoinResult),
+  ...response(
+    'applyActions',
+    Schema.Struct({
+      /** How many ready webviews the batch was handed to. */
+      webviews: Schema.Int,
+    })
+  ),
+  ...response('leave', OpenRecord),
+  ...response('save', Schema.Struct({ saved: Schema.Boolean })),
+]);
 
 /** Distributes over the method, so narrowing on method also narrows result. */
-export type HubResponse<M extends HubMethod = HubMethod> = M extends HubMethod
-  ?
-      | { id: number; ok: true; method: M; result: HubResultMap[M] }
-      | { id: number; ok: false; method: M; error: HubError }
-  : never;
+export type HubResponse<M extends HubMethod = HubMethod> = Extract<
+  typeof HubResponse.Type,
+  { method: M }
+>;
+export type HubResultMap = {
+  [M in HubMethod]: Extract<HubResponse<M>, { ok: true }>['result'];
+};
 
 /**
  * Notifications carry no id, get no response and flow from the hub to a peer
  * only; a peer hands its own actions over with the applyActions request.
  */
-export type HubNotificationParams = {
-  /** Actions of a webview or of another peer on a document the peer joined. */
-  actions: { path: string; actions: unknown[] };
-  documentClosed: { path: string };
-};
-
-export type HubNotificationMethod = keyof HubNotificationParams;
+export const HubNotification = Schema.Union([
+  notification(
+    'actions',
+    Schema.Struct({
+      path: Schema.String,
+      /** Actions of a webview or of another peer on a document the peer joined. */
+      actions: Actions,
+    })
+  ),
+  notification('documentClosed', PathParams),
+]);
 
 export type HubNotification<
   M extends HubNotificationMethod = HubNotificationMethod,
-> = M extends HubNotificationMethod
-  ? { method: M; params: HubNotificationParams[M] }
-  : never;
+> = Extract<typeof HubNotification.Type, { method: M }>;
+export type HubNotificationMethod = (typeof HubNotification.Type)['method'];
+export type HubNotificationParams = {
+  [M in HubNotificationMethod]: HubNotification<M>['params'];
+};
 
 /** Every frame a peer sends after connecting: requests only. */
+export const PeerToHubMessage = HubRequest;
 export type PeerToHubMessage = HubRequest;
 
 /** Every frame the hub sends a peer: responses and notifications. */
+export const HubToPeerMessage = Schema.Union([
+  ...HubResponse.members,
+  ...HubNotification.members,
+]);
 export type HubToPeerMessage = HubResponse | HubNotification;
 
-/** The request method names, pinned against HubRequest by protocol.test.ts. */
-export const HUB_REQUEST_METHODS = Object.freeze([
-  'hello',
-  'listDocuments',
-  'openDocument',
-  'join',
-  'applyActions',
-  'leave',
-  'save',
-] as const) satisfies readonly HubMethod[];
+/** The request method names in declaration order, read off the HubRequest members. */
+export const HUB_REQUEST_METHODS: readonly HubMethod[] = Object.freeze(
+  HubRequest.members.map(member => member.fields.method.literal)
+);
 
-/** The notification method names, pinned against HubNotification by protocol.test.ts. */
-export const HUB_NOTIFICATION_METHODS = Object.freeze([
-  'actions',
-  'documentClosed',
-] as const) satisfies readonly HubNotificationMethod[];
+/** The notification method names in declaration order, read off the HubNotification members. */
+export const HUB_NOTIFICATION_METHODS: readonly HubNotificationMethod[] =
+  Object.freeze(
+    HubNotification.members.map(member => member.fields.method.literal)
+  );
 
-/** A failure the hub turns into a HubError response carrying the same code. */
-export class HubRequestError extends Error {
+type HubRequestErrorProps = {
   readonly code: HubErrorCode;
+  readonly message: string;
+};
 
-  constructor(code: HubErrorCode, message: string) {
-    super(message);
-    this.name = 'HubRequestError';
-    this.code = code;
+/**
+ * A failure the hub turns into a HubError response carrying the same code.
+ * The positional form predates the schema; both build the same error.
+ */
+export class HubRequestError extends Schema.TaggedError<HubRequestError>()(
+  'HubRequestError',
+  { code: HubErrorCodeSchema, message: Schema.String }
+) {
+  constructor(code: HubErrorCode, message: string);
+  constructor(props: HubRequestErrorProps, options?: Schema.MakeOptions);
+  constructor(
+    codeOrProps: HubErrorCode | HubRequestErrorProps,
+    messageOrOptions?: string | Schema.MakeOptions
+  ) {
+    super(
+      typeof codeOrProps === 'string'
+        ? { code: codeOrProps, message: String(messageOrOptions) }
+        : codeOrProps,
+      typeof messageOrOptions === 'string' ? undefined : messageOrOptions
+    );
   }
 }
 
