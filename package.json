@@ -30,6 +30,7 @@
     "lint": "vp lint .",
     "check": "vp check && tsc --noEmit && node --test tools/vite-config.test.ts && node scripts/check-task-inputs.mjs",
     "size": "node scripts/check-bundle-size.mjs",
+    "agent-graph": "node scripts/check-agent-graph.mjs",
     "cache:clear": "vp cache clean",
     "prepare": "vp config"
   },
