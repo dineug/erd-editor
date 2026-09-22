@@ -1,4 +1,3 @@
-import { readDocument, type ToolArg } from '@dineug/erd-editor/agent.js';
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
 
@@ -9,6 +8,8 @@ import {
   tableNamed,
 } from '@/__test-utils__/documents';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
+import { readDocument } from '@/tools/read';
+import type { ToolArg } from '@/tools/registry';
 import { runTool } from '@/tools/run';
 import { validateToolArgs } from '@/tools/validate';
 

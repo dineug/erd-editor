@@ -1,4 +1,3 @@
-import type { ReadFormat } from '@dineug/erd-editor/agent.js';
 import {
   type DiscoveryResult,
   type DocumentInfo,
@@ -27,6 +26,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import type { ReadFormat } from '@/tools/read';
 
 /** A session idle this long is closed; the next call opens a new one and reseeds. */
 export const IDLE_TTL_MS = 30 * 60 * 1000;

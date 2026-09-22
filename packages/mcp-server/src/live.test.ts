@@ -1,4 +1,3 @@
-import { readDocument } from '@dineug/erd-editor/agent.js';
 import {
   afterEach,
   beforeEach,
@@ -23,6 +22,7 @@ import {
   REJOIN_NOTE,
   RESEED_NOTE,
 } from '@/session/live';
+import { readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/live.erd.json';

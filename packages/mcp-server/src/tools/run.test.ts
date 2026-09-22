@@ -1,4 +1,3 @@
-import { readDocument, toolByName } from '@dineug/erd-editor/agent.js';
 import {
   createPeerStore,
   type PeerStore,
@@ -14,6 +13,8 @@ import {
   tableNamed,
 } from '@/__test-utils__/documents';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
+import { readDocument } from '@/tools/read';
+import { toolByName } from '@/tools/registry';
 import { runTool } from '@/tools/run';
 
 const SEED_VALUE = documentFromSql(SHOP_SQL);

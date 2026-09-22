@@ -1,7 +1,7 @@
-import { actionTools, type ToolArgKind } from '@dineug/erd-editor/agent.js';
 import { describe, expect, it } from 'vite-plus/test';
 import { z } from 'zod';
 
+import { actionTools, type ToolArgKind } from '@/tools/registry';
 import { argKindSchema, argsShape } from '@/tools/schema';
 
 /** One kind of each type, with a value it takes and one it refuses. */

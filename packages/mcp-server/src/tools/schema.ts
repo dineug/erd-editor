@@ -1,5 +1,6 @@
-import type { ToolArg, ToolArgKind } from '@dineug/erd-editor/agent.js';
 import { z } from 'zod';
+
+import type { ToolArg, ToolArgKind } from '@/tools/registry';
 
 /**
  * The zod type of one registry argument kind. The shape only guides the

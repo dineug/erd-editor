@@ -1,4 +1,3 @@
-import { readDocument } from '@dineug/erd-editor/agent.js';
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
@@ -24,6 +23,7 @@ import {
   settle,
 } from '@/__test-utils__/mcp';
 import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/shop.erd.json';

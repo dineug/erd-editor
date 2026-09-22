@@ -1,6 +1,6 @@
-import type { ReadFormat } from '@dineug/erd-editor/agent.js';
 import type { RevertResult } from '@dineug/erd-editor/peer.js';
 
+import type { ReadFormat } from '@/tools/read';
 import type { ToolRun } from '@/tools/run';
 
 /** Live joins a VS Code window's editing stream; headless edits the file itself. */

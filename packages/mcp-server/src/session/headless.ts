@@ -1,4 +1,3 @@
-import { readDocument, type ReadFormat } from '@dineug/erd-editor/agent.js';
 import {
   createPeerStore,
   type PeerStore,
@@ -22,6 +21,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import { readDocument, type ReadFormat } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 export const HEADLESS_SAVE_NOTE =

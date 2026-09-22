@@ -1,10 +1,10 @@
-import { readDocument, type ReadFormat } from '@dineug/erd-editor/agent.js';
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import type { DocumentInfo } from '@dineug/erd-editor-agent-hub';
 
 import { errnoCode, messageOf, SessionError, SessionErrorCode } from '@/errors';
 import { type McpIo } from '@/io';
 import { isErdPath, pathsOf } from '@/paths';
+import { readDocument, type ReadFormat } from '@/tools/read';
 
 /** Directories a listing never walks into: dependencies, VCS data and anything hidden. */
 const SKIPPED_DIRECTORIES = new Set(['node_modules']);

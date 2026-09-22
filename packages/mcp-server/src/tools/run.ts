@@ -1,10 +1,4 @@
 import {
-  type ActionTool,
-  type ExpectedCount,
-  type ToolArgValues,
-  toolByName,
-} from '@dineug/erd-editor/agent.js';
-import {
   type DispatchFocus,
   type PeerStore,
   PeerStoreError,
@@ -13,6 +7,12 @@ import {
 import type { AnyAction } from '@dineug/r-html';
 
 import { ToolError, ToolErrorCode } from '@/tools/errors';
+import {
+  type ActionTool,
+  type ExpectedCount,
+  type ToolArgValues,
+  toolByName,
+} from '@/tools/registry';
 import { validateToolArgs } from '@/tools/validate';
 
 export type ToolRun = {

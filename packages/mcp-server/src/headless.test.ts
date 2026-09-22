@@ -10,7 +10,6 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { readDocument } from '@dineug/erd-editor/agent.js';
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
@@ -38,6 +37,7 @@ import {
   openHeadlessSession,
   RELOADED_NOTE,
 } from '@/session/headless';
+import { readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/solo.erd.json';

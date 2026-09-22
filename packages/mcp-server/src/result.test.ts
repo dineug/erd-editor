@@ -1,8 +1,3 @@
-import {
-  actionTools,
-  AgentToolError,
-  toolByName,
-} from '@dineug/erd-editor/agent.js';
 import { PeerStoreError } from '@dineug/erd-editor/peer.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
@@ -18,6 +13,7 @@ import { SessionError } from '@/errors';
 import { type SessionManager } from '@/session/manager';
 import { ToolError } from '@/tools/errors';
 import { registerEditTool } from '@/tools/register';
+import { actionTools, toolByName } from '@/tools/registry';
 import {
   errorResult,
   jsonResult,
@@ -127,7 +123,7 @@ describe('tool results', () => {
     const coded = [
       new ToolError('notFound', 'erd_add_column', 'no table'),
       new PeerStoreError('readonly', 'erd_add_table'),
-      new AgentToolError('invalidArgs', 'erd_read', 'vendor applies to sql'),
+      new ToolError('invalidArgs', 'erd_read', 'vendor applies to sql'),
       new SessionError('blocked', 'hub off'),
     ].map(error => body(errorResult(error)));
     expect(coded).toEqual([

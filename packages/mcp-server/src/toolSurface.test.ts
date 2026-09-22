@@ -1,9 +1,10 @@
-import { actionTools, SQL_VENDORS } from '@dineug/erd-editor/agent.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
 import { createMemoryIo } from '@/__test-utils__/memoryIo';
+import { SQL_VENDORS } from '@/tools/read';
 import { isDestructive, SESSION_TOOL_NAMES } from '@/tools/register';
+import { actionTools } from '@/tools/registry';
 
 let mcp: McpHarness;
 let tools: Awaited<ReturnType<McpHarness['client']['listTools']>>['tools'];

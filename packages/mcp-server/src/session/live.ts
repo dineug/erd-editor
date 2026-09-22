@@ -1,4 +1,3 @@
-import { readDocument, type ReadFormat } from '@dineug/erd-editor/agent.js';
 import {
   createPeerStore,
   type PeerStore,
@@ -25,6 +24,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import { readDocument, type ReadFormat } from '@/tools/read';
 import { runTool as runPeerTool, type ToolRun } from '@/tools/run';
 
 export const RESEED_NOTE =

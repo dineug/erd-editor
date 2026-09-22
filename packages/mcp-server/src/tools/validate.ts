@@ -1,13 +1,13 @@
+import type { RootState } from '@dineug/erd-editor/peer.js';
+import { isPlainObject } from 'es-toolkit';
+
+import { ToolError, ToolErrorCode } from '@/tools/errors';
 import type {
   ActionTool,
   ToolArg,
   ToolArgValues,
   ToolEntity,
-} from '@dineug/erd-editor/agent.js';
-import type { RootState } from '@dineug/erd-editor/peer.js';
-import { isPlainObject } from 'es-toolkit';
-
-import { ToolError, ToolErrorCode } from '@/tools/errors';
+} from '@/tools/registry';
 
 type Tool = Pick<ActionTool, 'name' | 'args' | 'refine'>;
 

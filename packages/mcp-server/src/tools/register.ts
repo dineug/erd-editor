@@ -1,10 +1,3 @@
-import {
-  type ActionTool,
-  actionTools,
-  READ_FORMATS,
-  type ReadFormat,
-  SQL_VENDORS,
-} from '@dineug/erd-editor/agent.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type {
   CallToolResult,
@@ -14,6 +7,8 @@ import { z } from 'zod';
 
 import { type SessionManager } from '@/session/manager';
 import { describeArg, describeTool } from '@/tools/copy';
+import { READ_FORMATS, type ReadFormat, SQL_VENDORS } from '@/tools/read';
+import { type ActionTool, actionTools } from '@/tools/registry';
 import {
   errorResult,
   jsonResult,
