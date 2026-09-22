@@ -63,6 +63,6 @@
 
 ### External
 
-`@modelcontextprotocol/sdk` 1.30 (`McpServer`, `StdioServerTransport`; `Client` and `InMemoryTransport` in specs), `zod` 4. The SDK brings `ajv` into the bundle; the engine brings `graphql` (about 32 KB raw, 7.6 KB gzip of the 843 KB / 213 KB file).
+`@modelcontextprotocol/sdk` 1.30 (`McpServer`, `StdioServerTransport`; `Client` and `InMemoryTransport` in specs), `zod` 4. The SDK brings `ajv` into the bundle; the engine brings `graphql` (about 32 KB raw, 7.6 KB gzip of the 844 KB / 214 KB file at 0.1.0, gzip level 9). It stays in on purpose: the parser sits in the engine chunk, so dropping the import tools would not shed it.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

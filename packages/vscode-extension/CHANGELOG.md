@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.9.0] - 2026-09-22
+
+### Added
+
+- Let a coding agent such as Claude Code or Codex edit your ERD documents while they are open. Add
+  the `@dineug/erd-editor-mcp` MCP server to the agent, and it joins the editor like a collaborator:
+  each change it makes shows up on the canvas as it happens, with its focus on the cell it is
+  editing, and stays unsaved until the agent or you save. You can keep editing alongside it, and
+  the agent's undo reverts only its own changes. A document that is not open yet is opened for it.
+- A new setting, `dineug.erd-editor.agentHub.enabled` (on by default), turns this off for the
+  window. Agents connect only in a trusted workspace; when the setting is off or the workspace is
+  untrusted, they are still kept from writing this window's ERD files behind the editor's back.
+- The zoom percentage on the bottom toolbar of the ERD and Visualization tabs is now a button that
+  resets the zoom to 100%.
+
+### Changed
+
+- The extension now also starts in a workspace whose only ERD files are `.erd.json` or
+  `.vuerd.json`, not just `.erd` or `.vuerd`.
+
+### Fixed
+
+- With one document open in two editor groups, the last move of a table drag reaches the other
+  group right away, instead of waiting there until the next change.
+
 ## [2.8.0] - 2026-09-19
 
 ### Added

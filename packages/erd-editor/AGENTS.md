@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-22 -->
 
 # erd-editor
 
 ## Purpose
 
-The editor core and the workspace's one npm package (3.9.0): the framework-free `<erd-editor>` custom element on `@dineug/r-html`, with a Redux-like store whose actions carry a Lamport clock version and merge through the LWW registers in `@dineug/erd-editor-schema`. `app`, `webview-client` and `replication-store-worker` depend on it; `app` and `replication-store-worker` also import the DOM-free `engine.js` entry.
+The editor core, published on npm (3.10.0): the framework-free `<erd-editor>` custom element on `@dineug/r-html`, with a Redux-like store whose actions carry a Lamport clock version and merge through the LWW registers in `@dineug/erd-editor-schema`. `app`, `webview-client` and `replication-store-worker` depend on it; `app` and `replication-store-worker` also import the DOM-free `engine.js` entry, and `mcp-server` inlines the DOM-free `agent.js` entry, a headless collaboration peer that edits through registry tools instead of a pointer.
 
 The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/konva/`); toolbar, panels, menus and the editing overlay stay DOM. The same scene components also draw the one **view**, the Visualization tab's Flow mode — the reader's own placement, zoom and rows, never in the file, the history or a peer — told which through a `GeometrySource`.
 
@@ -15,8 +15,13 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 | --- | --- |
 | `src/index.ts` | Public entry: registers `<erd-editor>` as a side effect; exports `ErdEditorElement` (type), `setExportFileCallback`, `setImportFileCallback` |
 | `src/engine/index.ts` | `@dineug/erd-editor/engine.js` — `createReplicationStore` only, pinned by `src/engine/index.test.ts` |
+| `src/agent/index.ts` | `@dineug/erd-editor/agent.js` — `createAgentPeer`, `actionTools` / `toolByName` / `PENDING_COVERAGE`, `NOT_EMITTED` / `NO_DEDICATED_TOOL` / `EXCLUSION_REASONS`, `readDocument` / `READ_FORMATS` / `SQL_VENDORS`, `toAgentSnapshot`, `AgentToolError` / `AgentToolErrorCode`; pinned by `src/agent/index.test.ts` |
+| `src/agent/peer.ts` | `createAgentPeer`: an `RxStore` (`manualStreamFlush`, `observable: false`) and a `SharedStore` like an element's, one registry tool per `runTool` as one dispatch, measured batches and history entries against the declared ones (`mismatch`), `undo` / `redo` over the agent's own calls only, `setInitialValue` as the one reseed |
+| `src/agent/registry.ts`, `registry.<entity>.ts` | `ActionTool` and the 53 tools (table, column, relationship, index, memo, settings, import); `validate.ts` checks argument kinds and entity liveness first and throws `AgentToolError` |
+| `src/agent/reachability.ts` | `NOT_EMITTED` (7 change types no tool emits), `NO_DEDICATED_TOOL` (`editor.clear`, inside the imports only), `EXCLUSION_REASONS` for both |
+| `src/agent/read.ts`, `snapshot.ts` | `readDocument`: `snapshot` (compact, with ids and enum names), `sql` (per vendor through `createSchemaSQL`) or `json` (`toJson`, as the element saves) |
 | `src/components/erd-editor/ErdEditor.tsx` | The element: `shadow: 'closed'`, the `ErdEditorElement` API, `readonly` / `systemDarkMode` / `enableThemeBuilder` |
-| `src/engine/rx-store.ts` | UI store: version stamping, history and reducer pipelines, the two view seams, `change$` (200 ms), `HISTORY_LIMIT = 2048` |
+| `src/engine/rx-store.ts` | UI store: version stamping, history and reducer pipelines, the two view seams, `change$` (200 ms), `HISTORY_LIMIT = 2048`, `flushStreamBuffers` and the internal `manualStreamFlush` / `observable` options |
 | `src/engine/actions.ts` | The action classification lists (`ChangeActionTypes`, `ReadonlyIgnoreActionTypes`, `ViewIgnoreActionTypes`, `Shared*`, `Stream*`, `HistoryActionTypes`) |
 | `src/engine/replication-store.ts` | Headless replica: forwards only `ChangeActionTypes`, tags stripped; schema GC on `setInitialValue` |
 | `src/engine/modules/editor/view*.ts` | `getActiveView`, `getSourceView`, `isViewShown`; the ten `editor.view*` actions, `editor.changeVisualizationMode`, `clearViews`; `focusFlowTableAction$` |
@@ -27,8 +32,8 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 | `src/konva/host.ts`, `src/konva/batchDraw.ts` | The Konva `HostAdapter`; the only draw authority (`Konva.autoDrawEnabled = false`, one `batchDraw` per dirty layer per commit) |
 | `src/konva/scene/viewport.ts` | The coordinate canon and the culling rect |
 | `src/workers/spawn.ts`, `spawn.inline.ts` | The only place the four SharedWorkers are constructed; the umd build aliases in the inline twin |
-| `package.json` | `exports` `.` and `./engine.js`; `unpkg` / `jsdelivr` → `dist/erd-editor.umd.js`; `files` is `dist` minus maps; deliberately no `sideEffects` |
-| `vite.config.ts` | Lib entries `index` + `engine/index`, `createExternal(manifest)`, `createWorkerOptions(external)` plus the worker's own `rHtml`, `libraryWorkerUrls()`, dts via `tsconfig.build.json`; the umd build is appended to `build` |
+| `package.json` | `exports` `.`, `./engine.js` and `./agent.js`; `unpkg` / `jsdelivr` → `dist/erd-editor.umd.js`; `files` is `dist` minus maps; deliberately no `sideEffects` |
+| `vite.config.ts` | Lib entries `index`, `engine/index` and `agent/index` (the third moves the old engine chunk into `store-hooks`, leaves `schemaGCService` to `index` and `engine` alone, and lifts what `index` and `agent` share — `rx-store`, `shared-store`, `schema-sql` — out of `index.js` into `shared-store`), `createExternal(manifest)`, `createWorkerOptions(external)` plus the worker's own `rHtml`, `libraryWorkerUrls()`, dts via `tsconfig.build.json`; the umd build is appended to `build` |
 | `vite.umd.config.ts` | Script-tag build: `formats: ['umd']`, `name: 'ErdEditor'`, nothing external, `emptyOutDir: false`, `spawn.inline.ts` alias, `base64InlineWorkers()` |
 | `vitest.config.ts`, `vitest.setup.ts` | `unit` and `browser` projects, each repeating the JSX plugin, `@` alias and `__APP_VERSION__`; one root coverage block; unit-only stubs |
 | `.storybook/` | Storybook 10; `main.ts` drops the dts plugin and bundles worker dependencies |
@@ -38,12 +43,13 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 | Directory | Purpose |
 | --- | --- |
 | `src/engine/` | Stores (`store`, `rx-store`, `shared-store`, `replication-store`), `clock`, `history`, `tag`, `rx-operators/`, and `modules/` (eight, each `actions.ts` / `atom.actions.ts` / `generator.actions.ts` / `history.ts`) |
+| `src/agent/` | The `agent.js` peer: `peer.ts`, the registry and `validate.ts`, `reachability.ts`, `read.ts` / `snapshot.ts`, `presence.ts` (the focused cell only, on a heartbeat, timer `unref`'d), `streamFlush.ts`, `toWidth.ts` (the replica's text estimate) |
 | `src/components/` | r-html FCs: `erd/` (scene in `canvas/` and `minimap/`, DOM shell, menus, diff viewer, time travel, automatic placement), `visualization/` (Graph, Flow, `particles/`), `table-view/`, `primitives/`, the panels |
 | `src/konva/` | Render host (`host.ts`, `batchDraw.ts`, `theme.ts`, `testHandle.ts`, `jsx.d.ts`) and `scene/` geometry |
 | `src/services/` | SharedWorker services: `schema-gc/` and `export-png/` fall back in-process; `elk-layout/` refuses a host with no worker; `shiki/` answers null (plain text) |
 | `src/utils/` | `schema-sql/` (DDL per vendor), `generator-code/`, importers `schema-{sql,graphql,dbml,aml}-parser/` (in the last three `parser.ts` / `tokenizer.ts` own the grammar or `graphql` AST, `convert.ts` never sees it), `draw-relationship/`, `table-clipboard/`, `keyboard-shortcut/` |
 | `src/themes/`, `src/styles/` | Tokens and radix palette (`LightThemeConfig`); global style fragments and `elevation.styles.ts`'s `floatingShadow` |
-| `src/__test-utils__/`, `src/__jsx-parity__/` | Vitest mount helpers (out of dts and coverage); the JSX parity gates |
+| `src/__test-utils__/`, `src/__jsx-parity__/` | Vitest mount helpers and the agent fixtures, `agentSeed.ts` (seed document and `SEED` ids, `createUserStore`, `createSession` wiring a peer to a user store, `comparable`) and `agentScenarios.ts` (`TOOL_SCENARIOS`, one call per tool) — out of dts and coverage; the JSX parity gates |
 | `e2e/` | Playwright: `fixture/`, `support/` (page object, seeds, `sceneMirror.ts`), `specs/`, `bench/` (never in CI), `README.md` |
 
 ## For AI Agents
@@ -52,7 +58,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 
 **Engine**
 
-- **Adding an action** touches the module's `actions.ts`, `atom.actions.ts` and `history.ts` (whose undo entry puts it in `HistoryActionTypes`) **and** the hand-kept lists in `src/engine/actions.ts`. Missing `ChangeActionTypes` compiles, then silently breaks the host `change` (autosave), collaboration and readonly. Readonly is enforced only there (`readonlyIgnoreFilter`, `hasReadonlyIgnore`), never in components.
+- **Adding an action** touches the module's `actions.ts`, `atom.actions.ts` and `history.ts` (whose undo entry puts it in `HistoryActionTypes`) **and** the hand-kept lists in `src/engine/actions.ts`. Missing `ChangeActionTypes` compiles, then silently breaks the host `change` (autosave), collaboration and readonly. Readonly is enforced only there (`readonlyIgnoreFilter`, `hasReadonlyIgnore`), never in components. A new change type also needs an agent tool or a `NOT_EMITTED` reason (Agent peer, below).
 - Reducers write through the LWW operators from `@dineug/erd-editor-schema` with `action.version`; a direct write wins every merge and corrupts collaborative sessions.
 - Reader-only state (`editor.views`, `visualizationMode`, `handTool`, `zenMode`, `openMap`) is in no list, so it is never saved, undone or sent to a peer; `engine/actions.test.ts` pins the ten `editor.view*` types and `editor.changeVisualizationMode` out of all of them.
 - **View seams** (`rx-store.ts`): while `getActiveView` finds one, `viewActionRedirect` rewrites `settings.scrollTo` / `streamScrollTo` / `changeZoomLevel` / `streamZoomLevel` into their `editor.view*` twin (not `Tag.shared` / `Tag.following`), and `viewIgnoreFilter` drops `ViewIgnoreActionTypes` (readonly's list minus `editor.loadJson` / `editor.clear`), letting `Tag.shared` reach the store. `undo` / `redo` no-op while a view is active.
@@ -97,6 +103,18 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 - A header press lifts the table only past `CLICK_DRAG_MIN_MOVE` (`clickKinds`, `canvas/useMoveEntity.ts`); the drag layer is off the hit canvas, so lifting at once keeps a double click from opening the cell editor.
 - `YIELDS_TO_A_CARET` (`hooks/useKeyBindingMap.ts`) stands `selectAllTable` and `handTool` down in a text field, per binding, because `Enter` / `Escape` must still reach `handleShortcut` from the cell editor.
 
+**Agent peer (`agent.js`)**
+
+- **The agent graph runs in Node with no DOM and no bundler of its own**: `mcp-server` inlines what `src/agent/index.ts` reaches into one file. That graph may read no `document.`, `window.` or `navigator.`, construct no `SharedWorker`, touch no `customElements`, and import only `deepmerge`, `es-toolkit` (and `/compat`), `graphql`, `luxon`, `nanoid` and `rxjs` besides the workspace libraries it inlines. `src/agent/imports.test.ts` walks the sources in `pnpm test`; `pnpm agent-graph` walks `dist/` after `pnpm build`, and both keep the same allowlist. A shared helper that starts reaching konva, shiki, elkjs, comlink or a worker spawn is how that breaks.
+- **Stream buffer option.** `createRxStore(context, { manualStreamFlush })` and `createSharedStore(store, config, { manualStreamFlush })` close a stream group (colors, memo resizes) on `flushStreamBuffers()` instead of `groupByStreamActions`' 200 ms quiet period, through `flushOnNotifier` over a `Subject` the store owns. Each store owns its tick count too: one in the rx-store's single history stage; `MANUAL_FLUSH_TICKS = 2` in the shared store, whose compressor stands on each side of the circuit breaker and whose second stage arms too late for the first tick. So `streamFlush.ts` flushes history first, then the outbound pipe, and knows neither the count nor an rxjs type. Without the flag `flushStreamBuffers` is a no-op and the editor keeps its timing: a stream edit reaches peers after the two stages' 200 ms each, 400 ms. The shared store takes it as an internal third argument, so `SharedStoreConfig` and `getSharedStore` stay as they were.
+- `flushOnNotifier` and `createSharedStreamActionsCompressor` are deep-imported and stay out of the `rx-operators` barrel: `rx-operators/index.test.ts` pins the barrel's export set, as it keeps `readonlyIgnoreFilter` out.
+- **`createRxStore`'s internal `observable` option** (default true) keeps the state a plain object. r-html's reactive proxy reads `value instanceof Node`, a `ReferenceError` in plain Node; the replica store never hit it because it already ran with observation off. The peer passes false and first dispatches `changeViewportAction({ width: 0, height: 0 })`, so a load never reaches the pull's view lookup. `RxStoreOptions` is not public surface.
+- **A tool is one dispatch and declares what it does, in machine terms only** (the prose is `mcp-server`'s `tools/copy.ts`): a generator where the engine has one, otherwise an atom whose `atomReason` says why no generator fits; `actionTypes`, `undoable`, `stream`, `expectedBatches` / `expectedHistory` (a number, or a range when state decides), `focus`, `snapshotPaths`, `args`. The flags, kind, undoable, focus and snapshot specs hold each declaration to what the engine measurably does, and a new tool needs its call in `agentScenarios.ts`.
+- **Every change type is reachable or excluded with a reason.** `registry.reachability.test.ts` pins 56 `ChangeActionTypes`, 49 emitted by some tool and the 7 of `NOT_EMITTED`, and requires every tool to emit only what it declares. A new change type gets a tool, or a `NOT_EMITTED` entry plus its `EXCLUSION_REASONS` line; `PENDING_COVERAGE` (`registry.ts`, empty) is where one waits for its tool.
+- **Viewer-local settings have no tool.** Zoom, scroll and `settings.changeCanvasType` are `SharedFollowingActionTypes`, which every receiver drops, so a tool would report success while no one's screen or file changed; the spec keeps `SharedFollowingActionTypes` inside `NOT_EMITTED`. `table.move` / `memo.move` are relative drag steps with `moveTo` twins.
+- **`erd_sort_tables` sends `table.moveTo`, never `table.sort`.** `sortTable` places by each replica's own `toWidth`, so replaying it lands tables apart; the tool runs the reducer on copies of the live tables and sends the absolute points in one undoable batch (0 or 1). An import's `table.sort` is safe because the widths travel inside its `loadJson` payload.
+- **Value-setting tools send nothing when the value already holds**: the four column flags, `erd_set_show`, `erd_set_index_unique`, `erd_set_index_column_order`, and `erd_add_index_column` on a covered column, each declaring 0 or 1 batch and entry. The engine's undo records the negation of what was sent, so a repeated set would leave an undo that flips a value that never changed. The column flags, `erd_set_index_unique` and `erd_set_index_column_order` are atoms because their generators toggle (`toggleColumnValueAction$`, `changeColumnPrimaryKeyAction$`, `changeIndexUniqueAction$`, `changeIndexColumnOrderTypeAction$`), which an agent's retry would flip back; `erd_set_show` is an atom because no generator sets it, and `erd_add_index_column` is a generator, `addIndexColumnOnceAction$`, that skips a covered column.
+
 **Clipboard, packaging, dependencies**
 
 - **Duplicates** (`utils/table-clipboard/copy.ts`, `engine/modules/editor/utils/duplicate.ts`): a relationship rides only when both ends are copied, an index whole or not at all, `index.add` before its `indexColumn.add`s — one batch of atom actions, never `attachChangeOnlyTag$` or a second dispatch, so one undo reverts it. `CLIPBOARD_VERSION` stays 1 (a bump makes shipped editors refuse new copies); `PayloadKind.columns` carries neither array.
@@ -114,6 +132,8 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 - A view spec provides the source on its container **before** rendering: `useContext` subscribes at setup and `onBeforeMount` only.
 - Everything mounting `canvas/Canvas.tsx` registers as `canvas`; `konva/testHandle.ts` publishes the newest live claim, so `__erdStages.canvas` is the surface on top.
 - The export-png worker builds its own app context, so scene code counts twice in `pnpm size`; only removing a live reference moves bytes. Report a number rather than re-pinning the budget.
+- `src/agent/` specs open with `// @vitest-environment node`, since the peer's real realm has no DOM; `peer.node.test.ts` runs one with `window`, `document` and `Node` undefined. `peer.converge.test.ts` wires a peer and a user store the way `e2e/specs/shared-presence.spec.ts` wires two elements, and is one of the three completion gates of the agent work with `mcp-server`'s `scenarios.test.ts` and `vuerd-vscode`'s `agent-hub.test.ts`.
+- `dist/agent/index.js` (about 10 kB gzip) counts in `pnpm size` though no editor loads it; the budget note says how much.
 
 ### Common Patterns
 
@@ -142,7 +162,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 
 - `konva` `^10.3.2` via `konva/lib/*` only; a caret so a consumer dedupes to one copy, since `batchDraw.ts` patches the namespace. `@chenglou/pretext` lays out memo text. `imports.test.ts` keeps `html-to-image` out.
 - `elkjs` only from the elk-layout worker, `shiki` + `@shikijs/langs` / `themes` only from the shiki worker (`createHighlighterCore`, JavaScript regex engine, so no `wasm-unsafe-eval`); `comlink` on all four worker boundaries; `d3-force` for Graph mode and automatic placement.
-- `rxjs`, `nanoid`, `graphql` (only in `schema-graphql-parser/parser.ts`), `tinykeys`, `fuse.js`, `luxon`, `lucide`, `@radix-ui/colors`, `@egjs/agent`, `deepmerge`, `highlight-words-core`, `@easylogic/colorpicker`; `stylis` for the inlined r-html.
+- `rxjs`, `nanoid`, `graphql` (only in `schema-graphql-parser/parser.ts`, which sits in the engine chunk all three entries share, so `agent.js` carries it too), `tinykeys`, `fuse.js`, `luxon`, `lucide`, `@radix-ui/colors`, `@egjs/agent`, `deepmerge`, `highlight-words-core`, `@easylogic/colorpicker`; `stylis` for the inlined r-html.
 - `es-toolkit`: `get`, `set`, `isEmpty`, `round` come from `es-toolkit/compat` on purpose — the main entry lacks the first three and rounds exact `.xx5` ties down into persisted LWW state. Neither entry has an integer guard, so `clock.ts` and `tag.ts` spell `isNumber(x) && Number.isInteger(x)`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
