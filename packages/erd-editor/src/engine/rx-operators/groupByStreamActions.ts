@@ -17,6 +17,9 @@ const NONE_STREAM_KEY = '@@none-stream';
 type Regroup = [string, Array<string> | ReadonlyArray<string>];
 type HasRegroup = [string, (type: string) => boolean];
 
+/** Runs on a stream group's batches; each value it emits closes the buffer. */
+export type StreamBufferOperator = MonoTypeOperatorFunction<Array<AnyAction>>;
+
 const createToKey =
   (has: (type: string) => boolean, hasRegroups: HasRegroup[]) =>
   (type: string) => {
@@ -27,9 +30,7 @@ const createToKey =
 export const groupByStreamActions = (
   streamActionTypes: Array<string> | ReadonlyArray<string>,
   regroups: Regroup[] = [],
-  bufferClosingNotifierOperator: MonoTypeOperatorFunction<
-    Array<AnyAction>
-  > = debounceTime(200)
+  bufferClosingNotifierOperator: StreamBufferOperator = debounceTime(200)
 ) => {
   const has = arrayHas(streamActionTypes);
   const hasRegroups: HasRegroup[] = regroups.map(([key, types]) => [

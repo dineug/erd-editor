@@ -16,6 +16,8 @@ import {
   ignoreTagFilter,
   sharedStreamActionsCompressor,
 } from '@/engine/rx-operators';
+import { createSharedStreamActionsCompressor } from '@/engine/rx-operators/createSharedStreamActionsCompressor';
+import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
 import { RxStore } from '@/engine/rx-store';
 import { attachActionsTag, attachActionTag, Tag } from '@/engine/tag';
 import { Unsubscribe } from '@/internal-types';
@@ -27,6 +29,11 @@ export type SharedStore = {
   dispatch: (actions: Array<AnyAction> | AnyAction) => void;
   dispatchSync: (actions: Array<AnyAction> | AnyAction) => void;
   subscribe: (fn: (value: AnyAction[]) => void) => Unsubscribe;
+  /**
+   * Sends the stream groups still held back from the peers, now. A no-op
+   * unless the store was created with manualStreamFlush.
+   */
+  flushStreamBuffers: () => void;
   destroy: () => void;
 };
 
@@ -34,14 +41,27 @@ export type SharedStoreConfig = {
   getNickname?: () => string;
 };
 
+/** Not part of getSharedStore's config: only a headless peer sets this. */
+export type SharedStoreInternalOptions = {
+  /** Closes stream buffers on flushStreamBuffers() instead of after 200 ms. */
+  manualStreamFlush?: boolean;
+};
+
+// A compressor stands on each side of the circuit breaker. A Subject emits to a
+// copy of its observers, so a group the first one closes arms in the second too
+// late for that tick and waits for the next.
+const MANUAL_FLUSH_TICKS = 2;
+
 const hasSharedFollowingActionTypes = arrayHas<string>(
   SharedFollowingActionTypes
 );
 
 export function createSharedStore(
   store: RxStore,
-  config?: SharedStoreConfig
+  config?: SharedStoreConfig,
+  internal?: SharedStoreInternalOptions
 ): SharedStore {
+  const manualStreamFlush = internal?.manualStreamFlush ?? false;
   const editorId = store.state.editor.id;
   const sharedMeta = { editorId };
   const subscriptionSet = new Set<Subscription>();
@@ -50,6 +70,10 @@ export function createSharedStore(
   const internal$ = new Subject<Array<AnyAction>>();
   const openingNotifier$ = new Subject<void>();
   const closingNotifier$ = new Subject<void>();
+  const flush$ = new Subject<void>();
+  const compressor = manualStreamFlush
+    ? createSharedStreamActionsCompressor(flushOnNotifier(flush$))
+    : sharedStreamActionsCompressor;
 
   let isConnection = true;
   let firstSubscribe = true;
@@ -64,9 +88,9 @@ export function createSharedStore(
       .pipe(
         actionsFilter(SharedActionTypes),
         ignoreTagFilter([Tag.shared]),
-        sharedStreamActionsCompressor,
+        compressor,
         bufferCircuitBreaker(openingNotifier$, closingNotifier$),
-        sharedStreamActionsCompressor,
+        compressor,
         map(actions =>
           attachActionsTag(
             Tag.shared,
@@ -157,6 +181,14 @@ export function createSharedStore(
     toMergeLWWAction(actions);
   };
 
+  const flushStreamBuffers = () => {
+    if (!manualStreamFlush) return;
+
+    for (let tick = 0; tick < MANUAL_FLUSH_TICKS; tick++) {
+      flush$.next();
+    }
+  };
+
   const destroy = () => {
     Array.from(subscriptionSet).forEach(sub => sub.unsubscribe());
     Array.from(observerSubscriptionSet).forEach(sub => sub.unsubscribe());
@@ -165,6 +197,7 @@ export function createSharedStore(
     observer$.complete();
     openingNotifier$.complete();
     closingNotifier$.complete();
+    flush$.complete();
   };
 
   return Object.freeze({
@@ -173,6 +206,7 @@ export function createSharedStore(
     dispatch,
     dispatchSync,
     subscribe,
+    flushStreamBuffers,
     destroy,
   });
 }
