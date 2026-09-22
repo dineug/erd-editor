@@ -6,8 +6,8 @@
     "dist (reachable from exports)": {
       "bytes": 1142812,
       "gzip": 276422,
-      "budgetGzip": 325028,
-      "budgetNote": "312,748 B measured after pinch zoom landed (feat/pinch-zoom, 2026-09-19): the trackpad, two finger and Safari gesture pinch on the ERD, Flow, Graph and diff viewer scenes cost 1,697 B gzip over the 311,051 B before it, a few bytes of it twice through the scene memo the export worker carries. Plus the same 12,280 B margin as before, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a third scene copy fails the round it lands in, while routine work does not."
+      "budgetGzip": 335578,
+      "budgetNote": "323,298 B measured after the coding-agent export landed (feat/ai, 2026-09-22): 10,603 B gzip over the 312,695 B before it. dist/agent/index.js, which only the MCP server loads, is 9,815 B of that (10,155 B compressed on its own); the files an editor loads grew 788 B, from the stream flush option, the relationship generator, the store's observable option and the chunk split the third entry causes. Plus the same 12,280 B margin as before, so a worker inlined again, a dependency the size of rxjs or konva that stops being external, or a third scene copy fails the round it lands in, while routine work does not."
     }
   }
 }
