@@ -36,7 +36,6 @@ export default defineConfig({
       entry: {
         index: './src/index.ts',
         'engine/index': './src/engine/index.ts',
-        'agent/index': './src/agent/index.ts',
         'peer/index': './src/peer/index.ts',
       },
       formats: ['es'],

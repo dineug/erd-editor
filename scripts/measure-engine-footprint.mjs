@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-import { filesOf } from './check-agent-graph.mjs';
+import { filesOf } from './check-peer-graph.mjs';
 
 const EXPORT_KEY = './engine.js';
 const GZIP_LEVEL = 9;

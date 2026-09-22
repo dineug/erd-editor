@@ -140,8 +140,11 @@ describe('peer source graph (AC-B5)', () => {
     );
   });
 
-  it('reaches nothing of the agent entry or the replication store', () => {
-    expect(graph.files.filter(file => file.startsWith('agent/'))).toEqual([]);
+  it('reaches nothing of the element or the replication store', () => {
+    expect(graph.files.filter(file => file.startsWith('components/'))).toEqual(
+      []
+    );
+    expect(graph.files).not.toContain('index.ts');
     expect(graph.files).not.toContain('engine/index.ts');
     expect(graph.files).not.toContain('engine/replication-store.ts');
   });

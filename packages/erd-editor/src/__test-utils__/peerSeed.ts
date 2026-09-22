@@ -10,7 +10,6 @@ import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeDatabaseNameAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -130,21 +129,6 @@ export function createSeedValue(): string {
       }),
       addMemoAction({ id: SEED.memo, ui: { x: 900, y: 100, zIndex: 5 } }),
     ]
-  );
-}
-
-/**
- * A document of its own for the JSON import to replace the seed with: one
- * table, no relationship, index or memo, and a database name of its own.
- */
-export function createImportValue(): string {
-  return buildValue(
-    [
-      changeDatabaseNameAction({ value: 'imported' }),
-      addTableAction({ id: 'accounts', ui: { x: 50, y: 50, zIndex: 2 } }),
-      changeTableNameAction({ id: 'accounts', value: 'accounts' }),
-    ],
-    column('accounts', 'accounts_id', 'id', 'BIGINT')
   );
 }
 

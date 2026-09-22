@@ -6,8 +6,8 @@
     "dist (reachable from exports)": {
       "bytes": 1142812,
       "gzip": 276422,
-      "budgetGzip": 336885,
-      "budgetNote": "324,605 B measured with ./agent.js and ./peer.js both in the exports (feat/ai node22-effect-boundary, 2026-09-23), plus the same 12,280 B margin as before. temporary: ./agent.js and ./peer.js coexist during Step 3-4; lowered again in Step 5"
+      "budgetGzip": 328242,
+      "budgetNote": "315,962 B measured after ./agent.js left the exports and ./peer.js took its place (feat/ai node22-effect-boundary, 2026-09-23): dist/peer/index.js carries createPeerStore and the catalog barrels, while the tool registry, validation, read and snapshot left for mcp-server (-8,643 B against the temporary Step 3 measurement, -7,443 B against a25b835f). Same 12,280 B margin."
     }
   }
 }

@@ -1,4 +1,4 @@
-<!-- Generated: 2026-08-27 | Updated: 2026-09-22 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-23 -->
 
 # erd-editor
 
@@ -11,7 +11,7 @@
 | File | Description |
 | --- | --- |
 | `vite.config.ts` | The only `lint` / `fmt` / `staged` config; deliberately no `.oxlintrc.json` / `.oxfmtrc.json` |
-| `package.json` | Root scripts (`build`, `test`, `check`, `format`, `lint`, `size`, `agent-graph`, `cache:clear`) |
+| `package.json` | Root scripts (`build`, `test`, `check`, `format`, `lint`, `size`, `peer-graph`, `cache:clear`) |
 | `pnpm-workspace.yaml` | `packages/*`, the catalog (`vite` → `@voidzero-dev/vite-plus-core`, Vitest), the `typescript` override |
 | `tsconfig.app.json` | Base every TS package extends (ES2022, strict, bundler resolution) except `vscode-extension`, a Node config |
 | `tsconfig.json` | Root program: `tools/` and every package's Vite / Vitest config, which no package program covers |
@@ -22,7 +22,7 @@
 | `tools/eslint-rules/` | The `local` oxlint plugin — the four comment rules; itself lint-exempt |
 | `scripts/check-task-inputs.mjs` | Recomputes library tasks; matches bespoke tasks' `.d.ts` globs to declared deps; pins the 9 / 8 library-config counts a new library must update |
 | `scripts/check-bundle-size.mjs` | The `pnpm size` gate |
-| `scripts/check-agent-graph.mjs` | The `pnpm agent-graph` gate: what `erd-editor`'s `agent.js` reaches in `dist/`, walked like the size gate, may hold none of five browser tokens (`SharedWorker`, `customElements`, `document.`, `window.`, `navigator.`) and import no package outside its allowlist |
+| `scripts/check-peer-graph.mjs` | The `pnpm peer-graph` gate: what `erd-editor`'s `peer.js` reaches in `dist/`, walked like the size gate, may hold none of five browser tokens (`SharedWorker`, `customElements`, `document.`, `window.`, `navigator.`) and import no package outside its allowlist; `--export <key>` reports another entry's graph and judges nothing |
 | `erd-editor.code-workspace` | Multi-root workspace, formatting through `oxc.oxc-vscode` |
 
 ## Subdirectories
@@ -46,7 +46,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | JSX → tagged templates, HMR |
 | `schema-sql-parser` | `@dineug/schema-sql-parser` | permissive DDL parser for SQL import |
 | `erd-editor-schema` | `@dineug/erd-editor-schema` | v2/v3 document schema, parsing, LWW operators |
-| `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.10.0): `<erd-editor>`, its Konva scene, `engine.js` (`createReplicationStore`) and `agent.js` (`createAgentPeer` and the tool registry `mcp-server` serves) |
+| `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.10.0): `<erd-editor>`, its Konva scene, `engine.js` (`createReplicationStore`) and `peer.js` (`createPeerStore` and the catalog barrels `mcp-server` builds its tools from) |
 | `webview-bridge` | `@dineug/erd-editor-webview-bridge` | `Bridge`, the typed host↔webview command protocol |
 | `agent-hub` | `@dineug/erd-editor-agent-hub` | the IDE ↔ coding-agent hub protocol: messages, lock file, JSON lines framing, path authorization, discovery |
 | `webview-client` | `@dineug/erd-editor-webview-client` | `mountWebview(host)` — all host wiring both webviews share |
@@ -100,10 +100,10 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 - **Not verified until `pnpm build` passes** — declaration emit, bundling and the packages with no `test` task are checked only there.
 - `pnpm check` = `vp check` (oxfmt + oxlint) + root `tsc --noEmit` + `node --test tools/vite-config.test.ts` + `check-task-inputs.mjs`.
 - `pnpm size`, after `pnpm build`: gzip of every script reachable from `erd-editor`'s `exports` vs `packages/erd-editor/.size-baseline.json`. `budgetGzip` is a regression watch; re-pin with `--set-budget --budget-gzip <bytes> --budget-note <why>`.
-- `pnpm agent-graph`, after `pnpm build`: the scripts `erd-editor`'s `agent.js` reaches must hold no `SharedWorker`, `customElements`, `document.`, `window.` or `navigator.` and import only `deepmerge`, `es-toolkit` (and `/compat`), `graphql`, `luxon`, `nanoid`, `rxjs`. `erd-editor`'s `src/agent/imports.test.ts` holds the sources to the same two rules in `pnpm test`; change both allowlists together.
+- `pnpm peer-graph`, after `pnpm build`: the scripts `erd-editor`'s `peer.js` reaches must hold no `SharedWorker`, `customElements`, `document.`, `window.` or `navigator.` and import only `deepmerge`, `es-toolkit` (and `/compat`), `graphql`, `luxon`, `nanoid`, `rxjs`. `erd-editor`'s `src/peer/imports.test.ts` holds the sources to the same two rules in `pnpm test`; change both allowlists together.
 - `pnpm --filter <pkg> e2e`, outside `pnpm test`: Playwright for `@dineug/erd-editor`, `@dineug/erd-editor-app`, `@dineug/r-html`; `@vscode/test-cli` for `vuerd-vscode` (`xvfb-run -a` on Linux). Each runs in its own CI job.
 - SQL-generation changes: `docker/<vendor>/` plus `data/*.sql` is the manual loop.
-- CI `ci.yml`: `check` (`pnpm check`, then builds `app`'s and `vuerd-vscode`'s dependencies for their `typecheck` scripts, which read siblings' `dist/**/*.d.ts`), `ci` (`pnpm test`, every package's `test:coverage`, `pnpm build`, `pnpm agent-graph`, `pnpm size`), `e2e`, `app-e2e`, `r-html-e2e`, `vscode-extension-e2e`.
+- CI `ci.yml`: `check` (`pnpm check`, then builds `app`'s and `vuerd-vscode`'s dependencies for their `typecheck` scripts, which read siblings' `dist/**/*.d.ts`), `ci` (`pnpm test`, every package's `test:coverage`, `pnpm build`, `pnpm peer-graph`, `pnpm size`), `e2e`, `app-e2e`, `r-html-e2e`, `vscode-extension-e2e`.
 - `intellij-plugin.yml` is separate so its `cancel-in-progress` never reaches `ci.yml`; a `gate` job stands in for a `paths` filter, which would leave the check Pending forever.
 - `setup-workspace` caches the pnpm store, never the Vite Task cache: a cold cache is what makes declared inputs do real work.
 

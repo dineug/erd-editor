@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Artifact gate for @dineug/erd-editor/agent.js, wired as pnpm agent-graph
-// after pnpm build. The MCP server inlines what that entry reaches into a Node
+// Artifact gate for @dineug/erd-editor/peer.js, wired as pnpm peer-graph after
+// pnpm build. The MCP server inlines what that entry reaches into a Node
 // process, so those files may hold no browser token and import few packages.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,11 +8,19 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(import.meta.dirname, '..');
 const packageDir = path.join(root, 'packages', 'erd-editor');
-const EXPORT_KEY = './agent.js';
+const EXPORT_KEY = './peer.js';
+
+const USAGE = `Usage: node scripts/check-peer-graph.mjs [--export <key>]
+
+  (no options)      Gate ${EXPORT_KEY}: exits 1 on a browser token or an
+                    import outside the allowlist.
+  --export <key>    Report that exports key's graph; no import or token fails
+                    it, though an unknown key exits 1.
+  --help            Print this text.`;
 
 /**
  * The packages the built engine chunks may import, the same list as the source
- * half of this gate in src/agent/imports.test.ts. Keep the two equal.
+ * half of this gate in src/peer/imports.test.ts. Keep the two equal.
  */
 const BARE_ALLOWLIST = new Set([
   'deepmerge',
@@ -48,15 +56,15 @@ const DOM_TOKEN =
 const MISSING_OUTPUT =
   'Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build';
 
-function agentEntry() {
+function entryOf(exportKey) {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8')
   );
-  const target = manifest.exports?.[EXPORT_KEY];
+  const target = manifest.exports?.[exportKey];
   const file = typeof target === 'string' ? target : target?.default;
   if (!file) {
     throw new Error(
-      `packages/erd-editor/package.json exports no ${EXPORT_KEY}`
+      `packages/erd-editor/package.json exports no ${exportKey}`
     );
   }
   return path.join(packageDir, file);
@@ -111,17 +119,21 @@ function scan(files) {
   return { bare, domTokens };
 }
 
-function verify() {
-  const entry = agentEntry();
+/**
+ * Prints one entry's graph: the files it reaches with their byte sum, the bare
+ * specifiers with their importers, and every browser token found.
+ */
+function report(exportKey) {
+  const entry = entryOf(exportKey);
   const files = filesOf(entry);
   const { bare, domTokens } = scan(files);
   const specifiers = [...bare.keys()].sort();
-  const offenders = specifiers.filter(name => !BARE_ALLOWLIST.has(name));
   const width = Math.max(0, ...specifiers.map(name => name.length));
+  const bytes = files.reduce((sum, file) => sum + fs.statSync(file).size, 0);
 
-  console.log(`${EXPORT_KEY} -> ${path.relative(root, entry)}`);
+  console.log(`${exportKey} -> ${path.relative(root, entry)}`);
   console.log('');
-  console.log(`files reached (${files.length})`);
+  console.log(`files reached (${files.length}, ${bytes} B)`);
   for (const file of files) console.log(`  ${path.relative(root, file)}`);
   console.log('');
   console.log(`bare imports (${specifiers.length})`);
@@ -136,8 +148,17 @@ function verify() {
   for (const token of domTokens) console.log(`  FAIL ${token}`);
   console.log('');
 
+  return {
+    offenders: specifiers.filter(name => !BARE_ALLOWLIST.has(name)),
+    domTokens,
+  };
+}
+
+function verify() {
+  const { offenders, domTokens } = report(EXPORT_KEY);
+
   if (offenders.length || domTokens.length) {
-    console.log('Agent graph gate: FAIL');
+    console.log('Peer graph gate: FAIL');
     console.log(
       'The MCP server runs this graph in Node and inlines every import. Keep'
     );
@@ -146,8 +167,38 @@ function verify() {
     );
     return 1;
   }
-  console.log('Agent graph gate: pass');
+  console.log('Peer graph gate: pass');
   return 0;
+}
+
+/**
+ * The gate takes no argument. --export names another entry to print instead;
+ * that run is a measurement, so no offending import or token can fail it.
+ */
+function main(argv) {
+  if (argv[0] === '--help' || argv[0] === '-h') {
+    console.log(USAGE);
+    return 0;
+  }
+  if (argv[0] === '--export') {
+    if (argv[1] === undefined) {
+      console.error('--export needs an exports key');
+      console.error('');
+      console.error(USAGE);
+      return 2;
+    }
+    report(argv[1]);
+    console.log(`Reported ${argv[1]}; the gate judges ${EXPORT_KEY} only.`);
+    return 0;
+  }
+  if (argv.length) {
+    console.error(`Unknown argument: ${argv[0]}`);
+    console.error('');
+    console.error(USAGE);
+    return 2;
+  }
+
+  return verify();
 }
 
 const realpathOf = file => fs.realpathSync(path.resolve(file));
@@ -160,7 +211,7 @@ if (
   realpathOf(process.argv[1]) === realpathOf(fileURLToPath(import.meta.url))
 ) {
   try {
-    process.exitCode = verify();
+    process.exitCode = main(process.argv.slice(2));
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

@@ -3,15 +3,30 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { TOOL_SCENARIOS } from '@/__test-utils__/agentScenarios';
+import {
+  addColumn,
+  addTable,
+  colorMemo,
+  colorTable,
+  moveTable,
+  type PeerScenario,
+  play,
+  renameColumn,
+  renameTable,
+  resizeMemo,
+  setColumnNotNull,
+  setColumnPrimaryKey,
+  setDatabase,
+  sortTables,
+} from '@/__test-utils__/peerScenarios';
 import {
   comparable,
   createSession,
   SEED,
   type Session,
   settle,
-} from '@/__test-utils__/agentSeed';
-import { actionTools } from '@/agent/registry';
+} from '@/__test-utils__/peerSeed';
+import { Database } from '@/constants/schema';
 import {
   changeTableNameAction,
   sortTableAction,
@@ -30,6 +45,23 @@ afterEach(() => {
   sessions.splice(0).forEach(session => session.destroy());
 });
 
+/** One edit per shape a dispatch takes, as the undoable spec measures them. */
+const SCENARIOS: Record<string, () => PeerScenario> = {
+  addTable: () => addTable(),
+  renameTable: () => renameTable(SEED.users, 'members'),
+  colorTable: () => colorTable(SEED.users, '#ff8800'),
+  moveTable: () => moveTable(SEED.users, 40, 60),
+  sortTables: () => sortTables(),
+  addColumn: () => addColumn(SEED.empty),
+  renameColumn: () => renameColumn(SEED.users, SEED.userName, 'full_name'),
+  setColumnNotNull: () => setColumnNotNull(SEED.users, SEED.userName, true),
+  setColumnPrimaryKey: () =>
+    setColumnPrimaryKey(SEED.users, SEED.userName, true),
+  colorMemo: () => colorMemo(SEED.memo, '#336699'),
+  resizeMemo: () => resizeMemo(SEED.memo, 320, 240),
+  setDatabase: () => setDatabase(Database.PostgreSQL),
+};
+
 /** Both sides' documents, meta aside, since each replica stamps its own. */
 const sides = ({ peer, user }: Session) => [
   comparable(peer.value),
@@ -41,35 +73,17 @@ const expectConverged = (session: Session) => {
   expect(peer).toEqual(user);
 };
 
-describe('a peer and a user store converge (AC-E5)', () => {
-  it.each(actionTools.map(({ name }) => name))(
+describe('a peer store and an element’s store converge (AC-E5)', () => {
+  it.each(Object.keys(SCENARIOS))(
     'after %s both sides serialize the same document',
     async name => {
       const session = open();
       await settle();
 
-      const run = await session.peer.runTool(name, TOOL_SCENARIOS[name]);
+      const report = play(session.peer, SCENARIOS[name]());
       await settle();
 
-      expect(run.batches).toBeGreaterThan(0);
-      expectConverged(session);
-    }
-  );
-
-  it.each(['erd_change_table_color', 'erd_change_memo_color'])(
-    'converges after %s though the compressor sends it without a version',
-    async name => {
-      const session = open();
-      await settle();
-
-      await session.peer.runTool(name, TOOL_SCENARIOS[name]);
-      await settle();
-
-      const color = session.sent
-        .flat()
-        .find(({ type }) => type.endsWith('.changeColor'));
-
-      expect(color?.version).toBeUndefined();
+      expect(report.batches).toBe(1);
       expectConverged(session);
     }
   );
@@ -78,25 +92,22 @@ describe('a peer and a user store converge (AC-E5)', () => {
     const session = open();
     await settle();
 
-    const run = await session.peer.runTool('erd_change_table_color', {
-      tableId: SEED.orders,
-      color: '#00aa55',
-    });
+    const report = play(session.peer, colorTable(SEED.users, '#00aa55'));
     await settle();
 
     const sentColor = session.sent
       .flat()
       .find(action => action.type === 'table.changeColor');
 
-    expect(run.batches).toBe(1);
+    expect(report.batches).toBe(1);
     expect(sentColor?.version).toBeUndefined();
     expect(session.user.rxStore.state.collections.tableEntities).toMatchObject({
-      [SEED.orders]: { ui: { color: '#00aa55' } },
+      [SEED.users]: { ui: { color: '#00aa55' } },
     });
     expectConverged(session);
   });
 
-  it('converges when the user edits while the agent adds a column', async () => {
+  it('converges when the user edits while the peer adds a column', async () => {
     const session = open({ held: true });
     session.deliver();
     await settle();
@@ -104,9 +115,7 @@ describe('a peer and a user store converge (AC-E5)', () => {
     session.user.rxStore.dispatchSync(
       changeTableNameAction({ id: SEED.orders, value: 'purchases' })
     );
-    const run = await session.peer.runTool('erd_add_column', {
-      tableId: SEED.orders,
-    });
+    const report = play(session.peer, addColumn(SEED.orders));
 
     expect(session.peer.state.collections.tableEntities[SEED.orders].name).toBe(
       'orders'
@@ -116,7 +125,7 @@ describe('a peer and a user store converge (AC-E5)', () => {
 
     const orders = session.peer.state.collections.tableEntities[SEED.orders];
     expect(orders.name).toBe('purchases');
-    expect(orders.columnIds).toContain(run.createdIds[0]);
+    expect(orders.columnIds).toContain(report.createdIds[0]);
     expectConverged(session);
   });
 
@@ -132,35 +141,30 @@ describe('a peer and a user store converge (AC-E5)', () => {
         value: 'from the user',
       })
     );
-    await session.peer.runTool('erd_change_column_name', {
-      tableId: SEED.users,
-      columnId: SEED.userName,
-      value: 'from_the_agent',
-    });
+    play(
+      session.peer,
+      renameColumn(SEED.users, SEED.userName, 'from_the_peer')
+    );
     session.deliver();
     await settle();
 
     expect(
       session.peer.state.collections.tableColumnEntities[SEED.userName]
-    ).toMatchObject({ name: 'from_the_agent', comment: 'from the user' });
+    ).toMatchObject({ name: 'from_the_peer', comment: 'from the user' });
     expectConverged(session);
   });
 
-  it('converges over a run of tools and the undo of the last one', async () => {
+  it('converges over a run of edits and the undo of the last one', async () => {
     const session = open();
     await settle();
 
     const { peer } = session;
-    const added = await peer.runTool('erd_add_table', {});
+    const added = play(peer, addTable());
     const tableId = added.createdIds[0];
-    await peer.runTool('erd_change_table_name', { tableId, value: 'audit' });
-    const column = await peer.runTool('erd_add_column', { tableId });
-    await peer.runTool('erd_set_column_primary_key', {
-      tableId,
-      columnId: column.createdIds[0],
-      value: true,
-    });
-    await peer.undo();
+    play(peer, renameTable(tableId, 'audit'));
+    const column = play(peer, addColumn(tableId));
+    play(peer, setColumnPrimaryKey(tableId, column.createdIds[0], true));
+    peer.undo();
     await settle();
 
     expectConverged(session);
@@ -183,22 +187,22 @@ describe('a layout converges although the two sides measure text apart', () => {
     const { peer, user } = session;
 
     for (const tableId of [SEED.users, SEED.orders, SEED.empty]) {
-      await peer.runTool('erd_change_table_name', {
-        tableId,
-        value: `${tableId}_with_a_name_long_enough_to_set_the_width`,
-      });
+      play(
+        peer,
+        renameTable(tableId, `${tableId}_with_a_name_long_enough_to_set_width`)
+      );
     }
     await settle();
     const before = positions(peer.state);
 
-    const run = await peer.runTool('erd_sort_tables', {});
+    const report = play(peer, sortTables());
     await settle();
 
-    expect(run.mismatch).toBeUndefined();
+    expect(report.historyEntries).toBe(1);
     expect(positions(peer.state)).not.toEqual(before);
     expect(positions(user.rxStore.state)).toEqual(positions(peer.state));
 
-    await peer.undo();
+    peer.undo();
     await settle();
 
     expect(positions(peer.state)).toEqual(before);
@@ -212,7 +216,7 @@ describe('a layout converges although the two sides measure text apart', () => {
     const { peer, user } = session;
     const before = positions(peer.state);
 
-    await peer.runTool('erd_sort_tables', {});
+    play(peer, sortTables());
     user.rxStore.dispatchSync(sortTableAction());
 
     expect(positions(peer.state)).not.toEqual(before);

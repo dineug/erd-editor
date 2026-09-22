@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-09-22 | Updated: 2026-09-22 -->
+<!-- Generated: 2026-09-22 | Updated: 2026-09-23 -->
 
 # mcp-server
 
@@ -40,7 +40,7 @@
 - **The build is one ESM file with no bare import.** `vite.config.ts` copies `vscode-extension`'s SSR shape — `ssr.noExternal: true`, node builtins the only externals — with three differences: `format: 'es'` (no `main` contract forces CJS, and the ESM-only dependencies inline without a bridge), `minify: true` + `sourcemap: false` (npx downloads the tarball on every cold start), and a `#!/usr/bin/env node` banner. An SSR build ignores `lib.fileName` and strips no whitespace, so `rolldownOptions.output` sets `entryFileNames` and `minify` itself. `bin.test.ts` runs a copy of the built file from a folder with no `node_modules`.
 - **The floor is Node 22.12, the root's.** `engines.node` (`>=22.12.0`), `build.target: 'node22'` and `@types/node` `^22` are raised by hand together, and nothing gates them; `bin.test.ts` runs the build on the toolchain's Node (22.23.2), not on the floor.
 - **Everything is a devDependency** — the MCP SDK, zod, `@dineug/erd-editor`, `@dineug/erd-editor-agent-hub` — because it is all inlined; `dependencies` stays empty. `@dineug/erd-editor` resolves to its built `dist/peer/index.js`, so the `build` and `test` tasks depend on the siblings' builds and track a `dist/**/*.d.ts` glob per workspace dependency, which `check-task-inputs.mjs` matches to the declared dependencies. The `test` task also builds this package first, for `bin.test.ts`; `pnpm --filter @dineug/erd-editor-mcp test:coverage` does not, so build before it.
-- **The registry reaches the engine only through `./peer.js`.** Action creators come from the per-module barrels (`tableActions.changeTableNameAction`, `tableActions$.addTableAction$`), constants and `bHas` from the same entry, the document parser from `@dineug/erd-editor-schema` and `CompositionActions` from `@dineug/r-html`. Nothing here imports `@dineug/erd-editor/agent.js`.
+- **The registry reaches the engine only through `./peer.js`.** Action creators come from the per-module barrels (`tableActions.changeTableNameAction`, `tableActions$.addTableAction$`), constants and `bHas` from the same entry, the document parser from `@dineug/erd-editor-schema` and `CompositionActions` from `@dineug/r-html`. `src/peerSurface.test.ts` holds the entry's 43 exported values to the names this package imports, so neither side keeps a dead one.
 - **Prose lives in `tools/copy.ts`, in English.** The registry is machine-readable only (plan axis b). `copy.exhaustive.test.ts` fails on a tool or argument without prose and on an entry nothing uses; an argument that means something particular in one tool (`value` always does) gets that tool's own entry. Keep descriptions short: every agent reads `tools/list` (40,821 bytes at 0.1.0, logged by `toolSurface.test.ts`) before its first call.
 
 **The five rules a tool obeys**
@@ -66,7 +66,8 @@
 - `pnpm exec vp run --filter @dineug/erd-editor-mcp --fail-if-no-match test`, then `pnpm --filter @dineug/erd-editor-mcp test:coverage` for the perFile 80% gate (after a build).
 - The specs drive the real server through the SDK's `InMemoryTransport` (`__test-utils__/mcp.ts`) against `fakeHub`, which speaks the agent-hub protocol over `memoryIo`'s in-memory socket pairs with a real agent peer standing in for the webview. `fakeHub` mirrors `vscode-extension`'s `src/hub/handlers.ts` and `documentRegistry.ts` by hand; after a hub behaviour change, update both.
 - `scenarios.test.ts` is the completion gate for this package (plan AC-M1): the four spec scenarios, each ending with the agent's document equal to the editor's.
-- `tools/registry.test.ts` and `tools/reachability.test.ts` run every tool against a real peer on `__test-utils__/seed.ts`, and `tools/snapshot.test.ts` reads such a peer, driving one tool, `erd_remove_memo`, for the removal case; `toolSurface.parity.test.ts` holds the listed surface to the recorded 0.1.0 one.
+- `tools/registry.test.ts`, `tools/registry.undoable.test.ts` and `tools/reachability.test.ts` run every tool against a real peer on `__test-utils__/seed.ts`, and `tools/snapshot.test.ts` reads such a peer, driving one tool, `erd_remove_memo`, for the removal case; `toolSurface.parity.test.ts` holds the listed surface to the recorded 0.1.0 one.
+- **`undoable` is checked in two halves.** `tools/registry.undoable.test.ts` holds each tool's flag to the entries a run on the engine reports; that the report itself matches the engine is `erd-editor`'s `src/engine/peer-store.undoable.test.ts`, which measures a bare store's history cursor beside the peer. `expectedHistory` is no substitute: several tools declare the range `0..1`.
 - `headless.test.ts` and `io.test.ts` also touch the real file system and a real unix socket under the temp directory.
 - `toolSurface.test.ts` logs the `tools/list` byte count with `console.info` as an observation, not a gate.
 

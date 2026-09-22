@@ -14,7 +14,7 @@ export type FocusPresence = {
   destroy: () => void;
 };
 
-/** A Node timer keeps a finished MCP process alive unless released; a browser one is a number. */
+/** A Node timer keeps a finished host process alive unless released; a browser one is a number. */
 const release = (timer: unknown) => {
   (timer as { unref?: () => void } | null)?.unref?.();
 };
@@ -31,7 +31,7 @@ type SharedTrackerMaps = Pick<Editor, (typeof SHARED_TRACKER_MAPS)[number]>;
 /**
  * Clears the expiry the engine set on every tracker another peer sent, and the
  * trackers with it. A pending expiry is a Node timer the reducer never releases,
- * so a closed MCP process would wait up to 90 seconds for it.
+ * so a closed peer's process would wait up to 90 seconds for it.
  */
 export function clearSharedTrackers(editor: SharedTrackerMaps) {
   for (const key of SHARED_TRACKER_MAPS) {
