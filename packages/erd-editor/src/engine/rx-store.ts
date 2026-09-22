@@ -58,6 +58,11 @@ export type RxStoreOptions = {
   getHistory?: (options: HistoryOptions) => History;
   /** Closes stream buffers on flushStreamBuffers() instead of after 200 ms. */
   manualStreamFlush?: boolean;
+  /**
+   * Keeps the state a plain object when false. Nothing renders from a
+   * headless store, and the reactive proxy reads DOM globals Node lacks.
+   */
+  observable?: boolean;
 };
 
 export const HISTORY_LIMIT = 2048;
@@ -68,10 +73,11 @@ export function createRxStore(
     getReadonly = () => false,
     getHistory,
     manualStreamFlush = false,
+    observable = true,
   }: RxStoreOptions = {}
 ): RxStore {
   const subscriptionSet = new Set<Subscription | Unsubscribe>();
-  const store = createStore(context);
+  const store = createStore(context, observable);
   const hooks = createHooks(store);
   const historyOptions: HistoryOptions = {
     notify: payload => store.dispatch(changeHasHistoryAction(payload)),
