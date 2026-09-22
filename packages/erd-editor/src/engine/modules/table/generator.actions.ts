@@ -20,6 +20,7 @@ import {
   addRelationshipAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
+import { toForeignKeyActions } from '@/engine/modules/relationship/fkColumns';
 import {
   addColumnAction,
   changeColumnAutoIncrementAction,
@@ -155,39 +156,7 @@ export const selectTableAction$ = (
 
       const endColumnIds = startColumns.map(() => nanoid());
 
-      for (let i = 0; i < startColumns.length; i++) {
-        const startColumn = startColumns[i];
-        const endColumnId = endColumnIds[i];
-        const payload = {
-          id: endColumnId,
-          tableId: endTable.id,
-        };
-
-        yield [
-          addColumnAction(payload),
-          changeColumnNotNullAction({
-            ...payload,
-            value: true,
-          }),
-          changeColumnNameAction({
-            ...payload,
-            value: startColumn.name,
-          }),
-          changeColumnDataTypeAction({
-            ...payload,
-            value: startColumn.dataType,
-          }),
-          changeColumnDefaultAction({
-            ...payload,
-            value: startColumn.default,
-          }),
-          changeColumnCommentAction({
-            ...payload,
-            value: startColumn.comment,
-          }),
-        ];
-      }
-
+      yield toForeignKeyActions(startColumns, endTable.id, endColumnIds);
       yield addRelationshipAction({
         id: nanoid(),
         relationshipType: drawRelationship.relationshipType,
