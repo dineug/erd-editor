@@ -1,6 +1,7 @@
 import * as Deferred from 'effect/Deferred';
 import * as Duration from 'effect/Duration';
 import * as Effect from 'effect/Effect';
+import type * as vscode from 'vscode';
 
 /** Where an action reached the hub from; drops at a join are counted per source. */
 export type ActionSource = 'webview' | 'peer';
@@ -66,11 +67,13 @@ export function maxVersion(current: number, actions: unknown[]): number {
 
 /**
  * Whether a document is between a change and the replica saves it causes.
- * Every ready webview runs its own replica, so the last expected save, not
- * the first, is the one that makes the content current.
+ * Every webview the change reached runs its own replica, so the last of their
+ * saves, not the first, is the one that makes the content current.
  */
 export type QuietState = {
   pending: boolean;
+  /** The ready webviews the pending change went to, copied as it was noted; each owes one save. */
+  awaiting: Set<vscode.Webview>;
   saves: number;
   /** A save reaching the hub before this instant was sent before its replica held the latest peer batch. */
   countFrom: number;
@@ -81,6 +84,7 @@ export type QuietState = {
 export function createQuietState(): QuietState {
   return {
     pending: false,
+    awaiting: new Set(),
     saves: 0,
     countFrom: Number.NEGATIVE_INFINITY,
     settled: null,
@@ -95,34 +99,51 @@ export function createQuietState(): QuietState {
 export function noteChange(
   state: QuietState,
   source: ActionSource,
-  now: number
+  now: number,
+  recipients: Iterable<vscode.Webview>
 ): void {
   state.pending = true;
   state.saves = 0;
+  state.awaiting = new Set(recipients);
   state.settled ??= Deferred.makeUnsafe<void>();
   if (source === 'peer') {
     state.countFrom = Math.max(state.countFrom, now + REPLICA_DEBOUNCE_MS);
   }
 }
 
-/** A save outside a pending change, or too early to hold the latest peer batch, is ignored. */
+/**
+ * A save outside a pending change, or too early to hold the latest peer batch,
+ * is ignored. One from a webview the change never reached settles nothing on
+ * its own, since it leaves every awaited save still owed.
+ */
 export function noteSave(
   state: QuietState,
-  expected: number,
+  webview: vscode.Webview,
   now: number
 ): void {
   if (!state.pending || now < state.countFrom) return;
 
   state.saves++;
-  recount(state, expected);
+  state.awaiting.delete(webview);
+  settle(state);
 }
 
 /**
- * Settles a pending change once its counted saves cover expected. A closed
- * webview lowers expected without a save, so its removal checks again here.
+ * A closed webview owes no save, so its removal can be what settles a pending
+ * change the replicas left have already saved. One no replica saved keeps
+ * waiting all the same, as a change is owed a save even with none left.
  */
-export function recount(state: QuietState, expected: number): void {
-  if (!state.pending || state.saves < Math.max(1, expected)) return;
+export function dropRecipient(
+  state: QuietState,
+  webview: vscode.Webview
+): void {
+  state.awaiting.delete(webview);
+  settle(state);
+}
+
+/** Settles once every awaited webview has saved or gone and at least one save came. */
+function settle(state: QuietState): void {
+  if (!state.pending || state.awaiting.size > 0 || state.saves < 1) return;
 
   state.pending = false;
   const settled = state.settled;

@@ -278,7 +278,7 @@ describe('ErdEditor', () => {
 
       expect(contentThen).toEqual(encoder.encode('saved'));
       expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
-      expect(registry.onValueSaved).toHaveBeenCalledWith(document);
+      expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
     });
   });
 

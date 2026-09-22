@@ -317,6 +317,30 @@ describe('ready webviews', () => {
     expect(replicationsTo(loading)).toEqual([]);
   });
 
+  it('awaits the replicas a batch reached, so a webview still loading holds nothing open', async () => {
+    vi.useFakeTimers();
+    const peer = createConnection();
+    const harness = createDocumentHarness();
+    const ready = await harness.openReady(PATH, '{}');
+    const loading = await harness.resolveView(ready.document);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+    );
+
+    let settled: boolean | undefined;
+    runHub(harness.registry.whenQuiet(ready.document, 1_000)).then(
+      value => (settled = value)
+    );
+    await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
+    expect(settled).toBeUndefined();
+
+    await harness.saveValue(ready, '{"tables":["t1"]}');
+
+    expect(settled).toBe(true);
+    expect(replicationsTo(loading)).toEqual([]);
+  });
+
   it('ignores a ready signal from a webview it never added, or for a document it does not track', async () => {
     const harness = createDocumentHarness();
     const editor = await harness.openReady(PATH, '{}');
@@ -328,7 +352,7 @@ describe('ready webviews', () => {
 
     harness.registry.onWebviewReady(editor.document, stranger.webview as any);
     harness.registry.onWebviewReady(stray, stranger.webview as any);
-    harness.registry.onValueSaved(stray);
+    harness.registry.onValueSaved(stray, stranger.webview as any);
     harness.registry.addWebview(stray, stranger as unknown as WebviewPanel);
     harness.registry.removeWebview(stray, stranger as unknown as WebviewPanel);
 

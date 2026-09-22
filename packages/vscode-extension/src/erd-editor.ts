@@ -86,7 +86,7 @@ export class ErdEditor extends Editor {
       }),
       this.bridge.registerCommand(hostSaveValueCommand, async ({ value }) => {
         await this.document.update(textEncoder.encode(value));
-        this.registry.onValueSaved(this.document);
+        this.registry.onValueSaved(this.document, this.webview);
       }),
       this.bridge.registerCommand(hostSaveReplicationCommand, ({ actions }) => {
         dispatchBroadcast(

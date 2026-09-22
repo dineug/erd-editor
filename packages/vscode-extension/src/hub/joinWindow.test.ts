@@ -8,18 +8,19 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
+import type * as vscode from 'vscode';
 
 import {
   actionType,
   actionVersion,
   createQuietState,
+  dropRecipient,
   filterJoinQueue,
   hasChangeAction,
   JOIN_QUIET_CAP_MS,
   maxVersion,
   noteChange,
   noteSave,
-  recount,
   REPLICA_DEBOUNCE_MS,
   waitForQuiet,
 } from '@/hub/joinWindow';
@@ -44,6 +45,9 @@ const add = (version?: number, type = 'table.add') =>
   version === undefined
     ? { type, payload: {} }
     : { type, payload: {}, version };
+
+/** A webview double: the quiet state reads nothing of one but its identity. */
+const view = (name: string) => ({ name }) as unknown as vscode.Webview;
 
 beforeEach(() => {
   resetVscodeMock();
@@ -89,80 +93,91 @@ describe('action fields', () => {
 describe('quiet state', () => {
   it('resolves true at once with no change pending', async () => {
     const state = createQuietState();
-    noteSave(state, 1, 0);
+    noteSave(state, view('only'), 0);
 
     await expect(Effect.runPromise(waitForQuiet(state))).resolves.toBe(true);
     expect(state.pending).toBe(false);
   });
 
-  it('wakes on the last save a pending change expects, one per ready webview', async () => {
+  it('wakes on the last save of the webviews the change reached, not on another webview', async () => {
     vi.useFakeTimers();
+    const [first, second, other] = [view('first'), view('second'), view('x')];
     const state = createQuietState();
-    noteChange(state, 'webview', 0);
+    noteChange(state, 'webview', 0, [first, second]);
     let woken: boolean | undefined;
     void Effect.runPromise(waitForQuiet(state)).then(
       settled => (woken = settled)
     );
 
-    noteSave(state, 2, 0);
+    noteSave(state, other, 0);
+    await microtasks();
+    expect(woken).toBeUndefined();
+    expect(state.awaiting).toEqual(new Set([first, second]));
+
+    noteSave(state, first, 0);
     await microtasks();
     expect(woken).toBeUndefined();
 
-    noteSave(state, 2, 0);
+    noteSave(state, second, 0);
     await microtasks();
     expect(woken).toBe(true);
     expect(state.settled).toBeNull();
   });
 
-  it('starts counting again when another change lands mid-wait', async () => {
+  it('awaits the webviews of the newest change when another lands mid-wait, owing it a save of its own', async () => {
     vi.useFakeTimers();
+    const [first, second] = [view('first'), view('second')];
     const state = createQuietState();
-    noteChange(state, 'webview', 0);
+    noteChange(state, 'webview', 0, [first, second]);
     let woken: boolean | undefined;
     void Effect.runPromise(waitForQuiet(state)).then(
       settled => (woken = settled)
     );
 
-    noteSave(state, 2, 0);
-    noteChange(state, 'webview', 0);
-    noteSave(state, 2, 0);
+    noteSave(state, first, 0);
+    noteChange(state, 'webview', 0, [first, second]);
+    expect(state.saves).toBe(0);
+
+    noteSave(state, first, 0);
     await microtasks();
     expect(woken).toBeUndefined();
 
-    noteSave(state, 2, 0);
+    noteSave(state, second, 0);
     await microtasks();
     expect(woken).toBe(true);
   });
 
   it('ignores a save sent before its replica could hold the latest peer batch', () => {
+    const only = view('only');
     const state = createQuietState();
-    noteChange(state, 'peer', 1_000);
+    noteChange(state, 'peer', 1_000, [only]);
 
-    noteSave(state, 1, 1_000 + REPLICA_DEBOUNCE_MS - 1);
+    noteSave(state, only, 1_000 + REPLICA_DEBOUNCE_MS - 1);
     expect(state.pending).toBe(true);
-    noteSave(state, 1, 1_000 + REPLICA_DEBOUNCE_MS);
+    noteSave(state, only, 1_000 + REPLICA_DEBOUNCE_MS);
     expect(state.pending).toBe(false);
   });
 
   it('keeps the bound of a peer batch through a later relay, which sets none of its own', () => {
+    const only = view('only');
     const state = createQuietState();
-    noteChange(state, 'peer', 1_000);
-    noteChange(state, 'webview', 1_100);
+    noteChange(state, 'peer', 1_000, [only]);
+    noteChange(state, 'webview', 1_100, [only]);
 
-    noteSave(state, 1, 1_150);
+    noteSave(state, only, 1_150);
     expect(state.pending).toBe(true);
-    noteSave(state, 1, 1_000 + REPLICA_DEBOUNCE_MS);
+    noteSave(state, only, 1_000 + REPLICA_DEBOUNCE_MS);
     expect(state.pending).toBe(false);
 
-    noteChange(state, 'webview', 5_000);
-    noteSave(state, 1, 5_000);
+    noteChange(state, 'webview', 5_000, [only]);
+    noteSave(state, only, 5_000);
     expect(state.pending).toBe(false);
   });
 
   it('expects one save even with no ready webview, and resolves false at the cap', async () => {
     vi.useFakeTimers();
     const state = createQuietState();
-    noteChange(state, 'webview', 0);
+    noteChange(state, 'webview', 0, []);
     let woken: boolean | undefined;
     void Effect.runPromise(waitForQuiet(state)).then(
       settled => (woken = settled)
@@ -174,32 +189,51 @@ describe('quiet state', () => {
     expect(woken).toBe(false);
     expect(state.pending).toBe(true);
 
-    noteSave(state, 0, 0);
+    noteSave(state, view('late'), 0);
     expect(state.pending).toBe(false);
   });
 
-  it('settles on a recount once fewer saves are expected than already came, never with none', async () => {
+  it('settles when the webview still owing a save closes after the other saved', async () => {
     vi.useFakeTimers();
+    const [first, second] = [view('first'), view('second')];
     const state = createQuietState();
-    noteChange(state, 'webview', 0);
+    noteChange(state, 'webview', 0, [first, second]);
     let woken: boolean | undefined;
     void Effect.runPromise(waitForQuiet(state)).then(
       settled => (woken = settled)
     );
 
-    recount(state, 0);
-    expect(state.pending).toBe(true);
-    noteSave(state, 2, 0);
-    recount(state, 2);
+    noteSave(state, second, 0);
     await microtasks();
     expect(woken).toBeUndefined();
 
-    recount(state, 1);
+    dropRecipient(state, first);
     await microtasks();
     expect(woken).toBe(true);
     expect(state.settled).toBeNull();
-    recount(state, 1);
+    dropRecipient(state, first);
     expect(state.pending).toBe(false);
+  });
+
+  it('keeps waiting when every webview owing a save closes without one, then takes a later save', async () => {
+    vi.useFakeTimers();
+    const [first, second] = [view('first'), view('second')];
+    const state = createQuietState();
+    noteChange(state, 'webview', 0, [first, second]);
+    let woken: boolean | undefined;
+    void Effect.runPromise(waitForQuiet(state)).then(
+      settled => (woken = settled)
+    );
+
+    dropRecipient(state, first);
+    dropRecipient(state, second);
+    await microtasks();
+    expect(woken).toBeUndefined();
+    expect(state.pending).toBe(true);
+
+    noteSave(state, view('reopened'), 0);
+    await microtasks();
+    expect(woken).toBe(true);
   });
 });
 
@@ -296,6 +330,23 @@ describe('join', () => {
 
     await harness.saveValue(second, '{"from":"second"}');
     expect(result?.initialValue).toBe('{"from":"second"}');
+  });
+
+  it('wakes on the saves of the webviews the change reached, not on one readied after it', async () => {
+    vi.useFakeTimers();
+    const harness = createDocumentHarness();
+    const first = await harness.openReady(PATH, '{}');
+    harness.relay(first, [add(4)]);
+    const late = await harness.resolveView(first.document);
+    harness.ready(late);
+
+    let result: { initialValue: string } | undefined;
+    harness
+      .run(harness.handler.join({ path: PATH }, createConnection()))
+      .then(value => (result = value));
+    await harness.saveValue(first, '{"from":"first"}');
+
+    expect(result?.initialValue).toBe('{"from":"first"}');
   });
 
   it('gives up waiting at the cap and captures what the document holds', async () => {

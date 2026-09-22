@@ -207,6 +207,30 @@ describe('save', () => {
     expect(harness.io.files.get(PATH)?.data).toBe('{"tables":["t1"]}');
   });
 
+  it('waits only for the webviews the edit reached, not for one readied after it', async () => {
+    vi.useFakeTimers();
+    const harness = createDocumentHarness();
+    const editor = await harness.openReady(PATH, '{}');
+    const tab = harness.trackTab(editor);
+    serveWorkspaceSave(harness, editor, tab);
+    const peer = createConnection();
+    await harness.run(harness.handler.join({ path: PATH }, peer));
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: EDIT }, peer)
+    );
+    const late = await harness.resolveView(editor.document);
+    harness.ready(late);
+
+    const saved = harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
+    );
+    await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
+    await harness.saveValue(editor, '{"tables":["t1"]}');
+
+    await expect(saved).resolves.toEqual({ saved: true });
+    expect(harness.io.files.get(PATH)?.data).toBe('{"tables":["t1"]}');
+  });
+
   it('answers saved false and writes nothing when no replica saves the edit within its cap', async () => {
     vi.useFakeTimers();
     const harness = createDocumentHarness();

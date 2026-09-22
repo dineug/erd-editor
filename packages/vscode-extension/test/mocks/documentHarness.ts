@@ -15,7 +15,7 @@ import { widthEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
 import { ErdEditor } from '@/erd-editor';
 import { ErdEditorProvider } from '@/erd-editor-provider';
-import { DocumentRegistry } from '@/hub/documentRegistry';
+import { DocumentRegistry, type WebviewRelay } from '@/hub/documentRegistry';
 import { createDocumentHandler } from '@/hub/handlers';
 import { type HubConnection } from '@/hub/server';
 import * as HubLogger from '@/hub/services/HubLogger';
@@ -71,12 +71,12 @@ export async function microtasks(): Promise<void> {
   for (let turn = 0; turn < 10; turn++) await Promise.resolve();
 }
 
-/** A ErdEditor relay double, for specs that only check the calls. */
+/** A ErdEditor relay double, typed off the relay so a signature change reaches its specs. */
 export function createWebviewRelay() {
   return {
-    onWebviewReady: vi.fn(),
-    onWebviewActions: vi.fn(),
-    onValueSaved: vi.fn(),
+    onWebviewReady: vi.fn<WebviewRelay['onWebviewReady']>(),
+    onWebviewActions: vi.fn<WebviewRelay['onWebviewActions']>(),
+    onValueSaved: vi.fn<WebviewRelay['onValueSaved']>(),
   };
 }
 

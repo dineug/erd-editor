@@ -19,6 +19,7 @@ import { type ErdDocument } from '@/erd-document';
 import {
   type ActionSource,
   createQuietState,
+  dropRecipient,
   filterJoinQueue,
   hasChangeAction,
   maxVersion,
@@ -26,7 +27,6 @@ import {
   noteSave,
   type QueuedBatch,
   type QuietState,
-  recount,
   waitForQuiet,
 } from '@/hub/joinWindow';
 import { isReadonlyUri } from '@/hub/readonlyUri';
@@ -157,7 +157,7 @@ export class DocumentRegistry {
   /**
    * Called from the panel's onDidDispose, where VS Code already throws on
    * panel.webview, so the webview is found by its panel. A pending change
-   * then expects one save fewer, which the replicas left may already cover.
+   * stops awaiting it, which the replicas left may already have covered.
    */
   removeWebview(document: ErdDocument, panel: vscode.WebviewPanel): void {
     const entry = this.entries.get(document);
@@ -168,8 +168,8 @@ export class DocumentRegistry {
       entry.webviews.delete(webview);
       entry.panels.delete(webview);
       entry.ready.delete(webview);
+      dropRecipient(entry.quiet, webview);
     }
-    recount(entry.quiet, entry.ready.size);
   }
 
   /** The document of the ERD panel that took focus last; a blur leaves it in place. */
@@ -248,10 +248,14 @@ export class DocumentRegistry {
     }
   }
 
-  /** A replica saved, so document.content is current for what it had seen. */
-  onValueSaved(document: ErdDocument): void {
+  /**
+   * A replica saved, so document.content is current for what its webview had
+   * seen. The webview comes from the editor that relayed it, since only the
+   * saves of those a change reached say the content holds that change.
+   */
+  onValueSaved(document: ErdDocument, webview: vscode.Webview): void {
     const entry = this.entries.get(document);
-    if (entry) noteSave(entry.quiet, entry.ready.size, performance.now());
+    if (entry) noteSave(entry.quiet, webview, performance.now());
   }
 
   /** True once no replica save is outstanding, false if one still is at capMs. */
@@ -442,7 +446,7 @@ export class DocumentRegistry {
   ): void {
     entry.observedVersion = maxVersion(entry.observedVersion, actions);
     if (hasChangeAction(actions)) {
-      noteChange(entry.quiet, source, performance.now());
+      noteChange(entry.quiet, source, performance.now(), entry.ready);
     }
   }
 
