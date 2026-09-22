@@ -31,10 +31,10 @@ export default defineConfig({
     // ssr puts Rolldown in Node resolution mode: no browser field, no
     // import.meta.env shimming, and require left alone.
     ssr: true,
-    // Derived from engines.vscode rather than guessed, by measuring the Node
-    // that build's Electron ships. Targeting lower only costs downlevelling the
-    // host never needed, and raising engines.vscode should raise this.
-    target: 'node20',
+    // Derived from engines.vscode, not guessed: 1.101.0 ships Electron 35.5.1
+    // with Node 22.15.1 (ewanharris/vscode-versions). Targeting lower only
+    // downlevels for a host that never needed it; raise this with the floor.
+    target: 'node22',
     outDir: 'dist',
     emptyOutDir: true,
     // Vite defaults this to false. The VSIX has always carried a 32KB map and

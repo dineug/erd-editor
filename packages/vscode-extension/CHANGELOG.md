@@ -17,6 +17,7 @@
 
 ### Changed
 
+- Minimum supported VSCode is now 1.101.0 (was 1.90.0), the first release running on Node 22.
 - The extension now also starts in a workspace whose only ERD files are `.erd.json` or
   `.vuerd.json`, not just `.erd` or `.vuerd`.
 

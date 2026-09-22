@@ -3,7 +3,7 @@
     "module": "commonjs",
     // ES2022. Unlike the browser packages this config really emits —
     // `tsconfig.integration.json` extends it to build `out/` — and the host is
-    // Node 20.9, which supports ES2022 in full.
+    // Node 22.15, which supports ES2022 in full.
     "target": "ES2022",
     "lib": ["ES2022"],
     "outDir": "out",

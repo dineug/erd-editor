@@ -32,7 +32,7 @@
   },
   "license": "MIT",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.101.0"
   },
   "main": "./dist/extension",
   "scripts": {
@@ -51,8 +51,8 @@
     "@dineug/erd-editor-webview-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20.19.0",
-    "@types/vscode": "^1.90.0",
+    "@types/node": "^22.20.1",
+    "@types/vscode": "^1.101.0",
     "@vitest/coverage-v8": "catalog:",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
