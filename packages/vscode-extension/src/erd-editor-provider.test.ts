@@ -481,10 +481,11 @@ describe('ErdEditorProvider', () => {
       await provider.resolveCustomEditor(document, asPanel(second));
       const webviews = webviewsOf(liveMap(createEditor), document);
       expect(webviews.size).toBe(2);
+      const closed = first.webview;
 
       first.__dispose();
 
-      expect(webviews.has(first.webview)).toBe(false);
+      expect(webviews.has(closed)).toBe(false);
       expect(webviews.has(second.webview)).toBe(true);
       expect(webviews.size).toBe(1);
       expect(editors[0].disposable.dispose).toHaveBeenCalledTimes(1);
@@ -538,6 +539,7 @@ describe('ErdEditorProvider', () => {
       });
       const document = await openDocument(provider);
       const panel = createWebviewPanel();
+      const { webview } = panel;
       const pending = provider.resolveCustomEditor(document, asPanel(panel));
       await flush();
 
@@ -546,9 +548,9 @@ describe('ErdEditorProvider', () => {
       await pending;
 
       expect(editors[0].disposable.dispose).toHaveBeenCalledTimes(1);
-      expect(
-        webviewsOf(liveMap(createEditor), document).has(panel.webview)
-      ).toBe(false);
+      expect(webviewsOf(liveMap(createEditor), document).has(webview)).toBe(
+        false
+      );
     });
   });
 

@@ -12,6 +12,7 @@ import type { Uri as VscodeUri, WebviewPanel } from 'vscode';
 import { ErdDocument } from '@/erd-document';
 import { DocumentRegistry } from '@/hub/documentRegistry';
 import { REPLICA_DEBOUNCE_MS } from '@/hub/joinWindow';
+import { textDecoder } from '@/utils';
 
 import {
   actionsSent,
@@ -213,6 +214,76 @@ describe('ready webviews', () => {
     await expect(
       harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
     ).rejects.toMatchObject({ code: HubErrorCode.notOpen });
+  });
+
+  it('forgets a closed panel without reading its webview, which VS Code refuses once disposed', async () => {
+    const peer = createConnection();
+    const { harness, first, second } = await openJoined([peer]);
+
+    first.panel.__dispose();
+
+    expect(() => first.panel.webview).toThrow('Webview is disposed');
+    expect(harness.registry.docToWebviewMap.get(first.document)).toEqual(
+      new Set([second.webview])
+    );
+    await expect(
+      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+    ).resolves.toEqual({ webviews: 1 });
+    expect(replicationsTo(first)).toEqual([]);
+    expect(replicationsTo(second)).toEqual([injected(batch(1))]);
+
+    let settled: boolean | undefined;
+    harness.registry
+      .whenQuiet(first.document, 1_000)
+      .then(value => (settled = value));
+    await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
+    await harness.saveValue(second, '{"tables":["t1"]}');
+    expect(settled).toBe(true);
+  });
+
+  it('settles a pending edit when the panel still owing a save closes after the other saved', async () => {
+    const peer = createConnection();
+    const { harness, first, second } = await openJoined([peer]);
+    await expect(
+      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+    ).resolves.toEqual({ webviews: 2 });
+
+    let settled: boolean | undefined;
+    harness.registry
+      .whenQuiet(first.document, 1_000)
+      .then(value => (settled = value));
+    await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
+    await harness.saveValue(second, '{"tables":["t1"]}');
+    expect(settled).toBeUndefined();
+
+    first.panel.__dispose();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(settled).toBe(true);
+    await expect(harness.handler.save({ path: PATH }, peer)).resolves.toEqual({
+      saved: true,
+    });
+    expect(textDecoder.decode(first.document.content)).toBe(
+      '{"tables":["t1"]}'
+    );
+  });
+
+  it('keeps a pending edit waiting when a panel closes before any replica saved it', async () => {
+    const peer = createConnection();
+    const { harness, first, second } = await openJoined([peer]);
+    await harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer);
+    let settled: boolean | undefined;
+    harness.registry
+      .whenQuiet(first.document, 1_000)
+      .then(value => (settled = value));
+
+    first.panel.__dispose();
+    second.panel.__dispose();
+    await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
+    expect(settled).toBeUndefined();
+
+    await vi.advanceTimersByTimeAsync(1_000 - REPLICA_DEBOUNCE_MS);
+    expect(settled).toBe(false);
   });
 
   it('never injects into a webview that has not reported ready', async () => {

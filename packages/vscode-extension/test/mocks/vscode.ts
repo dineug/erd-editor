@@ -381,13 +381,25 @@ export function createExtensionContext(extensionPath = '/ext') {
 
 export type MockExtensionContext = ReturnType<typeof createExtensionContext>;
 
-/** Builds a vscode.WebviewPanel double around createWebview(). */
+/**
+ * Builds a vscode.WebviewPanel double around createWebview(). Like VSCode, it
+ * marks itself disposed before firing onDidDispose, and from then on reading
+ * webview throws, so a dispose listener cannot lean on it.
+ */
 export function createWebviewPanel(webview = createWebview()) {
   const disposeEmitter = new EventEmitter<void>();
   const viewStateEmitter = new EventEmitter<{ webviewPanel: unknown }>();
+  let disposed = false;
+  const fireDispose = () => {
+    disposed = true;
+    disposeEmitter.fire();
+  };
 
   const panel = {
-    webview,
+    get webview() {
+      if (disposed) throw new Error('Webview is disposed');
+      return webview;
+    },
     visible: true,
     active: true,
     onDidDispose: disposeEmitter.event,
@@ -395,9 +407,9 @@ export function createWebviewPanel(webview = createWebview()) {
       viewStateEmitter.event(listener)
     ),
     reveal: vi.fn(),
-    dispose: vi.fn(() => disposeEmitter.fire()),
+    dispose: vi.fn(fireDispose),
     /** Test-only: fires onDidDispose the way VSCode does on panel close. */
-    __dispose: () => disposeEmitter.fire(),
+    __dispose: fireDispose,
     /** Test-only: updates active and visible, then fires onDidChangeViewState. */
     __changeViewState: (state: { active: boolean; visible: boolean }) => {
       panel.active = state.active;

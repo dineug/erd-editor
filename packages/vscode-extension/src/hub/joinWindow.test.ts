@@ -18,6 +18,7 @@ import {
   maxVersion,
   noteChange,
   noteSave,
+  recount,
   REPLICA_DEBOUNCE_MS,
   waitForQuiet,
 } from '@/hub/joinWindow';
@@ -163,6 +164,28 @@ describe('quiet state', () => {
     expect(state.pending).toBe(true);
 
     noteSave(state, 0, 0);
+    expect(state.pending).toBe(false);
+  });
+
+  it('settles on a recount once fewer saves are expected than already came, never with none', async () => {
+    vi.useFakeTimers();
+    const state = createQuietState();
+    noteChange(state, 'webview', 0);
+    let woken: boolean | undefined;
+    waitForQuiet(state).then(settled => (woken = settled));
+
+    recount(state, 0);
+    expect(state.pending).toBe(true);
+    noteSave(state, 2, 0);
+    recount(state, 2);
+    await microtasks();
+    expect(woken).toBeUndefined();
+
+    recount(state, 1);
+    await microtasks();
+    expect(woken).toBe(true);
+    expect(state.wakers.size).toBe(0);
+    recount(state, 1);
     expect(state.pending).toBe(false);
   });
 });

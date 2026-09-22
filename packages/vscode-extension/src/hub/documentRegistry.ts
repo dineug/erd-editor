@@ -26,6 +26,7 @@ import {
   noteSave,
   type QueuedBatch,
   type QuietState,
+  recount,
   waitForQuiet,
 } from '@/hub/joinWindow';
 import { warn } from '@/hub/log';
@@ -143,13 +144,22 @@ export class DocumentRegistry {
     if (panel.active) this.setActive(document);
   }
 
+  /**
+   * Called from the panel's onDidDispose, where VS Code already throws on
+   * panel.webview, so the webview is found by its panel. A pending change
+   * then expects one save fewer, which the replicas left may already cover.
+   */
   removeWebview(document: ErdDocument, panel: vscode.WebviewPanel): void {
     const entry = this.entries.get(document);
     if (!entry) return;
 
-    entry.webviews.delete(panel.webview);
-    entry.panels.delete(panel.webview);
-    entry.ready.delete(panel.webview);
+    for (const [webview, owner] of Array.from(entry.panels)) {
+      if (owner !== panel) continue;
+      entry.webviews.delete(webview);
+      entry.panels.delete(webview);
+      entry.ready.delete(webview);
+    }
+    recount(entry.quiet, entry.ready.size);
   }
 
   /** The document of the ERD panel that took focus last; a blur leaves it in place. */

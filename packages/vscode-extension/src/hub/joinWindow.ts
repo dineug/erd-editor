@@ -108,7 +108,15 @@ export function noteSave(
   if (!state.pending || now < state.countFrom) return;
 
   state.saves++;
-  if (state.saves < Math.max(1, expected)) return;
+  recount(state, expected);
+}
+
+/**
+ * Settles a pending change once its counted saves cover expected. A closed
+ * webview lowers expected without a save, so its removal checks again here.
+ */
+export function recount(state: QuietState, expected: number): void {
+  if (!state.pending || state.saves < Math.max(1, expected)) return;
 
   state.pending = false;
   for (const wake of Array.from(state.wakers)) wake(true);

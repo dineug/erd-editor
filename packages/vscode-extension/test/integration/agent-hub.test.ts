@@ -80,6 +80,8 @@ async function closeAllEditors(): Promise<void> {
  */
 class FakePeer {
   readonly notifications: Frame[] = [];
+  /** When each notification arrived, by performance.now, for the timing log. */
+  readonly arrivals: number[] = [];
   private buffer = '';
   private nextId = 1;
   private readonly pending = new Map<number, (frame: Frame) => void>();
@@ -102,6 +104,15 @@ class FakePeer {
     return this.notifications
       .filter(frame => frame.method === 'actions')
       .map(frame => frame.params.actions);
+  }
+
+  /** When the first actions notification mentioning tableId arrived. */
+  arrivalOf(tableId: string): number | undefined {
+    const index = this.notifications.findIndex(
+      frame =>
+        frame.method === 'actions' && mentions([frame.params.actions], tableId)
+    );
+    return index === -1 ? undefined : this.arrivals[index];
   }
 
   request(method: string, params: Record<string, unknown>): Promise<Frame> {
@@ -141,6 +152,7 @@ class FakePeer {
   private dispatch(frame: Frame): void {
     if (typeof frame.id !== 'number') {
       this.notifications.push(frame);
+      this.arrivals.push(performance.now());
       return;
     }
     const resolve = this.pending.get(frame.id);
@@ -175,6 +187,32 @@ function tableBatch(tableId: string, version: number): Frame[] {
 function mentions(batches: Frame[][], tableId: string): boolean {
   return batches.some(batch =>
     batch.some(action => action.payload?.id === tableId)
+  );
+}
+
+/**
+ * Stamps the first tab change that leaves an ERD tab dirty. The assertions
+ * still poll; the stamp only keeps the logged time from rounding to the poll.
+ */
+function stampFirstDirty(): {
+  at: () => number | undefined;
+} & vscode.Disposable {
+  let stamp: number | undefined;
+  const listener = vscode.window.tabGroups.onDidChangeTabs(() => {
+    if (stamp === undefined && erdTabs().some(tab => tab.isDirty)) {
+      stamp = performance.now();
+    }
+  });
+  return { at: () => stamp, dispose: () => listener.dispose() };
+}
+
+/** The observability numbers plan section 7 asks for, one line per spec. */
+function logTimings(spec: string, timings: Record<string, number>): void {
+  const fields = Object.entries(timings).map(
+    ([name, ms]) => `${name}=${ms.toFixed(1)}ms`
+  );
+  console.log(
+    `[agent-hub e2e] vscode ${vscode.version} ${spec}: ${fields.join(' ')}`
   );
 }
 
@@ -264,28 +302,46 @@ describe('document hub for coding agents', () => {
     const peer = await connectPeer('e2e');
     await openThroughHub(peer);
     assert.strictEqual(erdTabs().length, 1);
+    const joinStart = performance.now();
     const joined = await peer.call('join', { path: documentPath });
+    const joinMs = performance.now() - joinStart;
     assert.strictEqual(joined.readonly, false);
     assert.strictEqual(JSON.parse(joined.initialValue).version, '3.0.0');
     const tableId = `e2e${Date.now()}`;
+    const dirty = stampFirstDirty();
 
+    const applyStart = performance.now();
     const applied = await peer.call('applyActions', {
       path: documentPath,
       actions: tableBatch(tableId, joined.snapshotVersion + 1),
     });
+    const applyMs = performance.now() - applyStart;
 
     assert.deepStrictEqual(applied, { webviews: 1 });
-    await waitUntil('the ERD tab turns dirty', () =>
-      erdTabs().some(tab => tab.isDirty)
-    );
+    try {
+      await waitUntil('the ERD tab turns dirty', () =>
+        erdTabs().some(tab => tab.isDirty)
+      );
+    } finally {
+      dirty.dispose();
+    }
+    const dirtyMs = (dirty.at() ?? performance.now()) - applyStart;
     assert.ok(!fs.readFileSync(documentPath, 'utf8').includes(tableId));
 
+    const saveStart = performance.now();
     const saved = await peer.call('save', { path: documentPath });
+    const saveMs = performance.now() - saveStart;
 
     assert.deepStrictEqual(saved, { saved: true });
     const onDisk = JSON.parse(fs.readFileSync(documentPath, 'utf8'));
     assert.ok(onDisk.doc.tableIds.includes(tableId));
     assert.ok(erdTabs().every(tab => !tab.isDirty));
+    logTimings('one peer', {
+      join: joinMs,
+      applyActions: applyMs,
+      applyToDirty: dirtyMs,
+      save: saveMs,
+    });
   });
 
   it('hands one peer batch to the other peer, and never back to its sender', async () => {
@@ -298,11 +354,13 @@ describe('document hub for coding agents', () => {
     const tableId = `e2e${Date.now()}`;
     const batch = tableBatch(tableId, joined.snapshotVersion + 1);
 
+    const applyStart = performance.now();
     await a.call('applyActions', { path: documentPath, actions: batch });
 
     await waitUntil('the other peer receives the batch', () =>
       mentions(b.actionBatches(), tableId)
     );
+    const relayMs = (b.arrivalOf(tableId) as number) - applyStart;
     // Well past the replica round trip: an echo would have arrived by now.
     await delay(1_000);
     assert.deepStrictEqual(
@@ -313,5 +371,59 @@ describe('document hub for coding agents', () => {
     assert.deepStrictEqual(await a.call('save', { path: documentPath }), {
       saved: true,
     });
+    logTimings('two peers', { applyToOtherPeer: relayMs });
+  });
+
+  /** Polls openDocument, which answers an open document at once, for its ready webview count. */
+  async function waitForReadyWebviews(
+    peer: FakePeer,
+    expected: number
+  ): Promise<void> {
+    const deadline = Date.now() + POLL_TIMEOUT;
+    let webviews: number | undefined;
+
+    while (Date.now() < deadline) {
+      ({ webviews } = await peer.call('openDocument', { path: documentPath }));
+      if (webviews === expected) return;
+      await delay(POLL_INTERVAL);
+    }
+    assert.fail(
+      `openDocument still counts ${webviews} ready webviews, not ${expected}, after ${POLL_TIMEOUT}ms`
+    );
+  }
+
+  it('counts only the panels still open once one of two on the document closes, and still saves', async () => {
+    const peer = await connectPeer('e2e-split');
+    await openThroughHub(peer);
+    await vscode.commands.executeCommand(
+      'vscode.openWith',
+      documentUri,
+      VIEW_TYPE,
+      vscode.ViewColumn.Beside
+    );
+    await waitUntil('a second ERD tab is open', () => erdTabs().length === 2);
+    await waitForReadyWebviews(peer, 2);
+
+    await vscode.window.tabGroups.close(erdTabs()[0]);
+    await waitUntil('one ERD tab is left', () => erdTabs().length === 1);
+    await waitForReadyWebviews(peer, 1);
+    const joined = await peer.call('join', { path: documentPath });
+    const tableId = `e2e${Date.now()}`;
+
+    const applied = await peer.call('applyActions', {
+      path: documentPath,
+      actions: tableBatch(tableId, joined.snapshotVersion + 1),
+    });
+
+    assert.deepStrictEqual(applied, { webviews: 1 });
+    await waitUntil('the ERD tab turns dirty', () =>
+      erdTabs().some(tab => tab.isDirty)
+    );
+    assert.deepStrictEqual(await peer.call('save', { path: documentPath }), {
+      saved: true,
+    });
+    const onDisk = JSON.parse(fs.readFileSync(documentPath, 'utf8'));
+    assert.ok(onDisk.doc.tableIds.includes(tableId));
+    assert.ok(erdTabs().every(tab => !tab.isDirty));
   });
 });
