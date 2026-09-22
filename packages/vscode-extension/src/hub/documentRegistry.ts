@@ -11,11 +11,11 @@ import {
   Bridge,
   webviewReplicationCommand,
 } from '@dineug/erd-editor-webview-bridge';
+import * as Context from 'effect/Context';
+import * as Effect from 'effect/Effect';
 import type * as vscode from 'vscode';
 
 import { type ErdDocument } from '@/erd-document';
-import { realpathOrSelf } from '@/hub/authz';
-import { type HubIo, nodeHubIo } from '@/hub/io';
 import {
   type ActionSource,
   createQuietState,
@@ -29,9 +29,10 @@ import {
   recount,
   waitForQuiet,
 } from '@/hub/joinWindow';
-import { warn } from '@/hub/log';
 import { isReadonlyUri } from '@/hub/readonlyUri';
 import { type HubConnection } from '@/hub/server';
+import { warnUnsafe } from '@/hub/services/HubLogger';
+import { nodeRegistryIo, type RegistryIo } from '@/hub/services/registryIo';
 import { textDecoder } from '@/utils';
 
 /** The three calls ErdEditor makes from its bridge handlers. */
@@ -81,8 +82,17 @@ export class DocumentRegistry {
   private publisher: DocumentPublisher | null = null;
   private activeDocument: ErdDocument | null = null;
 
-  constructor(private readonly io: HubIo = nodeHubIo) {
-    this.platform = io.platform();
+  private constructor(private readonly io: RegistryIo) {
+    this.platform = io.platform;
+  }
+
+  /**
+   * Built before the provider is registered, so the Disposable it returns is
+   * still handed to context.subscriptions inside activate; the hub layer takes
+   * this very instance through Layer.succeed once its own build finishes.
+   */
+  static makeUnsafe(io: RegistryIo = nodeRegistryIo): DocumentRegistry {
+    return new DocumentRegistry(io);
   }
 
   /** Publishes the documents already open, then every change to them. */
@@ -199,14 +209,14 @@ export class DocumentRegistry {
   }
 
   /**
-   * Resolves with the document once a writable webview of path reports ready,
-   * or with null after timeoutMs or on cancel. Never rejects, so nothing is
-   * left unhandled while the caller still awaits the editor opening.
+   * Gives the document once a writable webview of path reports ready, or null
+   * after timeoutMs or on cancel. Never fails, so nothing is left unhandled
+   * while the caller still awaits the editor opening.
    */
   waitForReady(
     path: string,
     timeoutMs: number
-  ): { ready: Promise<ErdDocument | null>; cancel: () => void } {
+  ): { ready: Effect.Effect<ErdDocument | null>; cancel: () => void } {
     let waiter!: ReadyWaiter;
     const ready = new Promise<ErdDocument | null>(resolve => {
       waiter = {
@@ -221,7 +231,10 @@ export class DocumentRegistry {
       this.readyWaiters.add(waiter);
     });
 
-    return { ready, cancel: () => waiter.resolve(null) };
+    return {
+      ready: Effect.promise(() => ready),
+      cancel: () => waiter.resolve(null),
+    };
   }
 
   /** A webview's own actions, from its hostSaveReplicationCommand, for every joined peer. */
@@ -242,9 +255,9 @@ export class DocumentRegistry {
   }
 
   /** True once no replica save is outstanding, false if one still is at capMs. */
-  whenQuiet(document: ErdDocument, capMs: number): Promise<boolean> {
+  whenQuiet(document: ErdDocument, capMs: number): Effect.Effect<boolean> {
     const entry = this.entries.get(document);
-    return entry ? waitForQuiet(entry.quiet, capMs) : Promise.resolve(true);
+    return entry ? waitForQuiet(entry.quiet, capMs) : Effect.succeed(true);
   }
 
   /**
@@ -335,35 +348,49 @@ export class DocumentRegistry {
    * to go quiet, then captures content and observedVersion in one tick. The
    * queue empties on a timer, after the response is written, not ahead of it.
    */
-  async join(
+  join(
     document: ErdDocument,
     connection: HubConnection
-  ): Promise<JoinResult> {
-    const entry = this.entries.get(document);
-    if (!entry) throw this.closedDuringJoin(document.uri.fsPath);
+  ): Effect.Effect<JoinResult, HubRequestError> {
+    const entries = this.entries;
+    const closedDuringJoin = (path: string) => this.closedDuringJoin(path);
+    const endJoinWindow = (
+      entry: Entry,
+      peer: Peer,
+      queue: QueuedBatch[],
+      captured: number,
+      snapshotVersion: number
+    ) => this.endJoinWindow(entry, peer, queue, captured, snapshotVersion);
 
-    const queue: QueuedBatch[] = [];
-    const peer: Peer = { connection, queue };
-    entry.peers.set(connection, peer);
+    return Effect.gen(function* () {
+      const entry = entries.get(document);
+      if (!entry) {
+        return yield* Effect.fail(closedDuringJoin(document.uri.fsPath));
+      }
 
-    await waitForQuiet(entry.quiet);
-    if (
-      this.entries.get(document) !== entry ||
-      entry.peers.get(connection) !== peer
-    ) {
-      throw this.closedDuringJoin(entry.path);
-    }
+      const queue: QueuedBatch[] = [];
+      const peer: Peer = { connection, queue };
+      entry.peers.set(connection, peer);
 
-    const result: JoinResult = {
-      initialValue: textDecoder.decode(document.content),
-      snapshotVersion: entry.observedVersion,
-      readonly: isReadonlyUri(document.uri),
-    };
-    const captured = queue.length;
-    setTimeout(() =>
-      this.endJoinWindow(entry, peer, queue, captured, result.snapshotVersion)
-    );
-    return result;
+      yield* waitForQuiet(entry.quiet);
+      if (
+        entries.get(document) !== entry ||
+        entry.peers.get(connection) !== peer
+      ) {
+        return yield* Effect.fail(closedDuringJoin(entry.path));
+      }
+
+      const result: JoinResult = {
+        initialValue: textDecoder.decode(document.content),
+        snapshotVersion: entry.observedVersion,
+        readonly: isReadonlyUri(document.uri),
+      };
+      const captured = queue.length;
+      setTimeout(() =>
+        endJoinWindow(entry, peer, queue, captured, result.snapshotVersion)
+      );
+      return result;
+    });
   }
 
   /** Drops the peer from every document at path, its queue with it. */
@@ -439,7 +466,7 @@ export class DocumentRegistry {
       snapshotVersion
     );
     if (droppedCount) {
-      warn(
+      warnUnsafe(
         `dropped ${droppedCount} queued actions joining ${entry.path}: versioned at most ${snapshotVersion}, or unversioned`,
         dropped
       );
@@ -450,16 +477,17 @@ export class DocumentRegistry {
   }
 
   private closedDuringJoin(path: string): HubRequestError {
-    return new HubRequestError(
-      HubErrorCode.notOpen,
-      `${path} closed, or the peer left it, before the join finished`
-    );
+    return new HubRequestError({
+      code: HubErrorCode.notOpen,
+      message: `${path} closed, or the peer left it, before the join finished`,
+    });
   }
 
+  /** Falls back to the path it was given, which is what keeps register from rejecting. */
   private realPathOf(fsPath: string): Promise<string> {
     const paths = this.platform === 'win32' ? win32 : posix;
     return paths.isAbsolute(fsPath)
-      ? realpathOrSelf(this.io, fsPath)
+      ? this.io.realPath(fsPath).catch(() => fsPath)
       : Promise.resolve(fsPath);
   }
 
@@ -476,7 +504,13 @@ export class DocumentRegistry {
     try {
       await this.publisher(documents);
     } catch (error) {
-      warn('could not list the open documents in the lock', error);
+      warnUnsafe('could not list the open documents in the lock', error);
     }
   }
 }
+
+/** The instance activate builds before the provider is registered. */
+export class DocumentRegistryService extends Context.Service<
+  DocumentRegistryService,
+  DocumentRegistry
+>()('vuerd-vscode/hub/DocumentRegistry') {}

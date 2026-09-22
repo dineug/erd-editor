@@ -1,3 +1,7 @@
+import * as Deferred from 'effect/Deferred';
+import * as Duration from 'effect/Duration';
+import * as Effect from 'effect/Effect';
+
 /** Where an action reached the hub from; drops at a join are counted per source. */
 export type ActionSource = 'webview' | 'peer';
 
@@ -70,7 +74,8 @@ export type QuietState = {
   saves: number;
   /** A save reaching the hub before this instant was sent before its replica held the latest peer batch. */
   countFrom: number;
-  wakers: Set<(settled: boolean) => void>;
+  /** Completed by the save that settles the pending change; null while none is pending. */
+  settled: Deferred.Deferred<void> | null;
 };
 
 export function createQuietState(): QuietState {
@@ -78,7 +83,7 @@ export function createQuietState(): QuietState {
     pending: false,
     saves: 0,
     countFrom: Number.NEGATIVE_INFINITY,
-    wakers: new Set(),
+    settled: null,
   };
 }
 
@@ -94,6 +99,7 @@ export function noteChange(
 ): void {
   state.pending = true;
   state.saves = 0;
+  state.settled ??= Deferred.makeUnsafe<void>();
   if (source === 'peer') {
     state.countFrom = Math.max(state.countFrom, now + REPLICA_DEBOUNCE_MS);
   }
@@ -119,28 +125,28 @@ export function recount(state: QuietState, expected: number): void {
   if (!state.pending || state.saves < Math.max(1, expected)) return;
 
   state.pending = false;
-  for (const wake of Array.from(state.wakers)) wake(true);
+  const settled = state.settled;
+  state.settled = null;
+  if (settled) Deferred.doneUnsafe(settled, Effect.void);
 }
 
 /**
- * Resolves true at once when no change is pending or on the save that settles
- * it, and false at capMs. Never rejects: join captures what the document holds
- * either way, while save refuses to write bytes that may lack an edit.
+ * True at once when no change is pending or on the save that settles it, and
+ * false at capMs. Never fails: join captures what the document holds either
+ * way, while save refuses to write bytes that may lack an edit.
  */
 export function waitForQuiet(
   state: QuietState,
-  capMs = JOIN_QUIET_CAP_MS
-): Promise<boolean> {
-  if (!state.pending) return Promise.resolve(true);
+  capMs: number = JOIN_QUIET_CAP_MS
+): Effect.Effect<boolean> {
+  return Effect.suspend(() => {
+    const settled = state.settled;
+    if (!state.pending || !settled) return Effect.succeed(true);
 
-  return new Promise(resolve => {
-    const wake = (settled: boolean) => {
-      clearTimeout(timer);
-      state.wakers.delete(wake);
-      resolve(settled);
-    };
-    const timer = setTimeout(() => wake(false), capMs);
-    state.wakers.add(wake);
+    return Effect.raceFirst(
+      Deferred.await(settled).pipe(Effect.as(true)),
+      Effect.sleep(Duration.millis(capMs)).pipe(Effect.as(false))
+    );
   });
 }
 

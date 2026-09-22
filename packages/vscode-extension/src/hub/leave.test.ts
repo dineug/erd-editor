@@ -37,7 +37,8 @@ async function joinAll(...peers: ReturnType<typeof createConnection>[]) {
   vi.useFakeTimers();
   const harness = createDocumentHarness();
   const editor = await harness.openReady(PATH, '{}');
-  for (const peer of peers) await harness.handler.join({ path: PATH }, peer);
+  for (const peer of peers)
+    await harness.run(harness.handler.join({ path: PATH }, peer));
   await vi.advanceTimersByTimeAsync(0);
   return { harness, editor };
 }
@@ -49,18 +50,19 @@ describe('leave', () => {
     const { harness, editor } = await joinAll(leaving, staying);
 
     await expect(
-      harness.handler.leave({ path: PATH }, leaving)
+      harness.run(harness.handler.leave({ path: PATH }, leaving))
     ).resolves.toEqual({});
     harness.relay(editor, batch(1));
-    await harness.handler.applyActions(
-      { path: PATH, actions: batch(2) },
-      staying
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: batch(2) }, staying)
     );
 
     expect(leaving.notify).not.toHaveBeenCalled();
     expect(actionsSent(staying)).toEqual([batch(1)]);
     await expect(
-      harness.handler.applyActions({ path: PATH, actions: batch(3) }, leaving)
+      harness.run(
+        harness.handler.applyActions({ path: PATH, actions: batch(3) }, leaving)
+      )
     ).rejects.toMatchObject({ code: HubErrorCode.notOpen });
   });
 
@@ -71,12 +73,12 @@ describe('leave', () => {
     harness.relay(editor, batch(1));
     const peer = createConnection();
 
-    const joining = harness.handler.join({ path: PATH }, peer);
+    const joining = harness.run(harness.handler.join({ path: PATH }, peer));
     const rejected = expect(joining).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
     });
     harness.relay(editor, batch(2));
-    await harness.handler.leave({ path: PATH }, peer);
+    await harness.run(harness.handler.leave({ path: PATH }, peer));
     await harness.saveValue(editor, '{}');
     await rejected;
     await vi.advanceTimersByTimeAsync(0);
@@ -88,10 +90,10 @@ describe('leave', () => {
     const { harness } = await joinAll();
 
     await expect(
-      harness.handler.leave({ path: PATH }, createConnection())
+      harness.run(harness.handler.leave({ path: PATH }, createConnection()))
     ).resolves.toEqual({});
     await expect(
-      harness.handler.leave({ path: OTHER }, createConnection())
+      harness.run(harness.handler.leave({ path: OTHER }, createConnection()))
     ).resolves.toEqual({});
   });
 });
@@ -102,7 +104,7 @@ describe('documentClosed', () => {
     const elsewhere = createConnection(2);
     const { harness, editor } = await joinAll(joined);
     await harness.openReady(OTHER, '{}');
-    await harness.handler.join({ path: OTHER }, elsewhere);
+    await harness.run(harness.handler.join({ path: OTHER }, elsewhere));
 
     editor.document.dispose();
 
@@ -120,7 +122,9 @@ describe('documentClosed', () => {
     const reopened = await harness.openReady(PATH, '{}');
 
     await expect(
-      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      harness.run(
+        harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      )
     ).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
       message: `Join ${PATH} before applying actions to it`,
@@ -135,7 +139,7 @@ describe('disconnect', () => {
     const peer = createConnection(1);
     const { harness, editor } = await joinAll(peer);
     const other = await harness.openReady(OTHER, '{}');
-    await harness.handler.join({ path: OTHER }, peer);
+    await harness.run(harness.handler.join({ path: OTHER }, peer));
     await vi.advanceTimersByTimeAsync(0);
 
     harness.handler.disconnect(peer);

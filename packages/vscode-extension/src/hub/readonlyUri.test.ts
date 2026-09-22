@@ -67,9 +67,8 @@ describe('a read-only view at the hub', () => {
   it('joins as readonly, with the content still readable', async () => {
     const { harness } = await openGitView();
 
-    const result = await harness.handler.join(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.join({ path: PATH }, createConnection())
     );
 
     expect(result).toEqual({
@@ -82,13 +81,15 @@ describe('a read-only view at the hub', () => {
   it('refuses applyActions with readonly and reaches no webview', async () => {
     const { harness, editor } = await openGitView();
     const peer = createConnection();
-    await harness.handler.join({ path: PATH }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
     editor.webview.postMessage.mockClear();
 
     await expect(
-      harness.handler.applyActions(
-        { path: PATH, actions: [{ type: 'table.add', version: 1 }] },
-        peer
+      harness.run(
+        harness.handler.applyActions(
+          { path: PATH, actions: [{ type: 'table.add', version: 1 }] },
+          peer
+        )
       )
     ).rejects.toMatchObject({ code: HubErrorCode.readonly });
     expect(editor.webview.postMessage).not.toHaveBeenCalled();
@@ -98,7 +99,7 @@ describe('a read-only view at the hub', () => {
     const { harness } = await openGitView();
 
     await expect(
-      harness.handler.save({ path: PATH }, createConnection())
+      harness.run(harness.handler.save({ path: PATH }, createConnection()))
     ).rejects.toMatchObject({
       code: HubErrorCode.readonly,
     });
@@ -109,9 +110,8 @@ describe('a read-only view at the hub', () => {
     const publisher = vi.fn(async () => undefined);
     await harness.registry.setPublisher(publisher);
 
-    const { documents } = await harness.handler.listDocuments(
-      {},
-      createConnection()
+    const { documents } = await harness.run(
+      harness.handler.listDocuments({}, createConnection())
     );
 
     expect(documents).toEqual([
@@ -125,10 +125,11 @@ describe('a read-only view at the hub', () => {
     const file = await harness.openReady(PATH);
     const peer = createConnection();
 
-    const result = await harness.handler.join({ path: PATH }, peer);
-    const { documents } = await harness.handler.listDocuments(
-      {},
-      createConnection()
+    const result = await harness.run(
+      harness.handler.join({ path: PATH }, peer)
+    );
+    const { documents } = await harness.run(
+      harness.handler.listDocuments({}, createConnection())
     );
 
     expect(result.readonly).toBe(false);
@@ -137,7 +138,9 @@ describe('a read-only view at the hub', () => {
       expect.objectContaining({ path: PATH, readonly: false }),
     ]);
     await expect(
-      harness.handler.applyActions({ path: PATH, actions: [] }, peer)
+      harness.run(
+        harness.handler.applyActions({ path: PATH, actions: [] }, peer)
+      )
     ).resolves.toEqual({ webviews: 1 });
   });
 
@@ -145,9 +148,8 @@ describe('a read-only view at the hub', () => {
     const { harness } = await openGitView();
     const opened = harness.serveOpenWith();
 
-    const result = await harness.handler.openDocument(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.openDocument({ path: PATH }, createConnection())
     );
 
     expect(commands.executeCommand).toHaveBeenCalledWith(
@@ -159,7 +161,7 @@ describe('a read-only view at the hub', () => {
     expect(result).toEqual({ path: PATH, opened: true, webviews: 1 });
     expect(harness.registry.find(PATH)).toBe(opened[0].document);
     await expect(
-      harness.handler.join({ path: PATH }, createConnection())
+      harness.run(harness.handler.join({ path: PATH }, createConnection()))
     ).resolves.toMatchObject({ readonly: false });
   });
 
@@ -167,9 +169,11 @@ describe('a read-only view at the hub', () => {
     const { harness } = await openGitView();
 
     await expect(
-      harness.handler.applyActions(
-        { path: PATH, actions: [] },
-        createConnection()
+      harness.run(
+        harness.handler.applyActions(
+          { path: PATH, actions: [] },
+          createConnection()
+        )
       )
     ).rejects.toMatchObject({
       message: `${PATH} is open only as a read-only view, such as a git revision; openDocument opens the file itself`,
@@ -191,9 +195,8 @@ describe('a read-only view at the hub', () => {
       { isDirty: true }
     );
 
-    const { documents } = await harness.handler.listDocuments(
-      {},
-      createConnection()
+    const { documents } = await harness.run(
+      harness.handler.listDocuments({}, createConnection())
     );
 
     expect(documents).toEqual([

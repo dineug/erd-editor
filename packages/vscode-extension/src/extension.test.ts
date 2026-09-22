@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
 import {
   afterEach,
   beforeEach,
@@ -13,9 +14,14 @@ import {
 import { VIEW_TYPE } from '@/constants/viewType';
 import { ErdEditorProvider } from '@/erd-editor-provider';
 import { activate, deactivate } from '@/extension';
-import { nodeHubIo } from '@/hub/io';
+import { type DocumentRegistry } from '@/hub/documentRegistry';
 
-import { connectToLock, flush, type MemoryHubIo } from '../test/mocks/hubIo';
+import {
+  connectToLock,
+  createMemoryHub,
+  flush,
+  type MemoryHub,
+} from '../test/mocks/hubLayers';
 import {
   commands,
   createExtensionContext,
@@ -27,14 +33,27 @@ import {
   workspace,
 } from '../test/mocks/vscode';
 
+const hub = vi.hoisted(() => ({
+  io: null as unknown as MemoryHub,
+  buildFailure: null as Error | null,
+}));
+
 // activate starts the document hub, which must not bind a socket or write a
 // lock under the real home directory from a unit test.
-vi.mock('@/hub/io', async () => {
-  const { createMemoryHubIo } = await import('../test/mocks/hubIo');
-  return { nodeHubIo: createMemoryHubIo() };
-});
+vi.mock('@/hub', async () => {
+  const actual = await vi.importActual<typeof import('@/hub')>('@/hub');
+  const { memoryHubLive } = await import('../test/mocks/hubLayers');
+  const Effect = await import('effect/Effect');
+  const Layer = await import('effect/Layer');
 
-const hubIo = nodeHubIo as MemoryHubIo;
+  return {
+    ...actual,
+    documentHubLive: (_version: string, registry: DocumentRegistry) =>
+      hub.buildFailure
+        ? Layer.effect(actual.DocumentHub, Effect.die(hub.buildFailure))
+        : memoryHubLive(hub.io, registry),
+  };
+});
 
 type Manifest = {
   contributes: {
@@ -84,10 +103,10 @@ function activateAndGetCommand(id: string) {
 describe('extension', () => {
   beforeEach(() => {
     resetVscodeMock();
-    // Every activate starts a hub on the one shared double; a fresh file
-    // system and no listener keep one spec's hub out of the next.
-    hubIo.files.clear();
-    hubIo.servers.clear();
+    // Every activate starts a hub on its own memory machine, so one spec's
+    // lock and listener never reach the next.
+    hub.io = createMemoryHub();
+    hub.buildFailure = null;
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
@@ -126,31 +145,27 @@ describe('extension', () => {
         expect(context.subscriptions).toContain(commandRegistrations.get(id));
       }
       expect(context.subscriptions[5]).toMatchObject({
-        setDocuments: expect.any(Function),
-        close: expect.any(Function),
         dispose: expect.any(Function),
       });
     });
 
     it('still registers the editor and every command when the document hub cannot start', async () => {
       const context = createExtensionContext();
-      hubIo.homedir.mockImplementationOnce(() => {
-        throw new Error('uv_os_homedir returned ENOENT');
-      });
+      hub.buildFailure = new Error('uv_os_homedir returned ENOENT');
 
       expect(() => activate(context as any)).not.toThrow();
 
       expect(window.registerCustomEditorProvider).toHaveBeenCalledTimes(1);
       expect(registeredCommandIds()).toEqual(COMMAND_IDS);
-      expect(context.subscriptions).toHaveLength(5);
+      expect(context.subscriptions).toHaveLength(6);
+      await flush();
       expect(console.warn).toHaveBeenCalledWith(
         '[erd-editor hub]',
         'could not start the document hub',
         expect.objectContaining({ message: 'uv_os_homedir returned ENOENT' })
       );
-      await flush();
-      expect(hubIo.lock()).toBeUndefined();
-      expect(deactivate()).toBeUndefined();
+      expect(hub.io.lock()).toBeUndefined();
+      await expect(deactivate()).resolves.toBeUndefined();
     });
 
     it('registers exactly the four vuerd commands', () => {
@@ -182,7 +197,7 @@ describe('extension', () => {
       activate(createExtensionContext() as any);
       await flush();
 
-      expect(hubIo.lock()).toMatchObject({ hub: true, ide: 'vscode' });
+      expect(hub.io.lock()).toMatchObject({ hub: true, ide: 'vscode' });
     });
 
     it('deletes the lock when the hub subscription is disposed', async () => {
@@ -193,7 +208,23 @@ describe('extension', () => {
       context.subscriptions[5].dispose();
       await flush();
 
-      expect(hubIo.lock()).toBeUndefined();
+      expect(hub.io.lock()).toBeUndefined();
+    });
+
+    it('warns instead of rejecting when closing the hub dies', async () => {
+      activate(createExtensionContext() as any);
+      await flush();
+      hub.io.fs.remove.mockImplementation(() =>
+        Effect.die(new Error('EIO under the lock directory'))
+      );
+
+      await expect(deactivate()).resolves.toBeUndefined();
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[erd-editor hub]',
+        'could not close the document hub',
+        expect.anything()
+      );
     });
 
     it('deletes the lock in deactivate, which VSCode awaits, and has nothing left to close after', async () => {
@@ -202,21 +233,21 @@ describe('extension', () => {
 
       await deactivate();
 
-      expect(hubIo.lock()).toBeUndefined();
+      expect(hub.io.lock()).toBeUndefined();
       expect(deactivate()).toBeUndefined();
     });
 
     /** Activates with /workspace open, so requests pass authorization and reach the handler. */
     async function activateWithWorkspace() {
       workspace.workspaceFolders = [{ uri: Uri.file('/workspace') }];
-      hubIo.addDir('/workspace');
+      hub.io.addDir('/workspace');
       activate(createExtensionContext() as any);
       await flush();
-      return connectToLock(hubIo);
+      return connectToLock(hub.io);
     }
 
     it('serves requests from the document registry: an unopened document is listed and read, not edited', async () => {
-      hubIo.addFile('/workspace/a.erd.json', '{"version":"3.0.0"}');
+      hub.io.addFile('/workspace/a.erd.json', '{"version":"3.0.0"}');
       workspace.findFiles.mockResolvedValue([
         Uri.file('/workspace/a.erd.json'),
       ]);
@@ -266,7 +297,7 @@ describe('extension', () => {
 
     it('lists a document in the lock once the ERD editor opens it, and unlists it on close', async () => {
       await activateWithWorkspace();
-      hubIo.addFile('/elsewhere/b.erd.json', '{}');
+      hub.io.addFile('/elsewhere/b.erd.json', '{}');
       const [, provider] = window.registerCustomEditorProvider.mock
         .calls[0] as unknown as [string, ErdEditorProvider];
 
@@ -275,11 +306,11 @@ describe('extension', () => {
         { backupId: undefined, untitledDocumentData: undefined }
       );
       await flush();
-      expect(hubIo.lock()?.documents).toEqual(['/elsewhere/b.erd.json']);
+      expect(hub.io.lock()?.documents).toEqual(['/elsewhere/b.erd.json']);
 
       document.dispose();
       await flush();
-      expect(hubIo.lock()?.documents).toEqual([]);
+      expect(hub.io.lock()?.documents).toEqual([]);
     });
   });
 

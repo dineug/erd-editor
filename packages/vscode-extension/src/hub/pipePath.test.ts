@@ -12,18 +12,14 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { startDocumentHub } from '@/hub';
 import { choosePipePath, socketFilePaths, tmpPipePath } from '@/hub/pipePath';
 
 import {
-  createHubHandler,
-  createMemoryHubIo,
+  createMemoryHub,
   flush,
-} from '../../test/mocks/hubIo';
-import {
-  createExtensionContext,
-  resetVscodeMock,
-} from '../../test/mocks/vscode';
+  startMemoryHub,
+} from '../../test/mocks/hubLayers';
+import { resetVscodeMock } from '../../test/mocks/vscode';
 
 const PID = 4242;
 
@@ -110,26 +106,22 @@ describe('the hub under a home too long for a socket path', () => {
   });
 
   it('listens under tmpdir, names that pipe in the lock, and keeps the lock in the home', async () => {
-    const io = createMemoryHubIo({ homedir: LONG_HOME, tmpdir: '/tmp' });
+    const io = createMemoryHub({ homedir: LONG_HOME, tmpdir: '/tmp' });
     io.addDir('/tmp');
-    startDocumentHub(createExtensionContext() as any, createHubHandler(), io);
+    startMemoryHub(io);
     await flush();
 
     const fallback = `/tmp/erd-editor-ide-${PID}.sock`;
-    expect(io.listen).toHaveBeenCalledWith(fallback, expect.any(Function));
+    expect(io.listen).toHaveBeenCalledWith(fallback);
     expect(io.lockPath()).toBe(lockFilePath(LONG_HOME, PID));
     expect(io.lock()).toMatchObject({ hub: true, pipe: fallback });
     expect(io.files.has(pipePath(LONG_HOME, PID, 'linux'))).toBe(false);
   });
 
   it('deletes the fallback socket with the lock on dispose', async () => {
-    const io = createMemoryHubIo({ homedir: LONG_HOME, tmpdir: '/tmp' });
+    const io = createMemoryHub({ homedir: LONG_HOME, tmpdir: '/tmp' });
     io.addDir('/tmp');
-    const hub = startDocumentHub(
-      createExtensionContext() as any,
-      createHubHandler(),
-      io
-    );
+    const hub = startMemoryHub(io);
     await flush();
 
     await hub.close();
@@ -139,12 +131,8 @@ describe('the hub under a home too long for a socket path', () => {
   });
 
   it('serves the named pipe on win32 whatever the home, and deletes no socket file for it', async () => {
-    const io = createMemoryHubIo({ homedir: LONG_HOME, platform: 'win32' });
-    const hub = startDocumentHub(
-      createExtensionContext() as any,
-      createHubHandler(),
-      io
-    );
+    const io = createMemoryHub({ homedir: LONG_HOME, platform: 'win32' });
+    const hub = startMemoryHub(io);
     await flush();
     const namedPipe = `\\\\.\\pipe\\erd-editor-ide-${PID}`;
 
@@ -152,16 +140,16 @@ describe('the hub under a home too long for a socket path', () => {
 
     await hub.close();
 
-    expect(io.unlink).not.toHaveBeenCalledWith(namedPipe);
+    expect(io.fs.remove).not.toHaveBeenCalledWith(namedPipe);
     expect(io.servers.size).toBe(0);
   });
 
   it('never listens and writes only a hub false lock when no socket path fits at all', async () => {
-    const io = createMemoryHubIo({
+    const io = createMemoryHub({
       homedir: LONG_HOME,
       tmpdir: `/${'t'.repeat(100)}`,
     });
-    startDocumentHub(createExtensionContext() as any, createHubHandler(), io);
+    startMemoryHub(io);
     await flush();
 
     expect(io.listen).not.toHaveBeenCalled();

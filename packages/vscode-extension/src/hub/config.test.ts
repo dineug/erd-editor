@@ -10,7 +10,6 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { startDocumentHub } from '@/hub';
 import {
   affectsHubEnabled,
   AGENT_HUB_ENABLED_SETTING,
@@ -18,13 +17,12 @@ import {
 } from '@/hub/config';
 
 import {
-  createHubHandler,
-  createMemoryHubIo,
+  createMemoryHub,
   flush,
-  type MemoryHubIo,
-} from '../../test/mocks/hubIo';
+  type MemoryHub,
+  startMemoryHub,
+} from '../../test/mocks/hubLayers';
 import {
-  createExtensionContext,
   createWorkspaceConfiguration,
   fireConfigurationChange,
   fireGrantWorkspaceTrust,
@@ -53,10 +51,8 @@ function setHubSetting(value: unknown) {
   );
 }
 
-function start(io: MemoryHubIo = createMemoryHubIo()) {
-  const context = createExtensionContext();
-  const hub = startDocumentHub(context as any, createHubHandler(), io);
-  return { hub, io, context };
+function start(io: MemoryHub = createMemoryHub()) {
+  return { hub: startMemoryHub(io), io };
 }
 
 describe('isHubEnabled', () => {
@@ -158,7 +154,7 @@ describe('the hub by trust and setting', () => {
     fireGrantWorkspaceTrust();
     await flush();
 
-    expect(io.listen).toHaveBeenCalledWith(SOCKET, expect.any(Function));
+    expect(io.listen).toHaveBeenCalledWith(SOCKET);
     expect(io.lock()).toMatchObject({
       hub: true,
       pipe: SOCKET,
@@ -170,20 +166,20 @@ describe('the hub by trust and setting', () => {
     workspace.isTrusted = false;
     const { io } = start();
     await flush();
-    io.listen.mockRejectedValueOnce(new Error('EADDRINUSE'));
-    io.rename.mockClear();
+    io.failListenOnce();
+    io.fs.rename.mockClear();
 
     fireGrantWorkspaceTrust();
     await flush();
 
     expect(io.listen).toHaveBeenCalledTimes(1);
-    expect(io.rename).toHaveBeenCalledTimes(1);
+    expect(io.fs.rename).toHaveBeenCalledTimes(1);
     expect(io.lock()).toMatchObject({ hub: false, pipe: '', token: '' });
   });
 
   it('retries listening on the next trust event after a failure', async () => {
-    const io = createMemoryHubIo();
-    io.listen.mockRejectedValueOnce(new Error('EADDRINUSE'));
+    const io = createMemoryHub();
+    io.failListenOnce();
     start(io);
     await flush();
 
@@ -209,8 +205,7 @@ describe('the hub by trust and setting', () => {
     const { io } = start();
     await flush();
     const client = io.connect(SOCKET);
-    const handle = await io.listen.mock.results[0].value;
-    io.rename.mockClear();
+    io.fs.rename.mockClear();
 
     setHubSetting(false);
     fireConfigurationChange([AGENT_HUB_ENABLED_SETTING]);
@@ -222,8 +217,8 @@ describe('the hub by trust and setting', () => {
     expect(io.files.has(SOCKET)).toBe(false);
     // A client that reads the lock in between finds hub false, never a pipe
     // that no longer answers.
-    expect(io.rename.mock.invocationCallOrder[0]).toBeLessThan(
-      handle.close.mock.invocationCallOrder[0]
+    expect(io.fs.rename.mock.invocationCallOrder[0]).toBeLessThan(
+      io.closeListener.mock.invocationCallOrder[0]
     );
   });
 
@@ -245,12 +240,12 @@ describe('the hub by trust and setting', () => {
   it('ignores a configuration change to any other setting', async () => {
     const { io } = start();
     await flush();
-    io.writeFile.mockClear();
+    io.fs.writeFileString.mockClear();
 
     fireConfigurationChange(['dineug.erd-editor.theme.appearance']);
     await flush();
 
-    expect(io.writeFile).not.toHaveBeenCalled();
+    expect(io.fs.writeFileString).not.toHaveBeenCalled();
     expect(io.listen).toHaveBeenCalledTimes(1);
   });
 
@@ -281,7 +276,9 @@ describe('the hub by trust and setting', () => {
     });
     const { io, hub } = start();
     await flush();
-    expect(io.lock()).toBeUndefined();
+    // The registry publishes the documents it already holds as the hub builds,
+    // so the guarding lock is there before the setting can be read again.
+    expect(io.lock()).toMatchObject({ hub: false, documents: [] });
 
     await hub.setDocuments(['/elsewhere/a.erd.json']);
     expect(io.lock()).toMatchObject({
@@ -312,7 +309,7 @@ describe('the lock of a window without folders', () => {
     'is written when workspaceFolders is %s, and lists the open documents',
     async (_label, folders) => {
       workspace.workspaceFolders = folders;
-      const io = createMemoryHubIo();
+      const io = createMemoryHub();
       io.addFile('/notes/loose.erd.json');
       const { hub } = start(io);
 
@@ -328,7 +325,7 @@ describe('the lock of a window without folders', () => {
 
   it('lists the documents in a hub false lock too, since that lock guards them', async () => {
     workspace.isTrusted = false;
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     const { hub } = start(io);
 
     await hub.setDocuments(['/notes/loose.erd.json']);
@@ -346,7 +343,7 @@ describe('the workspace folders of the lock', () => {
   });
 
   it('lists the real path of every file folder and leaves virtual folders out', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/real/project');
     io.links.set('/link', '/real');
     workspace.workspaceFolders = [
@@ -360,7 +357,7 @@ describe('the workspace folders of the lock', () => {
   });
 
   it('rewrites the lock when a folder is added to the window', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/a');
     io.addDir('/b');
     workspace.workspaceFolders = [{ uri: Uri.file('/a') }];
@@ -377,7 +374,7 @@ describe('the workspace folders of the lock', () => {
   });
 
   it('keeps a folder whose realpath fails under the path VSCode reported', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     workspace.workspaceFolders = [{ uri: Uri.file('/gone') }];
     start(io);
     await flush();

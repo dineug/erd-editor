@@ -1,4 +1,6 @@
 import { type HubNotification } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
 import {
   Bridge,
   hostInitialCommand,
@@ -16,8 +18,9 @@ import { ErdEditorProvider } from '@/erd-editor-provider';
 import { DocumentRegistry } from '@/hub/documentRegistry';
 import { createDocumentHandler } from '@/hub/handlers';
 import { type HubConnection } from '@/hub/server';
+import * as HubLogger from '@/hub/services/HubLogger';
 
-import { createMemoryHubIo, type MemoryHubIoOptions } from './hubIo';
+import { createMemoryHub, type MemoryHubOptions } from './hubLayers';
 import {
   commands,
   createExtensionContext,
@@ -85,13 +88,16 @@ export type OpenedEditor = {
 
 /**
  * A registry, its handler and a provider building the real ErdEditor, over
- * the vscode stub and a memory HubIo. Documents are files of that HubIo,
- * which the stub's fs reads and writes too.
+ * the vscode stub and the memory hub layers. Documents are files of that
+ * memory FileSystem, which the stub's fs reads and writes too.
  */
-export function createDocumentHarness(options: MemoryHubIoOptions = {}) {
-  const io = createMemoryHubIo(options);
-  const registry = new DocumentRegistry(io);
-  const handler = createDocumentHandler(registry, io);
+export function createDocumentHarness(options: MemoryHubOptions = {}) {
+  const io = createMemoryHub(options);
+  const registry = DocumentRegistry.makeUnsafe(io.registryIo);
+  const handler = createDocumentHandler(
+    registry,
+    io.fs as unknown as FileSystem.FileSystem
+  );
   const provider = new ErdEditorProvider(
     createExtensionContext() as any,
     widthEditor(ErdEditor),
@@ -192,10 +198,22 @@ export function createDocumentHarness(options: MemoryHubIoOptions = {}) {
     return tab;
   }
 
+  /**
+   * Runs one of the hub's effects and gives its success, or its failure. The
+   * logger is the hub's, so a warning reaches console.warn as it does in the
+   * extension, not stdout under effect's default format.
+   */
+  const run = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
+    Effect.runPromise(Effect.provide(effect, HubLogger.layer));
+  const runFailure = <A, E>(effect: Effect.Effect<A, E>): Promise<E> =>
+    run(Effect.flip(effect));
+
   return {
     io,
     registry,
     handler,
+    run,
+    runFailure,
     provider,
     open,
     openReady,

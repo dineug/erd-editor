@@ -1,4 +1,9 @@
-import { HubErrorCode, HubRequestError } from '@dineug/erd-editor-agent-hub';
+import {
+  HubErrorCode,
+  HubRequestError,
+  type Platform,
+} from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
 import {
   afterEach,
   beforeEach,
@@ -8,29 +13,24 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { startDocumentHub } from '@/hub';
 import { authorizePath, realpathOrSelf, resolveRealPath } from '@/hub/authz';
 
 import {
   connectToLock,
   createHubHandler,
-  createMemoryHubIo,
+  createMemoryHub,
   flush,
-  type MemoryHubIo,
+  fsError,
+  type MemoryHub,
   type MockHubHandler,
-} from '../../test/mocks/hubIo';
-import {
-  createExtensionContext,
-  resetVscodeMock,
-  Uri,
-  workspace,
-} from '../../test/mocks/vscode';
+  runMemory,
+  startMemoryHub,
+} from '../../test/mocks/hubLayers';
+import { resetVscodeMock, Uri, workspace } from '../../test/mocks/vscode';
 
 const LOCK = '/home/user/.erd-editor/ide/4242.json';
 
-function enoent() {
-  return Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
-}
+const missing = (path: string) => fsError('NotFound', 'realPath', path);
 
 beforeEach(() => {
   resetVscodeMock();
@@ -42,100 +42,95 @@ afterEach(() => {
 });
 
 describe('resolveRealPath', () => {
+  const resolve = (io: MemoryHub, path: string, platform: Platform = 'linux') =>
+    runMemory(io, resolveRealPath(path, platform));
+
   it('resolves a symlink anywhere in an existing path', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/real/ws/a.erd.json');
     io.links.set('/ws', '/real/ws');
 
-    expect(await resolveRealPath(io, '/ws/a.erd.json', 'linux')).toBe(
-      '/real/ws/a.erd.json'
-    );
+    expect(await resolve(io, '/ws/a.erd.json')).toBe('/real/ws/a.erd.json');
   });
 
   it('resolves the longest existing prefix of a document about to be created', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/real/ws');
     io.links.set('/ws', '/real/ws');
 
-    expect(await resolveRealPath(io, '/ws/new/b.erd.json', 'linux')).toBe(
+    expect(await resolve(io, '/ws/new/b.erd.json')).toBe(
       '/real/ws/new/b.erd.json'
     );
   });
 
   it('hands back a relative path untouched, for paths.ts to reject', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
 
-    expect(await resolveRealPath(io, 'ws/a.erd.json', 'linux')).toBe(
-      'ws/a.erd.json'
-    );
-    expect(io.realpath).not.toHaveBeenCalled();
+    expect(await resolve(io, 'ws/a.erd.json')).toBe('ws/a.erd.json');
+    expect(io.fs.realPath).not.toHaveBeenCalled();
   });
 
   it('gives null when not even the root resolves', async () => {
-    const io = createMemoryHubIo();
-    io.realpath.mockRejectedValue(enoent());
+    const io = createMemoryHub();
+    io.fs.realPath.mockImplementation((path: string) =>
+      Effect.fail(missing(path))
+    );
 
-    expect(await resolveRealPath(io, '/ws/a.erd.json', 'linux')).toBeNull();
-    expect(io.realpath).toHaveBeenLastCalledWith('/');
+    expect(await resolve(io, '/ws/a.erd.json')).toBeNull();
+    expect(io.fs.realPath).toHaveBeenLastCalledWith('/');
   });
 
   it('gives null for a dangling symlink, which a write would follow to its target', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/ws');
     io.links.set('/ws/schema.erd.json', '/outside/planted.erd.json');
 
-    expect(
-      await resolveRealPath(io, '/ws/schema.erd.json', 'linux')
-    ).toBeNull();
-    expect(
-      await resolveRealPath(io, '/ws/schema.erd.json/x.erd.json', 'linux')
-    ).toBeNull();
+    expect(await resolve(io, '/ws/schema.erd.json')).toBeNull();
+    expect(await resolve(io, '/ws/schema.erd.json/x.erd.json')).toBeNull();
   });
 
   it('gives null for a missing directory followed by .., which join would fold onto an unresolved link', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/ws');
     io.addDir('/outside');
     io.links.set('/ws/link', '/outside');
 
-    expect(
-      await resolveRealPath(io, '/ws/missing/../link/x.erd.json', 'linux')
-    ).toBeNull();
+    expect(await resolve(io, '/ws/missing/../link/x.erd.json')).toBeNull();
   });
 
   it('lets the file system resolve .. behind a directory that exists', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/ws/sub');
-    io.realpath.mockImplementation(async path => {
-      if (path === '/ws/sub/..') return '/ws';
-      throw enoent();
-    });
+    io.fs.realPath.mockImplementation((path: string) =>
+      path === '/ws/sub/..' ? Effect.succeed('/ws') : Effect.fail(missing(path))
+    );
 
-    expect(await resolveRealPath(io, '/ws/sub/../new.erd.json', 'linux')).toBe(
+    expect(await resolve(io, '/ws/sub/../new.erd.json')).toBe(
       '/ws/new.erd.json'
     );
   });
 
   it('gives null, without climbing, when realpath fails for any reason but a missing entry', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/ws/loop.erd.json');
-    io.realpath.mockRejectedValueOnce(
-      Object.assign(new Error('ELOOP'), { code: 'ELOOP' })
+    io.fs.realPath.mockImplementationOnce((path: string) =>
+      Effect.fail(fsError('Busy', 'realPath', path))
     );
 
-    expect(await resolveRealPath(io, '/ws/loop.erd.json', 'linux')).toBeNull();
-    expect(io.realpath).toHaveBeenCalledTimes(1);
-    expect(io.lstat).not.toHaveBeenCalled();
+    expect(await resolve(io, '/ws/loop.erd.json')).toBeNull();
+    expect(io.fs.realPath).toHaveBeenCalledTimes(1);
+    expect(io.env.lstat).not.toHaveBeenCalled();
   });
 
   it('walks win32 paths with win32 separators', async () => {
-    const io = createMemoryHubIo();
-    io.realpath.mockImplementation(async path => {
-      if (path === 'C:\\ws') return 'C:\\Real\\ws';
-      throw enoent();
-    });
+    const io = createMemoryHub();
+    io.fs.realPath.mockImplementation((path: string) =>
+      path === 'C:\\ws'
+        ? Effect.succeed('C:\\Real\\ws')
+        : Effect.fail(missing(path))
+    );
 
-    expect(await resolveRealPath(io, 'C:\\ws\\new.erd.json', 'win32')).toBe(
+    expect(await resolve(io, 'C:\\ws\\new.erd.json', 'win32')).toBe(
       'C:\\Real\\ws\\new.erd.json'
     );
   });
@@ -143,28 +138,30 @@ describe('resolveRealPath', () => {
 
 describe('realpathOrSelf', () => {
   it('falls back to the path it was given', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/ws');
 
-    expect(await realpathOrSelf(io, '/ws')).toBe('/ws');
-    expect(await realpathOrSelf(io, '/gone')).toBe('/gone');
+    expect(await runMemory(io, realpathOrSelf('/ws'))).toBe('/ws');
+    expect(await runMemory(io, realpathOrSelf('/gone'))).toBe('/gone');
   });
 });
 
 describe('authorizePath', () => {
   const scope = { folders: ['/a/b'], documents: ['/loose/c.erd.json'] };
+  const authorize = (io: MemoryHub, target: string) =>
+    runMemory(io, authorizePath('linux', scope, target));
 
   it('returns the real path inside a folder, or of an open document', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/a/b/x.erd.json');
     io.addFile('/loose/c.erd.json');
 
-    await expect(
-      authorizePath(io, 'linux', scope, '/a/b/x.erd.json')
-    ).resolves.toBe('/a/b/x.erd.json');
-    await expect(
-      authorizePath(io, 'linux', scope, '/loose/c.erd.json')
-    ).resolves.toBe('/loose/c.erd.json');
+    await expect(authorize(io, '/a/b/x.erd.json')).resolves.toBe(
+      '/a/b/x.erd.json'
+    );
+    await expect(authorize(io, '/loose/c.erd.json')).resolves.toBe(
+      '/loose/c.erd.json'
+    );
   });
 
   it.each([
@@ -173,31 +170,29 @@ describe('authorizePath', () => {
     ['a relative path', 'a/b/x.erd.json'],
     ['a path climbing out with ..', '/a/b/../../etc/passwd'],
   ])('refuses %s with outsideWorkspace', async (_label, target) => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
 
-    await expect(
-      authorizePath(io, 'linux', scope, target)
-    ).rejects.toMatchObject({ code: HubErrorCode.outsideWorkspace });
+    await expect(authorize(io, target)).rejects.toMatchObject({
+      code: HubErrorCode.outsideWorkspace,
+    });
   });
 
   it('refuses a symlink inside the folder that leads out of it', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/etc/passwd');
     io.links.set('/a/b/escape', '/etc');
 
-    await expect(
-      authorizePath(io, 'linux', scope, '/a/b/escape/passwd')
-    ).rejects.toBeInstanceOf(HubRequestError);
+    await expect(authorize(io, '/a/b/escape/passwd')).rejects.toBeInstanceOf(
+      HubRequestError
+    );
   });
 
   it('refuses a dangling symlink inside the folder with outsideWorkspace', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/a/b');
     io.links.set('/a/b/x.erd.json', '/etc/planted.erd.json');
 
-    await expect(
-      authorizePath(io, 'linux', scope, '/a/b/x.erd.json')
-    ).rejects.toMatchObject({
+    await expect(authorize(io, '/a/b/x.erd.json')).rejects.toMatchObject({
       code: HubErrorCode.outsideWorkspace,
       message:
         '/a/b/x.erd.json has no real path the hub can check, such as a dangling link',
@@ -205,12 +200,12 @@ describe('authorizePath', () => {
   });
 });
 
-function startHub(io: MemoryHubIo, handler: MockHubHandler) {
-  return startDocumentHub(createExtensionContext() as any, handler, io);
+function startHub(io: MemoryHub, handler: MockHubHandler) {
+  return startMemoryHub(io, handler);
 }
 
 /** Sends one request after hello and hands back its response. */
-async function ask(io: MemoryHubIo, frame: Record<string, unknown>) {
+async function ask(io: MemoryHub, frame: Record<string, unknown>) {
   const client = connectToLock(io);
   client.send(frame);
   await flush();
@@ -230,12 +225,12 @@ describe('path authorization at the hub entry', () => {
     'refuses %s outside the workspace, calls no handler and creates no file',
     async (method, params) => {
       workspace.workspaceFolders = [{ uri: Uri.file('/ws') }];
-      const io = createMemoryHubIo();
+      const io = createMemoryHub();
       io.addDir('/ws');
       const handler = createHubHandler();
       startHub(io, handler);
       await flush();
-      io.writeFile.mockClear();
+      io.fs.writeFileString.mockClear();
 
       const response = await ask(io, { id: 2, method, params });
 
@@ -246,14 +241,14 @@ describe('path authorization at the hub entry', () => {
         error: { code: HubErrorCode.outsideWorkspace },
       });
       expect(handler[method as 'join']).not.toHaveBeenCalled();
-      expect(io.writeFile).not.toHaveBeenCalled();
+      expect(io.fs.writeFileString).not.toHaveBeenCalled();
       expect(io.files.has(OUTSIDE)).toBe(false);
     }
   );
 
   it('lets a path inside a workspace folder through under its real path', async () => {
     workspace.workspaceFolders = [{ uri: Uri.file('/link') }];
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/real/a.erd.json');
     io.links.set('/link', '/real');
     const handler = createHubHandler();
@@ -280,7 +275,7 @@ describe('path authorization at the hub entry', () => {
     'compares paths by the platform this window runs on: %s',
     async (platform, expected) => {
       workspace.workspaceFolders = [{ uri: Uri.file('/WS') }];
-      const io = createMemoryHubIo({ platform });
+      const io = createMemoryHub({ platform });
       io.addDir('/WS');
       startHub(io, createHubHandler());
       await flush();
@@ -297,7 +292,7 @@ describe('path authorization at the hub entry', () => {
 
   it('refuses a dangling symlink in the workspace and creates nothing at its target', async () => {
     workspace.workspaceFolders = [{ uri: Uri.file('/ws') }];
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/ws');
     io.links.set('/ws/schema.erd.json', '/outside/planted.erd.json');
     const handler = createHubHandler();
@@ -326,7 +321,7 @@ describe('path authorization at the hub entry', () => {
       'with workspaceFolders %s, admits the open document and nothing else',
       async (_label, folders) => {
         workspace.workspaceFolders = folders;
-        const io = createMemoryHubIo();
+        const io = createMemoryHub();
         io.addFile('/notes/open.erd.json');
         io.addFile('/notes/closed.erd.json');
         const handler = createHubHandler();
@@ -363,7 +358,7 @@ describe('path authorization at the hub entry', () => {
     );
 
     it('stops admitting a document once it is closed', async () => {
-      const io = createMemoryHubIo();
+      const io = createMemoryHub();
       io.addFile('/notes/open.erd.json');
       const hub = startHub(io, createHubHandler());
       await hub.setDocuments(['/notes/open.erd.json']);

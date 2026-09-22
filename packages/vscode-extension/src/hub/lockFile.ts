@@ -1,102 +1,105 @@
 import {
   LOCK_FILE_MODE,
-  lockDirPath,
-  type LockFile,
   lockFilePath,
-  lockFilePid,
   type LockRecord,
-  type Platform,
+  readLockDirectory,
   selectHub,
   serializeLock,
 } from '@dineug/erd-editor-agent-hub';
+import * as Context from 'effect/Context';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
+import * as Layer from 'effect/Layer';
 
-import { type HubIo } from '@/hub/io';
 import { socketFilePaths } from '@/hub/pipePath';
+import { HubEnvironment } from '@/hub/services/HubEnvironment';
+
+export type LockFileShape = {
+  /** Rewrites this window's lock atomically; false when the write failed. */
+  readonly write: (record: LockRecord) => Effect.Effect<boolean>;
+  /** Deletes this window's lock and its leftover temp file. */
+  readonly remove: Effect.Effect<void>;
+  /** Deletes the lock, temp file and socket of every window whose pid is dead. */
+  readonly cleanStale: Effect.Effect<void>;
+};
+
+export class LockFile extends Context.Service<LockFile, LockFileShape>()(
+  'vuerd-vscode/hub/LockFile'
+) {}
+
+const tempPath = (lockPath: string): string => `${lockPath}.tmp`;
 
 /** Resolves whether or not the file was there; a missing file is the usual case. */
-export function unlinkQuietly(io: HubIo, path: string): Promise<void> {
-  return io.unlink(path).catch(() => undefined);
-}
-
-function tempPath(lockPath: string): string {
-  return `${lockPath}.tmp`;
-}
+const removeQuietly = (fs: FileSystem.FileSystem, path: string) =>
+  fs.remove(path).pipe(Effect.ignore);
 
 /**
  * Writes the temp file with LOCK_FILE_MODE, then renames it over the lock: a
  * rename keeps the source's mode, so the lock is never readable by others.
  * A leftover temp goes first, since writeFile keeps an existing file's mode.
  */
-export async function writeLockFile(
-  io: HubIo,
+const writeLock = (
+  fs: FileSystem.FileSystem,
   lockPath: string,
   record: LockRecord
-): Promise<void> {
-  const temp = tempPath(lockPath);
+) =>
+  Effect.gen(function* () {
+    const temp = tempPath(lockPath);
 
-  await unlinkQuietly(io, temp);
-  await io.writeFile(temp, serializeLock(record), LOCK_FILE_MODE);
-  await io.rename(temp, lockPath);
-}
+    yield* removeQuietly(fs, temp);
+    yield* fs.writeFileString(temp, serializeLock(record), {
+      mode: LOCK_FILE_MODE,
+    });
+    yield* fs.rename(temp, lockPath);
+  });
 
-export async function removeLockFile(
-  io: HubIo,
-  lockPath: string
-): Promise<void> {
-  await unlinkQuietly(io, lockPath);
-  await unlinkQuietly(io, tempPath(lockPath));
-}
+const removeLock = (fs: FileSystem.FileSystem, lockPath: string) =>
+  Effect.gen(function* () {
+    yield* removeQuietly(fs, lockPath);
+    yield* removeQuietly(fs, tempPath(lockPath));
+  });
 
-async function readLockFiles(
-  io: HubIo,
-  homeDir: string,
-  ownPid: number
-): Promise<LockFile[]> {
-  const dir = lockDirPath(homeDir);
-  const names = await io.readdir(dir).catch((): string[] => []);
-  const locks: LockFile[] = [];
+export const layer: Layer.Layer<
+  LockFile,
+  never,
+  FileSystem.FileSystem | HubEnvironment
+> = Layer.effect(
+  LockFile,
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const env = yield* HubEnvironment;
+    const lockPath = lockFilePath(env.homeDir, env.pid);
 
-  for (const name of names) {
-    const pid = lockFilePid(name);
-    if (pid === null || pid === ownPid) continue;
+    return {
+      write: record =>
+        writeLock(fs, lockPath, record).pipe(
+          Effect.as(true),
+          Effect.catch(error =>
+            Effect.logWarning(`could not write ${lockPath}`, error).pipe(
+              Effect.as(false)
+            )
+          )
+        ),
+      remove: removeLock(fs, lockPath).pipe(Effect.ignore),
+      cleanStale: Effect.gen(function* () {
+        const locks = yield* readLockDirectory(env.homeDir);
+        const others = locks.filter(lock => lock.pid !== env.pid);
+        const { stale } = selectHub(others, '', env.platform, env.isAlive);
 
-    const path = lockFilePath(homeDir, pid);
-    try {
-      const [raw, { mtimeMs }] = await Promise.all([
-        io.readFile(path),
-        io.stat(path),
-      ]);
-      locks.push({ pid, raw, mtimeMs });
-    } catch {
-      // Its window deleted it between readdir and now.
-      continue;
-    }
-  }
+        for (const { pid, reason } of stale) {
+          if (reason !== 'dead') continue;
 
-  return locks;
-}
-
-/**
- * Deletes the lock, temp file and socket of every window whose pid is dead.
- * The empty target matches no lock, so selectHub only sorts out the stale;
- * a malformed lock of a live pid may be mid-write and is left alone.
- */
-export async function cleanStaleLocks(
-  io: HubIo,
-  homeDir: string,
-  tmpDir: string,
-  ownPid: number,
-  platform: Platform
-): Promise<void> {
-  const locks = await readLockFiles(io, homeDir, ownPid);
-  const { stale } = selectHub(locks, '', platform, pid => io.isAlive(pid));
-
-  for (const { pid, reason } of stale) {
-    if (reason !== 'dead') continue;
-
-    await removeLockFile(io, lockFilePath(homeDir, pid));
-    for (const socket of socketFilePaths(homeDir, tmpDir, pid, platform)) {
-      await unlinkQuietly(io, socket);
-    }
-  }
-}
+          yield* removeLock(fs, lockFilePath(env.homeDir, pid));
+          for (const socket of socketFilePaths(
+            env.homeDir,
+            env.tmpDir,
+            pid,
+            env.platform
+          )) {
+            yield* removeQuietly(fs, socket);
+          }
+        }
+      }).pipe(Effect.provideService(FileSystem.FileSystem, fs), Effect.ignore),
+    };
+  })
+);

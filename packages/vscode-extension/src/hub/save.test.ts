@@ -50,8 +50,10 @@ async function editedDocument() {
   const editor = await harness.openReady(PATH, '{}');
   const tab = harness.trackTab(editor);
   const peer = createConnection();
-  await harness.handler.join({ path: PATH }, peer);
-  await harness.handler.applyActions({ path: PATH, actions: EDIT }, peer);
+  await harness.run(harness.handler.join({ path: PATH }, peer));
+  await harness.run(
+    harness.handler.applyActions({ path: PATH, actions: EDIT }, peer)
+  );
   await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
   await harness.saveValue(editor, '{"tables":["t1"]}');
   return { harness, editor, tab, peer };
@@ -83,9 +85,8 @@ describe('save', () => {
     const { harness, editor, tab } = await editedDocument();
     serveWorkspaceSave(harness, editor, tab);
 
-    const result = await harness.handler.save(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
     );
 
     expect(result).toEqual({ saved: true });
@@ -110,9 +111,8 @@ describe('save', () => {
       return undefined;
     });
 
-    const result = await harness.handler.save(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
     );
 
     expect(result).toEqual({ saved: true });
@@ -132,7 +132,7 @@ describe('save', () => {
     });
 
     await expect(
-      harness.handler.save({ path: PATH }, createConnection())
+      harness.run(harness.handler.save({ path: PATH }, createConnection()))
     ).resolves.toEqual({
       saved: true,
     });
@@ -148,9 +148,8 @@ describe('save', () => {
     workspace.save.mockResolvedValue(undefined);
     commands.executeCommand.mockRejectedValueOnce(new Error('busy'));
 
-    const result = await harness.handler.save(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
     );
 
     expect(result).toEqual({ saved: false });
@@ -177,7 +176,7 @@ describe('save', () => {
     workspace.save.mockResolvedValue(undefined);
 
     await expect(
-      harness.handler.save({ path: PATH }, createConnection())
+      harness.run(harness.handler.save({ path: PATH }, createConnection()))
     ).resolves.toEqual({
       saved: false,
     });
@@ -191,10 +190,14 @@ describe('save', () => {
     const tab = harness.trackTab(editor);
     serveWorkspaceSave(harness, editor, tab);
     const peer = createConnection();
-    await harness.handler.join({ path: PATH }, peer);
-    await harness.handler.applyActions({ path: PATH, actions: EDIT }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: EDIT }, peer)
+    );
 
-    const saved = harness.handler.save({ path: PATH }, createConnection());
+    const saved = harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
+    );
     await microtasks();
     expect(workspace.save).not.toHaveBeenCalled();
 
@@ -211,10 +214,14 @@ describe('save', () => {
     const tab = harness.trackTab(editor);
     serveWorkspaceSave(harness, editor, tab);
     const peer = createConnection();
-    await harness.handler.join({ path: PATH }, peer);
-    await harness.handler.applyActions({ path: PATH, actions: EDIT }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: EDIT }, peer)
+    );
 
-    const saved = harness.handler.save({ path: PATH }, createConnection());
+    const saved = harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
+    );
     await vi.advanceTimersByTimeAsync(SAVE_QUIET_CAP_MS);
 
     await expect(saved).resolves.toEqual({ saved: false });
@@ -233,12 +240,16 @@ describe('save', () => {
     const tab = harness.trackTab(editor);
     serveWorkspaceSave(harness, editor, tab);
     const peer = createConnection();
-    await harness.handler.join({ path: PATH }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
     harness.relay(editor, [{ type: 'table.add', payload: { id: 'u1' } }]);
     await vi.advanceTimersByTimeAsync(150);
-    await harness.handler.applyActions({ path: PATH, actions: EDIT }, peer);
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: EDIT }, peer)
+    );
 
-    const saved = harness.handler.save({ path: PATH }, createConnection());
+    const saved = harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
+    );
     await vi.advanceTimersByTimeAsync(60);
     await harness.saveValue(editor, '{"tables":["u1"]}');
     expect(workspace.save).not.toHaveBeenCalled();
@@ -254,10 +265,14 @@ describe('save', () => {
     const harness = createDocumentHarness();
     const editor = await harness.openReady(PATH, '{}');
     const peer = createConnection();
-    await harness.handler.join({ path: PATH }, peer);
-    await harness.handler.applyActions({ path: PATH, actions: EDIT }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: EDIT }, peer)
+    );
 
-    const saved = harness.handler.save({ path: PATH }, createConnection());
+    const saved = harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
+    );
     const rejected = expect(saved).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
       message: `${PATH} closed before it could be saved`,
@@ -273,7 +288,9 @@ describe('save', () => {
     const harness = createDocumentHarness();
 
     await expect(
-      harness.handler.save({ path: '/ws/schema.sql' }, createConnection())
+      harness.run(
+        harness.handler.save({ path: '/ws/schema.sql' }, createConnection())
+      )
     ).rejects.toMatchObject({ code: HubErrorCode.badRequest });
     expect(workspace.save).not.toHaveBeenCalled();
   });
@@ -283,7 +300,7 @@ describe('save', () => {
     harness.io.addFile(PATH, '{}');
 
     await expect(
-      harness.handler.save({ path: PATH }, createConnection())
+      harness.run(harness.handler.save({ path: PATH }, createConnection()))
     ).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
     });

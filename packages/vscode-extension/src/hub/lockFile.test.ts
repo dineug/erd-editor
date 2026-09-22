@@ -5,6 +5,7 @@ import {
   type LockRecord,
   serializeLock,
 } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
 import {
   afterEach,
   beforeEach,
@@ -14,23 +15,17 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { startDocumentHub } from '@/hub';
-import {
-  cleanStaleLocks,
-  removeLockFile,
-  unlinkQuietly,
-  writeLockFile,
-} from '@/hub/lockFile';
-
 import {
   connectToLock,
-  createHubHandler,
-  createMemoryHubIo,
+  createMemoryHub,
   flush,
-  type MemoryHubIo,
-} from '../../test/mocks/hubIo';
+  fsError,
+  type MemoryHub,
+  memoryLockFile,
+  runHub,
+  startMemoryHub,
+} from '../../test/mocks/hubLayers';
 import {
-  createExtensionContext,
   fireWorkspaceFoldersChange,
   resetVscodeMock,
   Uri,
@@ -53,13 +48,8 @@ const record: LockRecord = {
   hub: true,
 };
 
-function start(io: MemoryHubIo = createMemoryHubIo()) {
-  const hub = startDocumentHub(
-    createExtensionContext() as any,
-    createHubHandler(),
-    io
-  );
-  return { hub, io };
+function start(io: MemoryHub = createMemoryHub()) {
+  return { hub: startMemoryHub(io), io };
 }
 
 beforeEach(() => {
@@ -71,28 +61,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('writeLockFile', () => {
+describe('LockFile.write', () => {
   it('writes a 0600 temp file, then renames it over the lock', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir(LOCK_DIR);
+    const lock = await memoryLockFile(io);
 
-    await writeLockFile(io, LOCK, record);
+    await expect(runHub(lock.write(record))).resolves.toBe(true);
 
-    expect(io.writeFile).toHaveBeenCalledWith(
+    expect(io.fs.writeFileString).toHaveBeenCalledWith(
       `${LOCK}.tmp`,
       serializeLock(record),
-      LOCK_FILE_MODE
+      { mode: LOCK_FILE_MODE }
     );
-    expect(io.rename).toHaveBeenCalledWith(`${LOCK}.tmp`, LOCK);
+    expect(io.fs.rename).toHaveBeenCalledWith(`${LOCK}.tmp`, LOCK);
     expect(io.files.get(LOCK)).toMatchObject({ mode: 0o600 });
     expect(io.files.has(`${LOCK}.tmp`)).toBe(false);
   });
 
   it('deletes a leftover temp first, since writing over it would keep its mode', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile(`${LOCK}.tmp`, 'half a lock');
+    const lock = await memoryLockFile(io);
 
-    await writeLockFile(io, LOCK, record);
+    await runHub(lock.write(record));
 
     expect(io.files.get(LOCK)).toEqual({
       data: serializeLock(record),
@@ -101,63 +93,66 @@ describe('writeLockFile', () => {
     });
   });
 
-  it('rejects when the temp file cannot be written', async () => {
-    const io = createMemoryHubIo();
+  it('answers false and only warns when the temp file cannot be written', async () => {
+    const io = createMemoryHub();
+    const lock = await memoryLockFile(io);
 
-    await expect(writeLockFile(io, LOCK, record)).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
-    expect(io.rename).not.toHaveBeenCalled();
+    await expect(runHub(lock.write(record))).resolves.toBe(false);
+
+    expect(io.fs.rename).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      '[erd-editor hub]',
+      `could not write ${LOCK}`,
+      expect.objectContaining({ _tag: 'PlatformError' })
+    );
   });
 });
 
-describe('removeLockFile', () => {
+describe('LockFile.remove', () => {
   it('deletes the lock and its temp file, and is quiet when neither exists', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile(LOCK);
     io.addFile(`${LOCK}.tmp`);
+    const lock = await memoryLockFile(io);
 
-    await removeLockFile(io, LOCK);
-    await removeLockFile(io, LOCK);
+    await runHub(lock.remove);
+    await expect(runHub(lock.remove)).resolves.toBeUndefined();
 
     expect(io.files.size).toBe(0);
   });
 });
 
-describe('unlinkQuietly', () => {
-  it('resolves for a missing file', async () => {
-    await expect(
-      unlinkQuietly(createMemoryHubIo(), '/nowhere')
-    ).resolves.toBeUndefined();
-  });
-});
-
-describe('cleanStaleLocks', () => {
-  function seed(io: MemoryHubIo, pid: number, raw = serializeLock(record)) {
+describe('LockFile.cleanStale', () => {
+  function seed(io: MemoryHub, pid: number, raw = serializeLock(record)) {
     io.addFile(`${LOCK_DIR}/${pid}.json`, raw);
   }
 
+  const clean = async (io: MemoryHub) => {
+    const lock = await memoryLockFile(io);
+    await runHub(lock.cleanStale);
+  };
+
   it('deletes the lock, temp file and both possible sockets of a dead pid', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/tmp');
     seed(io, 100);
     io.addFile(`${LOCK_DIR}/100.json.tmp`);
     io.addFile(`${LOCK_DIR}/100.sock`);
     io.addFile('/tmp/erd-editor-ide-100.sock');
 
-    await cleanStaleLocks(io, HOME, '/tmp', 4242, 'linux');
+    await clean(io);
 
     expect([...io.files.keys()]).toEqual([]);
   });
 
   it('leaves the lock of a live window, even a malformed one that may be mid-write', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.alive.add(200).add(300);
     seed(io, 200);
     seed(io, 300, '{"pipe":');
     io.addFile(`${LOCK_DIR}/200.sock`);
 
-    await cleanStaleLocks(io, HOME, '/tmp', 4242, 'linux');
+    await clean(io);
 
     expect([...io.files.keys()].sort()).toEqual([
       `${LOCK_DIR}/200.json`,
@@ -167,52 +162,50 @@ describe('cleanStaleLocks', () => {
   });
 
   it('never touches its own lock or files that are not locks', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.alive.delete(4242);
     seed(io, 4242);
     io.addFile(`${LOCK_DIR}/notes.txt`);
 
-    await cleanStaleLocks(io, HOME, '/tmp', 4242, 'linux');
+    await clean(io);
 
     expect(io.files.has(LOCK)).toBe(true);
     expect(io.files.has(`${LOCK_DIR}/notes.txt`)).toBe(true);
-    expect(io.isAlive).not.toHaveBeenCalledWith(4242);
+    expect(io.env.isAlive).not.toHaveBeenCalledWith(4242);
   });
 
   it('skips a lock that its window deleted between the listing and the read, and cleans the rest', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.alive.add(500);
     seed(io, 500);
     seed(io, 100);
     io.addFile(`${LOCK_DIR}/100.sock`);
-    io.readFile.mockRejectedValueOnce(
-      Object.assign(new Error('gone'), { code: 'ENOENT' })
+    io.fs.readFileString.mockImplementationOnce((path: string) =>
+      Effect.fail(fsError('NotFound', 'readFileString', path))
     );
 
-    await cleanStaleLocks(io, HOME, '/tmp', 4242, 'linux');
+    await clean(io);
 
-    expect(io.readFile.mock.calls[0][0]).toBe(`${LOCK_DIR}/500.json`);
+    expect(io.fs.readFileString.mock.calls[0][0]).toBe(`${LOCK_DIR}/500.json`);
     expect(io.files.has(`${LOCK_DIR}/500.json`)).toBe(true);
     expect(io.files.has(`${LOCK_DIR}/100.json`)).toBe(false);
     expect(io.files.has(`${LOCK_DIR}/100.sock`)).toBe(false);
   });
 
   it('does nothing when the lock directory does not exist yet', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
 
-    await expect(
-      cleanStaleLocks(io, HOME, '/tmp', 4242, 'linux')
-    ).resolves.toBeUndefined();
-    expect(io.unlink).not.toHaveBeenCalled();
+    await expect(clean(io)).resolves.toBeUndefined();
+    expect(io.fs.remove).not.toHaveBeenCalled();
   });
 
   it('deletes no socket file on win32, where the pipe is no file', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub({ platform: 'win32', tmpdir: 'C:\\Temp' });
     seed(io, 100);
 
-    await cleanStaleLocks(io, HOME, 'C:\\Temp', 4242, 'win32');
+    await clean(io);
 
-    expect(io.unlink.mock.calls.map(([path]) => path)).toEqual([
+    expect(io.fs.remove.mock.calls.map(([path]) => path)).toEqual([
       `${LOCK_DIR}/100.json`,
       `${LOCK_DIR}/100.json.tmp`,
     ]);
@@ -224,14 +217,17 @@ describe('the hub lock file', () => {
     const { io } = start();
     await flush();
 
-    expect(io.mkdir).toHaveBeenCalledWith(LOCK_DIR, LOCK_DIR_MODE);
+    expect(io.fs.makeDirectory).toHaveBeenCalledWith(LOCK_DIR, {
+      recursive: true,
+      mode: LOCK_DIR_MODE,
+    });
     expect(io.dirs.get(LOCK_DIR)).toBe(0o700);
     expect(io.files.get(LOCK)?.mode).toBe(0o600);
   });
 
   it('names the socket, a random token and this extension in the lock', async () => {
     workspace.workspaceFolders = [{ uri: Uri.file('/ws') }];
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addDir('/ws');
     start(io);
     await flush();
@@ -253,12 +249,12 @@ describe('the hub lock file', () => {
     await flush();
 
     expect(io.listen.mock.invocationCallOrder[0]).toBeLessThan(
-      io.writeFile.mock.invocationCallOrder[0]
+      io.fs.writeFileString.mock.invocationCallOrder[0]
     );
   });
 
   it('removes a socket file a dead process with this pid left before listening', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile(SOCKET);
     start(io);
     await flush();
@@ -267,8 +263,8 @@ describe('the hub lock file', () => {
   });
 
   it('writes a hub false lock naming no pipe when listening fails, so its paths stay guarded', async () => {
-    const io = createMemoryHubIo();
-    io.listen.mockRejectedValueOnce(new Error('EADDRINUSE'));
+    const io = createMemoryHub();
+    io.failListenOnce();
     start(io);
     await flush();
 
@@ -282,8 +278,10 @@ describe('the hub lock file', () => {
   });
 
   it('neither listens nor writes a lock when the lock directory cannot be created', async () => {
-    const io = createMemoryHubIo();
-    io.mkdir.mockRejectedValue(new Error('EACCES'));
+    const io = createMemoryHub();
+    io.fs.makeDirectory.mockImplementation((path: string) =>
+      Effect.fail(fsError('PermissionDenied', 'makeDirectory', path))
+    );
     start(io);
     await flush();
 
@@ -292,13 +290,15 @@ describe('the hub lock file', () => {
     expect(console.warn).toHaveBeenCalledWith(
       '[erd-editor hub]',
       `could not write ${LOCK}`,
-      expect.objectContaining({ message: 'EACCES' })
+      expect.objectContaining({ _tag: 'PlatformError' })
     );
   });
 
   it('closes the pipe again and falls back to hub false when the lock cannot be written after listening', async () => {
-    const io = createMemoryHubIo();
-    io.rename.mockRejectedValueOnce(new Error('ENOSPC'));
+    const io = createMemoryHub();
+    io.fs.rename.mockImplementationOnce((from: string) =>
+      Effect.fail(fsError('Busy', 'rename', from))
+    );
     start(io);
     await flush();
 
@@ -309,7 +309,7 @@ describe('the hub lock file', () => {
   });
 
   it('deletes the locks of dead windows on start', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile(`${LOCK_DIR}/100.json`, serializeLock(record));
     start(io);
     await flush();
@@ -325,8 +325,7 @@ describe('the hub on dispose', () => {
     await flush();
     const client = connectToLock(io);
 
-    hub.dispose();
-    await flush();
+    await hub.close();
 
     expect(io.files.has(LOCK)).toBe(false);
     expect(io.files.has(SOCKET)).toBe(false);
@@ -337,13 +336,14 @@ describe('the hub on dispose', () => {
   it('deletes the lock before closing the pipe, so no reader finds a dead pipe', async () => {
     const { hub, io } = start();
     await flush();
-    const handle = await io.listen.mock.results[0].value;
 
     await hub.close();
 
-    const lockGone = io.unlink.mock.calls.findIndex(([path]) => path === LOCK);
-    expect(io.unlink.mock.invocationCallOrder[lockGone]).toBeLessThan(
-      handle.close.mock.invocationCallOrder[0]
+    const lockGone = io.fs.remove.mock.calls.findIndex(
+      ([path]) => path === LOCK
+    );
+    expect(io.fs.remove.mock.invocationCallOrder[lockGone]).toBeLessThan(
+      io.closeListener.mock.invocationCallOrder[0]
     );
   });
 
@@ -361,32 +361,33 @@ describe('the hub on dispose', () => {
     const { hub, io } = start();
     await flush();
 
-    const first = hub.close();
-    expect(hub.close()).toBe(first);
-    await first;
+    await hub.close();
+    await hub.close();
 
     expect(io.listen).toHaveBeenCalledTimes(1);
+    expect(io.files.size).toBe(0);
   });
 
-  it('never writes a lock when disposed before the start ran', async () => {
+  it('never binds a pipe or writes a lock when disposed right after activate', async () => {
     const { hub, io } = start();
 
     await hub.close();
 
     expect(io.listen).not.toHaveBeenCalled();
     expect(io.files.size).toBe(0);
+    expect(io.servers.size).toBe(0);
   });
 });
 
 describe('the documents of the lock', () => {
   it('rewrites the lock atomically on every open and close', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/ws/a.erd.json');
     io.addFile('/ws/b.erd.json');
     const { hub } = start(io);
     await flush();
-    io.writeFile.mockClear();
-    io.rename.mockClear();
+    io.fs.writeFileString.mockClear();
+    io.fs.rename.mockClear();
 
     await hub.setDocuments(['/ws/a.erd.json']);
     expect(io.lock()?.documents).toEqual(['/ws/a.erd.json']);
@@ -396,13 +397,18 @@ describe('the documents of the lock', () => {
 
     expect(io.lock()?.documents).toEqual(['/ws/b.erd.json']);
     expect(
-      io.writeFile.mock.calls.map(([path, , mode]) => [path, mode])
+      io.fs.writeFileString.mock.calls.map(([path, , options]) => [
+        path,
+        options?.mode,
+      ])
     ).toEqual(Array(3).fill([`${LOCK}.tmp`, LOCK_FILE_MODE]));
-    expect(io.rename.mock.calls).toEqual(Array(3).fill([`${LOCK}.tmp`, LOCK]));
+    expect(io.fs.rename.mock.calls).toEqual(
+      Array(3).fill([`${LOCK}.tmp`, LOCK])
+    );
   });
 
   it('lists each document under its real path', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/real/a.erd.json');
     io.links.set('/link', '/real');
     const { hub } = start(io);
@@ -413,15 +419,15 @@ describe('the documents of the lock', () => {
   });
 
   it.each([
-    ['writeFile', 'ENOSPC'],
-    ['rename', 'EACCES'],
+    ['writeFileString', 'PermissionDenied'],
+    ['rename', 'Busy'],
   ] as const)(
-    'resolves and only warns when %s rejects, then succeeds on the next call',
-    async (method, code) => {
+    'resolves and only warns when %s fails, then succeeds on the next call',
+    async (method, tag) => {
       const { hub, io } = start();
       await flush();
-      io[method].mockRejectedValueOnce(
-        Object.assign(new Error(code), { code })
+      io.fs[method].mockImplementationOnce((path: string) =>
+        Effect.fail(fsError(tag, method, path))
       );
 
       await expect(
@@ -430,7 +436,7 @@ describe('the documents of the lock', () => {
       expect(console.warn).toHaveBeenCalledWith(
         '[erd-editor hub]',
         `could not write ${LOCK}`,
-        expect.objectContaining({ code })
+        expect.objectContaining({ _tag: 'PlatformError' })
       );
       expect(io.lock()?.documents).toEqual([]);
 
@@ -454,8 +460,8 @@ describe('the documents of the lock', () => {
   });
 
   it('keeps the documents in the hub false lock of a hub that failed to listen', async () => {
-    const io = createMemoryHubIo();
-    io.listen.mockRejectedValueOnce(new Error('EADDRINUSE'));
+    const io = createMemoryHub();
+    io.failListenOnce();
     const { hub } = start(io);
 
     await hub.setDocuments(['/ws/a.erd.json']);
@@ -467,8 +473,8 @@ describe('the documents of the lock', () => {
   });
 
   it('keeps the folders in the hub false lock of a hub that failed to listen', async () => {
-    const io = createMemoryHubIo();
-    io.listen.mockRejectedValueOnce(new Error('EADDRINUSE'));
+    const io = createMemoryHub();
+    io.failListenOnce();
     start(io);
     await flush();
 

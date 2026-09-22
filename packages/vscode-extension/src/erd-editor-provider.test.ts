@@ -19,7 +19,7 @@ import { ErdDocument } from '@/erd-document';
 import { ErdEditorProvider } from '@/erd-editor-provider';
 import { DocumentRegistry } from '@/hub/documentRegistry';
 
-import { createMemoryHubIo } from '../test/mocks/hubIo';
+import { createMemoryHub } from '../test/mocks/hubLayers';
 import {
   createExtensionContext,
   createWebviewPanel,
@@ -88,7 +88,7 @@ function createEditorFactory(
 }
 
 function createRegistry() {
-  return new DocumentRegistry(createMemoryHubIo());
+  return DocumentRegistry.makeUnsafe(createMemoryHub().registryIo);
 }
 
 /**

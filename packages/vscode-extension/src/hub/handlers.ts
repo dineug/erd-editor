@@ -4,14 +4,20 @@ import {
   HubRequestError,
   isSamePath,
 } from '@dineug/erd-editor-agent-hub';
+import * as Context from 'effect/Context';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
+import * as Layer from 'effect/Layer';
+import type * as PlatformError from 'effect/PlatformError';
 import * as vscode from 'vscode';
 
 import { VIEW_TYPE } from '@/constants/viewType';
 import { type ErdDocument } from '@/erd-document';
 import { realpathOrSelf } from '@/hub/authz';
-import { type DocumentRegistry } from '@/hub/documentRegistry';
-import { type HubIo, nodeHubIo } from '@/hub/io';
-import { warn } from '@/hub/log';
+import {
+  type DocumentRegistry,
+  DocumentRegistryService,
+} from '@/hub/documentRegistry';
 import { isReadonlyUri } from '@/hub/readonlyUri';
 import { type HubHandler } from '@/hub/server';
 
@@ -41,29 +47,44 @@ export const OPEN_READY_TIMEOUT_MS = 5_000;
  */
 export const SAVE_QUIET_CAP_MS = 2_000;
 
-function errorCode(error: unknown): unknown {
-  return (error as { code?: unknown } | null)?.code;
-}
+/** The hub's request half, so the connection server needs no vscode of its own. */
+export class HubHandlerService extends Context.Service<
+  HubHandlerService,
+  HubHandler
+>()('vuerd-vscode/hub/HubHandler') {}
 
 function notOpen(message: string): HubRequestError {
-  return new HubRequestError(HubErrorCode.notOpen, message);
+  return new HubRequestError({ code: HubErrorCode.notOpen, message });
+}
+
+function isNotFound(error: PlatformError.PlatformError): boolean {
+  return error.reason._tag === 'NotFound';
+}
+
+function isAlreadyExists(error: PlatformError.PlatformError): boolean {
+  return error.reason._tag === 'AlreadyExists';
 }
 
 /** Refuses a path the ERD editor does not own, before anything opens, reads or writes it. */
-function assertErdFile(path: string): void {
+function erdFileProblem(path: string): HubRequestError | null {
   const name = path.toLowerCase();
   if (ERD_FILE_EXTENSIONS.some(extension => name.endsWith(`.${extension}`))) {
-    return;
+    return null;
   }
-  throw new HubRequestError(
-    HubErrorCode.badRequest,
-    `${path} is not an ERD file; the hub serves ${ERD_FILE_EXTENSIONS.map(extension => `.${extension}`).join(', ')} only`
-  );
+  return new HubRequestError({
+    code: HubErrorCode.badRequest,
+    message: `${path} is not an ERD file; the hub serves ${ERD_FILE_EXTENSIONS.map(extension => `.${extension}`).join(', ')} only`,
+  });
 }
+
+const assertErdFile = (path: string) => {
+  const problem = erdFileProblem(path);
+  return problem ? Effect.fail(problem) : Effect.void;
+};
 
 /** TextDecoder drops a byte order mark when the editor reads a file; the hub does too. */
 function stripBom(text: string): string {
-  return text.startsWith('\uFEFF') ? text.slice(1) : text;
+  return text.startsWith('﻿') ? text.slice(1) : text;
 }
 
 /**
@@ -71,11 +92,22 @@ function stripBom(text: string): string {
  * authorized and real, and must name an ERD file. Only openDocument opens an
  * editor, and only openDocument with create writes a file.
  */
+export const make = Effect.fn('createDocumentHandler')(function* () {
+  const registry = yield* DocumentRegistryService;
+  const fs = yield* FileSystem.FileSystem;
+
+  return createDocumentHandler(registry, fs);
+});
+
 export function createDocumentHandler(
   registry: DocumentRegistry,
-  io: HubIo = nodeHubIo
+  fs: FileSystem.FileSystem
 ): HubHandler {
   const { platform } = registry;
+  const withFs = <A, E>(
+    effect: Effect.Effect<A, E, FileSystem.FileSystem>
+  ): Effect.Effect<A, E> =>
+    Effect.provideService(effect, FileSystem.FileSystem, fs);
 
   const sameUri = (a: vscode.Uri, b: vscode.Uri) =>
     a.scheme === b.scheme && isSamePath(a.fsPath, b.fsPath, platform);
@@ -104,228 +136,283 @@ export function createDocumentHandler(
   }
 
   /** Answers a missing file with notFound; any other failure is the hub's. */
-  async function orNotFound<T>(path: string, task: Promise<T>): Promise<T> {
-    try {
-      return await task;
-    } catch (error) {
-      if (errorCode(error) === 'ENOENT') {
-        throw new HubRequestError(
-          HubErrorCode.notFound,
-          `${path} does not exist`
-        );
-      }
-      throw error;
-    }
-  }
+  const orNotFound = <A>(
+    path: string,
+    task: Effect.Effect<A, PlatformError.PlatformError>
+  ): Effect.Effect<A, HubRequestError> =>
+    task.pipe(
+      Effect.catch(error =>
+        isNotFound(error)
+          ? Effect.fail(
+              new HubRequestError({
+                code: HubErrorCode.notFound,
+                message: `${path} does not exist`,
+              })
+            )
+          : Effect.die(error)
+      )
+    );
 
   /** Writes initialValue only where no file is, with an exclusive create. */
-  async function ensureFile(
+  const ensureFile = (
     path: string,
     create: boolean | undefined,
     initialValue: string | undefined
-  ): Promise<void> {
-    if (!create) {
-      await orNotFound(path, io.stat(path));
-      return;
-    }
-    if (typeof initialValue !== 'string') {
-      throw new HubRequestError(
-        HubErrorCode.badRequest,
-        'openDocument with create needs a string initialValue, the bytes of an empty document'
-      );
-    }
-    try {
-      await io.createFile(path, initialValue);
-    } catch (error) {
-      if (errorCode(error) === 'EEXIST') return;
-      if (errorCode(error) === 'ENOENT') {
-        throw new HubRequestError(
-          HubErrorCode.notFound,
-          `The folder of ${path} does not exist`
+  ): Effect.Effect<void, HubRequestError> =>
+    Effect.gen(function* () {
+      if (!create) {
+        yield* orNotFound(path, fs.stat(path));
+        return;
+      }
+      if (typeof initialValue !== 'string') {
+        return yield* Effect.fail(
+          new HubRequestError({
+            code: HubErrorCode.badRequest,
+            message:
+              'openDocument with create needs a string initialValue, the bytes of an empty document',
+          })
         );
       }
-      throw error;
-    }
-  }
+      yield* fs.writeFileString(path, initialValue, { flag: 'wx' }).pipe(
+        Effect.catch(error => {
+          if (isAlreadyExists(error)) return Effect.void;
+          if (isNotFound(error)) {
+            return Effect.fail(
+              new HubRequestError({
+                code: HubErrorCode.notFound,
+                message: `The folder of ${path} does not exist`,
+              })
+            );
+          }
+          return Effect.die(error);
+        })
+      );
+    });
 
-  async function openEditor(path: string): Promise<void> {
-    try {
-      await vscode.commands.executeCommand(
-        'vscode.openWith',
-        vscode.Uri.file(path),
-        VIEW_TYPE,
-        { preserveFocus: true, preview: false }
-      );
-    } catch (error) {
-      throw notOpen(
-        `VS Code could not open ${path} in the ERD editor: ${error}`
-      );
-    }
-  }
+  const openEditor = (path: string) =>
+    Effect.tryPromise({
+      try: () =>
+        Promise.resolve(
+          vscode.commands.executeCommand(
+            'vscode.openWith',
+            vscode.Uri.file(path),
+            VIEW_TYPE,
+            { preserveFocus: true, preview: false }
+          )
+        ),
+      catch: error =>
+        notOpen(`VS Code could not open ${path} in the ERD editor: ${error}`),
+    }).pipe(Effect.asVoid);
 
   /**
    * Step 0 measured the first rung to be enough on VS Code 1.138; the others
    * stay for hosts where it is not. Success means the tab is no longer dirty,
    * never that some file was written.
    */
-  async function saveThroughEditor(document: ErdDocument): Promise<boolean> {
-    try {
-      await vscode.workspace.save(document.uri);
-    } catch (error) {
-      warn(`workspace.save failed for ${document.uri.fsPath}`, error);
-    }
-    if (!isDirty(document.uri)) return true;
-
-    const panel = registry.panelOf(document);
-    if (panel) {
-      try {
-        panel.reveal();
-        await vscode.commands.executeCommand('workbench.action.files.save');
-      } catch (error) {
-        warn(
-          `workbench.action.files.save failed for ${document.uri.fsPath}`,
-          error
-        );
-      }
+  const saveThroughEditor = (document: ErdDocument) =>
+    Effect.gen(function* () {
+      yield* Effect.tryPromise({
+        try: () => Promise.resolve(vscode.workspace.save(document.uri)),
+        catch: error => error,
+      }).pipe(
+        Effect.catch(error =>
+          Effect.logWarning(
+            `workspace.save failed for ${document.uri.fsPath}`,
+            error
+          )
+        )
+      );
       if (!isDirty(document.uri)) return true;
-    }
 
-    warn(`${document.uri.fsPath} is still dirty after every way to save it`);
-    return false;
-  }
+      const panel = registry.panelOf(document);
+      if (panel) {
+        yield* Effect.tryPromise({
+          try: () => {
+            panel.reveal();
+            return Promise.resolve(
+              vscode.commands.executeCommand('workbench.action.files.save')
+            );
+          },
+          catch: error => error,
+        }).pipe(
+          Effect.catch(error =>
+            Effect.logWarning(
+              `workbench.action.files.save failed for ${document.uri.fsPath}`,
+              error
+            )
+          )
+        );
+        if (!isDirty(document.uri)) return true;
+      }
+
+      yield* Effect.logWarning(
+        `${document.uri.fsPath} is still dirty after every way to save it`
+      );
+      return false;
+    });
 
   return {
-    listDocuments: async () => {
-      const found = await vscode.workspace.findFiles(
-        ERD_FILE_GLOB,
-        EXCLUDE_GLOB
-      );
-      const documents: DocumentInfo[] = [];
-      const add = (info: DocumentInfo) => {
-        if (
-          documents.some(({ path }) => isSamePath(path, info.path, platform))
-        ) {
-          return;
+    listDocuments: () =>
+      Effect.gen(function* () {
+        const found = yield* Effect.promise(() =>
+          Promise.resolve(
+            vscode.workspace.findFiles(ERD_FILE_GLOB, EXCLUDE_GLOB)
+          )
+        );
+        const documents: DocumentInfo[] = [];
+        const add = (info: DocumentInfo) => {
+          if (
+            documents.some(({ path }) => isSamePath(path, info.path, platform))
+          ) {
+            return;
+          }
+          documents.push(info);
+        };
+
+        for (const { document, path } of registry.documents()) {
+          add(documentInfo(document, path));
         }
-        documents.push(info);
-      };
+        for (const uri of found) {
+          add({
+            path: yield* withFs(realpathOrSelf(uri.fsPath)),
+            open: false,
+            active: false,
+            dirty: isDirty(uri),
+            readonly: false,
+          });
+        }
+        return { documents };
+      }),
 
-      for (const { document, path } of registry.documents()) {
-        add(documentInfo(document, path));
-      }
-      for (const uri of found) {
-        add({
-          path: await realpathOrSelf(io, uri.fsPath),
-          open: false,
-          active: false,
-          dirty: isDirty(uri),
-          readonly: false,
-        });
-      }
-      return { documents };
-    },
+    openDocument: ({ path, create, initialValue }) =>
+      Effect.gen(function* () {
+        yield* assertErdFile(path);
+        const current = registry.findWritable(path);
+        if (current && registry.readyWebviewCount(current) > 0) {
+          return {
+            path,
+            opened: false,
+            webviews: registry.readyWebviewCount(current),
+          };
+        }
 
-    openDocument: async ({ path, create, initialValue }) => {
-      assertErdFile(path);
-      const current = registry.findWritable(path);
-      if (current && registry.readyWebviewCount(current) > 0) {
+        const { ready, cancel } = registry.waitForReady(
+          path,
+          OPEN_READY_TIMEOUT_MS
+        );
+        // onError, not tapError: a file system errno the hub has no code for
+        // dies, and a waiter left registered holds its timer for five seconds.
+        yield* ensureFile(path, create, initialValue).pipe(
+          Effect.flatMap(() => openEditor(path)),
+          Effect.onError(() => Effect.sync(cancel))
+        );
+
+        const document = yield* ready;
+        if (!document) {
+          return yield* Effect.fail(
+            notOpen(
+              `No ERD editor on ${path} reported ready within ${OPEN_READY_TIMEOUT_MS} ms`
+            )
+          );
+        }
         return {
           path,
-          opened: false,
-          webviews: registry.readyWebviewCount(current),
+          opened: true,
+          webviews: registry.readyWebviewCount(document),
         };
-      }
+      }),
 
-      const { ready, cancel } = registry.waitForReady(
-        path,
-        OPEN_READY_TIMEOUT_MS
-      );
-      try {
-        await ensureFile(path, create, initialValue);
-        await openEditor(path);
-      } catch (error) {
-        cancel();
-        throw error;
-      }
+    join: ({ path }, connection) =>
+      Effect.gen(function* () {
+        yield* assertErdFile(path);
+        const document = registry.find(path);
+        if (document) return yield* registry.join(document, connection);
 
-      const document = await ready;
-      if (!document) {
-        throw notOpen(
-          `No ERD editor on ${path} reported ready within ${OPEN_READY_TIMEOUT_MS} ms`
-        );
-      }
-      return {
-        path,
-        opened: true,
-        webviews: registry.readyWebviewCount(document),
-      };
-    },
+        return {
+          initialValue: stripBom(
+            yield* orNotFound(path, fs.readFileString(path))
+          ),
+          snapshotVersion: 0,
+          readonly: false,
+        };
+      }),
 
-    join: async ({ path }, connection) => {
-      assertErdFile(path);
-      const document = registry.find(path);
-      if (document) return registry.join(document, connection);
+    applyActions: ({ path, actions }, connection) =>
+      Effect.gen(function* () {
+        yield* assertErdFile(path);
+        const document = registry.find(path);
+        if (document && isReadonlyUri(document.uri)) {
+          return yield* Effect.fail(
+            new HubRequestError({
+              code: HubErrorCode.readonly,
+              message: `${path} is open only as a read-only view, such as a git revision; openDocument opens the file itself`,
+            })
+          );
+        }
+        if (!document || registry.readyWebviewCount(document) === 0) {
+          return yield* Effect.fail(
+            notOpen(
+              `${path} is not open in an ERD editor that is ready; open it with openDocument, then join`
+            )
+          );
+        }
+        if (!registry.isJoined(document, connection)) {
+          return yield* Effect.fail(
+            notOpen(`Join ${path} before applying actions to it`)
+          );
+        }
 
-      return {
-        initialValue: stripBom(await orNotFound(path, io.readFile(path))),
-        snapshotVersion: 0,
-        readonly: false,
-      };
-    },
+        return {
+          webviews: registry.applyPeerActions(document, connection, actions),
+        };
+      }),
 
-    applyActions: async ({ path, actions }, connection) => {
-      assertErdFile(path);
-      const document = registry.find(path);
-      if (document && isReadonlyUri(document.uri)) {
-        throw new HubRequestError(
-          HubErrorCode.readonly,
-          `${path} is open only as a read-only view, such as a git revision; openDocument opens the file itself`
-        );
-      }
-      if (!document || registry.readyWebviewCount(document) === 0) {
-        throw notOpen(
-          `${path} is not open in an ERD editor that is ready; open it with openDocument, then join`
-        );
-      }
-      if (!registry.isJoined(document, connection)) {
-        throw notOpen(`Join ${path} before applying actions to it`);
-      }
+    leave: ({ path }, connection) =>
+      Effect.sync(() => {
+        registry.leave(path, connection);
+        return {};
+      }),
 
-      return {
-        webviews: registry.applyPeerActions(document, connection, actions),
-      };
-    },
+    save: ({ path }) =>
+      Effect.gen(function* () {
+        yield* assertErdFile(path);
+        const document = registry.find(path);
+        if (!document) {
+          return yield* Effect.fail(
+            notOpen(`${path} is not open in an ERD editor`)
+          );
+        }
+        if (isReadonlyUri(document.uri)) {
+          return yield* Effect.fail(
+            new HubRequestError({
+              code: HubErrorCode.readonly,
+              message: `${path} is open only as a read-only view and cannot be saved; openDocument opens the file itself`,
+            })
+          );
+        }
 
-    leave: async ({ path }, connection) => {
-      registry.leave(path, connection);
-      return {};
-    },
-
-    save: async ({ path }) => {
-      assertErdFile(path);
-      const document = registry.find(path);
-      if (!document) throw notOpen(`${path} is not open in an ERD editor`);
-      if (isReadonlyUri(document.uri)) {
-        throw new HubRequestError(
-          HubErrorCode.readonly,
-          `${path} is open only as a read-only view and cannot be saved; openDocument opens the file itself`
-        );
-      }
-
-      // An edit reaches document.content only once the replicas save it.
-      const settled = await registry.whenQuiet(document, SAVE_QUIET_CAP_MS);
-      if (registry.findWritable(path) !== document) {
-        throw notOpen(`${path} closed before it could be saved`);
-      }
-      if (!settled) {
-        warn(
-          `${path} has an edit no replica saved within ${SAVE_QUIET_CAP_MS} ms; its bytes may lack it, so nothing was saved`
-        );
-        return { saved: false };
-      }
-      return { saved: await saveThroughEditor(document) };
-    },
+        // An edit reaches document.content only once the replicas save it.
+        const settled = yield* registry.whenQuiet(document, SAVE_QUIET_CAP_MS);
+        if (registry.findWritable(path) !== document) {
+          return yield* Effect.fail(
+            notOpen(`${path} closed before it could be saved`)
+          );
+        }
+        if (!settled) {
+          yield* Effect.logWarning(
+            `${path} has an edit no replica saved within ${SAVE_QUIET_CAP_MS} ms; its bytes may lack it, so nothing was saved`
+          );
+          return { saved: false };
+        }
+        return { saved: yield* saveThroughEditor(document) };
+      }),
 
     disconnect: connection => registry.disconnect(connection),
   };
 }
+
+export const layer: Layer.Layer<
+  HubHandlerService,
+  never,
+  DocumentRegistryService | FileSystem.FileSystem
+> = Layer.effect(HubHandlerService, make());

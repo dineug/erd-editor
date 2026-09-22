@@ -1,4 +1,5 @@
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
 import {
   afterEach,
   beforeEach,
@@ -20,7 +21,7 @@ import {
   createDocumentHarness,
   type OpenedEditor,
 } from '../../test/mocks/documentHarness';
-import { createMemoryHubIo } from '../../test/mocks/hubIo';
+import { createMemoryHub, runHub } from '../../test/mocks/hubLayers';
 import {
   createWebviewPanel,
   resetVscodeMock,
@@ -62,7 +63,8 @@ async function openJoined(peers = [createConnection(1)]) {
   const first = await harness.openReady(PATH, '{}');
   const second = await harness.resolveView(first.document);
   harness.ready(second);
-  for (const peer of peers) await harness.handler.join({ path: PATH }, peer);
+  for (const peer of peers)
+    await harness.run(harness.handler.join({ path: PATH }, peer));
   await vi.advanceTimersByTimeAsync(0);
   return { harness, first, second };
 }
@@ -92,7 +94,7 @@ describe('relay to peers', () => {
     );
     harness.ready(editor);
     const peer = createConnection();
-    await harness.handler.join({ path: '/real/a.erd.json' }, peer);
+    await harness.run(harness.handler.join({ path: '/real/a.erd.json' }, peer));
     await vi.advanceTimersByTimeAsync(0);
 
     harness.relay(editor, batch(1));
@@ -128,9 +130,8 @@ describe('peer to webviews and peers', () => {
     const peer = createConnection();
     const { harness, first, second } = await openJoined([peer]);
 
-    const result = await harness.handler.applyActions(
-      { path: PATH, actions: batch(4) },
-      peer
+    const result = await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: batch(4) }, peer)
     );
 
     expect(result).toEqual({ webviews: 2 });
@@ -144,11 +145,13 @@ describe('peer to webviews and peers', () => {
     const editor = await harness.openReady(PATH, '{}');
     const a = createConnection(1);
     const b = createConnection(2);
-    await harness.handler.join({ path: PATH }, a);
-    await harness.handler.join({ path: PATH }, b);
+    await harness.run(harness.handler.join({ path: PATH }, a));
+    await harness.run(harness.handler.join({ path: PATH }, b));
     await vi.advanceTimersByTimeAsync(0);
 
-    await harness.handler.applyActions({ path: PATH, actions: batch(5) }, a);
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: batch(5) }, a)
+    );
 
     expect(replicationsTo(editor)).toEqual([injected(batch(5))]);
     expect(actionsSent(b)).toEqual([batch(5)]);
@@ -162,8 +165,10 @@ describe('peer to webviews and peers', () => {
     const deliver = vi.spyOn(harness.registry, 'deliverToPeer');
 
     harness.relay(first, batch(1));
-    const joining = harness.handler.join({ path: PATH }, b);
-    await harness.handler.applyActions({ path: PATH, actions: batch(2) }, a);
+    const joining = harness.run(harness.handler.join({ path: PATH }, b));
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: batch(2) }, a)
+    );
     harness.relay(first, batch(3));
     await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
     await harness.saveValue(first, '{}');
@@ -212,7 +217,9 @@ describe('ready webviews', () => {
     expect(harness.registry.readyWebviewCount(first.document)).toBe(0);
 
     await expect(
-      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      harness.run(
+        harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      )
     ).rejects.toMatchObject({ code: HubErrorCode.notOpen });
   });
 
@@ -227,15 +234,17 @@ describe('ready webviews', () => {
       new Set([second.webview])
     );
     await expect(
-      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      harness.run(
+        harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      )
     ).resolves.toEqual({ webviews: 1 });
     expect(replicationsTo(first)).toEqual([]);
     expect(replicationsTo(second)).toEqual([injected(batch(1))]);
 
     let settled: boolean | undefined;
-    harness.registry
-      .whenQuiet(first.document, 1_000)
-      .then(value => (settled = value));
+    runHub(harness.registry.whenQuiet(first.document, 1_000)).then(
+      value => (settled = value)
+    );
     await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
     await harness.saveValue(second, '{"tables":["t1"]}');
     expect(settled).toBe(true);
@@ -245,13 +254,15 @@ describe('ready webviews', () => {
     const peer = createConnection();
     const { harness, first, second } = await openJoined([peer]);
     await expect(
-      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      harness.run(
+        harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+      )
     ).resolves.toEqual({ webviews: 2 });
 
     let settled: boolean | undefined;
-    harness.registry
-      .whenQuiet(first.document, 1_000)
-      .then(value => (settled = value));
+    runHub(harness.registry.whenQuiet(first.document, 1_000)).then(
+      value => (settled = value)
+    );
     await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
     await harness.saveValue(second, '{"tables":["t1"]}');
     expect(settled).toBeUndefined();
@@ -260,7 +271,9 @@ describe('ready webviews', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(settled).toBe(true);
-    await expect(harness.handler.save({ path: PATH }, peer)).resolves.toEqual({
+    await expect(
+      harness.run(harness.handler.save({ path: PATH }, peer))
+    ).resolves.toEqual({
       saved: true,
     });
     expect(textDecoder.decode(first.document.content)).toBe(
@@ -271,11 +284,13 @@ describe('ready webviews', () => {
   it('keeps a pending edit waiting when a panel closes before any replica saved it', async () => {
     const peer = createConnection();
     const { harness, first, second } = await openJoined([peer]);
-    await harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer);
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
+    );
     let settled: boolean | undefined;
-    harness.registry
-      .whenQuiet(first.document, 1_000)
-      .then(value => (settled = value));
+    runHub(harness.registry.whenQuiet(first.document, 1_000)).then(
+      value => (settled = value)
+    );
 
     first.panel.__dispose();
     second.panel.__dispose();
@@ -291,11 +306,10 @@ describe('ready webviews', () => {
     const harness = createDocumentHarness();
     const ready = await harness.openReady(PATH, '{}');
     const loading = await harness.resolveView(ready.document);
-    await harness.handler.join({ path: PATH }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
 
-    const result = await harness.handler.applyActions(
-      { path: PATH, actions: batch(1) },
-      peer
+    const result = await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: batch(1) }, peer)
     );
 
     expect(result).toEqual({ webviews: 1 });
@@ -326,7 +340,9 @@ describe('ready webviews', () => {
       harness.registry.applyPeerActions(stray, createConnection(), [])
     ).toBe(0);
     harness.registry.injectToPeers(stray, createConnection(), batch(1));
-    await expect(harness.registry.whenQuiet(stray, 100)).resolves.toBe(true);
+    await expect(runHub(harness.registry.whenQuiet(stray, 100))).resolves.toBe(
+      true
+    );
   });
 
   it('hands the next panel to reveal once the first of two closes', async () => {
@@ -354,7 +370,9 @@ describe('ready webviews', () => {
     expect(stranger.notify).not.toHaveBeenCalled();
     expect(harness.registry.observedVersion(stray)).toBe(0);
     expect(harness.registry.isJoined(stray, stranger)).toBe(false);
-    await expect(harness.registry.join(stray, stranger)).rejects.toMatchObject({
+    await expect(
+      runHub(harness.registry.join(stray, stranger))
+    ).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
       message:
         '/ws/stray.erd.json closed, or the peer left it, before the join finished',
@@ -370,9 +388,11 @@ describe('observedVersion', () => {
     harness.relay(first, [...batch(3), { type: 'table.move', payload: {} }]);
     expect(harness.registry.observedVersion(first.document)).toBe(3);
 
-    await harness.handler.applyActions(
-      { path: PATH, actions: [...batch(7), { type: 'memo.resize' }] },
-      peer
+    await harness.run(
+      harness.handler.applyActions(
+        { path: PATH, actions: [...batch(7), { type: 'memo.resize' }] },
+        peer
+      )
     );
     expect(harness.registry.observedVersion(first.document)).toBe(7);
 
@@ -383,10 +403,10 @@ describe('observedVersion', () => {
 
 describe('registration and the lock', () => {
   it('publishes the real paths of file documents on register and unregister, and register waits for it', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/real/a.erd.json');
     io.links.set('/link', '/real');
-    const registry = new DocumentRegistry(io);
+    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
     const published: string[][] = [];
     let release!: () => void;
     await registry.setPublisher(async documents => {
@@ -414,7 +434,7 @@ describe('registration and the lock', () => {
   });
 
   it('never rejects when the publisher fails, and logs it', async () => {
-    const registry = new DocumentRegistry(createMemoryHubIo());
+    const registry = DocumentRegistry.makeUnsafe(createMemoryHub().registryIo);
     await registry.setPublisher(async () => {
       throw new Error('disk full');
     });
@@ -432,8 +452,8 @@ describe('registration and the lock', () => {
   });
 
   it('keeps an untitled document out of the file system and out of the lock', async () => {
-    const io = createMemoryHubIo();
-    const registry = new DocumentRegistry(io);
+    const io = createMemoryHub();
+    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
     const publisher = vi.fn(async () => undefined);
     await registry.setPublisher(publisher);
     const document = ErdDocument.create(
@@ -443,15 +463,17 @@ describe('registration and the lock', () => {
 
     await registry.register(document);
 
-    expect(io.realpath).not.toHaveBeenCalled();
+    expect(io.fs.realPath).not.toHaveBeenCalled();
     expect(publisher).toHaveBeenLastCalledWith([]);
     expect(registry.documents()).toEqual([{ document, path: 'Untitled-1' }]);
   });
 
   it('resolves a win32 document path with win32 rules', async () => {
-    const io = createMemoryHubIo({ platform: 'win32' });
-    io.realpath.mockImplementation(async () => 'd:\\real\\a.erd.json');
-    const registry = new DocumentRegistry(io);
+    const io = createMemoryHub({ platform: 'win32' });
+    io.fs.realPath.mockImplementation(() =>
+      Effect.succeed('d:\\real\\a.erd.json')
+    );
+    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
     const document = ErdDocument.create(
       { scheme: 'file', fsPath: 'c:\\ws\\a.erd.json' } as unknown as VscodeUri,
       new Uint8Array()
@@ -459,7 +481,7 @@ describe('registration and the lock', () => {
 
     await registry.register(document);
 
-    expect(io.realpath).toHaveBeenCalledWith('c:\\ws\\a.erd.json');
+    expect(io.fs.realPath).toHaveBeenCalledWith('c:\\ws\\a.erd.json');
     expect(registry.documents()).toEqual([
       { document, path: 'd:\\real\\a.erd.json' },
     ]);
@@ -467,10 +489,10 @@ describe('registration and the lock', () => {
   });
 
   it('lists a file open under a link and under its real path once in the lock', async () => {
-    const io = createMemoryHubIo();
+    const io = createMemoryHub();
     io.addFile('/real/a.erd.json');
     io.links.set('/link', '/real');
-    const registry = new DocumentRegistry(io);
+    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
     const publisher = vi.fn(async () => undefined);
     await registry.setPublisher(publisher);
 
@@ -538,7 +560,7 @@ describe('waitForReady', () => {
 
     const editor = await harness.openReady(PATH, '{}');
 
-    await expect(ready).resolves.toBe(editor.document);
+    await expect(runHub(ready)).resolves.toBe(editor.document);
   });
 
   it('stays waiting while a git view of the same path reports ready', async () => {
@@ -547,7 +569,7 @@ describe('waitForReady', () => {
     harness.io.addFile(PATH, '{}');
     const { ready } = harness.registry.waitForReady(PATH, 100);
     let settled: unknown = 'pending';
-    ready.then(value => (settled = value));
+    void runHub(ready).then(value => (settled = value));
 
     const view = await harness.open(PATH, '{}', Uri.parse(`git:${PATH}`));
     harness.ready(view);
@@ -565,7 +587,7 @@ describe('waitForReady', () => {
     const harness = createDocumentHarness();
     const { ready } = harness.registry.waitForReady(PATH, 100);
     let settled: unknown = 'pending';
-    ready.then(value => (settled = value));
+    void runHub(ready).then(value => (settled = value));
 
     await harness.openReady('/ws/other.erd.json', '{}');
     await vi.advanceTimersByTimeAsync(0);
@@ -582,8 +604,8 @@ describe('waitForReady', () => {
     const cancelled = harness.registry.waitForReady(PATH, 100);
 
     cancelled.cancel();
-    await expect(cancelled.ready).resolves.toBeNull();
+    await expect(runHub(cancelled.ready)).resolves.toBeNull();
     await vi.advanceTimersByTimeAsync(100);
-    await expect(timed.ready).resolves.toBeNull();
+    await expect(runHub(timed.ready)).resolves.toBeNull();
   });
 });

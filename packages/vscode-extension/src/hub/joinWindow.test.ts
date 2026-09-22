@@ -1,4 +1,5 @@
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
 import {
   afterEach,
   beforeEach,
@@ -22,7 +23,6 @@ import {
   REPLICA_DEBOUNCE_MS,
   waitForQuiet,
 } from '@/hub/joinWindow';
-import { createHubServer } from '@/hub/server';
 
 import {
   actionsSent,
@@ -30,7 +30,12 @@ import {
   createDocumentHarness,
   microtasks,
 } from '../../test/mocks/documentHarness';
-import { createMemorySocketPair, helloFrame } from '../../test/mocks/hubIo';
+import {
+  createMemoryHubServer,
+  flush,
+  fsError,
+  helloFrame,
+} from '../../test/mocks/hubLayers';
 import { resetVscodeMock } from '../../test/mocks/vscode';
 
 const PATH = '/ws/a.erd.json';
@@ -86,7 +91,7 @@ describe('quiet state', () => {
     const state = createQuietState();
     noteSave(state, 1, 0);
 
-    await expect(waitForQuiet(state)).resolves.toBe(true);
+    await expect(Effect.runPromise(waitForQuiet(state))).resolves.toBe(true);
     expect(state.pending).toBe(false);
   });
 
@@ -95,7 +100,9 @@ describe('quiet state', () => {
     const state = createQuietState();
     noteChange(state, 'webview', 0);
     let woken: boolean | undefined;
-    waitForQuiet(state).then(settled => (woken = settled));
+    void Effect.runPromise(waitForQuiet(state)).then(
+      settled => (woken = settled)
+    );
 
     noteSave(state, 2, 0);
     await microtasks();
@@ -104,7 +111,7 @@ describe('quiet state', () => {
     noteSave(state, 2, 0);
     await microtasks();
     expect(woken).toBe(true);
-    expect(state.wakers.size).toBe(0);
+    expect(state.settled).toBeNull();
   });
 
   it('starts counting again when another change lands mid-wait', async () => {
@@ -112,7 +119,9 @@ describe('quiet state', () => {
     const state = createQuietState();
     noteChange(state, 'webview', 0);
     let woken: boolean | undefined;
-    waitForQuiet(state).then(settled => (woken = settled));
+    void Effect.runPromise(waitForQuiet(state)).then(
+      settled => (woken = settled)
+    );
 
     noteSave(state, 2, 0);
     noteChange(state, 'webview', 0);
@@ -155,7 +164,9 @@ describe('quiet state', () => {
     const state = createQuietState();
     noteChange(state, 'webview', 0);
     let woken: boolean | undefined;
-    waitForQuiet(state).then(settled => (woken = settled));
+    void Effect.runPromise(waitForQuiet(state)).then(
+      settled => (woken = settled)
+    );
 
     await vi.advanceTimersByTimeAsync(JOIN_QUIET_CAP_MS - 1);
     expect(woken).toBeUndefined();
@@ -172,7 +183,9 @@ describe('quiet state', () => {
     const state = createQuietState();
     noteChange(state, 'webview', 0);
     let woken: boolean | undefined;
-    waitForQuiet(state).then(settled => (woken = settled));
+    void Effect.runPromise(waitForQuiet(state)).then(
+      settled => (woken = settled)
+    );
 
     recount(state, 0);
     expect(state.pending).toBe(true);
@@ -184,7 +197,7 @@ describe('quiet state', () => {
     recount(state, 1);
     await microtasks();
     expect(woken).toBe(true);
-    expect(state.wakers.size).toBe(0);
+    expect(state.settled).toBeNull();
     recount(state, 1);
     expect(state.pending).toBe(false);
   });
@@ -233,9 +246,8 @@ describe('join', () => {
     const editor = await harness.openReady(PATH, '{"version":"3.0.0"}');
     harness.relay(editor, [{ type: 'editor.getLWW', version: 2 }]);
 
-    const result = await harness.handler.join(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.join({ path: PATH }, createConnection())
     );
 
     expect(result).toEqual({
@@ -252,8 +264,8 @@ describe('join', () => {
     harness.relay(editor, [add(4)]);
 
     let result: unknown;
-    harness.handler
-      .join({ path: PATH }, createConnection())
+    harness
+      .run(harness.handler.join({ path: PATH }, createConnection()))
       .then(value => (result = value));
     await vi.advanceTimersByTimeAsync(200);
     expect(result).toBeUndefined();
@@ -276,8 +288,8 @@ describe('join', () => {
     harness.relay(first, [add(4)]);
 
     let result: { initialValue: string } | undefined;
-    harness.handler
-      .join({ path: PATH }, createConnection())
+    harness
+      .run(harness.handler.join({ path: PATH }, createConnection()))
       .then(value => (result = value));
     await harness.saveValue(first, '{"from":"first"}');
     expect(result).toBeUndefined();
@@ -293,8 +305,8 @@ describe('join', () => {
     harness.relay(editor, [add(4)]);
 
     let result: { initialValue: string } | undefined;
-    harness.handler
-      .join({ path: PATH }, createConnection())
+    harness
+      .run(harness.handler.join({ path: PATH }, createConnection()))
       .then(value => (result = value));
     await vi.advanceTimersByTimeAsync(JOIN_QUIET_CAP_MS);
 
@@ -306,15 +318,14 @@ describe('join', () => {
     const harness = createDocumentHarness();
     const editor = await harness.openReady(PATH, '{}');
     const writer = createConnection(1);
-    await harness.handler.join({ path: PATH }, writer);
-    await harness.handler.applyActions(
-      { path: PATH, actions: [add(8)] },
-      writer
+    await harness.run(harness.handler.join({ path: PATH }, writer));
+    await harness.run(
+      harness.handler.applyActions({ path: PATH, actions: [add(8)] }, writer)
     );
 
     let result: { initialValue: string; snapshotVersion: number } | undefined;
-    harness.handler
-      .join({ path: PATH }, createConnection(2))
+    harness
+      .run(harness.handler.join({ path: PATH }, createConnection(2)))
       .then(value => (result = value));
     await microtasks();
     expect(result).toBeUndefined();
@@ -338,7 +349,7 @@ describe('join', () => {
     harness.relay(editor, [add(3)]);
     const joining = createConnection(2);
 
-    const joined = harness.handler.join({ path: PATH }, joining);
+    const joined = harness.run(harness.handler.join({ path: PATH }, joining));
     harness.relay(editor, [add(5), add(undefined, 'table.move')]);
     await harness.saveValue(editor, '{"saved":5}');
     const result = await joined;
@@ -361,23 +372,27 @@ describe('join', () => {
     const harness = createDocumentHarness();
     const editor = await harness.openReady(PATH, '{}');
     const writer = createConnection(1);
-    await harness.handler.join({ path: PATH }, writer);
+    await harness.run(harness.handler.join({ path: PATH }, writer));
     await vi.advanceTimersByTimeAsync(0);
     harness.relay(editor, [add(2)]);
     const joining = createConnection(2);
 
-    const joined = harness.handler.join({ path: PATH }, joining);
+    const joined = harness.run(harness.handler.join({ path: PATH }, joining));
     harness.relay(editor, [add(3)]);
-    await harness.handler.applyActions(
-      {
-        path: PATH,
-        actions: [add(2, 'memo.add'), add(undefined, 'memo.move')],
-      },
-      writer
+    await harness.run(
+      harness.handler.applyActions(
+        {
+          path: PATH,
+          actions: [add(2, 'memo.add'), add(undefined, 'memo.move')],
+        },
+        writer
+      )
     );
-    await harness.handler.applyActions(
-      { path: PATH, actions: [add(7, 'memo.add')] },
-      writer
+    await harness.run(
+      harness.handler.applyActions(
+        { path: PATH, actions: [add(7, 'memo.add')] },
+        writer
+      )
     );
     await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
     await harness.saveValue(editor, '{}');
@@ -400,7 +415,7 @@ describe('join', () => {
     harness.relay(editor, [add(4)]);
     const joining = createConnection(2);
 
-    const joined = harness.handler.join({ path: PATH }, joining);
+    const joined = harness.run(harness.handler.join({ path: PATH }, joining));
     harness.relay(editor, [add(3, 'memo.add')]);
     await harness.saveValue(editor, '{"saved":4}');
     const result = await joined;
@@ -421,19 +436,18 @@ describe('join', () => {
   });
 
   it('writes the join response before any queued actions notification', async () => {
-    vi.useFakeTimers();
     const harness = createDocumentHarness();
     const editor = await harness.openReady(PATH, '{}');
-    const server = createHubServer({
+    const server = createMemoryHubServer({
       token: 'token',
       ide: 'vscode',
       version: '2.9.0',
       handler: harness.handler,
-      authorize: async path => path,
+      authorize: path => Effect.succeed(path),
     });
-    const { socket, client } = createMemorySocketPair();
-    server.accept(socket);
+    const { client } = server.accept();
     client.send(helloFrame('token'));
+    await flush();
     harness.relay(editor, [add(1)]);
     const response = {
       id: 2,
@@ -447,14 +461,15 @@ describe('join', () => {
     };
 
     client.send({ id: 2, method: 'join', params: { path: PATH } });
-    await microtasks();
+    await flush();
     harness.relay(editor, [add(2)]);
     await harness.saveValue(editor, '{"saved":2}');
     await microtasks();
     harness.relay(editor, [add(3)]);
-    expect(client.received.slice(1)).toEqual([response]);
 
-    await vi.advanceTimersByTimeAsync(0);
+    await flush();
+
+    // In order: the response is framed before the window empties its queue.
     expect(client.received.slice(1)).toEqual([
       response,
       { method: 'actions', params: { path: PATH, actions: [add(3)] } },
@@ -467,7 +482,9 @@ describe('join', () => {
     const editor = await harness.openReady(PATH, '{}');
     harness.relay(editor, [add(1)]);
 
-    const joined = harness.handler.join({ path: PATH }, createConnection());
+    const joined = harness.run(
+      harness.handler.join({ path: PATH }, createConnection())
+    );
     const rejected = expect(joined).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
     });
@@ -484,7 +501,7 @@ describe('join', () => {
     harness.relay(editor, [add(1)]);
     const peer = createConnection();
 
-    const joined = harness.handler.join({ path: PATH }, peer);
+    const joined = harness.run(harness.handler.join({ path: PATH }, peer));
     const rejected = expect(joined).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
     });
@@ -502,9 +519,9 @@ describe('join', () => {
     const editor = await harness.openReady(PATH, '{}');
     const peer = createConnection();
 
-    await harness.handler.join({ path: PATH }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
     harness.relay(editor, [add(3)]);
-    const again = harness.handler.join({ path: PATH }, peer);
+    const again = harness.run(harness.handler.join({ path: PATH }, peer));
     await harness.saveValue(editor, '{}');
     await again;
     await vi.advanceTimersByTimeAsync(0);
@@ -518,9 +535,8 @@ describe('join', () => {
     const harness = createDocumentHarness();
     harness.io.addFile(PATH, '\uFEFF{"version":"3.0.0"}');
 
-    const result = await harness.handler.join(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.join({ path: PATH }, createConnection())
     );
 
     expect(result).toEqual({
@@ -534,13 +550,18 @@ describe('join', () => {
     const harness = createDocumentHarness();
 
     await expect(
-      harness.handler.join({ path: '/ws/missing.erd.json' }, createConnection())
+      harness.run(
+        harness.handler.join(
+          { path: '/ws/missing.erd.json' },
+          createConnection()
+        )
+      )
     ).rejects.toMatchObject({ code: HubErrorCode.notFound });
-    harness.io.readFile.mockRejectedValueOnce(
-      Object.assign(new Error('EACCES'), { code: 'EACCES' })
+    harness.io.fs.readFileString.mockImplementationOnce((path: string) =>
+      Effect.fail(fsError('Busy', 'readFileString', path))
     );
     await expect(
-      harness.handler.join({ path: PATH }, createConnection())
-    ).rejects.toMatchObject({ message: 'EACCES' });
+      harness.run(harness.handler.join({ path: PATH }, createConnection()))
+    ).rejects.toMatchObject({ _tag: 'PlatformError' });
   });
 });

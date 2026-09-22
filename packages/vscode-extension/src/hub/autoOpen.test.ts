@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
 import {
   afterEach,
   beforeEach,
@@ -22,7 +23,7 @@ import {
   createDocumentHarness,
   type DocumentHarness,
 } from '../../test/mocks/documentHarness';
-import { flush } from '../../test/mocks/hubIo';
+import { flush, fsError } from '../../test/mocks/hubLayers';
 import {
   commands,
   createTab,
@@ -62,9 +63,11 @@ describe('applyActions never opens an editor', () => {
     harness.io.addFile(PATH, '{}');
 
     await expect(
-      harness.handler.applyActions(
-        { path: PATH, actions: [{ type: 'table.add', version: 1 }] },
-        createConnection()
+      harness.run(
+        harness.handler.applyActions(
+          { path: PATH, actions: [{ type: 'table.add', version: 1 }] },
+          createConnection()
+        )
       )
     ).rejects.toMatchObject({ code: HubErrorCode.notOpen });
     expect(commands.executeCommand).not.toHaveBeenCalled();
@@ -74,10 +77,12 @@ describe('applyActions never opens an editor', () => {
     const harness = createDocumentHarness();
     await harness.open(PATH, '{}');
     const peer = createConnection();
-    await harness.handler.join({ path: PATH }, peer);
+    await harness.run(harness.handler.join({ path: PATH }, peer));
 
     await expect(
-      harness.handler.applyActions({ path: PATH, actions: [] }, peer)
+      harness.run(
+        harness.handler.applyActions({ path: PATH, actions: [] }, peer)
+      )
     ).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
       message: expect.stringContaining('open it with openDocument, then join'),
@@ -89,9 +94,11 @@ describe('applyActions never opens an editor', () => {
     const editor = await harness.openReady(PATH, '{}');
 
     await expect(
-      harness.handler.applyActions(
-        { path: PATH, actions: [] },
-        createConnection()
+      harness.run(
+        harness.handler.applyActions(
+          { path: PATH, actions: [] },
+          createConnection()
+        )
       )
     ).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
@@ -108,8 +115,8 @@ describe('openDocument', () => {
     const opened = harness.serveOpenWith(false);
     let result: unknown;
 
-    harness.handler
-      .openDocument({ path: PATH }, createConnection())
+    harness
+      .run(harness.handler.openDocument({ path: PATH }, createConnection()))
       .then(value => (result = value));
     await flush();
 
@@ -133,9 +140,8 @@ describe('openDocument', () => {
     harness.io.addFile(PATH, '{}');
     const opened = harness.serveOpenWith(false);
 
-    const pending = harness.handler.openDocument(
-      { path: PATH },
-      createConnection()
+    const pending = harness.run(
+      harness.handler.openDocument({ path: PATH }, createConnection())
     );
     const rejected = expect(pending).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
@@ -154,14 +160,16 @@ describe('openDocument', () => {
     const harness = createDocumentHarness();
     await harness.openReady(PATH, '{}');
 
-    const result = await harness.handler.openDocument(
-      { path: PATH, create: true, initialValue: EMPTY_DOCUMENT },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.openDocument(
+        { path: PATH, create: true, initialValue: EMPTY_DOCUMENT },
+        createConnection()
+      )
     );
 
     expect(result).toEqual({ path: PATH, opened: false, webviews: 1 });
     expect(commands.executeCommand).not.toHaveBeenCalled();
-    expect(harness.io.createFile).not.toHaveBeenCalled();
+    expect(harness.io.fs.writeFileString).not.toHaveBeenCalled();
   });
 
   it('shows a registered document whose webview is still loading and waits for it', async () => {
@@ -172,9 +180,8 @@ describe('openDocument', () => {
       return undefined;
     });
 
-    const result = await harness.handler.openDocument(
-      { path: PATH },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.openDocument({ path: PATH }, createConnection())
     );
 
     expect(result).toEqual({ path: PATH, opened: true, webviews: 1 });
@@ -185,12 +192,18 @@ describe('openDocument', () => {
     harness.io.addDir('/ws');
     harness.serveOpenWith();
 
-    const result = await harness.handler.openDocument(
-      { path: PATH, create: true, initialValue: EMPTY_DOCUMENT },
-      createConnection()
+    const result = await harness.run(
+      harness.handler.openDocument(
+        { path: PATH, create: true, initialValue: EMPTY_DOCUMENT },
+        createConnection()
+      )
     );
 
-    expect(harness.io.createFile).toHaveBeenCalledWith(PATH, EMPTY_DOCUMENT);
+    expect(harness.io.fs.writeFileString).toHaveBeenCalledWith(
+      PATH,
+      EMPTY_DOCUMENT,
+      { flag: 'wx' }
+    );
     expect(harness.io.files.get(PATH)?.data).toBe(EMPTY_DOCUMENT);
     expect(result).toEqual({ path: PATH, opened: true, webviews: 1 });
   });
@@ -200,13 +213,19 @@ describe('openDocument', () => {
     harness.io.addFile(PATH, '{"mine":true}');
     harness.serveOpenWith();
 
-    await harness.handler.openDocument(
-      { path: PATH, create: true, initialValue: EMPTY_DOCUMENT },
-      createConnection()
+    await harness.run(
+      harness.handler.openDocument(
+        { path: PATH, create: true, initialValue: EMPTY_DOCUMENT },
+        createConnection()
+      )
     );
 
     expect(harness.io.files.get(PATH)?.data).toBe('{"mine":true}');
-    expect(harness.io.writeFile).not.toHaveBeenCalled();
+    expect(harness.io.fs.writeFileString).toHaveBeenCalledWith(
+      PATH,
+      EMPTY_DOCUMENT,
+      { flag: 'wx' }
+    );
   });
 
   it('refuses create without initialValue with badRequest, writing and opening nothing', async () => {
@@ -215,12 +234,14 @@ describe('openDocument', () => {
     harness.io.addDir('/ws');
 
     await expect(
-      harness.handler.openDocument(
-        { path: PATH, create: true },
-        createConnection()
+      harness.run(
+        harness.handler.openDocument(
+          { path: PATH, create: true },
+          createConnection()
+        )
       )
     ).rejects.toMatchObject({ code: HubErrorCode.badRequest });
-    expect(harness.io.createFile).not.toHaveBeenCalled();
+    expect(harness.io.fs.writeFileString).not.toHaveBeenCalled();
     expect(commands.executeCommand).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -244,29 +265,37 @@ describe('openDocument', () => {
     harness.io.addDir('/ws');
 
     await expect(
-      harness.handler.openDocument(params, createConnection())
+      harness.run(harness.handler.openDocument(params, createConnection()))
     ).rejects.toMatchObject(error);
     expect(commands.executeCommand).not.toHaveBeenCalled();
   });
 
-  it('passes on a file system failure it has no code for', async () => {
+  it('passes on a file system failure it has no code for, cancelling its ready wait', async () => {
+    vi.useFakeTimers();
     const harness = createDocumentHarness();
-    harness.io.createFile.mockRejectedValueOnce(
-      Object.assign(new Error('EACCES'), { code: 'EACCES' })
+    harness.io.fs.writeFileString.mockImplementationOnce((path: string) =>
+      Effect.fail(fsError('PermissionDenied', 'writeFileString', path))
     );
-    harness.io.stat.mockRejectedValueOnce(
-      Object.assign(new Error('EIO'), { code: 'EIO' })
+    harness.io.fs.stat.mockImplementationOnce((path: string) =>
+      Effect.fail(fsError('Busy', 'stat', path))
     );
 
     await expect(
-      harness.handler.openDocument(
-        { path: PATH, create: true, initialValue: '{}' },
-        createConnection()
+      harness.run(
+        harness.handler.openDocument(
+          { path: PATH, create: true, initialValue: '{}' },
+          createConnection()
+        )
       )
-    ).rejects.toMatchObject({ message: 'EACCES' });
+    ).rejects.toMatchObject({ _tag: 'PlatformError' });
     await expect(
-      harness.handler.openDocument({ path: PATH }, createConnection())
-    ).rejects.toMatchObject({ message: 'EIO' });
+      harness.run(
+        harness.handler.openDocument({ path: PATH }, createConnection())
+      )
+    ).rejects.toMatchObject({ _tag: 'PlatformError' });
+    // A waiter left registered holds its five second timer, and the next
+    // editor to report ready on this path would resolve it.
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('answers notOpen, with the reason, when VS Code cannot open the editor', async () => {
@@ -275,7 +304,9 @@ describe('openDocument', () => {
     commands.executeCommand.mockRejectedValueOnce(new Error('no such editor'));
 
     await expect(
-      harness.handler.openDocument({ path: PATH }, createConnection())
+      harness.run(
+        harness.handler.openDocument({ path: PATH }, createConnection())
+      )
     ).rejects.toMatchObject({
       code: HubErrorCode.notOpen,
       message: `VS Code could not open ${PATH} in the ERD editor: Error: no such editor`,
@@ -314,9 +345,8 @@ describe('the read paths open nothing', () => {
       }
     );
 
-    const { documents } = await harness.handler.listDocuments(
-      {},
-      createConnection()
+    const { documents } = await harness.run(
+      harness.handler.listDocuments({}, createConnection())
     );
 
     expect(workspace.findFiles).toHaveBeenCalledWith(
@@ -347,7 +377,7 @@ describe('the read paths open nothing', () => {
     const harness = createDocumentHarness();
     harness.io.addFile(PATH, '{}');
 
-    await harness.handler.join({ path: PATH }, createConnection());
+    await harness.run(harness.handler.join({ path: PATH }, createConnection()));
 
     expect(commands.executeCommand).not.toHaveBeenCalled();
     expect(harness.registry.find(PATH)).toBeUndefined();
@@ -367,31 +397,37 @@ describe('paths that are no ERD file', () => {
     [
       'openDocument',
       (harness: DocumentHarness) =>
-        harness.handler.openDocument({ path: '/ws/schema.sql' }, peer),
+        harness.run(
+          harness.handler.openDocument({ path: '/ws/schema.sql' }, peer)
+        ),
     ],
     [
       'openDocument with create',
       (harness: DocumentHarness) =>
-        harness.handler.openDocument(
-          {
-            path: '/ws/notes.txt',
-            create: true,
-            initialValue: EMPTY_DOCUMENT,
-          },
-          peer
+        harness.run(
+          harness.handler.openDocument(
+            {
+              path: '/ws/notes.txt',
+              create: true,
+              initialValue: EMPTY_DOCUMENT,
+            },
+            peer
+          )
         ),
     ],
     [
       'join',
       (harness: DocumentHarness) =>
-        harness.handler.join({ path: '/ws/schema.sql' }, peer),
+        harness.run(harness.handler.join({ path: '/ws/schema.sql' }, peer)),
     ],
     [
       'applyActions',
       (harness: DocumentHarness) =>
-        harness.handler.applyActions(
-          { path: '/ws/schema.sql', actions: [] },
-          peer
+        harness.run(
+          harness.handler.applyActions(
+            { path: '/ws/schema.sql', actions: [] },
+            peer
+          )
         ),
     ],
   ])(
@@ -404,8 +440,8 @@ describe('paths that are no ERD file', () => {
         code: HubErrorCode.badRequest,
       });
       expect(commands.executeCommand).not.toHaveBeenCalled();
-      expect(harness.io.createFile).not.toHaveBeenCalled();
-      expect(harness.io.readFile).not.toHaveBeenCalled();
+      expect(harness.io.fs.writeFileString).not.toHaveBeenCalled();
+      expect(harness.io.fs.readFileString).not.toHaveBeenCalled();
     }
   );
 
@@ -413,13 +449,13 @@ describe('paths that are no ERD file', () => {
     const harness = createDocumentHarness();
 
     await expect(
-      harness.handler.join({ path: '/ws/schema.sql' }, peer)
+      harness.run(harness.handler.join({ path: '/ws/schema.sql' }, peer))
     ).rejects.toMatchObject({
       message:
         '/ws/schema.sql is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only',
     });
     await expect(
-      harness.handler.join({ path: '/ws/MODEL.VUERD.JSON' }, peer)
+      harness.run(harness.handler.join({ path: '/ws/MODEL.VUERD.JSON' }, peer))
     ).rejects.toMatchObject({ code: HubErrorCode.notFound });
   });
 
