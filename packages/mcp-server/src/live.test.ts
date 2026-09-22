@@ -100,6 +100,18 @@ describe('a live session beyond the transition table', () => {
     );
   });
 
+  it('shows the cell it works on to the editor, and only that one', async () => {
+    const { run } = await session.runTool('erd_add_table', {});
+    const [tableId] = run.createdIds;
+
+    await session.runTool('erd_change_table_name', { tableId, value: 'users' });
+    await settle(200);
+
+    expect(
+      Object.values(hub.webview(DOCUMENT).state.editor.sharedFocusTrackerMap)
+    ).toMatchObject([{ tableId, focusType: 'tableName' }]);
+  });
+
   it('refuses edits to a document the editor holds read-only', async () => {
     hub.readonlyPaths.add(DOCUMENT);
 

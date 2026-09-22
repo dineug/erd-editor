@@ -3,6 +3,7 @@ import {
   indexActions,
   indexColumnActions,
   memoActions,
+  type PeerStore,
   relationshipActions,
   RelationshipType,
   settingsActions,
@@ -10,6 +11,7 @@ import {
   tableColumnActions,
 } from '@dineug/erd-editor/peer.js';
 import type { AnyAction } from '@dineug/r-html';
+import { cloneDeep } from 'es-toolkit';
 
 /** Fixed ids, so a spec names the seed's entities without reading them back. */
 export const SEED = {
@@ -146,4 +148,56 @@ export function createSeededPeer() {
   const peer = createPeerStore({ nickname: 'agent', presence: false });
   peer.setInitialValue(createSeedValue());
   return peer;
+}
+
+export type PeerSession = {
+  agent: PeerStore;
+  other: PeerStore;
+  /**
+   * Every batch the agent sent, copied as it left: a store stamps a missing
+   * version onto the very object it was handed.
+   */
+  sent: AnyAction[][];
+  destroy: () => void;
+};
+
+/**
+ * Two peers on the same seed, cross wired the way the hub wires this agent to
+ * the editor's replica: each side receives the other's batches as they leave.
+ */
+export function createPeerSession({
+  otherToWidth,
+}: {
+  /** The other side's text measure, which a canvas makes unlike the agent's. */
+  otherToWidth?: (text: string) => number;
+} = {}): PeerSession {
+  const value = createSeedValue();
+  const agent = createPeerStore({ nickname: 'agent', presence: false });
+  const other = createPeerStore({
+    nickname: 'user',
+    presence: false,
+    toWidth: otherToWidth,
+  });
+  agent.setInitialValue(value);
+  other.setInitialValue(value);
+
+  const sent: AnyAction[][] = [];
+
+  const unsubscribeAgent = agent.subscribe(actions => {
+    sent.push(cloneDeep(actions));
+    other.receive(actions);
+  });
+  const unsubscribeOther = other.subscribe(actions => agent.receive(actions));
+
+  return {
+    agent,
+    other,
+    sent,
+    destroy: () => {
+      unsubscribeAgent();
+      unsubscribeOther();
+      agent.destroy();
+      other.destroy();
+    },
+  };
 }

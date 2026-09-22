@@ -74,7 +74,7 @@
 
 ### Internal
 
-`@dineug/erd-editor` (`peer.js` only: `createPeerStore` and its errors, `RootState`, seven of the eight `actions$` barrels — every settings tool is an atom, so `settingsActions$` has no consumer here yet — and all seven atom `actions` barrels, the `constants/schema` and `constants/layout` values, `createSchemaSQL`, the vendor list and map, `bHas`, `createEngineContext` and `defaultToWidth` for the specs), `@dineug/erd-editor-agent-hub` (protocol, lock, framing, `selectHub`), `@dineug/erd-editor-schema` (`parser`, `query`, `toJson`), `@dineug/r-html` (`AnyAction`, `CompositionActions`, `compositionActionsFlat`).
+`@dineug/erd-editor` (`peer.js` only: `createPeerStore` and its errors, `RootState`, all eight `actions$` barrels — `settingsActions$` only in `tools/registry.kind.test.ts`'s generator census, since every settings tool is an atom — and all seven atom `actions` barrels, the `constants/schema` and `constants/layout` values, `createSchemaSQL`, the vendor list and map, `bHas`, `createEngineContext` and `defaultToWidth` for the specs), `@dineug/erd-editor-agent-hub` (protocol, lock, framing, `selectHub`), `@dineug/erd-editor-schema` (`parser`, `query`, `toJson`, `SchemaV3Constants`), `@dineug/r-html` (`AnyAction`, `CompositionAction`, `CompositionActions`, `compositionActionsFlat`).
 
 ### External
 
