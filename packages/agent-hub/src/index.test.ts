@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
 import * as discovery from '@/discovery';
 import * as framing from '@/framing';
@@ -39,6 +39,14 @@ describe('public api surface', () => {
         'toSegments',
       ].sort()
     );
+  });
+
+  it('re-exports the message types, direction types included', () => {
+    expectTypeOf<publicApi.PeerToHubMessage>().toEqualTypeOf<protocol.PeerToHubMessage>();
+    expectTypeOf<publicApi.HubToPeerMessage>().toEqualTypeOf<protocol.HubToPeerMessage>();
+    expectTypeOf<publicApi.HubRequestParams['applyActions']>().toEqualTypeOf<
+      protocol.HubRequestParams['applyActions']
+    >();
   });
 
   it('re-exports every runtime member of every module by identity', () => {

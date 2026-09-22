@@ -6,7 +6,6 @@ import {
   HubErrorCode,
   type HubMethod,
   type HubNotification,
-  type HubNotificationParams,
   HubRequestError,
   type HubRequestParams,
   type HubResultMap,
@@ -29,7 +28,8 @@ export type HubConnection = {
 
 /**
  * Everything the hub serves after hello. A path in params is already the
- * authorized real path, and a thrown HubRequestError answers with its code.
+ * authorized real path; a thrown HubRequestError answers with its code and
+ * anything else with internal.
  */
 export type HubHandler = {
   [M in HubRoutedMethod]: (
@@ -37,14 +37,6 @@ export type HubHandler = {
     connection: HubConnection
   ) => Promise<HubResultMap[M]>;
 } & {
-  /**
-   * A notification has no response, so a rejected batch can only be logged.
-   * The frames behind it wait for a returned promise, keeping batches in order.
-   */
-  actions: (
-    params: HubNotificationParams['actions'],
-    connection: HubConnection
-  ) => void | Promise<void>;
   disconnect: (connection: HubConnection) => void;
 };
 
@@ -77,15 +69,10 @@ const CARRIES_PATH: {
   listDocuments: false,
   openDocument: true,
   join: true,
+  applyActions: true,
   leave: true,
   save: true,
 };
-
-/**
- * HubErrorCode has no code for a malformed request or a handler bug. A
- * terminal code the client reports as is fits best until the protocol has one.
- */
-const FALLBACK_ERROR_CODE = HubErrorCode.notFound;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -97,6 +84,20 @@ function isRequestId(value: unknown): value is number {
 
 function isRoutedMethod(method: string): method is HubRoutedMethod {
   return Object.hasOwn(CARRIES_PATH, method);
+}
+
+/** Why params cannot reach the handler, or null when they can. */
+function paramsProblem(
+  method: HubRoutedMethod,
+  params: Record<string, unknown>
+): string | null {
+  if (CARRIES_PATH[method] && typeof params.path !== 'string') {
+    return `${method} needs a string params.path`;
+  }
+  if (method === 'applyActions' && !Array.isArray(params.actions)) {
+    return 'applyActions needs an array params.actions';
+  }
+  return null;
 }
 
 /** Compares every character whatever the first difference, so timing leaks no prefix. */
@@ -115,7 +116,7 @@ function toHubError(error: unknown): HubError {
     return { code: error.code, message: error.message };
   }
   warn('request failed', error);
-  return { code: FALLBACK_ERROR_CODE, message: String(error) };
+  return { code: HubErrorCode.internal, message: String(error) };
 }
 
 export function createHubServer(options: HubServerOptions): HubServer {
@@ -231,26 +232,24 @@ export function createHubServer(options: HubServerOptions): HubServer {
       if (!isRoutedMethod(method)) {
         respond(id, method, {
           error: {
-            code: FALLBACK_ERROR_CODE,
+            code: HubErrorCode.badRequest,
             message: `The hub has no method ${JSON.stringify(method)}`,
           },
+        });
+        return;
+      }
+      const problem = paramsProblem(method, params);
+      if (problem) {
+        respond(id, method, {
+          error: { code: HubErrorCode.badRequest, message: problem },
         });
         return;
       }
 
       let routed = params;
       if (CARRIES_PATH[method]) {
-        if (typeof params.path !== 'string') {
-          respond(id, method, {
-            error: {
-              code: FALLBACK_ERROR_CODE,
-              message: `${method} needs a string params.path`,
-            },
-          });
-          return;
-        }
         try {
-          routed = { ...params, path: await authorize(params.path) };
+          routed = { ...params, path: await authorize(String(params.path)) };
         } catch (error) {
           respond(id, method, { error: toHubError(error) });
           return;
@@ -258,8 +257,6 @@ export function createHubServer(options: HubServerOptions): HubServer {
       }
       if (!open) return;
 
-      // Not awaited: a slow request must not hold back the frames behind it,
-      // while calling the handler here keeps the handlers in arrival order.
       let pending: Promise<unknown>;
       try {
         pending = Promise.resolve(
@@ -268,42 +265,16 @@ export function createHubServer(options: HubServerOptions): HubServer {
       } catch (error) {
         pending = Promise.reject(error);
       }
-      pending
+      const answered = pending
         .then(
           result => respond(id, method, { result }),
           error => respond(id, method, { error: toHubError(error) })
         )
         .catch(warn);
-    }
-
-    async function notification(
-      method: string,
-      params: Record<string, unknown>,
-      peer: HubConnection
-    ): Promise<void> {
-      if (method !== 'actions') {
-        warn(`ignored a ${JSON.stringify(method)} notification`);
-        return;
-      }
-      if (typeof params.path !== 'string' || !Array.isArray(params.actions)) {
-        warn('dropped an actions notification without a path and an array');
-        return;
-      }
-
-      let path: string;
-      try {
-        path = await authorize(params.path);
-      } catch (error) {
-        warn(`dropped actions for ${params.path}`, error);
-        return;
-      }
-      if (!open) return;
-
-      try {
-        await handler.actions({ path, actions: params.actions }, peer);
-      } catch (error) {
-        warn(`the actions handler failed for ${path}`, error);
-      }
+      // Batches of one peer land in the order it sent them. Any other request
+      // is left running, so a slow one does not hold back the frames behind
+      // it; calling its handler here still keeps handlers in arrival order.
+      if (method === 'applyActions') await answered;
     }
 
     /** Frames of one connection pass authorization in arrival order. */
@@ -312,9 +283,13 @@ export function createHubServer(options: HubServerOptions): HubServer {
       const method = typeof frame.method === 'string' ? frame.method : '';
       const params = isRecord(frame.params) ? frame.params : {};
 
-      return isRequestId(frame.id)
-        ? request(frame.id, method, params, peer)
-        : notification(method, params, peer);
+      if (!isRequestId(frame.id)) {
+        warn(
+          `ignored a ${JSON.stringify(method)} frame without an id: a peer sends requests only`
+        );
+        return Promise.resolve();
+      }
+      return request(frame.id, method, params, peer);
     }
 
     hangUps.add(hangUp);

@@ -81,6 +81,8 @@ export default defineConfig({
         input: [
           { auto: true },
           'src/**',
+          // tsconfig.unit.json typechecks the stubs too, out of sight of the tracer.
+          'test/mocks/**',
           'vitest.config.*',
           'package.json',
           'vite.config.ts',
@@ -115,6 +117,8 @@ export default defineConfig({
         input: [
           { auto: true },
           'src/**',
+          // tsconfig.unit.json typechecks the stubs too, out of sight of the tracer.
+          'test/mocks/**',
           'vitest.config.*',
           'package.json',
           'vite.config.ts',

@@ -32,6 +32,8 @@ export type HubIo = {
   mkdir: (path: string, mode: number) => Promise<void>;
   /** The mode applies when the file is created, as with fs.writeFile. */
   writeFile: (path: string, data: string, mode: number) => Promise<void>;
+  /** Exclusive: rejects with EEXIST rather than touch a file that is already there. */
+  createFile: (path: string, data: string) => Promise<void>;
   readFile: (path: string) => Promise<string>;
   readdir: (path: string) => Promise<string[]>;
   stat: (path: string) => Promise<{ mtimeMs: number }>;
@@ -110,6 +112,7 @@ export const nodeHubIo: HubIo = {
     await fs.mkdir(path, { recursive: true, mode });
   },
   writeFile: (path, data, mode) => fs.writeFile(path, data, { mode }),
+  createFile: (path, data) => fs.writeFile(path, data, { flag: 'wx' }),
   readFile: path => fs.readFile(path, 'utf8'),
   readdir: path => fs.readdir(path),
   stat: path => fs.stat(path),

@@ -84,6 +84,20 @@ describe('nodeHubIo', () => {
     });
   });
 
+  it('creates a file only where none is, leaving an existing one untouched', async () => {
+    const path = join(dir, 'new.erd.json');
+
+    await nodeHubIo.createFile(path, '{"version":"3.0.0"}');
+    await expect(nodeHubIo.createFile(path, '{}')).rejects.toMatchObject({
+      code: 'EEXIST',
+    });
+    await expect(
+      nodeHubIo.createFile(join(dir, 'missing', 'a.erd.json'), '{}')
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+
+    expect(await nodeHubIo.readFile(path)).toBe('{"version":"3.0.0"}');
+  });
+
   it('resolves a symlink with realpath', async () => {
     const target = join(dir, 'target');
     await fs.mkdir(target);

@@ -19,11 +19,14 @@ export type JoinResult = {
   readonly: boolean;
 };
 
+/** What a peer asks of the hub; every peer to hub message is one of these. */
 export type HubRequestParams = {
   hello: { token: string; protocolVersion: number; client: string };
   listDocuments: Record<string, never>;
   openDocument: { path: string; create?: boolean; initialValue?: string };
   join: { path: string };
+  /** A batch of the peer's own actions for every webview and every other peer. */
+  applyActions: { path: string; actions: unknown[] };
   leave: { path: string };
   save: { path: string };
 };
@@ -31,9 +34,14 @@ export type HubRequestParams = {
 export type HubResultMap = {
   hello: { protocolVersion: number; ide: string; version: string };
   listDocuments: { documents: DocumentInfo[] };
-  /** Sent once the first webview of the document reports ready. */
+  /**
+   * Sent once the first webview of the document reports ready. opened is false
+   * when a ready editor already showed the document and nothing was opened.
+   */
   openDocument: { path: string; opened: boolean; webviews: number };
   join: JoinResult;
+  /** How many ready webviews the batch was handed to. */
+  applyActions: { webviews: number };
   leave: Record<string, never>;
   save: { saved: boolean };
 };
@@ -52,6 +60,10 @@ export const HubErrorCode = {
   notOpen: 'notOpen',
   readonly: 'readonly',
   hubDisabled: 'hubDisabled',
+  /** A malformed request, an unknown method or a missing path. */
+  badRequest: 'badRequest',
+  /** The hub failed: a handler threw or its result could not be framed. */
+  internal: 'internal',
 } as const;
 export type HubErrorCode = (typeof HubErrorCode)[keyof typeof HubErrorCode];
 
@@ -69,8 +81,12 @@ export type HubResponse<M extends HubMethod = HubMethod> = M extends HubMethod
       | { id: number; ok: false; method: M; error: HubError }
   : never;
 
-/** Notifications carry no id and get no response; actions flows both ways. */
+/**
+ * Notifications carry no id, get no response and flow from the hub to a peer
+ * only; a peer hands its own actions over with the applyActions request.
+ */
 export type HubNotificationParams = {
+  /** Actions of a webview or of another peer on a document the peer joined. */
   actions: { path: string; actions: unknown[] };
   documentClosed: { path: string };
 };
@@ -83,12 +99,19 @@ export type HubNotification<
   ? { method: M; params: HubNotificationParams[M] }
   : never;
 
+/** Every frame a peer sends after connecting: requests only. */
+export type PeerToHubMessage = HubRequest;
+
+/** Every frame the hub sends a peer: responses and notifications. */
+export type HubToPeerMessage = HubResponse | HubNotification;
+
 /** The request method names, pinned against HubRequest by protocol.test.ts. */
 export const HUB_REQUEST_METHODS = Object.freeze([
   'hello',
   'listDocuments',
   'openDocument',
   'join',
+  'applyActions',
   'leave',
   'save',
 ] as const) satisfies readonly HubMethod[];

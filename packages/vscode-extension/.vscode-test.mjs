@@ -25,13 +25,16 @@ function userDataDir(label) {
   return dir;
 }
 
+const mocha = {
+  ui: 'bdd',
+  timeout: 30_000,
+};
+
 const shared = {
-  files: 'out/test/integration/**/*.test.js',
+  // Top level only: erd-json-only/ holds the specs of another folder.
+  files: 'out/test/integration/*.test.js',
   workspaceFolder: './test/fixtures/workspace',
-  mocha: {
-    ui: 'bdd',
-    timeout: 30_000,
-  },
+  mocha,
 };
 
 export default defineConfig([
@@ -53,6 +56,20 @@ export default defineConfig([
       '--disable-extensions',
       '--disable-gpu',
       `--user-data-dir=${userDataDir(minimumSupported)}`,
+    ],
+  },
+  {
+    // A folder whose only ERD file is a .erd.json: the activation glob alone
+    // has to wake the extension, since nothing there opens an editor.
+    files: 'out/test/integration/erd-json-only/*.test.js',
+    workspaceFolder: './test/fixtures/erd-json-only',
+    mocha,
+    label: 'erd-json-only',
+    version: 'stable',
+    launchArgs: [
+      '--disable-extensions',
+      '--disable-gpu',
+      `--user-data-dir=${userDataDir('erd-json-only')}`,
     ],
   },
 ]);

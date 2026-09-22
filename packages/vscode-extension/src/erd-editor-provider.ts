@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
+import { type DocumentRegistry } from '@/hub/documentRegistry';
 
 export class ErdEditorProvider implements vscode.CustomEditorProvider<ErdDocument> {
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<
@@ -11,18 +12,18 @@ export class ErdEditorProvider implements vscode.CustomEditorProvider<ErdDocumen
   public readonly onDidChangeCustomDocument =
     this._onDidChangeCustomDocument.event;
 
-  private docToWebviewMap = new Map<ErdDocument, Set<vscode.Webview>>();
-
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly createEditor: CreateEditor
+    private readonly createEditor: CreateEditor,
+    private readonly registry: DocumentRegistry
   ) {}
 
   static register(
     context: vscode.ExtensionContext,
-    createEditor: CreateEditor
+    createEditor: CreateEditor,
+    registry: DocumentRegistry
   ): vscode.Disposable {
-    const provider = new ErdEditorProvider(context, createEditor);
+    const provider = new ErdEditorProvider(context, createEditor, registry);
 
     return vscode.window.registerCustomEditorProvider(VIEW_TYPE, provider, {
       webviewOptions: { retainContextWhenHidden: true },
@@ -42,15 +43,14 @@ export class ErdEditorProvider implements vscode.CustomEditorProvider<ErdDocumen
       this._onDidChangeCustomDocument.fire({ document });
     });
 
-    if (!this.docToWebviewMap.has(document)) {
-      this.docToWebviewMap.set(document, new Set());
-    }
-
     document.onDidDispose(() => {
       listener.dispose();
-      this.docToWebviewMap.delete(document);
+      this.registry.unregister(document);
     });
 
+    // Awaited so the lock lists the document before its editor can take
+    // edits; register never rejects, so a broken hub never blocks the open.
+    await this.registry.register(document);
     return document;
   }
 
@@ -58,23 +58,27 @@ export class ErdEditorProvider implements vscode.CustomEditorProvider<ErdDocumen
     document: ErdDocument,
     webviewPanel: vscode.WebviewPanel
   ) {
-    const webviewSet = this.docToWebviewMap.get(document);
     const webview = webviewPanel.webview;
-    webviewSet?.add(webview);
+    this.registry.addWebview(document, webviewPanel);
 
     const editor = this.createEditor(
       document,
       webview,
       this.context,
-      this.docToWebviewMap
+      this.registry.docToWebviewMap,
+      this.registry
     );
+    const viewState = webviewPanel.onDidChangeViewState(event => {
+      if (event.webviewPanel.active) this.registry.setActive(document);
+    });
     // Subscribed before bootstrapWebview is awaited, since that reads off disk:
     // a tab closed in flight fires onDidDispose before there is anything to
     // unregister, leaving the webview mapped to a panel that no longer exists.
     let disposed = false;
     webviewPanel.onDidDispose(() => {
       disposed = true;
-      webviewSet?.delete(webview);
+      viewState.dispose();
+      this.registry.removeWebview(document, webviewPanel);
     });
 
     const editorDisposable = await editor.bootstrapWebview();

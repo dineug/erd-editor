@@ -49,6 +49,8 @@ export {
   type HubRequestParams,
   type HubResponse,
   type HubResultMap,
+  type HubToPeerMessage,
   type JoinResult,
+  type PeerToHubMessage,
   protocolMismatchMessage,
 } from './protocol';

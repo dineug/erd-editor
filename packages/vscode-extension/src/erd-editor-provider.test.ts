@@ -17,7 +17,9 @@ import { VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
 import { ErdEditorProvider } from '@/erd-editor-provider';
+import { DocumentRegistry } from '@/hub/documentRegistry';
 
+import { createMemoryHubIo } from '../test/mocks/hubIo';
 import {
   createExtensionContext,
   createWebviewPanel,
@@ -73,7 +75,8 @@ function createEditorFactory(
       _document: ErdDocument,
       webview: MockWebview,
       _context: MockExtensionContext,
-      _docToWebviewMap: DocToWebviewMap
+      _docToWebviewMap: DocToWebviewMap,
+      _registry: DocumentRegistry
     ) => {
       const editor = createEditorDouble(webview, bootstrap);
       editors.push(editor);
@@ -84,23 +87,29 @@ function createEditorFactory(
   return { createEditor, editors };
 }
 
+function createRegistry() {
+  return new DocumentRegistry(createMemoryHubIo());
+}
+
 /**
- * Builds a provider around an editor double. createEditor is the only seam
- * through which the private docToWebviewMap is observable — the provider
- * hands it the live map as the fourth argument.
+ * Builds a provider around an editor double. The registry owns the webview
+ * map; createEditor gets the live map as its fourth argument and the
+ * registry itself as its fifth.
  */
 function createProvider(options?: {
   bootstrap?: (disposable: EditorDisposable) => Promise<EditorDisposable>;
 }) {
   const context = createExtensionContext();
+  const registry = createRegistry();
   const { createEditor, editors } = createEditorFactory(options?.bootstrap);
 
   const provider = new ErdEditorProvider(
     context as unknown as any,
-    createEditor as unknown as CreateEditor
+    createEditor as unknown as CreateEditor,
+    registry
   );
 
-  return { provider, context, createEditor, editors };
+  return { provider, context, createEditor, editors, registry };
 }
 
 /** The map instance the provider really owns, as handed to createEditor. */
@@ -182,7 +191,11 @@ describe('ErdEditorProvider', () => {
     it('registers the provider under the erd view type, keeping the webview alive when hidden', () => {
       const context = createExtensionContext();
 
-      ErdEditorProvider.register(context as unknown as any, vi.fn() as any);
+      ErdEditorProvider.register(
+        context as unknown as any,
+        vi.fn() as any,
+        createRegistry()
+      );
 
       expect(window.registerCustomEditorProvider).toHaveBeenCalledTimes(1);
       expect(window.registerCustomEditorProvider).toHaveBeenCalledWith(
@@ -202,7 +215,8 @@ describe('ErdEditorProvider', () => {
 
       const result = ErdEditorProvider.register(
         createExtensionContext() as unknown as any,
-        vi.fn() as any
+        vi.fn() as any,
+        createRegistry()
       );
 
       expect(result).toBe(registration);
@@ -214,7 +228,8 @@ describe('ErdEditorProvider', () => {
 
       ErdEditorProvider.register(
         context as unknown as any,
-        createEditor as unknown as CreateEditor
+        createEditor as unknown as CreateEditor,
+        createRegistry()
       );
       const [, registered] = window.registerCustomEditorProvider.mock
         .calls[0] as unknown as [string, ErdEditorProvider];
@@ -534,6 +549,94 @@ describe('ErdEditorProvider', () => {
       expect(
         webviewsOf(liveMap(createEditor), document).has(panel.webview)
       ).toBe(false);
+    });
+  });
+
+  describe('document registry', () => {
+    it('hands createEditor the registry that owns the webview map', async () => {
+      const { provider, createEditor, registry } = createProvider();
+      const document = await openDocument(provider);
+
+      await provider.resolveCustomEditor(
+        document,
+        asPanel(createWebviewPanel())
+      );
+
+      const [, , , docToWebviewMap, passedRegistry] =
+        createEditor.mock.calls[0];
+      expect(passedRegistry).toBe(registry);
+      expect(docToWebviewMap).toBe(registry.docToWebviewMap);
+    });
+
+    it('resolves openCustomDocument only after the registry has listed the document', async () => {
+      const { provider, registry } = createProvider();
+      let release!: () => void;
+      const publisher = vi.fn(async (documents: string[]) => {
+        if (documents.length) {
+          await new Promise<void>(resolve => (release = resolve));
+        }
+      });
+      await registry.setPublisher(publisher);
+      let settled = false;
+
+      const pending = openDocument(provider).then(() => {
+        settled = true;
+      });
+      await flush();
+
+      expect(publisher).toHaveBeenLastCalledWith(['/workspace/sample.erd']);
+      expect(settled).toBe(false);
+      release();
+      await pending;
+      expect(settled).toBe(true);
+    });
+
+    it('unregisters the document when it is disposed, which unlists it', async () => {
+      const { provider, registry } = createProvider();
+      const publisher = vi.fn(async () => undefined);
+      await registry.setPublisher(publisher);
+      const document = await openDocument(provider);
+
+      document.dispose();
+      await flush();
+
+      expect(registry.find('/workspace/sample.erd')).toBeUndefined();
+      expect(publisher).toHaveBeenLastCalledWith([]);
+    });
+
+    it('marks the document active when its panel takes focus, and stops listening once the panel closes', async () => {
+      const { provider, registry } = createProvider();
+      const first = await openDocument(provider, '/workspace/a.erd');
+      const second = await openDocument(provider, '/workspace/b.erd');
+      const firstPanel = createWebviewPanel();
+      const secondPanel = createWebviewPanel();
+      await provider.resolveCustomEditor(first, asPanel(firstPanel));
+      await provider.resolveCustomEditor(second, asPanel(secondPanel));
+      expect(registry.isActive(second)).toBe(true);
+
+      firstPanel.__changeViewState({ active: true, visible: true });
+      expect(registry.isActive(first)).toBe(true);
+      firstPanel.__changeViewState({ active: false, visible: true });
+      expect(registry.isActive(first)).toBe(true);
+
+      secondPanel.__changeViewState({ active: true, visible: true });
+      expect(registry.isActive(second)).toBe(true);
+      firstPanel.__dispose();
+      firstPanel.__changeViewState({ active: true, visible: true });
+      expect(registry.isActive(second)).toBe(true);
+    });
+
+    it('takes a closed panel webview out of the ready count', async () => {
+      const { provider, registry } = createProvider();
+      const document = await openDocument(provider);
+      const panel = createWebviewPanel();
+      await provider.resolveCustomEditor(document, asPanel(panel));
+      registry.onWebviewReady(document, panel.webview as any);
+      expect(registry.readyWebviewCount(document)).toBe(1);
+
+      panel.__dispose();
+
+      expect(registry.readyWebviewCount(document)).toBe(0);
     });
   });
 

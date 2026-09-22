@@ -223,6 +223,7 @@ describe('path authorization at the hub entry', () => {
   it.each([
     ['openDocument', { path: OUTSIDE, create: true, initialValue: '{}' }],
     ['join', { path: OUTSIDE }],
+    ['applyActions', { path: OUTSIDE, actions: [] }],
     ['leave', { path: OUTSIDE }],
     ['save', { path: OUTSIDE }],
   ])(
@@ -249,21 +250,6 @@ describe('path authorization at the hub entry', () => {
       expect(io.files.has(OUTSIDE)).toBe(false);
     }
   );
-
-  it('drops actions outside the workspace', async () => {
-    workspace.workspaceFolders = [{ uri: Uri.file('/ws') }];
-    const io = createMemoryHubIo();
-    io.addDir('/ws');
-    const handler = createHubHandler();
-    startHub(io, handler);
-    await flush();
-
-    const client = connectToLock(io);
-    client.send({ method: 'actions', params: { path: OUTSIDE, actions: [] } });
-    await flush();
-
-    expect(handler.actions).not.toHaveBeenCalled();
-  });
 
   it('lets a path inside a workspace folder through under its real path', async () => {
     workspace.workspaceFolders = [{ uri: Uri.file('/link') }];

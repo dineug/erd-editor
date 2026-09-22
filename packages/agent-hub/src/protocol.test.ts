@@ -8,12 +8,15 @@ import {
   HubErrorCode,
   type HubMethod,
   type HubNotification,
+  type HubNotificationParams,
   type HubRequest,
   HubRequestError,
   type HubRequestParams,
   type HubResponse,
   type HubResultMap,
+  type HubToPeerMessage,
   type JoinResult,
+  type PeerToHubMessage,
   protocolMismatchMessage,
 } from '@/protocol';
 
@@ -23,13 +26,20 @@ describe('method catalogue', () => {
       HubRequest['method']
     >();
     expectTypeOf<HubRequest['method']>().toEqualTypeOf<
-      'hello' | 'listDocuments' | 'openDocument' | 'join' | 'leave' | 'save'
+      | 'hello'
+      | 'listDocuments'
+      | 'openDocument'
+      | 'join'
+      | 'applyActions'
+      | 'leave'
+      | 'save'
     >();
     expect([...HUB_REQUEST_METHODS]).toEqual([
       'hello',
       'listDocuments',
       'openDocument',
       'join',
+      'applyActions',
       'leave',
       'save',
     ]);
@@ -69,6 +79,37 @@ describe('method catalogue', () => {
   });
 });
 
+describe('message direction', () => {
+  it('lets a peer send requests only, so its actions travel as applyActions', () => {
+    expectTypeOf<PeerToHubMessage>().toEqualTypeOf<HubRequest>();
+    expectTypeOf<
+      Extract<PeerToHubMessage, { method: 'applyActions' }>['params']
+    >().toEqualTypeOf<{ path: string; actions: unknown[] }>();
+    expectTypeOf<
+      Extract<PeerToHubMessage, { method: 'actions' }>
+    >().toEqualTypeOf<never>();
+  });
+
+  it('sends a peer responses and the two notifications, actions among them', () => {
+    expectTypeOf<HubToPeerMessage>().toEqualTypeOf<
+      HubResponse | HubNotification
+    >();
+    expectTypeOf<
+      Extract<HubToPeerMessage, { method: 'actions'; params: unknown }>
+    >().toEqualTypeOf<HubNotification<'actions'>>();
+    expectTypeOf<HubNotificationParams['actions']>().toEqualTypeOf<{
+      path: string;
+      actions: unknown[];
+    }>();
+  });
+
+  it('answers applyActions with the number of webviews that took the batch', () => {
+    expectTypeOf<
+      Extract<HubResponse, { ok: true; method: 'applyActions' }>['result']
+    >().toEqualTypeOf<{ webviews: number }>();
+  });
+});
+
 describe('message types', () => {
   it('narrows a response result by its method', () => {
     expectTypeOf<
@@ -92,7 +133,7 @@ describe('message types', () => {
 });
 
 describe('HubErrorCode', () => {
-  it('pins the seven codes, each equal to its key', () => {
+  it('pins the nine codes, each equal to its key', () => {
     expect(HubErrorCode).toEqual({
       protocolMismatch: 'protocolMismatch',
       unauthorized: 'unauthorized',
@@ -101,6 +142,8 @@ describe('HubErrorCode', () => {
       notOpen: 'notOpen',
       readonly: 'readonly',
       hubDisabled: 'hubDisabled',
+      badRequest: 'badRequest',
+      internal: 'internal',
     });
   });
 });

@@ -11,7 +11,7 @@
 
 | File | Description |
 | --- | --- |
-| `src/protocol.ts` | `HUB_PROTOCOL_VERSION`, `HubRequest` / `HubResponse` / `HubNotification` (derived from `HubRequestParams`, `HubResultMap`, `HubNotificationParams`), `HubErrorCode`, `HUB_REQUEST_METHODS` / `HUB_NOTIFICATION_METHODS`, `HubRequestError`, `protocolMismatchMessage` |
+| `src/protocol.ts` | `HUB_PROTOCOL_VERSION`, `HubRequest` / `HubResponse` / `HubNotification` (derived from `HubRequestParams`, `HubResultMap`, `HubNotificationParams`), the direction types `PeerToHubMessage` / `HubToPeerMessage`, `HubErrorCode`, `HUB_REQUEST_METHODS` / `HUB_NOTIFICATION_METHODS`, `HubRequestError`, `protocolMismatchMessage` |
 | `src/lock.ts` | `LockRecord`, `lockDirPath` / `lockFilePath` / `pipePath`, `lockFilePid` (file name → pid), `pipePathFits`, `parseLock` / `serializeLock`, the modes and `MAX_PIPE_PATH_BYTES` |
 | `src/framing.ts` | `encodeFrame` (JSON + `\n`), `createFrameDecoder`, `MAX_FRAME_BYTES` (64 MiB) |
 | `src/paths.ts` | `toSegments`, `isInside`, `isSamePath`, `longestPrefixIndex`, `isAuthorized` / `assertAuthorized` |
@@ -25,7 +25,9 @@
 ### Working In This Directory
 
 - **No `node:*` — a choice, not a constraint.** `defineLibraryConfig` builds for `BROWSER_TARGET` and `createExternal` does not externalize builtins, but a bespoke Node-target config would be allowed (`check-task-inputs.mjs`'s `sharedTaskCount` would go 1 → 2). Pure functions with injected `isAlive` / `homeDir` / `platform` were chosen because three runtimes read the same spec — the extension's CJS bundle, the MCP server's ESM bundle and the Extension Host e2e's unbundled fake peer — and because the suite then reaches perFile 80% without fs. `node-free.test.ts` enforces it; byte counts use `TextEncoder`, never `Buffer`.
-- **The protocol is a wire format.** A new method goes into `HubRequestParams` + `HubResultMap` (or `HubNotificationParams`) and the matching `HUB_*_METHODS` list; `protocol.test.ts` fails `tsc` when a list and its type disagree. Any change that an older peer cannot read bumps `HUB_PROTOCOL_VERSION`. There is no `rejoin` message: reseeding after an auto open is a session step of the MCP server.
+- **The protocol is a wire format.** A new method goes into `HubRequestParams` + `HubResultMap` (or `HubNotificationParams`) and the matching `HUB_*_METHODS` list; `protocol.test.ts` fails `tsc` when a list and its type disagree. Any change that an older peer cannot read bumps `HUB_PROTOCOL_VERSION`; it stayed 1 through the unreleased `applyActions` change below. There is no `rejoin` message: reseeding after an auto open is a session step of the MCP server.
+- **A peer sends requests only; notifications flow hub → peer.** A peer hands over its own actions with the `applyActions` request (`{ path, actions }` → `{ webviews }`), so a refusal (`notOpen`, `readonly`) reaches it and the session can rejoin; the `actions` notification carries the actions of webviews and of other peers to a joined peer, and `documentClosed` tells it the editor went away. The hub answers a frame without an `id` with nothing.
+- **Error codes say whose fault it is.** `badRequest` is a malformed request, an unknown method or a missing `path`; `internal` is the hub failing (a handler threw something other than `HubRequestError`, or its result could not be framed). `notFound` means only that the named document does not exist, so an MCP server never reads a hub bug as a missing file.
 - **Lock location is computed here only.** Locks are `<home>/.erd-editor/ide/<pid>.json` (dir `0o700`, file `0o600`); the socket is `<pid>.sock` beside it, or `\\.\pipe\erd-editor-ide-<pid>` on win32. `lockFilePid` is the inverse of `lockFilePath` and ignores anything else in the directory, temp files of an atomic rewrite included.
 - **`MAX_PIPE_PATH_BYTES` is 100** — under the kernel's `sun_path` field of 104 bytes on macOS and 108 on Linux. `pipePathFits` measures UTF-8 bytes and always passes win32 named pipes; a path that does not fit is the adapter's cue to bind under the temp directory and write that path into the lock's `pipe`. The lock itself never moves.
 - **Socket path, measured 2026-09-22** on macOS 26 (Darwin 25.6, arm64), Node 22.23.2, libuv 1.51.0: `<home>/.erd-editor/ide/<pid>.sock` came to 40 bytes for a 13-byte home, and `net.createServer().listen` bound it and accepted a connection. Paths up to 104 bytes bind as given; a longer one is not rejected — `listen` succeeds on its first 104 bytes and a client given the same long path still connects — so `pipePathFits` is the only guard and the adapter checks it before `listen`. The path is home + 22 + pid digits bytes, so the longest home that fits is 73 bytes on macOS (5-digit pids) and 71 on Linux (`pid_max` up to 4194304). Not measured yet: Linux `listen` and the win32 named pipe ACL.
@@ -40,7 +42,7 @@
 
 - `pnpm exec vp run --filter @dineug/erd-editor-agent-hub --fail-if-no-match test` (node environment); `pnpm --filter @dineug/erd-editor-agent-hub test:coverage` for the perFile 80% gate.
 - `framing.test.ts` builds strings of `MAX_FRAME_BYTES` to test the real limit, which takes about a second.
-- This suite cannot see consumer breakage: after a protocol or lock change run `pnpm build`, and update the hand-written frames of the Extension Host e2e peer, which imports nothing from this package.
+- This suite cannot see consumer breakage: after a protocol or lock change run `pnpm build`, and update the hand-written frames of the Extension Host e2e peer (`packages/vscode-extension/test/integration/agent-hub.test.ts`), which imports nothing from this package.
 
 ### Common Patterns
 

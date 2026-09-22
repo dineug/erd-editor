@@ -215,47 +215,71 @@ describe('extension', () => {
       return connectToLock(hubIo);
     }
 
-    it.each([
-      ['listDocuments', {}],
-      ['openDocument', { path: '/workspace/a.erd.json', create: true }],
-      ['join', { path: '/workspace/a.erd.json' }],
-      ['leave', { path: '/workspace/a.erd.json' }],
-      ['save', { path: '/workspace/a.erd.json' }],
-    ])(
-      'answers %s with notOpen until a document registry serves requests',
-      async (method, params) => {
-        const client = await activateWithWorkspace();
-
-        client.send({ id: 2, method, params });
-        await flush();
-
-        expect(client.received[1]).toEqual({
-          id: 2,
-          ok: false,
-          method,
-          error: {
-            code: HubErrorCode.notOpen,
-            message:
-              'This VS Code window does not serve ERD documents to agents yet',
-          },
-        });
-      }
-    );
-
-    it('logs and drops actions, since no peer can have joined', async () => {
+    it('serves requests from the document registry: an unopened document is listed and read, not edited', async () => {
+      hubIo.addFile('/workspace/a.erd.json', '{"version":"3.0.0"}');
+      workspace.findFiles.mockResolvedValue([
+        Uri.file('/workspace/a.erd.json'),
+      ]);
       const client = await activateWithWorkspace();
+      const path = '/workspace/a.erd.json';
 
+      client.send({ id: 2, method: 'listDocuments', params: {} });
+      client.send({ id: 3, method: 'join', params: { path } });
       client.send({
-        method: 'actions',
-        params: { path: '/workspace/a.erd.json', actions: [] },
+        id: 4,
+        method: 'applyActions',
+        params: { path, actions: [] },
       });
+      client.send({ id: 5, method: 'save', params: { path } });
+      client.send({ id: 6, method: 'leave', params: { path } });
       await flush();
-      client.close();
 
-      expect(console.warn).toHaveBeenCalledWith(
-        '[erd-editor hub]',
-        'dropped actions for /workspace/a.erd.json: no peer can join'
+      const byId = (id: number) =>
+        client.received.find((frame: any) => frame.id === id);
+      expect(byId(2)).toMatchObject({
+        ok: true,
+        result: {
+          documents: [
+            { path, open: false, active: false, dirty: false, readonly: false },
+          ],
+        },
+      });
+      expect(byId(3)).toMatchObject({
+        ok: true,
+        result: {
+          initialValue: '{"version":"3.0.0"}',
+          snapshotVersion: 0,
+          readonly: false,
+        },
+      });
+      expect(byId(4)).toMatchObject({
+        ok: false,
+        error: { code: HubErrorCode.notOpen },
+      });
+      expect(byId(5)).toMatchObject({
+        ok: false,
+        error: { code: HubErrorCode.notOpen },
+      });
+      expect(byId(6)).toMatchObject({ ok: true, result: {} });
+      expect(commands.executeCommand).not.toHaveBeenCalled();
+    });
+
+    it('lists a document in the lock once the ERD editor opens it, and unlists it on close', async () => {
+      await activateWithWorkspace();
+      hubIo.addFile('/elsewhere/b.erd.json', '{}');
+      const [, provider] = window.registerCustomEditorProvider.mock
+        .calls[0] as unknown as [string, ErdEditorProvider];
+
+      const document = await provider.openCustomDocument(
+        Uri.file('/elsewhere/b.erd.json') as any,
+        { backupId: undefined, untitledDocumentData: undefined }
       );
+      await flush();
+      expect(hubIo.lock()?.documents).toEqual(['/elsewhere/b.erd.json']);
+
+      document.dispose();
+      await flush();
+      expect(hubIo.lock()?.documents).toEqual([]);
     });
   });
 

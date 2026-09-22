@@ -26,9 +26,11 @@ export function createHubHandler() {
       snapshotVersion: 0,
       readonly: false,
     })),
+    applyActions: vi.fn<HubHandler['applyActions']>(async () => ({
+      webviews: 1,
+    })),
     leave: vi.fn<HubHandler['leave']>(async () => ({})),
     save: vi.fn<HubHandler['save']>(async () => ({ saved: true })),
-    actions: vi.fn<HubHandler['actions']>(),
     disconnect: vi.fn<HubHandler['disconnect']>(),
   } satisfies HubHandler;
 }
@@ -187,6 +189,11 @@ export function createMemoryHubIo(options: MemoryHubIoOptions = {}) {
       if (!dirs.has(parentOf(path))) throw fsError('ENOENT', path);
       const existing = files.get(path);
       files.set(path, { data, mode: existing?.mode ?? mode, socket: false });
+    }),
+    createFile: vi.fn(async (path: string, data: string) => {
+      if (!dirs.has(parentOf(path))) throw fsError('ENOENT', path);
+      if (files.has(path) || dirs.has(path)) throw fsError('EEXIST', path);
+      files.set(path, { data, mode: 0o644, socket: false });
     }),
     readFile: vi.fn(async (path: string) => {
       const file = files.get(path);

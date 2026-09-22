@@ -283,7 +283,7 @@ describe('requests', () => {
     ]);
   });
 
-  it.each(['openDocument', 'join', 'leave', 'save'])(
+  it.each(['openDocument', 'join', 'applyActions', 'leave', 'save'])(
     'answers %s with the authorization error and never calls the handler',
     async method => {
       authorize.mockRejectedValueOnce(
@@ -291,7 +291,11 @@ describe('requests', () => {
       );
       const { client } = connectAuthenticated();
 
-      client.send({ id: 2, method, params: { path: '/etc/passwd' } });
+      client.send({
+        id: 2,
+        method,
+        params: { path: '/etc/passwd', actions: [] },
+      });
       await flush();
 
       expect(client.received).toEqual([
@@ -306,7 +310,7 @@ describe('requests', () => {
     }
   );
 
-  it('answers a request without a string path without authorizing anything', async () => {
+  it('answers a request without a string path with badRequest, authorizing nothing', async () => {
     const { client } = connectAuthenticated();
 
     client.send({ id: 2, method: 'join', params: { path: 7 } });
@@ -319,18 +323,28 @@ describe('requests', () => {
         ok: false,
         method: 'join',
         error: {
-          code: HubErrorCode.notFound,
+          code: HubErrorCode.badRequest,
           message: 'join needs a string params.path',
         },
       },
     ]);
   });
 
+  it('never authorizes a path on a method that names no document', async () => {
+    const { client } = connectAuthenticated();
+
+    client.send({ id: 2, method: 'listDocuments', params: { path: '/etc' } });
+    await flush();
+
+    expect(authorize).not.toHaveBeenCalled();
+    expect(client.received).toMatchObject([{ id: 2, ok: true }]);
+  });
+
   it.each([
     ['an unknown method', 'rejoin', 'The hub has no method "rejoin"'],
     ['a second hello', 'hello', 'The hub has no method "hello"'],
     ['a prototype key', 'toString', 'The hub has no method "toString"'],
-  ])('answers %s with a well-formed error', async (_label, method, message) => {
+  ])('answers %s with badRequest', async (_label, method, message) => {
     const { client } = connectAuthenticated();
 
     client.send({ id: 2, method, params: {} });
@@ -341,20 +355,25 @@ describe('requests', () => {
         id: 2,
         ok: false,
         method,
-        error: { code: HubErrorCode.notFound, message },
+        error: { code: HubErrorCode.badRequest, message },
       },
     ]);
     expect(client.closed).toBe(false);
   });
 
-  it('answers a request with no method string', async () => {
+  it('answers a request with no method string with badRequest', async () => {
     const { client } = connectAuthenticated();
 
     client.send({ id: 2, params: {} });
     await flush();
 
     expect(client.received).toMatchObject([
-      { id: 2, ok: false, method: '', error: { code: HubErrorCode.notFound } },
+      {
+        id: 2,
+        ok: false,
+        method: '',
+        error: { code: HubErrorCode.badRequest },
+      },
     ]);
   });
 
@@ -366,8 +385,11 @@ describe('requests', () => {
 
     expect(console.warn).toHaveBeenCalledWith(
       '[erd-editor hub]',
-      'answered rejoin with notFound',
-      { code: HubErrorCode.notFound, message: 'The hub has no method "rejoin"' }
+      'answered rejoin with badRequest',
+      {
+        code: HubErrorCode.badRequest,
+        message: 'The hub has no method "rejoin"',
+      }
     );
   });
 
@@ -390,7 +412,7 @@ describe('requests', () => {
     ]);
   });
 
-  it('answers a handler bug, rejected or thrown, with the fallback code and logs it', async () => {
+  it('answers a handler bug, rejected or thrown, with internal and logs it', async () => {
     handler.save.mockRejectedValueOnce(new TypeError('document is undefined'));
     handler.leave.mockImplementationOnce(() => {
       throw new RangeError('thrown before any promise');
@@ -407,7 +429,7 @@ describe('requests', () => {
         ok: false,
         method: 'save',
         error: {
-          code: HubErrorCode.notFound,
+          code: HubErrorCode.internal,
           message: 'TypeError: document is undefined',
         },
       },
@@ -416,7 +438,7 @@ describe('requests', () => {
         ok: false,
         method: 'leave',
         error: {
-          code: HubErrorCode.notFound,
+          code: HubErrorCode.internal,
           message: 'RangeError: thrown before any promise',
         },
       },
@@ -428,7 +450,7 @@ describe('requests', () => {
     );
   });
 
-  it('answers with an error when the result cannot be framed', async () => {
+  it('answers with internal when the result cannot be framed', async () => {
     handler.listDocuments.mockResolvedValueOnce({
       documents: [{ path: 1n }] as any,
     });
@@ -443,7 +465,7 @@ describe('requests', () => {
         ok: false,
         method: 'listDocuments',
         error: {
-          code: HubErrorCode.notFound,
+          code: HubErrorCode.internal,
           message: expect.stringContaining('BigInt'),
         },
       },
@@ -513,113 +535,191 @@ describe('requests', () => {
   });
 });
 
-describe('the actions notification', () => {
-  it('reaches the handler with the authorized path and the connection', async () => {
+describe('applyActions', () => {
+  it('reaches the handler with the authorized path and the connection, and answers its result', async () => {
+    handler.applyActions.mockResolvedValueOnce({ webviews: 2 });
     const { client } = connectAuthenticated();
     const actions = [{ type: 'table.add', payload: {}, version: 3 }];
 
     client.send({
-      method: 'actions',
+      id: 2,
+      method: 'applyActions',
       params: { path: '/ws/a.erd.json', actions },
     });
     await flush();
 
-    expect(handler.actions).toHaveBeenCalledWith(
+    expect(handler.applyActions).toHaveBeenCalledWith(
       { path: '/real/ws/a.erd.json', actions },
       expect.objectContaining({ id: 1 })
     );
-    expect(client.received).toEqual([]);
+    expect(client.received).toEqual([
+      { id: 2, ok: true, method: 'applyActions', result: { webviews: 2 } },
+    ]);
   });
 
-  it('is dropped with a warning when authorization fails, since no response exists', async () => {
-    authorize.mockRejectedValueOnce(
-      new HubRequestError(HubErrorCode.outsideWorkspace, 'outside')
+  it('answers a refusal of the handler with its code, which a notification never could', async () => {
+    handler.applyActions.mockRejectedValueOnce(
+      new HubRequestError(HubErrorCode.notOpen, 'no webview is ready')
     );
     const { client } = connectAuthenticated();
 
-    client.send({ method: 'actions', params: { path: '/etc/x', actions: [] } });
+    client.send({
+      id: 2,
+      method: 'applyActions',
+      params: { path: '/a', actions: [] },
+    });
     await flush();
 
-    expect(handler.actions).not.toHaveBeenCalled();
-    expect(console.warn).toHaveBeenCalledWith(
-      '[erd-editor hub]',
-      'dropped actions for /etc/x',
-      expect.any(HubRequestError)
-    );
+    expect(client.received).toEqual([
+      {
+        id: 2,
+        ok: false,
+        method: 'applyActions',
+        error: { code: HubErrorCode.notOpen, message: 'no webview is ready' },
+      },
+    ]);
   });
 
   it.each([
-    ['without a path', { actions: [] }],
-    ['without an actions array', { path: '/ws/a.erd.json', actions: {} }],
-  ])('is dropped %s', async (_label, params) => {
+    [
+      'without a path',
+      { actions: [] },
+      'applyActions needs a string params.path',
+    ],
+    [
+      'without an actions array',
+      { path: '/ws/a.erd.json', actions: {} },
+      'applyActions needs an array params.actions',
+    ],
+  ])('answers a batch %s with badRequest', async (_label, params, message) => {
     const { client } = connectAuthenticated();
 
-    client.send({ method: 'actions', params });
+    client.send({ id: 2, method: 'applyActions', params });
     await flush();
 
     expect(authorize).not.toHaveBeenCalled();
-    expect(handler.actions).not.toHaveBeenCalled();
+    expect(handler.applyActions).not.toHaveBeenCalled();
+    expect(client.received).toEqual([
+      {
+        id: 2,
+        ok: false,
+        method: 'applyActions',
+        error: { code: HubErrorCode.badRequest, message },
+      },
+    ]);
   });
 
-  it('waits for an async handler before the next batch, and logs its rejection', async () => {
+  it('holds the frames behind a batch until the batch is answered', async () => {
     let finishFirst!: () => void;
-    handler.actions.mockImplementationOnce(
-      () => new Promise<void>(resolve => (finishFirst = resolve))
+    handler.applyActions.mockImplementationOnce(
+      () =>
+        new Promise(resolve => (finishFirst = () => resolve({ webviews: 1 })))
     );
-    handler.actions.mockImplementationOnce(async () => {
-      throw new Error('webview gone');
-    });
+    handler.applyActions.mockRejectedValueOnce(new Error('webview gone'));
     const { client } = connectAuthenticated();
 
-    client.send({ method: 'actions', params: { path: '/a', actions: [1] } });
-    client.send({ method: 'actions', params: { path: '/a', actions: [2] } });
+    client.send({
+      id: 2,
+      method: 'applyActions',
+      params: { path: '/a', actions: [1] },
+    });
+    client.send({
+      id: 3,
+      method: 'applyActions',
+      params: { path: '/a', actions: [2] },
+    });
+    client.send({ id: 4, method: 'listDocuments', params: {} });
     await flush();
-    expect(handler.actions).toHaveBeenCalledTimes(1);
+    expect(handler.applyActions).toHaveBeenCalledTimes(1);
+    expect(handler.listDocuments).not.toHaveBeenCalled();
 
     finishFirst();
     await flush();
-    expect(handler.actions).toHaveBeenCalledTimes(2);
-    expect(console.warn).toHaveBeenCalledWith(
-      '[erd-editor hub]',
-      'the actions handler failed for /real/a',
-      expect.objectContaining({ message: 'webview gone' })
-    );
+    expect(
+      handler.applyActions.mock.calls.map(([params]) => params.actions)
+    ).toEqual([[1], [2]]);
+    expect(client.received).toMatchObject([
+      { id: 2, ok: true, result: { webviews: 1 } },
+      {
+        id: 3,
+        ok: false,
+        error: { code: HubErrorCode.internal, message: 'Error: webview gone' },
+      },
+      { id: 4, ok: true },
+    ]);
   });
 
-  it('logs a handler that throws and keeps the connection', async () => {
-    handler.actions.mockImplementationOnce(() => {
-      throw new Error('registry bug');
-    });
-    const { client } = connectAuthenticated();
-
-    client.send({ method: 'actions', params: { path: '/a', actions: [] } });
-    client.send({ id: 2, method: 'listDocuments', params: {} });
-    await flush();
-
-    expect(console.warn).toHaveBeenCalledWith(
-      '[erd-editor hub]',
-      'the actions handler failed for /real/a',
-      expect.any(Error)
-    );
-    expect(client.received).toMatchObject([{ id: 2, ok: true }]);
-  });
-
-  it('keeps several batches for one document in their order', async () => {
+  it('keeps several batches for one document in their order while authorization is slow', async () => {
     let resolveFirst!: (path: string) => void;
     authorize.mockImplementationOnce(
       () => new Promise(resolve => (resolveFirst = resolve))
     );
     const { client } = connectAuthenticated();
 
-    client.send({ method: 'actions', params: { path: '/a', actions: [1] } });
-    client.send({ method: 'actions', params: { path: '/a', actions: [2] } });
+    client.send({
+      id: 2,
+      method: 'applyActions',
+      params: { path: '/a', actions: [1] },
+    });
+    client.send({
+      id: 3,
+      method: 'applyActions',
+      params: { path: '/a', actions: [2] },
+    });
     await flush();
     resolveFirst('/real/a');
     await flush();
 
     expect(
-      handler.actions.mock.calls.map(([params]) => params.actions)
+      handler.applyActions.mock.calls.map(([params]) => params.actions)
     ).toEqual([[1], [2]]);
+  });
+
+  it('logs a handler that throws, answers internal and keeps the connection', async () => {
+    handler.applyActions.mockImplementationOnce(() => {
+      throw new Error('registry bug');
+    });
+    const { client } = connectAuthenticated();
+
+    client.send({
+      id: 2,
+      method: 'applyActions',
+      params: { path: '/a', actions: [] },
+    });
+    client.send({ id: 3, method: 'listDocuments', params: {} });
+    await flush();
+
+    expect(console.warn).toHaveBeenCalledWith(
+      '[erd-editor hub]',
+      'request failed',
+      expect.objectContaining({ message: 'registry bug' })
+    );
+    expect(client.received).toMatchObject([
+      { id: 2, ok: false, error: { code: HubErrorCode.internal } },
+      { id: 3, ok: true },
+    ]);
+    expect(client.closed).toBe(false);
+  });
+});
+
+describe('frames without an id', () => {
+  it('ignores an actions notification from a peer: actions come in as applyActions', async () => {
+    const { client } = connectAuthenticated();
+
+    client.send({
+      method: 'actions',
+      params: { path: '/ws/a.erd.json', actions: [] },
+    });
+    await flush();
+
+    expect(authorize).not.toHaveBeenCalled();
+    expect(handler.applyActions).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      '[erd-editor hub]',
+      'ignored a "actions" frame without an id: a peer sends requests only'
+    );
+    expect(client.received).toEqual([]);
+    expect(client.closed).toBe(false);
   });
 
   it('ignores a frame after hello that is no object at all', async () => {
@@ -630,20 +730,7 @@ describe('the actions notification', () => {
 
     expect(console.warn).toHaveBeenCalledWith(
       '[erd-editor hub]',
-      'ignored a "" notification'
-    );
-    expect(client.closed).toBe(false);
-  });
-
-  it('ignores a notification it does not take from a peer', async () => {
-    const { client } = connectAuthenticated();
-
-    client.send({ method: 'documentClosed', params: { path: '/a' } });
-    await flush();
-
-    expect(console.warn).toHaveBeenCalledWith(
-      '[erd-editor hub]',
-      'ignored a "documentClosed" notification'
+      'ignored a "" frame without an id: a peer sends requests only'
     );
     expect(client.closed).toBe(false);
   });
@@ -697,14 +784,18 @@ describe('closing', () => {
     const { client } = connectAuthenticated();
 
     client.send({ id: 2, method: 'join', params: { path: '/a' } });
-    client.send({ method: 'actions', params: { path: '/a', actions: [] } });
+    client.send({
+      id: 3,
+      method: 'applyActions',
+      params: { path: '/a', actions: [] },
+    });
     await flush();
     client.close();
     resolvePath('/real/a');
     await flush();
 
     expect(handler.join).not.toHaveBeenCalled();
-    expect(handler.actions).not.toHaveBeenCalled();
+    expect(handler.applyActions).not.toHaveBeenCalled();
   });
 
   it('writes no response for a request that finishes after its peer left', async () => {

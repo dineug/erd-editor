@@ -80,14 +80,19 @@ export class ErdEditor extends Editor {
             value: textDecoder.decode(this.document.content),
           })
         );
+        // Last: postMessage keeps order, so an agent batch sent from now on
+        // lands after the initial value instead of being wiped by it.
+        this.registry.onWebviewReady(this.document, this.webview);
       }),
       this.bridge.registerCommand(hostSaveValueCommand, async ({ value }) => {
         await this.document.update(textEncoder.encode(value));
+        this.registry.onValueSaved(this.document);
       }),
       this.bridge.registerCommand(hostSaveReplicationCommand, ({ actions }) => {
         dispatchBroadcast(
           Bridge.executeCommand(webviewReplicationCommand, { actions })
         );
+        this.registry.onWebviewActions(this.document, actions);
       }),
       this.bridge.registerCommand(
         hostImportFileCommand,
