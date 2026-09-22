@@ -1,6 +1,6 @@
 {
   "name": "vuerd-vscode",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "private": true,
   "description": "Entity-Relationship Diagram Editor VSCode Extension",
   "icon": "./assets/erd-editor.png",
@@ -47,6 +47,7 @@
     "e2e:typecheck": "tsc -p tsconfig.integration.json --noEmit"
   },
   "devDependencies": {
+    "@dineug/erd-editor-agent-hub": "workspace:*",
     "@dineug/erd-editor-webview-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
     "@types/mocha": "^10.0.10",
@@ -61,7 +62,7 @@
     "vite-plus": "catalog:"
   },
   "activationEvents": [
-    "workspaceContains:**/*.{erd,vuerd}"
+    "workspaceContains:**/*.{erd,vuerd,erd.json,vuerd.json}"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -215,6 +216,11 @@
               "mint",
               "sky"
             ]
+          },
+          "dineug.erd-editor.agentHub.enabled": {
+            "description": "Let a coding agent's ERD Editor MCP server edit the documents open in this window over a local pipe. Served only in a trusted workspace; when off or untrusted, agents are still kept from writing this window's ERD files directly.",
+            "type": "boolean",
+            "default": true
           }
         }
       }

@@ -523,6 +523,9 @@ importers:
 
   packages/vscode-extension:
     devDependencies:
+      '@dineug/erd-editor-agent-hub':
+        specifier: workspace:*
+        version: link:../agent-hub
       '@dineug/erd-editor-vscode-webview':
         specifier: workspace:*
         version: link:../vscode-webview

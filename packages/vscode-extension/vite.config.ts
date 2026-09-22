@@ -89,6 +89,10 @@ export default defineConfig({
           'tsconfig.unit.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
           {
+            pattern: 'packages/agent-hub/dist/**/*.d.ts',
+            base: 'workspace',
+          },
+          {
             pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',
           },
@@ -118,6 +122,10 @@ export default defineConfig({
           'tsconfig.json',
           'tsconfig.unit.json',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
+          {
+            pattern: 'packages/agent-hub/dist/**/*.d.ts',
+            base: 'workspace',
+          },
           {
             pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',

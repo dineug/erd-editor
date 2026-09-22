@@ -1,11 +1,21 @@
 import { readFileSync } from 'node:fs';
 
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { VIEW_TYPE } from '@/constants/viewType';
 import { ErdEditorProvider } from '@/erd-editor-provider';
-import { activate } from '@/extension';
+import { activate, deactivate } from '@/extension';
+import { nodeHubIo } from '@/hub/io';
 
+import { connectToLock, flush, type MemoryHubIo } from '../test/mocks/hubIo';
 import {
   commands,
   createExtensionContext,
@@ -14,7 +24,17 @@ import {
   Uri,
   ViewColumn,
   window,
+  workspace,
 } from '../test/mocks/vscode';
+
+// activate starts the document hub, which must not bind a socket or write a
+// lock under the real home directory from a unit test.
+vi.mock('@/hub/io', async () => {
+  const { createMemoryHubIo } = await import('../test/mocks/hubIo');
+  return { nodeHubIo: createMemoryHubIo() };
+});
+
+const hubIo = nodeHubIo as MemoryHubIo;
 
 type Manifest = {
   contributes: {
@@ -64,20 +84,30 @@ function activateAndGetCommand(id: string) {
 describe('extension', () => {
   beforeEach(() => {
     resetVscodeMock();
+    // Every activate starts a hub on the one shared double; a fresh file
+    // system and no listener keep one spec's hub out of the next.
+    hubIo.files.clear();
+    hubIo.servers.clear();
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    await deactivate();
+    vi.restoreAllMocks();
   });
 
   describe('activate', () => {
-    it('hands VSCode five disposables — the custom editor plus one per command', () => {
+    it('hands VSCode six disposables — the custom editor, one per command and the document hub', () => {
       const context = createExtensionContext();
 
       activate(context as any);
 
-      expect(context.subscriptions).toHaveLength(5);
+      expect(context.subscriptions).toHaveLength(6);
       expect(window.registerCustomEditorProvider).toHaveBeenCalledTimes(1);
       expect(commands.registerCommand).toHaveBeenCalledTimes(4);
     });
 
-    it('pushes the very disposable each registration returned, so deactivation releases all five', () => {
+    it('pushes the very disposable each registration returned, so deactivation releases all six', () => {
       const context = createExtensionContext();
       const registration = new Disposable(() => undefined);
       const commandRegistrations = new Map<string, Disposable>();
@@ -90,10 +120,37 @@ describe('extension', () => {
 
       activate(context as any);
 
+      expect(context.subscriptions).toHaveLength(6);
       expect(context.subscriptions).toContain(registration);
       for (const id of COMMAND_IDS) {
         expect(context.subscriptions).toContain(commandRegistrations.get(id));
       }
+      expect(context.subscriptions[5]).toMatchObject({
+        setDocuments: expect.any(Function),
+        close: expect.any(Function),
+        dispose: expect.any(Function),
+      });
+    });
+
+    it('still registers the editor and every command when the document hub cannot start', async () => {
+      const context = createExtensionContext();
+      hubIo.homedir.mockImplementationOnce(() => {
+        throw new Error('uv_os_homedir returned ENOENT');
+      });
+
+      expect(() => activate(context as any)).not.toThrow();
+
+      expect(window.registerCustomEditorProvider).toHaveBeenCalledTimes(1);
+      expect(registeredCommandIds()).toEqual(COMMAND_IDS);
+      expect(context.subscriptions).toHaveLength(5);
+      expect(console.warn).toHaveBeenCalledWith(
+        '[erd-editor hub]',
+        'could not start the document hub',
+        expect.objectContaining({ message: 'uv_os_homedir returned ENOENT' })
+      );
+      await flush();
+      expect(hubIo.lock()).toBeUndefined();
+      expect(deactivate()).toBeUndefined();
     });
 
     it('registers exactly the four vuerd commands', () => {
@@ -117,6 +174,88 @@ describe('extension', () => {
 
       expect(window.showTextDocument).not.toHaveBeenCalled();
       expect(commands.executeCommand).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('document hub', () => {
+    it('writes the lock of this window and serves its pipe', async () => {
+      activate(createExtensionContext() as any);
+      await flush();
+
+      expect(hubIo.lock()).toMatchObject({ hub: true, ide: 'vscode' });
+    });
+
+    it('deletes the lock when the hub subscription is disposed', async () => {
+      const context = createExtensionContext();
+      activate(context as any);
+      await flush();
+
+      context.subscriptions[5].dispose();
+      await flush();
+
+      expect(hubIo.lock()).toBeUndefined();
+    });
+
+    it('deletes the lock in deactivate, which VSCode awaits, and has nothing left to close after', async () => {
+      activate(createExtensionContext() as any);
+      await flush();
+
+      await deactivate();
+
+      expect(hubIo.lock()).toBeUndefined();
+      expect(deactivate()).toBeUndefined();
+    });
+
+    /** Activates with /workspace open, so requests pass authorization and reach the handler. */
+    async function activateWithWorkspace() {
+      workspace.workspaceFolders = [{ uri: Uri.file('/workspace') }];
+      hubIo.addDir('/workspace');
+      activate(createExtensionContext() as any);
+      await flush();
+      return connectToLock(hubIo);
+    }
+
+    it.each([
+      ['listDocuments', {}],
+      ['openDocument', { path: '/workspace/a.erd.json', create: true }],
+      ['join', { path: '/workspace/a.erd.json' }],
+      ['leave', { path: '/workspace/a.erd.json' }],
+      ['save', { path: '/workspace/a.erd.json' }],
+    ])(
+      'answers %s with notOpen until a document registry serves requests',
+      async (method, params) => {
+        const client = await activateWithWorkspace();
+
+        client.send({ id: 2, method, params });
+        await flush();
+
+        expect(client.received[1]).toEqual({
+          id: 2,
+          ok: false,
+          method,
+          error: {
+            code: HubErrorCode.notOpen,
+            message:
+              'This VS Code window does not serve ERD documents to agents yet',
+          },
+        });
+      }
+    );
+
+    it('logs and drops actions, since no peer can have joined', async () => {
+      const client = await activateWithWorkspace();
+
+      client.send({
+        method: 'actions',
+        params: { path: '/workspace/a.erd.json', actions: [] },
+      });
+      await flush();
+      client.close();
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[erd-editor hub]',
+        'dropped actions for /workspace/a.erd.json: no peer can join'
+      );
     });
   });
 

@@ -182,6 +182,46 @@ export type MockWorkspaceConfiguration = ReturnType<
 const configurationEmitter = new EventEmitter<{
   affectsConfiguration: (section: string, scope?: unknown) => boolean;
 }>();
+const grantWorkspaceTrustEmitter = new EventEmitter<void>();
+const workspaceFoldersEmitter = new EventEmitter<{
+  added: Array<{ uri: Uri }>;
+  removed: Array<{ uri: Uri }>;
+}>();
+const tabsEmitter = new EventEmitter<{
+  opened: MockTab[];
+  closed: MockTab[];
+  changed: MockTab[];
+}>();
+const tabGroupsEmitter = new EventEmitter<{
+  opened: MockTabGroup[];
+  closed: MockTabGroup[];
+  changed: MockTabGroup[];
+}>();
+
+/** The input of a tab showing a custom editor; specs tell tabs apart with instanceof. */
+export class TabInputCustom {
+  constructor(
+    readonly uri: Uri,
+    readonly viewType: string
+  ) {}
+}
+
+export type MockTab = {
+  label: string;
+  input: unknown;
+  isActive: boolean;
+  isDirty: boolean;
+  isPinned: boolean;
+  isPreview: boolean;
+  group: MockTabGroup;
+};
+
+export type MockTabGroup = {
+  isActive: boolean;
+  viewColumn: ViewColumn;
+  activeTab: MockTab | undefined;
+  tabs: MockTab[];
+};
 
 export const workspace = {
   fs: {
@@ -196,6 +236,18 @@ export const workspace = {
     configurationEmitter.event(listener)
   ),
   workspaceFolders: undefined as Array<{ uri: Uri }> | undefined,
+  /** True by default, as in a VSCode with workspace trust turned off. */
+  isTrusted: true,
+  onDidGrantWorkspaceTrust: vi.fn((listener: () => any) =>
+    grantWorkspaceTrustEmitter.event(listener)
+  ),
+  onDidChangeWorkspaceFolders: vi.fn((listener: (e: any) => any) =>
+    workspaceFoldersEmitter.event(listener)
+  ),
+  save: vi.fn(async (uri: Uri): Promise<Uri | undefined> => uri),
+  findFiles: vi.fn(
+    async (_include: string, _exclude?: string | null): Promise<Uri[]> => []
+  ),
 };
 
 export const window = {
@@ -205,6 +257,16 @@ export const window = {
   showTextDocument: vi.fn(async () => undefined),
   createWebviewPanel: vi.fn(),
   registerCustomEditorProvider: vi.fn(() => new Disposable(() => undefined)),
+  tabGroups: {
+    /** Specs push groups built with createTabGroup. */
+    all: [] as MockTabGroup[],
+    onDidChangeTabs: vi.fn((listener: (e: any) => any) =>
+      tabsEmitter.event(listener)
+    ),
+    onDidChangeTabGroups: vi.fn((listener: (e: any) => any) =>
+      tabGroupsEmitter.event(listener)
+    ),
+  },
 };
 
 export const commands = {
@@ -223,6 +285,60 @@ export const commands = {
 export function fireConfigurationChange(affects: string[] = []) {
   configurationEmitter.fire({
     affectsConfiguration: (section: string) => affects.includes(section),
+  });
+}
+
+/** Grants trust the way VSCode does: isTrusted turns true before the event fires. */
+export function fireGrantWorkspaceTrust() {
+  workspace.isTrusted = true;
+  grantWorkspaceTrustEmitter.fire();
+}
+
+/** Replaces workspace.workspaceFolders, then fires onDidChangeWorkspaceFolders. */
+export function fireWorkspaceFoldersChange(
+  folders: Array<{ uri: Uri }> | undefined
+) {
+  const before = workspace.workspaceFolders ?? [];
+  workspace.workspaceFolders = folders;
+  workspaceFoldersEmitter.fire({
+    added: (folders ?? []).filter(folder => !before.includes(folder)),
+    removed: before.filter(folder => !(folders ?? []).includes(folder)),
+  });
+}
+
+/** Builds a tab group; add tabs with createTab, then push it onto window.tabGroups.all. */
+export function createTabGroup(viewColumn = ViewColumn.One): MockTabGroup {
+  return { isActive: true, viewColumn, activeTab: undefined, tabs: [] };
+}
+
+/** Builds a tab of group showing input, appended to group.tabs. */
+export function createTab(
+  group: MockTabGroup,
+  input: unknown,
+  state: Partial<Pick<MockTab, 'isActive' | 'isDirty' | 'label'>> = {}
+): MockTab {
+  const tab: MockTab = {
+    label: state.label ?? 'tab',
+    input,
+    isActive: state.isActive ?? false,
+    isDirty: state.isDirty ?? false,
+    isPinned: false,
+    isPreview: false,
+    group,
+  };
+  group.tabs.push(tab);
+  if (tab.isActive) group.activeTab = tab;
+  return tab;
+}
+
+/** Fires window.tabGroups.onDidChangeTabs; mutate the tabs first, as VSCode does. */
+export function fireTabsChange(
+  change: Partial<{ opened: MockTab[]; closed: MockTab[]; changed: MockTab[] }>
+) {
+  tabsEmitter.fire({
+    opened: change.opened ?? [],
+    closed: change.closed ?? [],
+    changed: change.changed ?? [],
   });
 }
 
@@ -251,6 +367,10 @@ export type MockWebview = ReturnType<typeof createWebview>;
 /** Builds a vscode.ExtensionContext double. */
 export function createExtensionContext(extensionPath = '/ext') {
   return {
+    extension: {
+      id: 'dineug.vuerd-vscode',
+      packageJSON: { name: 'vuerd-vscode', version: '0.0.0-mock' },
+    },
     extensionUri: Uri.file(extensionPath),
     extensionPath,
     subscriptions: [] as Array<{ dispose(): any }>,
@@ -264,18 +384,29 @@ export type MockExtensionContext = ReturnType<typeof createExtensionContext>;
 /** Builds a vscode.WebviewPanel double around createWebview(). */
 export function createWebviewPanel(webview = createWebview()) {
   const disposeEmitter = new EventEmitter<void>();
+  const viewStateEmitter = new EventEmitter<{ webviewPanel: unknown }>();
 
-  return {
+  const panel = {
     webview,
     visible: true,
     active: true,
     onDidDispose: disposeEmitter.event,
-    onDidChangeViewState: vi.fn(() => new Disposable(() => undefined)),
+    onDidChangeViewState: vi.fn((listener: (e: any) => any) =>
+      viewStateEmitter.event(listener)
+    ),
     reveal: vi.fn(),
     dispose: vi.fn(() => disposeEmitter.fire()),
     /** Test-only: fires onDidDispose the way VSCode does on panel close. */
     __dispose: () => disposeEmitter.fire(),
+    /** Test-only: updates active and visible, then fires onDidChangeViewState. */
+    __changeViewState: (state: { active: boolean; visible: boolean }) => {
+      panel.active = state.active;
+      panel.visible = state.visible;
+      viewStateEmitter.fire({ webviewPanel: panel });
+    },
   };
+
+  return panel;
 }
 
 export type MockWebviewPanel = ReturnType<typeof createWebviewPanel>;
@@ -290,16 +421,22 @@ const spies = [
   window.showSaveDialog,
   window.showInformationMessage,
   window.showTextDocument,
+  workspace.onDidGrantWorkspaceTrust,
+  workspace.onDidChangeWorkspaceFolders,
+  workspace.save,
+  workspace.findFiles,
   window.createWebviewPanel,
   window.registerCustomEditorProvider,
+  window.tabGroups.onDidChangeTabs,
+  window.tabGroups.onDidChangeTabGroups,
   commands.registerCommand,
   commands.executeCommand,
 ];
 
 /**
  * Restores every spy to the default implementation declared above and drops
- * any listener a previous spec left on onDidChangeConfiguration. Call it from
- * beforeEach — the module is shared across a file's tests.
+ * any listener a previous spec left on a workspace or window event. Call it
+ * from beforeEach — the module is shared across a file's tests.
  */
 export function resetVscodeMock() {
   for (const spy of spies) spy.mockReset();
@@ -314,6 +451,15 @@ export function resetVscodeMock() {
     configurationEmitter.event(listener)
   );
   workspace.workspaceFolders = undefined;
+  workspace.isTrusted = true;
+  workspace.onDidGrantWorkspaceTrust.mockImplementation(listener =>
+    grantWorkspaceTrustEmitter.event(listener)
+  );
+  workspace.onDidChangeWorkspaceFolders.mockImplementation(listener =>
+    workspaceFoldersEmitter.event(listener)
+  );
+  workspace.save.mockImplementation(async uri => uri);
+  workspace.findFiles.mockImplementation(async () => []);
 
   window.showOpenDialog.mockImplementation(async () => undefined);
   window.showSaveDialog.mockImplementation(async () => undefined);
@@ -322,6 +468,13 @@ export function resetVscodeMock() {
   window.registerCustomEditorProvider.mockImplementation(
     () => new Disposable(() => undefined)
   );
+  window.tabGroups.all = [];
+  window.tabGroups.onDidChangeTabs.mockImplementation(listener =>
+    tabsEmitter.event(listener)
+  );
+  window.tabGroups.onDidChangeTabGroups.mockImplementation(listener =>
+    tabGroupsEmitter.event(listener)
+  );
 
   commands.registerCommand.mockImplementation(
     () => new Disposable(() => undefined)
@@ -329,4 +482,8 @@ export function resetVscodeMock() {
   commands.executeCommand.mockImplementation(async () => undefined);
 
   configurationEmitter.dispose();
+  grantWorkspaceTrustEmitter.dispose();
+  workspaceFoldersEmitter.dispose();
+  tabsEmitter.dispose();
+  tabGroupsEmitter.dispose();
 }
