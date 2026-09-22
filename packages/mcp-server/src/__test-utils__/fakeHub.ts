@@ -1,4 +1,4 @@
-import { type AgentPeer, createAgentPeer } from '@dineug/erd-editor/agent.js';
+import { createPeerStore, type PeerStore } from '@dineug/erd-editor/peer.js';
 import {
   createFrameDecoder,
   encodeFrame,
@@ -23,7 +23,7 @@ type Connection = {
 /** The editor side of one open document: a real store standing in for the webview and its replica. */
 export type FakeDocument = {
   path: string;
-  webview: AgentPeer;
+  webview: PeerStore;
   peers: Set<Connection>;
   observedVersion: number;
   dirty: boolean;
@@ -63,7 +63,7 @@ export type FakeHub = {
   open: (path: string) => FakeDocument;
   /** The user closes the editor; joined peers hear documentClosed. */
   close: (path: string) => void;
-  webview: (path: string) => AgentPeer;
+  webview: (path: string) => PeerStore;
   /** Drops every connection, as a window reload does. */
   disconnectAll: () => void;
   methods: () => string[];
@@ -107,7 +107,7 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
     const current = documents.get(path);
     if (current) return current;
 
-    const webview = createAgentPeer({ nickname: 'user', presence: false });
+    const webview = createPeerStore({ nickname: 'user', presence: false });
     webview.setInitialValue(io.read(path));
     const document: FakeDocument = {
       path,
@@ -238,7 +238,7 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
         }
         const actions: unknown[] = params.actions;
         observe(document, actions);
-        document.webview.dispatch(actions as any[]);
+        document.webview.receive(actions as any[]);
         document.dirty = true;
         for (const peer of document.peers) {
           if (peer !== connection) {

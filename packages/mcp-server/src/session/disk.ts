@@ -1,4 +1,5 @@
-import { createAgentPeer, type ReadFormat } from '@dineug/erd-editor/agent.js';
+import { readDocument, type ReadFormat } from '@dineug/erd-editor/agent.js';
+import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import type { DocumentInfo } from '@dineug/erd-editor-agent-hub';
 
 import { errnoCode, messageOf, SessionError, SessionErrorCode } from '@/errors';
@@ -32,7 +33,7 @@ export function stripBom(text: string): string {
 
 /** The bytes of a new document: an empty peer's value, $schema stamp included. */
 export function createEmptyDocument(): string {
-  const peer = createAgentPeer({ nickname: '', presence: false });
+  const peer = createPeerStore({ nickname: '', presence: false });
   try {
     return peer.value;
   } finally {
@@ -106,10 +107,10 @@ export async function readFromDisk(
   vendor?: string
 ): Promise<string> {
   const text = await readDocumentFile(io, path);
-  const peer = createAgentPeer({ nickname: '', presence: false });
+  const peer = createPeerStore({ nickname: '', presence: false });
   try {
     peer.setInitialValue(text);
-    return peer.read(format, vendor);
+    return readDocument(peer.state, format, vendor);
   } finally {
     peer.destroy();
   }

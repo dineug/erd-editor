@@ -1,8 +1,7 @@
-import type {
-  ReadFormat,
-  ToolRun,
-  UndoResult,
-} from '@dineug/erd-editor/agent.js';
+import type { ReadFormat } from '@dineug/erd-editor/agent.js';
+import type { RevertResult } from '@dineug/erd-editor/peer.js';
+
+import type { ToolRun } from '@/tools/run';
 
 /** Live joins a VS Code window's editing stream; headless edits the file itself. */
 export type SessionMode = 'live' | 'headless';
@@ -18,7 +17,7 @@ export type Notes = string[];
 
 export type ToolOutcome = { run: ToolRun; notes: Notes };
 
-export type UndoOutcome = { result: UndoResult; notes: Notes };
+export type UndoOutcome = { result: RevertResult; notes: Notes };
 
 export type ReadOutcome = { text: string; notes: Notes };
 

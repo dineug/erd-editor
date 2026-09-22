@@ -417,6 +417,12 @@ importers:
       '@dineug/erd-editor-agent-hub':
         specifier: workspace:*
         version: link:../agent-hub
+      '@dineug/erd-editor-schema':
+        specifier: workspace:*
+        version: link:../erd-editor-schema
+      '@dineug/r-html':
+        specifier: workspace:*
+        version: link:../r-html
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-rc.117(effect@4.0.0-rc.117)
@@ -432,6 +438,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0-rc.117
+      es-toolkit:
+        specifier: ^1.50.0
+        version: 1.50.0
       typescript:
         specifier: 7.0.2
         version: 7.0.2

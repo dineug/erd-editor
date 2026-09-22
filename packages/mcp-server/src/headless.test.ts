@@ -10,7 +10,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createAgentPeer } from '@dineug/erd-editor/agent.js';
+import { readDocument } from '@dineug/erd-editor/agent.js';
+import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
   beforeEach,
@@ -37,6 +38,7 @@ import {
   openHeadlessSession,
   RELOADED_NOTE,
 } from '@/session/headless';
+import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/solo.erd.json';
 
@@ -56,10 +58,10 @@ afterEach(async () => {
 });
 
 /** A document another program wrote: one memo, ids of its own. */
-async function withMemo(): Promise<string> {
-  const peer = createAgentPeer({ nickname: 'other', presence: false });
+function withMemo(): string {
+  const peer = createPeerStore({ nickname: 'other', presence: false });
   try {
-    await peer.runTool('erd_add_memo', {});
+    runTool(peer, 'erd_add_memo', {});
     return peer.value;
   } finally {
     peer.destroy();
@@ -68,9 +70,9 @@ async function withMemo(): Promise<string> {
 
 /** What the file on disk reads as, through a fresh engine. */
 function reload(text: string) {
-  const peer = createAgentPeer({ nickname: 'check', presence: false });
+  const peer = createPeerStore({ nickname: 'check', presence: false });
   peer.setInitialValue(text);
-  const snapshot = peer.read('snapshot');
+  const snapshot = readDocument(peer.state, 'snapshot');
   peer.destroy();
   return snapshot;
 }
@@ -144,6 +146,34 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
     });
   });
 
+  it('refuses a vendor on a format that is not sql, with the code the caller acts on', async () => {
+    const refused = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'json',
+      vendor: 'PostgreSQL',
+    });
+
+    expect(refused.isError).toBe(true);
+    expect(refused.json.error).toEqual({
+      code: 'invalidArgs',
+      message: 'vendor applies to the sql format only, not json',
+    });
+  });
+
+  it('refuses a read on a session that was closed', async () => {
+    const session = await openHeadlessSession({
+      io,
+      path: DOCUMENT,
+      nickname: 'agent',
+    });
+    await session.close();
+
+    await expect(session.read('snapshot')).rejects.toMatchObject({
+      name: 'PeerStoreError',
+      code: 'destroyed',
+    });
+  });
+
   it('refuses a document that does not exist', async () => {
     const missing = await mcp.call('erd_add_table', {
       path: '/work/none.erd.json',
@@ -171,7 +201,7 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
   });
 
   it('refuses a document with merge conflict markers, and never writes it', async () => {
-    const ours = await documentFromSql(SHOP_SQL);
+    const ours = documentFromSql(SHOP_SQL);
     const conflicted = `<<<<<<< HEAD\n${ours}\n=======\n${emptyDocument()}\n>>>>>>> theirs\n`;
     io.put(DOCUMENT, conflicted);
 
@@ -252,7 +282,7 @@ describe('headless compare-and-swap (AC-P14)', () => {
   });
 
   it('takes the baseline before reading, so a write landing in between is kept', async () => {
-    const theirs = await withMemo();
+    const theirs = withMemo();
     const readFile = io.readFile;
     io.readFile = async path => {
       const text = await readFile(path);
@@ -274,7 +304,7 @@ describe('headless compare-and-swap (AC-P14)', () => {
   });
 
   it('keeps the stat of the file it wrote, so a write landing after the rename is loaded', async () => {
-    const theirs = await withMemo();
+    const theirs = withMemo();
     await mcp.ok('erd_add_table', { path: DOCUMENT });
     const rename = io.rename;
     io.rename = async (from, to) => {
@@ -375,8 +405,8 @@ describe('headless compare-and-swap (AC-P14)', () => {
       nickname: 'agent',
     });
 
-    expect((await session.undo()).result.toolName).toBeNull();
-    expect((await session.redo()).result.toolName).toBeNull();
+    expect((await session.undo()).result.label).toBeNull();
+    expect((await session.redo()).result.label).toBeNull();
     expect(io.writes).toEqual([]);
     await session.close();
   });
@@ -461,7 +491,7 @@ describe('headless on a real file system', () => {
     // The baseline is the temp file's stat, so this holds only if the rename kept it.
     const undone = await session.undo();
     expect(undone).toMatchObject({
-      result: { toolName: 'erd_add_table' },
+      result: { label: 'erd_add_table' },
       notes: [],
     });
     expect(JSON.parse(await readFile(path, 'utf8')).doc.tableIds).toEqual([]);

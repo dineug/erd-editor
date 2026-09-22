@@ -22,7 +22,7 @@ let original: string;
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
   io = createMemoryIo();
-  original = await documentFromSql(SHOP_SQL);
+  original = documentFromSql(SHOP_SQL);
   io.put(DOCUMENT, original);
   createFakeHub(io, { pid: 7171, workspaceFolders: ['/work'], hub: false });
   mcp = await connectMcp({ io });

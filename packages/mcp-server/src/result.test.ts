@@ -3,6 +3,7 @@ import {
   AgentToolError,
   toolByName,
 } from '@dineug/erd-editor/agent.js';
+import { PeerStoreError } from '@dineug/erd-editor/peer.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
   afterEach,
@@ -15,6 +16,7 @@ import {
 
 import { SessionError } from '@/errors';
 import { type SessionManager } from '@/session/manager';
+import { ToolError } from '@/tools/errors';
 import { registerEditTool } from '@/tools/register';
 import {
   errorResult,
@@ -98,11 +100,11 @@ describe('tool results', () => {
   });
 
   it('names what an undo or redo passed over, or that nothing was left', () => {
-    const outcome = (toolName: string | null, skipped: string[]) => ({
+    const outcome = (label: string | null, skipped: string[]) => ({
       mode: 'headless' as const,
       path: '/work/a.erd.json',
       notes: [],
-      result: { toolName, entries: toolName ? 1 : 0, skipped },
+      result: { label, entries: label ? 1 : 0, skipped },
     });
 
     expect(
@@ -123,11 +125,20 @@ describe('tool results', () => {
 
   it('turns refusals into coded errors, and anything else into a logged internal one', () => {
     const coded = [
-      new AgentToolError('notFound', 'erd_add_column', 'no table'),
+      new ToolError('notFound', 'erd_add_column', 'no table'),
+      new PeerStoreError('readonly', 'erd_add_table'),
+      new AgentToolError('invalidArgs', 'erd_read', 'vendor applies to sql'),
       new SessionError('blocked', 'hub off'),
     ].map(error => body(errorResult(error)));
     expect(coded).toEqual([
       { error: { code: 'notFound', message: 'no table' } },
+      {
+        error: {
+          code: 'readonly',
+          message: 'the document is readonly, so no edit was made',
+        },
+      },
+      { error: { code: 'invalidArgs', message: 'vendor applies to sql' } },
       { error: { code: 'blocked', message: 'hub off' } },
     ]);
 

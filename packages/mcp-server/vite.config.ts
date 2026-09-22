@@ -25,6 +25,8 @@ const sharedInput: Array<
   { pattern: 'tsconfig.app.json', base: 'workspace' },
   { pattern: 'packages/agent-hub/dist/**/*.d.ts', base: 'workspace' },
   { pattern: 'packages/erd-editor/dist/**/*.d.ts', base: 'workspace' },
+  { pattern: 'packages/erd-editor-schema/dist/**/*.d.ts', base: 'workspace' },
+  { pattern: 'packages/r-html/dist/**/*.d.ts', base: 'workspace' },
   '!**/*.tsbuildinfo',
 ];
 

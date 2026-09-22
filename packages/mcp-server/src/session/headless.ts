@@ -1,8 +1,10 @@
+import { readDocument, type ReadFormat } from '@dineug/erd-editor/agent.js';
 import {
-  type AgentPeer,
-  createAgentPeer,
-  type ReadFormat,
-} from '@dineug/erd-editor/agent.js';
+  createPeerStore,
+  type PeerStore,
+  PeerStoreError,
+  PeerStoreErrorCode,
+} from '@dineug/erd-editor/peer.js';
 
 import { errnoCode, SessionError, SessionErrorCode } from '@/errors';
 import { type FileStat, type McpIo } from '@/io';
@@ -20,6 +22,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import { runTool } from '@/tools/run';
 
 export const HEADLESS_SAVE_NOTE =
   'No editor holds this document, so every edit was already written to the file; there is nothing to save.';
@@ -71,7 +74,7 @@ export async function openHeadlessSession({
   if (create) await createIfMissing(io, path);
 
   const paths = pathsOf(io.platform());
-  const peer: AgentPeer = createAgentPeer({ nickname, presence: false });
+  const peer: PeerStore = createPeerStore({ nickname, presence: false });
   let loaded: FileStat;
   let edits = 0;
 
@@ -143,7 +146,7 @@ export async function openHeadlessSession({
 
     runTool: async (name, args): Promise<ToolOutcome> => {
       const notes = await refresh();
-      const run = await peer.runTool(name, args);
+      const run = runTool(peer, name, args);
       if (run.actions.length) {
         await persist();
         if (run.historyEntries) edits++;
@@ -151,9 +154,14 @@ export async function openHeadlessSession({
       return { run, notes };
     },
 
+    // readDocument takes the state straight, so the refusal the peer facade
+    // used to raise on a closed store is kept here.
     read: async (format: ReadFormat, vendor?: string): Promise<ReadOutcome> => {
       const notes = await refresh();
-      return { text: peer.read(format, vendor), notes };
+      if (peer.isDestroyed) {
+        throw new PeerStoreError(PeerStoreErrorCode.destroyed, 'erd_read');
+      }
+      return { text: readDocument(peer.state, format, vendor), notes };
     },
 
     save: async (): Promise<SaveOutcome> => ({
@@ -163,14 +171,14 @@ export async function openHeadlessSession({
 
     undo: async (): Promise<UndoOutcome> => {
       const notes = await refresh();
-      const result = await peer.undo();
+      const result = peer.undo();
       if (result.entries) await persist();
       return { result, notes };
     },
 
     redo: async (): Promise<UndoOutcome> => {
       const notes = await refresh();
-      const result = await peer.redo();
+      const result = peer.redo();
       if (result.entries) await persist();
       return { result, notes };
     },

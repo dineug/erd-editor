@@ -1,4 +1,6 @@
-import { createAgentPeer } from '@dineug/erd-editor/agent.js';
+import { createPeerStore } from '@dineug/erd-editor/peer.js';
+
+import { runTool } from '@/tools/run';
 
 export const SHOP_SQL = `
 CREATE TABLE users (
@@ -16,10 +18,10 @@ CREATE TABLE orders (
 `;
 
 /** A document built the way an import builds it, ids drawn fresh each time. */
-export async function documentFromSql(sql: string): Promise<string> {
-  const peer = createAgentPeer({ nickname: 'seed', presence: false });
+export function documentFromSql(sql: string): string {
+  const peer = createPeerStore({ nickname: 'seed', presence: false });
   try {
-    await peer.runTool('erd_import_sql', { value: sql });
+    runTool(peer, 'erd_import_sql', { value: sql });
     return peer.value;
   } finally {
     peer.destroy();
@@ -27,7 +29,7 @@ export async function documentFromSql(sql: string): Promise<string> {
 }
 
 export function emptyDocument(): string {
-  const peer = createAgentPeer({ nickname: 'seed', presence: false });
+  const peer = createPeerStore({ nickname: 'seed', presence: false });
   try {
     return peer.value;
   } finally {

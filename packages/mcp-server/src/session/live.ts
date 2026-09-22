@@ -1,10 +1,9 @@
+import { readDocument, type ReadFormat } from '@dineug/erd-editor/agent.js';
 import {
-  type AgentPeer,
-  createAgentPeer,
-  type ReadFormat,
-  type ToolRun,
-  type UndoResult,
-} from '@dineug/erd-editor/agent.js';
+  createPeerStore,
+  type PeerStore,
+  type RevertResult,
+} from '@dineug/erd-editor/peer.js';
 import {
   HubErrorCode,
   type HubNotification,
@@ -26,6 +25,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import { runTool as runPeerTool, type ToolRun } from '@/tools/run';
 
 export const RESEED_NOTE =
   'The document was joined again from the editor, so edits made before this call can no longer be undone with erd_undo.';
@@ -70,7 +70,7 @@ type Joined = 'none' | 'seeded' | 'registered';
 export function createLiveSession(options: LiveSessionOptions): LiveSession {
   const { io, path, nickname } = options;
   const platform = io.platform();
-  const peer: AgentPeer = createAgentPeer({ nickname, presence: true });
+  const peer: PeerStore = createPeerStore({ nickname, presence: true });
 
   let candidate = options.candidate;
   let connection: HubClient | null = null;
@@ -94,7 +94,7 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
     if (!isSamePath(notification.params.path, path, platform)) return;
 
     if (notification.method === 'actions') {
-      peer.dispatch(notification.params.actions as any[]);
+      peer.receive(notification.params.actions as any[]);
     } else {
       if (edits > 0) closedAfterEdits = true;
       forget('reconnecting');
@@ -223,8 +223,8 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
   };
 
   const runOnce = async (name: string, args: Record<string, unknown>) => {
-    const { value, errors } = await withOutbound(() =>
-      peer.runTool(name, args)
+    const { value, errors } = await withOutbound(async () =>
+      runPeerTool(peer, name, args)
     );
     return { run: value, error: errors[0] };
   };
@@ -252,13 +252,11 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
     return { run: run as ToolRun, notes };
   };
 
-  const replay = async (
-    step: () => Promise<UndoResult>
-  ): Promise<UndoOutcome> => {
+  const replay = async (step: () => RevertResult): Promise<UndoOutcome> => {
     const notes = begin();
     await prepareWrite(notes);
 
-    const { value, errors } = await withOutbound(step);
+    const { value, errors } = await withOutbound(async () => step());
     if (errors.length) {
       forget('reconnecting');
       throw errors[0];
@@ -294,7 +292,7 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
     read: async (format: ReadFormat, vendor?: string): Promise<ReadOutcome> => {
       const notes = begin();
       await prepareRead(notes);
-      return { text: peer.read(format, vendor), notes };
+      return { text: readDocument(peer.state, format, vendor), notes };
     },
 
     // The hub answers saved false both when it could not confirm every edit

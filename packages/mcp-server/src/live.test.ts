@@ -1,3 +1,4 @@
+import { readDocument } from '@dineug/erd-editor/agent.js';
 import {
   afterEach,
   beforeEach,
@@ -22,6 +23,7 @@ import {
   REJOIN_NOTE,
   RESEED_NOTE,
 } from '@/session/live';
+import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/live.erd.json';
 
@@ -70,11 +72,14 @@ describe('a live session beyond the transition table', () => {
   });
 
   it('takes the clock of edits the user made before it joined, so its edit to the same field wins', async () => {
-    io.put(DOCUMENT, await documentFromSql(SHOP_SQL));
+    io.put(DOCUMENT, documentFromSql(SHOP_SQL));
     const { webview } = hub.open(DOCUMENT);
-    const users = tableNamed(JSON.parse(webview.read('snapshot')), 'users');
+    const users = tableNamed(
+      JSON.parse(readDocument(webview.state, 'snapshot')),
+      'users'
+    );
     for (let i = 0; i < 30; i++) {
-      await webview.runTool('erd_change_table_name', {
+      runTool(webview, 'erd_change_table_name', {
         tableId: users.id,
         value: `user_${i}`,
       });
@@ -88,7 +93,7 @@ describe('a live session beyond the transition table', () => {
     });
     await settle();
 
-    const shown = JSON.parse(webview.read('snapshot'));
+    const shown = JSON.parse(readDocument(webview.state, 'snapshot'));
     expect(tableNamed(shown, 'members').id).toBe(users.id);
     expect(comparable((await session.read('json')).text)).toEqual(
       comparable(webview.value)
@@ -99,7 +104,7 @@ describe('a live session beyond the transition table', () => {
     hub.readonlyPaths.add(DOCUMENT);
 
     await expect(session.runTool('erd_add_table', {})).rejects.toMatchObject({
-      name: 'AgentToolError',
+      name: 'PeerStoreError',
       code: 'readonly',
     });
     expect(session.state).toBe('ready');
@@ -161,7 +166,7 @@ describe('a live session beyond the transition table', () => {
 
     expect(JSON.parse((await session.read('snapshot')).text).memos).toEqual([]);
     await expect(session.runTool('erd_add_memo', {})).rejects.toMatchObject({
-      name: 'AgentToolError',
+      name: 'PeerStoreError',
       code: 'readonly',
     });
     expect(hub.webview(DOCUMENT).state.doc.memoIds).toEqual([]);
@@ -240,7 +245,7 @@ describe('a live session beyond the transition table', () => {
     for (const peer of hub.documents.get(DOCUMENT)!.peers)
       other.peers.add(peer);
 
-    await other.webview.runTool('erd_add_memo', {});
+    runTool(other.webview, 'erd_add_memo', {});
     await settle();
 
     expect(JSON.parse((await session.read('snapshot')).text).memos).toEqual([]);

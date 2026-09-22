@@ -1,4 +1,5 @@
 import { type ActionTool, AgentToolError } from '@dineug/erd-editor/agent.js';
+import { PeerStoreError } from '@dineug/erd-editor/peer.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { messageOf, SessionError } from '@/errors';
@@ -9,6 +10,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import { ToolError } from '@/tools/errors';
 
 export const UNCHANGED_NOTE =
   'The call changed nothing, since the document already held that value, so erd_undo passes over it.';
@@ -39,7 +41,14 @@ export function textResult(text: string, notes: Notes): CallToolResult {
 /** A refusal with the code that says what kind; anything unexpected is internal and logged. */
 export function errorResult(error: unknown): CallToolResult {
   let code: string;
-  if (error instanceof AgentToolError || error instanceof SessionError) {
+  // readDocument still refuses with AgentToolError, so that arm stays until
+  // the read moves into this package.
+  if (
+    error instanceof ToolError ||
+    error instanceof PeerStoreError ||
+    error instanceof AgentToolError ||
+    error instanceof SessionError
+  ) {
     code = error.code;
   } else {
     code = 'internal';
@@ -95,10 +104,10 @@ export function undoResult(
   return jsonResult({
     tool,
     mode,
-    toolName: result.toolName,
+    toolName: result.label,
     entries: result.entries,
     ...(result.skipped.length ? { skipped: result.skipped } : {}),
-    notes: result.toolName
+    notes: result.label
       ? notes
       : [
           ...notes,

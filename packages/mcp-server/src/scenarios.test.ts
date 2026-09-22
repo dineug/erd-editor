@@ -1,4 +1,5 @@
-import { createAgentPeer } from '@dineug/erd-editor/agent.js';
+import { readDocument } from '@dineug/erd-editor/agent.js';
+import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
   beforeEach,
@@ -23,6 +24,7 @@ import {
   settle,
 } from '@/__test-utils__/mcp';
 import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/shop.erd.json';
 
@@ -185,7 +187,7 @@ describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
   });
 
   it('refactors an existing diagram by id while the user edits it too', async () => {
-    io.put(DOCUMENT, await documentFromSql(SHOP_SQL));
+    io.put(DOCUMENT, documentFromSql(SHOP_SQL));
     hub.open(DOCUMENT);
 
     const before = await snapshot();
@@ -209,7 +211,7 @@ describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
       relationshipType: 'OneOnly',
     });
 
-    await hub.webview(path).runTool('erd_change_table_name', {
+    runTool(hub.webview(path), 'erd_change_table_name', {
       tableId: users.id,
       value: 'members',
     });
@@ -238,7 +240,7 @@ describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
   });
 
   it('generates code from the diagram without opening an editor', async () => {
-    const text = await documentFromSql(SHOP_SQL);
+    const text = documentFromSql(SHOP_SQL);
     io.put(DOCUMENT, text);
 
     const sql = await mcp.text('erd_read', {
@@ -246,13 +248,13 @@ describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
       format: 'sql',
       vendor: 'PostgreSQL',
     });
-    const reference = createAgentPeer({
+    const reference = createPeerStore({
       nickname: 'reference',
       presence: false,
     });
     reference.setInitialValue(text);
 
-    expect(sql).toBe(reference.read('sql', 'PostgreSQL'));
+    expect(sql).toBe(readDocument(reference.state, 'sql', 'PostgreSQL'));
     expect(sql).toMatch(/CREATE TABLE "?users"?/);
     expect(sql).toContain('FOREIGN KEY');
 
