@@ -24,7 +24,6 @@
     "url": "https://github.com/dineug/erd-editor.git",
     "directory": "packages/mcp-server"
   },
-  "author": "SeungHwan-Lee <dineug2@gmail.com>",
   "license": "MIT",
   "keywords": [
     "erd",
