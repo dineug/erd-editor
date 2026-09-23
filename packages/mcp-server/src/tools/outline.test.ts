@@ -35,6 +35,12 @@ describe('the document list', () => {
     const list = toDocumentList(peer.state);
 
     expect(list.settings).toEqual(toAgentSnapshot(peer.state).settings);
+    expect(list.tableCount).toBe(3);
+    expect(Object.keys(list).slice(0, 3)).toEqual([
+      'settings',
+      'tableCount',
+      'tables',
+    ]);
     expect(
       list.tables.map(({ id, name, x, y, columnCount }) => ({
         id,
@@ -145,6 +151,7 @@ describe('the document list', () => {
     expect(peer.state.collections.tableEntities[SEED.empty]).toBeDefined();
     const list = toDocumentList(peer.state);
     expect(list.tables.map(({ id }) => id)).toEqual([SEED.users, SEED.orders]);
+    expect(list.tableCount).toBe(2);
     expect(list.memos).toEqual([]);
   });
 

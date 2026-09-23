@@ -60,6 +60,8 @@ export type ListedMemo = {
  */
 export type DocumentList = {
   settings: AgentSnapshotSettings;
+  /** How many tables the list holds, so no one has to count them. */
+  tableCount: number;
   tables: ListedTable[];
   relationships: ListedRelationship[];
   indexes: ListedIndex[];
@@ -98,22 +100,24 @@ export const tableSize = (table: TableEntity, state: RootState): TableSize =>
 export function toDocumentList(state: RootState): DocumentList {
   const { settings, doc, collections } = state;
   const select = query(collections);
+  const tables = select
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .map(table => ({
+      id: table.id,
+      name: table.name,
+      x: table.ui.x,
+      y: table.ui.y,
+      ...tableSize(table, state),
+      columnCount: select
+        .collection('tableColumnEntities')
+        .selectByIds(table.columnIds).length,
+    }));
 
   return {
     settings: toSnapshotSettings(settings),
-    tables: select
-      .collection('tableEntities')
-      .selectByIds(doc.tableIds)
-      .map(table => ({
-        id: table.id,
-        name: table.name,
-        x: table.ui.x,
-        y: table.ui.y,
-        ...tableSize(table, state),
-        columnCount: select
-          .collection('tableColumnEntities')
-          .selectByIds(table.columnIds).length,
-      })),
+    tableCount: tables.length,
+    tables,
     relationships: select
       .collection('relationshipEntities')
       .selectByIds(doc.relationshipIds)

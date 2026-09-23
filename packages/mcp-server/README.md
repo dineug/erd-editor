@@ -64,8 +64,8 @@ has none. Existing `.erd`, `.vuerd` and `.vuerd.json` files open too. A file tha
 document the editor can read, such as one left with merge conflict markers, is refused with
 `invalidDocument` and left as it is, never loaded as an empty diagram and written back.
 
-An agent finds ids with `erd_list`, which lists the settings and every table, relationship, index
-and memo by id, each table with its position and its size on the canvas (the width approximate, the
+An agent finds ids with `erd_list`, which lists the settings, the table count and every table,
+relationship, index and memo by id, each table with its position and its size on the canvas (the width approximate, the
 height exact), and reads columns and other details with `erd_get`, then passes those ids to the edit
 tools. Both stay small on a large schema. `erd_read` answers the whole document at once: the
 `snapshot` format lists every entity with its id, the `sql` format generates DDL for any of the

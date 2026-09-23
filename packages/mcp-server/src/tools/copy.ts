@@ -81,7 +81,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_list: {
     description:
-      'Lists a document: its settings and every table, relationship, index and memo by id. Each table has its position and its size on the ERD canvas; the width is approximate, the height exact. Columns, comments and memo text come from erd_get.',
+      'Lists a document: its settings, tableCount, and every table, relationship, index and memo by id. Each table has its position and its size on the ERD canvas; the width is approximate, the height exact. Columns, comments and memo text come from erd_get.',
   },
   erd_get: {
     description:
