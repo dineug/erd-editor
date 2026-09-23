@@ -4,23 +4,13 @@ import { compositionActionsFlat } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
-  addColumn,
-  addTable,
-  colorMemo,
-  colorTable,
-  moveTable,
   type PeerScenario,
   play,
-  renameColumn,
   renameTable,
   resizeMemo,
-  setColumnNotNull,
-  setColumnPrimaryKey,
-  setDatabase,
-  sortTables,
+  SEED_SCENARIOS,
 } from '@/__test-utils__/peerScenarios';
 import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
-import { Database } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
 import { pushUndoHistoryMap } from '@/engine/history.actions';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
@@ -35,27 +25,7 @@ afterEach(() => {
   cleanups.splice(0).forEach(cleanup => cleanup());
 });
 
-/**
- * One edit per shape a dispatch takes on the seed, each built again for every
- * measurement, since a scenario carries the generators it dispatches.
- */
-const SCENARIOS: Record<string, () => PeerScenario> = {
-  addTable: () => addTable(),
-  renameTable: () => renameTable(SEED.users, 'members'),
-  colorTable: () => colorTable(SEED.users, '#ff8800'),
-  moveTable: () => moveTable(SEED.users, 40, 60),
-  sortTables: () => sortTables(),
-  addColumn: () => addColumn(SEED.empty),
-  renameColumn: () => renameColumn(SEED.users, SEED.userName, 'full_name'),
-  setColumnNotNull: () => setColumnNotNull(SEED.users, SEED.userName, true),
-  setColumnPrimaryKey: () =>
-    setColumnPrimaryKey(SEED.users, SEED.userName, true),
-  colorMemo: () => colorMemo(SEED.memo, '#336699'),
-  resizeMemo: () => resizeMemo(SEED.memo, 320, 240),
-  setDatabase: () => setDatabase(Database.PostgreSQL),
-};
-
-const names = Object.keys(SCENARIOS);
+const names = Object.keys(SEED_SCENARIOS);
 
 /**
  * The history cursor's move when a scenario's actions go through a bare store
@@ -94,25 +64,38 @@ describe('a dispatch reports the undo entries the engine makes (AC-P2)', () => {
   it.each(names)(
     '%s moves a bare store’s history cursor as far as the peer reports',
     name => {
-      const delta = cursorDelta(SCENARIOS[name]());
+      const delta = cursorDelta(SEED_SCENARIOS[name]());
 
-      const report = play(seededPeer(), SCENARIOS[name]());
+      const report = play(seededPeer(), SEED_SCENARIOS[name]());
 
       expect(report.historyEntries).toBe(delta);
     }
   );
 
-  it('records an entry for every scenario but the two the engine cannot undo', () => {
+  it('records an entry for every scenario but a memo resize and the settings the engine cannot undo', () => {
     const withoutEntry = names.filter(
-      name => play(seededPeer(), SCENARIOS[name]()).historyEntries === 0
+      name => play(seededPeer(), SEED_SCENARIOS[name]()).historyEntries === 0
     );
 
-    expect(withoutEntry).toEqual(['resizeMemo', 'setDatabase']);
+    expect(withoutEntry).toEqual([
+      'resizeMemo',
+      'setDatabaseName',
+      'setDatabase',
+      'setLanguage',
+      'setTableNameCase',
+      'setColumnNameCase',
+      'setBracketType',
+      'setRelationshipDataTypeSync',
+      'setRelationshipOptimization',
+      'setColumnOrder',
+      'setMaxWidthComment',
+      'setIgnoreSaveSettings',
+    ]);
   });
 
   it('leaves no entry only where the undo map holds none of the types sent', () => {
     for (const name of names) {
-      const report = play(seededPeer(), SCENARIOS[name]());
+      const report = play(seededPeer(), SEED_SCENARIOS[name]());
       if (report.historyEntries) continue;
 
       expect(

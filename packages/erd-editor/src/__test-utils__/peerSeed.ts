@@ -132,6 +132,17 @@ export function createSeedValue(): string {
   );
 }
 
+/** A document of its own for an import to replace the seed with. */
+export function createImportValue(): string {
+  return buildValue(
+    [
+      addTableAction({ id: 'accounts', ui: { x: 50, y: 50, zIndex: 2 } }),
+      changeTableNameAction({ id: 'accounts', value: 'accounts' }),
+    ],
+    column('accounts', 'accounts_id', 'id', 'BIGINT')
+  );
+}
+
 export type SeededStore = {
   rxStore: RxStore;
   sharedStore: SharedStore;

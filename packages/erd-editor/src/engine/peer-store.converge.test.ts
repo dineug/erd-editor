@@ -6,17 +6,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import {
   addColumn,
   addTable,
-  colorMemo,
   colorTable,
-  moveTable,
-  type PeerScenario,
   play,
   renameColumn,
   renameTable,
-  resizeMemo,
-  setColumnNotNull,
+  SEED_SCENARIOS,
   setColumnPrimaryKey,
-  setDatabase,
   sortTables,
 } from '@/__test-utils__/peerScenarios';
 import {
@@ -26,7 +21,6 @@ import {
   type Session,
   settle,
 } from '@/__test-utils__/peerSeed';
-import { Database } from '@/constants/schema';
 import {
   changeTableNameAction,
   sortTableAction,
@@ -45,23 +39,6 @@ afterEach(() => {
   sessions.splice(0).forEach(session => session.destroy());
 });
 
-/** One edit per shape a dispatch takes, as the undoable spec measures them. */
-const SCENARIOS: Record<string, () => PeerScenario> = {
-  addTable: () => addTable(),
-  renameTable: () => renameTable(SEED.users, 'members'),
-  colorTable: () => colorTable(SEED.users, '#ff8800'),
-  moveTable: () => moveTable(SEED.users, 40, 60),
-  sortTables: () => sortTables(),
-  addColumn: () => addColumn(SEED.empty),
-  renameColumn: () => renameColumn(SEED.users, SEED.userName, 'full_name'),
-  setColumnNotNull: () => setColumnNotNull(SEED.users, SEED.userName, true),
-  setColumnPrimaryKey: () =>
-    setColumnPrimaryKey(SEED.users, SEED.userName, true),
-  colorMemo: () => colorMemo(SEED.memo, '#336699'),
-  resizeMemo: () => resizeMemo(SEED.memo, 320, 240),
-  setDatabase: () => setDatabase(Database.PostgreSQL),
-};
-
 /** Both sides' documents, meta aside, since each replica stamps its own. */
 const sides = ({ peer, user }: Session) => [
   comparable(peer.value),
@@ -74,13 +51,13 @@ const expectConverged = (session: Session) => {
 };
 
 describe('a peer store and an element’s store converge (AC-E5)', () => {
-  it.each(Object.keys(SCENARIOS))(
+  it.each(Object.keys(SEED_SCENARIOS))(
     'after %s both sides serialize the same document',
     async name => {
       const session = open();
       await settle();
 
-      const report = play(session.peer, SCENARIOS[name]());
+      const report = play(session.peer, SEED_SCENARIOS[name]());
       await settle();
 
       expect(report.batches).toBe(1);
