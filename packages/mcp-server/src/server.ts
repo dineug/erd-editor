@@ -50,9 +50,24 @@ export const ToolsLayer: Layer.Layer<
     // end of stdin did in 0.1.0.
     const sessions = yield* Sessions.SessionManager;
     yield* Effect.addFinalizer(() => sessions.closeAll);
-    yield* McpServer.registerToolkit(SessionToolkit);
-    yield* registerReadTool;
-    yield* McpServer.registerToolkit(EditToolkit);
+
+    // A call arrives as the server starts it, before a toolkit forks its
+    // handler off, so erd_read, which has none, cannot overtake the others.
+    const server = yield* McpServer.McpServer;
+    const inArrivalOrder = Effect.provideService(
+      McpServer.McpServer,
+      McpServer.McpServer.of({
+        ...server,
+        addTool: tool =>
+          server.addTool({
+            ...tool,
+            handle: payload => sessions.arrive(tool.handle(payload)),
+          }),
+      })
+    );
+    yield* McpServer.registerToolkit(SessionToolkit).pipe(inArrivalOrder);
+    yield* registerReadTool.pipe(inArrivalOrder);
+    yield* McpServer.registerToolkit(EditToolkit).pipe(inArrivalOrder);
   })
 ).pipe(Layer.provide(ToolHandlers));
 

@@ -10,7 +10,6 @@ import * as FileSystem from 'effect/FileSystem';
 import * as Layer from 'effect/Layer';
 import * as Path from 'effect/Path';
 import * as Schedule from 'effect/Schedule';
-import * as Semaphore from 'effect/Semaphore';
 
 import { SessionError, SessionErrorCode } from '@/errors';
 import { HubConnector } from '@/hub/client';
@@ -23,6 +22,7 @@ import {
   readFromDisk,
 } from '@/session/disk';
 import { openHeadlessSession } from '@/session/headless';
+import { type Line, makeLine } from '@/session/line';
 import { type LiveSession, makeLiveSession } from '@/session/live';
 import {
   type DocumentSession,
@@ -73,6 +73,14 @@ export type OpenOutcome = {
 };
 
 export type SessionManagerShape = {
+  /**
+   * Gives a call its place in the order calls reached the server, which its
+   * document's queue keeps; taken before anything can run in between, as the
+   * tool registration does. A call made without one takes it on its own.
+   */
+  readonly arrive: <A, E, R>(
+    call: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E, R>;
   /** Names this server's peers after the MCP client, from the first call that runs. */
   readonly rememberClient: (name: string | undefined) => Effect.Effect<void>;
   readonly listDocuments: SessionCall<ListOutcome>;
@@ -108,8 +116,11 @@ export class SessionManager extends Context.Service<
 
 type Entry = { session: DocumentSession; lastUsed: number };
 
-/** A document's queue of calls, dropped once nothing waits on it. */
-type Lock = { semaphore: Semaphore.Semaphore; users: number };
+/** A call's place among the calls the server received, once it has one. */
+const Arrival = Context.Reference<number | undefined>(
+  '@dineug/erd-editor-mcp/Arrival',
+  { defaultValue: () => undefined }
+);
 
 type Intent = 'read' | 'write';
 
@@ -167,31 +178,54 @@ const make = Effect.gen(function* () {
 
   const now = () => clock.currentTimeMillisUnsafe();
   const sessions = new Map<string, Entry>();
-  const locks = new Map<string, Lock>();
+  /** Every call in the order it arrived, until it has queued on its document. */
+  const arrivals = makeLine();
+  /** Each document's calls, dropped once none is left. */
+  const queues = new Map<string, Line>();
   /** Documents with a call running, which a sweep from another call must not close. */
   const busy = new Set<string>();
   let clientName: string | undefined;
   const nickname = () => clientName || DEFAULT_CLIENT_NAME;
 
-  /** Calls on one document run one at a time; different documents run side by side. */
+  const arrive = <A, E, R>(call: Effect.Effect<A, E, R>) =>
+    Effect.flatMap(Arrival, arrived => {
+      if (arrived !== undefined) return call;
+      const place = arrivals.take();
+      return call.pipe(
+        Effect.provideService(Arrival, place),
+        Effect.ensuring(Effect.sync(() => arrivals.settle(place)))
+      );
+    });
+
+  /** Lets the calls that arrived later queue on their documents without this one. */
+  const leaveArrivals = Effect.map(Arrival, arrived => {
+    if (arrived !== undefined) arrivals.settle(arrived);
+  });
+
+  /**
+   * Calls on one document run one at a time, in the order they arrived, and
+   * different documents side by side. Queueing here is what lets the calls
+   * that arrived after this one queue in turn.
+   */
   const serialize = <A, E>(key: string, task: Effect.Effect<A, E>) =>
     Effect.suspend(() => {
-      let lock = locks.get(key);
-      if (!lock) {
-        lock = { semaphore: Semaphore.makeUnsafe(1), users: 0 };
-        locks.set(key, lock);
+      let queue = queues.get(key);
+      if (!queue) {
+        queue = makeLine();
+        queues.set(key, queue);
       }
-      const held = lock;
-      held.users++;
-      return held.semaphore
-        .withPermits(1)(task)
-        .pipe(
-          Effect.ensuring(
-            Effect.sync(() => {
-              if (--held.users === 0) locks.delete(key);
-            })
-          )
-        );
+      const held = queue;
+      const place = held.take();
+      return leaveArrivals.pipe(
+        Effect.andThen(held.turn(place)),
+        Effect.andThen(task),
+        Effect.ensuring(
+          Effect.sync(() => {
+            held.settle(place);
+            if (held.idle()) queues.delete(key);
+          })
+        )
+      );
     });
 
   const put = <T extends DocumentSession>(key: string, session: T): T => {
@@ -291,9 +325,9 @@ const make = Effect.gen(function* () {
   });
 
   /**
-   * Resolves the path, sweeps idle sessions and runs task on the document's
-   * queue. Once it holds the document the task runs to its end, as 0.1.0's
-   * did: a cancel between an edit and its write would leave the two apart.
+   * Sweeps, resolves the path and queues on the document once every call that
+   * arrived earlier has queued on its own. Holding it, the task runs to its end
+   * as 0.1.0's did: a cancel between an edit and its write would split them.
    */
   const onDocument = <A>(
     input: string,
@@ -304,6 +338,8 @@ const make = Effect.gen(function* () {
       yield* sweep;
       const path = yield* withServices(resolveDocumentPath(input, create));
       const key = sessionKey(path, process.platform);
+      // A path that resolved sooner does not let a call overtake an earlier one.
+      yield* arrivals.turn((yield* Arrival)!);
 
       return yield* serialize(
         key,
@@ -321,7 +357,7 @@ const make = Effect.gen(function* () {
           Effect.uninterruptible
         )
       );
-    }).pipe(failOnDefect);
+    }).pipe(arrive, failOnDefect);
 
   const write = <T extends { notes: Notes }>(
     input: string,
@@ -359,12 +395,15 @@ const make = Effect.gen(function* () {
   );
 
   return SessionManager.of({
+    arrive,
+
     rememberClient: name =>
       Effect.sync(() => {
         clientName ??= name;
       }),
 
     listDocuments: Effect.gen(function* () {
+      yield* leaveArrivals;
       yield* sweep;
       const cwd = yield* withServices(realPath(process.cwd));
       const resolution = yield* discovery.discover(cwd);

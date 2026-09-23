@@ -44,6 +44,62 @@ describe('the session manager', () => {
     expect(JSON.parse(io.read(A)).doc.tableIds).toHaveLength(4);
   });
 
+  it('runs the calls on one document in the order they arrived, a read after the edits sent before it', async () => {
+    const kinds = [...'WRWWRWWRWR'];
+    const results = await Promise.all(
+      kinds.map(kind =>
+        kind === 'W'
+          ? mcp.call('erd_add_table', { path: A })
+          : mcp.call('erd_read', { path: A, format: 'json' })
+      )
+    );
+
+    const seen = results.flatMap(({ json }, index) =>
+      kinds[index] === 'R' ? [json.doc.tableIds.length] : []
+    );
+    expect(seen).toEqual([1, 3, 5, 6]);
+  });
+
+  it('queues a call behind an earlier one whose path took longer to resolve', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => (release = resolve));
+    let held!: () => void;
+    const holding = new Promise<void>(resolve => (held = resolve));
+    const realPath = io.calls.realPath;
+    io.calls.realPath = path => {
+      io.calls.realPath = realPath;
+      held();
+      return Effect.promise(() => gate).pipe(Effect.andThen(realPath(path)));
+    };
+
+    const write = mcp.call('erd_add_table', { path: A });
+    await holding;
+    const read = mcp.call('erd_read', { path: A, format: 'json' });
+    await settle(20);
+    release();
+
+    expect((await write).isError).toBe(false);
+    expect((await read).json.doc.tableIds).toHaveLength(1);
+  });
+
+  it('lets later calls through while a listing runs', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => (release = resolve));
+    const readDirectory = io.calls.readDirectory;
+    io.calls.readDirectory = path => {
+      io.calls.readDirectory = readDirectory;
+      return Effect.promise(() => gate).pipe(
+        Effect.andThen(readDirectory(path))
+      );
+    };
+
+    const listing = mcp.call('erd_list_documents', {});
+    expect((await mcp.call('erd_add_table', { path: A })).isError).toBe(false);
+    release();
+
+    expect((await listing).json.documents).toHaveLength(2);
+  });
+
   it('keeps running after a call on the same document failed', async () => {
     const [bad, good] = await Promise.all([
       mcp.call('erd_change_table_name', {

@@ -16,6 +16,7 @@ export function stubSessions(
   return Layer.succeed(
     SessionManager,
     SessionManager.of({
+      arrive: call => call,
       rememberClient: () => Effect.void,
       listDocuments: unused('listDocuments'),
       openDocument: () => unused('openDocument'),
