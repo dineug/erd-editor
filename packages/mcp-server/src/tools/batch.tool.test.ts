@@ -72,7 +72,11 @@ describe('erd_batch', () => {
       historyEntries: 5,
     });
     expect(result.createdIds).toHaveLength(2);
-    expect(result).not.toHaveProperty('undoNote');
+    // Five entries, and the result says they are one erd_undo, not five.
+    expect(result.undoNote).toBe(
+      'One erd_undo reverts this whole batch. historyEntries counts the editor history entries inside the batch, not erd_undo calls.'
+    );
+    expect(result).not.toHaveProperty('undoable');
     const onDisk = JSON.parse(io.read(DOCUMENT));
     const reviews = onDisk.collections.tableEntities[result.createdIds[0]];
     expect(reviews.name).toBe('reviews');
@@ -131,7 +135,7 @@ describe('erd_batch', () => {
     });
 
     expect(result.undoNote).toBe(
-      'One erd_undo reverts this batch, except operations[0] erd_set_database: the editor keeps no undo entry for those.'
+      'One erd_undo reverts this batch, except operations[0] erd_set_database: the editor keeps no undo entry for those. historyEntries counts the editor history entries inside the batch, not erd_undo calls.'
     );
     expect(result).not.toHaveProperty('undoable');
   });

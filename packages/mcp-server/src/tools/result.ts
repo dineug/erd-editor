@@ -106,21 +106,26 @@ export function toolRunResult(
   });
 }
 
-/** Why erd_undo will not revert the whole batch, or undefined when it will. */
-function batchUndoNote({ run }: BatchOutcome): string | undefined {
+/** A batch's count runs into the dozens, which an agent once read as that many undos. */
+const BATCH_ENTRIES_NOTE =
+  'historyEntries counts the editor history entries inside the batch, not erd_undo calls.';
+
+/** How much of the batch one erd_undo reverts, said on every batch that made an entry. */
+function batchUndoNote({ run }: BatchOutcome): string {
   if (!run.historyEntries) {
     return run.batches ? NO_ENTRY_NOTE : UNCHANGED_NOTE;
   }
-  if (!run.withoutUndo.length) return undefined;
+  if (!run.withoutUndo.length) {
+    return `One erd_undo reverts this whole batch. ${BATCH_ENTRIES_NOTE}`;
+  }
   const skipped = run.withoutUndo
     .map(at => `operations[${at}] ${run.steps[at].tool}`)
     .join(', ');
-  return `One erd_undo reverts this batch, except ${skipped}: the editor keeps no undo entry for those.`;
+  return `One erd_undo reverts this batch, except ${skipped}: the editor keeps no undo entry for those. ${BATCH_ENTRIES_NOTE}`;
 }
 
 export function batchResult(outcome: WithMode<BatchOutcome>) {
   const { run, mode, notes } = outcome;
-  const note = batchUndoNote(outcome);
 
   return jsonBody({
     tool: run.tool,
@@ -129,11 +134,8 @@ export function batchResult(outcome: WithMode<BatchOutcome>) {
     operations: run.steps,
     batches: run.batches,
     historyEntries: run.historyEntries,
-    ...(note
-      ? run.historyEntries
-        ? { undoNote: note }
-        : { undoable: false, undoNote: note }
-      : {}),
+    ...(run.historyEntries ? {} : { undoable: false }),
+    undoNote: batchUndoNote(outcome),
     notes,
   });
 }

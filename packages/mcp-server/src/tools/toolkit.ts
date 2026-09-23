@@ -111,7 +111,7 @@ export const BatchResult = Schema.Struct({
   batches: Schema.Int,
   historyEntries: Schema.Int,
   undoable: Schema.optionalKey(Schema.Boolean),
-  undoNote: Schema.optionalKey(Schema.String),
+  undoNote: Schema.String,
   notes: Notes,
 });
 
