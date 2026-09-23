@@ -1,8 +1,8 @@
-import { Layer } from 'effect';
+import { Cause, Effect, Layer } from 'effect';
 
 import {
-  type DocumentRegistry,
-  DocumentRegistryService,
+  DocumentRegistry,
+  type DocumentRegistryService,
 } from '@/hub/documentRegistry';
 import * as HubHandlers from '@/hub/handlers';
 import * as LockFile from '@/hub/lockFile';
@@ -36,18 +36,41 @@ export const nodeHubServices = (
     )
   );
 
-/**
- * The hub under one runtime: activate builds it, deactivate disposes it, and
- * the finalizers delete the lock before they close the pipe.
- */
-export const documentHubLive = (
-  version: string,
+/** The registry over the native realpath, so its keys are spelled as on disk. */
+export const registryLive = (
   registry: DocumentRegistry
-): Layer.Layer<DocumentHub> =>
+): Layer.Layer<DocumentRegistryService> =>
+  DocumentRegistry.layer(registry).pipe(Layer.provide(NativeFileSystem.layer));
+
+/** The hub over this machine, serving the registry the runtime already holds. */
+export const documentHubLive = (
+  version: string
+): Layer.Layer<DocumentHub, never, DocumentRegistryService> =>
   DocumentHubService.layer.pipe(
     Layer.provide(HubHandlers.layer),
-    Layer.provide(Layer.succeed(DocumentRegistryService, registry)),
     Layer.provide(nodeHubServices(version)),
-    Layer.provide(NativeFileSystem.layer),
+    Layer.provide(NativeFileSystem.layer)
+  );
+
+/**
+ * The one runtime activate builds and deactivate disposes. The registry comes
+ * first and cannot fail; the hub builds on it, and a hub that fails is logged
+ * and leaves the registry serving every editor. Finalizers run hub first.
+ */
+export const extensionLive = <E>(
+  registry: Layer.Layer<DocumentRegistryService>,
+  hub: Layer.Layer<DocumentHub, E, DocumentRegistryService>
+): Layer.Layer<DocumentRegistryService> =>
+  hub.pipe(
+    // Never called for an interrupted build, so a dispose mid-build logs nothing.
+    Layer.catchCause(cause =>
+      Layer.effectDiscard(
+        Effect.logWarning(
+          'could not start the document hub',
+          Cause.squash(cause)
+        )
+      )
+    ),
+    Layer.provideMerge(registry),
     Layer.provideMerge(HubLogger.layer)
   );

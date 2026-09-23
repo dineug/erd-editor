@@ -11,10 +11,11 @@ import {
   Bridge,
   webviewReplicationCommand,
 } from '@dineug/erd-editor-webview-bridge';
-import { Context, Effect } from 'effect';
+import { Context, Effect, FiberSet, FileSystem, Layer } from 'effect';
 import type * as vscode from 'vscode';
 
 import { type ErdDocument } from '@/erd-document';
+import { realpathOrSelf } from '@/hub/authz';
 import {
   type ActionSource,
   createQuietState,
@@ -31,7 +32,6 @@ import {
 import { isReadonlyUri } from '@/hub/readonlyUri';
 import { type HubConnection } from '@/hub/server';
 import { warnUnsafe } from '@/hub/services/HubLogger';
-import { nodeRegistryIo, type RegistryIo } from '@/hub/services/registryIo';
 import { textDecoder } from '@/utils';
 
 /** The three calls ErdEditor makes from its bridge handlers. */
@@ -43,6 +43,11 @@ export type WebviewRelay = Pick<
 /** Receives the real paths of the open file documents, which the lock lists. */
 export type DocumentPublisher = (documents: string[]) => Promise<void>;
 
+/** Runs the IO half of a register under the runtime that built the registry's layer. */
+type IoRunner = (
+  io: Effect.Effect<void, never, FileSystem.FileSystem>
+) => Promise<void>;
+
 type Peer = {
   connection: HubConnection;
   /** Deliveries wait here while the peer is inside its join window; null after it. */
@@ -53,6 +58,8 @@ type Entry = {
   document: ErdDocument;
   /** The real path, which the hub hands handlers and peers address the document by. */
   path: string;
+  /** Set once its IO step resolved path; only then does the lock list it. */
+  resolved: boolean;
   webviews: Set<vscode.Webview>;
   panels: Map<vscode.Webview, vscode.WebviewPanel>;
   ready: Set<vscode.Webview>;
@@ -74,24 +81,63 @@ type ReadyWaiter = {
 export class DocumentRegistry {
   /** The webviews of each document, the sets ErdEditor broadcasts over. */
   readonly docToWebviewMap = new Map<ErdDocument, Set<vscode.Webview>>();
-  readonly platform: Platform;
 
   private readonly entries = new Map<ErdDocument, Entry>();
   private readonly readyWaiters = new Set<ReadyWaiter>();
   private publisher: DocumentPublisher | null = null;
   private activeDocument: ErdDocument | null = null;
+  /** Null until the registry's layer attaches it, and again once closed. */
+  private runIo: IoRunner | null = null;
+  private closed = false;
+  private readonly opened: Promise<void>;
+  private open!: () => void;
+  /** The last IO step queued before the layer attached; the next such one runs after it. */
+  private backlog: Promise<void> = Promise.resolve();
 
-  private constructor(private readonly io: RegistryIo) {
-    this.platform = io.platform;
+  private constructor(readonly platform: Platform) {
+    this.opened = new Promise(resolve => (this.open = resolve));
   }
 
   /**
    * Built before the provider is registered, so the Disposable it returns is
-   * still handed to context.subscriptions inside activate; the hub layer takes
-   * this very instance through Layer.succeed once its own build finishes.
+   * still handed to context.subscriptions inside activate. Its IO comes later,
+   * from the runtime that builds its layer; until then its IO steps queue.
    */
-  static makeUnsafe(io: RegistryIo = nodeRegistryIo): DocumentRegistry {
-    return new DocumentRegistry(io);
+  static makeUnsafe(platform: Platform): DocumentRegistry {
+    return new DocumentRegistry(platform);
+  }
+
+  /**
+   * Serves registry and runs its IO on the file system it is given, the steps
+   * queued before it built one at a time in arrival order. It builds without IO
+   * and never fails; closing it interrupts what is in flight and settles the rest.
+   */
+  static layer(
+    registry: DocumentRegistry
+  ): Layer.Layer<DocumentRegistryService, never, FileSystem.FileSystem> {
+    return Layer.effect(
+      DocumentRegistryService,
+      Effect.gen(function* () {
+        const run = yield* FiberSet.makeRuntimePromise<FileSystem.FileSystem>();
+        yield* Effect.acquireRelease(
+          Effect.sync(() => registry.attach(run)),
+          () => Effect.sync(() => registry.close())
+        );
+        return registry;
+      })
+    );
+  }
+
+  /**
+   * Stops the IO and the publishing for good: what is still queued settles
+   * without IO, and a later register keys its document by the path given.
+   * Idempotent, since deactivate calls it after the layer's own release.
+   */
+  close(): void {
+    this.closed = true;
+    this.runIo = null;
+    this.publisher = null;
+    this.open();
   }
 
   /** Publishes the documents already open, then every change to them. */
@@ -101,17 +147,18 @@ export class DocumentRegistry {
   }
 
   /**
-   * Tracks a document opened in an ERD editor. Resolves once the lock lists
-   * it and never rejects, so openCustomDocument can await it; the same
-   * instance opened again keeps its webviews.
+   * Tracks a document at once, or keeps one already tracked, so its webviews
+   * work before the hub does. Never rejects: it resolves after the realpath and
+   * a publish, which the hub holds for the lock only with no listen ahead of it.
    */
-  async register(document: ErdDocument): Promise<void> {
-    if (this.entries.has(document)) return;
+  register(document: ErdDocument): Promise<void> {
+    if (this.entries.has(document)) return Promise.resolve();
 
     const webviews = new Set<vscode.Webview>();
     const entry: Entry = {
       document,
       path: document.uri.fsPath,
+      resolved: false,
       webviews,
       panels: new Map(),
       ready: new Set(),
@@ -122,8 +169,7 @@ export class DocumentRegistry {
     this.entries.set(document, entry);
     this.docToWebviewMap.set(document, webviews);
 
-    entry.path = await this.realPathOf(document.uri.fsPath);
-    await this.publish();
+    return this.enqueue(this.resolvePath(entry));
   }
 
   /** Tells the joined peers the editor went away, then forgets the document. */
@@ -141,7 +187,7 @@ export class DocumentRegistry {
       });
     }
     entry.peers.clear();
-    return this.publish();
+    return this.enqueue(null);
   }
 
   addWebview(document: ErdDocument, panel: vscode.WebviewPanel): void {
@@ -486,21 +532,76 @@ export class DocumentRegistry {
     });
   }
 
-  /** Falls back to the path it was given, which is what keeps register from rejecting. */
-  private realPathOf(fsPath: string): Promise<string> {
-    const paths = this.platform === 'win32' ? win32 : posix;
-    return paths.isAbsolute(fsPath)
-      ? this.io.realPath(fsPath).catch(() => fsPath)
-      : Promise.resolve(fsPath);
+  private attach(run: IoRunner): void {
+    if (this.closed) return;
+    this.runIo = run;
+    this.open();
   }
 
-  /** Lists file documents only: a git or merge view guards no path on disk. */
+  /**
+   * Runs io, then publishes. A step queued before the layer attached runs after
+   * the IO of each earlier one, not its publish, so the lock takes the backlog
+   * in arrival order; a step after that runs at once, holding up no other path.
+   */
+  private enqueue(
+    io: Effect.Effect<void, never, FileSystem.FileSystem> | null
+  ): Promise<void> {
+    const applied =
+      this.runIo || this.closed
+        ? this.apply(io)
+        : (this.backlog = this.backlog.then(() => this.apply(io)));
+    return applied.then(() => this.publish());
+  }
+
+  /** Waits for the layer, or for close, which skips the IO. Never rejects. */
+  private async apply(
+    io: Effect.Effect<void, never, FileSystem.FileSystem> | null
+  ): Promise<void> {
+    await this.opened;
+    const run = this.runIo;
+    // Closing interrupts the steps in flight, the one way run can reject.
+    if (io && run) await run(io).catch(() => undefined);
+  }
+
+  /**
+   * Keys the entry by its path on disk, or by the path given where that cannot
+   * be resolved, as an untitled document's cannot. An entry already
+   * unregistered by the time its step runs is left alone.
+   */
+  private resolvePath(
+    entry: Entry
+  ): Effect.Effect<void, never, FileSystem.FileSystem> {
+    const paths = this.platform === 'win32' ? win32 : posix;
+
+    return Effect.suspend(() => {
+      if (this.entries.get(entry.document) !== entry) return Effect.void;
+      const given = entry.path;
+      const resolve = paths.isAbsolute(given)
+        ? realpathOrSelf(given).pipe(
+            Effect.catchDefect(() => Effect.succeed(given))
+          )
+        : Effect.succeed(given);
+
+      return resolve.pipe(
+        Effect.map(path => {
+          entry.path = path;
+          entry.resolved = true;
+        })
+      );
+    });
+  }
+
+  /** Lists resolved file documents only: a git or merge view guards no path on disk. */
   private async publish(): Promise<void> {
     if (!this.publisher) return;
 
     const documents: string[] = [];
-    for (const { document, path } of this.entries.values()) {
-      if (document.uri.scheme === 'file' && !documents.includes(path)) {
+    for (const { document, path, resolved } of this.entries.values()) {
+      if (
+        resolved &&
+        document.uri.scheme === 'file' &&
+        !documents.includes(path)
+      ) {
         documents.push(path);
       }
     }
@@ -512,7 +613,7 @@ export class DocumentRegistry {
   }
 }
 
-/** The instance activate builds before the provider is registered. */
+/** The instance activate builds before the provider is registered, once its layer serves it. */
 export class DocumentRegistryService extends Context.Service<
   DocumentRegistryService,
   DocumentRegistry

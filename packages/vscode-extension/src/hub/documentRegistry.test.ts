@@ -11,7 +11,6 @@ import {
 import type { Uri as VscodeUri, WebviewPanel } from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
-import { DocumentRegistry } from '@/hub/documentRegistry';
 import { REPLICA_DEBOUNCE_MS } from '@/hub/joinWindow';
 import { textDecoder } from '@/utils';
 
@@ -21,7 +20,13 @@ import {
   createDocumentHarness,
   type OpenedEditor,
 } from '../../test/mocks/documentHarness';
-import { createMemoryHub, runHub } from '../../test/mocks/hubLayers';
+import {
+  createMemoryHub,
+  createMemoryRegistry,
+  createPendingRegistry,
+  flush,
+  runHub,
+} from '../../test/mocks/hubLayers';
 import {
   createWebviewPanel,
   resetVscodeMock,
@@ -430,7 +435,7 @@ describe('registration and the lock', () => {
     const io = createMemoryHub();
     io.addFile('/real/a.erd.json');
     io.links.set('/link', '/real');
-    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
+    const registry = createMemoryRegistry(io);
     const published: string[][] = [];
     let release!: () => void;
     await registry.setPublisher(async documents => {
@@ -458,7 +463,7 @@ describe('registration and the lock', () => {
   });
 
   it('never rejects when the publisher fails, and logs it', async () => {
-    const registry = DocumentRegistry.makeUnsafe(createMemoryHub().registryIo);
+    const registry = createMemoryRegistry(createMemoryHub());
     await registry.setPublisher(async () => {
       throw new Error('disk full');
     });
@@ -477,7 +482,7 @@ describe('registration and the lock', () => {
 
   it('keeps an untitled document out of the file system and out of the lock', async () => {
     const io = createMemoryHub();
-    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
+    const registry = createMemoryRegistry(io);
     const publisher = vi.fn(async () => undefined);
     await registry.setPublisher(publisher);
     const document = ErdDocument.create(
@@ -497,7 +502,7 @@ describe('registration and the lock', () => {
     io.fs.realPath.mockImplementation(() =>
       Effect.succeed('d:\\real\\a.erd.json')
     );
-    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
+    const registry = createMemoryRegistry(io);
     const document = ErdDocument.create(
       { scheme: 'file', fsPath: 'c:\\ws\\a.erd.json' } as unknown as VscodeUri,
       new Uint8Array()
@@ -516,7 +521,7 @@ describe('registration and the lock', () => {
     const io = createMemoryHub();
     io.addFile('/real/a.erd.json');
     io.links.set('/link', '/real');
-    const registry = DocumentRegistry.makeUnsafe(io.registryIo);
+    const registry = createMemoryRegistry(io);
     const publisher = vi.fn(async () => undefined);
     await registry.setPublisher(publisher);
 
@@ -531,6 +536,207 @@ describe('registration and the lock', () => {
 
     expect(registry.documents()).toHaveLength(2);
     expect(publisher).toHaveBeenLastCalledWith(['/real/a.erd.json']);
+  });
+
+  it('queues what arrives before its layer builds, and applies it in arrival order once it has', async () => {
+    const io = createMemoryHub();
+    for (const name of ['a', 'b', 'c', 'd'])
+      io.addFile(`/real/${name}.erd.json`);
+    io.links.set('/link', '/real');
+    const { registry, attach } = createPendingRegistry(io);
+    const publisher = vi.fn(async (_documents: string[]) => undefined);
+    await registry.setPublisher(publisher);
+    const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(name =>
+      ErdDocument.create(
+        Uri.file(`/link/${name}.erd.json`) as unknown as VscodeUri,
+        new Uint8Array()
+      )
+    );
+    const settled: string[] = [];
+    const track = (label: string, pending: Promise<void>) =>
+      pending.then(() => void settled.push(label));
+
+    const queued = [
+      track('register a', registry.register(a)),
+      track('register b', registry.register(b)),
+      track('unregister b', registry.unregister(b)),
+      track('register c', registry.register(c)),
+    ];
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(settled).toEqual([]);
+    expect(io.fs.realPath).not.toHaveBeenCalled();
+    expect(registry.docToWebviewMap.has(a)).toBe(true);
+    expect(registry.docToWebviewMap.has(b)).toBe(false);
+
+    attach();
+    await Promise.all(queued);
+    await registry.register(d);
+
+    expect(settled).toEqual([
+      'register a',
+      'register b',
+      'unregister b',
+      'register c',
+    ]);
+    expect(io.fs.realPath.mock.calls.map(([path]) => path)).toEqual([
+      '/link/a.erd.json',
+      '/link/c.erd.json',
+      '/link/d.erd.json',
+    ]);
+    expect(publisher.mock.calls.map(([documents]) => documents)).toEqual([
+      [],
+      ['/real/a.erd.json'],
+      ['/real/a.erd.json'],
+      ['/real/a.erd.json'],
+      ['/real/a.erd.json', '/real/c.erd.json'],
+      ['/real/a.erd.json', '/real/c.erd.json', '/real/d.erd.json'],
+    ]);
+  });
+
+  it('settles what it still queues without IO when closed before its layer builds, and publishes no more', async () => {
+    const io = createMemoryHub();
+    const { registry, attach } = createPendingRegistry(io);
+    const publisher = vi.fn(async (_documents: string[]) => undefined);
+    await registry.setPublisher(publisher);
+    const open = (path: string) =>
+      ErdDocument.create(
+        Uri.file(path) as unknown as VscodeUri,
+        new Uint8Array()
+      );
+    const pending = registry.register(open('/ws/a.erd.json'));
+
+    registry.close();
+    await pending;
+    await registry.register(open('/ws/b.erd.json'));
+    attach();
+    await registry.register(open('/ws/c.erd.json'));
+
+    expect(io.fs.realPath).not.toHaveBeenCalled();
+    expect(publisher).toHaveBeenCalledTimes(1);
+    expect(registry.documents().map(({ path }) => path)).toEqual([
+      '/ws/a.erd.json',
+      '/ws/b.erd.json',
+      '/ws/c.erd.json',
+    ]);
+  });
+
+  it('interrupts the path it is resolving and settles the rest when its layer closes', async () => {
+    const io = createMemoryHub();
+    io.fs.realPath.mockImplementation(() => Effect.never);
+    const { registry, attach, close } = createPendingRegistry(io);
+    const open = (path: string) =>
+      registry.register(
+        ErdDocument.create(
+          Uri.file(path) as unknown as VscodeUri,
+          new Uint8Array()
+        )
+      );
+    const pending = [open('/ws/a.erd.json'), open('/ws/b.erd.json')];
+    attach();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(io.fs.realPath).toHaveBeenCalledTimes(1);
+
+    await close();
+
+    await expect(Promise.all(pending)).resolves.toEqual([undefined, undefined]);
+    expect(io.fs.realPath).toHaveBeenCalledTimes(1);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('resolves and lists a path registered once its layer is up while an earlier realpath hangs', async () => {
+    const io = createMemoryHub();
+    io.addFile('/real/b.erd.json');
+    io.links.set('/link', '/real');
+    io.fs.realPath.mockImplementationOnce(() => Effect.never);
+    const { registry, attach, close } = createPendingRegistry(io);
+    attach();
+    const publisher = vi.fn(async (_documents: string[]) => undefined);
+    await registry.setPublisher(publisher);
+    const [a, b] = ['a', 'b'].map(name =>
+      ErdDocument.create(
+        Uri.file(`/link/${name}.erd.json`) as unknown as VscodeUri,
+        new Uint8Array()
+      )
+    );
+
+    const first = registry.register(a);
+    const second = registry.register(b);
+    await flush();
+
+    expect(io.fs.realPath.mock.calls.map(([path]) => path)).toEqual([
+      '/link/a.erd.json',
+      '/link/b.erd.json',
+    ]);
+    expect(registry.find('/real/b.erd.json')).toBe(b);
+    await second;
+    await registry.unregister(b);
+    expect(publisher.mock.calls.map(([documents]) => documents)).toEqual([
+      [],
+      ['/real/b.erd.json'],
+      [],
+    ]);
+
+    await close();
+    await expect(first).resolves.toBeUndefined();
+    expect(registry.documents()).toEqual([
+      { document: a, path: '/link/a.erd.json' },
+    ]);
+  });
+
+  it('resolves the next queued path while the lock write that listed the one before it hangs', async () => {
+    const io = createMemoryHub();
+    io.addFile('/real/a.erd.json');
+    io.addFile('/real/b.erd.json');
+    io.links.set('/link', '/real');
+    const { registry, attach } = createPendingRegistry(io);
+    const published: string[][] = [];
+    await registry.setPublisher(documents => {
+      published.push(documents);
+      return documents.length === 1
+        ? new Promise<void>(() => undefined)
+        : Promise.resolve();
+    });
+    const [a, b] = ['a', 'b'].map(name =>
+      ErdDocument.create(
+        Uri.file(`/link/${name}.erd.json`) as unknown as VscodeUri,
+        new Uint8Array()
+      )
+    );
+    let firstSettled = false;
+    void registry.register(a).then(() => (firstSettled = true));
+    const second = registry.register(b);
+
+    attach();
+    await flush();
+
+    expect(registry.find('/real/b.erd.json')).toBe(b);
+    await second;
+    expect(firstSettled).toBe(false);
+    expect(published).toEqual([
+      [],
+      ['/real/a.erd.json'],
+      ['/real/a.erd.json', '/real/b.erd.json'],
+    ]);
+  });
+
+  it('keys a document by the path given when resolving it dies, and still lists it', async () => {
+    const io = createMemoryHub();
+    io.fs.realPath.mockImplementation(() =>
+      Effect.die(new Error('EIO under /ws'))
+    );
+    const registry = createMemoryRegistry(io);
+    const publisher = vi.fn(async (_documents: string[]) => undefined);
+    await registry.setPublisher(publisher);
+
+    await registry.register(
+      ErdDocument.create(
+        Uri.file('/ws/a.erd.json') as unknown as VscodeUri,
+        new Uint8Array()
+      )
+    );
+
+    expect(publisher).toHaveBeenLastCalledWith(['/ws/a.erd.json']);
   });
 
   it('matches paths without regard to case on darwin', async () => {

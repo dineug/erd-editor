@@ -14,12 +14,16 @@ import { widthEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
 import { ErdEditor } from '@/erd-editor';
 import { ErdEditorProvider } from '@/erd-editor-provider';
-import { DocumentRegistry, type WebviewRelay } from '@/hub/documentRegistry';
+import { type WebviewRelay } from '@/hub/documentRegistry';
 import { createDocumentHandler } from '@/hub/handlers';
 import { type HubConnection } from '@/hub/server';
 import * as HubLogger from '@/hub/services/HubLogger';
 
-import { createMemoryHub, type MemoryHubOptions } from './hubLayers';
+import {
+  createMemoryHub,
+  createMemoryRegistry,
+  type MemoryHubOptions,
+} from './hubLayers';
 import {
   commands,
   createExtensionContext,
@@ -92,7 +96,7 @@ export type OpenedEditor = {
  */
 export function createDocumentHarness(options: MemoryHubOptions = {}) {
   const io = createMemoryHub(options);
-  const registry = DocumentRegistry.makeUnsafe(io.registryIo);
+  const registry = createMemoryRegistry(io);
   const handler = createDocumentHandler(
     registry,
     io.fs as unknown as FileSystem.FileSystem

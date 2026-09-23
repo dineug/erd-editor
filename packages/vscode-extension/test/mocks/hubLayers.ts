@@ -25,7 +25,7 @@ import { type Mock, vi } from 'vite-plus/test';
 
 import {
   DocumentRegistry,
-  DocumentRegistryService,
+  type DocumentRegistryService,
 } from '@/hub/documentRegistry';
 import { HubHandlerService } from '@/hub/handlers';
 import * as HubHandlers from '@/hub/handlers';
@@ -47,7 +47,6 @@ import {
 } from '@/hub/services/HubEnvironment';
 import { HubListener, HubListenError } from '@/hub/services/HubListener';
 import * as HubLogger from '@/hub/services/HubLogger';
-import { type RegistryIo } from '@/hub/services/registryIo';
 
 /** A handler double whose every member is a vi.fn answering a plausible result. */
 export function createHubHandler() {
@@ -487,16 +486,6 @@ export function createMemoryHub(options: MemoryHubOptions = {}) {
     })
   );
 
-  const registryIo: RegistryIo = {
-    platform,
-    realPath: path =>
-      Effect.runPromise(
-        fsMock
-          .realPath(path)
-          .pipe(Effect.orElseSucceed(() => path)) as Effect.Effect<string>
-      ),
-  };
-
   const layer = Layer.mergeAll(
     FileSystem.layerNoop(fsMock as unknown as Partial<FileSystem.FileSystem>),
     Layer.succeed(HubEnvironment, env),
@@ -516,7 +505,6 @@ export function createMemoryHub(options: MemoryHubOptions = {}) {
     listen,
     closeListener,
     layer,
-    registryIo,
     /** Adds a file and every missing parent directory. */
     addFile: (path: string, data = '') => {
       addDir(parentOf(path));
@@ -624,6 +612,44 @@ export function memoryLockFile(io: MemoryHub): Promise<LockFile.LockFileShape> {
   );
 }
 
+/** The registry's layer over the memory machine, as registryLive is over the node one. */
+export function memoryRegistryLive(
+  io: MemoryHub,
+  registry: DocumentRegistry
+): Layer.Layer<DocumentRegistryService> {
+  return DocumentRegistry.layer(registry).pipe(Layer.provide(io.layer));
+}
+
+/** A registry whose layer has not built yet, and what builds and closes it. */
+export type PendingRegistry = {
+  readonly registry: DocumentRegistry;
+  /** Builds the layer, which runs the queued IO in arrival order. */
+  readonly attach: () => void;
+  /** Closes the layer, as disposing the runtime does. */
+  readonly close: () => Promise<void>;
+};
+
+export function createPendingRegistry(io: MemoryHub): PendingRegistry {
+  const registry = DocumentRegistry.makeUnsafe(io.env.platform);
+  const scope = Effect.runSync(Scope.make());
+
+  return {
+    registry,
+    attach: () =>
+      void Effect.runSync(
+        Layer.buildWithScope(memoryRegistryLive(io, registry), scope)
+      ),
+    close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
+  };
+}
+
+/** A registry whose layer has built, as it has by the time the hub serves. */
+export function createMemoryRegistry(io: MemoryHub): DocumentRegistry {
+  const pending = createPendingRegistry(io);
+  pending.attach();
+  return pending.registry;
+}
+
 /** What a spec drives instead of the runtime activate builds. */
 export type MemoryHubHandle = {
   readonly registry: DocumentRegistry;
@@ -636,14 +662,12 @@ export type MemoryHubHandle = {
 
 /** The hub's layer over the memory machine, with the real request handlers. */
 export function memoryHubLive(
-  io: MemoryHub,
-  registry: DocumentRegistry
-): Layer.Layer<DocumentHub> {
+  io: MemoryHub
+): Layer.Layer<DocumentHub, never, DocumentRegistryService> {
   return documentHubLayer.pipe(
     Layer.provide(HubHandlers.layer),
-    Layer.provide(Layer.succeed(DocumentRegistryService, registry)),
     Layer.provide(LockFile.layer),
-    Layer.provideMerge(io.layer)
+    Layer.provide(io.layer)
   );
 }
 
@@ -656,11 +680,11 @@ export function startMemoryHub(
   io: MemoryHub,
   handler: HubHandler = createHubHandler()
 ): MemoryHubHandle {
-  const registry = DocumentRegistry.makeUnsafe(io.registryIo);
+  const registry = DocumentRegistry.makeUnsafe(io.env.platform);
   const runtime = ManagedRuntime.make(
     documentHubLayer.pipe(
       Layer.provide(Layer.succeed(HubHandlerService, handler)),
-      Layer.provide(Layer.succeed(DocumentRegistryService, registry)),
+      Layer.provide(memoryRegistryLive(io, registry)),
       Layer.provide(LockFile.layer),
       Layer.provideMerge(io.layer)
     )

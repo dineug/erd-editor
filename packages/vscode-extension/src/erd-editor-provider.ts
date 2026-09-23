@@ -49,7 +49,8 @@ export class ErdEditorProvider implements vscode.CustomEditorProvider<ErdDocumen
     });
 
     // Awaited so the lock lists the document before its editor can take
-    // edits; register never rejects, so a broken hub never blocks the open.
+    // edits once the hub is up; register never rejects and never waits on a
+    // hub still starting or listening, so a broken hub never blocks the open.
     await this.registry.register(document);
     return document;
   }

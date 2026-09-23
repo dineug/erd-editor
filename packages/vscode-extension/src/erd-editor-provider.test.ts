@@ -17,9 +17,9 @@ import { VIEW_TYPE } from '@/constants/viewType';
 import { CreateEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
 import { ErdEditorProvider } from '@/erd-editor-provider';
-import { DocumentRegistry } from '@/hub/documentRegistry';
+import { type DocumentRegistry } from '@/hub/documentRegistry';
 
-import { createMemoryHub } from '../test/mocks/hubLayers';
+import { createMemoryHub, createMemoryRegistry } from '../test/mocks/hubLayers';
 import {
   createExtensionContext,
   createWebviewPanel,
@@ -88,7 +88,7 @@ function createEditorFactory(
 }
 
 function createRegistry() {
-  return DocumentRegistry.makeUnsafe(createMemoryHub().registryIo);
+  return createMemoryRegistry(createMemoryHub());
 }
 
 /**

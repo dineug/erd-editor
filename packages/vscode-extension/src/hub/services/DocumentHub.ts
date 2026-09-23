@@ -79,6 +79,8 @@ const make = Effect.gen(function* () {
   let closed = false;
   let closing: Promise<void> | null = null;
   let queue = Promise.resolve();
+  /** Startup and apply tasks queued or running, the ones that may listen. */
+  let listensAhead = 0;
   let nextConnectionId = 1;
 
   const authorize = (path: string) =>
@@ -92,6 +94,13 @@ const make = Effect.gen(function* () {
       .then(() => (closed ? undefined : task()))
       .catch(error => warnUnsafe(error));
     return queue;
+  }
+
+  function enqueueListen(task: () => Promise<void>): void {
+    listensAhead++;
+    void enqueue(task).then(() => {
+      listensAhead--;
+    });
   }
 
   /** Every state writes one: hub false, with no pipe, guards the paths of a hub not serving. */
@@ -239,6 +248,16 @@ const make = Effect.gen(function* () {
     });
   }
 
+  /**
+   * What the registry publishes through. The write always queues in order;
+   * an editor opening waits for it only with no listen ahead, so the lock
+   * lists it once the hub is up and a hub that is not never holds it.
+   */
+  function publish(next: string[]): Promise<void> {
+    const written = setDocuments(next);
+    return listensAhead > 0 ? Promise.resolve() : written;
+  }
+
   function close(): Promise<void> {
     if (!closing) {
       closed = true;
@@ -254,14 +273,14 @@ const make = Effect.gen(function* () {
   }
 
   const listeners = [
-    vscode.workspace.onDidGrantWorkspaceTrust(() => enqueue(apply)),
+    vscode.workspace.onDidGrantWorkspaceTrust(() => enqueueListen(apply)),
     vscode.workspace.onDidChangeConfiguration(event => {
-      if (affectsHubEnabled(event)) enqueue(apply);
+      if (affectsHubEnabled(event)) enqueueListen(apply);
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => enqueue(updateFolders)),
   ];
 
-  enqueue(async () => {
+  enqueueListen(async () => {
     await run(lock.cleanStale);
     folders = await realFolders();
     await apply();
@@ -270,7 +289,7 @@ const make = Effect.gen(function* () {
   // The first publish is not awaited: it queues behind the startup task, and
   // holding the acquire open until that ran would bind the pipe and write a
   // lock even for a window disposed in the same tick.
-  yield* Effect.sync(() => void registry.setPublisher(setDocuments));
+  yield* Effect.sync(() => void registry.setPublisher(publish));
 
   return { setDocuments, close };
 });
