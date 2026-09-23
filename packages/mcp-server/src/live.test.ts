@@ -25,6 +25,7 @@ import {
   REJOIN_NOTE,
   RESEED_NOTE,
 } from '@/session/live';
+import { BatchInterrupted, runBatch } from '@/tools/batch';
 import {
   documentReader,
   entityReader,
@@ -32,6 +33,11 @@ import {
   readDocument,
 } from '@/tools/read';
 import { runTool } from '@/tools/run';
+
+vi.mock('@/tools/batch', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/tools/batch')>();
+  return { ...actual, runBatch: vi.fn(actual.runBatch) };
+});
 
 const DOCUMENT = '/work/live.erd.json';
 
@@ -488,6 +494,103 @@ describe('a live session beyond the transition table', () => {
     expect(hub.webview(DOCUMENT).state.doc.tableIds).toEqual([]);
     expect((await io.run(session.redo)).result.label).toBe('erd_add_table');
     expect(hub.webview(DOCUMENT).state.doc.tableIds).toEqual(run.createdIds);
+  });
+
+  it('runs a batch into the editor as one edit, which one undo reverts there', async () => {
+    const batches: Array<Array<{ type: string }>> = [];
+    hub.beforeApply = actions => void batches.push(actions as any[]);
+    const { run } = await io.run(
+      session.runBatch([
+        { tool: 'erd_add_table', as: 't' },
+        {
+          tool: 'erd_change_table_name',
+          args: { tableId: '$t', value: 'reviews' },
+        },
+        { tool: 'erd_add_column', args: { tableId: '$t' } },
+      ])
+    );
+    const webview = hub.webview(DOCUMENT);
+    const [tableId, columnId] = run.createdIds;
+    // Three dispatches, one request: the editor takes the batch whole. The
+    // focus each operation moved follows on its own, and changes nothing.
+    const changing = batches.filter(batch =>
+      batch.some(({ type }) => !type.startsWith('editor.'))
+    );
+    expect(changing).toHaveLength(1);
+    expect(changing[0].map(({ type }) => type)).toEqual(
+      expect.arrayContaining(['table.add', 'table.changeName', 'column.add'])
+    );
+
+    expect(webview.state.doc.tableIds).toEqual([tableId]);
+    expect(webview.state.collections.tableEntities[tableId]).toMatchObject({
+      name: 'reviews',
+      columnIds: [columnId],
+    });
+    expect((await io.run(session.undo)).result).toMatchObject({
+      label: 'erd_batch',
+      entries: 3,
+    });
+    expect(webview.state.doc.tableIds).toEqual([]);
+  });
+
+  it('sends nothing of a batch the editor refuses, and joins again next time', async () => {
+    await call('erd_add_table');
+    const shown = comparable(hub.webview(DOCUMENT).value);
+    hub.documents.get(DOCUMENT)!.readonly = true;
+
+    await expect(
+      io.run(
+        session.runBatch([
+          { tool: 'erd_add_memo' },
+          { tool: 'erd_add_table', as: 't' },
+          {
+            tool: 'erd_change_table_name',
+            args: { tableId: '$t', value: 'x' },
+          },
+        ])
+      )
+    ).rejects.toMatchObject({ name: 'SessionError', code: 'readonly' });
+    hub.documents.get(DOCUMENT)!.readonly = false;
+    await settle();
+
+    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    const { notes } = await call('erd_add_memo');
+    expect(notes).toEqual([RESEED_NOTE]);
+  });
+
+  it('keeps nothing of a batch cut short on the peer, and reseeds from the editor', async () => {
+    await call('erd_add_table');
+    const shown = comparable(hub.webview(DOCUMENT).value);
+    vi.mocked(runBatch).mockImplementationOnce(peer => {
+      runTool(peer, 'erd_add_memo', {});
+      throw new BatchInterrupted(new Error('boom'));
+    });
+
+    await expect(
+      io.run(session.runBatch([{ tool: 'erd_add_memo' }]))
+    ).rejects.toBeInstanceOf(BatchInterrupted);
+    await settle();
+
+    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    const { text, notes } = await read('json');
+    expect(comparable(text)).toEqual(shown);
+    expect(notes).toEqual([RESEED_NOTE]);
+  });
+
+  it('refuses a batch before any of it reaches the editor', async () => {
+    await call('erd_add_table');
+    const shown = comparable(hub.webview(DOCUMENT).value);
+
+    await expect(
+      io.run(
+        session.runBatch([
+          { tool: 'erd_add_memo' },
+          { tool: 'erd_remove_table', args: { tableId: 'gone' } },
+        ])
+      )
+    ).rejects.toMatchObject({ name: 'ToolError', code: 'notFound' });
+    await settle();
+    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
   });
 
   it('reports a disconnect in the middle of an undo', async () => {

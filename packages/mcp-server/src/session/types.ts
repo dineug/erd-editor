@@ -1,6 +1,7 @@
 import type { RevertResult } from '@dineug/erd-editor/peer.js';
 import type { Effect } from 'effect';
 
+import type { BatchRun } from '@/tools/batch';
 import type { DocumentReader } from '@/tools/read';
 import type { ToolRun } from '@/tools/run';
 
@@ -17,6 +18,8 @@ export type SessionState = 'ready' | 'reconnecting' | 'detached';
 export type Notes = string[];
 
 export type ToolOutcome = { run: ToolRun; notes: Notes };
+
+export type BatchOutcome = { run: BatchRun; notes: Notes };
 
 export type UndoOutcome = { result: RevertResult; notes: Notes };
 
@@ -39,6 +42,7 @@ export type DocumentSession = {
     name: string,
     args: Record<string, unknown>
   ) => SessionCall<ToolOutcome>;
+  readonly runBatch: (operations: unknown) => SessionCall<BatchOutcome>;
   readonly read: (reader: DocumentReader) => SessionCall<ReadOutcome>;
   readonly save: SessionCall<SaveOutcome>;
   readonly undo: SessionCall<UndoOutcome>;

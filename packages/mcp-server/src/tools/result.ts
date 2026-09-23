@@ -4,6 +4,7 @@ import { McpSchema } from 'effect/unstable/ai';
 import { messageOf, SessionError } from '@/errors';
 import { type WithMode } from '@/session/manager';
 import {
+  type BatchOutcome,
   type Notes,
   type ToolOutcome,
   type UndoOutcome,
@@ -101,6 +102,38 @@ export function toolRunResult(
     historyEntries: run.historyEntries,
     ...(note ? { undoable: false, undoNote: note } : {}),
     ...(run.mismatch ? { mismatch: run.mismatch } : {}),
+    notes,
+  });
+}
+
+/** Why erd_undo will not revert the whole batch, or undefined when it will. */
+function batchUndoNote({ run }: BatchOutcome): string | undefined {
+  if (!run.historyEntries) {
+    return run.batches ? NO_ENTRY_NOTE : UNCHANGED_NOTE;
+  }
+  if (!run.withoutUndo.length) return undefined;
+  const skipped = run.withoutUndo
+    .map(at => `operations[${at}] ${run.steps[at].tool}`)
+    .join(', ');
+  return `One erd_undo reverts this batch, except ${skipped}: the editor keeps no undo entry for those.`;
+}
+
+export function batchResult(outcome: WithMode<BatchOutcome>) {
+  const { run, mode, notes } = outcome;
+  const note = batchUndoNote(outcome);
+
+  return jsonBody({
+    tool: run.tool,
+    mode,
+    createdIds: run.createdIds,
+    operations: run.steps,
+    batches: run.batches,
+    historyEntries: run.historyEntries,
+    ...(note
+      ? run.historyEntries
+        ? { undoNote: note }
+        : { undoable: false, undoNote: note }
+      : {}),
     notes,
   });
 }

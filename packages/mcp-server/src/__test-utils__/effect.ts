@@ -20,6 +20,7 @@ export function stubSessions(
       listDocuments: unused('listDocuments'),
       openDocument: () => unused('openDocument'),
       runTool: () => unused('runTool'),
+      runBatch: () => unused('runBatch'),
       read: () => unused('read'),
       save: () => unused('save'),
       undo: () => unused('undo'),

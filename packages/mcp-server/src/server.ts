@@ -13,7 +13,7 @@ import { MessageStdin } from '@/stdin';
 import { SERVER_INSTRUCTIONS } from '@/tools/copy';
 import { ToolHandlers } from '@/tools/handlers';
 import { registerReadTools } from '@/tools/read.tool';
-import { EditToolkit, SessionToolkit } from '@/tools/toolkit';
+import { BatchToolkit, EditToolkit, SessionToolkit } from '@/tools/toolkit';
 
 import { version } from '../package.json';
 
@@ -34,7 +34,7 @@ export const PROTOCOLS = [
 
 /**
  * Every tool, registered one after another so tools/list keeps one order:
- * Layer.mergeAll would build the three concurrently and interleave them.
+ * Layer.mergeAll would build them concurrently and interleave them.
  */
 export const ToolsLayer: Layer.Layer<
   never,
@@ -64,6 +64,7 @@ export const ToolsLayer: Layer.Layer<
     yield* McpServer.registerToolkit(SessionToolkit).pipe(inArrivalOrder);
     yield* registerReadTools.pipe(inArrivalOrder);
     yield* McpServer.registerToolkit(EditToolkit).pipe(inArrivalOrder);
+    yield* McpServer.registerToolkit(BatchToolkit).pipe(inArrivalOrder);
   })
 ).pipe(Layer.provide(ToolHandlers));
 

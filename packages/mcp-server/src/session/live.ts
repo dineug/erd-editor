@@ -25,6 +25,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import { BatchInterrupted, runBatch as runPeerBatch } from '@/tools/batch';
 import type { DocumentReader } from '@/tools/read';
 import { runTool as runPeerTool } from '@/tools/run';
 
@@ -138,8 +139,15 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
     Effect.forkIn(scope)
   );
 
+  /** The batches a whole erd_batch makes while it runs, sent later as one. */
+  let held: unknown[][] | null = null;
+
   /** The one way out of the peer: in order, and never before this agent is registered. */
   const enqueueOutbound = (actions: unknown[]) => {
+    if (held) {
+      held.push(actions);
+      return;
+    }
     const client = connection;
     const errors = callErrors;
     if (joined !== 'registered' || !client) return;
@@ -277,22 +285,23 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
       : Effect.succeed<Notes>(closedAfterEdits ? [CLOSED_NOTE] : [])
   );
 
-  const runOnce = (name: string, args: Record<string, unknown>) =>
-    withOutbound(() => runPeerTool(peer, name, args)).pipe(
+  const runOnce = <R>(task: () => R) =>
+    withOutbound(task).pipe(
       Effect.map(({ value, errors }) => ({ run: value, error: errors[0] }))
     );
 
-  const runTool = (name: string, args: Record<string, unknown>) =>
+  /** One edit on the peer: a tool call or a whole batch, whose batches all go out before it answers. */
+  const edit = <R extends { historyEntries: number }>(task: () => R) =>
     Effect.gen(function* () {
       const notes = yield* begin;
       yield* prepareWrite(notes);
 
-      let { run, error } = yield* runOnce(name, args);
+      let { run, error } = yield* runOnce(task);
       if (isSessionError(error, HubErrorCode.notOpen)) {
         forget('reconnecting');
         notes.push(REJOIN_NOTE);
         yield* prepareWrite(notes);
-        ({ run, error } = yield* runOnce(name, args));
+        ({ run, error } = yield* runOnce(task));
       }
       // The peer holds an edit the editor refused, so the next call reseeds it away.
       if (error) {
@@ -300,8 +309,39 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
         return yield* Effect.fail(error);
       }
       if (run.historyEntries) edits++;
-      return { run, notes } satisfies ToolOutcome;
+      return { run, notes };
     });
+
+  /**
+   * Holds every batch a task makes and sends them as one applyActions request,
+   * so the editor takes all of them or none. A task that fails sends nothing,
+   * and one that left part of itself on the peer has the next call reseed it.
+   */
+  const heldTogether =
+    <A>(task: () => A) =>
+    () => {
+      held = [];
+      try {
+        const value = task();
+        const batches = held;
+        held = null;
+        if (batches.length) enqueueOutbound(batches.flat());
+        return value;
+      } catch (error) {
+        if (held?.length || error instanceof BatchInterrupted) {
+          forget('reconnecting');
+        }
+        throw error;
+      } finally {
+        held = null;
+      }
+    };
+
+  const runTool = (name: string, args: Record<string, unknown>) =>
+    edit(() => runPeerTool(peer, name, args)) satisfies Effect.Effect<
+      ToolOutcome,
+      unknown
+    >;
 
   const replay = (step: () => RevertResult) =>
     Effect.gen(function* () {
@@ -341,6 +381,9 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
       }),
 
     runTool,
+
+    runBatch: operations =>
+      edit(heldTogether(() => runPeerBatch(peer, operations))),
 
     read: (reader: DocumentReader) =>
       Effect.gen(function* () {

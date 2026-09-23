@@ -20,9 +20,9 @@ import {
   type Notes,
   type ReadOutcome,
   type SaveOutcome,
-  type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
+import { BatchInterrupted, runBatch } from '@/tools/batch';
 import type { DocumentReader } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
@@ -153,21 +153,33 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
       return { result, notes } satisfies UndoOutcome;
     });
 
+  /** One edit on the peer, written to the file once whatever it dispatched. */
+  const edit = <R extends { actions: unknown[]; historyEntries: number }>(
+    task: () => R
+  ) =>
+    Effect.gen(function* () {
+      const notes = yield* refresh;
+      // A batch cut short left part of itself on the peer, which the file never saw.
+      const outcome = yield* run(task).pipe(
+        Effect.tapError(error =>
+          error instanceof BatchInterrupted ? reloadQuietly : Effect.void
+        )
+      );
+      if (outcome.actions.length) {
+        yield* persist;
+        if (outcome.historyEntries) edits++;
+      }
+      return { run: outcome, notes };
+    });
+
   const session: HeadlessSession = {
     path,
     mode: 'headless',
     state: 'ready',
 
-    runTool: (name, args) =>
-      Effect.gen(function* () {
-        const notes = yield* refresh;
-        const outcome = yield* run(() => runTool(peer, name, args));
-        if (outcome.actions.length) {
-          yield* persist;
-          if (outcome.historyEntries) edits++;
-        }
-        return { run: outcome, notes } satisfies ToolOutcome;
-      }),
+    runTool: (name, args) => edit(() => runTool(peer, name, args)),
+
+    runBatch: operations => edit(() => runBatch(peer, operations)),
 
     // A reader takes the state straight, so the refusal the peer facade
     // used to raise on a closed store is kept here.

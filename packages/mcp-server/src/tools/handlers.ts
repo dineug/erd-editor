@@ -6,13 +6,19 @@ import { SessionManager, type SessionManagerShape } from '@/session/manager';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import { type ActionTool, actionTools } from '@/tools/registry';
 import {
+  batchResult,
   isRefusal,
   jsonBody,
   refusal,
   toolRunResult,
   undoResult,
 } from '@/tools/result';
-import { EditToolkit, SessionParams, SessionToolkit } from '@/tools/toolkit';
+import {
+  BatchToolkit,
+  EditToolkit,
+  SessionParams,
+  SessionToolkit,
+} from '@/tools/toolkit';
 
 /**
  * Tells the session manager who calls, then runs the call. A refusal fails
@@ -129,5 +135,25 @@ export const EditHandlers = EditToolkit.toLayer(
   })
 );
 
-/** Both toolkits' handlers, over the one session manager. */
-export const ToolHandlers = Layer.mergeAll(SessionHandlers, EditHandlers);
+/** erd_batch: the path picks the session, which runs every operation as one edit. */
+export const BatchHandlers = BatchToolkit.toLayer(
+  Effect.gen(function* () {
+    const sessions = yield* SessionManager;
+    return {
+      erd_batch: ({ path, operations }) =>
+        answer(
+          sessions,
+          sessions
+            .runBatch(path, operations)
+            .pipe(Effect.map(outcome => batchResult(outcome)))
+        ),
+    };
+  })
+);
+
+/** Every toolkit's handlers, over the one session manager. */
+export const ToolHandlers = Layer.mergeAll(
+  SessionHandlers,
+  EditHandlers,
+  BatchHandlers
+);

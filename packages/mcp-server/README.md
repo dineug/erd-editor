@@ -84,15 +84,21 @@ not supported.
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
 | Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_language`, `erd_set_table_name_case`, `erd_set_column_name_case`, `erd_set_bracket_type`, `erd_set_relationship_data_type_sync`, `erd_set_relationship_optimization`, `erd_set_column_order`, `erd_set_max_width_comment`, `erd_set_ignore_save_settings`, `erd_set_show` |
 | Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |
+| Batch | `erd_batch` |
+
+`erd_batch` runs several edit tools in order as one edit, all or none: the operations are tried on
+a copy of the document first, so a refused one is named and nothing is applied, and one `erd_undo`
+reverts the whole batch. An operation named with `as` lets a later one pass `$name` (or `$name.1`
+for its second created id) where it takes an entity id, so a table and its columns take one call.
 
 Every edit tool takes the document `path`. Settings other than `erd_set_show`, and
 `erd_resize_memo`, make no undo entry in the editor, so `erd_undo` passes over them and the result
 says so.
 
-The edit tools and the read tools (`erd_list`, `erd_get`, `erd_read`) refuse an argument they do
-not declare, or one of the wrong type, with a JSON-RPC invalid params error (-32602) before touching
-the document, so a misspelled argument is never silently dropped. The other session tools ignore
-arguments they do not know.
+The edit tools, `erd_batch` and the read tools (`erd_list`, `erd_get`, `erd_read`) refuse an
+argument they do not declare, or one of the wrong type, with a JSON-RPC invalid params error
+(-32602) before touching the document, so a misspelled argument is never silently dropped. The
+other session tools ignore arguments they do not know.
 
 ## License
 

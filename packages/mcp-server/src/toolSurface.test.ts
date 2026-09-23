@@ -59,16 +59,20 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the eight session tools and every registry tool: 62 in all', () => {
+  it('is the eight session tools, every registry tool and erd_batch: 63 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
-      [...SESSION_TOOL_NAMES, ...actionTools.map(({ name }) => name)].sort()
+      [
+        ...SESSION_TOOL_NAMES,
+        ...actionTools.map(({ name }) => name),
+        'erd_batch',
+      ].sort()
     );
     expect(SESSION_TOOL_NAMES).toHaveLength(8);
     expect(actionTools).toHaveLength(54);
-    expect(tools).toHaveLength(62);
+    expect(tools).toHaveLength(63);
   });
 
-  it('lists the session toolkit, then the read tools, then the registry, in its order', () => {
+  it('lists the session toolkit, then the read tools, then the registry, in its order, then erd_batch', () => {
     expect(tools.map(({ name }) => name)).toEqual([
       'erd_list_documents',
       'erd_open_document',
@@ -79,6 +83,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_list',
       'erd_get',
       ...actionTools.map(({ name }) => name),
+      'erd_batch',
     ]);
   });
 
@@ -152,7 +157,7 @@ describe('the tool surface (AC-M8)', () => {
     }
   });
 
-  it('marks reads read-only and removals and imports destructive, the other hints at their defaults', () => {
+  it('marks reads read-only and removals, imports and batches destructive, the other hints at their defaults', () => {
     expect(tool('erd_read').annotations).toEqual(hints(true, true));
     expect(tool('erd_list').annotations).toEqual(hints(true, true));
     expect(tool('erd_get').annotations).toEqual(hints(true, true));
@@ -178,6 +183,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_import_dbml',
       'erd_import_aml',
       'erd_import_json',
+      'erd_batch',
     ]);
     expect(destructive.every(isDestructive)).toBe(true);
   });
@@ -191,7 +197,7 @@ describe('the tool surface (AC-M8)', () => {
     }
   });
 
-  it('closes the arguments of every edit tool and read tool, and of no other session tool', () => {
+  it('closes the arguments of every edit tool, read tool and erd_batch, and of no other session tool', () => {
     const closed = tools
       .filter(({ inputSchema }) => inputSchema.additionalProperties === false)
       .map(({ name }) => name);
@@ -201,6 +207,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_list',
       'erd_get',
       ...actionTools.map(({ name }) => name),
+      'erd_batch',
     ]);
   });
 

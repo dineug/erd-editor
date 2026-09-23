@@ -28,6 +28,7 @@ import { openHeadlessSession } from '@/session/headless';
 import { type Line, makeLine } from '@/session/line';
 import { type LiveSession, makeLiveSession } from '@/session/live';
 import {
+  type BatchOutcome,
   type DocumentSession,
   type Notes,
   type ReadOutcome,
@@ -96,6 +97,10 @@ export type SessionManagerShape = {
     name: string,
     args: Record<string, unknown>
   ) => SessionCall<WithMode<ToolOutcome>>;
+  readonly runBatch: (
+    path: string,
+    operations: unknown
+  ) => SessionCall<WithMode<BatchOutcome>>;
   readonly read: (
     path: string,
     reader: DocumentReader
@@ -472,6 +477,9 @@ const make = Effect.gen(function* () {
 
     runTool: (input, name, args) =>
       write(input, session => session.runTool(name, args)),
+
+    runBatch: (input, operations) =>
+      write(input, session => session.runBatch(operations)),
 
     read: (input, reader) =>
       onDocument(input, (key, path) =>

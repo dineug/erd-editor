@@ -21,6 +21,7 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
     name,
     args: ['path', ...args.map(arg => arg.name)],
   })),
+  { name: 'erd_batch', args: ['path', 'operations'] },
 ];
 
 describe('the prose table covers the surface exactly', () => {

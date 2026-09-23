@@ -2,7 +2,8 @@ import { DocumentInfo } from '@dineug/erd-editor-agent-hub';
 import { Schema } from 'effect';
 import { McpSchema, Tool, Toolkit } from 'effect/unstable/ai';
 
-import { describeArg, describeTool } from '@/tools/copy';
+import { BATCH_TOOL, MAX_OPERATIONS, OPERATION_NAME } from '@/tools/batch';
+import { BATCH_FIELD_COPY, describeArg, describeTool } from '@/tools/copy';
 import { type ActionTool, actionTools } from '@/tools/registry';
 import { argsFields, toolInputSchema } from '@/tools/schema';
 
@@ -18,9 +19,16 @@ export const SESSION_TOOL_NAMES = Object.freeze([
   'erd_redo',
 ] as const);
 
-/** Removals and whole-document imports discard what the document held. */
+/**
+ * Removals and whole-document imports discard what the document held, and a
+ * batch may run either.
+ */
 export function isDestructive(name: string): boolean {
-  return name.startsWith('erd_remove_') || name.startsWith('erd_import_');
+  return (
+    name === BATCH_TOOL ||
+    name.startsWith('erd_remove_') ||
+    name.startsWith('erd_import_')
+  );
 }
 
 /**
@@ -71,6 +79,11 @@ export const UndoResult = Schema.Struct({
   notes: Notes,
 });
 
+const Mismatch = Schema.Struct({
+  expectedBatches: Schema.String,
+  expectedHistory: Schema.String,
+});
+
 export const EditResult = Schema.Struct({
   tool: Schema.String,
   mode: Mode,
@@ -79,12 +92,26 @@ export const EditResult = Schema.Struct({
   historyEntries: Schema.Int,
   undoable: Schema.optionalKey(Schema.Boolean),
   undoNote: Schema.optionalKey(Schema.String),
-  mismatch: Schema.optionalKey(
+  mismatch: Schema.optionalKey(Mismatch),
+  notes: Notes,
+});
+
+export const BatchResult = Schema.Struct({
+  tool: Schema.Literal(BATCH_TOOL),
+  mode: Mode,
+  createdIds: Schema.Array(Schema.String),
+  operations: Schema.Array(
     Schema.Struct({
-      expectedBatches: Schema.String,
-      expectedHistory: Schema.String,
+      tool: Schema.String,
+      as: Schema.optionalKey(Schema.String),
+      createdIds: Schema.Array(Schema.String),
+      mismatch: Schema.optionalKey(Mismatch),
     })
   ),
+  batches: Schema.Int,
+  historyEntries: Schema.Int,
+  undoable: Schema.optionalKey(Schema.Boolean),
+  undoNote: Schema.optionalKey(Schema.String),
   notes: Notes,
 });
 
@@ -180,3 +207,41 @@ export function toTool(tool: ActionTool) {
 }
 
 export const EditToolkit = Toolkit.make(...actionTools.map(toTool));
+
+/** One operation of erd_batch: an edit tool by name, its arguments, and a name for its ids. */
+const BatchOperationParams = Schema.Struct({
+  tool: Schema.Literals(actionTools.map(({ name }) => name)).annotate({
+    description: BATCH_FIELD_COPY.tool,
+  }),
+  as: Schema.optionalKey(
+    Schema.String.check(Schema.isPattern(OPERATION_NAME)).annotate({
+      description: BATCH_FIELD_COPY.as,
+    })
+  ),
+  args: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.Unknown).annotate({
+      description: BATCH_FIELD_COPY.args,
+    })
+  ),
+});
+
+/**
+ * Strict like the edit tools: an unknown key, an operation's included, is
+ * -32602. The arguments of each operation are checked when it runs.
+ */
+const Batch = Tool.make(BATCH_TOOL, {
+  description: describeTool(BATCH_TOOL),
+  parameters: Schema.Struct({
+    path: pathField(BATCH_TOOL),
+    operations: Schema.Array(BatchOperationParams)
+      .check(Schema.isMinLength(1), Schema.isMaxLength(MAX_OPERATIONS))
+      .annotate({ description: describeArg(BATCH_TOOL, 'operations') }),
+  }),
+  success: BatchResult,
+  failure: ToolRefusal,
+  dependencies,
+})
+  .annotate(Tool.Strict, true)
+  .annotate(Tool.Destructive, isDestructive(BATCH_TOOL));
+
+export const BatchToolkit = Toolkit.make(Batch);

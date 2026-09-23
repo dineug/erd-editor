@@ -11,7 +11,7 @@ export type ToolCopy = {
 
 /** What the client hands the model once, beside the tool list. */
 export const SERVER_INSTRUCTIONS =
-  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools. Never write a document file yourself. When a VS Code window has the document, edits appear live in its ERD editor and stay unsaved until erd_save; otherwise they are written to the file at once.';
+  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. Never write a document file yourself. When a VS Code window has the document, edits appear live in its ERD editor and stay unsaved until erd_save; otherwise they are written to the file at once.';
 
 const TABLE_ID = 'Table id, from erd_list or the createdIds of erd_add_table.';
 const COLUMN_ID =
@@ -26,6 +26,13 @@ const RELATIONSHIP_TYPE =
 const COLOR = 'CSS hex color such as #3b82f6.';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
+
+/** The fields of one erd_batch operation, which no tool takes as an argument of its own. */
+export const BATCH_FIELD_COPY = {
+  tool: 'An erd_ edit tool, such as erd_add_column.',
+  as: 'A name for the ids this operation creates, which a later operation passes as $name, $name.1 or $name.last.',
+  args: 'The tool arguments without path; where one takes an entity id, $name refers to an earlier operation.',
+} as const;
 
 /** Arguments that mean the same in every tool that takes them. */
 export const ARG_COPY: Readonly<Record<string, string>> = {
@@ -91,6 +98,14 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
       relationshipIds: 'Relationship ids, from erd_list.',
       indexIds: 'Index ids, from erd_list.',
       memoIds: 'Memo ids, from erd_list.',
+    },
+  },
+  erd_batch: {
+    description:
+      'Runs several edit tools in order as one edit, all or none: they are tried on a copy first, so a refusal names the operation and leaves the document as it was. One erd_undo reverts the whole batch. Name an operation with as, then pass $name for its first created id, $name.1 for its second or $name.last for its last, where a later operation takes an entity id.',
+    args: {
+      operations:
+        'The edit tool calls to run, at most 100, each { tool, as, args }.',
     },
   },
   erd_save: {
@@ -180,7 +195,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
 
   erd_add_relationship: {
     description:
-      'Relates two tables: copies the parent primary key into the child as foreign key columns, creating a primary key column first if the parent has none. Returns new column and relationship ids in createdIds.',
+      'Relates two tables: copies the parent primary key into the child as foreign key columns, creating a primary key column first if the parent has none. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.',
     args: {
       startTableId:
         'Parent table id, the referenced side that holds the primary key.',
