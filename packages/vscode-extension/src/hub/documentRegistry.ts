@@ -149,7 +149,7 @@ export class DocumentRegistry {
   /**
    * Tracks a document at once, or keeps one already tracked, so its webviews
    * work before the hub does. Never rejects: it resolves after the realpath and
-   * a publish, which the hub holds for the lock only with no listen ahead of it.
+   * a publish, which a hub that is up holds for the lock, a second at most.
    */
   register(document: ErdDocument): Promise<void> {
     if (this.entries.has(document)) return Promise.resolve();

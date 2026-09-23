@@ -29,6 +29,7 @@ import {
   Disposable,
   fireConfigurationChange,
   fireGrantWorkspaceTrust,
+  fireWorkspaceFoldersChange,
   resetVscodeMock,
   Uri,
   ViewColumn,
@@ -533,6 +534,39 @@ describe('extension', () => {
       write();
       await opening;
       expect(hub.io.lock()?.documents).toEqual(['/workspace/a.erd.json']);
+    });
+
+    it('opens an editor after a second once the hub is up when a lock rewrite ahead of it stalls', async () => {
+      const provider = activateProvider();
+      await flush();
+      const realPath = hub.io.fs.realPath.getMockImplementation()!;
+      hub.io.fs.realPath.mockImplementation((path: string) =>
+        path === '/stalled' ? Effect.never : realPath(path)
+      );
+      hub.io.addDir('/stalled');
+      fireWorkspaceFoldersChange([{ uri: Uri.file('/stalled') }]);
+      await flush();
+      vi.useFakeTimers();
+      let opened = false;
+
+      const opening = openFile(provider, '/elsewhere/a.erd.json').then(() => {
+        opened = true;
+      });
+      await vi.advanceTimersByTimeAsync(999);
+      expect(opened).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(opened).toBe(true);
+      await opening;
+      expect(hub.io.fs.realPath).toHaveBeenCalledWith('/elsewhere/a.erd.json');
+      expect(hub.io.lock()?.documents).toEqual([]);
+      expect(console.warn).toHaveBeenCalledWith(
+        '[erd-editor hub]',
+        'the lock did not list the open documents within 1 second; the editor opens without waiting for it'
+      );
+      const closing = deactivate();
+      await vi.advanceTimersByTimeAsync(5_000);
+      await closing;
     });
 
     it('lists a document in the lock once the ERD editor opens it, and unlists it on close', async () => {

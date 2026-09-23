@@ -52,6 +52,9 @@ type Serving = {
 
 const IDE = 'vscode';
 
+/** How long an editor opening waits, once the hub is up, for the lock to list it. */
+const PUBLISH_WAIT = '1 second';
+
 /**
  * Serves this window's documents over a per-window pipe that its lock file
  * advertises. Every state change runs on one queue, so the lock on disk always
@@ -249,13 +252,25 @@ const make = Effect.gen(function* () {
   }
 
   /**
-   * What the registry publishes through. The write always queues in order;
-   * an editor opening waits for it only with no listen ahead, so the lock
-   * lists it once the hub is up and a hub that is not never holds it.
+   * What the registry publishes through. The write always queues in order; an
+   * editor opening waits for it with no listen ahead and for PUBLISH_WAIT at
+   * most, so neither a hub coming up nor a task stalling the queue holds it.
    */
   function publish(next: string[]): Promise<void> {
     const written = setDocuments(next);
-    return listensAhead > 0 ? Promise.resolve() : written;
+    if (listensAhead > 0) return Promise.resolve();
+
+    return run(
+      Effect.promise(() => written).pipe(
+        Effect.timeoutOrElse({
+          duration: PUBLISH_WAIT,
+          orElse: () =>
+            Effect.logWarning(
+              `the lock did not list the open documents within ${PUBLISH_WAIT}; the editor opens without waiting for it`
+            ),
+        })
+      )
+    );
   }
 
   function close(): Promise<void> {
