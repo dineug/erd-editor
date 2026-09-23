@@ -1,5 +1,30 @@
 # Changelog
 
+## [3.0.0] - 2026-09-24
+
+### Added
+
+- Let a coding agent edit your diagrams. Claude Code, Codex or any other MCP client joins the
+  editor through the `@dineug/erd-editor-mcp` MCP server like a collaborator: each change shows up
+  on the canvas as it happens and stays unsaved until the agent or you save, and the agent's undo
+  reverts only its own edits. See Coding agents in the README to set it up.
+- An agent connects only in a trusted workspace, and the new `dineug.erd-editor.agentHub.enabled`
+  setting turns it off for the window. An agent can then still read the diagrams from disk, but
+  never writes one behind the editor.
+- Reset the zoom to 100% by clicking the percentage on the bottom toolbar, on the ERD canvas and
+  the Visualization tab.
+
+### Changed
+
+- Minimum supported VSCode is now `1.101.0` (was `1.90.0`), the first release running on Node 22.
+- The extension also starts in a workspace whose diagrams are `.erd.json` or `.vuerd.json` files,
+  not only `.erd` or `.vuerd`, so an agent can reach them before one is opened.
+
+### Fixed
+
+- After a table is dragged in one editor, the other editors of the same document show where it
+  ended up at once, instead of stopping short of it until the next change.
+
 ## [2.8.0] - 2026-09-19
 
 ### Added

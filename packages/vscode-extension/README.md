@@ -65,16 +65,53 @@ The same document can be open in several editors at once, and they stay in sync.
 
 ![multiple editors per document](https://github.com/dineug/erd-editor/blob/main/img/supports-multiple-editors-per-document.webp?raw=true)
 
-### Coding agents
+## Coding agents
 
 A coding agent such as Claude Code or Codex can edit the diagrams open in this window through the
 [`@dineug/erd-editor-mcp`](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
-MCP server; its README shows how to add it to the agent. The agent joins the editor like a
-collaborator: each change shows up on the canvas as it happens and stays unsaved until the agent
-or you save. It connects only in a trusted workspace, and the
-`dineug.erd-editor.agentHub.enabled` setting turns it off for the window.
+MCP server. The agent joins the editor like a collaborator: each change shows up on the canvas as
+it happens and stays unsaved until the agent or you save, and the agent's undo reverts only its
+own edits.
 
 ![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
+
+### Install the MCP server
+
+The server needs Node.js 22.12 or later. `npx` downloads it the first time the agent starts it, so
+there is nothing else to install.
+
+**Claude Code** — run in your project folder:
+
+```sh
+claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+```
+
+**Codex** — add to `~/.codex/config.toml`, or to `.codex/config.toml` in a trusted project:
+
+```toml
+[mcp_servers.erd-editor]
+command = "npx"
+args = ["-y", "@dineug/erd-editor-mcp"]
+```
+
+**Any other MCP client** — run `npx -y @dineug/erd-editor-mcp` as a stdio server. Start it in your
+project folder: it resolves relative document paths against its working directory.
+
+### Edit with an agent
+
+1. Open the project folder in VS Code and trust the workspace.
+2. Start the agent in the same folder and ask in plain words, for example _"Add a reviews table to
+   schema.erd.json, related to users and products"_.
+3. Watch the change land on the canvas, then save with `Ctrl`/`Cmd`+`S`, or ask the agent to save.
+
+A diagram that is not open yet opens in the ERD Editor on the agent's first edit. With no VS Code
+window on the document's folder, the agent edits the file on disk instead.
+
+The agent connects only in a trusted workspace, and the `dineug.erd-editor.agentHub.enabled`
+setting turns it off for the window. Either way it can still read the diagrams from disk, but it
+never writes one behind the editor, where your next save would overwrite the change. The
+[MCP server's README](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
+lists every tool.
 
 ## Settings
 
