@@ -123,6 +123,12 @@ export type PeerStore = {
   ) => DispatchReport;
   /** Applies another peer's batch now, so a read right after sees it. */
   receive: (actions: AnyAction[] | AnyAction) => void;
+  /**
+   * Runs dispatches as one undo unit under label, so one undo reverts every
+   * entry they made. A group inside another joins it; undo, redo and a reseed
+   * are refused inside one, since the unit would no longer match the history.
+   */
+  group: <T>(label: string, run: () => T) => T;
   undo: () => RevertResult;
   redo: () => RevertResult;
   subscribe: (fn: (actions: AnyAction[]) => void) => Unsubscribe;
@@ -244,6 +250,8 @@ export function createPeerStore({
   let batches = 0;
   let revertLog: RevertUnit[] = [];
   let redoStack: RevertUnit[] = [];
+  /** The unit a group gathers its dispatches into, and whether one has run. */
+  let grouped: { unit: RevertUnit; dispatched: boolean } | null = null;
 
   // A peer has no screen. Reported empty before any load, the origin stays
   // where the file put it, and the load never reaches the pull's frozen view
@@ -277,6 +285,10 @@ export function createPeerStore({
     if (destroyed) {
       throw new PeerStoreError(PeerStoreErrorCode.destroyed, operation);
     }
+  };
+
+  const assertOutsideGroup = (operation: string) => {
+    if (grouped) throw new Error(`${operation} cannot run inside a group`);
   };
 
   const assertWritable = (operation: string) => {
@@ -342,18 +354,41 @@ export function createPeerStore({
       historyEntries: getPushes() - pushesBefore,
     };
 
-    revertLog.push({
-      label: report.label,
-      historyEntries: report.historyEntries,
-    });
+    if (grouped) {
+      grouped.unit.historyEntries += report.historyEntries;
+      grouped.dispatched = true;
+    } else {
+      revertLog.push({
+        label: report.label,
+        historyEntries: report.historyEntries,
+      });
+    }
     // The history drops its redo side only when an entry is pushed, so the
     // units that mirror it do the same.
     if (report.historyEntries) {
       redoStack = [];
     }
-    trimRevertLog();
+    if (!grouped) trimRevertLog();
 
     return report;
+  };
+
+  const group = <T>(label: string, run: () => T): T => {
+    assertWritable('group');
+    if (grouped) return run();
+
+    const current = { unit: { label, historyEntries: 0 }, dispatched: false };
+    grouped = current;
+    try {
+      return run();
+    } finally {
+      grouped = null;
+      // A group that dispatched nothing leaves no unit, as no dispatch ran.
+      if (current.dispatched) {
+        revertLog.push(current.unit);
+        trimRevertLog();
+      }
+    }
   };
 
   const replay = (unit: RevertUnit, step: () => void) => {
@@ -366,6 +401,7 @@ export function createPeerStore({
 
   const undo = (): RevertResult => {
     assertWritable('undo');
+    assertOutsideGroup('undo');
     openSink();
 
     const skipped: string[] = [];
@@ -388,6 +424,7 @@ export function createPeerStore({
 
   const redo = (): RevertResult => {
     assertWritable('redo');
+    assertOutsideGroup('redo');
     openSink();
 
     const unit = redoStack.pop();
@@ -403,6 +440,7 @@ export function createPeerStore({
 
   const setInitialValue = (value: string) => {
     assertUsable('setInitialValue');
+    assertOutsideGroup('setInitialValue');
     const safeValue = toSafeString(value);
 
     rxStore.dispatchSync(
@@ -483,6 +521,7 @@ export function createPeerStore({
     },
     dispatch,
     receive,
+    group,
     undo,
     redo,
     subscribe,

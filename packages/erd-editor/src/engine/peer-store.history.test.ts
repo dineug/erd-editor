@@ -327,3 +327,113 @@ describe('the labels keep to what the history holds', () => {
     expect(tableName(peer, SEED.users)).toBe('users');
   });
 });
+
+describe('a group of dispatches is one undo unit', () => {
+  it('reverts every dispatch of the group with one undo, under its label, and redoes them all', () => {
+    const peer = seededPeer();
+    renameUsers(peer, 'accounts');
+
+    const reports = peer.group('batch', () => [
+      renameUsers(peer, 'members'),
+      play(peer, moveTable(SEED.users, 640, 480)),
+      setIdNotNull(peer),
+    ]);
+    const at = () => peer.state.collections.tableEntities[SEED.users].ui;
+
+    expect(reports.map(report => report.historyEntries)).toEqual([1, 1, 0]);
+    expect(peer.undo()).toEqual({ label: 'batch', entries: 2, skipped: [] });
+    expect(tableName(peer, SEED.users)).toBe('accounts');
+    expect([at().x, at().y]).not.toEqual([640, 480]);
+
+    expect(peer.redo()).toEqual({ label: 'batch', entries: 2, skipped: [] });
+    expect(tableName(peer, SEED.users)).toBe('members');
+    expect([at().x, at().y]).toEqual([640, 480]);
+
+    peer.undo();
+    expect(peer.undo().label).toBe('renameTable');
+    expect(tableName(peer, SEED.users)).toBe('users');
+  });
+
+  it('joins a group opened inside another to the outer one', () => {
+    const peer = seededPeer();
+
+    peer.group('outer', () => {
+      renameUsers(peer, 'members');
+      peer.group('inner', () => play(peer, moveTable(SEED.users, 640, 480)));
+    });
+
+    expect(peer.undo()).toEqual({ label: 'outer', entries: 2, skipped: [] });
+    expect(peer.undo()).toEqual({ label: null, entries: 0, skipped: [] });
+  });
+
+  it('leaves no unit for a group that dispatched nothing, and hands back what it ran', () => {
+    const peer = seededPeer();
+    renameUsers(peer, 'members');
+
+    expect(peer.group('empty', () => 'value')).toBe('value');
+    expect(peer.undo()).toEqual({
+      label: 'renameTable',
+      entries: 1,
+      skipped: [],
+    });
+  });
+
+  it('names a group whose dispatches made no entry among those it passes over', () => {
+    const peer = seededPeer();
+    renameUsers(peer, 'members');
+    peer.group('flags', () => setIdNotNull(peer));
+
+    expect(peer.undo()).toEqual({
+      label: 'renameTable',
+      entries: 1,
+      skipped: ['flags'],
+    });
+  });
+
+  it('keeps the unit of a group a failure cut short, for what it did dispatch', () => {
+    const peer = seededPeer();
+
+    expect(() =>
+      peer.group('broken', () => {
+        renameUsers(peer, 'members');
+        throw new Error('stop');
+      })
+    ).toThrow('stop');
+    expect(peer.undo()).toEqual({ label: 'broken', entries: 1, skipped: [] });
+    expect(tableName(peer, SEED.users)).toBe('users');
+  });
+
+  it('refuses undo, redo and a reseed inside a group, and keeps the group whole', () => {
+    const peer = seededPeer();
+
+    peer.group('batch', () => {
+      renameUsers(peer, 'members');
+      expect(() => peer.undo()).toThrow('undo cannot run inside a group');
+      expect(() => peer.redo()).toThrow('redo cannot run inside a group');
+      expect(() => peer.setInitialValue(createSeedValue())).toThrow(
+        'setInitialValue cannot run inside a group'
+      );
+    });
+
+    expect(peer.undo()).toEqual({ label: 'batch', entries: 1, skipped: [] });
+    expect(tableName(peer, SEED.users)).toBe('users');
+  });
+
+  it('refuses a group on a readonly peer', () => {
+    const peer = seededPeer();
+    peer.setReadonly(true);
+
+    expect(() => peer.group('x', () => undefined)).toThrow(
+      expect.objectContaining({ code: 'readonly', operation: 'group' })
+    );
+  });
+
+  it('refuses a group on a destroyed peer', () => {
+    const peer = createPeerStore({ nickname: 'agent', presence: false });
+    peer.destroy();
+
+    expect(() => peer.group('x', () => undefined)).toThrow(
+      expect.objectContaining({ code: 'destroyed', operation: 'group' })
+    );
+  });
+});
