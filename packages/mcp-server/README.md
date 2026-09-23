@@ -64,16 +64,19 @@ has none. Existing `.erd`, `.vuerd` and `.vuerd.json` files open too. A file tha
 document the editor can read, such as one left with merge conflict markers, is refused with
 `invalidDocument` and left as it is, never loaded as an empty diagram and written back.
 
-An agent should read a document with `erd_read` in the `snapshot` format, which lists every table,
-column, relationship, index and memo with its id, and pass those ids to the edit tools. The `sql`
-format generates DDL for any of the eight supported databases; the `json` format is the raw file.
-Editing the JSON file by hand is not supported.
+An agent finds ids with `erd_list`, which lists the settings and every table, relationship, index
+and memo by id, each table with its position and its size on the canvas (the width approximate, the
+height exact), and reads columns and other details with `erd_get`, then passes those ids to the edit
+tools. Both stay small on a large schema. `erd_read` answers the whole document at once: the
+`snapshot` format lists every entity with its id, the `sql` format generates DDL for any of the
+eight supported databases and the `json` format is the raw file. Editing the JSON file by hand is
+not supported.
 
 ## Tools
 
 | Group | Tools |
 | --- | --- |
-| Session | `erd_list_documents`, `erd_open_document`, `erd_read`, `erd_save`, `erd_undo`, `erd_redo` |
+| Session | `erd_list_documents`, `erd_open_document`, `erd_list`, `erd_get`, `erd_read`, `erd_save`, `erd_undo`, `erd_redo` |
 | Tables | `erd_add_table`, `erd_remove_table`, `erd_change_table_name`, `erd_change_table_comment`, `erd_change_table_color`, `erd_move_table`, `erd_sort_tables` |
 | Columns | `erd_add_column`, `erd_remove_columns`, `erd_change_column_name`, `erd_change_column_data_type`, `erd_change_column_default`, `erd_change_column_comment`, `erd_set_column_primary_key`, `erd_set_column_unique`, `erd_set_column_not_null`, `erd_set_column_auto_increment`, `erd_move_column` |
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type` |
@@ -86,9 +89,10 @@ Every edit tool takes the document `path`. Settings other than `erd_set_show`, a
 `erd_resize_memo`, make no undo entry in the editor, so `erd_undo` passes over them and the result
 says so.
 
-The edit tools and `erd_read` refuse an argument they do not declare, or one of the wrong type,
-with a JSON-RPC invalid params error (-32602) before touching the document, so a misspelled
-argument is never silently dropped. The other session tools ignore arguments they do not know.
+The edit tools and the read tools (`erd_list`, `erd_get`, `erd_read`) refuse an argument they do
+not declare, or one of the wrong type, with a JSON-RPC invalid params error (-32602) before touching
+the document, so a misspelled argument is never silently dropped. The other session tools ignore
+arguments they do not know.
 
 ## License
 

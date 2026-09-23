@@ -13,10 +13,17 @@ import {
 const fixture = readToolSurfaceFixture();
 
 /**
- * The one tool that advertises no result schema: erd_read answers plain text,
- * added by hand. The 58 toolkit tools declare theirs; the recording has none.
+ * The tools that advertise no result schema: the read tools answer plain
+ * text, added by hand. The 58 toolkit tools declare theirs; the recording has none.
  */
-const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set(['erd_read']);
+const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
+  'erd_read',
+  'erd_list',
+  'erd_get',
+]);
+
+/** The tools the server gained after the recording was made. */
+const ADDED_TOOLS: readonly string[] = ['erd_get', 'erd_list'];
 
 let mcp: McpHarness;
 let tools: ListedTool[];
@@ -38,22 +45,32 @@ const declarations = (surface: readonly ToolSurface[]) =>
 const outputSchemas = (surface: readonly ToolSurface[]) =>
   surface.map(({ name, hasOutputSchema }) => ({ name, hasOutputSchema }));
 
+const recorded = () => live.filter(({ name }) => !ADDED_TOOLS.includes(name));
+
 describe('the tool surface against the SDK-based server recording', () => {
-  it('holds the 59 recorded tools', () => {
+  it('holds the 59 recorded tools and the 2 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(59);
+    expect(tools).toHaveLength(61);
+    expect(fixture.filter(({ name }) => ADDED_TOOLS.includes(name))).toEqual(
+      []
+    );
+    expect(
+      live
+        .filter(({ name }) => ADDED_TOOLS.includes(name))
+        .map(({ name }) => name)
+    ).toEqual(ADDED_TOOLS);
   });
 
-  it('keeps every tool name, argument name, JSON type and required flag', () => {
-    expect(declarations(live)).toEqual(declarations(fixture));
+  it('keeps every recorded tool name, argument name, JSON type and required flag', () => {
+    expect(declarations(recorded())).toEqual(declarations(fixture));
   });
 
-  it('advertises a result schema for every tool but erd_read, where the recording has none', () => {
+  it('advertises a result schema for every tool but the read tools, where the recording has none', () => {
     expect(outputSchemas(fixture).every(tool => !tool.hasOutputSchema)).toBe(
       true
     );
     expect(outputSchemas(live)).toEqual(
-      fixture.map(({ name }) => ({
+      live.map(({ name }) => ({
         name,
         hasOutputSchema: !PLAIN_TEXT_TOOLS.has(name),
       }))

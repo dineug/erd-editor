@@ -68,7 +68,7 @@ export function refusal(error: unknown): Refusal {
   };
 }
 
-/** A refusal as a result of its own, for erd_read, which the toolkit does not answer. */
+/** A refusal as a result of its own, for the read tools, which the toolkit does not answer. */
 export function errorResult(refused: Refusal): McpSchema.CallToolResult {
   return new McpSchema.CallToolResult({
     isError: true,

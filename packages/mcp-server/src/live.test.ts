@@ -25,7 +25,12 @@ import {
   REJOIN_NOTE,
   RESEED_NOTE,
 } from '@/session/live';
-import { documentReader, readDocument } from '@/tools/read';
+import {
+  documentReader,
+  entityReader,
+  listReader,
+  readDocument,
+} from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/live.erd.json';
@@ -109,6 +114,30 @@ describe('a live session beyond the transition table', () => {
     expect(comparable((await read('json')).text)).toEqual(
       comparable(webview.value)
     );
+  });
+
+  it('lists and gets from the editor the document it joined', async () => {
+    io.put(DOCUMENT, documentFromSql(SHOP_SQL));
+    const { webview } = hub.open(DOCUMENT);
+    const users = tableNamed(
+      JSON.parse(readDocument(webview.state, 'snapshot')),
+      'users'
+    );
+
+    const list = JSON.parse((await io.run(session.read(listReader))).text);
+    expect(list.tables.map(({ name }: { name: string }) => name)).toEqual(
+      JSON.parse(readDocument(webview.state, 'snapshot')).tables.map(
+        ({ name }: { name: string }) => name
+      )
+    );
+    const got = JSON.parse(
+      (await io.run(session.read(entityReader({ tableIds: [users.id] })))).text
+    );
+    expect(got.tables[0]).toMatchObject({
+      id: users.id,
+      name: 'users',
+      columns: users.columns,
+    });
   });
 
   describe('the order of a join answer and what came with it', () => {

@@ -59,15 +59,16 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the six session tools and every registry tool: 59 in all', () => {
+  it('is the eight session tools and every registry tool: 61 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [...SESSION_TOOL_NAMES, ...actionTools.map(({ name }) => name)].sort()
     );
+    expect(SESSION_TOOL_NAMES).toHaveLength(8);
     expect(actionTools).toHaveLength(53);
-    expect(tools).toHaveLength(59);
+    expect(tools).toHaveLength(61);
   });
 
-  it('lists the session toolkit, then erd_read, then the registry, in its order', () => {
+  it('lists the session toolkit, then the read tools, then the registry, in its order', () => {
     expect(tools.map(({ name }) => name)).toEqual([
       'erd_list_documents',
       'erd_open_document',
@@ -75,6 +76,8 @@ describe('the tool surface (AC-M8)', () => {
       'erd_undo',
       'erd_redo',
       'erd_read',
+      'erd_list',
+      'erd_get',
       ...actionTools.map(({ name }) => name),
     ]);
   });
@@ -91,9 +94,29 @@ describe('the tool surface (AC-M8)', () => {
     const { description } = (tool('erd_read').inputSchema as any).properties
       .format;
 
-    expect(description).toMatch(/whole raw \.erd\.json document, large/);
-    expect(description).toMatch(/use snapshot for editing/);
+    expect(description).toMatch(/whole raw \.erd\.json document, larger/);
     expect(description).toMatch(/never write this into the file/);
+    expect(tool('erd_read').description).toMatch(/prefer erd_list and erd_get/);
+  });
+
+  it('gives erd_list the path alone and erd_get a list of ids per kind', () => {
+    const list = tool('erd_list').inputSchema as any;
+    const get = tool('erd_get').inputSchema as any;
+
+    expect(Object.keys(list.properties)).toEqual(['path']);
+    expect(list.required).toEqual(['path']);
+    expect(Object.keys(get.properties)).toEqual([
+      'path',
+      'tableIds',
+      'relationshipIds',
+      'indexIds',
+      'memoIds',
+    ]);
+    expect(get.required).toEqual(['path']);
+    expect(get.properties.tableIds).toMatchObject({
+      type: 'array',
+      items: { type: 'string' },
+    });
   });
 
   it('adds a required path to every edit tool beside its registry arguments', () => {
@@ -112,6 +135,8 @@ describe('the tool surface (AC-M8)', () => {
 
   it('marks reads read-only and removals and imports destructive, the other hints at their defaults', () => {
     expect(tool('erd_read').annotations).toEqual(hints(true, true));
+    expect(tool('erd_list').annotations).toEqual(hints(true, true));
+    expect(tool('erd_get').annotations).toEqual(hints(true, true));
     expect(tool('erd_list_documents').annotations).toEqual(hints(true, true));
     expect(tool('erd_add_table').annotations).toEqual(hints(false, false));
     expect(tool('erd_save').annotations).toEqual(hints(false, false));
@@ -147,13 +172,15 @@ describe('the tool surface (AC-M8)', () => {
     }
   });
 
-  it('closes the arguments of every edit tool and erd_read, and of no other session tool', () => {
+  it('closes the arguments of every edit tool and read tool, and of no other session tool', () => {
     const closed = tools
       .filter(({ inputSchema }) => inputSchema.additionalProperties === false)
       .map(({ name }) => name);
 
     expect(closed).toEqual([
       'erd_read',
+      'erd_list',
+      'erd_get',
       ...actionTools.map(({ name }) => name),
     ]);
   });
@@ -171,7 +198,8 @@ describe('the tool surface (AC-M8)', () => {
       name: 'erd-editor',
       version: SERVER_VERSION,
     });
-    expect(result.instructions).toMatch(/erd_read format snapshot/);
+    expect(result.instructions).toMatch(/Find ids with erd_list/);
+    expect(result.instructions).toMatch(/with erd_get/);
   });
 });
 

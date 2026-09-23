@@ -8,6 +8,11 @@ import {
 import { toJson } from '@dineug/erd-editor-schema';
 
 import { ToolError, ToolErrorCode } from '@/tools/errors';
+import {
+  type EntityIds,
+  toDocumentList,
+  toEntityDetails,
+} from '@/tools/outline';
 import { toAgentSnapshot } from '@/tools/snapshot';
 
 export type ReadFormat = 'snapshot' | 'sql' | 'json';
@@ -21,7 +26,9 @@ export const READ_FORMATS: readonly ReadFormat[] = Object.freeze([
 /** The vendor names the sql format takes, each the name of one database. */
 export const SQL_VENDORS: readonly string[] = DatabaseVendorList;
 
-const READ_TOOL = 'erd_read';
+export const READ_TOOL = 'erd_read';
+export const LIST_TOOL = 'erd_list';
+export const GET_TOOL = 'erd_get';
 
 const refused = (message: string) =>
   new ToolError(ToolErrorCode.invalidArgs, READ_TOOL, message);
@@ -81,4 +88,16 @@ export const documentReader = (
 ): DocumentReader => ({
   tool: READ_TOOL,
   render: state => readDocument(state, format, vendor),
+});
+
+/** erd_list: the settings and every live entity by id, tables with their size. */
+export const listReader: DocumentReader = {
+  tool: LIST_TOOL,
+  render: state => JSON.stringify(toDocumentList(state)),
+};
+
+/** erd_get: the entities named, in full. */
+export const entityReader = (ids: EntityIds): DocumentReader => ({
+  tool: GET_TOOL,
+  render: state => JSON.stringify(toEntityDetails(state, ids)),
 });

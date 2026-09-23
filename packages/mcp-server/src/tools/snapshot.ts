@@ -104,6 +104,117 @@ const flagsOf = (names: Names, mask: number): Record<string, boolean> =>
     Object.entries(names).map(([name, bit]) => [name, bHas(mask, Number(bit))])
   );
 
+/** The name the tools take for a relationship type. */
+export const relationshipTypeName = (value: number): string =>
+  nameOf(RelationshipType, value);
+
+type Select = ReturnType<typeof query>;
+type TableEntity = RootState['collections']['tableEntities'][string];
+type RelationshipEntity =
+  RootState['collections']['relationshipEntities'][string];
+type IndexEntity = RootState['collections']['indexEntities'][string];
+type MemoEntity = RootState['collections']['memoEntities'][string];
+
+export function toSnapshotSettings(
+  settings: RootState['settings']
+): AgentSnapshotSettings {
+  return {
+    databaseName: settings.databaseName,
+    database: nameOf(Database, settings.database),
+    canvasType: nameOf(CanvasType, settings.canvasType),
+    language: nameOf(Language, settings.language),
+    tableNameCase: nameOf(NameCase, settings.tableNameCase),
+    columnNameCase: nameOf(NameCase, settings.columnNameCase),
+    bracketType: nameOf(BracketType, settings.bracketType),
+    relationshipDataTypeSync: settings.relationshipDataTypeSync,
+    relationshipOptimization: settings.relationshipOptimization,
+    columnOrder: settings.columnOrder.map(type => nameOf(ColumnType, type)),
+    show: flagsOf(Show, settings.show),
+    maxWidthComment: settings.maxWidthComment,
+    ignoreSaveSettings: flagsOf(SaveSettingType, settings.ignoreSaveSettings),
+  };
+}
+
+export function toSnapshotTable(
+  select: Select,
+  { id, name, comment, columnIds, ui }: TableEntity
+): AgentSnapshotTable {
+  return {
+    id,
+    name,
+    comment,
+    color: ui.color,
+    x: ui.x,
+    y: ui.y,
+    zIndex: ui.zIndex,
+    columns: select
+      .collection('tableColumnEntities')
+      .selectByIds(columnIds)
+      .map(column => ({
+        id: column.id,
+        name: column.name,
+        dataType: column.dataType,
+        default: column.default,
+        comment: column.comment,
+        primaryKey: bHas(column.options, ColumnOption.primaryKey),
+        notNull: bHas(column.options, ColumnOption.notNull),
+        unique: bHas(column.options, ColumnOption.unique),
+        autoIncrement: bHas(column.options, ColumnOption.autoIncrement),
+      })),
+  };
+}
+
+export function toSnapshotRelationship({
+  id,
+  relationshipType,
+  start,
+  end,
+}: RelationshipEntity): AgentSnapshotRelationship {
+  return {
+    id,
+    relationshipType: relationshipTypeName(relationshipType),
+    start: { tableId: start.tableId, columnIds: [...start.columnIds] },
+    end: { tableId: end.tableId, columnIds: [...end.columnIds] },
+  };
+}
+
+export function toSnapshotIndex(
+  select: Select,
+  { id, tableId, name, unique, indexColumnIds }: IndexEntity
+): AgentSnapshotIndex {
+  return {
+    id,
+    tableId,
+    name,
+    unique,
+    columns: select
+      .collection('indexColumnEntities')
+      .selectByIds(indexColumnIds)
+      .map(({ id, columnId, orderType }) => ({
+        id,
+        columnId,
+        orderType: nameOf(OrderType, orderType),
+      })),
+  };
+}
+
+export function toSnapshotMemo({
+  id,
+  value,
+  ui,
+}: MemoEntity): AgentSnapshotMemo {
+  return {
+    id,
+    value,
+    color: ui.color,
+    x: ui.x,
+    y: ui.y,
+    width: ui.width,
+    height: ui.height,
+    zIndex: ui.zIndex,
+  };
+}
+
 /** The live entities of a document, as its id lists hold them, in their order. */
 export function toAgentSnapshot({
   settings,
@@ -113,85 +224,22 @@ export function toAgentSnapshot({
   const select = query(collections);
 
   return {
-    settings: {
-      databaseName: settings.databaseName,
-      database: nameOf(Database, settings.database),
-      canvasType: nameOf(CanvasType, settings.canvasType),
-      language: nameOf(Language, settings.language),
-      tableNameCase: nameOf(NameCase, settings.tableNameCase),
-      columnNameCase: nameOf(NameCase, settings.columnNameCase),
-      bracketType: nameOf(BracketType, settings.bracketType),
-      relationshipDataTypeSync: settings.relationshipDataTypeSync,
-      relationshipOptimization: settings.relationshipOptimization,
-      columnOrder: settings.columnOrder.map(type => nameOf(ColumnType, type)),
-      show: flagsOf(Show, settings.show),
-      maxWidthComment: settings.maxWidthComment,
-      ignoreSaveSettings: flagsOf(SaveSettingType, settings.ignoreSaveSettings),
-    },
+    settings: toSnapshotSettings(settings),
     tables: select
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
-      .map(({ id, name, comment, columnIds, ui }) => ({
-        id,
-        name,
-        comment,
-        color: ui.color,
-        x: ui.x,
-        y: ui.y,
-        zIndex: ui.zIndex,
-        columns: select
-          .collection('tableColumnEntities')
-          .selectByIds(columnIds)
-          .map(column => ({
-            id: column.id,
-            name: column.name,
-            dataType: column.dataType,
-            default: column.default,
-            comment: column.comment,
-            primaryKey: bHas(column.options, ColumnOption.primaryKey),
-            notNull: bHas(column.options, ColumnOption.notNull),
-            unique: bHas(column.options, ColumnOption.unique),
-            autoIncrement: bHas(column.options, ColumnOption.autoIncrement),
-          })),
-      })),
+      .map(table => toSnapshotTable(select, table)),
     relationships: select
       .collection('relationshipEntities')
       .selectByIds(doc.relationshipIds)
-      .map(({ id, relationshipType, start, end }) => ({
-        id,
-        relationshipType: nameOf(RelationshipType, relationshipType),
-        start: { tableId: start.tableId, columnIds: [...start.columnIds] },
-        end: { tableId: end.tableId, columnIds: [...end.columnIds] },
-      })),
+      .map(toSnapshotRelationship),
     indexes: select
       .collection('indexEntities')
       .selectByIds(doc.indexIds)
-      .map(({ id, tableId, name, unique, indexColumnIds }) => ({
-        id,
-        tableId,
-        name,
-        unique,
-        columns: select
-          .collection('indexColumnEntities')
-          .selectByIds(indexColumnIds)
-          .map(({ id, columnId, orderType }) => ({
-            id,
-            columnId,
-            orderType: nameOf(OrderType, orderType),
-          })),
-      })),
+      .map(index => toSnapshotIndex(select, index)),
     memos: select
       .collection('memoEntities')
       .selectByIds(doc.memoIds)
-      .map(({ id, value, ui }) => ({
-        id,
-        value,
-        color: ui.color,
-        x: ui.x,
-        y: ui.y,
-        width: ui.width,
-        height: ui.height,
-        zIndex: ui.zIndex,
-      })),
+      .map(toSnapshotMemo),
   };
 }

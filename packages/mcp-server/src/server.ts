@@ -12,7 +12,7 @@ import * as Sessions from '@/session/manager';
 import { MessageStdin } from '@/stdin';
 import { SERVER_INSTRUCTIONS } from '@/tools/copy';
 import { ToolHandlers } from '@/tools/handlers';
-import { registerReadTool } from '@/tools/read.tool';
+import { registerReadTools } from '@/tools/read.tool';
 import { EditToolkit, SessionToolkit } from '@/tools/toolkit';
 
 import { version } from '../package.json';
@@ -48,7 +48,7 @@ export const ToolsLayer: Layer.Layer<
     yield* Effect.addFinalizer(() => sessions.closeAll);
 
     // A call arrives as the server starts it, before a toolkit forks its
-    // handler off, so erd_read, which has none, cannot overtake the others.
+    // handler off, so the read tools, which have none, cannot overtake the others.
     const server = yield* McpServer.McpServer;
     const inArrivalOrder = Effect.provideService(
       McpServer.McpServer,
@@ -62,7 +62,7 @@ export const ToolsLayer: Layer.Layer<
       })
     );
     yield* McpServer.registerToolkit(SessionToolkit).pipe(inArrivalOrder);
-    yield* registerReadTool.pipe(inArrivalOrder);
+    yield* registerReadTools.pipe(inArrivalOrder);
     yield* McpServer.registerToolkit(EditToolkit).pipe(inArrivalOrder);
   })
 ).pipe(Layer.provide(ToolHandlers));

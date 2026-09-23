@@ -169,7 +169,7 @@ describe('the server', () => {
 
     expect((await answered).result).toEqual({});
     expect((await mcp.request('ping')).result).toEqual({});
-    expect((await mcp.listTools()).tools).toHaveLength(59);
+    expect((await mcp.listTools()).tools).toHaveLength(61);
     expect(console.error).toHaveBeenCalledWith(
       '[erd-editor-mcp]',
       'skipped a stdin line that is not a JSON-RPC message',
@@ -189,7 +189,7 @@ describe('the protocols it speaks', () => {
       });
 
       expect(mcp.initialize.result.protocolVersion).toBe(version);
-      expect((await mcp.listTools()).tools).toHaveLength(59);
+      expect((await mcp.listTools()).tools).toHaveLength(61);
       await mcp.close();
     }
   );

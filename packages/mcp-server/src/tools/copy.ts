@@ -11,16 +11,14 @@ export type ToolCopy = {
 
 /** What the client hands the model once, beside the tool list. */
 export const SERVER_INSTRUCTIONS =
-  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Read ids with erd_read format snapshot, then pass them to the edit tools; never write a document file yourself. When a VS Code window has the document, edits appear live in its ERD editor and stay unsaved until erd_save; otherwise they are written to the file at once.';
+  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools. Never write a document file yourself. When a VS Code window has the document, edits appear live in its ERD editor and stay unsaved until erd_save; otherwise they are written to the file at once.';
 
-const TABLE_ID =
-  'Table id, from erd_read snapshot or the createdIds of erd_add_table.';
+const TABLE_ID = 'Table id, from erd_list or the createdIds of erd_add_table.';
 const COLUMN_ID =
-  'Column id in that table, from erd_read snapshot or the createdIds of erd_add_column.';
-const INDEX_ID =
-  'Index id, from erd_read snapshot or the createdIds of erd_add_index.';
+  'Column id in that table, from erd_get or the createdIds of erd_add_column.';
+const INDEX_ID = 'Index id, from erd_list or the createdIds of erd_add_index.';
 const INDEX_COLUMN_ID =
-  'Index column id: an entry of the index columns list in erd_read snapshot, not the table column id.';
+  'Index column id: an entry of the index columns list erd_get gives, not the table column id.';
 const X = 'Left edge on the canvas, in pixels.';
 const Y = 'Top edge on the canvas, in pixels.';
 const RELATIONSHIP_TYPE =
@@ -34,10 +32,10 @@ export const ARG_COPY: Readonly<Record<string, string>> = {
   path: 'Path of the ERD document (.erd.json, .erd, .vuerd), absolute or relative to the working directory.',
   tableId: TABLE_ID,
   columnId: COLUMN_ID,
-  memoId: 'Memo id, from erd_read snapshot or the createdIds of erd_add_memo.',
+  memoId: 'Memo id, from erd_list or the createdIds of erd_add_memo.',
   indexId: INDEX_ID,
   indexColumnId: INDEX_COLUMN_ID,
-  relationshipId: 'Relationship id, from erd_read snapshot or createdIds.',
+  relationshipId: 'Relationship id, from erd_list or createdIds.',
   relationshipType: RELATIONSHIP_TYPE,
   color: COLOR,
   x: X,
@@ -73,12 +71,26 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_read: {
     description:
-      'Reads a document. Use snapshot to edit: compact JSON with every id. Other formats never edit; change a document only through the erd_ tools, never by writing its file.',
+      'Reads a whole document at once. For ids and details prefer erd_list and erd_get, which stay small on a large schema. Change a document only through the erd_ tools, never by writing its file.',
     args: {
       format:
-        'snapshot: compact JSON with ids, for editing. sql: DDL of a vendor. json: the whole raw .erd.json document, large; use snapshot for editing and never write this into the file.',
+        'snapshot: compact JSON with every id and column, large on a big schema. sql: DDL of a vendor. json: the whole raw .erd.json document, larger still; never write this into the file.',
       vendor:
         'Database for the sql format; defaults to the database the document is set to.',
+    },
+  },
+  erd_list: {
+    description:
+      'Lists a document: its settings and every table, relationship, index and memo by id. Each table has its position and its size on the ERD canvas; the width is approximate, the height exact. Columns, comments and memo text come from erd_get.',
+  },
+  erd_get: {
+    description:
+      'Gives the entities named, in full: tables with their columns and size, relationships with their columns, indexes with their columns, memos with their text. Ids that name no live entity of their kind are listed in missing.',
+    args: {
+      tableIds: 'Table ids, from erd_list.',
+      relationshipIds: 'Relationship ids, from erd_list.',
+      indexIds: 'Index ids, from erd_list.',
+      memoIds: 'Memo ids, from erd_list.',
     },
   },
   erd_save: {
@@ -127,7 +139,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   erd_remove_columns: {
     description:
       'Removes columns from one table, with the relationships and index entries that use them.',
-    args: { columnIds: 'Column ids in that table, from erd_read snapshot.' },
+    args: { columnIds: 'Column ids in that table, from erd_get.' },
   },
   erd_change_column_data_type: {
     description:

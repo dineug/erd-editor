@@ -35,7 +35,7 @@ export const REJOIN_NOTE =
   'The editor had dropped this agent from the document, so it was opened and joined again and the call ran once more.';
 
 export const CLOSED_NOTE =
-  "The editor on this document was closed after this agent's last edit, so those edits are in the file only if they were saved before it closed; erd_read shows what it holds now.";
+  "The editor on this document was closed after this agent's last edit, so those edits are in the file only if they were saved before it closed; erd_list shows what it holds now.";
 
 export type LiveSession = DocumentSession & {
   readonly mode: 'live';

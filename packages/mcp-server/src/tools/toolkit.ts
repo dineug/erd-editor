@@ -11,6 +11,8 @@ export const SESSION_TOOL_NAMES = Object.freeze([
   'erd_list_documents',
   'erd_open_document',
   'erd_read',
+  'erd_list',
+  'erd_get',
   'erd_save',
   'erd_undo',
   'erd_redo',
@@ -141,8 +143,8 @@ const sessionTool = <
     .annotate(Tool.Destructive, false);
 
 /**
- * The session tools but erd_read, which answers plain text and so is added by
- * hand. None is strict: an unknown key is ignored.
+ * The session tools but the three read tools, which answer plain text and so
+ * are added by hand. None is strict: an unknown key is ignored.
  */
 export const SessionToolkit = Toolkit.make(
   ListDocuments,

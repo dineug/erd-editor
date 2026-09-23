@@ -59,4 +59,9 @@ export {
 export type { RootState } from '@/engine/state';
 export { defaultToWidth } from '@/engine/to-width';
 export { bHas } from '@/utils/bit';
+export {
+  calcTableHeight,
+  calcTableWidths,
+  recalculateTableWidth,
+} from '@/utils/calcTable';
 export { createSchemaSQL } from '@/utils/schema-sql';

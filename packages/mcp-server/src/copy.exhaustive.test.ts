@@ -9,6 +9,11 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
   { name: 'erd_list_documents', args: [] },
   { name: 'erd_open_document', args: ['path', 'create'] },
   { name: 'erd_read', args: ['path', 'format', 'vendor'] },
+  { name: 'erd_list', args: ['path'] },
+  {
+    name: 'erd_get',
+    args: ['path', 'tableIds', 'relationshipIds', 'indexIds', 'memoIds'],
+  },
   { name: 'erd_save', args: ['path'] },
   { name: 'erd_undo', args: ['path'] },
   { name: 'erd_redo', args: ['path'] },
@@ -20,7 +25,7 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
 
 describe('the prose table covers the surface exactly', () => {
   it('names the session tools the surface above lists', () => {
-    expect(SURFACE.slice(0, 6).map(({ name }) => name)).toEqual([
+    expect(SURFACE.slice(0, 8).map(({ name }) => name)).toEqual([
       ...SESSION_TOOL_NAMES,
     ]);
   });

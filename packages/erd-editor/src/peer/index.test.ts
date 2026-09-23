@@ -20,10 +20,15 @@ import {
 import { defaultToWidth } from '@/engine/to-width';
 import * as peer from '@/peer';
 import { bHas } from '@/utils/bit';
+import {
+  calcTableHeight,
+  calcTableWidths,
+  recalculateTableWidth,
+} from '@/utils/calcTable';
 import { createSchemaSQL } from '@/utils/schema-sql';
 
 describe('peer barrel (AC-B2)', () => {
-  it('exposes exactly the 43 values the headless peer needs', () => {
+  it('exposes exactly the 46 values the headless peer needs', () => {
     expect(Object.keys(peer).sort()).toEqual(
       [
         'createPeerStore',
@@ -69,9 +74,12 @@ describe('peer barrel (AC-B2)', () => {
         'DatabaseVendorList',
         'DatabaseVendorToDatabase',
         'bHas',
+        'calcTableWidths',
+        'calcTableHeight',
+        'recalculateTableWidth',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(43);
+    expect(Object.keys(peer)).toHaveLength(46);
   });
 
   it('re-exports each name from the module that owns it', () => {
@@ -93,6 +101,9 @@ describe('peer barrel (AC-B2)', () => {
     expect(peer.createSchemaSQL).toBe(createSchemaSQL);
     expect(peer.DatabaseVendorList).toBe(DatabaseVendorList);
     expect(peer.bHas).toBe(bHas);
+    expect(peer.calcTableWidths).toBe(calcTableWidths);
+    expect(peer.calcTableHeight).toBe(calcTableHeight);
+    expect(peer.recalculateTableWidth).toBe(recalculateTableWidth);
   });
 
   it('keeps the catalog per module and exports no flat actions map', () => {
