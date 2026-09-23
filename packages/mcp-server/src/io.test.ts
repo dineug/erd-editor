@@ -6,7 +6,9 @@ import {
   mkdtemp,
   realpath,
   rm,
+  stat as nodeStat,
   symlink,
+  utimes,
   writeFile,
 } from 'node:fs/promises';
 import {
@@ -23,7 +25,6 @@ import * as Effect from 'effect/Effect';
 import * as Fiber from 'effect/Fiber';
 import * as FileSystem from 'effect/FileSystem';
 import * as Layer from 'effect/Layer';
-import * as Path from 'effect/Path';
 import * as Stream from 'effect/Stream';
 import * as Socket from 'effect/unstable/socket/Socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -34,7 +35,7 @@ import { connectPipe, fromNetSocket, HubUnreachable } from '@/io/netSocket';
 import { isAlive, ProcessInfo } from '@/io/process';
 import * as Process from '@/io/process';
 import { realPath } from '@/paths';
-import { listDiskDocuments, statOf } from '@/session/disk';
+import { listDiskDocuments } from '@/session/disk';
 
 let dir: string;
 
@@ -48,7 +49,7 @@ afterEach(async () => {
 
 const node = Layer.mergeAll(NodeFs.layer, NodePath.layer);
 const onNode = <A, E>(
-  effect: Effect.Effect<A, E, FileSystem.FileSystem | Path.Path>
+  effect: Effect.Effect<A, E, Layer.Success<typeof node>>
 ) => Effect.runPromise(Effect.provide(effect, node));
 
 describe('the process', () => {
@@ -138,16 +139,27 @@ describe('the node file system, as the sessions read its failures', () => {
     expect(isPlatformReason(missing, 'NotFound')).toBe(true);
   });
 
-  it('stats size, mtime and the permission bits alone', async () => {
+  it('stats size, the permission bits alone and mtime to the fraction of a millisecond', async () => {
     const path = join(dir, 'private.erd.json');
     await writeFile(path, 'x');
     await chmod(path, 0o600);
+    // A quarter millisecond past a whole one, which a Date would drop.
+    await utimes(path, 1_700_000_000.00025, 1_700_000_000.00025);
 
-    const stat = await onNode(
-      FileSystem.FileSystem.use(fs => statOf(fs, path))
+    const stat = await onNode(NodeFs.FileStats.use(({ stat }) => stat(path)));
+    expect(stat).toEqual({
+      size: 1,
+      mode: 0o600,
+      mtimeMs: (await nodeStat(path)).mtimeMs,
+    });
+    expect(Math.round((stat.mtimeMs % 1) * 4)).toBe(1);
+
+    const missing = await onNode(
+      NodeFs.FileStats.use(({ stat }) => stat(join(dir, 'none.erd.json'))).pipe(
+        Effect.flip
+      )
     );
-    expect(stat).toMatchObject({ size: 1, mode: 0o600 });
-    expect(stat.mtimeMs).toBeGreaterThan(0);
+    expect(isPlatformReason(missing, 'NotFound')).toBe(true);
   });
 
   it('lists the documents of a tree, never walking a symlinked folder', async () => {

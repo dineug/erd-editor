@@ -99,13 +99,14 @@ export const layerWithSessions = <E>(
 /** What the sessions stand on: files, paths, the process and the way to a hub. */
 export type Platform =
   | FileSystem.FileSystem
+  | NodeFs.FileStats
   | Path.Path
   | ProcessInfo.ProcessInfo
   | HubConnector.HubConnector;
 
 /**
- * The node platform: its file system (realPath the native one) and path, this
- * process, node:net connections.
+ * The node platform: its file system (realPath and stat the native ones) and
+ * path, this process, node:net connections.
  */
 export const NodePlatform: Layer.Layer<Platform> = Layer.mergeAll(
   NodeFs.layer,

@@ -5,13 +5,13 @@ import {
   readFile,
   rm,
   stat,
+  utimes,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import * as NodePath from '@effect/platform-node/NodePath';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
@@ -32,6 +32,7 @@ import {
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
 import { fsError } from '@/__test-utils__/memoryFs';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
+import * as NodeFs from '@/io/fileSystem';
 import * as ProcessInfo from '@/io/process';
 import type { HeadlessSession } from '@/session/headless';
 import {
@@ -494,11 +495,7 @@ describe('headless on a real file system', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  const node = Layer.mergeAll(
-    NodeFileSystem.layer,
-    NodePath.layer,
-    ProcessInfo.layer
-  );
+  const node = Layer.mergeAll(NodeFs.layer, NodePath.layer, ProcessInfo.layer);
   const onNode = <A, E>(
     effect: Effect.Effect<A, E, Layer.Success<typeof node>>
   ) => Effect.runPromise(Effect.provide(effect, node));
@@ -535,6 +532,39 @@ describe('headless on a real file system', () => {
       notes: [],
     });
     expect(JSON.parse(await readFile(path, 'utf8')).doc.tableIds).toEqual([]);
+    await onNode(session.close);
+  });
+
+  it('tells a write of the same size stamped within the millisecond of its own', async () => {
+    const path = join(dir, 'twin.erd.json');
+    await writeFile(path, emptyDocument());
+    const session = await openReal(path);
+    const {
+      run: {
+        createdIds: [tableId],
+      },
+    } = await onNode(session.runTool('erd_add_table', {}));
+
+    // The same bytes but for the table id, stamped a quarter millisecond or more
+    // away from the session's own write, inside the same millisecond.
+    const otherId = `${tableId[0] === 'x' ? 'y' : 'x'}${tableId.slice(1)}`;
+    const ours = await stat(path, { bigint: true });
+    await writeFile(
+      path,
+      (await readFile(path, 'utf8')).replaceAll(tableId, otherId)
+    );
+    const millisecond = ours.mtimeNs / 1_000_000n;
+    const fraction = ours.mtimeNs % 1_000_000n < 500_000n ? 750_000n : 250_000n;
+    const seconds = Number(millisecond * 1_000_000n + fraction) / 1e9;
+    await utimes(path, seconds, seconds);
+    const theirs = await stat(path, { bigint: true });
+    expect(theirs.size).toBe(ours.size);
+    expect(theirs.mtimeNs / 1_000_000n).toBe(millisecond);
+    expect(theirs.mtimeNs).not.toBe(ours.mtimeNs);
+
+    const { text, notes } = await onNode(session.read('json'));
+    expect(JSON.parse(text).doc.tableIds).toEqual([otherId]);
+    expect(notes).toEqual([RELOADED_NOTE]);
     await onNode(session.close);
   });
 });

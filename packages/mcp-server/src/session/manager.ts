@@ -14,6 +14,7 @@ import * as Schedule from 'effect/Schedule';
 import { SessionError, SessionErrorCode } from '@/errors';
 import { HubConnector } from '@/hub/client';
 import { HubDiscovery } from '@/hub/discovery';
+import { FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import { realPath, resolveDocumentPath, sessionKey } from '@/paths';
 import {
@@ -164,6 +165,7 @@ const make = Effect.gen(function* () {
   const connector = yield* HubConnector;
   const clock = yield* Clock.clockWith(Effect.succeed);
   const services = Context.make(FileSystem.FileSystem, fs).pipe(
+    Context.add(FileStats, yield* FileStats),
     Context.add(Path.Path, yield* Path.Path),
     Context.add(ProcessInfo, process),
     Context.add(HubConnector, connector)
@@ -172,7 +174,7 @@ const make = Effect.gen(function* () {
     effect: Effect.Effect<
       A,
       E,
-      FileSystem.FileSystem | Path.Path | ProcessInfo | HubConnector
+      FileSystem.FileSystem | FileStats | Path.Path | ProcessInfo | HubConnector
     >
   ) => Effect.provideContext(effect, services);
 
@@ -515,5 +517,10 @@ const make = Effect.gen(function* () {
 export const layer: Layer.Layer<
   SessionManager,
   never,
-  FileSystem.FileSystem | Path.Path | ProcessInfo | HubConnector | HubDiscovery
+  | FileSystem.FileSystem
+  | FileStats
+  | Path.Path
+  | ProcessInfo
+  | HubConnector
+  | HubDiscovery
 > = Layer.effect(SessionManager, make);

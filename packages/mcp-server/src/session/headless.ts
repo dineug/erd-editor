@@ -10,13 +10,12 @@ import * as FileSystem from 'effect/FileSystem';
 import * as Path from 'effect/Path';
 
 import { isPlatformReason, SessionError, SessionErrorCode } from '@/errors';
+import { type FileStat, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import {
   createEmptyDocument,
-  type FileStat,
   orNotFound,
   readDocumentFile,
-  statOf,
 } from '@/session/disk';
 import {
   type DocumentSession,
@@ -71,6 +70,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
   create = false,
 }: HeadlessSessionOptions) {
   const fs = yield* FileSystem.FileSystem;
+  const { stat } = yield* FileStats;
   const paths = yield* Path.Path;
   const { randomId } = yield* ProcessInfo;
   if (create) yield* createIfMissing(fs, path);
@@ -84,12 +84,12 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
   // The stat comes before the read, so a write landing after it never passes
   // for the baseline: the next refresh loads it, or the swap check refuses.
   const load = Effect.gen(function* () {
-    const stat = yield* statOf(fs, path).pipe(orNotFound(path));
+    const baseline = yield* stat(path).pipe(orNotFound(path));
     const text = yield* readDocumentFile(path).pipe(
       Effect.provideService(FileSystem.FileSystem, fs)
     );
     yield* run(() => peer.setInitialValue(text));
-    loaded = stat;
+    loaded = baseline;
     edits = 0;
   });
 
@@ -97,7 +97,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
 
   /** Picks up an edit made outside this session, which only a reload can take in. */
   const refresh = Effect.gen(function* () {
-    const current = yield* statOf(fs, path).pipe(Effect.option);
+    const current = yield* stat(path).pipe(Effect.option);
     if (current._tag === 'Some' && sameStat(current.value, loaded)) {
       return [] as Notes;
     }
@@ -125,8 +125,8 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
       yield* fs.writeFileString(temp, peer.value, {
         mode: loaded.mode | 0o200,
       });
-      const written = yield* statOf(fs, temp);
-      const current = yield* statOf(fs, path);
+      const written = yield* stat(temp);
+      const current = yield* stat(path);
       if (!sameStat(current, loaded)) {
         yield* removeTemp;
         yield* reloadQuietly;

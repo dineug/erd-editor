@@ -2,7 +2,6 @@ import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import type { DocumentInfo } from '@dineug/erd-editor-agent-hub';
 import * as Effect from 'effect/Effect';
 import * as FileSystem from 'effect/FileSystem';
-import * as Option from 'effect/Option';
 import * as Path from 'effect/Path';
 
 import {
@@ -34,9 +33,6 @@ const DOCUMENT_KEYS = new Set([
 export const MAX_LISTED_DOCUMENTS = 500;
 export const MAX_LIST_DEPTH = 8;
 
-/** Size and mtime tell a change; mode is the permission bits alone. */
-export type FileStat = { size: number; mtimeMs: number; mode: number };
-
 /** The editor drops a byte order mark when it reads a file; so do the sessions. */
 export function stripBom(text: string): string {
   return text.startsWith('﻿') ? text.slice(1) : text;
@@ -51,18 +47,6 @@ export function createEmptyDocument(): string {
     peer.destroy();
   }
 }
-
-export const statOf = (fs: FileSystem.FileSystem, path: string) =>
-  fs.stat(path).pipe(
-    Effect.map((info): FileStat => ({
-      size: Number(info.size),
-      mtimeMs: Option.match(info.mtime, {
-        onNone: () => 0,
-        onSome: mtime => mtime.getTime(),
-      }),
-      mode: info.mode & 0o777,
-    }))
-  );
 
 function invalidDocument(path: string, what: string): SessionError {
   return new SessionError(

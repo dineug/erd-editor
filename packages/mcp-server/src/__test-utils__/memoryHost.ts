@@ -14,6 +14,7 @@ import {
 } from '@/__test-utils__/memorySocket';
 import * as HubConnector from '@/hub/client';
 import * as HubDiscovery from '@/hub/discovery';
+import { statsFromFileSystem } from '@/io/fileSystem';
 import type { ConnectPipe } from '@/io/netSocket';
 import * as ProcessInfo from '@/io/process';
 import { StderrLogger } from '@/logger';
@@ -79,6 +80,7 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
 
   const platformLayer: Layer.Layer<Platform> = Layer.mergeAll(
     fs.layer,
+    statsFromFileSystem.pipe(Layer.provide(fs.layer)),
     ProcessInfo.layerTest({
       cwd,
       homeDir: home,
