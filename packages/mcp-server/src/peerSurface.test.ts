@@ -69,7 +69,7 @@ describe('the peer entry has no dead export', () => {
   it('imports every one of the entry’s exported values somewhere', () => {
     const keys = Object.keys(peer).sort();
 
-    expect(keys).toHaveLength(46);
+    expect(keys).toHaveLength(44);
     expect(keys.filter(key => !imported.has(key))).toEqual([]);
   });
 

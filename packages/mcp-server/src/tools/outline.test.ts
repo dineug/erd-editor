@@ -1,7 +1,7 @@
 import {
-  calcTableHeight,
-  calcTableWidths,
   createPeerStore,
+  defaultToWidth,
+  measureTableSize,
   type PeerStore,
 } from '@dineug/erd-editor/peer.js';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -71,15 +71,14 @@ describe('the document list', () => {
     ]);
   });
 
-  it('sizes each table as the table sort does once the peer has settled', async () => {
+  it('sizes each table with the text measure of the peer hooks and the table sort', () => {
     const peer = seeded();
-    await settled();
     const { tables } = toDocumentList(peer.state);
 
     for (const { id, width, height } of tables) {
-      const table = tableOf(peer, id);
-      expect(width, id).toBe(calcTableWidths(table, peer.state).width);
-      expect(height, id).toBe(calcTableHeight(table));
+      expect({ width, height }, id).toEqual(
+        measureTableSize(tableOf(peer, id), peer.state, defaultToWidth)
+      );
     }
   });
 
@@ -159,21 +158,13 @@ describe('the document list', () => {
 });
 
 describe('the entity details', () => {
-  it('gives a table as the snapshot does, with its size before its columns', async () => {
+  it('gives a table as the snapshot does, with the size the list gives before its columns', () => {
     const peer = seeded();
-    await settled();
     const { tables } = toEntityDetails(peer.state, { tableIds: [SEED.orders] });
     const { columns, ...snapshot } = toAgentSnapshot(peer.state).tables[1];
-    const table = tableOf(peer, SEED.orders);
+    const { width, height } = toDocumentList(peer.state).tables[1];
 
-    expect(tables).toEqual([
-      {
-        ...snapshot,
-        width: calcTableWidths(table, peer.state).width,
-        height: calcTableHeight(table),
-        columns,
-      },
-    ]);
+    expect(tables).toEqual([{ ...snapshot, width, height, columns }]);
     expect(Object.keys(tables![0]).slice(-3)).toEqual([
       'width',
       'height',

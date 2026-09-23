@@ -1,9 +1,6 @@
 import {
-  calcTableHeight,
-  calcTableWidths,
-  createEngineContext,
   defaultToWidth,
-  recalculateTableWidth,
+  measureTableSize,
   type RootState,
 } from '@dineug/erd-editor/peer.js';
 import { query } from '@dineug/erd-editor-schema';
@@ -88,59 +85,19 @@ export type EntityDetails = {
   missing?: string[];
 };
 
-const ESTIMATE = createEngineContext({ toWidth: defaultToWidth });
-
-const withOwnUi = <T extends { ui: object }>(entity: T): T => ({
-  ...entity,
-  ui: { ...entity.ui },
-});
+type TableEntity = RootState['collections']['tableEntities'][string];
 
 /**
- * The state with every table and column copied and its text widths estimated
- * as this peer's hooks estimate them once a document loads, so a table's
- * size never depends on how long ago the file was read.
+ * A table's box as the table sort sizes it once the peer's hooks have measured
+ * its text, which they do a few milliseconds after a load whatever the file
+ * carried: the height exact, the width from about 10 px a character.
  */
-function estimateWidths(state: RootState): RootState {
-  const { tableEntities, tableColumnEntities } = state.collections;
-  const estimated: RootState = {
-    ...state,
-    collections: {
-      ...state.collections,
-      tableEntities: Object.fromEntries(
-        Object.entries(tableEntities).map(([id, table]) => [
-          id,
-          withOwnUi(table),
-        ])
-      ),
-      tableColumnEntities: Object.fromEntries(
-        Object.entries(tableColumnEntities).map(([id, column]) => [
-          id,
-          withOwnUi(column),
-        ])
-      ),
-    },
-  };
-  recalculateTableWidth(estimated, ESTIMATE);
-  return estimated;
-}
-
-/**
- * A table's box as the table sort sizes it, on a state from estimateWidths:
- * the height from its row count, exact, the width from text widths of about
- * 10 px a character, only near what the editor measures on its canvas.
- */
-export function tableSize(id: string, estimated: RootState): TableSize {
-  const table = estimated.collections.tableEntities[id];
-  return {
-    width: calcTableWidths(table, estimated).width,
-    height: calcTableHeight(table),
-  };
-}
+export const tableSize = (table: TableEntity, state: RootState): TableSize =>
+  measureTableSize(table, state, defaultToWidth);
 
 export function toDocumentList(state: RootState): DocumentList {
   const { settings, doc, collections } = state;
   const select = query(collections);
-  const estimated = estimateWidths(state);
 
   return {
     settings: toSnapshotSettings(settings),
@@ -152,7 +109,7 @@ export function toDocumentList(state: RootState): DocumentList {
         name: table.name,
         x: table.ui.x,
         y: table.ui.y,
-        ...tableSize(table.id, estimated),
+        ...tableSize(table, state),
         columnCount: select
           .collection('tableColumnEntities')
           .selectByIds(table.columnIds).length,
@@ -213,13 +170,12 @@ export function toEntityDetails(
   };
 
   if (ids.tableIds) {
-    const estimated = estimateWidths(state);
     details.tables = select
       .collection('tableEntities')
       .selectByIds(pick(ids.tableIds, doc.tableIds))
       .map(table => {
         const { columns, ...rest } = toSnapshotTable(select, table);
-        return { ...rest, ...tableSize(table.id, estimated), columns };
+        return { ...rest, ...tableSize(table, state), columns };
       });
   }
   if (ids.relationshipIds) {
