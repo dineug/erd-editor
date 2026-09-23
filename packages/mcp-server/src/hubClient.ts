@@ -13,7 +13,7 @@ import {
 
 import { messageOf, SessionError, SessionErrorCode } from '@/errors';
 import { type McpIo, type McpSocket } from '@/io';
-import { log } from '@/log';
+import { logUnsafe } from '@/logger';
 
 /** How long a request may go unanswered; the hub's own waits all end well inside it. */
 export const REQUEST_TIMEOUT_MS = 30_000;
@@ -97,10 +97,13 @@ export function createHubClient(
         entry.resolve(message.result);
         return;
       }
+      // SessionError checks its fields, and a throw here would end the process.
       const error = isRecord(message.error) ? message.error : {};
       entry.reject(
         new SessionError(
-          error.code ?? HubErrorCode.internal,
+          typeof error.code === 'string'
+            ? (error.code as HubErrorCode)
+            : HubErrorCode.internal,
           typeof error.message === 'string'
             ? error.message
             : `The hub refused ${entry.method}`
@@ -122,7 +125,10 @@ export function createHubClient(
     try {
       messages = decoder.push(chunk);
     } catch (error) {
-      log(`closed the hub connection of pid ${pid} on a bad frame`, error);
+      logUnsafe(
+        `closed the hub connection of pid ${pid} on a bad frame`,
+        error
+      );
       socket.end();
       teardown();
       return;

@@ -13,7 +13,7 @@ import {
 import { isSessionError, SessionError } from '@/errors';
 import { connectHub, type HubClient } from '@/hubClient';
 import { type McpIo } from '@/io';
-import { log } from '@/log';
+import { logUnsafe } from '@/logger';
 import { assertDocumentText, stripBom } from '@/session/disk';
 import {
   type DocumentSession,
@@ -130,7 +130,7 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
     if (errors) {
       errors.push(error);
     } else {
-      log(`a batch for ${path} did not reach the editor`, error);
+      logUnsafe(`a batch for ${path} did not reach the editor`, error);
     }
   };
 

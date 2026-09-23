@@ -12,8 +12,11 @@ import {
 
 const fixture = readToolSurfaceFixture();
 
-/** The tools that advertise a result schema; every declared-result tool joins it in Step 6a. */
-const OUTPUT_SCHEMA_TOOLS: ReadonlySet<string> = new Set<string>();
+/**
+ * The one tool that advertises no result schema: erd_read answers plain text,
+ * added by hand. The 58 toolkit tools declare theirs, as 0.1.0 did not.
+ */
+const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set(['erd_read']);
 
 let mcp: McpHarness;
 let tools: ListedTool[];
@@ -21,7 +24,7 @@ let live: ToolSurface[];
 
 beforeAll(async () => {
   mcp = await connectMcp({ io: createMemoryIo() });
-  tools = (await mcp.client.listTools()).tools;
+  tools = (await mcp.listTools()).tools;
   live = normalizeToolSurface(tools);
 });
 
@@ -45,13 +48,17 @@ describe('the tool surface against the 0.1.0 fixture (AC-E4)', () => {
     expect(declarations(live)).toEqual(declarations(fixture));
   });
 
-  it('advertises a result schema for exactly the tools the table names', () => {
+  it('advertises a result schema for every tool but erd_read, where 0.1.0 had none', () => {
+    expect(outputSchemas(fixture).every(tool => !tool.hasOutputSchema)).toBe(
+      true
+    );
     expect(outputSchemas(live)).toEqual(
       fixture.map(({ name }) => ({
         name,
-        hasOutputSchema: OUTPUT_SCHEMA_TOOLS.has(name),
+        hasOutputSchema: !PLAIN_TEXT_TOOLS.has(name),
       }))
     );
+    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(58);
   });
 
   it('takes an object for its arguments, in every tool (R3)', () => {

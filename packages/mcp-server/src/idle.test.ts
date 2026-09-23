@@ -45,15 +45,15 @@ describe('idle sessions (AC-P15)', () => {
   it('closes a session idle for the whole period, live and headless alike', async () => {
     await mcp.ok('erd_add_table', { path: LIVE });
     await mcp.ok('erd_add_table', { path: DISK });
-    expect(mcp.erd.manager.paths().sort()).toEqual([DISK, LIVE]);
+    expect(mcp.manager.paths().sort()).toEqual([DISK, LIVE]);
 
     clock += IDLE_TTL_MS - 1;
-    expect(await mcp.erd.manager.sweep()).toEqual([]);
+    expect(await mcp.manager.sweep()).toEqual([]);
 
     clock += 1;
-    expect((await mcp.erd.manager.sweep()).sort()).toEqual([DISK, LIVE]);
+    expect((await mcp.manager.sweep()).sort()).toEqual([DISK, LIVE]);
     await settle();
-    expect(mcp.erd.manager.paths()).toEqual([]);
+    expect(mcp.manager.paths()).toEqual([]);
     expect(hub.documents.get(LIVE)!.peers.size).toBe(0);
   });
 
@@ -63,7 +63,7 @@ describe('idle sessions (AC-P15)', () => {
     await mcp.text('erd_read', { path: DISK, format: 'snapshot' });
 
     clock += IDLE_TTL_MS - 1;
-    expect(await mcp.erd.manager.sweep()).toEqual([]);
+    expect(await mcp.manager.sweep()).toEqual([]);
   });
 
   it('sweeps before each call, and a call after the sweep opens a working session', async () => {

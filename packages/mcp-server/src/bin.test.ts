@@ -4,6 +4,7 @@ import { copyFile, mkdtemp, rm } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -14,9 +15,16 @@ const manifest = JSON.parse(
 const bin = join(packageDir, manifest.bin['erd-editor-mcp']);
 
 /**
+ * The gzip size, level 9, the built file may reach: 15% over the 208,191 bytes
+ * spike S1 projected for the server on effect's McpServer (plan D5); npx
+ * downloads the file on every cold start. Sizes by this spec's zlib: AGENTS.md.
+ */
+const BUNDLE_GZIP_BUDGET = 239_420;
+
+/**
  * The specifiers of the import statements that open an ESM file, where the
  * bundler hoists every static import. Scanning the whole text would also hit
- * code the bundle carries as strings, such as the source ajv generates.
+ * an import the bundle only quotes, inside a string or a template.
  */
 function leadingImports(source: string): string[] {
   const statement =
@@ -30,7 +38,11 @@ function leadingImports(source: string): string[] {
   return specifiers;
 }
 
-/** Talks to the built file over stdio, one JSON-RPC line at a time. */
+/**
+ * Talks to the built file over stdio, one JSON-RPC line at a time, and ends
+ * stdin once every request has its response. A notification the server sends
+ * on its own, such as tools/list_changed, is a line too, so ids are counted.
+ */
 function exchange(
   file: string,
   messages: object[]
@@ -41,8 +53,11 @@ function exchange(
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', chunk => {
       stdout += chunk;
-      const lines = stdout.split('\n').filter(Boolean);
-      if (lines.length >= messages.filter(m => 'id' in m).length) {
+      const responses = stdout
+        .split('\n')
+        .slice(0, -1)
+        .filter(line => 'id' in JSON.parse(line));
+      if (responses.length >= messages.filter(m => 'id' in m).length) {
         child.stdin.end();
       }
     });
@@ -88,6 +103,21 @@ describe('the built single file (AC-M9, AC-P7)', () => {
     expect(source.match(/(?<![\w$.])import\s*\(\s*["'`]/g)).toBeNull();
   });
 
+  it('stays within its gzip budget', () => {
+    const gzip = gzipSync(readFileSync(bin), { level: 9 }).length;
+    // An observation beside the gate, for the size table in AGENTS.md.
+    console.info(`erd-editor-mcp.js: gzip level 9 ${gzip} bytes`);
+    expect(gzip).toBeLessThanOrEqual(BUNDLE_GZIP_BUDGET);
+  });
+
+  it('carries neither ws nor undici, nor the effect modules that reach a dynamic import', () => {
+    const source = readFileSync(bin, 'utf8');
+
+    expect(source.match(/Sec-WebSocket-Accept/g)).toBeNull();
+    expect(source.match(/undici/gi)).toBeNull();
+    expect(source.match(/SchemaAOTCompiler|Migrator/g)).toBeNull();
+  });
+
   it('answers initialize and tools/list over stdio from a folder with no node_modules, then exits when stdin ends', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'erd-mcp-bin-'));
     const lone = join(dir, 'erd-editor-mcp.js');
@@ -108,11 +138,13 @@ describe('the built single file (AC-M9, AC-P7)', () => {
       { jsonrpc: '2.0', id: 2, method: 'tools/list' },
     ]);
 
-    expect(lines[0].result.serverInfo).toEqual({
+    const byId = new Map(lines.map(line => [line.id, line]));
+    expect(byId.get(1).result.serverInfo).toEqual({
       name: 'erd-editor',
       version: manifest.version,
     });
-    expect(lines[1].result.tools).toHaveLength(59);
+    expect(byId.get(2).result.tools).toHaveLength(59);
+    expect(lines.every(line => line.jsonrpc === '2.0')).toBe(true);
     expect(code).toBe(0);
     await rm(dir, { recursive: true, force: true });
   }, 20_000);

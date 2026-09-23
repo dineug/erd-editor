@@ -108,10 +108,24 @@ export default defineConfig({
           'no-regex-spaces': 'error',
           // Effect by subpath only: platform-node's root barrel reaches undici,
           // ws and two literal dynamic imports; effect's re-exports every core
-          // module. Exact names, so effect/Schema and the like stay legal.
+          // module. Unstable schema and sql, subpaths too, hold AOT and Migrator.
           'no-restricted-imports': [
             'error',
-            { paths: ['effect', '@effect/platform-node'] },
+            {
+              paths: [
+                'effect',
+                '@effect/platform-node',
+                'effect/unstable/schema',
+                'effect/unstable/sql',
+              ],
+              patterns: [
+                {
+                  group: ['effect/unstable/schema/*', 'effect/unstable/sql/*'],
+                  message:
+                    'SchemaAOTCompiler and Migrator, each with a dynamic import, live here.',
+                },
+              ],
+            },
           ],
           'no-self-assign': 'error',
           'no-setter-return': 'off',

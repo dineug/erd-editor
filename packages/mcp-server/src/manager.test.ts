@@ -78,18 +78,18 @@ describe('the session manager', () => {
     await settle();
     expect(held).toBe(true);
     clock += 2;
-    expect(await mcp.erd.manager.sweep()).toEqual([]);
+    expect(await mcp.manager.sweep()).toEqual([]);
     release();
 
     expect((await slow).isError).toBe(false);
-    expect(mcp.erd.manager.paths()).toEqual([A]);
+    expect(mcp.manager.paths()).toEqual([A]);
   });
 
   it('closes every session on closeAll', async () => {
     await mcp.ok('erd_add_table', { path: A });
     await mcp.ok('erd_add_table', { path: B });
 
-    await mcp.erd.manager.closeAll();
-    expect(mcp.erd.manager.paths()).toEqual([]);
+    await mcp.manager.closeAll();
+    expect(mcp.manager.paths()).toEqual([]);
   });
 });

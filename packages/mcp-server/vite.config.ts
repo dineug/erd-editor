@@ -5,8 +5,8 @@ import { defineConfig } from 'vite-plus';
 
 /**
  * Only the node builtins stay external. The npm tarball carries this one file
- * and no node_modules, so every dependency, the engine and the MCP SDK
- * included, is inlined.
+ * and no node_modules, so every dependency, the engine and effect included,
+ * is inlined.
  */
 const external = [
   ...builtinModules,

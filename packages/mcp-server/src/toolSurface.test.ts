@@ -1,17 +1,27 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
-import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
+import { emptyDocument } from '@/__test-utils__/documents';
+import {
+  connectMcp,
+  type ListedTools,
+  type McpHarness,
+  RpcError,
+} from '@/__test-utils__/mcp';
 import { createMemoryIo } from '@/__test-utils__/memoryIo';
 import { SQL_VENDORS } from '@/tools/read';
-import { isDestructive, SESSION_TOOL_NAMES } from '@/tools/register';
 import { actionTools } from '@/tools/registry';
+import { isDestructive, SESSION_TOOL_NAMES } from '@/tools/toolkit';
+
+const DOCUMENT = '/work/a.erd.json';
 
 let mcp: McpHarness;
-let tools: Awaited<ReturnType<McpHarness['client']['listTools']>>['tools'];
+let tools: ListedTools['tools'];
 
 beforeAll(async () => {
-  mcp = await connectMcp({ io: createMemoryIo() });
-  const listed = await mcp.client.listTools();
+  const io = createMemoryIo();
+  io.put(DOCUMENT, emptyDocument());
+  mcp = await connectMcp({ io });
+  const listed = await mcp.listTools();
   tools = listed.tools;
   // An observation, not a gate: the bytes every agent reads before its first call.
   console.info(
@@ -29,14 +39,43 @@ const tool = (name: string) => {
   return found;
 };
 
+/** A call's JSON-RPC error; fails the spec when the call was answered. */
+const rpcError = async (name: string, args: Record<string, unknown>) => {
+  const error = await mcp.call(name, args).then(
+    () => null,
+    (reason: unknown) => reason
+  );
+  expect(error).toBeInstanceOf(RpcError);
+  return error as RpcError;
+};
+
+/** The four hints every listed tool carries, the MCP defaults filled in. */
+const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
+  readOnlyHint,
+  destructiveHint,
+  idempotentHint: false,
+  openWorldHint: true,
+});
+
 describe('the tool surface (AC-M8)', () => {
   it('is the six session tools and every registry tool: 59 in all', () => {
-    expect(tools.map(({ name }) => name)).toEqual([
-      ...SESSION_TOOL_NAMES,
-      ...actionTools.map(({ name }) => name),
-    ]);
+    expect(tools.map(({ name }) => name).sort()).toEqual(
+      [...SESSION_TOOL_NAMES, ...actionTools.map(({ name }) => name)].sort()
+    );
     expect(actionTools).toHaveLength(53);
     expect(tools).toHaveLength(59);
+  });
+
+  it('lists the session toolkit, then erd_read, then the registry, in its order', () => {
+    expect(tools.map(({ name }) => name)).toEqual([
+      'erd_list_documents',
+      'erd_open_document',
+      'erd_save',
+      'erd_undo',
+      'erd_redo',
+      'erd_read',
+      ...actionTools.map(({ name }) => name),
+    ]);
   });
 
   it('gives erd_read the three formats and the vendor list', () => {
@@ -70,14 +109,17 @@ describe('the tool surface (AC-M8)', () => {
     }
   });
 
-  it('marks reads read-only and removals and imports destructive', () => {
-    expect(tool('erd_read').annotations).toEqual({ readOnlyHint: true });
-    expect(tool('erd_list_documents').annotations).toEqual({
-      readOnlyHint: true,
-    });
+  it('marks reads read-only and removals and imports destructive, the other hints at their defaults', () => {
+    expect(tool('erd_read').annotations).toEqual(hints(true, true));
+    expect(tool('erd_list_documents').annotations).toEqual(hints(true, true));
+    expect(tool('erd_add_table').annotations).toEqual(hints(false, false));
+    expect(tool('erd_save').annotations).toEqual(hints(false, false));
 
     const destructive = tools
-      .filter(({ annotations }) => annotations?.destructiveHint)
+      .filter(
+        ({ annotations }) =>
+          annotations.destructiveHint && !annotations.readOnlyHint
+      )
       .map(({ name }) => name);
     expect(destructive).toEqual([
       'erd_remove_table',
@@ -104,23 +146,110 @@ describe('the tool surface (AC-M8)', () => {
     }
   });
 
-  it('refuses arguments of the wrong shape before a session is touched', async () => {
-    const refused = await mcp.call('erd_move_table', {
-      path: '/work/a.erd.json',
+  it('closes the arguments of every edit tool and erd_read, and of no other session tool', () => {
+    const closed = tools
+      .filter(({ inputSchema }) => inputSchema.additionalProperties === false)
+      .map(({ name }) => name);
+
+    expect(closed).toEqual([
+      'erd_read',
+      ...actionTools.map(({ name }) => name),
+    ]);
+  });
+
+  it('keeps every input schema inline, with no $defs (X7)', () => {
+    expect(tools.filter(({ inputSchema }) => '$defs' in inputSchema)).toEqual(
+      []
+    );
+  });
+
+  it('introduces itself with the server name, version and instructions', () => {
+    const { result } = mcp.initialize;
+
+    expect(result.serverInfo).toEqual({ name: 'erd-editor', version: '0.1.0' });
+    expect(result.instructions).toMatch(/erd_read format snapshot/);
+  });
+});
+
+describe('tool arguments (A2)', () => {
+  it('refuses arguments of the wrong shape with -32602 before a session is touched', async () => {
+    const error = await rpcError('erd_move_table', {
+      path: DOCUMENT,
       tableId: 't',
       x: 'left',
       y: 1,
     });
-    expect(refused.isError).toBe(true);
-    expect(refused.text).toMatch(/Input validation error/);
-    expect(mcp.erd.manager.paths()).toEqual([]);
+
+    expect(error.code).toBe(-32602);
+    expect(error.message).toMatch(/erd_move_table.*\n.*\["x"\]/);
+    expect(mcp.manager.paths()).toEqual([]);
   });
 
-  it('introduces itself with the server name, version and instructions', () => {
-    expect(mcp.client.getServerVersion()).toEqual({
-      name: 'erd-editor',
-      version: '0.1.0',
+  it('refuses an argument an edit tool does not take with -32602, where 0.1.0 dropped it', async () => {
+    const error = await rpcError('erd_add_table', {
+      path: DOCUMENT,
+      bogus: 1,
     });
-    expect(mcp.client.getInstructions()).toMatch(/erd_read format snapshot/);
+
+    expect(error.code).toBe(-32602);
+    expect(error.message).toMatch(/excess property\n.*\["bogus"\]/);
+    expect(mcp.manager.paths()).toEqual([]);
+  });
+
+  it('refuses an unknown argument and an unknown format of erd_read with -32602', async () => {
+    const unknown = await rpcError('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+      bogus: 1,
+    });
+    const format = await rpcError('erd_read', {
+      path: DOCUMENT,
+      format: 'yaml',
+    });
+
+    expect([unknown.code, format.code]).toEqual([-32602, -32602]);
+    expect(unknown.message).toMatch(/^Invalid parameters for tool 'erd_read'/);
+    expect(format.message).toMatch(/\["format"\]/);
+    expect(mcp.manager.paths()).toEqual([]);
+  });
+
+  it('refuses a session tool argument of the wrong shape or a missing one with an isError result, as 0.1.0 did', async () => {
+    const create = await mcp.call('erd_open_document', {
+      path: DOCUMENT,
+      create: 'yes',
+    });
+    const missing = await mcp.call('erd_undo', {});
+
+    expect([create.isError, missing.isError]).toEqual([true, true]);
+    expect([create.json.error.code, missing.json.error.code]).toEqual([
+      'invalidArgs',
+      'invalidArgs',
+    ]);
+    expect(create.json.error.message).toMatch(
+      /^Invalid arguments for tool erd_open_document: .*\n.*\["create"\]/
+    );
+    expect(missing.json.error.message).toMatch(
+      /^Invalid arguments for tool erd_undo: .*\n.*\["path"\]/
+    );
+    expect(create.structured).toBeUndefined();
+    expect(mcp.manager.paths()).toEqual([]);
+  });
+
+  it('answers a tool name it does not list with -32602, where 0.1.0 answered isError', async () => {
+    const error = await rpcError('erd_nope', {});
+
+    expect(error.code).toBe(-32602);
+    expect(error.message).toBe("Tool 'erd_nope' not found");
+  });
+
+  it('lets erd_list_documents ignore a key it does not take, as 0.1.0 did', async () => {
+    const plain = await mcp.call('erd_list_documents', {});
+    const extra = await mcp.call('erd_list_documents', { bogus: 1 });
+
+    expect(extra.isError).toBe(false);
+    expect(extra.text).toBe(plain.text);
+    expect(plain.json.documents.map(({ path }: any) => path)).toEqual([
+      DOCUMENT,
+    ]);
   });
 });

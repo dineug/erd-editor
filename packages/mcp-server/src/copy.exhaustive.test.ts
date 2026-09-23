@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import { ARG_COPY, describeArg, describeTool, TOOL_COPY } from '@/tools/copy';
-import { SESSION_TOOL_NAMES } from '@/tools/register';
 import { actionTools } from '@/tools/registry';
+import { SESSION_TOOL_NAMES } from '@/tools/toolkit';
 
 /** Every tool the server lists, with the arguments its input schema has. */
 const SURFACE: Array<{ name: string; args: string[] }> = [

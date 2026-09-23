@@ -1,8 +1,7 @@
 import { PeerStoreError } from '@dineug/erd-editor/peer.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import * as McpSchema from 'effect/unstable/ai/McpSchema';
 
 import { messageOf, SessionError } from '@/errors';
-import { log } from '@/log';
 import { type WithMode } from '@/session/manager';
 import {
   type Notes,
@@ -18,48 +17,63 @@ export const UNCHANGED_NOTE =
 export const NO_ENTRY_NOTE =
   'The call made no undo entry, so erd_undo passes over it.';
 
-/** Compact JSON as the one text block; empty notes are left out. */
-export function jsonResult(payload: Record<string, unknown>): CallToolResult {
+/** What a refused call answers, as the one text block of an error result. */
+export type Refusal = { error: { code: string; message: string } };
+
+/**
+ * The body of a result, empty notes left out. The toolkit writes it as one
+ * compact JSON text block, in the order its success schema declares the keys.
+ */
+export function jsonBody<T extends { readonly notes?: Notes }>(
+  payload: T
+): Omit<T, 'notes'> & { notes?: Notes } {
   const { notes, ...rest } = payload;
-  const body =
-    Array.isArray(notes) && notes.length ? { ...rest, notes } : { ...rest };
-  return { content: [{ type: 'text', text: JSON.stringify(body) }] };
+  return Array.isArray(notes) && notes.length
+    ? { ...rest, notes }
+    : { ...rest };
 }
 
 /** A read's text as it is, any notes in a second block. */
-export function textResult(text: string, notes: Notes): CallToolResult {
-  return {
+export function textResult(
+  text: string,
+  notes: Notes
+): McpSchema.CallToolResult {
+  return new McpSchema.CallToolResult({
     content: [
       { type: 'text', text },
       ...(notes.length
         ? [{ type: 'text' as const, text: JSON.stringify({ notes }) }]
         : []),
     ],
-  };
+  });
 }
 
-/** A refusal with the code that says what kind; anything unexpected is internal and logged. */
-export function errorResult(error: unknown): CallToolResult {
-  let code: string;
-  if (
+/** A refusal whose code says what kind; anything else is internal, which the caller logs. */
+export function isRefusal(
+  error: unknown
+): error is ToolError | PeerStoreError | SessionError {
+  return (
     error instanceof ToolError ||
     error instanceof PeerStoreError ||
     error instanceof SessionError
-  ) {
-    code = error.code;
-  } else {
-    code = 'internal';
-    log('a tool call failed', error);
-  }
+  );
+}
+
+export function refusal(error: unknown): Refusal {
   return {
-    isError: true,
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({ error: { code, message: messageOf(error) } }),
-      },
-    ],
+    error: {
+      code: isRefusal(error) ? error.code : 'internal',
+      message: messageOf(error),
+    },
   };
+}
+
+/** A refusal as a result of its own, for erd_read, which the toolkit does not answer. */
+export function errorResult(refused: Refusal): McpSchema.CallToolResult {
+  return new McpSchema.CallToolResult({
+    isError: true,
+    content: [{ type: 'text', text: JSON.stringify(refused) }],
+  });
 }
 
 /** Why erd_undo will not revert this call, or undefined when it will. */
@@ -75,11 +89,11 @@ function undoNote(tool: ActionTool, outcome: ToolOutcome): string | undefined {
 export function toolRunResult(
   tool: ActionTool,
   outcome: WithMode<ToolOutcome>
-): CallToolResult {
+) {
   const { run, mode, notes } = outcome;
   const note = undoNote(tool, outcome);
 
-  return jsonResult({
+  return jsonBody({
     tool: run.tool,
     mode,
     createdIds: run.createdIds,
@@ -94,11 +108,11 @@ export function toolRunResult(
 export function undoResult(
   tool: 'erd_undo' | 'erd_redo',
   outcome: WithMode<UndoOutcome>
-): CallToolResult {
+) {
   const { result, mode, notes } = outcome;
   const verb = tool === 'erd_undo' ? 'undo' : 'redo';
 
-  return jsonResult({
+  return jsonBody({
     tool,
     mode,
     toolName: result.label,

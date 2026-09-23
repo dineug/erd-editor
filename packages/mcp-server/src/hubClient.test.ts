@@ -133,6 +133,26 @@ describe('the hub client', () => {
     });
   });
 
+  it.each([42, { x: 1 }, null])(
+    'refuses as internal an error response whose code is %j, and stays open',
+    async code => {
+      const { hub, sent, client } = pair();
+
+      const refused = client.request('listDocuments', {});
+      await settle();
+      hub.write(
+        `${JSON.stringify({ id: sent[0].id, ok: false, error: { code, message: 'bad code' } })}\n`
+      );
+
+      await expect(refused).rejects.toMatchObject({
+        name: 'SessionError',
+        code: 'internal',
+        message: 'bad code',
+      });
+      expect(client.closed).toBe(false);
+    }
+  );
+
   it('times out a request nobody answers', async () => {
     const { client } = pair({ client: 'c', requestTimeoutMs: 5 });
 

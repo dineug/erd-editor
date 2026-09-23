@@ -13,15 +13,29 @@ const sources = import.meta.glob<string>('./**/*.ts', {
 const SPECIFIER = /\b(?:from|import|require)\s*\(?\s*['"`]([^'"`]+)['"`]/g;
 const ROOT_BARRELS = new Set(['effect', '@effect/platform-node']);
 
+/** The rc keeps SchemaAOTCompiler and Migrator, each with a dynamic import, under these two. */
+const DYNAMIC_IMPORT_MODULES = [
+  'effect/unstable/schema',
+  'effect/unstable/sql',
+];
+
+const reachesDynamicImport = (specifier: string) =>
+  DYNAMIC_IMPORT_MODULES.some(
+    module => specifier === module || specifier.startsWith(`${module}/`)
+  );
+
 /**
  * bin.test.ts forbids a literal dynamic import in the bundle, and the
  * platform-node root barrel reaches two, beside undici and ws. The effect root
  * goes with it: an import names the one module it needs, not all of them.
  */
-function rootBarrelImports(source: string): string[] {
+function bannedImports(source: string): string[] {
   return [...source.matchAll(SPECIFIER)]
     .map(match => match[1])
-    .filter(specifier => ROOT_BARRELS.has(specifier));
+    .filter(
+      specifier =>
+        ROOT_BARRELS.has(specifier) || reachesDynamicImport(specifier)
+    );
 }
 
 describe('effect is imported by subpath only', () => {
@@ -30,7 +44,7 @@ describe('effect is imported by subpath only', () => {
       expect.arrayContaining([
         './main.ts',
         './session/live.ts',
-        './tools/register.ts',
+        './tools/toolkit.ts',
         './__test-utils__/mcp.ts',
         './bin.test.ts',
       ])
@@ -38,9 +52,9 @@ describe('effect is imported by subpath only', () => {
     expect(Object.keys(sources)).not.toContain('./imports.test.ts');
   });
 
-  it('imports neither effect nor @effect/platform-node by its bare name', () => {
+  it('imports neither root barrel, nor the two modules that reach a dynamic import', () => {
     const offenders = Object.entries(sources).flatMap(([path, source]) =>
-      rootBarrelImports(source).map(specifier => `${path}: ${specifier}`)
+      bannedImports(source).map(specifier => `${path}: ${specifier}`)
     );
 
     expect(offenders).toEqual([]);
@@ -57,15 +71,25 @@ describe('effect is imported by subpath only', () => {
       `const runtime = await import('${effect}');`,
     ].join('\n');
 
-    expect(rootBarrelImports(sample)).toEqual([
+    expect(bannedImports(sample)).toEqual([
       effect,
       effect,
       platformNode,
       effect,
       effect,
     ]);
+    const [schema, sql] = DYNAMIC_IMPORT_MODULES;
     expect(
-      rootBarrelImports(
+      bannedImports(
+        [
+          `import * as Aot from '${schema}/SchemaAOTCompiler';`,
+          `import * as Migrator from '${sql}/Migrator';`,
+          `export * from '${schema}';`,
+        ].join('\n')
+      )
+    ).toEqual([`${schema}/SchemaAOTCompiler`, `${sql}/Migrator`, schema]);
+    expect(
+      bannedImports(
         [
           `import * as Schema from 'effect/Schema';`,
           `import * as McpServer from 'effect/unstable/ai/McpServer';`,

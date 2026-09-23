@@ -88,6 +88,20 @@ describe('errors', () => {
     expect(isSessionError(new Error('x'))).toBe(false);
   });
 
+  it('builds the same tagged error from its fields as from the code and message', () => {
+    const fields = new SessionError({ code: 'hubGone', message: 'gone' });
+    const positional = new SessionError('hubGone', 'gone');
+
+    expect(fields).toMatchObject({
+      _tag: 'SessionError',
+      name: 'SessionError',
+      code: 'hubGone',
+      message: 'gone',
+    });
+    expect(positional).toMatchObject({ code: 'hubGone', message: 'gone' });
+    expect(fields).toBeInstanceOf(Error);
+  });
+
   it('reads an errno code and a message from anything thrown', () => {
     expect(errnoCode(fsError('ENOENT', '/x'))).toBe('ENOENT');
     expect(errnoCode({ code: 5 })).toBeUndefined();

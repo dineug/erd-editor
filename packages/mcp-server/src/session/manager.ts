@@ -7,7 +7,7 @@ import {
 import { SessionError, SessionErrorCode } from '@/errors';
 import { connectHub } from '@/hubClient';
 import { type McpIo } from '@/io';
-import { log } from '@/log';
+import { logUnsafe } from '@/logger';
 import { realPath, resolveDocumentPath, sessionKey } from '@/paths';
 import {
   createEmptyDocument,
@@ -161,7 +161,9 @@ export function createSessionManager(
   const drop = async (key: string) => {
     const entry = sessions.get(key);
     sessions.delete(key);
-    await entry?.session.close().catch(error => log('close failed', error));
+    await entry?.session
+      .close()
+      .catch(error => logUnsafe('close failed', error));
   };
 
   const newLive = (key: string, path: string, candidate: LockCandidate) =>

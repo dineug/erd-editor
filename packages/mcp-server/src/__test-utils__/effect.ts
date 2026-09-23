@@ -1,0 +1,33 @@
+import * as Effect from 'effect/Effect';
+import * as Layer from 'effect/Layer';
+
+import { SessionManager, type SessionManagerShape } from '@/session/service';
+
+const unused = (name: string) =>
+  Effect.die(new Error(`${name} is not part of this spec`));
+
+/**
+ * A session manager with only the calls a spec gives, for the tool layer on
+ * its own; any other call dies, naming itself.
+ */
+export function stubSessions(
+  calls: Partial<SessionManagerShape>
+): Layer.Layer<SessionManager> {
+  return Layer.succeed(
+    SessionManager,
+    SessionManager.of({
+      rememberClient: () => Effect.void,
+      listDocuments: unused('listDocuments'),
+      openDocument: () => unused('openDocument'),
+      runTool: () => unused('runTool'),
+      read: () => unused('read'),
+      save: () => unused('save'),
+      undo: () => unused('undo'),
+      redo: () => unused('redo'),
+      sweep: unused('sweep'),
+      closeAll: Effect.void,
+      paths: Effect.succeed([]),
+      ...calls,
+    })
+  );
+}

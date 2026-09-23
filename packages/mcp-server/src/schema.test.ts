@@ -1,8 +1,8 @@
+import * as Schema from 'effect/Schema';
 import { describe, expect, it } from 'vite-plus/test';
-import { z } from 'zod';
 
 import { actionTools, type ToolArgKind } from '@/tools/registry';
-import { argKindSchema, argsShape } from '@/tools/schema';
+import { argKindSchema, argsFields, toolInputSchema } from '@/tools/schema';
 
 /** One kind of each type, with a value it takes and one it refuses. */
 const KINDS: Array<[ToolArgKind, unknown, unknown]> = [
@@ -19,11 +19,16 @@ const KINDS: Array<[ToolArgKind, unknown, unknown]> = [
   ],
 ];
 
-describe('ToolArgKind to zod (axis b)', () => {
+const takes = (schema: Schema.Top, value: unknown) => Schema.is(schema)(value);
+
+const jsonSchema = (schema: Schema.Top) =>
+  Schema.toJsonSchemaDocument(schema).schema;
+
+describe('ToolArgKind to effect Schema (axis b)', () => {
   it.each(KINDS)('%j takes %j and refuses %j', (kind, good, bad) => {
     const schema = argKindSchema(kind);
-    expect(schema.safeParse(good).success).toBe(true);
-    expect(schema.safeParse(bad).success).toBe(false);
+    expect(takes(schema, good)).toBe(true);
+    expect(takes(schema, bad)).toBe(false);
   });
 
   it('covers every kind type the registry uses', () => {
@@ -39,9 +44,22 @@ describe('ToolArgKind to zod (axis b)', () => {
       type: 'enum',
       values: { MySQL: 8, PostgreSQL: 16 },
     });
-    expect(z.toJSONSchema(schema)).toMatchObject({
+    expect(jsonSchema(schema)).toMatchObject({
+      type: 'string',
       enum: ['MySQL', 'PostgreSQL'],
     });
+  });
+
+  it('advertises numbers as one plain JSON type, and refuses what JSON cannot carry (X4)', () => {
+    expect(jsonSchema(argKindSchema({ type: 'number' }))).toEqual({
+      type: 'number',
+    });
+    expect(jsonSchema(argKindSchema({ type: 'integer' }))).toEqual({
+      type: 'integer',
+    });
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(takes(argKindSchema({ type: 'number' }), value)).toBe(false);
+    }
   });
 
   it('throws on a kind it does not know, the never branch', () => {
@@ -51,27 +69,68 @@ describe('ToolArgKind to zod (axis b)', () => {
   });
 
   it('describes every argument and makes an optional one optional', () => {
-    const shape = argsShape(
-      [
-        {
-          name: 'tableId',
-          kind: { type: 'entityId', entity: 'table' },
-          required: true,
-        },
-        { name: 'note', kind: { type: 'string' }, required: false },
-      ],
-      arg => `about ${arg.name}`
+    const object = Schema.Struct(
+      argsFields(
+        [
+          {
+            name: 'tableId',
+            kind: { type: 'entityId', entity: 'table' },
+            required: true,
+          },
+          { name: 'note', kind: { type: 'string' }, required: false },
+        ],
+        arg => `about ${arg.name}`
+      )
     );
-    const object = z.object(shape);
 
-    expect(object.safeParse({ tableId: 't' }).success).toBe(true);
-    expect(object.safeParse({ note: 'n' }).success).toBe(false);
-    expect(z.toJSONSchema(object)).toMatchObject({
+    expect(takes(object, { tableId: 't' })).toBe(true);
+    expect(takes(object, { note: 'n' })).toBe(false);
+    expect(jsonSchema(object)).toMatchObject({
       required: ['tableId'],
       properties: {
-        tableId: { description: 'about tableId' },
-        note: { description: 'about note' },
+        tableId: { type: 'string', description: 'about tableId' },
+        note: { type: 'string', description: 'about note' },
       },
     });
+  });
+});
+
+describe('the input schema a tool lists from its own struct', () => {
+  const Params = Schema.Struct({
+    path: Schema.String,
+    create: Schema.optionalKey(Schema.Boolean),
+  });
+
+  it('closes the object when strict and opens it otherwise, as the toolkit lists either', () => {
+    const shape = {
+      type: 'object',
+      properties: { path: { type: 'string' }, create: { type: 'boolean' } },
+      required: ['path'],
+    };
+
+    expect(toolInputSchema('erd_strict', Params, true)).toEqual({
+      ...shape,
+      additionalProperties: false,
+    });
+    expect(toolInputSchema('erd_open', Params, false)).toEqual({
+      ...shape,
+      additionalProperties: true,
+    });
+  });
+
+  it('refuses a root that is not an object, naming the tool', () => {
+    expect(() => toolInputSchema('erd_text', Schema.String, true)).toThrow(
+      /erd_text must take one inline object of arguments/
+    );
+  });
+
+  it('refuses an object that needs $defs, which the older protocols drop (X7)', () => {
+    const Referenced = Schema.Struct({
+      id: Schema.String.annotate({ identifier: 'Id' }),
+    });
+
+    expect(() => toolInputSchema('erd_ref', Referenced, false)).toThrow(
+      /erd_ref must take one inline object of arguments/
+    );
   });
 });

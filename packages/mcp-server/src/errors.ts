@@ -1,4 +1,5 @@
 import { type HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import * as Schema from 'effect/Schema';
 
 /** The server's own refusals, beside the hub's codes a session passes through unchanged. */
 export const SessionErrorCode = {
@@ -24,14 +25,33 @@ export type SessionErrorCode =
 
 export type ErrorCode = SessionErrorCode | HubErrorCode;
 
-/** A refusal an agent can act on; the tool result carries its code and message. */
-export class SessionError extends Error {
+type SessionErrorProps = {
   readonly code: ErrorCode;
+  readonly message: string;
+};
 
-  constructor(code: ErrorCode, message: string) {
-    super(message);
-    this.name = 'SessionError';
-    this.code = code;
+/**
+ * A refusal an agent can act on; the tool result carries its code and message.
+ * A hub's code passes through unchanged, so the schema takes any string.
+ */
+export class SessionError extends Schema.TaggedError<SessionError>()(
+  'SessionError',
+  { code: Schema.String, message: Schema.String }
+) {
+  declare readonly code: ErrorCode;
+
+  constructor(code: ErrorCode, message: string);
+  constructor(props: SessionErrorProps, options?: Schema.MakeOptions);
+  constructor(
+    codeOrProps: ErrorCode | SessionErrorProps,
+    messageOrOptions?: string | Schema.MakeOptions
+  ) {
+    super(
+      typeof codeOrProps === 'string'
+        ? { code: codeOrProps, message: String(messageOrOptions) }
+        : codeOrProps,
+      typeof messageOrOptions === 'string' ? undefined : messageOrOptions
+    );
   }
 }
 

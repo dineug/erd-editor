@@ -9,7 +9,7 @@ import {
 } from '@dineug/erd-editor-agent-hub';
 
 import { type McpIo } from '@/io';
-import { log } from '@/log';
+import { logUnsafe } from '@/logger';
 
 /** Every lock file in the lock directory, unparsed; one deleted mid-read is skipped. */
 export async function readLockFiles(io: McpIo): Promise<LockFile[]> {
@@ -69,7 +69,7 @@ export async function discover(
     if (reason === 'dead') {
       await removeDeadLock(io, pid);
     } else {
-      log(`skipped the lock of pid ${pid}: it does not parse`);
+      logUnsafe(`skipped the lock of pid ${pid}: it does not parse`);
     }
   }
   return selected;
