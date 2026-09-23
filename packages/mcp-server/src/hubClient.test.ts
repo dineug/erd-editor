@@ -332,7 +332,77 @@ describe('the hub client', () => {
     await settle();
 
     expect(onNotification).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledTimes(2);
+    expect(console.error).toHaveBeenCalledWith(
+      '[erd-editor-mcp]',
+      'skipped a frame from the hub of pid 7 that is neither a response nor a notification',
+      expect.any(String)
+    );
     expect(client.closed).toBe(false);
+  });
+
+  it('hands on a notification the schema refuses as it reads, an unknown one among them', async () => {
+    const onNotification = vi.fn();
+    const { server, client } = await pair({ onNotification });
+    const refused = [
+      { method: 'focus', params: { path: '/a.erd.json' } },
+      { method: 'actions', params: { path: '/a.erd.json' } },
+      { method: 'documentClosed', params: { path: 7 } },
+      { id: 'x', method: 'documentClosed', params: { path: '/a.erd.json' } },
+    ];
+
+    server.write(refused.map(frame).join(''));
+    await settle();
+
+    expect(onNotification.mock.calls).toEqual(refused.map(value => [value]));
+    expect(client.closed).toBe(false);
+  });
+
+  it('takes a frame with a numeric id for an answer, even one shaped like a notification', async () => {
+    const onNotification = vi.fn();
+    const { server, sent, client } = await pair({ onNotification });
+
+    const joined = run(client.request('join', { path: '/a.erd.json' }));
+    await settle();
+    server.write(
+      frame({
+        id: 99,
+        method: 'documentClosed',
+        params: { path: '/a.erd.json' },
+      }) +
+        frame({
+          id: sent[0].id,
+          method: 'documentClosed',
+          params: { path: '/a.erd.json' },
+        })
+    );
+
+    await expect(joined).rejects.toMatchObject({
+      name: 'SessionError',
+      code: 'internal',
+      message: 'The hub refused join',
+    });
+    expect(onNotification).not.toHaveBeenCalled();
+    expect(client.closed).toBe(false);
+  });
+
+  it('hands on a notification as decoded, dropping fields the schema does not know', async () => {
+    const onNotification = vi.fn();
+    const { server } = await pair({ onNotification });
+
+    server.write(
+      frame({
+        method: 'actions',
+        params: { path: '/a.erd.json', actions: [{ type: 'x' }], from: 'b' },
+        sentAt: 1,
+      })
+    );
+    await settle();
+
+    expect(onNotification).toHaveBeenCalledWith({
+      method: 'actions',
+      params: { path: '/a.erd.json', actions: [{ type: 'x' }] },
+    });
   });
 
   it('logs a notification the session could not take, and stays open', async () => {
@@ -367,6 +437,59 @@ describe('the hub client', () => {
       code: 'internal',
       message: 'The hub refused join',
     });
+  });
+
+  it('refuses with the code and message of an error response the schema takes', async () => {
+    const { server, sent, client } = await pair();
+
+    const refused = run(client.request('save', { path: '/a.erd.json' }));
+    await settle();
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: false,
+        method: 'save',
+        error: { code: 'notOpen', message: 'no webview is ready' },
+      })
+    );
+
+    await expect(refused).rejects.toMatchObject({
+      name: 'SessionError',
+      code: 'notOpen',
+      message: 'no webview is ready',
+    });
+  });
+
+  it('refuses with the code an error response names even when the schema does not know it', async () => {
+    const { server, sent, client } = await pair();
+
+    const refused = run(client.request('save', { path: '/a.erd.json' }));
+    await settle();
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: false,
+        method: 'save',
+        error: { code: 'tooBusy', message: 'try later' },
+      })
+    );
+
+    await expect(refused).rejects.toMatchObject({
+      name: 'SessionError',
+      code: 'tooBusy',
+      message: 'try later',
+    });
+  });
+
+  it('settles a request with the result of an answer the schema refuses, as sent', async () => {
+    const { server, sent, client } = await pair();
+
+    const saved = run(client.request('save', { path: '/a.erd.json' }));
+    await settle();
+    server.write(frame({ id: sent[0].id, ok: true, result: { saved: 'yes' } }));
+
+    expect(await saved).toEqual({ saved: 'yes' });
+    expect(client.closed).toBe(false);
   });
 
   it.each([42, { x: 1 }, null])(
@@ -467,6 +590,28 @@ describe('the hub client', () => {
       code: 'disconnected',
       message: 'The connection to the VS Code window (pid 7) is closed',
     });
+  });
+
+  it('writes each request through the schema, its fields in schema order', async () => {
+    const { client, server } = createSocketPair();
+    const chunks: string[] = [];
+    server.onData(chunk => chunks.push(chunk));
+    const hub = await run(makeHubClient(client, 7, { client: 'c' }));
+
+    const opened = run(
+      hub.request('openDocument', {
+        initialValue: '{}',
+        create: true,
+        path: '/a.erd.json',
+      })
+    );
+    await settle();
+
+    expect(chunks.join('')).toBe(
+      '{"id":1,"method":"openDocument","params":{"path":"/a.erd.json","create":true,"initialValue":"{}"}}\n'
+    );
+    await run(hub.close);
+    await expect(opened).rejects.toMatchObject({ code: 'disconnected' });
   });
 
   it('fails a request it cannot frame, and one it cannot write, and stays usable', async () => {

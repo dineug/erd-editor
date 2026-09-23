@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+
 import { HubErrorCode, HubRequestError } from '@/protocol';
 
 /** A process.platform value; win32 and darwin compare paths case-insensitively. */
@@ -123,17 +125,24 @@ export function isAuthorized(
   );
 }
 
-/** Throws a HubRequestError with code outsideWorkspace when isAuthorized is false. */
-export function assertAuthorized(
+/**
+ * Checks isAuthorized when it runs: succeeds when it holds, else fails with a
+ * HubRequestError of code outsideWorkspace, which an adapter answers as is.
+ */
+export function authorize(
   folders: string[],
   documents: string[],
   target: string,
   platform: Platform
-): void {
-  if (!isAuthorized(folders, documents, target, platform)) {
-    throw new HubRequestError({
-      code: HubErrorCode.outsideWorkspace,
-      message: `${target} is neither inside a workspace folder nor an open document`,
-    });
-  }
+): Effect.Effect<void, HubRequestError> {
+  return Effect.suspend(() =>
+    isAuthorized(folders, documents, target, platform)
+      ? Effect.void
+      : Effect.fail(
+          new HubRequestError({
+            code: HubErrorCode.outsideWorkspace,
+            message: `${target} is neither inside a workspace folder nor an open document`,
+          })
+        )
+  );
 }

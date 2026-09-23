@@ -81,7 +81,12 @@ export const layer: Layer.Layer<
       cleanStale: Effect.gen(function* () {
         const locks = yield* readLockDirectory(env.homeDir);
         const others = locks.filter(lock => lock.pid !== env.pid);
-        const { stale } = selectHub(others, '', env.platform, env.isAlive);
+        const { stale } = yield* selectHub(
+          others,
+          '',
+          env.platform,
+          env.isAlive
+        );
 
         for (const { pid, reason } of stale) {
           if (reason !== 'dead') continue;

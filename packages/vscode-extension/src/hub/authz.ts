@@ -1,7 +1,7 @@
 import { type PlatformPath, posix, win32 } from 'node:path';
 
 import {
-  assertAuthorized,
+  authorize,
   HubErrorCode,
   HubRequestError,
   type Platform,
@@ -98,11 +98,6 @@ export const authorizePath = Effect.fn('authorizePath')(function* (
       })
     );
   }
-  return yield* Effect.try({
-    try: () => {
-      assertAuthorized(scope.folders, scope.documents, realPath, platform);
-      return realPath;
-    },
-    catch: error => error as HubRequestError,
-  });
+  yield* authorize(scope.folders, scope.documents, realPath, platform);
+  return realPath;
 });

@@ -44,11 +44,11 @@ const make = Effect.gen(function* () {
   const discover = Effect.fn('HubDiscovery.discover')(function* (
     targetPath: string
   ) {
-    const locks = yield* readLockDirectory(homeDir).pipe(
+    const { selected, stale } = yield* readLockDirectory(homeDir).pipe(
+      Effect.flatMap(locks =>
+        selectHub(locks, targetPath, platform, pid => isAlive(pid))
+      ),
       Effect.provideService(FileSystem.FileSystem, fs)
-    );
-    const { selected, stale } = selectHub(locks, targetPath, platform, pid =>
-      isAlive(pid)
     );
 
     for (const { pid, reason } of stale) {

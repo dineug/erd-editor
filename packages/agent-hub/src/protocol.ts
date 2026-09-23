@@ -101,11 +101,19 @@ function response<const M extends string, R extends Schema.Constraint>(
   ] as const;
 }
 
+/**
+ * A notification never carries an id: a frame with an id key is refused, so a
+ * peer never takes an answer to its request for a notification.
+ */
 function notification<const M extends string, P extends Schema.Constraint>(
   method: M,
   params: P
 ) {
-  return Schema.Struct({ method: Schema.Literal(method), params });
+  return Schema.Struct({
+    id: Schema.optionalKey(Schema.Never),
+    method: Schema.Literal(method),
+    params,
+  });
 }
 
 /** What a peer asks of the hub; every peer to hub frame is one of these. */
@@ -123,8 +131,9 @@ export const HubRequest = Schema.Union([
     'openDocument',
     Schema.Struct({
       path: Schema.String,
-      create: Schema.optionalKey(Schema.Boolean),
-      initialValue: Schema.optionalKey(Schema.String),
+      /** This and initialValue may also be undefined, which a frame leaves out. */
+      create: Schema.optional(Schema.Boolean),
+      initialValue: Schema.optional(Schema.String),
     })
   ),
   request('join', PathParams),

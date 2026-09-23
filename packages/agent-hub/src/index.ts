@@ -1,5 +1,6 @@
 export {
   type DiscoveryResult,
+  type HubSelection,
   type LockCandidate,
   type LockFile,
   readLockDirectory,
@@ -7,10 +8,16 @@ export {
   type StaleLock,
 } from './discovery';
 export {
+  decodeFrameResults,
   decodeFrames,
+  decodeHubToPeerFrames,
+  decodePeerToHubFrames,
   encodeFrame,
+  encodeHubNotificationFrame,
+  encodePeerToHubFrame,
   FrameError,
   MAX_FRAME_BYTES,
+  type RefusedFrame,
 } from './framing';
 export {
   LOCK_DIR_MODE,
@@ -26,7 +33,7 @@ export {
   serializeLock,
 } from './lock';
 export {
-  assertAuthorized,
+  authorize,
   isAuthorized,
   isInside,
   isSamePath,

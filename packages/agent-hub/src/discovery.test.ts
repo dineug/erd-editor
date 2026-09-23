@@ -1,8 +1,13 @@
 import { ByteSize, Effect, FileSystem, Option, PlatformError } from 'effect';
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { itEffect } from '@/__test-utils__/effect';
-import { type LockFile, readLockDirectory, selectHub } from '@/discovery';
+import {
+  type HubSelection,
+  type LockFile,
+  readLockDirectory,
+  selectHub,
+} from '@/discovery';
 import {
   lockDirPath,
   lockFilePath,
@@ -29,11 +34,15 @@ function lock({ pid, mtimeMs = 1000, ...fields }: LockInit): LockFile {
 
 const alive = () => true;
 
+/** selectHub's decision, the effect run to its end. */
+const select = (...args: Parameters<typeof selectHub>) =>
+  Effect.runSync(selectHub(...args));
+
 function pick(locks: LockFile[], target: string, platform = 'linux') {
-  return selectHub(locks, target, platform, alive);
+  return select(locks, target, platform, alive);
 }
 
-function selectedPid(result: ReturnType<typeof selectHub>) {
+function selectedPid(result: HubSelection) {
   return result.selected.kind === 'headless'
     ? null
     : result.selected.candidate.pid;
@@ -203,7 +212,7 @@ describe('selectHub', () => {
   it('marks a dead pid stale and never selects it', () => {
     const dead = lock({ pid: 11, workspaceFolders: ['/ws/app'] });
     const live = lock({ pid: 12, workspaceFolders: ['/ws'] });
-    const result = selectHub([dead, live], '/ws/app/x.erd', 'linux', pid => {
+    const result = select([dead, live], '/ws/app/x.erd', 'linux', pid => {
       return pid !== 11;
     });
 
@@ -220,7 +229,7 @@ describe('selectHub', () => {
   });
 
   it('calls a malformed lock of a dead pid dead, the reason that allows removal', () => {
-    const result = selectHub(
+    const result = select(
       [{ pid: 31, raw: 'garbage', mtimeMs: 1 }],
       '/ws/x.erd',
       'linux',
@@ -230,7 +239,7 @@ describe('selectHub', () => {
   });
 
   it('reports stale locks even when they would not match the target', () => {
-    const result = selectHub(
+    const result = select(
       [
         lock({ pid: 41, workspaceFolders: ['/other'] }),
         { pid: 42, raw: '[]', mtimeMs: 1 },
@@ -244,6 +253,25 @@ describe('selectHub', () => {
       { pid: 41, reason: 'dead' },
       { pid: 42, reason: 'malformed' },
     ]);
+  });
+
+  it('asks isAlive only when the effect runs, and again on every run', () => {
+    const isAlive = vi.fn(() => true);
+    const selection = selectHub(
+      [lock({ pid: 51, workspaceFolders: ['/ws'] })],
+      '/ws/x.erd',
+      'linux',
+      isAlive
+    );
+
+    expect(isAlive).not.toHaveBeenCalled();
+    expect(selectedPid(Effect.runSync(selection))).toBe(51);
+    isAlive.mockReturnValue(false);
+    expect(Effect.runSync(selection)).toEqual({
+      selected: { kind: 'headless' },
+      stale: [{ pid: 51, reason: 'dead' }],
+    });
+    expect(isAlive).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -410,6 +438,38 @@ describe('readLockDirectory', () => {
         { pid: 5, raw: lock({ pid: 5 }).raw, mtimeMs: 0 },
       ]);
     })
+  );
+
+  itEffect(
+    'chains into selectHub, which picks a window from what it read',
+    () =>
+      Effect.gen(function* () {
+        const files = new Map<string, MemoryFile>([
+          [
+            lockFilePath(HOME, 11),
+            {
+              text: lock({ pid: 11, workspaceFolders: ['/ws'] }).raw,
+              mtime: Option.some(new Date(10)),
+            },
+          ],
+          [
+            lockFilePath(HOME, 12),
+            {
+              text: lock({ pid: 12, workspaceFolders: ['/ws'] }).raw,
+              mtime: Option.some(new Date(20)),
+            },
+          ],
+        ]);
+        const selection = yield* readLockDirectory(HOME).pipe(
+          Effect.flatMap(locks =>
+            selectHub(locks, '/ws/x.erd', 'linux', pid => pid !== 11)
+          ),
+          Effect.provide(memoryFileSystem(files))
+        );
+
+        expect(selectedPid(selection)).toBe(12);
+        expect(selection.stale).toEqual([{ pid: 11, reason: 'dead' }]);
+      })
   );
 
   itEffect('hands selectHub what it needs to pick a window', () =>

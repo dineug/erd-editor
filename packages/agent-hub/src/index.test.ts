@@ -11,10 +11,15 @@ describe('public api surface', () => {
   it('exports exactly the runtime members of the barrel', () => {
     expect(Object.keys(publicApi).sort()).toEqual(
       [
-        'assertAuthorized',
+        'authorize',
+        'decodeFrameResults',
         'decodeFrames',
+        'decodeHubToPeerFrames',
+        'decodePeerToHubFrames',
         'DocumentInfo',
         'encodeFrame',
+        'encodeHubNotificationFrame',
+        'encodePeerToHubFrame',
         'FrameError',
         'HUB_NOTIFICATION_METHODS',
         'HUB_PROTOCOL_VERSION',
@@ -58,6 +63,8 @@ describe('public api surface', () => {
     expectTypeOf<publicApi.HubToPeerMessage>().toEqualTypeOf<protocol.HubToPeerMessage>();
     expectTypeOf<publicApi.LockRecord>().toEqualTypeOf<lock.LockRecord>();
     expectTypeOf<publicApi.LockFile>().toEqualTypeOf<discovery.LockFile>();
+    expectTypeOf<publicApi.HubSelection>().toEqualTypeOf<discovery.HubSelection>();
+    expectTypeOf<publicApi.RefusedFrame>().toEqualTypeOf<framing.RefusedFrame>();
     expectTypeOf<publicApi.HubRequestParams['applyActions']>().toEqualTypeOf<
       protocol.HubRequestParams['applyActions']
     >();

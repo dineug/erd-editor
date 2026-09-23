@@ -2,7 +2,11 @@ import { Effect, Exit, Schema } from 'effect';
 import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
 import { runTest } from '@/__test-utils__/effect';
-import { encodeFrame } from '@/framing';
+import {
+  encodeFrame,
+  encodeHubNotificationFrame,
+  encodePeerToHubFrame,
+} from '@/framing';
 import {
   DocumentInfo,
   HUB_NOTIFICATION_METHODS,
@@ -213,6 +217,28 @@ describe('message schemas', () => {
     }
   );
 
+  it.each(WIRE.requests)(
+    'frames a decoded request to the same bytes through encodePeerToHubFrame: %s',
+    line => {
+      const decoded = Schema.decodeUnknownSync(PeerToHubMessage)(
+        JSON.parse(line)
+      );
+
+      expect(encodePeerToHubFrame(decoded)).toBe(`${line}\n`);
+    }
+  );
+
+  it.each(WIRE.toPeer.filter(line => !line.startsWith('{"id"')))(
+    'frames a decoded notification to the same bytes through encodeHubNotificationFrame: %s',
+    line => {
+      const decoded = Schema.decodeUnknownSync(HubNotification)(
+        JSON.parse(line)
+      );
+
+      expect(encodeHubNotificationFrame(decoded)).toBe(`${line}\n`);
+    }
+  );
+
   it.each(WIRE.toPeer)(
     'decodes and re-encodes a hub frame to the same bytes: %s',
     line => {
@@ -319,6 +345,10 @@ describe('message schemas', () => {
       { id: 1, ok: true, method: 'leave', result: 'left' },
     ],
     ['a request', { id: 1, method: 'save', params: { path: '/a' } }],
+    [
+      'a notification that carries an id',
+      { id: 1, method: 'documentClosed', params: { path: '/a' } },
+    ],
   ])('refuses a hub frame with %s', (_, frame) => {
     expect(Exit.isFailure(decodeHubToPeer(frame))).toBe(true);
   });

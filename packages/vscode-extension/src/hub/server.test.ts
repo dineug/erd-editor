@@ -178,6 +178,10 @@ describe('hello', () => {
 
   it.each([
     ['a request other than hello', { id: 1, method: 'join', params: {} }],
+    [
+      'a well-formed request other than hello',
+      { id: 1, method: 'join', params: { path: '/ws/a.erd.json' } },
+    ],
     ['a hello without an id', { method: 'hello', params: { token: TOKEN } }],
     ['a hello with a fractional id', { ...helloFrame(TOKEN), id: 1.5 }],
     ['a frame that is not an object', [helloFrame(TOKEN)]],
@@ -407,6 +411,60 @@ describe('requests', () => {
     ]);
     expect(client.closed).toBe(false);
   });
+
+  it('answers a well-formed hello after the first with badRequest too', async () => {
+    const { client } = await connectAuthenticated();
+
+    client.send(helloFrame(TOKEN, {}, 3));
+    await flush();
+
+    expect(client.received).toEqual([
+      {
+        id: 3,
+        ok: false,
+        method: 'hello',
+        error: {
+          code: HubErrorCode.badRequest,
+          message: 'The hub has no method "hello"',
+        },
+      },
+    ]);
+    expect(client.closed).toBe(false);
+  });
+
+  it('hands the handler the params the schema decoded, without fields it does not know', async () => {
+    const { client } = await connectAuthenticated();
+
+    client.send({
+      id: 2,
+      method: 'join',
+      params: { path: '/ws/a.erd.json', as: 'someone' },
+      trace: 'x',
+    });
+    await flush();
+
+    expect(handler.join).toHaveBeenCalledWith(
+      { path: '/real/ws/a.erd.json' },
+      expect.anything()
+    );
+  });
+
+  it.each([
+    ['null params', null],
+    ['array params', [1]],
+    ['string params', 'all'],
+  ])(
+    'still serves listDocuments with %s, which the schema refuses, as empty params',
+    async (_label, params) => {
+      const { client } = await connectAuthenticated();
+
+      client.send({ id: 2, method: 'listDocuments', params });
+      await flush();
+
+      expect(handler.listDocuments).toHaveBeenCalledWith({}, expect.anything());
+      expect(client.received).toMatchObject([{ id: 2, ok: true }]);
+    }
+  );
 
   it('answers a request with no method string with badRequest', async () => {
     const { client } = await connectAuthenticated();
@@ -820,6 +878,25 @@ describe('notify', () => {
 
     expect(client.received).toEqual([
       { method: 'documentClosed', params: { path: '/a' } },
+    ]);
+  });
+
+  it('writes a notification through its schema, dropping fields it does not know', async () => {
+    const { client } = await connectAuthenticated();
+    client.send({ id: 2, method: 'listDocuments', params: {} });
+    await flush();
+    const peer = peerOf(handler.listDocuments) as any;
+    client.received.length = 0;
+
+    peer.notify({
+      params: { actions: [{ type: 'x' }], path: '/a', from: 'b' },
+      method: 'actions',
+      sentAt: 1,
+    });
+    await flush();
+
+    expect(client.received).toEqual([
+      { method: 'actions', params: { path: '/a', actions: [{ type: 'x' }] } },
     ]);
   });
 });

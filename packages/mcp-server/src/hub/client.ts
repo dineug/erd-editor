@@ -1,14 +1,18 @@
 import {
-  decodeFrames,
-  encodeFrame,
+  decodeHubToPeerFrames,
+  encodePeerToHubFrame,
   HUB_PROTOCOL_VERSION,
   HubErrorCode,
   type HubMethod,
   type HubNotification,
   type HubRequestParams,
+  type HubResponse,
   type HubResultMap,
+  type HubToPeerMessage,
   type LockCandidate,
+  type PeerToHubMessage,
   protocolMismatchMessage,
+  type RefusedFrame,
 } from '@dineug/erd-editor-agent-hub';
 import type { Cause } from 'effect';
 import {
@@ -19,7 +23,7 @@ import {
   Layer,
   Option,
   Queue,
-  Schema,
+  Result,
   Scope,
   Stream,
 } from 'effect';
@@ -31,7 +35,10 @@ import { type ConnectPipe, connectPipe } from '@/io/netSocket';
 /** How long a request may go unanswered; the hub's own waits all end well inside it. */
 export const REQUEST_TIMEOUT_MS = 30_000;
 
-/** What a request fails with: a SessionError, or the Error encodeFrame threw. */
+/**
+ * What a request fails with: a SessionError, or the Error encodePeerToHubFrame
+ * threw, a SchemaError for params the schema refuses or what encodeFrame throws.
+ */
 export type HubCallError = SessionError | Error;
 
 export type HubClient = {
@@ -75,24 +82,47 @@ type Pending = {
   readonly then?: (result: any) => Effect.Effect<unknown, unknown>;
 };
 
+/** One frame as the reader decodes it: a message, or JSON that fits none. */
+type Frame = Result.Result<HubToPeerMessage, RefusedFrame>;
+
+/** How a request ends once its answer is read. */
+type Answer =
+  | { ok: true; result: unknown }
+  | { ok: false; error: SessionError };
+
 function isRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** An error response's code and message; what the hub left out is filled in. */
-function refusal(method: string, raw: unknown): SessionError {
-  const error = isRecord(raw) ? raw : {};
-  return new SessionError(
-    typeof error.code === 'string'
-      ? (error.code as HubErrorCode)
-      : HubErrorCode.internal,
-    typeof error.message === 'string'
-      ? error.message
-      : `The hub refused ${method}`
-  );
+function answerOf(response: HubResponse): Answer {
+  return response.ok
+    ? { ok: true, result: response.result }
+    : {
+        ok: false,
+        error: new SessionError(response.error.code, response.error.message),
+      };
 }
 
-const frames = decodeFrames(Schema.Unknown);
+/**
+ * A refused frame that names a pending request still answers it, read as
+ * before the schema: ok true gives its result, anything else a refusal whose
+ * missing code and message are filled in, so the caller never waits it out.
+ */
+function refusedAnswer(method: string, frame: Record<string, any>): Answer {
+  if (frame.ok === true) return { ok: true, result: frame.result };
+  const error = isRecord(frame.error) ? frame.error : {};
+  return {
+    ok: false,
+    error: new SessionError(
+      typeof error.code === 'string'
+        ? (error.code as HubErrorCode)
+        : HubErrorCode.internal,
+      typeof error.message === 'string'
+        ? error.message
+        : `The hub refused ${method}`
+    ),
+  };
+}
 
 /**
  * JSON lines over one socket, every frame read into one queue that one fiber
@@ -107,7 +137,7 @@ export const makeHubClient = (
   Effect.gen(function* () {
     const scope = yield* Effect.scope;
     const writer = yield* socket.writer;
-    const inbound = yield* Queue.unbounded<unknown, Cause.Done>();
+    const inbound = yield* Queue.unbounded<Frame, Cause.Done>();
     const pending = new Map<number, Pending>();
     let nextId = 1;
     let closed = false;
@@ -166,13 +196,12 @@ export const makeHubClient = (
      * frame; a requestThen caller is held for next to release, so it goes on
      * only after the notifications read with its answer.
      */
-    const answer = (entry: Pending, response: Record<string, any>) => {
-      const outcome =
-        response.ok !== true
-          ? Effect.fail(refusal(entry.method, response.error))
-          : entry.then
-            ? entry.then(response.result)
-            : Effect.succeed(response.result);
+    const answer = (entry: Pending, reply: Answer) => {
+      const outcome = !reply.ok
+        ? Effect.fail(reply.error)
+        : entry.then
+          ? entry.then(reply.result)
+          : Effect.succeed(reply.result);
       return Effect.exit(outcome).pipe(
         Effect.flatMap(exit =>
           entry.then
@@ -194,7 +223,7 @@ export const makeHubClient = (
      * The next frame. Once none is left, drained callers resume, and held
      * requestThen callers too, after a scheduler turn runs then's microtasks.
      */
-    const next: Effect.Effect<unknown, Cause.Done> = Effect.suspend(() =>
+    const next: Effect.Effect<Frame, Cause.Done> = Effect.suspend(() =>
       settling.length === 0 && draining.length === 0
         ? awaitFrame
         : Queue.poll(inbound).pipe(
@@ -218,22 +247,45 @@ export const makeHubClient = (
       )
     );
 
-    const take = (message: unknown): Effect.Effect<unknown> => {
-      if (!isRecord(message)) return Effect.void;
-      if (typeof message.id === 'number') {
-        const entry = pending.get(message.id);
-        if (!entry) return Effect.void;
-        pending.delete(message.id);
-        return answer(entry, message);
+    /** Settles the request id names, if it is still pending; a late answer runs nothing. */
+    const settleRequest = (id: number, reply: (entry: Pending) => Answer) => {
+      const entry = pending.get(id);
+      if (!entry) return Effect.void;
+      pending.delete(id);
+      return answer(entry, reply(entry));
+    };
+
+    /**
+     * A response settles its request and a notification goes to the session. A
+     * refused frame is read by hand as before the schema: a numeric id answers,
+     * a string method with object params notifies, and anything else is skipped.
+     */
+    const take = (frame: Frame): Effect.Effect<unknown> => {
+      if (Result.isSuccess(frame)) {
+        const message = frame.success;
+        return 'ok' in message
+          ? settleRequest(message.id, () => answerOf(message))
+          : notify(message);
       }
-      return typeof message.method === 'string' && isRecord(message.params)
-        ? notify(message as HubNotification)
-        : Effect.void;
+      const { value, issue } = frame.failure;
+      if (isRecord(value) && typeof value.id === 'number') {
+        return settleRequest(value.id, entry =>
+          refusedAnswer(entry.method, value)
+        );
+      }
+      return isRecord(value) &&
+        typeof value.method === 'string' &&
+        isRecord(value.params)
+        ? notify(value as HubNotification)
+        : Effect.logWarning(
+            `skipped a frame from the hub of pid ${pid} that is neither a response nor a notification`,
+            issue
+          );
     };
 
     // The reader only fills the queue, so a slow then never holds up the socket.
     yield* Stream.fromPull(Socket.readerString(socket)).pipe(
-      frames,
+      decodeHubToPeerFrames,
       Stream.runForEach(frame =>
         Effect.sync(() => void Queue.offerUnsafe(inbound, frame))
       ),
@@ -285,7 +337,8 @@ export const makeHubClient = (
         const deferred = Deferred.makeUnsafe<unknown, unknown>();
         pending.set(id, { method, deferred, then });
         return Effect.try({
-          try: () => encodeFrame({ id, method, params }),
+          try: () =>
+            encodePeerToHubFrame({ id, method, params } as PeerToHubMessage),
           catch: error => error as Error,
         }).pipe(
           Effect.flatMap(frame =>

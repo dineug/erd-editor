@@ -1,7 +1,9 @@
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { runTest } from '@/__test-utils__/effect';
 import {
-  assertAuthorized,
+  authorize,
   isAuthorized,
   isInside,
   isSamePath,
@@ -180,25 +182,55 @@ describe('isAuthorized', () => {
   });
 });
 
-describe('assertAuthorized', () => {
-  it('returns quietly for an authorized path', () => {
-    expect(() =>
-      assertAuthorized(['/ws'], [], '/ws/model.erd', 'linux')
-    ).not.toThrow();
+describe('authorize', () => {
+  it('succeeds quietly for an authorized path', async () => {
+    await expect(
+      runTest(authorize(['/ws'], [], '/ws/model.erd', 'linux'))
+    ).resolves.toBeUndefined();
+    await expect(
+      runTest(authorize([], ['/open.erd'], '/open.erd', 'linux'))
+    ).resolves.toBeUndefined();
   });
 
-  it('throws outsideWorkspace for any other path', () => {
-    let caught: unknown;
-    try {
-      assertAuthorized(['/ws'], ['/open.erd'], '/etc/model.erd', 'linux');
-    } catch (error) {
-      caught = error;
-    }
+  it('fails with outsideWorkspace for any other path', async () => {
+    const caught = await runTest(
+      Effect.flip(authorize(['/ws'], ['/open.erd'], '/etc/model.erd', 'linux'))
+    );
 
     expect(caught).toBeInstanceOf(HubRequestError);
-    expect((caught as HubRequestError).code).toBe(
-      HubErrorCode.outsideWorkspace
+    expect(caught.code).toBe(HubErrorCode.outsideWorkspace);
+    expect(caught.message).toContain('/etc/model.erd');
+    expect(caught.message).toBe(
+      '/etc/model.erd is neither inside a workspace folder nor an open document'
     );
-    expect((caught as HubRequestError).message).toContain('/etc/model.erd');
+  });
+
+  it('applies the isAuthorized rule, platform included', async () => {
+    const outcome = (target: string, platform: string) =>
+      runTest(
+        authorize(['/ws/app'], ['/Docs/Model.erd'], target, platform).pipe(
+          Effect.as('authorized'),
+          Effect.catchTag('HubRequestError', error =>
+            Effect.succeed(error.code)
+          )
+        )
+      );
+
+    expect(await outcome('/ws/app/x.erd', 'linux')).toBe('authorized');
+    expect(await outcome('/ws/apple/x.erd', 'linux')).toBe('outsideWorkspace');
+    expect(await outcome('/ws/app/../x.erd', 'linux')).toBe('outsideWorkspace');
+    expect(await outcome('/docs/model.erd', 'darwin')).toBe('authorized');
+    expect(await outcome('/docs/model.erd', 'linux')).toBe('outsideWorkspace');
+  });
+
+  it('checks the folders and documents as they are when it runs', async () => {
+    const folders: string[] = [];
+    const check = authorize(folders, [], '/ws/model.erd', 'linux');
+
+    await expect(runTest(Effect.flip(check))).resolves.toBeInstanceOf(
+      HubRequestError
+    );
+    folders.push('/ws');
+    await expect(runTest(check)).resolves.toBeUndefined();
   });
 });

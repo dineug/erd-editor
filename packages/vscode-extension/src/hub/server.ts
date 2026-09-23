@@ -1,6 +1,7 @@
 import {
-  decodeFrames,
+  decodePeerToHubFrames,
   encodeFrame,
+  encodeHubNotificationFrame,
   HUB_PROTOCOL_VERSION,
   type HubError,
   HubErrorCode,
@@ -9,10 +10,12 @@ import {
   HubRequestError,
   type HubRequestParams,
   type HubResultMap,
+  type PeerToHubMessage,
   protocolMismatchMessage,
+  type RefusedFrame,
 } from '@dineug/erd-editor-agent-hub';
 import type { Cause } from 'effect';
-import { Effect, Fiber, Queue, Schema, Scope, Stream } from 'effect';
+import { Effect, Fiber, Queue, Result, Scope, Stream } from 'effect';
 import { Socket } from 'effect/unstable/socket';
 
 export type HubRoutedMethod = Exclude<HubMethod, 'hello'>;
@@ -53,6 +56,17 @@ type Outcome = { result: unknown } | { error: HubError };
 
 /** What the hub writes to a peer: a frame, or the close that destroys the socket. */
 type Outbound = string | Socket.CloseEvent;
+
+/** One frame as the reader decodes it: a request, or JSON that fits none. */
+type Frame = Result.Result<PeerToHubMessage, RefusedFrame>;
+
+/** What the hub checks of a hello before it lets a peer in. */
+type Hello = {
+  id: number;
+  token: unknown;
+  protocolVersion: number;
+  client: string;
+};
 
 /**
  * Which routed methods name a document. The type forces the value from the
@@ -115,7 +129,31 @@ const toHubError = (error: unknown): Effect.Effect<HubError> =>
         Effect.as({ code: HubErrorCode.internal, message: String(error) })
       );
 
-const frames = decodeFrames(Schema.Unknown);
+/**
+ * The hello a first frame carries, or null for any other frame. A refused one
+ * is read by hand as before the schema: its token is checked as it stands, a
+ * protocol that is no number reads as 0 and a client that is no string as ''.
+ */
+function helloOf(frame: Frame): Hello | null {
+  if (Result.isSuccess(frame)) {
+    const request = frame.success;
+    return request.method === 'hello'
+      ? { id: request.id, ...request.params }
+      : null;
+  }
+  const { value } = frame.failure;
+  if (!isRecord(value) || value.method !== 'hello' || !isRequestId(value.id)) {
+    return null;
+  }
+  const params = isRecord(value.params) ? value.params : {};
+  return {
+    id: value.id,
+    token: params.token,
+    protocolVersion:
+      typeof params.protocolVersion === 'number' ? params.protocolVersion : 0,
+    client: typeof params.client === 'string' ? params.client : '',
+  };
+}
 
 /**
  * Serves one accepted connection until it closes. Frames of one connection
@@ -171,13 +209,10 @@ export const serveConnection = (
       });
 
     /** The first frame must be a hello with this window's token and protocol. */
-    const authenticate = (message: unknown) =>
+    const authenticate = (frame: Frame) =>
       Effect.gen(function* () {
-        if (
-          !isRecord(message) ||
-          message.method !== 'hello' ||
-          !isRequestId(message.id)
-        ) {
+        const hello = helloOf(frame);
+        if (!hello) {
           yield* Effect.logWarning(
             'hung up on a peer whose first frame was not a hello'
           );
@@ -185,11 +220,10 @@ export const serveConnection = (
           return null;
         }
 
-        const { id } = message;
-        const params = isRecord(message.params) ? message.params : {};
+        const { id } = hello;
         if (
-          typeof params.token !== 'string' ||
-          !tokensMatch(params.token, token)
+          typeof hello.token !== 'string' ||
+          !tokensMatch(hello.token, token)
         ) {
           yield* Effect.logWarning(
             'refused a hello with a token that is not in the lock file'
@@ -207,10 +241,7 @@ export const serveConnection = (
           return null;
         }
 
-        const clientVersion =
-          typeof params.protocolVersion === 'number'
-            ? params.protocolVersion
-            : 0;
+        const clientVersion = hello.protocolVersion;
         if (clientVersion !== HUB_PROTOCOL_VERSION) {
           yield* Effect.logWarning(
             `refused a hello speaking protocol ${clientVersion}`
@@ -240,36 +271,35 @@ export const serveConnection = (
         });
         const peer: HubConnection = {
           id: nextConnectionId(),
-          client: typeof params.client === 'string' ? params.client : '',
-          notify: (notification: HubNotification) => send(notification),
+          client: hello.client,
+          notify: (notification: HubNotification) => {
+            if (open) {
+              Queue.offerUnsafe(
+                outbound,
+                encodeHubNotificationFrame(notification)
+              );
+            }
+          },
         };
         return peer;
       });
 
-    const request = (
+    const noMethod = (id: number, method: string) =>
+      respond(id, method, {
+        error: {
+          code: HubErrorCode.badRequest,
+          message: `The hub has no method ${JSON.stringify(method)}`,
+        },
+      });
+
+    /** Authorizes the path a request names, then calls its handler. */
+    const dispatch = (
       id: number,
-      method: string,
+      method: HubRoutedMethod,
       params: Record<string, unknown>,
       peer: HubConnection
     ) =>
       Effect.gen(function* () {
-        if (!isRoutedMethod(method)) {
-          yield* respond(id, method, {
-            error: {
-              code: HubErrorCode.badRequest,
-              message: `The hub has no method ${JSON.stringify(method)}`,
-            },
-          });
-          return;
-        }
-        const problem = paramsProblem(method, params);
-        if (problem) {
-          yield* respond(id, method, {
-            error: { code: HubErrorCode.badRequest, message: problem },
-          });
-          return;
-        }
-
         let routed = params;
         if (CARRIES_PATH[method]) {
           const authorized = yield* authorize(String(params.path)).pipe(
@@ -320,10 +350,14 @@ export const serveConnection = (
         if (method === 'applyActions') yield* Fiber.await(answered);
       });
 
-    /** Frames of one connection pass authorization in arrival order. */
-    const route = (message: unknown, peer: HubConnection) =>
+    /**
+     * A refused frame read by hand as before the schema, so it gets the answer
+     * it always got: skipped without a request id, badRequest for an unknown
+     * method or a param its method needs, else the handler with what it has.
+     */
+    const serveRefused = (value: unknown, peer: HubConnection) =>
       Effect.gen(function* () {
-        const frame = isRecord(message) ? message : {};
+        const frame = isRecord(value) ? value : {};
         const method = typeof frame.method === 'string' ? frame.method : '';
         const params = isRecord(frame.params) ? frame.params : {};
 
@@ -333,8 +367,29 @@ export const serveConnection = (
           );
           return;
         }
-        yield* request(frame.id, method, params, peer);
+        if (!isRoutedMethod(method)) {
+          yield* noMethod(frame.id, method);
+          return;
+        }
+        const problem = paramsProblem(method, params);
+        if (problem) {
+          yield* respond(frame.id, method, {
+            error: { code: HubErrorCode.badRequest, message: problem },
+          });
+          return;
+        }
+        yield* dispatch(frame.id, method, params, peer);
       });
+
+    /** Frames of one connection pass authorization in arrival order. */
+    const route = (frame: Frame, peer: HubConnection) => {
+      if (Result.isFailure(frame))
+        return serveRefused(frame.failure.value, peer);
+      const request = frame.success;
+      return request.method === 'hello'
+        ? noMethod(request.id, request.method)
+        : dispatch(request.id, request.method, request.params, peer);
+    };
 
     // The two halves run apart rather than as one duplex channel: a write that
     // cannot reach a peer must leave the reader serving, and hanging up has to
@@ -360,15 +415,15 @@ export const serveConnection = (
         })
       )
     );
-    const incoming = yield* Queue.unbounded<unknown, Cause.Done>();
+    const incoming = yield* Queue.unbounded<Frame, Cause.Done>();
 
     // Read in a fiber of its own, so a peer hanging up closes the connection
     // at once rather than behind whatever request is still being served.
     yield* Effect.forkChild(
       Stream.fromPull(Socket.readerString(socket)).pipe(
-        frames,
-        Stream.runForEach(message =>
-          Effect.sync(() => void Queue.offerUnsafe(incoming, message))
+        decodePeerToHubFrames,
+        Stream.runForEach(frame =>
+          Effect.sync(() => void Queue.offerUnsafe(incoming, frame))
         ),
         // A peer hanging up is the usual end of a connection and says nothing;
         // a frame the hub cannot read is what it hangs up over.
@@ -390,14 +445,14 @@ export const serveConnection = (
     );
 
     yield* Stream.fromQueue(incoming).pipe(
-      Stream.runForEach(message =>
+      Stream.runForEach(frame =>
         Effect.gen(function* () {
           if (!open) return;
           if (!connection) {
-            connection = yield* authenticate(message);
+            connection = yield* authenticate(frame);
             return;
           }
-          yield* route(message, connection);
+          yield* route(frame, connection);
         })
       ),
       Effect.ensuring(

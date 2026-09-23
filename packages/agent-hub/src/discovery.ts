@@ -105,17 +105,16 @@ function outranks(a: Ranked, b: Ranked): boolean {
   return a.candidate.pid > b.candidate.pid;
 }
 
-/**
- * Picks the window that holds targetPath by the authorization rule; ties go to
- * the newest mtimeMs, then the higher pid. A hub-false winner blocks the write
- * and no match at all means headless. targetPath is normalized like paths.ts.
- */
-export function selectHub(
+/** What selectHub decides: the window to use, and the locks that took no part. */
+export type HubSelection = { selected: DiscoveryResult; stale: StaleLock[] };
+
+/** selectHub's choice, made at once; targetPath is normalized as paths.ts wants. */
+function pickHub(
   locks: LockFile[],
   targetPath: string,
   platform: Platform,
   isAlive: (pid: number) => boolean
-): { selected: DiscoveryResult; stale: StaleLock[] } {
+): HubSelection {
   const stale: StaleLock[] = [];
   let best: Ranked | null = null;
 
@@ -143,4 +142,18 @@ export function selectHub(
       };
 
   return { selected, stale };
+}
+
+/**
+ * The window holding targetPath by the authorization rule, ties to the newest
+ * mtimeMs then the higher pid; a hub-false winner blocks, no match is headless.
+ * It asks isAlive as the effect runs, so it chains onto readLockDirectory.
+ */
+export function selectHub(
+  locks: LockFile[],
+  targetPath: string,
+  platform: Platform,
+  isAlive: (pid: number) => boolean
+): Effect.Effect<HubSelection> {
+  return Effect.sync(() => pickHub(locks, targetPath, platform, isAlive));
 }

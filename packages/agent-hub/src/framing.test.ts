@@ -1,14 +1,24 @@
-import { Effect, Exit, Schema, Stream } from 'effect';
+import { Effect, Exit, Result, Schema, Stream } from 'effect';
 import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
 import { runTest } from '@/__test-utils__/effect';
 import {
+  decodeFrameResults,
   decodeFrames,
+  decodeHubToPeerFrames,
+  decodePeerToHubFrames,
   encodeFrame,
+  encodeHubNotificationFrame,
+  encodePeerToHubFrame,
   FrameError,
   MAX_FRAME_BYTES,
+  type RefusedFrame,
 } from '@/framing';
-import { HubToPeerMessage } from '@/protocol';
+import {
+  HubNotification,
+  HubToPeerMessage,
+  PeerToHubMessage,
+} from '@/protocol';
 
 describe('encodeFrame', () => {
   it('keeps a value with newlines inside on a single line', () => {
@@ -232,4 +242,284 @@ describe('decodeFrames', () => {
       value: { reason: 'tooLarge' },
     });
   }, 30_000);
+});
+
+/** A frame's JSON text and its newline. */
+const line = (value: unknown) => `${JSON.stringify(value)}\n`;
+
+describe('decodeFrameResults', () => {
+  it('hands a value the schema refuses on as a Failure and keeps reading', async () => {
+    const { values, exit } = await drain(
+      Stream.fromIterable([
+        line({ method: 'documentClosed', params: { path: '/a' } }) +
+          line({ method: 'documentClosed', params: {} }),
+        line({ id: 3, ok: true, method: 'save', result: { saved: true } }),
+      ]).pipe(decodeFrameResults(HubToPeerMessage))
+    );
+
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(values).toEqual([
+      Result.succeed({ method: 'documentClosed', params: { path: '/a' } }),
+      Result.fail({
+        value: { method: 'documentClosed', params: {} },
+        issue: expect.stringMatching(
+          /^Missing key\s+at \["params"\]\["path"\]$/
+        ),
+      }),
+      Result.succeed({
+        id: 3,
+        ok: true,
+        method: 'save',
+        result: { saved: true },
+      }),
+    ]);
+  });
+
+  it('types each Result by the schema, a refusal as a RefusedFrame', () => {
+    const stream = Stream.fromIterable(['1\n']).pipe(
+      decodeFrameResults(Schema.String)
+    );
+
+    expectTypeOf(stream).toEqualTypeOf<
+      Stream.Stream<Result.Result<string, RefusedFrame>, FrameError>
+    >();
+  });
+
+  it('still fails the stream on a line that is not JSON, reading nothing after it', async () => {
+    const { values, exit } = await drain(
+      Stream.fromIterable(['1\n', '{"a":\n2\n']).pipe(
+        decodeFrameResults(Schema.Number)
+      )
+    );
+
+    expect(values).toEqual([Result.succeed(1)]);
+    expect(Exit.findErrorOption(exit)).toMatchObject({
+      value: { _tag: 'FrameError', reason: 'notJson' },
+    });
+  });
+
+  it('still fails the stream on a frame over MAX_FRAME_BYTES', async () => {
+    const { values, exit } = await drain(
+      Stream.fromIterable(['a'.repeat(MAX_FRAME_BYTES), 'a\n']).pipe(
+        decodeFrameResults(Schema.Unknown)
+      )
+    );
+
+    expect(values).toEqual([]);
+    expect(Exit.findErrorOption(exit)).toMatchObject({
+      value: { reason: 'tooLarge' },
+    });
+  }, 30_000);
+
+  it('skips blank lines and drops an unterminated tail, as decodeFrames does', async () => {
+    const { values } = await drain(
+      Stream.fromIterable(['\n  \n"a"\r\n', '"b"\n"c']).pipe(
+        decodeFrameResults(Schema.String)
+      )
+    );
+
+    expect(values).toEqual([Result.succeed('a'), Result.succeed('b')]);
+  });
+});
+
+describe('decodePeerToHubFrames', () => {
+  it('decodes the requests a peer sends', async () => {
+    const { values } = await drain(
+      Stream.fromIterable([
+        line({
+          id: 1,
+          method: 'hello',
+          params: { token: 't', protocolVersion: 1, client: 'c' },
+        }),
+        line({ id: 2, method: 'join', params: { path: '/a', extra: true } }),
+      ]).pipe(decodePeerToHubFrames)
+    );
+
+    expect(values).toEqual([
+      Result.succeed({
+        id: 1,
+        method: 'hello',
+        params: { token: 't', protocolVersion: 1, client: 'c' },
+      }),
+      Result.succeed({ id: 2, method: 'join', params: { path: '/a' } }),
+    ]);
+  });
+
+  it.each([
+    ['an unknown method', { id: 4, method: 'rejoin', params: {} }],
+    ['a missing path', { id: 5, method: 'join', params: {} }],
+    [
+      'a notification',
+      { method: 'actions', params: { path: '/a', actions: [] } },
+    ],
+    ['a value that is no object', [1, 2]],
+  ])(
+    'refuses %s, keeping the value for the hub to answer',
+    async (_, value) => {
+      const { values } = await drain(
+        Stream.fromIterable([line(value)]).pipe(decodePeerToHubFrames)
+      );
+
+      expect(values).toEqual([
+        Result.fail({ value, issue: expect.any(String) }),
+      ]);
+    }
+  );
+});
+
+describe('decodeHubToPeerFrames', () => {
+  it('decodes the responses and notifications a hub sends', async () => {
+    const response = {
+      id: 3,
+      ok: false,
+      method: 'save',
+      error: { code: 'notOpen', message: 'closed' },
+    };
+    const notification = {
+      method: 'actions',
+      params: { path: '/a', actions: [{ type: 'x' }] },
+    };
+    const { values } = await drain(
+      Stream.fromIterable([line(response) + line(notification)]).pipe(
+        decodeHubToPeerFrames
+      )
+    );
+
+    expect(values).toEqual([
+      Result.succeed(response),
+      Result.succeed(notification),
+    ]);
+  });
+
+  it.each([
+    ['a request', { id: 1, method: 'save', params: { path: '/a' } }],
+    [
+      'an unknown error code',
+      {
+        id: 1,
+        ok: false,
+        method: 'save',
+        error: { code: 'gone', message: 'x' },
+      },
+    ],
+    ['an unknown notification', { method: 'focus', params: { path: '/a' } }],
+  ])('refuses %s, keeping the value', async (_, value) => {
+    const { values } = await drain(
+      Stream.fromIterable([line(value)]).pipe(decodeHubToPeerFrames)
+    );
+
+    expect(values).toEqual([Result.fail({ value, issue: expect.any(String) })]);
+  });
+});
+
+describe('encodePeerToHubFrame', () => {
+  it('writes a request in schema order, whatever order its fields were given in', () => {
+    const request = {
+      params: { client: 'c', protocolVersion: 1, token: 't' },
+      method: 'hello',
+      id: 1,
+    } as const satisfies PeerToHubMessage;
+
+    expect(encodePeerToHubFrame(request)).toBe(
+      '{"id":1,"method":"hello","params":{"token":"t","protocolVersion":1,"client":"c"}}\n'
+    );
+  });
+
+  it('drops the fields the schema does not know', () => {
+    const request = {
+      id: 2,
+      method: 'save',
+      params: { path: '/a', force: true },
+      sentAt: 1,
+    } as PeerToHubMessage;
+
+    expect(encodePeerToHubFrame(request)).toBe(
+      '{"id":2,"method":"save","params":{"path":"/a"}}\n'
+    );
+  });
+
+  it('keeps any object as listDocuments params and every action as given', () => {
+    expect(
+      encodePeerToHubFrame({ id: 3, method: 'listDocuments', params: {} })
+    ).toBe('{"id":3,"method":"listDocuments","params":{}}\n');
+    expect(
+      encodePeerToHubFrame({
+        id: 4,
+        method: 'applyActions',
+        params: { path: '/a', actions: [{ type: 't', payload: { id: 'x' } }] },
+      })
+    ).toBe(
+      '{"id":4,"method":"applyActions","params":{"path":"/a","actions":[{"type":"t","payload":{"id":"x"}}]}}\n'
+    );
+  });
+
+  it('throws what the schema refuses, and what JSON cannot frame', () => {
+    expect(() =>
+      encodePeerToHubFrame({
+        id: 5,
+        method: 'join',
+        params: {},
+      } as unknown as PeerToHubMessage)
+    ).toThrow(/Missing key/);
+    expect(() =>
+      encodePeerToHubFrame({
+        id: 6,
+        method: 'applyActions',
+        params: { path: '/a', actions: [1n] },
+      })
+    ).toThrow(TypeError);
+  });
+
+  it('leaves out an optional given as undefined, as encodeFrame does', () => {
+    const request = {
+      id: 8,
+      method: 'openDocument',
+      params: { path: '/a', create: undefined, initialValue: undefined },
+    } as const satisfies PeerToHubMessage;
+
+    expect(encodePeerToHubFrame(request)).toBe(encodeFrame(request));
+    expect(encodePeerToHubFrame(request)).toBe(
+      '{"id":8,"method":"openDocument","params":{"path":"/a"}}\n'
+    );
+  });
+
+  it('frames what PeerToHubMessage decodes, byte for byte', () => {
+    const frame =
+      '{"id":7,"method":"openDocument","params":{"path":"/w/a.erd","create":true,"initialValue":"{}"}}\n';
+    const decoded = Schema.decodeUnknownSync(PeerToHubMessage)(
+      JSON.parse(frame)
+    );
+
+    expect(encodePeerToHubFrame(decoded)).toBe(frame);
+  });
+});
+
+describe('encodeHubNotificationFrame', () => {
+  it('writes the bytes encodeFrame writes of the notifications the hub builds', () => {
+    const notifications: HubNotification[] = [
+      { method: 'actions', params: { path: '/a', actions: [{ type: 'x' }] } },
+      { method: 'documentClosed', params: { path: '/a' } },
+    ];
+
+    for (const notification of notifications) {
+      expect(encodeHubNotificationFrame(notification)).toBe(
+        encodeFrame(notification)
+      );
+    }
+  });
+
+  it('drops the fields the schema does not know and throws what it refuses', () => {
+    expect(
+      encodeHubNotificationFrame({
+        params: { path: '/a', reason: 'deleted' },
+        method: 'documentClosed',
+      } as HubNotification)
+    ).toBe('{"method":"documentClosed","params":{"path":"/a"}}\n');
+    expect(() =>
+      encodeHubNotificationFrame({
+        method: 'actions',
+        params: { path: '/a' },
+      } as unknown as HubNotification)
+    ).toThrow(/Missing key/);
+  });
 });

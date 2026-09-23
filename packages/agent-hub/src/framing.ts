@@ -1,4 +1,10 @@
-import { Effect, Schema, Stream } from 'effect';
+import { Effect, Result, Schema, Stream } from 'effect';
+
+import {
+  HubNotification,
+  HubToPeerMessage,
+  PeerToHubMessage,
+} from '@/protocol';
 
 /**
  * The largest frame either side accepts, in UTF-8 bytes without the newline.
@@ -8,8 +14,8 @@ import { Effect, Schema, Stream } from 'effect';
 export const MAX_FRAME_BYTES = 64 * 1024 * 1024;
 
 /**
- * Why decodeFrames gave up on a stream: a frame over MAX_FRAME_BYTES, a line
- * that is not JSON, or a JSON value the message schema refuses.
+ * Why a frame decoder gave up on a stream: a frame over MAX_FRAME_BYTES, a line
+ * that is not JSON, or, in decodeFrames only, a value the schema refuses.
  */
 export class FrameError extends Schema.TaggedError<FrameError>()('FrameError', {
   reason: Schema.Literals(['tooLarge', 'notJson', 'invalid']),
@@ -85,27 +91,38 @@ const parseLine = (line: string) =>
   });
 
 /**
- * Turns a text stream into its messages: one JSON value per newline-ended line,
- * blank lines skipped, an unterminated tail dropped at the end, each value
- * decoded by schema. The first bad frame fails the stream with a FrameError.
+ * A JSON value the message schema refused, as parsed, so a reader can still
+ * answer it by what it can read of it or skip it; issue is the schema's reason.
  */
-export function decodeFrames<S extends Schema.Constraint>(schema: S) {
+export type RefusedFrame = { readonly value: unknown; readonly issue: string };
+
+/**
+ * Turns a text stream into one Result per frame: one JSON value per newline-ended
+ * line, blank lines skipped, an unterminated tail dropped at the end, each value
+ * decoded by schema or refused. A line that is not JSON or too large fails it.
+ */
+export function decodeFrameResults<S extends Schema.Constraint>(schema: S) {
   const decode = Schema.decodeUnknownEffect(schema);
   const decodeLine = (line: string) =>
     Effect.flatMap(parseLine(line), value =>
-      Effect.mapError(
-        decode(value),
-        error =>
-          new FrameError({
-            reason: 'invalid',
-            message: `A frame does not match the message schema: ${error.message}`,
-          })
+      decode(value).pipe(
+        Effect.result,
+        Effect.map(
+          Result.mapError((error): RefusedFrame => ({
+            value,
+            issue: error.message,
+          }))
+        )
       )
     );
 
   return <E, R>(
     text: Stream.Stream<string, E, R>
-  ): Stream.Stream<S['Type'], E | FrameError, R | S['DecodingServices']> =>
+  ): Stream.Stream<
+    Result.Result<S['Type'], RefusedFrame>,
+    E | FrameError,
+    R | S['DecodingServices']
+  > =>
     text.pipe(
       Stream.mapAccumEffect(
         (): Unterminated => ({ text: '', bytes: 0 }),
@@ -114,4 +131,56 @@ export function decodeFrames<S extends Schema.Constraint>(schema: S) {
       Stream.filter(line => line.trim() !== ''),
       Stream.mapEffect(decodeLine)
     );
+}
+
+/**
+ * Turns a text stream into its messages as decodeFrameResults reads them, but
+ * the first frame the schema refuses fails the stream too, with a FrameError.
+ */
+export function decodeFrames<S extends Schema.Constraint>(schema: S) {
+  const results = decodeFrameResults(schema);
+  const orFail = (
+    result: Result.Result<S['Type'], RefusedFrame>
+  ): Effect.Effect<S['Type'], FrameError> =>
+    Result.isSuccess(result)
+      ? Effect.succeed(result.success)
+      : Effect.fail(
+          new FrameError({
+            reason: 'invalid',
+            message: `A frame does not match the message schema: ${result.failure.issue}`,
+          })
+        );
+
+  return <E, R>(
+    text: Stream.Stream<string, E, R>
+  ): Stream.Stream<S['Type'], E | FrameError, R | S['DecodingServices']> =>
+    results(text).pipe(Stream.mapEffect(orFail));
+}
+
+/** What a hub reads from a peer: each frame a request, or refused. */
+export const decodePeerToHubFrames = decodeFrameResults(PeerToHubMessage);
+
+/** What a peer reads from its hub: each frame a response or a notification, or refused. */
+export const decodeHubToPeerFrames = decodeFrameResults(HubToPeerMessage);
+
+const encodeRequest = Schema.encodeSync(PeerToHubMessage);
+
+/**
+ * A request's frame: encoded by PeerToHubMessage, so its fields come in schema
+ * order and unknown ones are dropped, then framed; throws what either throws.
+ */
+export function encodePeerToHubFrame(request: PeerToHubMessage): string {
+  return encodeFrame(encodeRequest(request));
+}
+
+const encodeNotification = Schema.encodeSync(HubNotification);
+
+/**
+ * A notification's frame: encoded by HubNotification, so its fields come in
+ * schema order and unknown ones are dropped, then framed; throws what either throws.
+ */
+export function encodeHubNotificationFrame(
+  notification: HubNotification
+): string {
+  return encodeFrame(encodeNotification(notification));
 }
