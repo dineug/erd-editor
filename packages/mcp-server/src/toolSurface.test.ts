@@ -8,6 +8,7 @@ import {
   RpcError,
 } from '@/__test-utils__/mcp';
 import { createMemoryHost } from '@/__test-utils__/memoryHost';
+import { SERVER_VERSION } from '@/server';
 import { SQL_VENDORS } from '@/tools/read';
 import { actionTools } from '@/tools/registry';
 import { isDestructive, SESSION_TOOL_NAMES } from '@/tools/toolkit';
@@ -166,7 +167,10 @@ describe('the tool surface (AC-M8)', () => {
   it('introduces itself with the server name, version and instructions', () => {
     const { result } = mcp.initialize;
 
-    expect(result.serverInfo).toEqual({ name: 'erd-editor', version: '0.1.0' });
+    expect(result.serverInfo).toEqual({
+      name: 'erd-editor',
+      version: SERVER_VERSION,
+    });
     expect(result.instructions).toMatch(/erd_read format snapshot/);
   });
 });

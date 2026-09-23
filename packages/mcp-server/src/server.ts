@@ -20,10 +20,12 @@ import { ToolHandlers } from '@/tools/handlers';
 import { registerReadTool } from '@/tools/read.tool';
 import { EditToolkit, SessionToolkit } from '@/tools/toolkit';
 
+import { version } from '../package.json';
+
 export const SERVER_NAME = 'erd-editor';
 
-/** Pinned to package.json by server.test.ts. */
-export const SERVER_VERSION = '0.1.0';
+/** The manifest's version, inlined by the build, so a release edits one file. */
+export const SERVER_VERSION: string = version;
 
 /**
  * The three dated protocols that answer a malformed tool argument with
