@@ -11,6 +11,8 @@ the agent joins the editor as a collaborator: every call shows up on the canvas 
 the agent's focus on the cell it is editing. With no editor around, the same tools edit the file
 itself.
 
+![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
+
 The package is one self-contained file with no runtime dependencies. It needs Node.js 22.12 or
 later.
 
