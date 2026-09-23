@@ -59,13 +59,13 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the eight session tools and every registry tool: 61 in all', () => {
+  it('is the eight session tools and every registry tool: 62 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [...SESSION_TOOL_NAMES, ...actionTools.map(({ name }) => name)].sort()
     );
     expect(SESSION_TOOL_NAMES).toHaveLength(8);
-    expect(actionTools).toHaveLength(53);
-    expect(tools).toHaveLength(61);
+    expect(actionTools).toHaveLength(54);
+    expect(tools).toHaveLength(62);
   });
 
   it('lists the session toolkit, then the read tools, then the registry, in its order', () => {
@@ -116,6 +116,25 @@ describe('the tool surface (AC-M8)', () => {
     expect(get.properties.tableIds).toMatchObject({
       type: 'array',
       items: { type: 'string' },
+    });
+  });
+
+  it('gives erd_move_tables a list of closed tableId, x, y entries', () => {
+    const { properties, required } = tool('erd_move_tables').inputSchema as any;
+
+    expect(required).toEqual(['path', 'positions']);
+    expect(properties.positions).toMatchObject({
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          tableId: { type: 'string' },
+          x: { type: 'number' },
+          y: { type: 'number' },
+        },
+        required: ['tableId', 'x', 'y'],
+        additionalProperties: false,
+      },
     });
   });
 

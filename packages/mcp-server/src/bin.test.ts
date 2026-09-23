@@ -158,7 +158,7 @@ describe('the built single file (AC-M9, AC-P7)', () => {
       name: 'erd-editor',
       version: manifest.version,
     });
-    expect(byId.get(2).result.tools).toHaveLength(61);
+    expect(byId.get(2).result.tools).toHaveLength(62);
     expect(lines.every(line => line.jsonrpc === '2.0')).toBe(true);
     expect(code).toBe(0);
     await rm(dir, { recursive: true, force: true });

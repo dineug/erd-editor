@@ -127,6 +127,14 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   erd_move_table: {
     description: 'Moves a table to an absolute canvas position.',
   },
+  erd_move_tables: {
+    description:
+      'Moves several tables to absolute canvas positions in one edit, which one erd_undo reverts. Plan the layout from the positions and sizes erd_list gives.',
+    args: {
+      positions:
+        'One entry per table: its tableId from erd_list, with x and y, the left and top edges in pixels. Each table at most once.',
+    },
+  },
   erd_sort_tables: {
     description:
       'Arranges every table on the canvas automatically, as the editor sort command does.',

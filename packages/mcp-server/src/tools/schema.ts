@@ -24,6 +24,14 @@ export function argKindSchema(kind: ToolArgKind): Schema.Top {
       return Schema.String;
     case 'entityIdList':
       return Schema.Array(Schema.String);
+    case 'tablePositions':
+      return Schema.Array(
+        Schema.Struct({
+          tableId: Schema.String,
+          x: Schema.Finite,
+          y: Schema.Finite,
+        })
+      );
     default: {
       const never: never = kind;
       throw new TypeError(

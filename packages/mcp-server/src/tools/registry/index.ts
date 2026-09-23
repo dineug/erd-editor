@@ -30,7 +30,15 @@ export type ToolArgKind =
   | { type: 'boolean' }
   | { type: 'enum'; values: Readonly<Record<string, string | number>> }
   | { type: 'entityId'; entity: ToolEntity; parentArg?: string }
-  | { type: 'entityIdList'; entity: 'column'; parentArg: string };
+  | { type: 'entityIdList'; entity: 'column'; parentArg: string }
+  | { type: 'tablePositions' };
+
+/** One entry of a table positions argument: a live table, named once in the list. */
+export type TablePosition = {
+  readonly tableId: string;
+  readonly x: number;
+  readonly y: number;
+};
 
 export type ToolArg = {
   readonly name: string;

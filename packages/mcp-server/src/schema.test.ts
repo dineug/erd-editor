@@ -17,6 +17,11 @@ const KINDS: Array<[ToolArgKind, unknown, unknown]> = [
     ['a', 'b'],
     'a',
   ],
+  [
+    { type: 'tablePositions' },
+    [{ tableId: 'a', x: 10, y: -20.5 }],
+    [{ tableId: 'a', x: '10', y: 0 }],
+  ],
 ];
 
 const takes = (schema: Schema.Top, value: unknown) => Schema.is(schema)(value);

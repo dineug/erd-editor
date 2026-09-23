@@ -4,6 +4,7 @@ import { isPlainObject } from 'es-toolkit';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import type {
   ActionTool,
+  TablePosition,
   ToolArg,
   ToolArgValues,
   ToolEntity,
@@ -131,7 +132,63 @@ function checkShape(tool: Tool, arg: ToolArg, value: unknown): unknown {
         );
       }
       return [...new Set(value as string[])];
+    case 'tablePositions':
+      return checkPositions(tool, name, value);
   }
+}
+
+const POSITION_KEYS = ['tableId', 'x', 'y'];
+
+/**
+ * A list of table points, each a table named once: two points for one table
+ * leave which one wins to the order of the list, so the call is refused.
+ */
+function checkPositions(
+  tool: Tool,
+  name: string,
+  value: unknown
+): TablePosition[] {
+  if (!Array.isArray(value) || !value.length) {
+    throw invalid(
+      tool,
+      `${name} must be a non-empty list of { tableId, x, y } entries`
+    );
+  }
+
+  const seen = new Set<string>();
+  return value.map((entry: unknown, at) => {
+    const where = `${name}[${at}]`;
+    if (!isPlainObject(entry)) {
+      throw invalid(tool, `${where} must be an object, got ${typeName(entry)}`);
+    }
+    const record = entry as Record<string, unknown>;
+    const unknown = Object.keys(record).filter(
+      key => !POSITION_KEYS.includes(key)
+    );
+    if (unknown.length) {
+      throw invalid(
+        tool,
+        `${where} has unexpected key ${unknown.join(', ')}; accepted: ${POSITION_KEYS.join(', ')}`
+      );
+    }
+    const { tableId, x, y } = record;
+    if (typeof tableId !== 'string' || !tableId) {
+      throw invalid(tool, `${where}.tableId must be a table id`);
+    }
+    for (const [key, coordinate] of [
+      ['x', x],
+      ['y', y],
+    ] as const) {
+      if (typeof coordinate !== 'number' || !Number.isFinite(coordinate)) {
+        throw invalid(tool, `${where}.${key} must be a finite number`);
+      }
+    }
+    if (seen.has(tableId)) {
+      throw invalid(tool, `${where}.tableId ${tableId} is listed twice`);
+    }
+    seen.add(tableId);
+    return Object.freeze({ tableId, x: x as number, y: y as number });
+  });
 }
 
 function checkLive(
@@ -142,6 +199,17 @@ function checkLive(
   state: RootState
 ) {
   const { kind, name } = arg;
+  if (kind.type === 'tablePositions') {
+    (value as TablePosition[]).forEach(({ tableId }, at) => {
+      if (isLive(state, 'table', tableId)) return;
+      throw new ToolError(
+        ToolErrorCode.notFound,
+        tool.name,
+        `${name}[${at}].tableId ${tableId} names no live table; read the document for current ids`
+      );
+    });
+    return;
+  }
   if (kind.type !== 'entityId' && kind.type !== 'entityIdList') return;
 
   const parentArg = kind.parentArg

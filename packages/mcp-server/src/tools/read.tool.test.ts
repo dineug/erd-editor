@@ -56,7 +56,7 @@ describe('a call that fails unexpectedly', () => {
       'a tool call failed',
       expect.stringContaining('TypeError: bug')
     );
-    expect((await mcp.listTools()).tools).toHaveLength(61);
+    expect((await mcp.listTools()).tools).toHaveLength(62);
     await mcp.close();
   });
 

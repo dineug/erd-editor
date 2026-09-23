@@ -6,7 +6,7 @@ import {
 } from '@dineug/erd-editor/peer.js';
 import { query } from '@dineug/erd-editor-schema';
 
-import type { ActionTool, ToolArg } from '@/tools/registry';
+import type { ActionTool, TablePosition, ToolArg } from '@/tools/registry';
 
 const TABLE_ID: ToolArg = {
   name: 'tableId',
@@ -137,6 +137,29 @@ export const tableTools: readonly ActionTool[] = [
     toActions: ({ tableId, x, y }) => [
       tableActions.moveToTableAction({ id: tableId, x, y }),
     ],
+  },
+  {
+    name: 'erd_move_tables',
+    kind: 'atom',
+    atomReason:
+      'No generator places named tables at given points: moveAllAction$ drags the selection by one relative step, and sortTablesToMoveAction$ places every table where the sort puts it. One dispatch of the moves is one batch and one undo entry, as the sort is.',
+    actionTypes: ['table.moveTo'],
+    undoable: true,
+    stream: false,
+    expectedBatches: 1,
+    expectedHistory: 1,
+    snapshotPaths: ['tables'],
+    args: [
+      {
+        name: 'positions',
+        kind: { type: 'tablePositions' },
+        required: true,
+      },
+    ],
+    toActions: ({ positions }) =>
+      (positions as readonly TablePosition[]).map(({ tableId, x, y }) =>
+        tableActions.moveToTableAction({ id: tableId, x, y })
+      ),
   },
   {
     name: 'erd_sort_tables',

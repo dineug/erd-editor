@@ -13,6 +13,12 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     erd_change_table_comment: { tableId: SEED.users, value: 'who signs in' },
     erd_change_table_color: { tableId: SEED.users, color: '#ff8800' },
     erd_move_table: { tableId: SEED.users, x: 40, y: 60 },
+    erd_move_tables: {
+      positions: [
+        { tableId: SEED.users, x: 40, y: 60 },
+        { tableId: SEED.orders, x: 520, y: 60 },
+      ],
+    },
     erd_sort_tables: {},
     erd_add_column: { tableId: SEED.empty },
     erd_remove_columns: {

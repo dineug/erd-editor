@@ -342,3 +342,85 @@ describe('entity liveness', () => {
     other.destroy();
   });
 });
+
+describe('table positions', () => {
+  const positions = [arg('positions', { type: 'tablePositions' })];
+  const refused = (value: unknown) =>
+    refusal(() =>
+      validateToolArgs(tool(positions), { positions: value }, state)
+    );
+
+  it('hands on each entry as a frozen table id and point, in the order given', () => {
+    const values = validateToolArgs(
+      tool(positions),
+      {
+        positions: [
+          { tableId: SEED.orders, x: 10, y: -20.5 },
+          { tableId: SEED.users, x: 0, y: 0 },
+        ],
+      },
+      state
+    );
+
+    expect(values).toEqual({
+      positions: [
+        { tableId: SEED.orders, x: 10, y: -20.5 },
+        { tableId: SEED.users, x: 0, y: 0 },
+      ],
+    });
+    expect(Object.isFrozen(values.positions[0])).toBe(true);
+  });
+
+  it('wants a non-empty list of objects', () => {
+    for (const value of [[], 'users', { tableId: SEED.users, x: 0, y: 0 }]) {
+      expect(refused(value).message).toBe(
+        'positions must be a non-empty list of { tableId, x, y } entries'
+      );
+    }
+    expect(refused([null]).message).toBe(
+      'positions[0] must be an object, got null'
+    );
+  });
+
+  it('names the key an entry does not take, and the ones it does', () => {
+    expect(refused([{ tableId: SEED.users, x: 0, y: 0, z: 1 }]).message).toBe(
+      'positions[0] has unexpected key z; accepted: tableId, x, y'
+    );
+  });
+
+  it('wants a table id and a finite point in every entry', () => {
+    expect(refused([{ tableId: '', x: 0, y: 0 }]).message).toBe(
+      'positions[0].tableId must be a table id'
+    );
+    expect(
+      refused([
+        { tableId: SEED.users, x: 0, y: 0 },
+        { tableId: SEED.orders, x: Infinity, y: 0 },
+      ]).message
+    ).toBe('positions[1].x must be a finite number');
+    expect(refused([{ tableId: SEED.users, x: 0 }]).message).toBe(
+      'positions[0].y must be a finite number'
+    );
+  });
+
+  it('refuses a table listed twice, which would leave the winner to the order', () => {
+    expect(
+      refused([
+        { tableId: SEED.users, x: 0, y: 0 },
+        { tableId: SEED.users, x: 10, y: 10 },
+      ]).message
+    ).toBe(`positions[1].tableId ${SEED.users} is listed twice`);
+  });
+
+  it('refuses a table the document no longer shows, naming the entry', () => {
+    const error = refused([
+      { tableId: SEED.users, x: 0, y: 0 },
+      { tableId: 'gone', x: 0, y: 0 },
+    ]);
+
+    expect(error.code).toBe(ToolErrorCode.notFound);
+    expect(error.message).toBe(
+      'positions[1].tableId gone names no live table; read the document for current ids'
+    );
+  });
+});
