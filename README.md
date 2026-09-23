@@ -115,6 +115,7 @@ flowchart TB
 - [Documentation](https://docs.erd-editor.io)
 - [Editing Guide](https://docs.erd-editor.io/docs/category/guides)
 - [API](https://docs.erd-editor.io/docs/api/erd-editor-element)
+- [MCP](https://docs.erd-editor.io/docs/mcp/introduction)
 
 ## Packages
 

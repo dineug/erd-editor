@@ -110,6 +110,17 @@ argument they do not declare, or one of the wrong type, with a JSON-RPC invalid 
 (-32602) before touching the document, so a misspelled argument is never silently dropped. The
 other session tools ignore arguments they do not know.
 
+## Documentation
+
+- [Introduction](https://docs.erd-editor.io/docs/mcp/introduction) — what an agent can and cannot
+  do, how it works, requirements
+- [Install](https://docs.erd-editor.io/docs/mcp/installation) — Claude Code, Codex and any other
+  client, setting up VS Code, updating
+- [Live and Headless](https://docs.erd-editor.io/docs/mcp/live-and-headless) — where an edit
+  lands, saving, undo, a window that goes away, conflicts on disk
+- [Tools](https://docs.erd-editor.io/docs/mcp/tools) — every tool with its arguments, paging a
+  large schema, `erd_batch`, results and refusals
+
 ## License
 
 [MIT](https://github.com/dineug/erd-editor/blob/main/LICENSE)

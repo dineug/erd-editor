@@ -110,8 +110,8 @@ window on the document's folder, the agent edits the file on disk instead.
 The agent connects only in a trusted workspace, and the `dineug.erd-editor.agentHub.enabled`
 setting turns it off for the window. Either way it can still read the diagrams from disk, but it
 never writes one behind the editor, where your next save would overwrite the change. The
-[MCP server's README](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
-lists every tool.
+[MCP documentation](https://docs.erd-editor.io/docs/mcp/tools) lists every tool with its
+arguments.
 
 ## Settings
 
@@ -133,6 +133,8 @@ here, so a theme you pick on the canvas persists.
 
 - [Editing Guide](https://docs.erd-editor.io/docs/category/guides) — editing, import and
   export, relationships, quick search, visualization, code generation, settings
+- [MCP](https://docs.erd-editor.io/docs/mcp/introduction) — installing the MCP server, live and
+  headless editing, every tool
 - [Documentation](https://docs.erd-editor.io)
 
 ## Also available
