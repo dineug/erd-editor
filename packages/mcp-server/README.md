@@ -86,6 +86,10 @@ Every edit tool takes the document `path`. Settings other than `erd_set_show`, a
 `erd_resize_memo`, make no undo entry in the editor, so `erd_undo` passes over them and the result
 says so.
 
+The edit tools and `erd_read` refuse an argument they do not declare, or one of the wrong type,
+with a JSON-RPC invalid params error (-32602) before touching the document, so a misspelled
+argument is never silently dropped. The other session tools ignore arguments they do not know.
+
 ## License
 
 [MIT](https://github.com/dineug/erd-editor/blob/main/LICENSE)

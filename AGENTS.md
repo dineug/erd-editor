@@ -12,11 +12,11 @@
 | --- | --- |
 | `vite.config.ts` | The only `lint` / `fmt` / `staged` config; deliberately no `.oxlintrc.json` / `.oxfmtrc.json` |
 | `package.json` | Root scripts (`build`, `test`, `check`, `format`, `lint`, `size`, `peer-graph`, `cache:clear`) |
-| `pnpm-workspace.yaml` | `packages/*`, the catalog (`vite` → `@voidzero-dev/vite-plus-core`, Vitest), the `typescript` override |
+| `pnpm-workspace.yaml` | `packages/*`, the catalog (`vite` → `@voidzero-dev/vite-plus-core`, Vitest, the exact `effect` / `@effect/platform-node` pin), the `typescript` override, the `packageExtensions` entry that makes platform-node's `redis` peer optional |
 | `tsconfig.app.json` | Base every TS package extends (ES2022, strict, bundler resolution) except `vscode-extension`, a Node config |
 | `tsconfig.json` | Root program: `tools/` and every package's Vite / Vitest config, which no package program covers |
 | `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor for every library build and `app` |
-| `tools/vite/library-config.ts` | `defineLibraryConfig` (eight standard builds), `createLibraryTasks` (task contract of all nine library packages) |
+| `tools/vite/library-config.ts` | `defineLibraryConfig` (the whole config of eight library packages, one `src/index.ts` build each), `createLibraryTasks` (task contract of all nine library packages; `erd-editor` uses it alone) |
 | `tools/vite/package-metadata.ts` | Task inputs derived from tsconfig files and manifests; `createExternal` |
 | `tools/vite/worker-url.ts`, `same-origin-worker.ts`, `inline-worker.ts` | The worker plugins, tested with the factory in `tools/vite-config.test.ts` |
 | `tools/eslint-rules/` | The `local` oxlint plugin — the four comment rules; itself lint-exempt |
@@ -38,7 +38,7 @@
 
 ## Package Map
 
-Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `mcp-server` joins only its tail (`mcp-server` → `erd-editor` → `erd-editor-schema`), and its other dependency, `agent-hub`, which `vuerd-vscode` inlines too, depends on no workspace package. `intellij-plugin` is Gradle, outside the graph, fed by `intellij-webview`'s build.
+Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `mcp-server` joins only its tail (`mcp-server` → `erd-editor` → `erd-editor-schema`; it also names `erd-editor-schema` and `r-html` itself, for the parser and the action types), and its other dependency, `agent-hub`, which `vuerd-vscode` inlines too, depends on no workspace package; `effect` is its one peer. `intellij-plugin` is Gradle, outside the graph, fed by `intellij-webview`'s build.
 
 | `packages/` | npm name | |
 | --- | --- | --- |
@@ -48,15 +48,15 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `erd-editor-schema` | `@dineug/erd-editor-schema` | v2/v3 document schema, parsing, LWW operators |
 | `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.10.0): `<erd-editor>`, its Konva scene, `engine.js` (`createReplicationStore`) and `peer.js` (`createPeerStore` and the catalog barrels `mcp-server` builds its tools from) |
 | `webview-bridge` | `@dineug/erd-editor-webview-bridge` | `Bridge`, the typed host↔webview command protocol |
-| `agent-hub` | `@dineug/erd-editor-agent-hub` | the IDE ↔ coding-agent hub protocol: messages, lock file, JSON lines framing, path authorization, discovery |
+| `agent-hub` | `@dineug/erd-editor-agent-hub` | the IDE ↔ coding-agent hub protocol as an effect `Schema` spec, `effect` its one peer dependency: messages, lock file, JSON lines framing, path authorization, discovery |
 | `webview-client` | `@dineug/erd-editor-webview-client` | `mountWebview(host)` — all host wiring both webviews share |
 | `replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | headless replica `webview-client` spawns |
 | `vscode-webview` | `@dineug/erd-editor-vscode-webview` | VSCode webview bundle |
-| `vscode-extension` | `vuerd-vscode` | VSCode extension host, published (2.9.0), and the document hub coding agents join |
+| `vscode-extension` | `vuerd-vscode` | VSCode extension host, published (2.9.0), and the document hub coding agents join, on effect layers |
 | `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
 | `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published (0.8.0) |
 | `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io |
-| `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published (0.1.0): one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
+| `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published (0.1.0): effect's `McpServer` over stdio, one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
 
 ## For AI Agents
 
@@ -74,7 +74,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
   Flags go before the task: `vp run build -r` forwards `-r` to the task. A `--filter` matching nothing exits 0. `vp build` / `vp test` are built-ins that skip `run.tasks`, the `tsc --noEmit` gate and `dependsOn`. There is no `vite` binary.
 - **TypeScript 7.0.2's native `tsc` is invisible to Vite Task**, so every task declares `input`. Library packages derive it in `package-metadata.ts` and `check-task-inputs.mjs` recomputes it; app tasks list their own, and the check only matches their sibling `dist/**/*.d.ts` globs to declared dependencies. A task with no `output` restores nothing on a cache hit. `@typescript/typescript6` is only for `vite-plugin-dts`.
 - **Library builds.** Seven private libraries (`r-html`, `vite-plugin-r-html`, `schema-sql-parser`, `erd-editor-schema`, `webview-bridge`, `webview-client`, `agent-hub`) build `minify: false` + `preserveModules: true` with `sideEffects: false`, so the consumer prunes per file and minifies once. `erd-editor` keeps chunks and no `sideEffects` field (its `AGENTS.md` says why).
-- **Externals decide what ships.** `createExternal` keeps `dependencies` + `peerDependencies` as bare imports and inlines the rest. `erd-editor` lists the private libraries as devDependencies so they inline; moving one into `dependencies` ships an import of a package not on npm.
+- **Externals decide what ships.** `createExternal` keeps `dependencies` + `peerDependencies` as bare imports and inlines the rest. `erd-editor` lists the private libraries as devDependencies so they inline; moving one into `dependencies` ships an import of a package not on npm. `agent-hub` names `effect` in `peerDependencies`, the only private library with a peer: its `dist/*.js` and `.d.ts` keep every `effect/*` import bare, and each consumer (`mcp-server`, `vuerd-vscode`) lists `effect` as a devDependency from the same `catalog:` pin and inlines the one copy it resolves (`ssr.noExternal: true`), shared with its own effect code. A consumer program that type-checks those `.d.ts` files needs `skipLibCheck`, which `tsconfig.app.json` and the extension's `tsconfig.json` set: effect's own declarations name types lib ES2022 lacks (`TextDecoderOptions`).
 - **Workers.** `erd-editor`'s four SharedWorkers and the replica Worker ship as `dist/workers/*.js`, spawned from `new URL('./workers/x.js', import.meta.url)` — the spelling `worker-url.ts` writes, which webpack, Rspack and Vite all bundle from a dependency. `vscode-webview` rebuilds them as same-origin blobs (`same-origin-worker.ts`), `intellij-webview` loads them by URL, the UMD build inlines them (`inline-worker.ts`).
 - **A cache replay does not empty a task's `output` directory**, so a tree that has seen several builds holds stale chunks beside live ones. `pnpm cache:clear` and rebuild before packaging or publishing.
 - **`@/*` → `<package>/src/*`** in every TS package's `tsconfig.json`, mirrored by a Vite alias in the factory and in each Vitest config — a new config needs it too.
@@ -117,8 +117,9 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 
 ### External
 
-- Toolchain: **Vite+ 0.2.9** (`vp`), **pnpm 10.34.3**, **Node 22.23.2** (`.nvmrc` = `.node-version`), **TypeScript 7.0.2** (+ `@typescript/typescript6` 6.0.2), **Vitest 4.1.10**, **Playwright `^1.62.1`** everywhere, `@vscode/test-cli`, `eslint-plugin-simple-import-sort`, commitlint 20.
+- Toolchain: **Vite+ 0.2.9** (`vp`), **pnpm 10.34.3**, **Node 22.23.2** (`.nvmrc` = `.node-version`; the floor a package declares is `engines.node` `>=22.12.0`, in the root, `mcp-server` and `agent-hub`, and the extension's is VS Code 1.101, which runs Node 22.15), **TypeScript 7.0.2** (+ `@typescript/typescript6` 6.0.2), **Vitest 4.1.10**, **Playwright `^1.62.1`** everywhere, `@vscode/test-cli`, `eslint-plugin-simple-import-sort`, commitlint 20.
 - Editor runtime (konva, elkjs, shiki, comlink, rxjs, es-toolkit, nanoid, lucide, `@chenglou/pretext`): `packages/erd-editor/AGENTS.md`. React 19, Radix Themes, `dexie` `^3`: `app` only.
+- **`effect` 4.0.0-rc.117** and **`@effect/platform-node` 4.0.0-rc.117**, both through `catalog:`. `effect` is `agent-hub`'s peer and a devDependency of `mcp-server` and `vuerd-vscode`, which inline it; `@effect/platform-node` is a devDependency of those two only, and `agent-hub` does not depend on it. The catalog pins both to one exact release, never a range, and they move together: a release candidate moves modules between releases (the ai, rpc, socket and encoding modules are `effect/unstable/*` in rc.117), so bump both, then `pnpm build`, `pnpm test` and `mcp-server`'s `bin.test.ts`. Import by subpath only (`effect/Schema`, `@effect/platform-node/NodeStdio`): `no-restricted-imports` in `vite.config.ts` refuses the two root barrels and `effect/unstable/schema` / `effect/unstable/sql` (whose `SchemaAOTCompiler` and `Migrator` carry dynamic imports), and `mcp-server`'s `src/imports.test.ts` and `vuerd-vscode`'s `src/hub/imports.test.ts` hold their sources to all of it. `agent-hub`'s `node-free.test.ts` only holds its non-test sources to its own modules and `effect/` subpaths, so in `agent-hub` the lint rule alone keeps out the two `unstable` modules. `@effect/vitest` needs Vitest 5, so the specs run effects through each package's own helpers (`src/__test-utils__/` in `agent-hub` and `mcp-server`, `test/mocks/hubLayers.ts` in `vuerd-vscode`).
 
 ### Contracts Outside This Repo
 
