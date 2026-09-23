@@ -1,7 +1,7 @@
 import type { RevertResult } from '@dineug/erd-editor/peer.js';
 import type { Effect } from 'effect';
 
-import type { ReadFormat } from '@/tools/read';
+import type { DocumentReader } from '@/tools/read';
 import type { ToolRun } from '@/tools/run';
 
 /** Live joins a VS Code window's editing stream; headless edits the file itself. */
@@ -39,10 +39,7 @@ export type DocumentSession = {
     name: string,
     args: Record<string, unknown>
   ) => SessionCall<ToolOutcome>;
-  readonly read: (
-    format: ReadFormat,
-    vendor?: string
-  ) => SessionCall<ReadOutcome>;
+  readonly read: (reader: DocumentReader) => SessionCall<ReadOutcome>;
   readonly save: SessionCall<SaveOutcome>;
   readonly undo: SessionCall<UndoOutcome>;
   readonly redo: SessionCall<UndoOutcome>;

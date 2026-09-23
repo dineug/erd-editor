@@ -39,7 +39,7 @@ import {
   openHeadlessSession,
   RELOADED_NOTE,
 } from '@/session/headless';
-import { readDocument } from '@/tools/read';
+import { documentReader, readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/solo.erd.json';
@@ -176,7 +176,9 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
     const session = await open();
     await io.run(session.close);
 
-    await expect(io.run(session.read('snapshot'))).rejects.toMatchObject({
+    await expect(
+      io.run(session.read(documentReader('snapshot')))
+    ).rejects.toMatchObject({
       name: 'PeerStoreError',
       code: 'destroyed',
     });
@@ -410,7 +412,8 @@ describe('headless compare-and-swap (AC-P14)', () => {
     io.calls.rename = rename;
     expect(io.files.has('/work/.solo.erd.json.id1.tmp')).toBe(false);
     expect(
-      JSON.parse((await io.run(session.read('snapshot'))).text).tables
+      JSON.parse((await io.run(session.read(documentReader('snapshot')))).text)
+        .tables
     ).toEqual([]);
     await io.run(session.close);
   });
@@ -424,7 +427,8 @@ describe('headless compare-and-swap (AC-P14)', () => {
       io.run(session.runTool('erd_add_memo', {}))
     ).rejects.toMatchObject({ reason: { _tag: 'Unknown' } });
     expect(
-      JSON.parse((await io.run(session.read('snapshot'))).text).memos
+      JSON.parse((await io.run(session.read(documentReader('snapshot')))).text)
+        .memos
     ).toEqual([]);
     await io.run(session.close);
   });
@@ -511,7 +515,9 @@ describe('headless on a real file system', () => {
 
     expect(JSON.parse(text).doc.tableIds).toEqual(run.createdIds);
     expect(await readdir(dir)).toEqual(['real.erd.json']);
-    expect(reload(text)).toBe((await onNode(session.read('snapshot'))).text);
+    expect(reload(text)).toBe(
+      (await onNode(session.read(documentReader('snapshot')))).text
+    );
     await onNode(session.close);
   });
 
@@ -561,7 +567,7 @@ describe('headless on a real file system', () => {
     expect(theirs.mtimeNs / 1_000_000n).toBe(millisecond);
     expect(theirs.mtimeNs).not.toBe(ours.mtimeNs);
 
-    const { text, notes } = await onNode(session.read('json'));
+    const { text, notes } = await onNode(session.read(documentReader('json')));
     expect(JSON.parse(text).doc.tableIds).toEqual([otherId]);
     expect(notes).toEqual([RELOADED_NOTE]);
     await onNode(session.close);

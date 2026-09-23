@@ -23,7 +23,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
-import { readDocument, type ReadFormat } from '@/tools/read';
+import type { DocumentReader } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 export const HEADLESS_SAVE_NOTE =
@@ -169,17 +169,17 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
         return { run: outcome, notes } satisfies ToolOutcome;
       }),
 
-    // readDocument takes the state straight, so the refusal the peer facade
+    // A reader takes the state straight, so the refusal the peer facade
     // used to raise on a closed store is kept here.
-    read: (format: ReadFormat, vendor?: string) =>
+    read: (reader: DocumentReader) =>
       Effect.gen(function* () {
         const notes = yield* refresh;
         if (peer.isDestroyed) {
           return yield* Effect.fail(
-            new PeerStoreError(PeerStoreErrorCode.destroyed, 'erd_read')
+            new PeerStoreError(PeerStoreErrorCode.destroyed, reader.tool)
           );
         }
-        const text = yield* run(() => readDocument(peer.state, format, vendor));
+        const text = yield* run(() => reader.render(peer.state));
         return { text, notes } satisfies ReadOutcome;
       }),
 

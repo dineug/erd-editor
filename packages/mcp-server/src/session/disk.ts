@@ -9,7 +9,7 @@ import {
   SessionErrorCode,
 } from '@/errors';
 import { isErdPath } from '@/paths';
-import { readDocument, type ReadFormat } from '@/tools/read';
+import type { DocumentReader } from '@/tools/read';
 
 /** Directories a listing never walks into: dependencies, VCS data and anything hidden. */
 const SKIPPED_DIRECTORIES = new Set(['node_modules']);
@@ -111,8 +111,7 @@ export const readDocumentFile = Effect.fn('readDocumentFile')(function* (
 /** Serializes the file on disk without keeping a session, for a window whose hub is off. */
 export const readFromDisk = Effect.fn('readFromDisk')(function* (
   path: string,
-  format: ReadFormat,
-  vendor?: string
+  reader: DocumentReader
 ) {
   const text = yield* readDocumentFile(path);
   return yield* Effect.try({
@@ -120,7 +119,7 @@ export const readFromDisk = Effect.fn('readFromDisk')(function* (
       const peer = createPeerStore({ nickname: '', presence: false });
       try {
         peer.setInitialValue(text);
-        return readDocument(peer.state, format, vendor);
+        return reader.render(peer.state);
       } finally {
         peer.destroy();
       }

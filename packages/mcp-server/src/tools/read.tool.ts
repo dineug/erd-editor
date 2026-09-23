@@ -4,7 +4,7 @@ import { McpSchema, McpServer } from 'effect/unstable/ai';
 import { SessionManager } from '@/session/manager';
 import { describeArg, describeTool } from '@/tools/copy';
 import { answer } from '@/tools/handlers';
-import { READ_FORMATS, SQL_VENDORS } from '@/tools/read';
+import { documentReader, READ_FORMATS, SQL_VENDORS } from '@/tools/read';
 import { errorResult, textResult } from '@/tools/result';
 import { toolInputSchema } from '@/tools/schema';
 
@@ -58,7 +58,7 @@ export const registerReadTool = Effect.gen(function* () {
           answer(
             sessions,
             sessions
-              .read(path, format, vendor)
+              .read(path, documentReader(format, vendor))
               .pipe(Effect.map(({ text, notes }) => textResult(text, notes)))
           ).pipe(Effect.catch(refused => Effect.succeed(errorResult(refused))))
         ),

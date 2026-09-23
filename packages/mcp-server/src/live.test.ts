@@ -25,7 +25,7 @@ import {
   REJOIN_NOTE,
   RESEED_NOTE,
 } from '@/session/live';
-import { readDocument } from '@/tools/read';
+import { documentReader, readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/live.erd.json';
@@ -59,7 +59,8 @@ const call = (name: string, args: Record<string, unknown> = {}) =>
   io.run(session.runTool(name, args));
 const snapshotOf = (store: PeerStore) =>
   JSON.parse(readDocument(store.state, 'snapshot'));
-const read = (format: 'snapshot' | 'json') => io.run(session.read(format));
+const read = (format: 'snapshot' | 'json') =>
+  io.run(session.read(documentReader(format)));
 
 describe('a live session beyond the transition table', () => {
   it('starts reconnecting, unjoined, with no connection', () => {

@@ -63,3 +63,22 @@ export function readDocument(
     vendor === undefined ? undefined : toDatabase(vendor)
   );
 }
+
+/**
+ * What a read tool renders from a document's state, and the tool's name for a
+ * refusal. A session calls it on its peer's state, or on the file's when no
+ * session serves the document.
+ */
+export type DocumentReader = {
+  readonly tool: string;
+  readonly render: (state: RootState) => string;
+};
+
+/** erd_read in one of its formats. */
+export const documentReader = (
+  format: ReadFormat,
+  vendor?: string
+): DocumentReader => ({
+  tool: READ_TOOL,
+  render: state => readDocument(state, format, vendor),
+});

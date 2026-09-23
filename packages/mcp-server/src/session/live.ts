@@ -25,7 +25,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
-import { readDocument, type ReadFormat } from '@/tools/read';
+import type { DocumentReader } from '@/tools/read';
 import { runTool as runPeerTool } from '@/tools/run';
 
 export const RESEED_NOTE =
@@ -342,13 +342,11 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
 
     runTool,
 
-    read: (format: ReadFormat, vendor?: string) =>
+    read: (reader: DocumentReader) =>
       Effect.gen(function* () {
         const notes = yield* begin;
         yield* prepareRead(notes);
-        const text = yield* attempt(() =>
-          readDocument(peer.state, format, vendor)
-        );
+        const text = yield* attempt(() => reader.render(peer.state));
         return { text, notes } satisfies ReadOutcome;
       }),
 

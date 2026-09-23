@@ -37,7 +37,7 @@ import {
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
-import type { ReadFormat } from '@/tools/read';
+import type { DocumentReader } from '@/tools/read';
 
 /** A session idle this long is closed; the next call opens a new one and reseeds. */
 export const IDLE_TTL_MS = 30 * 60 * 1000;
@@ -98,8 +98,7 @@ export type SessionManagerShape = {
   ) => SessionCall<WithMode<ToolOutcome>>;
   readonly read: (
     path: string,
-    format: ReadFormat,
-    vendor?: string
+    reader: DocumentReader
   ) => SessionCall<WithMode<ReadOutcome>>;
   readonly save: (path: string) => SessionCall<WithMode<SaveOutcome>>;
   readonly undo: (path: string) => SessionCall<WithMode<UndoOutcome>>;
@@ -474,22 +473,20 @@ const make = Effect.gen(function* () {
     runTool: (input, name, args) =>
       write(input, session => session.runTool(name, args)),
 
-    read: (input, format, vendor) =>
+    read: (input, reader) =>
       onDocument(input, (key, path) =>
         Effect.gen(function* () {
           const notes: Notes = [];
           const resolution = yield* discovery.discover(path);
           const session = yield* acquire(key, path, 'read', resolution, notes);
           if (!session) {
-            const text = yield* withServices(
-              readFromDisk(path, format, vendor)
-            );
+            const text = yield* withServices(readFromDisk(path, reader));
             notes.push(DISK_READ_NOTE);
             const mode: Mode =
               resolution.kind === 'blocked' ? 'blocked' : 'headless';
             return { text, notes, mode, path };
           }
-          const outcome = yield* session.read(format, vendor);
+          const outcome = yield* session.read(reader);
           return {
             text: outcome.text,
             notes: [...notes, ...outcome.notes],
