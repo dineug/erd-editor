@@ -1,8 +1,8 @@
 import { type Platform } from '@dineug/erd-editor-agent-hub';
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import * as Effect from 'effect/Effect';
 
 import { realpathOrSelf } from '@/hub/authz';
+import * as NativeFileSystem from '@/hub/services/nativeFileSystem';
 
 /**
  * What the registry needs of the machine before the hub's runtime exists: the
@@ -18,6 +18,6 @@ export const nodeRegistryIo: RegistryIo = {
   platform: process.platform as Platform,
   realPath: path =>
     Effect.runPromise(
-      realpathOrSelf(path).pipe(Effect.provide(NodeFileSystem.layer))
+      realpathOrSelf(path).pipe(Effect.provide(NativeFileSystem.layer))
     ),
 };

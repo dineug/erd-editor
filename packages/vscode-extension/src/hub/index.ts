@@ -1,4 +1,3 @@
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import * as Layer from 'effect/Layer';
 
 import {
@@ -12,6 +11,7 @@ import * as DocumentHubService from '@/hub/services/DocumentHub';
 import * as HubEnvironment from '@/hub/services/HubEnvironment';
 import * as HubListener from '@/hub/services/HubListener';
 import * as HubLogger from '@/hub/services/HubLogger';
+import * as NativeFileSystem from '@/hub/services/nativeFileSystem';
 
 export type { HubConnection, HubHandler } from '@/hub/server';
 export { DocumentHub } from '@/hub/services/DocumentHub';
@@ -31,7 +31,7 @@ export const nodeHubServices = (
       Layer.mergeAll(
         HubEnvironment.layer(version),
         HubListener.layer,
-        NodeFileSystem.layer
+        NativeFileSystem.layer
       )
     )
   );
@@ -48,6 +48,6 @@ export const documentHubLive = (
     Layer.provide(HubHandlers.layer),
     Layer.provide(Layer.succeed(DocumentRegistryService, registry)),
     Layer.provide(nodeHubServices(version)),
-    Layer.provide(NodeFileSystem.layer),
+    Layer.provide(NativeFileSystem.layer),
     Layer.provideMerge(HubLogger.layer)
   );

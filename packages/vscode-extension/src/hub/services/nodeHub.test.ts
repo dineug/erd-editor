@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { connect, type Socket as NetSocket } from 'node:net';
 import * as os from 'node:os';
@@ -9,6 +10,7 @@ import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import type { Done } from 'effect/Cause';
 import * as Effect from 'effect/Effect';
 import * as Exit from 'effect/Exit';
+import * as FileSystem from 'effect/FileSystem';
 import * as Layer from 'effect/Layer';
 import * as Queue from 'effect/Queue';
 import * as Scope from 'effect/Scope';
@@ -16,7 +18,7 @@ import * as Stream from 'effect/Stream';
 import * as Socket from 'effect/unstable/socket/Socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { authorizePath } from '@/hub/authz';
+import { authorizePath, realpathOrSelf } from '@/hub/authz';
 import {
   HubEnvironment,
   layer as hubEnvironmentLayer,
@@ -26,6 +28,7 @@ import {
   HubListener,
   layer as hubListenerLayer,
 } from '@/hub/services/HubListener';
+import * as NativeFileSystem from '@/hub/services/nativeFileSystem';
 import { nodeRegistryIo } from '@/hub/services/registryIo';
 
 const env = makeNodeEnvironment('2.9.0');
@@ -122,6 +125,46 @@ describe('nodeRegistryIo', () => {
       join(dir, 'gone')
     );
     expect(nodeRegistryIo.platform).toBe(process.platform);
+  });
+});
+
+describe('the hub file system', () => {
+  const onNative = <A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) =>
+    Effect.runPromise(effect.pipe(Effect.provide(NativeFileSystem.layer)));
+
+  it('resolves a path to its spelling on disk, as the MCP server does', async () => {
+    const root = await fs.realpath(dir);
+    await fs.mkdir(join(root, 'CaseDir'));
+    await fs.writeFile(join(root, 'CaseDir', 'Doc.erd.json'), '{}');
+    const spelled = join(root, 'CaseDir', 'Doc.erd.json');
+    const typed = join(root, 'casedir', 'doc.ERD.json');
+    // A case-insensitive disk (macOS, Windows) finds the file either way.
+    const expected = existsSync(typed) ? spelled : typed;
+
+    expect(await nodeRegistryIo.realPath(typed)).toBe(expected);
+    expect(await onNative(realpathOrSelf(typed))).toBe(expected);
+  });
+
+  it('resolves a folder named in the other Unicode normalization to its name on disk', async () => {
+    const root = await fs.realpath(dir);
+    const onDisk = join(root, '프로젝트'.normalize('NFD'));
+    await fs.mkdir(onDisk);
+    const given = join(root, '프로젝트'.normalize('NFC'));
+    // APFS finds it either way, and VS Code hands a macOS path over as NFC.
+    const expected = existsSync(given) ? onDisk : given;
+
+    expect(await nodeRegistryIo.realPath(given)).toBe(expected);
+    expect(await onNative(realpathOrSelf(given))).toBe(expected);
+  });
+
+  it("fails with NodeFileSystem's reason tag where the native realpath fails", async () => {
+    const missing = await onNative(
+      FileSystem.FileSystem.use(files =>
+        files.realPath(join(dir, 'none.erd.json'))
+      ).pipe(Effect.flip)
+    );
+
+    expect(missing.reason._tag).toBe('NotFound');
   });
 });
 
