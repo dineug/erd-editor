@@ -703,3 +703,75 @@ describe('createRxStore', () => {
     });
   });
 });
+
+describe('createRxStore stream flushing', () => {
+  const recolor = (color: string, prevColor: string) =>
+    changeTableColorAction({ id: 't1', color, prevColor });
+
+  it('keeps the 200 ms settle without the flag, where flushStreamBuffers does nothing', () => {
+    vi.useFakeTimers();
+    const store = make(createContext());
+    store.dispatchSync(addTable('t1'));
+    const size = store.history.size;
+
+    store.dispatchSync(recolor('#f00', ''));
+    store.flushStreamBuffers();
+    vi.advanceTimersByTime(199);
+    expect(store.history.size).toBe(size);
+
+    vi.advanceTimersByTime(1);
+    expect(store.history.size).toBe(size + 1);
+  });
+
+  it('records a stream burst on one flushStreamBuffers call under the flag, without advancing timers', () => {
+    vi.useFakeTimers();
+    const store = make(createContext(), { manualStreamFlush: true });
+    store.dispatchSync(addTable('t1'));
+    const size = store.history.size;
+
+    store.dispatchSync(recolor('#f00', ''));
+    store.dispatchSync(recolor('#0f0', '#f00'));
+    vi.advanceTimersByTime(10_000);
+    expect(store.history.size).toBe(size);
+
+    store.flushStreamBuffers();
+    expect(store.history.size).toBe(size + 1);
+
+    store.flushStreamBuffers();
+    expect(store.history.size).toBe(size + 1);
+
+    store.undo();
+    expect(store.state.collections.tableEntities['t1'].ui.color).toBe('');
+  });
+
+  it('keeps one notifier across resetHistory, whose fresh chain drops the burst it replaced', () => {
+    const store = make(createContext(), { manualStreamFlush: true });
+    store.dispatchSync(addTable('t1'));
+
+    store.dispatchSync(recolor('#f00', ''));
+    store.resetHistory();
+    store.flushStreamBuffers();
+    expect(store.history.size).toBe(0);
+
+    store.dispatchSync(recolor('#0f0', '#f00'));
+    store.flushStreamBuffers();
+    expect(store.history.size).toBe(1);
+
+    store.undo();
+    expect(store.state.collections.tableEntities['t1'].ui.color).toBe('#f00');
+  });
+
+  it('takes a flushStreamBuffers call after destroy without throwing', () => {
+    const plain = make(createContext());
+    const manual = make(createContext(), { manualStreamFlush: true });
+    manual.dispatchSync(addTable('t1'));
+    manual.dispatchSync(recolor('#f00', ''));
+
+    plain.destroy();
+    manual.destroy();
+
+    expect(() => plain.flushStreamBuffers()).not.toThrow();
+    expect(() => manual.flushStreamBuffers()).not.toThrow();
+    expect(manual.history.size).toBe(0);
+  });
+});

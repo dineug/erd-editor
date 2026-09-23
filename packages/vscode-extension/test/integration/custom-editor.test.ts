@@ -95,8 +95,8 @@ describe('custom editor', () => {
 
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
     assert.ok(extension, `${EXTENSION_ID} is not installed in this host`);
-    // activationEvents is workspaceContains:**/*.{erd,vuerd}, so the
-    // fixture already triggers activation; awaiting it only removes the race.
+    // activationEvents is workspaceContains:**/*.{erd,vuerd,erd.json,vuerd.json},
+    // so the fixture already triggers activation; awaiting it only removes the race.
     await extension.activate();
     assert.strictEqual(extension.isActive, true);
 

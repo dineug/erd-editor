@@ -1,0 +1,56 @@
+{
+  "name": "@dineug/erd-editor-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets a coding agent edit erd-editor documents, live in VS Code or on disk",
+  "type": "module",
+  "bin": {
+    "erd-editor-mcp": "./dist/erd-editor-mcp.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/dineug/erd-editor#readme",
+  "bugs": {
+    "url": "https://github.com/dineug/erd-editor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dineug/erd-editor.git",
+    "directory": "packages/mcp-server"
+  },
+  "license": "MIT",
+  "keywords": [
+    "erd",
+    "erd-editor",
+    "mcp",
+    "model-context-protocol",
+    "database",
+    "diagram"
+  ],
+  "scripts": {
+    "test:dev": "vp test dev",
+    "test:coverage": "vp test run --coverage"
+  },
+  "devDependencies": {
+    "@dineug/erd-editor": "workspace:*",
+    "@dineug/erd-editor-agent-hub": "workspace:*",
+    "@dineug/erd-editor-schema": "workspace:*",
+    "@dineug/r-html": "workspace:*",
+    "@effect/platform-node": "catalog:",
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "catalog:",
+    "effect": "catalog:",
+    "es-toolkit": "^1.50.0",
+    "nanoid": "^5.1.3",
+    "typescript": "7.0.2",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

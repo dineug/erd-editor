@@ -31,6 +31,7 @@ import {
   groupByStreamActions,
   ignoreTagFilter,
 } from '@/engine/rx-operators';
+import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
 import { viewActionRedirect } from '@/engine/rx-operators/viewActionRedirect';
 import { viewIgnoreFilter } from '@/engine/rx-operators/viewIgnoreFilter';
@@ -45,21 +46,38 @@ export type RxStore = Store & {
   history: History;
   resetHistory: () => void;
   change$: Observable<Array<AnyAction>>;
+  /**
+   * Closes the stream groups the history is still buffering, now. A no-op
+   * unless the store was created with manualStreamFlush.
+   */
+  flushStreamBuffers: () => void;
 };
 
 export type RxStoreOptions = {
   getReadonly?: () => boolean;
   getHistory?: (options: HistoryOptions) => History;
+  /** Closes stream buffers on flushStreamBuffers() instead of after 200 ms. */
+  manualStreamFlush?: boolean;
+  /**
+   * Keeps the state a plain object when false. Nothing renders from a
+   * headless store, and the reactive proxy reads DOM globals Node lacks.
+   */
+  observable?: boolean;
 };
 
 export const HISTORY_LIMIT = 2048;
 
 export function createRxStore(
   context: EngineContext,
-  { getReadonly = () => false, getHistory }: RxStoreOptions = {}
+  {
+    getReadonly = () => false,
+    getHistory,
+    manualStreamFlush = false,
+    observable = true,
+  }: RxStoreOptions = {}
 ): RxStore {
   const subscriptionSet = new Set<Subscription | Unsubscribe>();
-  const store = createStore(context);
+  const store = createStore(context, observable);
   const hooks = createHooks(store);
   const historyOptions: HistoryOptions = {
     notify: payload => store.dispatch(changeHasHistoryAction(payload)),
@@ -80,15 +98,22 @@ export function createRxStore(
   // stream grouping behind it, which drops what that grouping still buffers.
   const historyInput$ = new Subject<Array<AnyAction>>();
   const historyReset$ = new Subject<void>();
+  // One notifier for the store's whole life, so the chain a reset starts
+  // listens to the same one.
+  const flush$ = new Subject<void>();
   const history$ = historyReset$.pipe(
     startWith(undefined),
     switchMap(() =>
       historyInput$.pipe(
-        groupByStreamActions(StreamActionTypes, [
-          ['@@move', StreamRegroupMoveActionTypes],
-          ['@@scroll', StreamRegroupScrollActionTypes],
-          ['@@color', StreamRegroupColorActionTypes],
-        ])
+        groupByStreamActions(
+          StreamActionTypes,
+          [
+            ['@@move', StreamRegroupMoveActionTypes],
+            ['@@scroll', StreamRegroupScrollActionTypes],
+            ['@@color', StreamRegroupColorActionTypes],
+          ],
+          manualStreamFlush ? flushOnNotifier(flush$) : undefined
+        )
       )
     )
   );
@@ -134,6 +159,7 @@ export function createRxStore(
     hooks.destroy();
     history.clear();
     dispatch$.complete();
+    flush$.complete();
   };
 
   /** Empties both stacks, dropping a stream burst still being grouped as well. */
@@ -152,6 +178,11 @@ export function createRxStore(
   const redo = () => {
     if (getReadonly() || getView()) return;
     history.redo();
+  };
+
+  // The history groups stream actions in one stage, so a single tick closes it.
+  const flushStreamBuffers = () => {
+    if (manualStreamFlush) flush$.next();
   };
 
   const mergeClock = () => {
@@ -192,5 +223,6 @@ export function createRxStore(
     history,
     resetHistory,
     change$,
+    flushStreamBuffers,
   });
 }

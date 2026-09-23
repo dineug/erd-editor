@@ -32,7 +32,7 @@
   },
   "license": "MIT",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.101.0"
   },
   "main": "./dist/extension",
   "scripts": {
@@ -47,21 +47,24 @@
     "e2e:typecheck": "tsc -p tsconfig.integration.json --noEmit"
   },
   "devDependencies": {
+    "@dineug/erd-editor-agent-hub": "workspace:*",
     "@dineug/erd-editor-webview-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
+    "@effect/platform-node": "catalog:",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20.19.0",
-    "@types/vscode": "^1.90.0",
+    "@types/node": "^22.20.1",
+    "@types/vscode": "^1.101.0",
     "@vitest/coverage-v8": "catalog:",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
+    "effect": "catalog:",
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vite-plus": "catalog:"
   },
   "activationEvents": [
-    "workspaceContains:**/*.{erd,vuerd}"
+    "workspaceContains:**/*.{erd,vuerd,erd.json,vuerd.json}"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -215,6 +218,11 @@
               "mint",
               "sky"
             ]
+          },
+          "dineug.erd-editor.agentHub.enabled": {
+            "description": "Let a coding agent's ERD Editor MCP server edit the documents open in this window over a local pipe. Served only in a trusted workspace; when off or untrusted, agents are still kept from writing this window's ERD files directly.",
+            "type": "boolean",
+            "default": true
           }
         }
       }

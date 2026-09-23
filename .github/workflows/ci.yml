@@ -64,9 +64,12 @@ jobs:
       # vitest.config sets on all four metrics; --no-bail reports every package.
       - run: pnpm -r --no-bail test:coverage
       - run: pnpm build
-      # Reads packages/erd-editor/dist, so it cannot sit in pnpm check, which
-      # runs before anything is built. It is a regression watch rather than a
-      # cap: the budget is set to catch an abnormal jump, not every byte.
+      # Reads packages/erd-editor/dist, so it cannot sit in pnpm check. The MCP
+      # server runs peer.js in Node: five browser tokens and any import outside
+      # its allowlist fail here, first, so a size miss never hides the verdict.
+      - run: pnpm peer-graph
+      # Also reads dist. It is a regression watch rather than a cap: the budget
+      # is set to catch an abnormal jump, not every byte.
       - run: pnpm size
 
   e2e:

@@ -32,6 +32,7 @@ import {
   calcTableHeight,
   calcTableWidths,
   calcViewTableWidths,
+  measureTableSize,
   recalculateTableWidth,
   viewHeaderNameWidth,
 } from '@/utils/calcTable';
@@ -646,5 +647,58 @@ describe('recalculateTableWidth', () => {
 
     expect(() => recalculateTableWidth(state, context)).not.toThrow();
     expect(table.ui.widthName).toBe(150);
+  });
+});
+
+describe('measureTableSize', () => {
+  const toWidth = (text: string) => text.length * 10;
+
+  function fixture() {
+    const column = createColumn({
+      id: 'column-1',
+      tableId: 'table-1',
+      name: 'created_at',
+      dataType: 'timestamp',
+      default: 'CURRENT_TIMESTAMP',
+      comment: 'x',
+      ui: { widthName: 900, widthDataType: 900 },
+    });
+    const table = createTable({
+      id: 'table-1',
+      name: 'users',
+      comment: 'user table',
+      columnIds: ['column-1'],
+      ui: { widthName: 900, widthComment: 900 },
+    });
+    const state = createState({
+      show: Show.tableComment | Show.columnDataType | Show.columnDefault,
+      tables: [table],
+      columns: [column],
+    });
+    return { table, column, state };
+  }
+
+  it('is the size recalculateTableWidth leaves the table at', () => {
+    const { table, state } = fixture();
+    const measured = measureTableSize(table, state, toWidth);
+
+    recalculateTableWidth(state, createEngineContext({ toWidth }));
+
+    expect(measured).toEqual({
+      width: calcTableWidths(table, state).width,
+      height: calcTableHeight(table),
+    });
+  });
+
+  it('writes nothing into the state and ignores the widths it holds', () => {
+    const { table, column, state } = fixture();
+    const before = JSON.stringify(state.collections);
+
+    const measured = measureTableSize(table, state, toWidth);
+
+    expect(JSON.stringify(state.collections)).toBe(before);
+    expect(table.ui.widthName).toBe(900);
+    expect(column.ui.widthDataType).toBe(900);
+    expect(measured.width).toBeLessThan(900);
   });
 });

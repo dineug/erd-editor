@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { ErdDocument } from '@/erd-document';
 import { ErdEditor } from '@/erd-editor';
 
+import { createWebviewRelay } from '../test/mocks/documentHarness';
 import {
   ConfigurationTarget,
   createExtensionContext,
@@ -73,6 +74,8 @@ function createEditor(
   const context = createExtensionContext();
   const docToWebviewMap = new Map([[document, new Set([webview, ...others])]]);
 
+  const registry = createWebviewRelay();
+
   webview.asWebviewUri.mockReturnValue(Uri.parse(WEBVIEW_ASSETS_URL));
   workspace.fs.readFile.mockResolvedValue(encoder.encode(HTML_TEMPLATE));
 
@@ -80,10 +83,11 @@ function createEditor(
     document,
     webview as any,
     context as any,
-    (registerWebviewSet ? docToWebviewMap : new Map()) as any
+    (registerWebviewSet ? docToWebviewMap : new Map()) as any,
+    registry
   );
 
-  return { editor, document, webview, others, context };
+  return { editor, document, webview, others, context, registry };
 }
 
 async function bootstrap(options: Parameters<typeof createEditor>[0] = {}) {
@@ -214,6 +218,21 @@ describe('ErdEditor', () => {
       });
     });
 
+    it('reports the webview ready to the registry after the three answers, never before', async () => {
+      const { webview, document, registry } = await bootstrap();
+      // Recorded, not asserted, inside: the bridge swallows a listener's throw.
+      let postedFirst = -1;
+      registry.onWebviewReady.mockImplementation(() => {
+        postedFirst = webview.postMessage.mock.calls.length;
+      });
+
+      webview.__receive(Bridge.executeCommand(hostInitialCommand, undefined));
+
+      expect(postedFirst).toBe(3);
+      expect(registry.onWebviewReady).toHaveBeenCalledTimes(1);
+      expect(registry.onWebviewReady).toHaveBeenCalledWith(document, webview);
+    });
+
     it('decodes the stored bytes as utf-8, not latin-1', async () => {
       const { webview } = await bootstrap({
         content: '{"name":"주문 테이블"}',
@@ -244,6 +263,23 @@ describe('ErdEditor', () => {
       );
       expect(document.content).toEqual(encoder.encode('héllo'));
     });
+
+    it('tells the registry the replica saved once the content holds the value', async () => {
+      const { webview, document, registry } = await bootstrap();
+      let contentThen: Uint8Array | undefined;
+      registry.onValueSaved.mockImplementation(() => {
+        contentThen = document.content;
+      });
+
+      webview.__receive(
+        Bridge.executeCommand(hostSaveValueCommand, { value: 'saved' })
+      );
+      await flush();
+
+      expect(contentThen).toEqual(encoder.encode('saved'));
+      expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
+      expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
+    });
   });
 
   describe('hostSaveReplicationCommand', () => {
@@ -266,6 +302,25 @@ describe('ErdEditor', () => {
       // The sender already applied the actions locally; echoing them back would
       // replay them into the split view that produced them.
       expect(webview.postMessage).not.toHaveBeenCalled();
+    });
+
+    it('hands the actions to the registry after the broadcast, for the joined peers', async () => {
+      const { webview, others, document, registry } = await bootstrap({
+        siblings: 1,
+      });
+      const actions = [{ type: 'table.add', version: 4 }];
+      let broadcastFirst = -1;
+      registry.onWebviewActions.mockImplementation(() => {
+        broadcastFirst = others[0].postMessage.mock.calls.length;
+      });
+
+      webview.__receive(
+        Bridge.executeCommand(hostSaveReplicationCommand, { actions })
+      );
+
+      expect(broadcastFirst).toBe(1);
+      expect(registry.onWebviewActions).toHaveBeenCalledTimes(1);
+      expect(registry.onWebviewActions).toHaveBeenCalledWith(document, actions);
     });
 
     it('sends nothing when the sender is the only webview on the document', async () => {

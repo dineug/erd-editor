@@ -16,12 +16,19 @@ import {
   sharedSelectionTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
-import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  moveMemoAction,
+  resizeMemoAction,
+} from '@/engine/modules/memo/atom.actions';
 import { streamZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableColorAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { bufferCircuitBreaker } from '@/engine/rx-operators/bufferCircuitBreaker';
+import { createSharedStreamActionsCompressor } from '@/engine/rx-operators/createSharedStreamActionsCompressor';
+import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
 import { sharedStreamActionsCompressor } from '@/engine/rx-operators/sharedStreamActionsCompressor';
 
 function createHarness() {
@@ -258,4 +265,184 @@ describe('sharedStreamActionsCompressor', () => {
 
     expect(onError).toHaveBeenCalledWith(err);
   });
+});
+
+describe('sharedStreamActionsCompressor versions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('sends the redo action the stream handler builds, which carries no version', () => {
+    const { source$, emitted } = createHarness();
+
+    source$.next([
+      {
+        ...changeTableColorAction({ id: 't1', color: '#f00', prevColor: '' }),
+        version: 5,
+      },
+    ]);
+    source$.next([
+      {
+        ...changeTableColorAction({
+          id: 't1',
+          color: '#0f0',
+          prevColor: '#f00',
+        }),
+        version: 6,
+      },
+    ]);
+    vi.advanceTimersByTime(200);
+
+    expect(emitted).toEqual([
+      [changeTableColorAction({ id: 't1', color: '#0f0', prevColor: '' })],
+    ]);
+    expect(emitted[0][0]).not.toHaveProperty('version');
+  });
+
+  it.each([
+    [
+      'a lone memo.resize',
+      resizeMemoAction({ id: 'm1', x: 0, y: 0, width: 120, height: 80 }),
+    ],
+    [
+      'a table.move under the move threshold',
+      moveTableAction({ ids: ['t1'], movementX: 1, movementY: 1 }),
+    ],
+  ])(
+    'lets %s through with its version when the handler builds nothing',
+    (_, action) => {
+      const { source$, emitted } = createHarness();
+      const versioned = { ...action, version: 7 };
+
+      source$.next([versioned]);
+      vi.advanceTimersByTime(200);
+
+      expect(emitted).toEqual([[versioned]]);
+      expect(emitted[0][0].version).toBe(7);
+    }
+  );
+});
+
+describe('createSharedStreamActionsCompressor', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function createNotifiedHarness() {
+    const notifier$ = new Subject<void>();
+    const source$ = new Subject<Array<AnyAction>>();
+    const emitted: Array<Array<AnyAction>> = [];
+    source$
+      .pipe(createSharedStreamActionsCompressor(flushOnNotifier(notifier$)))
+      .subscribe(actions => emitted.push(actions));
+    return { notifier$, source$, emitted };
+  }
+
+  it('waits out the same 200 ms quiet period as the editor instance when given no operator', () => {
+    const source$ = new Subject<Array<AnyAction>>();
+    const emitted: Array<Array<AnyAction>> = [];
+    source$
+      .pipe(createSharedStreamActionsCompressor())
+      .subscribe(actions => emitted.push(actions));
+
+    source$.next([
+      moveTableAction({ ids: ['t1'], movementX: 30, movementY: 0 }),
+    ]);
+    vi.advanceTimersByTime(199);
+    expect(emitted).toEqual([]);
+
+    vi.advanceTimersByTime(1);
+    expect(emitted).toEqual([
+      [moveTableAction({ ids: ['t1'], movementX: 30, movementY: 0 })],
+    ]);
+  });
+
+  it('closes an edit stream when the notifier fires instead of after a quiet period', () => {
+    const { notifier$, source$, emitted } = createNotifiedHarness();
+
+    source$.next([
+      moveTableAction({ ids: ['t1'], movementX: 30, movementY: 10 }),
+    ]);
+    source$.next([
+      moveTableAction({ ids: ['t1'], movementX: 20, movementY: 5 }),
+    ]);
+    vi.advanceTimersByTime(10_000);
+    expect(emitted).toEqual([]);
+
+    notifier$.next();
+
+    expect(emitted).toEqual([
+      [moveTableAction({ ids: ['t1'], movementX: 50, movementY: 15 })],
+    ]);
+  });
+
+  it('keeps the presence throttle on its own timer', () => {
+    const { notifier$, source$, emitted } = createNotifiedHarness();
+
+    source$.next([sharedMouseTrackerAction({ x: 1, y: 1 })]);
+    source$.next([sharedMouseTrackerAction({ x: 2, y: 2 })]);
+    notifier$.next();
+    expect(emitted).toEqual([[sharedMouseTrackerAction({ x: 1, y: 1 })]]);
+
+    vi.advanceTimersByTime(100);
+
+    expect(emitted).toEqual([
+      [sharedMouseTrackerAction({ x: 1, y: 1 })],
+      [sharedMouseTrackerAction({ x: 2, y: 2 })],
+    ]);
+  });
+
+  // The shared store stacks two compressors around its circuit breaker on one
+  // notifier and sends two ticks per flush; this measures what the pipe needs.
+  it.each([
+    [
+      'table.changeColor',
+      changeTableColorAction({ id: 't1', color: '#f00', prevColor: '' }),
+    ],
+    [
+      'memo.resize',
+      resizeMemoAction({ id: 'm1', x: 0, y: 0, width: 120, height: 80 }),
+    ],
+  ])(
+    'drains %s through two compressors behind a breaker within two ticks, and no further tick sends anything',
+    (_, action) => {
+      const notifier$ = new Subject<void>();
+      const opening$ = new Subject<void>();
+      const compressor = createSharedStreamActionsCompressor(
+        flushOnNotifier(notifier$)
+      );
+      const source$ = new Subject<Array<AnyAction>>();
+      const emitted: Array<Array<AnyAction>> = [];
+      source$
+        .pipe(
+          compressor,
+          bufferCircuitBreaker(opening$, new Subject<void>()),
+          compressor
+        )
+        .subscribe(actions => emitted.push(actions));
+      opening$.next();
+
+      source$.next([action]);
+      let ticks = 0;
+      while (!emitted.length && ticks < 10) {
+        notifier$.next();
+        ticks++;
+      }
+      notifier$.next();
+      notifier$.next();
+
+      expect(ticks).toBeGreaterThan(0);
+      expect(ticks).toBeLessThanOrEqual(2);
+      expect(emitted).toHaveLength(1);
+      expect(emitted[0].map(({ type }) => type)).toEqual([action.type]);
+    }
+  );
 });

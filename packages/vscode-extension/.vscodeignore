@@ -3,6 +3,7 @@ node_modules
 src/**
 test/**
 out/**
+dist/**/*.map
 .vscode-test/**
 .vscode-test.mjs
 vitest.config.mts

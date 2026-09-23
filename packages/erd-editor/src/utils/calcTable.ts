@@ -327,6 +327,23 @@ export function calcTableHeight(
   );
 }
 
+/** A table's header text widths as toWidth measures them. */
+const tableTextWidths = (table: Table, toWidth: EngineContext['toWidth']) => ({
+  widthName: textInRange(toWidth(table.name)),
+  widthComment: textInRange(toWidth(table.comment)),
+});
+
+/** A column's text widths as toWidth measures them. */
+const columnTextWidths = (
+  column: Column,
+  toWidth: EngineContext['toWidth']
+) => ({
+  widthName: textInRange(toWidth(column.name)),
+  widthDataType: textInRange(toWidth(column.dataType)),
+  widthDefault: textInRange(toWidth(column.default)),
+  widthComment: textInRange(toWidth(column.comment)),
+});
+
 export function recalculateTableWidth(
   { doc: { tableIds }, collections }: RootState,
   { toWidth }: EngineContext
@@ -341,16 +358,49 @@ export function recalculateTableWidth(
   const columnCollection = query(collections).collection('tableColumnEntities');
 
   for (const table of tables) {
-    table.ui.widthName = textInRange(toWidth(table.name));
-    table.ui.widthComment = textInRange(toWidth(table.comment));
+    Object.assign(table.ui, tableTextWidths(table, toWidth));
 
     const columns = columnCollection.selectByIds(table.columnIds);
 
     for (const column of columns) {
-      column.ui.widthName = textInRange(toWidth(column.name));
-      column.ui.widthDataType = textInRange(toWidth(column.dataType));
-      column.ui.widthDefault = textInRange(toWidth(column.default));
-      column.ui.widthComment = textInRange(toWidth(column.comment));
+      Object.assign(column.ui, columnTextWidths(column, toWidth));
     }
   }
+}
+
+/**
+ * The box a table takes on the ERD canvas once toWidth has measured its text,
+ * the size recalculateTableWidth would leave it at. It works on copies, so it
+ * writes no width into the state and bumps no width generation.
+ */
+export function measureTableSize(
+  table: Table,
+  state: RootState,
+  toWidth: EngineContext['toWidth']
+): { width: number; height: number } {
+  const columns = query(state.collections)
+    .collection('tableColumnEntities')
+    .selectByIds(table.columnIds)
+    .map(column => ({
+      ...column,
+      ui: { ...column.ui, ...columnTextWidths(column, toWidth) },
+    }));
+  const measured = {
+    ...table,
+    ui: { ...table.ui, ...tableTextWidths(table, toWidth) },
+  };
+  const scratch: RootState = {
+    ...state,
+    collections: {
+      ...state.collections,
+      tableColumnEntities: Object.fromEntries(
+        columns.map(column => [column.id, column])
+      ),
+    },
+  };
+
+  return {
+    width: calcTableWidths(measured, scratch).width,
+    height: calcTableHeight(measured),
+  };
 }

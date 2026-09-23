@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { Editor, widthEditor } from '@/editor';
 import { ErdDocument } from '@/erd-document';
 
+import { createWebviewRelay } from '../test/mocks/documentHarness';
 import {
   createExtensionContext,
   createWebview,
@@ -66,7 +67,8 @@ function createEditor(
     document,
     webview as any,
     context as any,
-    docToWebviewMap as any
+    docToWebviewMap as any,
+    createWebviewRelay()
   );
 
   return { editor, document, webview, context, docToWebviewMap };
@@ -250,7 +252,7 @@ describe('widthEditor', () => {
     resetVscodeMock();
   });
 
-  it('constructs the given class with the four host arguments in order', () => {
+  it('constructs the given class with the five host arguments in order', () => {
     const create = widthEditor(TestEditor);
     const document = ErdDocument.create(
       Uri.file('/workspace/sample.erd') as any,
@@ -259,12 +261,14 @@ describe('widthEditor', () => {
     const webview = createWebview();
     const context = createExtensionContext();
     const docToWebviewMap = new Map<ErdDocument, Set<MockWebview>>();
+    const registry = createWebviewRelay();
 
     const editor = create(
       document,
       webview as any,
       context as any,
-      docToWebviewMap as any
+      docToWebviewMap as any,
+      registry
     );
 
     expect(editor).toBeInstanceOf(TestEditor);
@@ -272,6 +276,7 @@ describe('widthEditor', () => {
     expect(editor.webview).toBe(webview);
     expect(editor.context).toBe(context);
     expect(editor.docToWebviewMap).toBe(docToWebviewMap);
+    expect(editor.registry).toBe(registry);
   });
 
   it('builds a fresh editor per call — one webview panel must not share another one state', () => {
@@ -289,13 +294,15 @@ describe('widthEditor', () => {
       document,
       first as any,
       context as any,
-      docToWebviewMap as any
+      docToWebviewMap as any,
+      createWebviewRelay()
     ) as TestEditor;
     const two = create(
       document,
       second as any,
       context as any,
-      docToWebviewMap as any
+      docToWebviewMap as any,
+      createWebviewRelay()
     ) as TestEditor;
 
     expect(one).not.toBe(two);
@@ -320,13 +327,15 @@ describe('widthEditor', () => {
       document,
       createWebview() as any,
       context as any,
-      docToWebviewMap as any
+      docToWebviewMap as any,
+      createWebviewRelay()
     ) as TestEditor;
     const two = create(
       document,
       createWebview() as any,
       context as any,
-      docToWebviewMap as any
+      docToWebviewMap as any,
+      createWebviewRelay()
     ) as TestEditor;
     one.testBridge.registerCommand(command, onOne);
     two.testBridge.registerCommand(command, onTwo);

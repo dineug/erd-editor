@@ -53,6 +53,14 @@
       "path": "packages/vite-plugin-r-html",
     },
     {
+      "name": "agent-hub",
+      "path": "packages/agent-hub",
+    },
+    {
+      "name": "mcp-server",
+      "path": "packages/mcp-server",
+    },
+    {
       "name": "monorepo",
       "path": ".",
     },

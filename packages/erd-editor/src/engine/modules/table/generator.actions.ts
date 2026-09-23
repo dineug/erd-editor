@@ -20,6 +20,7 @@ import {
   addRelationshipAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
+import { toForeignKeyActions } from '@/engine/modules/relationship/fkColumns';
 import {
   addColumnAction,
   changeColumnAutoIncrementAction,
@@ -36,10 +37,13 @@ import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { getShowColumnOrder } from '@/utils/table-clipboard';
 
+import { ActionType } from './actions';
 import {
   addTableAction,
   changeZIndexAction,
+  moveToTableAction,
   removeTableAction,
+  tableReducers,
 } from './atom.actions';
 
 export const addTableAction$ = (): GeneratorAction =>
@@ -155,39 +159,7 @@ export const selectTableAction$ = (
 
       const endColumnIds = startColumns.map(() => nanoid());
 
-      for (let i = 0; i < startColumns.length; i++) {
-        const startColumn = startColumns[i];
-        const endColumnId = endColumnIds[i];
-        const payload = {
-          id: endColumnId,
-          tableId: endTable.id,
-        };
-
-        yield [
-          addColumnAction(payload),
-          changeColumnNotNullAction({
-            ...payload,
-            value: true,
-          }),
-          changeColumnNameAction({
-            ...payload,
-            value: startColumn.name,
-          }),
-          changeColumnDataTypeAction({
-            ...payload,
-            value: startColumn.dataType,
-          }),
-          changeColumnDefaultAction({
-            ...payload,
-            value: startColumn.default,
-          }),
-          changeColumnCommentAction({
-            ...payload,
-            value: startColumn.comment,
-          }),
-        ];
-      }
-
+      yield toForeignKeyActions(startColumns, endTable.id, endColumnIds);
       yield addRelationshipAction({
         id: nanoid(),
         relationshipType: drawRelationship.relationshipType,
@@ -409,9 +381,40 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
     }
   };
 
+/**
+ * Runs the engine's sort once, on copies of the live tables, and places each
+ * table at the point it found. A replayed table.sort measures each replica's
+ * own text, so only the placed points come out the same everywhere.
+ */
+export const sortTablesToMoveAction$ = (): GeneratorAction =>
+  function* (state, context) {
+    const { doc, collections } = state;
+    const copies = query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds)
+      .map(table => ({ ...table, ui: { ...table.ui } }));
+
+    tableReducers[ActionType.sortTable](
+      {
+        ...state,
+        collections: {
+          ...collections,
+          tableEntities: Object.fromEntries(
+            copies.map(table => [table.id, table])
+          ),
+        },
+      },
+      { type: ActionType.sortTable, payload: undefined },
+      context
+    );
+
+    yield copies.map(({ id, ui: { x, y } }) => moveToTableAction({ id, x, y }));
+  };
+
 export const actions$ = {
   addTableAction$,
   removeTableAction$,
   selectTableAction$,
   pasteTableAction$,
+  sortTablesToMoveAction$,
 };

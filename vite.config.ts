@@ -106,6 +106,41 @@ export default defineConfig({
           'no-prototype-builtins': 'error',
           'no-redeclare': 'off',
           'no-regex-spaces': 'error',
+          // Effect through the entries its package.json exports and its docs
+          // import from; platform-node alone by module path, since its barrel
+          // needs redis. Each message says why; schema and sql stay out.
+          'no-restricted-imports': [
+            'error',
+            {
+              paths: [
+                {
+                  name: '@effect/platform-node',
+                  message:
+                    'Its barrel re-exports NodeRedis, which imports redis, an optional peer this workspace does not install: Node cannot load the barrel and the build cannot resolve it. Import the module path, as in @effect/platform-node/NodeStdio.',
+                },
+              ],
+              patterns: [
+                {
+                  regex:
+                    '^effect/(?:[A-Z]|index$|internal/|testing/|unstable/[^/]+/)',
+                  caseSensitive: true,
+                  message:
+                    "Import from effect, effect/testing or an effect/unstable/<group> barrel, the entries effect's package.json names; a module path resolves only through its ./* wildcard.",
+                },
+                {
+                  regex: '^effect/unstable/(?:schema|sql)(?:/|$)',
+                  message:
+                    'SchemaAOTCompiler and Migrator, each with a dynamic import, live here.',
+                },
+                {
+                  regex:
+                    '^@effect/platform-node/[^/]+/|^@effect/platform-node-shared(?:/|$)',
+                  message:
+                    'One @effect/platform-node module path deep, and nothing from platform-node-shared, which is not a dependency here.',
+                },
+              ],
+            },
+          ],
           'no-self-assign': 'error',
           'no-setter-return': 'off',
           'no-shadow-restricted-names': 'error',

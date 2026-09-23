@@ -17,7 +17,7 @@
       "@dineug/vite-plugin-r-html": ["./packages/vite-plugin-r-html/src/index.ts"]
     }
   },
-  // Every `vite.config.*` in this repo sat outside all 13 package programs, so a
+  // Every `vite.config.*` in this repo sat outside each package program, so a
   // typo in a `run.tasks` block — `from: ['devDependencie']`, `base: 'pacakge'`,
   // `input: ['scr/**']` — went unreported and silently narrowed the graph or the
   // cache key. Nothing about that failure is red.

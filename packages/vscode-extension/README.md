@@ -65,6 +65,17 @@ The same document can be open in several editors at once, and they stay in sync.
 
 ![multiple editors per document](https://github.com/dineug/erd-editor/blob/main/img/supports-multiple-editors-per-document.webp?raw=true)
 
+### Coding agents
+
+A coding agent such as Claude Code or Codex can edit the diagrams open in this window through the
+[`@dineug/erd-editor-mcp`](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
+MCP server; its README shows how to add it to the agent. The agent joins the editor like a
+collaborator: each change shows up on the canvas as it happens and stays unsaved until the agent
+or you save. It connects only in a trusted workspace, and the
+`dineug.erd-editor.agentHub.enabled` setting turns it off for the window.
+
+![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
+
 ## Settings
 
 | Setting | Default | Values |
@@ -72,9 +83,11 @@ The same document can be open in several editors at once, and they stay in sync.
 | `dineug.erd-editor.theme.appearance` | `dark` | `auto`, `light`, `dark` |
 | `dineug.erd-editor.theme.grayColor` | `slate` | `gray`, `mauve`, `slate`, `sage`, `olive`, `sand` |
 | `dineug.erd-editor.theme.accentColor` | `indigo` | 26 [Radix](https://www.radix-ui.com/colors) accents — `gray`, `gold`, `bronze`, `brown`, `yellow`, `amber`, `orange`, `tomato`, `red`, `ruby`, `crimson`, `pink`, `plum`, `purple`, `violet`, `iris`, `indigo`, `blue`, `cyan`, `teal`, `jade`, `green`, `grass`, `lime`, `mint`, `sky` |
+| `dineug.erd-editor.agentHub.enabled` | `true` | `true`, `false` |
 
-Changing any of these re-themes every open diagram immediately. `auto` follows your VS Code
-color theme and switches with it; note that the default is `dark` whichever theme you use.
+Changing any of the three theme settings re-themes every open diagram immediately. `auto`
+follows your VS Code color theme and switches with it; note that the default is `dark` whichever
+theme you use.
 
 The theme builder inside the editor changes these same three values and writes them back
 here, so a theme you pick on the canvas persists.

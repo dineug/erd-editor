@@ -1,0 +1,1273 @@
+[
+  {
+    "name": "erd_add_column",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_add_index",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_add_index_column",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_add_memo",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_add_relationship",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "startTableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "endTableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "relationshipType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "OneN",
+          "OneOnly",
+          "ZeroN",
+          "ZeroOne"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_add_table",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_column_comment",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_column_data_type",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_column_default",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_column_name",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_index_name",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_memo_color",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memoId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "color",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_memo_value",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memoId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_relationship_type",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "relationshipId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "relationshipType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "OneN",
+          "OneOnly",
+          "ZeroN",
+          "ZeroOne"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_table_color",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "color",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_table_comment",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_change_table_name",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_import_aml",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_import_dbml",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_import_graphql",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_import_json",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_import_sql",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_link_columns",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "startTableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "startColumnIds",
+        "type": "array",
+        "required": true,
+        "items": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "endTableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "endColumnIds",
+        "type": "array",
+        "required": true,
+        "items": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "relationshipType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "OneN",
+          "OneOnly",
+          "ZeroN",
+          "ZeroOne"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_list_documents",
+    "args": [],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_move_column",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "targetColumnId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_move_index_column",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexColumnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "targetIndexColumnId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_move_memo",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memoId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "x",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "y",
+        "type": "number",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_move_table",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "x",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "y",
+        "type": "number",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_open_document",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "create",
+        "type": "boolean",
+        "required": false
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_read",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "format",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "json",
+          "snapshot",
+          "sql"
+        ]
+      },
+      {
+        "name": "vendor",
+        "type": "string",
+        "required": false,
+        "enum": [
+          "Databricks",
+          "MSSQL",
+          "MariaDB",
+          "MySQL",
+          "Oracle",
+          "PostgreSQL",
+          "SQLite",
+          "Snowflake"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_redo",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_remove_columns",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnIds",
+        "type": "array",
+        "required": true,
+        "items": {
+          "type": "string"
+        }
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_remove_index",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_remove_index_column",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexColumnId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_remove_memo",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memoId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_remove_relationship",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "relationshipId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_remove_table",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_resize_memo",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memoId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "width",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "height",
+        "type": "number",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_save",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_bracket_type",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "backtick",
+          "doubleQuote",
+          "none",
+          "singleQuote"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_column_auto_increment",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_column_name_case",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "camelCase",
+          "none",
+          "pascalCase",
+          "snakeCase"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_column_not_null",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_column_order",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "columnAutoIncrement",
+          "columnComment",
+          "columnDataType",
+          "columnDefault",
+          "columnName",
+          "columnNotNull",
+          "columnUnique"
+        ]
+      },
+      {
+        "name": "targetColumnType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "columnAutoIncrement",
+          "columnComment",
+          "columnDataType",
+          "columnDefault",
+          "columnName",
+          "columnNotNull",
+          "columnUnique"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_column_primary_key",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_column_unique",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "columnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_database",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "Databricks",
+          "MSSQL",
+          "MariaDB",
+          "MySQL",
+          "Oracle",
+          "PostgreSQL",
+          "SQLite",
+          "Snowflake"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_database_name",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_ignore_save_settings",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "saveSettingType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "scroll",
+          "zoomLevel"
+        ]
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_index_column_order",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexColumnId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "orderType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "ASC",
+          "DESC"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_index_unique",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "indexId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_language",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "AML",
+          "DBML",
+          "Drizzle",
+          "Go",
+          "GraphQL",
+          "JPA",
+          "Java",
+          "Kotlin",
+          "SQLAlchemy",
+          "Scala",
+          "Sequelize",
+          "TypeORM",
+          "TypeScript",
+          "csharp"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_max_width_comment",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "integer",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_relationship_data_type_sync",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_relationship_optimization",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_show",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "show",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "columnAutoIncrement",
+          "columnComment",
+          "columnDataType",
+          "columnDefault",
+          "columnNotNull",
+          "columnPrimaryKey",
+          "columnUnique",
+          "relationship",
+          "tableComment"
+        ]
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_table_name_case",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "camelCase",
+          "none",
+          "pascalCase",
+          "snakeCase"
+        ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_sort_tables",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_undo",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "hasOutputSchema": false
+  }
+]

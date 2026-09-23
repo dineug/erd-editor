@@ -131,8 +131,8 @@ intellijPlatform {
 changelog {
     groups.empty()
     repositoryUrl = properties("pluginRepositoryUrl")
-    // The monorepo already carries `v*` tags for the editor itself, and `v0.3.2` / `v0.4.6`
-    // exist while the plugin is on 0.8.0 — a bare `v` prefix would render compare links that
+    // The monorepo already carries `v*` tags for the editor itself, `v0.*` among them, whose
+    // numbers a plugin version can share — a bare `v` prefix would render compare links that
     // resolve to unrelated releases rather than 404ing.
     versionPrefix = "intellij-plugin-v"
 }

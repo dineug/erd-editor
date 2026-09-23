@@ -2,6 +2,8 @@ import { Bridge } from '@dineug/erd-editor-webview-bridge';
 import * as vscode from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
+import { type WebviewRelay } from '@/hub/documentRegistry';
+import { isReadonlyUri } from '@/hub/readonlyUri';
 import { textDecoder } from '@/utils';
 
 export type CreateEditor = (
@@ -16,20 +18,12 @@ export abstract class Editor {
     readonly document: ErdDocument,
     readonly webview: vscode.Webview,
     readonly context: vscode.ExtensionContext,
-    readonly docToWebviewMap: Map<ErdDocument, Set<vscode.Webview>>
+    readonly docToWebviewMap: Map<ErdDocument, Set<vscode.Webview>>,
+    readonly registry: WebviewRelay
   ) {}
 
   get readonly() {
-    // TODO: scheme -- untitled, file, git, conflictResolution
-    /*
-    const editable = vscode.workspace.fs.isWritableFileSystem(
-      this.document.uri.scheme
-    );
-    */
-    return (
-      this.document.uri.scheme === 'git' ||
-      this.document.uri.scheme === 'conflictResolution'
-    );
+    return isReadonlyUri(this.document.uri);
   }
 
   abstract bootstrapWebview(): Promise<vscode.Disposable>;
