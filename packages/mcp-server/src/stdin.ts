@@ -65,8 +65,8 @@ const keep = (line: string) =>
 
 /**
  * Stdio whose stdin passes on only the lines isMessageLine accepts, each with
- * its newline, as 0.1.0 skipped what it could not parse; a skipped line other
- * than a blank one is logged. A line stdin never ends is never passed on.
+ * its newline, and skips the rest; a skipped line other than a blank one is
+ * logged. A line stdin never ends is never passed on.
  */
 export const MessageStdin: Layer.Layer<Stdio.Stdio, never, Stdio.Stdio> =
   Layer.effect(

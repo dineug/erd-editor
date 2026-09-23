@@ -36,9 +36,9 @@ export default defineConfig({
     target: 'node22',
     outDir: 'dist',
     emptyOutDir: true,
-    // Effect inlines here from the hub rewrite on, and unminified most of the
-    // bundle is its JSDoc. A map of the minified bundle measures about 18x the
-    // bundle, so 2.9.0 is the first release whose VSIX carries none.
+    // Effect inlines here, and unminified most of the bundle is its JSDoc. A
+    // map of the minified bundle measures about 18x the bundle, so the VSIX
+    // carries none.
     sourcemap: false,
     // Vite leaves an ssr build unminified; this alone strips it, and adding
     // rolldownOptions.output.minify as mcp-server does emits the same bytes.

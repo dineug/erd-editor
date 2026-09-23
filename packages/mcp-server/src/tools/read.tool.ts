@@ -35,8 +35,8 @@ const INTERNAL_MESSAGE =
 
 /**
  * erd_read answers the document as plain text, not a JSON body, so it is added
- * by hand: arguments decode strictly to -32602, a refusal becomes the isError
- * result 0.1.0 wrote, and only a defect becomes an internal error.
+ * by hand: arguments decode strictly to -32602, a refusal becomes an isError
+ * result, and only a defect becomes an internal error.
  */
 export const registerReadTool = Effect.gen(function* () {
   const server = yield* McpServer.McpServer;

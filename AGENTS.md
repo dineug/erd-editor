@@ -46,17 +46,17 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `vite-plugin-r-html` | `@dineug/vite-plugin-r-html` | JSX → tagged templates, HMR |
 | `schema-sql-parser` | `@dineug/schema-sql-parser` | permissive DDL parser for SQL import |
 | `erd-editor-schema` | `@dineug/erd-editor-schema` | v2/v3 document schema, parsing, LWW operators |
-| `erd-editor` | `@dineug/erd-editor` | **editor core**, published (3.10.0): `<erd-editor>`, its Konva scene, `engine.js` (`createReplicationStore`) and `peer.js` (`createPeerStore` and the catalog barrels `mcp-server` builds its tools from) |
+| `erd-editor` | `@dineug/erd-editor` | **editor core**, published: `<erd-editor>`, its Konva scene, `engine.js` (`createReplicationStore`) and `peer.js` (`createPeerStore` and the catalog barrels `mcp-server` builds its tools from) |
 | `webview-bridge` | `@dineug/erd-editor-webview-bridge` | `Bridge`, the typed host↔webview command protocol |
 | `agent-hub` | `@dineug/erd-editor-agent-hub` | the IDE ↔ coding-agent hub protocol as an effect `Schema` spec, `effect` its one peer dependency: messages, lock file, JSON lines framing, path authorization, discovery |
 | `webview-client` | `@dineug/erd-editor-webview-client` | `mountWebview(host)` — all host wiring both webviews share |
 | `replication-store-worker` | `@dineug/erd-editor-replication-store-worker` | headless replica `webview-client` spawns |
 | `vscode-webview` | `@dineug/erd-editor-vscode-webview` | VSCode webview bundle |
-| `vscode-extension` | `vuerd-vscode` | VSCode extension host, published (2.9.0), and the document hub coding agents join, on effect layers |
+| `vscode-extension` | `vuerd-vscode` | VSCode extension host, published, and the document hub coding agents join, on effect layers |
 | `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
-| `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published (0.8.0) |
+| `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published |
 | `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io |
-| `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published (0.1.0): effect's `McpServer` over stdio, one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
+| `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published: effect's `McpServer` over stdio, one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
 
 ## For AI Agents
 

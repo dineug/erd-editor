@@ -234,7 +234,7 @@ describe('a live session beyond the transition table', () => {
       );
     });
 
-    it('applies a documentClosed read with its openDocument answer before its edit, as 0.1.0 did: nothing goes out on the join the editor dropped, and the next call joins again', async () => {
+    it('applies a documentClosed read with its openDocument answer before its edit: nothing goes out on the join the editor dropped, and the next call joins again', async () => {
       await call('erd_add_table');
       await settle();
       relayWith(
@@ -253,7 +253,7 @@ describe('a live session beyond the transition table', () => {
       expect(hub.methods().slice(before)).toEqual(['openDocument', 'join']);
     });
 
-    it('hears a documentClosed read with the answer to its last batch before it counts its edit, as 0.1.0 did', async () => {
+    it('hears a documentClosed read with the answer to its last batch before it counts its edit', async () => {
       let focusBatch = false;
       hub.beforeApply = actions => {
         focusBatch = actions.some(

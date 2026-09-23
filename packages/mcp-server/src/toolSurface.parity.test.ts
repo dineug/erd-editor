@@ -14,7 +14,7 @@ const fixture = readToolSurfaceFixture();
 
 /**
  * The one tool that advertises no result schema: erd_read answers plain text,
- * added by hand. The 58 toolkit tools declare theirs, as 0.1.0 did not.
+ * added by hand. The 58 toolkit tools declare theirs; the recording has none.
  */
 const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set(['erd_read']);
 
@@ -38,8 +38,8 @@ const declarations = (surface: readonly ToolSurface[]) =>
 const outputSchemas = (surface: readonly ToolSurface[]) =>
   surface.map(({ name, hasOutputSchema }) => ({ name, hasOutputSchema }));
 
-describe('the tool surface against the 0.1.0 fixture (AC-E4)', () => {
-  it('holds the 59 tools of 0.1.0', () => {
+describe('the tool surface against the SDK-based server recording', () => {
+  it('holds the 59 recorded tools', () => {
     expect(fixture).toHaveLength(59);
     expect(tools).toHaveLength(59);
   });
@@ -48,7 +48,7 @@ describe('the tool surface against the 0.1.0 fixture (AC-E4)', () => {
     expect(declarations(live)).toEqual(declarations(fixture));
   });
 
-  it('advertises a result schema for every tool but erd_read, where 0.1.0 had none', () => {
+  it('advertises a result schema for every tool but erd_read, where the recording has none', () => {
     expect(outputSchemas(fixture).every(tool => !tool.hasOutputSchema)).toBe(
       true
     );

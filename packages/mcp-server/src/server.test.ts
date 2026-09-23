@@ -204,7 +204,7 @@ describe('the protocols it speaks', () => {
     await stdio.exit;
   });
 
-  it('answers every request before initialize with -32603, ping included, where 0.1.0 served them', async () => {
+  it('answers every request before initialize with -32603, ping included', async () => {
     const stdio = serveStdio(serverLayer({ host: createMemoryHost() }));
     const client = rpcClient(stdio);
 

@@ -33,16 +33,16 @@ import {
   toTool,
 } from '@/tools/toolkit';
 
-/** The text block 0.1.0's jsonResult wrote for a payload, kept here as the reference. */
-function text010(payload: Record<string, unknown>): string {
+/** The text block the SDK-based server's jsonResult wrote for a payload, kept here as the reference. */
+function referenceText(payload: Record<string, unknown>): string {
   const { notes, ...rest } = payload;
   const body =
     Array.isArray(notes) && notes.length ? { ...rest, notes } : { ...rest };
   return JSON.stringify(body);
 }
 
-/** The text block 0.1.0's errorResult wrote for a refusal. */
-const refusal010 = (code: string, message: string) =>
+/** The text block the SDK-based server's errorResult wrote for a refusal. */
+const referenceRefusal = (code: string, message: string) =>
   JSON.stringify({ error: { code, message } });
 
 /** The text the toolkit writes for a success value: the value encoded by the tool's schema. */
@@ -159,12 +159,12 @@ describe('tool results', () => {
 
     expect(result.isError).toBe(true);
     expect(result.content).toEqual([
-      { type: 'text', text: refusal010('blocked', 'no') },
+      { type: 'text', text: referenceRefusal('blocked', 'no') },
     ]);
   });
 });
 
-describe('the text blocks against 0.1.0', () => {
+describe('the text blocks against the reference writers', () => {
   const outcome = (notes: string[]) => ({
     ...run('erd_add_table', 1, 1),
     notes,
@@ -179,7 +179,7 @@ describe('the text blocks against 0.1.0', () => {
   });
 
   it.each(actionTools.map(({ name }) => [name]))(
-    '%s encodes to the bytes 0.1.0 wrote, with and without its optional keys',
+    '%s encodes to the reference bytes, with and without its optional keys',
     name => {
       const tool = toolByName.get(name)!;
       const { successSchema } = EditToolkit.tools[name];
@@ -187,7 +187,7 @@ describe('the text blocks against 0.1.0', () => {
       for (const notes of [[], ['a note']]) {
         const body = toolRunResult(tool, outcome(notes));
         expect(written(successSchema, body)).toBe(
-          text010({
+          referenceText({
             tool: 'erd_add_table',
             mode: 'live',
             createdIds: ['t1'],
@@ -205,7 +205,7 @@ describe('the text blocks against 0.1.0', () => {
         run: { ...run(name, 1, 1).run, createdIds: ['t1'] },
       });
       expect(written(successSchema, plain)).toBe(
-        text010({
+        referenceText({
           tool: name,
           mode: 'live',
           createdIds: ['t1'],
@@ -217,7 +217,7 @@ describe('the text blocks against 0.1.0', () => {
     }
   );
 
-  it('encodes the five session toolkit results to the bytes 0.1.0 wrote', () => {
+  it('encodes the five session toolkit results to the reference bytes', () => {
     const { tools } = SessionToolkit;
     const document = {
       path: '/work/a.erd.json',
@@ -250,15 +250,15 @@ describe('the text blocks against 0.1.0', () => {
 
     expect(
       written(tools.erd_list_documents.successSchema, jsonBody(list))
-    ).toBe(text010(list));
+    ).toBe(referenceText(list));
     expect(written(tools.erd_open_document.successSchema, jsonBody(open))).toBe(
-      text010(open)
+      referenceText(open)
     );
     expect(written(tools.erd_save.successSchema, jsonBody(save))).toBe(
-      text010(save)
+      referenceText(save)
     );
     expect(written(tools.erd_undo.successSchema, reverted)).toBe(
-      text010({
+      referenceText({
         tool: 'erd_undo',
         mode: 'live',
         toolName: 'erd_add_table',
@@ -268,7 +268,7 @@ describe('the text blocks against 0.1.0', () => {
       })
     );
     expect(written(tools.erd_redo.successSchema, empty)).toBe(
-      text010({
+      referenceText({
         tool: 'erd_redo',
         mode: 'live',
         toolName: null,
@@ -280,11 +280,11 @@ describe('the text blocks against 0.1.0', () => {
     );
   });
 
-  it('encodes a refusal to the bytes 0.1.0 wrote', () => {
+  it('encodes a refusal to the reference bytes', () => {
     const refused = refusal(new ToolError('notFound', 'erd_x', 'no table t'));
 
     expect(written(ToolRefusal, refused)).toBe(
-      refusal010('notFound', 'no table t')
+      referenceRefusal('notFound', 'no table t')
     );
   });
 });
@@ -306,7 +306,7 @@ describe('the results a client receives', () => {
     vi.restoreAllMocks();
   });
 
-  it('writes an edit, an undo, a save and a listing as 0.1.0 did, the same value structured beside', async () => {
+  it('writes an edit, an undo, a save and a listing as the reference text, the same value structured beside', async () => {
     const added = await mcp.call('erd_add_table', { path: DOCUMENT });
     const [tableId] = added.json.createdIds;
     const undone = await mcp.call('erd_undo', { path: DOCUMENT });
@@ -314,7 +314,7 @@ describe('the results a client receives', () => {
     const listed = await mcp.call('erd_list_documents');
 
     expect(added.text).toBe(
-      text010({
+      referenceText({
         tool: 'erd_add_table',
         mode: 'headless',
         createdIds: [tableId],
@@ -324,7 +324,7 @@ describe('the results a client receives', () => {
       })
     );
     expect(undone.text).toBe(
-      text010({
+      referenceText({
         tool: 'erd_undo',
         mode: 'headless',
         toolName: 'erd_add_table',
@@ -333,9 +333,9 @@ describe('the results a client receives', () => {
       })
     );
     expect(saved.json).toMatchObject({ tool: 'erd_save', saved: true });
-    expect(saved.text).toBe(text010(saved.json));
+    expect(saved.text).toBe(referenceText(saved.json));
     expect(listed.text).toBe(
-      text010({
+      referenceText({
         mode: 'headless',
         documents: [
           {
@@ -365,13 +365,13 @@ describe('the results a client receives', () => {
     expect(refused.structured).toBeUndefined();
     expect(refused.json.error.code).toBe('notFound');
     expect(refused.text).toBe(
-      refusal010('notFound', refused.json.error.message)
+      referenceRefusal('notFound', refused.json.error.message)
     );
     // A refusal is the caller's to act on, not the server's to log.
     expect(console.error).not.toHaveBeenCalled();
   });
 
-  it('writes an erd_read refusal as the text 0.1.0 wrote, and a read as plain text', async () => {
+  it('writes an erd_read refusal as the reference text, and a read as plain text', async () => {
     const refused = await mcp.call('erd_read', {
       path: DOCUMENT,
       format: 'snapshot',
@@ -384,7 +384,7 @@ describe('the results a client receives', () => {
 
     expect(refused).toMatchObject({ isError: true, structured: undefined });
     expect(refused.texts).toEqual([
-      refusal010(
+      referenceRefusal(
         'invalidArgs',
         'vendor applies to the sql format only, not snapshot'
       ),

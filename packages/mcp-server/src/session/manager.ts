@@ -328,8 +328,8 @@ const make = Effect.gen(function* () {
 
   /**
    * Sweeps, resolves the path and queues on the document once every call that
-   * arrived earlier has queued on its own. Holding it, the task runs to its end
-   * as 0.1.0's did: a cancel between an edit and its write would split them.
+   * arrived earlier has queued on its own. Holding it, the task runs to its
+   * end: a cancel between an edit and its write would split them.
    */
   const onDocument = <A>(
     input: string,

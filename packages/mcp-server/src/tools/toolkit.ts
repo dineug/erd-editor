@@ -25,7 +25,7 @@ export function isDestructive(name: string): boolean {
 
 /**
  * A refused call. A struct and not an Error, so the server writes the whole
- * payload as the one text block of an isError result, as 0.1.0 did.
+ * payload as the one text block of an isError result.
  */
 export const ToolRefusal = Schema.Struct({
   error: Schema.Struct({ code: Schema.String, message: Schema.String }),
@@ -38,7 +38,7 @@ const Notes = Schema.optionalKey(Schema.Array(Schema.String));
 
 /*
  * The success schemas declare their keys in the order the results emit them:
- * the toolkit writes the encoded value, so the text block keeps 0.1.0's bytes.
+ * the toolkit writes the encoded value, so the text block keeps the body's bytes.
  */
 
 export const ListResult = Schema.Struct({
@@ -95,8 +95,8 @@ const pathField = (tool: string) =>
 const dependencies = [McpSchema.McpRequestContext];
 
 /**
- * Takes any object and ignores its keys, as 0.1.0 did: a parameterless tool
- * refuses unknown keys and an empty struct advertises no object root.
+ * Takes any object and ignores its keys: a parameterless tool refuses unknown
+ * keys and an empty struct advertises no object root.
  */
 const ListDocuments = Tool.make('erd_list_documents', {
   description: describeTool('erd_list_documents'),
@@ -124,7 +124,7 @@ export const SessionParams = {
 /**
  * Lists its SessionParams struct but decodes nothing, so its handler does:
  * a malformed argument is refused with an isError result and an unknown key
- * is dropped, as in 0.1.0, where the toolkit would answer -32602.
+ * is dropped, where the toolkit would answer -32602.
  */
 const sessionTool = <
   const Name extends keyof typeof SessionParams,
@@ -144,7 +144,7 @@ const sessionTool = <
 
 /**
  * The session tools but erd_read, which answers plain text and so is added by
- * hand. None is strict: an unknown key is ignored, as it was in 0.1.0.
+ * hand. None is strict: an unknown key is ignored.
  */
 export const SessionToolkit = Toolkit.make(
   ListDocuments,

@@ -189,7 +189,7 @@ describe('tool arguments', () => {
     expect(mcp.manager.paths()).toEqual([]);
   });
 
-  it('refuses an argument an edit tool does not take with -32602, where 0.1.0 dropped it', async () => {
+  it('refuses an argument an edit tool does not take with -32602', async () => {
     const error = await rpcError('erd_add_table', {
       path: DOCUMENT,
       bogus: 1,
@@ -217,7 +217,7 @@ describe('tool arguments', () => {
     expect(mcp.manager.paths()).toEqual([]);
   });
 
-  it('refuses a session tool argument of the wrong shape or a missing one with an isError result, as 0.1.0 did', async () => {
+  it('refuses a session tool argument of the wrong shape or a missing one with an isError result', async () => {
     const create = await mcp.call('erd_open_document', {
       path: DOCUMENT,
       create: 'yes',
@@ -239,14 +239,14 @@ describe('tool arguments', () => {
     expect(mcp.manager.paths()).toEqual([]);
   });
 
-  it('answers a tool name it does not list with -32602, where 0.1.0 answered isError', async () => {
+  it('answers a tool name it does not list with -32602', async () => {
     const error = await rpcError('erd_nope', {});
 
     expect(error.code).toBe(-32602);
     expect(error.message).toBe("Tool 'erd_nope' not found");
   });
 
-  it('lets erd_list_documents ignore a key it does not take, as 0.1.0 did', async () => {
+  it('lets erd_list_documents ignore a key it does not take', async () => {
     const plain = await mcp.call('erd_list_documents', {});
     const extra = await mcp.call('erd_list_documents', { bogus: 1 });
 

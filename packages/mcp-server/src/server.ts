@@ -48,8 +48,7 @@ export const ToolsLayer: Layer.Layer<
 > = Layer.effectDiscard(
   Effect.gen(function* () {
     // A finalizer here runs before the server waits for the calls in flight,
-    // which run to their end: closing every session first ends them, as the
-    // end of stdin did in 0.1.0.
+    // which run to their end: closing every session first ends them.
     const sessions = yield* Sessions.SessionManager;
     yield* Effect.addFinalizer(() => sessions.closeAll);
 

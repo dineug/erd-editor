@@ -10,8 +10,8 @@ import type * as PlatformError from 'effect/PlatformError';
 
 /**
  * A file system whose realPath is the native realpath, which spells a path the
- * way a case-insensitive disk does, as 0.1.0's did; NodeFileSystem's keeps the
- * spelling typed. A failure is the one fs gives, with its reason tag.
+ * way a case-insensitive disk does; NodeFileSystem's keeps the spelling typed.
+ * A failure is the one fs gives, with its reason tag.
  */
 export const withNativeRealPath = (
   fs: FileSystem.FileSystem
@@ -45,7 +45,7 @@ export type FileStatsShape = {
 
 /**
  * The stat a headless session tells an outside write by. On node its mtime
- * keeps the fraction of a millisecond 0.1.0 compared, which File.Info drops:
+ * keeps the fraction of a millisecond, which File.Info drops:
  * two writes of one size in one millisecond differ only there.
  */
 export class FileStats extends Context.Service<FileStats, FileStatsShape>()(

@@ -51,8 +51,8 @@ export type HubClient = {
   ) => Effect.Effect<A, HubCallError | E>;
   /**
    * Succeeds once the frames read with the answer being handled are taken, at
-   * once when none is: 0.1.0's code went on past an await only after the
-   * notifications read with its answer, and before a later read.
+   * once when none is: a caller waiting on it goes on after the notifications
+   * read with its answer, without waiting for a later read.
    */
   readonly drained: Effect.Effect<void>;
   /** Hangs up; whatever is pending fails as disconnected. */
@@ -161,8 +161,8 @@ export const makeHubClient = (
 
     /**
      * A plain request's caller resumes on this fiber at once, before the next
-     * frame, as 0.1.0's did; a requestThen caller is held for next to release,
-     * as 0.1.0's went on only after the notifications read with its answer.
+     * frame; a requestThen caller is held for next to release, so it goes on
+     * only after the notifications read with its answer.
      */
     const answer = (entry: Pending, response: Record<string, any>) => {
       const outcome =
@@ -249,9 +249,9 @@ export const makeHubClient = (
       Effect.ensuring(Effect.sync(() => void Queue.endUnsafe(inbound))),
       Effect.forkScoped
     );
-    // Frames already read are taken back to back, as 0.1.0 took a chunk. Once
-    // the reader ends, pending requests fail and the connection's scope closes
-    // from here; a fiber forked into it never interrupts itself.
+    // Frames already read are taken back to back, a chunk in one go. Once the
+    // reader ends, pending requests fail and the connection's scope closes from
+    // here; a fiber forked into it never interrupts itself.
     yield* next.pipe(
       Effect.flatMap(take),
       Effect.forever({ disableYield: true }),

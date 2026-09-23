@@ -39,7 +39,7 @@ export const answer = <A, R>(
 
 type SessionToolName = keyof typeof SessionParams;
 
-/** A session tool's arguments, decoded as 0.1.0 did: unknown keys dropped, a malformed one refused. */
+/** A session tool's arguments, decoded leniently: unknown keys dropped, a malformed one refused. */
 const argumentsOf =
   <const Name extends SessionToolName>(name: Name) =>
   (payload: unknown) =>

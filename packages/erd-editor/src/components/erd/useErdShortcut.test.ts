@@ -747,7 +747,7 @@ describe('useErdShortcut - keydown handling', () => {
 
 describe('useErdShortcut - clipboard', () => {
   // AC-1 / AC-4: three flavours go out, and the two the rest of the world reads
-  // are byte-for-byte what the editor has written since 3.3.1 — the column
+  // are byte-for-byte what earlier releases of the editor wrote — the column
   // payload rides the custom MIME alone so the html is never wrapped.
   it('writes the selected columns to the clipboard on copy', async () => {
     const app = await setup();

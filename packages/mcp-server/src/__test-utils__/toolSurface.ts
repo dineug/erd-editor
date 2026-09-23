@@ -23,7 +23,7 @@ export type ToolSurface = {
   hasOutputSchema: boolean;
 };
 
-const FIXTURE_URL = new URL('./toolSurface.0.1.0.json', import.meta.url);
+const FIXTURE_URL = new URL('./toolSurface.sdk.json', import.meta.url);
 
 const UNKNOWN_TYPE = 'unknown';
 
@@ -108,7 +108,7 @@ export function expectObjectInputSchemas(tools: readonly ListedTool[]): void {
   ).toEqual(tools.map(({ name }) => `${name}: object`));
 }
 
-/** The 0.1.0 surface recorded from the SDK server, the parity spec's baseline. */
+/** The surface recorded from the SDK-based server, the parity spec's baseline. */
 export function readToolSurfaceFixture(): ToolSurface[] {
   return JSON.parse(readFileSync(FIXTURE_URL, 'utf8')) as ToolSurface[];
 }
