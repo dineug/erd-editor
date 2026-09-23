@@ -74,6 +74,8 @@ collaborator: each change shows up on the canvas as it happens and stays unsaved
 or you save. It connects only in a trusted workspace, and the
 `dineug.erd-editor.agentHub.enabled` setting turns it off for the window.
 
+![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
+
 ## Settings
 
 | Setting | Default | Values |
