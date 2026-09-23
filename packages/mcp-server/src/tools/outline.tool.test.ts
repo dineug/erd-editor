@@ -3,7 +3,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { connectMcp, type McpHarness, RpcError } from '@/__test-utils__/mcp';
 import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import { createSeededPeer, createSeedValue, SEED } from '@/__test-utils__/seed';
-import { toDocumentList, toEntityDetails } from '@/tools/outline';
+import { createWidePeer, wideTableName } from '@/__test-utils__/wide';
+import {
+  toDocumentList,
+  toEntityDetails,
+  toTableNameList,
+} from '@/tools/outline';
 
 const DOCUMENT = '/work/seed.erd.json';
 
@@ -56,15 +61,84 @@ describe('erd_list', () => {
     );
   });
 
-  it('refuses an argument it does not take with -32602', async () => {
+  it('passes a query, a page and namesOnly through to the list', async () => {
     const { mcp } = await connect();
-    const error = await rpcError(mcp, 'erd_list', {
+    const options = { query: 'order', offset: 0, limit: 1 };
+
+    expect(await mcp.text('erd_list', { path: DOCUMENT, ...options })).toBe(
+      JSON.stringify(fromSeed(peer => toDocumentList(peer.state, options)))
+    );
+    expect(
+      await mcp.text('erd_list', { path: DOCUMENT, namesOnly: true, offset: 1 })
+    ).toBe(
+      JSON.stringify(
+        fromSeed(peer => toTableNameList(peer.state, { offset: 1 }))
+      )
+    );
+  });
+
+  it('refuses an argument it does not take, or a page out of range, with -32602', async () => {
+    const { mcp } = await connect();
+
+    for (const args of [
+      { format: 'snapshot' },
+      { offset: -1 },
+      { limit: 0 },
+      { limit: 1.5 },
+      { namesOnly: 'yes' },
+    ]) {
+      const error = await rpcError(mcp, 'erd_list', {
+        path: DOCUMENT,
+        ...args,
+      });
+      expect(error.code, JSON.stringify(args)).toBe(-32602);
+    }
+    expect(mcp.manager.paths()).toEqual([]);
+  });
+});
+
+describe('a schema of hundreds of tables through the server', () => {
+  async function connectWide() {
+    const io = createMemoryHost();
+    const peer = createWidePeer(400);
+    io.put(DOCUMENT, peer.value);
+    peer.destroy();
+    const mcp = await connectMcp({ host: io });
+    harnesses.push(mcp);
+    return mcp;
+  }
+
+  it('lists a page, the names, and the DDL of the tables a task needs', async () => {
+    const mcp = await connectWide();
+
+    const page = JSON.parse(await mcp.text('erd_list', { path: DOCUMENT }));
+    expect(page.tableCount).toBe(400);
+    expect(page.nextOffset).toBe(page.tables.length);
+
+    const names = JSON.parse(
+      await mcp.text('erd_list', { path: DOCUMENT, namesOnly: true })
+    );
+    expect(names.tableNames).toHaveLength(400);
+
+    const sql = await mcp.text('erd_read', {
       path: DOCUMENT,
-      format: 'snapshot',
+      format: 'sql',
+      tableNames: [wideTableName(3)],
+    });
+    expect(sql).toContain(`CREATE TABLE ${wideTableName(3)}`);
+    expect(sql).toContain(`REFERENCES ${wideTableName(1)}`);
+  });
+
+  it('refuses the whole DDL as too large, saying how to narrow it', async () => {
+    const mcp = await connectWide();
+    const refused = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'sql',
     });
 
-    expect(error.code).toBe(-32602);
-    expect(mcp.manager.paths()).toEqual([]);
+    expect(refused.isError).toBe(true);
+    expect(refused.json.error.code).toBe('tooLarge');
+    expect(refused.json.error.message).toMatch(/pass tableIds or tableNames/);
   });
 });
 
@@ -83,6 +157,15 @@ describe('erd_get', () => {
     expect(JSON.parse(text).missing).toEqual(['gone']);
   });
 
+  it('takes tables by name', async () => {
+    const { mcp } = await connect();
+    const ids = { tableNames: ['Orders', 'gone'] };
+
+    expect(await mcp.text('erd_get', { path: DOCUMENT, ...ids })).toBe(
+      JSON.stringify(fromSeed(peer => toEntityDetails(peer.state, ids)))
+    );
+  });
+
   it('refuses a call that names no id, before any session', async () => {
     const { mcp } = await connect();
 
@@ -93,7 +176,7 @@ describe('erd_get', () => {
         error: {
           code: 'invalidArgs',
           message:
-            'name at least one id in tableIds, relationshipIds, indexIds, memoIds; erd_list lists them',
+            'name at least one entity in tableIds, tableNames, relationshipIds, indexIds, memoIds; erd_list lists them',
         },
       });
     }

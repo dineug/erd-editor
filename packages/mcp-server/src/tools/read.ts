@@ -7,11 +7,15 @@ import {
 } from '@dineug/erd-editor/peer.js';
 import { toJson } from '@dineug/erd-editor-schema';
 
+import { fitsInRead, MAX_READ_CHARS } from '@/tools/budget';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import {
   type EntityIds,
+  findTables,
+  type ListOptions,
   toDocumentList,
   toEntityDetails,
+  toTableNameList,
 } from '@/tools/outline';
 import { toAgentSnapshot } from '@/tools/snapshot';
 
@@ -43,6 +47,52 @@ function toDatabase(vendor: string): number {
   return DatabaseVendorToDatabase[vendor as DatabaseVendor];
 }
 
+/** The tables erd_read gives the DDL of, by id or by name; the whole document when absent. */
+export type TableFilter = Pick<EntityIds, 'tableIds' | 'tableNames'>;
+
+/** What each format tells an agent to do when the document is too large for one read. */
+const NARROWER: Readonly<Record<ReadFormat, string>> = {
+  sql: 'pass tableIds or tableNames for the tables the task needs, which erd_list with query or namesOnly finds',
+  snapshot:
+    'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
+  json: 'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
+};
+
+/**
+ * The state with only the tables named, their indexes and the relationships
+ * whose child end is one of them: the foreign keys they hold keep the parent
+ * tables they reference, so a join path out of the selection still shows.
+ */
+function selectTables(state: RootState, filter: TableFilter): RootState {
+  const { ids, missing } = findTables(state, filter);
+  if (missing.length) {
+    throw new ToolError(
+      ToolErrorCode.notFound,
+      READ_TOOL,
+      `${missing.join(', ')} ${missing.length === 1 ? 'names' : 'name'} no live table; erd_list lists them`
+    );
+  }
+  if (!ids.length) {
+    throw refused('tableIds and tableNames name no table; pass one at least');
+  }
+  const selected = new Set(ids);
+  const { doc, collections } = state;
+
+  return {
+    ...state,
+    doc: {
+      ...doc,
+      tableIds: doc.tableIds.filter(id => selected.has(id)),
+      relationshipIds: doc.relationshipIds.filter(id =>
+        selected.has(collections.relationshipEntities[id]?.end.tableId)
+      ),
+      indexIds: doc.indexIds.filter(id =>
+        selected.has(collections.indexEntities[id]?.tableId)
+      ),
+    },
+  };
+}
+
 /**
  * Serializes a document the way an agent asked to read it: the snapshot it
  * edits by, the DDL of a vendor, which defaults to the document's database,
@@ -51,7 +101,8 @@ function toDatabase(vendor: string): number {
 export function readDocument(
   state: RootState,
   format: ReadFormat,
-  vendor?: string
+  vendor?: string,
+  filter?: TableFilter
 ): string {
   if (!READ_FORMATS.includes(format)) {
     throw refused(
@@ -61,14 +112,36 @@ export function readDocument(
   if (vendor !== undefined && format !== 'sql') {
     throw refused(`vendor applies to the sql format only, not ${format}`);
   }
+  const filtered =
+    filter?.tableIds !== undefined || filter?.tableNames !== undefined
+      ? filter
+      : undefined;
+  if (filtered && format !== 'sql') {
+    throw refused(
+      `tableIds and tableNames apply to the sql format only, not ${format}; erd_get takes them too`
+    );
+  }
 
-  if (format === 'snapshot') return JSON.stringify(toAgentSnapshot(state));
-  if (format === 'json') return toJson(state);
-
-  return createSchemaSQL(
-    state,
-    vendor === undefined ? undefined : toDatabase(vendor)
-  );
+  const text =
+    format === 'snapshot'
+      ? JSON.stringify(toAgentSnapshot(state))
+      : format === 'json'
+        ? toJson(state)
+        : createSchemaSQL(
+            filtered ? selectTables(state, filtered) : state,
+            vendor === undefined ? undefined : toDatabase(vendor)
+          );
+  if (!fitsInRead(text)) {
+    const size = `${text.length.toLocaleString('en-US')} characters, over the ${MAX_READ_CHARS.toLocaleString('en-US')} one read returns`;
+    throw new ToolError(
+      ToolErrorCode.tooLarge,
+      READ_TOOL,
+      filtered
+        ? `the DDL of the tables asked for is ${size}; ask for fewer tables at a time`
+        : `this read is ${size}; ${NARROWER[format]}`
+    );
+  }
+  return text;
 }
 
 /**
@@ -84,17 +157,23 @@ export type DocumentReader = {
 /** erd_read in one of its formats. */
 export const documentReader = (
   format: ReadFormat,
-  vendor?: string
+  vendor?: string,
+  filter?: TableFilter
 ): DocumentReader => ({
   tool: READ_TOOL,
-  render: state => readDocument(state, format, vendor),
+  render: state => readDocument(state, format, vendor, filter),
 });
 
-/** erd_list: the settings and every live entity by id, tables with their size. */
-export const listReader: DocumentReader = {
+/** erd_list: the settings, the counts and a page of tables, or the table names alone. */
+export const listReader = (options: ListOptions = {}): DocumentReader => ({
   tool: LIST_TOOL,
-  render: state => JSON.stringify(toDocumentList(state)),
-};
+  render: state =>
+    JSON.stringify(
+      options.namesOnly
+        ? toTableNameList(state, options)
+        : toDocumentList(state, options)
+    ),
+});
 
 /** erd_get: the entities named, in full. */
 export const entityReader = (ids: EntityIds): DocumentReader => ({

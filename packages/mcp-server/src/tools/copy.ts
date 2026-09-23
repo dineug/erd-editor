@@ -11,7 +11,7 @@ export type ToolCopy = {
 
 /** What the client hands the model once, beside the tool list. */
 export const SERVER_INSTRUCTIONS =
-  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. Never write a document file yourself. When a VS Code window has the document, edits appear live in its ERD editor and stay unsaved until erd_save; otherwise they are written to the file at once.';
+  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Never write a document file yourself. When a VS Code window has the document, edits appear live in its ERD editor and stay unsaved until erd_save; otherwise they are written to the file at once.';
 
 const TABLE_ID = 'Table id, from erd_list or the createdIds of erd_add_table.';
 const COLUMN_ID =
@@ -78,23 +78,39 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_read: {
     description:
-      'Reads a whole document at once. For ids and details prefer erd_list and erd_get, which stay small on a large schema. Change a document only through the erd_ tools, never by writing its file.',
+      'Reads a document as a snapshot, as DDL or as its raw JSON. The sql format with tableIds or tableNames gives the DDL of just those tables, the way to read a large schema; a read too large for one answer is refused with how to narrow it. For ids and details prefer erd_list and erd_get. Change a document only through the erd_ tools, never by writing its file.',
     args: {
       format:
         'snapshot: compact JSON with every id and column, large on a big schema. sql: DDL of a vendor. json: the whole raw .erd.json document, larger still; never write this into the file.',
       vendor:
         'Database for the sql format; defaults to the database the document is set to.',
+      tableIds:
+        'For the sql format: the DDL of these tables only, with the foreign keys they hold, which name the tables they reference.',
+      tableNames:
+        'For the sql format: tables by name, in any case, as tableIds takes them by id.',
     },
   },
   erd_list: {
     description:
-      'Lists a document: its settings, tableCount, and every table, relationship, index and memo by id. Each table has its position and its size on the ERD canvas; the width is approximate, the height exact. Columns, comments and memo text come from erd_get.',
+      'Lists a document: its settings and counts, then a page of tables, each with its id, position and size on the ERD canvas (the width approximate, the height exact), with their indexes and relationships (each relationship once, with one of its tables), and after the tables the memos. A small schema fits in one page. On a larger one, nextOffset and note say how to go on: query finds tables by a word, namesOnly lists every table name in a call or a few. Columns, comments and memo text come from erd_get; the foreign keys a table holds, from erd_read sql with tableNames.',
+    args: {
+      query:
+        'Words to look for inside table names and comments and column names and comments, in any case; tables whose names hold more of the words come first.',
+      offset:
+        'Where the page starts in the list, 0 by default; pass the nextOffset of the page before, with the same query.',
+      limit:
+        'At most this many entries in the page, 100 by default and no limit with namesOnly; a page also stops where one answer is full.',
+      namesOnly:
+        'True for the table names alone, as many as one answer holds; erd_get and erd_read take tableNames.',
+    },
   },
   erd_get: {
     description:
-      'Gives the entities named, in full: tables with their columns and size, relationships with their columns, indexes with their columns, memos with their text. Ids that name no live entity of their kind are listed in missing.',
+      'Gives the entities named, in full: tables with their columns and size, relationships with their columns, indexes with their columns, memos with their text. Ids and names that name nothing live are listed in missing; ids one answer has no room for are listed in notReturned, to ask for again.',
     args: {
       tableIds: 'Table ids, from erd_list.',
+      tableNames:
+        'Table names, in any case, from erd_list; a name gives every table so named.',
       relationshipIds: 'Relationship ids, from erd_list.',
       indexIds: 'Index ids, from erd_list.',
       memoIds: 'Memo ids, from erd_list.',

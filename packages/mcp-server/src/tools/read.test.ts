@@ -7,6 +7,7 @@ import { toJson } from '@dineug/erd-editor-schema';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
 
 import { createSeededPeer, SEED } from '@/__test-utils__/seed';
+import { createWidePeer, wideTableName } from '@/__test-utils__/wide';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import {
   READ_FORMATS,
@@ -92,5 +93,110 @@ describe('what a read refuses', () => {
     expect(refusal(() => read('ddl' as ReadFormat)).message).toBe(
       'format must be one of snapshot, sql, json, got ddl'
     );
+  });
+});
+
+describe('the DDL of some tables', () => {
+  it('holds only the tables named, with the foreign keys they hold', () => {
+    const sql = readDocument(peer.state, 'sql', 'MySQL', {
+      tableNames: ['ORDERS'],
+    });
+
+    expect(sql).toContain('CREATE TABLE orders');
+    expect(sql).not.toContain('CREATE TABLE users');
+    // orders holds the key of users, so the reference out of the selection shows.
+    expect(sql).toMatch(/REFERENCES users/);
+    expect(sql).toBe(
+      readDocument(peer.state, 'sql', 'MySQL', {
+        tableIds: [SEED.orders],
+      })
+    );
+  });
+
+  it('leaves out a foreign key a table left out holds', () => {
+    const sql = readDocument(peer.state, 'sql', undefined, {
+      tableIds: [SEED.users],
+    });
+
+    expect(sql).toContain('CREATE TABLE users');
+    expect(sql).not.toContain('REFERENCES');
+    expect(sql).not.toContain('CREATE INDEX');
+  });
+
+  it('refuses a table it cannot find, a list with none and a format other than sql', () => {
+    expect(
+      refusal(() =>
+        readDocument(peer.state, 'sql', undefined, {
+          tableIds: ['gone'],
+          tableNames: ['nowhere', 'users'],
+        })
+      )
+    ).toEqual(
+      expect.objectContaining({
+        code: ToolErrorCode.notFound,
+        message: 'gone, nowhere name no live table; erd_list lists them',
+      })
+    );
+    expect(
+      refusal(() =>
+        readDocument(peer.state, 'sql', undefined, { tableNames: ['x'] })
+      ).message
+    ).toBe('x names no live table; erd_list lists them');
+    expect(
+      refusal(() =>
+        readDocument(peer.state, 'sql', undefined, { tableIds: [] })
+      ).message
+    ).toBe('tableIds and tableNames name no table; pass one at least');
+    expect(
+      refusal(() =>
+        readDocument(peer.state, 'snapshot', undefined, { tableIds: [] })
+      ).message
+    ).toBe(
+      'tableIds and tableNames apply to the sql format only, not snapshot; erd_get takes them too'
+    );
+  });
+});
+
+describe('a read too large for one answer', () => {
+  const wide = createWidePeer(400);
+
+  afterAll(() => wide.destroy());
+
+  it.each([
+    ['sql', /pass tableIds or tableNames for the tables the task needs/],
+    ['snapshot', /find tables with erd_list \(query, namesOnly\)/],
+    ['json', /read them with erd_get, or the sql format with tableNames$/],
+  ] as const)(
+    'is refused in the %s format with how to narrow it',
+    (format, how) => {
+      const error = refusal(() => readDocument(wide.state, format));
+
+      expect(error.code).toBe(ToolErrorCode.tooLarge);
+      expect(error.message).toMatch(
+        /^this read is [\d,]+ characters, over the 40,000 one read returns; /
+      );
+      expect(error.message).toMatch(how);
+    }
+  );
+
+  it('asks for fewer tables when the tables asked for are too many', () => {
+    const error = refusal(() =>
+      readDocument(wide.state, 'sql', undefined, {
+        tableIds: wide.state.doc.tableIds,
+      })
+    );
+
+    expect(error.code).toBe(ToolErrorCode.tooLarge);
+    expect(error.message).toMatch(
+      /^the DDL of the tables asked for is [\d,]+ characters, over the 40,000 one read returns; ask for fewer tables at a time$/
+    );
+  });
+
+  it('answers the DDL of the tables a task needs', () => {
+    const sql = readDocument(wide.state, 'sql', undefined, {
+      tableNames: [wideTableName(0), wideTableName(1)],
+    });
+
+    expect(sql.match(/CREATE TABLE/g)).toHaveLength(2);
   });
 });

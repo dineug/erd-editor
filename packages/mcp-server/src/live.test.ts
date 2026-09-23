@@ -130,7 +130,7 @@ describe('a live session beyond the transition table', () => {
       'users'
     );
 
-    const list = JSON.parse((await io.run(session.read(listReader))).text);
+    const list = JSON.parse((await io.run(session.read(listReader()))).text);
     expect(list.tables.map(({ name }: { name: string }) => name)).toEqual(
       JSON.parse(readDocument(webview.state, 'snapshot')).tables.map(
         ({ name }: { name: string }) => name

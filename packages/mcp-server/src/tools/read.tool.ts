@@ -23,6 +23,13 @@ import { toolInputSchema } from '@/tools/schema';
 const pathField = (tool: string) =>
   Schema.String.annotate({ description: describeArg(tool, 'path') });
 
+const stringsField = (tool: string, name: string) =>
+  Schema.optionalKey(
+    Schema.Array(Schema.String).annotate({
+      description: describeArg(tool, name),
+    })
+  );
+
 export const ReadParams = Schema.Struct({
   path: pathField(READ_TOOL),
   format: Schema.Literals(READ_FORMATS).annotate({
@@ -33,31 +40,48 @@ export const ReadParams = Schema.Struct({
       description: describeArg(READ_TOOL, 'vendor'),
     })
   ),
+  tableIds: stringsField(READ_TOOL, 'tableIds'),
+  tableNames: stringsField(READ_TOOL, 'tableNames'),
 });
 
-export const ListParams = Schema.Struct({ path: pathField(LIST_TOOL) });
+export const ListParams = Schema.Struct({
+  path: pathField(LIST_TOOL),
+  query: Schema.optionalKey(
+    Schema.String.annotate({ description: describeArg(LIST_TOOL, 'query') })
+  ),
+  offset: Schema.optionalKey(
+    Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).annotate({
+      description: describeArg(LIST_TOOL, 'offset'),
+    })
+  ),
+  limit: Schema.optionalKey(
+    Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)).annotate({
+      description: describeArg(LIST_TOOL, 'limit'),
+    })
+  ),
+  namesOnly: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description: describeArg(LIST_TOOL, 'namesOnly'),
+    })
+  ),
+});
 
-/** The id kinds erd_get takes, each an argument of its own. */
+/** The kinds erd_get takes, each an argument of its own; tables by id or by name. */
 export const ENTITY_ID_ARGS = Object.freeze([
   'tableIds',
+  'tableNames',
   'relationshipIds',
   'indexIds',
   'memoIds',
 ] as const);
 
-const idsField = (name: (typeof ENTITY_ID_ARGS)[number]) =>
-  Schema.optionalKey(
-    Schema.Array(Schema.String).annotate({
-      description: describeArg(GET_TOOL, name),
-    })
-  );
-
 export const GetParams = Schema.Struct({
   path: pathField(GET_TOOL),
-  tableIds: idsField('tableIds'),
-  relationshipIds: idsField('relationshipIds'),
-  indexIds: idsField('indexIds'),
-  memoIds: idsField('memoIds'),
+  tableIds: stringsField(GET_TOOL, 'tableIds'),
+  tableNames: stringsField(GET_TOOL, 'tableNames'),
+  relationshipIds: stringsField(GET_TOOL, 'relationshipIds'),
+  indexIds: stringsField(GET_TOOL, 'indexIds'),
+  memoIds: stringsField(GET_TOOL, 'memoIds'),
 });
 
 /** erd_get needs one id at least, in any of its lists. */
@@ -70,7 +94,7 @@ function toEntityReader(
         new ToolError(
           ToolErrorCode.invalidArgs,
           GET_TOOL,
-          `name at least one id in ${ENTITY_ID_ARGS.join(', ')}; erd_list lists them`
+          `name at least one entity in ${ENTITY_ID_ARGS.join(', ')}; erd_list lists them`
         )
       );
 }
@@ -142,9 +166,14 @@ const addReadTool = <
 
 /** erd_read, erd_list and erd_get, in that order. */
 export const registerReadTools = Effect.gen(function* () {
-  yield* addReadTool(READ_TOOL, ReadParams, ({ format, vendor }) =>
-    Effect.succeed(documentReader(format, vendor))
+  yield* addReadTool(
+    READ_TOOL,
+    ReadParams,
+    ({ format, vendor, tableIds, tableNames }) =>
+      Effect.succeed(documentReader(format, vendor, { tableIds, tableNames }))
   );
-  yield* addReadTool(LIST_TOOL, ListParams, () => Effect.succeed(listReader));
+  yield* addReadTool(LIST_TOOL, ListParams, ({ path: _, ...options }) =>
+    Effect.succeed(listReader(options))
+  );
   yield* addReadTool(GET_TOOL, GetParams, toEntityReader);
 });

@@ -8,11 +8,24 @@ import { SESSION_TOOL_NAMES } from '@/tools/toolkit';
 const SURFACE: Array<{ name: string; args: string[] }> = [
   { name: 'erd_list_documents', args: [] },
   { name: 'erd_open_document', args: ['path', 'create'] },
-  { name: 'erd_read', args: ['path', 'format', 'vendor'] },
-  { name: 'erd_list', args: ['path'] },
+  {
+    name: 'erd_read',
+    args: ['path', 'format', 'vendor', 'tableIds', 'tableNames'],
+  },
+  {
+    name: 'erd_list',
+    args: ['path', 'query', 'offset', 'limit', 'namesOnly'],
+  },
   {
     name: 'erd_get',
-    args: ['path', 'tableIds', 'relationshipIds', 'indexIds', 'memoIds'],
+    args: [
+      'path',
+      'tableIds',
+      'tableNames',
+      'relationshipIds',
+      'indexIds',
+      'memoIds',
+    ],
   },
   { name: 'erd_save', args: ['path'] },
   { name: 'erd_undo', args: ['path'] },

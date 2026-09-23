@@ -35,11 +35,22 @@ describe('the document list', () => {
     const list = toDocumentList(peer.state);
 
     expect(list.settings).toEqual(toAgentSnapshot(peer.state).settings);
-    expect(list.tableCount).toBe(3);
-    expect(Object.keys(list).slice(0, 3)).toEqual([
+    expect(list).toMatchObject({
+      tableCount: 3,
+      relationshipCount: 1,
+      indexCount: 1,
+      memoCount: 1,
+    });
+    expect(Object.keys(list)).toEqual([
       'settings',
       'tableCount',
+      'relationshipCount',
+      'indexCount',
+      'memoCount',
       'tables',
+      'relationships',
+      'indexes',
+      'memos',
     ]);
     expect(
       list.tables.map(({ id, name, x, y, columnCount }) => ({

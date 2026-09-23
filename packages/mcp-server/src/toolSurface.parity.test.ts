@@ -50,7 +50,21 @@ const declarations = (surface: readonly ToolSurface[]) =>
 const outputSchemas = (surface: readonly ToolSurface[]) =>
   surface.map(({ name, hasOutputSchema }) => ({ name, hasOutputSchema }));
 
-const recorded = () => live.filter(({ name }) => !ADDED_TOOLS.includes(name));
+/** The optional arguments a recorded tool gained after the recording was made. */
+const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
+  erd_read: ['tableIds', 'tableNames'],
+};
+
+/** The recorded tools as the server lists them, the arguments added since left out. */
+const recorded = () =>
+  live
+    .filter(({ name }) => !ADDED_TOOLS.includes(name))
+    .map(tool => ({
+      ...tool,
+      args: tool.args.filter(
+        ({ name }) => !ADDED_ARGS[tool.name]?.includes(name)
+      ),
+    }));
 
 describe('the tool surface against the SDK-based server recording', () => {
   it('holds the 59 recorded tools and the 4 added since', () => {
@@ -68,6 +82,15 @@ describe('the tool surface against the SDK-based server recording', () => {
 
   it('keeps every recorded tool name, argument name, JSON type and required flag', () => {
     expect(declarations(recorded())).toEqual(declarations(fixture));
+  });
+
+  it('adds only optional arguments to a recorded tool', () => {
+    for (const [name, added] of Object.entries(ADDED_ARGS)) {
+      const args = live.find(tool => tool.name === name)!.args;
+      expect(
+        args.filter(arg => added.includes(arg.name)).map(arg => arg.required)
+      ).toEqual(added.map(() => false));
+    }
   });
 
   it('advertises a result schema for every tool but the read tools, where the recording has none', () => {

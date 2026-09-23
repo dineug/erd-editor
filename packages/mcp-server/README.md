@@ -66,13 +66,21 @@ has none. Existing `.erd`, `.vuerd` and `.vuerd.json` files open too. A file tha
 document the editor can read, such as one left with merge conflict markers, is refused with
 `invalidDocument` and left as it is, never loaded as an empty diagram and written back.
 
-An agent finds ids with `erd_list`, which lists the settings, the table count and every table,
-relationship, index and memo by id, each table with its position and its size on the canvas (the width approximate, the
-height exact), and reads columns and other details with `erd_get`, then passes those ids to the edit
-tools. Both stay small on a large schema. `erd_read` answers the whole document at once: the
+An agent finds ids with `erd_list`, which lists the settings, the counts and the tables by id, each
+with its position and its size on the canvas (the width approximate, the height exact), with their
+relationships and indexes, then the memos, and reads columns and other details with `erd_get`, then
+passes those ids to the edit tools. `erd_read` answers the whole document at once: the
 `snapshot` format lists every entity with its id, the `sql` format generates DDL for any of the
 eight supported databases and the `json` format is the raw file. Editing the JSON file by hand is
 not supported.
+
+Schemas of hundreds or thousands of tables work too. A read answers at most 40,000 characters,
+under the point where Claude Code sets a tool result aside in a file. `erd_list` answers a page of
+100 tables and says where the next one starts; its `query` finds tables by a word in a table or
+column name or comment, and `namesOnly` lists the table names alone, 2,000 short names in one
+answer. `erd_get` and `erd_read` take `tableNames` as well as ids, so an agent asked for a SQL query
+on a large schema reads the DDL of just the tables it needs. A read too large for one answer is
+refused with how to narrow it.
 
 ## Tools
 

@@ -104,15 +104,42 @@ describe('the tool surface (AC-M8)', () => {
     expect(tool('erd_read').description).toMatch(/prefer erd_list and erd_get/);
   });
 
-  it('gives erd_list the path alone and erd_get a list of ids per kind', () => {
+  it('gives erd_read the tables to narrow its DDL to, by id or by name', () => {
+    const { properties, required } = tool('erd_read').inputSchema as any;
+
+    for (const name of ['tableIds', 'tableNames']) {
+      expect(properties[name]).toMatchObject({
+        type: 'array',
+        items: { type: 'string' },
+      });
+    }
+    expect(required).toEqual(['path', 'format']);
+  });
+
+  it('gives erd_list a query, a page and namesOnly, and erd_get a list per kind', () => {
     const list = tool('erd_list').inputSchema as any;
     const get = tool('erd_get').inputSchema as any;
 
-    expect(Object.keys(list.properties)).toEqual(['path']);
+    expect(Object.keys(list.properties)).toEqual([
+      'path',
+      'query',
+      'offset',
+      'limit',
+      'namesOnly',
+    ]);
     expect(list.required).toEqual(['path']);
+    expect(list.properties.offset).toMatchObject({
+      type: 'integer',
+      minimum: 0,
+    });
+    expect(list.properties.limit).toMatchObject({
+      type: 'integer',
+      minimum: 1,
+    });
     expect(Object.keys(get.properties)).toEqual([
       'path',
       'tableIds',
+      'tableNames',
       'relationshipIds',
       'indexIds',
       'memoIds',

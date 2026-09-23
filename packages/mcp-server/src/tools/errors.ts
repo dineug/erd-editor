@@ -3,6 +3,7 @@ export const ToolErrorCode = {
   unknownTool: 'unknownTool',
   invalidArgs: 'invalidArgs',
   notFound: 'notFound',
+  tooLarge: 'tooLarge',
 } as const;
 export type ToolErrorCode = (typeof ToolErrorCode)[keyof typeof ToolErrorCode];
 
