@@ -349,22 +349,18 @@ describe('HubErrorCode', () => {
 });
 
 describe('HubRequestError', () => {
-  it('is an Error that carries its code', () => {
-    const error = new HubRequestError(HubErrorCode.notOpen, 'closed');
+  it('is an Error that carries its code, tagged for catchTag', () => {
+    const error = new HubRequestError({
+      code: HubErrorCode.notOpen,
+      message: 'closed',
+    });
 
     expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(HubRequestError);
     expect(error.name).toBe('HubRequestError');
+    expect(error._tag).toBe('HubRequestError');
     expect(error.code).toBe('notOpen');
     expect(error.message).toBe('closed');
-  });
-
-  it('builds the same error from props, tagged for catchTag', () => {
-    const error = new HubRequestError({ code: 'readonly', message: 'locked' });
-
-    expect(error).toBeInstanceOf(HubRequestError);
-    expect(error._tag).toBe('HubRequestError');
-    expect(error.code).toBe('readonly');
-    expect(error.message).toBe('locked');
   });
 
   it('refuses a code outside HubErrorCode', () => {
@@ -376,7 +372,10 @@ describe('HubRequestError', () => {
   it('fails an effect and is caught by its tag', async () => {
     const code = await runTest(
       Effect.fail(
-        new HubRequestError(HubErrorCode.outsideWorkspace, 'out')
+        new HubRequestError({
+          code: HubErrorCode.outsideWorkspace,
+          message: 'out',
+        })
       ).pipe(
         Effect.catchTag('HubRequestError', error => Effect.succeed(error.code))
       )

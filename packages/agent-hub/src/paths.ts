@@ -131,9 +131,9 @@ export function assertAuthorized(
   platform: Platform
 ): void {
   if (!isAuthorized(folders, documents, target, platform)) {
-    throw new HubRequestError(
-      HubErrorCode.outsideWorkspace,
-      `${target} is neither inside a workspace folder nor an open document`
-    );
+    throw new HubRequestError({
+      code: HubErrorCode.outsideWorkspace,
+      message: `${target} is neither inside a workspace folder nor an open document`,
+    });
   }
 }

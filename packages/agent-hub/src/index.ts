@@ -7,10 +7,8 @@ export {
   type StaleLock,
 } from './discovery';
 export {
-  createFrameDecoder,
   decodeFrames,
   encodeFrame,
-  type FrameDecoder,
   FrameError,
   MAX_FRAME_BYTES,
 } from './framing';

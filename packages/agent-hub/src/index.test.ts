@@ -12,7 +12,6 @@ describe('public api surface', () => {
     expect(Object.keys(publicApi).sort()).toEqual(
       [
         'assertAuthorized',
-        'createFrameDecoder',
         'decodeFrames',
         'DocumentInfo',
         'encodeFrame',

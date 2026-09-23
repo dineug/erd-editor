@@ -229,33 +229,11 @@ export const HUB_NOTIFICATION_METHODS: readonly HubNotificationMethod[] =
     HubNotification.members.map(member => member.fields.method.literal)
   );
 
-type HubRequestErrorProps = {
-  readonly code: HubErrorCode;
-  readonly message: string;
-};
-
-/**
- * A failure the hub turns into a HubError response carrying the same code.
- * The positional form predates the schema; both build the same error.
- */
+/** A failure the hub turns into a HubError response carrying the same code. */
 export class HubRequestError extends Schema.TaggedError<HubRequestError>()(
   'HubRequestError',
   { code: HubErrorCodeSchema, message: Schema.String }
-) {
-  constructor(code: HubErrorCode, message: string);
-  constructor(props: HubRequestErrorProps, options?: Schema.MakeOptions);
-  constructor(
-    codeOrProps: HubErrorCode | HubRequestErrorProps,
-    messageOrOptions?: string | Schema.MakeOptions
-  ) {
-    super(
-      typeof codeOrProps === 'string'
-        ? { code: codeOrProps, message: String(messageOrOptions) }
-        : codeOrProps,
-      typeof messageOrOptions === 'string' ? undefined : messageOrOptions
-    );
-  }
-}
+) {}
 
 /**
  * Names both versions and the side that is behind, which is the side to
