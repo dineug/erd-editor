@@ -19,7 +19,14 @@ import {
   Stream,
 } from 'effect';
 import { Socket } from 'effect/unstable/socket';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 import type { Uri as VscodeUri } from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
@@ -52,14 +59,15 @@ afterEach(async () => {
   await fs.rm(dir, { recursive: true, force: true });
 });
 
-/** Collects everything the peer sends until it closes the connection. */
+/** Collects everything the peer sends until it closes the connection; a reset fails it. */
 function readUntilEnd(client: NetSocket): Promise<string> {
   client.setEncoding('utf8');
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     let text = '';
     client.on('data', chunk => {
       text += chunk;
     });
+    client.on('error', reject);
     client.on('close', () => resolve(text));
   });
 }
@@ -275,9 +283,13 @@ describe('HubListener over node:net', () => {
 
   it('hangs up every peer when its scope closes, so nothing is left connected', async () => {
     const pipe = join(dir, 'hub.sock');
-    const close = await serve(pipe, []);
+    const received: string[] = [];
+    const close = await serve(pipe, received);
     const client = connect(pipe);
     const ended = readUntilEnd(client);
+    // Closed before it accepts, Linux resets a connection still in the backlog.
+    client.write('partial');
+    await vi.waitFor(() => expect(received.join('')).toBe('partial'));
 
     await close();
 
