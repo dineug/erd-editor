@@ -65,8 +65,8 @@ export default defineConfig({
       external,
       output: {
         banner: '#!/usr/bin/env node',
-        // An ssr build names the entry after its module and minifies without
-        // stripping whitespace; these two say what the lib block above means.
+        // This build names the entry after its module, and lib mode keeps the
+        // whitespace of an es build; these two say what the lib block above means.
         entryFileNames: 'erd-editor-mcp.js',
         minify: true,
       },
