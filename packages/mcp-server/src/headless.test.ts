@@ -11,6 +11,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
+import * as NodePath from '@effect/platform-node/NodePath';
+import * as Effect from 'effect/Effect';
+import * as Layer from 'effect/Layer';
 import {
   afterEach,
   beforeEach,
@@ -26,12 +30,10 @@ import {
   SHOP_SQL,
 } from '@/__test-utils__/documents';
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
-import {
-  createMemoryIo,
-  fsError,
-  type MemoryIo,
-} from '@/__test-utils__/memoryIo';
-import { nodeIo } from '@/io';
+import { fsError } from '@/__test-utils__/memoryFs';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
+import * as ProcessInfo from '@/io/process';
+import type { HeadlessSession } from '@/session/headless';
 import {
   HEADLESS_SAVE_NOTE,
   openHeadlessSession,
@@ -42,14 +44,14 @@ import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/solo.erd.json';
 
-let io: MemoryIo;
+let io: MemoryHost;
 let mcp: McpHarness;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  io = createMemoryIo();
+  io = createMemoryHost();
   io.put(DOCUMENT, emptyDocument());
-  mcp = await connectMcp({ io });
+  mcp = await connectMcp({ host: io });
 });
 
 afterEach(async () => {
@@ -67,6 +69,16 @@ function withMemo(): string {
     peer.destroy();
   }
 }
+
+/** A session on the memory host, as the manager opens one. */
+const open = (options: { path?: string; create?: boolean } = {}) =>
+  io.run(
+    openHeadlessSession({
+      path: options.path ?? DOCUMENT,
+      nickname: 'agent',
+      create: options.create,
+    })
+  );
 
 /** What the file on disk reads as, through a fresh engine. */
 function reload(text: string) {
@@ -161,14 +173,10 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
   });
 
   it('refuses a read on a session that was closed', async () => {
-    const session = await openHeadlessSession({
-      io,
-      path: DOCUMENT,
-      nickname: 'agent',
-    });
-    await session.close();
+    const session = await open();
+    await io.run(session.close);
 
-    await expect(session.read('snapshot')).rejects.toMatchObject({
+    await expect(io.run(session.read('snapshot'))).rejects.toMatchObject({
       name: 'PeerStoreError',
       code: 'destroyed',
     });
@@ -180,6 +188,15 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
     });
     expect(missing.isError).toBe(true);
     expect(missing.json.error.code).toBe('notFound');
+  });
+
+  it('loads a file that starts with a byte order mark, as the editor does', async () => {
+    io.put(DOCUMENT, `\ufeff${emptyDocument()}`);
+
+    const added = await mcp.ok('erd_add_table', { path: DOCUMENT });
+    expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds).toEqual(
+      added.createdIds
+    );
   });
 
   it('loads a blank file as a new document', async () => {
@@ -274,44 +291,81 @@ describe('headless compare-and-swap (AC-P14)', () => {
     expect(conflict.isError).toBe(true);
     expect(conflict.json.error.code).toBe('conflict');
     expect(io.read(DOCUMENT)).toBe(theirs);
-    const snapshot = JSON.parse(
-      await mcp.text('erd_read', { path: DOCUMENT, format: 'snapshot' })
+    expect([...io.files.keys()].filter(path => path.endsWith('.tmp'))).toEqual(
+      []
     );
+    // Loaded again at the conflict, so the next read finds nothing new and carries no note.
+    const read = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+    });
+    expect(read.texts).toHaveLength(1);
+    const snapshot = JSON.parse(read.text);
     expect(snapshot.tables).toEqual([]);
     expect(snapshot.memos).toEqual([]);
   });
 
+  it('tells a change of the same size by its mtime, between calls and during one', async () => {
+    const {
+      createdIds: [tableId],
+    } = await mcp.ok('erd_add_table', { path: DOCUMENT });
+    // The same bytes but for the table id, so the size alone never tells them apart.
+    const otherId = `${tableId[0] === 'x' ? 'y' : 'x'}${tableId.slice(1)}`;
+    const ours = io.read(DOCUMENT);
+    const theirs = ours.replaceAll(tableId, otherId);
+    expect(theirs).toHaveLength(ours.length);
+    io.put(DOCUMENT, theirs);
+
+    const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    expect(memo.notes).toEqual([RELOADED_NOTE]);
+    expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds).toEqual([otherId]);
+
+    const again = io.read(DOCUMENT).replaceAll(otherId, tableId);
+    let stats = 0;
+    io.beforeStat = path => {
+      if (path === DOCUMENT && ++stats === 2) io.put(DOCUMENT, again);
+    };
+    const conflict = await mcp.call('erd_add_table', { path: DOCUMENT });
+    io.beforeStat = null;
+
+    expect(conflict.json.error.code).toBe('conflict');
+    expect(io.read(DOCUMENT)).toBe(again);
+  });
+
   it('takes the baseline before reading, so a write landing in between is kept', async () => {
     const theirs = withMemo();
-    const readFile = io.readFile;
-    io.readFile = async path => {
-      const text = await readFile(path);
-      io.readFile = readFile;
-      io.put(path, theirs);
-      return text;
-    };
-    const session = await openHeadlessSession({
-      io,
-      path: DOCUMENT,
-      nickname: 'agent',
-    });
+    const read = io.calls.readFileString;
+    io.calls.readFileString = path =>
+      read(path).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            io.calls.readFileString = read;
+            io.put(path, theirs);
+          })
+        )
+      );
+    const session = await open();
 
-    const { run } = await session.runTool('erd_add_table', {});
+    const { run } = await io.run(session.runTool('erd_add_table', {}));
     const document = JSON.parse(io.read(DOCUMENT));
     expect(document.doc.memoIds).toEqual(JSON.parse(theirs).doc.memoIds);
     expect(document.doc.tableIds).toEqual(run.createdIds);
-    await session.close();
+    await io.run(session.close);
   });
 
   it('keeps the stat of the file it wrote, so a write landing after the rename is loaded', async () => {
     const theirs = withMemo();
     await mcp.ok('erd_add_table', { path: DOCUMENT });
-    const rename = io.rename;
-    io.rename = async (from, to) => {
-      await rename(from, to);
-      io.rename = rename;
-      io.put(to, theirs);
-    };
+    const rename = io.calls.rename;
+    io.calls.rename = (from, to) =>
+      rename(from, to).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            io.calls.rename = rename;
+            io.put(to, theirs);
+          })
+        )
+      );
 
     await mcp.ok('erd_add_table', { path: DOCUMENT });
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
@@ -333,116 +387,99 @@ describe('headless compare-and-swap (AC-P14)', () => {
     ]) {
       io.files.delete(DOCUMENT);
       io.put(DOCUMENT, emptyDocument(), before);
-      const session = await openHeadlessSession({
-        io,
-        path: DOCUMENT,
-        nickname: 'agent',
-      });
+      const session = await open();
 
-      await session.runTool('erd_add_table', {});
-      expect((await io.stat(DOCUMENT)).mode).toBe(after);
-      await session.close();
+      await io.run(session.runTool('erd_add_table', {}));
+      expect(io.files.get(DOCUMENT)!.mode).toBe(after);
+      await io.run(session.close);
     }
   });
 
-  it('loads the file again when the write itself fails', async () => {
-    const session = await openHeadlessSession({
-      io,
-      path: DOCUMENT,
-      nickname: 'agent',
-    });
-    const rename = io.rename;
-    io.rename = async () => {
-      throw fsError('EACCES', DOCUMENT);
-    };
+  it('loads the file again when the write itself fails, and reports the system error', async () => {
+    const session = await open();
+    const rename = io.calls.rename;
+    io.calls.rename = from =>
+      Effect.fail(fsError('PermissionDenied', 'rename', from));
 
-    await expect(session.runTool('erd_add_table', {})).rejects.toMatchObject({
-      code: 'EACCES',
+    await expect(
+      io.run(session.runTool('erd_add_table', {}))
+    ).rejects.toMatchObject({
+      _tag: 'PlatformError',
+      reason: { _tag: 'PermissionDenied' },
     });
-    io.rename = rename;
+    io.calls.rename = rename;
     expect(io.files.has('/work/.solo.erd.json.id1.tmp')).toBe(false);
-    expect(JSON.parse((await session.read('snapshot')).text).tables).toEqual(
-      []
-    );
-    await session.close();
+    expect(
+      JSON.parse((await io.run(session.read('snapshot'))).text).tables
+    ).toEqual([]);
+    await io.run(session.close);
   });
 
   it('leaves no temp file and keeps the disk state when the temp write fails', async () => {
-    const session = await openHeadlessSession({
-      io,
-      path: DOCUMENT,
-      nickname: 'agent',
-    });
-    io.writeFile = async path => {
-      throw fsError('ENOSPC', path);
-    };
+    const session = await open();
+    io.calls.writeFileString = path =>
+      Effect.fail(fsError('Unknown', 'writeFile', path, 'ENOSPC'));
 
-    await expect(session.runTool('erd_add_memo', {})).rejects.toMatchObject({
-      code: 'ENOSPC',
+    await expect(
+      io.run(session.runTool('erd_add_memo', {}))
+    ).rejects.toMatchObject({ reason: { _tag: 'Unknown' } });
+    expect(
+      JSON.parse((await io.run(session.read('snapshot'))).text).memos
+    ).toEqual([]);
+    await io.run(session.close);
+  });
+
+  it('answers a failed write as internal, in the words of the system call', async () => {
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    io.calls.writeFileString = path =>
+      Effect.fail(fsError('Unknown', 'writeFile', path, 'ENOSPC'));
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error).toEqual({
+      code: 'internal',
+      message: 'ENOSPC: /work/.solo.erd.json.id2.tmp',
     });
-    expect(JSON.parse((await session.read('snapshot')).text).memos).toEqual([]);
-    await session.close();
   });
 
   it('reports a document deleted between calls', async () => {
-    const session = await openHeadlessSession({
-      io,
-      path: DOCUMENT,
-      nickname: 'agent',
-    });
-    await io.unlink(DOCUMENT);
+    const session = await open();
+    io.files.delete(DOCUMENT);
 
-    await expect(session.runTool('erd_add_memo', {})).rejects.toMatchObject({
-      code: 'notFound',
-    });
-    await session.close();
+    await expect(
+      io.run(session.runTool('erd_add_memo', {}))
+    ).rejects.toMatchObject({ code: 'notFound' });
+    await io.run(session.close);
   });
 
   it('writes nothing for an undo or redo with nothing to revert', async () => {
-    const session = await openHeadlessSession({
-      io,
-      path: DOCUMENT,
-      nickname: 'agent',
-    });
+    const session = await open();
 
-    expect((await session.undo()).result.label).toBeNull();
-    expect((await session.redo()).result.label).toBeNull();
+    expect((await io.run(session.undo)).result.label).toBeNull();
+    expect((await io.run(session.redo)).result.label).toBeNull();
     expect(io.writes).toEqual([]);
-    await session.close();
+    await io.run(session.close);
   });
 
   it('refuses to create a document in a folder that does not exist', async () => {
     await expect(
-      openHeadlessSession({
-        io,
-        path: '/nowhere/new.erd.json',
-        nickname: 'agent',
-        create: true,
-      })
+      open({ path: '/nowhere/new.erd.json', create: true })
     ).rejects.toMatchObject({ code: 'notFound' });
   });
 
   it('passes other failures of an exclusive create through', async () => {
-    io.createFile = async path => {
-      throw fsError('EACCES', path);
-    };
+    io.calls.writeFileString = path =>
+      Effect.fail(fsError('PermissionDenied', 'writeFile', path));
     await expect(
-      openHeadlessSession({
-        io,
-        path: '/work/new.erd.json',
-        nickname: 'agent',
-        create: true,
-      })
-    ).rejects.toMatchObject({ code: 'EACCES' });
+      open({ path: '/work/new.erd.json', create: true })
+    ).rejects.toMatchObject({ reason: { _tag: 'PermissionDenied' } });
   });
 
   it('passes a read failure other than a missing file through', async () => {
-    io.readFile = async path => {
-      throw fsError('EACCES', path);
-    };
-    await expect(
-      openHeadlessSession({ io, path: DOCUMENT, nickname: 'agent' })
-    ).rejects.toMatchObject({ code: 'EACCES' });
+    io.calls.readFileString = path =>
+      Effect.fail(fsError('PermissionDenied', 'readFile', path));
+    await expect(open()).rejects.toMatchObject({
+      reason: { _tag: 'PermissionDenied' },
+    });
   });
 });
 
@@ -457,44 +494,47 @@ describe('headless on a real file system', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  const node = Layer.mergeAll(
+    NodeFileSystem.layer,
+    NodePath.layer,
+    ProcessInfo.layer
+  );
+  const onNode = <A, E>(
+    effect: Effect.Effect<A, E, Layer.Success<typeof node>>
+  ) => Effect.runPromise(Effect.provide(effect, node));
+  const openReal = (path: string): Promise<HeadlessSession> =>
+    onNode(openHeadlessSession({ path, nickname: 'agent' }));
+
   it('replaces the file atomically and leaves no temp file behind', async () => {
     const path = join(dir, 'real.erd.json');
-    await writeFile(path, `﻿${emptyDocument()}`);
-    const session = await openHeadlessSession({
-      io: nodeIo,
-      path,
-      nickname: 'agent',
-    });
+    await writeFile(path, `\ufeff${emptyDocument()}`);
+    const session = await openReal(path);
 
-    const { run } = await session.runTool('erd_add_table', {});
+    const { run } = await onNode(session.runTool('erd_add_table', {}));
     const text = await readFile(path, 'utf8');
 
     expect(JSON.parse(text).doc.tableIds).toEqual(run.createdIds);
     expect(await readdir(dir)).toEqual(['real.erd.json']);
-    expect(reload(text)).toBe((await session.read('snapshot')).text);
-    await session.close();
+    expect(reload(text)).toBe((await onNode(session.read('snapshot'))).text);
+    await onNode(session.close);
   });
 
   it('keeps a private file private, and needs no reload after its own write', async () => {
     const path = join(dir, 'private.erd.json');
     await writeFile(path, emptyDocument());
     await chmod(path, 0o600);
-    const session = await openHeadlessSession({
-      io: nodeIo,
-      path,
-      nickname: 'agent',
-    });
+    const session = await openReal(path);
 
-    await session.runTool('erd_add_table', {});
+    await onNode(session.runTool('erd_add_table', {}));
     expect((await stat(path)).mode & 0o777).toBe(0o600);
 
     // The baseline is the temp file's stat, so this holds only if the rename kept it.
-    const undone = await session.undo();
+    const undone = await onNode(session.undo);
     expect(undone).toMatchObject({
       result: { label: 'erd_add_table' },
       notes: [],
     });
     expect(JSON.parse(await readFile(path, 'utf8')).doc.tableIds).toEqual([]);
-    await session.close();
+    await onNode(session.close);
   });
 });

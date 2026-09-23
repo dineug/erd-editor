@@ -11,7 +11,7 @@ import {
 
 import { emptyDocument } from '@/__test-utils__/documents';
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { SessionError } from '@/errors';
 import { ToolError } from '@/tools/errors';
 import { actionTools, toolByName } from '@/tools/registry';
@@ -291,14 +291,14 @@ describe('the text blocks against 0.1.0 (D11)', () => {
 
 describe('the results a client receives (D11)', () => {
   const DOCUMENT = '/work/a.erd.json';
-  let io: MemoryIo;
+  let io: MemoryHost;
   let mcp: McpHarness;
 
   beforeEach(async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    io = createMemoryIo();
+    io = createMemoryHost();
     io.put(DOCUMENT, emptyDocument());
-    mcp = await connectMcp({ io });
+    mcp = await connectMcp({ host: io });
   });
 
   afterEach(async () => {

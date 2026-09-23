@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
 
-import { SessionManager, type SessionManagerShape } from '@/session/service';
+import { SessionManager, type SessionManagerShape } from '@/session/manager';
 
 const unused = (name: string) =>
   Effect.die(new Error(`${name} is not part of this spec`));
@@ -24,7 +24,7 @@ export function stubSessions(
       save: () => unused('save'),
       undo: () => unused('undo'),
       redo: () => unused('redo'),
-      sweep: unused('sweep'),
+      sweep: Effect.succeed([]),
       closeAll: Effect.void,
       paths: Effect.succeed([]),
       ...calls,

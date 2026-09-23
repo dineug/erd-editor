@@ -3,11 +3,19 @@ import {
   type DocumentInfo,
   type LockCandidate,
 } from '@dineug/erd-editor-agent-hub';
+import * as Clock from 'effect/Clock';
+import * as Context from 'effect/Context';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
+import * as Layer from 'effect/Layer';
+import * as Path from 'effect/Path';
+import * as Schedule from 'effect/Schedule';
+import * as Semaphore from 'effect/Semaphore';
 
 import { SessionError, SessionErrorCode } from '@/errors';
-import { connectHub } from '@/hubClient';
-import { type McpIo } from '@/io';
-import { logUnsafe } from '@/logger';
+import { HubConnector } from '@/hub/client';
+import { HubDiscovery } from '@/hub/discovery';
+import { ProcessInfo } from '@/io/process';
 import { realPath, resolveDocumentPath, sessionKey } from '@/paths';
 import {
   createEmptyDocument,
@@ -15,13 +23,13 @@ import {
   readFromDisk,
 } from '@/session/disk';
 import { openHeadlessSession } from '@/session/headless';
-import { createLiveSession, type LiveSession } from '@/session/live';
-import { discover } from '@/session/resolve';
+import { type LiveSession, makeLiveSession } from '@/session/live';
 import {
   type DocumentSession,
   type Notes,
   type ReadOutcome,
   type SaveOutcome,
+  type SessionCall,
   type SessionMode,
   type ToolOutcome,
   type UndoOutcome,
@@ -30,6 +38,12 @@ import type { ReadFormat } from '@/tools/read';
 
 /** A session idle this long is closed; the next call opens a new one and reseeds. */
 export const IDLE_TTL_MS = 30 * 60 * 1000;
+
+/** How often idle sessions are looked for between calls. */
+export const SWEEP_INTERVAL_MS = 60_000;
+
+/** The nickname a peer shows when the client sent no name. */
+export const DEFAULT_CLIENT_NAME = 'agent';
 
 export const FELL_BACK_NOTE =
   'The VS Code window that served this document has exited, so this call edited the file on disk instead; edits made through that window can no longer be undone.';
@@ -58,39 +72,44 @@ export type OpenOutcome = {
   notes: Notes;
 };
 
-export type SessionManager = {
-  listDocuments: () => Promise<ListOutcome>;
-  openDocument: (path: string, create: boolean) => Promise<OpenOutcome>;
-  runTool: (
+export type SessionManagerShape = {
+  /** Names this server's peers after the MCP client, from the first call that runs. */
+  readonly rememberClient: (name: string | undefined) => Effect.Effect<void>;
+  readonly listDocuments: SessionCall<ListOutcome>;
+  readonly openDocument: (
+    path: string,
+    create: boolean
+  ) => SessionCall<OpenOutcome>;
+  readonly runTool: (
     path: string,
     name: string,
     args: Record<string, unknown>
-  ) => Promise<WithMode<ToolOutcome>>;
-  read: (
+  ) => SessionCall<WithMode<ToolOutcome>>;
+  readonly read: (
     path: string,
     format: ReadFormat,
     vendor?: string
-  ) => Promise<WithMode<ReadOutcome>>;
-  save: (path: string) => Promise<WithMode<SaveOutcome>>;
-  undo: (path: string) => Promise<WithMode<UndoOutcome>>;
-  redo: (path: string) => Promise<WithMode<UndoOutcome>>;
-  /** Closes every session idle for idleTtlMs; resolves with their paths. */
-  sweep: () => Promise<string[]>;
-  closeAll: () => Promise<void>;
+  ) => SessionCall<WithMode<ReadOutcome>>;
+  readonly save: (path: string) => SessionCall<WithMode<SaveOutcome>>;
+  readonly undo: (path: string) => SessionCall<WithMode<UndoOutcome>>;
+  readonly redo: (path: string) => SessionCall<WithMode<UndoOutcome>>;
+  /** Closes every session idle for IDLE_TTL_MS; succeeds with their paths. */
+  readonly sweep: Effect.Effect<string[]>;
+  readonly closeAll: Effect.Effect<void>;
   /** The documents with an open session, for the idle and state specs. */
-  paths: () => string[];
+  readonly paths: Effect.Effect<string[]>;
 };
 
-export type SessionManagerOptions = {
-  io: McpIo;
-  /** The MCP client's name: the peer's nickname and what hello carries. */
-  clientName: () => string;
-  idleTtlMs?: number;
-  now?: () => number;
-  requestTimeoutMs?: number;
-};
+/** One session per document, for every tool the server lists. */
+export class SessionManager extends Context.Service<
+  SessionManager,
+  SessionManagerShape
+>()('@dineug/erd-editor-mcp/SessionManager') {}
 
 type Entry = { session: DocumentSession; lastUsed: number };
+
+/** A document's queue of calls, dropped once nothing waits on it. */
+type Lock = { semaphore: Semaphore.Semaphore; users: number };
 
 type Intent = 'read' | 'write';
 
@@ -118,34 +137,62 @@ function hubGoneError(path: string, pid: number): SessionError {
 const isLive = (session: DocumentSession | undefined): session is LiveSession =>
   session?.mode === 'live';
 
+/** A throw inside a session fails the call, as it rejected one when sessions were promises. */
+const failOnDefect = <A>(call: SessionCall<A>): SessionCall<A> =>
+  Effect.catchDefect(call, defect => Effect.fail(defect));
+
 /**
  * One session per document, chosen again on every call: a write never lands
  * on disk under an editor, and a live session falls back to the file only
  * when its window has exited, saying so.
  */
-export function createSessionManager(
-  options: SessionManagerOptions
-): SessionManager {
-  const { io } = options;
-  const idleTtlMs = options.idleTtlMs ?? IDLE_TTL_MS;
-  const now = options.now ?? Date.now;
-  const platform = io.platform();
+const make = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem;
+  const process = yield* ProcessInfo;
+  const discovery = yield* HubDiscovery;
+  const connector = yield* HubConnector;
+  const clock = yield* Clock.clockWith(Effect.succeed);
+  const services = Context.make(FileSystem.FileSystem, fs).pipe(
+    Context.add(Path.Path, yield* Path.Path),
+    Context.add(ProcessInfo, process),
+    Context.add(HubConnector, connector)
+  );
+  const withServices = <A, E>(
+    effect: Effect.Effect<
+      A,
+      E,
+      FileSystem.FileSystem | Path.Path | ProcessInfo | HubConnector
+    >
+  ) => Effect.provideContext(effect, services);
+
+  const now = () => clock.currentTimeMillisUnsafe();
   const sessions = new Map<string, Entry>();
-  const locks = new Map<string, Promise<unknown>>();
+  const locks = new Map<string, Lock>();
   /** Documents with a call running, which a sweep from another call must not close. */
   const busy = new Set<string>();
+  let clientName: string | undefined;
+  const nickname = () => clientName || DEFAULT_CLIENT_NAME;
 
   /** Calls on one document run one at a time; different documents run side by side. */
-  const serialize = <T>(key: string, task: () => Promise<T>): Promise<T> => {
-    const previous = locks.get(key) ?? Promise.resolve();
-    const next = previous.then(task, task);
-    const settled = next.catch(() => undefined);
-    locks.set(key, settled);
-    settled.then(() => {
-      if (locks.get(key) === settled) locks.delete(key);
+  const serialize = <A, E>(key: string, task: Effect.Effect<A, E>) =>
+    Effect.suspend(() => {
+      let lock = locks.get(key);
+      if (!lock) {
+        lock = { semaphore: Semaphore.makeUnsafe(1), users: 0 };
+        locks.set(key, lock);
+      }
+      const held = lock;
+      held.users++;
+      return held.semaphore
+        .withPermits(1)(task)
+        .pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              if (--held.users === 0) locks.delete(key);
+            })
+          )
+        );
     });
-    return next;
-  };
 
   const put = <T extends DocumentSession>(key: string, session: T): T => {
     sessions.set(key, { session, lastUsed: now() });
@@ -153,199 +200,231 @@ export function createSessionManager(
   };
 
   const exists = (path: string) =>
-    io.stat(path).then(
-      () => true,
-      () => false
+    fs.stat(path).pipe(
+      Effect.as(true),
+      Effect.orElseSucceed(() => false)
     );
 
-  const drop = async (key: string) => {
-    const entry = sessions.get(key);
-    sessions.delete(key);
-    await entry?.session
-      .close()
-      .catch(error => logUnsafe('close failed', error));
-  };
+  const drop = (key: string) =>
+    Effect.suspend(() => {
+      const entry = sessions.get(key);
+      sessions.delete(key);
+      return entry ? entry.session.close : Effect.void;
+    });
 
   const newLive = (key: string, path: string, candidate: LockCandidate) =>
-    put(
-      key,
-      createLiveSession({
-        io,
+    withServices(
+      makeLiveSession({
         path,
         candidate,
-        nickname: options.clientName(),
-        client: options.clientName(),
-        requestTimeoutMs: options.requestTimeoutMs,
+        nickname: nickname(),
+        client: nickname(),
       })
-    );
+    ).pipe(Effect.map(session => put(key, session)));
 
-  const newHeadless = async (key: string, path: string, create = false) =>
-    put(
-      key,
-      await openHeadlessSession({
-        io,
-        path,
-        nickname: options.clientName(),
-        create,
-      })
-    );
+  const newHeadless = (key: string, path: string, create = false) =>
+    withServices(
+      openHeadlessSession({ path, nickname: nickname(), create })
+    ).pipe(Effect.map(session => put(key, session)));
 
   /**
    * The session for a call, or null when a read should come from disk. The
    * rules: a hub false lock refuses writes, a new hub closes a disk session,
    * and a live session goes to disk only once its window has exited.
    */
-  const acquire = async (
+  const acquire = Effect.fn('SessionManager.acquire')(function* (
     key: string,
     path: string,
     intent: Intent,
     resolution: DiscoveryResult,
     notes: Notes,
     create = false
-  ): Promise<DocumentSession | null> => {
+  ) {
     const existing = sessions.get(key)?.session;
 
     if (resolution.kind === 'blocked') {
-      if (intent === 'write') throw blockedError(path, resolution.candidate);
+      if (intent === 'write') {
+        return yield* blockedError(path, resolution.candidate);
+      }
       return null;
     }
 
     if (resolution.kind === 'live') {
       if (existing && !isLive(existing)) {
-        await drop(key);
+        yield* drop(key);
         if (intent === 'write') {
-          throw hubAppearedError(path, resolution.candidate.pid);
+          return yield* hubAppearedError(path, resolution.candidate.pid);
         }
         notes.push(LEFT_DISK_NOTE);
       } else if (isLive(existing)) {
         existing.setCandidate(resolution.candidate);
         return existing;
       }
-      return newLive(key, path, resolution.candidate);
+      return yield* newLive(key, path, resolution.candidate);
     }
 
     if (isLive(existing)) {
       if (existing.connected) return existing;
-      if (io.isAlive(existing.pid)) {
-        if (intent === 'write') throw hubGoneError(path, existing.pid);
+      if (process.isAlive(existing.pid)) {
+        if (intent === 'write') return yield* hubGoneError(path, existing.pid);
         return null;
       }
-      await drop(key);
+      yield* drop(key);
       notes.push(FELL_BACK_NOTE);
     } else if (existing) {
       // A create on a file deleted under the session starts over from a new file.
-      if (!create || (await exists(path))) return existing;
-      await drop(key);
+      if (!create || (yield* exists(path))) return existing;
+      yield* drop(key);
     }
-    return newHeadless(key, path, create);
-  };
+    return yield* newHeadless(key, path, create);
+  });
 
-  /** Resolves the path, sweeps idle sessions and runs task on the document's queue. */
-  const onDocument = async <T>(
+  const sweep = Effect.suspend(() => {
+    const time = now();
+    const idle = Array.from(sessions).filter(
+      ([key, entry]) => !busy.has(key) && time - entry.lastUsed >= IDLE_TTL_MS
+    );
+    for (const [key] of idle) sessions.delete(key);
+    return Effect.forEach(idle, ([, { session }]) => session.close, {
+      discard: true,
+    }).pipe(Effect.as(idle.map(([, { session }]) => session.path)));
+  });
+
+  /**
+   * Resolves the path, sweeps idle sessions and runs task on the document's
+   * queue. Once it holds the document the task runs to its end, as 0.1.0's
+   * did: a cancel between an edit and its write would leave the two apart.
+   */
+  const onDocument = <A>(
     input: string,
-    task: (key: string, path: string) => Promise<T>,
+    task: (key: string, path: string) => SessionCall<A>,
     create = false
-  ): Promise<T> => {
-    await sweep();
-    const path = await resolveDocumentPath(io, input, create);
-    const key = sessionKey(path, platform);
+  ) =>
+    Effect.gen(function* () {
+      yield* sweep;
+      const path = yield* withServices(resolveDocumentPath(input, create));
+      const key = sessionKey(path, process.platform);
 
-    return serialize(key, async () => {
-      busy.add(key);
-      try {
-        return await task(key, path);
-      } finally {
-        busy.delete(key);
-        const entry = sessions.get(key);
-        if (entry) entry.lastUsed = now();
-      }
-    });
-  };
+      return yield* serialize(
+        key,
+        Effect.suspend(() => {
+          busy.add(key);
+          return task(key, path);
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              busy.delete(key);
+              const entry = sessions.get(key);
+              if (entry) entry.lastUsed = now();
+            })
+          ),
+          Effect.uninterruptible
+        )
+      );
+    }).pipe(failOnDefect);
 
   const write = <T extends { notes: Notes }>(
     input: string,
-    task: (session: DocumentSession) => Promise<T>
-  ): Promise<WithMode<T>> =>
-    onDocument(input, async (key, path) => {
-      const notes: Notes = [];
-      const resolution = await discover(io, path);
-      const session = (await acquire(key, path, 'write', resolution, notes))!;
-      const outcome = await task(session);
-      return {
-        ...outcome,
-        notes: [...notes, ...outcome.notes],
-        mode: session.mode,
-        path,
-      };
-    });
+    task: (session: DocumentSession) => SessionCall<T>
+  ) =>
+    onDocument(input, (key, path) =>
+      Effect.gen(function* () {
+        const notes: Notes = [];
+        const resolution = yield* discovery.discover(path);
+        const session = (yield* acquire(
+          key,
+          path,
+          'write',
+          resolution,
+          notes
+        ))!;
+        const outcome = yield* task(session);
+        return {
+          ...outcome,
+          notes: [...notes, ...outcome.notes],
+          mode: session.mode,
+          path,
+        } as WithMode<T>;
+      })
+    );
 
-  const sweep = async (): Promise<string[]> => {
-    const closed: string[] = [];
-    const time = now();
-    for (const [key, entry] of Array.from(sessions)) {
-      if (busy.has(key) || time - entry.lastUsed < idleTtlMs) continue;
-      closed.push(entry.session.path);
-      await drop(key);
-    }
-    return closed;
-  };
+  const closeAll = Effect.suspend(() =>
+    Effect.forEach(Array.from(sessions.keys()), drop, { discard: true })
+  );
 
-  return {
-    listDocuments: async () => {
-      await sweep();
-      const cwd = await realPath(io, io.cwd());
-      const resolution = await discover(io, cwd);
+  // Finalizers run last first: the sweep stops before every session closes.
+  yield* Effect.addFinalizer(() => closeAll);
+  yield* Effect.schedule(sweep, Schedule.spaced(SWEEP_INTERVAL_MS)).pipe(
+    Effect.forkScoped
+  );
+
+  return SessionManager.of({
+    rememberClient: name =>
+      Effect.sync(() => {
+        clientName ??= name;
+      }),
+
+    listDocuments: Effect.gen(function* () {
+      yield* sweep;
+      const cwd = yield* withServices(realPath(process.cwd));
+      const resolution = yield* discovery.discover(cwd);
 
       if (resolution.kind === 'live') {
-        const client = await connectHub(io, resolution.candidate, {
-          client: options.clientName(),
-          requestTimeoutMs: options.requestTimeoutMs,
-        });
-        try {
-          const { documents } = await client.request('listDocuments', {});
-          return { mode: 'live', documents, notes: [] };
-        } finally {
-          client.close();
-        }
+        const { documents } = yield* connector
+          .connect(resolution.candidate, { client: nickname() })
+          .pipe(
+            Effect.flatMap(client => client.request('listDocuments', {})),
+            Effect.scoped
+          );
+        return { mode: 'live', documents, notes: [] } satisfies ListOutcome;
       }
 
-      const documents = await listDiskDocuments(io, cwd);
-      return resolution.kind === 'blocked'
-        ? {
-            mode: 'blocked',
-            documents,
-            notes: [blockedError(cwd, resolution.candidate).message],
-          }
-        : { mode: 'headless', documents, notes: [] };
-    },
+      const documents = yield* withServices(listDiskDocuments(cwd));
+      return (
+        resolution.kind === 'blocked'
+          ? {
+              mode: 'blocked',
+              documents,
+              notes: [blockedError(cwd, resolution.candidate).message],
+            }
+          : { mode: 'headless', documents, notes: [] }
+      ) satisfies ListOutcome;
+    }).pipe(failOnDefect),
 
     openDocument: (input, create) =>
       onDocument(
         input,
-        async (key, path) => {
-          const notes: Notes = [];
-          const existed = await exists(path);
-          const resolution = await discover(io, path);
-          const session = (await acquire(
-            key,
-            path,
-            'write',
-            resolution,
-            notes,
-            create
-          ))!;
+        (key, path) =>
+          Effect.gen(function* () {
+            const notes: Notes = [];
+            const existed = yield* exists(path);
+            const resolution = yield* discovery.discover(path);
+            const session = (yield* acquire(
+              key,
+              path,
+              'write',
+              resolution,
+              notes,
+              create
+            ))!;
 
-          let opened = false;
-          if (isLive(session)) {
-            const result = await session.open(
-              create ? createEmptyDocument() : undefined
-            );
-            opened = result.opened;
-            notes.push(...result.notes);
-          }
-          const created = !existed && (await exists(path));
-          return { mode: session.mode, path, created, opened, notes };
-        },
+            let opened = false;
+            if (isLive(session)) {
+              const result = yield* session.open(
+                create ? createEmptyDocument() : undefined
+              );
+              opened = result.opened;
+              notes.push(...result.notes);
+            }
+            const created = !existed && (yield* exists(path));
+            return {
+              mode: session.mode,
+              path,
+              created,
+              opened,
+              notes,
+            } satisfies OpenOutcome;
+          }),
         create
       ),
 
@@ -353,36 +432,49 @@ export function createSessionManager(
       write(input, session => session.runTool(name, args)),
 
     read: (input, format, vendor) =>
-      onDocument(input, async (key, path) => {
-        const notes: Notes = [];
-        const resolution = await discover(io, path);
-        const session = await acquire(key, path, 'read', resolution, notes);
-        if (!session) {
-          const text = await readFromDisk(io, path, format, vendor);
-          notes.push(DISK_READ_NOTE);
-          const mode: Mode =
-            resolution.kind === 'blocked' ? 'blocked' : 'headless';
-          return { text, notes, mode, path };
-        }
-        const outcome = await session.read(format, vendor);
-        return {
-          text: outcome.text,
-          notes: [...notes, ...outcome.notes],
-          mode: session.mode,
-          path,
-        };
-      }),
+      onDocument(input, (key, path) =>
+        Effect.gen(function* () {
+          const notes: Notes = [];
+          const resolution = yield* discovery.discover(path);
+          const session = yield* acquire(key, path, 'read', resolution, notes);
+          if (!session) {
+            const text = yield* withServices(
+              readFromDisk(path, format, vendor)
+            );
+            notes.push(DISK_READ_NOTE);
+            const mode: Mode =
+              resolution.kind === 'blocked' ? 'blocked' : 'headless';
+            return { text, notes, mode, path };
+          }
+          const outcome = yield* session.read(format, vendor);
+          return {
+            text: outcome.text,
+            notes: [...notes, ...outcome.notes],
+            mode: session.mode,
+            path,
+          };
+        })
+      ),
 
-    save: input => write(input, session => session.save()),
-    undo: input => write(input, session => session.undo()),
-    redo: input => write(input, session => session.redo()),
+    save: input => write(input, session => session.save),
+    undo: input => write(input, session => session.undo),
+    redo: input => write(input, session => session.redo),
 
     sweep,
+    closeAll,
+    paths: Effect.sync(() =>
+      Array.from(sessions.values(), ({ session }) => session.path)
+    ),
+  });
+});
 
-    closeAll: async () => {
-      for (const key of Array.from(sessions.keys())) await drop(key);
-    },
-
-    paths: () => Array.from(sessions.values(), ({ session }) => session.path),
-  };
-}
+/**
+ * The session manager as a scoped service: an idle sweep runs beside it on
+ * the clock, and closing the scope, as the end of stdin does, closes every
+ * session.
+ */
+export const layer: Layer.Layer<
+  SessionManager,
+  never,
+  FileSystem.FileSystem | Path.Path | ProcessInfo | HubConnector | HubDiscovery
+> = Layer.effect(SessionManager, make);

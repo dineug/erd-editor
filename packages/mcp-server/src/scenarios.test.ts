@@ -22,21 +22,21 @@ import {
   type McpHarness,
   settle,
 } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/shop.erd.json';
 
-let io: MemoryIo;
+let io: MemoryHost;
 let hub: FakeHub;
 let mcp: McpHarness;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  io = createMemoryIo();
+  io = createMemoryHost();
   hub = createFakeHub(io, { pid: 4242, workspaceFolders: ['/work'] });
-  mcp = await connectMcp({ io });
+  mcp = await connectMcp({ host: io });
 });
 
 afterEach(async () => {

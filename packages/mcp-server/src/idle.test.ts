@@ -9,26 +9,28 @@ import {
 
 import { emptyDocument } from '@/__test-utils__/documents';
 import { createFakeHub, type FakeHub } from '@/__test-utils__/fakeHub';
-import { connectMcp, type McpHarness, settle } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
-import { IDLE_TTL_MS } from '@/session/manager';
+import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
+import { IDLE_TTL_MS, SWEEP_INTERVAL_MS } from '@/session/manager';
 
 const LIVE = '/work/live.erd.json';
 const DISK = '/disk/solo.erd.json';
 
-let io: MemoryIo;
+/** Half an interval, so no timed sweep lands on the instant a spec sweeps at. */
+const OFF_BEAT = SWEEP_INTERVAL_MS / 2;
+
+let io: MemoryHost;
 let hub: FakeHub;
 let mcp: McpHarness;
-let clock: number;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  clock = 0;
-  io = createMemoryIo();
+  io = createMemoryHost();
   io.put(LIVE, emptyDocument());
   io.put(DISK, emptyDocument());
   hub = createFakeHub(io, { pid: 3434, workspaceFolders: ['/work'] });
-  mcp = await connectMcp({ io, now: () => clock });
+  mcp = await connectMcp({ host: io, testClock: true });
+  await mcp.adjust(OFF_BEAT);
 });
 
 afterEach(async () => {
@@ -38,8 +40,9 @@ afterEach(async () => {
 });
 
 describe('idle sessions (AC-P15)', () => {
-  it('is thirty minutes', () => {
+  it('is thirty minutes, looked for every minute', () => {
     expect(IDLE_TTL_MS).toBe(30 * 60 * 1000);
+    expect(SWEEP_INTERVAL_MS).toBe(60_000);
   });
 
   it('closes a session idle for the whole period, live and headless alike', async () => {
@@ -47,28 +50,38 @@ describe('idle sessions (AC-P15)', () => {
     await mcp.ok('erd_add_table', { path: DISK });
     expect(mcp.manager.paths().sort()).toEqual([DISK, LIVE]);
 
-    clock += IDLE_TTL_MS - 1;
+    await mcp.adjust(IDLE_TTL_MS - 1);
     expect(await mcp.manager.sweep()).toEqual([]);
 
-    clock += 1;
+    await mcp.adjust(1);
     expect((await mcp.manager.sweep()).sort()).toEqual([DISK, LIVE]);
-    await settle();
     expect(mcp.manager.paths()).toEqual([]);
     expect(hub.documents.get(LIVE)!.peers.size).toBe(0);
   });
 
+  it('closes it on the timed sweep between calls too', async () => {
+    await mcp.ok('erd_add_table', { path: LIVE });
+
+    await mcp.adjust(IDLE_TTL_MS + OFF_BEAT - 1);
+    expect(mcp.manager.paths()).toEqual([LIVE]);
+
+    await mcp.adjust(1);
+    expect(mcp.manager.paths()).toEqual([]);
+  });
+
   it('counts from the last call, not the first', async () => {
     await mcp.ok('erd_add_table', { path: DISK });
-    clock += IDLE_TTL_MS - 1;
+    await mcp.adjust(IDLE_TTL_MS - 1);
     await mcp.text('erd_read', { path: DISK, format: 'snapshot' });
 
-    clock += IDLE_TTL_MS - 1;
+    await mcp.adjust(IDLE_TTL_MS - 1);
     expect(await mcp.manager.sweep()).toEqual([]);
+    expect(mcp.manager.paths()).toEqual([DISK]);
   });
 
   it('sweeps before each call, and a call after the sweep opens a working session', async () => {
     await mcp.ok('erd_add_table', { path: LIVE });
-    clock += IDLE_TTL_MS;
+    await mcp.adjust(IDLE_TTL_MS);
 
     const memo = await mcp.ok('erd_add_memo', { path: LIVE });
     expect(memo.mode).toBe('live');

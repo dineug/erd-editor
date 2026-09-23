@@ -2,6 +2,7 @@ import type * as Cause from 'effect/Cause';
 import type * as Context from 'effect/Context';
 import * as Effect from 'effect/Effect';
 import type * as Exit from 'effect/Exit';
+import * as Fiber from 'effect/Fiber';
 import * as Layer from 'effect/Layer';
 import * as Queue from 'effect/Queue';
 import * as Sink from 'effect/Sink';
@@ -21,6 +22,8 @@ export type StdioServer<A> = {
   context: Promise<Context.Context<A>>;
   /** Settles when the server stops. */
   exit: Promise<Exit.Exit<never, unknown>>;
+  /** Interrupts the server, as a signal interrupts the main fiber. */
+  interrupt: () => void;
 };
 
 /**
@@ -65,7 +68,7 @@ export function serveStdio<A, E>(
     failed = reject;
   });
 
-  const exit = Effect.runPromiseExit(
+  const fiber = Effect.runFork(
     Effect.scoped(
       Effect.gen(function* () {
         started(yield* Layer.build(layer.pipe(Layer.provide(stdio))));
@@ -73,6 +76,7 @@ export function serveStdio<A, E>(
       })
     )
   );
+  const exit = Effect.runPromise(Fiber.await(fiber));
   exit.then(result => failed(new Error(`the server stopped: ${result._tag}`)));
 
   return {
@@ -90,5 +94,8 @@ export function serveStdio<A, E>(
     },
     context,
     exit,
+    interrupt: () => {
+      Effect.runFork(Fiber.interrupt(fiber));
+    },
   };
 }

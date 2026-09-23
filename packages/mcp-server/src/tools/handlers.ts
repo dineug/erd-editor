@@ -4,7 +4,7 @@ import * as Schema from 'effect/Schema';
 import * as McpSchema from 'effect/unstable/ai/McpSchema';
 import type * as Toolkit from 'effect/unstable/ai/Toolkit';
 
-import { SessionManager, type SessionManagerShape } from '@/session/service';
+import { SessionManager, type SessionManagerShape } from '@/session/manager';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import { type ActionTool, actionTools } from '@/tools/registry';
 import {

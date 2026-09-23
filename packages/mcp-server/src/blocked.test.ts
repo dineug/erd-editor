@@ -10,22 +10,22 @@ import {
 import { documentFromSql, SHOP_SQL } from '@/__test-utils__/documents';
 import { createFakeHub } from '@/__test-utils__/fakeHub';
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { DISK_READ_NOTE } from '@/session/manager';
 
 const DOCUMENT = '/work/guarded.erd.json';
 
-let io: MemoryIo;
+let io: MemoryHost;
 let mcp: McpHarness;
 let original: string;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  io = createMemoryIo();
+  io = createMemoryHost();
   original = documentFromSql(SHOP_SQL);
   io.put(DOCUMENT, original);
   createFakeHub(io, { pid: 7171, workspaceFolders: ['/work'], hub: false });
-  mcp = await connectMcp({ io });
+  mcp = await connectMcp({ host: io });
 });
 
 afterEach(async () => {
@@ -96,6 +96,19 @@ describe('a hub false lock over the path (AC-M3, X3)', () => {
     expect(refused.isError).toBe(true);
     expect(refused.json.error.code).toBe('invalidDocument');
     expect(io.read(DOCUMENT)).toBe(truncated);
+  });
+
+  it('refuses a vendor on a format that is not sql, read from disk too', async () => {
+    const refused = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'json',
+      vendor: 'PostgreSQL',
+    });
+
+    expect(refused.json.error).toEqual({
+      code: 'invalidArgs',
+      message: 'vendor applies to the sql format only, not json',
+    });
   });
 
   it('lists the files on disk with the same warning', async () => {

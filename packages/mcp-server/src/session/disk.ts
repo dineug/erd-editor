@@ -1,9 +1,17 @@
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import type { DocumentInfo } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
+import * as Option from 'effect/Option';
+import * as Path from 'effect/Path';
 
-import { errnoCode, messageOf, SessionError, SessionErrorCode } from '@/errors';
-import { type McpIo } from '@/io';
-import { isErdPath, pathsOf } from '@/paths';
+import {
+  isPlatformReason,
+  messageOf,
+  SessionError,
+  SessionErrorCode,
+} from '@/errors';
+import { isErdPath } from '@/paths';
 import { readDocument, type ReadFormat } from '@/tools/read';
 
 /** Directories a listing never walks into: dependencies, VCS data and anything hidden. */
@@ -26,6 +34,9 @@ const DOCUMENT_KEYS = new Set([
 export const MAX_LISTED_DOCUMENTS = 500;
 export const MAX_LIST_DEPTH = 8;
 
+/** Size and mtime tell a change; mode is the permission bits alone. */
+export type FileStat = { size: number; mtimeMs: number; mode: number };
+
 /** The editor drops a byte order mark when it reads a file; so do the sessions. */
 export function stripBom(text: string): string {
   return text.startsWith('﻿') ? text.slice(1) : text;
@@ -41,6 +52,18 @@ export function createEmptyDocument(): string {
   }
 }
 
+export const statOf = (fs: FileSystem.FileSystem, path: string) =>
+  fs.stat(path).pipe(
+    Effect.map((info): FileStat => ({
+      size: Number(info.size),
+      mtimeMs: Option.match(info.mtime, {
+        onNone: () => 0,
+        onSome: mtime => mtime.getTime(),
+      }),
+      mode: info.mode & 0o777,
+    }))
+  );
+
 function invalidDocument(path: string, what: string): SessionError {
   return new SessionError(
     SessionErrorCode.invalidDocument,
@@ -53,105 +76,131 @@ function invalidDocument(path: string, what: string): SessionError {
  * file holds something, such as merge conflict markers, a truncated write or
  * unrelated JSON. Blank text is a new document and passes.
  */
-export function assertDocumentText(path: string, text: string): void {
+export const assertDocumentText = Effect.fn('assertDocumentText')(function* (
+  path: string,
+  text: string
+) {
   if (text.trim() === '') return;
 
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch (error) {
-    throw invalidDocument(path, `is not valid JSON (${messageOf(error)})`);
+    return yield* invalidDocument(
+      path,
+      `is not valid JSON (${messageOf(error)})`
+    );
   }
   const keys =
     json !== null && typeof json === 'object' && !Array.isArray(json)
       ? Object.keys(json)
       : null;
   if (!keys || (keys.length && !keys.some(key => DOCUMENT_KEYS.has(key)))) {
-    throw invalidDocument(path, 'holds JSON that is not an ERD document');
+    return yield* invalidDocument(
+      path,
+      'holds JSON that is not an ERD document'
+    );
   }
-}
+});
 
-/** Runs an fs call on a document, a missing file refused with notFound. */
-export async function orNotFound<T>(
-  path: string,
-  task: Promise<T>
-): Promise<T> {
-  try {
-    return await task;
-  } catch (error) {
-    if (errnoCode(error) === 'ENOENT') {
-      throw new SessionError(
-        'notFound',
-        `${path} does not exist; erd_open_document with create true makes a new document`
-      );
-    }
-    throw error;
-  }
-}
+/** Refuses a missing document with notFound, naming the way to make one. */
+export const orNotFound =
+  (path: string) =>
+  <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    Effect.mapError(effect, error =>
+      isPlatformReason(error, 'NotFound')
+        ? new SessionError(
+            'notFound',
+            `${path} does not exist; erd_open_document with create true makes a new document`
+          )
+        : error
+    );
 
 /** Reads a document file: a missing one is notFound, one the engine cannot read invalidDocument. */
-export async function readDocumentFile(
-  io: McpIo,
+export const readDocumentFile = Effect.fn('readDocumentFile')(function* (
   path: string
-): Promise<string> {
-  const text = stripBom(await orNotFound(path, io.readFile(path)));
-  assertDocumentText(path, text);
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const text = stripBom(yield* fs.readFileString(path).pipe(orNotFound(path)));
+  yield* assertDocumentText(path, text);
   return text;
-}
+});
 
 /** Serializes the file on disk without keeping a session, for a window whose hub is off. */
-export async function readFromDisk(
-  io: McpIo,
+export const readFromDisk = Effect.fn('readFromDisk')(function* (
   path: string,
   format: ReadFormat,
   vendor?: string
-): Promise<string> {
-  const text = await readDocumentFile(io, path);
-  const peer = createPeerStore({ nickname: '', presence: false });
-  try {
-    peer.setInitialValue(text);
-    return readDocument(peer.state, format, vendor);
-  } finally {
-    peer.destroy();
-  }
-}
+) {
+  const text = yield* readDocumentFile(path);
+  return yield* Effect.try({
+    try: () => {
+      const peer = createPeerStore({ nickname: '', presence: false });
+      try {
+        peer.setInitialValue(text);
+        return readDocument(peer.state, format, vendor);
+      } finally {
+        peer.destroy();
+      }
+    },
+    catch: error => error,
+  });
+});
 
-/** ERD files under root, none of them open: what a listing shows with no hub to ask. */
-export async function listDiskDocuments(
-  io: McpIo,
+/**
+ * ERD files under root, none of them open: what a listing shows with no hub
+ * to ask. An entry is looked at only when its name could be walked or listed;
+ * a symlink is never walked, as a directory entry of its own kind.
+ */
+export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
   root: string
-): Promise<DocumentInfo[]> {
-  const paths = pathsOf(io.platform());
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const paths = yield* Path.Path;
   const documents: DocumentInfo[] = [];
 
-  const walk = async (dir: string, depth: number): Promise<void> => {
-    const entries = await io.readdir(dir).catch(() => []);
-    const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+  const isDirectory = (path: string) =>
+    fs.stat(path).pipe(
+      Effect.flatMap(info =>
+        info.type === 'Directory'
+          ? fs.readLink(path).pipe(
+              Effect.as(false),
+              Effect.orElseSucceed(() => true)
+            )
+          : Effect.succeed(false)
+      ),
+      Effect.orElseSucceed(() => false)
+    );
 
-    for (const { name, directory } of sorted) {
-      if (documents.length >= MAX_LISTED_DOCUMENTS) return;
-      const path = paths.join(dir, name);
+  const walk = (dir: string, depth: number): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const names = yield* fs
+        .readDirectory(dir)
+        .pipe(Effect.orElseSucceed((): string[] => []));
 
-      if (directory) {
-        if (
+      for (const name of [...names].sort((a, b) => a.localeCompare(b))) {
+        if (documents.length >= MAX_LISTED_DOCUMENTS) return;
+        const walkable =
           depth < MAX_LIST_DEPTH &&
           !name.startsWith('.') &&
-          !SKIPPED_DIRECTORIES.has(name)
-        ) {
-          await walk(path, depth + 1);
-        }
-      } else if (isErdPath(name)) {
-        documents.push({
-          path,
-          open: false,
-          active: false,
-          dirty: false,
-          readonly: false,
-        });
-      }
-    }
-  };
+          !SKIPPED_DIRECTORIES.has(name);
+        if (!walkable && !isErdPath(name)) continue;
 
-  await walk(root, 0);
+        const path = paths.join(dir, name);
+        if (yield* isDirectory(path)) {
+          if (walkable) yield* walk(path, depth + 1);
+        } else if (isErdPath(name)) {
+          documents.push({
+            path,
+            open: false,
+            active: false,
+            dirty: false,
+            readonly: false,
+          });
+        }
+      }
+    });
+
+  yield* walk(root, 0);
   return documents;
-}
+});

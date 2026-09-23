@@ -1,4 +1,5 @@
 import type { RevertResult } from '@dineug/erd-editor/peer.js';
+import type * as Effect from 'effect/Effect';
 
 import type { ReadFormat } from '@/tools/read';
 import type { ToolRun } from '@/tools/run';
@@ -23,18 +24,27 @@ export type ReadOutcome = { text: string; notes: Notes };
 
 export type SaveOutcome = { saved: boolean; notes: Notes };
 
+/**
+ * A session call fails with whatever refused it: a SessionError, a ToolError,
+ * a PeerStoreError, or a platform failure the result reports as internal.
+ */
+export type SessionCall<A> = Effect.Effect<A, unknown>;
+
 /** One document, live or headless behind the same face. */
 export type DocumentSession = {
   readonly path: string;
   readonly mode: SessionMode;
   readonly state: SessionState;
-  runTool: (
+  readonly runTool: (
     name: string,
     args: Record<string, unknown>
-  ) => Promise<ToolOutcome>;
-  read: (format: ReadFormat, vendor?: string) => Promise<ReadOutcome>;
-  save: () => Promise<SaveOutcome>;
-  undo: () => Promise<UndoOutcome>;
-  redo: () => Promise<UndoOutcome>;
-  close: () => Promise<void>;
+  ) => SessionCall<ToolOutcome>;
+  readonly read: (
+    format: ReadFormat,
+    vendor?: string
+  ) => SessionCall<ReadOutcome>;
+  readonly save: SessionCall<SaveOutcome>;
+  readonly undo: SessionCall<UndoOutcome>;
+  readonly redo: SessionCall<UndoOutcome>;
+  readonly close: Effect.Effect<void>;
 };

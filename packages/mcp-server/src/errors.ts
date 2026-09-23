@@ -1,4 +1,5 @@
 import { type HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import * as PlatformError from 'effect/PlatformError';
 import * as Schema from 'effect/Schema';
 
 /** The server's own refusals, beside the hub's codes a session passes through unchanged. */
@@ -55,6 +56,16 @@ export class SessionError extends Schema.TaggedError<SessionError>()(
   }
 }
 
+/** Whether error is a platform failure of the given kind, such as a missing file. */
+export function isPlatformReason(
+  error: unknown,
+  tag: PlatformError.SystemErrorTag
+): error is PlatformError.PlatformError {
+  return (
+    error instanceof PlatformError.PlatformError && error.reason._tag === tag
+  );
+}
+
 export function isSessionError(
   error: unknown,
   code?: ErrorCode
@@ -64,12 +75,16 @@ export function isSessionError(
   );
 }
 
-/** The errno code of a failed fs or net call, if it has one. */
-export function errnoCode(error: unknown): string | undefined {
-  const code = (error as { code?: unknown } | null)?.code;
-  return typeof code === 'string' ? code : undefined;
-}
-
+/**
+ * The message of anything thrown. A file system failure keeps the words of the
+ * system call under it, which is what a refusal quoted before effect wrapped it.
+ */
 export function messageOf(error: unknown): string {
+  if (
+    error instanceof PlatformError.PlatformError &&
+    error.reason.cause instanceof Error
+  ) {
+    return error.reason.cause.message;
+  }
   return error instanceof Error ? error.message : String(error);
 }

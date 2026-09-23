@@ -1,6 +1,5 @@
 import { createPeerStore, type PeerStore } from '@dineug/erd-editor/peer.js';
 import {
-  createFrameDecoder,
   encodeFrame,
   HUB_PROTOCOL_VERSION,
   type HubErrorCode,
@@ -11,7 +10,8 @@ import {
   protocolMismatchMessage,
 } from '@dineug/erd-editor-agent-hub';
 
-import { type MemoryIo, type ServerSocket } from '@/__test-utils__/memoryIo';
+import { type MemoryHost } from '@/__test-utils__/memoryHost';
+import { type ServerSocket } from '@/__test-utils__/memorySocket';
 
 type Connection = {
   id: number;
@@ -53,8 +53,14 @@ export type FakeHub = {
   readonly connections: Set<Connection>;
   /** openDocument answers with this refusal instead of opening. */
   openFailure: Failure | null;
-  /** Runs as an applyActions arrives, before it is answered. */
-  beforeApply: (() => void) | null;
+  /** Runs as an applyActions arrives, before it is answered, with its batch. */
+  beforeApply: ((actions: unknown[]) => void) | null;
+  /** While set, what the hub writes waits for it, so a spec can act with a request in flight. */
+  hold: Promise<void> | null;
+  /** Notifications written with an answer in one chunk, as one read of a busy pipe brings them. */
+  sameChunk:
+    | ((method: string, path: string | undefined) => HubNotification[])
+    | null;
   saveResult: boolean;
   readonlyPaths: Set<string>;
   lock: () => LockRecord;
@@ -67,6 +73,8 @@ export type FakeHub = {
   /** Drops every connection, as a window reload does. */
   disconnectAll: () => void;
   methods: () => string[];
+  /** Settles once an applyActions reaches the webview with an action that matches. */
+  applied: (match: (action: Record<string, any>) => boolean) => Promise<void>;
   destroy: () => void;
 };
 
@@ -79,19 +87,38 @@ function isErdPath(path: string) {
   return /\.(erd|vuerd)(\.json)?$/i.test(path);
 }
 
+/** Cuts a text stream into its JSON lines, as the hub reads a peer. */
+function lineReader() {
+  let buffer = '';
+  return (chunk: string): Array<Record<string, any>> => {
+    const lines = (buffer + chunk).split('\n');
+    buffer = lines.pop() ?? '';
+    return lines
+      .filter(line => line.trim() !== '')
+      .map(line => JSON.parse(line));
+  };
+}
+
 /**
  * The hub as vscode-extension serves it, over memory pipes: openDocument quick
  * for an open file, join from disk without registering for a closed one,
  * applyActions only after a join, and a relay both ways.
  */
-export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
+export function createFakeHub(
+  io: MemoryHost,
+  options: FakeHubOptions
+): FakeHub {
   const { pid, workspaceFolders } = options;
   const token = options.token ?? `token-${pid}`;
   const serving = options.hub ?? true;
-  const pipe = serving ? pipePath(io.homedir(), pid, io.platform()) : '';
+  const pipe = serving ? pipePath(io.home, pid, io.platform) : '';
   const documents = new Map<string, FakeDocument>();
   const requests: FakeHub['requests'] = [];
   const connections = new Set<Connection>();
+  const appliedWaiters = new Set<{
+    match: (action: Record<string, any>) => boolean;
+    resolve: () => void;
+  }>();
   let nextId = 1;
 
   const observe = (document: FakeDocument, actions: unknown[]) => {
@@ -156,12 +183,7 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
 
   const authorize = (path: string) => {
     if (
-      !isAuthorized(
-        workspaceFolders,
-        [...documents.keys()],
-        path,
-        io.platform()
-      )
+      !isAuthorized(workspaceFolders, [...documents.keys()], path, io.platform)
     ) {
       throw fail('outsideWorkspace', `${path} is outside the workspace`);
     }
@@ -230,7 +252,7 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
         };
       }
       case 'applyActions': {
-        hub.beforeApply?.();
+        hub.beforeApply?.(params.actions);
         if (document?.readonly) throw fail('readonly', `${path} is read-only`);
         if (!document) throw fail('notOpen', `${path} is not open`);
         if (!document.peers.has(connection)) {
@@ -240,6 +262,12 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
         observe(document, actions);
         document.webview.receive(actions as any[]);
         document.dirty = true;
+        for (const waiter of Array.from(appliedWaiters)) {
+          if (actions.some(action => waiter.match(action as any))) {
+            appliedWaiters.delete(waiter);
+            waiter.resolve();
+          }
+        }
         for (const peer of document.peers) {
           if (peer !== connection) {
             peer.notify({ method: 'actions', params: { path, actions } });
@@ -263,9 +291,14 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
   };
 
   const accept = (socket: ServerSocket) => {
-    const decoder = createFrameDecoder();
+    const read = lineReader();
     let connection: Connection | null = null;
-    const send = (message: unknown) => socket.write(encodeFrame(message));
+    const write = (text: string) => {
+      const held = hub.hold;
+      if (held) void held.then(() => socket.write(text));
+      else socket.write(text);
+    };
+    const send = (message: unknown) => write(encodeFrame(message));
 
     socket.onClose(() => {
       if (!connection) return;
@@ -274,7 +307,7 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
         document.peers.delete(connection);
     });
     socket.onData(chunk => {
-      for (const message of decoder.push(chunk) as Array<Record<string, any>>) {
+      for (const message of read(chunk)) {
         const { id, method, params } = message;
         if (!connection) {
           const version = options.helloProtocolVersion ?? HUB_PROTOCOL_VERSION;
@@ -325,7 +358,12 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
         }
         try {
           const result = handle(connection, method, params ?? {});
-          send({ id, ok: true, method, result });
+          const tail = hub.sameChunk?.(method, params?.path) ?? [];
+          write(
+            [{ id, ok: true, method, result }, ...tail]
+              .map(message => encodeFrame(message))
+              .join('')
+          );
         } catch (error) {
           send({ id, ok: false, method, error });
         }
@@ -341,6 +379,8 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
     connections,
     openFailure: null,
     beforeApply: null,
+    hold: null,
+    sameChunk: null,
     saveResult: true,
     readonlyPaths: new Set(),
     lock,
@@ -364,6 +404,10 @@ export function createFakeHub(io: MemoryIo, options: FakeHubOptions): FakeHub {
         connection.socket.destroy();
     },
     methods: () => requests.map(({ method }) => method),
+    applied: match =>
+      new Promise<void>(resolve => {
+        appliedWaiters.add({ match, resolve });
+      }),
     destroy: () => {
       hub.disconnectAll();
       for (const path of Array.from(documents.keys())) close(path);

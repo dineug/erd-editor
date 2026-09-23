@@ -10,21 +10,21 @@ import {
 import { emptyDocument } from '@/__test-utils__/documents';
 import { createFakeHub, type FakeHub } from '@/__test-utils__/fakeHub';
 import { connectMcp, type McpHarness, settle } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { CLOSED_NOTE, RESEED_NOTE } from '@/session/live';
 
 const DOCUMENT = '/work/auto.erd.json';
 
-let io: MemoryIo;
+let io: MemoryHost;
 let hub: FakeHub;
 let mcp: McpHarness;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  io = createMemoryIo();
+  io = createMemoryHost();
   io.put(DOCUMENT, emptyDocument());
   hub = createFakeHub(io, { pid: 5151, workspaceFolders: ['/work'] });
-  mcp = await connectMcp({ io });
+  mcp = await connectMcp({ host: io });
 });
 
 afterEach(async () => {

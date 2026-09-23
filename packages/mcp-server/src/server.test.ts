@@ -2,10 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import * as Cause from 'effect/Cause';
-import * as Effect from 'effect/Effect';
 import * as Exit from 'effect/Exit';
-import * as Layer from 'effect/Layer';
-import * as TestClock from 'effect/testing/TestClock';
 import {
   afterEach,
   beforeEach,
@@ -21,44 +18,15 @@ import {
   connectMcp,
   initialize,
   rpcClient,
-  settle,
+  serverLayer,
 } from '@/__test-utils__/mcp';
-import { createMemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import { serveStdio } from '@/__test-utils__/stdio';
-import {
-  DEFAULT_CLIENT_NAME,
-  makeServerLayer,
-  SERVER_VERSION,
-  SWEEP_INTERVAL_MS,
-} from '@/server';
-import type { SessionManager } from '@/session/manager';
-
-// The service wraps the Promise manager this module creates; the specs below
-// reach that manager through the one the server was built on.
-const created = vi.hoisted(() => ({
-  managers: [] as SessionManager[],
-  prepare: (() => undefined) as (manager: SessionManager) => void,
-}));
-
-vi.mock('@/session/manager', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/session/manager')>();
-  return {
-    ...actual,
-    createSessionManager: (
-      options: Parameters<typeof actual.createSessionManager>[0]
-    ) => {
-      const manager = actual.createSessionManager(options);
-      created.managers.push(manager);
-      created.prepare(manager);
-      return manager;
-    },
-  };
-});
+import { SERVER_VERSION } from '@/server';
+import { DEFAULT_CLIENT_NAME } from '@/session/manager';
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  created.managers.length = 0;
-  created.prepare = () => undefined;
 });
 
 afterEach(() => {
@@ -80,10 +48,9 @@ describe('the server', () => {
       readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8')
     );
     expect(SERVER_VERSION).toBe(manifest.version);
-    expect(SWEEP_INTERVAL_MS).toBe(60_000);
   });
 
-  it('builds on the real io unless told otherwise', async () => {
+  it('builds on the node platform unless told otherwise', async () => {
     const mcp = await connectMcp();
     expect(mcp.manager.paths()).toEqual([]);
     await mcp.close();
@@ -94,10 +61,10 @@ describe('the server', () => {
     ['codex', 'codex'],
     ['', DEFAULT_CLIENT_NAME],
   ])('introduces client %j to the hub as %j', async (clientName, expected) => {
-    const io = createMemoryIo();
+    const io = createMemoryHost();
     io.put('/work/a.erd.json', emptyDocument());
     const hub = createFakeHub(io, { pid: 5656, workspaceFolders: ['/work'] });
-    const mcp = await connectMcp({ io, clientName });
+    const mcp = await connectMcp({ host: io, clientName });
 
     await mcp.ok('erd_add_table', { path: '/work/a.erd.json' });
     expect([...hub.connections].map(({ client }) => client)).toEqual([
@@ -108,15 +75,14 @@ describe('the server', () => {
   });
 
   it('serves MCP over stdio and closes every session when stdin ends', async () => {
-    const io = createMemoryIo();
+    const io = createMemoryHost();
     io.put('/work/a.erd.json', emptyDocument());
-    const mcp = await connectMcp({ io });
+    const mcp = await connectMcp({ host: io });
 
     const added = await mcp.ok('erd_add_table', { path: '/work/a.erd.json' });
     expect(added.mode).toBe('headless');
     expect(mcp.manager.paths()).toEqual(['/work/a.erd.json']);
 
-    const closeAll = vi.spyOn(created.managers[0], 'closeAll');
     mcp.stdio.end();
     const exit = await mcp.stdio.exit;
 
@@ -125,16 +91,15 @@ describe('the server', () => {
       true
     );
     expect(mcp.manager.paths()).toEqual([]);
-    expect(closeAll).toHaveBeenCalledTimes(1);
     await mcp.close();
   });
 
   it('leaves no tracker expiry behind when stdin ends after another editor sent its focus', async () => {
-    const io = createMemoryIo();
+    const io = createMemoryHost();
     const path = '/work/a.erd.json';
     io.put(path, emptyDocument());
     const hub = createFakeHub(io, { pid: 5757, workspaceFolders: ['/work'] });
-    const mcp = await connectMcp({ io });
+    const mcp = await connectMcp({ host: io });
 
     expect((await mcp.ok('erd_add_table', { path })).mode).toBe('live');
 
@@ -183,45 +148,8 @@ describe('the server', () => {
     hub.destroy();
   });
 
-  it('sweeps idle sessions once per interval and logs a sweep that fails', async () => {
-    let sweep: ReturnType<typeof vi.spyOn> | undefined;
-    created.prepare = manager => {
-      sweep = vi
-        .spyOn(manager, 'sweep')
-        .mockRejectedValueOnce(new Error('stuck'))
-        .mockResolvedValue([]);
-    };
-    const stdio = serveStdio(
-      makeServerLayer({ io: createMemoryIo(), sweepIntervalMs: 10 }).pipe(
-        Layer.provideMerge(TestClock.layer())
-      )
-    );
-    const context = await stdio.context;
-    // Each step lets the sweep fiber park on the test clock before moving it.
-    const at = async (ms: number, calls: number) => {
-      await settle(50);
-      await Effect.runPromise(
-        TestClock.adjust(ms).pipe(Effect.provideContext(context))
-      );
-      await settle(50);
-      expect(sweep).toHaveBeenCalledTimes(calls);
-    };
-
-    await at(9, 0);
-    await at(1, 1);
-    expect(console.error).toHaveBeenCalledWith(
-      '[erd-editor-mcp]',
-      'idle sweep failed',
-      expect.any(Error)
-    );
-    await at(9, 1);
-    await at(1, 2);
-    stdio.end();
-    await stdio.exit;
-  });
-
   it('skips stdin lines that are not JSON-RPC messages and answers the rest, in the same chunk and after', async () => {
-    const mcp = await connectMcp({ io: createMemoryIo() });
+    const mcp = await connectMcp({ host: createMemoryHost() });
     const answered = new Promise<any>(resolve => {
       mcp.stdio.onLine(message => {
         if (message.id === 'same-chunk') resolve(message);
@@ -250,20 +178,6 @@ describe('the server', () => {
     );
     await mcp.close();
   });
-
-  it('logs a shutdown that fails, and still stops', async () => {
-    created.prepare = manager => {
-      vi.spyOn(manager, 'closeAll').mockRejectedValue(new Error('stuck'));
-    };
-    const mcp = await connectMcp({ io: createMemoryIo() });
-
-    await mcp.close();
-    expect(console.error).toHaveBeenCalledWith(
-      '[erd-editor-mcp]',
-      'shutdown failed',
-      expect.any(Error)
-    );
-  });
 });
 
 describe('the protocols it speaks (D3)', () => {
@@ -271,7 +185,7 @@ describe('the protocols it speaks (D3)', () => {
     'answers %s in kind',
     async version => {
       const mcp = await connectMcp({
-        io: createMemoryIo(),
+        host: createMemoryHost(),
         protocolVersion: version,
       });
 
@@ -282,7 +196,7 @@ describe('the protocols it speaks (D3)', () => {
   );
 
   it('answers a client on a later protocol with 2025-06-18, the newest it lists', async () => {
-    const stdio = serveStdio(makeServerLayer({ io: createMemoryIo() }));
+    const stdio = serveStdio(serverLayer({ host: createMemoryHost() }));
     const response = await initialize(rpcClient(stdio), 'later', '2025-11-25');
 
     expect(response.result.protocolVersion).toBe('2025-06-18');
@@ -291,7 +205,7 @@ describe('the protocols it speaks (D3)', () => {
   });
 
   it('answers every request before initialize with -32603, ping included, where 0.1.0 served them', async () => {
-    const stdio = serveStdio(makeServerLayer({ io: createMemoryIo() }));
+    const stdio = serveStdio(serverLayer({ host: createMemoryHost() }));
     const client = rpcClient(stdio);
 
     const early = [
@@ -316,9 +230,9 @@ describe('the protocols it speaks (D3)', () => {
   });
 
   it('drops structured content and result schemas for a client before 2025-06-18', async () => {
-    const io = createMemoryIo();
+    const io = createMemoryHost();
     io.put('/work/a.erd.json', emptyDocument());
-    const mcp = await connectMcp({ io, protocolVersion: '2025-03-26' });
+    const mcp = await connectMcp({ host: io, protocolVersion: '2025-03-26' });
 
     const { tools } = await mcp.listTools();
     const added = await mcp.call('erd_add_table', { path: '/work/a.erd.json' });

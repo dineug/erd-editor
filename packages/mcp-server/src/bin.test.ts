@@ -1,12 +1,27 @@
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { copyFile, mkdtemp, rm } from 'node:fs/promises';
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { builtinModules } from 'node:module';
+import { createServer, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
+import {
+  HUB_PROTOCOL_VERSION,
+  lockDirPath,
+  lockFilePath,
+} from '@dineug/erd-editor-agent-hub';
 import { describe, expect, it } from 'vite-plus/test';
+
+import { emptyDocument } from '@/__test-utils__/documents';
 
 const packageDir = join(import.meta.dirname, '..');
 const manifest = JSON.parse(
@@ -148,4 +163,155 @@ describe('the built single file (AC-M9, AC-P7)', () => {
     expect(code).toBe(0);
     await rm(dir, { recursive: true, force: true });
   }, 20_000);
+});
+
+/**
+ * The built file on a hub over a real socket that answers until an edit's
+ * batch arrives and never after, so the call waits on it with the focus the
+ * call moved queued behind; stop is how the server is then asked to end.
+ */
+async function stopWithCallInFlight(stop: 'stdin' | 'SIGINT') {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'erd-mcp-home-')));
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'erd-mcp-cwd-')));
+  const document = join(cwd, 'a.erd.json');
+  const initialValue = emptyDocument();
+  await writeFile(document, initialValue);
+  const pipe =
+    process.platform === 'win32'
+      ? `\\\\.\\pipe\\erd-mcp-bin-test-${process.pid}`
+      : join(home, 'hub.sock');
+
+  let heldEdit!: () => void;
+  const edited = new Promise<void>(resolve => (heldEdit = resolve));
+  const sockets: Socket[] = [];
+  const hub = createServer(socket => {
+    sockets.push(socket);
+    let buffer = '';
+    let holding = false;
+    socket.setEncoding('utf8');
+    socket.on('error', () => undefined);
+    socket.on('data', chunk => {
+      const lines = (buffer + chunk).split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines.filter(Boolean)) {
+        const { id, method, params } = JSON.parse(line);
+        if (
+          method === 'applyActions' &&
+          JSON.stringify(params).includes('memo.add')
+        ) {
+          holding = true;
+          heldEdit();
+        }
+        if (holding) continue;
+        const result =
+          method === 'hello'
+            ? {
+                protocolVersion: HUB_PROTOCOL_VERSION,
+                ide: 'vscode',
+                version: '2.9.0',
+              }
+            : method === 'openDocument'
+              ? { path: params.path, opened: false, webviews: 1 }
+              : method === 'join'
+                ? { initialValue, snapshotVersion: 0, readonly: false }
+                : { webviews: 1 };
+        socket.write(`${JSON.stringify({ id, ok: true, method, result })}\n`);
+      }
+    });
+  });
+  await new Promise<void>(resolve => hub.listen(pipe, resolve));
+  await mkdir(lockDirPath(home), { recursive: true, mode: 0o700 });
+  await writeFile(
+    lockFilePath(home, process.pid),
+    JSON.stringify({
+      pipe,
+      workspaceFolders: [cwd],
+      documents: [document],
+      ide: 'vscode',
+      version: '2.9.0',
+      protocolVersion: HUB_PROTOCOL_VERSION,
+      token: 'token',
+      hub: true,
+    }),
+    { mode: 0o600 }
+  );
+
+  const child = spawn(process.execPath, [bin], {
+    cwd,
+    env: { ...process.env, HOME: home, USERPROFILE: home },
+  });
+  const closed = new Promise<number | null>(resolve =>
+    child.on('close', code => resolve(code))
+  );
+  const answers = new Map<number, (message: any) => void>();
+  let stdout = '';
+  child.stdout.setEncoding('utf8');
+  child.stdout.on('data', chunk => {
+    stdout += chunk;
+    const lines = stdout.split('\n');
+    stdout = lines.pop() ?? '';
+    for (const line of lines.filter(Boolean)) {
+      const message = JSON.parse(line);
+      answers.get(message.id)?.(message);
+    }
+  });
+  const send = (message: object) =>
+    child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
+  const request = (id: number, method: string, params: object) =>
+    new Promise<any>(resolve => {
+      answers.set(id, resolve);
+      send({ id, method, params });
+    });
+  const pause = (ms: number) =>
+    new Promise<void>(resolve => setTimeout(resolve, ms));
+
+  try {
+    await request(1, 'initialize', {
+      protocolVersion: '2025-06-18',
+      capabilities: {},
+      clientInfo: { name: 'bin-test', version: '1.0.0' },
+    });
+    send({ method: 'notifications/initialized' });
+    const table = await request(2, 'tools/call', {
+      name: 'erd_add_table',
+      arguments: { path: 'a.erd.json' },
+    });
+    expect(JSON.parse(table.result.content[0].text).mode).toBe('live');
+    // Past the 100 ms a peer holds a focus back, so the next call queues one behind its edit.
+    await pause(150);
+    send({
+      id: 3,
+      method: 'tools/call',
+      params: { name: 'erd_add_memo', arguments: { path: 'a.erd.json' } },
+    });
+    await edited;
+    await pause(50);
+
+    const start = Date.now();
+    if (stop === 'stdin') child.stdin.end();
+    else child.kill('SIGINT');
+    const code = await Promise.race([closed, pause(5_000).then(() => 'alive')]);
+    return { code, ms: Date.now() - start };
+  } finally {
+    child.kill('SIGKILL');
+    for (const socket of sockets) socket.destroy();
+    hub.close();
+    await rm(home, { recursive: true, force: true });
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+describe('the built file with an edit in flight on a hub that stopped answering', () => {
+  it.each([
+    ['stdin', 0],
+    ['SIGINT', 130],
+  ] as const)(
+    'exits when %s ends it, with %d',
+    async (stop, code) => {
+      const exit = await stopWithCallInFlight(stop);
+      console.info(`erd-editor-mcp.js: exit on ${stop} after ${exit.ms} ms`);
+      expect(exit.code).toBe(code);
+    },
+    20_000
+  );
 });

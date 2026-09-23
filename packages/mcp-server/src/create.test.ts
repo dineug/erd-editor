@@ -10,16 +10,16 @@ import {
 import { emptyDocument } from '@/__test-utils__/documents';
 import { createFakeHub } from '@/__test-utils__/fakeHub';
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { createEmptyDocument } from '@/session/disk';
 
-let io: MemoryIo;
+let io: MemoryHost;
 let mcp: McpHarness;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  io = createMemoryIo();
-  mcp = await connectMcp({ io });
+  io = createMemoryHost();
+  mcp = await connectMcp({ host: io });
 });
 
 afterEach(async () => {
@@ -74,7 +74,7 @@ describe('erd_open_document with create (AC-M7)', () => {
   it('creates the file again when it was deleted under an open session', async () => {
     await mcp.ok('erd_open_document', { path: 'again', create: true });
     await mcp.ok('erd_add_table', { path: 'again.erd.json' });
-    await io.unlink('/work/again.erd.json');
+    io.files.delete('/work/again.erd.json');
 
     const reopened = await mcp.ok('erd_open_document', {
       path: 'again',

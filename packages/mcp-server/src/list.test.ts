@@ -10,16 +10,16 @@ import {
 import { emptyDocument } from '@/__test-utils__/documents';
 import { createFakeHub } from '@/__test-utils__/fakeHub';
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { MAX_LIST_DEPTH, MAX_LISTED_DOCUMENTS } from '@/session/disk';
 
-let io: MemoryIo;
+let io: MemoryHost;
 let mcp: McpHarness;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  io = createMemoryIo();
-  mcp = await connectMcp({ io });
+  io = createMemoryHost();
+  mcp = await connectMcp({ host: io });
 });
 
 afterEach(async () => {

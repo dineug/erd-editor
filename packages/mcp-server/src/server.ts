@@ -1,12 +1,19 @@
+import * as NodePath from '@effect/platform-node/NodePath';
 import type * as Cause from 'effect/Cause';
 import * as Effect from 'effect/Effect';
+import type * as FileSystem from 'effect/FileSystem';
 import * as Layer from 'effect/Layer';
+import type * as Path from 'effect/Path';
 import type * as Stdio from 'effect/Stdio';
 import * as McpProtocol from 'effect/unstable/ai/McpProtocol';
 import * as McpServer from 'effect/unstable/ai/McpServer';
 
+import * as HubConnector from '@/hub/client';
+import * as HubDiscovery from '@/hub/discovery';
+import * as NodeFs from '@/io/fileSystem';
+import * as ProcessInfo from '@/io/process';
 import { StderrLogger } from '@/logger';
-import * as Sessions from '@/session/service';
+import * as Sessions from '@/session/manager';
 import { MessageStdin } from '@/stdin';
 import { SERVER_INSTRUCTIONS } from '@/tools/copy';
 import { ToolHandlers } from '@/tools/handlers';
@@ -17,12 +24,6 @@ export const SERVER_NAME = 'erd-editor';
 
 /** Pinned to package.json by server.test.ts. */
 export const SERVER_VERSION = '0.1.0';
-
-/** The nickname a peer shows when the client sent no name. */
-export const DEFAULT_CLIENT_NAME = 'agent';
-
-/** How often idle sessions are looked for between calls. */
-export const SWEEP_INTERVAL_MS = 60_000;
 
 /**
  * The three dated protocols that answer a malformed tool argument with
@@ -44,16 +45,16 @@ export const ToolsLayer: Layer.Layer<
   McpServer.McpServer | Sessions.SessionManager
 > = Layer.effectDiscard(
   Effect.gen(function* () {
+    // A finalizer here runs before the server waits for the calls in flight,
+    // which run to their end: closing every session first ends them, as the
+    // end of stdin did in 0.1.0.
+    const sessions = yield* Sessions.SessionManager;
+    yield* Effect.addFinalizer(() => sessions.closeAll);
     yield* McpServer.registerToolkit(SessionToolkit);
     yield* registerReadTool;
     yield* McpServer.registerToolkit(EditToolkit);
   })
 ).pipe(Layer.provide(ToolHandlers));
-
-export type ServerOptions = Omit<
-  Sessions.SessionManagerOptions,
-  'sweepIntervalMs' | 'defaultClientName'
-> & { sweepIntervalMs?: number };
 
 /**
  * The MCP server over stdio on the sessions a layer gives. layerStdio
@@ -80,14 +81,31 @@ export const layerWithSessions = <E>(
     Layer.provide(StderrLogger)
   );
 
+/** What the sessions stand on: files, paths, the process and the way to a hub. */
+export type Platform =
+  | FileSystem.FileSystem
+  | Path.Path
+  | ProcessInfo.ProcessInfo
+  | HubConnector.HubConnector;
+
+/**
+ * The node platform: its file system (realPath the native one) and path, this
+ * process, node:net connections.
+ */
+export const NodePlatform: Layer.Layer<Platform> = Layer.mergeAll(
+  NodeFs.layer,
+  NodePath.layer,
+  ProcessInfo.layer,
+  HubConnector.layer
+);
+
 /** The server with the session manager beside it, which the end of stdin closes. */
-export const makeServerLayer = (options: ServerOptions = {}) =>
+export const makeServerLayer = <E>(platform: Layer.Layer<Platform, E>) =>
   layerWithSessions(
-    Sessions.layer({
-      ...options,
-      sweepIntervalMs: options.sweepIntervalMs ?? SWEEP_INTERVAL_MS,
-      defaultClientName: DEFAULT_CLIENT_NAME,
-    })
+    Sessions.layer.pipe(
+      Layer.provide(HubDiscovery.layer),
+      Layer.provide(platform)
+    )
   );
 
-export const ServerLayer = makeServerLayer();
+export const ServerLayer = makeServerLayer(NodePlatform);

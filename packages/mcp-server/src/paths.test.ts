@@ -1,11 +1,18 @@
+import * as Effect from 'effect/Effect';
+import * as PlatformError from 'effect/PlatformError';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { createMemoryIo, fsError } from '@/__test-utils__/memoryIo';
-import { errnoCode, isSessionError, messageOf, SessionError } from '@/errors';
+import { fsError } from '@/__test-utils__/memoryFs';
+import { createMemoryHost } from '@/__test-utils__/memoryHost';
+import {
+  isPlatformReason,
+  isSessionError,
+  messageOf,
+  SessionError,
+} from '@/errors';
 import {
   DEFAULT_EXTENSION,
   isErdPath,
-  pathsOf,
   realPath,
   resolveDocumentPath,
   sessionKey,
@@ -26,55 +33,71 @@ describe('document paths', () => {
     expect(sessionKey('/A/b.erd', 'linux')).toBe('/A/b.erd');
   });
 
-  it('picks the path module of the platform', () => {
-    expect(pathsOf('win32').sep).toBe('\\');
-    expect(pathsOf('linux').sep).toBe('/');
-  });
-
   it('resolves relative paths against the working directory', async () => {
-    const io = createMemoryIo({ cwd: '/work' });
+    const io = createMemoryHost({ cwd: '/work' });
     io.put('/work/sub/a.erd.json', '{}');
 
-    expect(await resolveDocumentPath(io, 'sub/a.erd.json')).toBe(
+    expect(await io.run(resolveDocumentPath('sub/a.erd.json'))).toBe(
       '/work/sub/a.erd.json'
     );
-    expect(await resolveDocumentPath(io, '../work/sub/./a.erd.json')).toBe(
+    expect(await io.run(resolveDocumentPath('../work/sub/./a.erd.json'))).toBe(
       '/work/sub/a.erd.json'
     );
   });
 
   it('hands back the real path of a document named through a symlink', async () => {
-    const io = createMemoryIo();
-    io.realpath = async path => path.replace(/^\/link(?=\/|$)/, '/work');
+    const io = createMemoryHost();
+    io.links.set('/link', '/work');
+    io.put('/work/a.erd.json', '{}');
 
-    expect(await resolveDocumentPath(io, '/link/a.erd.json')).toBe(
+    expect(await io.run(resolveDocumentPath('/link/a.erd.json'))).toBe(
       '/work/a.erd.json'
     );
-    expect(await resolveDocumentPath(io, '/link/new', true)).toBe(
+    expect(await io.run(resolveDocumentPath('/link/new', true))).toBe(
       '/work/new.erd.json'
     );
   });
 
-  it('resolves a missing file through its existing folders', async () => {
-    const io = createMemoryIo();
-    io.realpath = async path => {
-      if (path === '/work') return '/real/work';
-      throw fsError('ENOENT', path);
-    };
+  it('refuses an empty path, and a path that is no ERD document', async () => {
+    const io = createMemoryHost();
 
-    expect(await realPath(io, '/work/new/x.erd.json')).toBe(
+    await expect(io.run(resolveDocumentPath('  '))).rejects.toMatchObject({
+      code: 'invalidPath',
+      message: 'path is empty',
+    });
+    await expect(
+      io.run(resolveDocumentPath('notes.md', true))
+    ).rejects.toMatchObject({ code: 'invalidPath' });
+  });
+
+  it('resolves a missing file through its existing folders', async () => {
+    const io = createMemoryHost();
+    io.calls.realPath = path =>
+      path === '/work'
+        ? Effect.succeed('/real/work')
+        : Effect.fail(fsError('NotFound', 'realPath', path));
+
+    expect(await io.run(realPath('/work/new/x.erd.json'))).toBe(
       '/real/work/new/x.erd.json'
     );
   });
 
   it('stops climbing on a failure other than a missing entry, or at the root', async () => {
-    const io = createMemoryIo();
-    io.realpath = async path => {
-      throw fsError(path === '/locked/x.erd' ? 'EACCES' : 'ENOENT', path);
-    };
+    const io = createMemoryHost();
+    // The folder resolves elsewhere, so a climb past the refusal would show.
+    io.calls.realPath = path =>
+      path === '/locked'
+        ? Effect.succeed('/real/locked')
+        : Effect.fail(
+            fsError(
+              path === '/locked/x.erd' ? 'PermissionDenied' : 'NotFound',
+              'realPath',
+              path
+            )
+          );
 
-    expect(await realPath(io, '/locked/x.erd')).toBe('/locked/x.erd');
-    expect(await realPath(io, '/')).toBe('/');
+    expect(await io.run(realPath('/locked/x.erd'))).toBe('/locked/x.erd');
+    expect(await io.run(realPath('/'))).toBe('/');
   });
 });
 
@@ -102,11 +125,25 @@ describe('errors', () => {
     expect(fields).toBeInstanceOf(Error);
   });
 
-  it('reads an errno code and a message from anything thrown', () => {
-    expect(errnoCode(fsError('ENOENT', '/x'))).toBe('ENOENT');
-    expect(errnoCode({ code: 5 })).toBeUndefined();
-    expect(errnoCode(null)).toBeUndefined();
+  it('tells a platform failure by its reason tag', () => {
+    const missing = fsError('NotFound', 'stat', '/x');
+
+    expect(isPlatformReason(missing, 'NotFound')).toBe(true);
+    expect(isPlatformReason(missing, 'AlreadyExists')).toBe(false);
+    expect(isPlatformReason(new Error('ENOENT'), 'NotFound')).toBe(false);
+  });
+
+  it('reads a message from anything thrown, a file system failure in the words of its system call', () => {
     expect(messageOf(new Error('boom'))).toBe('boom');
     expect(messageOf('plain')).toBe('plain');
+    expect(messageOf(fsError('Unknown', 'writeFile', '/x', 'ENOSPC'))).toBe(
+      'ENOSPC: /x'
+    );
+    const bare = PlatformError.systemError({
+      _tag: 'Busy',
+      module: 'FileSystem',
+      method: 'remove',
+    });
+    expect(messageOf(bare)).toBe(bare.message);
   });
 });

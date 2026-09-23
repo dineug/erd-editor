@@ -15,25 +15,25 @@ import {
   type McpHarness,
   settle,
 } from '@/__test-utils__/mcp';
-import { createMemoryIo, type MemoryIo } from '@/__test-utils__/memoryIo';
-import { CLOSED_NOTE, createLiveSession, RESEED_NOTE } from '@/session/live';
+import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
+import { CLOSED_NOTE, makeLiveSession, RESEED_NOTE } from '@/session/live';
 import { FELL_BACK_NOTE } from '@/session/manager';
 
 const DOCUMENT = '/work/state.erd.json';
 
-let io: MemoryIo;
+let io: MemoryHost;
 let hub: FakeHub;
 const harnesses: McpHarness[] = [];
 
 async function connect(clientName = 'claude-code') {
-  const mcp = await connectMcp({ io, clientName });
+  const mcp = await connectMcp({ host: io, clientName });
   harnesses.push(mcp);
   return mcp;
 }
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  io = createMemoryIo();
+  io = createMemoryHost();
   io.put(DOCUMENT, emptyDocument());
   hub = createFakeHub(io, { pid: 6161, workspaceFolders: ['/work'] });
 });
@@ -44,29 +44,27 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-const candidate = () => ({
-  pid: hub.pid,
-  record: hub.lock(),
-  mtimeMs: 1,
-});
+const live = () =>
+  io.run(
+    makeLiveSession({
+      path: DOCUMENT,
+      candidate: { pid: hub.pid, record: hub.lock(), mtimeMs: 1 },
+      nickname: 'agent',
+      client: 'agent',
+    })
+  );
 
 describe('LiveSession transitions (AC-P13)', () => {
   it('leave: ready to detached, and the next write joins again', async () => {
-    const session = createLiveSession({
-      io,
-      path: DOCUMENT,
-      candidate: candidate(),
-      nickname: 'agent',
-      client: 'agent',
-    });
-    await session.runTool('erd_add_table', {});
+    const session = await live();
+    await io.run(session.runTool('erd_add_table', {}));
     expect(session.state).toBe('ready');
 
-    await session.leave();
+    await io.run(session.leave);
     expect(session.state).toBe('detached');
     expect(hub.documents.get(DOCUMENT)!.peers.size).toBe(0);
 
-    const { run } = await session.runTool('erd_add_memo', {});
+    const { run } = await io.run(session.runTool('erd_add_memo', {}));
     expect(run.batches).toBe(1);
     expect(session.state).toBe('ready');
     expect(hub.methods().slice(-4)).toEqual([
@@ -75,28 +73,22 @@ describe('LiveSession transitions (AC-P13)', () => {
       'join',
       'applyActions',
     ]);
-    await session.close();
+    await io.run(session.close);
   });
 
   it('documentClosed: ready to reconnecting, and the next write opens and joins again', async () => {
-    const session = createLiveSession({
-      io,
-      path: DOCUMENT,
-      candidate: candidate(),
-      nickname: 'agent',
-      client: 'agent',
-    });
-    await session.runTool('erd_add_table', {});
+    const session = await live();
+    await io.run(session.runTool('erd_add_table', {}));
 
     hub.close(DOCUMENT);
     await settle();
     expect(session.state).toBe('reconnecting');
 
-    const { notes } = await session.runTool('erd_add_memo', {});
+    const { notes } = await io.run(session.runTool('erd_add_memo', {}));
     expect(notes).toEqual([CLOSED_NOTE, RESEED_NOTE]);
     expect(session.state).toBe('ready');
     expect(hub.webview(DOCUMENT).state.doc.memoIds).toHaveLength(1);
-    await session.close();
+    await io.run(session.close);
   });
 
   it('documentClosed: a save before the next write says the earlier edits may be gone', async () => {

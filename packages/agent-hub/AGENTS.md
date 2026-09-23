@@ -13,7 +13,7 @@
 | --- | --- |
 | `src/protocol.ts` | `HUB_PROTOCOL_VERSION`; the union schemas `HubRequest` / `HubResponse` / `HubNotification`, each a type of the same name narrowed by `method`, and `HubRequestParams` / `HubResultMap` / `HubNotificationParams` read off them; the direction schemas `PeerToHubMessage` / `HubToPeerMessage`; `HubError`, `JoinResult`, `DocumentInfo`; `HubErrorCode` and its `HubErrorCodeSchema`; `HUB_REQUEST_METHODS` / `HUB_NOTIFICATION_METHODS`; `HubRequestError` (a `Schema.TaggedError`); `protocolMismatchMessage` |
 | `src/lock.ts` | `LockRecord` (schema and type), `lockDirPath` / `lockFilePath` / `pipePath`, `lockFilePid` (file name → pid), `pipePathFits`, `parseLock` / `serializeLock` (one `Schema.fromJsonString` codec), the modes and `MAX_PIPE_PATH_BYTES` |
-| `src/framing.ts` | `encodeFrame` (JSON + `\n`), `decodeFrames(schema)` (a `Stream<string>` → `Stream<message>` step) and its `FrameError`, `MAX_FRAME_BYTES` (64 MiB); `createFrameDecoder` stays for the two consumers until they stream frames |
+| `src/framing.ts` | `encodeFrame` (JSON + `\n`), `decodeFrames(schema)` (a `Stream<string>` → `Stream<message>` step) and its `FrameError`, `MAX_FRAME_BYTES` (64 MiB); `createFrameDecoder`, which neither consumer imports any more (both stream frames through `decodeFrames`), is still exported until its removal |
 | `src/paths.ts` | `toSegments`, `isInside`, `isSamePath`, `longestPrefixIndex`, `isAuthorized` / `assertAuthorized` |
 | `src/discovery.ts` | `readLockDirectory(homeDir)` — the lock files over `FileSystem`; `selectHub` — lock files → `live` / `blocked` / `headless` plus the `stale` list |
 | `src/framing.wire.test.ts` | The byte-level contract a hand-written peer is held to |

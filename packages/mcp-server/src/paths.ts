@@ -1,7 +1,9 @@
-import { type PlatformPath, posix, win32 } from 'node:path';
+import * as Effect from 'effect/Effect';
+import * as FileSystem from 'effect/FileSystem';
+import * as Path from 'effect/Path';
 
-import { errnoCode, SessionError, SessionErrorCode } from '@/errors';
-import { type McpIo } from '@/io';
+import { SessionError, SessionErrorCode } from '@/errors';
+import { ProcessInfo } from '@/io/process';
 
 /** The extensions the VS Code custom editor opens, which the hub also insists on. */
 export const ERD_EXTENSIONS: readonly string[] = [
@@ -13,10 +15,6 @@ export const ERD_EXTENSIONS: readonly string[] = [
 
 /** What a new document gets when its name has no extension at all. */
 export const DEFAULT_EXTENSION = '.erd.json';
-
-export function pathsOf(platform: string): PlatformPath {
-  return platform === 'win32' ? win32 : posix;
-}
 
 export function isErdPath(path: string): boolean {
   const name = path.toLowerCase();
@@ -32,43 +30,55 @@ export function sessionKey(path: string, platform: string): string {
 
 /**
  * Resolves symlinks on the longest prefix that exists, so a document about to
- * be created resolves like the hub will resolve it once it does.
+ * be created resolves like the hub will resolve it once it does. Only a
+ * missing entry climbs; any other failure keeps the path as it was given.
  */
-export async function realPath(io: McpIo, target: string): Promise<string> {
-  const paths = pathsOf(io.platform());
-  try {
-    return await io.realpath(target);
-  } catch (error) {
-    const parent = paths.dirname(target);
-    if (errnoCode(error) !== 'ENOENT' || parent === target) return target;
-    return paths.join(await realPath(io, parent), paths.basename(target));
-  }
-}
+export const realPath = Effect.fn('realPath')(function* (target: string) {
+  const fs = yield* FileSystem.FileSystem;
+  const paths = yield* Path.Path;
+
+  const climb = (current: string): Effect.Effect<string> =>
+    fs.realPath(current).pipe(
+      Effect.catch(error => {
+        const parent = paths.dirname(current);
+        if (error.reason._tag !== 'NotFound' || parent === current) {
+          return Effect.succeed(current);
+        }
+        return climb(parent).pipe(
+          Effect.map(real => paths.join(real, paths.basename(current)))
+        );
+      })
+    );
+  return yield* climb(target);
+});
 
 /**
  * The absolute real path of an ERD document an agent named, relative paths
  * against the server's working directory. With create, a name without any
  * extension gets .erd.json; any other non ERD path is refused.
  */
-export async function resolveDocumentPath(
-  io: McpIo,
+export const resolveDocumentPath = Effect.fn('resolveDocumentPath')(function* (
   input: string,
   create = false
-): Promise<string> {
-  const paths = pathsOf(io.platform());
+) {
+  const paths = yield* Path.Path;
+  const { cwd } = yield* ProcessInfo;
   if (input.trim() === '') {
-    throw new SessionError(SessionErrorCode.invalidPath, 'path is empty');
+    return yield* new SessionError(
+      SessionErrorCode.invalidPath,
+      'path is empty'
+    );
   }
 
-  let absolute = paths.resolve(io.cwd(), input);
+  let absolute = paths.resolve(cwd, input);
   if (!isErdPath(absolute)) {
     if (!create || paths.extname(absolute) !== '') {
-      throw new SessionError(
+      return yield* new SessionError(
         SessionErrorCode.invalidPath,
         `${absolute} is not an ERD document; use a ${ERD_EXTENSIONS.map(extension => `.${extension}`).join(', ')} file, and ${DEFAULT_EXTENSION} for a new one`
       );
     }
     absolute += DEFAULT_EXTENSION;
   }
-  return realPath(io, absolute);
-}
+  return yield* realPath(absolute);
+});

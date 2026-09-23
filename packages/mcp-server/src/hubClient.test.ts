@@ -1,4 +1,10 @@
 import { HUB_PROTOCOL_VERSION, pipePath } from '@dineug/erd-editor-agent-hub';
+import * as Effect from 'effect/Effect';
+import * as Exit from 'effect/Exit';
+import * as Fiber from 'effect/Fiber';
+import * as Scope from 'effect/Scope';
+import * as TestClock from 'effect/testing/TestClock';
+import * as Socket from 'effect/unstable/socket/Socket';
 import {
   afterEach,
   beforeEach,
@@ -9,33 +15,56 @@ import {
 } from 'vite-plus/test';
 
 import { settle } from '@/__test-utils__/mcp';
+import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import {
-  createMemoryIo,
   createSocketPair,
   type ServerSocket,
-} from '@/__test-utils__/memoryIo';
-import { connectHub, createHubClient, REQUEST_TIMEOUT_MS } from '@/hubClient';
+} from '@/__test-utils__/memorySocket';
+import {
+  type HubClientOptions,
+  HubConnector,
+  makeHubClient,
+  REQUEST_TIMEOUT_MS,
+} from '@/hub/client';
+import { HubUnreachable } from '@/io/netSocket';
+import { StderrLogger } from '@/logger';
+
+let scope: Scope.Closeable;
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  scope = Scope.makeUnsafe();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await Effect.runPromise(Scope.close(scope, Exit.void));
   vi.restoreAllMocks();
 });
 
-/** A client over a socket pair whose hub end the spec drives by hand. */
-function pair(
-  options: Parameters<typeof createHubClient>[2] = { client: 'c' }
-) {
-  const [client, hub] = createSocketPair();
+/** Runs an effect in the spec's scope, which outlives it, logging as the server does. */
+const run = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
+  Effect.runPromise(
+    effect.pipe(Scope.provide(scope), Effect.provide(StderrLogger))
+  );
+
+/** A client over a socket pair whose hub end the spec drives by hand, in a scope of its own. */
+async function pair(options: Partial<HubClientOptions> = {}) {
+  const { client, server } = createSocketPair();
   const sent: any[] = [];
-  hub.onData(chunk => {
+  server.onData(chunk => {
     for (const line of chunk.split('\n').filter(Boolean))
       sent.push(JSON.parse(line));
   });
-  return { hub, sent, client: createHubClient(client, 7, options) };
+  const own = Scope.forkUnsafe(scope);
+  const hub = await run(
+    makeHubClient(client, 7, { client: 'c', ...options }).pipe(
+      Scope.provide(own)
+    )
+  );
+  return { server, sent, client: hub, scope: own };
 }
+
+const frame = (message: object) => `${JSON.stringify(message)}\n`;
 
 describe('the hub client', () => {
   it('waits thirty seconds for an answer by default', () => {
@@ -44,19 +73,24 @@ describe('the hub client', () => {
 
   it('matches responses to requests by id and hands notifications on', async () => {
     const onNotification = vi.fn();
-    const { hub, sent, client } = pair({ client: 'c', onNotification });
+    const { server, sent, client } = await pair({ onNotification });
 
-    const leave = client.request('leave', { path: '/a.erd.json' });
-    const save = client.request('save', { path: '/a.erd.json' });
+    const leave = run(client.request('leave', { path: '/a.erd.json' }));
+    const save = run(client.request('save', { path: '/a.erd.json' }));
     await settle();
-    hub.write(
-      `${JSON.stringify({ id: sent[1].id, ok: true, method: 'save', result: { saved: true } })}\n`
+    server.write(
+      frame({
+        id: sent[1].id,
+        ok: true,
+        method: 'save',
+        result: { saved: true },
+      })
     );
-    hub.write(
-      `${JSON.stringify({ id: sent[0].id, ok: true, method: 'leave', result: {} })}\n`
+    server.write(
+      frame({ id: sent[0].id, ok: true, method: 'leave', result: {} })
     );
-    hub.write(
-      `${JSON.stringify({ method: 'documentClosed', params: { path: '/a.erd.json' } })}\n`
+    server.write(
+      frame({ method: 'documentClosed', params: { path: '/a.erd.json' } })
     );
 
     expect(await save).toEqual({ saved: true });
@@ -69,35 +103,40 @@ describe('the hub client', () => {
   });
 
   it.each([
-    ['after', ['joined', 'notification']],
-    ['before', ['notification', 'joined']],
+    ['after', 'at once', ['joined', 'notification']],
+    ['after', 'after a wait', ['joined', 'notification']],
+    ['before', 'at once', ['notification', 'joined']],
   ])(
-    'runs the code awaiting a response and a notification %s it in one chunk in stream order',
-    async (position, expected) => {
+    'runs what a request does with its answer and a notification %s it in one chunk in stream order, its work done %s',
+    async (position, timing, expected) => {
       const order: string[] = [];
-      const { hub, sent, client } = pair({
-        client: 'c',
+      const { server, sent, client } = await pair({
         onNotification: () => order.push('notification'),
       });
-      const joined = client
-        .request('join', { path: '/a.erd.json' })
-        .then(() => order.push('joined'));
+      // A then that waits still runs before the next frame: it runs on the reading fiber.
+      const wait =
+        timing === 'at once' ? Effect.void : Effect.promise(() => settle(1));
+      const joined = run(
+        client.requestThen('join', { path: '/a.erd.json' }, () =>
+          wait.pipe(Effect.andThen(Effect.sync(() => order.push('joined'))))
+        )
+      );
       await settle();
 
-      const response = JSON.stringify({
+      const response = frame({
         id: sent[0].id,
         ok: true,
         method: 'join',
         result: { initialValue: '{}', snapshotVersion: 3, readonly: false },
       });
-      const notification = JSON.stringify({
+      const notification = frame({
         method: 'actions',
         params: { path: '/a.erd.json', actions: [] },
       });
-      hub.write(
+      server.write(
         position === 'after'
-          ? `${response}\n${notification}\n`
-          : `${notification}\n${response}\n`
+          ? `${response}${notification}`
+          : `${notification}${response}`
       );
       await joined;
       await settle();
@@ -106,24 +145,224 @@ describe('the hub client', () => {
     }
   );
 
+  it('resumes a requestThen caller once the frames read with its answer and the microtasks its then queued have run', async () => {
+    const order: string[] = [];
+    const { server, sent, client } = await pair({
+      onNotification: () => order.push('notification'),
+    });
+    const joined = run(
+      client
+        .requestThen('join', { path: '/a.erd.json' }, () =>
+          Effect.sync(() => {
+            order.push('then');
+            queueMicrotask(() => order.push('microtask'));
+          })
+        )
+        .pipe(Effect.tap(() => Effect.sync(() => order.push('caller'))))
+    );
+    await settle();
+
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: true,
+        method: 'join',
+        result: { initialValue: '{}', snapshotVersion: 3, readonly: false },
+      }) +
+        frame({
+          method: 'actions',
+          params: { path: '/a.erd.json', actions: [] },
+        })
+    );
+    await joined;
+
+    expect(order).toEqual(['then', 'notification', 'microtask', 'caller']);
+  });
+
+  it('resumes a plain request caller before a later frame of the same chunk', async () => {
+    const order: string[] = [];
+    const { server, sent, client } = await pair({
+      onNotification: () => order.push('notification'),
+    });
+    const saved = run(
+      client
+        .request('save', { path: '/a.erd.json' })
+        .pipe(Effect.tap(() => Effect.sync(() => order.push('caller'))))
+    );
+    await settle();
+
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: true,
+        method: 'save',
+        result: { saved: true },
+      }) + frame({ method: 'documentClosed', params: { path: '/a.erd.json' } })
+    );
+    await saved;
+    await settle();
+
+    expect(order).toEqual(['caller', 'notification']);
+  });
+
+  it('holds a caller on drained until the rest of the chunk its answer came in is taken', async () => {
+    const order: string[] = [];
+    const { server, sent, client } = await pair({
+      onNotification: () => order.push('notification'),
+    });
+    const opened = run(
+      client.request('openDocument', { path: '/a.erd.json' }).pipe(
+        Effect.tap(() => Effect.sync(() => order.push('caller'))),
+        Effect.andThen(client.drained),
+        Effect.tap(() => Effect.sync(() => order.push('drained')))
+      )
+    );
+    await settle();
+
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: true,
+        method: 'openDocument',
+        result: { path: '/a.erd.json', opened: false, webviews: 1 },
+      }) +
+        frame({
+          method: 'actions',
+          params: { path: '/a.erd.json', actions: [] },
+        })
+    );
+    await opened;
+
+    expect(order).toEqual(['caller', 'notification', 'drained']);
+  });
+
+  it('lets a caller past drained before a frame read after its answer, during the turn that released it', async () => {
+    const order: string[] = [];
+    const { server, sent, client } = await pair({
+      onNotification: () => order.push('notification'),
+    });
+    const later = frame({
+      method: 'actions',
+      params: { path: '/a.erd.json', actions: [] },
+    });
+    const joined = run(
+      client
+        .requestThen('join', { path: '/a.erd.json' }, () =>
+          Effect.sync(() => queueMicrotask(() => server.write(later)))
+        )
+        .pipe(
+          Effect.andThen(client.drained),
+          Effect.tap(() => Effect.sync(() => order.push('caller')))
+        )
+    );
+    await settle();
+
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: true,
+        method: 'join',
+        result: { initialValue: '{}', snapshotVersion: 3, readonly: false },
+      })
+    );
+    await joined;
+    await settle();
+
+    expect(order).toEqual(['caller', 'notification']);
+  });
+
+  it('resumes a requestThen caller its answer held when the connection closes in the turn that would release it', async () => {
+    const { server, sent, client } = await pair();
+    const joined = run(
+      client.requestThen('join', { path: '/a.erd.json' }, () =>
+        Effect.sync(() => {
+          queueMicrotask(() => void Effect.runFork(client.close));
+          return 'seeded';
+        })
+      )
+    );
+    await settle();
+
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: true,
+        method: 'join',
+        result: { initialValue: '{}', snapshotVersion: 3, readonly: false },
+      })
+    );
+
+    expect(await Promise.race([joined, settle(50).then(() => 'held')])).toBe(
+      'seeded'
+    );
+    expect(client.closed).toBe(true);
+  });
+
+  it('lets what waits on drained go when the connection closes', async () => {
+    const { server, sent, client } = await pair();
+    // A then that waits on drained holds the fiber that would release it, until the close does.
+    const joined = run(
+      client.requestThen('join', { path: '/a.erd.json' }, () =>
+        client.drained.pipe(Effect.as('drained'))
+      )
+    );
+    await settle();
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: true,
+        method: 'join',
+        result: { initialValue: '{}', snapshotVersion: 3, readonly: false },
+      })
+    );
+    await settle();
+
+    await run(client.close);
+
+    expect(await Promise.race([joined, settle(50).then(() => 'held')])).toBe(
+      'drained'
+    );
+    expect(await run(client.drained)).toBeUndefined();
+  });
+
   it('ignores frames it cannot place: unknown ids, non objects, notifications without params', async () => {
     const onNotification = vi.fn();
-    const { hub, client } = pair({ client: 'c', onNotification });
+    const { server, client } = await pair({ onNotification });
 
-    hub.write('{"id":99,"ok":true,"result":{}}\n[1,2]\n{"method":"actions"}\n');
+    server.write(
+      '{"id":99,"ok":true,"result":{}}\n[1,2]\n{"method":"actions"}\n'
+    );
     await settle();
 
     expect(onNotification).not.toHaveBeenCalled();
     expect(client.closed).toBe(false);
   });
 
-  it('turns an error response into a SessionError, filling in what the hub left out', async () => {
-    const { hub, sent, client } = pair();
+  it('logs a notification the session could not take, and stays open', async () => {
+    const { server, client } = await pair({
+      onNotification: () => {
+        throw new Error('no peer');
+      },
+    });
 
-    const refused = client.request('join', { path: '/a.erd.json' });
+    server.write(frame({ method: 'documentClosed', params: { path: '/a' } }));
     await settle();
-    hub.write(
-      `${JSON.stringify({ id: sent[0].id, ok: false, method: 'join', error: 'nope' })}\n`
+
+    expect(console.error).toHaveBeenCalledWith(
+      '[erd-editor-mcp]',
+      'dropped a notification from the hub of pid 7',
+      expect.objectContaining({ message: 'no peer' })
+    );
+    expect(client.closed).toBe(false);
+  });
+
+  it('turns an error response into a SessionError, filling in what the hub left out', async () => {
+    const { server, sent, client } = await pair();
+
+    const refused = run(client.request('join', { path: '/a.erd.json' }));
+    await settle();
+    server.write(
+      frame({ id: sent[0].id, ok: false, method: 'join', error: 'nope' })
     );
 
     await expect(refused).rejects.toMatchObject({
@@ -136,12 +375,16 @@ describe('the hub client', () => {
   it.each([42, { x: 1 }, null])(
     'refuses as internal an error response whose code is %j, and stays open',
     async code => {
-      const { hub, sent, client } = pair();
+      const { server, sent, client } = await pair();
 
-      const refused = client.request('listDocuments', {});
+      const refused = run(client.request('listDocuments', {}));
       await settle();
-      hub.write(
-        `${JSON.stringify({ id: sent[0].id, ok: false, error: { code, message: 'bad code' } })}\n`
+      server.write(
+        frame({
+          id: sent[0].id,
+          ok: false,
+          error: { code, message: 'bad code' },
+        })
       );
 
       await expect(refused).rejects.toMatchObject({
@@ -153,43 +396,153 @@ describe('the hub client', () => {
     }
   );
 
-  it('times out a request nobody answers', async () => {
-    const { client } = pair({ client: 'c', requestTimeoutMs: 5 });
+  it('times out a request nobody answers, on the clock', async () => {
+    const { client } = await pair();
 
-    await expect(client.request('listDocuments', {})).rejects.toMatchObject({
+    const outcome = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fiber = yield* Effect.forkChild(
+          client.request('listDocuments', {})
+        );
+        yield* TestClock.adjust(REQUEST_TIMEOUT_MS - 1);
+        const early = fiber.pollUnsafe();
+        yield* TestClock.adjust(1);
+        return { early, error: yield* Effect.flip(Fiber.join(fiber)) };
+      }).pipe(Effect.provide(TestClock.layer()))
+    );
+
+    expect(outcome.early).toBeUndefined();
+    expect(outcome.error).toMatchObject({
       code: 'timeout',
+      message: `The VS Code window (pid 7) did not answer listDocuments within ${REQUEST_TIMEOUT_MS} ms`,
     });
+  });
+
+  it('forgets a request once it timed out, so a late answer runs nothing', async () => {
+    const then = vi.fn(() => Effect.void);
+    const { server, sent, client } = await pair();
+
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fiber = yield* Effect.forkChild(
+          client.requestThen('join', { path: '/a.erd.json' }, then)
+        );
+        yield* TestClock.adjust(REQUEST_TIMEOUT_MS);
+        return yield* Effect.flip(Fiber.join(fiber));
+      }).pipe(Effect.provide(TestClock.layer()))
+    );
+    server.write(
+      frame({
+        id: sent[0].id,
+        ok: true,
+        method: 'join',
+        result: { initialValue: '{}', snapshotVersion: 3, readonly: false },
+      })
+    );
+    await settle();
+
+    expect(error).toMatchObject({ code: 'timeout' });
+    expect(then).not.toHaveBeenCalled();
+    expect(client.closed).toBe(false);
   });
 
   it('closes on a frame out of step, failing what is pending', async () => {
     const onClose = vi.fn();
-    const { hub, client } = pair({ client: 'c', onClose });
+    const { server, client } = await pair({ onClose });
+    const hungUp = vi.fn();
+    server.onClose(hungUp);
 
-    const pending = client.request('listDocuments', {});
-    hub.write('not json\n');
+    const pending = run(client.request('listDocuments', {}));
+    server.write('not json\n');
 
     await expect(pending).rejects.toMatchObject({ code: 'disconnected' });
     expect(client.closed).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
-    await expect(client.request('listDocuments', {})).rejects.toMatchObject({
+    expect(hungUp).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledWith(
+      '[erd-editor-mcp]',
+      'closed the hub connection of pid 7 on a bad frame',
+      expect.objectContaining({ reason: 'notJson' })
+    );
+    await expect(
+      run(client.request('listDocuments', {}))
+    ).rejects.toMatchObject({
       code: 'disconnected',
+      message: 'The connection to the VS Code window (pid 7) is closed',
     });
+  });
+
+  it('fails a request it cannot frame, and one it cannot write, and stays usable', async () => {
+    const { client } = await pair();
+
+    await expect(
+      run(client.request('applyActions', { path: '/a', actions: [1n] }))
+    ).rejects.toBeInstanceOf(TypeError);
+
+    const broken = await run(
+      makeHubClient(
+        Socket.make({
+          reader: createSocketPair().client.reader,
+          writer: Effect.succeed({
+            write: () =>
+              Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketWriteError({
+                    cause: new Error('EPIPE'),
+                  }),
+                })
+              ),
+            writeAll: () => Effect.void,
+          }),
+        }),
+        7,
+        { client: 'c' }
+      )
+    );
+    await expect(
+      run(broken.request('save', { path: '/a.erd.json' }))
+    ).rejects.toMatchObject({
+      code: 'disconnected',
+      message:
+        'The connection to the VS Code window (pid 7) closed before it answered save',
+    });
+    expect(client.closed).toBe(false);
   });
 
   it('closes once, whether it or the hub hangs up first', async () => {
     const onClose = vi.fn();
-    const { hub, client } = pair({ client: 'c', onClose });
+    const { server, client } = await pair({ onClose });
 
-    client.close();
-    client.close();
-    hub.end();
+    await run(client.close);
+    await run(client.close);
+    server.end();
     await settle();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('fails what is pending as disconnected when the hub hangs up, and closes its scope', async () => {
+    const onClose = vi.fn();
+    const { server, client, scope: own } = await pair({ onClose });
+    const released = vi.fn();
+    await run(Scope.addFinalizer(own, Effect.sync(released)));
+
+    const pending = run(client.request('save', { path: '/a.erd.json' }));
+    await settle();
+    server.destroy();
+
+    await expect(pending).rejects.toMatchObject({
+      code: 'disconnected',
+      message:
+        'The connection to the VS Code window (pid 7) closed before it answered save',
+    });
+    await settle();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(released).toHaveBeenCalledTimes(1);
+  });
 });
 
-describe('connectHub', () => {
+describe('the hub connector', () => {
   const candidate = (protocolVersion = HUB_PROTOCOL_VERSION) => ({
     pid: 11,
     mtimeMs: 1,
@@ -205,65 +558,91 @@ describe('connectHub', () => {
     },
   });
 
-  it('says hello with the lock token, the protocol and the client name', async () => {
-    const io = createMemoryIo();
-    let hello: any;
-    io.servers.set(candidate().record.pipe, (socket: ServerSocket) => {
+  const connect = (
+    io: ReturnType<typeof createMemoryHost>,
+    lock: ReturnType<typeof candidate>,
+    client = 'c'
+  ) =>
+    run(
+      Effect.gen(function* () {
+        const connector = yield* HubConnector;
+        return yield* connector.connect(lock, { client });
+      }).pipe(Effect.provide(io.layer))
+    );
+
+  /** Answers hello in the given protocol, recording the frame it got. */
+  const answerHello = (protocolVersion: number, seen: any[] = []) => {
+    return (socket: ServerSocket) => {
       socket.onData(chunk => {
-        hello = JSON.parse(chunk);
+        const hello = JSON.parse(chunk);
+        seen.push(hello);
         socket.write(
-          `${JSON.stringify({ id: hello.id, ok: true, method: 'hello', result: { protocolVersion: HUB_PROTOCOL_VERSION, ide: 'vscode', version: '2.9.0' } })}\n`
+          frame({
+            id: hello.id,
+            ok: true,
+            method: 'hello',
+            result: { protocolVersion, ide: 'vscode', version: '2.9.0' },
+          })
         );
       });
-    });
+    };
+  };
 
-    const client = await connectHub(io, candidate(), { client: 'claude-code' });
+  it('says hello with the lock token, the protocol and the client name', async () => {
+    const io = createMemoryHost();
+    const seen: any[] = [];
+    io.servers.set(
+      candidate().record.pipe,
+      answerHello(HUB_PROTOCOL_VERSION, seen)
+    );
 
-    expect(hello).toMatchObject({
-      method: 'hello',
-      params: {
-        token: 'secret',
-        protocolVersion: HUB_PROTOCOL_VERSION,
-        client: 'claude-code',
+    const client = await connect(io, candidate(), 'claude-code');
+
+    expect(seen).toMatchObject([
+      {
+        method: 'hello',
+        params: {
+          token: 'secret',
+          protocolVersion: HUB_PROTOCOL_VERSION,
+          client: 'claude-code',
+        },
       },
-    });
+    ]);
     expect(client.pid).toBe(11);
-    client.close();
+    await run(client.close);
   });
 
   it('refuses a hello answered in another protocol and closes the connection', async () => {
-    const io = createMemoryIo();
-    io.servers.set(candidate().record.pipe, (socket: ServerSocket) => {
-      socket.onData(chunk => {
-        const { id } = JSON.parse(chunk);
-        socket.write(
-          `${JSON.stringify({ id, ok: true, method: 'hello', result: { protocolVersion: HUB_PROTOCOL_VERSION + 1, ide: 'vscode', version: '9' } })}\n`
-        );
-      });
+    const io = createMemoryHost();
+    const hungUp = vi.fn();
+    io.servers.set(candidate().record.pipe, socket => {
+      socket.onClose(hungUp);
+      answerHello(HUB_PROTOCOL_VERSION + 1)(socket);
     });
 
-    await expect(
-      connectHub(io, candidate(), { client: 'c' })
-    ).rejects.toMatchObject({ code: 'protocolMismatch' });
+    await expect(connect(io, candidate())).rejects.toMatchObject({
+      code: 'protocolMismatch',
+    });
+    expect(hungUp).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a lock from another protocol without connecting', async () => {
-    const io = createMemoryIo();
-    const connect = vi.spyOn(io, 'connect');
+    const io = createMemoryHost();
+    const dial = vi.fn(io.connect);
+    io.connect = dial;
 
     await expect(
-      connectHub(io, candidate(HUB_PROTOCOL_VERSION + 1), { client: 'c' })
+      connect(io, candidate(HUB_PROTOCOL_VERSION + 1))
     ).rejects.toMatchObject({ code: 'protocolMismatch' });
-    expect(connect).not.toHaveBeenCalled();
+    expect(dial).not.toHaveBeenCalled();
   });
 
-  it('reports a string rejection from connect too', async () => {
-    const io = createMemoryIo();
-    io.connect = () => Promise.reject('refused');
+  it('reports a hub nothing accepts a connection on, with the reason', async () => {
+    const io = createMemoryHost();
+    io.connect = pipe =>
+      Effect.fail(new HubUnreachable({ pipe, message: 'refused' }));
 
-    await expect(
-      connectHub(io, candidate(), { client: 'c' })
-    ).rejects.toMatchObject({
+    await expect(connect(io, candidate())).rejects.toMatchObject({
       code: 'hubUnreachable',
       message: expect.stringContaining('(refused)'),
     });

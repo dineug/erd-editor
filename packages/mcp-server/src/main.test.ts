@@ -14,7 +14,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { createMemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import { makeServerLayer } from '@/server';
 
 const runMain = vi.hoisted(() => vi.fn());
@@ -43,7 +43,7 @@ describe('the entry point', () => {
     const closed = Stdio.layerTest({});
     const exit = await Effect.runPromiseExit(
       serve(
-        makeServerLayer({ io: createMemoryIo() }).pipe(Layer.provide(closed))
+        makeServerLayer(createMemoryHost().layer).pipe(Layer.provide(closed))
       )
     );
 

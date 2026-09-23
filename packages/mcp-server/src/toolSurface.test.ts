@@ -7,7 +7,7 @@ import {
   type McpHarness,
   RpcError,
 } from '@/__test-utils__/mcp';
-import { createMemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import { SQL_VENDORS } from '@/tools/read';
 import { actionTools } from '@/tools/registry';
 import { isDestructive, SESSION_TOOL_NAMES } from '@/tools/toolkit';
@@ -18,9 +18,9 @@ let mcp: McpHarness;
 let tools: ListedTools['tools'];
 
 beforeAll(async () => {
-  const io = createMemoryIo();
+  const io = createMemoryHost();
   io.put(DOCUMENT, emptyDocument());
-  mcp = await connectMcp({ io });
+  mcp = await connectMcp({ host: io });
   const listed = await mcp.listTools();
   tools = listed.tools;
   // An observation, not a gate: the bytes every agent reads before its first call.

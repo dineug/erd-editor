@@ -5,7 +5,7 @@ import * as Schema from 'effect/Schema';
 import * as McpSchema from 'effect/unstable/ai/McpSchema';
 import * as McpServer from 'effect/unstable/ai/McpServer';
 
-import { SessionManager } from '@/session/service';
+import { SessionManager } from '@/session/manager';
 import { describeArg, describeTool } from '@/tools/copy';
 import { answer } from '@/tools/handlers';
 import { READ_FORMATS, SQL_VENDORS } from '@/tools/read';

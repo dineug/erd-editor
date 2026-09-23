@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
-import { createMemoryIo } from '@/__test-utils__/memoryIo';
+import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import {
   expectObjectInputSchemas,
   type ListedTool,
@@ -23,7 +23,7 @@ let tools: ListedTool[];
 let live: ToolSurface[];
 
 beforeAll(async () => {
-  mcp = await connectMcp({ io: createMemoryIo() });
+  mcp = await connectMcp({ host: createMemoryHost() });
   tools = (await mcp.listTools()).tools;
   live = normalizeToolSurface(tools);
 });

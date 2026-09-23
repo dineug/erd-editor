@@ -1,12 +1,14 @@
 import * as Context from 'effect/Context';
 import * as Effect from 'effect/Effect';
-import type * as Layer from 'effect/Layer';
+import * as Layer from 'effect/Layer';
 import type * as Stdio from 'effect/Stdio';
+import * as TestClock from 'effect/testing/TestClock';
 
+import type { MemoryHost } from '@/__test-utils__/memoryHost';
 import { serveStdio, type StdioServer } from '@/__test-utils__/stdio';
 import type { ListedTool } from '@/__test-utils__/toolSurface';
-import { makeServerLayer, type ServerOptions } from '@/server';
-import { SessionManager } from '@/session/service';
+import { makeServerLayer, NodePlatform } from '@/server';
+import { SessionManager } from '@/session/manager';
 
 export type CallOutcome = {
   isError: boolean;
@@ -55,14 +57,20 @@ export type McpHarness = McpClient & {
     sweep: () => Promise<string[]>;
     closeAll: () => Promise<void>;
   };
+  /** Moves the test clock the server runs on, once it was asked for one. */
+  adjust: (ms: number) => Promise<void>;
   stdio: StdioServer<SessionManager>;
   /** Ends stdin and waits for the server to stop; safe to call twice. */
   close: () => Promise<void>;
 };
 
-export type ConnectOptions = ServerOptions & {
+export type ConnectOptions = {
+  /** The machine in memory to serve on; the real one when left out. */
+  host?: MemoryHost;
   clientName?: string;
   protocolVersion?: string;
+  /** Runs the server on TestClock, which only adjust moves. */
+  testClock?: boolean;
 };
 
 function parse(text: string): any {
@@ -179,6 +187,12 @@ export async function connectLayer(
       sweep: () => Effect.runPromise(service.sweep),
       closeAll: () => Effect.runPromise(service.closeAll),
     },
+    adjust: ms =>
+      Effect.runPromise(
+        TestClock.adjust(ms).pipe(
+          Effect.provideContext(context as Context.Context<never>)
+        )
+      ),
     stdio,
     close: () =>
       (closing ??= (async () => {
@@ -188,13 +202,20 @@ export async function connectLayer(
   };
 }
 
+/** The server as the host runs it, stdio and clock aside. */
+export function serverLayer(
+  options: Pick<ConnectOptions, 'host' | 'testClock'>
+) {
+  const layer = makeServerLayer(options.host?.layer ?? NodePlatform);
+  return options.testClock
+    ? layer.pipe(Layer.provideMerge(TestClock.layer()))
+    : layer;
+}
+
 /** The server with every tool, over an in-memory stdio, and an MCP client session on it. */
 export function connectMcp(options: ConnectOptions = {}): Promise<McpHarness> {
-  const { clientName, protocolVersion, ...server } = options;
-  return connectLayer(makeServerLayer(server), {
-    clientName,
-    protocolVersion,
-  });
+  const { clientName, protocolVersion } = options;
+  return connectLayer(serverLayer(options), { clientName, protocolVersion });
 }
 
 /** Lets queued microtasks and socket deliveries run. */

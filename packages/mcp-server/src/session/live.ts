@@ -9,23 +9,28 @@ import {
   isSamePath,
   type LockCandidate,
 } from '@dineug/erd-editor-agent-hub';
+import * as Deferred from 'effect/Deferred';
+import * as Effect from 'effect/Effect';
+import * as Exit from 'effect/Exit';
+import * as Queue from 'effect/Queue';
+import * as Scope from 'effect/Scope';
 
 import { isSessionError, SessionError } from '@/errors';
-import { connectHub, type HubClient } from '@/hubClient';
-import { type McpIo } from '@/io';
-import { logUnsafe } from '@/logger';
+import { type HubClient, HubConnector } from '@/hub/client';
+import { ProcessInfo } from '@/io/process';
 import { assertDocumentText, stripBom } from '@/session/disk';
 import {
   type DocumentSession,
   type Notes,
   type ReadOutcome,
   type SaveOutcome,
+  type SessionCall,
   type SessionState,
   type ToolOutcome,
   type UndoOutcome,
 } from '@/session/types';
 import { readDocument, type ReadFormat } from '@/tools/read';
-import { runTool as runPeerTool, type ToolRun } from '@/tools/run';
+import { runTool as runPeerTool } from '@/tools/run';
 
 export const RESEED_NOTE =
   'The document was joined again from the editor, so edits made before this call can no longer be undone with erd_undo.';
@@ -42,35 +47,51 @@ export type LiveSession = DocumentSession & {
   readonly pid: number;
   readonly connected: boolean;
   /** The window discovery picked for this call; another pid moves the session there. */
-  setCandidate: (candidate: LockCandidate) => void;
+  readonly setCandidate: (candidate: LockCandidate) => void;
   /** Opens the editor if needed and joins, as a write does; create writes an empty document first. */
-  open: (initialValue?: string) => Promise<{ opened: boolean; notes: Notes }>;
+  readonly open: (
+    initialValue?: string
+  ) => SessionCall<{ opened: boolean; notes: Notes }>;
   /** Leaves the document on the hub; the next write joins again. */
-  leave: () => Promise<void>;
+  readonly leave: SessionCall<void>;
 };
 
 export type LiveSessionOptions = {
-  io: McpIo;
   path: string;
   candidate: LockCandidate;
   nickname: string;
   /** The MCP client name hello carries. */
   client: string;
-  requestTimeoutMs?: number;
 };
 
 /** How far the peer is joined: seeded may be a read of the file, registered receives every edit. */
 type Joined = 'none' | 'seeded' | 'registered';
+
+/** One outbound batch, the call it belongs to, if any, and when it has gone. */
+type Outbound = {
+  client: HubClient;
+  actions: unknown[];
+  errors: unknown[] | null;
+  sent: Deferred.Deferred<void>;
+};
+
+const attempt = <A>(evaluate: () => A) =>
+  Effect.try({ try: evaluate, catch: error => error });
 
 /**
  * A document inside a VS Code window. A write opens the editor if needed and
  * joins, so the peer holds the editor's state and clock; each outbound batch
  * is an applyActions request, one at a time, and the call waits for them.
  */
-export function createLiveSession(options: LiveSessionOptions): LiveSession {
-  const { io, path, nickname } = options;
-  const platform = io.platform();
+export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
+  options: LiveSessionOptions
+) {
+  const connector = yield* HubConnector;
+  const { platform } = yield* ProcessInfo;
+  const { path, nickname } = options;
+  const scope = yield* Scope.make();
   const peer: PeerStore = createPeerStore({ nickname, presence: true });
+  const outbound = yield* Queue.unbounded<Outbound>();
 
   let candidate = options.candidate;
   let connection: HubClient | null = null;
@@ -83,7 +104,8 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
   let subscribed = false;
   let closed = false;
   let callErrors: unknown[] | null = null;
-  let outbound: Promise<void> = Promise.resolve();
+  let lastSent = Deferred.makeUnsafe<void>();
+  Deferred.doneUnsafe(lastSent, Exit.void);
 
   const forget = (next: SessionState) => {
     state = next;
@@ -101,38 +123,24 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
     }
   };
 
-  /** The connection to the chosen window, a new one when it closed or the window changed. */
-  const ensureConnected = async (): Promise<HubClient> => {
-    if (connection && !connection.closed && connection.pid === candidate.pid) {
-      return connection;
-    }
-    const previous = connection;
-    connection = null;
-    forget('reconnecting');
-    previous?.close();
+  const report = (error: unknown, errors: unknown[] | null) =>
+    errors
+      ? Effect.sync(() => void errors.push(error))
+      : Effect.logError(`a batch for ${path} did not reach the editor`, error);
 
-    let client: HubClient | null = null;
-    client = await connectHub(io, candidate, {
-      client: options.client,
-      requestTimeoutMs: options.requestTimeoutMs,
-      onNotification,
-      onClose: () => {
-        if (connection !== client) return;
-        connection = null;
-        forget('reconnecting');
-      },
-    });
-    connection = client;
-    return client;
-  };
+  /** One batch as an applyActions request; a refusal goes to its call, and sent settles either way. */
+  const deliver = ({ client, actions, errors, sent }: Outbound) =>
+    client.request('applyActions', { path, actions }).pipe(
+      Effect.catch(error => report(error, errors)),
+      Effect.ensuring(Deferred.done(sent, Exit.void))
+    );
 
-  const report = (error: unknown, errors: unknown[] | null) => {
-    if (errors) {
-      errors.push(error);
-    } else {
-      logUnsafe(`a batch for ${path} did not reach the editor`, error);
-    }
-  };
+  // Batches leave in the order the peer made them, each one answered before the next.
+  yield* Queue.take(outbound).pipe(
+    Effect.flatMap(deliver),
+    Effect.forever,
+    Effect.forkIn(scope)
+  );
 
   /** The one way out of the peer: in order, and never before this agent is registered. */
   const enqueueOutbound = (actions: unknown[]) => {
@@ -140,131 +148,179 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
     const errors = callErrors;
     if (joined !== 'registered' || !client) return;
 
-    outbound = outbound.then(async () => {
-      try {
-        await client.request('applyActions', { path, actions });
-      } catch (error) {
-        report(error, errors);
-      }
-    });
+    const sent = Deferred.makeUnsafe<void>();
+    lastSent = sent;
+    Queue.offerUnsafe(outbound, { client, actions, errors, sent });
   };
 
-  const joinAndSeed = async (
-    client: HubClient,
-    notes: Notes,
-    registered: boolean
-  ) => {
-    const result = await client.request('join', { path });
-    // A closed document is answered from disk, which may hold bytes the engine cannot read.
-    assertDocumentText(path, stripBom(result.initialValue));
-    if (seeded && edits > 0) notes.push(RESEED_NOTE);
+  const awaitOutbound = Effect.suspend(() => Deferred.await(lastSent));
 
-    peer.setInitialValue(result.initialValue);
-    peer.mergeClock(result.snapshotVersion);
-    peer.setReadonly(result.readonly);
-    seeded = true;
-    edits = 0;
-    closedAfterEdits = false;
-    joined = registered ? 'registered' : 'seeded';
-    state = 'ready';
+  /** The frames the connection already read are taken, notifications applied. */
+  const drained = Effect.suspend(() =>
+    connection ? connection.drained : Effect.void
+  );
 
-    if (registered && !subscribed) {
-      subscribed = true;
-      peer.subscribe(enqueueOutbound);
+  /** The connection to the chosen window, a new one when it closed or the window changed. */
+  const ensureConnected = Effect.gen(function* () {
+    if (connection && !connection.closed && connection.pid === candidate.pid) {
+      return connection;
     }
-  };
+    const previous = connection;
+    connection = null;
+    forget('reconnecting');
+    if (previous) yield* previous.close;
+
+    let client: HubClient | null = null;
+    client = yield* connector
+      .connect(candidate, {
+        client: options.client,
+        onNotification,
+        onClose: () => {
+          if (connection !== client) return;
+          connection = null;
+          forget('reconnecting');
+        },
+      })
+      .pipe(Scope.provide(scope));
+    connection = client;
+    return client;
+  });
+
+  /**
+   * The reseed runs as the join is answered, before the client takes the next
+   * frame, so the actions the hub sent after its snapshot land on the new seed.
+   */
+  const joinAndSeed = (client: HubClient, notes: Notes, registered: boolean) =>
+    client.requestThen('join', { path }, result =>
+      Effect.gen(function* () {
+        // A closed document is answered from disk, which may hold bytes the engine cannot read.
+        yield* assertDocumentText(path, stripBom(result.initialValue));
+        if (seeded && edits > 0) notes.push(RESEED_NOTE);
+
+        yield* attempt(() => {
+          peer.setInitialValue(result.initialValue);
+          peer.mergeClock(result.snapshotVersion);
+          peer.setReadonly(result.readonly);
+        });
+        seeded = true;
+        edits = 0;
+        closedAfterEdits = false;
+        joined = registered ? 'registered' : 'seeded';
+        state = 'ready';
+
+        if (registered && !subscribed) {
+          subscribed = true;
+          yield* attempt(() => peer.subscribe(enqueueOutbound));
+        }
+      })
+    );
 
   /** openDocument answers at once when a ready editor shows the file, so it runs every time. */
-  const prepareWrite = async (notes: Notes, initialValue?: string) => {
-    const client = await ensureConnected();
-    const opened = await client.request(
-      'openDocument',
-      initialValue === undefined
-        ? { path }
-        : { path, create: true, initialValue }
-    );
-    if (opened.opened || joined !== 'registered' || state !== 'ready') {
-      await joinAndSeed(client, notes, true);
-    }
-    return opened;
-  };
+  const prepareWrite = (notes: Notes, initialValue?: string) =>
+    Effect.gen(function* () {
+      const client = yield* ensureConnected;
+      const opened = yield* client.request(
+        'openDocument',
+        initialValue === undefined
+          ? { path }
+          : { path, create: true, initialValue }
+      );
+      if (opened.opened || joined !== 'registered' || state !== 'ready') {
+        yield* joinAndSeed(client, notes, true);
+      }
+      return opened;
+    });
 
-  const prepareRead = async (notes: Notes) => {
-    const client = await ensureConnected();
-    if (joined !== 'registered' || state !== 'ready') {
-      await joinAndSeed(client, notes, false);
-    }
-  };
+  const prepareRead = (notes: Notes) =>
+    Effect.gen(function* () {
+      const client = yield* ensureConnected;
+      if (joined !== 'registered' || state !== 'ready') {
+        yield* joinAndSeed(client, notes, false);
+      }
+    });
 
-  /** Runs one peer call and waits for every batch it sent; a refusal comes back in errors. */
-  const withOutbound = async <T>(
-    task: () => Promise<T>
-  ): Promise<{ value: T; errors: unknown[] }> => {
-    const errors: unknown[] = [];
-    callErrors = errors;
-    try {
-      const value = await task();
-      await outbound;
-      return { value, errors };
-    } finally {
-      callErrors = null;
-    }
-  };
+  /**
+   * Runs one peer call and waits for every batch it sent; a refusal comes back
+   * in errors. The focus it moved goes out on a microtask, so it yields once
+   * first. Each side of it waits for the frames read with the last answer.
+   */
+  const withOutbound = <A>(task: () => A) =>
+    Effect.suspend(() => {
+      const errors: unknown[] = [];
+      return drained.pipe(
+        Effect.andThen(
+          Effect.suspend(() => {
+            callErrors = errors;
+            return attempt(task);
+          })
+        ),
+        Effect.tap(() =>
+          Effect.yieldNow.pipe(
+            Effect.andThen(awaitOutbound),
+            Effect.andThen(drained)
+          )
+        ),
+        Effect.map(value => ({ value, errors })),
+        Effect.ensuring(
+          Effect.sync(() => {
+            callErrors = null;
+          })
+        )
+      );
+    });
 
   /** Every call starts here: refused once closed, told of an editor closed under its edits. */
-  const begin = (): Notes => {
-    if (closed) {
-      throw new SessionError(
-        'notOpen',
-        `The session on ${path} was closed; call the tool again`
-      );
-    }
-    return closedAfterEdits ? [CLOSED_NOTE] : [];
-  };
+  const begin = Effect.suspend(() =>
+    closed
+      ? Effect.fail(
+          new SessionError(
+            'notOpen',
+            `The session on ${path} was closed; call the tool again`
+          )
+        )
+      : Effect.succeed<Notes>(closedAfterEdits ? [CLOSED_NOTE] : [])
+  );
 
-  const runOnce = async (name: string, args: Record<string, unknown>) => {
-    const { value, errors } = await withOutbound(async () =>
-      runPeerTool(peer, name, args)
+  const runOnce = (name: string, args: Record<string, unknown>) =>
+    withOutbound(() => runPeerTool(peer, name, args)).pipe(
+      Effect.map(({ value, errors }) => ({ run: value, error: errors[0] }))
     );
-    return { run: value, error: errors[0] };
-  };
 
-  const runTool = async (
-    name: string,
-    args: Record<string, unknown>
-  ): Promise<ToolOutcome> => {
-    const notes = begin();
-    await prepareWrite(notes);
+  const runTool = (name: string, args: Record<string, unknown>) =>
+    Effect.gen(function* () {
+      const notes = yield* begin;
+      yield* prepareWrite(notes);
 
-    let { run, error } = await runOnce(name, args);
-    if (isSessionError(error, HubErrorCode.notOpen)) {
-      forget('reconnecting');
-      notes.push(REJOIN_NOTE);
-      await prepareWrite(notes);
-      ({ run, error } = await runOnce(name, args));
-    }
-    // The peer holds an edit the editor refused, so the next call reseeds it away.
-    if (error) {
-      forget('reconnecting');
-      throw error;
-    }
-    if (run.historyEntries) edits++;
-    return { run: run as ToolRun, notes };
-  };
+      let { run, error } = yield* runOnce(name, args);
+      if (isSessionError(error, HubErrorCode.notOpen)) {
+        forget('reconnecting');
+        notes.push(REJOIN_NOTE);
+        yield* prepareWrite(notes);
+        ({ run, error } = yield* runOnce(name, args));
+      }
+      // The peer holds an edit the editor refused, so the next call reseeds it away.
+      if (error) {
+        forget('reconnecting');
+        return yield* Effect.fail(error);
+      }
+      if (run.historyEntries) edits++;
+      return { run, notes } satisfies ToolOutcome;
+    });
 
-  const replay = async (step: () => RevertResult): Promise<UndoOutcome> => {
-    const notes = begin();
-    await prepareWrite(notes);
+  const replay = (step: () => RevertResult) =>
+    Effect.gen(function* () {
+      const notes = yield* begin;
+      yield* prepareWrite(notes);
 
-    const { value, errors } = await withOutbound(async () => step());
-    if (errors.length) {
-      forget('reconnecting');
-      throw errors[0];
-    }
-    return { result: value, notes };
-  };
+      const { value, errors } = yield* withOutbound(step);
+      if (errors.length) {
+        forget('reconnecting');
+        return yield* Effect.fail(errors[0]);
+      }
+      return { result: value, notes } satisfies UndoOutcome;
+    });
 
-  return {
+  const session: LiveSession = {
     path,
     mode: 'live',
     get state() {
@@ -281,57 +337,68 @@ export function createLiveSession(options: LiveSessionOptions): LiveSession {
       candidate = next;
     },
 
-    open: async initialValue => {
-      const notes = begin();
-      const { opened } = await prepareWrite(notes, initialValue);
-      return { opened, notes };
-    },
+    open: initialValue =>
+      Effect.gen(function* () {
+        const notes = yield* begin;
+        const { opened } = yield* prepareWrite(notes, initialValue);
+        return { opened, notes };
+      }),
 
     runTool,
 
-    read: async (format: ReadFormat, vendor?: string): Promise<ReadOutcome> => {
-      const notes = begin();
-      await prepareRead(notes);
-      return { text: readDocument(peer.state, format, vendor), notes };
-    },
+    read: (format: ReadFormat, vendor?: string) =>
+      Effect.gen(function* () {
+        const notes = yield* begin;
+        yield* prepareRead(notes);
+        const text = yield* attempt(() =>
+          readDocument(peer.state, format, vendor)
+        );
+        return { text, notes } satisfies ReadOutcome;
+      }),
 
     // The hub answers saved false both when it could not confirm every edit
     // reached the editor and when VS Code kept the tab dirty, so the message
     // names both.
-    save: async (): Promise<SaveOutcome> => {
-      const notes = begin();
-      const client = await ensureConnected();
-      await outbound;
-      const { saved } = await client.request('save', { path });
+    save: Effect.gen(function* () {
+      const notes = yield* begin;
+      const client = yield* ensureConnected;
+      yield* awaitOutbound;
+      const { saved } = yield* client.request('save', { path });
       if (!saved) {
-        throw new SessionError(
+        return yield* new SessionError(
           'notSaved',
           `The editor did not save ${path}: it could not confirm that every edit reached it, or VS Code kept the tab unsaved (for example because the file changed on disk). Check the editor, then call erd_save again.`
         );
       }
-      return { saved, notes };
-    },
+      return { saved, notes } satisfies SaveOutcome;
+    }),
 
-    undo: () => replay(() => peer.undo()),
-    redo: () => replay(() => peer.redo()),
+    undo: replay(() => peer.undo()),
+    redo: replay(() => peer.redo()),
 
-    leave: async () => {
+    leave: Effect.gen(function* () {
       if (connection && joined !== 'none') {
-        await connection.request('leave', { path });
+        yield* connection.request('leave', { path });
       }
       forget('detached');
-    },
+    }),
 
     // Closing the connection drops this peer from every document on the hub,
     // so no leave is sent: a shutdown never waits on a slow window.
-    close: async () => {
+    close: Effect.gen(function* () {
       if (closed) return;
       closed = true;
       const client = connection;
       connection = null;
       forget('detached');
-      client?.close();
+      if (client) yield* client.close;
+      yield* Scope.close(scope, Exit.void);
+      // The batches the outbound fiber never took go on their closed
+      // connections, which refuse them at once, so no call waits on one.
+      const unsent = yield* Queue.clear(outbound);
+      yield* Effect.forEach(unsent, deliver, { discard: true });
       peer.destroy();
-    },
+    }),
   };
-}
+  return session;
+});
