@@ -164,7 +164,7 @@ describe('tool results', () => {
   });
 });
 
-describe('the text blocks against 0.1.0 (D11)', () => {
+describe('the text blocks against 0.1.0', () => {
   const outcome = (notes: string[]) => ({
     ...run('erd_add_table', 1, 1),
     notes,
@@ -289,7 +289,7 @@ describe('the text blocks against 0.1.0 (D11)', () => {
   });
 });
 
-describe('the results a client receives (D11)', () => {
+describe('the results a client receives', () => {
   const DOCUMENT = '/work/a.erd.json';
   let io: MemoryHost;
   let mcp: McpHarness;

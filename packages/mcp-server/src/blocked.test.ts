@@ -33,7 +33,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-describe('a hub false lock over the path (AC-M3, X3)', () => {
+describe('a hub false lock over the path (AC-M3)', () => {
   it.each([
     ['erd_add_table', {}],
     ['erd_import_json', { value: '{}' }],

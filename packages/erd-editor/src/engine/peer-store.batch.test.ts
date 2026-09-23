@@ -190,7 +190,7 @@ describe('one dispatch is one outbound batch and one undo entry (AC-E9′, AC-P1
   });
 });
 
-describe('closing the stream buffers (D15)', () => {
+describe('closing the stream buffers', () => {
   it('closes the history before the outbound pipe after a stream dispatch', () => {
     play(peer, colorTable(SEED.users, '#111111'));
 

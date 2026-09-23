@@ -7,7 +7,7 @@ const { engines } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8')
 );
 
-/** ^1.90.0 → 1.90.0, so the floor is never restated in two places. */
+/** ^x.y.z → x.y.z, so the floor is never restated in two places. */
 const minimumSupported = engines.vscode.replace(/^\D+/, '');
 
 /**

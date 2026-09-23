@@ -24,7 +24,7 @@ const takes = (schema: Schema.Top, value: unknown) => Schema.is(schema)(value);
 const jsonSchema = (schema: Schema.Top) =>
   Schema.toJsonSchemaDocument(schema).schema;
 
-describe('ToolArgKind to effect Schema (axis b)', () => {
+describe('ToolArgKind to effect Schema', () => {
   it.each(KINDS)('%j takes %j and refuses %j', (kind, good, bad) => {
     const schema = argKindSchema(kind);
     expect(takes(schema, good)).toBe(true);
@@ -50,7 +50,7 @@ describe('ToolArgKind to effect Schema (axis b)', () => {
     });
   });
 
-  it('advertises numbers as one plain JSON type, and refuses what JSON cannot carry (X4)', () => {
+  it('advertises numbers as one plain JSON type, and refuses what JSON cannot carry', () => {
     expect(jsonSchema(argKindSchema({ type: 'number' }))).toEqual({
       type: 'number',
     });
@@ -124,7 +124,7 @@ describe('the input schema a tool lists from its own struct', () => {
     );
   });
 
-  it('refuses an object that needs $defs, which the older protocols drop (X7)', () => {
+  it('refuses an object that needs $defs, which the older protocols drop', () => {
     const Referenced = Schema.Struct({
       id: Schema.String.annotate({ identifier: 'Id' }),
     });

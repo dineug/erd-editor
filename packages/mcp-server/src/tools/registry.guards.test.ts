@@ -73,7 +73,7 @@ describe('the generators the tools add read the state defensively', () => {
   });
 });
 
-describe('the 3b generators read the state defensively', () => {
+describe('the memo and index tools read the state defensively', () => {
   it('recolors a memo that is gone from an empty previous color', () => {
     const [action] = emitOnEmpty('erd_change_memo_color', {
       memoId: 'gone',

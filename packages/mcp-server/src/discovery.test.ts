@@ -127,7 +127,7 @@ describe('discovery (AC-M4)', () => {
   });
 });
 
-describe('discovery again on every write (AC-M4, A6)', () => {
+describe('discovery again on every write (AC-M4)', () => {
   let mcp: McpHarness;
 
   beforeEach(async () => {

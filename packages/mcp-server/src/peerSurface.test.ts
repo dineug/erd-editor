@@ -1,6 +1,6 @@
-// AC-X15: every value the peer entry exports has a user here. The entry is the
-// one seam onto the engine, so a key nobody imports is dead public surface and
-// this spec is what holds erd-editor's export list to the names in use.
+// Every value the peer entry exports has a user here. The entry is the one seam
+// onto the engine, so a key nobody imports is dead public surface and this spec
+// is what holds erd-editor's export list to the names in use.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -42,7 +42,7 @@ function valuesImported(source: string): string[] {
   );
 }
 
-describe('the peer entry has no dead export (AC-X15)', () => {
+describe('the peer entry has no dead export', () => {
   const files = sourceFiles(SOURCE_ROOT);
   // This spec's own sample imports name real exports, so counting them would
   // keep a key alive that nothing else uses.

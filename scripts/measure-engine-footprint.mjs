@@ -36,7 +36,7 @@ const CONSUMERS = [
   },
 ];
 
-/** Where the auxiliary marker search looks, as the plan's grep does. */
+/** The marker search reads every file under these, not only the chunks above. */
 const MARKER_DIRS = [
   'packages/vscode-extension/public',
   'packages/intellij-plugin/src/main/resources/assets',

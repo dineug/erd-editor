@@ -38,9 +38,9 @@ export type HubEnvironmentShape = {
 };
 
 /**
- * What the hub knows about the machine it runs on. PlatformError folds every
- * errno but five into Unknown, so lstat keeps its raw code in this one service
- * rather than lose the difference authz turns on.
+ * What the hub knows about the machine it runs on. PlatformError folds EINVAL,
+ * EPERM, EIO and every other errno it does not map into Unknown, so lstat keeps
+ * its raw code here rather than lose the difference authz turns on.
  */
 export class HubEnvironment extends Context.Service<
   HubEnvironment,

@@ -61,7 +61,7 @@ describe('the tool surface against the 0.1.0 fixture (AC-E4)', () => {
     expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(58);
   });
 
-  it('takes an object for its arguments, in every tool (R3)', () => {
+  it('takes an object for its arguments, in every tool', () => {
     expectObjectInputSchemas(tools);
   });
 });

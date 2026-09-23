@@ -162,8 +162,8 @@ class FakePeer {
 }
 
 /**
- * A table with a primary key column, shaped like the Step 0 spike batch:
- * tagged shared (1), so a webview applies it without relaying it back.
+ * A table with a primary key column, tagged shared (1), so a webview applies
+ * it without relaying it back.
  */
 function tableBatch(tableId: string, version: number): Frame[] {
   const meta = { editorId: 'agent-hub-e2e', nickname: 'e2e' };
@@ -206,7 +206,7 @@ function stampFirstDirty(): {
   return { at: () => stamp, dispose: () => listener.dispose() };
 }
 
-/** The observability numbers plan section 7 asks for, one line per spec. */
+/** One line per spec: the timings AGENTS.md holds against the hub's caps. */
 function logTimings(spec: string, timings: Record<string, number>): void {
   const fields = Object.entries(timings).map(
     ([name, ms]) => `${name}=${ms.toFixed(1)}ms`

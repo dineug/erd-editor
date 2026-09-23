@@ -180,7 +180,7 @@ describe('the server', () => {
   });
 });
 
-describe('the protocols it speaks (D3)', () => {
+describe('the protocols it speaks', () => {
   it.each(['2025-06-18', '2025-03-26', '2024-11-05'])(
     'answers %s in kind',
     async version => {

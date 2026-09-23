@@ -157,7 +157,7 @@ describe('the tool surface (AC-M8)', () => {
     ]);
   });
 
-  it('keeps every input schema inline, with no $defs (X7)', () => {
+  it('keeps every input schema inline, with no $defs', () => {
     expect(tools.filter(({ inputSchema }) => '$defs' in inputSchema)).toEqual(
       []
     );
@@ -171,7 +171,7 @@ describe('the tool surface (AC-M8)', () => {
   });
 });
 
-describe('tool arguments (A2)', () => {
+describe('tool arguments', () => {
   it('refuses arguments of the wrong shape with -32602 before a session is touched', async () => {
     const error = await rpcError('erd_move_table', {
       path: DOCUMENT,

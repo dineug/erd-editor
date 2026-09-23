@@ -18,7 +18,7 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
   })),
 ];
 
-describe('the prose table covers the surface exactly (axis b)', () => {
+describe('the prose table covers the surface exactly', () => {
   it('names the session tools the surface above lists', () => {
     expect(SURFACE.slice(0, 6).map(({ name }) => name)).toEqual([
       ...SESSION_TOOL_NAMES,

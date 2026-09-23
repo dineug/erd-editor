@@ -205,9 +205,9 @@ export function createDocumentHandler(
     }).pipe(Effect.asVoid);
 
   /**
-   * Step 0 measured the first rung to be enough on VS Code 1.138; the others
-   * stay for hosts where it is not. Success means the tab is no longer dirty,
-   * never that some file was written.
+   * On VS Code 1.138 workspace.save alone clears the dirty flag (AGENTS.md);
+   * the second rung, the panel's save command, is for hosts where it does not.
+   * Success means the tab is no longer dirty, never that some file was written.
    */
   const saveThroughEditor = (document: ErdDocument) =>
     Effect.gen(function* () {

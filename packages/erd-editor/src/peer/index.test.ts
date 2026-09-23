@@ -95,7 +95,7 @@ describe('peer barrel (AC-B2)', () => {
     expect(peer.bHas).toBe(bHas);
   });
 
-  it('keeps the catalog per module and exports no flat actions map (D2′)', () => {
+  it('keeps the catalog per module and exports no flat actions map', () => {
     // Spread flat, memo's changeZIndexAction and table's share one key and the
     // later spread wins, so a caller would get the other module's creator. Per
     // module barrels shadow nothing, so the flat map stays out of this entry.

@@ -30,9 +30,9 @@ const manifest = JSON.parse(
 const bin = join(packageDir, manifest.bin['erd-editor-mcp']);
 
 /**
- * The gzip size, level 9, the built file may reach: 15% over the 208,191 bytes
- * spike S1 projected for the server on effect's McpServer (plan D5); npx
- * downloads the file on every cold start. Sizes by this spec's zlib: AGENTS.md.
+ * The gzip size, level 9, the built file may reach, since npx downloads it on
+ * every cold start: 15% over the 208,191 bytes projected for the server on
+ * effect's McpServer before the move. Sizes by this spec's zlib: AGENTS.md.
  */
 const BUNDLE_GZIP_BUDGET = 239_420;
 
