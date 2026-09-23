@@ -13,8 +13,7 @@ import { join } from 'node:path';
 
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import * as NodePath from '@effect/platform-node/NodePath';
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
+import { Effect, Layer } from 'effect';
 import {
   afterEach,
   beforeEach,

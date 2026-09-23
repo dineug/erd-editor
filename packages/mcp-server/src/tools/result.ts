@@ -1,5 +1,5 @@
 import { PeerStoreError } from '@dineug/erd-editor/peer.js';
-import * as McpSchema from 'effect/unstable/ai/McpSchema';
+import { McpSchema } from 'effect/unstable/ai';
 
 import { messageOf, SessionError } from '@/errors';
 import { type WithMode } from '@/session/manager';

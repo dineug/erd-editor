@@ -1,8 +1,4 @@
-import * as ByteSize from 'effect/ByteSize';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Option from 'effect/Option';
-import * as PlatformError from 'effect/PlatformError';
+import { ByteSize, Effect, FileSystem, Option, PlatformError } from 'effect';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { itEffect } from '@/__test-utils__/effect';

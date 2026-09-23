@@ -21,12 +21,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import * as NodePath from '@effect/platform-node/NodePath';
-import * as Effect from 'effect/Effect';
-import * as Fiber from 'effect/Fiber';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
-import * as Stream from 'effect/Stream';
-import * as Socket from 'effect/unstable/socket/Socket';
+import { Effect, Fiber, FileSystem, Layer, Stream } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { isPlatformReason } from '@/errors';

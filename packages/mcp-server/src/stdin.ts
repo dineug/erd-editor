@@ -1,7 +1,4 @@
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
-import * as Stdio from 'effect/Stdio';
-import * as Stream from 'effect/Stream';
+import { Effect, Layer, Stdio, Stream } from 'effect';
 
 /** The method namespace effect's RPC layer keeps for itself; its Eof stops every answer. */
 const RPC_CONTROL = '@effect/rpc/';

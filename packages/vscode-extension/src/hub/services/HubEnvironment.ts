@@ -3,10 +3,7 @@ import { lstat } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 
 import { type Platform } from '@dineug/erd-editor-agent-hub';
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
-import * as Schema from 'effect/Schema';
+import { Context, Effect, Layer, Schema } from 'effect';
 
 /**
  * Why a directory entry could not be examined. NotFound means no entry at all;

@@ -1,12 +1,7 @@
 import * as NodePath from '@effect/platform-node/NodePath';
-import type * as Cause from 'effect/Cause';
-import * as Effect from 'effect/Effect';
-import type * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
-import type * as Path from 'effect/Path';
-import type * as Stdio from 'effect/Stdio';
-import * as McpProtocol from 'effect/unstable/ai/McpProtocol';
-import * as McpServer from 'effect/unstable/ai/McpServer';
+import type { Cause, FileSystem, Path, Stdio } from 'effect';
+import { Effect, Layer } from 'effect';
+import { McpProtocol, McpServer } from 'effect/unstable/ai';
 
 import * as HubConnector from '@/hub/client';
 import * as HubDiscovery from '@/hub/discovery';

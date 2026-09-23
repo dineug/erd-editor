@@ -11,8 +11,7 @@ import {
   Bridge,
   webviewReplicationCommand,
 } from '@dineug/erd-editor-webview-bridge';
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
+import { Context, Effect } from 'effect';
 import type * as vscode from 'vscode';
 
 import { type ErdDocument } from '@/erd-document';

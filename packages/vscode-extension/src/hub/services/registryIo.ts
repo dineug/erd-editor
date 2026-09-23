@@ -1,5 +1,5 @@
 import { type Platform } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
+import { Effect } from 'effect';
 
 import { realpathOrSelf } from '@/hub/authz';
 import * as NativeFileSystem from '@/hub/services/nativeFileSystem';

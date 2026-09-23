@@ -5,7 +5,7 @@ import {
   type LockRecord,
   serializeLock,
 } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
+import { Effect } from 'effect';
 import {
   afterEach,
   beforeEach,

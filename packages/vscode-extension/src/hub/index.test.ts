@@ -1,4 +1,4 @@
-import * as Layer from 'effect/Layer';
+import { Layer } from 'effect';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { documentHubLive, nodeHubServices } from '@/hub';

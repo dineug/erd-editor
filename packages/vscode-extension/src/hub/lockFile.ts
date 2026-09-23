@@ -6,10 +6,7 @@ import {
   selectHub,
   serializeLock,
 } from '@dineug/erd-editor-agent-hub';
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
+import { Context, Effect, FileSystem, Layer } from 'effect';
 
 import { socketFilePaths } from '@/hub/pipePath';
 import { HubEnvironment } from '@/hub/services/HubEnvironment';

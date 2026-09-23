@@ -1,6 +1,4 @@
-import * as Deferred from 'effect/Deferred';
-import * as Duration from 'effect/Duration';
-import * as Effect from 'effect/Effect';
+import { Deferred, Duration, Effect } from 'effect';
 import type * as vscode from 'vscode';
 
 /** Where an action reached the hub from; drops at a join are counted per source. */

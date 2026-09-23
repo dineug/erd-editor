@@ -1,4 +1,4 @@
-import * as Schema from 'effect/Schema';
+import { Schema } from 'effect';
 
 /** Bumped on any wire change; hello carries it and the hub refuses a mismatch. */
 export const HUB_PROTOCOL_VERSION = 1;

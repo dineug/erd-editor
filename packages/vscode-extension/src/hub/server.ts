@@ -11,14 +11,9 @@ import {
   type HubResultMap,
   protocolMismatchMessage,
 } from '@dineug/erd-editor-agent-hub';
-import type { Done } from 'effect/Cause';
-import * as Effect from 'effect/Effect';
-import * as Fiber from 'effect/Fiber';
-import * as Queue from 'effect/Queue';
-import * as Schema from 'effect/Schema';
-import * as Scope from 'effect/Scope';
-import * as Stream from 'effect/Stream';
-import * as Socket from 'effect/unstable/socket/Socket';
+import type { Cause } from 'effect';
+import { Effect, Fiber, Queue, Schema, Scope, Stream } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 
 export type HubRoutedMethod = Exclude<HubMethod, 'hello'>;
 
@@ -134,7 +129,7 @@ export const serveConnection = (
 ): Effect.Effect<void, never, Scope.Scope> =>
   Effect.gen(function* () {
     const { token, ide, version, handler, authorize } = options;
-    const outbound = yield* Queue.unbounded<Outbound, Done>();
+    const outbound = yield* Queue.unbounded<Outbound, Cause.Done>();
     let open = true;
     let connection: HubConnection | null = null;
 
@@ -365,7 +360,7 @@ export const serveConnection = (
         })
       )
     );
-    const incoming = yield* Queue.unbounded<unknown, Done>();
+    const incoming = yield* Queue.unbounded<unknown, Cause.Done>();
 
     // Read in a fiber of its own, so a peer hanging up closes the connection
     // at once rather than behind whatever request is still being served.

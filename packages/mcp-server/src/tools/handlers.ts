@@ -1,8 +1,6 @@
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
-import * as Schema from 'effect/Schema';
-import * as McpSchema from 'effect/unstable/ai/McpSchema';
-import type * as Toolkit from 'effect/unstable/ai/Toolkit';
+import { Effect, Layer, Schema } from 'effect';
+import type { Toolkit } from 'effect/unstable/ai';
+import { McpSchema } from 'effect/unstable/ai';
 
 import { SessionManager, type SessionManagerShape } from '@/session/manager';
 import { ToolError, ToolErrorCode } from '@/tools/errors';

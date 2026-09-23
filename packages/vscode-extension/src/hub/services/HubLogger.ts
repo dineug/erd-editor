@@ -1,5 +1,4 @@
-import * as Layer from 'effect/Layer';
-import * as Logger from 'effect/Logger';
+import { Layer, Logger } from 'effect';
 
 const PREFIX = '[erd-editor hub]';
 

@@ -6,9 +6,8 @@ import {
   HubRequestError,
   type Platform,
 } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import type * as PlatformError from 'effect/PlatformError';
+import type { PlatformError } from 'effect';
+import { Effect, FileSystem } from 'effect';
 
 import { HubEnvironment } from '@/hub/services/HubEnvironment';
 

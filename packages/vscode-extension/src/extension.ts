@@ -1,5 +1,4 @@
-import * as Effect from 'effect/Effect';
-import * as ManagedRuntime from 'effect/ManagedRuntime';
+import { Effect, ManagedRuntime } from 'effect';
 import * as vscode from 'vscode';
 
 import { VIEW_TYPE } from '@/constants/viewType';

@@ -1,5 +1,4 @@
-import * as Effect from 'effect/Effect';
-import * as PlatformError from 'effect/PlatformError';
+import { Effect, PlatformError } from 'effect';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { fsError } from '@/__test-utils__/memoryFs';

@@ -79,7 +79,7 @@ describe('the editor source names no tool or MCP concept (AC-B3)', () => {
       'the MCP server inlines it',
       "peer.dispatch(actions, { label: 'erd_add_table' });",
       'const server = new McpServer();',
-      "import { McpSchema } from 'effect/unstable/ai/McpSchema';",
+      "import { McpSchema } from 'effect/unstable/ai';",
       'const names: ActionTools = [];',
       'runToolOnce(peer, name);',
       'const factory: AgentPeerFactory = make;',

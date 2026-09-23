@@ -1,10 +1,4 @@
-import * as Cause from 'effect/Cause';
-import * as Deferred from 'effect/Deferred';
-import * as Effect from 'effect/Effect';
-import * as Exit from 'effect/Exit';
-import * as Fiber from 'effect/Fiber';
-import * as Layer from 'effect/Layer';
-import * as Stdio from 'effect/Stdio';
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Stdio } from 'effect';
 import {
   afterEach,
   beforeEach,

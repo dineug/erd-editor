@@ -1,8 +1,6 @@
 import { DocumentInfo } from '@dineug/erd-editor-agent-hub';
-import * as Schema from 'effect/Schema';
-import * as McpSchema from 'effect/unstable/ai/McpSchema';
-import * as Tool from 'effect/unstable/ai/Tool';
-import * as Toolkit from 'effect/unstable/ai/Toolkit';
+import { Schema } from 'effect';
+import { McpSchema, Tool, Toolkit } from 'effect/unstable/ai';
 
 import { describeArg, describeTool } from '@/tools/copy';
 import { type ActionTool, actionTools } from '@/tools/registry';

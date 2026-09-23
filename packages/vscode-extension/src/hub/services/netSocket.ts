@@ -1,11 +1,13 @@
 import * as net from 'node:net';
 
-import type { NonEmptyReadonlyArray } from 'effect/Array';
-import * as Effect from 'effect/Effect';
-import * as Scope from 'effect/Scope';
-import * as Socket from 'effect/unstable/socket/Socket';
+import type { Array as Arr } from 'effect';
+import { Effect, Scope } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 
-type Pull = Effect.Effect<NonEmptyReadonlyArray<string>, Socket.SocketError>;
+type Pull = Effect.Effect<
+  Arr.NonEmptyReadonlyArray<string>,
+  Socket.SocketError
+>;
 
 /**
  * A Socket over node:net, without platform-node's NodeSocket, which re-exports
@@ -64,14 +66,15 @@ export function fromNetSocket(conn: net.Socket): Socket.Socket {
       const chunk = conn.read() as string | null;
       if (chunk !== null) return Effect.succeed([chunk] as const);
       if (error) return Effect.fail(error);
-      return Effect.callback<NonEmptyReadonlyArray<string>, Socket.SocketError>(
-        resume => {
-          waiter = resume;
-          return Effect.sync(() => {
-            if (waiter === resume) waiter = undefined;
-          });
-        }
-      );
+      return Effect.callback<
+        Arr.NonEmptyReadonlyArray<string>,
+        Socket.SocketError
+      >(resume => {
+        waiter = resume;
+        return Effect.sync(() => {
+          if (waiter === resume) waiter = undefined;
+        });
+      });
     });
     return { pull, upgrade: Socket.SocketUpgradeError.unsupported };
   });
@@ -98,7 +101,7 @@ export function fromNetSocket(conn: net.Socket): Socket.Socket {
         Socket.isCloseEvent(chunk)
           ? Effect.sync(() => void conn.destroy())
           : writeOne(chunk),
-      writeAll: (chunks: NonEmptyReadonlyArray<Uint8Array | string>) =>
+      writeAll: (chunks: Arr.NonEmptyReadonlyArray<Uint8Array | string>) =>
         Effect.forEach(chunks, writeOne, { discard: true }),
     }),
     () =>

@@ -1,7 +1,4 @@
-import * as Arr from 'effect/Array';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Option from 'effect/Option';
+import { Array as Arr, Effect, FileSystem, Option } from 'effect';
 
 import {
   lockDirPath,

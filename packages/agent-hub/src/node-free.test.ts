@@ -14,13 +14,34 @@ const sources: Record<string, string> = {
   './node-free.test.ts': ownSource,
 };
 
-const NODE_IMPORT = /\b(?:from|import|require)\s*\(?\s*['"]node:/;
-const SPECIFIER = /\b(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g;
-/** Effect by subpath only: the bare effect barrel stays out, as the root lint rule has it. */
-const ALLOWED_BARE = /^effect\//;
+/**
+ * The module an import, export, require or vi module call names. It is read in
+ * a lookahead, so a typeof import in the call's type argument is read as well.
+ */
+const SPECIFIER =
+  /\b(?:from|import|require|mock|doMock|unmock|doUnmock|importActual|importMock)\b(?=\s*(?:<[^>]*>)?\s*\(?\s*['"`]([^'"`]+)['"`])/g;
+
+/**
+ * Effect through the entries its package.json exports by name, as the root lint
+ * rule has it: never a module path, and neither schema nor sql, where the rc
+ * keeps SchemaAOTCompiler and Migrator. Platform-node is not a dependency here.
+ */
+const EFFECT_ENTRY =
+  /^effect(?:\/testing|\/unstable\/(?!schema$|sql$)[a-z]+)?$/;
 
 const isTestCode = (path: string) =>
   path.endsWith('.test.ts') || path.startsWith('./__test-utils__/');
+
+const isEffect = (specifier: string) =>
+  specifier === 'effect' ||
+  specifier.startsWith('effect/') ||
+  specifier.startsWith('@effect/');
+
+const specifiers = (source: string) =>
+  [...source.matchAll(SPECIFIER)].map(match => match[1]);
+
+const nodeBuiltins = (source: string) =>
+  specifiers(source).filter(specifier => specifier.startsWith('node:'));
 
 describe('agent-hub stays free of node builtins', () => {
   it('scans every TypeScript file under src, tests included', () => {
@@ -39,24 +60,23 @@ describe('agent-hub stays free of node builtins', () => {
   });
 
   it('has no node: import in any file', () => {
-    const offenders = Object.entries(sources)
-      .filter(([, source]) => NODE_IMPORT.test(source))
-      .map(([path]) => path);
+    const offenders = Object.entries(sources).flatMap(([path, source]) =>
+      nodeBuiltins(source).map(specifier => `${path}: ${specifier}`)
+    );
 
     expect(offenders).toEqual([]);
   });
 
-  it('imports only its own modules and effect subpaths outside tests, so no bare builtin slips in either', () => {
+  it('imports only its own modules and effect entries outside tests, so no bare builtin slips in either', () => {
     const bare = Object.entries(sources)
       .filter(([path]) => !isTestCode(path))
       .flatMap(([path, source]) =>
-        [...source.matchAll(SPECIFIER)]
-          .map(match => match[1])
+        specifiers(source)
           .filter(
             specifier =>
               !specifier.startsWith('./') &&
               !specifier.startsWith('@/') &&
-              !ALLOWED_BARE.test(specifier)
+              !EFFECT_ENTRY.test(specifier)
           )
           .map(specifier => `${path}: ${specifier}`)
       );
@@ -64,34 +84,95 @@ describe('agent-hub stays free of node builtins', () => {
     expect(bare).toEqual([]);
   });
 
-  it('allows effect subpaths only, never the bare effect barrel', () => {
-    for (const specifier of [
-      'effect/Schema',
-      'effect/unstable/encoding/Ndjson',
-    ]) {
-      expect(ALLOWED_BARE.test(specifier)).toBe(true);
-    }
+  it('imports effect from its entries in tests too, and does import it', () => {
+    const effectImports = Object.entries(sources).flatMap(([path, source]) =>
+      specifiers(source)
+        .filter(isEffect)
+        .map(specifier => ({ path, specifier }))
+    );
+
+    expect(effectImports.map(({ path }) => path)).toEqual(
+      expect.arrayContaining(['./framing.ts', './discovery.test.ts'])
+    );
+    expect(
+      effectImports
+        .filter(({ specifier }) => !EFFECT_ENTRY.test(specifier))
+        .map(({ path, specifier }) => `${path}: ${specifier}`)
+    ).toEqual([]);
+  });
+
+  it('allows the documented effect entries only, never a module path', () => {
     for (const specifier of [
       'effect',
+      'effect/testing',
+      'effect/unstable/encoding',
+    ]) {
+      expect(EFFECT_ENTRY.test(specifier)).toBe(true);
+    }
+    // Spelled through a variable so a plain grep of src finds no module path here.
+    const effect = 'effect';
+    for (const specifier of [
+      `${effect}/Schema`,
+      `${effect}/testing/TestClock`,
+      `${effect}/unstable/encoding/Ndjson`,
+      `${effect}/unstable/schema`,
+      `${effect}/unstable/sql`,
       'effect-schema',
       '@effect/platform-node',
     ]) {
-      expect(ALLOWED_BARE.test(specifier)).toBe(false);
+      expect(EFFECT_ENTRY.test(specifier)).toBe(false);
     }
   });
 
   it('recognizes every import form it guards against', () => {
-    const prefix = 'node';
+    // Spelled through variables so this file names no builtin or module path.
+    const node = 'node';
+    const effect = 'effect';
+    const named = [
+      `${node}:fs`,
+      `${node}:net`,
+      `${node}:os`,
+      `${node}:path`,
+      `${node}:path`,
+      `${node}:url`,
+      `${effect}/Option`,
+      `${effect}/Effect`,
+      `${effect}/Layer`,
+      `${effect}/Scope`,
+      `${effect}/Stream`,
+      `${effect}/Schema`,
+      `${effect}/testing/TestClock`,
+    ];
+    const statements = [
+      `import { readFile } from '${named[0]}';`,
+      `import '${named[1]}';`,
+      `const os = await import("${named[2]}");`,
+      `const path = require('${named[3]}');`,
+      `export { join } from '${named[4]}';`,
+      `const url = require(\`${named[5]}\`);`,
+      `vi.mock('${named[6]}', () => ({}));`,
+      `vi.doMock('${named[7]}', () => ({}));`,
+      `vi.unmock('${named[8]}');`,
+      `vi.doUnmock('${named[9]}');`,
+      `await vi.importMock('${named[10]}');`,
+      `await vi.importActual<typeof import('${named[12]}')>('${named[11]}');`,
+    ];
 
-    for (const statement of [
-      `import { readFile } from '${prefix}:fs';`,
-      `import '${prefix}:net';`,
-      `const os = await import("${prefix}:os");`,
-      `const path = require('${prefix}:path');`,
-      `export { join } from '${prefix}:path';`,
-    ]) {
-      expect(NODE_IMPORT.test(statement)).toBe(true);
-    }
-    expect(NODE_IMPORT.test(`import { node } from './node';`)).toBe(false);
+    expect(specifiers(statements.join('\n'))).toEqual(named);
+    expect(nodeBuiltins(statements.join('\n'))).toEqual(named.slice(0, 6));
+    expect(nodeBuiltins(`import { node } from './node';`)).toEqual([]);
+    expect(
+      specifiers(`vi.mocked(console.error); importantly('./x'); remock('./y');`)
+    ).toEqual([]);
+    expect(
+      specifiers(
+        [
+          `import { Schema } from 'effect';`,
+          `import type { Stream } from "effect";`,
+          `export * from 'effect/unstable/encoding';`,
+          `const { Effect } = await import('effect');`,
+        ].join('\n')
+      )
+    ).toEqual(['effect', 'effect', 'effect/unstable/encoding', 'effect']);
   });
 });

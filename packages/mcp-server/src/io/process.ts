@@ -2,9 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 
 import type { Platform } from '@dineug/erd-editor-agent-hub';
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
+import { Context, Effect, Layer } from 'effect';
 
 export type ProcessInfoShape = {
   /** The working directory relative document paths resolve against. */

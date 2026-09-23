@@ -5,10 +5,7 @@ import {
   readLockDirectory,
   selectHub,
 } from '@dineug/erd-editor-agent-hub';
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
+import { Context, Effect, FileSystem, Layer } from 'effect';
 
 import { ProcessInfo } from '@/io/process';
 

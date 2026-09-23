@@ -1,6 +1,6 @@
 import { createPeerStore, type PeerStore } from '@dineug/erd-editor/peer.js';
 import { type HubNotification } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
+import { Effect } from 'effect';
 import {
   afterEach,
   beforeEach,

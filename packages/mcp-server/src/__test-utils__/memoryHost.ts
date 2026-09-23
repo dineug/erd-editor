@@ -4,8 +4,7 @@ import {
   type LockRecord,
   serializeLock,
 } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
+import { Effect, Layer } from 'effect';
 
 import { createMemoryFs, type MemoryFs } from '@/__test-utils__/memoryFs';
 import {

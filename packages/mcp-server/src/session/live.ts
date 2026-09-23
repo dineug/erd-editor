@@ -9,11 +9,7 @@ import {
   isSamePath,
   type LockCandidate,
 } from '@dineug/erd-editor-agent-hub';
-import * as Deferred from 'effect/Deferred';
-import * as Effect from 'effect/Effect';
-import * as Exit from 'effect/Exit';
-import * as Queue from 'effect/Queue';
-import * as Scope from 'effect/Scope';
+import { Deferred, Effect, Exit, Queue, Scope } from 'effect';
 
 import { isSessionError, SessionError } from '@/errors';
 import { type HubClient, HubConnector } from '@/hub/client';

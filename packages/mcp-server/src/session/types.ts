@@ -1,5 +1,5 @@
 import type { RevertResult } from '@dineug/erd-editor/peer.js';
-import type * as Effect from 'effect/Effect';
+import type { Effect } from 'effect';
 
 import type { ReadFormat } from '@/tools/read';
 import type { ToolRun } from '@/tools/run';

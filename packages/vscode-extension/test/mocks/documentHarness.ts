@@ -1,6 +1,5 @@
 import { type HubNotification } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
+import { Effect, FileSystem } from 'effect';
 import {
   Bridge,
   hostInitialCommand,

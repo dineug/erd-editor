@@ -4,11 +4,8 @@ import {
   HubRequestError,
   isSamePath,
 } from '@dineug/erd-editor-agent-hub';
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
-import type * as PlatformError from 'effect/PlatformError';
+import type { PlatformError } from 'effect';
+import { Context, Effect, FileSystem, Layer } from 'effect';
 import * as vscode from 'vscode';
 
 import { VIEW_TYPE } from '@/constants/viewType';

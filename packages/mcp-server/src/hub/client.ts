@@ -10,18 +10,20 @@ import {
   type LockCandidate,
   protocolMismatchMessage,
 } from '@dineug/erd-editor-agent-hub';
-import type { Done } from 'effect/Cause';
-import * as Context from 'effect/Context';
-import * as Deferred from 'effect/Deferred';
-import * as Effect from 'effect/Effect';
-import * as Exit from 'effect/Exit';
-import * as Layer from 'effect/Layer';
-import * as Option from 'effect/Option';
-import * as Queue from 'effect/Queue';
-import * as Schema from 'effect/Schema';
-import * as Scope from 'effect/Scope';
-import * as Stream from 'effect/Stream';
-import * as Socket from 'effect/unstable/socket/Socket';
+import type { Cause } from 'effect';
+import {
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Layer,
+  Option,
+  Queue,
+  Schema,
+  Scope,
+  Stream,
+} from 'effect';
+import { Socket } from 'effect/unstable/socket';
 
 import { SessionError, SessionErrorCode } from '@/errors';
 import { type ConnectPipe, connectPipe } from '@/io/netSocket';
@@ -105,7 +107,7 @@ export const makeHubClient = (
   Effect.gen(function* () {
     const scope = yield* Effect.scope;
     const writer = yield* socket.writer;
-    const inbound = yield* Queue.unbounded<unknown, Done>();
+    const inbound = yield* Queue.unbounded<unknown, Cause.Done>();
     const pending = new Map<number, Pending>();
     let nextId = 1;
     let closed = false;
@@ -192,7 +194,7 @@ export const makeHubClient = (
      * The next frame. Once none is left, drained callers resume, and held
      * requestThen callers too, after a scheduler turn runs then's microtasks.
      */
-    const next: Effect.Effect<unknown, Done> = Effect.suspend(() =>
+    const next: Effect.Effect<unknown, Cause.Done> = Effect.suspend(() =>
       settling.length === 0 && draining.length === 0
         ? awaitFrame
         : Queue.poll(inbound).pipe(

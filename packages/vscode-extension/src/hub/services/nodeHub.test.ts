@@ -7,15 +7,9 @@ import { join } from 'node:path';
 
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
-import type { Done } from 'effect/Cause';
-import * as Effect from 'effect/Effect';
-import * as Exit from 'effect/Exit';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
-import * as Queue from 'effect/Queue';
-import * as Scope from 'effect/Scope';
-import * as Stream from 'effect/Stream';
-import * as Socket from 'effect/unstable/socket/Socket';
+import type { Cause } from 'effect';
+import { Effect, Exit, FileSystem, Layer, Queue, Scope, Stream } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { authorizePath, realpathOrSelf } from '@/hub/authz';
@@ -171,7 +165,7 @@ describe('the hub file system', () => {
 /** Everything the listener spec needs of one accepted connection. */
 function echoLines(socket: Socket.Socket, received: string[]) {
   return Effect.gen(function* () {
-    const out = yield* Queue.unbounded<string, Done>();
+    const out = yield* Queue.unbounded<string, Cause.Done>();
 
     yield* Stream.fromQueue(out).pipe(
       Stream.pipeThroughChannel(Socket.toChannelString<never>(socket)),

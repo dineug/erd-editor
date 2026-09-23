@@ -1,6 +1,4 @@
-import * as Effect from 'effect/Effect';
-import * as Schema from 'effect/Schema';
-import * as Stream from 'effect/Stream';
+import { Effect, Schema, Stream } from 'effect';
 
 /**
  * The largest frame either side accepts, in UTF-8 bytes without the newline.

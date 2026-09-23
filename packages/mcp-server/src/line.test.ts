@@ -1,5 +1,4 @@
-import * as Effect from 'effect/Effect';
-import * as Fiber from 'effect/Fiber';
+import { Effect, Fiber } from 'effect';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { makeLine } from '@/session/line';

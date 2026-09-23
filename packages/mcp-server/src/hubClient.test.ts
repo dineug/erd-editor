@@ -1,10 +1,7 @@
 import { HUB_PROTOCOL_VERSION, pipePath } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
-import * as Exit from 'effect/Exit';
-import * as Fiber from 'effect/Fiber';
-import * as Scope from 'effect/Scope';
-import * as TestClock from 'effect/testing/TestClock';
-import * as Socket from 'effect/unstable/socket/Socket';
+import { Effect, Exit, Fiber, Scope } from 'effect';
+import { TestClock } from 'effect/testing';
+import { Socket } from 'effect/unstable/socket';
 import {
   afterEach,
   beforeEach,

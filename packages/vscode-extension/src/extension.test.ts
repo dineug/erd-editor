@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
-import * as Effect from 'effect/Effect';
+import { Effect } from 'effect';
 import {
   afterEach,
   beforeEach,
@@ -43,8 +43,7 @@ const hub = vi.hoisted(() => ({
 vi.mock('@/hub', async () => {
   const actual = await vi.importActual<typeof import('@/hub')>('@/hub');
   const { memoryHubLive } = await import('../test/mocks/hubLayers');
-  const Effect = await import('effect/Effect');
-  const Layer = await import('effect/Layer');
+  const { Effect, Layer } = await import('effect');
 
   return {
     ...actual,

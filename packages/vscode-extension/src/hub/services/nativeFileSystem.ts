@@ -1,9 +1,7 @@
 import { realpath } from 'node:fs/promises';
 
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
+import { Effect, FileSystem, Layer } from 'effect';
 
 /**
  * A file system whose realPath is the native realpath, which spells a path the

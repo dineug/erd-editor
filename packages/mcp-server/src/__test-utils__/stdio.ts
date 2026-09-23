@@ -1,13 +1,5 @@
-import type * as Cause from 'effect/Cause';
-import type * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import type * as Exit from 'effect/Exit';
-import * as Fiber from 'effect/Fiber';
-import * as Layer from 'effect/Layer';
-import * as Queue from 'effect/Queue';
-import * as Sink from 'effect/Sink';
-import * as Stdio from 'effect/Stdio';
-import * as Stream from 'effect/Stream';
+import type { Cause, Context, Exit } from 'effect';
+import { Effect, Fiber, Layer, Queue, Sink, Stdio, Stream } from 'effect';
 
 export type StdioServer<A> = {
   /** Writes one message to the server's stdin, as a JSON line or raw text. */

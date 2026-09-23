@@ -3,8 +3,8 @@ import * as net from 'node:net';
 import * as os from 'node:os';
 import { join } from 'node:path';
 
-import * as Effect from 'effect/Effect';
-import * as Socket from 'effect/unstable/socket/Socket';
+import { Effect } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { fromNetSocket } from '@/hub/services/netSocket';

@@ -1,13 +1,7 @@
 import * as net from 'node:net';
 
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
-import * as Queue from 'effect/Queue';
-import * as Schema from 'effect/Schema';
-import * as Scope from 'effect/Scope';
-import * as Stream from 'effect/Stream';
-import * as Socket from 'effect/unstable/socket/Socket';
+import { Context, Effect, Layer, Queue, Schema, Scope, Stream } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 
 import { warnUnsafe } from '@/hub/services/HubLogger';
 import { fromNetSocket } from '@/hub/services/netSocket';

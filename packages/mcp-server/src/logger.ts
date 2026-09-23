@@ -1,6 +1,4 @@
-import * as Cause from 'effect/Cause';
-import * as Layer from 'effect/Layer';
-import * as Logger from 'effect/Logger';
+import { Cause, Layer, Logger } from 'effect';
 
 const PREFIX = '[erd-editor-mcp]';
 

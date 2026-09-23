@@ -1,10 +1,6 @@
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime';
 import * as NodeStdio from '@effect/platform-node/NodeStdio';
-import * as Cause from 'effect/Cause';
-import * as Effect from 'effect/Effect';
-import * as Exit from 'effect/Exit';
-import * as Fiber from 'effect/Fiber';
-import * as Layer from 'effect/Layer';
+import { Cause, Effect, Exit, Fiber, Layer } from 'effect';
 
 import { StderrLogger } from '@/logger';
 import { ServerLayer } from '@/server';

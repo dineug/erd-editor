@@ -1,5 +1,4 @@
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
+import { Effect, Layer } from 'effect';
 
 import { SessionManager, type SessionManagerShape } from '@/session/manager';
 

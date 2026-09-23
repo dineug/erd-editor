@@ -1,6 +1,5 @@
 import { type HubErrorCode } from '@dineug/erd-editor-agent-hub';
-import * as PlatformError from 'effect/PlatformError';
-import * as Schema from 'effect/Schema';
+import { PlatformError, Schema } from 'effect';
 
 /** The server's own refusals, beside the hub's codes a session passes through unchanged. */
 export const SessionErrorCode = {

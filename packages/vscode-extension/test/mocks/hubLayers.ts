@@ -6,19 +6,21 @@ import {
   type LockRecord,
   type Platform,
 } from '@dineug/erd-editor-agent-hub';
-import type { NonEmptyReadonlyArray } from 'effect/Array';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
-import * as ManagedRuntime from 'effect/ManagedRuntime';
-import * as Option from 'effect/Option';
-import * as PlatformError from 'effect/PlatformError';
-import * as Exit from 'effect/Exit';
-import * as Queue from 'effect/Queue';
-import * as Schema from 'effect/Schema';
-import * as Scope from 'effect/Scope';
-import * as Stream from 'effect/Stream';
-import * as Socket from 'effect/unstable/socket/Socket';
+import type { Array as Arr } from 'effect';
+import {
+  Effect,
+  Exit,
+  FileSystem,
+  Layer,
+  ManagedRuntime,
+  Option,
+  PlatformError,
+  Queue,
+  Schema,
+  Scope,
+  Stream,
+} from 'effect';
+import { Socket } from 'effect/unstable/socket';
 import { type Mock, vi } from 'vite-plus/test';
 
 import {
@@ -120,7 +122,7 @@ export type MemoryClient = {
 const textDecoder = new TextDecoder();
 
 type Waiter = (
-  effect: Effect.Effect<NonEmptyReadonlyArray<string>, Socket.SocketError>
+  effect: Effect.Effect<Arr.NonEmptyReadonlyArray<string>, Socket.SocketError>
 ) => void;
 
 /** A connected pair, with the spies a spec makes the transport fail through. */
@@ -153,7 +155,9 @@ export function createMemorySocketPair(): MemorySocketPair {
     if (inbox.length) {
       waiter = undefined;
       const batch = inbox.splice(0, inbox.length);
-      resume(Effect.succeed(batch as unknown as NonEmptyReadonlyArray<string>));
+      resume(
+        Effect.succeed(batch as unknown as Arr.NonEmptyReadonlyArray<string>)
+      );
       return;
     }
     if (error) {
@@ -202,12 +206,12 @@ export function createMemorySocketPair(): MemorySocketPair {
         if (inbox.length) {
           const batch = inbox.splice(0, inbox.length);
           return Effect.succeed(
-            batch as unknown as NonEmptyReadonlyArray<string>
+            batch as unknown as Arr.NonEmptyReadonlyArray<string>
           );
         }
         if (error) return Effect.fail(error);
         return Effect.callback<
-          NonEmptyReadonlyArray<string>,
+          Arr.NonEmptyReadonlyArray<string>,
           Socket.SocketError
         >(resume => {
           waiter = resume;

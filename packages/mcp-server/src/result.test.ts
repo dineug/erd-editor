@@ -1,5 +1,5 @@
 import { PeerStoreError } from '@dineug/erd-editor/peer.js';
-import * as Schema from 'effect/Schema';
+import { Schema } from 'effect';
 import {
   afterEach,
   beforeEach,

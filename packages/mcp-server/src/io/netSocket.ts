@@ -1,10 +1,8 @@
 import * as net from 'node:net';
 
-import type { NonEmptyReadonlyArray } from 'effect/Array';
-import * as Effect from 'effect/Effect';
-import * as Schema from 'effect/Schema';
-import * as Scope from 'effect/Scope';
-import * as Socket from 'effect/unstable/socket/Socket';
+import type { Array as Arr } from 'effect';
+import { Effect, Schema, Scope } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 
 /** Nothing accepted a connection at the pipe a lock advertises. */
 export class HubUnreachable extends Schema.TaggedError<HubUnreachable>()(
@@ -17,7 +15,10 @@ export type ConnectPipe = (
   pipe: string
 ) => Effect.Effect<Socket.Socket, HubUnreachable, Scope.Scope>;
 
-type Pull = Effect.Effect<NonEmptyReadonlyArray<string>, Socket.SocketError>;
+type Pull = Effect.Effect<
+  Arr.NonEmptyReadonlyArray<string>,
+  Socket.SocketError
+>;
 
 /**
  * A Socket over a connected node:net socket, without platform-node's NodeSocket,
@@ -69,14 +70,15 @@ export function fromNetSocket(conn: net.Socket): Socket.Socket {
       const chunk = conn.read() as string | null;
       if (chunk !== null) return Effect.succeed([chunk] as const);
       if (error) return Effect.fail(error);
-      return Effect.callback<NonEmptyReadonlyArray<string>, Socket.SocketError>(
-        resume => {
-          waiter = resume;
-          return Effect.sync(() => {
-            if (waiter === resume) waiter = undefined;
-          });
-        }
-      );
+      return Effect.callback<
+        Arr.NonEmptyReadonlyArray<string>,
+        Socket.SocketError
+      >(resume => {
+        waiter = resume;
+        return Effect.sync(() => {
+          if (waiter === resume) waiter = undefined;
+        });
+      });
     });
     return { pull, upgrade: Socket.SocketUpgradeError.unsupported };
   });

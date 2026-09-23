@@ -1,7 +1,4 @@
-import * as Effect from 'effect/Effect';
-import * as Exit from 'effect/Exit';
-import * as Schema from 'effect/Schema';
-import * as Stream from 'effect/Stream';
+import { Effect, Exit, Schema, Stream } from 'effect';
 import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
 import { runTest } from '@/__test-utils__/effect';

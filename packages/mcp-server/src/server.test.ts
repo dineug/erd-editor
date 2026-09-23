@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import * as Cause from 'effect/Cause';
-import * as Exit from 'effect/Exit';
+import { Cause, Exit } from 'effect';
 import {
   afterEach,
   beforeEach,

@@ -1,8 +1,6 @@
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as Layer from 'effect/Layer';
-import type * as Stdio from 'effect/Stdio';
-import * as TestClock from 'effect/testing/TestClock';
+import type { Stdio } from 'effect';
+import { Context, Effect, Layer } from 'effect';
+import { TestClock } from 'effect/testing';
 
 import type { MemoryHost } from '@/__test-utils__/memoryHost';
 import { serveStdio, type StdioServer } from '@/__test-utils__/stdio';

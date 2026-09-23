@@ -1,5 +1,5 @@
-import * as Effect from 'effect/Effect';
-import type * as Scope from 'effect/Scope';
+import type { Scope } from 'effect';
+import { Effect } from 'effect';
 import { it } from 'vite-plus/test';
 
 /** Runs an effect that needs nothing to its value; a failure rejects the promise. */

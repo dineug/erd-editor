@@ -1,4 +1,4 @@
-import * as Effect from 'effect/Effect';
+import { Effect } from 'effect';
 
 /**
  * Places handed out in order, each let through once every earlier one has

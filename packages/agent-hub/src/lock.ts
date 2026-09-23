@@ -1,5 +1,4 @@
-import * as Result from 'effect/Result';
-import * as Schema from 'effect/Schema';
+import { Result, Schema } from 'effect';
 
 import { type Platform } from '@/paths';
 

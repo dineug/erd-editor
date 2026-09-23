@@ -1,6 +1,6 @@
-import type { NonEmptyReadonlyArray } from 'effect/Array';
-import * as Effect from 'effect/Effect';
-import * as Socket from 'effect/unstable/socket/Socket';
+import type { Array as Arr } from 'effect';
+import { Effect } from 'effect';
+import { Socket } from 'effect/unstable/socket';
 
 import { type ConnectPipe, HubUnreachable } from '@/io/netSocket';
 
@@ -21,7 +21,10 @@ export type SocketPair = {
   server: ServerSocket;
 };
 
-type Pull = Effect.Effect<NonEmptyReadonlyArray<string>, Socket.SocketError>;
+type Pull = Effect.Effect<
+  Arr.NonEmptyReadonlyArray<string>,
+  Socket.SocketError
+>;
 
 const textDecoder = new TextDecoder();
 
@@ -50,7 +53,7 @@ export function createSocketPair(): SocketPair {
     resume(
       inbox.length
         ? Effect.succeed(
-            inbox.splice(0) as unknown as NonEmptyReadonlyArray<string>
+            inbox.splice(0) as unknown as Arr.NonEmptyReadonlyArray<string>
           )
         : Effect.fail(closeError)
     );
@@ -98,7 +101,7 @@ export function createSocketPair(): SocketPair {
       pull: Effect.suspend((): Pull => {
         if (inbox.length) {
           return Effect.succeed(
-            inbox.splice(0) as unknown as NonEmptyReadonlyArray<string>
+            inbox.splice(0) as unknown as Arr.NonEmptyReadonlyArray<string>
           );
         }
         if (closed) return Effect.fail(closeError);

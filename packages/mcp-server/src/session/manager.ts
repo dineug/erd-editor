@@ -3,13 +3,15 @@ import {
   type DocumentInfo,
   type LockCandidate,
 } from '@dineug/erd-editor-agent-hub';
-import * as Clock from 'effect/Clock';
-import * as Context from 'effect/Context';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
-import * as Path from 'effect/Path';
-import * as Schedule from 'effect/Schedule';
+import {
+  Clock,
+  Context,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Schedule,
+} from 'effect';
 
 import { SessionError, SessionErrorCode } from '@/errors';
 import { HubConnector } from '@/hub/client';

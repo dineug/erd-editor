@@ -1,12 +1,14 @@
 import { posix } from 'node:path';
 
-import * as ByteSize from 'effect/ByteSize';
-import * as Effect from 'effect/Effect';
-import * as FileSystem from 'effect/FileSystem';
-import * as Layer from 'effect/Layer';
-import * as Option from 'effect/Option';
-import * as Path from 'effect/Path';
-import * as PlatformError from 'effect/PlatformError';
+import {
+  ByteSize,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  PlatformError,
+} from 'effect';
 
 export type MemoryFile = { data: string; mtimeMs: number; mode: number };
 

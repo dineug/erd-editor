@@ -1,4 +1,4 @@
-import * as Schema from 'effect/Schema';
+import { Schema } from 'effect';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { actionTools, type ToolArgKind } from '@/tools/registry';
