@@ -48,6 +48,11 @@ export {
   toDownloadFileName,
   toNewFileName,
 } from '@/services/gdrive/driveFileName';
+export {
+  describeDriveImport,
+  type DriveImportResult,
+  importToDrive,
+} from '@/services/gdrive/driveImport';
 export { createEmptyDocument } from '@/services/gdrive/emptyDocument';
 export {
   type FilesChannel,
@@ -67,12 +72,25 @@ export {
 export type { PopupWindowLike } from '@/services/gdrive/oauthPopup';
 export type { CheckResult, RenameResult } from '@/services/gdrive/saveQueue';
 export {
+  createGdriveSession,
+  type CreateRequest,
+  type FilesState,
+  type GdriveSession,
+  type LeaveRequest,
+  type SessionDeps,
+  type SessionLocation,
+  type SessionNotice,
+  type SessionScreen,
+  type SessionSnapshot,
+} from '@/services/gdrive/session';
+export {
   type DriveState,
   isStateForAccount,
   type ParsedDriveState,
   parseDriveState,
 } from '@/services/gdrive/stateParam';
 export {
+  AUTH_CONTROL_ATTRIBUTE,
   createTokenManager,
   type GoogleAccount,
   type RelayMode,

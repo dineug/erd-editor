@@ -55,6 +55,15 @@ const router = createBrowserRouter([
         },
         errorElement: <LiveCollaborativeError />,
       },
+      {
+        path: 'gdrive',
+        lazy: async () => {
+          const { default: Component } =
+            await import('@/components/gdrive/GdriveRoute');
+          return { Component };
+        },
+        errorElement: <LiveCollaborativeError />,
+      },
     ],
   },
   {

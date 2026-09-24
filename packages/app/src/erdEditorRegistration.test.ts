@@ -18,6 +18,7 @@ const SIDE_EFFECT_IMPORT = /^import '@dineug\/erd-editor';$/m;
 
 /** Where the element is built today, so a rename cannot leave the check matching nothing. */
 const CALLERS = [
+  'components/gdrive/gdrive-editor/GdriveEditor.tsx',
   'components/live-collaborative/LiveCollaborative.tsx',
   'components/viewer/editor/Editor.tsx',
   'utils/convertSource.ts',
