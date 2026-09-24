@@ -69,7 +69,7 @@ describe('useSidebarList', () => {
     expect(result.current.noResults).toBe(false);
   });
 
-  it('puts the Tab stop on the first item, else the open one', () => {
+  it('puts the Tab stop on the open item, else the first one', () => {
     const { result, select } = render(null);
     expect(result.current.tabStopId).toBe('new');
 

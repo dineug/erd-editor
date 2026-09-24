@@ -29,8 +29,13 @@ interface SidebarItemViewBaseProps {
   inputPlaceholder: string;
   /** Menu items between Rename and the remove item. */
   menuItems?: React.ReactNode;
-  /** What sits between the name and the menu trigger. */
+  /**
+   * What sits between the name and the menu trigger, hidden with the trigger
+   * until the row is hovered or focused; an element can keep itself shown.
+   */
   trailing?: React.ReactNode;
+  /** Leaves F2, a double click and the Rename item inert. */
+  renameDisabled?: boolean;
   onFocus: () => void;
   onSelect: () => void;
   /** Called with the trimmed name, and only when it changed. */
@@ -54,6 +59,7 @@ const SidebarItemView: React.FC<SidebarItemViewProps> = ({
   inputPlaceholder,
   menuItems,
   trailing,
+  renameDisabled = false,
   onFocus,
   onSelect,
   onRename,
@@ -68,7 +74,9 @@ const SidebarItemView: React.FC<SidebarItemViewProps> = ({
   const editingRef = useRef(false);
   const refocusRef = useRef(false);
 
+  // Radix still calls a disabled menu item's onClick, so the guard sits here.
   const handleStartEditing = () => {
+    if (renameDisabled) return;
     setValue(name);
     setIsEditing(true);
     editingRef.current = true;
@@ -214,7 +222,7 @@ const SidebarItemView: React.FC<SidebarItemViewProps> = ({
         </button>
       )}
 
-      {trailing}
+      {trailing ? <span className="item-trailing">{trailing}</span> : null}
 
       <DropdownMenu.Root open={open} onOpenChange={setOpen}>
         <DropdownMenu.Trigger>
@@ -231,7 +239,10 @@ const SidebarItemView: React.FC<SidebarItemViewProps> = ({
           </IconButton>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content onCloseAutoFocus={handleMenuCloseAutoFocus}>
-          <DropdownMenu.Item onClick={handleStartEditing}>
+          <DropdownMenu.Item
+            disabled={renameDisabled}
+            onClick={handleStartEditing}
+          >
             <Pencil size={16} />
             Rename
           </DropdownMenu.Item>
