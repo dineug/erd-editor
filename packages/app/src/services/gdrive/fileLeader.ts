@@ -149,14 +149,14 @@ export function createFileLeader({
     },
 
     /**
-     * Asked before a save starts and again before its PATCH: a steal reaches this
-     * tab as the rejection of its request, which the query waits behind.
+     * Asked before a save starts and again before its PATCH. The fence is the
+     * flag a steal's rejection clears; the query, which lists the thief's lock
+     * under the same name, only lets a rejection already on its way land first.
      */
     async isStillLeader(): Promise<boolean> {
       if (!leader) return false;
-      if (!locks) return true;
-      const { held = [] } = await locks.query();
-      return leader && held.some(lock => lock.name === name);
+      if (locks) await locks.query();
+      return leader;
     },
 
     /** Lets go for good: the held lock, or the request still queued. */

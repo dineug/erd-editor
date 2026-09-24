@@ -276,17 +276,22 @@ describe('createFileLeader', () => {
   });
 
   describe('isStillLeader', () => {
-    it('asks the lock manager, which a steal may have reached first', async () => {
+    it('waits behind a query, so a steal’s rejection on its way clears the flag first', async () => {
       locks = createLockManager();
-      const { leader } = open();
-      await leader.probe();
-      const query = vi
-        .spyOn(locks, 'query')
-        .mockResolvedValueOnce({ held: [] });
+      const first = open();
+      const second = open();
+      await first.leader.probe();
+      const query = vi.spyOn(locks, 'query');
 
-      expect(await leader.isStillLeader()).toBe(false);
-      expect(await leader.isStillLeader()).toBe(true);
-      expect(query).toHaveBeenCalledTimes(2);
+      const stealing = second.leader.steal();
+      // The rejection is queued, not handled: the flag still says leader.
+      expect(first.leader.isLeader()).toBe(true);
+      expect(await first.leader.isStillLeader()).toBe(false);
+      await stealing;
+
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(locks.isHeld(NAME)).toBe(true);
+      expect(await second.leader.isStillLeader()).toBe(true);
     });
 
     it('is false for a follower without a query', async () => {

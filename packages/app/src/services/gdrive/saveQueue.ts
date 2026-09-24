@@ -116,6 +116,9 @@ function fingerprintOf(text: string): string | null {
   }
 }
 
+/** Whether RFC 3339 time a is before b; a time that does not parse is never before. */
+const isBefore = (a: string, b: string) => Date.parse(a) < Date.parse(b);
+
 /**
  * Autosave of one Drive file. Every tab runs the debounce, two seconds after
  * the last change and ten at most; the leader then saves and a follower asks
@@ -294,8 +297,12 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
       );
     },
 
-    /** A token again after a pause, or a new try after a failure: one cycle. */
+    /**
+     * A token again after a pause or a missing grant, or a new try after a
+     * failure: one cycle. Another account stays stopped.
+     */
     resume() {
+      if (state === 'scope-missing') setState('paused');
       if (state === 'paused' || state === 'failed') void flush();
     },
 
@@ -323,17 +330,24 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
       pendingAttempt = { ...attempt };
     },
 
+    /** An attempt Drive refused: if it was what kept a leader unconfirmed, the file moved without it. */
     onFailed({ attemptId }: { attemptId: string }) {
+      const unaccounted =
+        state === 'unconfirmed' &&
+        pendingAttempt?.attemptId === attemptId &&
+        isLeader();
       settleAttempt(attemptId);
+      if (unaccounted) setState('conflict');
     },
 
     /**
      * Another tab's save, maybe one this tab never heard announced: the base
-     * moves to it, and a leader whose content differs saves over it at once,
-     * which puts back what a stale PATCH from a stolen leader overwrote.
+     * moves to it, unless it is older, and a leader whose content differs saves
+     * over it at once, which puts back what a stale PATCH overwrote.
      */
     onSaved({ attemptId, modifiedTime, fingerprint }: SavedMessage) {
       settleAttempt(attemptId);
+      if (isBefore(modifiedTime, base.modifiedTime)) return;
       base = { modifiedTime, fingerprint };
       if (!isLeader()) return;
       if (state === 'conflict' || state === 'unconfirmed') setState('saved');
@@ -373,15 +387,18 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
     },
 
     /**
-     * Check Drive, for a save nobody could confirm: when Drive holds what the
-     * attempt sent, the base moves to it and saving resumes; anything else is
-     * a conflict. Drive's content is only read, never overwritten.
+     * Check Drive, for a save nobody could confirm: Drive holding what the
+     * attempt sent moves the base and resumes saving; anything else, or no
+     * attempt left, is a conflict. Drive's content is only ever read.
      */
     checkUnconfirmed(): Promise<CheckResult> {
       return serialize(async () => {
         const attempt = pendingAttempt;
-        if (state !== 'unconfirmed' || !attempt || !isLeader())
-          return 'skipped';
+        if (state !== 'unconfirmed' || !isLeader()) return 'skipped';
+        if (!attempt) {
+          setState('conflict');
+          return 'conflict';
+        }
         let modifiedTime: string;
         let remote: string | null;
         try {

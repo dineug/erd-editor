@@ -28,6 +28,7 @@ import {
 } from '@/services/gdrive/documentController';
 import {
   fileChannelName,
+  FLUSH_TIMEOUT_MS,
   openFileChannel,
 } from '@/services/gdrive/fileChannel';
 import { fileLockName } from '@/services/gdrive/fileLeader';
@@ -76,6 +77,9 @@ async function open(name: string, options: Partial<TabOptions> = {}) {
 
 const driveContent = (fileId = 'file-1') =>
   env.drive.files.get(fileId)!.content;
+
+/** The other tabs apply an edit later, by their own clock, which stamps its entity meta. */
+const deliverLater = () => vi.setSystemTime(Date.now() + 1000);
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -235,6 +239,72 @@ describe('leadership', () => {
     expect(env.patches().map(env.tabOf)).toEqual(['a', 'b', 'b']);
     expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
     expect(b.snapshot().saveState).toBe('saved');
+  });
+
+  it('hands off after a save with nothing left to save', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    b.addTable('orders');
+    deliverLater();
+    await settle(2100);
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(STEAL_SETTLE_MS);
+
+    expect(b.snapshot()).toMatchObject({ role: 'leader', saveState: 'saved' });
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
+    expect(env.patches()).toHaveLength(1);
+  });
+
+  it('takes the snapshot a leader still loading sends after the hellos gave up, and steals nothing', async () => {
+    const a = await open('a', { autoAttach: false });
+    const b = await open('b');
+    await settle(7500);
+    expect(b.snapshot().phase).toBe('waiting-snapshot');
+
+    a.mount();
+    await settle(20);
+
+    expect(b.snapshot()).toMatchObject({
+      phase: 'ready',
+      role: 'follower',
+      saveState: 'saved',
+      epoch: a.snapshot().epoch,
+    });
+    expect(a.snapshot().role).toBe('leader');
+    expect(env.locks.calls.some(call => call.options.steal)).toBe(false);
+    b.addTable('orders');
+    await settle(5);
+    expect(tableNames(a.value())).toEqual(['orders', 'users']);
+  });
+
+  it('installs nothing from a load a takeover overtook', async () => {
+    const release = env.drive.hold(
+      'GET',
+      url => url.searchParams.get('alt') === 'media'
+    );
+    const a = await open('a');
+    const b = await open('b');
+    await settle(7500);
+    expect(a.snapshot().phase).toBe('loading');
+    expect(b.snapshot().phase).toBe('waiting-snapshot');
+
+    const taking = b.controller.takeOver();
+    await settle(20);
+    await taking;
+    const { epoch } = b.snapshot();
+    expect(a.snapshot()).toMatchObject({ phase: 'ready', role: 'follower' });
+    expect(a.snapshot().epoch).toBe(epoch);
+
+    release();
+    await settle(20);
+
+    expect(a.snapshot()).toMatchObject({ role: 'follower', epoch });
+    a.addTable('orders');
+    await settle(5);
+    expect(tableNames(b.value())).toEqual(['orders', 'users']);
   });
 
   it('waits after a takeover for the save the old leader announced', async () => {
@@ -688,9 +758,66 @@ describe('the page around it', () => {
     expect(env.patches()).toHaveLength(1);
 
     b.addTable('items');
+    const release = env.drive.hold('PATCH');
+    let flushed: boolean | null = null;
+    void b.controller.flush().then(saved => (flushed = saved));
+    await settle(600);
+    // The leader acked and is saving: the follower waits for the save itself.
+    expect(env.patches()).toHaveLength(2);
+    expect(flushed).toBeNull();
+
+    release();
+    await settle(20);
+    expect(flushed).toBe(true);
+    expect(env.patches().map(env.tabOf)).toEqual(['a', 'a']);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+    await settle(10_000);
+    expect(env.patches()).toHaveLength(2);
+  });
+
+  it('reports a follower’s flush the leader acked but could not save', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    b.addTable('orders');
+    env.drive.failNext('PATCH', 400, 'badRequest');
+
     const flushed = b.controller.flush();
     await settle(600);
+
+    expect(await flushed).toBe(false);
+    expect(a.snapshot().saveState).toBe('failed');
+    expect(b.snapshot().saveState).toBe('failed');
+  });
+
+  it('gives up on a leader that acked a flush and never finished', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    b.addTable('orders');
+    env.drive.hold('PATCH');
+
+    const flushed = b.controller.flush();
+    await settle(600);
+    a.freeze();
+    await settle(FLUSH_TIMEOUT_MS);
+
+    expect(await flushed).toBe(false);
+  });
+
+  it('answers a flush in a tab elected while it waited as its leader would', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    b.addTable('orders');
+    a.freeze();
+
+    const flushed = b.controller.flush();
+    await settle(600);
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(5);
+
+    expect(b.snapshot().role).toBe('leader');
     expect(await flushed).toBe(true);
+    expect(env.patches().map(env.tabOf)).toEqual(['b']);
   });
 
   it('reports a follower whose leader does not ack a flush', async () => {
@@ -729,6 +856,12 @@ describe('the page around it', () => {
 });
 
 describe('without Web Locks', () => {
+  async function openAlone(name: string, options: Partial<TabOptions> = {}) {
+    const tab = await open(name, { locks: null, ...options });
+    await settle(NO_LOCKS_JOIN_MS);
+    return tab;
+  }
+
   it('joins another tab’s document, so both share edits', async () => {
     const a = await open('a', { locks: null });
     const b = openTab(env, { name: 'b', locks: null });
@@ -742,6 +875,97 @@ describe('without Web Locks', () => {
     b.addTable('orders');
     await settle(5);
     expect(tableNames(a.value())).toEqual(['orders', 'users']);
+  });
+
+  it('saves one edit once, however long both tabs stay open', async () => {
+    const a = await openAlone('a');
+    const b = await openAlone('b');
+    expect(b.snapshot().epoch).toBe(a.snapshot().epoch);
+
+    b.addTable('orders');
+    deliverLater();
+    await settle(30_000);
+
+    expect(env.patches()).toHaveLength(1);
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
+    expect(a.snapshot().saveState).toBe('saved');
+    expect(b.snapshot().saveState).toBe('saved');
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('takes a snapshot that comes after it loaded Drive alone, before any edit', async () => {
+    const a = await openAlone('a', { autoAttach: false });
+    const b = await openAlone('b');
+    const alone = b.snapshot().epoch;
+    expect(b.snapshot().phase).toBe('ready');
+    expect(env.downloads().map(env.tabOf)).toEqual(['a', 'b']);
+
+    // The answer a background tab's throttled timer held back.
+    a.mount();
+    await settle(20);
+
+    expect(b.snapshot().epoch).not.toBe(alone);
+    expect(b.snapshot().epoch).toBe(a.snapshot().epoch);
+    b.addTable('orders');
+    await settle(5);
+    expect(tableNames(a.value())).toEqual(['orders', 'users']);
+  });
+
+  it('keeps a load it already handed to another tab', async () => {
+    const a = await openAlone('a', { autoAttach: false });
+    const b = await openAlone('b');
+    const c = await openAlone('c');
+    expect(c.snapshot().epoch).toBe(b.snapshot().epoch);
+
+    a.mount();
+    await settle(20);
+
+    expect(b.snapshot().epoch).not.toBe(a.snapshot().epoch);
+    expect(c.snapshot().epoch).toBe(b.snapshot().epoch);
+    c.addTable('orders');
+    await settle(5);
+    expect(tableNames(b.value())).toEqual(['orders', 'users']);
+  });
+
+  it('keeps a load it edited, and never saves over another load’s save', async () => {
+    const a = await openAlone('a', { autoAttach: false });
+    const b = await openAlone('b');
+    b.addTable('orders');
+    a.mount();
+    await settle(20);
+    expect(b.snapshot().epoch).not.toBe(a.snapshot().epoch);
+
+    await settle(10_000);
+    expect(env.patches().map(env.tabOf)).toEqual(['b']);
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
+
+    a.addTable('items');
+    await settle(2100);
+    expect(a.snapshot().saveState).toBe('conflict');
+    expect(env.patches()).toHaveLength(1);
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
+  });
+});
+
+describe('presence', () => {
+  it('keeps the trackers of one person’s editors off the file’s channel', async () => {
+    const a = await open('a', { presence: true });
+    const b = await open('b', { presence: true });
+
+    b.addTable('orders');
+    await settle(30_000);
+
+    const sent = env.sent
+      .filter(({ message }) => message.type === 'actions')
+      .flatMap(({ message }) => message.actions.map(({ type }: any) => type));
+    expect(sent.length).toBeGreaterThan(0);
+    expect(sent.filter(type => /^editor\.shared.*Tracker$/.test(type))).toEqual(
+      []
+    );
+    expect(tableNames(a.value())).toEqual(['orders', 'users']);
+    const { editor } = a.editor.store.state;
+    expect(editor.sharedFocusTrackerMap).toEqual({});
+    expect(editor.sharedMouseTrackerMap).toEqual({});
   });
 });
 

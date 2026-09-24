@@ -621,7 +621,11 @@ export function createFakeDrive() {
     reply: (() => Response) | 'network-error';
     when?: (url: URL) => boolean;
   }> = [];
-  const holds: Array<{ method: string; gate: Promise<void> }> = [];
+  const holds: Array<{
+    method: string;
+    gate: Promise<void>;
+    when?: (url: URL) => boolean;
+  }> = [];
   const lostResponses: string[] = [];
   let clock = Date.UTC(2026, 8, 25, 9);
   let created = 0;
@@ -691,10 +695,10 @@ export function createFakeDrive() {
       failures.push({ method, reply: 'network-error' });
     },
 
-    /** The next request of this method waits, unprocessed, until released. */
-    hold(method: string): () => void {
+    /** The next request of this method, and of URLs when matches if given, waits unprocessed until released. */
+    hold(method: string, when?: (url: URL) => boolean): () => void {
       let release: () => void = () => {};
-      holds.push({ method, gate: new Promise<void>(r => (release = r)) });
+      holds.push({ method, gate: new Promise<void>(r => (release = r)), when });
       return release;
     },
 
@@ -722,7 +726,10 @@ export function createFakeDrive() {
         headers: new Headers(init?.headers),
         body: typeof init?.body === 'string' ? init.body : null,
       });
-      const held = holds.findIndex(entry => entry.method === method);
+      const held = holds.findIndex(
+        entry =>
+          entry.method === method && (!entry.when || entry.when(new URL(input)))
+      );
       if (held !== -1) await holds.splice(held, 1)[0].gate;
       const lost = lostResponses.indexOf(method);
       if (lost === -1) return respond(input, init);

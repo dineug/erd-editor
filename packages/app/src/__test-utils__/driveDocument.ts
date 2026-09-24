@@ -66,9 +66,10 @@ export function comparable(value: string) {
 /**
  * A headless editor behind the adapter the controller drives, as the element
  * would be: its shared store's batches go out, and any change is a change.
+ * With presence, it sends its focus as the element's tracker does.
  */
-export function createPeerEditor(nickname: string) {
-  const store = createPeerStore({ nickname, presence: false });
+export function createPeerEditor(nickname: string, presence = false) {
+  const store = createPeerStore({ nickname, presence });
   const changes = new Set<() => void>();
   const changed = () => [...changes].forEach(listener => listener());
 
@@ -193,6 +194,8 @@ export type TabOptions = {
   locks?: FileLockManagerLike | null;
   /** Mounts an editor whenever a document is ready, as GdriveEditor will. */
   autoAttach?: boolean;
+  /** Editors that send their focus, as the element's presence tracker does. */
+  presence?: boolean;
 } & Partial<
   Pick<DocumentControllerDeps, 'document' | 'tokens' | 'retry' | 'now'>
 >;
@@ -204,6 +207,7 @@ export function openTab(env: DriveEnv, options: TabOptions) {
     fileId = 'file-1',
     locks = env.locks,
     autoAttach = true,
+    presence = false,
     retry = { random: () => 0 },
     ...rest
   } = options;
@@ -237,7 +241,7 @@ export function openTab(env: DriveEnv, options: TabOptions) {
     const { phase, epoch } = controller.getSnapshot();
     if (phase !== 'ready' || epoch === mounted) return;
     mounted = epoch;
-    const editor = createPeerEditor(name);
+    const editor = createPeerEditor(name, presence);
     editors.push(editor);
     controller.attach(editor.adapter);
   };

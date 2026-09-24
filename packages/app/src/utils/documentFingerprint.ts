@@ -71,16 +71,22 @@ export function toFingerprint(value: string) {
   });
 }
 
+/** Collections less each entity's meta, which every replica stamps with its own clock. */
+const withoutMeta = (collections: any) =>
+  mapValues(collections, (entities: any) =>
+    mapValues(entities, (entity: any) => omit(entity, ['meta']))
+  );
+
 /**
  * What a Drive save compares: the document and every setting but the view's.
  * A Drive file is the whole document, so a changed database or column order
- * has to reach it, while a zoom or a scroll alone never makes a save.
+ * has to reach it, while a zoom, a scroll or another tab's clock never does.
  */
 export function toDriveFingerprint(value: string) {
   const { doc, collections, settings } = JSON.parse(value);
   return JSON.stringify({
     doc,
-    collections: withoutDerived(collections),
+    collections: withoutDerived(withoutMeta(collections)),
     settings: omit(settings, VIEW_SETTINGS),
   });
 }

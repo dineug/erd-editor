@@ -16,6 +16,7 @@ import {
   type FileChannel,
   fileChannelName,
   type FileMessage,
+  FLUSH_TIMEOUT_MS,
   FOLLOWER_SEND_WINDOW_MS,
   followerHasUnsavedChanges,
   openFileChannel,
@@ -49,6 +50,17 @@ import { safeCallback } from '@/utils/safeCallback';
 
 /** Without Web Locks, how long a new tab waits for another to hand it the document. */
 export const NO_LOCKS_JOIN_MS = 500;
+
+/** Presence the element sends, which the tabs of one person never show one another. */
+const PRESENCE_ACTIONS: ReadonlySet<unknown> = new Set([
+  'editor.sharedMouseTracker',
+  'editor.sharedFocusTracker',
+  'editor.sharedSelectionTracker',
+  'editor.sharedDragSelectTracker',
+]);
+
+const isPresence = (action: unknown) =>
+  PRESENCE_ACTIONS.has((action as { type?: unknown } | null)?.type);
 
 export type DocumentPhase =
   | 'loading'
@@ -292,6 +304,11 @@ export function createDocumentController(deps: DocumentControllerDeps) {
 
   /** Waiting for a snapshot after a hello. */
   let joining = false;
+  /**
+   * Without Web Locks, a tab whose hello went unanswered loads Drive alone and
+   * still takes a snapshot that comes late, until it edits or saves.
+   */
+  let lateJoin = false;
   let stopHello: (() => void) | null = null;
   /** A leader answers hellos once its editor holds the document and its baseline. */
   let answering = false;
@@ -304,7 +321,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   let changeUnconfirmed = false;
   let lastChangeAt: number | null = null;
   let ackTimer: ReturnType<typeof setTimeout> | null = null;
-  const ackWaiters = new Set<() => void>();
+  /** A follower's flushes waiting for the leader's answer, by request id. */
+  const flushWaiters = new Map<string, (saved: boolean | null) => void>();
 
   const channel = openFileChannel(
     createChannel,
@@ -374,7 +392,11 @@ export function createDocumentController(deps: DocumentControllerDeps) {
         isLeader: () => role === 'leader' && !disposed,
         isStillLeader: () => leader.isStillLeader(),
         requestSave,
-        broadcast: message => channel.post(message),
+        broadcast: message => {
+          // A tab that saved its own load keeps it, however late another answers.
+          if (message.type === 'saving') lateJoin = false;
+          channel.post(message);
+        },
         onState: () => {
           postStatus();
           refresh();
@@ -420,7 +442,10 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       return;
     }
     role = 'leader';
-    if (!locks && (await joinWithoutLocks())) return;
+    if (!locks) {
+      if (await joinWithoutLocks()) return;
+      lateJoin = true;
+    }
     await loadFromDrive(file, false);
   }
 
@@ -436,24 +461,27 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   /**
    * Reads the file and makes it the document. A reload or a takeover tells the
    * other tabs, once this tab's editor has it; a failed reload keeps the old one.
+   * A load a steal or another tab's document overtook installs nothing.
    */
   async function loadFromDrive(
     known: DriveFile | null,
     announce: boolean
   ): Promise<boolean> {
+    const loading = epoch;
+    const overtaken = () => disposed || role !== 'leader' || epoch !== loading;
     let file: DriveFile;
     let text: string;
     try {
       file = known ?? (await withRetry(() => drive.getFile(fileId), retry));
       text = await withRetry(() => drive.download(fileId), retry);
     } catch (error) {
-      if (disposed || initialValue !== null) return false;
+      if (overtaken() || initialValue !== null) return false;
       leader.release();
       role = null;
       setPhase(phaseForError(error));
       return false;
     }
-    if (disposed) return false;
+    if (overtaken()) return false;
     if (!isDocumentText(text)) {
       if (initialValue !== null) return false;
       // Never saved, never edited: the lock goes to a tab that finds the same.
@@ -494,12 +522,27 @@ export function createDocumentController(deps: DocumentControllerDeps) {
 
   function stopJoining() {
     joining = false;
+    lateJoin = false;
     stopHello?.();
     stopHello = null;
   }
 
+  /**
+   * A snapshot for this tab: while it says hello, once a follower gave up on
+   * its hellos, since a leader still loading answers late, and without Web
+   * Locks while this tab has not edited the document it loaded alone.
+   */
+  function takesSnapshot(message: SnapshotMessage) {
+    if (message.to !== tabId) return false;
+    if (joining) return true;
+    if (role === 'follower') return phase === 'waiting-snapshot';
+    return (
+      role === 'leader' && lateJoin && !(queue?.hasUnsavedChanges() ?? false)
+    );
+  }
+
   function adoptSnapshot(message: SnapshotMessage & { epoch: string | null }) {
-    if (message.to !== tabId || !joining) return;
+    if (!takesSnapshot(message)) return;
     stopJoining();
     epoch = message.epoch;
     initialValue = message.value;
@@ -516,6 +559,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       pendingAttempt: message.pendingAttempt,
       canEdit,
     });
+    dropAdapter();
     setPhase('ready');
   }
 
@@ -560,9 +604,10 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     // The order the shared store needs: the value, then the subscription whose
     // first handshake settles the LWW state, then what other tabs sent meanwhile.
     next.setInitialValue(initialValue);
-    const offLocal = next.subscribeLocal(actions =>
-      channel.post({ type: 'actions', actions })
-    );
+    const offLocal = next.subscribeLocal(batch => {
+      const actions = batch.filter(action => !isPresence(action));
+      if (actions.length) channel.post({ type: 'actions', actions });
+    });
     const pending = buffered.filter(entry => entry.epoch === epoch);
     buffered = [];
     adapter = next;
@@ -624,6 +669,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       heldHellos.add(to);
       return;
     }
+    // A tab that handed its load to another keeps it, or that tab would be left alone on it.
+    lateJoin = false;
     const base = queue.getBase();
     channel.post({
       type: 'snapshot',
@@ -650,7 +697,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   async function onElected(how: Election) {
     if (disposed) return;
     role = 'leader';
-    settleAck();
+    clearAck();
+    endFlushes(null);
     waitingLeader = false;
     if (joining || initialValue === null || !queue) {
       stopJoining();
@@ -674,23 +722,54 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     refresh();
   }
 
-  function requestSave() {
-    channel.post({ type: 'save-request' });
+  /** Asks the leader to save; a flush's request names itself, for the answer. */
+  function requestSave(requestId?: string) {
+    channel.post({ type: 'save-request', requestId });
     if (ackTimer !== null) return;
     // An election or a dispose clears it, so it only ever fires in a follower.
     ackTimer = setTimeout(() => {
       ackTimer = null;
       waitingLeader = true;
       refresh();
-      settleAck();
+      endFlushes(false);
     }, ACK_TIMEOUT_MS);
   }
 
-  /** The leader answered, or will not: stop waiting for its ack. */
-  function settleAck() {
+  /** The leader acked, or this tab leads or closes: stop waiting for an ack. */
+  function clearAck() {
     if (ackTimer !== null) clearTimeout(ackTimer);
     ackTimer = null;
-    for (const waiter of [...ackWaiters]) waiter();
+  }
+
+  /** Ends the flushes still waiting: false when no answer will come, null when this tab leads. */
+  function endFlushes(saved: boolean | null) {
+    for (const done of [...flushWaiters.values()]) done(saved);
+  }
+
+  /** Asks the leader to save and waits until that cycle ends: whether nothing was left. */
+  function askLeaderToSave(): Promise<boolean | null> {
+    const requestId = createId();
+    return new Promise(resolve => {
+      const done = (saved: boolean | null) => {
+        clearTimeout(timer);
+        flushWaiters.delete(requestId);
+        resolve(saved);
+      };
+      const timer = setTimeout(() => done(false), FLUSH_TIMEOUT_MS);
+      flushWaiters.set(requestId, done);
+      requestSave(requestId);
+    });
+  }
+
+  /** A follower's save-request; one a flush sent gets its answer once the cycle ends. */
+  async function saveFor(requestId: string | undefined) {
+    const leading = queue;
+    if (!leading) return;
+    await leading.flush();
+    if (requestId === undefined) return;
+    const saved =
+      answering && queue === leading && !leading.hasUnsavedChanges();
+    channel.post({ type: 'flushed', requestId, saved });
   }
 
   function takeStatus(state: SaveState) {
@@ -698,7 +777,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     followerStatus = state;
     waitingLeader = false;
     changeUnconfirmed = false;
-    settleAck();
+    clearAck();
     refresh();
   }
 
@@ -737,7 +816,9 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       case 'status':
         return takeStatus(message.state);
       case 'save-request':
-        return answerLater(() => void queue?.flush());
+        return answerLater(() => void saveFor(message.requestId));
+      case 'flushed':
+        return flushWaiters.get(message.requestId)?.(message.saved);
       case 'check-request':
         return answerLater(() => void queue?.checkUnconfirmed());
       case 'reload-request':
@@ -746,9 +827,12 @@ export function createDocumentController(deps: DocumentControllerDeps) {
         return answerLater(
           () => void renameFor(message.requestId, message.name)
         );
+      // Another load's saves never move this one's base: that is another document.
       case 'saving':
-        return queue?.onSaving(message);
+        if (message.epoch === epoch) queue?.onSaving(message);
+        return;
       case 'saved':
+        if (message.epoch !== epoch) return;
         queue?.onSaved(message);
         return refresh();
       case 'failed':
@@ -876,28 +960,22 @@ export function createDocumentController(deps: DocumentControllerDeps) {
 
     /**
      * Saves before a switch or a sign-out; true when nothing is left unsaved.
-     * A follower lets its send window pass, asks the leader and waits for its ack.
+     * A follower lets its send window pass, asks the leader, and waits for the
+     * cycle it asked for to end, false when the leader does not answer.
      */
     async flush(): Promise<boolean> {
       if (phase !== 'ready' || !queue) return true;
-      if (role === 'leader') {
-        await queue.flush();
-        return !queue.hasUnsavedChanges();
+      if (role !== 'leader' && lastChangeAt !== null) {
+        const wait = lastChangeAt + FOLLOWER_SEND_WINDOW_MS - now();
+        if (wait > 0) await sleep(wait);
       }
-      const wait =
-        lastChangeAt === null
-          ? 0
-          : lastChangeAt + FOLLOWER_SEND_WINDOW_MS - now();
-      if (wait > 0) await sleep(wait);
-      await new Promise<void>(resolve => {
-        const done = () => {
-          ackWaiters.delete(done);
-          resolve();
-        };
-        ackWaiters.add(done);
-        requestSave();
-      });
-      return !hasUnsavedChanges();
+      if (role !== 'leader') {
+        const saved = await askLeaderToSave();
+        if (saved !== null) return saved && !hasUnsavedChanges();
+      }
+      // This tab leads, or came to while it waited.
+      await queue.flush();
+      return !queue.hasUnsavedChanges();
     },
 
     /** For beforeunload: the leader compares fingerprints, a follower judges its sends. */
@@ -907,7 +985,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       if (disposed) return;
       disposed = true;
       stopJoining();
-      settleAck();
+      clearAck();
+      endFlushes(false);
       dropAdapter();
       queue?.dispose();
       leader.release();

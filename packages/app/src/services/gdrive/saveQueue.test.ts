@@ -347,7 +347,7 @@ describe('a save cycle', () => {
   });
 
   it('gives up after three retries and tries again on the next change', async () => {
-    const { queue, edit } = setup();
+    const { queue, edit, file } = setup();
     for (let i = 0; i < 4; i++) drive.failNext('GET', 500);
 
     edit();
@@ -357,9 +357,24 @@ describe('a save cycle', () => {
     expect(queue.getState()).toBe('failed');
     expect(drive.callsTo('GET')).toHaveLength(4);
 
+    edit(EDITED_AGAIN);
+    await settle(DEBOUNCE_MS);
+    expect(queue.getState()).toBe('saved');
+    expect(file.content).toBe(EDITED_AGAIN);
+  });
+
+  it('tries a failed save again on resume', async () => {
+    const { queue, edit } = setup();
+    drive.failNext('PATCH', 400, 'badRequest');
+    edit();
+    await queue.flush();
+    expect(queue.getState()).toBe('failed');
+
     queue.resume();
     await settle();
+
     expect(queue.getState()).toBe('saved');
+    expect(drive.callsTo('PATCH')).toHaveLength(2);
   });
 
   it('tells the other tabs of a PATCH Drive refused', async () => {
@@ -484,6 +499,36 @@ describe('a token that runs out in the fallback', () => {
     expect(queue.getState()).toBe(expected);
   });
 
+  it('saves once the grant is back after a missing scope, and never for another account', async () => {
+    const { queue, edit, token, states } = setup();
+    token.status = 'scope-missing';
+    edit();
+    await queue.flush();
+    expect(queue.getState()).toBe('scope-missing');
+
+    token.status = null;
+    queue.resume();
+    await settle();
+    expect(queue.getState()).toBe('saved');
+    expect(drive.callsTo('PATCH')).toHaveLength(1);
+    expect(states).toEqual([
+      'saving',
+      'scope-missing',
+      'paused',
+      'saving',
+      'saved',
+    ]);
+
+    token.status = 'account-changed';
+    edit(EDITED_AGAIN);
+    await queue.flush();
+    token.status = null;
+    queue.resume();
+    await settle();
+    expect(queue.getState()).toBe('account-changed');
+    expect(drive.callsTo('PATCH')).toHaveLength(1);
+  });
+
   it('resumes nothing that is not paused or failed', async () => {
     const { queue } = setup();
 
@@ -577,6 +622,25 @@ describe('saves from other tabs', () => {
     });
     expect(drive.calls).toHaveLength(0);
     expect(file.content).toBe(USERS_DOCUMENT);
+  });
+
+  it('keeps its base when a save it hears of is older than it, settling the attempt alone', async () => {
+    const { queue } = setup();
+    const base = queue.getBase();
+    queue.onSaving({ attemptId: 'stale', fingerprint: 'f1' });
+
+    queue.onSaved({
+      type: 'saved',
+      attemptId: 'stale',
+      modifiedTime: '2026-09-25T08:59:00.000Z',
+      fingerprint: toDriveFingerprint(EDITED),
+    });
+    await settle();
+
+    expect(queue.getBase()).toBe(base);
+    expect(queue.getPendingAttempt()).toBeNull();
+    expect(queue.getState()).toBe('saved');
+    expect(drive.calls).toHaveLength(0);
   });
 
   it('tracks the attempts it hears of until they settle', () => {
@@ -685,6 +749,31 @@ describe('checkUnconfirmed (Check Drive)', () => {
 
     expect(await queue.checkUnconfirmed()).toBe('failed');
     expect(queue.getState()).toBe('unconfirmed');
+  });
+
+  it('turns into a conflict once the attempt it waited on fails, in the leader alone', async () => {
+    const pendingAttempt = { attemptId: 'old', fingerprint: 'x' };
+    const follower = setup({
+      leader: false,
+      pendingAttempt,
+      state: 'unconfirmed',
+    });
+    follower.queue.onFailed({ attemptId: 'old' });
+    expect(follower.queue.getState()).toBe('unconfirmed');
+
+    const { queue } = setup({ pendingAttempt, state: 'unconfirmed' });
+    queue.onFailed({ attemptId: 'other' });
+    expect(queue.getState()).toBe('unconfirmed');
+    queue.onFailed({ attemptId: 'old' });
+    expect(queue.getState()).toBe('conflict');
+  });
+
+  it('reads unconfirmed with no attempt left as a conflict, reading nothing', async () => {
+    const { queue } = setup({ state: 'unconfirmed' });
+
+    expect(await queue.checkUnconfirmed()).toBe('conflict');
+    expect(queue.getState()).toBe('conflict');
+    expect(drive.calls).toHaveLength(0);
   });
 
   it('skips a queue that is not unconfirmed', async () => {

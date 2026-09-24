@@ -1,5 +1,10 @@
 import { createReplicationStore } from '@dineug/erd-editor/engine.js';
-import { describe, expect, it } from 'vite-plus/test';
+import {
+  createPeerStore,
+  tableActions,
+  tableActions$,
+} from '@dineug/erd-editor/peer.js';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { toDriveFingerprint, toFingerprint } from '@/utils/documentFingerprint';
 import { toWidth } from '@/utils/text';
@@ -110,5 +115,36 @@ describe('toDriveFingerprint', () => {
       viewChanges.forEach(([, change]) => change(json))
     );
     expect(toDriveFingerprint(viewed)).toBe(toDriveFingerprint(VALUE));
+  });
+
+  describe('across replicas', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('is the same for two replicas of one edit, whose entity meta differs', () => {
+      vi.useFakeTimers({ now: Date.UTC(2026, 8, 25) });
+      const here = createPeerStore({ nickname: 'here', presence: false });
+      const there = createPeerStore({ nickname: 'there', presence: false });
+      here.setInitialValue(VALUE);
+      there.setInitialValue(VALUE);
+      const sent: unknown[][] = [];
+      here.subscribe(actions => sent.push(actions));
+      there.subscribe(() => {});
+
+      const [id] = here.dispatch([tableActions$.addTableAction$()]).createdIds;
+      here.dispatch([tableActions.changeTableNameAction({ id, value: 'x' })]);
+      here.flushStreamBuffers();
+      // The other tab applies the batches a second later, by its own clock.
+      vi.advanceTimersByTime(1000);
+      for (const actions of sent) there.receive(actions as any);
+
+      const metaOf = (value: string) =>
+        JSON.parse(value).collections.tableEntities[id].meta;
+      expect(metaOf(there.value)).not.toEqual(metaOf(here.value));
+      expect(toDriveFingerprint(there.value)).toBe(
+        toDriveFingerprint(here.value)
+      );
+      here.destroy();
+      there.destroy();
+    });
   });
 });

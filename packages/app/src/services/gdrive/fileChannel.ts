@@ -15,6 +15,8 @@ export const FOLLOWER_SEND_WINDOW_MS = 500;
 export const RENAME_PROBE_MS = 2000;
 /** How long a rename waits for the leader, which first finishes a save under way. */
 export const RENAME_TIMEOUT_MS = 30_000;
+/** How long a follower's flush waits for the leader to end the save it asked for. */
+export const FLUSH_TIMEOUT_MS = 30_000;
 
 export const SAVE_STATES = [
   'saved',
@@ -77,6 +79,14 @@ export type SavedMessage = {
   fingerprint: string;
 };
 
+/** The leader's answer to a flush's save-request, once the cycle it asked for ended. */
+export type FlushedMessage = {
+  type: 'flushed';
+  requestId: string;
+  /** Whether the leader has nothing left unsaved. */
+  saved: boolean;
+};
+
 export type RenamedMessage = {
   type: 'renamed';
   /** The rename-request it answers; null for the leader's own rename. */
@@ -92,7 +102,8 @@ type Body =
   | { type: 'hello'; from: string }
   | SnapshotMessage
   | { type: 'status'; state: SaveState; at: number }
-  | { type: 'save-request' }
+  | { type: 'save-request'; requestId?: string }
+  | FlushedMessage
   | { type: 'check-request' }
   | { type: 'reload-request' }
   | ({ type: 'saving' } & SaveAttempt)
@@ -170,7 +181,14 @@ const readers: Record<Body['type'], Reader> = {
     isSaveState(state) && typeof at === 'number'
       ? { type: 'status', state, at }
       : null,
-  'save-request': () => ({ type: 'save-request' }),
+  'save-request': ({ requestId }) => {
+    if (requestId === undefined) return { type: 'save-request' };
+    return isString(requestId) ? { type: 'save-request', requestId } : null;
+  },
+  flushed: ({ requestId, saved }) =>
+    isString(requestId) && isBoolean(saved)
+      ? { type: 'flushed', requestId, saved }
+      : null,
   'check-request': () => ({ type: 'check-request' }),
   'reload-request': () => ({ type: 'reload-request' }),
   saving: data => {
