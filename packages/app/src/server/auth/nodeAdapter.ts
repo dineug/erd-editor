@@ -42,9 +42,9 @@ async function send(res: ServerResponse, response: Response): Promise<void> {
 }
 
 /**
- * The relay under vp dev, as connect middleware added without a mount path so
- * it runs ahead of Vite's own and the SPA fallback. It reads originalUrl first,
- * which keeps working if something mounts it under a prefix after all.
+ * The relay under vp dev, as connect middleware added without a mount path. It
+ * reads originalUrl first, which keeps working if something mounts it under a
+ * prefix after all.
  */
 export function createAuthDevMiddleware({
   getEnv,

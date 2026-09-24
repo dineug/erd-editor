@@ -40,15 +40,16 @@ function gtag(isProduction: boolean): Plugin {
 }
 
 /**
- * Serves /api/auth/* from the handlers the Pages Function runs. The middleware
- * is added straight away, not from a returned hook, so it precedes Vite's own
- * and the SPA fallback. Secrets come from the env or packages/app/.env.local.
+ * Serves /api/auth/* from the handlers the Pages Function runs. Added straight
+ * away, not from a returned hook, it precedes Vite's transform, static and SPA
+ * fallback middlewares; Vite's request, cors and host checks still run first.
  */
 function gdriveDevServer(mode: string): Plugin {
   return {
     name: 'gdrive-dev-server',
     apply: 'serve',
     configureServer(server) {
+      // Secrets come from the env or packages/app/.env.local.
       const env = loadEnv(mode, import.meta.dirname, '');
       server.middlewares.use(
         createAuthDevMiddleware({

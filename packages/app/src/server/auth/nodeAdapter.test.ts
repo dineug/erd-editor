@@ -135,7 +135,7 @@ describe('createAuthDevMiddleware', () => {
     expect(start.headers['access-control-allow-origin']).toBeUndefined();
     expect(start.headers.vary).toBeUndefined();
     const location = new URL(start.headers.location ?? '').searchParams;
-    const code = google.issueCode(location.get('code_challenge') ?? '');
+    const code = google.issueCode(location);
 
     const callback = await send(
       `/api/auth/callback?state=${location.get('state')}&code=${code}`,
@@ -222,7 +222,7 @@ describe('createAuthDevMiddleware', () => {
     );
     const start = await send(`/api/auth/start?attempt=${ATTEMPT}`);
     const location = new URL(start.headers.location ?? '').searchParams;
-    const code = google.issueCode(location.get('code_challenge') ?? '');
+    const code = google.issueCode(location);
 
     const callback = await send(
       `/api/auth/callback?state=${location.get('state')}&code=${code}`,

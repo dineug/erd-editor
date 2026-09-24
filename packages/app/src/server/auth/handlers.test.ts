@@ -9,6 +9,8 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   AUTH_ENV,
+  CLIENT_ID,
+  CLIENT_SECRET,
   cookiePair,
   createFakeGoogle,
   DRIVE_FILE,
@@ -30,6 +32,7 @@ import {
   STATE_COOKIE_AAD,
 } from '@/server/auth/cookie';
 import { importCookieKey, sealValue } from '@/server/auth/cookieCrypto';
+import { openOAuthState, pkceChallenge } from '@/server/auth/oauthState';
 import { onRequest } from '@/server/auth/pages';
 
 const ORIGIN = 'https://erd-editor.test';
@@ -86,10 +89,7 @@ function setup(env: AuthEnv = AUTH_ENV) {
   }: { attempt?: string; scope?: string } = {}) {
     const start = await call(`/api/auth/start?attempt=${attempt}`);
     const location = new URL(start.headers.get('Location') ?? '');
-    const code = google.issueCode(
-      location.searchParams.get('code_challenge') ?? '',
-      scope
-    );
+    const code = google.issueCode(location.searchParams, scope);
     const state = location.searchParams.get('state');
     const callback = await call(
       `/api/auth/callback?state=${state}&code=${code}`,
@@ -127,12 +127,23 @@ function marker(body: string) {
   };
 }
 
-/** Seals a state cookie value with the test key, as only the relay could. */
-async function sealState(plaintext: string): Promise<string> {
-  const key = await importCookieKey(
+function testKey() {
+  return importCookieKey(
     parseCookieKey(AUTH_ENV.COOKIE_KEY) ?? new Uint8Array(32)
   );
-  return sealValue(key, plaintext, STATE_COOKIE_AAD);
+}
+
+/** Seals a state cookie value with the test key, as only the relay could. */
+async function sealState(plaintext: string): Promise<string> {
+  return sealValue(await testKey(), plaintext, STATE_COOKIE_AAD);
+}
+
+/** What the state cookie a start set holds, opened with the test key. */
+async function openState(response: Response, now: number) {
+  const value = cookiePair(response, STATE_COOKIE).slice(
+    `${STATE_COOKIE}=`.length
+  );
+  return openOAuthState(await testKey(), value, now);
 }
 
 /** Changes a character in the middle of a cookie value, where every bit counts. */
@@ -182,7 +193,7 @@ describe('start', () => {
   });
 
   it('seals state, verifier and attempt into a Lax __Host- cookie for ten minutes', async () => {
-    const { call } = setup();
+    const { call, clock } = setup();
 
     const response = await call(`/api/auth/start?attempt=${ATTEMPT}`);
 
@@ -196,6 +207,17 @@ describe('start', () => {
     const state = new URL(response.headers.get('Location') ?? '').searchParams;
     expect(value).not.toContain(state.get('state'));
     expect(value).not.toContain(ATTEMPT);
+    const sealed = await openState(response, clock.now);
+    expect(sealed).toEqual({
+      state: state.get('state'),
+      verifier: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      attempt: ATTEMPT,
+      loginHint: null,
+      expiresAt: clock.now + 600_000,
+    });
+    expect(await pkceChallenge(sealed?.verifier ?? '')).toBe(
+      state.get('code_challenge')
+    );
   });
 
   it('draws a new state and challenge for every sign-in', async () => {
@@ -217,7 +239,7 @@ describe('start', () => {
   it.each(['1234567890123456789012', 'someone@example.com'])(
     'passes login_hint %s to Google, skips the account chooser and seals the hint',
     async hint => {
-      const { call, google } = setup();
+      const { call, google, clock } = setup();
 
       const response = await call(
         `/api/auth/start?attempt=${ATTEMPT}&login_hint=${encodeURIComponent(hint)}`
@@ -230,8 +252,9 @@ describe('start', () => {
       const cookie = cookiePair(response, STATE_COOKIE);
       expect(cookie).not.toContain(hint);
       expect(cookie).not.toContain(encodeURIComponent(hint));
+      expect((await openState(response, clock.now))?.loginHint).toBe(hint);
 
-      const code = google.issueCode(params.get('code_challenge') ?? '');
+      const code = google.issueCode(params);
       const callback = await call(
         `/api/auth/callback?state=${params.get('state')}&code=${code}`,
         { cookie }
@@ -437,7 +460,7 @@ describe('callback', () => {
         .searchParams;
       return {
         state: location.get('state') ?? '',
-        code: google.issueCode(location.get('code_challenge') ?? ''),
+        code: google.issueCode(location),
         cookie: cookiePair(response, STATE_COOKIE),
       };
     };
@@ -1020,7 +1043,7 @@ describe('onRequest', () => {
 
     const start = await request(`/api/auth/start?attempt=${ATTEMPT}`);
     const location = new URL(start.headers.get('Location') ?? '').searchParams;
-    const code = google.issueCode(location.get('code_challenge') ?? '');
+    const code = google.issueCode(location);
     const callback = await request(
       `/api/auth/callback?state=${location.get('state')}&code=${code}`,
       { headers: { Cookie: cookiePair(start, STATE_COOKIE) } }
@@ -1055,6 +1078,48 @@ describe('onRequest', () => {
     }
   });
 
+  it.each([
+    [
+      'another redirect_uri',
+      'redirect_uri',
+      'https://other.test/api/auth/callback',
+    ],
+    ['another client', 'client_id', 'other-client.apps.googleusercontent.com'],
+  ])(
+    'is checked by a fake that refuses a code issued for %s, as Google does',
+    async (_, name, value) => {
+      const google = createFakeGoogle();
+      const send = google.fetch;
+      const verifier = 'v'.repeat(43);
+      const authorize = new URLSearchParams({
+        client_id: CLIENT_ID,
+        redirect_uri: `${ORIGIN}/api/auth/callback`,
+        code_challenge: await pkceChallenge(verifier),
+      });
+      const exchange = (code: string) =>
+        send(google.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            code_verifier: verifier,
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            redirect_uri: `${ORIGIN}/api/auth/callback`,
+          }).toString(),
+        });
+
+      const matching = await exchange(google.issueCode(authorize));
+      authorize.set(name, value);
+      const other = await exchange(google.issueCode(authorize));
+
+      expect(matching.status).toBe(200);
+      expect(other.status).toBe(400);
+      expect(await other.json()).toEqual({ error: 'invalid_grant' });
+    }
+  );
+
   it('is checked by a fake that refuses a call through another object', () => {
     const google = createFakeGoogle();
     const deps = { fetch: google.fetch };
@@ -1076,6 +1141,6 @@ async function beginFlow() {
     ...context,
     cookie: cookiePair(start, STATE_COOKIE),
     state: location.get('state') ?? '',
-    code: context.google.issueCode(location.get('code_challenge') ?? ''),
+    code: context.google.issueCode(location),
   };
 }

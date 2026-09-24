@@ -20,6 +20,13 @@ export const GRANTED_SCOPE = [
 
 type Reply = Response | 'network-error';
 
+/** What a code is bound to: the client, redirect_uri and PKCE challenge it was issued for. */
+type AuthorizeRequest = {
+  clientId: string;
+  redirectUri: string;
+  challenge: string;
+};
+
 export type GoogleRequest = { url: string; params: URLSearchParams };
 
 function reply(body: unknown, status = 200): Response {
@@ -51,13 +58,13 @@ function isFormPost(init: RequestInit | undefined): boolean {
 
 /**
  * Google's token and revoke endpoints by path on any host: form POSTs only,
- * codes bound to their PKCE challenge, live refresh tokens. Its fetch throws on
+ * codes bound to the authorize request, live refresh tokens. Its fetch throws on
  * a receiver other than undefined or globalThis, as workerd and Chrome do.
  */
 export function createFakeGoogle() {
   const requests: GoogleRequest[] = [];
   const replies: Reply[] = [];
-  const codes = new Map<string, { challenge: string; scope: string }>();
+  const codes = new Map<string, AuthorizeRequest & { scope: string }>();
   const liveTokens = new Set<string>();
   let issued = 0;
 
@@ -73,10 +80,15 @@ export function createFakeGoogle() {
     /** Codes exchange without a refresh token, as for a returning grant without consent. */
     omitRefreshToken: false,
 
-    /** A code Google would send back for this challenge. */
-    issueCode(challenge: string, scope = GRANTED_SCOPE): string {
-      const code = `code-${codes.size + 1}-${challenge.slice(0, 6)}`;
-      codes.set(code, { challenge, scope });
+    /** A code Google would send back to the authorize request start redirected to. */
+    issueCode(authorize: URLSearchParams, scope = GRANTED_SCOPE): string {
+      const request = {
+        clientId: authorize.get('client_id') ?? '',
+        redirectUri: authorize.get('redirect_uri') ?? '',
+        challenge: authorize.get('code_challenge') ?? '',
+      };
+      const code = `code-${codes.size + 1}-${request.challenge.slice(0, 6)}`;
+      codes.set(code, { ...request, scope });
       return code;
     },
 
@@ -130,7 +142,12 @@ export function createFakeGoogle() {
       const entry = codes.get(params.get('code') ?? '');
       codes.delete(params.get('code') ?? '');
       const verifier = params.get('code_verifier') ?? '';
-      if (!entry || (await s256(verifier)) !== entry.challenge) {
+      if (
+        !entry ||
+        params.get('client_id') !== entry.clientId ||
+        params.get('redirect_uri') !== entry.redirectUri ||
+        (await s256(verifier)) !== entry.challenge
+      ) {
         return reply({ error: 'invalid_grant' }, 400);
       }
       return reply({
