@@ -12,7 +12,8 @@ const GTAG_ID = 'G-3VBWD4V1JX';
 
 /**
  * Injects the analytics snippet in production only, replacing the
- * <%= gtag %> placeholder HtmlWebpackPlugin used to substitute.
+ * <%= gtag %> placeholder HtmlWebpackPlugin used to substitute. The tag is
+ * added from script and never on /gdrive, which keeps Google user data out.
  */
 function gtag(isProduction: boolean): Plugin {
   return {
@@ -23,14 +24,19 @@ function gtag(isProduction: boolean): Plugin {
         isProduction
           ? html.replace(
               '</body>',
-              `  <script async src="https://www.googletagmanager.com/gtag/js?id=${GTAG_ID}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
+              `  <script>
+      if (!location.pathname.startsWith('/gdrive')) {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () {
+          dataLayer.push(arguments);
+        };
+        gtag('js', new Date());
+        gtag('config', '${GTAG_ID}');
+        var gtagScript = document.createElement('script');
+        gtagScript.async = true;
+        gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=${GTAG_ID}';
+        document.head.appendChild(gtagScript);
       }
-      gtag('js', new Date());
-      gtag('config', '${GTAG_ID}');
     </script>
   </body>`
             )

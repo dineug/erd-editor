@@ -15,12 +15,20 @@ import LiveCollaborativeError from '@/components/live-collaborative/live-collabo
 import { registerSW } from '@/registerSW';
 import Root from '@/routes/root/Root';
 import { store } from '@/store';
+import {
+  sentryPrivacyOptions,
+  shouldCreateSpanForRequest,
+} from '@/utils/sentryScrub';
 
 if (import.meta.env.MODE === 'production') {
   Sentry.init({
     dsn: 'https://77d8b1a5cdead25c1dea4978fba38a70@o245231.ingest.us.sentry.io/4506887372668928',
-    integrations: [Sentry.browserTracingIntegration()],
+    integrations: [
+      Sentry.browserTracingIntegration({ shouldCreateSpanForRequest }),
+    ],
     tracesSampleRate: 0.1,
+    // Drive file ids, file names and the account's id stay out (Limited Use).
+    ...sentryPrivacyOptions(() => location.pathname),
   });
 }
 
