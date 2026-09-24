@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-20 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-25 -->
 
 # app
 
@@ -34,7 +34,7 @@
 | Directory | Purpose |
 | --- | --- |
 | `src/atoms/modules/` | jotai state — `schema`, `schema-import`, `sidebar`, `sidebar-sash`, `collaborative`, `theme`, `app-update` |
-| `src/components/` | `app/` the `/` shell (drop overlay, import notice, URL sync), `sidebar/` the list, trash and theme control, `viewer/` the React↔custom-element boundary, `live-collaborative/` the `/live` guest view, `app-update-prompt/` |
+| `src/components/` | `app/` the `/` shell (drop overlay, import notice, URL sync), `sidebar/` the list, trash and theme control, built from source-free fragments, `viewer/` the React↔custom-element boundary, `live-collaborative/` the `/live` guest view, `app-update-prompt/` |
 | `src/services/collaborative/` | Main-thread WebRTC transport — `room.ts`, `host.ts`, `guest.ts`, `leader.ts`, `participants.ts` |
 | `src/services/indexeddb/` | Dexie service; `index.ts` picks `SharedWorker`, then `Worker`, then in-thread |
 | `e2e/` | Playwright specs, `support/AppPage.ts`, `support/backup.ts` (seed files), `support/relay.mjs` (a local nostr relay) |
@@ -68,6 +68,7 @@
 - **Theme**: `appearance` is `'dark' | 'light' | 'system'`, default `dark`; `system` is opt-in and follows `matchMedia`. The inline script in `index.html` applies a stored preference before first paint with the rules of `parseThemeState` / `resolveAppearance`, and `theme.test.ts` runs that script against them — change both together, and keep the script inline.
 - **Icons are `lucide-react`**; brand marks, which lucide 1.x does not ship, are inline SVG (the GitHub mark in `Viewer.tsx`).
 - **The sidebar is `<nav aria-label="Schemas">`** with one roving Tab stop across the date groups: arrows, Home and End move, Enter and Space open, F2 renames, Delete or Backspace moves to the trash. A row's collaboration and menu buttons show on hover or focus and take Tab on the focused row only, since a running session keeps its trigger on screen. The e2e locators rely on these names and labels.
+- **The sidebar is fragments put together by an adapter.** `SidebarShell` (the landmark, the header, list and footer slots, the bar the sash folds it to), `SidebarSearch`, `SidebarGroups` (the date groups, `data-schema-list`, No results, a `leading` row), `useSidebarList` (query, groups, Tab stop) and `SidebarItemView` (rename field, row keys, menu, with `menuItems`, `trailing` and an optional remove) read no atom. `Sidebar` and `SidebarItem` are the local adapter: they bind the IndexedDB atoms, keep the header buttons, the Duplicate item and the footer, and pass every label, so the names above stay theirs. The two remove paths stay apart: Delete or Backspace focuses the row taking its place before removing, the menu item once the menu has closed. A change to a fragment is a change to `/`, which the e2e specs guard.
 - **Hex `[hash:8]` output names are a contract with `sw.ts`**, repeated under `worker` because workers inherit no `build` output options; base64 hashes silently stop matching `CacheFirst`.
 - Take `RouterProvider` from `react-router/dom`; the root export of the same name lacks the `flushSync` wiring and still typechecks.
 - `run.tasks` is bespoke: its inputs name `packages/erd-editor/dist/**/*.d.ts` by hand, so a newly typechecked sibling goes into that list.
@@ -83,7 +84,7 @@
 ### Common Patterns
 
 - `Component.tsx` beside `Component.styles.ts`; Emotion `css` prop, Radix Themes for widgets, `lucide-react` for icons.
-- **Buttons are gray-first, size 2** (size 1 inside the compact update-prompt card). The one primary action of a screen or dialog is `solid` `color="gray"` `highContrast` (New schema in the empty viewer, Start session, Reload, Refresh); a destructive one is `outline` red (Empty trash, a confirmation's Delete, Stop session), or ghost red in a row, never solid: red-9 under a white label reads 3.9:1. Secondaries are `outline` gray, a dialog's Close / Cancel `soft` gray. The sidebar's New schema and Trash are ghost gray rows (`rowButton` in `SidebarItem.styles.ts`) with their icon on the list's text edge. Solid jade is avoided: its white label reads 3.15:1.
+- **Buttons are gray-first, size 2** (size 1 inside the compact update-prompt card). The one primary action of a screen or dialog is `solid` `color="gray"` `highContrast` (New schema in the empty viewer, Start session, Reload, Refresh); a destructive one is `outline` red (Empty trash, a confirmation's Delete, Stop session), or ghost red in a row, never solid: red-9 under a white label reads 3.9:1. Secondaries are `outline` gray, a dialog's Close / Cancel `soft` gray. The sidebar's New schema and Trash are ghost gray rows (`rowButton` in `SidebarItemView.styles.ts`) with their icon on the list's text edge. Solid jade is avoided: its white label reads 3.15:1.
 - jotai modules export their state atoms but keep write-only `atom(null, …)` action atoms private behind `use*` hooks.
 - Dates and relative times go through luxon, in the `en` locale like the rest of the UI copy.
 
