@@ -22,6 +22,9 @@
   // `input: ['scr/**']` — went unreported and silently narrowed the graph or the
   // cache key. Nothing about that failure is red.
   "include": [
+    // The Pages Functions entry and the auth handlers it re-exports, checked
+    // here without the DOM lib that the app program lends them.
+    "functions/**/*.ts",
     "vite.config.ts",
     "build-target.ts",
     "tools/**/*.ts",

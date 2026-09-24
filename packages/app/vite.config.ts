@@ -182,6 +182,9 @@ export default defineConfig(({ mode }) => {
           // input은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
           // 자동 추적에 안 잡히는 tsc가 다시 돈다.
           command: ['tsc --noEmit', 'vp build'],
+          // Listed so the Google client id compiled into /gdrive reaches the
+          // build and keys its cache; a task otherwise runs in a clean env.
+          env: ['VITE_GOOGLE_CLIENT_ID'],
           dependsOn: [
             {
               task: 'build',
@@ -203,6 +206,7 @@ export default defineConfig(({ mode }) => {
               pattern: 'packages/erd-editor/dist/**/*.d.ts',
               base: 'workspace',
             },
+            { pattern: 'functions/**', base: 'workspace' },
             '!**/*.tsbuildinfo',
             '!dist/**',
           ],
@@ -234,6 +238,7 @@ export default defineConfig(({ mode }) => {
               pattern: 'packages/erd-editor/dist/**/*.d.ts',
               base: 'workspace',
             },
+            { pattern: 'functions/**', base: 'workspace' },
             '!**/*.tsbuildinfo',
           ],
         },
