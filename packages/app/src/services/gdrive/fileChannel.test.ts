@@ -103,6 +103,14 @@ describe('readFileMessage', () => {
     { type: 'rename-failed', epoch: 'e1', requestId: 'r1' },
     { type: 'save-request', epoch: 'e1', requestId: 'r2' },
     { type: 'flushed', epoch: null, requestId: 'r2', saved: false },
+    {
+      type: 'rename-request',
+      epoch: null,
+      requestId: 'r3',
+      name: 'b.erd',
+      to: 'tab-2',
+    },
+    { type: 'rename-claim', epoch: 'e1', requestId: 'r3', from: 'tab-2' },
   ];
 
   it.each(valid)('reads $type', message => {
@@ -136,6 +144,9 @@ describe('readFileMessage', () => {
       { ...valid[10], fingerprint: 1 },
       { ...valid[10], epoch: undefined },
       { type: 'rename-request', requestId: 'r1' },
+      { ...valid[16], to: 7 },
+      { type: 'rename-claim', requestId: 'r3' },
+      { type: 'rename-claim', from: 'tab-2' },
       { ...valid[12], to: null },
       { ...valid[12], requestId: 7 },
       { type: 'rename-failed' },

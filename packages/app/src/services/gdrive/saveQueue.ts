@@ -190,11 +190,10 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
     if (meta.modifiedTime !== base.modifiedTime) {
       throw new SaveStop(pendingAttempt ? 'unconfirmed' : 'conflict');
     }
-    // The file is as the base left it, so an earlier attempt never landed.
-    pendingAttempt = null;
     if (!meta.canEdit) throw new SaveStop('readonly');
     if (!(await isStillLeader())) throw new SaveStop(null);
 
+    // The file is as the base left it, so an earlier attempt never landed.
     const attempt: SaveAttempt = { attemptId: createId(), fingerprint };
     pendingAttempt = attempt;
     broadcast({ type: 'saving', ...attempt });
@@ -238,12 +237,35 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
       await withRetry(() => attemptSave(value, fingerprint), retry);
       setState('saved');
     } catch (error) {
-      setState(
-        error instanceof SaveStop && !error.state
-          ? before
-          : stateForError(error)
-      );
+      // A tab that lost the lock meanwhile keeps no stop: the new leader finds its own.
+      const fenced = error instanceof SaveStop && !error.state;
+      setState(fenced || !isLeader() ? before : stateForError(error));
     }
+  }
+
+  /**
+   * A stop another tab's save may explain: saving resumes only when Drive is
+   * where that save left the base. Otherwise the stop stays, a conflict once no
+   * attempt is left to account for the move.
+   */
+  function recheck(): Promise<void> {
+    return serialize(async () => {
+      if (disposed || !isLeader()) return;
+      if (state !== 'conflict' && state !== 'unconfirmed') return;
+      let modifiedTime: string;
+      try {
+        modifiedTime = (await drive.getFile(fileId)).modifiedTime;
+      } catch {
+        return;
+      }
+      if (!isLeader()) return;
+      if (modifiedTime !== base.modifiedTime) {
+        if (!pendingAttempt) setState('conflict');
+        return;
+      }
+      setState('saved');
+      if (hasUnsavedChanges()) void flush();
+    });
   }
 
   /** Saves now, joining a cycle already asked for; a follower asks its leader instead. */
@@ -311,11 +333,15 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
       base = { ...base, fingerprint };
     },
 
-    /** A new leader keeps what its predecessor had stopped on. */
+    /**
+     * A new leader takes its predecessor's view: what that one stopped on, and
+     * none of the stops this tab's queue kept from before, which it has since
+     * seen resolved. A file this tab may not edit stays readonly.
+     */
     inherit(previous: SaveState | null) {
-      if (previous && STOPPED.has(previous)) {
-        setState(previous as LeaderSaveState);
-      }
+      if (!previous) return;
+      if (STOPPED.has(previous)) setState(previous as LeaderSaveState);
+      else if (STOPPED.has(state) && state !== 'readonly') setState('saved');
     },
 
     /** A new document load: its base, no attempt, saved. */
@@ -342,16 +368,16 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
 
     /**
      * Another tab's save, maybe one this tab never heard announced: the base
-     * moves to it, unless it is older, and a leader whose content differs saves
-     * over it at once, which puts back what a stale PATCH overwrote.
+     * moves to it, unless it is older. A leader whose content differs saves over
+     * it at once, or checks Drive first if stopped, since Drive may be past it.
      */
     onSaved({ attemptId, modifiedTime, fingerprint }: SavedMessage) {
       settleAttempt(attemptId);
       if (isBefore(modifiedTime, base.modifiedTime)) return;
       base = { modifiedTime, fingerprint };
       if (!isLeader()) return;
-      if (state === 'conflict' || state === 'unconfirmed') setState('saved');
-      if (hasUnsavedChanges()) void flush();
+      if (state === 'conflict' || state === 'unconfirmed') void recheck();
+      else if (hasUnsavedChanges()) void flush();
     },
 
     onRenamed(from: string, to: string) {
@@ -360,13 +386,14 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
 
     /**
      * After a handoff, saves what the old leader left unsaved. After a steal,
-     * waits up to five seconds for the attempt the old leader announced, then
-     * checks Drive: a file that moved stops as unconfirmed.
+     * holds every save up to five seconds for the attempt the old leader
+     * announced, then checks Drive: a file that moved stops as unconfirmed.
      */
     async afterElection(stolen: boolean) {
       if (stolen && pendingAttempt) {
-        await waitForAttempt(STEAL_SETTLE_MS);
+        const settled = waitForAttempt(STEAL_SETTLE_MS);
         const verified = await serialize(async () => {
+          await settled;
           if (!isLeader() || disposed) return false;
           try {
             const meta = await drive.getFile(fileId);

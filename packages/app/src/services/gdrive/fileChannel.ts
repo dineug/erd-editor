@@ -97,6 +97,14 @@ export type RenamedMessage = {
   to: string;
 };
 
+export type RenameRequestMessage = {
+  type: 'rename-request';
+  requestId: string;
+  name: string;
+  /** The tab that is to rename, without Web Locks: the first to claim the request. */
+  to?: string;
+};
+
 type Body =
   | { type: 'actions'; actions: unknown[] }
   | { type: 'hello'; from: string }
@@ -110,7 +118,8 @@ type Body =
   | SavedMessage
   | { type: 'failed'; attemptId: string }
   | ReloadedMessage
-  | { type: 'rename-request'; requestId: string; name: string }
+  | RenameRequestMessage
+  | { type: 'rename-claim'; requestId: string; from: string }
   | RenamedMessage
   | { type: 'rename-failed'; requestId: string };
 
@@ -215,9 +224,16 @@ const readers: Record<Body['type'], Reader> = {
           canRename: data.canRename as boolean,
         }
       : null,
-  'rename-request': ({ requestId, name }) =>
-    isString(requestId) && isString(name)
-      ? { type: 'rename-request', requestId, name }
+  'rename-request': ({ requestId, name, to }) => {
+    if (!isString(requestId) || !isString(name)) return null;
+    if (to === undefined) return { type: 'rename-request', requestId, name };
+    return isString(to)
+      ? { type: 'rename-request', requestId, name, to }
+      : null;
+  },
+  'rename-claim': ({ requestId, from }) =>
+    isString(requestId) && isString(from)
+      ? { type: 'rename-claim', requestId, from }
       : null,
   renamed: ({ requestId, name, from, to }) =>
     (requestId === null || isString(requestId)) &&

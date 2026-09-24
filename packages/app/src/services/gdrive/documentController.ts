@@ -23,6 +23,7 @@ import {
   type ReloadedMessage,
   RENAME_PROBE_MS,
   RENAME_TIMEOUT_MS,
+  type RenameRequestMessage,
   type SaveState,
   sayHello,
   type SnapshotMessage,
@@ -165,7 +166,8 @@ const sleep = (ms: number) =>
 
 /**
  * Asks the file's leader to rename it and waits for its answer. With probe,
- * no status within two seconds means no tab has the file open: null.
+ * without Web Locks, the first tab to claim the request renames, and no claim
+ * within two seconds means no tab has the file open: null.
  */
 function askLeaderToRename(
   channel: FileChannel,
@@ -190,10 +192,20 @@ function askLeaderToRename(
       waitingForAck ? resolve(null) : unanswered()
     );
     off = channel.subscribe(message => {
-      if (message.type === 'status' && waitingForAck) {
+      if (
+        message.type === 'rename-claim' &&
+        message.requestId === requestId &&
+        waitingForAck
+      ) {
         waitingForAck = false;
         clearTimeout(timer);
         timer = arm(RENAME_TIMEOUT_MS, unanswered);
+        channel.post({
+          type: 'rename-request',
+          requestId,
+          name,
+          to: message.from,
+        });
       } else if (
         message.type === 'renamed' &&
         message.requestId === requestId
@@ -490,6 +502,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       setPhase('rejected', 'not-document');
       return false;
     }
+    dropAdapter();
     adoptMeta(file);
     epoch = createId();
     initialValue = text;
@@ -501,7 +514,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       pendingAttempt: null,
       canEdit,
     });
-    dropAdapter();
     setPhase('ready');
     return true;
   }
@@ -544,6 +556,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   function adoptSnapshot(message: SnapshotMessage & { epoch: string | null }) {
     if (!takesSnapshot(message)) return;
     stopJoining();
+    dropAdapter();
     epoch = message.epoch;
     initialValue = message.value;
     name = message.name;
@@ -559,7 +572,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       pendingAttempt: message.pendingAttempt,
       canEdit,
     });
-    dropAdapter();
     setPhase('ready');
   }
 
@@ -570,6 +582,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   function adoptReloaded(message: ReloadedMessage & { epoch: string | null }) {
     if (role === null) return;
     stopJoining();
+    dropAdapter();
     epoch = message.epoch;
     initialValue = message.value;
     name = message.name;
@@ -590,7 +603,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     };
     if (queue) queue.reset(init);
     else queue = createQueue(init);
-    dropAdapter();
     setPhase('ready');
   }
 
@@ -618,6 +630,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       if (adapter !== next) return;
       offLocal();
       offChange();
+      // The next editor of this load starts from this one's document, edits included.
+      initialValue = next.getValue();
       adapter = null;
       answering = false;
       if (detachAdapter === detach) detachAdapter = null;
@@ -629,8 +643,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
 
   /**
    * A leader answers once its baseline is known: for a document fresh from
-   * Drive, one microtask after the load, past the tombstones the engine
-   * collects on every load, which are housekeeping rather than an edit.
+   * Drive, one microtask after the load. The element collects old tombstones
+   * later still, which the Drive fingerprint never counts.
    */
   function startLeading(next: EditorAdapter, current: SaveQueue) {
     if (current.getBase().fingerprint !== null) {
@@ -792,6 +806,22 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     }, 0);
   }
 
+  /**
+   * Without Web Locks every tab leads, so a tab claims a rename the sidebar
+   * asks for and carries it out only once the asking tab names it.
+   */
+  function answerRename({ requestId, name: next, to }: RenameRequestMessage) {
+    if (to === undefined && !locks) {
+      if (role === 'leader' && queue) {
+        channel.post({ type: 'rename-claim', requestId, from: tabId });
+      }
+      return;
+    }
+    if (to === undefined || to === tabId) {
+      answerLater(() => void renameFor(requestId, next));
+    }
+  }
+
   function receiveActions(message: {
     epoch: string | null;
     actions: unknown[];
@@ -824,9 +854,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       case 'reload-request':
         return answerLater(() => void reload());
       case 'rename-request':
-        return answerLater(
-          () => void renameFor(message.requestId, message.name)
-        );
+        return answerRename(message);
       // Another load's saves never move this one's base: that is another document.
       case 'saving':
         if (message.epoch === epoch) queue?.onSaving(message);

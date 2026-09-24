@@ -621,12 +621,26 @@ export function createFakeDrive() {
     reply: (() => Response) | 'network-error';
     when?: (url: URL) => boolean;
   }> = [];
-  const holds: Array<{
+  type Hold = {
     method: string;
     gate: Promise<void>;
     when?: (url: URL) => boolean;
-  }> = [];
+  };
+  const holds: Hold[] = [];
+  const heldAnswers: Hold[] = [];
   const lostResponses: string[] = [];
+
+  const gate = (list: Hold[], method: string, when?: (url: URL) => boolean) => {
+    let release: () => void = () => {};
+    list.push({ method, gate: new Promise<void>(r => (release = r)), when });
+    return release;
+  };
+  const takeHold = (list: Hold[], method: string, url: URL) => {
+    const index = list.findIndex(
+      entry => entry.method === method && (!entry.when || entry.when(url))
+    );
+    return index === -1 ? null : list.splice(index, 1)[0].gate;
+  };
   let clock = Date.UTC(2026, 8, 25, 9);
   let created = 0;
 
@@ -697,9 +711,12 @@ export function createFakeDrive() {
 
     /** The next request of this method, and of URLs when matches if given, waits unprocessed until released. */
     hold(method: string, when?: (url: URL) => boolean): () => void {
-      let release: () => void = () => {};
-      holds.push({ method, gate: new Promise<void>(r => (release = r)), when });
-      return release;
+      return gate(holds, method, when);
+    },
+
+    /** The next request of this method is answered at once, and the answer reaches the caller once released. */
+    holdAnswer(method: string, when?: (url: URL) => boolean): () => void {
+      return gate(heldAnswers, method, when);
     },
 
     /** The next request of this method goes through and its answer is lost, as a dropped connection. */
@@ -726,11 +743,15 @@ export function createFakeDrive() {
         headers: new Headers(init?.headers),
         body: typeof init?.body === 'string' ? init.body : null,
       });
-      const held = holds.findIndex(
-        entry =>
-          entry.method === method && (!entry.when || entry.when(new URL(input)))
-      );
-      if (held !== -1) await holds.splice(held, 1)[0].gate;
+      const url = new URL(input);
+      const held = takeHold(holds, method, url);
+      if (held) await held;
+      const answerHeld = takeHold(heldAnswers, method, url);
+      if (answerHeld) {
+        const answer = await respond(input, init);
+        await answerHeld;
+        return answer;
+      }
       const lost = lostResponses.indexOf(method);
       if (lost === -1) return respond(input, init);
       lostResponses.splice(lost, 1);

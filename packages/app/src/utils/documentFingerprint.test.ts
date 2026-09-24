@@ -30,11 +30,51 @@ function documentValue() {
 
 const VALUE = documentValue();
 
-function changed(change: (json: any) => void) {
-  const json = JSON.parse(VALUE);
+function changed(change: (json: any) => void, value = VALUE) {
+  const json = JSON.parse(value);
   change(json);
   return JSON.stringify(json);
 }
+
+const META = { updateAt: 1, createAt: 1 };
+
+/** VALUE with orders removed, its column, index and relationship, and a removed memo. */
+const TOMBSTONES = changed(({ collections }) => {
+  const { users } = collections.tableEntities;
+  collections.tableEntities.orders = { ...users, id: 'orders', meta: META };
+  collections.tableColumnEntities['orders.id'] = {
+    ...collections.tableColumnEntities['users.id'],
+    id: 'orders.id',
+    tableId: 'orders',
+    meta: META,
+  };
+  collections.indexEntities.byOrder = {
+    id: 'byOrder',
+    tableId: 'orders',
+    meta: META,
+  };
+  collections.indexColumnEntities['byOrder.id'] = {
+    id: 'byOrder.id',
+    indexId: 'byOrder',
+    meta: META,
+  };
+  const end = (tableId: string) => ({ tableId, x: 0, y: 0, direction: 1 });
+  collections.relationshipEntities.placed = {
+    id: 'placed',
+    start: end('users'),
+    end: end('orders'),
+    meta: META,
+  };
+  collections.memoEntities.note = { id: 'note', value: 'x', meta: META };
+});
+
+/** The same entities, all of them in the document. */
+const LIVE = changed(({ doc }) => {
+  doc.tableIds.push('orders');
+  doc.relationshipIds.push('placed');
+  doc.indexIds.push('byOrder');
+  doc.memoIds.push('note');
+}, TOMBSTONES);
 
 const viewChanges: Array<[string, (json: any) => void]> = [
   ['scrollTop', json => (json.settings.scrollTop += 10)],
@@ -115,6 +155,42 @@ describe('toDriveFingerprint', () => {
       viewChanges.forEach(([, change]) => change(json))
     );
     expect(toDriveFingerprint(viewed)).toBe(toDriveFingerprint(VALUE));
+  });
+
+  describe('what no longer hangs off the document', () => {
+    it('leaves out a removed table and memo and what belonged to the table', () => {
+      expect(toDriveFingerprint(TOMBSTONES)).toBe(toDriveFingerprint(VALUE));
+    });
+
+    it('leaves out a relationship and an index the document still lists on a removed table', () => {
+      const dangling = changed(({ doc }) => {
+        doc.relationshipIds.push('placed', 'gone');
+        doc.indexIds.push('byOrder', 'gone');
+      }, TOMBSTONES);
+
+      expect(toDriveFingerprint(dangling)).toBe(toDriveFingerprint(VALUE));
+    });
+
+    it.each([
+      ['relationship', 'relationshipIds', 'relationshipEntities', 'placed'],
+      ['index', 'indexIds', 'indexEntities', 'byOrder'],
+      ['memo', 'memoIds', 'memoEntities', 'note'],
+    ])('tells a %s the document holds apart', (_name, ids, entities, id) => {
+      const without = changed(({ doc, collections }) => {
+        doc[ids] = doc[ids].filter((kept: string) => kept !== id);
+        delete collections[entities][id];
+      }, LIVE);
+
+      expect(toDriveFingerprint(without)).not.toBe(toDriveFingerprint(LIVE));
+    });
+
+    it('tells a column of an index the document holds apart', () => {
+      const without = changed(({ collections }) => {
+        delete collections.indexColumnEntities['byOrder.id'];
+      }, LIVE);
+
+      expect(toDriveFingerprint(without)).not.toBe(toDriveFingerprint(LIVE));
+    });
   });
 
   describe('across replicas', () => {

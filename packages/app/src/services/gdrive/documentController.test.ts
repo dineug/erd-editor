@@ -1,4 +1,8 @@
-import { tableActions } from '@dineug/erd-editor/peer.js';
+import {
+  settingsActions,
+  tableActions,
+  tableActions$,
+} from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
   beforeEach,
@@ -20,6 +24,7 @@ import {
   type Tab,
   tableNames,
   type TabOptions,
+  USERS_DOCUMENT,
 } from '@/__test-utils__/driveDocument';
 import {
   createDocumentController,
@@ -27,6 +32,7 @@ import {
   renameDriveFile,
 } from '@/services/gdrive/documentController';
 import {
+  ACK_TIMEOUT_MS,
   fileChannelName,
   FLUSH_TIMEOUT_MS,
   openFileChannel,
@@ -63,6 +69,17 @@ const VERSION_2_DOCUMENT = JSON.stringify({
   memo: { memos: [] },
   relationship: { relationships: [] },
 });
+
+/** Users, and a table the person removed, which the element's collector drops days on. */
+const REMOVED_TABLE = (() => {
+  let id = '';
+  const value = documentWith(store => {
+    store.setInitialValue(USERS_DOCUMENT);
+    [id] = store.dispatch([tableActions$.addTableAction$()]).createdIds;
+    store.dispatch([tableActions.removeTableAction({ id })]);
+  });
+  return { id, value };
+})();
 
 let env: DriveEnv;
 const tabs: Tab[] = [];
@@ -203,18 +220,48 @@ describe('leadership', () => {
     const a = await open('a');
     const b = await open('b');
     a.addTable('orders');
-    const release = env.drive.hold('GET');
+    // a reads the file before the steal and hears back after it.
+    const answer = env.drive.holdAnswer('GET');
     await settle(2000);
+    const check = env.drive.hold('GET');
+    const taking = b.controller.takeOver();
+    await settle(5);
 
-    await b.controller.takeOver();
-    release();
+    answer();
+    await settle(5);
+    expect(env.patches()).toHaveLength(0);
+
+    check();
+    await taking;
     await settle(20);
-
     expect(env.patches().map(env.tabOf)).toEqual(['b']);
     expect(a.snapshot().role).toBe('follower');
     expect(toDriveFingerprint(driveContent())).toBe(
       toDriveFingerprint(b.value())
     );
+  });
+
+  it('lets a stolen leader whose check came back late lead again with nothing stopped', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    const release = env.drive.hold('GET');
+    await settle(2000);
+    await b.controller.takeOver();
+    // a's check reads b's save, which b has not told a of yet.
+    release();
+    await settle(20);
+    expect(env.patches().map(env.tabOf)).toEqual(['b']);
+
+    b.close();
+    tabs.splice(tabs.indexOf(b), 1);
+    await settle(5);
+
+    expect(a.snapshot()).toMatchObject({ role: 'leader', saveState: 'saved' });
+    a.addTable('items');
+    await settle(2000);
+    expect(env.patches().map(env.tabOf)).toEqual(['b', 'a']);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
   });
 
   it('puts back what a stolen leader’s late PATCH overwrote', async () => {
@@ -326,6 +373,38 @@ describe('leadership', () => {
     expect(env.patches().map(env.tabOf)).toEqual(['a', 'b']);
     expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
     expect(b.snapshot()).toMatchObject({ role: 'leader', saveState: 'saved' });
+  });
+});
+
+describe('after a takeover', () => {
+  it('holds the new leader’s saves until it has checked on the attempt it took over', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    const release = env.drive.hold('PATCH');
+    await settle(2005);
+    a.freeze();
+
+    const taking = b.controller.takeOver();
+    b.addTable('items');
+    await settle(3000);
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+
+    // The old PATCH lands three seconds into the wait, and its saved never comes.
+    release();
+    await settle(STEAL_SETTLE_MS);
+    await taking;
+
+    expect(b.snapshot()).toMatchObject({
+      role: 'leader',
+      saveState: 'unconfirmed',
+    });
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+    expect(await b.controller.checkUnconfirmed()).toBe('resumed');
+    await settle(20);
+    expect(b.snapshot().saveState).toBe('saved');
+    expect(env.patches().map(env.tabOf)).toEqual(['a', 'b']);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
   });
 });
 
@@ -703,6 +782,50 @@ describe('what a file is', () => {
   });
 });
 
+describe('what the element does on its own', () => {
+  it('saves nothing for the tombstones it collects after a load, nor for a zoom', async () => {
+    env.drive.files.delete('file-1');
+    env.addFile({ content: REMOVED_TABLE.value });
+    const a = await open('a');
+    await settle(5);
+
+    // The collector answers from its shared worker a macrotask or more later.
+    delete a.editor.store.state.collections.tableEntities[REMOVED_TABLE.id];
+    a.edit([settingsActions.changeZoomLevelAction({ value: 0.5 })]);
+    await settle(10_000);
+
+    expect(JSON.parse(a.value()).collections.tableEntities).not.toHaveProperty(
+      REMOVED_TABLE.id
+    );
+    expect(env.patches()).toHaveLength(0);
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('gives an editor attached again in one load the document the last one left', async () => {
+    const a = await open('a', { autoAttach: false });
+    const first = createPeerEditor('first');
+    const second = createPeerEditor('second');
+    const detachFirst = a.controller.attach(first.adapter);
+    await settle(5);
+    first.addTable('orders');
+    await settle(2000);
+    expect(env.patches()).toHaveLength(1);
+
+    detachFirst();
+    a.controller.attach(second.adapter);
+    await settle(5);
+
+    expect(tableNames(second.store.value)).toEqual(['orders', 'users']);
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+    second.addTable('items');
+    await settle(2000);
+    expect(env.patches()).toHaveLength(2);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+    first.destroy();
+    second.destroy();
+  });
+});
+
 describe('the page around it', () => {
   it('saves at once when the leader’s page goes hidden', async () => {
     const page = new EventTarget() as EventTarget & {
@@ -925,6 +1048,38 @@ describe('without Web Locks', () => {
     c.addTable('orders');
     await settle(5);
     expect(tableNames(b.value())).toEqual(['orders', 'users']);
+  });
+
+  it('has one tab carry out a rename asked for from outside', async () => {
+    const a = await openAlone('a');
+    const b = await openAlone('b');
+
+    const renaming = renameDriveFile(
+      {
+        drive: env.clientFor('sidebar'),
+        locks: null,
+        createChannel: env.hub.create,
+        sub: SUB,
+      },
+      'file-1',
+      'store.erd.json'
+    );
+    await settle(20);
+
+    expect((await renaming).name).toBe('store.erd.json');
+    const renames = env.drive
+      .callsTo('PATCH')
+      .filter(call => call.url.pathname === '/drive/v3/files/file-1');
+    expect(renames).toHaveLength(1);
+    expect(a.snapshot().name).toBe('store.erd.json');
+    expect(b.snapshot().name).toBe('store.erd.json');
+
+    b.addTable('orders');
+    deliverLater();
+    await settle(30_000);
+    expect(a.snapshot().saveState).toBe('saved');
+    expect(b.snapshot().saveState).toBe('saved');
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
   });
 
   it('keeps a load it edited, and never saves over another load’s save', async () => {
@@ -1173,6 +1328,9 @@ describe('edges of a tab’s life', () => {
         ({ tab, message }) => tab === 'b' && message.type === 'save-request'
       )
     ).toHaveLength(2);
+    // One ack timer: a second one the ack never cleared would say the leader went.
+    await settle(ACK_TIMEOUT_MS);
+    expect(b.snapshot().saveState).toBe('saved');
   });
 
   it('waits for the page to hide and for a token before it saves', async () => {

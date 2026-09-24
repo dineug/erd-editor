@@ -51,6 +51,8 @@ type Setup = {
   leader?: boolean;
   pendingAttempt?: { attemptId: string; fingerprint: string } | null;
   state?: Parameters<typeof createSaveQueue>[1]['state'];
+  /** The baseline, null until an editor has the document loaded from Drive. */
+  baseFingerprint?: string | null;
 };
 
 let drive: FakeDrive;
@@ -61,6 +63,7 @@ function setup({
   leader = true,
   pendingAttempt = null,
   state,
+  baseFingerprint = toDriveFingerprint(USERS_DOCUMENT),
 }: Setup = {}) {
   const file = drive.add({
     id: 'file-1',
@@ -103,10 +106,7 @@ function setup({
       retry: { random: () => 0 },
     },
     {
-      base: {
-        modifiedTime: file.modifiedTime,
-        fingerprint: toDriveFingerprint(USERS_DOCUMENT),
-      },
+      base: { modifiedTime: file.modifiedTime, fingerprint: baseFingerprint },
       pendingAttempt,
       canEdit,
       state,
@@ -451,9 +451,18 @@ describe('a save cycle', () => {
     expect(drive.callsTo('PATCH')).toHaveLength(1);
   });
 
-  it('waits for an editor and a baseline before it compares', async () => {
+  it('waits for an editor before it compares', async () => {
     const { queue, tab } = setup();
     tab.value = null;
+
+    await queue.flush();
+    expect(drive.calls).toHaveLength(0);
+    expect(queue.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('waits for a baseline before it compares, with an editor attached', async () => {
+    const { queue, tab } = setup({ baseFingerprint: null });
+    tab.value = EDITED;
 
     await queue.flush();
     expect(drive.calls).toHaveLength(0);
@@ -567,6 +576,24 @@ describe('fencing a leader that lost its lock', () => {
     expect(queue.getState()).toBe('saved');
   });
 
+  it('keeps no stop from a cycle whose lock went while its metadata was on its way', async () => {
+    const { queue, edit, tab, states } = setup();
+    const release = drive.hold('GET');
+
+    edit();
+    const done = queue.flush();
+    await settle();
+    tab.leader = false;
+    tab.stillLeader = false;
+    drive.bumpRemote('file-1');
+    release();
+    await done;
+
+    expect(drive.callsTo('PATCH')).toHaveLength(0);
+    expect(queue.getState()).toBe('saved');
+    expect(states).toEqual(['saving', 'saved']);
+  });
+
   it('announces a PATCH that went out, whoever leads by the time it lands', async () => {
     const { queue, edit, tab, broadcasts } = setup();
     const release = drive.hold('PATCH');
@@ -657,7 +684,7 @@ describe('saves from other tabs', () => {
     expect(queue.getPendingAttempt()).toBeNull();
   });
 
-  it('clears a conflict once a save it learns of moves the base', async () => {
+  it('clears a conflict once Drive is where a save it learns of left it', async () => {
     const { queue, edit, file } = setup();
     drive.bumpRemote('file-1', EDITED);
     edit(EDITED);
@@ -670,8 +697,138 @@ describe('saves from other tabs', () => {
       modifiedTime: file.modifiedTime,
       fingerprint: toDriveFingerprint(EDITED),
     });
+    expect(queue.getState()).toBe('conflict');
+    await settle();
 
     expect(queue.getState()).toBe('saved');
+    expect(drive.callsTo('GET')).toHaveLength(2);
+    expect(drive.callsTo('PATCH')).toHaveLength(0);
+  });
+
+  it('saves what it has on top once a save it learns of clears its stop', async () => {
+    const { queue, edit, file } = setup();
+    drive.bumpRemote('file-1', EDITED);
+    edit(EDITED_AGAIN);
+    await queue.flush();
+
+    queue.onSaved({
+      type: 'saved',
+      attemptId: 'elsewhere',
+      modifiedTime: file.modifiedTime,
+      fingerprint: toDriveFingerprint(EDITED),
+    });
+    await settle();
+
+    expect(queue.getState()).toBe('saved');
+    expect(file.content).toBe(EDITED_AGAIN);
+  });
+
+  it('stays in conflict when Drive moved past a save it learns of since', async () => {
+    const { queue, edit, file } = setup();
+    drive.bumpRemote('file-1', EDITED);
+    const landed = file.modifiedTime;
+    // A change made outside the tabs, after that save, is what stopped it.
+    drive.bumpRemote('file-1', EDITED_AGAIN);
+    edit(EDITED);
+    await queue.flush();
+    expect(queue.getState()).toBe('conflict');
+
+    queue.onSaved({
+      type: 'saved',
+      attemptId: 'elsewhere',
+      modifiedTime: landed,
+      fingerprint: toDriveFingerprint(EDITED),
+    });
+    await settle(MAX_WAIT_MS);
+
+    expect(queue.getState()).toBe('conflict');
+    expect(drive.callsTo('PATCH')).toHaveLength(0);
+    expect(file.content).toBe(EDITED_AGAIN);
+  });
+
+  it('turns unconfirmed into a conflict when the attempt landed and Drive moved past it', async () => {
+    const { queue, file } = setup({
+      pendingAttempt: {
+        attemptId: 'old',
+        fingerprint: toDriveFingerprint(EDITED),
+      },
+    });
+    drive.bumpRemote('file-1', EDITED);
+    const landed = file.modifiedTime;
+    drive.bumpRemote('file-1', EDITED_AGAIN);
+    const electing = queue.afterElection(true);
+    await settle(STEAL_SETTLE_MS);
+    await electing;
+    expect(queue.getState()).toBe('unconfirmed');
+
+    queue.onSaved({
+      type: 'saved',
+      attemptId: 'old',
+      modifiedTime: landed,
+      fingerprint: toDriveFingerprint(EDITED),
+    });
+    await settle();
+
+    expect(queue.getState()).toBe('conflict');
+    expect(queue.getPendingAttempt()).toBeNull();
+    expect(drive.callsTo('PATCH')).toHaveLength(0);
+  });
+
+  it('stays unconfirmed while another attempt is left to account for the move', async () => {
+    const { queue, file } = setup({
+      pendingAttempt: { attemptId: 'other', fingerprint: 'f' },
+      state: 'unconfirmed',
+    });
+    drive.bumpRemote('file-1', EDITED);
+    const landed = file.modifiedTime;
+    drive.bumpRemote('file-1', EDITED_AGAIN);
+
+    queue.onSaved({
+      type: 'saved',
+      attemptId: 'elsewhere',
+      modifiedTime: landed,
+      fingerprint: toDriveFingerprint(EDITED),
+    });
+    await settle();
+
+    expect(queue.getState()).toBe('unconfirmed');
+  });
+
+  it('stays stopped when Drive cannot be read after a save it learns of', async () => {
+    const { queue, file } = setup({ state: 'conflict' });
+    drive.bumpRemote('file-1', EDITED);
+    drive.failNext('GET', 500);
+
+    queue.onSaved({
+      type: 'saved',
+      attemptId: 'elsewhere',
+      modifiedTime: file.modifiedTime,
+      fingerprint: toDriveFingerprint(EDITED),
+    });
+    await settle();
+
+    expect(queue.getState()).toBe('conflict');
+    expect(drive.callsTo('GET')).toHaveLength(1);
+  });
+
+  it('leaves its stop alone when it lost the lock while checking Drive', async () => {
+    const { queue, tab, file, states } = setup({ state: 'conflict' });
+    const release = drive.hold('GET');
+    drive.bumpRemote('file-1', EDITED);
+
+    queue.onSaved({
+      type: 'saved',
+      attemptId: 'elsewhere',
+      modifiedTime: file.modifiedTime,
+      fingerprint: toDriveFingerprint(EDITED),
+    });
+    await settle();
+    tab.leader = false;
+    release();
+    await settle();
+
+    expect(states).toEqual([]);
+    expect(drive.callsTo('GET')).toHaveLength(1);
   });
 
   it('follows a rename that moved the base', () => {
@@ -853,6 +1010,30 @@ describe('afterElection', () => {
     expect(queue.getState()).toBe('saved');
   });
 
+  it('saves nothing of its own until the check after a steal is done', async () => {
+    const { queue, edit, file } = setup({
+      pendingAttempt: {
+        attemptId: 'old',
+        fingerprint: toDriveFingerprint(EDITED),
+      },
+    });
+    const electing = queue.afterElection(true);
+
+    edit(EDITED_AGAIN);
+    await settle(DEBOUNCE_MS + 1000);
+    expect(drive.calls).toHaveLength(0);
+    // The old leader's PATCH lands; its saved never comes.
+    drive.bumpRemote('file-1', EDITED);
+    await settle(STEAL_SETTLE_MS);
+    await electing;
+
+    expect(queue.getState()).toBe('unconfirmed');
+    expect(drive.callsTo('PATCH')).toHaveLength(0);
+    expect(await queue.checkUnconfirmed()).toBe('resumed');
+    await settle();
+    expect(file.content).toBe(EDITED_AGAIN);
+  });
+
   it('reads a failed check after a steal by its error', async () => {
     const { queue } = setup({
       pendingAttempt: { attemptId: 'old', fingerprint: 'x' },
@@ -920,6 +1101,18 @@ describe('the queue’s own state', () => {
     expect(queue.getState()).toBe('saved');
     queue.inherit('conflict');
     expect(states).toEqual(['conflict']);
+  });
+
+  it('drops a stop of its own that its predecessor has since seen resolved', () => {
+    const { queue, states } = setup({ state: 'unconfirmed' });
+
+    queue.inherit('saved');
+
+    expect(queue.getState()).toBe('saved');
+    expect(states).toEqual(['saved']);
+    const readonly = setup({ canEdit: false });
+    readonly.queue.inherit('saved');
+    expect(readonly.queue.getState()).toBe('readonly');
   });
 
   it('starts over on a reset, readonly when the file is', () => {

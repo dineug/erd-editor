@@ -1,4 +1,4 @@
-import { mapValues, omit } from 'es-toolkit';
+import { mapValues, omit, pickBy } from 'es-toolkit';
 
 /** The foreign key bit of ui.keys, kept in step with the relationships. */
 const FOREIGN_KEY = 2;
@@ -78,15 +78,63 @@ const withoutMeta = (collections: any) =>
   );
 
 /**
+ * The document less what no longer hangs off it: removed tables and memos, and
+ * what belongs to a removed table. The element's collector drops those three
+ * days on, a macrotask or more after a load, and a removal shows in doc anyway.
+ */
+function reachable(doc: any, collections: Record<string, Record<string, any>>) {
+  const tableIds = new Set<string>(doc.tableIds);
+  const memoIds = new Set<string>(doc.memoIds);
+  const relationshipIds = doc.relationshipIds.filter((id: string) => {
+    const relationship = collections.relationshipEntities[id];
+    return (
+      tableIds.has(relationship?.start.tableId) &&
+      tableIds.has(relationship?.end.tableId)
+    );
+  });
+  const indexIds = doc.indexIds.filter((id: string) =>
+    tableIds.has(collections.indexEntities[id]?.tableId)
+  );
+  const keptRelationships = new Set<string>(relationshipIds);
+  const keptIndexes = new Set<string>(indexIds);
+  return {
+    doc: { ...doc, relationshipIds, indexIds },
+    collections: {
+      ...collections,
+      tableEntities: pickBy(collections.tableEntities, (_table, id) =>
+        tableIds.has(id)
+      ),
+      tableColumnEntities: pickBy(collections.tableColumnEntities, column =>
+        tableIds.has(column.tableId)
+      ),
+      relationshipEntities: pickBy(
+        collections.relationshipEntities,
+        (_relationship, id) => keptRelationships.has(id)
+      ),
+      indexEntities: pickBy(collections.indexEntities, (_index, id) =>
+        keptIndexes.has(id)
+      ),
+      indexColumnEntities: pickBy(collections.indexColumnEntities, column =>
+        keptIndexes.has(column.indexId)
+      ),
+      memoEntities: pickBy(collections.memoEntities, (_memo, id) =>
+        memoIds.has(id)
+      ),
+    },
+  };
+}
+
+/**
  * What a Drive save compares: the document and every setting but the view's.
  * A Drive file is the whole document, so a changed database or column order
- * has to reach it, while a zoom, a scroll or another tab's clock never does.
+ * has to reach it, while a zoom, a scroll, a collected tombstone never does.
  */
 export function toDriveFingerprint(value: string) {
-  const { doc, collections, settings } = JSON.parse(value);
+  const json = JSON.parse(value);
+  const { doc, collections } = reachable(json.doc, json.collections);
   return JSON.stringify({
     doc,
     collections: withoutDerived(withoutMeta(collections)),
-    settings: omit(settings, VIEW_SETTINGS),
+    settings: omit(json.settings, VIEW_SETTINGS),
   });
 }
