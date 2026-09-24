@@ -40,10 +40,19 @@ async function s256(verifier: string): Promise<string> {
     .replace(/=+$/, '');
 }
 
+/** Google takes a form POST only; a string body sent without the header goes as text/plain. */
+function isFormPost(init: RequestInit | undefined): boolean {
+  const type = new Headers(init?.headers).get('Content-Type') ?? '';
+  return (
+    init?.method === 'POST' &&
+    type.split(';')[0].trim() === 'application/x-www-form-urlencoded'
+  );
+}
+
 /**
- * Google's token and revoke endpoints by path on any host, keeping codes bound
- * to their PKCE challenge and live refresh tokens. Its fetch throws on another
- * receiver than undefined or globalThis, as workerd and Chrome do.
+ * Google's token and revoke endpoints by path on any host: form POSTs only,
+ * codes bound to their PKCE challenge, live refresh tokens. Its fetch throws on
+ * a receiver other than undefined or globalThis, as workerd and Chrome do.
  */
 export function createFakeGoogle() {
   const requests: GoogleRequest[] = [];
@@ -82,6 +91,9 @@ export function createFakeGoogle() {
       }
       const params = new URLSearchParams(String(init?.body ?? ''));
       requests.push({ url: input, params });
+      if (!isFormPost(init)) {
+        return Promise.resolve(reply({ error: 'invalid_request' }, 400));
+      }
       const queued = replies.shift();
       if (queued === 'network-error') {
         return Promise.reject(new TypeError('fetch failed'));

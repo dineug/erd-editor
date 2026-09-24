@@ -35,8 +35,8 @@ function resolveDeps(deps: AuthDeps): ResolvedAuthDeps {
 
 /**
  * The relay behind /api/auth/*, on web standard APIs only, shared by the Pages
- * Function and the dev server. Every answer is JSON or the callback page, never
- * the app's HTML, which is how the client tells a working relay from a fallback.
+ * Function and the dev server. Every answer is JSON, the callback page or start's
+ * redirect, never the app's HTML: how the client tells a relay from a fallback.
  */
 export async function handleAuthRequest(
   request: Request,

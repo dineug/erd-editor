@@ -7,6 +7,7 @@ export type OAuthState = {
   state: string;
   verifier: string;
   attempt: string | null;
+  loginHint: string | null;
   expiresAt: number;
 };
 
@@ -27,11 +28,16 @@ export function isLoginHint(value: string): boolean {
   );
 }
 
-export function createOAuthState(attempt: string | null, now: number) {
+export function createOAuthState(
+  attempt: string | null,
+  loginHint: string | null,
+  now: number
+) {
   return {
     state: randomBase64Url(32),
     verifier: randomBase64Url(32),
     attempt,
+    loginHint,
     expiresAt: now + STATE_COOKIE_MAX_AGE * 1000,
   } satisfies OAuthState;
 }
@@ -58,6 +64,7 @@ function isOAuthState(value: unknown): value is OAuthState {
     typeof candidate.state === 'string' &&
     typeof candidate.verifier === 'string' &&
     (candidate.attempt === null || typeof candidate.attempt === 'string') &&
+    (candidate.loginHint === null || typeof candidate.loginHint === 'string') &&
     typeof candidate.expiresAt === 'number'
   );
 }

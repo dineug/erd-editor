@@ -12,6 +12,7 @@ import {
   cookiePair,
   createFakeGoogle,
   DRIVE_FILE,
+  type FakeGoogle,
   jsonReply,
 } from '@/__test-utils__/googleOAuth';
 import { type AuthEnv, type AuthEvent, handleAuthRequest } from '@/server/auth';
@@ -33,6 +34,7 @@ import { onRequest } from '@/server/auth/pages';
 
 const ORIGIN = 'https://erd-editor.test';
 const ATTEMPT = 'AbCdEfGhIjKlMnOpQrStUv';
+const OTHER_ATTEMPT = 'ZyXwVuTsRqPoNmLkJiHgFe';
 const XHR = { Origin: ORIGIN, 'X-Requested-With': 'XMLHttpRequest' };
 const CALLBACK_ERRORS: CallbackError[] = [
   'access_denied',
@@ -213,9 +215,9 @@ describe('start', () => {
   });
 
   it.each(['1234567890123456789012', 'someone@example.com'])(
-    'passes login_hint %s to Google and skips the account chooser',
+    'passes login_hint %s to Google, skips the account chooser and seals the hint',
     async hint => {
-      const { call } = setup();
+      const { call, google } = setup();
 
       const response = await call(
         `/api/auth/start?attempt=${ATTEMPT}&login_hint=${encodeURIComponent(hint)}`
@@ -225,6 +227,16 @@ describe('start', () => {
         .searchParams;
       expect(params.get('login_hint')).toBe(hint);
       expect(params.get('prompt')).toBe('consent');
+      const cookie = cookiePair(response, STATE_COOKIE);
+      expect(cookie).not.toContain(hint);
+      expect(cookie).not.toContain(encodeURIComponent(hint));
+
+      const code = google.issueCode(params.get('code_challenge') ?? '');
+      const callback = await call(
+        `/api/auth/callback?state=${params.get('state')}&code=${code}`,
+        { cookie }
+      );
+      expect(marker(await callback.text()).ok).toBe('true');
     }
   );
 
@@ -308,25 +320,49 @@ describe('callback', () => {
   });
 
   it.each<
-    [string, (flow: Flow & { refreshCookie: string }) => Promise<Response>]
+    [
+      string,
+      'kept' | 'cleared',
+      (flow: Flow & { refreshCookie: string }) => Promise<Response>,
+    ]
   >([
     [
       'without a state cookie',
+      'cleared',
       ({ call, state, code }) =>
         call(`/api/auth/callback?state=${state}&code=${code}`),
     ],
     [
       'with another state',
+      'kept',
       ({ call, cookie, code }) =>
         call(`/api/auth/callback?state=forged&code=${code}`, { cookie }),
     ],
     [
+      'with the state of another sign-in, as long as its own',
+      'kept',
+      async ({ call, cookie, state, code }) => {
+        const other = await call('/api/auth/start');
+        const otherState =
+          new URL(other.headers.get('Location') ?? '').searchParams.get(
+            'state'
+          ) ?? '';
+        expect(otherState).toHaveLength(state.length);
+        expect(otherState).not.toBe(state);
+        return call(`/api/auth/callback?state=${otherState}&code=${code}`, {
+          cookie,
+        });
+      },
+    ],
+    [
       'without a state',
+      'kept',
       ({ call, cookie, code }) =>
         call(`/api/auth/callback?code=${code}`, { cookie }),
     ],
     [
       'with a tampered cookie',
+      'cleared',
       ({ call, cookie, state, code }) =>
         call(`/api/auth/callback?state=${state}&code=${code}`, {
           cookie: tamper(cookie),
@@ -334,6 +370,7 @@ describe('callback', () => {
     ],
     [
       'after the cookie has expired',
+      'cleared',
       ({ call, cookie, state, code, clock }) => {
         clock.now += 600_001;
         return call(`/api/auth/callback?state=${state}&code=${code}`, {
@@ -343,6 +380,7 @@ describe('callback', () => {
     ],
     [
       'with the refresh cookie in its place',
+      'cleared',
       ({ call, state, code, refreshCookie }) =>
         call(`/api/auth/callback?state=${state}&code=${code}`, {
           cookie: refreshCookie.replace(REFRESH_COOKIE, STATE_COOKIE),
@@ -350,6 +388,7 @@ describe('callback', () => {
     ],
     [
       'with a sealed cookie that is not JSON',
+      'cleared',
       async ({ call, state, code }) =>
         call(`/api/auth/callback?state=${state}&code=${code}`, {
           cookie: `${STATE_COOKIE}=${await sealState('not json')}`,
@@ -357,29 +396,78 @@ describe('callback', () => {
     ],
     [
       'with a sealed cookie of another shape',
+      'cleared',
       async ({ call, state, code }) =>
         call(`/api/auth/callback?state=${state}&code=${code}`, {
           cookie: `${STATE_COOKIE}=${await sealState(JSON.stringify({ state, verifier: 1 }))}`,
         }),
     ],
-  ])('stops as state_mismatch %s, telling no opener', async (_, callback) => {
-    const flow = {
-      ...(await beginFlow()),
-      refreshCookie: await setup().signedIn(),
+  ])(
+    'stops as state_mismatch %s, telling no opener, the state cookie %s',
+    async (_, stateCookie, callback) => {
+      const flow = {
+        ...(await beginFlow()),
+        refreshCookie: await setup().signedIn(),
+      };
+
+      const response = await callback(flow);
+
+      expect(response.status).toBe(400);
+      expect(marker(await response.text())).toEqual({
+        ok: 'false',
+        error: 'state_mismatch',
+        attempt: '',
+      });
+      expect(flow.google.requests).toEqual([]);
+      expect(setCookie(response, REFRESH_COOKIE)).toBe('');
+      if (stateCookie === 'kept') {
+        expect(setCookie(response, STATE_COOKIE)).toBe('');
+      } else {
+        expect(setCookie(response, STATE_COOKIE)).toContain('Max-Age=0');
+      }
+      expect(flow.events.at(-1)).toBe('auth.callback.state_mismatch');
+    }
+  );
+
+  it('lets the later of two sign-ins finish when the earlier popup comes back first', async () => {
+    const { call, google } = setup();
+    const start = async (attempt: string) => {
+      const response = await call(`/api/auth/start?attempt=${attempt}`);
+      const location = new URL(response.headers.get('Location') ?? '')
+        .searchParams;
+      return {
+        state: location.get('state') ?? '',
+        code: google.issueCode(location.get('code_challenge') ?? ''),
+        cookie: cookiePair(response, STATE_COOKIE),
+      };
     };
+    const earlier = await start(ATTEMPT);
+    const later = await start(OTHER_ATTEMPT);
 
-    const response = await callback(flow);
+    // The browser keeps one state cookie, the one the later start set.
+    const early = await call(
+      `/api/auth/callback?state=${earlier.state}&code=${earlier.code}`,
+      { cookie: later.cookie }
+    );
+    const late = await call(
+      `/api/auth/callback?state=${later.state}&code=${later.code}`,
+      { cookie: later.cookie }
+    );
 
-    expect(response.status).toBe(400);
-    expect(marker(await response.text())).toEqual({
+    expect(marker(await early.text())).toEqual({
       ok: 'false',
       error: 'state_mismatch',
       attempt: '',
     });
-    expect(flow.google.requests).toEqual([]);
-    expect(setCookie(response, REFRESH_COOKIE)).toBe('');
-    expect(setCookie(response, STATE_COOKIE)).toContain('Max-Age=0');
-    expect(flow.events.at(-1)).toBe('auth.callback.state_mismatch');
+    expect(early.headers.getSetCookie()).toEqual([]);
+    expect(marker(await late.text())).toEqual({
+      ok: 'true',
+      error: '',
+      attempt: OTHER_ATTEMPT,
+    });
+    expect(setCookie(late, REFRESH_COOKIE)).not.toBe('');
+    expect(setCookie(late, STATE_COOKIE)).toContain('Max-Age=0');
+    expect(google.requests).toHaveLength(1);
   });
 
   it.each<[string, CallbackError, (flow: Flow) => string]>([
@@ -457,16 +545,24 @@ describe('callback', () => {
     expect(setCookie(response, REFRESH_COOKIE)).not.toBe('');
   });
 
-  it.each<[string, Response]>([
+  it.each<[string, (google: FakeGoogle) => void]>([
     [
       'no refresh token',
-      jsonReply({ access_token: 'a', expires_in: 1, scope: DRIVE_FILE }),
+      google => {
+        google.omitRefreshToken = true;
+      },
     ],
-    ['a token response without expiry', jsonReply({ access_token: 'a' })],
-    ['a success that is not JSON', new Response('<html></html>')],
-  ])('reports upstream for %s', async (_, reply) => {
+    [
+      'a token response without expiry',
+      google => google.queue(jsonReply({ access_token: 'a' })),
+    ],
+    [
+      'a success that is not JSON',
+      google => google.queue(new Response('<html></html>')),
+    ],
+  ])('reports upstream for %s', async (_, arrange) => {
     const flow = await beginFlow();
-    flow.google.queue(reply);
+    arrange(flow.google);
 
     const response = await flow.call(
       `/api/auth/callback?state=${flow.state}&code=${flow.code}`,
@@ -940,6 +1036,23 @@ describe('onRequest', () => {
       'https://oauth2.googleapis.com/token',
     ]);
     expect(log.mock.calls).toEqual([['auth.start'], ['auth.callback.ok']]);
+  });
+
+  it('is checked by a fake that refuses what Google refuses: another method, a body not sent as a form', async () => {
+    const send = createFakeGoogle().fetch;
+    const body = new URLSearchParams({ token: 'refresh-token-1' }).toString();
+
+    for (const init of [
+      { body },
+      { method: 'GET' },
+      { method: 'POST', body },
+      { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body },
+    ] as RequestInit[]) {
+      const response = await send('https://oauth2.fake.test/revoke', init);
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: 'invalid_request' });
+    }
   });
 
   it('is checked by a fake that refuses a call through another object', () => {

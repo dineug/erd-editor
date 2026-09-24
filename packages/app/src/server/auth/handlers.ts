@@ -84,7 +84,7 @@ export const handleStart: AuthHandler = async (request, secrets, deps) => {
     return json({ error: 'invalid_request' }, { status: 400 });
   }
 
-  const oauth = createOAuthState(attempt, deps.now());
+  const oauth = createOAuthState(attempt, loginHint, deps.now());
   const params = new URLSearchParams({
     client_id: secrets.clientId,
     redirect_uri: callbackUrl(url),
@@ -112,19 +112,21 @@ export const handleStart: AuthHandler = async (request, secrets, deps) => {
 export const handleCallback: AuthHandler = async (request, secrets, deps) => {
   if (!secrets) return notConfigured(deps);
   const url = new URL(request.url);
-  const cookies = [clearStateCookie()];
   const sealed = readCookie(request, STATE_COOKIE);
   const oauth =
     sealed && (await openOAuthState(secrets.key, sealed, deps.now()));
   const state = url.searchParams.get('state') ?? '';
   if (!oauth || !safeEqual(state, oauth.state)) {
     deps.log('auth.callback.state_mismatch');
+    // A cookie that opens belongs to a sign-in still open in another popup, so
+    // a stale or stray callback leaves it for that popup to finish.
     return callbackPage(
       { ok: false, error: 'state_mismatch', attempt: null },
-      cookies
+      oauth ? [] : [clearStateCookie()]
     );
   }
 
+  const cookies = [clearStateCookie()];
   const fail = (error: CallbackError) => {
     deps.log(`auth.callback.${error}`);
     return callbackPage({ ok: false, error, attempt: oauth.attempt }, cookies);
