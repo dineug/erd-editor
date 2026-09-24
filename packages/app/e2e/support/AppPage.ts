@@ -11,7 +11,7 @@ import {
  * reach of Playwright locators. Reopening the boundary before any page script
  * runs — and only here, in the e2e suite — lets the specs drive the real editor.
  */
-async function reopenShadowRoots(page: Page) {
+export async function reopenShadowRoots(page: Page) {
   await page.addInitScript(() => {
     const attachShadow = Element.prototype.attachShadow;
     Element.prototype.attachShadow = function (init: ShadowRootInit) {
@@ -27,7 +27,7 @@ const CANVAS = 'erd-editor [data-testid="erd-canvas"]';
  * synchronously — the authoritative view of editor state rather than a rendering
  * of it.
  */
-async function tableIds(page: Page): Promise<string[]> {
+export async function tableIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const editor = document.querySelector('erd-editor') as any;
     if (!editor) throw new Error('erd-editor is not mounted');
@@ -487,7 +487,7 @@ async function freeCanvasPoint(page: Page) {
  * inside the shadow root, so the canvas has to be clicked first for the keydown
  * to reach the binding.
  */
-async function addTable(page: Page) {
+export async function addTable(page: Page) {
   const before = await tableIds(page);
 
   await page.locator(CANVAS).click({ position: await freeCanvasPoint(page) });

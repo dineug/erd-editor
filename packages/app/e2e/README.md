@@ -3,13 +3,35 @@
 Playwright specs for what a unit test cannot reach: for live collaboration, two
 real browser contexts, a real `RTCPeerConnection` and a real `navigator.locks`
 handover between tabs; for the schema list, the real editor, IndexedDB behind its
-worker, the URL, file choosers, downloads and the pre-paint theme script.
+worker, the URL, file choosers, downloads and the pre-paint theme script; for
+`/gdrive`, the real auth relay under `vp dev`, a popup, cookies, tabs sharing a
+file and its lock, and the editor saving to a Drive in memory.
 
 ```bash
-pnpm --filter @dineug/erd-editor-app e2e            # headless
-pnpm --filter @dineug/erd-editor-app e2e:dev        # Playwright UI
+pnpm --filter @dineug/erd-editor-app e2e            # both runs, headless
+pnpm --filter @dineug/erd-editor-app e2e:dev        # Playwright UI, run 1
 pnpm --filter @dineug/erd-editor-app e2e:typecheck
+pnpm --filter @dineug/erd-editor-app exec playwright test --config e2e/gdrive/playwright.config.ts   # run 2 alone
 ```
+
+## Two runs
+
+`e2e` runs Playwright twice, one after the other, and exits non-zero if either
+failed; the second runs even when the first fails, so a broken local spec never
+hides the Drive results.
+
+| Run | Config                            | Servers                                                      | Specs                     |
+| --- | --------------------------------- | ------------------------------------------------------------ | ------------------------- |
+| 1   | `playwright.config.ts`            | relay :5176, `vp dev` :5175 without a Google client id       | `specs/*.spec.ts`         |
+| 2   | `gdrive/playwright.config.ts`     | fake Google token server :5178, `vp dev` :5177 with a client | `gdrive/specs/*.spec.ts`  |
+
+Only one dev server is ever up, so the two never race over `node_modules/.vite`.
+Each run names every variable its dev server reads (run 1 an empty
+`VITE_GOOGLE_CLIENT_ID`; run 2 the client, `GOOGLE_CLIENT_SECRET`, `COOKIE_KEY`
+and `ERD_EDITOR_E2E_GOOGLE_OAUTH_URL`, in `support/gdrive/server.ts`), since Vite
+prefers the environment to `packages/app/.env.local`, where a real client may
+live. Neither reuses a server: a dev server started by hand on one of these
+ports makes the run fail at once (`--strictPort`) rather than test the wrong one.
 
 ## What makes it deterministic
 
@@ -40,6 +62,21 @@ session left, since a backup carries no `deletedAt`.
 `addInitScript` — before any page script runs — so locators reach the canvas.
 Production code is untouched.
 
+**A fake Google for run 2.** `support/gdrive/fakeGoogleOAuth.mjs` is Google's
+token and revoke endpoints, which the real dev relay calls: codes bound to the
+client, `redirect_uri` and PKCE challenge, refresh tokens live until revoked,
+`/__control/*` for the specs. `support/gdrive/fakeGoogle.ts` routes the rest in
+the browser context: the authorize page (it registers a code with the token
+server and sends the popup to the real callback, or denies, closes, or leaves
+Drive out), the GIS script, userinfo, and a Drive in memory that answers only the
+`fields` asked for, pages by two, records each request with its tab, and can hold
+PATCHes or lose a PATCH's answer. Any other Google host aborts. The browser follows a redirect past every route, so the relay's `start`
+is routed too: its real answer, cookie included, comes back as a page that
+navigates to the authorize URL, marked so the popup does not take it for a stray
+page. `support/gdrive/fakeAuth.ts` makes `/api/auth/*` fail its JSON contract
+for the fallback spec. The clickjacking check frames `/gdrive` from the token
+server's own `/__framer`: Chrome blocks a routed origin from framing localhost.
+
 ## What the specs cover
 
 | Spec                    | Covers                                                                                 |
@@ -52,13 +89,19 @@ Production code is untouched.
 | `schema-url.spec.ts`    | `?schema=` follows the selection, survives a reload, back and forward; bad ids cleared |
 | `import-export.spec.ts` | Sources stored parsed, kept on reload, opened without a bump; a backup round trip      |
 | `theme.spec.ts`         | Dark by default on a light system, the System option, no dark flash on reload          |
+| `gdrive-not-configured.spec.ts` | `/gdrive` without a client id; `/` loads no Drive module or GIS script         |
+| `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, the account switch, Drive left out, a stray callback link, the CSRF gate |
+| `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
+| `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename; import; v2 saved as v3 only once edited; files never saved |
+| `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, tabs and their leader, Check Drive after a lost answer, `beforeunload`, a frame |
 
 ## Reading a failure
 
 `workers: 1` and `fullyParallel: false`: every spec drives several contexts at
 once, and a handover reads better when nothing else is racing the relay. Traces
-land in `e2e/.results` on a retry; `pnpm --filter @dineug/erd-editor-app e2e:report`
-opens the HTML report.
+land in `e2e/.results` on a retry (run 2's in `e2e/.results/gdrive`);
+`pnpm --filter @dineug/erd-editor-app e2e:report` opens run 1's HTML report, and
+run 2 writes its own to `e2e/.report/gdrive` on CI.
 
 The usual suspect for a flake here is timing around a handover — the host has no
 outbound buffer, so an edit made in the second or two before the successor tab has
