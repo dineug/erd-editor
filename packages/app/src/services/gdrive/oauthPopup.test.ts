@@ -24,7 +24,13 @@ const ATTEMPT = 'AbCdEfGhIjKlMnOpQrStUv';
 const TOKEN = { accessToken: 'ya29.a', expiresIn: 3599, scope: 'openid' };
 const TOKEN_RESULT: RelayTokenResult = { kind: 'token', token: TOKEN };
 
-function setup({ blocked = false } = {}) {
+function setup({
+  blocked = false,
+  requestTokenWith,
+}: {
+  blocked?: boolean;
+  requestTokenWith?: (callbackSucceeded: boolean) => Promise<RelayTokenResult>;
+} = {}) {
   const hub = createChannelHub();
   const popup = createFakePopup();
   const opened: Array<{ url: string; target: string; features: string }> = [];
@@ -55,7 +61,7 @@ function setup({ blocked = false } = {}) {
       {
         open,
         createChannel: hub.create,
-        requestToken,
+        requestToken: requestTokenWith ?? requestToken,
         recordUnavailable,
         createAttempt: () => ATTEMPT,
       },
@@ -180,8 +186,8 @@ describe('openOAuthPopup', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(outcome).toHaveBeenCalledWith({ kind: 'done', token: TOKEN });
-    expect(requestToken).toHaveBeenCalledTimes(1);
-    expect(popup.state.closed).toBe(true);
+    expect(requestToken).toHaveBeenCalledExactlyOnceWith(true);
+    expect(popup.state.closeCalls).toBe(1);
     expect(hub.openCount(AUTH_CHANNEL)).toBe(0);
   });
 
@@ -285,7 +291,7 @@ describe('openOAuthPopup', () => {
         await end(context, handle);
 
         expect(outcome).toHaveBeenCalledWith({ kind: 'done', token: TOKEN });
-        expect(context.requestToken).toHaveBeenCalledTimes(1);
+        expect(context.requestToken).toHaveBeenCalledExactlyOnceWith(false);
         expect(context.popup.state.closed).toBe(true);
         expect(context.hub.openCount(AUTH_CHANNEL)).toBe(0);
       }
@@ -337,9 +343,16 @@ describe('openOAuthPopup', () => {
     expect(recordUnavailable).not.toHaveBeenCalled();
   });
 
-  it('takes a token request that throws as an unavailable relay', async () => {
-    const { popup, requestToken, recordUnavailable, start } = setup();
-    requestToken.mockRejectedValueOnce(new Error('boom'));
+  it('takes a token request that rejects as an unavailable relay', async () => {
+    // A plain function, since a Vitest mock settles what it returns and would
+    // hide a rejection nobody handles.
+    const asked = vi.fn();
+    const { popup, recordUnavailable, start } = setup({
+      requestTokenWith: () => {
+        asked();
+        return Promise.reject(new Error('boom'));
+      },
+    });
     const { result } = start();
     const outcome = await settle(result);
 
@@ -347,6 +360,7 @@ describe('openOAuthPopup', () => {
     await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
 
     expect(outcome).toHaveBeenCalledWith({ kind: 'unavailable' });
+    expect(asked).toHaveBeenCalledTimes(1);
     expect(recordUnavailable).toHaveBeenCalledTimes(1);
   });
 
@@ -433,6 +447,99 @@ describe('openOAuthPopup', () => {
     expect(outcome).toHaveBeenCalledTimes(1);
     expect(outcome).toHaveBeenCalledWith({ kind: 'done', token: TOKEN });
     expect(requestToken).toHaveBeenCalledTimes(1);
+    expect(popup.state.closeCalls).toBe(1);
+  });
+
+  describe('when the callback crosses the token request of a close', () => {
+    /** Closes the popup, lets the poll send its token request, and holds the answer. */
+    async function closeAndHold(context: ReturnType<typeof setup>) {
+      let answer: (result: RelayTokenResult) => void = () => {};
+      context.requestToken.mockImplementationOnce(
+        () => new Promise(resolve => (answer = resolve))
+      );
+      const handle = context.start();
+      const outcome = await settle(handle.result);
+      context.popup.state.closed = true;
+      await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
+      expect(context.requestToken).toHaveBeenCalledExactlyOnceWith(false);
+      return {
+        handle,
+        outcome,
+        answer: (result: RelayTokenResult) => answer(result),
+      };
+    }
+
+    it.each([
+      ['scope_missing', 'a 401', { kind: 'signed-out' }, 'scope-missing'],
+      ['access_denied', 'an older cookie', TOKEN_RESULT, 'cancelled'],
+      ['upstream', 'an older cookie', TOKEN_RESULT, 'error'],
+    ] as const)(
+      'reads a failed callback with %s as the result, over %s',
+      async (error, _label, token, kind) => {
+        const context = setup();
+        const { outcome, answer } = await closeAndHold(context);
+
+        context.done({ attempt: ATTEMPT, ok: false, error });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(outcome).not.toHaveBeenCalled();
+        answer(token);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(outcome).toHaveBeenCalledExactlyOnceWith({ kind });
+        expect(context.requestToken).toHaveBeenCalledTimes(1);
+        expect(context.onLate).not.toHaveBeenCalled();
+        expect(context.hub.openCount(AUTH_CHANNEL)).toBe(0);
+      }
+    );
+
+    it('asks for the token again when a successful callback crosses a 401', async () => {
+      const context = setup();
+      context.tokenResults.push(TOKEN_RESULT);
+      const { outcome, answer } = await closeAndHold(context);
+
+      context.done({ attempt: ATTEMPT, ok: true, error: null });
+      context.done({ attempt: ATTEMPT, ok: false, error: 'unknown' });
+      await vi.advanceTimersByTimeAsync(0);
+      answer({ kind: 'signed-out' });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({
+        kind: 'done',
+        token: TOKEN,
+      });
+      expect(context.requestToken.mock.calls).toEqual([[false], [true]]);
+      expect(context.popup.state.closeCalls).toBe(1);
+    });
+
+    it('keeps the token of a close when a successful callback crosses it', async () => {
+      const context = setup();
+      const { outcome, answer } = await closeAndHold(context);
+
+      context.done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+      answer(TOKEN_RESULT);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({
+        kind: 'done',
+        token: TOKEN,
+      });
+      expect(context.requestToken).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays cancelled when disposed before the token answer', async () => {
+      const context = setup();
+      const { handle, outcome, answer } = await closeAndHold(context);
+
+      context.done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+      handle.dispose();
+      answer({ kind: 'signed-out' });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({ kind: 'cancelled' });
+      expect(context.requestToken).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('times out while the token request of a cancel is still out, then stops', async () => {

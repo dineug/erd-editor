@@ -5,7 +5,10 @@ import { htmlReply, jsonReply, receiverChecked } from '@/__test-utils__/gdrive';
 import {
   browserStorage,
   classifyRelayResponse,
+  isLogoutPending,
+  LOGOUT_PENDING_KEY,
   nextUtcMidnight,
+  recordLogoutPending,
   recordServerUnavailable,
   RELAY_LOGOUT_PATH,
   RELAY_TIMEOUT_MS,
@@ -83,9 +86,24 @@ describe('classifyRelayResponse', () => {
   });
 });
 
+/** A fetch that answers nothing until its signal aborts. */
+function stalledFetch(signals: AbortSignal[]) {
+  return receiverChecked(
+    (_input, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        if (signal) signals.push(signal);
+        signal?.addEventListener('abort', () =>
+          reject(new DOMException('Aborted', 'AbortError'))
+        );
+      })
+  );
+}
+
 describe('requestRelayToken', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('POSTs past the CSRF gate, calling fetch without a receiver', async () => {
@@ -134,31 +152,28 @@ describe('requestRelayToken', () => {
     await expect(requestRelayToken({ fetch })).resolves.toEqual({
       kind: 'offline',
     });
-    vi.restoreAllMocks();
   });
 
   it('gives up after the timeout and reads it as unavailable', async () => {
     vi.useFakeTimers();
-    let signal: AbortSignal | undefined;
-    const fetch = receiverChecked(
-      (_input, init) =>
-        new Promise<Response>((_resolve, reject) => {
-          signal = init?.signal ?? undefined;
-          signal?.addEventListener('abort', () =>
-            reject(new DOMException('Aborted', 'AbortError'))
-          );
-        })
-    );
+    const signals: AbortSignal[] = [];
 
-    const result = requestRelayToken({ fetch, isOnline: () => true });
+    const result = requestRelayToken({
+      fetch: stalledFetch(signals),
+      isOnline: () => true,
+    });
     await vi.advanceTimersByTimeAsync(RELAY_TIMEOUT_MS);
 
     await expect(result).resolves.toEqual({ kind: 'unavailable' });
-    expect(signal?.aborted).toBe(true);
+    expect(signals.map(signal => signal.aborted)).toEqual([true]);
   });
 });
 
 describe('requestRelayLogout', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('POSTs past the CSRF gate and reads the relay confirming', async () => {
     const calls: Array<{ input: string; init?: RequestInit }> = [];
     const fetch = receiverChecked(async (input, init) => {
@@ -185,6 +200,48 @@ describe('requestRelayLogout', () => {
     await expect(
       requestRelayLogout({ fetch: receiverChecked(reply) })
     ).resolves.toBe(false);
+  });
+
+  it('gives up after the timeout, so a sign-out never hangs', async () => {
+    vi.useFakeTimers();
+    const signals: AbortSignal[] = [];
+
+    const result = requestRelayLogout({ fetch: stalledFetch(signals) });
+    await vi.advanceTimersByTimeAsync(RELAY_TIMEOUT_MS);
+
+    await expect(result).resolves.toBe(false);
+    expect(signals.map(signal => signal.aborted)).toEqual([true]);
+  });
+});
+
+describe('the pending logout', () => {
+  it('is remembered until cleared', () => {
+    const storage = memoryStorage();
+    expect(isLogoutPending(storage)).toBe(false);
+
+    recordLogoutPending(storage, true);
+    expect(storage.items.get(LOGOUT_PENDING_KEY)).toBe('1');
+    expect(isLogoutPending(storage)).toBe(true);
+
+    recordLogoutPending(storage, false);
+    expect(storage.items.has(LOGOUT_PENDING_KEY)).toBe(false);
+    expect(isLogoutPending(storage)).toBe(false);
+  });
+
+  it('is never pending without a storage, or with one that throws', () => {
+    const storage = {
+      getItem: () => {
+        throw new DOMException('denied', 'SecurityError');
+      },
+      setItem: () => {
+        throw new DOMException('full', 'QuotaExceededError');
+      },
+      removeItem: () => {},
+    };
+    recordLogoutPending(null, true);
+    expect(isLogoutPending(null)).toBe(false);
+    expect(() => recordLogoutPending(storage, true)).not.toThrow();
+    expect(isLogoutPending(storage)).toBe(false);
   });
 });
 

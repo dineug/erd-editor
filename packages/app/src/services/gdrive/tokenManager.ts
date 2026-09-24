@@ -1,11 +1,19 @@
-import { hasDriveFileScope, SCOPES } from '@/server/auth/google';
 import {
+  GOOGLE_REVOKE_URL,
+  hasDriveFileScope,
+  SCOPES,
+} from '@/server/auth/google';
+import {
+  isLogoutPending,
+  recordLogoutPending,
   recordServerUnavailable,
+  RELAY_TIMEOUT_MS,
   type RelayToken,
   type RelayTokenResult,
   requestRelayLogout,
   requestRelayToken,
   shouldTryServer,
+  withTimeout,
 } from '@/services/gdrive/authMode';
 import type {
   GisError,
@@ -32,6 +40,8 @@ import { safeCallback } from '@/utils/safeCallback';
 export const TOKEN_CHANNEL = '@dineug/erd-editor-app/gdrive-token';
 export const REFRESH_LOCK = '@dineug/erd-editor-app/gdrive-token-refresh';
 export const USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo';
+/** Marks Sign in, Reconnect Google, Sign out and their kin: a click on one renews nothing by itself. */
+export const AUTH_CONTROL_ATTRIBUTE = 'data-gdrive-auth-control';
 
 /** How long before expiry a token is renewed. */
 export const REFRESH_MARGIN_MS = 5 * 60_000;
@@ -109,6 +119,8 @@ export type TokenManagerDeps = {
 /** A token as the tabs share it; the access token never leaves memory and the channel. */
 type Session = {
   accessToken: string;
+  /** When it was asked for, so a tab that signed out since drops it. */
+  issuedAt: number;
   expiresAt: number;
   renewAt: number;
   scope: string | null;
@@ -119,7 +131,7 @@ type Session = {
 type TokenMessage =
   | { type: 'request' }
   | { type: 'token'; session: Session }
-  | { type: 'signed-out' };
+  | { type: 'signed-out'; at: number | null };
 
 type GisResult =
   | { kind: 'response'; response: GisTokenResponse }
@@ -131,10 +143,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readSession(value: unknown): Session | null {
   if (!isRecord(value) || !isRecord(value.account)) return null;
-  const { accessToken, expiresAt, renewAt, scope, account, mode } = value;
+  const { accessToken, issuedAt, expiresAt, renewAt, scope, account, mode } =
+    value;
   const { sub, email } = account;
   if (
     typeof accessToken !== 'string' ||
+    typeof issuedAt !== 'number' ||
     typeof expiresAt !== 'number' ||
     typeof renewAt !== 'number' ||
     (typeof scope !== 'string' && scope !== null) ||
@@ -146,6 +160,7 @@ function readSession(value: unknown): Session | null {
   }
   return {
     accessToken,
+    issuedAt,
     expiresAt,
     renewAt,
     scope,
@@ -156,8 +171,12 @@ function readSession(value: unknown): Session | null {
 
 function readTokenMessage(data: unknown): TokenMessage | null {
   if (!isRecord(data)) return null;
-  if (data.type === 'request' || data.type === 'signed-out') {
-    return { type: data.type };
+  if (data.type === 'request') return { type: 'request' };
+  if (data.type === 'signed-out') {
+    return {
+      type: 'signed-out',
+      at: typeof data.at === 'number' ? data.at : null,
+    };
   }
   const session = data.type === 'token' ? readSession(data.session) : null;
   return session && { type: 'token', session };
@@ -190,14 +209,30 @@ export function isEditingGesture(event: Event): boolean {
   return event.composedPath().some(isEditingTarget);
 }
 
+function isAuthControl(target: EventTarget): boolean {
+  return (
+    (target as Partial<Element>).hasAttribute?.(AUTH_CONTROL_ATTRIBUTE) === true
+  );
+}
+
+/** A click on a sign-in or sign-out control, whose own handler decides. */
+export function isAuthControlGesture(event: Event): boolean {
+  return event.composedPath().some(isAuthControl);
+}
+
+/** The account of a token; ten seconds of silence fail like any other error. */
 export async function fetchUserInfo(
   send: FetchLike,
-  accessToken: string
+  accessToken: string,
+  timeoutMs = RELAY_TIMEOUT_MS
 ): Promise<GoogleAccount> {
-  const response = await send(USERINFO_URL, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+  const body = await withTimeout(timeoutMs, async signal => {
+    const response = await send(USERINFO_URL, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal,
+    });
+    return response.ok ? ((await response.json()) as unknown) : null;
   });
-  const body: unknown = response.ok ? await response.json() : null;
   if (
     !isRecord(body) ||
     typeof body.sub !== 'string' ||
@@ -206,6 +241,28 @@ export async function fetchUserInfo(
     throw new Error('Google userinfo failed');
   }
   return { sub: body.sub, email: body.email };
+}
+
+/**
+ * Revokes the grant behind an access token at Google, the refresh token
+ * included. A form POST, so no preflight; its answer changes nothing.
+ */
+export async function revokeAtGoogle(
+  send: FetchLike,
+  accessToken: string
+): Promise<void> {
+  try {
+    await withTimeout(RELAY_TIMEOUT_MS, signal =>
+      send(GOOGLE_REVOKE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: accessToken }).toString(),
+        signal,
+      })
+    );
+  } catch {
+    // The logout left pending still clears the cookie before its next use.
+  }
 }
 
 function delay(ms: number): Promise<void> {
@@ -252,7 +309,13 @@ export function createTokenManager(deps: TokenManagerDeps) {
   let oauth2: GisOAuth2 | null = null;
   let tokenClient: GisTokenClient | null = null;
   let gisPending: ((result: GisResult) => void) | null = null;
+  /** The open token client request, and whether someone asked for it. */
+  let gisAttempt: { intentional: boolean } | null = null;
   let gestureBlocked = false;
+  /** Counts the sign-outs this tab saw, so an answer asked for before one is dropped. */
+  let signOutEpoch = 0;
+  /** The latest sign-out of any tab, so a token issued before it is not adopted. */
+  let signedOutAt = -Infinity;
   let renewTimer: ReturnType<typeof setTimeout> | undefined;
   let expireTimer: ReturnType<typeof setTimeout> | undefined;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -290,6 +353,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
 
   const setSession = (next: Session, broadcast: boolean) => {
     session = next;
+    gestureBlocked = false;
     update({
       status: next.mode,
       mode: next.mode,
@@ -374,25 +438,37 @@ export function createTokenManager(deps: TokenManagerDeps) {
     else expireFallback();
   }
 
-  /** A token this tab obtained: its account read from userinfo, then shared. */
+  function markSignedOut(at: number) {
+    signOutEpoch++;
+    signedOutAt = Math.max(signedOutAt, at);
+  }
+
+  /**
+   * A token this tab obtained: its account read from userinfo, then shared. A
+   * sign-out during that round trip drops it.
+   */
   async function acceptOwnToken(
     token: RelayToken,
     mode: RelayMode,
-    intentional: boolean
+    intentional: boolean,
+    issuedAt = now()
   ): Promise<SignInResult> {
+    const epoch = signOutEpoch;
+    const outdated = () => epoch !== signOutEpoch;
     if (lacksDriveScope(token.scope)) {
       clearSession('scope-missing', mode);
       return 'scope-missing';
     }
-    const issuedAt = now();
     let account: GoogleAccount;
     try {
       account = await fetchUserInfo(send, token.accessToken);
     } catch {
+      if (outdated()) return 'cancelled';
       if (session) scheduleRetry();
       else update({ status: 'signed-out', mode, error: 'failed' });
       return 'error';
     }
+    if (outdated()) return 'cancelled';
     if (
       !intentional &&
       snapshot.account &&
@@ -405,6 +481,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
     setSession(
       {
         accessToken: token.accessToken,
+        issuedAt,
         expiresAt,
         renewAt: Math.max(
           expiresAt - REFRESH_MARGIN_MS,
@@ -419,16 +496,16 @@ export function createTokenManager(deps: TokenManagerDeps) {
     return 'done';
   }
 
-  async function applyRelayResult(result: RelayTokenResult) {
+  async function applyRelayResult(result: RelayTokenResult, issuedAt: number) {
     const hadSession = !!session;
     switch (result.kind) {
       case 'token':
-        await acceptOwnToken(result.token, 'server', false);
+        await acceptOwnToken(result.token, 'server', false, issuedAt);
         return;
       case 'signed-out':
         clearSession('signed-out', 'server');
         // The cookie is gone for every tab, not only this one.
-        if (hadSession) post({ type: 'signed-out' });
+        if (hadSession) post({ type: 'signed-out', at: now() });
         return;
       case 'unavailable':
         recordServerUnavailable(storage, now());
@@ -451,6 +528,20 @@ export function createTokenManager(deps: TokenManagerDeps) {
     locks ? locks.request(REFRESH_LOCK, run) : run();
 
   /**
+   * Every token request of this tab. A logout a sign-out left pending goes
+   * first, and until the relay confirms it the cookie it clears is not used.
+   */
+  async function relayToken(): Promise<RelayTokenResult> {
+    if (isLogoutPending(storage)) {
+      if (!(await requestRelayLogout({ fetch: send }))) {
+        return isOnline() ? { kind: 'unavailable' } : { kind: 'offline' };
+      }
+      recordLogoutPending(storage, false);
+    }
+    return requestRelayToken({ fetch: send, isOnline });
+  }
+
+  /**
    * Renews the token stale names, or finds the first one when stale is null.
    * Under the lock a tab first takes what another tab just renewed, so the
    * tabs of a browser call the relay once between them.
@@ -466,9 +557,11 @@ export function createTokenManager(deps: TokenManagerDeps) {
       }
       if ((await adoptFromTabs(stale)) || disposed) return;
       if (!shouldTryServer(storage, now())) return fallBack();
-      await applyRelayResult(
-        await requestRelayToken({ fetch: send, isOnline })
-      );
+      const issuedAt = now();
+      const epoch = signOutEpoch;
+      const result = await relayToken();
+      // A sign-out while the relay answered wins over the answer.
+      if (epoch === signOutEpoch) await applyRelayResult(result, issuedAt);
     }).finally(() => {
       refreshing = null;
     });
@@ -478,6 +571,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
   function adopt(incoming: Session) {
     if (
       snapshot.status === 'account-changed' ||
+      incoming.issuedAt < signedOutAt ||
       now() >= incoming.expiresAt ||
       (session && incoming.expiresAt <= session.expiresAt) ||
       lacksDriveScope(incoming.scope)
@@ -500,6 +594,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
     } else if (message?.type === 'token') {
       adopt(message.session);
     } else if (message?.type === 'signed-out') {
+      markSignedOut(message.at ?? now());
       if (session || snapshot.account) clearSession('signed-out');
     }
   }
@@ -512,16 +607,43 @@ export function createTokenManager(deps: TokenManagerDeps) {
       gestureBlocked ||
       gisPending ||
       !account ||
-      isEditingGesture(event)
+      isEditingGesture(event) ||
+      isAuthControlGesture(event)
     ) {
+      return;
+    }
+    // Past the recorded midnight an expired tab asks the relay first.
+    if (!session && shouldTryServer(storage, now())) {
+      void refresh(null);
       return;
     }
     void requestGisToken({ prompt: '', login_hint: account.sub }, false);
   }
 
+  /**
+   * Another tab may have found the relay unavailable, or midnight passed: a
+   * tab without a token follows the flag they share once it shows again.
+   */
+  function followRelayFlag() {
+    if (session) return;
+    const tryServer = shouldTryServer(storage, now());
+    const { status, mode } = snapshot;
+    if (!tryServer && mode === 'server' && status === 'signed-out') {
+      fallBack();
+    } else if (
+      tryServer &&
+      mode === 'fallback' &&
+      (status === 'signed-out' || status === 'fallback-expired')
+    ) {
+      void refresh(null);
+    }
+  }
+
   function onVisibility() {
+    if (doc.visibilityState !== 'visible') return;
     // Timers of a hidden tab are throttled; check the moment it shows again.
-    if (doc.visibilityState === 'visible') schedule();
+    schedule();
+    followRelayFlag();
   }
 
   function onOnline() {
@@ -538,7 +660,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
 
   async function finishGis(
     result: GisResult,
-    intentional: boolean
+    attempt: { intentional: boolean }
   ): Promise<SignInResult> {
     let outcome: SignInResult;
     if (result.kind === 'error') {
@@ -559,11 +681,14 @@ export function createTokenManager(deps: TokenManagerDeps) {
         outcome = await acceptOwnToken(
           { accessToken: access_token, expiresIn, scope: scope ?? null },
           'fallback',
-          intentional
+          attempt.intentional
         );
       }
     }
-    // A renewal that failed without being asked for waits for Reconnect Google.
+    // Read after the await: a click on Reconnect may have joined it meanwhile.
+    if (gisAttempt === attempt) gisAttempt = null;
+    const { intentional } = attempt;
+    // A renewal that failed without being asked for waits for a new token.
     if (!intentional && outcome !== 'done') gestureBlocked = true;
     update({
       signingIn: false,
@@ -578,23 +703,35 @@ export function createTokenManager(deps: TokenManagerDeps) {
     return outcome;
   }
 
+  /**
+   * The sign-in already open, when there is one. A click that asked for one
+   * makes a renewal the same click started its own, so its failure is shown.
+   */
+  function joinPending(intentional: boolean): Promise<SignInResult> | null {
+    if (intentional && gisAttempt) gisAttempt.intentional = true;
+    return pendingSignIn;
+  }
+
   /** Opens the token client; the caller is a click handler, since GIS opens a popup at once. */
   function requestGisToken(
     request: GisTokenRequest,
     intentional: boolean
   ): Promise<SignInResult> {
-    if (pendingSignIn) return pendingSignIn;
+    const pending = joinPending(intentional);
+    if (pending) return pending;
     const client = tokenClient;
     if (!client) {
       ensureGis();
       return Promise.resolve('error');
     }
+    const attempt = { intentional };
+    gisAttempt = attempt;
     update({ signingIn: true, error: null });
     const result = new Promise<GisResult>(resolve => {
       gisPending = resolve;
     });
     client.requestAccessToken(request);
-    return track(result.then(settled => finishGis(settled, intentional)));
+    return track(result.then(settled => finishGis(settled, attempt)));
   }
 
   async function finishPopup(
@@ -621,15 +758,21 @@ export function createTokenManager(deps: TokenManagerDeps) {
   }
 
   /**
-   * Sign in, or Try again: the relay's popup in the server mode, the token
-   * client in the fallback. Call it inside the click handler. A login hint
-   * picks the account, as a Drive state's userId does.
+   * Sign in, or Try again: the relay's popup, or the token client until the
+   * midnight the tabs share, read again here. Call it inside the click handler.
+   * A login hint picks the account, as a Drive state's userId does.
    */
   function signIn({
     loginHint = null,
   }: { loginHint?: string | null } = {}): Promise<SignInResult> {
-    if (pendingSignIn) return pendingSignIn;
-    if (snapshot.mode === 'fallback') {
+    const pending = joinPending(true);
+    if (pending) return pending;
+    if (!shouldTryServer(storage, now())) {
+      if (snapshot.mode === 'server') {
+        // Another tab found the relay unavailable since this one decided.
+        fallBack();
+        if (!tokenClient) return Promise.resolve('unavailable');
+      }
       return requestGisToken(
         loginHint
           ? { prompt: '', login_hint: loginHint }
@@ -643,7 +786,11 @@ export function createTokenManager(deps: TokenManagerDeps) {
       {
         open: openWindow,
         createChannel,
-        requestToken: () => requestRelayToken({ fetch: send, isOnline }),
+        requestToken: callbackSucceeded => {
+          // The callback's cookie replaced the one a pending logout was for.
+          if (callbackSucceeded) recordLogoutPending(storage, false);
+          return relayToken();
+        },
         recordUnavailable: () => recordServerUnavailable(storage, now()),
       },
       {
@@ -651,6 +798,8 @@ export function createTokenManager(deps: TokenManagerDeps) {
         onLate: outcome => {
           if (outcome.kind === 'done') {
             void acceptOwnToken(outcome.token, 'server', true);
+          } else if (outcome.kind === 'scope-missing') {
+            clearSession('scope-missing', 'server');
           }
         },
       }
@@ -706,11 +855,13 @@ export function createTokenManager(deps: TokenManagerDeps) {
       popup?.cancel();
     },
 
-    /** Reconnect Google: the token client again, with this account. */
+    /** Reconnect Google: the token client again, with this account; past midnight, the relay. */
     reconnect(): Promise<SignInResult> {
-      if (snapshot.mode !== 'fallback') return signIn();
-      gestureBlocked = false;
       const account = snapshot.account;
+      if (snapshot.mode !== 'fallback' || shouldTryServer(storage, now())) {
+        return signIn({ loginHint: account?.sub ?? null });
+      }
+      gestureBlocked = false;
       return requestGisToken(
         account
           ? { prompt: '', login_hint: account.sub }
@@ -746,25 +897,34 @@ export function createTokenManager(deps: TokenManagerDeps) {
     },
 
     /**
-     * Signs every tab out and revokes the grant. In the fallback the relay is
-     * asked too, so a shared computer keeps no refresh cookie behind.
+     * Signs every tab out and revokes the grant; true once the relay confirmed
+     * it cleared its cookie. Otherwise a live token is revoked at Google, and
+     * the logout goes ahead of the next token request, in any tab or visit.
      */
-    async signOut(): Promise<void> {
+    async signOut(): Promise<boolean> {
       const previous = session;
       // A sign-in still open must not bring the account back afterwards.
       popup?.dispose();
       popup = null;
       settleGis({ kind: 'error', error: { type: 'popup_closed' } });
+      markSignedOut(now());
       clearSession('signed-out');
-      post({ type: 'signed-out' });
+      post({ type: 'signed-out', at: signedOutAt });
+      let revoked = false;
       if (previous?.mode === 'fallback' && oauth2) {
         try {
           oauth2.revoke(previous.accessToken);
+          revoked = true;
         } catch {
           // The relay's logout below still revokes the grant.
         }
       }
-      await requestRelayLogout({ fetch: send });
+      const confirmed = await requestRelayLogout({ fetch: send });
+      recordLogoutPending(storage, !confirmed);
+      if (!confirmed && !revoked && previous && now() < previous.expiresAt) {
+        await revokeAtGoogle(send, previous.accessToken);
+      }
+      return confirmed;
     },
 
     dispose() {

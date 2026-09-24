@@ -8,6 +8,8 @@ export const RELAY_LOGOUT_PATH = '/api/auth/logout';
 export const RELAY_TIMEOUT_MS = 10_000;
 export const UNAVAILABLE_UNTIL_KEY =
   '@dineug/erd-editor-app/gdrive-relay-unavailable-until';
+export const LOGOUT_PENDING_KEY =
+  '@dineug/erd-editor-app/gdrive-relay-logout-pending';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -95,8 +97,22 @@ export async function classifyRelayResponse(
   };
 }
 
+/** Calls run with a signal that aborts after timeoutMs, so a stalled answer gives up too. */
+export async function withTimeout<T>(
+  timeoutMs: number,
+  run: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await run(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** A POST the relay's CSRF gate lets through: the browser adds Origin, this adds the header. */
-function relayPost(signal?: AbortSignal): RequestInit {
+function relayPost(signal: AbortSignal): RequestInit {
   return {
     method: 'POST',
     headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -111,25 +127,52 @@ export async function requestRelayToken({
   isOnline = browserIsOnline,
   timeoutMs = RELAY_TIMEOUT_MS,
 }: RelayDeps): Promise<RelayTokenResult> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await send(RELAY_TOKEN_PATH, relayPost(controller.signal));
-    return await classifyRelayResponse(response);
+    return await withTimeout(timeoutMs, async signal =>
+      classifyRelayResponse(await send(RELAY_TOKEN_PATH, relayPost(signal)))
+    );
   } catch {
     return isOnline() ? { kind: 'unavailable' } : { kind: 'offline' };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
-/** Whether the relay revoked and cleared the cookie; a failure is not an error to the caller. */
+/**
+ * Whether the relay cleared the cookie; a failure, ten seconds of silence
+ * included, is not an error to the caller.
+ */
 export async function requestRelayLogout({
   fetch: send,
-}: Pick<RelayDeps, 'fetch'>): Promise<boolean> {
+  timeoutMs = RELAY_TIMEOUT_MS,
+}: Pick<RelayDeps, 'fetch' | 'timeoutMs'>): Promise<boolean> {
   try {
-    const response = await send(RELAY_LOGOUT_PATH, relayPost());
-    return response.ok && (await readJson(response))?.ok === true;
+    return await withTimeout(timeoutMs, async signal => {
+      const response = await send(RELAY_LOGOUT_PATH, relayPost(signal));
+      return response.ok && (await readJson(response))?.ok === true;
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Remembers a sign-out the relay did not confirm, whose cookie may still sign
+ * this browser in: the logout goes ahead of the next token request.
+ */
+export function recordLogoutPending(
+  storage: StorageLike | null,
+  pending: boolean
+): void {
+  try {
+    if (pending) storage?.setItem(LOGOUT_PENDING_KEY, '1');
+    else storage?.removeItem(LOGOUT_PENDING_KEY);
+  } catch {
+    // Without a storage the direct revoke at sign-out is all there is.
+  }
+}
+
+export function isLogoutPending(storage: StorageLike | null): boolean {
+  try {
+    return storage?.getItem(LOGOUT_PENDING_KEY) != null;
   } catch {
     return false;
   }

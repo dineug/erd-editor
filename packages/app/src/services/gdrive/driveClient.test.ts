@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createFakeDrive,
@@ -233,6 +233,10 @@ describe('createDriveClient', () => {
     expect(call.method).toBe('PATCH');
     expect(call.url.pathname).toBe(`/drive/v3/files/${file.id}`);
     expect(call.url.searchParams.get('fields')).toBe(RENAME_FIELDS);
+    // Drive reads metadata from a JSON body alone; text/plain would rename nothing.
+    expect(call.headers.get('Content-Type')).toBe(
+      'application/json; charset=UTF-8'
+    );
     expect(JSON.parse(call.body ?? '')).toEqual({ name: 'sales.vuerd' });
     expect(renamed).toEqual({
       id: file.id,
@@ -543,6 +547,10 @@ describe('parseDriveFile', () => {
 describe('withRetry', () => {
   const retryable = () => new DriveError('server', 503, 'backendError', true);
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('runs the whole cycle again up to three times, backing off exponentially', async () => {
     const sleep = vi.fn(async (_ms: number) => {});
     const cycle = vi.fn(async () => {
@@ -639,7 +647,6 @@ describe('withRetry', () => {
     await vi.advanceTimersByTimeAsync(1);
 
     await expect(result).resolves.toBe('ok');
-    vi.useRealTimers();
   });
 
   it('adds up to a quarter second of jitter', () => {

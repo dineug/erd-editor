@@ -2,6 +2,7 @@ import { vi } from 'vite-plus/test';
 
 import { GRANTED_SCOPE } from '@/__test-utils__/googleOAuth';
 import { CALLBACK_MARKER } from '@/server/auth/callbackPage';
+import { GOOGLE_REVOKE_URL } from '@/server/auth/google';
 import {
   RELAY_LOGOUT_PATH,
   RELAY_TOKEN_PATH,
@@ -20,8 +21,6 @@ import type {
   FetchLike,
   LockManagerLike,
 } from '@/services/gdrive/types';
-
-export { GRANTED_SCOPE };
 
 /**
  * fetch as workerd and Chrome have it: a call through any receiver other than
@@ -151,19 +150,50 @@ export function createLockManager() {
 
 type RelayReply = Response | 'network-error';
 
+/** A fetch that answers nothing until its signal aborts, as a stalled connection. */
+function stalled(init?: RequestInit): Promise<Response> {
+  return new Promise((_resolve, reject) => {
+    init?.signal?.addEventListener('abort', () =>
+      reject(new DOMException('Aborted', 'AbortError'))
+    );
+  });
+}
+
+/** The relay's router and CSRF gate: a POST with X-Requested-With, else JSON 405 or 403. */
+function refusedByGate(init?: RequestInit): Response | null {
+  if (init?.method !== 'POST') {
+    return jsonReply({ error: 'method_not_allowed' }, 405);
+  }
+  if (new Headers(init.headers).get('X-Requested-With') !== 'XMLHttpRequest') {
+    return jsonReply({ error: 'forbidden' }, 403);
+  }
+  return null;
+}
+
 /**
- * The relay's token and logout endpoints and Google's userinfo, as one fetch.
- * A signed-in relay hands out a new access token per call, each bound to the
- * account signed in when it was issued.
+ * The relay's token and logout endpoints, Google's userinfo and revoke, as one
+ * fetch. A signed-in relay hands out a new access token per call, each bound
+ * to the account signed in when it was issued; a revoke ends the grant.
  */
 export function createFakeRelay() {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const replies: RelayReply[] = [];
+  const logoutReplies: RelayReply[] = [];
+  const holds = new Map<string, Array<Promise<void>>>();
+  const revoked: string[] = [];
   const tokenAccounts = new Map<string, { sub: string; email: string }>();
   let issued = 0;
+  let userInfoStalls = 0;
+
+  const answer = async (reply: RelayReply, gate?: Promise<void>) => {
+    await gate;
+    if (reply === 'network-error') throw new TypeError('fetch failed');
+    return reply;
+  };
 
   const relay = {
     calls,
+    revoked,
     signedIn: true,
     expiresIn: 3600,
     scope: GRANTED_SCOPE as string | null,
@@ -174,6 +204,25 @@ export function createFakeRelay() {
     /** Answers the next token calls, in order, before the default behaviour. */
     queue(...next: RelayReply[]) {
       replies.push(...next);
+    },
+
+    /** Answers the next logout calls, in order, before the default behaviour. */
+    queueLogout(...next: RelayReply[]) {
+      logoutReplies.push(...next);
+    },
+
+    /** Delivers the next answer of path, decided at once, only once released. */
+    hold(path: string = RELAY_TOKEN_PATH): () => void {
+      let release: () => void = () => {};
+      const queue = holds.get(path) ?? [];
+      queue.push(new Promise<void>(resolve => (release = resolve)));
+      holds.set(path, queue);
+      return release;
+    },
+
+    /** The next userinfo calls answer nothing until their signal aborts. */
+    stallUserInfo(count = 1) {
+      userInfoStalls += count;
     },
 
     count(path: string): number {
@@ -187,6 +236,13 @@ export function createFakeRelay() {
     /** Every call to /api/auth/*, whatever the path. */
     relayCalls(): number {
       return calls.filter(call => call.url.startsWith('/api/auth/')).length;
+    },
+
+    /** The /api/auth/* paths called, in order. */
+    relayPaths(): string[] {
+      return calls
+        .map(call => call.url)
+        .filter(url => url.startsWith('/api/auth/'));
     },
 
     /** A token as the relay would issue it now, for tests that hand one over directly. */
@@ -203,26 +259,57 @@ export function createFakeRelay() {
           .get('Authorization')
           ?.replace(/^Bearer /, '');
         const account = token && tokenAccounts.get(token);
+        if (userInfoStalls > 0) {
+          userInfoStalls--;
+          return stalled(init);
+        }
         if (relay.userInfoDown) throw new TypeError('fetch failed');
-        return account
-          ? jsonReply({ ...account, email_verified: true })
-          : jsonReply({ error: 'invalid_token' }, 401);
+        return answer(
+          account
+            ? jsonReply({ ...account, email_verified: true })
+            : jsonReply({ error: 'invalid_token' }, 401),
+          holds.get(url)?.shift()
+        );
       }
+      if (url === GOOGLE_REVOKE_URL) {
+        const token = new URLSearchParams(String(init?.body ?? '')).get(
+          'token'
+        );
+        const form =
+          init?.method === 'POST' &&
+          new Headers(init.headers).get('Content-Type') ===
+            'application/x-www-form-urlencoded';
+        if (!form || !token) {
+          return jsonReply({ error: 'invalid_request' }, 400);
+        }
+        revoked.push(token);
+        // An access token's grant takes its refresh token, the cookie's, along.
+        relay.signedIn = false;
+        return jsonReply({});
+      }
+      if (url !== RELAY_TOKEN_PATH && url !== RELAY_LOGOUT_PATH) {
+        return htmlReply(404);
+      }
+      const refused = refusedByGate(init);
+      if (refused) return refused;
+
       if (url === RELAY_LOGOUT_PATH) {
+        const queued = logoutReplies.shift();
+        if (queued) return answer(queued);
         relay.signedIn = false;
         return jsonReply({ ok: true, revoked: true });
       }
-      if (url !== RELAY_TOKEN_PATH) return htmlReply(404);
-
       const queued = replies.shift();
-      if (queued === 'network-error') throw new TypeError('fetch failed');
-      if (queued) return queued;
-      if (!relay.signedIn) return jsonReply({ error: 'signed_out' }, 401);
-      return jsonReply({
-        access_token: relay.issue(),
-        expires_in: relay.expiresIn,
-        scope: relay.scope ?? undefined,
-      });
+      const reply: RelayReply =
+        queued ??
+        (relay.signedIn
+          ? jsonReply({
+              access_token: relay.issue(),
+              expires_in: relay.expiresIn,
+              scope: relay.scope ?? undefined,
+            })
+          : jsonReply({ error: 'signed_out' }, 401));
+      return answer(reply, holds.get(url)?.shift());
     }),
   };
   return relay;
@@ -581,6 +668,10 @@ export function createFakeDrive() {
         return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
       }
       if (method === 'PATCH' && !match[1]) {
+        // Without it Drive reads no metadata from the body.
+        if (!headers.get('Content-Type')?.startsWith('application/json')) {
+          return driveError(400, 'badRequest');
+        }
         if (!file.canRename)
           return driveError(403, 'insufficientFilePermissions');
         const update = JSON.parse(body ?? '{}') as { name?: string };

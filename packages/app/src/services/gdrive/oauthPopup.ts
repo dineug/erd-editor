@@ -36,8 +36,11 @@ export type OAuthPopupDeps = {
     features: string
   ) => PopupWindowLike | null;
   createChannel: CreateChannel;
-  /** POST /api/auth/token, classified by its JSON contract. */
-  requestToken: () => Promise<RelayTokenResult>;
+  /**
+   * POST /api/auth/token, classified by its JSON contract. callbackSucceeded
+   * is true once this attempt's callback reported the cookie it set.
+   */
+  requestToken: (callbackSucceeded: boolean) => Promise<RelayTokenResult>;
   /** Remembers the relay as unavailable until UTC midnight. */
   recordUnavailable: () => void;
   createAttempt?: () => string;
@@ -105,7 +108,7 @@ export function startUrl(attempt: string, loginHint: string | null): string {
 /**
  * Opens the relay's sign-in popup; call it in the click handler. The result is
  * this attempt's oauth-done, or else one token request once the popup closes,
- * strays, times out or is cancelled, classified like any other.
+ * strays, times out or is cancelled; an oauth-done crossing that request wins.
  */
 export function openOAuthPopup(
   deps: OAuthPopupDeps,
@@ -128,8 +131,10 @@ export function openOAuthPopup(
     };
   }
 
-  let phase: 'waiting' | 'finishing' | 'late' | 'over' = 'waiting';
+  let phase: 'waiting' | 'closing' | 'finishing' | 'late' | 'over' = 'waiting';
   let timedOut = false;
+  /** This attempt's oauth-done, come while the token request of a close was out. */
+  let crossed: OAuthDone | null = null;
   let settle: (outcome: OAuthPopupOutcome) => void = () => {};
   const result = new Promise<OAuthPopupOutcome>(resolve => {
     settle = resolve;
@@ -139,9 +144,9 @@ export function openOAuthPopup(
   const classify = async (
     afterSuccess: boolean
   ): Promise<OAuthPopupOutcome> => {
-    const token = await requestToken().catch((): RelayTokenResult => ({
-      kind: 'unavailable',
-    }));
+    const token = await requestToken(afterSuccess).catch(
+      (): RelayTokenResult => ({ kind: 'unavailable' })
+    );
     switch (token.kind) {
       case 'token':
         return { kind: 'done', token: token.token };
@@ -157,6 +162,18 @@ export function openOAuthPopup(
   const fromMessage = (done: OAuthDone): Promise<OAuthPopupOutcome> =>
     done.ok ? classify(true) : Promise.resolve(failureOutcome(done.error));
 
+  /**
+   * The callback's word over the close's token request: its failure, even with
+   * an older cookie answering, or a token asked for again once its cookie is set.
+   */
+  const reconcile = (
+    closed: OAuthPopupOutcome
+  ): OAuthPopupOutcome | Promise<OAuthPopupOutcome> => {
+    if (!crossed || phase === 'over') return closed;
+    if (!crossed.ok) return failureOutcome(crossed.error);
+    return closed.kind === 'cancelled' ? classify(true) : closed;
+  };
+
   const stop = () => {
     phase = 'over';
     clearInterval(poll);
@@ -164,33 +181,40 @@ export function openOAuthPopup(
     channel.removeEventListener('message', onMessage);
     channel.close();
   };
-  const leave = () => {
-    phase = 'finishing';
+  const leave = (next: 'closing' | 'finishing') => {
+    phase = next;
     clearInterval(poll);
     popup.close();
   };
 
   const terminate = () => {
     if (phase !== 'waiting') return;
-    leave();
-    void classify(false).then(outcome => {
-      if (phase === 'over') return;
-      // A popup closed early by COOP may still finish; keep listening for it.
-      if (outcome.kind === 'cancelled' && !timedOut) phase = 'late';
-      else stop();
-      settle(outcome);
-    });
+    leave('closing');
+    void classify(false)
+      .then(reconcile)
+      .then(outcome => {
+        if (phase === 'over') return;
+        // A popup closed early by COOP may still finish; keep listening for it.
+        if (outcome.kind === 'cancelled' && !crossed && !timedOut) {
+          phase = 'late';
+        } else {
+          stop();
+        }
+        settle(outcome);
+      });
   };
 
   const onMessage = (event: MessageEvent) => {
     const done = readOAuthDone(event.data);
     if (!done || done.attempt !== attempt) return;
     if (phase === 'waiting') {
-      leave();
+      leave('finishing');
       void fromMessage(done).then(outcome => {
         stop();
         settle(outcome);
       });
+    } else if (phase === 'closing') {
+      crossed ??= done;
     } else if (phase === 'late') {
       phase = 'finishing';
       void fromMessage(done).then(outcome => {
