@@ -128,10 +128,19 @@ type Session = {
   mode: RelayMode;
 };
 
+/**
+ * fromSignOut tells a person's sign-out, which also ends the sign-ins still
+ * open in every tab, from the relay's 401.
+ */
 type TokenMessage =
   | { type: 'request' }
   | { type: 'token'; session: Session }
-  | { type: 'signed-out'; at: number | null };
+  | { type: 'signed-out'; at: number | null; fromSignOut: boolean };
+
+/** When a token was asked for, and the sign-outs and sign-ins this tab had seen by then. */
+type Asked = { at: number; signOuts: number; signIns: number };
+
+type GisAttempt = { intentional: boolean; asked: Asked };
 
 type GisResult =
   | { kind: 'response'; response: GisTokenResponse }
@@ -176,6 +185,7 @@ function readTokenMessage(data: unknown): TokenMessage | null {
     return {
       type: 'signed-out',
       at: typeof data.at === 'number' ? data.at : null,
+      fromSignOut: data.fromSignOut === true,
     };
   }
   const session = data.type === 'token' ? readSession(data.session) : null;
@@ -265,6 +275,13 @@ export async function revokeAtGoogle(
   }
 }
 
+/** What a Reconnect Google through the relay reports when it ends without a token. */
+const RECONNECT_RESULTS: Partial<Record<TokenStatus, SignInResult>> = {
+  'signed-out': 'cancelled',
+  'fallback-expired': 'unavailable',
+  'scope-missing': 'scope-missing',
+};
+
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -310,10 +327,14 @@ export function createTokenManager(deps: TokenManagerDeps) {
   let tokenClient: GisTokenClient | null = null;
   let gisPending: ((result: GisResult) => void) | null = null;
   /** The open token client request, and whether someone asked for it. */
-  let gisAttempt: { intentional: boolean } | null = null;
+  let gisAttempt: GisAttempt | null = null;
   let gestureBlocked = false;
   /** Counts the sign-outs this tab saw, so an answer asked for before one is dropped. */
   let signOutEpoch = 0;
+  /** Counts the sign-ins this tab finished, so a renewal asked for before one is dropped. */
+  let signInEpoch = 0;
+  /** Relay logouts run one after another, so the last one sent sets the pending flag last. */
+  let loggingOut: Promise<boolean> = Promise.resolve(true);
   /** The latest sign-out of any tab, so a token issued before it is not adopted. */
   let signedOutAt = -Infinity;
   let renewTimer: ReturnType<typeof setTimeout> | undefined;
@@ -335,6 +356,17 @@ export function createTokenManager(deps: TokenManagerDeps) {
 
   const isFresh = (candidate: Session | null, stale: string | null) =>
     !!candidate && candidate.accessToken !== stale && now() < candidate.renewAt;
+
+  /** Read afresh after every await: another tab's token can stop this one meanwhile. */
+  const isAccountChanged = () => snapshot.status === 'account-changed';
+
+  const askedNow = (): Asked => ({
+    at: now(),
+    signOuts: signOutEpoch,
+    signIns: signInEpoch,
+  });
+  const isOutdated = (asked: Asked) =>
+    asked.signOuts !== signOutEpoch || asked.signIns !== signInEpoch;
 
   const schedule = () => {
     clearTimers();
@@ -445,16 +477,15 @@ export function createTokenManager(deps: TokenManagerDeps) {
 
   /**
    * A token this tab obtained: its account read from userinfo, then shared. A
-   * sign-out during that round trip drops it.
+   * sign-out, or a sign-in of this tab, since it was asked for drops it.
    */
   async function acceptOwnToken(
     token: RelayToken,
     mode: RelayMode,
     intentional: boolean,
-    issuedAt = now()
+    asked = askedNow()
   ): Promise<SignInResult> {
-    const epoch = signOutEpoch;
-    const outdated = () => epoch !== signOutEpoch;
+    const outdated = () => isOutdated(asked);
     if (lacksDriveScope(token.scope)) {
       clearSession('scope-missing', mode);
       return 'scope-missing';
@@ -477,6 +508,8 @@ export function createTokenManager(deps: TokenManagerDeps) {
       clearSession('account-changed');
       return 'error';
     }
+    if (intentional) signInEpoch++;
+    const issuedAt = asked.at;
     const expiresAt = issuedAt + token.expiresIn * 1000;
     setSession(
       {
@@ -496,16 +529,18 @@ export function createTokenManager(deps: TokenManagerDeps) {
     return 'done';
   }
 
-  async function applyRelayResult(result: RelayTokenResult, issuedAt: number) {
+  async function applyRelayResult(result: RelayTokenResult, asked: Asked) {
     const hadSession = !!session;
     switch (result.kind) {
       case 'token':
-        await acceptOwnToken(result.token, 'server', false, issuedAt);
+        await acceptOwnToken(result.token, 'server', false, asked);
         return;
       case 'signed-out':
         clearSession('signed-out', 'server');
         // The cookie is gone for every tab, not only this one.
-        if (hadSession) post({ type: 'signed-out', at: now() });
+        if (hadSession) {
+          post({ type: 'signed-out', at: now(), fromSignOut: false });
+        }
         return;
       case 'unavailable':
         recordServerUnavailable(storage, now());
@@ -548,20 +583,15 @@ export function createTokenManager(deps: TokenManagerDeps) {
    */
   function refresh(stale: string | null): Promise<void> {
     refreshing ??= withLock(async () => {
-      if (
-        disposed ||
-        snapshot.status === 'account-changed' ||
-        isFresh(session, stale)
-      ) {
+      if (disposed || isAccountChanged() || isFresh(session, stale)) return;
+      if ((await adoptFromTabs(stale)) || disposed || isAccountChanged()) {
         return;
       }
-      if ((await adoptFromTabs(stale)) || disposed) return;
       if (!shouldTryServer(storage, now())) return fallBack();
-      const issuedAt = now();
-      const epoch = signOutEpoch;
+      const asked = askedNow();
       const result = await relayToken();
-      // A sign-out while the relay answered wins over the answer.
-      if (epoch === signOutEpoch) await applyRelayResult(result, issuedAt);
+      // A sign-out, or this tab's sign-in, while the relay answered wins.
+      if (!isOutdated(asked)) await applyRelayResult(result, asked);
     }).finally(() => {
       refreshing = null;
     });
@@ -595,6 +625,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
       adopt(message.session);
     } else if (message?.type === 'signed-out') {
       markSignedOut(message.at ?? now());
+      if (message.fromSignOut) endSignIns();
       if (session || snapshot.account) clearSession('signed-out');
     }
   }
@@ -660,7 +691,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
 
   async function finishGis(
     result: GisResult,
-    attempt: { intentional: boolean }
+    attempt: GisAttempt
   ): Promise<SignInResult> {
     let outcome: SignInResult;
     if (result.kind === 'error') {
@@ -681,7 +712,8 @@ export function createTokenManager(deps: TokenManagerDeps) {
         outcome = await acceptOwnToken(
           { accessToken: access_token, expiresIn, scope: scope ?? null },
           'fallback',
-          attempt.intentional
+          attempt.intentional,
+          attempt.asked
         );
       }
     }
@@ -724,7 +756,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
       ensureGis();
       return Promise.resolve('error');
     }
-    const attempt = { intentional };
+    const attempt: GisAttempt = { intentional, asked: askedNow() };
     gisAttempt = attempt;
     update({ signingIn: true, error: null });
     const result = new Promise<GisResult>(resolve => {
@@ -786,9 +818,14 @@ export function createTokenManager(deps: TokenManagerDeps) {
       {
         open: openWindow,
         createChannel,
-        requestToken: callbackSucceeded => {
+        requestToken: async (callbackSucceeded, callbackReport) => {
+          // A pending logout would clear the cookie of a callback whose report
+          // is still on its way, so a close waits a moment for that report.
+          const succeeded =
+            callbackSucceeded ||
+            (isLogoutPending(storage) && (await callbackReport()));
           // The callback's cookie replaced the one a pending logout was for.
-          if (callbackSucceeded) recordLogoutPending(storage, false);
+          if (succeeded) recordLogoutPending(storage, false);
           return relayToken();
         },
         recordUnavailable: () => recordServerUnavailable(storage, now()),
@@ -806,6 +843,32 @@ export function createTokenManager(deps: TokenManagerDeps) {
     );
     update({ signingIn: true, error: null });
     return track(popup.result.then(finishPopup));
+  }
+
+  /** Whether the relay cleared its cookie; unconfirmed, the next token request logs out first. */
+  function logOutAtRelay(): Promise<boolean> {
+    loggingOut = loggingOut.then(async () => {
+      const confirmed = await requestRelayLogout({ fetch: send });
+      recordLogoutPending(storage, !confirmed);
+      return confirmed;
+    });
+    return loggingOut;
+  }
+
+  /**
+   * A sign-out ends the sign-ins still open: the popup closes, and should its
+   * callback still set a cookie, the relay logs out again.
+   */
+  function endSignIns() {
+    popup?.abandon(() => void logOutAtRelay());
+    settleGis({ kind: 'error', error: { type: 'popup_closed' } });
+  }
+
+  /** Reconnect Google past midnight: the cookie the fallback kept, without a popup. */
+  async function reconnectThroughRelay(): Promise<SignInResult> {
+    await refresh(session?.accessToken ?? null);
+    if (session) return 'done';
+    return RECONNECT_RESULTS[snapshot.status] ?? 'error';
   }
 
   async function getAccessToken(): Promise<string> {
@@ -855,12 +918,17 @@ export function createTokenManager(deps: TokenManagerDeps) {
       popup?.cancel();
     },
 
-    /** Reconnect Google: the token client again, with this account; past midnight, the relay. */
+    /**
+     * Reconnect Google: the token client again, with this account. Past the
+     * recorded midnight one token request to the relay decides instead, and a
+     * 401 leaves Sign in. Outside the fallback, the relay's popup.
+     */
     reconnect(): Promise<SignInResult> {
       const account = snapshot.account;
-      if (snapshot.mode !== 'fallback' || shouldTryServer(storage, now())) {
+      if (snapshot.mode !== 'fallback') {
         return signIn({ loginHint: account?.sub ?? null });
       }
+      if (shouldTryServer(storage, now())) return reconnectThroughRelay();
       gestureBlocked = false;
       return requestGisToken(
         account
@@ -904,12 +972,10 @@ export function createTokenManager(deps: TokenManagerDeps) {
     async signOut(): Promise<boolean> {
       const previous = session;
       // A sign-in still open must not bring the account back afterwards.
-      popup?.dispose();
-      popup = null;
-      settleGis({ kind: 'error', error: { type: 'popup_closed' } });
+      endSignIns();
       markSignedOut(now());
       clearSession('signed-out');
-      post({ type: 'signed-out', at: signedOutAt });
+      post({ type: 'signed-out', at: signedOutAt, fromSignOut: true });
       let revoked = false;
       if (previous?.mode === 'fallback' && oauth2) {
         try {
@@ -919,8 +985,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
           // The relay's logout below still revokes the grant.
         }
       }
-      const confirmed = await requestRelayLogout({ fetch: send });
-      recordLogoutPending(storage, !confirmed);
+      const confirmed = await logOutAtRelay();
       if (!confirmed && !revoked && previous && now() < previous.expiresAt) {
         await revokeAtGoogle(send, previous.accessToken);
       }

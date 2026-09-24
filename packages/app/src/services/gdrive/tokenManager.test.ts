@@ -27,7 +27,7 @@ import {
   UNAVAILABLE_UNTIL_KEY,
 } from '@/services/gdrive/authMode';
 import { GisBlockedError } from '@/services/gdrive/gis';
-import { POPUP_POLL_MS } from '@/services/gdrive/oauthPopup';
+import { CALLBACK_GRACE_MS, POPUP_POLL_MS } from '@/services/gdrive/oauthPopup';
 import {
   ADOPT_WAIT_MS,
   AUTH_CONTROL_ATTRIBUTE,
@@ -714,7 +714,7 @@ describe('createTokenManager', () => {
       });
     });
 
-    it('ends a sign-in still open when the person signs out', async () => {
+    it('closes a sign-in still open when the person signs out, and logs out again should it finish', async () => {
       const tab = openTab(browser);
       await start(tab);
 
@@ -722,13 +722,128 @@ describe('createTokenManager', () => {
       await tab.manager.signOut();
 
       await expect(result).resolves.toBe('cancelled');
+      expect(tab.popup.state.closeCalls).toBe(1);
+      expect(browser.relay.signedIn).toBe(false);
+      // Its callback was already under way and sets a cookie after the logout.
+      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      browser.relay.signedIn = true;
       finishPopup(browser, tab);
       await flush();
+      await flush();
+
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'signed-out',
         signingIn: false,
+        account: null,
       });
       expect(browser.relay.tokenCalls()).toBe(1);
+      expect(browser.relay.count(RELAY_LOGOUT_PATH)).toBe(2);
+      expect(browser.relay.signedIn).toBe(false);
+      expect(browser.storage.items.has(LOGOUT_PENDING_KEY)).toBe(false);
+      const next = openTab(browser);
+      await start(next);
+      expect(next.manager.getSnapshot().status).toBe('signed-out');
+    });
+
+    it('closes the sign-in another tab has open when one signs out', async () => {
+      const first = openTab(browser);
+      await start(first);
+      const second = openTab(browser);
+      await start(second);
+
+      const result = second.manager.signIn({ loginHint: 'sub-2' });
+      await first.manager.signOut();
+      await flush();
+
+      await expect(result).resolves.toBe('cancelled');
+      expect(second.popup.state.closeCalls).toBe(1);
+      browser.relay.signedIn = true;
+      finishPopup(browser, second);
+      await flush();
+      await flush();
+
+      expect(browser.relay.count(RELAY_LOGOUT_PATH)).toBe(2);
+      expect(browser.relay.signedIn).toBe(false);
+      expect(first.manager.getSnapshot().status).toBe('signed-out');
+      expect(second.manager.getSnapshot()).toMatchObject({
+        status: 'signed-out',
+        signingIn: false,
+      });
+    });
+
+    it('keeps the sign-in another tab has open when a renewal meets a revoked grant', async () => {
+      const first = openTab(browser);
+      await start(first);
+      const second = openTab(browser);
+      await start(second);
+      const result = second.manager.signIn({ loginHint: 'sub-2' });
+      browser.relay.queue(jsonReply({ error: 'invalid_grant' }, 401));
+
+      const renewal = expect(
+        first.manager.onUnauthorized('access-1')
+      ).rejects.toMatchObject({ status: 'signed-out' });
+      await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
+      await renewal;
+      await flush();
+      expect(second.popup.state.closeCalls).toBe(0);
+      expect(second.manager.getSnapshot()).toMatchObject({
+        status: 'signed-out',
+        signingIn: true,
+      });
+
+      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      finishPopup(browser, second);
+      await flush();
+
+      await expect(result).resolves.toBe('done');
+      expect(second.manager.getSnapshot()).toMatchObject({
+        status: 'server',
+        account: { sub: 'sub-2' },
+      });
+    });
+
+    it('keeps an account switch that finishes while a renewal for the old account is out', async () => {
+      const tab = openTab(browser);
+      await start(tab);
+      const release = browser.relay.hold();
+
+      const renewal = tab.manager.onUnauthorized('access-1');
+      await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
+      expect(browser.relay.tokenCalls()).toBe(2);
+      const result = tab.manager.signIn({ loginHint: 'sub-2' });
+      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      finishPopup(browser, tab);
+      await flush();
+      await expect(result).resolves.toBe('done');
+      release();
+
+      await expect(renewal).resolves.toBe('access-3');
+      expect(tab.manager.getSnapshot()).toMatchObject({
+        status: 'server',
+        account: { sub: 'sub-2' },
+      });
+      expect(browser.relay.count(USERINFO_URL)).toBe(2);
+    });
+
+    it('asks the relay nothing once another tab switched accounts while it waited for a token', async () => {
+      const first = openTab(browser);
+      await start(first);
+      const second = openTab(browser);
+      await start(second);
+
+      const renewal = expect(
+        second.manager.onUnauthorized('access-1')
+      ).rejects.toMatchObject({ status: 'account-changed' });
+      void first.manager.signIn({ loginHint: 'sub-2' });
+      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      finishPopup(browser, first);
+      await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
+      await renewal;
+
+      expect(browser.relay.tokenCalls()).toBe(2);
+      expect(first.manager.getSnapshot().account).toMatchObject({
+        sub: 'sub-2',
+      });
     });
 
     it('opens the relay popup again for Try again in the server mode', async () => {
@@ -816,6 +931,9 @@ describe('createTokenManager', () => {
       const result = tab.manager.signIn();
       tab.manager.cancelSignIn();
       await flush();
+      // A callback that crossed the close would report within the grace.
+      expect(browser.relay.relayPaths()).toEqual([RELAY_TOKEN_PATH]);
+      await vi.advanceTimersByTimeAsync(CALLBACK_GRACE_MS);
 
       await expect(result).resolves.toBe('cancelled');
       expect(browser.relay.relayPaths().slice(1)).toEqual([
@@ -823,6 +941,31 @@ describe('createTokenManager', () => {
         RELAY_TOKEN_PATH,
       ]);
       expect(tab.manager.getSnapshot().account).toBeNull();
+    });
+
+    it('keeps the cookie of a callback reporting just after the close, a logout pending', async () => {
+      browser.relay.signedIn = false;
+      const tab = openTab(browser);
+      await start(tab);
+      browser.storage.setItem(LOGOUT_PENDING_KEY, '1');
+      // The callback replaced the cookie a failed logout left behind.
+      browser.relay.signedIn = true;
+      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+
+      const result = tab.manager.signIn();
+      tab.popup.state.closed = true;
+      await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
+      expect(browser.relay.relayPaths()).toEqual([RELAY_TOKEN_PATH]);
+      finishPopup(browser, tab);
+      await flush();
+
+      await expect(result).resolves.toBe('done');
+      expect(browser.relay.count(RELAY_LOGOUT_PATH)).toBe(0);
+      expect(browser.storage.items.has(LOGOUT_PENDING_KEY)).toBe(false);
+      expect(tab.manager.getSnapshot()).toMatchObject({
+        status: 'server',
+        account: { sub: 'sub-2' },
+      });
     });
   });
 
@@ -1195,20 +1338,61 @@ describe('createTokenManager', () => {
       expect(tab.gis.requests).toHaveLength(4);
     });
 
-    it('opens the relay popup for Reconnect Google once midnight has passed', async () => {
+    it.each([
+      [
+        'signs in with the cookie the fallback kept',
+        true,
+        'done',
+        { status: 'server', mode: 'server', account: { sub: 'sub-1' } },
+      ],
+      [
+        'leaves Sign in on a 401',
+        false,
+        'cancelled',
+        { status: 'signed-out', mode: 'server', account: null },
+      ],
+    ] as const)(
+      'asks the relay once, opening no popup, for Reconnect Google past midnight: %s',
+      async (_label, signedIn, expected, snapshot) => {
+        const tab = openTab(browser);
+        vi.setSystemTime(Date.UTC(2026, 8, 25, 22));
+        await fallenBack(tab);
+        await signInWithGis(tab);
+        await vi.advanceTimersByTimeAsync(3599 * 1000);
+        expect(tab.manager.getSnapshot().status).toBe('fallback-expired');
+        vi.setSystemTime(MIDNIGHT + HOUR / 2);
+        browser.relay.signedIn = signedIn;
+
+        const reconnect = tab.manager.reconnect();
+        await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
+
+        await expect(reconnect).resolves.toBe(expected);
+        expect(browser.relay.tokenCalls()).toBe(2);
+        expect(tab.opened).toHaveLength(0);
+        expect(tab.gis.requests).toHaveLength(1);
+        expect(tab.manager.getSnapshot()).toMatchObject(snapshot);
+      }
+    );
+
+    it('reports the relay still unavailable to Reconnect Google past midnight', async () => {
       const tab = openTab(browser);
       vi.setSystemTime(Date.UTC(2026, 8, 25, 22));
       await fallenBack(tab);
       await signInWithGis(tab);
       await vi.advanceTimersByTimeAsync(3599 * 1000);
-      expect(tab.manager.getSnapshot().status).toBe('fallback-expired');
       vi.setSystemTime(MIDNIGHT + HOUR / 2);
+      browser.relay.queue(htmlReply(200));
 
+      const reconnect = tab.manager.reconnect();
+      await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
+
+      await expect(reconnect).resolves.toBe('unavailable');
+      expect(tab.manager.getSnapshot()).toMatchObject({
+        status: 'fallback-expired',
+        mode: 'fallback',
+      });
       void tab.manager.reconnect();
-
-      expect(tab.opened).toHaveLength(1);
-      expect(tab.opened[0]).toContain('login_hint=sub-1');
-      expect(tab.gis.requests).toHaveLength(1);
+      expect(tab.gis.requests).toHaveLength(2);
     });
 
     it.each([
@@ -1331,6 +1515,40 @@ describe('createTokenManager', () => {
         signingIn: false,
       });
     });
+
+    it.each([
+      ['after it hears of the sign-out', true],
+      ['before it hears of the sign-out', false],
+    ])(
+      'drops a renewal another tab asked for before the sign-out, answered %s',
+      async (_label, heard) => {
+        const first = openTab(browser);
+        await fallenBack(first);
+        await signInWithGis(first);
+        const second = openTab(browser);
+        await start(second);
+        await vi.advanceTimersByTimeAsync(3599 * 1000 - REFRESH_MARGIN_MS);
+        click(second, document.createElement('button'));
+        expect(second.gis.requests).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(1000);
+
+        await first.manager.signOut();
+        if (heard) await flush();
+        second.gis.respond(grant(browser));
+        await flush();
+        await flush();
+
+        for (const tab of [first, second]) {
+          expect(tab.manager.getSnapshot()).toMatchObject({
+            status: 'signed-out',
+            account: null,
+          });
+          await expect(tab.manager.getAccessToken()).rejects.toBeInstanceOf(
+            TokenUnavailableError
+          );
+        }
+      }
+    );
 
     it('revokes the token client grant on sign out', async () => {
       const tab = openTab(browser);
@@ -1612,9 +1830,14 @@ describe('createTokenManager', () => {
       const started = manager.start();
       await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
       await started;
-
       expect(manager.getSnapshot().status).toBe('server');
-      expect(browser.locks.requests).toEqual([]);
+
+      await vi.advanceTimersByTimeAsync(
+        3600 * 1000 - REFRESH_MARGIN_MS + ADOPT_WAIT_MS
+      );
+
+      expect(browser.relay.tokenCalls()).toBe(2);
+      await expect(manager.getAccessToken()).resolves.toBe('access-2');
       manager.dispose();
     });
   });

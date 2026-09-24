@@ -468,8 +468,24 @@ function project(value: unknown, tree: FieldTree | null): unknown {
   return result;
 }
 
+/** Whether every field asked for, nested ones included, is one the resource has. */
+function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
+  return [...tree].every(([name, children]) => {
+    if (!schema.has(name)) return false;
+    const known = schema.get(name);
+    return !children || (!!known && isKnownSelection(children, known));
+  });
+}
+
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const DEFAULT_LIST_FIELDS = `kind,incompleteSearch,nextPageToken,files(${DEFAULT_FILE_FIELDS})`;
+const FILE_SCHEMA = parseFields(
+  'kind,id,name,mimeType,modifiedTime,size,trashed,parents,capabilities(canEdit,canRename)'
+);
+const LIST_SCHEMA: FieldTree = new Map([
+  ...parseFields('kind,incompleteSearch,nextPageToken'),
+  ['files', FILE_SCHEMA],
+]);
 
 function driveError(status: number, reason: string): Response {
   return jsonReply(
@@ -501,9 +517,9 @@ function parseMultipart(contentType: string, body: string) {
 }
 
 /**
- * Drive v3 in memory and no more lenient: only the fields asked for, pages of
- * two, a media PATCH's Content-Type becomes the mimeType, read-only files
- * refuse writes, a resource key is required. Its fetch checks the receiver.
+ * Drive v3 in memory and no more lenient: only the fields asked for, a 400 for
+ * a field it lacks, pages of two, a media PATCH's Content-Type as the mimeType,
+ * read-only files refuse writes, a resource key is required. Checks the receiver.
  */
 export function createFakeDrive() {
   const files = new Map<string, FakeDriveFile>();
@@ -529,8 +545,19 @@ export function createFakeDrive() {
     capabilities: { canEdit: file.canEdit, canRename: file.canRename },
   });
 
-  const reply = (value: unknown, fields: string | null, fallback: string) =>
-    jsonReply(project(value, parseFields(fields ?? fallback)));
+  const reply = (
+    value: unknown,
+    fields: string | null,
+    fallback: string,
+    schema = FILE_SCHEMA
+  ) => {
+    const tree = parseFields(fields ?? fallback);
+    // Drive refuses a selection naming a field it does not have: Invalid field selection.
+    if (!isKnownSelection(tree, schema)) {
+      return driveError(400, 'invalidParameter');
+    }
+    return jsonReply(project(value, tree));
+  };
 
   const drive = {
     files,
@@ -613,7 +640,8 @@ export function createFakeDrive() {
             files: page.map(resource),
           },
           fields,
-          DEFAULT_LIST_FIELDS
+          DEFAULT_LIST_FIELDS,
+          LIST_SCHEMA
         );
       }
 

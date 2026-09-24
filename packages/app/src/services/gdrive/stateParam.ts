@@ -44,9 +44,11 @@ function isUserId(value: unknown): value is string {
   return typeof value === 'string' && USER_ID.test(value);
 }
 
-function isResourceKey(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= 256;
-}
+/**
+ * A resource key takes an id's characters: one goes into a request header, so a
+ * line break, comma or slash could break it or add another file's key.
+ */
+const isResourceKey = isDriveId;
 
 function parseResourceKeys(value: unknown): Record<string, string> | null {
   if (value === undefined || value === null) return {};

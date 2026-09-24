@@ -11,6 +11,9 @@ import { createChannelHub, createFakePopup } from '@/__test-utils__/gdrive';
 import { AUTH_CHANNEL } from '@/server/auth/callbackPage';
 import type { RelayTokenResult } from '@/services/gdrive/authMode';
 import {
+  CALLBACK_GRACE_MS,
+  type OAuthPopup,
+  type OAuthPopupDeps,
   type OAuthPopupOutcome,
   openOAuthPopup,
   POPUP_FEATURES,
@@ -29,15 +32,14 @@ function setup({
   requestTokenWith,
 }: {
   blocked?: boolean;
-  requestTokenWith?: (callbackSucceeded: boolean) => Promise<RelayTokenResult>;
+  requestTokenWith?: OAuthPopupDeps['requestToken'];
 } = {}) {
   const hub = createChannelHub();
   const popup = createFakePopup();
   const opened: Array<{ url: string; target: string; features: string }> = [];
   const tokenResults: RelayTokenResult[] = [];
-  const requestToken = vi.fn(
-    async (): Promise<RelayTokenResult> =>
-      tokenResults.shift() ?? { kind: 'signed-out' }
+  const requestToken = vi.fn<OAuthPopupDeps['requestToken']>(
+    async () => tokenResults.shift() ?? { kind: 'signed-out' }
   );
   const recordUnavailable = vi.fn();
   const onLate = vi.fn();
@@ -166,6 +168,7 @@ describe('openOAuthPopup', () => {
     expect(hub.openCount(AUTH_CHANNEL)).toBe(0);
     popup.cancel();
     popup.dispose();
+    popup.abandon(() => {});
     expect(requestToken).not.toHaveBeenCalled();
   });
 
@@ -186,7 +189,10 @@ describe('openOAuthPopup', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(outcome).toHaveBeenCalledWith({ kind: 'done', token: TOKEN });
-    expect(requestToken).toHaveBeenCalledExactlyOnceWith(true);
+    expect(requestToken).toHaveBeenCalledExactlyOnceWith(
+      true,
+      expect.any(Function)
+    );
     expect(popup.state.closeCalls).toBe(1);
     expect(hub.openCount(AUTH_CHANNEL)).toBe(0);
   });
@@ -291,7 +297,10 @@ describe('openOAuthPopup', () => {
         await end(context, handle);
 
         expect(outcome).toHaveBeenCalledWith({ kind: 'done', token: TOKEN });
-        expect(context.requestToken).toHaveBeenCalledExactlyOnceWith(false);
+        expect(context.requestToken).toHaveBeenCalledExactlyOnceWith(
+          false,
+          expect.any(Function)
+        );
         expect(context.popup.state.closed).toBe(true);
         expect(context.hub.openCount(AUTH_CHANNEL)).toBe(0);
       }
@@ -461,7 +470,10 @@ describe('openOAuthPopup', () => {
       const outcome = await settle(handle.result);
       context.popup.state.closed = true;
       await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
-      expect(context.requestToken).toHaveBeenCalledExactlyOnceWith(false);
+      expect(context.requestToken).toHaveBeenCalledExactlyOnceWith(
+        false,
+        expect.any(Function)
+      );
       return {
         handle,
         outcome,
@@ -507,7 +519,9 @@ describe('openOAuthPopup', () => {
         kind: 'done',
         token: TOKEN,
       });
-      expect(context.requestToken.mock.calls).toEqual([[false], [true]]);
+      expect(
+        context.requestToken.mock.calls.map(([succeeded]) => succeeded)
+      ).toEqual([false, true]);
       expect(context.popup.state.closeCalls).toBe(1);
     });
 
@@ -596,6 +610,222 @@ describe('openOAuthPopup', () => {
     expect(onLate).not.toHaveBeenCalled();
     expect(hub.openCount(AUTH_CHANNEL)).toBe(0);
   });
+
+  describe('the callback report a close may wait for', () => {
+    /** A token request that waits for the report whenever the callback has not reported. */
+    function reporting(
+      waitFirst = 0
+    ): ReturnType<typeof setup> & { reports: boolean[] } {
+      const reports: boolean[] = [];
+      const context = setup({
+        requestTokenWith: async (succeeded, report) => {
+          if (waitFirst)
+            await new Promise(resolve => setTimeout(resolve, waitFirst));
+          if (!succeeded) reports.push(await report());
+          return TOKEN_RESULT;
+        },
+      });
+      return Object.assign(context, { reports });
+    }
+
+    async function close(context: ReturnType<typeof setup>) {
+      const handle = context.start();
+      const outcome = await settle(handle.result);
+      context.popup.state.closed = true;
+      await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
+      return outcome;
+    }
+
+    it('is true once a successful callback crosses the close', async () => {
+      const context = reporting();
+      const outcome = await close(context);
+      expect(context.reports).toEqual([]);
+
+      context.done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(context.reports).toEqual([true]);
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({
+        kind: 'done',
+        token: TOKEN,
+      });
+    });
+
+    it('is false for a failed callback, whose failure is the result', async () => {
+      const context = reporting();
+      const outcome = await close(context);
+
+      context.done({ attempt: ATTEMPT, ok: false, error: 'access_denied' });
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(context.reports).toEqual([false]);
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({ kind: 'cancelled' });
+    });
+
+    it('is false once the grace passes without a report', async () => {
+      const context = reporting();
+      const outcome = await close(context);
+
+      await vi.advanceTimersByTimeAsync(CALLBACK_GRACE_MS - 1);
+      expect(context.reports).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(context.reports).toEqual([false]);
+      expect(outcome).toHaveBeenCalledWith({ kind: 'done', token: TOKEN });
+    });
+
+    it('answers at once for a report that came before it was asked', async () => {
+      const context = reporting(10);
+      await close(context);
+
+      context.done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(1);
+      expect(context.reports).toEqual([]);
+      await vi.advanceTimersByTimeAsync(9);
+
+      expect(context.reports).toEqual([true]);
+    });
+  });
+
+  describe('when abandoned by a sign-out', () => {
+    it('closes the popup, settles as cancelled and reports a success its callback still sends', async () => {
+      const { hub, popup, requestToken, start, done } = setup();
+      const handle = start();
+      const outcome = await settle(handle.result);
+      const signedIn = vi.fn();
+
+      handle.abandon(signedIn);
+      await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
+
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({ kind: 'cancelled' });
+      expect(popup.state.closeCalls).toBe(1);
+      expect(hub.openCount(AUTH_CHANNEL)).toBe(1);
+
+      done({ attempt: 'ZyXwVuTsRqPoNmLkJiHgFe', ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(signedIn).not.toHaveBeenCalled();
+      done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(signedIn).toHaveBeenCalledTimes(1);
+      expect(requestToken).not.toHaveBeenCalled();
+      expect(hub.openCount(AUTH_CHANNEL)).toBe(0);
+    });
+
+    it.each([
+      [
+        'a failed callback',
+        async ({ done }: ReturnType<typeof setup>) => {
+          done({ attempt: ATTEMPT, ok: false, error: 'access_denied' });
+          await vi.advanceTimersByTimeAsync(0);
+        },
+      ],
+      [
+        'the five minutes',
+        async ({ done }: ReturnType<typeof setup>) => {
+          await vi.advanceTimersByTimeAsync(POPUP_TIMEOUT_MS);
+          done({ attempt: ATTEMPT, ok: true, error: null });
+          await vi.advanceTimersByTimeAsync(0);
+        },
+      ],
+    ])('stops listening at %s', async (_label, end) => {
+      const context = setup();
+      const handle = context.start();
+      const signedIn = vi.fn();
+      handle.abandon(signedIn);
+
+      await end(context);
+
+      expect(signedIn).not.toHaveBeenCalled();
+      expect(context.hub.openCount(AUTH_CHANNEL)).toBe(0);
+    });
+
+    it('drops the token request of a close still out, and takes a success after it', async () => {
+      const context = setup();
+      let answer: (result: RelayTokenResult) => void = () => {};
+      context.requestToken.mockImplementationOnce(
+        () => new Promise(resolve => (answer = resolve))
+      );
+      const handle = context.start();
+      const outcome = await settle(handle.result);
+      context.popup.state.closed = true;
+      await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
+      const signedIn = vi.fn();
+
+      handle.abandon(signedIn);
+      context.done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+      answer({ kind: 'signed-out' });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(signedIn).toHaveBeenCalledTimes(1);
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({ kind: 'cancelled' });
+      expect(context.requestToken).toHaveBeenCalledTimes(1);
+      expect(context.onLate).not.toHaveBeenCalled();
+    });
+
+    it('stops at once when the five minutes ran out while a token request was out', async () => {
+      const context = setup();
+      context.requestToken.mockImplementationOnce(() => new Promise(() => {}));
+      const handle = context.start();
+      context.popup.atGoogle();
+      await vi.advanceTimersByTimeAsync(POPUP_TIMEOUT_MS);
+      expect(context.requestToken).toHaveBeenCalledTimes(1);
+
+      handle.abandon(() => {});
+
+      expect(context.hub.openCount(AUTH_CHANNEL)).toBe(0);
+    });
+
+    it('does nothing once the popup has its result', async () => {
+      const { popup, tokenResults, start, done } = setup();
+      tokenResults.push(TOKEN_RESULT);
+      const handle = start();
+      const outcome = await settle(handle.result);
+      done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+      const signedIn = vi.fn();
+
+      handle.abandon(signedIn);
+      done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(outcome).toHaveBeenCalledExactlyOnceWith({
+        kind: 'done',
+        token: TOKEN,
+      });
+      expect(popup.state.closeCalls).toBe(1);
+      expect(signedIn).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each([
+    ['abandoned', (popup: OAuthPopup) => popup.abandon(() => {})],
+    ['disposed', (popup: OAuthPopup) => popup.dispose()],
+  ])(
+    'reports no late sign-in %s while its token request is out',
+    async (_label, end) => {
+      const { hub, popup, requestToken, start, done, onLate } = setup();
+      const handle = start();
+      await settle(handle.result);
+      popup.state.closed = true;
+      await vi.advanceTimersByTimeAsync(POPUP_POLL_MS);
+      let answer: (result: RelayTokenResult) => void = () => {};
+      requestToken.mockImplementationOnce(
+        () => new Promise(resolve => (answer = resolve))
+      );
+      done({ attempt: ATTEMPT, ok: true, error: null });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(requestToken).toHaveBeenCalledTimes(2);
+
+      end(handle);
+      answer(TOKEN_RESULT);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(onLate).not.toHaveBeenCalled();
+      expect(hub.openCount(AUTH_CHANNEL)).toBe(0);
+    }
+  );
 
   it('keeps the result it already had when disposed later', async () => {
     const { tokenResults, start, done } = setup();

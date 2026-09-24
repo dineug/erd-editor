@@ -92,10 +92,20 @@ describe('parseDriveState', () => {
       'a resource key for a malformed id',
       state({ action: 'open', ids: ['a'], resourceKeys: { 'a b': 'k' } }),
     ],
+    ...['0-a\nb', '0-a,b/c', '0-a/b', '0-a b', '0-ключ', 'k'.repeat(257)].map(
+      key => [
+        `the resource key ${JSON.stringify(key.slice(0, 12))}`,
+        state({ action: 'open', ids: ['a'], resourceKeys: { a: key } }),
+      ]
+    ),
     ['a malformed folder', state({ action: 'create', folderId: '../x' })],
     [
-      'a malformed folder key',
+      'an empty folder key',
       state({ action: 'create', folderId: 'f', folderResourceKey: '' }),
+    ],
+    [
+      'a folder key with a comma',
+      state({ action: 'create', folderId: 'f', folderResourceKey: '0-a,b/c' }),
     ],
     ['a user id that is not a string', state({ action: 'create', userId: 5 })],
     ['a user id with spaces', state({ action: 'create', userId: 'a b' })],

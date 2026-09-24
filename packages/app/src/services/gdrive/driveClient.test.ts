@@ -10,17 +10,15 @@ import {
   backoffDelay,
   createDriveClient,
   DriveError,
-  FILE_FIELDS,
-  LIST_FIELDS,
-  NAME_FIELDS,
   parseDriveFile,
-  RENAME_FIELDS,
-  SAVE_FIELDS,
   withRetry,
 } from '@/services/gdrive/driveClient';
 import { TokenUnavailableError } from '@/services/gdrive/tokenManager';
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
+// Spelled out, not imported: a misspelled field in the client must fail here.
+const FILE_FIELDS =
+  'id,name,mimeType,modifiedTime,size,trashed,parents,capabilities(canEdit,canRename)';
 
 function setup(drive: FakeDrive = createFakeDrive()) {
   const tokens = { current: 'drive-token-1', renewed: 'drive-token-2' };
@@ -101,7 +99,9 @@ describe('createDriveClient', () => {
       expect(url.origin + url.pathname).toBe(
         'https://www.googleapis.com/drive/v3/files'
       );
-      expect(url.searchParams.get('fields')).toBe(LIST_FIELDS);
+      expect(url.searchParams.get('fields')).toBe(
+        `nextPageToken,files(${FILE_FIELDS})`
+      );
       expect(url.searchParams.get('q')).toBe('trashed=false');
       expect(url.searchParams.get('orderBy')).toBe('modifiedTime desc');
       expect(url.searchParams.get('supportsAllDrives')).toBe('true');
@@ -111,27 +111,55 @@ describe('createDriveClient', () => {
 
   it('reads the listed files with every field it asked for', async () => {
     const { drive, client } = setup();
-    const file = drive.add({
+    const renamable = drive.add({
       name: 'orders.erd',
       mimeType: 'application/octet-stream',
       content: '{"version":"3.0.0"}',
       parents: ['folder-1'],
+      canEdit: false,
+      canRename: true,
+    });
+    const editable = drive.add({
+      name: 'sales.erd.json',
+      canEdit: true,
       canRename: false,
     });
 
     await expect(client.listFiles()).resolves.toEqual([
       {
-        id: file.id,
-        name: 'orders.erd',
-        mimeType: 'application/octet-stream',
-        modifiedTime: file.modifiedTime,
-        size: 19,
+        id: editable.id,
+        name: 'sales.erd.json',
+        mimeType: 'application/json',
+        modifiedTime: editable.modifiedTime,
+        size: 2,
         trashed: false,
-        parents: ['folder-1'],
+        parents: ['root'],
         canEdit: true,
         canRename: false,
       },
+      {
+        id: renamable.id,
+        name: 'orders.erd',
+        mimeType: 'application/octet-stream',
+        modifiedTime: renamable.modifiedTime,
+        size: 19,
+        trashed: false,
+        parents: ['folder-1'],
+        canEdit: false,
+        canRename: true,
+      },
     ]);
+  });
+
+  it('reads a file in the trash as trashed', async () => {
+    const { drive, client } = setup();
+    const file = drive.add({ name: 'old.erd', trashed: true });
+
+    await expect(client.getFile(file.id)).resolves.toMatchObject({
+      trashed: true,
+      canEdit: true,
+      canRename: true,
+    });
   });
 
   it('lists nothing from an empty Drive in one call', async () => {
@@ -169,7 +197,7 @@ describe('createDriveClient', () => {
     const folder = drive.add({ name: 'Designs', mimeType: FOLDER_MIME });
 
     await expect(client.getName(folder.id)).resolves.toBe('Designs');
-    expect(drive.calls[0].url.searchParams.get('fields')).toBe(NAME_FIELDS);
+    expect(drive.calls[0].url.searchParams.get('fields')).toBe('name');
   });
 
   it('downloads the content with alt=media', async () => {
@@ -198,7 +226,7 @@ describe('createDriveClient', () => {
       `https://www.googleapis.com/upload/drive/v3/files/${file.id}`
     );
     expect(call.url.searchParams.get('uploadType')).toBe('media');
-    expect(call.url.searchParams.get('fields')).toBe(SAVE_FIELDS);
+    expect(call.url.searchParams.get('fields')).toBe('id,modifiedTime');
     expect(call.url.searchParams.get('supportsAllDrives')).toBe('true');
     expect(call.headers.get('Content-Type')).toBe('application/octet-stream');
     expect(call.body).toBe('{"version":"3.0.0"}');
@@ -232,7 +260,7 @@ describe('createDriveClient', () => {
     const [call] = drive.calls;
     expect(call.method).toBe('PATCH');
     expect(call.url.pathname).toBe(`/drive/v3/files/${file.id}`);
-    expect(call.url.searchParams.get('fields')).toBe(RENAME_FIELDS);
+    expect(call.url.searchParams.get('fields')).toBe('id,name,modifiedTime');
     // Drive reads metadata from a JSON body alone; text/plain would rename nothing.
     expect(call.headers.get('Content-Type')).toBe(
       'application/json; charset=UTF-8'
@@ -504,6 +532,29 @@ describe('createDriveClient', () => {
     await expect(
       driveError(client.saveContent({ id: 'x', mimeType: 'a' }, '{}'))
     ).resolves.toMatchObject({ kind: 'invalid-response' });
+  });
+
+  it.each([
+    ['a misspelled field', `/files/file-1?fields=id,canRenam`],
+    [
+      'a misspelled nested field',
+      `/files/file-1?fields=capabilities(canRenam)`,
+    ],
+    ['a field of a file on the list', `/files?fields=files(id,canEdit)`],
+    ['a sub-selection of a plain field', `/files/file-1?fields=name(id)`],
+  ])('has the fake Drive refuse %s, as Drive does', async (_label, path) => {
+    const drive = createFakeDrive();
+    drive.add({ name: 'orders.erd' });
+    const send = drive.fetch;
+
+    const response = await send(`https://www.googleapis.com/drive/v3${path}`, {
+      headers: { Authorization: 'Bearer drive-token-1' },
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { errors: [{ reason: 'invalidParameter' }] },
+    });
   });
 
   it('throws Illegal invocation through a fetch called with a receiver', async () => {

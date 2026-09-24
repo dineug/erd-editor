@@ -11,6 +11,8 @@ export const POPUP_NAME = 'erd-editor-google-auth';
 export const POPUP_FEATURES = 'popup,width=500,height=640';
 export const POPUP_TIMEOUT_MS = 5 * 60_000;
 export const POPUP_POLL_MS = 500;
+/** How long a close waits for its callback's report before a pending logout goes out. */
+export const CALLBACK_GRACE_MS = 1_000;
 
 /** The window.open result as far as the popup is watched; Window fits it. */
 export type PopupWindowLike = {
@@ -38,9 +40,13 @@ export type OAuthPopupDeps = {
   createChannel: CreateChannel;
   /**
    * POST /api/auth/token, classified by its JSON contract. callbackSucceeded
-   * is true once this attempt's callback reported the cookie it set.
+   * is true once this attempt's callback reported the cookie it set; before
+   * that, callbackReport waits a moment for the report, true on a success.
    */
-  requestToken: (callbackSucceeded: boolean) => Promise<RelayTokenResult>;
+  requestToken: (
+    callbackSucceeded: boolean,
+    callbackReport: () => Promise<boolean>
+  ) => Promise<RelayTokenResult>;
   /** Remembers the relay as unavailable until UTC midnight. */
   recordUnavailable: () => void;
   createAttempt?: () => string;
@@ -56,8 +62,14 @@ export type OAuthPopup = {
   result: Promise<OAuthPopupOutcome>;
   /** Ends the wait as a closed popup would. */
   cancel: () => void;
-  /** Stops watching and settles as cancelled, asking the relay nothing: signing out, leaving. */
+  /** Stops watching and settles as cancelled, asking the relay nothing: a new sign-in, leaving. */
   dispose: () => void;
+  /**
+   * Signing out: closes the popup and settles as cancelled, asking the relay
+   * nothing. A success its callback still reports in the time left calls
+   * onSignedIn, since the cookie that callback set outlives the sign-out.
+   */
+  abandon: (onSignedIn: () => void) => void;
 };
 
 type OAuthDone = { attempt: string; ok: boolean; error: string | null };
@@ -128,23 +140,45 @@ export function openOAuthPopup(
       result: Promise.resolve({ kind: 'blocked' }),
       cancel: () => {},
       dispose: () => {},
+      abandon: () => {},
     };
   }
 
-  let phase: 'waiting' | 'closing' | 'finishing' | 'late' | 'over' = 'waiting';
+  let phase:
+    | 'waiting'
+    | 'closing'
+    | 'finishing'
+    | 'late'
+    | 'abandoned'
+    | 'over' = 'waiting';
   let timedOut = false;
   /** This attempt's oauth-done, come while the token request of a close was out. */
   let crossed: OAuthDone | null = null;
+  let answerReport: (() => void) | null = null;
+  let onSignedIn: () => void = () => {};
   let settle: (outcome: OAuthPopupOutcome) => void = () => {};
   const result = new Promise<OAuthPopupOutcome>(resolve => {
     settle = resolve;
   });
   const channel = createChannel(AUTH_CHANNEL);
 
+  /** Waits a moment for this attempt's report to cross the close's token request. */
+  const callbackReport = () =>
+    new Promise<boolean>(resolve => {
+      const answer = () => {
+        clearTimeout(timer);
+        answerReport = null;
+        resolve(crossed?.ok === true);
+      };
+      const timer = setTimeout(answer, CALLBACK_GRACE_MS);
+      answerReport = answer;
+      if (crossed) answer();
+    });
+
   const classify = async (
     afterSuccess: boolean
   ): Promise<OAuthPopupOutcome> => {
-    const token = await requestToken(afterSuccess).catch(
+    const token = await requestToken(afterSuccess, callbackReport).catch(
       (): RelayTokenResult => ({ kind: 'unavailable' })
     );
     switch (token.kind) {
@@ -169,7 +203,7 @@ export function openOAuthPopup(
   const reconcile = (
     closed: OAuthPopupOutcome
   ): OAuthPopupOutcome | Promise<OAuthPopupOutcome> => {
-    if (!crossed || phase === 'over') return closed;
+    if (!crossed || phase !== 'closing') return closed;
     if (!crossed.ok) return failureOutcome(crossed.error);
     return closed.kind === 'cancelled' ? classify(true) : closed;
   };
@@ -193,7 +227,7 @@ export function openOAuthPopup(
     void classify(false)
       .then(reconcile)
       .then(outcome => {
-        if (phase === 'over') return;
+        if (phase !== 'closing') return;
         // A popup closed early by COOP may still finish; keep listening for it.
         if (outcome.kind === 'cancelled' && !crossed && !timedOut) {
           phase = 'late';
@@ -204,23 +238,33 @@ export function openOAuthPopup(
       });
   };
 
+  /** Reports a message's outcome unless the popup was disposed or abandoned meanwhile. */
+  const finish = (
+    done: OAuthDone,
+    report: (outcome: OAuthPopupOutcome) => void
+  ) => {
+    void fromMessage(done).then(outcome => {
+      const finishing = phase === 'finishing';
+      stop();
+      if (finishing) report(outcome);
+    });
+  };
+
   const onMessage = (event: MessageEvent) => {
     const done = readOAuthDone(event.data);
     if (!done || done.attempt !== attempt) return;
     if (phase === 'waiting') {
       leave('finishing');
-      void fromMessage(done).then(outcome => {
-        stop();
-        settle(outcome);
-      });
+      finish(done, settle);
     } else if (phase === 'closing') {
       crossed ??= done;
+      answerReport?.();
     } else if (phase === 'late') {
       phase = 'finishing';
-      void fromMessage(done).then(outcome => {
-        stop();
-        onLate?.(outcome);
-      });
+      finish(done, outcome => onLate?.(outcome));
+    } else if (phase === 'abandoned') {
+      stop();
+      if (done.ok) onSignedIn();
     }
   };
 
@@ -230,7 +274,7 @@ export function openOAuthPopup(
   const deadline = setTimeout(() => {
     timedOut = true;
     if (phase === 'waiting') terminate();
-    else if (phase === 'late') stop();
+    else if (phase === 'late' || phase === 'abandoned') stop();
   }, POPUP_TIMEOUT_MS);
   channel.addEventListener('message', onMessage);
 
@@ -240,6 +284,18 @@ export function openOAuthPopup(
     dispose: () => {
       stop();
       settle({ kind: 'cancelled' });
+    },
+    abandon: signedIn => {
+      settle({ kind: 'cancelled' });
+      if (phase === 'over') return;
+      clearInterval(poll);
+      popup.close();
+      if (timedOut) {
+        stop();
+      } else {
+        phase = 'abandoned';
+        onSignedIn = signedIn;
+      }
     },
   };
 }
