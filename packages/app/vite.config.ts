@@ -2,9 +2,10 @@ import { join } from 'node:path';
 
 import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite-plus';
+import { defineConfig, loadEnv, type Plugin } from 'vite-plus';
 
 import { BROWSER_TARGET, BROWSER_TARGET_QUERY } from '../../build-target';
+import { createAuthDevMiddleware } from './src/server/auth/nodeAdapter';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const GTAG_ID = 'G-3VBWD4V1JX';
@@ -34,6 +35,33 @@ function gtag(isProduction: boolean): Plugin {
   </body>`
             )
           : html,
+    },
+  };
+}
+
+/**
+ * Serves /api/auth/* from the handlers the Pages Function runs. The middleware
+ * is added straight away, not from a returned hook, so it precedes Vite's own
+ * and the SPA fallback. Secrets come from the env or packages/app/.env.local.
+ */
+function gdriveDevServer(mode: string): Plugin {
+  return {
+    name: 'gdrive-dev-server',
+    apply: 'serve',
+    configureServer(server) {
+      const env = loadEnv(mode, import.meta.dirname, '');
+      server.middlewares.use(
+        createAuthDevMiddleware({
+          getEnv: () => ({
+            GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
+            COOKIE_KEY: env.COOKIE_KEY,
+            VITE_GOOGLE_CLIENT_ID: env.VITE_GOOGLE_CLIENT_ID,
+          }),
+          // Only the e2e harness sets this, pointing Google's token and revoke
+          // endpoints at its fake; the Pages Function never reads it.
+          oauthBaseUrl: env.ERD_EDITOR_E2E_GOOGLE_OAUTH_URL || undefined,
+        })
+      );
     },
   };
 }
@@ -102,6 +130,8 @@ export default defineConfig(({ mode }) => {
       }),
 
       gtag(isProduction),
+
+      gdriveDevServer(mode),
     ],
 
     /**
