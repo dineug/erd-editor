@@ -8,6 +8,10 @@ import {
   RELAY_TOKEN_PATH,
 } from '@/services/gdrive/authMode';
 import type {
+  FileLockManagerLike,
+  FileLockOptions,
+} from '@/services/gdrive/fileLeader';
+import type {
   GisError,
   GisOAuth2,
   GisTokenClientConfig,
@@ -62,12 +66,15 @@ type HubChannel = ChannelLike & {
  */
 export function createChannelHub() {
   const open = new Set<HubChannel>();
+  const muted = new Set<ChannelLike>();
   const posted: Array<{ name: string; message: unknown }> = [];
 
   const send = (name: string, message: unknown, from: HubChannel | null) => {
+    if (from && muted.has(from)) return;
     posted.push({ name, message });
     for (const channel of open) {
       if (channel === from || channel.name !== name) continue;
+      if (muted.has(channel)) continue;
       const data = structuredClone(message);
       setTimeout(() => channel.deliver(data), 0);
     }
@@ -112,41 +119,124 @@ export function createChannelHub() {
     openCount(name: string) {
       return [...open].filter(channel => channel.name === name).length;
     },
+
+    /** A frozen tab's channel: it hears nothing and what it posts goes nowhere. */
+    mute(channel: ChannelLike) {
+      muted.add(channel);
+    },
   };
 }
 
 export type ChannelHub = ReturnType<typeof createChannelHub>;
 
-/** navigator.locks for exclusive requests: granted a microtask later, in order, released when the callback settles. */
+function abortError(): DOMException {
+  return new DOMException('The lock request was aborted.', 'AbortError');
+}
+
+type LockCallback = (lock: { name: string; mode: 'exclusive' } | null) => any;
+
+type Holder = { steal: () => void };
+
+/**
+ * navigator.locks for exclusive requests, shared by a test's tabs: granted a
+ * microtask later, in order, freed when the callback settles; ifAvailable,
+ * signal, steal (the holder's promise rejects, its callback runs on) and query.
+ */
 export function createLockManager() {
-  const held = new Set<string>();
+  const held = new Map<string, Holder>();
   const waiting = new Map<string, Array<() => void>>();
   const requests: string[] = [];
+  const calls: Array<{ name: string; options: FileLockOptions }> = [];
 
-  const locks: LockManagerLike & { requests: string[] } = {
-    requests,
-    request<T>(name: string, callback: () => Promise<T>): Promise<T> {
-      requests.push(name);
-      return new Promise<T>((resolve, reject) => {
-        const grant = () => {
-          held.add(name);
-          Promise.resolve()
-            .then(callback)
-            .then(resolve, reject)
-            .finally(() => {
-              held.delete(name);
-              waiting.get(name)?.shift()?.();
-            });
+  const next = (name: string) => waiting.get(name)?.shift()?.();
+
+  function request(
+    name: string,
+    optionsOrCallback: FileLockOptions | LockCallback,
+    maybeCallback?: LockCallback
+  ): Promise<unknown> {
+    const options =
+      typeof optionsOrCallback === 'function' ? {} : optionsOrCallback;
+    const callback =
+      typeof optionsOrCallback === 'function'
+        ? optionsOrCallback
+        : maybeCallback!;
+    requests.push(name);
+    calls.push({ name, options });
+
+    return new Promise((resolve, reject) => {
+      if (options.signal?.aborted) return reject(abortError());
+
+      const grant = () => {
+        let stolen = false;
+        const holder: Holder = {
+          steal: () => {
+            stolen = true;
+            reject(abortError());
+          },
         };
-        if (!held.has(name)) return grant();
-        const queue = waiting.get(name) ?? [];
-        queue.push(grant);
-        waiting.set(name, queue);
+        held.set(name, holder);
+        Promise.resolve()
+          .then(() => callback({ name, mode: 'exclusive' }))
+          .then(
+            value => !stolen && resolve(value),
+            error => !stolen && reject(error)
+          )
+          .finally(() => {
+            if (held.get(name) !== holder) return;
+            held.delete(name);
+            next(name);
+          });
+      };
+
+      if (options.steal) {
+        held.get(name)?.steal();
+        return grant();
+      }
+      if (!held.has(name) && !waiting.get(name)?.length) return grant();
+      if (options.ifAvailable) {
+        Promise.resolve()
+          .then(() => callback(null))
+          .then(resolve, reject);
+        return;
+      }
+      const queue = waiting.get(name) ?? [];
+      queue.push(grant);
+      waiting.set(name, queue);
+      options.signal?.addEventListener('abort', () => {
+        const index = queue.indexOf(grant);
+        if (index === -1) return;
+        queue.splice(index, 1);
+        reject(abortError());
       });
+    });
+  }
+
+  return {
+    requests,
+    calls,
+    request,
+    async query() {
+      return {
+        held: [...held.keys()].map(name => ({ name, mode: 'exclusive' })),
+        pending: [...waiting].flatMap(([name, queue]) =>
+          queue.map(() => ({ name, mode: 'exclusive' }))
+        ),
+      };
     },
-  };
-  return locks;
+    /** Whether a tab holds name, as a test sees it without awaiting a query. */
+    isHeld: (name: string) => held.has(name),
+    waitingFor: (name: string) => waiting.get(name)?.length ?? 0,
+  } as LockManagerLike &
+    FileLockManagerLike & {
+      requests: string[];
+      calls: Array<{ name: string; options: FileLockOptions }>;
+      isHeld(name: string): boolean;
+      waitingFor(name: string): number;
+    };
 }
+
+export type FakeLockManager = ReturnType<typeof createLockManager>;
 
 type RelayReply = Response | 'network-error';
 
@@ -422,6 +512,8 @@ export type FakeDriveFile = {
   canEdit: boolean;
   canRename: boolean;
   resourceKey: string | null;
+  /** What Drive reports, when a test needs more than the content's bytes. */
+  size?: number;
 };
 
 export type DriveCall = {
@@ -527,7 +619,10 @@ export function createFakeDrive() {
   const failures: Array<{
     method: string;
     reply: (() => Response) | 'network-error';
+    when?: (url: URL) => boolean;
   }> = [];
+  const holds: Array<{ method: string; gate: Promise<void> }> = [];
+  const lostResponses: string[] = [];
   let clock = Date.UTC(2026, 8, 25, 9);
   let created = 0;
 
@@ -539,7 +634,7 @@ export function createFakeDrive() {
     name: file.name,
     mimeType: file.mimeType,
     modifiedTime: file.modifiedTime,
-    size: String(new TextEncoder().encode(file.content).length),
+    size: String(file.size ?? new TextEncoder().encode(file.content).length),
     trashed: file.trashed,
     parents: file.parents,
     capabilities: { canEdit: file.canEdit, canRename: file.canRename },
@@ -582,13 +677,37 @@ export function createFakeDrive() {
       return file;
     },
 
-    /** The next request of this method fails with this status and reason. */
-    failNext(method: string, status: number, reason = 'backendError') {
-      failures.push({ method, reply: () => driveError(status, reason) });
+    /** The next request of this method, and of URLs when matches if given, fails so. */
+    failNext(
+      method: string,
+      status: number,
+      reason = 'backendError',
+      when?: (url: URL) => boolean
+    ) {
+      failures.push({ method, reply: () => driveError(status, reason), when });
     },
 
     failNetworkNext(method: string) {
       failures.push({ method, reply: 'network-error' });
+    },
+
+    /** The next request of this method waits, unprocessed, until released. */
+    hold(method: string): () => void {
+      let release: () => void = () => {};
+      holds.push({ method, gate: new Promise<void>(r => (release = r)) });
+      return release;
+    },
+
+    /** The next request of this method goes through and its answer is lost, as a dropped connection. */
+    loseNextResponse(method: string) {
+      lostResponses.push(method);
+    },
+
+    /** A change made elsewhere, as the Drive web app or another device saves. */
+    bumpRemote(fileId: string, content?: string) {
+      const file = files.get(fileId)!;
+      if (content !== undefined) file.content = content;
+      file.modifiedTime = nextTime();
     },
 
     callsTo(method: string): DriveCall[] {
@@ -596,120 +715,136 @@ export function createFakeDrive() {
     },
 
     fetch: receiverChecked(async (input, init): Promise<Response> => {
-      const url = new URL(input);
       const method = init?.method ?? 'GET';
-      const headers = new Headers(init?.headers);
-      const body = typeof init?.body === 'string' ? init.body : null;
-      calls.push({ method, url, headers, body });
-
-      const failure = failures.findIndex(entry => entry.method === method);
-      if (failure !== -1) {
-        const [{ reply: failed }] = failures.splice(failure, 1);
-        if (failed === 'network-error') throw new TypeError('fetch failed');
-        return failed();
-      }
-
-      const token = headers.get('Authorization')?.replace(/^Bearer /, '');
-      if (!token || !drive.tokens.has(token))
-        return driveError(401, 'authError');
-
-      const fields = url.searchParams.get('fields');
-      const path = url.pathname;
-
-      if (method === 'GET' && path === '/drive/v3/files') {
-        const listed = [...files.values()]
-          .filter(
-            file =>
-              !(url.searchParams.get('q') ?? '').includes('trashed=false') ||
-              !file.trashed
-          )
-          .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
-        const start = Number(url.searchParams.get('pageToken') ?? 0);
-        const size = Math.min(
-          drive.pageSize,
-          Number(url.searchParams.get('pageSize') ?? 100)
-        );
-        const page = listed.slice(start, start + size);
-        const next =
-          start + size < listed.length ? String(start + size) : undefined;
-        return reply(
-          {
-            kind: 'drive#fileList',
-            incompleteSearch: false,
-            nextPageToken: next,
-            files: page.map(resource),
-          },
-          fields,
-          DEFAULT_LIST_FIELDS,
-          LIST_SCHEMA
-        );
-      }
-
-      if (method === 'POST' && path === '/upload/drive/v3/files') {
-        const parts =
-          url.searchParams.get('uploadType') === 'multipart' && body
-            ? parseMultipart(headers.get('Content-Type') ?? '', body)
-            : null;
-        if (!parts) return driveError(400, 'badRequest');
-        const metadata = JSON.parse(parts[0].body) as {
-          name: string;
-          mimeType?: string;
-          parents?: string[];
-        };
-        const file = drive.add({
-          id: `created-${++created}`,
-          name: metadata.name,
-          mimeType: metadata.mimeType ?? parts[1].type,
-          parents: metadata.parents ?? ['root'],
-          content: parts[1].body,
-        });
-        return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
-      }
-
-      const match = /^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(path);
-      const file = match && files.get(decodeURIComponent(match[2]));
-      const keys = headers.get('X-Goog-Drive-Resource-Keys') ?? '';
-      if (
-        !file ||
-        (file.resourceKey &&
-          !keys.split(',').includes(`${file.id}/${file.resourceKey}`))
-      ) {
-        return driveError(404, 'notFound');
-      }
-
-      if (method === 'GET' && !match[1]) {
-        return url.searchParams.get('alt') === 'media'
-          ? new Response(file.content, {
-              headers: { 'Content-Type': file.mimeType },
-            })
-          : reply(resource(file), fields, DEFAULT_FILE_FIELDS);
-      }
-      if (method === 'PATCH' && match[1]) {
-        if (url.searchParams.get('uploadType') !== 'media') {
-          return driveError(400, 'badRequest');
-        }
-        if (!file.canEdit)
-          return driveError(403, 'insufficientFilePermissions');
-        file.content = body ?? '';
-        file.mimeType = (headers.get('Content-Type') ?? '').split(';')[0];
-        file.modifiedTime = nextTime();
-        return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
-      }
-      if (method === 'PATCH' && !match[1]) {
-        // Without it Drive reads no metadata from the body.
-        if (!headers.get('Content-Type')?.startsWith('application/json')) {
-          return driveError(400, 'badRequest');
-        }
-        if (!file.canRename)
-          return driveError(403, 'insufficientFilePermissions');
-        const update = JSON.parse(body ?? '{}') as { name?: string };
-        if (update.name) file.name = update.name;
-        file.modifiedTime = nextTime();
-        return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
-      }
-      return driveError(400, 'badRequest');
+      calls.push({
+        method,
+        url: new URL(input),
+        headers: new Headers(init?.headers),
+        body: typeof init?.body === 'string' ? init.body : null,
+      });
+      const held = holds.findIndex(entry => entry.method === method);
+      if (held !== -1) await holds.splice(held, 1)[0].gate;
+      const lost = lostResponses.indexOf(method);
+      if (lost === -1) return respond(input, init);
+      lostResponses.splice(lost, 1);
+      await respond(input, init);
+      throw new TypeError('fetch failed');
     }),
   };
+
+  async function respond(input: string, init?: RequestInit): Promise<Response> {
+    const url = new URL(input);
+    const method = init?.method ?? 'GET';
+    const headers = new Headers(init?.headers);
+    const body = typeof init?.body === 'string' ? init.body : null;
+
+    const failure = failures.findIndex(
+      entry => entry.method === method && (!entry.when || entry.when(url))
+    );
+    if (failure !== -1) {
+      const [{ reply: failed }] = failures.splice(failure, 1);
+      if (failed === 'network-error') throw new TypeError('fetch failed');
+      return failed();
+    }
+
+    const token = headers.get('Authorization')?.replace(/^Bearer /, '');
+    if (!token || !drive.tokens.has(token)) return driveError(401, 'authError');
+
+    const fields = url.searchParams.get('fields');
+    const path = url.pathname;
+
+    if (method === 'GET' && path === '/drive/v3/files') {
+      const listed = [...files.values()]
+        .filter(
+          file =>
+            !(url.searchParams.get('q') ?? '').includes('trashed=false') ||
+            !file.trashed
+        )
+        .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
+      const start = Number(url.searchParams.get('pageToken') ?? 0);
+      const size = Math.min(
+        drive.pageSize,
+        Number(url.searchParams.get('pageSize') ?? 100)
+      );
+      const page = listed.slice(start, start + size);
+      const next =
+        start + size < listed.length ? String(start + size) : undefined;
+      return reply(
+        {
+          kind: 'drive#fileList',
+          incompleteSearch: false,
+          nextPageToken: next,
+          files: page.map(resource),
+        },
+        fields,
+        DEFAULT_LIST_FIELDS,
+        LIST_SCHEMA
+      );
+    }
+
+    if (method === 'POST' && path === '/upload/drive/v3/files') {
+      const parts =
+        url.searchParams.get('uploadType') === 'multipart' && body
+          ? parseMultipart(headers.get('Content-Type') ?? '', body)
+          : null;
+      if (!parts) return driveError(400, 'badRequest');
+      const metadata = JSON.parse(parts[0].body) as {
+        name: string;
+        mimeType?: string;
+        parents?: string[];
+      };
+      const file = drive.add({
+        id: `created-${++created}`,
+        name: metadata.name,
+        mimeType: metadata.mimeType ?? parts[1].type,
+        parents: metadata.parents ?? ['root'],
+        content: parts[1].body,
+      });
+      return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
+    }
+
+    const match = /^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(path);
+    const file = match && files.get(decodeURIComponent(match[2]));
+    const keys = headers.get('X-Goog-Drive-Resource-Keys') ?? '';
+    if (
+      !file ||
+      (file.resourceKey &&
+        !keys.split(',').includes(`${file.id}/${file.resourceKey}`))
+    ) {
+      return driveError(404, 'notFound');
+    }
+
+    if (method === 'GET' && !match[1]) {
+      return url.searchParams.get('alt') === 'media'
+        ? new Response(file.content, {
+            headers: { 'Content-Type': file.mimeType },
+          })
+        : reply(resource(file), fields, DEFAULT_FILE_FIELDS);
+    }
+    if (method === 'PATCH' && match[1]) {
+      if (url.searchParams.get('uploadType') !== 'media') {
+        return driveError(400, 'badRequest');
+      }
+      if (!file.canEdit) return driveError(403, 'insufficientFilePermissions');
+      file.content = body ?? '';
+      file.mimeType = (headers.get('Content-Type') ?? '').split(';')[0];
+      file.modifiedTime = nextTime();
+      return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
+    }
+    if (method === 'PATCH' && !match[1]) {
+      // Without it Drive reads no metadata from the body.
+      if (!headers.get('Content-Type')?.startsWith('application/json')) {
+        return driveError(400, 'badRequest');
+      }
+      if (!file.canRename)
+        return driveError(403, 'insufficientFilePermissions');
+      const update = JSON.parse(body ?? '{}') as { name?: string };
+      if (update.name) file.name = update.name;
+      file.modifiedTime = nextTime();
+      return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
+    }
+    return driveError(400, 'badRequest');
+  }
   return drive;
 }
 

@@ -24,7 +24,8 @@ export const RETRY_LIMIT = 3;
 export const RETRY_BASE_MS = 1000;
 const RETRY_JITTER_MS = 250;
 const LIST_PAGE_SIZE = '100';
-const GOOGLE_APPS_MIME = 'application/vnd.google-apps.';
+/** Folders, shortcuts and Google's own documents: files with no content to open. */
+export const GOOGLE_APPS_MIME = 'application/vnd.google-apps.';
 const RATE_LIMIT_REASONS = new Set([
   'rateLimitExceeded',
   'userRateLimitExceeded',

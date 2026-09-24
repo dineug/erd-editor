@@ -1,0 +1,1035 @@
+import { tableActions } from '@dineug/erd-editor/peer.js';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
+
+import {
+  comparable,
+  createDriveEnv,
+  createPeerEditor,
+  documentWith,
+  type DriveEnv,
+  openTab,
+  settle,
+  SUB,
+  type Tab,
+  tableNames,
+  type TabOptions,
+} from '@/__test-utils__/driveDocument';
+import {
+  createDocumentController,
+  NO_LOCKS_JOIN_MS,
+  renameDriveFile,
+} from '@/services/gdrive/documentController';
+import {
+  fileChannelName,
+  openFileChannel,
+} from '@/services/gdrive/fileChannel';
+import { fileLockName } from '@/services/gdrive/fileLeader';
+import { STEAL_SETTLE_MS } from '@/services/gdrive/saveQueue';
+import { toDriveFingerprint } from '@/utils/documentFingerprint';
+
+/** A .vuerd file as the version 2 editor saved it: one table, users. */
+const VERSION_2_DOCUMENT = JSON.stringify({
+  canvas: { version: '2.0.0', width: 2000, height: 2000, databaseName: '' },
+  table: {
+    tables: [
+      {
+        id: 't1',
+        name: 'users',
+        comment: '',
+        columns: [],
+        ui: {
+          active: false,
+          left: 10,
+          top: 20,
+          zIndex: 1,
+          widthName: 60,
+          widthComment: 60,
+        },
+        visible: true,
+      },
+    ],
+    edit: null,
+    copyColumns: [],
+    columnDraggable: null,
+  },
+  memo: { memos: [] },
+  relationship: { relationships: [] },
+});
+
+let env: DriveEnv;
+const tabs: Tab[] = [];
+
+async function open(name: string, options: Partial<TabOptions> = {}) {
+  const tab = openTab(env, { name, ...options });
+  tabs.push(tab);
+  void tab.controller.open();
+  await settle(20);
+  return tab;
+}
+
+const driveContent = (fileId = 'file-1') =>
+  env.drive.files.get(fileId)!.content;
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  env = createDriveEnv();
+  env.addFile();
+});
+
+afterEach(() => {
+  tabs.splice(0).forEach(tab => tab.close());
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+
+describe('one tab', () => {
+  it('leads, loads from Drive and saves an edit two seconds later', async () => {
+    const a = await open('a');
+
+    expect(a.snapshot()).toMatchObject({
+      phase: 'ready',
+      role: 'leader',
+      name: 'shop.erd.json',
+      canEdit: true,
+      canRename: true,
+      saveState: 'saved',
+    });
+    expect(tableNames(a.value())).toEqual(['users']);
+
+    a.addTable('orders');
+    await settle(1999);
+    expect(env.patches()).toHaveLength(0);
+    await settle(1);
+
+    expect(env.patches()).toHaveLength(1);
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
+    expect(a.snapshot().saveState).toBe('saved');
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+  });
+});
+
+describe('tabs of one file', () => {
+  it('converge across three replicas, whichever tab edits', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    const c = await open('c');
+
+    expect(b.snapshot()).toMatchObject({ phase: 'ready', role: 'follower' });
+    expect(c.snapshot()).toMatchObject({ phase: 'ready', role: 'follower' });
+
+    const orders = b.addTable('orders');
+    await settle(5);
+    c.edit([
+      tableActions.changeTableNameAction({ id: orders, value: 'purchases' }),
+    ]);
+    await settle(5);
+    a.addTable('items');
+    await settle(5);
+
+    expect(tableNames(a.value())).toEqual(['items', 'purchases', 'users']);
+    expect(comparable(b.value())).toEqual(comparable(a.value()));
+    expect(comparable(c.value())).toEqual(comparable(a.value()));
+
+    await settle(10_000);
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+    expect(toDriveFingerprint(driveContent())).toBe(
+      toDriveFingerprint(a.value())
+    );
+  });
+});
+
+describe('leadership', () => {
+  it('passes to the next tab when the leader closes, which saves what it left', async () => {
+    const a = await open('a');
+    const b = await open('b');
+
+    a.addTable('orders');
+    await settle(5);
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(5);
+
+    expect(b.snapshot()).toMatchObject({ role: 'leader', saveState: 'saved' });
+    expect(env.patches().map(env.tabOf)).toEqual(['b']);
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
+
+    b.addTable('items');
+    await settle(2000);
+    expect(env.patches().map(env.tabOf)).toEqual(['b', 'b']);
+  });
+
+  it('starts a new tab from the leader’s value, unsaved edits included, without reading Drive', async () => {
+    const a = await open('a');
+    a.addTable('orders');
+    await settle(5);
+
+    const c = await open('c');
+
+    expect(tableNames(c.value())).toEqual(['orders', 'users']);
+    expect(env.downloads().map(env.tabOf)).toEqual(['a']);
+    expect(env.patches()).toHaveLength(0);
+  });
+
+  it('lets a tab take over saving from a leader that stopped answering', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.freeze();
+
+    b.addTable('orders');
+    await settle(2000 + 3000);
+    expect(b.snapshot().saveState).toBe('waiting-leader');
+    expect(env.patches()).toHaveLength(0);
+
+    await b.controller.takeOver();
+    await settle(5);
+
+    expect(b.snapshot()).toMatchObject({ role: 'leader', saveState: 'saved' });
+    expect(env.patches().map(env.tabOf)).toEqual(['b']);
+    expect(a.snapshot().role).toBe('follower');
+  });
+
+  it('keeps a stolen leader from PATCHing once its metadata check comes back', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    const release = env.drive.hold('GET');
+    await settle(2000);
+
+    await b.controller.takeOver();
+    release();
+    await settle(20);
+
+    expect(env.patches().map(env.tabOf)).toEqual(['b']);
+    expect(a.snapshot().role).toBe('follower');
+    expect(toDriveFingerprint(driveContent())).toBe(
+      toDriveFingerprint(b.value())
+    );
+  });
+
+  it('puts back what a stolen leader’s late PATCH overwrote', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    const release = env.drive.hold('PATCH');
+    await settle(2000);
+    // a has items too, but the PATCH it sent carries what it had before.
+    b.addTable('items');
+    await settle(5);
+
+    const taking = b.controller.takeOver();
+    await settle(STEAL_SETTLE_MS + 20);
+    await taking;
+    expect(env.patches().map(env.tabOf)).toEqual(['a', 'b']);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+
+    release();
+    await settle(20);
+
+    expect(env.patches().map(env.tabOf)).toEqual(['a', 'b', 'b']);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+    expect(b.snapshot().saveState).toBe('saved');
+  });
+
+  it('waits after a takeover for the save the old leader announced', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    const release = env.drive.hold('PATCH');
+    await settle(2005);
+
+    const taking = b.controller.takeOver();
+    b.addTable('items');
+    await settle(1000);
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+
+    release();
+    await settle(20);
+    await taking;
+
+    expect(env.patches().map(env.tabOf)).toEqual(['a', 'b']);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+    expect(b.snapshot()).toMatchObject({ role: 'leader', saveState: 'saved' });
+  });
+});
+
+describe('a remote change', () => {
+  it('stops every tab with a conflict and sends no PATCH', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    env.drive.bumpRemote('file-1');
+
+    b.addTable('orders');
+    await settle(2100);
+
+    expect(a.snapshot().saveState).toBe('conflict');
+    expect(b.snapshot().saveState).toBe('conflict');
+    expect(env.patches()).toHaveLength(0);
+    expect(b.controller.hasUnsavedChanges()).toBe(true);
+  });
+
+  it('downloads my changes as the editor holds them', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    env.drive.bumpRemote('file-1');
+    b.addTable('orders');
+    await settle(2100);
+
+    b.controller.downloadChanges();
+
+    expect(b.downloads).toEqual([{ fileName: 'shop.erd', text: b.value() }]);
+    expect(tableNames(b.downloads[0].text)).toEqual(['orders', 'users']);
+    a.controller.downloadChanges();
+    expect(a.downloads[0].text).toBe(a.value());
+  });
+
+  it('reloads from Drive in every tab, from a follower’s click, and saves again', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    env.drive.bumpRemote(
+      'file-1',
+      driveContent().replace('"users"', '"people"')
+    );
+    b.addTable('orders');
+    await settle(2100);
+    expect(a.snapshot().saveState).toBe('conflict');
+    const epoch = a.snapshot().epoch;
+
+    await b.controller.reload();
+    await settle(20);
+
+    expect(a.snapshot()).toMatchObject({ saveState: 'saved', phase: 'ready' });
+    expect(a.snapshot().epoch).not.toBe(epoch);
+    expect(b.snapshot().epoch).toBe(a.snapshot().epoch);
+    expect(tableNames(a.value())).toEqual(['people']);
+    expect(tableNames(b.value())).toEqual(['people']);
+
+    b.addTable('orders');
+    await settle(2100);
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+    expect(tableNames(driveContent())).toEqual(['orders', 'people']);
+  });
+});
+
+describe('a save nobody confirmed', () => {
+  it('stops the next leader as unconfirmed when the old one died after its PATCH', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    const release = env.drive.hold('PATCH');
+    // b hears of the attempt; then the PATCH lands and a dies before saying so.
+    await settle(2005);
+    release();
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(20);
+    b.addTable('items');
+    await settle(2000);
+
+    expect(b.snapshot()).toMatchObject({
+      role: 'leader',
+      saveState: 'unconfirmed',
+    });
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+  });
+
+  it('resumes after Check Drive finds the attempt landed, from any tab', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    env.drive.loseNextResponse('PATCH');
+    await settle(2000 + 1000 + 20);
+    expect(a.snapshot().saveState).toBe('unconfirmed');
+    expect(b.snapshot().saveState).toBe('unconfirmed');
+    expect(env.patches()).toHaveLength(1);
+
+    expect(await b.controller.checkUnconfirmed()).toBe('skipped');
+    await settle(20);
+
+    expect(a.snapshot().saveState).toBe('saved');
+    expect(b.snapshot().saveState).toBe('saved');
+    b.addTable('items');
+    await settle(2100);
+    expect(env.patches().map(env.tabOf)).toEqual(['a', 'a']);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+  });
+
+  it('turns into a conflict when Drive holds something else', async () => {
+    const a = await open('a');
+    a.addTable('orders');
+    env.drive.loseNextResponse('PATCH');
+    await settle(2000);
+    env.drive.bumpRemote('file-1', driveContent().replace('"orders"', '"x"'));
+    await settle(1020);
+    expect(a.snapshot().saveState).toBe('unconfirmed');
+
+    expect(await a.controller.checkUnconfirmed()).toBe('conflict');
+    expect(a.snapshot().saveState).toBe('conflict');
+  });
+});
+
+describe('rename', () => {
+  it('waits for the save under way when a follower asks, so the next save is no conflict', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    const release = env.drive.hold('PATCH');
+    await settle(2000);
+
+    const renamed = b.controller.rename('store.erd.json');
+    await settle(20);
+    expect(env.drive.files.get('file-1')!.name).toBe('shop.erd.json');
+
+    release();
+    await settle(20);
+    const result = await renamed;
+
+    expect(result.name).toBe('store.erd.json');
+    expect(env.drive.files.get('file-1')!.name).toBe('store.erd.json');
+    expect(a.snapshot().name).toBe('store.erd.json');
+    expect(b.snapshot().name).toBe('store.erd.json');
+
+    b.addTable('items');
+    await settle(2100);
+    expect(a.snapshot().saveState).toBe('saved');
+    expect(env.patches()).toHaveLength(2);
+  });
+
+  it('renames in the leader’s own tab and tells the others', async () => {
+    const a = await open('a');
+    const b = await open('b');
+
+    const renaming = a.controller.rename('store.erd.json');
+    await settle(5);
+    await renaming;
+
+    expect(b.snapshot().name).toBe('store.erd.json');
+    a.addTable('orders');
+    await settle(2000);
+    expect(a.snapshot().saveState).toBe('saved');
+  });
+
+  it('reports a rename Drive refused to the tab that asked', async () => {
+    await open('a');
+    const b = await open('b');
+    env.drive.files.get('file-1')!.canRename = false;
+
+    const failed = expect(
+      b.controller.rename('store.erd.json')
+    ).rejects.toThrow('The file could not be renamed');
+    await settle(20);
+    await failed;
+  });
+
+  it('goes through the leader of a file open elsewhere', async () => {
+    const a = await open('a');
+
+    const renaming = renameDriveFile(
+      {
+        drive: env.clientFor('sidebar'),
+        locks: env.locks,
+        createChannel: env.hub.create,
+        sub: SUB,
+      },
+      'file-1',
+      'store.erd.json'
+    );
+    await settle(20);
+    const result = await renaming;
+
+    expect(result.name).toBe('store.erd.json');
+    expect(a.snapshot().name).toBe('store.erd.json');
+    const renames = env.drive
+      .callsTo('PATCH')
+      .filter(call => call.url.pathname === '/drive/v3/files/file-1');
+    expect(renames.map(env.tabOf)).toEqual(['a']);
+  });
+
+  it('renames a file no tab has open at once', async () => {
+    const result = await renameDriveFile(
+      {
+        drive: env.clientFor('sidebar'),
+        locks: env.locks,
+        createChannel: env.hub.create,
+        sub: SUB,
+      },
+      'file-1',
+      'store.erd.json'
+    );
+
+    expect(result.name).toBe('store.erd.json');
+    expect(env.hub.posted).toHaveLength(0);
+  });
+
+  it('asks the tabs first without Web Locks, and renames at once when none answers', async () => {
+    const renaming = renameDriveFile(
+      {
+        drive: env.clientFor('sidebar'),
+        locks: null,
+        createChannel: env.hub.create,
+        sub: SUB,
+      },
+      'file-1',
+      'store.erd.json'
+    );
+    await settle(1999);
+    expect(env.drive.files.get('file-1')!.name).toBe('shop.erd.json');
+    await settle(1);
+
+    expect((await renaming).name).toBe('store.erd.json');
+  });
+
+  it('hands the rename to a tab without Web Locks that answers', async () => {
+    const a = await open('a', { locks: null });
+    await settle(NO_LOCKS_JOIN_MS);
+
+    const renaming = renameDriveFile(
+      {
+        drive: env.clientFor('sidebar'),
+        locks: null,
+        createChannel: env.hub.create,
+        sub: SUB,
+      },
+      'file-1',
+      'store.erd.json'
+    );
+    await settle(20);
+
+    expect((await renaming).name).toBe('store.erd.json');
+    expect(a.snapshot().name).toBe('store.erd.json');
+  });
+
+  it('gives up on a leader that never answers', async () => {
+    const a = await open('a');
+    a.freeze();
+
+    const renaming = renameDriveFile(
+      {
+        drive: env.clientFor('sidebar'),
+        locks: env.locks,
+        createChannel: env.hub.create,
+        sub: SUB,
+      },
+      'file-1',
+      'store.erd.json'
+    );
+    const failed = expect(renaming).rejects.toThrow('did not answer');
+    await settle(30_000);
+    await failed;
+  });
+});
+
+describe('what a file is', () => {
+  it('opens a version 2 file as version 3, saving nothing until an edit, then version 3 under its name', async () => {
+    env.drive.files.delete('file-1');
+    env.addFile({ name: 'legacy.vuerd', content: VERSION_2_DOCUMENT });
+    const a = await open('a');
+
+    expect(tableNames(a.value())).toEqual(['users']);
+    await settle(10_000);
+    expect(env.patches()).toHaveLength(0);
+
+    a.addTable('orders');
+    await settle(2000);
+
+    const [patch] = env.patches();
+    expect(JSON.parse(patch.body!).version).toBe('3.0.0');
+    expect(env.drive.files.get('file-1')!.name).toBe('legacy.vuerd');
+    expect(
+      env.drive
+        .callsTo('PATCH')
+        .filter(call => call.url.pathname === '/drive/v3/files/file-1')
+    ).toHaveLength(0);
+  });
+
+  it.each([
+    ['another tool’s JSON', '{"entities":[]}'],
+    ['no JSON at all', 'erd designer 1.0'],
+  ])('opens no editor for %s, and lets the lock go', async (_name, content) => {
+    env.drive.files.delete('file-1');
+    env.addFile({ name: 'model.erd', content });
+
+    const a = await open('a');
+
+    expect(a.snapshot()).toMatchObject({
+      phase: 'rejected',
+      rejection: 'not-document',
+      role: null,
+    });
+    expect(a.editors).toHaveLength(0);
+    expect(env.locks.isHeld(fileLockName(SUB, 'file-1'))).toBe(false);
+    await settle(10_000);
+    expect(env.patches()).toHaveLength(0);
+  });
+
+  it.each([
+    ['trashed', { trashed: true }],
+    ['google-native', { mimeType: 'application/vnd.google-apps.document' }],
+    ['too-large', { size: 64 * 1024 * 1024 + 1 }],
+  ])(
+    'turns away a file that is %s before reading it',
+    async (rejection, file) => {
+      env.drive.files.delete('file-1');
+      env.addFile(file);
+
+      const a = await open('a');
+
+      expect(a.snapshot()).toMatchObject({ phase: 'rejected', rejection });
+      expect(env.downloads()).toHaveLength(0);
+    }
+  );
+
+  it('says a file is not found when Drive has none, or shows it to nobody here', async () => {
+    env.drive.files.delete('file-1');
+    expect((await open('a')).snapshot().phase).toBe('not-found');
+
+    env.addFile();
+    env.drive.failNext('GET', 403, 'forbidden');
+    expect((await open('b')).snapshot().phase).toBe('not-found');
+  });
+
+  it('fails an open whose metadata Drive refuses', async () => {
+    env.drive.failNext('GET', 400, 'badRequest');
+
+    expect((await open('a')).snapshot().phase).toBe('failed');
+  });
+
+  it('fails an open whose content Drive refuses, and lets the lock go', async () => {
+    env.drive.failNext(
+      'GET',
+      400,
+      'badRequest',
+      url => url.searchParams.get('alt') === 'media'
+    );
+
+    const a = await open('a');
+
+    expect(a.snapshot()).toMatchObject({ phase: 'failed', role: null });
+    expect(env.locks.isHeld(fileLockName(SUB, 'file-1'))).toBe(false);
+  });
+
+  it('opens a file this account may only read as read-only and saves nothing', async () => {
+    env.drive.files.get('file-1')!.canEdit = false;
+    const a = await open('a');
+    const b = await open('b');
+
+    expect(a.snapshot()).toMatchObject({
+      canEdit: false,
+      saveState: 'readonly',
+    });
+    expect(b.snapshot()).toMatchObject({
+      canEdit: false,
+      saveState: 'readonly',
+    });
+    b.addTable('orders');
+    await settle(10_000);
+    expect(env.patches()).toHaveLength(0);
+  });
+});
+
+describe('the page around it', () => {
+  it('saves at once when the leader’s page goes hidden', async () => {
+    const page = new EventTarget() as EventTarget & {
+      visibilityState: DocumentVisibilityState;
+    };
+    page.visibilityState = 'visible';
+    const a = await open('a', { document: page });
+
+    a.addTable('orders');
+    page.visibilityState = 'hidden';
+    page.dispatchEvent(new Event('visibilitychange'));
+    await settle(5);
+
+    expect(env.patches()).toHaveLength(1);
+  });
+
+  it('holds the edits while the fallback token has run out, and saves them once reconnected', async () => {
+    const listeners = new Set<() => void>();
+    const tokenSnapshot = { status: 'fallback-expired' };
+    const tokens = {
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      getSnapshot: () => tokenSnapshot,
+    } as unknown as TabOptions['tokens'];
+    const a = await open('a', { tokens });
+    env.tokenStatus.current = 'fallback-expired';
+
+    a.addTable('orders');
+    await settle(2000);
+    a.addTable('items');
+    await settle(10_000);
+    expect(a.snapshot().saveState).toBe('paused');
+    expect(env.patches()).toHaveLength(0);
+
+    env.tokenStatus.current = null;
+    tokenSnapshot.status = 'fallback';
+    listeners.forEach(listener => listener());
+    await settle(5);
+
+    expect(env.patches()).toHaveLength(1);
+    expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+  });
+
+  it('flushes before a switch, in the leader and in a follower', async () => {
+    const a = await open('a');
+    const b = await open('b');
+
+    a.addTable('orders');
+    expect(a.controller.hasUnsavedChanges()).toBe(true);
+    expect(await a.controller.flush()).toBe(true);
+    expect(env.patches()).toHaveLength(1);
+
+    b.addTable('items');
+    const flushed = b.controller.flush();
+    await settle(600);
+    expect(await flushed).toBe(true);
+  });
+
+  it('reports a follower whose leader does not ack a flush', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.freeze();
+
+    const flushed = b.controller.flush();
+    await settle(3000);
+
+    expect(await flushed).toBe(false);
+  });
+
+  it('flushes nothing before a document is open', async () => {
+    const a = openTab(env, { name: 'a' });
+    tabs.push(a);
+
+    expect(await a.controller.flush()).toBe(true);
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+    expect(() => a.controller.attach(createPeerEditor('x').adapter)).toThrow();
+  });
+
+  it('lets go of its lock and its channel when closed', async () => {
+    const a = await open('a');
+    const b = await open('b');
+
+    b.close();
+    tabs.splice(tabs.indexOf(b), 1);
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(5);
+
+    expect(env.locks.isHeld(fileLockName(SUB, 'file-1'))).toBe(false);
+    expect(env.hub.openCount(fileChannelName(SUB, 'file-1'))).toBe(0);
+  });
+});
+
+describe('without Web Locks', () => {
+  it('joins another tab’s document, so both share edits', async () => {
+    const a = await open('a', { locks: null });
+    const b = openTab(env, { name: 'b', locks: null });
+    tabs.push(b);
+    void b.controller.open();
+    await settle(NO_LOCKS_JOIN_MS + 20);
+
+    expect(b.snapshot()).toMatchObject({ phase: 'ready', role: 'leader' });
+    expect(env.downloads().map(env.tabOf)).toEqual(['a']);
+
+    b.addTable('orders');
+    await settle(5);
+    expect(tableNames(a.value())).toEqual(['orders', 'users']);
+  });
+});
+
+describe('edges of a tab’s life', () => {
+  it('keeps the document when a reload cannot read Drive', async () => {
+    const a = await open('a');
+    const { epoch } = a.snapshot();
+
+    env.drive.failNext('GET', 400, 'badRequest');
+    const failed = a.controller.reload();
+    await settle(5);
+    expect(await failed).toBe(false);
+
+    env.drive.bumpRemote('file-1', 'no longer a document');
+    const refused = a.controller.reload();
+    await settle(5);
+    expect(await refused).toBe(false);
+
+    expect(a.snapshot()).toMatchObject({ phase: 'ready', epoch });
+    expect(tableNames(a.value())).toEqual(['users']);
+  });
+
+  it('gives every tab that waited the document one of them took over', async () => {
+    env.locks
+      .request(fileLockName(SUB, 'file-1'), {}, () => new Promise(() => {}))
+      .catch(() => {});
+    const b = await open('b');
+    const c = await open('c');
+    await settle(7500);
+    expect(c.snapshot().phase).toBe('waiting-snapshot');
+
+    const taking = b.controller.takeOver();
+    await settle(20);
+    await taking;
+
+    expect(c.snapshot()).toMatchObject({
+      phase: 'ready',
+      role: 'follower',
+      epoch: b.snapshot().epoch,
+    });
+    c.addTable('orders');
+    await settle(5);
+    expect(tableNames(b.value())).toEqual(['orders', 'users']);
+    expect(env.downloads().map(env.tabOf)).toEqual(['b']);
+  });
+
+  it('leaves a tab that could not open the file alone on another’s reload', async () => {
+    env.drive.failNext('GET', 404, 'notFound');
+    const x = await open('x');
+    const a = await open('a');
+    expect(x.snapshot().phase).toBe('not-found');
+
+    const reloading = a.controller.reload();
+    await settle(20);
+    await reloading;
+
+    expect(x.snapshot()).toMatchObject({ phase: 'not-found', role: null });
+  });
+
+  it('answers only while an editor is attached, and a stale detach does nothing', async () => {
+    const a = await open('a', { autoAttach: false });
+    const first = createPeerEditor('first');
+    const second = createPeerEditor('second');
+    const hello = openFileChannel(
+      env.hub.create,
+      fileChannelName(SUB, 'file-1'),
+      () => null
+    );
+    const heard: string[] = [];
+    hello.subscribe(message => {
+      if (message.type !== 'actions') heard.push(message.type);
+    });
+
+    const detachFirst = a.controller.attach(first.adapter);
+    detachFirst();
+    hello.post({ type: 'hello', from: 'raw' });
+    await settle(5);
+    expect(heard).toEqual(['status']);
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+
+    const detachSecond = a.controller.attach(second.adapter);
+    await settle(5);
+    expect(heard).toEqual(['status', 'snapshot', 'status']);
+    detachFirst();
+    second.addTable('orders');
+    await settle(2000);
+    expect(env.patches()).toHaveLength(1);
+
+    detachSecond();
+    detachSecond();
+    first.destroy();
+    second.destroy();
+  });
+
+  it('answers once mounted when elected before its editor was', async () => {
+    const a = await open('a');
+    const b = await open('b', { autoAttach: false });
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(5);
+    expect(b.snapshot().role).toBe('leader');
+
+    const c = await open('c');
+    expect(c.snapshot().phase).toBe('loading');
+    b.mount();
+    await settle(5);
+
+    expect(c.snapshot()).toMatchObject({ phase: 'ready', role: 'follower' });
+  });
+
+  it('tells the other tabs of a PATCH Drive refused, so none waits on it', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    // Refused twice: a's own save, then the one b's save-request asks for.
+    env.drive.failNext('PATCH', 400, 'badRequest');
+    env.drive.failNext('PATCH', 400, 'badRequest');
+    a.addTable('orders');
+    await settle(2005);
+    expect(a.snapshot().saveState).toBe('failed');
+    expect(env.patches()).toHaveLength(2);
+
+    env.drive.bumpRemote('file-1');
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(5);
+
+    // An attempt still pending would read the remote change as unconfirmed.
+    expect(b.snapshot()).toMatchObject({
+      role: 'leader',
+      saveState: 'conflict',
+    });
+  });
+
+  it('stops opening once closed', async () => {
+    const release = env.drive.hold('GET');
+    const a = openTab(env, { name: 'a' });
+    void a.controller.open();
+    a.close();
+    release();
+    await settle(20);
+
+    expect(a.snapshot().phase).toBe('loading');
+    expect(env.locks.calls).toHaveLength(0);
+
+    const failing = env.drive.hold('GET');
+    env.drive.failNext('GET', 404, 'notFound');
+    const b = openTab(env, { name: 'b' });
+    void b.controller.open();
+    b.close();
+    failing();
+    await settle(20);
+    expect(b.snapshot().phase).toBe('loading');
+  });
+
+  it('lets go of a lock it won after it was closed', async () => {
+    const tab: { current: Tab | null } = { current: null };
+    const locks = {
+      request: (...args: Parameters<typeof env.locks.request>) => {
+        tab.current?.controller.dispose();
+        return env.locks.request(...args);
+      },
+      query: () => env.locks.query(),
+    };
+    tab.current = openTab(env, { name: 'a', locks });
+    void tab.current.controller.open();
+    await settle(20);
+
+    expect(tab.current.snapshot().role).toBeNull();
+    expect(env.locks.isHeld(fileLockName(SUB, 'file-1'))).toBe(false);
+    expect(env.downloads()).toHaveLength(0);
+  });
+
+  it('does no work a closed leader acked', async () => {
+    const a = await open('a');
+    const raw = openFileChannel(
+      env.hub.create,
+      fileChannelName(SUB, 'file-1'),
+      () => null
+    );
+    a.addTable('orders');
+    const requests = env.drive.calls.length;
+
+    raw.post({ type: 'save-request' });
+    await settle(0);
+    expect(env.sent.at(-1)?.message.type).toBe('status');
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    a.close();
+    await settle(20);
+
+    expect(env.drive.calls).toHaveLength(requests);
+  });
+
+  it('shares one ack among a follower’s flushes', async () => {
+    await open('a');
+    const b = await open('b');
+
+    const first = b.controller.flush();
+    const second = b.controller.flush();
+    await settle(20);
+
+    expect(await Promise.all([first, second])).toEqual([true, true]);
+    expect(
+      env.sent.filter(
+        ({ tab, message }) => tab === 'b' && message.type === 'save-request'
+      )
+    ).toHaveLength(2);
+  });
+
+  it('waits for the page to hide and for a token before it saves', async () => {
+    const page = new EventTarget() as EventTarget & {
+      visibilityState: DocumentVisibilityState;
+    };
+    page.visibilityState = 'visible';
+    const listeners = new Set<() => void>();
+    const tokenSnapshot = { status: 'fallback-expired' };
+    const tokens = {
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      getSnapshot: () => tokenSnapshot,
+    } as unknown as TabOptions['tokens'];
+    const a = await open('a', { document: page, tokens });
+    const b = await open('b', { document: page });
+
+    b.addTable('orders');
+    page.dispatchEvent(new Event('visibilitychange'));
+    listeners.forEach(listener => listener());
+    await settle(5);
+    expect(env.patches()).toHaveLength(0);
+
+    page.visibilityState = 'hidden';
+    page.dispatchEvent(new Event('visibilitychange'));
+    await settle(5);
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+  });
+
+  it('takes nothing over in a tab that leads', async () => {
+    const a = await open('a');
+    const steals = env.locks.calls.length;
+
+    await a.controller.takeOver();
+
+    expect(env.locks.calls).toHaveLength(steals);
+  });
+
+  it('downloads the loaded document before an editor holds it, and nothing before that', async () => {
+    const a = openTab(env, { name: 'a', autoAttach: false });
+    tabs.push(a);
+    a.controller.downloadChanges();
+    expect(a.downloads).toEqual([]);
+
+    void a.controller.open();
+    await settle(20);
+    a.controller.downloadChanges();
+
+    expect(a.downloads).toEqual([
+      { fileName: 'shop.erd', text: driveContent() },
+    ]);
+  });
+
+  it('saves a download through the browser by default', async () => {
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:changes');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const clicked: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
+      function (this: HTMLAnchorElement) {
+        clicked.push(this.download);
+      }
+    );
+    const controller = createDocumentController({
+      fileId: 'file-1',
+      sub: SUB,
+      drive: env.clientFor('a'),
+      locks: env.locks,
+      createChannel: env.hub.create,
+    });
+    void controller.open();
+    await settle(20);
+
+    controller.downloadChanges();
+    controller.dispose();
+
+    expect(clicked).toEqual(['shop.erd']);
+    const [blob] = createObjectURL.mock.calls[0] as [Blob];
+    expect(await blob.text()).toBe(driveContent());
+  });
+});

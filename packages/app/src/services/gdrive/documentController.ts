@@ -1,0 +1,922 @@
+import { randomBase64Url } from '@/server/auth/base64url';
+import {
+  type DriveClient,
+  DriveError,
+  type DriveFile,
+  GOOGLE_APPS_MIME,
+  type RetryOptions,
+  withRetry,
+} from '@/services/gdrive/driveClient';
+import {
+  NEW_FILE_MIME_TYPE,
+  toDownloadFileName,
+} from '@/services/gdrive/driveFileName';
+import {
+  ACK_TIMEOUT_MS,
+  type FileChannel,
+  fileChannelName,
+  type FileMessage,
+  FOLLOWER_SEND_WINDOW_MS,
+  followerHasUnsavedChanges,
+  openFileChannel,
+  type ReloadedMessage,
+  RENAME_PROBE_MS,
+  RENAME_TIMEOUT_MS,
+  type SaveState,
+  sayHello,
+  type SnapshotMessage,
+} from '@/services/gdrive/fileChannel';
+import {
+  createFileLeader,
+  type Election,
+  type FileLockManagerLike,
+  fileLockName,
+  isFileOpen,
+} from '@/services/gdrive/fileLeader';
+import {
+  type CheckResult,
+  createSaveQueue,
+  type RenameResult,
+  type SaveQueue,
+  type SaveQueueInit,
+} from '@/services/gdrive/saveQueue';
+import type { TokenManager } from '@/services/gdrive/tokenManager';
+import type { CreateChannel } from '@/services/gdrive/types';
+import { toDriveFingerprint } from '@/utils/documentFingerprint';
+import { downloadFile } from '@/utils/file';
+import { isEditorDocument, MAX_IMPORT_FILE_SIZE } from '@/utils/importFile';
+import { safeCallback } from '@/utils/safeCallback';
+
+/** Without Web Locks, how long a new tab waits for another to hand it the document. */
+export const NO_LOCKS_JOIN_MS = 500;
+
+export type DocumentPhase =
+  | 'loading'
+  | 'waiting-snapshot'
+  | 'ready'
+  | 'rejected'
+  | 'not-found'
+  | 'failed';
+
+/** Why a file opens no editor: in the trash, over 64 MB, a Google Doc, or not a document. */
+export type DocumentRejection =
+  | 'trashed'
+  | 'too-large'
+  | 'google-native'
+  | 'not-document';
+
+export type DocumentRole = 'leader' | 'follower';
+
+export type DocumentSnapshot = {
+  phase: DocumentPhase;
+  rejection: DocumentRejection | null;
+  role: DocumentRole | null;
+  name: string | null;
+  canEdit: boolean;
+  canRename: boolean;
+  saveState: SaveState;
+  /** A new one with every load of the document, which makes the editor anew. */
+  epoch: string | null;
+};
+
+/** The editor as the controller drives it: the element, or a headless peer store. */
+export type EditorAdapter = {
+  getValue(): string;
+  setInitialValue(value: string): void;
+  /** The batches this editor sends, the shared store's own subscription. */
+  subscribeLocal(listener: (actions: unknown[]) => void): () => void;
+  applyRemote(actions: unknown[]): void;
+  /** Any change, remote ones included, as the element's change event. */
+  onChange(listener: () => void): () => void;
+};
+
+export type DocumentDrive = Pick<
+  DriveClient,
+  'getFile' | 'download' | 'saveContent' | 'rename'
+>;
+
+export type DocumentControllerDeps = {
+  fileId: string;
+  /** The account, whose tabs alone share the file's lock and channel. */
+  sub: string;
+  drive: DocumentDrive;
+  locks: FileLockManagerLike | null;
+  createChannel: CreateChannel;
+  /** A leader that goes hidden saves at once, since its timers get throttled. */
+  document?: Pick<Document, 'visibilityState'> &
+    Pick<EventTarget, 'addEventListener' | 'removeEventListener'>;
+  /** A save paused for a token resumes once the tab has one again. */
+  tokens?: Pick<TokenManager, 'subscribe' | 'getSnapshot'>;
+  download?: (fileName: string, text: string) => void;
+  createId?: () => string;
+  now?: () => number;
+  retry?: RetryOptions;
+};
+
+const INITIAL: DocumentSnapshot = {
+  phase: 'loading',
+  rejection: null,
+  role: null,
+  name: null,
+  canEdit: false,
+  canRename: false,
+  saveState: 'saved',
+  epoch: null,
+};
+
+function rejectionOf(file: DriveFile): DocumentRejection | null {
+  if (file.trashed) return 'trashed';
+  if (file.mimeType.startsWith(GOOGLE_APPS_MIME)) return 'google-native';
+  if (file.size !== null && file.size > MAX_IMPORT_FILE_SIZE) {
+    return 'too-large';
+  }
+  return null;
+}
+
+function isDocumentText(text: string): boolean {
+  try {
+    return isEditorDocument(JSON.parse(text));
+  } catch {
+    return false;
+  }
+}
+
+function phaseForError(error: unknown): DocumentPhase {
+  return error instanceof DriveError &&
+    (error.kind === 'not-found' || error.kind === 'forbidden')
+    ? 'not-found'
+    : 'failed';
+}
+
+const sleep = (ms: number) =>
+  new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/**
+ * Asks the file's leader to rename it and waits for its answer. With probe,
+ * no status within two seconds means no tab has the file open: null.
+ */
+function askLeaderToRename(
+  channel: FileChannel,
+  requestId: string,
+  name: string,
+  probe: boolean
+): Promise<RenameResult | null> {
+  return new Promise((resolve, reject) => {
+    let waitingForAck = probe;
+    let off = () => {};
+    const finish = (settle: () => void) => {
+      clearTimeout(timer);
+      off();
+      settle();
+    };
+    const unanswered = () =>
+      reject(new Error('The tab that has this file open did not answer'));
+    const arm = (ms: number, onTimeout: () => void) =>
+      setTimeout(() => finish(onTimeout), ms);
+
+    let timer = arm(probe ? RENAME_PROBE_MS : RENAME_TIMEOUT_MS, () =>
+      waitingForAck ? resolve(null) : unanswered()
+    );
+    off = channel.subscribe(message => {
+      if (message.type === 'status' && waitingForAck) {
+        waitingForAck = false;
+        clearTimeout(timer);
+        timer = arm(RENAME_TIMEOUT_MS, unanswered);
+      } else if (
+        message.type === 'renamed' &&
+        message.requestId === requestId
+      ) {
+        const { name: renamed, from, to } = message;
+        finish(() => resolve({ name: renamed, from, to }));
+      } else if (
+        message.type === 'rename-failed' &&
+        message.requestId === requestId
+      ) {
+        finish(() => reject(new Error('The file could not be renamed')));
+      }
+    });
+    channel.post({ type: 'rename-request', requestId, name });
+  });
+}
+
+export type RenameDeps = {
+  drive: Pick<DriveClient, 'rename'>;
+  locks: FileLockManagerLike | null;
+  createChannel: CreateChannel;
+  sub: string;
+  createId?: () => string;
+};
+
+/**
+ * Renames a file this tab does not have open. When another tab has it open,
+ * its leader renames after any save under way, so the rename cannot turn that
+ * save into a conflict; otherwise Drive is asked at once.
+ */
+export async function renameDriveFile(
+  {
+    drive,
+    locks,
+    createChannel,
+    sub,
+    createId = () => randomBase64Url(12),
+  }: RenameDeps,
+  fileId: string,
+  name: string
+): Promise<{ name: string; modifiedTime: string }> {
+  const open = await isFileOpen(locks, fileLockName(sub, fileId));
+  if (open !== false) {
+    const channel = openFileChannel(
+      createChannel,
+      fileChannelName(sub, fileId),
+      () => null
+    );
+    try {
+      const result = await askLeaderToRename(
+        channel,
+        createId(),
+        name,
+        open === null
+      );
+      if (result) return { name: result.name, modifiedTime: result.to };
+    } finally {
+      channel.close();
+    }
+  }
+  const renamed = await drive.rename(fileId, name);
+  return { name: renamed.name, modifiedTime: renamed.modifiedTime };
+}
+
+/**
+ * One Drive file open in this tab. Every tab of the file shares its edits over
+ * the file's channel, and the holder of the file's lock alone saves: it loads
+ * from Drive, answers a new tab's hello with a snapshot, and runs the queue.
+ */
+export function createDocumentController(deps: DocumentControllerDeps) {
+  const {
+    fileId,
+    sub,
+    drive,
+    locks,
+    createChannel,
+    document: doc,
+    tokens,
+    download = (fileName, text) =>
+      downloadFile(fileName, text, NEW_FILE_MIME_TYPE),
+    createId = () => randomBase64Url(12),
+    now = Date.now,
+    retry,
+  } = deps;
+
+  const tabId = createId();
+  const listeners = new Set<() => void>();
+  let snapshot = INITIAL;
+  let phase: DocumentPhase = 'loading';
+  let rejection: DocumentRejection | null = null;
+  let disposed = false;
+  let opened: Promise<void> | null = null;
+  let electing: Promise<void> | null = null;
+
+  let role: DocumentRole | null = null;
+  /** Drive's name for the file, empty until the metadata comes. */
+  let name = '';
+  let canEdit = false;
+  let canRename = false;
+  let epoch: string | null = null;
+  let initialValue: string | null = null;
+  let queue: SaveQueue | null = null;
+
+  let adapter: EditorAdapter | null = null;
+  let detachAdapter: (() => void) | null = null;
+  /** Other tabs' batches that came before the editor did, with their epoch. */
+  let buffered: Array<{ epoch: string | null; actions: unknown[] }> = [];
+
+  /** Waiting for a snapshot after a hello. */
+  let joining = false;
+  let stopHello: (() => void) | null = null;
+  /** A leader answers hellos once its editor holds the document and its baseline. */
+  let answering = false;
+  const heldHellos = new Set<string>();
+  /** A leader that reloaded tells the others once its editor has the new document. */
+  let announceReload = false;
+
+  let followerStatus: SaveState | null = null;
+  let waitingLeader = false;
+  let changeUnconfirmed = false;
+  let lastChangeAt: number | null = null;
+  let ackTimer: ReturnType<typeof setTimeout> | null = null;
+  const ackWaiters = new Set<() => void>();
+
+  const channel = openFileChannel(
+    createChannel,
+    fileChannelName(sub, fileId),
+    () => epoch
+  );
+  const leader = createFileLeader({
+    locks,
+    name: fileLockName(sub, fileId),
+    onElected: how => {
+      electing = onElected(how);
+    },
+    onLost,
+  });
+
+  function saveState(): SaveState {
+    if (phase === 'waiting-snapshot') return 'waiting-snapshot';
+    if (role === 'leader') return queue?.getState() ?? 'saved';
+    if (waitingLeader) return 'waiting-leader';
+    return followerStatus ?? 'saved';
+  }
+
+  function refresh() {
+    const state = saveState();
+    const next: DocumentSnapshot = {
+      phase,
+      rejection,
+      role,
+      name: name || null,
+      canEdit: canEdit && state !== 'readonly',
+      canRename,
+      saveState: state,
+      epoch,
+    };
+    const changed = (Object.keys(next) as Array<keyof DocumentSnapshot>).some(
+      key => next[key] !== snapshot[key]
+    );
+    if (!changed) return;
+    snapshot = next;
+    for (const listener of [...listeners]) safeCallback(listener);
+  }
+
+  function setPhase(next: DocumentPhase, why: DocumentRejection | null = null) {
+    phase = next;
+    rejection = why;
+    refresh();
+  }
+
+  function adoptMeta(file: DriveFile) {
+    name = file.name;
+    canEdit = file.canEdit;
+    canRename = file.canRename;
+  }
+
+  function postStatus() {
+    if (role !== 'leader') return;
+    channel.post({ type: 'status', state: saveState(), at: now() });
+  }
+
+  function createQueue(init: SaveQueueInit): SaveQueue {
+    queue?.dispose();
+    return createSaveQueue(
+      {
+        drive,
+        fileId,
+        getValue: () => adapter?.getValue() ?? null,
+        isLeader: () => role === 'leader' && !disposed,
+        isStillLeader: () => leader.isStillLeader(),
+        requestSave,
+        broadcast: message => channel.post(message),
+        onState: () => {
+          postStatus();
+          refresh();
+        },
+        createId,
+        now,
+        retry,
+      },
+      init
+    );
+  }
+
+  function dropAdapter() {
+    detachAdapter?.();
+    detachAdapter = null;
+  }
+
+  // Loading
+
+  async function open(): Promise<void> {
+    channel.subscribe(onMessage);
+    let file: DriveFile;
+    try {
+      file = await withRetry(() => drive.getFile(fileId), retry);
+    } catch (error) {
+      if (!disposed) setPhase(phaseForError(error));
+      return;
+    }
+    if (disposed) return;
+    const why = rejectionOf(file);
+    if (why) {
+      setPhase('rejected', why);
+      return;
+    }
+    adoptMeta(file);
+    const probed = await leader.probe();
+    if (disposed) return;
+    if (probed === 'follower-with-holder') {
+      role = 'follower';
+      leader.wait();
+      requestSnapshot();
+      refresh();
+      return;
+    }
+    role = 'leader';
+    if (!locks && (await joinWithoutLocks())) return;
+    await loadFromDrive(file, false);
+  }
+
+  /** Without Web Locks every tab leads; one another tab answers starts from its snapshot. */
+  async function joinWithoutLocks(): Promise<boolean> {
+    joining = true;
+    channel.post({ type: 'hello', from: tabId });
+    await sleep(NO_LOCKS_JOIN_MS);
+    joining = false;
+    return initialValue !== null;
+  }
+
+  /**
+   * Reads the file and makes it the document. A reload or a takeover tells the
+   * other tabs, once this tab's editor has it; a failed reload keeps the old one.
+   */
+  async function loadFromDrive(
+    known: DriveFile | null,
+    announce: boolean
+  ): Promise<boolean> {
+    let file: DriveFile;
+    let text: string;
+    try {
+      file = known ?? (await withRetry(() => drive.getFile(fileId), retry));
+      text = await withRetry(() => drive.download(fileId), retry);
+    } catch (error) {
+      if (disposed || initialValue !== null) return false;
+      leader.release();
+      role = null;
+      setPhase(phaseForError(error));
+      return false;
+    }
+    if (disposed) return false;
+    if (!isDocumentText(text)) {
+      if (initialValue !== null) return false;
+      // Never saved, never edited: the lock goes to a tab that finds the same.
+      leader.release();
+      role = null;
+      setPhase('rejected', 'not-document');
+      return false;
+    }
+    adoptMeta(file);
+    epoch = createId();
+    initialValue = text;
+    buffered = [];
+    answering = false;
+    announceReload = announce;
+    queue = createQueue({
+      base: { modifiedTime: file.modifiedTime, fingerprint: null },
+      pendingAttempt: null,
+      canEdit,
+    });
+    dropAdapter();
+    setPhase('ready');
+    return true;
+  }
+
+  function requestSnapshot() {
+    joining = true;
+    stopHello?.();
+    stopHello = sayHello(
+      () => channel.post({ type: 'hello', from: tabId }),
+      () => {
+        stopHello = null;
+        joining = false;
+        // A tab still holds the lock, so reading Drive alone could fork the document.
+        setPhase('waiting-snapshot');
+      }
+    );
+  }
+
+  function stopJoining() {
+    joining = false;
+    stopHello?.();
+    stopHello = null;
+  }
+
+  function adoptSnapshot(message: SnapshotMessage & { epoch: string | null }) {
+    if (message.to !== tabId || !joining) return;
+    stopJoining();
+    epoch = message.epoch;
+    initialValue = message.value;
+    name = message.name;
+    canEdit = message.canEdit;
+    canRename = message.canRename;
+    followerStatus = message.saveState;
+    buffered = buffered.filter(entry => entry.epoch === epoch);
+    queue = createQueue({
+      base: {
+        modifiedTime: message.baseModifiedTime,
+        fingerprint: message.baseFingerprint,
+      },
+      pendingAttempt: message.pendingAttempt,
+      canEdit,
+    });
+    setPhase('ready');
+  }
+
+  /**
+   * Another tab's reload, or its takeover from Drive: every tab of the file
+   * takes the new document, a tab still waiting for a snapshot included.
+   */
+  function adoptReloaded(message: ReloadedMessage & { epoch: string | null }) {
+    if (role === null) return;
+    stopJoining();
+    epoch = message.epoch;
+    initialValue = message.value;
+    name = message.name;
+    canEdit = message.canEdit;
+    canRename = message.canRename;
+    buffered = [];
+    followerStatus = 'saved';
+    waitingLeader = false;
+    changeUnconfirmed = false;
+    lastChangeAt = null;
+    const init: SaveQueueInit = {
+      base: {
+        modifiedTime: message.modifiedTime,
+        fingerprint: message.fingerprint,
+      },
+      pendingAttempt: null,
+      canEdit,
+    };
+    if (queue) queue.reset(init);
+    else queue = createQueue(init);
+    dropAdapter();
+    setPhase('ready');
+  }
+
+  // The editor
+
+  function attach(next: EditorAdapter): () => void {
+    if (phase !== 'ready' || initialValue === null || !queue) {
+      throw new Error('The document is not ready for an editor');
+    }
+    dropAdapter();
+    // The order the shared store needs: the value, then the subscription whose
+    // first handshake settles the LWW state, then what other tabs sent meanwhile.
+    next.setInitialValue(initialValue);
+    const offLocal = next.subscribeLocal(actions =>
+      channel.post({ type: 'actions', actions })
+    );
+    const pending = buffered.filter(entry => entry.epoch === epoch);
+    buffered = [];
+    adapter = next;
+    for (const entry of pending) next.applyRemote(entry.actions);
+    const offChange = next.onChange(onChange);
+
+    const detach = () => {
+      if (adapter !== next) return;
+      offLocal();
+      offChange();
+      adapter = null;
+      answering = false;
+      if (detachAdapter === detach) detachAdapter = null;
+    };
+    detachAdapter = detach;
+    if (role === 'leader') startLeading(next, queue);
+    return detach;
+  }
+
+  /**
+   * A leader answers once its baseline is known: for a document fresh from
+   * Drive, one microtask after the load, past the tombstones the engine
+   * collects on every load, which are housekeeping rather than an edit.
+   */
+  function startLeading(next: EditorAdapter, current: SaveQueue) {
+    if (current.getBase().fingerprint !== null) {
+      startAnswering(next, current);
+      return;
+    }
+    queueMicrotask(() => {
+      if (adapter !== next || queue !== current || disposed) return;
+      current.setBaseFingerprint(toDriveFingerprint(next.getValue()));
+      startAnswering(next, current);
+    });
+  }
+
+  function startAnswering(current: EditorAdapter, leading: SaveQueue) {
+    answering = true;
+    if (announceReload) {
+      announceReload = false;
+      const base = leading.getBase();
+      channel.post({
+        type: 'reloaded',
+        value: current.getValue(),
+        modifiedTime: base.modifiedTime,
+        fingerprint: base.fingerprint!,
+        name,
+        canEdit,
+        canRename,
+      });
+    }
+    for (const to of heldHellos) sendSnapshot(to);
+    heldHellos.clear();
+    postStatus();
+  }
+
+  function sendSnapshot(to: string) {
+    if (!answering || !adapter || !queue) {
+      heldHellos.add(to);
+      return;
+    }
+    const base = queue.getBase();
+    channel.post({
+      type: 'snapshot',
+      to,
+      value: adapter.getValue(),
+      baseModifiedTime: base.modifiedTime,
+      baseFingerprint: base.fingerprint!,
+      name,
+      canEdit,
+      canRename,
+      saveState: queue.getState(),
+      pendingAttempt: queue.getPendingAttempt(),
+    });
+  }
+
+  function onChange() {
+    lastChangeAt = now();
+    if (role !== 'leader') changeUnconfirmed = true;
+    queue?.notifyChange();
+  }
+
+  // Leadership
+
+  async function onElected(how: Election) {
+    if (disposed) return;
+    role = 'leader';
+    settleAck();
+    waitingLeader = false;
+    if (joining || initialValue === null || !queue) {
+      stopJoining();
+      // No document yet: Drive's, which every other tab then takes too.
+      refresh();
+      await loadFromDrive(null, true);
+      return;
+    }
+    queue.inherit(followerStatus);
+    if (adapter) startAnswering(adapter, queue);
+    refresh();
+    await queue.afterElection(how === 'steal');
+  }
+
+  function onLost() {
+    if (disposed) return;
+    role = 'follower';
+    answering = false;
+    followerStatus = queue?.getState() ?? null;
+    leader.wait();
+    refresh();
+  }
+
+  function requestSave() {
+    channel.post({ type: 'save-request' });
+    if (ackTimer !== null) return;
+    // An election or a dispose clears it, so it only ever fires in a follower.
+    ackTimer = setTimeout(() => {
+      ackTimer = null;
+      waitingLeader = true;
+      refresh();
+      settleAck();
+    }, ACK_TIMEOUT_MS);
+  }
+
+  /** The leader answered, or will not: stop waiting for its ack. */
+  function settleAck() {
+    if (ackTimer !== null) clearTimeout(ackTimer);
+    ackTimer = null;
+    for (const waiter of [...ackWaiters]) waiter();
+  }
+
+  function takeStatus(state: SaveState) {
+    if (role !== 'follower') return;
+    followerStatus = state;
+    waitingLeader = false;
+    changeUnconfirmed = false;
+    settleAck();
+    refresh();
+  }
+
+  // Messages
+
+  /** A leader acks first and works a task later, so no save or serialization delays the ack. */
+  function answerLater(work: () => void) {
+    if (role !== 'leader') return;
+    postStatus();
+    setTimeout(() => {
+      if (!disposed && role === 'leader') work();
+    }, 0);
+  }
+
+  function receiveActions(message: {
+    epoch: string | null;
+    actions: unknown[];
+  }) {
+    if (joining || !adapter) {
+      buffered.push({ epoch: message.epoch, actions: message.actions });
+      return;
+    }
+    // Edits made on another load of the document are dropped, never merged.
+    if (message.epoch === epoch) adapter.applyRemote(message.actions);
+  }
+
+  function onMessage(message: FileMessage) {
+    if (disposed) return;
+    switch (message.type) {
+      case 'actions':
+        return receiveActions(message);
+      case 'hello':
+        return answerLater(() => sendSnapshot(message.from));
+      case 'snapshot':
+        return adoptSnapshot(message);
+      case 'status':
+        return takeStatus(message.state);
+      case 'save-request':
+        return answerLater(() => void queue?.flush());
+      case 'check-request':
+        return answerLater(() => void queue?.checkUnconfirmed());
+      case 'reload-request':
+        return answerLater(() => void reload());
+      case 'rename-request':
+        return answerLater(
+          () => void renameFor(message.requestId, message.name)
+        );
+      case 'saving':
+        return queue?.onSaving(message);
+      case 'saved':
+        queue?.onSaved(message);
+        return refresh();
+      case 'failed':
+        return queue?.onFailed(message);
+      case 'reloaded':
+        return adoptReloaded(message);
+      case 'renamed':
+        name = message.name;
+        queue?.onRenamed(message.from, message.to);
+        return refresh();
+      case 'rename-failed':
+        return;
+    }
+  }
+
+  // Actions
+
+  async function reload(): Promise<boolean> {
+    if (role !== 'leader') {
+      channel.post({ type: 'reload-request' });
+      return true;
+    }
+    return loadFromDrive(null, true);
+  }
+
+  async function renameHere(next: string): Promise<RenameResult> {
+    const result = await queue!.rename(next);
+    name = result.name;
+    refresh();
+    return result;
+  }
+
+  async function renameFor(requestId: string, next: string) {
+    try {
+      const result = await renameHere(next);
+      channel.post({ type: 'renamed', requestId, ...result });
+    } catch {
+      channel.post({ type: 'rename-failed', requestId });
+    }
+  }
+
+  function onVisibility() {
+    if (doc?.visibilityState === 'hidden' && role === 'leader') {
+      void queue?.flush();
+    }
+  }
+  doc?.addEventListener('visibilitychange', onVisibility);
+
+  const offTokens = tokens
+    ? tokens.subscribe(() => {
+        const { status } = tokens.getSnapshot();
+        if (status === 'server' || status === 'fallback') queue?.resume();
+      })
+    : null;
+
+  function hasUnsavedChanges(): boolean {
+    if (phase !== 'ready' || !queue) return false;
+    if (role === 'leader') return queue.hasUnsavedChanges();
+    return followerHasUnsavedChanges({
+      now: now(),
+      lastChangeAt,
+      changeUnconfirmed,
+      state: saveState(),
+    });
+  }
+
+  return {
+    fileId,
+    getSnapshot: () => snapshot,
+
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+
+    /** Reads the metadata, turns away what it cannot open, then leads or follows. */
+    open(): Promise<void> {
+      opened ??= open();
+      return opened;
+    },
+
+    attach,
+
+    /**
+     * Take over saving, or Open from Drive and take over: steals the lock from
+     * a leader that stopped answering. Without a document yet, Drive's is
+     * loaded and handed to every other tab.
+     */
+    async takeOver(): Promise<void> {
+      if (role === 'leader' || disposed) return;
+      stopJoining();
+      await leader.steal();
+      await electing;
+    },
+
+    /** Reload from Drive: the leader reads it again, and every tab takes it. */
+    reload,
+
+    /** Check Drive, from the unconfirmed banner; a follower's answer comes as the leader's status. */
+    async checkUnconfirmed(): Promise<CheckResult> {
+      if (role === 'leader' && queue) return queue.checkUnconfirmed();
+      channel.post({ type: 'check-request' });
+      return 'skipped';
+    },
+
+    /** Download my changes: the editor's value as an .erd file. */
+    downloadChanges() {
+      const value = adapter?.getValue() ?? initialValue;
+      if (value === null) return;
+      download(toDownloadFileName(name), value);
+    },
+
+    /** Renames through the leader, so no save of this file runs meanwhile. */
+    async rename(next: string): Promise<RenameResult> {
+      if (role === 'leader' && queue) {
+        const result = await renameHere(next);
+        channel.post({ type: 'renamed', requestId: null, ...result });
+        return result;
+      }
+      const result = await askLeaderToRename(channel, createId(), next, false);
+      return result!;
+    },
+
+    /**
+     * Saves before a switch or a sign-out; true when nothing is left unsaved.
+     * A follower lets its send window pass, asks the leader and waits for its ack.
+     */
+    async flush(): Promise<boolean> {
+      if (phase !== 'ready' || !queue) return true;
+      if (role === 'leader') {
+        await queue.flush();
+        return !queue.hasUnsavedChanges();
+      }
+      const wait =
+        lastChangeAt === null
+          ? 0
+          : lastChangeAt + FOLLOWER_SEND_WINDOW_MS - now();
+      if (wait > 0) await sleep(wait);
+      await new Promise<void>(resolve => {
+        const done = () => {
+          ackWaiters.delete(done);
+          resolve();
+        };
+        ackWaiters.add(done);
+        requestSave();
+      });
+      return !hasUnsavedChanges();
+    },
+
+    /** For beforeunload: the leader compares fingerprints, a follower judges its sends. */
+    hasUnsavedChanges,
+
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      stopJoining();
+      settleAck();
+      dropAdapter();
+      queue?.dispose();
+      leader.release();
+      channel.close();
+      doc?.removeEventListener('visibilitychange', onVisibility);
+      offTokens?.();
+      listeners.clear();
+    },
+  };
+}
+
+export type DocumentController = ReturnType<typeof createDocumentController>;

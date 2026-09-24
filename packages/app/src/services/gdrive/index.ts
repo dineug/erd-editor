@@ -13,6 +13,19 @@ export {
   readClientId,
 } from '@/services/gdrive/availability';
 export {
+  createDocumentController,
+  type DocumentController,
+  type DocumentControllerDeps,
+  type DocumentDrive,
+  type DocumentPhase,
+  type DocumentRejection,
+  type DocumentRole,
+  type DocumentSnapshot,
+  type EditorAdapter,
+  type RenameDeps,
+  renameDriveFile,
+} from '@/services/gdrive/documentController';
+export {
   createDriveClient,
   type DriveClient,
   type DriveClientDeps,
@@ -35,12 +48,24 @@ export {
   toDownloadFileName,
   toNewFileName,
 } from '@/services/gdrive/driveFileName';
+export { createEmptyDocument } from '@/services/gdrive/emptyDocument';
+export {
+  type FilesChannel,
+  type FilesMessage,
+  openFilesChannel,
+  type SaveState,
+} from '@/services/gdrive/fileChannel';
+export {
+  browserLocks,
+  type FileLockManagerLike,
+} from '@/services/gdrive/fileLeader';
 export {
   GisBlockedError,
   type GisOAuth2,
   loadGis,
 } from '@/services/gdrive/gis';
 export type { PopupWindowLike } from '@/services/gdrive/oauthPopup';
+export type { CheckResult, RenameResult } from '@/services/gdrive/saveQueue';
 export {
   type DriveState,
   isStateForAccount,
