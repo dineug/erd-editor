@@ -78,15 +78,17 @@ export function trackSceneHits(stage: Stage): () => void {
     const evt = event.evt;
     const point = pointOf(evt);
     const previous = trackedHits.get(stage);
-    const own = event.target === stage ? null : entityUnder(event.target);
     // A contextmenu resolves against a hit canvas the press before it has
-    // already invalidated, so the press at that same point answers for it.
-    const inherited =
+    // already invalidated, where konva searches past a torn down node to a live
+    // one near it, so the press at that same point answers for it instead.
+    const hit =
       evt.type === 'contextmenu' && samePoint(previous?.point, point)
         ? (previous?.hit ?? null)
-        : null;
+        : event.target === stage
+          ? null
+          : entityUnder(event.target);
 
-    trackedHits.set(stage, { evt, hit: own ?? inherited, point });
+    trackedHits.set(stage, { evt, hit, point });
   };
 
   stage.on(HIT_EVENTS, record);

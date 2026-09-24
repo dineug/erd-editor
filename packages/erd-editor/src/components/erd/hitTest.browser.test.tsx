@@ -438,12 +438,14 @@ async function mountEditor(): Promise<Editor> {
 function pressOn(
   { stage }: Editor,
   type: string,
-  point: { x: number; y: number }
+  point: { x: number; y: number },
+  init: MouseEventInit = {}
 ) {
   const content = stage.content.getBoundingClientRect();
 
   stage.content.querySelector('canvas')!.dispatchEvent(
     new MouseEvent(type, {
+      ...init,
       bubbles: true,
       cancelable: true,
       clientX: content.left + point.x,
@@ -480,6 +482,39 @@ describe('Erd - routing what the scene answered', () => {
 
     expect(findByText(editor.root, 'Relationship Type')).toBeTruthy();
     expect(findByText(editor.root, 'New Table')).toBeUndefined();
+  });
+
+  it('opens the table menu for a right press on a table over a connector', async () => {
+    const editor = await mountEditor();
+    editor.app.store.dispatchSync(
+      addTableAction({ id: 't3', ui: { x: 380, y: 100, zIndex: 5 } })
+    );
+    await settle();
+
+    const connector = editor.stage
+      .findOne('.relationship-hit-area')!
+      .getClientRect();
+    const table = editor.stage.findOne('#table-t3')!.getClientRect();
+    const point = {
+      x: table.x + table.width / 2,
+      y: connector.y + connector.height / 2,
+    };
+
+    // The connector runs under the table right where the press lands.
+    expect(point.x).toBeGreaterThan(connector.x);
+    expect(point.x).toBeLessThan(connector.x + connector.width);
+    expect(point.y).toBeGreaterThan(table.y);
+    expect(point.y).toBeLessThan(table.y + table.height);
+
+    // The press lifts the table into the drag layer, so the menu that follows
+    // reads a hit canvas still holding the torn down card over the connector.
+    pressOn(editor, 'mousedown', point, { button: 2, buttons: 2 });
+    await flush();
+    pressOn(editor, 'contextmenu', point, { button: 2, buttons: 2 });
+    await flush(6);
+
+    expect(findByText(editor.root, 'Table Properties')).toBeTruthy();
+    expect(findByText(editor.root, 'Relationship Type')).toBeUndefined();
   });
 
   it('opens the erd menu for a contextmenu on bare canvas', async () => {
