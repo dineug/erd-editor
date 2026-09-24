@@ -2,7 +2,7 @@ import {
   createReplicationStore,
   ReplicationStore,
 } from '@dineug/erd-editor/engine.js';
-import { mapValues, omit } from 'es-toolkit';
+import { omit } from 'es-toolkit';
 
 import { type AppDatabase } from '@/services/indexeddb/appDatabaseService';
 import {
@@ -18,65 +18,8 @@ import {
   updateSchemaEntity,
 } from '@/services/indexeddb/modules/schema';
 import type { updateSchemaEntityAction } from '@/utils/broadcastChannel';
+import { toFingerprint } from '@/utils/documentFingerprint';
 import { toWidth } from '@/utils/text';
-
-/** The foreign key bit of ui.keys, kept in step with the relationships. */
-const FOREIGN_KEY = 2;
-
-const withoutAnchor = (end: Record<string, unknown>) =>
-  omit(end, ['x', 'y', 'direction']);
-
-/**
- * Collections less what the engine derives from the rest of them and rewrites
- * after a load without an action: text widths, measured with this machine's
- * fonts, connector anchors, and flags read off the columns and relationships.
- */
-function withoutDerived(collections: any) {
-  return {
-    ...collections,
-    tableEntities: mapValues(collections.tableEntities, (table: any) => ({
-      ...table,
-      ui: omit(table.ui, ['widthName', 'widthComment']),
-    })),
-    tableColumnEntities: mapValues(
-      collections.tableColumnEntities,
-      (column: any) => ({
-        ...column,
-        ui: {
-          ...omit(column.ui, [
-            'widthName',
-            'widthComment',
-            'widthDataType',
-            'widthDefault',
-          ]),
-          keys: column.ui.keys & ~FOREIGN_KEY,
-        },
-      })
-    ),
-    relationshipEntities: mapValues(
-      collections.relationshipEntities,
-      (relationship: any) => ({
-        ...omit(relationship, ['identification', 'startRelationshipType']),
-        start: withoutAnchor(relationship.start),
-        end: withoutAnchor(relationship.end),
-      })
-    ),
-  };
-}
-
-/**
- * The part of a saved value an edit changes. The engine also saves view state
- * (zoom, scroll, canvas type) as a change, and none of that is an edit. The
- * value is always the replica's own, so every collection and ui is present.
- */
-function toFingerprint(value: string) {
-  const { doc, collections, settings } = JSON.parse(value);
-  return JSON.stringify({
-    doc,
-    collections: withoutDerived(collections),
-    databaseName: settings.databaseName,
-  });
-}
 
 export class SchemaService {
   private cache = new Map<string, SchemaEntity & { store: ReplicationStore }>();
