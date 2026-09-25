@@ -11,6 +11,7 @@ export type AuthEvent =
   | `auth.callback.${'ok' | CallbackError}`
   | 'auth.token.invalid_grant'
   | 'auth.token.unreadable_cookie'
+  | 'auth.token.reauth_required'
   | 'auth.upstream.retry'
   | 'auth.logout'
   | 'auth.not_configured'

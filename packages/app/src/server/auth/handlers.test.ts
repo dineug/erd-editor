@@ -28,14 +28,18 @@ import {
 import { parseCookieKey } from '@/server/auth/config';
 import {
   REFRESH_COOKIE,
+  REFRESH_COOKIE_AAD,
   STATE_COOKIE,
   STATE_COOKIE_AAD,
 } from '@/server/auth/cookie';
 import { importCookieKey, sealValue } from '@/server/auth/cookieCrypto';
 import { openOAuthState, pkceChallenge } from '@/server/auth/oauthState';
 import { onRequest } from '@/server/auth/pages';
+import { openRefreshGrant, sealRefreshGrant } from '@/server/auth/refreshGrant';
 
 const ORIGIN = 'https://erd-editor.test';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const YEAR_S = 365 * 24 * 60 * 60;
 const ATTEMPT = 'AbCdEfGhIjKlMnOpQrStUv';
 const OTHER_ATTEMPT = 'ZyXwVuTsRqPoNmLkJiHgFe';
 const XHR = { Origin: ORIGIN, 'X-Requested-With': 'XMLHttpRequest' };
@@ -144,6 +148,14 @@ async function openState(response: Response, now: number) {
     `${STATE_COOKIE}=`.length
   );
   return openOAuthState(await testKey(), value, now);
+}
+
+/** What a refresh cookie pair holds, opened with the test key. */
+async function openGrant(pair: string) {
+  return openRefreshGrant(
+    await testKey(),
+    pair.slice(`${REFRESH_COOKIE}=`.length)
+  );
 }
 
 /** Changes a character in the middle of a cookie value, where every bit counts. */
@@ -311,6 +323,7 @@ describe('callback', () => {
       ].sort()
     );
     expect(refresh).not.toContain('refresh-token-');
+    expect(refresh).toMatch(new RegExp(`^${REFRESH_COOKIE}=v1\\.`));
     expect(setCookie(callback, STATE_COOKIE)).toContain('Max-Age=0');
 
     const body = await callback.text();
@@ -319,6 +332,31 @@ describe('callback', () => {
     expect(body).not.toContain('refresh-token-');
     expect(body).not.toContain(code);
     expect(events).toEqual(['auth.start', 'auth.callback.ok']);
+  });
+
+  it('seals the refresh token with the time of this consent, in seconds', async () => {
+    const { google, clock, signIn } = setup();
+
+    const { callback } = await signIn();
+
+    expect(await openGrant(cookiePair(callback, REFRESH_COOKIE))).toEqual({
+      rt: [...google.liveTokens][0],
+      iat: clock.now / 1000,
+    });
+  });
+
+  it('starts the year over at every sign-in', async () => {
+    const { clock, signIn } = setup();
+    await signIn();
+
+    clock.now += 300 * DAY_MS;
+    const { callback } = await signIn();
+
+    const refresh = setCookie(callback, REFRESH_COOKIE);
+    expect(refresh).toContain('Max-Age=15552000');
+    expect((await openGrant(refresh.split(';')[0]))?.iat).toBe(
+      clock.now / 1000
+    );
   });
 
   it('answers with a page that runs one nonce script and leaks no referrer', async () => {
@@ -761,6 +799,74 @@ describe('token', () => {
     expect((await post('/api/auth/token', next)).status).toBe(200);
   });
 
+  describe('the year from the last consent', () => {
+    it('keeps the consent time through a rotated refresh token', async () => {
+      const { post, signedIn, google, clock } = setup();
+      const cookie = await signedIn();
+      const consent = await openGrant(cookie);
+      google.rotate = true;
+      clock.now += 10 * DAY_MS;
+
+      const next = await openGrant(
+        cookiePair(await post('/api/auth/token', cookie), REFRESH_COOKIE)
+      );
+
+      expect(next?.rt).not.toBe(consent?.rt);
+      expect(next?.rt).toBe([...google.liveTokens][0]);
+      expect(next?.iat).toBe(consent?.iat);
+    });
+
+    it('renews for less than 180 days once less of the year is left', async () => {
+      const { post, signedIn, clock } = setup();
+      const cookie = await signedIn();
+      clock.now += 300 * DAY_MS;
+
+      const response = await post('/api/auth/token', cookie);
+
+      expect(response.status).toBe(200);
+      expect(setCookie(response, REFRESH_COOKIE)).toContain(
+        `Max-Age=${65 * 24 * 60 * 60}`
+      );
+    });
+
+    it('still renews a second before the year is up, for that second', async () => {
+      const { post, signedIn, clock } = setup();
+      const cookie = await signedIn();
+      clock.now += YEAR_S * 1000 - 1000;
+
+      const response = await post('/api/auth/token', cookie);
+
+      expect(response.status).toBe(200);
+      expect(setCookie(response, REFRESH_COOKIE)).toContain('Max-Age=1;');
+    });
+
+    it.each([
+      ['as the year ends', 0],
+      ['a second after', 1000],
+      ['a renewal later', 90 * DAY_MS],
+    ])(
+      'clears the cookie with JSON 401 %s and asks Google nothing',
+      async (_, past) => {
+        const { post, signedIn, google, clock, events } = setup();
+        const cookie = await signedIn();
+        const renewed = cookiePair(
+          await post('/api/auth/token', cookie),
+          REFRESH_COOKIE
+        );
+        const requests = google.requests.length;
+        clock.now += YEAR_S * 1000 + past;
+
+        const response = await post('/api/auth/token', renewed);
+
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({ error: 'reauth_required' });
+        expect(setCookie(response, REFRESH_COOKIE)).toContain('Max-Age=0');
+        expect(google.requests).toHaveLength(requests);
+        expect(events.at(-1)).toBe('auth.token.reauth_required');
+      }
+    );
+  });
+
   it('passes on a scope without Drive for the client to act on', async () => {
     const { post, signedIn, google } = setup();
     const cookie = await signedIn();
@@ -784,14 +890,33 @@ describe('token', () => {
     expect(events.at(-1)).toBe('auth.token.invalid_grant');
   });
 
-  it.each([
-    ['not sealed', `${REFRESH_COOKIE}=plain-refresh-token`],
-    ['sealed by another key', 'other-key'],
+  /** A value the relay's own key and AAD seal, holding what a refresh cookie never does. */
+  const sealedAsCookie = async (plaintext: string) =>
+    `${REFRESH_COOKIE}=${await sealValue(await testKey(), plaintext, REFRESH_COOKIE_AAD)}`;
+
+  it.each<[string, () => Promise<string>]>([
+    ['not sealed', async () => `${REFRESH_COOKIE}=plain-refresh-token`],
+    [
+      'sealed by another key',
+      () => setup({ ...AUTH_ENV, COOKIE_KEY: btoa('k'.repeat(32)) }).signedIn(),
+    ],
+    ['holding a bare refresh token', () => sealedAsCookie('refresh-token-1')],
+    [
+      'holding a grant without a consent time',
+      () => sealedAsCookie(JSON.stringify({ rt: 'refresh-token-1' })),
+    ],
+    [
+      'holding a grant with an empty token',
+      () => sealedAsCookie(JSON.stringify({ rt: '', iat: 1 })),
+    ],
+    [
+      'holding a grant with a consent time as text',
+      () => sealedAsCookie(JSON.stringify({ rt: 'refresh-token-1', iat: '1' })),
+    ],
   ])(
     'clears a cookie %s with JSON 401 and asks Google nothing',
     async (_, cookie) => {
-      const other = setup({ ...AUTH_ENV, COOKIE_KEY: btoa('k'.repeat(32)) });
-      const value = cookie === 'other-key' ? await other.signedIn() : cookie;
+      const value = await cookie();
       const { post, google, events } = setup();
 
       const response = await post('/api/auth/token', value);
@@ -876,6 +1001,24 @@ describe('logout', () => {
     expect(google.liveTokens.size).toBe(0);
     expect(setCookie(response, REFRESH_COOKIE)).toContain('Max-Age=0');
     expect(events.at(-1)).toBe('auth.logout');
+  });
+
+  it('still revokes the refresh token of a cookie past its year', async () => {
+    const { post, signedIn, google, clock } = setup();
+    await signedIn();
+    const [refreshToken] = google.liveTokens;
+    const sealed = await sealRefreshGrant(await testKey(), {
+      rt: refreshToken,
+      iat: clock.now / 1000 - 2 * YEAR_S,
+    });
+
+    const response = await post(
+      '/api/auth/logout',
+      `${REFRESH_COOKIE}=${sealed}`
+    );
+
+    expect(await response.json()).toEqual({ ok: true, revoked: true });
+    expect(google.liveTokens.size).toBe(0);
   });
 
   it('counts a token Google already dropped as revoked', async () => {

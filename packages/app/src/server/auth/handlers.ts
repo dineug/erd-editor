@@ -10,12 +10,13 @@ import {
   clearStateCookie,
   readCookie,
   REFRESH_COOKIE,
-  REFRESH_COOKIE_AAD,
+  REFRESH_COOKIE_ABSOLUTE_MAX_AGE,
+  REFRESH_COOKIE_MAX_AGE,
   refreshCookie,
   STATE_COOKIE,
   stateCookie,
 } from './cookie';
-import { type CookieKey, openValue, sealValue } from './cookieCrypto';
+import { type CookieKey } from './cookieCrypto';
 import {
   exchangeCode,
   GOOGLE_AUTHORIZE_URL,
@@ -34,6 +35,7 @@ import {
   safeEqual,
   sealOAuthState,
 } from './oauthState';
+import { openRefreshGrant, sealRefreshGrant } from './refreshGrant';
 import { type ResolvedAuthDeps } from './types';
 
 /** The configuration a handler runs with, the cookie key imported; null when not configured. */
@@ -53,6 +55,9 @@ export type AuthHandler = (
 function callbackUrl(url: URL): string {
   return `${url.origin}/api/auth/callback`;
 }
+
+/** The relay's clock in epoch seconds, the unit of a cookie's Max-Age and its iat. */
+const nowSeconds = (deps: ResolvedAuthDeps) => Math.floor(deps.now() / 1000);
 
 function notConfigured(deps: ResolvedAuthDeps): Response {
   deps.log('auth.not_configured');
@@ -149,32 +154,44 @@ export const handleCallback: AuthHandler = async (request, secrets, deps) => {
   if (!hasDriveFileScope(result.grant.scope)) return fail('scope_missing');
   if (!result.grant.refreshToken) return fail('upstream');
 
-  const sealedToken = await sealValue(
-    secrets.key,
-    result.grant.refreshToken,
-    REFRESH_COOKIE_AAD
-  );
+  // A new consent, so the cookie's year starts over.
+  const sealedGrant = await sealRefreshGrant(secrets.key, {
+    rt: result.grant.refreshToken,
+    iat: nowSeconds(deps),
+  });
   deps.log('auth.callback.ok');
   return callbackPage({ ok: true, error: null, attempt: oauth.attempt }, [
     ...cookies,
-    refreshCookie(sealedToken),
+    refreshCookie(sealedGrant),
   ]);
 };
 
 /**
  * Trades the refresh cookie for an access token and renews the cookie for
- * another 180 days, with Google's new refresh token when it sends one.
+ * another 180 days, with Google's new refresh token when it sends one. A year
+ * after the consent it holds, the cookie goes and the person signs in again.
  */
 export const handleToken: AuthHandler = async (request, secrets, deps) => {
   const sealed = readCookie(request, REFRESH_COOKIE);
   if (!sealed) return json({ error: 'signed_out' }, { status: 401 });
   if (!secrets) return notConfigured(deps);
 
-  const refreshToken = await openValue(secrets.key, sealed, REFRESH_COOKIE_AAD);
-  if (refreshToken === null) {
+  const grant = await openRefreshGrant(secrets.key, sealed);
+  if (grant === null) {
     deps.log('auth.token.unreadable_cookie');
     return json(
       { error: 'invalid_cookie' },
+      { status: 401, cookies: [clearRefreshCookie()] }
+    );
+  }
+  // No server keeps sessions to end one, so a copied cookie that stays in use
+  // would slide forever; the year since the consent caps it.
+  const lifeLeft =
+    grant.iat + REFRESH_COOKIE_ABSOLUTE_MAX_AGE - nowSeconds(deps);
+  if (lifeLeft <= 0) {
+    deps.log('auth.token.reauth_required');
+    return json(
+      { error: 'reauth_required' },
       { status: 401, cookies: [clearRefreshCookie()] }
     );
   }
@@ -182,7 +199,7 @@ export const handleToken: AuthHandler = async (request, secrets, deps) => {
   const result = await refreshAccessToken(deps, {
     clientId: secrets.clientId,
     clientSecret: secrets.clientSecret,
-    refreshToken,
+    refreshToken: grant.rt,
   });
   if (!result.ok && result.error === 'invalid_grant') {
     deps.log('auth.token.invalid_grant');
@@ -193,18 +210,22 @@ export const handleToken: AuthHandler = async (request, secrets, deps) => {
   }
   if (!result.ok) return json({ error: 'upstream' }, { status: 502 });
 
-  const renewed = await sealValue(
-    secrets.key,
-    result.grant.refreshToken ?? refreshToken,
-    REFRESH_COOKIE_AAD
-  );
+  // A rotated refresh token is no new consent: the year keeps counting.
+  const renewed = await sealRefreshGrant(secrets.key, {
+    rt: result.grant.refreshToken ?? grant.rt,
+    iat: grant.iat,
+  });
   return json(
     {
       access_token: result.grant.accessToken,
       expires_in: result.grant.expiresIn,
       scope: result.grant.scope,
     },
-    { cookies: [refreshCookie(renewed)] }
+    {
+      cookies: [
+        refreshCookie(renewed, Math.min(REFRESH_COOKIE_MAX_AGE, lifeLeft)),
+      ],
+    }
   );
 };
 
@@ -214,11 +235,9 @@ export const handleToken: AuthHandler = async (request, secrets, deps) => {
  */
 export const handleLogout: AuthHandler = async (request, secrets, deps) => {
   const sealed = readCookie(request, REFRESH_COOKIE);
-  const refreshToken =
-    sealed &&
-    secrets &&
-    (await openValue(secrets.key, sealed, REFRESH_COOKIE_AAD));
-  const revoked = refreshToken ? await revokeToken(deps, refreshToken) : false;
+  const grant =
+    sealed && secrets && (await openRefreshGrant(secrets.key, sealed));
+  const revoked = grant ? await revokeToken(deps, grant.rt) : false;
   deps.log('auth.logout');
   return json({ ok: true, revoked }, { cookies: [clearRefreshCookie()] });
 };

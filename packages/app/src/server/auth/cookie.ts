@@ -1,10 +1,12 @@
 /**
- * The refresh token, sealed. Strict because only the app's own requests carry
- * it; 180 days, renewed on every refresh.
+ * The refresh token and the time of the consent behind it, sealed. Strict
+ * because only the app's own requests carry it; 180 days, renewed on every
+ * refresh, and never past a year from that consent.
  */
 export const REFRESH_COOKIE = '__Host-erd_gdrive_rt';
 export const REFRESH_COOKIE_AAD = `${REFRESH_COOKIE}|v1`;
 export const REFRESH_COOKIE_MAX_AGE = 15_552_000;
+export const REFRESH_COOKIE_ABSOLUTE_MAX_AGE = 31_536_000;
 
 /**
  * State, PKCE verifier and attempt for one sign-in, sealed. Lax because Google
@@ -23,8 +25,11 @@ function serialize(
   return `${name}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=${sameSite}`;
 }
 
-export function refreshCookie(value: string): string {
-  return serialize(REFRESH_COOKIE, value, REFRESH_COOKIE_MAX_AGE, 'Strict');
+export function refreshCookie(
+  value: string,
+  maxAge: number = REFRESH_COOKIE_MAX_AGE
+): string {
+  return serialize(REFRESH_COOKIE, value, maxAge, 'Strict');
 }
 
 export function clearRefreshCookie(): string {

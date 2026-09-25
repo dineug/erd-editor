@@ -322,12 +322,15 @@ describe('createTokenManager', () => {
       );
     });
 
-    it('signs every tab out once a renewal meets a revoked grant', async () => {
+    it.each([
+      ['a revoked grant', 'invalid_grant'],
+      ['a cookie past its year', 'reauth_required'],
+    ])('signs every tab out once a renewal meets %s', async (_, error) => {
       const first = openTab(browser);
       await start(first);
       const second = openTab(browser);
       await start(second);
-      browser.relay.queue(jsonReply({ error: 'invalid_grant' }, 401));
+      browser.relay.queue(jsonReply({ error }, 401));
 
       const renewal = expect(
         first.manager.onUnauthorized('access-1')

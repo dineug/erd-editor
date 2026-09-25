@@ -204,10 +204,12 @@
         browser, in a cookie that is encrypted with a key only the relay holds,
         that scripts on the page cannot read, and that your browser sends to
         erd-editor.io alone. The cookie lasts 180 days from the last time
-        erd-editor used it. While you sign in, a second cookie, protected the
-        same way, holds that sign-in's state, including the Google account ID
-        to sign in with when erd-editor or Google Drive already knows it; it
-        lasts at most 10 minutes and is deleted when the sign-in completes.
+        erd-editor used it, and never more than a year from the time you last
+        signed in, after which you sign in again. While you sign in, a second
+        cookie, protected the same way, holds that sign-in's state, including
+        the Google account ID to sign in with when erd-editor or Google Drive
+        already knows it; it lasts at most 10 minutes and is deleted when the
+        sign-in completes.
         The access token lives only in the memory of your open erd-editor
         tabs. The relay's logs record what happened, such as a sign-in, and
         never a token, code, cookie or anything about your files. Cloudflare,

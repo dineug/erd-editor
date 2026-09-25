@@ -48,11 +48,14 @@ describe('classifyRelayResponse', () => {
     });
   });
 
-  it('reads a 401 of the JSON contract as signed out', async () => {
-    await expect(
-      classifyRelayResponse(jsonReply({ error: 'invalid_grant' }, 401))
-    ).resolves.toEqual({ kind: 'signed-out' });
-  });
+  it.each(['signed_out', 'invalid_cookie', 'invalid_grant', 'reauth_required'])(
+    'reads a 401 of the JSON contract with %s as signed out',
+    async error => {
+      await expect(
+        classifyRelayResponse(jsonReply({ error }, 401))
+      ).resolves.toEqual({ kind: 'signed-out' });
+    }
+  );
 
   it.each([
     ['a 429', () => jsonReply({ error: 'rate_limited' }, 429)],
