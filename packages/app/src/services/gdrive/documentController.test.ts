@@ -33,6 +33,7 @@ import {
 } from '@/services/gdrive/documentController';
 import {
   ACK_TIMEOUT_MS,
+  CHECK_TIMEOUT_MS,
   fileChannelName,
   FLUSH_TIMEOUT_MS,
   FOLLOWER_SEND_WINDOW_MS,
@@ -523,15 +524,60 @@ describe('a save nobody confirmed', () => {
     expect(b.snapshot().saveState).toBe('unconfirmed');
     expect(env.patches()).toHaveLength(1);
 
-    expect(await b.controller.checkUnconfirmed()).toBe('skipped');
+    const checked = b.controller.checkUnconfirmed();
     await settle(20);
 
+    expect(await checked).toBe('resumed');
     expect(a.snapshot().saveState).toBe('saved');
     expect(b.snapshot().saveState).toBe('saved');
     b.addTable('items');
     await settle(2100);
     expect(env.patches().map(env.tabOf)).toEqual(['a', 'a']);
     expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+  });
+
+  it('tells a follower when the leader could not reach Drive, or never answered', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    a.addTable('orders');
+    env.drive.loseNextResponse('PATCH');
+    await settle(2000 + 1000 + 20);
+    expect(b.snapshot().saveState).toBe('unconfirmed');
+
+    env.drive.failNext('GET', 500);
+    const failed = b.controller.checkUnconfirmed();
+    await settle(20);
+    expect(await failed).toBe('failed');
+    expect(b.snapshot().saveState).toBe('unconfirmed');
+
+    a.freeze();
+    const unanswered = b.controller.checkUnconfirmed();
+    await settle(CHECK_TIMEOUT_MS);
+    expect(await unanswered).toBe('failed');
+  });
+
+  it('checks in a follower elected while it waited, and skips in one that closed', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    const c = await open('c');
+    a.addTable('orders');
+    env.drive.loseNextResponse('PATCH');
+    await settle(2000 + 1000 + 20);
+    a.freeze();
+
+    const checked = b.controller.checkUnconfirmed();
+    const closed = c.controller.checkUnconfirmed();
+    c.close();
+    tabs.splice(tabs.indexOf(c), 1);
+    expect(await closed).toBe('skipped');
+    expect(await c.controller.checkUnconfirmed()).toBe('skipped');
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(20);
+
+    expect(b.snapshot().role).toBe('leader');
+    expect(await checked).toBe('resumed');
+    expect(b.snapshot().saveState).toBe('saved');
   });
 
   it('turns into a conflict when Drive holds something else', async () => {
@@ -796,14 +842,39 @@ describe('what a file is', () => {
     expect(a.snapshot()).toMatchObject({
       canEdit: false,
       saveState: 'readonly',
+      accessLost: false,
     });
     expect(b.snapshot()).toMatchObject({
       canEdit: false,
       saveState: 'readonly',
+      accessLost: false,
     });
     b.addTable('orders');
     await settle(10_000);
     expect(env.patches()).toHaveLength(0);
+  });
+
+  it('stops every tab with its edits when a save finds edit access gone, and downloads them once closed', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    env.drive.files.get('file-1')!.canEdit = false;
+
+    b.addTable('orders');
+    await settle(2100);
+
+    for (const tab of [a, b]) {
+      expect(tab.snapshot()).toMatchObject({
+        canEdit: false,
+        saveState: 'readonly',
+        accessLost: true,
+      });
+    }
+    expect(env.patches()).toHaveLength(0);
+    expect(a.controller.hasUnsavedChanges()).toBe(true);
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    a.controller.downloadChanges();
+    expect(tableNames(a.downloads[0].text)).toEqual(['orders', 'users']);
   });
 });
 

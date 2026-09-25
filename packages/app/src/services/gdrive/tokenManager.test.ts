@@ -789,6 +789,7 @@ describe('createTokenManager', () => {
       expect(second.manager.getSnapshot()).toMatchObject({
         status: 'signed-out',
         signingIn: true,
+        bySignOut: false,
       });
 
       browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
@@ -1722,6 +1723,25 @@ describe('createTokenManager', () => {
       expect(listener).not.toHaveBeenCalled();
     });
 
+    it('learns that a person signed out elsewhere after a 401 had signed it out', async () => {
+      browser.relay.signedIn = false;
+      const tab = openTab(browser);
+      await start(tab);
+      expect(tab.manager.getSnapshot().bySignOut).toBe(false);
+
+      browser.hub.broadcast(TOKEN_CHANNEL, {
+        type: 'signed-out',
+        at: 1,
+        fromSignOut: true,
+      });
+      await flush();
+
+      expect(tab.manager.getSnapshot()).toMatchObject({
+        status: 'signed-out',
+        bySignOut: true,
+      });
+    });
+
     it('signs every tab out from one, logging out at the relay', async () => {
       const first = openTab(browser);
       await start(first);
@@ -1731,9 +1751,11 @@ describe('createTokenManager', () => {
       await expect(first.manager.signOut()).resolves.toBe(true);
       await flush();
 
+      expect(first.manager.getSnapshot().bySignOut).toBe(true);
       expect(second.manager.getSnapshot()).toMatchObject({
         status: 'signed-out',
         account: null,
+        bySignOut: true,
       });
       expect(browser.relay.count(RELAY_LOGOUT_PATH)).toBe(1);
       expect(first.gis.revoked).toEqual([]);

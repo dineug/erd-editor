@@ -3,6 +3,7 @@ import {
   CircleAlert,
   CircleCheck,
   CloudOff,
+  Download,
   Eye,
   LoaderCircle,
   type LucideIcon,
@@ -39,7 +40,10 @@ interface GdriveSaveStatusProps {
   state: SaveState;
 }
 
-/** Where the open file's saves stand, for people and for the e2e specs (data-save-state). */
+/**
+ * Where the open file's saves stand, for people and for the e2e specs
+ * (data-save-state). A save that failed or waits for Google offers the edits.
+ */
 const GdriveSaveStatus: React.FC<GdriveSaveStatusProps> = ({
   session,
   state,
@@ -65,6 +69,17 @@ const GdriveSaveStatus: React.FC<GdriveSaveStatusProps> = ({
           onClick={() => void settleReported(session.retrySave)()}
         >
           Try again
+        </Button>
+      ) : null}
+      {state === 'failed' || state === 'paused' ? (
+        <Button
+          size="1"
+          variant="ghost"
+          color="gray"
+          onClick={() => session.downloadChanges()}
+        >
+          <Download size={14} />
+          Download my changes
         </Button>
       ) : null}
     </Flex>

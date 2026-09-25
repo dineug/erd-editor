@@ -82,19 +82,22 @@ const GdriveSignIn: React.FC<GdriveSignInProps> = ({
         title="Waiting for Google sign-in…"
         description="Finish signing in in the window Google opened."
       >
-        <Flex align="center" gap="3">
-          <Spinner size="2" />
-          {fallback ? null : (
-            <Button
-              size="2"
-              variant="soft"
-              color="gray"
-              onClick={() => session.cancelSignIn()}
-              {...authControl}
-            >
-              Cancel
-            </Button>
-          )}
+        <Flex direction="column" align="center" gap="3">
+          <Flex align="center" gap="3">
+            <Spinner size="2" />
+            {fallback ? null : (
+              <Button
+                size="2"
+                variant="soft"
+                color="gray"
+                onClick={() => session.cancelSignIn()}
+                {...authControl}
+              >
+                Cancel
+              </Button>
+            )}
+          </Flex>
+          {children}
         </Flex>
       </GdriveNotice>
     );

@@ -653,6 +653,49 @@ describe('the open file', () => {
     expect(tab.snapshot().document?.saveState).toBe('saved');
   });
 
+  it('tells a follower tab when its Check Drive could not reach Drive', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    const other = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await start(other);
+    await settle(10);
+    browser.drive.loseNextResponse('PATCH');
+    other.editor.addTable('orders');
+    await settle(3010);
+    expect(other.snapshot().document).toMatchObject({
+      role: 'follower',
+      saveState: 'unconfirmed',
+    });
+
+    browser.drive.failNext('GET', 500);
+    const checking = other.session.checkDrive();
+    await settle(20);
+
+    expect(await checking).toBe('failed');
+    expect(other.snapshot().notice?.message).toBe(MESSAGES.checkFailed);
+    expect(tab.snapshot().notice).toBeNull();
+  });
+
+  it('keeps edits to download once Drive takes edit access away', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await settle(10);
+    browser.drive.files.get('file-1')!.canEdit = false;
+
+    tab.editor.addTable('orders');
+    await settle(2010);
+
+    expect(tab.snapshot().document).toMatchObject({
+      saveState: 'readonly',
+      canEdit: false,
+      accessLost: true,
+    });
+    expect(tab.session.hasUnsavedChanges()).toBe(true);
+    tab.session.downloadChanges();
+    expect(tableNames(tab.downloads[0].text)).toEqual(['orders', 'users']);
+    expect(patches(browser, 'file-1')).toHaveLength(0);
+  });
+
   it('does nothing for the file actions without a file', async () => {
     const tab = openTab(browser);
     await start(tab);
@@ -667,7 +710,7 @@ describe('the open file', () => {
     expect(tab.snapshot().controller).toBeNull();
   });
 
-  it('keeps the file through a sign-out another tab made, for the same account', async () => {
+  it('closes a file without edits when another tab signs out, and opens it again after', async () => {
     const tab = openTab(browser, { state: null, file: 'file-1' });
     const other = openTab(browser);
     await start(tab);
@@ -677,15 +720,41 @@ describe('the open file', () => {
 
     await other.session.signOut();
     await settle(10);
-    expect(tab.snapshot().screen).toBe('sign-in');
-    expect(tab.snapshot().controller).toBe(controller);
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'sign-in',
+      controller: null,
+      keptChanges: false,
+      files: [],
+    });
+    expect(tab.session.hasUnsavedChanges()).toBe(false);
 
     tab.session.signIn();
     browser.relay.signedIn = true;
     await finishPopup(browser, tab);
     await settle(10);
     expect(tab.snapshot().screen).toBe('workspace');
-    expect(tab.snapshot().controller).toBe(controller);
+    expect(tab.snapshot().controller?.fileId).toBe('file-1');
+    expect(tab.snapshot().controller).not.toBe(controller);
+    expect(tab.snapshot().document?.phase).toBe('ready');
+  });
+
+  it('keeps the file through a 401 for the same account, with nothing to download', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await settle(10);
+    const { controller } = tab.snapshot();
+    browser.relay.signedIn = false;
+    browser.drive.tokens.clear();
+
+    tab.events.dispatchEvent(new Event('focus'));
+    await settle(ADOPT_WAIT_MS + 10);
+
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'sign-in',
+      controller,
+      keptChanges: false,
+    });
+    expect(tab.snapshot().token.bySignOut).toBe(false);
   });
 
   it('keeps counting the edits an account screen took the editor from, and saves them back', async () => {
@@ -699,6 +768,7 @@ describe('the open file', () => {
     await other.session.signOut();
     await settle(10);
     expect(tab.snapshot().screen).toBe('sign-in');
+    expect(tab.snapshot().keptChanges).toBe(true);
     expect(tab.session.hasUnsavedChanges()).toBe(true);
     tab.session.downloadChanges();
     expect(tableNames(tab.downloads[0].text)).toEqual(['orders', 'users']);
@@ -716,6 +786,81 @@ describe('the open file', () => {
     expect(tableNames(tab.editor.store.value)).toEqual(['orders', 'users']);
     expect(patches(browser, 'file-1')).toHaveLength(1);
     expect(tab.session.hasUnsavedChanges()).toBe(false);
+  });
+});
+
+describe('another account', () => {
+  it('holds the edits it found unsaved until the person downloads them or goes on', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    const other = openTab(browser);
+    await start(tab);
+    await start(other);
+    await settle(10);
+    tab.editor.addTable('orders');
+    await other.session.signOut();
+    await settle(10);
+
+    // Another tab signs in with a second account; this one was left alone.
+    browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+    browser.relay.signedIn = true;
+    other.session.signIn();
+    await finishPopup(browser, other);
+    await settle(10);
+
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'unsaved-changes',
+      stranded: { name: 'shop.erd.json', email: 'person@example.com' },
+      keptChanges: true,
+    });
+    expect(tab.snapshot().token.account?.sub).toBe('sub-2');
+    expect(tab.session.hasUnsavedChanges()).toBe(true);
+    await settle(10_000);
+    expect(patches(browser, 'file-1')).toHaveLength(0);
+
+    tab.session.downloadChanges();
+    expect(tableNames(tab.downloads[0].text)).toEqual(['orders', 'users']);
+    tab.session.discardChanges();
+    tab.session.discardChanges();
+    await settle(10);
+
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'workspace',
+      stranded: null,
+      keptChanges: false,
+    });
+    expect(tab.session.hasUnsavedChanges()).toBe(false);
+    expect(tab.snapshot().document?.phase).toBe('ready');
+    expect(tableNames(tab.editor.store.value)).toEqual(['users']);
+  });
+
+  it('lists the new account’s files when it signs in while the old one’s list is out', async () => {
+    const tab = openTab(browser, {
+      state: openState('file-1', { userId: 'sub-2' }),
+      file: null,
+    });
+    await start(tab);
+    expect(tab.snapshot().filesState).toBe('ready');
+    const isList = (url: URL) => url.pathname === '/drive/v3/files';
+    const release = browser.drive.hold('GET', isList);
+    tab.events.dispatchEvent(new Event('focus'));
+    await settle(10);
+    const lists = browser.drive.callsTo('GET').filter(call => isList(call.url));
+
+    tab.session.switchAccount();
+    browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+    await finishPopup(browser, tab);
+    await settle(10);
+
+    expect(
+      browser.drive.callsTo('GET').filter(call => isList(call.url)).length
+    ).toBeGreaterThan(lists.length);
+    expect(tab.snapshot().filesState).toBe('ready');
+    expect(tab.snapshot().files).toHaveLength(2);
+    release();
+    await settle(10);
+    expect(tab.snapshot().filesState).toBe('ready');
+    expect(tab.snapshot().files).toHaveLength(2);
+    expect(tab.snapshot().token.account?.sub).toBe('sub-2');
   });
 });
 

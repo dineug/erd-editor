@@ -86,6 +86,8 @@ export type TokenSnapshot = {
   gis: 'idle' | 'loading' | 'ready' | 'blocked';
   /** The last sign-in's failure, for the screen that offered it. */
   error: 'popup-blocked' | 'failed' | null;
+  /** Signed out by a person's Sign out, in this tab or another, rather than by the relay's 401. */
+  bySignOut: boolean;
 };
 
 /** No token to give: the status says what the person has to do. */
@@ -316,6 +318,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
     signingIn: false,
     gis: 'idle',
     error: null,
+    bySignOut: false,
   };
   let session: Session | null = null;
   let channel: ChannelLike | null = null;
@@ -393,13 +396,18 @@ export function createTokenManager(deps: TokenManagerDeps) {
       expiresAt: next.expiresAt,
       renewDue: false,
       error: null,
+      bySignOut: false,
     });
     if (next.mode === 'fallback') ensureGis();
     schedule();
     if (broadcast) post({ type: 'token', session: next });
   };
 
-  const clearSession = (status: TokenStatus, mode = snapshot.mode) => {
+  const clearSession = (
+    status: TokenStatus,
+    mode = snapshot.mode,
+    bySignOut = false
+  ) => {
     session = null;
     clearTimers();
     update({
@@ -408,6 +416,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
       account: status === 'signed-out' ? null : snapshot.account,
       expiresAt: null,
       renewDue: status === 'fallback-expired',
+      bySignOut,
     });
   };
 
@@ -626,7 +635,11 @@ export function createTokenManager(deps: TokenManagerDeps) {
     } else if (message?.type === 'signed-out') {
       markSignedOut(message.at ?? now());
       if (message.fromSignOut) endSignIns();
-      if (session || snapshot.account) clearSession('signed-out');
+      if (session || snapshot.account) {
+        clearSession('signed-out', snapshot.mode, message.fromSignOut);
+      } else if (message.fromSignOut && snapshot.status === 'signed-out') {
+        update({ bySignOut: true });
+      }
     }
   }
 
@@ -974,7 +987,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
       // A sign-in still open must not bring the account back afterwards.
       endSignIns();
       markSignedOut(now());
-      clearSession('signed-out');
+      clearSession('signed-out', snapshot.mode, true);
       post({ type: 'signed-out', at: signedOutAt, fromSignOut: true });
       let revoked = false;
       if (previous?.mode === 'fallback' && oauth2) {

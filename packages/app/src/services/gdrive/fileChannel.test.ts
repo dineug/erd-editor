@@ -111,6 +111,8 @@ describe('readFileMessage', () => {
       to: 'tab-2',
     },
     { type: 'rename-claim', epoch: 'e1', requestId: 'r3', from: 'tab-2' },
+    { type: 'check-request', epoch: 'e1', requestId: 'c1' },
+    { type: 'checked', epoch: null, requestId: 'c1', result: 'resumed' },
   ];
 
   it.each(valid)('reads $type', message => {
@@ -153,6 +155,9 @@ describe('readFileMessage', () => {
       { type: 'save-request', requestId: 7 },
       { type: 'flushed', requestId: 'r2' },
       { type: 'flushed', saved: true },
+      { type: 'check-request', requestId: 7 },
+      { type: 'checked', requestId: 'c1', result: 'maybe' },
+      { type: 'checked', result: 'failed' },
     ];
     for (const message of invalid) expect(readFileMessage(message)).toBeNull();
   });

@@ -24,9 +24,11 @@ const GdriveReconnectBanner: React.FC<GdriveReconnectBannerProps> = ({
     message={
       error === 'popup-blocked'
         ? 'Your browser blocked the Google window. Allow pop-ups for this site, then reconnect.'
-        : expired
-          ? 'Your Google session ended, so saving is paused.'
-          : 'Your Google session ends soon.'
+        : error === 'failed'
+          ? "Google didn't reconnect. Try again."
+          : expired
+            ? 'Your Google session ended, so saving is paused.'
+            : 'Your Google session ends soon.'
     }
   >
     <Button

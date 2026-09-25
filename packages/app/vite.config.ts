@@ -11,9 +11,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 const GTAG_ID = 'G-3VBWD4V1JX';
 
 /**
- * Injects the analytics snippet in production only, where HtmlWebpackPlugin
- * filled <%= gtag %>. Added from script, never on /gdrive in any case or
- * percent-encoding the router matches, it keeps Google user data out.
+ * Injects the analytics snippet in production only. Added from script, never
+ * on /gdrive or on a sign-in popup a deploy answered with the app, in any case
+ * or percent-encoding the router matches, it keeps Google user data out.
  */
 function gtag(isProduction: boolean): Plugin {
   return {
@@ -29,7 +29,8 @@ function gtag(isProduction: boolean): Plugin {
       try {
         gtagPath = decodeURI(gtagPath);
       } catch (error) {}
-      if (!gtagPath.toLowerCase().startsWith('/gdrive')) {
+      gtagPath = gtagPath.toLowerCase();
+      if (!gtagPath.startsWith('/gdrive') && !gtagPath.startsWith('/api/auth')) {
         window.dataLayer = window.dataLayer || [];
         window.gtag = function () {
           dataLayer.push(arguments);

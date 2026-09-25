@@ -13,6 +13,8 @@ import {
 } from '@/services/gdrive/driveFileName';
 import {
   ACK_TIMEOUT_MS,
+  CHECK_TIMEOUT_MS,
+  type CheckResult,
   type FileChannel,
   fileChannelName,
   type FileMessage,
@@ -36,7 +38,6 @@ import {
   isFileOpen,
 } from '@/services/gdrive/fileLeader';
 import {
-  type CheckResult,
   createSaveQueue,
   type RenameResult,
   type SaveQueue,
@@ -88,6 +89,8 @@ export type DocumentSnapshot = {
   canEdit: boolean;
   canRename: boolean;
   saveState: SaveState;
+  /** Edit access the file loaded with and a save then found gone: the stopped edits are still here. */
+  accessLost: boolean;
   /** A new one with every load of the document, which makes the editor anew. */
   epoch: string | null;
 };
@@ -136,6 +139,7 @@ const INITIAL: DocumentSnapshot = {
   canEdit: false,
   canRename: false,
   saveState: 'saved',
+  accessLost: false,
   epoch: null,
 };
 
@@ -337,6 +341,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   let ackTimer: ReturnType<typeof setTimeout> | null = null;
   /** A follower's flushes waiting for the leader's answer, by request id. */
   const flushWaiters = new Map<string, (saved: boolean | null) => void>();
+  /** A follower's Check Drive clicks waiting for the leader's answer, null once this tab leads. */
+  const checkWaiters = new Map<string, (result: CheckResult | null) => void>();
 
   const channel = openFileChannel(
     createChannel,
@@ -369,6 +375,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       canEdit: canEdit && state !== 'readonly',
       canRename,
       saveState: state,
+      // A file that loaded read-only starts so; reaching it from editable took a save.
+      accessLost: canEdit && state === 'readonly',
       epoch,
     };
     const changed = (Object.keys(next) as Array<keyof DocumentSnapshot>).some(
@@ -725,6 +733,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     role = 'leader';
     clearAck();
     endFlushes(null);
+    endChecks(null);
     waitingLeader = false;
     if (joining || initialValue === null || !queue) {
       stopJoining();
@@ -772,6 +781,11 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     for (const done of [...flushWaiters.values()]) done(saved);
   }
 
+  /** Ends the checks still waiting: null when this tab leads, skipped when it closes. */
+  function endChecks(result: CheckResult | null) {
+    for (const done of [...checkWaiters.values()]) done(result);
+  }
+
   /** Asks the leader to save and waits until that cycle ends: whether nothing was left. */
   function askLeaderToSave(): Promise<boolean | null> {
     const requestId = createId();
@@ -785,6 +799,29 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       flushWaiters.set(requestId, done);
       requestSave(requestId);
     });
+  }
+
+  /** Asks the leader to check Drive and waits for how it went; null when this tab leads meanwhile. */
+  function askLeaderToCheck(): Promise<CheckResult | null> {
+    const requestId = createId();
+    return new Promise(resolve => {
+      const done = (result: CheckResult | null) => {
+        clearTimeout(timer);
+        checkWaiters.delete(requestId);
+        resolve(result);
+      };
+      const timer = setTimeout(() => done('failed'), CHECK_TIMEOUT_MS);
+      checkWaiters.set(requestId, done);
+      channel.post({ type: 'check-request', requestId });
+    });
+  }
+
+  /** A follower's Check Drive, answered once the leader's check ended. */
+  async function checkFor(requestId: string | undefined) {
+    const result = queue ? await queue.checkUnconfirmed() : 'skipped';
+    if (requestId !== undefined) {
+      channel.post({ type: 'checked', requestId, result });
+    }
   }
 
   /** A follower's save-request; one a flush sent gets its answer once the cycle ends. */
@@ -862,7 +899,9 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       case 'flushed':
         return flushWaiters.get(message.requestId)?.(message.saved);
       case 'check-request':
-        return answerLater(() => void queue?.checkUnconfirmed());
+        return answerLater(() => void checkFor(message.requestId));
+      case 'checked':
+        return checkWaiters.get(message.requestId)?.(message.result);
       case 'reload-request':
         return answerLater(() => void reload());
       case 'rename-request':
@@ -973,14 +1012,18 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     /** Reload from Drive: the leader reads it again, and every tab takes it. */
     reload,
 
-    /** Check Drive, from the unconfirmed banner; a follower's answer comes as the leader's status. */
+    /** Check Drive, from the unconfirmed banner: a follower asks the leader and waits for how it went. */
     async checkUnconfirmed(): Promise<CheckResult> {
-      if (role === 'leader' && queue) return queue.checkUnconfirmed();
-      channel.post({ type: 'check-request' });
-      return 'skipped';
+      if (phase !== 'ready' || !queue || disposed) return 'skipped';
+      if (role !== 'leader') {
+        const result = await askLeaderToCheck();
+        if (result !== null) return result;
+      }
+      // This tab leads, or came to while it waited.
+      return queue.checkUnconfirmed();
     },
 
-    /** Download my changes: the editor's value as an .erd file. */
+    /** Download my changes: the editor's value as an .erd file, still after a dispose. */
     downloadChanges() {
       const value = adapter?.getValue() ?? initialValue;
       if (value === null) return;
@@ -1027,6 +1070,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       stopJoining();
       clearAck();
       endFlushes(false);
+      endChecks('skipped');
       dropAdapter();
       queue?.dispose();
       leader.release();

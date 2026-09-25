@@ -5,6 +5,7 @@ import {
   withRetry,
 } from '@/services/gdrive/driveClient';
 import type {
+  CheckResult,
   SaveAttempt,
   SavedMessage,
   SaveState,
@@ -42,8 +43,6 @@ const STOPPED: ReadonlySet<SaveState> = new Set<SaveState>([
 export type SaveBase = { modifiedTime: string; fingerprint: string | null };
 
 export type RenameResult = { name: string; from: string; to: string };
-
-export type CheckResult = 'resumed' | 'conflict' | 'failed' | 'skipped';
 
 export type SaveBroadcast =
   | ({ type: 'saving' } & SaveAttempt)

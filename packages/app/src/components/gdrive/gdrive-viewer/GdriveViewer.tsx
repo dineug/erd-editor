@@ -185,7 +185,8 @@ function Banners({
     } else if (
       state === 'conflict' ||
       state === 'unconfirmed' ||
-      state === 'deleted'
+      state === 'deleted' ||
+      (state === 'readonly' && document.accessLost)
     ) {
       banners.push(
         <GdriveConflictBanner key="conflict" session={session} state={state} />

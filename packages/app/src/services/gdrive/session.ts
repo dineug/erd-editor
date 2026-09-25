@@ -23,12 +23,12 @@ import {
 } from '@/services/gdrive/driveImport';
 import { createEmptyDocument } from '@/services/gdrive/emptyDocument';
 import {
+  type CheckResult,
   type FilesChannel,
   type FilesMessage,
   openFilesChannel,
 } from '@/services/gdrive/fileChannel';
 import type { FileLockManagerLike } from '@/services/gdrive/fileLeader';
-import type { CheckResult } from '@/services/gdrive/saveQueue';
 import {
   type DriveState,
   isStateForAccount,
@@ -54,6 +54,7 @@ export type SessionScreen =
   | 'scope-missing'
   | 'account-mismatch'
   | 'account-changed'
+  | 'unsaved-changes'
   | 'workspace';
 
 export type FilesState = 'loading' | 'ready' | 'failed';
@@ -74,6 +75,14 @@ export type LeaveRequest = {
   target: string | null;
 };
 
+/** Edits of the last account's file that Drive lacks, which a new account's sign-in closed. */
+export type StrandedChanges = {
+  /** The file's name, when its metadata had come. */
+  name: string | null;
+  /** The account that made them. */
+  email: string;
+};
+
 export type SessionNotice = {
   key: number;
   message: string;
@@ -90,6 +99,10 @@ export type SessionSnapshot = {
   /** The open file's controller, which the editor attaches to. */
   controller: DocumentController | null;
   document: DocumentSnapshot | null;
+  /** Shown on unsaved-changes until the person downloads them or goes on without. */
+  stranded: StrandedChanges | null;
+  /** Off the workspace: whether the file an account screen replaced holds edits Drive lacks. */
+  keptChanges: boolean;
   create: CreateRequest | null;
   leave: LeaveRequest | null;
   notice: SessionNotice | null;
@@ -149,7 +162,8 @@ const SIGNED_IN: ReadonlySet<TokenStatus> = new Set<TokenStatus>([
 
 function screenOf(
   status: TokenStatus,
-  expectedUserId: string | null
+  expectedUserId: string | null,
+  stranded: boolean
 ): SessionScreen {
   switch (status) {
     case 'unknown':
@@ -163,6 +177,7 @@ function screenOf(
     case 'account-changed':
       return 'account-changed';
     default:
+      if (stranded) return 'unsaved-changes';
       return expectedUserId ? 'account-mismatch' : 'workspace';
   }
 }
@@ -196,12 +211,15 @@ export function createGdriveSession(deps: SessionDeps) {
   let account: GoogleAccount | null = null;
   let files: DriveFile[] = [];
   let filesState: FilesState = 'loading';
-  let listing: Promise<void> | null = null;
+  /** The list under way and the account it lists for. */
+  let listing: { sub: string; run: Promise<void> } | null = null;
   /** What this tab created or renamed while a list was on its way, which its answer may predate. */
   let touched: Map<string, DriveFile> | null = null;
   let filesChannel: FilesChannel | null = null;
   let controller: DocumentController | null = null;
   let offController: (() => void) | null = null;
+  /** A closed controller that still downloads the edits it had, and who made them. */
+  let stranded: { controller: DocumentController; email: string } | null = null;
   let switching: string | null | undefined;
   let switchSeq = 0;
   let create: CreateRequest | null = null;
@@ -217,14 +235,22 @@ export function createGdriveSession(deps: SessionDeps) {
 
   function compute(): SessionSnapshot {
     const token = tokens.getSnapshot();
+    const screen = screenOf(token.status, expectedUserId, stranded !== null);
     return {
-      screen: screenOf(token.status, expectedUserId),
+      screen,
       token,
       expectedUserId,
       files,
       filesState,
       controller,
       document: controller?.getSnapshot() ?? null,
+      stranded: stranded && {
+        name: stranded.controller.getSnapshot().name,
+        email: stranded.email,
+      },
+      keptChanges:
+        screen !== 'workspace' &&
+        (stranded !== null || (controller?.hasUnsavedChanges() ?? false)),
       create,
       leave,
       notice,
@@ -297,29 +323,39 @@ export function createGdriveSession(deps: SessionDeps) {
     emit();
   }
 
-  /** Every page of the list again; one at a time, and dropped if the account changed meanwhile. */
+  async function list(sub: string, local: Map<string, DriveFile>) {
+    try {
+      const listed = await withRetry(() => drive.listFiles(), retry);
+      if (account?.sub !== sub) return;
+      setFiles(withTouched(listed, local));
+      filesState = 'ready';
+    } catch {
+      if (account?.sub === sub && filesState !== 'ready') {
+        filesState = 'failed';
+      }
+    } finally {
+      // A list for another account started since owns them now.
+      if (touched === local) {
+        touched = null;
+        listing = null;
+      }
+      emit();
+    }
+  }
+
+  /**
+   * Every page of the list again, one at a time for an account: a list another
+   * account started runs on, and its answer is dropped.
+   */
   function refreshFiles(): Promise<void> {
     const sub = account?.sub;
     if (!sub) return Promise.resolve();
-    listing ??= (async () => {
+    if (listing?.sub !== sub) {
       const local = new Map<string, DriveFile>();
       touched = local;
-      try {
-        const listed = await withRetry(() => drive.listFiles(), retry);
-        if (account?.sub !== sub) return;
-        setFiles(withTouched(listed, local));
-        filesState = 'ready';
-      } catch {
-        if (account?.sub === sub && filesState !== 'ready') {
-          filesState = 'failed';
-        }
-      } finally {
-        touched = null;
-        listing = null;
-        emit();
-      }
-    })();
-    return listing;
+      listing = { sub, run: list(sub, local) };
+    }
+    return listing.run;
   }
 
   function announce(message: FilesMessage) {
@@ -407,8 +443,15 @@ export function createGdriveSession(deps: SessionDeps) {
 
   // The account
 
+  /** A new account starts afresh; edits of the last one's file Drive lacks wait for the person. */
   function enterAccount(next: GoogleAccount) {
-    if (account) leaveAccount();
+    if (account) {
+      const current = controller;
+      if (!stranded && current?.hasUnsavedChanges()) {
+        stranded = { controller: current, email: account.email };
+      }
+      leaveAccount();
+    }
     account = next;
     filesState = 'loading';
     filesChannel = openFilesChannel(createChannel, next.sub);
@@ -499,14 +542,22 @@ export function createGdriveSession(deps: SessionDeps) {
   }
 
   /**
-   * A new account starts afresh. A sign-out another tab made or a 401 keeps
-   * the open file, its edits included, for the same account signing back in.
+   * A 401, or another tab's sign-out while the file holds edits, keeps the
+   * open file for the same account signing back in; a sign-out without edits
+   * to keep leaves nothing of the account behind.
    */
   function onTokens() {
     const token = tokens.getSnapshot();
     const next = token.account;
     if (SIGNED_IN.has(token.status) && next && next.sub !== account?.sub) {
       enterAccount(next);
+    } else if (
+      token.status === 'signed-out' &&
+      token.bySignOut &&
+      account &&
+      !controller?.hasUnsavedChanges()
+    ) {
+      leaveAccount();
     }
     evaluate();
     emit();
@@ -760,9 +811,10 @@ export function createGdriveSession(deps: SessionDeps) {
 
     /** Check Drive, from the unconfirmed banner; null without a file. A check that never reached Drive says so. */
     async checkDrive(): Promise<CheckResult | null> {
-      if (!controller) return null;
-      const result = await controller.checkUnconfirmed();
-      if (result === 'failed') {
+      const current = controller;
+      if (!current) return null;
+      const result = await current.checkUnconfirmed();
+      if (result === 'failed' && controller === current) {
         showNotice(MESSAGES.checkFailed, 'warning');
         emit();
       }
@@ -772,8 +824,16 @@ export function createGdriveSession(deps: SessionDeps) {
     /** Try again after a failed save. */
     retrySave: () => controller?.flush() ?? Promise.resolve(true),
 
+    /** Download my changes: the edits a new account's sign-in closed, else the open file's. */
     downloadChanges() {
-      controller?.downloadChanges();
+      (stranded?.controller ?? controller)?.downloadChanges();
+    },
+
+    /** Go on without the edits the last account left unsaved. */
+    discardChanges() {
+      if (!stranded) return;
+      stranded = null;
+      emit();
     },
 
     /** Opens the file again after it failed to load. */
@@ -786,13 +846,15 @@ export function createGdriveSession(deps: SessionDeps) {
     },
 
     /** For beforeunload. */
-    hasUnsavedChanges: () => controller?.hasUnsavedChanges() ?? false,
+    hasUnsavedChanges: () =>
+      stranded !== null || (controller?.hasUnsavedChanges() ?? false),
 
     dispose() {
       if (disposed) return;
       offTokens?.();
       events?.removeEventListener('focus', onFocus);
       leaveAccount();
+      stranded = null;
       disposed = true;
       listeners.clear();
     },

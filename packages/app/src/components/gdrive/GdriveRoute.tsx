@@ -34,22 +34,21 @@ interface ScreenProps {
 
 /**
  * Everything but the workspace: checking, offline and the account screens. A
- * file open when one replaced the editor keeps its edits here, to download.
+ * file an account screen replaced keeps its unsaved edits here, to download.
  */
 const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
   const { token } = snapshot;
-  const download =
-    snapshot.controller && snapshot.document?.phase === 'ready' ? (
-      <Button
-        size="2"
-        variant="outline"
-        color="gray"
-        onClick={() => session.downloadChanges()}
-      >
-        <Download size={16} />
-        Download my changes
-      </Button>
-    ) : null;
+  const download = snapshot.keptChanges ? (
+    <Button
+      size="2"
+      variant="outline"
+      color="gray"
+      onClick={() => session.downloadChanges()}
+    >
+      <Download size={16} />
+      Download my changes
+    </Button>
+  ) : null;
 
   switch (snapshot.screen) {
     case 'offline':
@@ -57,7 +56,9 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
         <GdriveNotice
           title="You're offline"
           description="erd-editor checks your Google sign-in once you're back online."
-        />
+        >
+          {download}
+        </GdriveNotice>
       );
     case 'sign-in':
       return (
@@ -120,6 +121,33 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
           {download}
         </GdriveNotice>
       );
+    case 'unsaved-changes': {
+      const { name, email } = snapshot.stranded!;
+      return (
+        <GdriveNotice
+          title="Your changes weren't saved"
+          description={`${name ?? 'The file you had open'} has changes from ${email} that aren't in Google Drive, and ${token.account?.email ?? 'another account'} is signed in now. Download them before you go on.`}
+        >
+          <Button
+            size="2"
+            color="gray"
+            highContrast
+            onClick={() => session.downloadChanges()}
+          >
+            <Download size={16} />
+            Download my changes
+          </Button>
+          <Button
+            size="2"
+            variant="outline"
+            color="red"
+            onClick={() => session.discardChanges()}
+          >
+            Continue without them
+          </Button>
+        </GdriveNotice>
+      );
+    }
     default:
       return (
         <GdriveNotice title="Checking your Google sign-in…">

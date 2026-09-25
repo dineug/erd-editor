@@ -17,6 +17,8 @@ export const RENAME_PROBE_MS = 2000;
 export const RENAME_TIMEOUT_MS = 30_000;
 /** How long a follower's flush waits for the leader to end the save it asked for. */
 export const FLUSH_TIMEOUT_MS = 30_000;
+/** How long a follower's Check Drive waits for the leader's answer, a download included. */
+export const CHECK_TIMEOUT_MS = 30_000;
 
 export const SAVE_STATES = [
   'saved',
@@ -45,6 +47,16 @@ const FOLLOWER_UNSAVED_STATES: ReadonlySet<SaveState> = new Set<SaveState>([
   'conflict',
   'unconfirmed',
 ]);
+
+export const CHECK_RESULTS = [
+  'resumed',
+  'conflict',
+  'failed',
+  'skipped',
+] as const;
+
+/** How Check Drive ended: saving again, a conflict, Drive out of reach, or nothing to check. */
+export type CheckResult = (typeof CHECK_RESULTS)[number];
 
 /** A save a leader announced before its PATCH, known by the fingerprint of what it sent. */
 export type SaveAttempt = { attemptId: string; fingerprint: string };
@@ -77,6 +89,13 @@ export type SavedMessage = {
   attemptId: string;
   modifiedTime: string;
   fingerprint: string;
+};
+
+/** The leader's answer to a follower's Check Drive, once its check ended. */
+export type CheckedMessage = {
+  type: 'checked';
+  requestId: string;
+  result: CheckResult;
 };
 
 /** The leader's answer to a flush's save-request, once the cycle it asked for ended. */
@@ -112,7 +131,8 @@ type Body =
   | { type: 'status'; state: SaveState; at: number }
   | { type: 'save-request'; requestId?: string }
   | FlushedMessage
-  | { type: 'check-request' }
+  | { type: 'check-request'; requestId?: string }
+  | CheckedMessage
   | { type: 'reload-request' }
   | ({ type: 'saving' } & SaveAttempt)
   | SavedMessage
@@ -141,6 +161,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function isSaveState(value: unknown): value is SaveState {
   return (SAVE_STATES as readonly unknown[]).includes(value);
 }
+
+const isCheckResult = (value: unknown): value is CheckResult =>
+  (CHECK_RESULTS as readonly unknown[]).includes(value);
 
 function readAttempt(value: unknown): SaveAttempt | null {
   return isRecord(value) &&
@@ -198,7 +221,14 @@ const readers: Record<Body['type'], Reader> = {
     isString(requestId) && isBoolean(saved)
       ? { type: 'flushed', requestId, saved }
       : null,
-  'check-request': () => ({ type: 'check-request' }),
+  'check-request': ({ requestId }) => {
+    if (requestId === undefined) return { type: 'check-request' };
+    return isString(requestId) ? { type: 'check-request', requestId } : null;
+  },
+  checked: ({ requestId, result }) =>
+    isString(requestId) && isCheckResult(result)
+      ? { type: 'checked', requestId, result }
+      : null,
   'reload-request': () => ({ type: 'reload-request' }),
   saving: data => {
     const attempt = readAttempt(data);

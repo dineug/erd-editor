@@ -8,7 +8,8 @@ import { settleReported } from '@/utils/reportError';
 
 interface GdriveConflictBannerProps {
   session: GdriveSession;
-  state: 'conflict' | 'unconfirmed' | 'deleted';
+  /** readonly only for edit access lost while editing, never for a file that opened read-only. */
+  state: 'conflict' | 'unconfirmed' | 'deleted' | 'readonly';
 }
 
 const MESSAGES = {
@@ -18,6 +19,8 @@ const MESSAGES = {
     "Couldn't confirm the last save, so saving stopped. Your changes are still here.",
   deleted:
     'This file was deleted or moved to the trash in Google Drive, so saving stopped.',
+  readonly:
+    "You can't edit this file in Google Drive anymore, so saving stopped. Your changes are still here.",
 };
 
 /**

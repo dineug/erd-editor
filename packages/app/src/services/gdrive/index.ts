@@ -55,6 +55,7 @@ export {
 } from '@/services/gdrive/driveImport';
 export { createEmptyDocument } from '@/services/gdrive/emptyDocument';
 export {
+  type CheckResult,
   type FilesChannel,
   type FilesMessage,
   openFilesChannel,
@@ -70,7 +71,7 @@ export {
   loadGis,
 } from '@/services/gdrive/gis';
 export type { PopupWindowLike } from '@/services/gdrive/oauthPopup';
-export type { CheckResult, RenameResult } from '@/services/gdrive/saveQueue';
+export type { RenameResult } from '@/services/gdrive/saveQueue';
 export {
   createGdriveSession,
   type CreateRequest,
