@@ -1,3 +1,4 @@
+import type { SerializedStyles } from '@emotion/react';
 import { Button, Flex, Text } from '@radix-ui/themes';
 import {
   CircleAlert,
@@ -14,9 +15,16 @@ import { settleReported } from '@/utils/reportError';
 
 import * as styles from './GdriveSaveStatus.styles';
 
-const LABELS: Record<SaveState, { text: string; Icon: LucideIcon }> = {
-  saved: { text: 'Saved to Google Drive', Icon: CircleCheck },
-  saving: { text: 'Saving…', Icon: LoaderCircle },
+const LABELS: Record<
+  SaveState,
+  { text: string; Icon: LucideIcon; iconCss?: SerializedStyles }
+> = {
+  saved: {
+    text: 'Saved to Google Drive',
+    Icon: CircleCheck,
+    iconCss: styles.saved,
+  },
+  saving: { text: 'Saving…', Icon: LoaderCircle, iconCss: styles.spinning },
   failed: { text: "Couldn't save", Icon: CircleAlert },
   conflict: { text: 'Changed in Google Drive', Icon: CircleAlert },
   unconfirmed: { text: "Couldn't confirm the last save", Icon: CircleAlert },
@@ -26,10 +34,12 @@ const LABELS: Record<SaveState, { text: string; Icon: LucideIcon }> = {
   'waiting-leader': {
     text: 'Waiting for the tab that saves this file',
     Icon: LoaderCircle,
+    iconCss: styles.spinning,
   },
   'waiting-snapshot': {
     text: 'Waiting for the tab that opened this file',
     Icon: LoaderCircle,
+    iconCss: styles.spinning,
   },
   'account-changed': { text: 'Signed in with another account', Icon: CloudOff },
   'scope-missing': { text: 'No Google Drive access', Icon: CloudOff },
@@ -48,7 +58,7 @@ const GdriveSaveStatus: React.FC<GdriveSaveStatusProps> = ({
   session,
   state,
 }) => {
-  const { text, Icon } = LABELS[state];
+  const { text, Icon, iconCss } = LABELS[state];
 
   return (
     <Flex
@@ -59,7 +69,7 @@ const GdriveSaveStatus: React.FC<GdriveSaveStatusProps> = ({
       gap="2"
       data-save-state={state}
     >
-      <Icon size={14} aria-hidden />
+      <Icon css={iconCss} size={14} aria-hidden />
       <Text size="1">{text}</Text>
       {state === 'failed' ? (
         <Button

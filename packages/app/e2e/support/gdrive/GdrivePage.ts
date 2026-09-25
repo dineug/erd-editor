@@ -80,6 +80,22 @@ export class GdrivePage {
     await expect(this.saveStatus()).toHaveAttribute('data-save-state', state);
   }
 
+  saveStatusIcon() {
+    return this.saveStatus().locator('svg').first();
+  }
+
+  /** What a color token resolves to inside the save status, as a computed color. */
+  async tokenColor(token: string): Promise<string> {
+    return await this.saveStatus().evaluate((status, name) => {
+      const probe = document.createElement('span');
+      probe.style.color = `var(${name})`;
+      status.append(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    }, token);
+  }
+
   /** The live document, serialised by the element. */
   async editorValue(): Promise<string> {
     return await this.page.evaluate(() => {

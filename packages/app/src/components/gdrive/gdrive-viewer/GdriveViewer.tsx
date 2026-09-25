@@ -7,6 +7,7 @@ import GdriveLeaderBanner from '@/components/gdrive/gdrive-banner/GdriveLeaderBa
 import GdriveReconnectBanner from '@/components/gdrive/gdrive-banner/GdriveReconnectBanner';
 import GdriveNotice from '@/components/gdrive/gdrive-screens/GdriveNotice';
 import GdriveSaveStatus from '@/components/gdrive/gdrive-status/GdriveSaveStatus';
+import { spinning } from '@/components/gdrive/gdrive-status/GdriveSaveStatus.styles';
 import ResourceLinks from '@/components/resource-links/ResourceLinks';
 import type {
   DocumentRejection,
@@ -252,7 +253,7 @@ const GdriveViewer: React.FC<GdriveViewerProps> = ({
       ) : null}
       {snapshot.busy ? (
         <Flex css={styles.busy} align="center" gap="2" role="status">
-          <LoaderCircle size={14} aria-hidden />
+          <LoaderCircle css={spinning} size={14} aria-hidden />
           <Text size="1">Saving before you leave…</Text>
         </Flex>
       ) : null}

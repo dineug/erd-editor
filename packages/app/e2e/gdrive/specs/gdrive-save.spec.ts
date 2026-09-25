@@ -62,12 +62,40 @@ test.describe('saving to Drive', () => {
       '/drive/v3/files/shop'
     );
     await expect(app.saveStatus()).toHaveText('Saving…');
+    await expect(app.saveStatusIcon()).not.toHaveCSS('animation-name', 'none');
+    await expect(app.saveStatusIcon()).toHaveCSS('animation-duration', '1s');
 
     google.releasePatches();
     await app.expectSaveState('saved');
     await expect(app.saveStatus()).toHaveText('Saved to Google Drive');
+    await expect(app.saveStatusIcon()).toHaveCSS('animation-name', 'none');
+    const green = await app.tokenColor('--green-11');
+    const gray = await app.tokenColor('--gray-11');
+    expect(green).not.toBe(gray);
+    await expect(app.saveStatusIcon()).toHaveCSS('color', green);
+    await expect(app.saveStatus().getByText('Saved to Google Drive')).toHaveCSS(
+      'color',
+      gray
+    );
     expect(google.patches('shop')).toHaveLength(1);
     expect(tableNames(google.files.get('shop')!.content)).toHaveLength(2);
+  });
+
+  test('keeps the saving icon turning under reduced motion, only slower', async ({
+    context,
+  }) => {
+    const app = await openShop(context);
+    await app.expectSaveState('saved');
+    await app.page.emulateMedia({ reducedMotion: 'reduce' });
+    google.holdPatches();
+
+    await app.addTable();
+    await app.expectSaveState('saving');
+    await expect(app.saveStatusIcon()).not.toHaveCSS('animation-name', 'none');
+    await expect(app.saveStatusIcon()).toHaveCSS('animation-duration', '3s');
+
+    google.releasePatches();
+    await app.expectSaveState('saved');
   });
 
   test('saves nothing for a zoom and does not ask before closing', async ({
