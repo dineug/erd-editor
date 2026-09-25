@@ -90,21 +90,29 @@ test.describe('the Drive list', () => {
 
   test('opens each of the four extensions', async ({ context }) => {
     const files = [
-      { id: 'a', name: 'a.erd', content: documentWithTable('alpha') },
-      { id: 'b', name: 'b.vuerd', content: version2Document('beta') },
-      { id: 'c', name: 'c.erd.json', content: documentWithTable('gamma') },
-      { id: 'd', name: 'd.vuerd.json', content: documentWithTable('delta') },
+      { id: 'a', name: 'a.erd', table: 'alpha' },
+      { id: 'b', name: 'b.vuerd', table: 'beta' },
+      { id: 'c', name: 'c.erd.json', table: 'gamma' },
+      { id: 'd', name: 'd.vuerd.json', table: 'delta' },
     ];
-    files.forEach(file => google.add(file));
+    for (const { id, name, table } of files) {
+      google.add({
+        id,
+        name,
+        content:
+          id === 'b' ? version2Document(table) : documentWithTable(table),
+      });
+    }
     const app = await signedIn(context);
 
-    for (const { name } of files) {
+    for (const { name, table } of files) {
       await app.openFile(name);
       await expect(app.page).toHaveTitle(`${name} · erd-editor`);
+      // The last file's canvas stays until the new one mounts: read its tables.
+      await expect
+        .poll(async () => tableNames(await app.editorValue()))
+        .toEqual([table]);
     }
-    await expect
-      .poll(async () => tableNames(await app.editorValue()))
-      .toEqual(['delta']);
     await app.openFile('b.vuerd');
     await expect
       .poll(async () => tableNames(await app.editorValue()))
@@ -126,12 +134,13 @@ test.describe('the Drive list', () => {
       userId: ACCOUNT.sub,
     });
 
-    await app.page.goto(`/gdrive?state=${encodeURIComponent(state)}`);
     const length = await app.page.evaluate(() => history.length);
+    await app.page.goto(`/gdrive?state=${encodeURIComponent(state)}`);
     await app.waitForEditor();
 
+    // The visit is the one new entry; ?file= replaced ?state= in it.
     await expect(app.page).toHaveURL(/\/gdrive\?file=shared$/);
-    expect(await app.page.evaluate(() => history.length)).toBe(length);
+    expect(await app.page.evaluate(() => history.length)).toBe(length + 1);
   });
 });
 
@@ -342,6 +351,8 @@ test.describe('what is never saved', () => {
     await app.openFile('shared.erd');
     await app.expectSaveState('readonly');
     await expect(app.saveStatus()).toHaveText('View only');
+    // Read-only from the start stops nothing, so no banner offers the edits.
+    await expect(app.page.getByRole('alert')).toHaveCount(0);
     expect(
       await app.page.evaluate(
         () => (document.querySelector('erd-editor') as any).readonly

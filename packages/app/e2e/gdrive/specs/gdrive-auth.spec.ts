@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 import {
   ACCOUNT,
@@ -60,11 +60,16 @@ test.describe('signing in through the relay', () => {
     await setTokenLifetime(305);
     const before = (await oauthServerState()).refreshes;
 
-    const tokenRequests: string[] = [];
+    const tokenRequests: Array<{ at: number; page: Page | null }> = [];
     context.on('request', request => {
-      if (new URL(request.url()).pathname === '/api/auth/token') {
-        tokenRequests.push(request.url());
+      if (new URL(request.url()).pathname !== '/api/auth/token') return;
+      let page: Page | null = null;
+      try {
+        page = request.frame().page();
+      } catch {
+        // A service worker's request has no frame.
       }
+      tokenRequests.push({ at: Date.now(), page });
     });
     await first.page.reload();
     await expect(first.sidebar()).toBeVisible();
@@ -72,13 +77,12 @@ test.describe('signing in through the relay', () => {
     const second = await GdrivePage.open(context);
     await expect(second.sidebar()).toBeVisible();
 
-    // The first tab's visit, then its renewal five seconds in; the second tab
-    // takes both from the first over the channel.
-    await expect
-      .poll(async () => (await oauthServerState()).refreshes, {
-        timeout: 20_000,
-      })
-      .toBe(before + 2);
+    // The first tab's visit, then one renewal five seconds after it; the
+    // second tab took the visit's token over the channel, asking nothing.
+    await expect.poll(() => tokenRequests.length, { timeout: 20_000 }).toBe(2);
+    const [visit, renewal] = tokenRequests;
+    expect(visit.page).toBe(first.page);
+    expect(renewal.at - visit.at).toBeGreaterThan(4500);
     await second.page.waitForTimeout(1500);
     expect(tokenRequests).toHaveLength(2);
     expect((await oauthServerState()).refreshes).toBe(before + 2);
@@ -123,6 +127,8 @@ test.describe('signing in through the relay', () => {
   test('asks for the account Drive used and switches with it as the hint', async ({
     context,
   }) => {
+    // Drive shows each account the files it opened with erd-editor alone.
+    google.files.get('file-1')!.accounts = [OTHER_ACCOUNT.sub];
     const state = JSON.stringify({
       action: 'open',
       ids: ['file-1'],
@@ -147,6 +153,7 @@ test.describe('signing in through the relay', () => {
     await app.waitForEditor();
     await expect(app.sidebar().getByText(OTHER_ACCOUNT.email)).toBeVisible();
     await expect(app.page).toHaveURL(/\/gdrive\?file=file-1$/);
+    await expect.poll(() => app.fileNames()).toEqual(['shop.erd.json']);
   });
 
   test('says so when Drive access was left out, keeps no cookie, and tries again', async ({

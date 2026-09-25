@@ -50,6 +50,8 @@ export type DriveFileSeed = {
   resourceKey?: string | null;
   /** Invisible under drive.file: a 404 for every request, and out of the list. */
   hidden?: boolean;
+  /** The accounts drive.file lets see it, by sub; the first account's alone by default. */
+  accounts?: string[];
 };
 
 type DriveFile = Required<Omit<DriveFileSeed, 'modifiedTime'>> & {
@@ -177,7 +179,7 @@ const GIS_SCRIPT = `(() => {
 /**
  * Google for a browser context: the authorize page, which registers its code
  * with the fake token server, the GIS token client, userinfo and a Drive in
- * memory that answers only the fields asked for. Other Google hosts abort.
+ * memory that answers only the fields asked for, per account. Others abort.
  */
 export async function installFakeGoogle(context: BrowserContext) {
   const files = new Map<string, DriveFile>();
@@ -191,6 +193,8 @@ export async function installFakeGoogle(context: BrowserContext) {
   let patchGate: Promise<void> | null = null;
   let releaseGate: () => void = () => {};
   let dropPatchResponses = 0;
+  const failures: Array<{ method: string; status: number; reason: string }> =
+    [];
 
   const nextTime = () => {
     clock = Math.max(clock + 1000, Date.now());
@@ -216,6 +220,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         canRename: true,
         resourceKey: null,
         hidden: false,
+        accounts: [ACCOUNT.sub],
         ...seed,
         modifiedTime:
           seed.modifiedTime === undefined
@@ -246,6 +251,16 @@ export async function installFakeGoogle(context: BrowserContext) {
     /** The next content PATCH is applied and its answer lost, as a dropped connection. */
     dropNextPatchResponse() {
       dropPatchResponses++;
+    },
+
+    /** The next times Drive requests of this method fail so, before Drive looks at them. */
+    failNext(
+      method: string,
+      status: number,
+      reason = 'backendError',
+      times = 1
+    ) {
+      for (let n = 0; n < times; n++) failures.push({ method, status, reason });
     },
 
     /** Drive requests made so far, by method, path and tab. */
@@ -321,15 +336,26 @@ export async function installFakeGoogle(context: BrowserContext) {
     return json(route, project(value, tree));
   };
 
-  async function drive(route: Route, request: Request, url: URL) {
+  /** What drive.file lets this account see. */
+  const visible = (file: DriveFile, sub: string) =>
+    !file.hidden && file.accounts.includes(sub);
+
+  async function drive(route: Route, request: Request, url: URL, sub: string) {
     const method = request.method();
     const fields = url.searchParams.get('fields');
     const path = url.pathname;
     const body = request.postData();
+    const uploadType = url.searchParams.get('uploadType');
+
+    const failure = failures.findIndex(entry => entry.method === method);
+    if (failure !== -1) {
+      const [{ status, reason }] = failures.splice(failure, 1);
+      return driveError(route, status, reason);
+    }
 
     if (method === 'GET' && path === '/drive/v3/files') {
       const listed = [...files.values()]
-        .filter(file => !file.hidden && !file.trashed)
+        .filter(file => visible(file, sub) && !file.trashed)
         .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
       const start = Number(url.searchParams.get('pageToken') ?? 0);
       const page = listed.slice(start, start + PAGE_SIZE);
@@ -352,6 +378,9 @@ export async function installFakeGoogle(context: BrowserContext) {
     }
 
     if (method === 'POST' && path === '/upload/drive/v3/files') {
+      if (uploadType !== 'multipart') {
+        return driveError(route, 400, 'badRequest');
+      }
       const boundary = /boundary=([^;]+)/.exec(
         request.headers()['content-type'] ?? ''
       )?.[1];
@@ -375,7 +404,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         parents?: string[];
       };
       const parent = metadata.parents?.[0];
-      if (parent && (!files.has(parent) || files.get(parent)!.hidden)) {
+      if (parent && (!files.has(parent) || !visible(files.get(parent)!, sub))) {
         return driveError(route, 404, 'notFound');
       }
       const file = fake.add({
@@ -384,6 +413,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         mimeType: metadata.mimeType,
         parents: metadata.parents ?? ['root'],
         content: parts[1],
+        accounts: [sub],
       });
       return reply(route, resource(file), fields, DEFAULT_FILE_FIELDS);
     }
@@ -394,7 +424,7 @@ export async function installFakeGoogle(context: BrowserContext) {
     if (
       !match ||
       !file ||
-      file.hidden ||
+      !visible(file, sub) ||
       (file.resourceKey &&
         !keys.split(',').includes(`${file.id}/${file.resourceKey}`))
     ) {
@@ -414,6 +444,7 @@ export async function installFakeGoogle(context: BrowserContext) {
     }
 
     if (method === 'PATCH' && match[1]) {
+      if (uploadType !== 'media') return driveError(route, 400, 'badRequest');
       if (patchGate) await patchGate;
       if (!file.canEdit) {
         return driveError(route, 403, 'insufficientFilePermissions');
@@ -429,6 +460,10 @@ export async function installFakeGoogle(context: BrowserContext) {
     }
 
     if (method === 'PATCH') {
+      const type = request.headers()['content-type'] ?? '';
+      if (!type.startsWith('application/json')) {
+        return driveError(route, 400, 'badRequest');
+      }
       if (!file.canRename) {
         return driveError(route, 403, 'insufficientFilePermissions');
       }
@@ -460,7 +495,7 @@ export async function installFakeGoogle(context: BrowserContext) {
     if (url.pathname === '/oauth2/v3/userinfo') {
       return json(route, { ...account, email_verified: true });
     }
-    return drive(route, request, url);
+    return drive(route, request, url, account.sub);
   }
 
   async function authorize(route: Route) {

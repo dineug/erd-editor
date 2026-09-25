@@ -115,6 +115,70 @@ test.describe('saving to Drive', () => {
     await app.expectSaveState('saved');
     expect(google.patches('shop')).toHaveLength(0);
   });
+
+  test('shows a save Drive kept refusing, keeps it for download, and Try again saves it', async ({
+    context,
+  }) => {
+    const app = await openShop(context);
+    // The PATCH and its three retries, one, two and four seconds apart.
+    google.failNext('PATCH', 503, 'backendError', 4);
+
+    await app.addTable();
+
+    await expect(app.saveStatus()).toHaveAttribute(
+      'data-save-state',
+      'failed',
+      { timeout: 30_000 }
+    );
+    await expect(app.saveStatus()).toContainText("Couldn't save");
+    expect(google.patches('shop')).toHaveLength(4);
+    expect(tableNames(google.files.get('shop')!.content)).toEqual(['users']);
+    expect(await closeAsked(app.page)).toBe(true);
+
+    const download = app.page.waitForEvent('download');
+    await app
+      .saveStatus()
+      .getByRole('button', { name: 'Download my changes' })
+      .click();
+    const file = await download;
+    const text = await (await file.createReadStream()).toArray();
+    expect(tableNames(Buffer.concat(text).toString('utf8'))).toHaveLength(2);
+
+    await app.saveStatus().getByRole('button', { name: 'Try again' }).click();
+    await app.expectSaveState('saved');
+    expect(google.patches('shop')).toHaveLength(5);
+    expect(tableNames(google.files.get('shop')!.content)).toHaveLength(2);
+  });
+
+  test('keeps the edits for download once Drive takes edit access away', async ({
+    context,
+  }) => {
+    const app = await openShop(context);
+    google.files.get('shop')!.canEdit = false;
+
+    await app.addTable();
+
+    await expect(
+      app.page
+        .getByRole('alert')
+        .filter({ hasText: "You can't edit this file in Google Drive anymore" })
+    ).toBeVisible();
+    await app.expectSaveState('readonly');
+    expect(google.patches('shop')).toHaveLength(0);
+    expect(
+      await app.page.evaluate(
+        () => (document.querySelector('erd-editor') as any).readonly
+      )
+    ).toBe(true);
+
+    const download = app.page.waitForEvent('download');
+    await app.page.getByRole('button', { name: 'Download my changes' }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe('shop.erd');
+    const text = await (await file.createReadStream()).toArray();
+    expect(Buffer.concat(text).toString('utf8')).toBe(await app.editorValue());
+    expect(tableNames(await app.editorValue())).toHaveLength(2);
+  });
 });
 
 test.describe('tabs of one file', () => {

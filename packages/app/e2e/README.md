@@ -69,8 +69,10 @@ client, `redirect_uri` and PKCE challenge, refresh tokens live until revoked,
 the browser context: the authorize page (it registers a code with the token
 server and sends the popup to the real callback, or denies, closes, or leaves
 Drive out), the GIS script, userinfo, and a Drive in memory that answers only the
-`fields` asked for, pages by two, records each request with its tab, and can hold
-PATCHes or lose a PATCH's answer. Any other Google host aborts. The browser follows a redirect past every route, so the relay's `start`
+`fields` asked for, pages by two, shows each account only the files it may see,
+refuses an upload without its `uploadType` and a metadata PATCH that is not JSON,
+records each request with its tab, and can hold PATCHes, lose a PATCH's answer or
+fail the next requests. Any other Google host aborts. The browser follows a redirect past every route, so the relay's `start`
 is routed too: its real answer, cookie included, comes back as a page that
 navigates to the authorize URL, marked so the popup does not take it for a stray
 page. `support/gdrive/fakeAuth.ts` makes `/api/auth/*` fail its JSON contract
@@ -93,7 +95,7 @@ server's own `/__framer`: Chrome blocks a routed origin from framing localhost.
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, the account switch, Drive left out, a stray callback link, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
 | `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename; import; v2 saved as v3 only once edited; files never saved |
-| `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, tabs and their leader, the next leader after one gone past its PATCH and Check Drive, `beforeunload` right after an edit, a frame |
+| `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, a save Drive kept refusing and Try again, edit access lost with the edits downloaded, tabs and their leader, the next leader after one gone past its PATCH and Check Drive, `beforeunload` right after an edit, a frame |
 
 ## Reading a failure
 
