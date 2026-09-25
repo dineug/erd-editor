@@ -137,6 +137,10 @@ run 2 writes its own to `e2e/.report/gdrive` on CI.
 
 The usual suspect for a flake here is timing around a handover — the host has no
 outbound buffer, so an edit made in the second or two before the successor tab has
-rejoined the room is dropped. The guest does buffer (its shared store holds
-actions while disconnected and flushes on reconnect), which is why
-`leadership.spec.ts` drives the handover from the guest side.
+rejoined the room is dropped. The guest buffers (its shared store holds actions
+while disconnected and flushes on reconnect), but only once it has seen the host
+go: an edit it makes in the moment after the leader tab closes is sent to that tab
+and lost, unless the dying tab still relays it, as it usually does. So
+`leadership.spec.ts` drives the handover from the guest side and has the guest edit
+only after the successor's own participants list shows a nickname typed after the
+leader closed, the check `participants.spec.ts` uses for a handover.
