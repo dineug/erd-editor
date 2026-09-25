@@ -25,9 +25,9 @@ const REJECTIONS: Record<
   { title: string; description: string }
 > = {
   'not-document': {
-    title: "This file isn't an erd-editor document",
+    title: "This file isn't an ERD Editor document",
     description:
-      'erd-editor opens diagrams it saved itself. It leaves this file as it is and never saves over it.',
+      'ERD Editor opens diagrams it saved itself. It leaves this file as it is and never saves over it.',
   },
   trashed: {
     title: 'This file is in the trash',
@@ -35,10 +35,10 @@ const REJECTIONS: Record<
   },
   'too-large': {
     title: 'This file is too large',
-    description: 'erd-editor opens files up to 64 MB.',
+    description: 'ERD Editor opens files up to 64 MB.',
   },
   'google-native': {
-    title: "This file isn't an erd-editor document",
+    title: "This file isn't an ERD Editor document",
     description: 'Google Docs, Sheets and folders open in Google Drive.',
   },
 };
@@ -66,7 +66,7 @@ const EmptyViewer: React.FC<EmptyViewerProps> = ({
     description={
       hasFiles
         ? 'Pick a file from the sidebar, or start a new one.'
-        : 'Create a file or import one. The files you open with erd-editor from Google Drive show up here too.'
+        : 'Create a file or import one. The files you open with ERD Editor from Google Drive show up here too.'
     }
   >
     <Button size="2" color="gray" highContrast onClick={onNewFile}>

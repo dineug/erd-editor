@@ -45,7 +45,7 @@ export function version2Document(tableName: string): string {
   });
 }
 
-/** Another app's .erd, which erd-editor must neither open nor save over. */
+/** Another app's .erd, which ERD Editor must neither open nor save over. */
 export const FOREIGN_ERD = JSON.stringify({
   nodes: [{ id: 'n1', type: 'entity' }],
   edges: [],

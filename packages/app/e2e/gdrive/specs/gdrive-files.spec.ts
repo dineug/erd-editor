@@ -107,7 +107,7 @@ test.describe('the Drive list', () => {
 
     for (const { name, table } of files) {
       await app.openFile(name);
-      await expect(app.page).toHaveTitle(`${name} · erd-editor`);
+      await expect(app.page).toHaveTitle(`${name} · ERD Editor`);
       // The last file's canvas stays until the new one mounts: read its tables.
       await expect
         .poll(async () => tableNames(await app.editorValue()))
@@ -173,7 +173,7 @@ test.describe('creating from Google Drive', () => {
     await app.waitForEditor();
     expect(google.calls('POST')).toHaveLength(1);
     await expect(
-      app.page.getByText("This file isn't an erd-editor document")
+      app.page.getByText("This file isn't an ERD Editor document")
     ).toHaveCount(0);
   });
 
@@ -192,12 +192,12 @@ test.describe('creating from Google Drive', () => {
     await app.page.goto(`/gdrive?state=${encodeURIComponent(state)}`);
     const dialog = app.page.getByRole('dialog');
     await expect(
-      dialog.getByText("In a folder erd-editor can't see")
+      dialog.getByText("In a folder ERD Editor can't see")
     ).toBeVisible();
     await dialog.getByLabel('File name').fill('orders');
     await dialog.getByRole('button', { name: 'Create', exact: true }).click();
     await expect(
-      dialog.getByText("erd-editor can't create files in this folder.", {
+      dialog.getByText("ERD Editor can't create files in this folder.", {
         exact: false,
       })
     ).toBeVisible();
@@ -353,7 +353,7 @@ test.describe('what is never saved', () => {
 
     await app.fileItem('designer.erd').click();
     await expect(
-      app.page.getByText("This file isn't an erd-editor document")
+      app.page.getByText("This file isn't an ERD Editor document")
     ).toBeVisible();
     await expect(app.page.locator('erd-editor')).toHaveCount(0);
 

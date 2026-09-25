@@ -129,8 +129,8 @@ export default defineConfig(({ mode }) => {
         injectRegister: null,
         manifestFilename: 'manifest.json',
         manifest: {
-          name: 'erd-editor',
-          short_name: 'erd-editor',
+          name: 'ERD Editor',
+          short_name: 'ERD Editor',
           description: 'Entity-Relationship Diagram Editor App',
           start_url: '/',
           scope: '/',

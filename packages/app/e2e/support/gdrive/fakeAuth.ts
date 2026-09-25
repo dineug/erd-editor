@@ -29,7 +29,7 @@ export async function installFakeAuth(
     const url = new URL(route.request().url());
     paths.push(url.pathname);
     if (mode === 'html200') {
-      return html(route, '<!doctype html><title>erd-editor</title>');
+      return html(route, '<!doctype html><title>ERD Editor</title>');
     }
     if (mode === 'tooMany429') return html(route, 'Too Many Requests', 429);
     // The page's first check finds no cookie; the sign-in is what hits the limit.

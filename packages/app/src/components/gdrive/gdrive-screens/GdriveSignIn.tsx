@@ -66,7 +66,7 @@ interface GdriveSignInProps {
 }
 
 /**
- * Sign in with Google through erd-editor's popup, or Continue with Google on
+ * Sign in with Google through ERD Editor's popup, or Continue with Google on
  * Google's own token popup while the sign-in server is unavailable.
  */
 const GdriveSignIn: React.FC<GdriveSignInProps> = ({
@@ -108,8 +108,8 @@ const GdriveSignIn: React.FC<GdriveSignInProps> = ({
       title="Open your ERD files in Google Drive"
       description={
         fallback
-          ? "erd-editor's sign-in server is busy, so Google signs you in for an hour at a time."
-          : 'erd-editor opens and saves only the files you create or open with it.'
+          ? "ERD Editor's sign-in server is busy, so Google signs you in for an hour at a time."
+          : 'ERD Editor opens and saves only the files you create or open with it.'
       }
     >
       <Flex direction="column" align="center" gap="3">

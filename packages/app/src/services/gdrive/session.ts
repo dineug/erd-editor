@@ -148,7 +148,7 @@ export type SessionDeps = {
 };
 
 export const MESSAGES = {
-  unreadableState: "Google Drive sent a link erd-editor couldn't read",
+  unreadableState: "Google Drive sent a link ERD Editor couldn't read",
   renameFailed: "Couldn't rename the file",
   createFailed: "Couldn't create the file",
   importFailed: 'Import failed',
@@ -158,14 +158,14 @@ export const MESSAGES = {
     trashed: "Couldn't reload: the file is in the trash in Google Drive",
     'too-large': "Couldn't reload: the file in Google Drive is over 64 MB",
     'google-native':
-      "Couldn't reload: the file in Google Drive isn't an erd-editor document anymore",
+      "Couldn't reload: the file in Google Drive isn't an ERD Editor document anymore",
     'not-document':
-      "Couldn't reload: the file in Google Drive isn't an erd-editor document anymore",
+      "Couldn't reload: the file in Google Drive isn't an ERD Editor document anymore",
   } satisfies Record<DocumentRejection, string>,
   signOutUnconfirmed:
-    "Signed out here. erd-editor's server didn't confirm it, so this browser finishes signing out the next time it connects",
+    "Signed out here. ERD Editor's server didn't confirm it, so this browser finishes signing out the next time it connects",
   signOutNotRevoked:
-    "Signed out here, but Google didn't confirm it removed erd-editor's access, so your other devices may stay signed in until you remove it at myaccount.google.com/permissions",
+    "Signed out here, but Google didn't confirm it removed ERD Editor's access, so your other devices may stay signed in until you remove it at myaccount.google.com/permissions",
 };
 
 const SIGNED_IN: ReadonlySet<TokenStatus> = new Set<TokenStatus>([

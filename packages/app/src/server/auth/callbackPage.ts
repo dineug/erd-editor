@@ -53,7 +53,7 @@ export function renderCallbackPage(
   <head>
     <meta charset="utf-8" />
     <meta name="${CALLBACK_MARKER}" data-ok="${ok}" data-error="${escapeHtml(error ?? '')}" data-attempt="${escapeHtml(attempt ?? '')}" />
-    <title>erd-editor</title>
+    <title>ERD Editor</title>
   </head>
   <body>
     <p>You can close this window.</p>

@@ -17,7 +17,7 @@ interface GdriveCreateDialogProps {
 function folderText({ folderId, folderName }: CreateRequest) {
   if (!folderId) return 'In My Drive';
   if (folderName === undefined) return 'In a folder…';
-  if (folderName === null) return "In a folder erd-editor can't see";
+  if (folderName === null) return "In a folder ERD Editor can't see";
   return `In the folder “${folderName}”`;
 }
 
@@ -65,7 +65,7 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
             </Text>
             {request.status === 'folder-refused' ? (
               <Text size="2" color="red">
-                erd-editor can&apos;t create files in this folder. Create it in
+                ERD Editor can&apos;t create files in this folder. Create it in
                 My Drive instead?
               </Text>
             ) : request.status === 'failed' ? (

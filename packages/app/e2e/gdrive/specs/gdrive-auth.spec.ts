@@ -128,7 +128,7 @@ test.describe('signing in through the relay', () => {
   test('signs in with the account Drive used as the hint', async ({
     context,
   }) => {
-    // Drive shows each account the files it opened with erd-editor alone.
+    // Drive shows each account the files it opened with ERD Editor alone.
     google.files.get('file-1')!.accounts = [OTHER_ACCOUNT.sub];
     const state = JSON.stringify({
       action: 'open',

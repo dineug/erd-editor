@@ -24,7 +24,7 @@ const AppUpdatePrompt: React.FC<AppUpdatePromptProps> = () => {
         <Text size="2">
           {status === 'updatedElsewhere'
             ? 'The app was updated in another tab — reload to finish.'
-            : 'A new version of erd-editor is available.'}
+            : 'A new version of ERD Editor is available.'}
         </Text>
         <Button
           size="1"

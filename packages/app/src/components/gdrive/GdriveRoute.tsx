@@ -31,7 +31,7 @@ import { pickFiles } from '@/utils/file';
 import { IMPORT_ACCEPT } from '@/utils/importFile';
 import { settleReported } from '@/utils/reportError';
 
-const APP_TITLE = 'erd-editor';
+const APP_TITLE = 'ERD Editor';
 
 interface ScreenProps {
   session: GdriveSession;
@@ -61,7 +61,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
       return (
         <GdriveNotice
           title="You're offline"
-          description="erd-editor checks your Google sign-in once you're back online."
+          description="ERD Editor checks your Google sign-in once you're back online."
         >
           {download}
         </GdriveNotice>
@@ -76,7 +76,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
       return (
         <GdriveNotice
           title="Google Drive access was not granted"
-          description="erd-editor needs access to the files you create or open with it. Sign in again and allow Google Drive access."
+          description="ERD Editor needs access to the files you create or open with it. Sign in again and allow Google Drive access."
         >
           <Button
             size="2"
@@ -93,7 +93,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
       );
     case 'account-mismatch': {
       const choose = snapshot.hintRefused
-        ? " erd-editor couldn't preselect that account, so choose it when Google asks."
+        ? " ERD Editor couldn't preselect that account, so choose it when Google asks."
         : '';
       return (
         <GdriveNotice
@@ -294,7 +294,7 @@ const GdriveRoute: React.FC = () => {
   if (framed) {
     return (
       <GdriveNotice
-        title="Open erd-editor's Google Drive editor in its own tab"
+        title="Open ERD Editor's Google Drive editor in its own tab"
         description="It doesn't run inside another page."
       >
         <Link
@@ -312,7 +312,7 @@ const GdriveRoute: React.FC = () => {
     return (
       <GdriveNotice
         title="Google Drive integration is not configured"
-        description="This build of erd-editor has no Google sign-in client."
+        description="This build of ERD Editor has no Google sign-in client."
       />
     );
   }

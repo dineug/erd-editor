@@ -14,11 +14,11 @@ const PAGES = [
     // own words; a point with several parts pins each part.
     phrases: [
       ['drive.file'],
-      ['never pass through an erd-editor server'],
+      ['never pass through an ERD Editor server'],
       ['encrypted with a key only the relay holds', 'It has no database'],
       [
-        "Signing out of erd-editor revokes erd-editor's access at Google",
-        'every other device where you use erd-editor',
+        "Signing out of ERD Editor revokes ERD Editor's access at Google",
+        'every other device where you use ERD Editor',
       ],
       [
         'Google Analytics is not loaded on the Google Drive pages',

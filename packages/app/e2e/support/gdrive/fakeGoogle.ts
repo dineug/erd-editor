@@ -587,7 +587,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         'Cache-Control': 'no-store',
         ...(cookies.length ? { 'Set-Cookie': cookies.join('\n') } : {}),
       },
-      body: `<!doctype html><meta name="erd-editor-auth-callback"><title>erd-editor</title><script>location.replace(${JSON.stringify(location)})</script>`,
+      body: `<!doctype html><meta name="erd-editor-auth-callback"><title>ERD Editor</title><script>location.replace(${JSON.stringify(location)})</script>`,
     });
   }
 

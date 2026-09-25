@@ -29,7 +29,7 @@ const GdriveLeaveDialog: React.FC<GdriveLeaveDialogProps> = ({
           Your latest changes aren&apos;t saved
         </AlertDialog.Title>
         <AlertDialog.Description size="2">
-          erd-editor couldn&apos;t save them to Google Drive. Download them to
+          ERD Editor couldn&apos;t save them to Google Drive. Download them to
           keep a copy, or {signingOut ? 'sign out' : 'leave'} and lose them.
         </AlertDialog.Description>
         <Flex gap="3" mt="4" justify="end" wrap="wrap">

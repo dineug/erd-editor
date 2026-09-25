@@ -306,7 +306,7 @@ test('shows only a link to its own tab inside a frame', async ({ context }) => {
 
   const frame = page.frameLocator('iframe');
   await expect(
-    frame.getByText("Open erd-editor's Google Drive editor in its own tab")
+    frame.getByText("Open ERD Editor's Google Drive editor in its own tab")
   ).toBeVisible();
   await expect(
     frame.getByRole('link', { name: 'Open in a new tab' })

@@ -48,7 +48,7 @@ export function jsonReply(body: unknown, status = 200): Response {
 }
 
 export function htmlReply(status = 200): Response {
-  return new Response('<!doctype html><title>erd-editor</title>', {
+  return new Response('<!doctype html><title>ERD Editor</title>', {
     status,
     headers: { 'Content-Type': 'text/html' },
   });
