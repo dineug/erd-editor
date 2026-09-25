@@ -18,6 +18,8 @@ const PAGES = [
       [
         'named ERD Editor, which ERD Editor creates in your My Drive',
         'makes a new one if the folder is deleted, in the trash, moved to a shared drive',
+        'after you sign out of ERD Editor or remove its access from your Google Account',
+        'the earlier folder and the files in it stay in your Google Drive, but ERD Editor can no longer list them',
       ],
       ['never pass through an ERD Editor server'],
       ['encrypted with a key only the relay holds', 'It has no database'],
