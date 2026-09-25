@@ -127,7 +127,7 @@ type Body =
   | { type: 'actions'; actions: unknown[] }
   | { type: 'hello'; from: string }
   | SnapshotMessage
-  | { type: 'status'; state: SaveState; at: number }
+  | { type: 'status'; state: SaveState }
   | { type: 'save-request'; requestId?: string }
   | FlushedMessage
   | { type: 'check-request'; requestId?: string }
@@ -198,10 +198,8 @@ const readers: Record<Body['type'], Reader> = {
         }
       : null;
   },
-  status: ({ state, at }) =>
-    isSaveState(state) && typeof at === 'number'
-      ? { type: 'status', state, at }
-      : null,
+  status: ({ state }) =>
+    isSaveState(state) ? { type: 'status', state } : null,
   'save-request': ({ requestId }) => {
     if (requestId === undefined) return { type: 'save-request' };
     return isString(requestId) ? { type: 'save-request', requestId } : null;

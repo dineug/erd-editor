@@ -67,7 +67,7 @@ describe('readFileMessage', () => {
       saveState: 'conflict',
       pendingAttempt: { attemptId: 'a1', fingerprint: 'f2' },
     },
-    { type: 'status', epoch: 'e1', state: 'saving', at: 1 },
+    { type: 'status', epoch: 'e1', state: 'saving' },
     { type: 'save-request', epoch: 'e1' },
     { type: 'check-request', epoch: 'e1' },
     { type: 'reload-request', epoch: 'e1' },
@@ -137,7 +137,8 @@ describe('readFileMessage', () => {
       { ...valid[2], saveState: 'dirty' },
       { ...valid[2], pendingAttempt: { attemptId: 'a1' } },
       { ...valid[2], canEdit: 'yes' },
-      { type: 'status', epoch: 'e1', state: 'saved' },
+      { type: 'status', epoch: 'e1' },
+      { type: 'status', epoch: 'e1', state: 'dirty' },
       { type: 'saving', epoch: 'e1', attemptId: 'a1' },
       { type: 'saved', epoch: 'e1', attemptId: 'a1', fingerprint: 'f1' },
       { type: 'failed', epoch: 'e1' },
@@ -591,7 +592,7 @@ describe('the file protocol, from another tab', () => {
     );
 
     other.addTable('orders');
-    stale.channel.post({ type: 'status', state: 'saved', at: 1 });
+    stale.channel.post({ type: 'status', state: 'saved' });
     await settle(5);
 
     expect(b.snapshot().epoch).toBe(epoch);

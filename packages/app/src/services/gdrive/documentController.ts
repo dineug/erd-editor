@@ -417,7 +417,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
 
   function postStatus() {
     if (role !== 'leader') return;
-    channel.post({ type: 'status', state: saveState(), at: now() });
+    channel.post({ type: 'status', state: saveState() });
   }
 
   function createQueue(init: SaveQueueInit): SaveQueue {
