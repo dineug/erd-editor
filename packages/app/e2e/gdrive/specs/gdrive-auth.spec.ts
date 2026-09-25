@@ -10,6 +10,7 @@ import {
   setTokenLifetime,
 } from '../../support/gdrive/fakeGoogle';
 import { GdrivePage } from '../../support/gdrive/GdrivePage';
+import { GDRIVE_BASE_URL } from '../../support/gdrive/server';
 
 const REFRESH_COOKIE = '__Host-erd_gdrive_rt';
 const DOCUMENT = JSON.stringify({
@@ -232,6 +233,29 @@ test.describe('signing in through the relay', () => {
     expect(await app.page.evaluate(() => (window as any).__messages)).toEqual(
       []
     );
+  });
+
+  test('says a preview deploy cannot sign in, and offers nothing to click', async ({
+    context,
+  }) => {
+    // A pages.dev preview, served by the dev server behind the fake origin.
+    const preview = 'https://preview.erd-editor.pages.dev';
+    await context.route(`${preview}/**`, async route => {
+      const url = new URL(route.request().url());
+      const response = await route.fetch({
+        url: `${GDRIVE_BASE_URL}${url.pathname}${url.search}`,
+      });
+      await route.fulfill({ response });
+    });
+    const page = await context.newPage();
+
+    await page.goto(`${preview}/gdrive`);
+
+    await expect(
+      page.getByRole('heading', { name: "Google Drive isn't available here" })
+    ).toBeVisible();
+    await expect(page.getByRole('button')).toHaveCount(0);
+    expect(google.authorizeRequests).toEqual([]);
   });
 
   test('answers a POST without a cookie as JSON 401, and one without its header as 403', async ({
