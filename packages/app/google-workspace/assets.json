@@ -1,0 +1,22 @@
+[
+  { "file": "icon-16.png", "kind": "icon", "width": 16, "height": 16 },
+  { "file": "icon-32.png", "kind": "icon", "width": 32, "height": 32 },
+  { "file": "icon-48.png", "kind": "icon", "width": 48, "height": 48 },
+  { "file": "icon-64.png", "kind": "icon", "width": 64, "height": 64 },
+  { "file": "icon-96.png", "kind": "icon", "width": 96, "height": 96 },
+  { "file": "icon-120.png", "kind": "icon", "width": 120, "height": 120 },
+  { "file": "icon-128.png", "kind": "icon", "width": 128, "height": 128 },
+  { "file": "icon-256.png", "kind": "icon", "width": 256, "height": 256 },
+  {
+    "file": "banner-220x140.png",
+    "kind": "banner",
+    "width": 220,
+    "height": 140
+  },
+  {
+    "file": "screenshot-1280x800.png",
+    "kind": "screenshot",
+    "width": 1280,
+    "height": 800
+  }
+]
