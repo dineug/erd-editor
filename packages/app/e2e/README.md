@@ -84,7 +84,8 @@ refusal (`isFramed`) alone.
 **Static policy pages.** Pages answers `/privacy` and `/terms` with their files
 in `public/`; `vp dev` would answer them with the app, so `policyPages` in
 `vite.config.ts` rewrites the two paths, and `policy.spec.ts` reads them with
-JavaScript off, as Google's reviewers may.
+JavaScript off, as Google's reviewers may, along with the links `/` keeps for
+that case in `index.html`.
 
 ## Marketplace assets
 
@@ -107,7 +108,7 @@ then reads the size of each PNG against `google-workspace/assets.json`.
 | `import-export.spec.ts` | Sources stored parsed, kept on reload, opened without a bump; a backup round trip      |
 | `theme.spec.ts`         | Dark by default on a light system, the System option, no dark flash on reload          |
 | `gdrive-not-configured.spec.ts` | `/gdrive` without a client id; `/` loads no Drive module or GIS script         |
-| `policy.spec.ts`        | `/privacy` and `/terms` with JavaScript off: 200, no script, the points each must make, no email address or governing law, GitHub Issues; both themes; the sidebar's links in a new tab, none to `/gdrive` |
+| `policy.spec.ts`        | `/privacy` and `/terms` with JavaScript off: 200, no script, the points each must make, no email address or governing law, GitHub Issues, no request to another origin, both themes; `/`'s `<noscript>` links; the sidebar's links in a new tab, none to `/gdrive` |
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, the account switch, Drive left out, a stray callback link, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
 | `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename; import; the account, Sign out and the policy links; v2 saved as v3 only once edited; files never saved |

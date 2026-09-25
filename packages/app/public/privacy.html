@@ -190,7 +190,7 @@
         storage: reopening a file reads it from Google Drive again.
       </p>
 
-      <h3>The server keeps an encrypted cookie in your browser and no database</h3>
+      <h3>The server keeps encrypted cookies in your browser and no database</h3>
       <p>
         erd-editor has one small server part, a sign-in relay at
         erd-editor.io/api/auth, running on Cloudflare Pages Functions. It
@@ -203,20 +203,25 @@
         browser, in a cookie that is encrypted with a key only the relay holds,
         that scripts on the page cannot read, and that your browser sends to
         erd-editor.io alone. The cookie lasts 180 days from the last time
-        erd-editor used it. The access token lives only in the memory of your
-        open erd-editor tabs. The relay's logs record what happened, such as a
-        sign-in, and never a token, code, cookie or anything about your files.
-        Cloudflare, which hosts the site, processes each request's IP address
-        and headers as any web host does.
+        erd-editor used it. While you sign in, a second cookie, protected the
+        same way, holds that sign-in's state, including the Google account ID
+        to sign in with when erd-editor or Google Drive already knows it; it
+        lasts at most 10 minutes and is deleted when the sign-in completes.
+        The access token lives only in the memory of your open erd-editor
+        tabs. The relay's logs record what happened, such as a sign-in, and
+        never a token, code, cookie or anything about your files. Cloudflare,
+        which hosts the site, processes each request's IP address and headers
+        as any web host does.
       </p>
 
       <h3>Signing out revokes access</h3>
       <p>
         Signing out of erd-editor revokes erd-editor's access at Google and
-        deletes the cookie. Google revokes an app's access for your whole
-        account, so every other device where you use erd-editor with the same
-        Google account has to sign in again. You can also remove erd-editor's
-        access at any time from your Google Account's
+        deletes the cookie that holds the refresh token. Google revokes an
+        app's access for your whole account, so every other device where you
+        use erd-editor with the same Google account has to sign in again. You
+        can also remove erd-editor's access at any time from your Google
+        Account's
         <a href="https://myaccount.google.com/permissions"
           >third-party connections</a
         >.
@@ -255,7 +260,7 @@
           end its access to your Google Drive.
         </li>
         <li>
-          Clear this site's data in your browser to delete the cookie and
+          Clear this site's data in your browser to delete the cookies and
           everything the local editor stored.
         </li>
         <li>

@@ -10,18 +10,24 @@ const PAGES = [
   {
     path: '/privacy',
     heading: 'Privacy Policy',
-    // The seven points the policy has to make, in the page's own words.
+    // The seven points the policy has to make, one entry each, in the page's
+    // own words; a point with several parts pins each part.
     phrases: [
-      'drive.file',
-      'never pass through an erd-editor server',
-      'It has no database',
-      "Signing out of erd-editor revokes erd-editor's access at Google",
-      'every other device where you use erd-editor',
-      'Google Analytics is not loaded on the Google Drive pages',
-      'file IDs, which become a placeholder',
-      'including the Limited Use requirements',
-      'Effective date:',
-    ],
+      ['drive.file'],
+      ['never pass through an erd-editor server'],
+      ['encrypted with a key only the relay holds', 'It has no database'],
+      [
+        "Signing out of erd-editor revokes erd-editor's access at Google",
+        'every other device where you use erd-editor',
+      ],
+      [
+        'Google Analytics is not loaded on the Google Drive pages',
+        'file IDs, which become a placeholder',
+        "never carry your files' content or names",
+      ],
+      ['including the Limited Use requirements'],
+      ['Effective date:'],
+    ].flat(),
   },
   {
     path: '/terms',
@@ -44,6 +50,8 @@ test.describe('the policy pages', () => {
     test(`${path} is a static page that says what it must`, async ({
       page,
     }) => {
+      const requested: URL[] = [];
+      page.on('request', request => requested.push(new URL(request.url())));
       const response = await page.goto(path);
 
       expect(response?.status()).toBe(200);
@@ -59,17 +67,36 @@ test.describe('the policy pages', () => {
       expect(await page.content()).not.toMatch(EMAIL_ADDRESS);
       await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
       await expect(page.locator(`a[href="${ISSUES_URL}"]`)).toHaveCount(1);
+
+      // Nothing from another host, which a review may block: no font or image.
+      await page.waitForLoadState('networkidle');
+      const origin = new URL(page.url()).origin;
+      expect(
+        requested.filter(url => url.origin !== origin).map(url => url.href)
+      ).toEqual([]);
+    });
+
+    test(`${path} follows the system theme with CSS alone`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: 'light' });
+      await page.goto(path);
+      const body = page.locator('body');
+      await expect(body).toHaveCSS('background-color', 'rgb(252, 252, 253)');
+
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await expect(body).toHaveCSS('background-color', 'rgb(17, 17, 19)');
     });
   }
 
-  test('follow the system theme with CSS alone', async ({ page }) => {
-    await page.emulateMedia({ colorScheme: 'light' });
-    await page.goto('/privacy');
-    const body = page.locator('body');
-    await expect(body).toHaveCSS('background-color', 'rgb(252, 252, 253)');
+  test('/ links both from its static markup', async ({ page }) => {
+    await page.goto('/');
 
-    await page.emulateMedia({ colorScheme: 'dark' });
-    await expect(body).toHaveCSS('background-color', 'rgb(17, 17, 19)');
+    for (const { path, heading } of PAGES) {
+      await expect(
+        page.getByRole('link', { name: heading, exact: true })
+      ).toHaveAttribute('href', path);
+    }
   });
 });
 
