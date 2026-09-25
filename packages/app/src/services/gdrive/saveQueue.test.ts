@@ -197,6 +197,31 @@ describe('debounce', () => {
   });
 });
 
+describe('unsaved changes', () => {
+  it('fingerprints a document asked about again and again only once', async () => {
+    const { queue, tab, edit, requests } = setup();
+    const zoomed = viewed(EDITED);
+    edit();
+    const parse = vi.spyOn(JSON, 'parse');
+
+    for (let asked = 0; asked < 3; asked++) {
+      expect(queue.hasUnsavedChanges()).toBe(true);
+    }
+    expect(parse).toHaveBeenCalledTimes(1);
+
+    tab.value = zoomed;
+    expect(queue.hasUnsavedChanges()).toBe(true);
+    expect(parse).toHaveBeenCalledTimes(2);
+
+    // The cycle compares the same document again, and saves it.
+    parse.mockClear();
+    await queue.flush();
+    expect(requests()).toContain('PATCH /upload/drive/v3/files');
+    expect(queue.hasUnsavedChanges()).toBe(false);
+    expect(parse).not.toHaveBeenCalledWith(tab.value);
+  });
+});
+
 describe('a save cycle', () => {
   it('checks the metadata, then PATCHes with the file’s own mimeType', async () => {
     const { queue, edit, file, broadcasts, states } = setup();

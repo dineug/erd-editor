@@ -152,6 +152,18 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
   /** A cycle asked for and not started yet, which a second ask joins. */
   let queued: Promise<void> | null = null;
   const settleWaiters = new Set<() => void>();
+  /**
+   * The last document fingerprinted: while no editor is attached, as under an
+   * account screen, every emit asks again of the same one, up to 64 MB of it.
+   */
+  let fingerprinted: { value: string; fingerprint: string } | null = null;
+
+  const fingerprintOfValue = (value: string) => {
+    if (fingerprinted?.value !== value) {
+      fingerprinted = { value, fingerprint: toDriveFingerprint(value) };
+    }
+    return fingerprinted.fingerprint;
+  };
 
   const setState = (next: LeaderSaveState) => {
     if (state === next) return;
@@ -180,7 +192,7 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
   const hasUnsavedChanges = () => {
     const value = getValue();
     if (value === null || base.fingerprint === null) return false;
-    return toDriveFingerprint(value) !== base.fingerprint;
+    return fingerprintOfValue(value) !== base.fingerprint;
   };
 
   async function attemptSave(value: string, fingerprint: string) {
@@ -227,7 +239,7 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
     if (!(await isStillLeader())) return;
     const before = state;
     try {
-      const fingerprint = toDriveFingerprint(value);
+      const fingerprint = fingerprintOfValue(value);
       if (fingerprint === base.fingerprint) {
         setState('saved');
         return;
@@ -474,6 +486,7 @@ export function createSaveQueue(deps: SaveQueueDeps, init: SaveQueueInit) {
       disposed = true;
       clearTimer();
       settleWaiters.clear();
+      fingerprinted = null;
     },
   };
 }
