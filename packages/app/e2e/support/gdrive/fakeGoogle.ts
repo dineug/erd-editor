@@ -125,12 +125,17 @@ function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
 
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const FILE_SCHEMA = parseFields(
-  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,appProperties,capabilities(canEdit,canRename)'
+  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,appProperties,capabilities(canEdit,canRename,canAddChildren)'
 );
 const LIST_SCHEMA: FieldTree = new Map([
   ...parseFields('kind,incompleteSearch,nextPageToken'),
   ['files', FILE_SCHEMA],
 ]);
+
+/** Drive's canAddChildren: a folder the account may edit, and never a file. */
+const canAddChildren = (file: DriveFile) =>
+  file.mimeType === FOLDER_MIME && file.canEdit;
+
 /** Drive answers two files a page here, so a list of three already reads two pages. */
 const PAGE_SIZE = 2;
 const DEFAULT_LIST_FIELDS = `kind,incompleteSearch,nextPageToken,files(${DEFAULT_FILE_FIELDS})`;
@@ -388,7 +393,11 @@ export async function installFakeGoogle(context: BrowserContext) {
     trashed: file.trashed,
     parents: file.parents,
     appProperties: file.appProperties,
-    capabilities: { canEdit: file.canEdit, canRename: file.canRename },
+    capabilities: {
+      canEdit: file.canEdit,
+      canRename: file.canRename,
+      canAddChildren: canAddChildren(file),
+    },
   });
 
   const json = (route: Route, body: unknown, status = 200) =>
@@ -438,17 +447,22 @@ export async function installFakeGoogle(context: BrowserContext) {
 
   /**
    * Where a create lands: My Drive without parents, else a folder the account
-   * can see, whose trash the new file shares; null is Drive's 404.
+   * can see (404) and add to (403), whose trash the new file shares.
    */
   const placement = (
     parents: string[] | undefined,
     request: Request,
     sub: string
-  ) => {
+  ):
+    | { parents: string[]; trashed: boolean }
+    | { status: number; reason: string } => {
     if (!parents?.length) return { parents: ['root'], trashed: false };
     const parent = files.get(parents[0]);
     if (!parent || !visible(parent, sub) || !hasKey(parent, request)) {
-      return null;
+      return { status: 404, reason: 'notFound' };
+    }
+    if (!canAddChildren(parent)) {
+      return { status: 403, reason: 'insufficientFilePermissions' };
     }
     return { parents, trashed: parent.trashed };
   };
@@ -516,7 +530,9 @@ export async function installFakeGoogle(context: BrowserContext) {
       if (parts.length !== 2) return driveError(route, 400, 'badRequest');
       const metadata = JSON.parse(parts[0]) as NewFileMetadata;
       const placed = placement(metadata.parents, request, sub);
-      if (!placed) return driveError(route, 404, 'notFound');
+      if ('status' in placed) {
+        return driveError(route, placed.status, placed.reason);
+      }
       const file = fake.add({
         id: `created-${++created}`,
         name: metadata.name,
@@ -537,7 +553,9 @@ export async function installFakeGoogle(context: BrowserContext) {
       }
       const metadata = JSON.parse(body ?? '{}') as NewFileMetadata;
       const placed = placement(metadata.parents, request, sub);
-      if (!placed) return driveError(route, 404, 'notFound');
+      if ('status' in placed) {
+        return driveError(route, placed.status, placed.reason);
+      }
       const file = fake.add({
         id: `created-folder-${++createdFolders}`,
         name: metadata.name,

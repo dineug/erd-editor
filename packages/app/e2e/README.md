@@ -73,9 +73,10 @@ Drive out), the GIS script, userinfo, and a Drive in memory that answers only th
 refuses an upload without its `uploadType` and a metadata PATCH that is not JSON,
 reads a list's `q` of the terms the app sends (`trashed`, `mimeType`,
 `appProperties has`) and answers any other with a 400, so an unmatched query lists
-nothing, creates a file only in a parent the account can see and in the trash when
-that parent is, creates the ERD Editor folder from a JSON POST (`appFolders()`
-finds it by its marker), records each request with its tab, and can hold PATCHes,
+nothing, creates a file only in a folder the account can see and add to
+(`canAddChildren`, a 404 or a 403 otherwise) and in the trash when that folder is,
+creates the ERD Editor folder from a JSON POST (`appFolders()` finds it by its
+marker), records each request with its tab, and can hold PATCHes,
 lose a PATCH's answer or fail the next requests. Any other Google host aborts. The browser follows a redirect past every route, so the relay's `start`
 is routed too: its real answer, cookie included, comes back as a page that
 navigates to the authorize URL, marked so the popup does not take it for a stray
@@ -119,7 +120,7 @@ size of each PNG against `google-workspace/assets.json`.
 | `policy.spec.ts`        | `/privacy` and `/terms` with JavaScript off: 200, no script, the points each must make, no email address or governing law, GitHub Issues, no link to the site but each other, no request to another origin, both themes; `/`'s `<noscript>` links; the sidebar's links in a new tab, none to `/gdrive` |
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, its `userId` as the first sign-in's `login_hint`, the account switch and the ways out of it, Drive left out, a stray callback link, a preview origin, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
-| `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states, and the ERD Editor folder a refused one falls back to; rename, disabled for a file Drive lets the account view only or not rename; New file and import, each into one ERD Editor folder the next file reuses and the list leaves out; the account, Sign out and the policy links; v2 saved as v3 only once edited; files never saved |
+| `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states, and the ERD Editor folder a refused one falls back to; rename, disabled for a file Drive lets the account view only or not rename; New file and import, each into one ERD Editor folder the next file reuses, a reloaded page too by its marker after a rename and a move, and the list leaves out; the account, Sign out and the policy links; v2 saved as v3 only once edited; files never saved |
 | `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, a save Drive kept refusing and Try again, edit access lost with the edits downloaded, tabs and their leader, the next leader after one gone past its PATCH and Check Drive, `beforeunload` right after an edit, a frame |
 
 ## Reading a failure

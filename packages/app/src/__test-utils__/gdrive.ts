@@ -577,12 +577,18 @@ function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const DEFAULT_LIST_FIELDS = `kind,incompleteSearch,nextPageToken,files(${DEFAULT_FILE_FIELDS})`;
 const FILE_SCHEMA = parseFields(
-  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,appProperties,capabilities(canEdit,canRename)'
+  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,appProperties,capabilities(canEdit,canRename,canAddChildren)'
 );
 const LIST_SCHEMA: FieldTree = new Map([
   ...parseFields('kind,incompleteSearch,nextPageToken'),
   ['files', FILE_SCHEMA],
 ]);
+
+const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+
+/** Drive's canAddChildren: a folder the account may edit, and never a file. */
+const canAddChildren = (file: FakeDriveFile) =>
+  file.mimeType === FOLDER_MIME_TYPE && file.canEdit;
 
 type FilePredicate = (file: FakeDriveFile) => boolean;
 
@@ -677,7 +683,7 @@ function parseMultipart(contentType: string, body: string) {
 /**
  * Drive v3 in memory, no more lenient: only the fields and query terms it has,
  * pages of two, a media PATCH's Content-Type as its mimeType, read-only files
- * refuse writes, resource keys and a visible parent required. Checks the receiver.
+ * refuse writes, a parent it can see, key included, and add to. Checks the receiver.
  */
 export function createFakeDrive() {
   const files = new Map<string, FakeDriveFile>();
@@ -724,7 +730,11 @@ export function createFakeDrive() {
     trashed: file.trashed,
     parents: file.parents,
     appProperties: file.appProperties,
-    capabilities: { canEdit: file.canEdit, canRename: file.canRename },
+    capabilities: {
+      canEdit: file.canEdit,
+      canRename: file.canRename,
+      canAddChildren: canAddChildren(file),
+    },
   });
 
   const isHidden = (file: FakeDriveFile, headers: Headers) =>
@@ -734,13 +744,18 @@ export function createFakeDrive() {
       .includes(`${file.id}/${file.resourceKey}`);
 
   /**
-   * Where a create lands: My Drive without parents, else a parent it can see,
-   * whose trash the new file shares; null is Drive's 404.
+   * Where a create lands: My Drive without parents, else a parent it can see
+   * (404) and add to (403), whose trash the new file shares.
    */
   const placement = (parents: string[] | undefined, headers: Headers) => {
     if (!parents?.length) return { parents: ['root'], trashed: false };
     const parent = files.get(parents[0]);
-    if (!parent || isHidden(parent, headers)) return null;
+    if (!parent || isHidden(parent, headers)) {
+      return driveError(404, 'notFound');
+    }
+    if (!canAddChildren(parent)) {
+      return driveError(403, 'insufficientFilePermissions');
+    }
     return { parents, trashed: parent.trashed };
   };
 
@@ -763,6 +778,8 @@ export function createFakeDrive() {
     calls,
     tokens: new Set(['drive-token-1']),
     pageSize: 2,
+    /** Files a list leaves out for now, as Drive's search does until it catches up with a create. */
+    unlisted: new Set<string>(),
 
     add(partial: Partial<FakeDriveFile> & { name: string }): FakeDriveFile {
       const time = nextTime();
@@ -874,7 +891,7 @@ export function createFakeDrive() {
       const matches = q === null ? () => true : parseDriveQuery(q);
       if (!matches) return driveError(400, 'invalid');
       const listed = [...files.values()]
-        .filter(matches)
+        .filter(file => !drive.unlisted.has(file.id) && matches(file))
         .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
       const start = Number(url.searchParams.get('pageToken') ?? 0);
       const size = Math.min(
@@ -905,7 +922,7 @@ export function createFakeDrive() {
       if (!parts) return driveError(400, 'badRequest');
       const metadata = JSON.parse(parts[0].body) as NewFileMetadata;
       const placed = placement(metadata.parents, headers);
-      if (!placed) return driveError(404, 'notFound');
+      if (placed instanceof Response) return placed;
       const file = drive.add({
         id: `created-${++created}`,
         name: metadata.name,
@@ -924,7 +941,7 @@ export function createFakeDrive() {
       }
       const metadata = JSON.parse(body ?? '{}') as NewFileMetadata;
       const placed = placement(metadata.parents, headers);
-      if (!placed) return driveError(404, 'notFound');
+      if (placed instanceof Response) return placed;
       const file = drive.add({
         id: `created-folder-${++createdFolders}`,
         name: metadata.name,

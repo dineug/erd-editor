@@ -22,6 +22,7 @@ const FILE_FIELDS =
 const APP_FOLDER_QUERY =
   "mimeType='application/vnd.google-apps.folder' and appProperties has { key='erdEditorFolder' and value='1' } and trashed=false";
 const MARKER = { erdEditorFolder: '1' };
+const FOLDER_FIELDS = 'id,createdTime,trashed,capabilities(canAddChildren)';
 
 function setup(drive: FakeDrive = createFakeDrive()) {
   const tokens = { current: 'drive-token-1', renewed: 'drive-token-2' };
@@ -389,11 +390,12 @@ describe('createDriveClient', () => {
 
     const folders = await client.findAppFolders();
 
+    const open = { trashed: false, canAddChildren: true };
     expect(folders).toEqual(
       expect.arrayContaining([
-        { id: renamed.id, createdTime: '2026-09-01T00:00:00.000Z' },
-        { id: second.id, createdTime: second.createdTime },
-        { id: third.id, createdTime: third.createdTime },
+        { id: renamed.id, createdTime: '2026-09-01T00:00:00.000Z', ...open },
+        { id: second.id, createdTime: second.createdTime, ...open },
+        { id: third.id, createdTime: third.createdTime, ...open },
       ])
     );
     expect(folders).toHaveLength(3);
@@ -408,8 +410,9 @@ describe('createDriveClient', () => {
       );
       expect(url.searchParams.get('q')).toBe(APP_FOLDER_QUERY);
       expect(url.searchParams.get('fields')).toBe(
-        'nextPageToken,files(id,createdTime)'
+        `nextPageToken,files(${FOLDER_FIELDS})`
       );
+      expect(url.searchParams.has('includeItemsFromAllDrives')).toBe(false);
       expect(url.searchParams.get('spaces')).toBe('drive');
       expect(url.searchParams.get('supportsAllDrives')).toBe('true');
     }
@@ -425,7 +428,7 @@ describe('createDriveClient', () => {
     expect(call.url.origin + call.url.pathname).toBe(
       'https://www.googleapis.com/drive/v3/files'
     );
-    expect(call.url.searchParams.get('fields')).toBe('id,createdTime');
+    expect(call.url.searchParams.get('fields')).toBe(FOLDER_FIELDS);
     expect(call.url.searchParams.get('supportsAllDrives')).toBe('true');
     expect(call.url.searchParams.get('uploadType')).toBeNull();
     expect(call.headers.get('Content-Type')).toBe(
@@ -437,7 +440,12 @@ describe('createDriveClient', () => {
       appProperties: MARKER,
     });
     const stored = drive.files.get(folder.id)!;
-    expect(folder).toEqual({ id: stored.id, createdTime: stored.createdTime });
+    expect(folder).toEqual({
+      id: stored.id,
+      createdTime: stored.createdTime,
+      trashed: false,
+      canAddChildren: true,
+    });
     expect(stored).toMatchObject({
       name: 'ERD Editor',
       mimeType: FOLDER_MIME,
@@ -445,6 +453,37 @@ describe('createDriveClient', () => {
       appProperties: MARKER,
     });
     await expect(client.findAppFolders()).resolves.toEqual([folder]);
+  });
+
+  it('reads the folder again, whether it is in the trash and takes new files', async () => {
+    const { drive, client } = setup();
+    const folder = drive.add({
+      name: 'Diagrams',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+      createdTime: '2026-09-01T00:00:00.000Z',
+    });
+
+    await expect(client.getFolder(folder.id)).resolves.toEqual({
+      id: folder.id,
+      createdTime: '2026-09-01T00:00:00.000Z',
+      trashed: false,
+      canAddChildren: true,
+    });
+    const [call] = drive.calls;
+    expect(call.url.pathname).toBe(`/drive/v3/files/${folder.id}`);
+    expect(call.url.searchParams.get('fields')).toBe(FOLDER_FIELDS);
+    expect(call.url.searchParams.get('supportsAllDrives')).toBe('true');
+
+    folder.trashed = true;
+    folder.canEdit = false;
+    await expect(client.getFolder(folder.id)).resolves.toMatchObject({
+      trashed: true,
+      canAddChildren: false,
+    });
+    await expect(driveError(client.getFolder('gone'))).resolves.toMatchObject({
+      kind: 'not-found',
+    });
   });
 
   it.each([
@@ -871,13 +910,19 @@ describe('the fake Drive', () => {
     }
   });
 
-  it('creates into a folder it can see alone, and into the trash with a trashed one', async () => {
+  it('creates into a folder it can see and add to alone, and into the trash with a trashed one', async () => {
     const { drive, client } = setup();
     const shared = drive.add({
       name: 'Shared',
       mimeType: FOLDER_MIME,
       resourceKey: 'key',
     });
+    const viewed = drive.add({
+      name: 'Viewed',
+      mimeType: FOLDER_MIME,
+      canEdit: false,
+    });
+    const file = drive.add({ name: 'a.erd' });
     const trashed = drive.add({
       name: 'Old',
       mimeType: FOLDER_MIME,
@@ -892,6 +937,11 @@ describe('the fake Drive', () => {
     await expect(driveError(create(shared.id))).resolves.toMatchObject({
       kind: 'not-found',
     });
+    for (const parent of [viewed, file]) {
+      await expect(driveError(create(parent.id))).resolves.toMatchObject({
+        kind: 'forbidden',
+      });
+    }
     await expect(create(trashed.id)).resolves.toMatchObject({ trashed: true });
   });
 });

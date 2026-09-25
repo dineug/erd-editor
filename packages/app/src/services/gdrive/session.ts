@@ -227,7 +227,11 @@ export function createGdriveSession(deps: SessionDeps) {
     retry,
   } = deps;
 
-  const appFolder = createAppFolder({ drive, locks });
+  const appFolder = createAppFolder({
+    drive,
+    locks,
+    isCurrent: sub => account?.sub === sub,
+  });
   const listeners = new Set<() => void>();
   let location: SessionLocation = { state: null, file: null };
   /** The state already acted on, so a render that still carries it does not act twice. */

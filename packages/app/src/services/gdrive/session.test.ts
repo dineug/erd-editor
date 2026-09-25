@@ -1342,6 +1342,29 @@ describe('the list', () => {
     expect(tab.snapshot().notice?.message).toBe(MESSAGES.createFailed);
   });
 
+  it('creates nothing for an account another sign-in replaced during the folder lookup', async () => {
+    const tab = openTab(browser);
+    await start(tab);
+    const release = browser.drive.hold(
+      'GET',
+      url => url.searchParams.get('q')?.includes('appProperties') ?? false
+    );
+    const creating = tab.session.newFile('orders');
+    await settle(10);
+
+    tab.session.signIn();
+    browser.relay.account = { sub: '1002', email: 'other@example.com' };
+    await finishPopup(browser, tab);
+    expect(tab.snapshot().token.account?.sub).toBe('1002');
+    release();
+    await creating;
+    await settle(10);
+
+    expect(browser.drive.callsTo('POST')).toEqual([]);
+    expect(tab.navigations).toEqual([]);
+    expect(tab.snapshot().notice?.message).toBe(MESSAGES.createFailed);
+  });
+
   it('creates nothing when the folder cannot be looked up, and says so', async () => {
     const tab = openTab(browser);
     await start(tab);

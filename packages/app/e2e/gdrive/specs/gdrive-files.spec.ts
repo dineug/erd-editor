@@ -247,10 +247,17 @@ test.describe('the sidebar', () => {
     ).toHaveAttribute('aria-disabled', 'true');
   });
 
-  test('creates a new file in one ERD Editor folder, which the next reuses and the list leaves out', async ({
+  test('creates a new file in one ERD Editor folder, which the next reuses, after a reload, a rename and a move too, and the list leaves out', async ({
     context,
   }) => {
+    google.add({ id: 'projects', name: 'Projects', mimeType: FOLDER_MIME });
     const app = await signedIn(context);
+    const lookups = () =>
+      google
+        .calls('GET', '/drive/v3/files')
+        .filter(request =>
+          request.url.searchParams.get('q')?.includes('appProperties has')
+        );
     const newFile = async (name: string) => {
       await app.sidebar().getByRole('button', { name: 'New file' }).click();
       const input = app.sidebar().getByLabel('New file name');
@@ -272,11 +279,21 @@ test.describe('the sidebar', () => {
     expect(onlyAppFolder().id).toBe(folder.id);
     expect(google.files.get('created-2')?.parents).toEqual([folder.id]);
 
+    // A new page knows no folder: it finds the one it made by its marker alone.
+    folder.name = 'Diagrams';
+    folder.parents = ['projects'];
     await app.page.reload();
     await app.waitForEditor();
     await expect
       .poll(async () => (await app.fileNames()).sort())
       .toEqual(['invoices.erd.json', 'orders.erd.json']);
+    const looked = lookups().length;
+
+    await newFile('customers');
+    await expect(app.page).toHaveURL(/\/gdrive\?file=created-3$/);
+    expect(google.files.get('created-3')?.parents).toEqual([folder.id]);
+    expect(lookups()).toHaveLength(looked + 1);
+    expect(google.appFolders()).toHaveLength(1);
     expect(google.calls('POST', '/drive/v3/files')).toHaveLength(1);
   });
 
@@ -354,7 +371,13 @@ test.describe('the sidebar', () => {
       name: 'bar.erd.json',
       parents: [folder.id],
     });
-    expect(await app.fileNames()).not.toContain('ERD Editor');
+
+    // The list Drive gives a new page holds the folder, which the sidebar leaves out.
+    await app.page.reload();
+    await app.waitForEditor();
+    await expect
+      .poll(async () => (await app.fileNames()).sort())
+      .toEqual(['bar.erd.json', 'foo.erd.json', 'shop.erd.json']);
   });
 
   test('shows the account, Sign out and the policy links, and links to nothing of /', async ({

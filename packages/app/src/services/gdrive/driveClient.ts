@@ -20,7 +20,8 @@ export const LIST_FIELDS = `nextPageToken,files(${FILE_FIELDS})`;
 export const SAVE_FIELDS = 'id,modifiedTime';
 export const RENAME_FIELDS = 'id,name,modifiedTime';
 export const NAME_FIELDS = 'name';
-export const FOLDER_FIELDS = 'id,createdTime';
+export const FOLDER_FIELDS =
+  'id,createdTime,trashed,capabilities(canAddChildren)';
 export const FOLDER_LIST_FIELDS = `nextPageToken,files(${FOLDER_FIELDS})`;
 
 export const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
@@ -58,8 +59,14 @@ export type DriveFile = {
   canRename: boolean;
 };
 
-/** A folder of the app's, as the lookup reads it: the oldest one wins. */
-export type DriveFolder = { id: string; createdTime: string };
+/** A folder of the app's, as the lookup reads it: the oldest one open to new files wins. */
+export type DriveFolder = {
+  id: string;
+  createdTime: string;
+  /** Itself or through a parent, as Drive reports it. */
+  trashed: boolean;
+  canAddChildren: boolean;
+};
 
 export type DriveSaveResult = { id: string; modifiedTime: string };
 export type DriveRenameResult = DriveSaveResult & { name: string };
@@ -174,6 +181,8 @@ function parseDriveFolder(value: unknown): DriveFolder {
   return {
     id: readString(raw, 'id'),
     createdTime: readString(raw, 'createdTime'),
+    trashed: raw.trashed === true,
+    canAddChildren: asRecord(raw.capabilities)?.canAddChildren === true,
   };
 }
 
@@ -351,7 +360,7 @@ export function createDriveClient(deps: DriveClientDeps) {
       return files.filter(isListedFile);
     },
 
-    /** Every folder of the app's not in the trash, found by its marker, never by name. */
+    /** Every folder of the app's not in the trash, found by its marker, never by name; none in a shared drive. */
     async findAppFolders(): Promise<DriveFolder[]> {
       return await listAll(
         {
@@ -376,6 +385,17 @@ export function createDriveClient(deps: DriveClientDeps) {
             mimeType: FOLDER_MIME_TYPE,
             appProperties: { [APP_FOLDER_PROPERTY]: '1' },
           }),
+        })
+      );
+    },
+
+    /** The ERD Editor folder again, to check it still takes new files. */
+    async getFolder(folderId: string): Promise<DriveFolder> {
+      return parseDriveFolder(
+        await callJson({
+          method: 'GET',
+          url: fileUrl(DRIVE_API, folderId, { fields: FOLDER_FIELDS }),
+          fileId: folderId,
         })
       );
     },
