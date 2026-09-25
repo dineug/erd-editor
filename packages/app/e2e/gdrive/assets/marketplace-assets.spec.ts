@@ -83,7 +83,7 @@ test.describe('the Google Workspace Marketplace assets', () => {
         asset,
         `<div style="display:flex;align-items:center;justify-content:center;gap:14px;height:100%;background:#fcfcfd;border:1px solid #d9d9e0;box-sizing:border-box">
           <img src="${ICON_URL}" alt="" style="height:76px">
-          <span style="font:600 26px/1 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#1c2024;letter-spacing:-0.3px">erd-editor</span>
+          <span style="font:600 26px/1 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#1c2024;letter-spacing:-0.3px">ERD Editor</span>
         </div>`
       );
     });
