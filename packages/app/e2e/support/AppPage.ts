@@ -467,19 +467,25 @@ export class AppPage {
  * (200, 100) on, so the scan keeps to the strips above and left of them.
  */
 async function freeCanvasPoint(page: Page) {
-  return await page.locator(CANVAS).evaluate(stage => {
-    const root = stage.getRootNode() as Document | ShadowRoot;
-    const { left, top, width, height } = stage.getBoundingClientRect();
+  // A schema just opened mounts a new editor, whose canvas stays 0x0 until its
+  // viewport is measured, so the scan runs again until it finds a point.
+  let point = { x: 0, y: 0 };
+  await expect(async () => {
+    point = await page.locator(CANVAS).evaluate(stage => {
+      const root = stage.getRootNode() as Document | ShadowRoot;
+      const { left, top, width, height } = stage.getBoundingClientRect();
 
-    for (let y = 40; y < height - 40; y += 20) {
-      for (let x = 40; x < width - 40; x += 20) {
-        if (x > 160 && y > 60) break;
-        const hit = root.elementFromPoint(left + x, top + y);
-        if (hit && stage.contains(hit)) return { x, y };
+      for (let y = 40; y < height - 40; y += 20) {
+        for (let x = 40; x < width - 40; x += 20) {
+          if (x > 160 && y > 60) break;
+          const hit = root.elementFromPoint(left + x, top + y);
+          if (hit && stage.contains(hit)) return { x, y };
+        }
       }
-    }
-    throw new Error('Every point of the canvas is covered');
-  });
+      throw new Error(`No free point on the ${width}x${height} canvas`);
+    });
+  }).toPass({ timeout: 15_000 });
+  return point;
 }
 
 /**
