@@ -1,6 +1,6 @@
 import { Button, DropdownMenu, Flex, IconButton, Text } from '@radix-ui/themes';
 import { useAtomValue } from 'jotai';
-import { EllipsisVertical, FileUp, LogOut, SquarePen } from 'lucide-react';
+import { FileUp, LogOut } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { useNow } from '@/atoms/modules/schema';
@@ -9,6 +9,7 @@ import { authControl } from '@/components/gdrive/authControl';
 import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
 import SidebarAppearance from '@/components/sidebar/sidebar-appearance/SidebarAppearance';
 import SidebarGroups from '@/components/sidebar/sidebar-groups/SidebarGroups';
+import SidebarHeaderRow from '@/components/sidebar/sidebar-header-row/SidebarHeaderRow';
 import SidebarItemView from '@/components/sidebar/sidebar-item/sidebar-item-view/SidebarItemView';
 import SidebarPolicyLinks from '@/components/sidebar/sidebar-policy-links/SidebarPolicyLinks';
 import SidebarSearch from '@/components/sidebar/sidebar-search/SidebarSearch';
@@ -67,41 +68,20 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
       open={sashState.open}
       header={
         <>
-          <Flex align="center" gap="1">
-            <Button
-              css={styles.addButton}
-              size="2"
-              variant="ghost"
-              color="gray"
-              highContrast
-              onClick={() => onAddingChange(true)}
-            >
-              <SquarePen size={16} />
-              New file
-            </Button>
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger>
-                <IconButton
-                  css={styles.menuButton}
-                  size="2"
-                  variant="ghost"
-                  color="gray"
-                  aria-label="Import"
-                >
-                  <EllipsisVertical size={16} />
-                </IconButton>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Content align="end">
-                <DropdownMenu.Item
-                  disabled={snapshot.importing}
-                  onSelect={onImport}
-                >
-                  <FileUp size={16} />
-                  Import files
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
-          </Flex>
+          <SidebarHeaderRow
+            addLabel="New file"
+            onAdd={() => onAddingChange(true)}
+            menuLabel="Import"
+            menuItems={
+              <DropdownMenu.Item
+                disabled={snapshot.importing}
+                onSelect={onImport}
+              >
+                <FileUp size={16} />
+                Import files
+              </DropdownMenu.Item>
+            }
+          />
           <SidebarSearch
             label="Search files"
             value={list.query}

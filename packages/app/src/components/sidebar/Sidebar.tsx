@@ -1,6 +1,6 @@
-import { Button, DropdownMenu, Flex, IconButton } from '@radix-ui/themes';
+import { DropdownMenu } from '@radix-ui/themes';
 import { useAtom, useAtomValue } from 'jotai';
-import { Download, EllipsisVertical, FileUp, SquarePen } from 'lucide-react';
+import { Download, FileUp } from 'lucide-react';
 import { useEffect } from 'react';
 
 import { useUpdateCollaborativeSessionAll } from '@/atoms/modules/collaborative';
@@ -23,6 +23,7 @@ import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem';
 import SidebarAppearance from '@/components/sidebar/sidebar-appearance/SidebarAppearance';
 import SidebarGroups from '@/components/sidebar/sidebar-groups/SidebarGroups';
+import SidebarHeaderRow from '@/components/sidebar/sidebar-header-row/SidebarHeaderRow';
 import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
 import SidebarPolicyLinks from '@/components/sidebar/sidebar-policy-links/SidebarPolicyLinks';
 import SidebarSearch from '@/components/sidebar/sidebar-search/SidebarSearch';
@@ -68,31 +69,12 @@ const Sidebar: React.FC<SidebarProps> = () => {
       open={sashState.open}
       header={
         <>
-          <Flex align="center" gap="1">
-            <Button
-              css={styles.addButton}
-              size="2"
-              variant="ghost"
-              color="gray"
-              highContrast
-              onClick={handleStartEditing}
-            >
-              <SquarePen size={16} />
-              New schema
-            </Button>
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger>
-                <IconButton
-                  css={styles.menuButton}
-                  size="2"
-                  variant="ghost"
-                  color="gray"
-                  aria-label="Import and export"
-                >
-                  <EllipsisVertical size={16} />
-                </IconButton>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Content align="end">
+          <SidebarHeaderRow
+            addLabel="New schema"
+            onAdd={handleStartEditing}
+            menuLabel="Import and export"
+            menuItems={
+              <>
                 <DropdownMenu.Item onSelect={() => openImportDialog()}>
                   <FileUp size={16} />
                   Import files
@@ -104,9 +86,9 @@ const Sidebar: React.FC<SidebarProps> = () => {
                   <Download size={16} />
                   Export backup
                 </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
-          </Flex>
+              </>
+            }
+          />
           <SidebarSearch
             label="Search schemas"
             value={list.query}
