@@ -8,6 +8,8 @@ import type {
 type TransactionEvent = Parameters<
   NonNullable<BrowserOptions['beforeSendTransaction']>
 >[0];
+type SpanJson = Parameters<NonNullable<BrowserOptions['beforeSendSpan']>>[0];
+type SpanData = Record<string, unknown>;
 
 /**
  * What Limited Use keeps out of Sentry on /gdrive: Drive file ids, which sit in
@@ -17,12 +19,31 @@ type TransactionEvent = Parameters<
 const GOOGLE_HOST =
   /^https?:\/\/[^/?#]*\.(?:googleapis|google)\.com(?:[/?#]|$)/;
 const PRIVATE_PATH =
-  /^(?:https?:\/\/[^/?#]+)?\/(?:gdrive|api\/auth)(?:[/?#]|$)/;
+  /^(?:https?:\/\/[^/?#]+)?\/(?:gdrive|api\/auth)(?:[/?#]|$)/i;
+const GDRIVE_PATH = /^(?:https?:\/\/[^/?#]+)?\/gdrive(?:[/?#]|$)/i;
 const FILE_ID = /(\/files\/)[^/?#]+/g;
 const UNTRACED = /googleapis\.com|accounts\.google\.com|\/api\/auth\//;
+const URL_KEYS = ['url', 'http.url', 'url.full', 'from', 'to'];
+/** Web vitals name the element they measured, with its aria-label and title. */
+const ELEMENT_KEY = /^(?:lcp\.(?:element|id|url)|cls\.source\.\d+)$/;
+const FILTERED = '[Filtered]';
+
+/** The router matches a percent-decoded path in any case: /GDrive and /%67drive are /gdrive. */
+function decoded(url: string): string {
+  try {
+    return decodeURI(url);
+  } catch {
+    return url;
+  }
+}
 
 function isPrivateUrl(url: string): boolean {
-  return GOOGLE_HOST.test(url) || PRIVATE_PATH.test(url);
+  return GOOGLE_HOST.test(url) || PRIVATE_PATH.test(decoded(url));
+}
+
+/** Whether a path, URL or route name is /gdrive. */
+function isOnGdrive(pathname: string): boolean {
+  return GDRIVE_PATH.test(decoded(pathname));
 }
 
 /**
@@ -44,11 +65,26 @@ export function shouldCreateSpanForRequest(url: string): boolean {
   return !UNTRACED.test(url);
 }
 
-function scrubData(data: Record<string, unknown> | undefined) {
+/** The URLs of span or breadcrumb data scrubbed, and the query and fragment of a private one dropped. */
+function scrubData(data: SpanData | undefined) {
   if (!data) return;
-  for (const key of ['url', 'http.url', 'from', 'to']) {
+  let exposed = false;
+  for (const key of URL_KEYS) {
     const value = data[key];
-    if (typeof value === 'string') data[key] = scrubUrl(value);
+    if (typeof value !== 'string' || !isPrivateUrl(value)) continue;
+    exposed = true;
+    data[key] = scrubUrl(value);
+  }
+  if (exposed) {
+    delete data['http.query'];
+    delete data['http.fragment'];
+  }
+}
+
+/** Drops the web vitals' element names, measured on /gdrive. */
+function dropElements(data: SpanData) {
+  for (const key of Object.keys(data)) {
+    if (ELEMENT_KEY.test(key)) delete data[key];
   }
 }
 
@@ -61,7 +97,11 @@ function scrubHeaders(headers: Record<string, string> | undefined) {
   }
 }
 
-/** The event with every URL it carries scrubbed: request, referrer, transaction, spans and breadcrumbs. */
+/**
+ * The event with every URL it carries scrubbed: request, referrer, transaction,
+ * the root span's data, spans and breadcrumbs. A /gdrive transaction also loses
+ * the elements its web vitals name.
+ */
 export function scrubEvent<T extends Event>(event: T): T {
   const { request } = event;
   if (request?.url !== undefined) {
@@ -70,6 +110,11 @@ export function scrubEvent<T extends Event>(event: T): T {
     request.url = url;
   }
   scrubHeaders(request?.headers);
+  const trace = event.contexts?.trace;
+  if (trace?.data) {
+    scrubData(trace.data);
+    if (isOnGdrive(event.transaction ?? '')) dropElements(trace.data);
+  }
   if (event.transaction !== undefined) {
     event.transaction = scrubUrl(event.transaction);
   }
@@ -85,8 +130,21 @@ export function scrubEvent<T extends Event>(event: T): T {
   return event;
 }
 
-function isOnGdrive(pathname: string): boolean {
-  return pathname === '/gdrive' || pathname.startsWith('/gdrive/');
+/**
+ * A span as Sentry sends it, alone like the INP of an interaction or within a
+ * transaction. On /gdrive an interaction is named after its element, whose
+ * aria-label or title can be a file name or the account's email.
+ */
+export function scrubSpan(span: SpanJson, onGdrive: boolean): SpanJson {
+  if (span.description !== undefined) {
+    span.description = scrubText(span.description);
+  }
+  scrubData(span.data);
+  if (onGdrive) {
+    if (span.op?.startsWith('ui.interaction.')) span.description = FILTERED;
+    if (span.data) dropElements(span.data);
+  }
+  return span;
 }
 
 function hasQuery(value: unknown): boolean {
@@ -126,13 +184,32 @@ export function filterBreadcrumb(
 
 /**
  * The Sentry options that apply the rules above, for Sentry.init; pathname is
- * read at the moment a breadcrumb is recorded.
+ * read whenever one runs. An interaction's span goes when the tab is hidden,
+ * perhaps after Back left /gdrive, so a page that showed /gdrive stays marked.
  */
 export function sentryPrivacyOptions(pathname: () => string) {
+  let showedGdrive = false;
+  const onGdrive = (route?: unknown) => {
+    showedGdrive ||=
+      isOnGdrive(pathname()) ||
+      (typeof route === 'string' && isOnGdrive(route));
+    return showedGdrive;
+  };
+
   return {
-    beforeBreadcrumb: (breadcrumb: Breadcrumb) =>
-      filterBreadcrumb(breadcrumb, pathname()),
-    beforeSend: (event: ErrorEvent) => scrubEvent(event),
-    beforeSendTransaction: (event: TransactionEvent) => scrubEvent(event),
+    beforeBreadcrumb: (breadcrumb: Breadcrumb) => {
+      onGdrive();
+      return filterBreadcrumb(breadcrumb, pathname());
+    },
+    beforeSend: (event: ErrorEvent) => {
+      onGdrive();
+      return scrubEvent(event);
+    },
+    beforeSendTransaction: (event: TransactionEvent) => {
+      onGdrive(event.transaction);
+      return scrubEvent(event);
+    },
+    beforeSendSpan: (span: SpanJson) =>
+      scrubSpan(span, onGdrive(span.data?.transaction)),
   };
 }
