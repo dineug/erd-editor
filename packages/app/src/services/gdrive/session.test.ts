@@ -617,6 +617,30 @@ describe('the open file', () => {
     expect(tab.snapshot().controller?.fileId).toBe('file-2');
   });
 
+  it('drops a waiting leave when the route comes back to the open file', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await settle(10);
+    tab.editor.addTable('orders');
+    browser.drive.failNext('PATCH', 400, 'badRequest');
+
+    tab.session.setLocation({ state: null, file: 'file-2' });
+    await settle(10);
+    expect(tab.snapshot().leave).toEqual({
+      reason: 'switch',
+      target: 'file-2',
+    });
+
+    // Back to the file still open, as the browser's Back button does.
+    tab.session.setLocation({ state: null, file: 'file-1' });
+    await settle(10);
+    expect(tab.snapshot().leave).toBeNull();
+
+    await tab.session.leaveAnyway();
+    await settle(10);
+    expect(tab.snapshot().controller?.fileId).toBe('file-1');
+  });
+
   it('calls off a switch still saving when the route comes back', async () => {
     const tab = openTab(browser, { state: null, file: 'file-1' });
     await start(tab);

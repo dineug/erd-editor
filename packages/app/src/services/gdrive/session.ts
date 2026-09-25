@@ -434,12 +434,13 @@ export function createGdriveSession(deps: SessionDeps) {
     if (leave?.reason === 'switch' && leave.target === target) return;
     const current = controller;
     if ((current?.fileId ?? null) === target) {
-      // Back where it started: a switch still saving is called off.
+      // Back where it started: a switch still saving or waiting is called off, as Stay does.
       if (switching !== undefined) {
         switchSeq++;
         switching = undefined;
         busy = false;
       }
+      if (leave?.reason === 'switch') leave = null;
       return;
     }
     const seq = ++switchSeq;
