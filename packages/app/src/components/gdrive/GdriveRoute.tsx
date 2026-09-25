@@ -1,6 +1,12 @@
 import { Button, Link, Spinner } from '@radix-ui/themes';
 import { useSetAtom } from 'jotai';
-import { Download, ExternalLink, RotateCw } from 'lucide-react';
+import {
+  Download,
+  ExternalLink,
+  FolderOpen,
+  LogOut,
+  RotateCw,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
@@ -89,7 +95,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
       return (
         <GdriveNotice
           title="Google Drive sent this for another account"
-          description={`You're signed in as ${token.account?.email ?? 'another account'}. Switch to the account Google Drive used to open it.`}
+          description={`You're signed in as ${token.account?.email ?? 'another account'}. Switch to the account Google Drive used to open it, or go on with this account's files.`}
         >
           <Button
             size="2"
@@ -99,6 +105,25 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             {...authControl}
           >
             Switch account
+          </Button>
+          <Button
+            size="2"
+            variant="outline"
+            color="gray"
+            onClick={() => session.dismissState()}
+          >
+            <FolderOpen size={16} />
+            Show my files
+          </Button>
+          <Button
+            size="2"
+            variant="outline"
+            color="gray"
+            onClick={() => void settleReported(session.signOut)()}
+            {...authControl}
+          >
+            <LogOut size={16} />
+            Sign out
           </Button>
           {download}
         </GdriveNotice>
@@ -199,9 +224,6 @@ const Workspace: React.FC<ScreenProps> = ({ session, snapshot }) => {
           request={snapshot.create}
         />
       ) : null}
-      {snapshot.leave ? (
-        <GdriveLeaveDialog session={session} request={snapshot.leave} />
-      ) : null}
     </>
   );
 };
@@ -246,6 +268,10 @@ const GdriveApp: React.FC<{ clientId: string }> = ({ clientId }) => {
       ) : (
         <AccountScreen session={session} snapshot={snapshot} />
       )}
+      {/* A sign-out whose save failed may start on an account screen too. */}
+      {snapshot.leave ? (
+        <GdriveLeaveDialog session={session} request={snapshot.leave} />
+      ) : null}
       <GdriveImportNotice session={session} notice={snapshot.notice} />
     </>
   );

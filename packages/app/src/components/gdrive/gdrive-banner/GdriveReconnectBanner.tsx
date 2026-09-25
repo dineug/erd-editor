@@ -9,6 +9,8 @@ interface GdriveReconnectBannerProps {
   /** Whether the hour of Google's own token is already over. */
   expired: boolean;
   error: 'popup-blocked' | 'failed' | null;
+  /** False beside another primary action, which a screen has one of. */
+  primary: boolean;
 }
 
 /**
@@ -19,6 +21,7 @@ const GdriveReconnectBanner: React.FC<GdriveReconnectBannerProps> = ({
   session,
   expired,
   error,
+  primary,
 }) => (
   <GdriveBanner
     message={
@@ -33,8 +36,9 @@ const GdriveReconnectBanner: React.FC<GdriveReconnectBannerProps> = ({
   >
     <Button
       size="2"
+      variant={primary ? 'solid' : 'outline'}
       color="gray"
-      highContrast
+      highContrast={primary}
       onClick={() => session.reconnect()}
       {...authControl}
     >

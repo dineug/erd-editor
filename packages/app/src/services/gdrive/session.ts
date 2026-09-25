@@ -653,6 +653,15 @@ export function createGdriveSession(deps: SessionDeps) {
       void tokens.signIn({ loginHint: expectedUserId });
     },
 
+    /** The other way out of account-mismatch: Drive's state goes, and this account's files show. */
+    dismissState() {
+      if (!expectedUserId || location.state === null) return;
+      handledState = location.state;
+      expectedUserId = null;
+      navigate(location.file, { replace: true });
+      emit();
+    },
+
     cancelSignIn() {
       tokens.cancelSignIn();
     },

@@ -386,6 +386,31 @@ describe("Drive's state", () => {
     expect(tab.snapshot().document?.phase).toBe('ready');
   });
 
+  it("leaves a state for another account for this account's files", async () => {
+    const state = openState('file-1', { userId: 'sub-2' });
+    const tab = openTab(browser, { state, file: null });
+    await start(tab);
+    expect(tab.snapshot().screen).toBe('account-mismatch');
+
+    tab.session.dismissState();
+    await settle(10);
+
+    expect(tab.navigations).toEqual([{ fileId: null, replace: true }]);
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'workspace',
+      expectedUserId: null,
+      document: null,
+      filesState: 'ready',
+    });
+    expect(tab.snapshot().token.account?.sub).toBe('sub-1');
+
+    // A render that still carries the state acts on it no more.
+    tab.session.setLocation({ state, file: null });
+    expect(tab.snapshot().screen).toBe('workspace');
+    tab.session.dismissState();
+    expect(tab.navigations).toHaveLength(1);
+  });
+
   it('drops a state it cannot read, with a notice', async () => {
     const tab = openTab(browser, {
       state: '{"action":"nope"}',

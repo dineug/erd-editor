@@ -156,6 +156,36 @@ test.describe('signing in through the relay', () => {
     await expect.poll(() => app.fileNames()).toEqual(['shop.erd.json']);
   });
 
+  test("leaves a state for another account for this account's files, or signs out there", async ({
+    context,
+  }) => {
+    google.files.get('file-1')!.accounts = [OTHER_ACCOUNT.sub];
+    const path = `/gdrive?state=${encodeURIComponent(
+      JSON.stringify({
+        action: 'open',
+        ids: ['file-1'],
+        userId: OTHER_ACCOUNT.sub,
+      })
+    )}`;
+    const mismatch = (page: Page) =>
+      page.getByText('Google Drive sent this for another account');
+    const app = await GdrivePage.open(context, path);
+    await app.throughPopup(app.signInButton());
+    await expect(mismatch(app.page)).toBeVisible();
+
+    await app.page.getByRole('button', { name: 'Show my files' }).click();
+
+    await expect(app.sidebar().getByText(ACCOUNT.email)).toBeVisible();
+    await expect(app.page).toHaveURL(/\/gdrive$/);
+    await expect.poll(() => app.fileNames()).toEqual(['blog.erd']);
+
+    const again = await GdrivePage.open(context, path);
+    await expect(mismatch(again.page)).toBeVisible();
+    await again.page.getByRole('button', { name: 'Sign out' }).click();
+    await expect(again.signInScreen()).toBeVisible();
+    await expect.poll(async () => (await oauthServerState()).revokes).toBe(1);
+  });
+
   test('says so when Drive access was left out, keeps no cookie, and tries again', async ({
     context,
   }) => {

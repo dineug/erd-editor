@@ -145,7 +145,15 @@ const DocumentView: React.FC<DocumentViewProps> = ({
   }
 };
 
-/** What stopped or needs the person, in the order it matters. */
+/** Whether the viewer under the banners shows a primary action: New file, or Try again. */
+function viewerHasPrimary({ document, filesState }: SessionSnapshot): boolean {
+  return document ? document.phase === 'failed' : filesState !== 'loading';
+}
+
+/**
+ * What stopped or needs the person, in the order it matters. Each banner's
+ * action is the primary one, except Reconnect Google beside another.
+ */
 function Banners({
   session,
   snapshot,
@@ -155,19 +163,6 @@ function Banners({
 }) {
   const { token, document } = snapshot;
   const banners: React.ReactNode[] = [];
-  const reconnect =
-    token.status === 'fallback-expired' ||
-    (token.status === 'fallback' && token.renewDue);
-  if (reconnect) {
-    banners.push(
-      <GdriveReconnectBanner
-        key="reconnect"
-        session={session}
-        expired={token.status === 'fallback-expired'}
-        error={token.error}
-      />
-    );
-  }
   if (document?.phase === 'waiting-snapshot') {
     banners.push(
       <GdriveLeaderBanner
@@ -192,6 +187,20 @@ function Banners({
         <GdriveConflictBanner key="conflict" session={session} state={state} />
       );
     }
+  }
+  const reconnect =
+    token.status === 'fallback-expired' ||
+    (token.status === 'fallback' && token.renewDue);
+  if (reconnect) {
+    banners.unshift(
+      <GdriveReconnectBanner
+        key="reconnect"
+        session={session}
+        expired={token.status === 'fallback-expired'}
+        error={token.error}
+        primary={banners.length === 0 && !viewerHasPrimary(snapshot)}
+      />
+    );
   }
   return banners.length ? (
     <Flex css={styles.banners} direction="column" align="center" gap="2">
