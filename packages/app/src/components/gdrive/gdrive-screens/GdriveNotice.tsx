@@ -7,6 +7,8 @@ interface GdriveNoticeProps {
   description?: React.ReactNode;
   /** The buttons or links under the text; the first is the one primary action. */
   children?: React.ReactNode;
+  /** A row under the actions, such as the resource links of the empty viewer. */
+  footer?: React.ReactNode;
 }
 
 /** A screen of text and actions filling the space it is given: the route, or the viewer. */
@@ -14,6 +16,7 @@ const GdriveNotice: React.FC<GdriveNoticeProps> = ({
   title,
   description,
   children,
+  footer,
 }) => (
   <Flex css={styles.root} direction="column" align="center" justify="center">
     <Flex css={styles.body} direction="column" align="center" gap="4">
@@ -32,6 +35,7 @@ const GdriveNotice: React.FC<GdriveNoticeProps> = ({
           {children}
         </Flex>
       ) : null}
+      {footer}
     </Flex>
   </Flex>
 );

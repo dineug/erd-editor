@@ -7,6 +7,7 @@ import GdriveLeaderBanner from '@/components/gdrive/gdrive-banner/GdriveLeaderBa
 import GdriveReconnectBanner from '@/components/gdrive/gdrive-banner/GdriveReconnectBanner';
 import GdriveNotice from '@/components/gdrive/gdrive-screens/GdriveNotice';
 import GdriveSaveStatus from '@/components/gdrive/gdrive-status/GdriveSaveStatus';
+import ResourceLinks from '@/components/resource-links/ResourceLinks';
 import type {
   DocumentRejection,
   DocumentSnapshot,
@@ -68,6 +69,7 @@ const EmptyViewer: React.FC<EmptyViewerProps> = ({
         ? 'Pick a file from the sidebar, or start a new one.'
         : 'Create a file or import one. The files you open with ERD Editor from Google Drive show up here too.'
     }
+    footer={<ResourceLinks />}
   >
     <Button size="2" color="gray" highContrast onClick={onNewFile}>
       <Plus size={16} />
