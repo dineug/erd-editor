@@ -39,12 +39,18 @@ export function clearStateCookie(): string {
   return serialize(STATE_COOKIE, '', 0, 'Lax');
 }
 
-/** The first cookie of that name, or null when it is missing or empty. */
+/**
+ * The space and tab a Cookie header puts around a pair, and nothing else: a
+ * name padded with other whitespace is another cookie, one without the prefix.
+ */
+const trimPair = (text: string) => text.replace(/^[ \t]+|[ \t]+$/g, '');
+
+/** The first cookie of exactly that name, or null when it is missing or empty. */
 export function readCookie(request: Request, name: string): string | null {
   for (const pair of (request.headers.get('Cookie') ?? '').split(';')) {
     const separator = pair.indexOf('=');
-    if (separator > 0 && pair.slice(0, separator).trim() === name) {
-      return pair.slice(separator + 1).trim() || null;
+    if (separator > 0 && trimPair(pair.slice(0, separator)) === name) {
+      return trimPair(pair.slice(separator + 1)) || null;
     }
   }
   return null;
