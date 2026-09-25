@@ -56,7 +56,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `vscode-extension` | `vuerd-vscode` | VSCode extension host, published, and the document hub coding agents join, on effect layers |
 | `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
 | `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published |
-| `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io |
+| `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io, with `/gdrive`, its Google Drive editor, whose OAuth relay is the one Pages Function (`functions/`) |
 | `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published: effect's `McpServer` over stdio, one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
 
 ## For AI Agents
@@ -128,7 +128,8 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | --- | --- |
 | JetBrains Marketplace | the plugin `<id>`, its signing certificate and the listing text from `packages/intellij-plugin/README.md` |
 | `json-schema/schema.json` on `main` | the `$schema` of every saved `.erd` / `.vuerd` file: `erd-editor-schema` stamps its raw GitHub URL, so moving or renaming it leaves existing files pointing at a dead URL |
+| erd-editor.io's paths `/privacy`, `/terms`, `/gdrive` and `/api/auth/callback` | the Google Cloud console, set by hand: the OAuth consent screen and the Workspace Marketplace listing link the two policy pages, Drive's Open with and New open `/gdrive`, and the web client registers the callback as its redirect URI (`http://localhost:5175/api/auth/callback` too); moving one, or asking for another scope than `packages/app/src/server/auth/google.ts` lists, is a console change first |
 
-Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`, `@dineug/erd-editor-mcp`) — is manual: no token or key is in the repository and no workflow uploads anything.
+Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`, `@dineug/erd-editor-mcp`) — is manual: no token or key is in the repository and no workflow uploads anything. So are the Google Workspace Marketplace listing (its assets in `packages/app/google-workspace/`) and the Pages variables the relay reads (`GOOGLE_CLIENT_SECRET`, `COOKIE_KEY`, `VITE_GOOGLE_CLIENT_ID`).
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

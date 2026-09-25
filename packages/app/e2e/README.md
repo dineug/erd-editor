@@ -78,6 +78,21 @@ navigates to the authorize URL, marked so the popup does not take it for a stray
 page. `support/gdrive/fakeAuth.ts` makes `/api/auth/*` fail its JSON contract
 for the fallback spec. The clickjacking check frames `/gdrive` from the token
 server's own `/__framer`: Chrome blocks a routed origin from framing localhost.
+Neither dev server reads `public/_headers`, so the check covers the app's own
+refusal (`isFramed`) alone.
+
+**Static policy pages.** Pages answers `/privacy` and `/terms` with their files
+in `public/`; `vp dev` would answer them with the app, so `policyPages` in
+`vite.config.ts` rewrites the two paths, and `policy.spec.ts` reads them with
+JavaScript off, as Google's reviewers may.
+
+## Marketplace assets
+
+`gdrive/assets.config.ts` is not a third run. `google-workspace:assets` runs it
+on run 2's servers to render `google-workspace/`: the icons and the card banner
+from `public/erd-editor_icon.svg`, and the screenshot from `/gdrive` with a few
+files listed and `src/assets/bookstore.dbml` imported. `google-workspace:check`
+then reads the size of each PNG against `google-workspace/assets.json`.
 
 ## What the specs cover
 
@@ -92,9 +107,10 @@ server's own `/__framer`: Chrome blocks a routed origin from framing localhost.
 | `import-export.spec.ts` | Sources stored parsed, kept on reload, opened without a bump; a backup round trip      |
 | `theme.spec.ts`         | Dark by default on a light system, the System option, no dark flash on reload          |
 | `gdrive-not-configured.spec.ts` | `/gdrive` without a client id; `/` loads no Drive module or GIS script         |
+| `policy.spec.ts`        | `/privacy` and `/terms` with JavaScript off: 200, no script, the points each must make, no email address or governing law, GitHub Issues; both themes; the sidebar's links in a new tab, none to `/gdrive` |
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, the account switch, Drive left out, a stray callback link, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
-| `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename; import; v2 saved as v3 only once edited; files never saved |
+| `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename; import; the account, Sign out and the policy links; v2 saved as v3 only once edited; files never saved |
 | `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, a save Drive kept refusing and Try again, edit access lost with the edits downloaded, tabs and their leader, the next leader after one gone past its PATCH and Check Drive, `beforeunload` right after an edit, a frame |
 
 ## Reading a failure
