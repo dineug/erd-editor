@@ -16,6 +16,7 @@ import {
   resetOAuthServer,
 } from '../../support/gdrive/fakeGoogle';
 import { GdrivePage } from '../../support/gdrive/GdrivePage';
+import { expectResourceLinks } from '../../support/resourceLinks';
 
 let google: FakeGoogle;
 
@@ -42,23 +43,6 @@ function onlyAppFolder() {
     trashed: false,
   });
   return folders[0];
-}
-
-/** The empty viewer's Editing Guide and GitHub, each in a new tab, under its buttons. */
-async function expectResourceLinks(app: GdrivePage) {
-  const buttons = await app.page
-    .getByRole('button', { name: 'Import files', exact: true })
-    .boundingBox();
-  for (const [name, href] of [
-    ['Editing Guide', 'https://docs.erd-editor.io/docs/category/guides'],
-    ['GitHub', 'https://github.com/dineug/erd-editor'],
-  ]) {
-    const link = app.page.getByRole('link', { name, exact: true });
-    await expect(link).toHaveAttribute('href', href);
-    await expect(link).toHaveAttribute('target', '_blank');
-    const box = await link.boundingBox();
-    expect(box!.y).toBeGreaterThanOrEqual(buttons!.y + buttons!.height);
-  }
 }
 
 /** The names under each date group, top to bottom. */
@@ -463,14 +447,14 @@ test.describe('the empty viewer', () => {
     await expect(
       app.page.getByRole('heading', { name: 'No files yet' })
     ).toBeVisible();
-    await expectResourceLinks(app);
+    await expectResourceLinks(app.page);
 
     google.add({ id: 'a', name: 'a.erd', content: documentWithTable('alpha') });
     await app.page.reload();
     await expect(
       app.page.getByRole('heading', { name: 'No file open' })
     ).toBeVisible();
-    await expectResourceLinks(app);
+    await expectResourceLinks(app.page);
   });
 });
 

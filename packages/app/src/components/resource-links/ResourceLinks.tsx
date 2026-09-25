@@ -23,6 +23,7 @@ const ResourceLinks: React.FC<ResourceLinksProps> = () => (
     <Link
       href="https://docs.erd-editor.io/docs/category/guides"
       target="_blank"
+      rel="noopener"
       underline="hover"
       size="2"
       color="gray"
@@ -35,6 +36,7 @@ const ResourceLinks: React.FC<ResourceLinksProps> = () => (
     <Link
       href="https://github.com/dineug/erd-editor"
       target="_blank"
+      rel="noopener"
       underline="hover"
       size="2"
       color="gray"

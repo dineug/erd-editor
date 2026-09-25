@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { AppPage } from '../support/AppPage';
+import { expectResourceLinks } from '../support/resourceLinks';
 
 const ISSUES_URL = 'https://github.com/dineug/erd-editor/issues';
 // Anything shaped like an email address: GitHub Issues is the only contact.
@@ -147,5 +148,15 @@ test.describe('the local sidebar', () => {
           .filter(pathname => pathname.startsWith('/gdrive'))
       )
     ).toEqual([]);
+  });
+});
+
+test.describe('the local empty viewer', () => {
+  test('links the Editing Guide and GitHub in a new tab, under its buttons', async ({
+    context,
+  }) => {
+    const app = await AppPage.open(context);
+    await expect(app.page.getByText('No schema open')).toBeVisible();
+    await expectResourceLinks(app.page);
   });
 });
