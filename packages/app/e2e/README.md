@@ -91,9 +91,9 @@ Neither dev server reads `public/_headers`, so the check covers the app's own
 refusal (`isFramed`) alone; `src/pagesHeaders.test.ts` holds the file's two
 `/gdrive` rules in the unit tests.
 
-**Static policy pages.** Pages answers `/privacy` and `/terms` with their files
-in `public/`; `vp dev` would answer them with the app, so `policyPages` in
-`vite.config.ts` rewrites the two paths, and `policy.spec.ts` reads them with
+**Static policy pages.** Pages answers `/privacy`, `/terms` and `/support` with
+their files in `public/`; `vp dev` would answer them with the app, so
+`policyPages` in `vite.config.ts` rewrites the three paths, and `policy.spec.ts` reads them with
 JavaScript off, as Google's reviewers may, along with the links `/` keeps for
 that case in `index.html`.
 
@@ -119,7 +119,7 @@ banner. `google-workspace:check` then reads the size of each PNG against
 | `import-export.spec.ts` | Sources stored parsed, kept on reload, opened without a bump; a backup round trip      |
 | `theme.spec.ts`         | Dark by default on a light system, the System option, no dark flash on reload          |
 | `gdrive-not-configured.spec.ts` | `/gdrive` without a client id; `/` loads no Drive module or GIS script         |
-| `policy.spec.ts`        | `/privacy` and `/terms` with JavaScript off: 200, no script, the points each must make, no email address or governing law, GitHub Issues, no link to the site but each other, no request to another origin, both themes; `/`'s `<noscript>` links; the sidebar's links in a new tab, none to `/gdrive`; the empty viewer's Editing Guide and GitHub, with `rel="noopener"`, checked on `/gdrive` too by the same `support/resourceLinks.ts` |
+| `policy.spec.ts`        | `/privacy`, `/terms` and `/support` with JavaScript off: 200, no script, the points each must make, no email address but `support@erd-editor.io` and no governing law, GitHub Issues, no link to the site but each other, no request to another origin, both themes; `/`'s `<noscript>` links; the sidebar's links in a new tab, none to `/gdrive`; the empty viewer's Editing Guide and GitHub, with `rel="noopener"`, checked on `/gdrive` too by the same `support/resourceLinks.ts` |
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, its `userId` as the first sign-in's `login_hint`, the account switch and the ways out of it, Drive left out, a stray callback link, a preview origin, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
 | `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states, and the ERD Editor folder a create state without a folder uses and a refused one falls back to; rename, disabled for a file Drive lets the account view only or not rename; New file and import, each into one ERD Editor folder the next file reuses, a reloaded page too by its marker after a rename and a move, and the list leaves out; the account, Sign out and the policy links; the empty viewer's Editing Guide and GitHub, with no files and with some; v2 saved as v3 only once edited; files never saved |

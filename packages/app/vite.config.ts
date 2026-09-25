@@ -78,12 +78,12 @@ function gdriveDevServer(mode: string): Plugin {
   };
 }
 
-const POLICY_PAGES = new Set(['/privacy', '/terms']);
+const POLICY_PAGES = new Set(['/privacy', '/terms', '/support']);
 
 /**
- * Answers /privacy and /terms with their files in public/, as Pages does for an
- * extensionless path. Vite would send them the app, whose catch-all route leads
- * to /, so the policy spec would read the wrong page.
+ * Answers /privacy, /terms and /support with their files in public/, as Pages
+ * does for an extensionless path. Vite would send them the app, whose catch-all
+ * route leads to /, so the policy spec would read the wrong page.
  */
 function policyPages(): Plugin {
   return {

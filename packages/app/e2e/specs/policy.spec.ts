@@ -4,8 +4,9 @@ import { AppPage } from '../support/AppPage';
 import { expectResourceLinks } from '../support/resourceLinks';
 
 const ISSUES_URL = 'https://github.com/dineug/erd-editor/issues';
-// Anything shaped like an email address: GitHub Issues is the only contact.
-const EMAIL_ADDRESS = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/;
+const SUPPORT_EMAIL = 'support@erd-editor.io';
+// Anything shaped like an email address: the support address is the only one.
+const EMAIL_ADDRESS = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
 
 const PAGES = [
   {
@@ -48,6 +49,18 @@ const PAGES = [
       'Effective date:',
     ],
   },
+  {
+    path: '/support',
+    heading: 'Support',
+    phrases: [
+      SUPPORT_EMAIL,
+      'What to include',
+      'Editing Guide',
+      'sign out of ERD Editor',
+    ],
+    // The Marketplace listing links it; / links only the two policies.
+    home: false,
+  },
 ];
 
 test.describe('the policy pages', () => {
@@ -72,18 +85,25 @@ test.describe('the policy pages', () => {
       for (const phrase of phrases) expect(text).toContain(phrase);
       expect(text.toLowerCase()).not.toContain('governing law');
 
-      expect(await page.content()).not.toMatch(EMAIL_ADDRESS);
-      await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
+      const emails = (await page.content()).match(EMAIL_ADDRESS) ?? [];
+      expect([...new Set(emails)]).toEqual([SUPPORT_EMAIL]);
+      const mailto = page.locator('a[href^="mailto:"]');
+      await expect(mailto).toHaveCount(1);
+      await expect(mailto).toHaveAttribute('href', `mailto:${SUPPORT_EMAIL}`);
       await expect(page.locator(`a[href="${ISSUES_URL}"]`)).toHaveCount(1);
 
-      // The two policies link each other and nothing else of the site, / and /gdrive included.
+      // The three pages link each other and nothing else of the site, / and /gdrive included.
       const paths = await page.locator('a[href]').evaluateAll(anchors =>
         anchors
           .map(anchor => new URL((anchor as HTMLAnchorElement).href))
           .filter(url => url.origin === location.origin)
           .map(url => url.pathname)
       );
-      expect([...new Set(paths)].sort()).toEqual(['/privacy', '/terms']);
+      expect([...new Set(paths)].sort()).toEqual([
+        '/privacy',
+        '/support',
+        '/terms',
+      ]);
 
       // Nothing from another host, which a review may block: no font or image.
       await page.waitForLoadState('networkidle');
@@ -109,7 +129,9 @@ test.describe('the policy pages', () => {
   test('/ links both from its static markup', async ({ page }) => {
     await page.goto('/');
 
-    for (const { path, heading } of PAGES) {
+    for (const { path, heading } of PAGES.filter(
+      ({ home }) => home !== false
+    )) {
       await expect(
         page.getByRole('link', { name: heading, exact: true })
       ).toHaveAttribute('href', path);
