@@ -87,7 +87,6 @@ export type TokenSnapshot = {
   status: TokenStatus;
   mode: RelayMode;
   account: GoogleAccount | null;
-  expiresAt: number | null;
   /** In the fallback near or past expiry: the next click outside a text field renews. */
   renewDue: boolean;
   signingIn: boolean;
@@ -344,7 +343,6 @@ export function createTokenManager(deps: TokenManagerDeps) {
     status: 'unknown',
     mode: 'server',
     account: null,
-    expiresAt: null,
     renewDue: false,
     signingIn: false,
     gis: 'idle',
@@ -427,7 +425,6 @@ export function createTokenManager(deps: TokenManagerDeps) {
       status: next.mode,
       mode: next.mode,
       account: next.account,
-      expiresAt: next.expiresAt,
       renewDue: false,
       error: null,
       bySignOut: false,
@@ -448,7 +445,6 @@ export function createTokenManager(deps: TokenManagerDeps) {
       status,
       mode,
       account: status === 'signed-out' ? null : snapshot.account,
-      expiresAt: null,
       renewDue: status === 'fallback-expired',
       bySignOut,
     });

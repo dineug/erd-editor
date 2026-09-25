@@ -180,7 +180,6 @@ describe('createTokenManager', () => {
         status: 'server',
         mode: 'server',
         account: { sub: '1001', email: 'person@example.com' },
-        expiresAt: NOON + ADOPT_WAIT_MS + 3600 * 1000,
         error: null,
       });
       expect(browser.relay.tokenCalls()).toBe(1);

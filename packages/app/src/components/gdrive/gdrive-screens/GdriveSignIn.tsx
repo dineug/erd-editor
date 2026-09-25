@@ -35,7 +35,7 @@ interface GoogleButtonProps {
 }
 
 /** Google's own button, the one exception to the gray buttons (the user's call, U6). */
-export const GoogleButton: React.FC<GoogleButtonProps> = ({
+const GoogleButton: React.FC<GoogleButtonProps> = ({
   label,
   disabled,
   onClick,
