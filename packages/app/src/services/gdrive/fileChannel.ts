@@ -70,7 +70,6 @@ export type SnapshotMessage = {
   baseFingerprint: string;
   name: string;
   canEdit: boolean;
-  canRename: boolean;
   saveState: SaveState;
   pendingAttempt: SaveAttempt | null;
 };
@@ -82,7 +81,6 @@ export type ReloadedMessage = {
   fingerprint: string;
   name: string;
   canEdit: boolean;
-  canRename: boolean;
 };
 
 export type SavedMessage = {
@@ -172,12 +170,7 @@ function readAttempt(value: unknown): SaveAttempt | null {
 
 /** The document fields a snapshot and a reload both carry. */
 function hasDocument(data: Record<string, unknown>): boolean {
-  return (
-    isString(data.value) &&
-    isString(data.name) &&
-    isBoolean(data.canEdit) &&
-    isBoolean(data.canRename)
-  );
+  return isString(data.value) && isString(data.name) && isBoolean(data.canEdit);
 }
 
 const readers: Record<Body['type'], Reader> = {
@@ -200,7 +193,6 @@ const readers: Record<Body['type'], Reader> = {
           baseFingerprint: data.baseFingerprint,
           name: data.name as string,
           canEdit: data.canEdit as boolean,
-          canRename: data.canRename as boolean,
           saveState: data.saveState,
           pendingAttempt,
         }
@@ -248,7 +240,6 @@ const readers: Record<Body['type'], Reader> = {
           fingerprint: data.fingerprint,
           name: data.name as string,
           canEdit: data.canEdit as boolean,
-          canRename: data.canRename as boolean,
         }
       : null,
   'rename-request': ({ requestId, name, to }) => {

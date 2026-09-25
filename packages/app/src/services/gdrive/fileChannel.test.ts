@@ -64,7 +64,6 @@ describe('readFileMessage', () => {
       baseFingerprint: 'f1',
       name: 'shop.erd',
       canEdit: true,
-      canRename: false,
       saveState: 'conflict',
       pendingAttempt: { attemptId: 'a1', fingerprint: 'f2' },
     },
@@ -89,7 +88,6 @@ describe('readFileMessage', () => {
       fingerprint: 'f3',
       name: 'shop.erd',
       canEdit: false,
-      canRename: true,
     },
     { type: 'rename-request', epoch: null, requestId: 'r1', name: 'a.erd' },
     {

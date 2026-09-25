@@ -128,7 +128,6 @@ describe('one tab', () => {
       role: 'leader',
       name: 'shop.erd.json',
       canEdit: true,
-      canRename: true,
       saveState: 'saved',
     });
     expect(tableNames(a.value())).toEqual(['users']);

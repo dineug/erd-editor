@@ -105,7 +105,6 @@ export type DocumentSnapshot = {
   role: DocumentRole | null;
   name: string | null;
   canEdit: boolean;
-  canRename: boolean;
   saveState: SaveState;
   /** Edit access the file loaded with and a save then found gone: the stopped edits are still here. */
   accessLost: boolean;
@@ -157,7 +156,6 @@ const INITIAL: DocumentSnapshot = {
   role: null,
   name: null,
   canEdit: false,
-  canRename: false,
   saveState: 'saved',
   accessLost: false,
   epoch: null,
@@ -328,7 +326,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   /** Drive's name for the file, empty until the metadata comes. */
   let name = '';
   let canEdit = false;
-  let canRename = false;
   let epoch: string | null = null;
   let initialValue: string | null = null;
   let queue: SaveQueue | null = null;
@@ -393,7 +390,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       role,
       name: name || null,
       canEdit: canEdit && state !== 'readonly',
-      canRename,
       saveState: state,
       // A file that loaded read-only starts so; reaching it from editable took a save.
       accessLost: canEdit && state === 'readonly',
@@ -417,7 +413,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   function adoptMeta(file: DriveFile) {
     name = file.name;
     canEdit = file.canEdit;
-    canRename = file.canRename;
   }
 
   function postStatus() {
@@ -594,7 +589,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     initialValue = message.value;
     name = message.name;
     canEdit = message.canEdit;
-    canRename = message.canRename;
     followerStatus = message.saveState;
     buffered = buffered.filter(entry => entry.epoch === epoch);
     queue = createQueue({
@@ -620,7 +614,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     initialValue = message.value;
     name = message.name;
     canEdit = message.canEdit;
-    canRename = message.canRename;
     buffered = [];
     followerStatus = 'saved';
     waitingLeader = false;
@@ -708,7 +701,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
         fingerprint: base.fingerprint!,
         name,
         canEdit,
-        canRename,
       });
     }
     for (const to of heldHellos) sendSnapshot(to);
@@ -732,7 +724,6 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       baseFingerprint: base.fingerprint!,
       name,
       canEdit,
-      canRename,
       saveState: queue.getState(),
       pendingAttempt: queue.getPendingAttempt(),
     });
