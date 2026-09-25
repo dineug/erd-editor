@@ -9,6 +9,8 @@ interface SidebarShellProps {
   open: boolean;
   header: React.ReactNode;
   footer: React.ReactNode;
+  /** The row under the footer's: the policy links, on every sidebar. */
+  legal: React.ReactNode;
   /** The list, scrolled between the header and the footer. */
   children: React.ReactNode;
 }
@@ -18,6 +20,7 @@ const SidebarShell: React.FC<SidebarShellProps> = ({
   open,
   header,
   footer,
+  legal,
   children,
 }) => (
   <>
@@ -33,8 +36,11 @@ const SidebarShell: React.FC<SidebarShellProps> = ({
         <ScrollArea css={styles.scrollArea} scrollbars="vertical">
           {children}
         </ScrollArea>
-        <Flex css={styles.footer} align="center" gap="3">
-          {footer}
+        <Flex css={styles.footer} direction="column" gap="2">
+          <Flex align="center" gap="3">
+            {footer}
+          </Flex>
+          {legal}
         </Flex>
       </nav>
     </Flex>

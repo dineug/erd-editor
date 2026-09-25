@@ -78,6 +78,31 @@ function gdriveDevServer(mode: string): Plugin {
   };
 }
 
+const POLICY_PAGES = new Set(['/privacy', '/terms']);
+
+/**
+ * Answers /privacy and /terms with their files in public/, as Pages does for an
+ * extensionless path. Vite would send them the app, whose catch-all route leads
+ * to /, so the policy spec would read the wrong page.
+ */
+function policyPages(): Plugin {
+  return {
+    name: 'policy-pages',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const url = req.url ?? '';
+        const queryAt = url.indexOf('?');
+        const pathname = queryAt === -1 ? url : url.slice(0, queryAt);
+        if (POLICY_PAGES.has(pathname)) {
+          req.url = `${pathname}.html${url.slice(pathname.length)}`;
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
   const isTest = process.env.VITEST !== undefined;
@@ -144,6 +169,8 @@ export default defineConfig(({ mode }) => {
       gtag(isProduction),
 
       gdriveDevServer(mode),
+
+      policyPages(),
     ],
 
     /**

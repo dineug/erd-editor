@@ -282,7 +282,7 @@ test.describe('the sidebar', () => {
     await app.waitForEditor();
   });
 
-  test('shows the account and Sign out, and links to nothing of /', async ({
+  test('shows the account, Sign out and the policy links, and links to nothing of /', async ({
     context,
   }) => {
     const app = await signedIn(context);
@@ -291,6 +291,15 @@ test.describe('the sidebar', () => {
     await expect(
       app.sidebar().getByRole('button', { name: 'Sign out' })
     ).toBeVisible();
+    for (const [name, path] of [
+      ['Privacy', '/privacy'],
+      ['Terms', '/terms'],
+    ]) {
+      const link = app.sidebar().getByRole('link', { name, exact: true });
+      await expect(link).toHaveAttribute('href', path);
+      // A new tab, so following one leaves the open file where it is.
+      await expect(link).toHaveAttribute('target', '_blank');
+    }
     // The local app's routes; the policy pages may be linked.
     expect(
       await app.page.locator('a[href]').evaluateAll(links =>

@@ -24,6 +24,7 @@ import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem
 import SidebarAppearance from '@/components/sidebar/sidebar-appearance/SidebarAppearance';
 import SidebarGroups from '@/components/sidebar/sidebar-groups/SidebarGroups';
 import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
+import SidebarPolicyLinks from '@/components/sidebar/sidebar-policy-links/SidebarPolicyLinks';
 import SidebarSearch from '@/components/sidebar/sidebar-search/SidebarSearch';
 import SidebarShell from '@/components/sidebar/sidebar-shell/SidebarShell';
 import SidebarTrash from '@/components/sidebar/sidebar-trash/SidebarTrash';
@@ -122,6 +123,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <SidebarAppearance />
         </>
       }
+      legal={<SidebarPolicyLinks />}
     >
       <SidebarGroups
         groups={list.groups}

@@ -10,6 +10,7 @@ import SidebarAddItem from '@/components/sidebar/sidebar-add-item/SidebarAddItem
 import SidebarAppearance from '@/components/sidebar/sidebar-appearance/SidebarAppearance';
 import SidebarGroups from '@/components/sidebar/sidebar-groups/SidebarGroups';
 import SidebarItemView from '@/components/sidebar/sidebar-item/sidebar-item-view/SidebarItemView';
+import SidebarPolicyLinks from '@/components/sidebar/sidebar-policy-links/SidebarPolicyLinks';
 import SidebarSearch from '@/components/sidebar/sidebar-search/SidebarSearch';
 import SidebarShell from '@/components/sidebar/sidebar-shell/SidebarShell';
 import { useSidebarList } from '@/components/sidebar/useSidebarList';
@@ -29,8 +30,8 @@ interface GdriveSidebarProps {
 
 /**
  * The Drive adapter of the sidebar fragments: the account's files by
- * modifiedTime, New file, Import, rename keeping the extension, and the
- * account's email with Sign out. No duplicate, trash or backup.
+ * modifiedTime, New file, Import, rename keeping the extension, the account's
+ * email with Sign out, and the policy links. No duplicate, trash or backup.
  */
 const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
   session,
@@ -129,6 +130,7 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
           <SidebarAppearance />
         </>
       }
+      legal={<SidebarPolicyLinks />}
     >
       <SidebarGroups
         groups={list.groups}
