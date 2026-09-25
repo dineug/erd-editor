@@ -725,6 +725,78 @@ describe('rename', () => {
     expect(a.snapshot().name).toBe('store.erd.json');
   });
 
+  describe('asked while the leader still loads', () => {
+    const isDownload = (url: URL) => url.searchParams.get('alt') === 'media';
+
+    /** Tab a leads and waits for its download; the sidebar of a renames meanwhile. */
+    async function renameWhileLoading() {
+      const release = env.drive.hold('GET', isDownload);
+      const a = openTab(env, { name: 'a' });
+      tabs.push(a);
+      void a.controller.open();
+      await settle(20);
+      expect(a.snapshot().phase).toBe('loading');
+      expect(env.locks.isHeld(fileLockName(SUB, 'file-1'))).toBe(true);
+      const renaming = renameDriveFile(
+        {
+          drive: env.clientFor('sidebar'),
+          locks: env.locks,
+          createChannel: env.hub.create,
+          sub: SUB,
+        },
+        'file-1',
+        'store.erd.json'
+      );
+      await settle(20);
+      return { a, release, renaming };
+    }
+
+    it('renames once the leader has the document', async () => {
+      const { a, release, renaming } = await renameWhileLoading();
+      expect(env.drive.files.get('file-1')!.name).toBe('shop.erd.json');
+
+      release();
+      await settle(20);
+
+      expect((await renaming).name).toBe('store.erd.json');
+      expect(a.snapshot()).toMatchObject({
+        phase: 'ready',
+        name: 'store.erd.json',
+      });
+      a.addTable('orders');
+      await settle(2000);
+      expect(a.snapshot().saveState).toBe('saved');
+      expect(env.patches()).toHaveLength(1);
+    });
+
+    it('says it could not once the load fails', async () => {
+      const { release, renaming } = await renameWhileLoading();
+      const failed = expect(renaming).rejects.toThrow(
+        'The file could not be renamed'
+      );
+      env.drive.failNext('GET', 404, 'notFound', isDownload);
+
+      release();
+      await settle(20);
+
+      await failed;
+      expect(env.drive.files.get('file-1')!.name).toBe('shop.erd.json');
+    });
+
+    it('says it could not once the leader closes', async () => {
+      const { a, renaming } = await renameWhileLoading();
+      const failed = expect(renaming).rejects.toThrow(
+        'The file could not be renamed'
+      );
+
+      a.close();
+      tabs.splice(tabs.indexOf(a), 1);
+      await settle(20);
+
+      await failed;
+    });
+  });
+
   it('gives up on a leader that never answers', async () => {
     const a = await open('a');
     a.freeze();

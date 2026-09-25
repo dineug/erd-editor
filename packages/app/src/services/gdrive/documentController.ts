@@ -331,6 +331,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   /** A leader answers hellos once its editor holds the document and its baseline. */
   let answering = false;
   const heldHellos = new Set<string>();
+  /** Renames asked of this tab while it leads without a document yet, by request id. */
+  const heldRenames = new Map<string, string>();
   /** A leader that reloaded tells the others once its editor has the new document. */
   let announceReload = false;
 
@@ -470,6 +472,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       lateJoin = true;
     }
     await loadFromDrive(file, false);
+    settleHeldRenames();
   }
 
   /** Without Web Locks every tab leads; one another tab answers starts from its snapshot. */
@@ -740,6 +743,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       // No document yet: Drive's, which every other tab then takes too.
       refresh();
       await loadFromDrive(null, true);
+      settleHeldRenames();
       return;
     }
     queue.inherit(followerStatus);
@@ -867,7 +871,24 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       return;
     }
     if (to === undefined || to === tabId) {
-      answerLater(() => void renameFor(requestId, next));
+      answerLater(() => {
+        // Still loading, as the sidebar of this very tab finds it on F2.
+        if (queue) void renameFor(requestId, next);
+        else heldRenames.set(requestId, next);
+      });
+    }
+  }
+
+  /** Once a load ends: a leader with the document renames, any other outcome says it could not. */
+  function settleHeldRenames() {
+    const held = [...heldRenames];
+    heldRenames.clear();
+    for (const [requestId, next] of held) {
+      if (!disposed && role === 'leader' && queue) {
+        void renameFor(requestId, next);
+      } else {
+        channel.post({ type: 'rename-failed', requestId });
+      }
     }
   }
 
@@ -1071,6 +1092,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       clearAck();
       endFlushes(false);
       endChecks('skipped');
+      settleHeldRenames();
       dropAdapter();
       queue?.dispose();
       leader.release();
