@@ -13,6 +13,7 @@ import {
   type FakeGoogle,
   FOLDER_MIME,
   installFakeGoogle,
+  OTHER_ACCOUNT,
   resetOAuthServer,
 } from '../../support/gdrive/fakeGoogle';
 import { GdrivePage } from '../../support/gdrive/GdrivePage';
@@ -323,6 +324,32 @@ test.describe('the sidebar', () => {
     expect(lookups()).toHaveLength(looked + 1);
     expect(google.appFolders()).toHaveLength(1);
     expect(google.calls('POST', '/drive/v3/files')).toHaveLength(1);
+  });
+
+  test("passes over another account's older ERD Editor folder shared with this one, and makes its own", async ({
+    context,
+  }) => {
+    google.add({
+      id: 'shared',
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: APP_FOLDER_PROPERTIES,
+      modifiedTime: Date.now() - 24 * 60 * 60_000,
+      accounts: [OTHER_ACCOUNT.sub, ACCOUNT.sub],
+    });
+    const app = await signedIn(context);
+
+    await app.sidebar().getByRole('button', { name: 'New file' }).click();
+    const input = app.sidebar().getByLabel('New file name');
+    await input.fill('orders');
+    await input.press('Enter');
+
+    await expect(app.page).toHaveURL(/\/gdrive\?file=created-1$/);
+    await app.waitForEditor();
+    const own = google.appFolders().filter(folder => folder.id !== 'shared');
+    expect(own).toHaveLength(1);
+    expect(own[0]).toMatchObject({ owner: ACCOUNT.sub, parents: ['root'] });
+    expect(google.files.get('created-1')?.parents).toEqual([own[0].id]);
   });
 
   test('imports documents as new .erd.json files and refuses a backup', async ({

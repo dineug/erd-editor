@@ -59,6 +59,8 @@ export type DriveFileSeed = {
   hidden?: boolean;
   /** The accounts drive.file lets see it, by sub; the first account's alone by default. */
   accounts?: string[];
+  /** The account that owns it, by sub; the first of accounts by default. */
+  owner?: string;
 };
 
 type DriveFile = Required<
@@ -127,7 +129,7 @@ function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
 
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const FILE_SCHEMA = parseFields(
-  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,driveId,appProperties,capabilities(canEdit,canRename,canAddChildren)'
+  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,driveId,ownedByMe,appProperties,capabilities(canEdit,canRename,canAddChildren)'
 );
 const LIST_SCHEMA: FieldTree = new Map([
   ...parseFields('kind,incompleteSearch,nextPageToken'),
@@ -310,6 +312,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         resourceKey: null,
         hidden: false,
         accounts: [ACCOUNT.sub],
+        owner: seed.accounts?.[0] ?? ACCOUNT.sub,
         ...seed,
         modifiedTime,
         createdTime: modifiedTime,
@@ -402,7 +405,8 @@ export async function installFakeGoogle(context: BrowserContext) {
   const inReach = (file: DriveFile, url: URL, param: string) =>
     !driveIdOf(file) || url.searchParams.get(param) === 'true';
 
-  const resource = (file: DriveFile) => ({
+  /** The file as Drive answers the account sub. */
+  const resource = (file: DriveFile, sub: string) => ({
     kind: 'drive#file',
     id: file.id,
     name: file.name,
@@ -413,6 +417,8 @@ export async function installFakeGoogle(context: BrowserContext) {
     trashed: ancestry(file).some(entry => entry.trashed),
     parents: file.parents,
     driveId: driveIdOf(file),
+    // Drive leaves ownedByMe out for a shared drive's file.
+    ownedByMe: driveIdOf(file) ? undefined : file.owner === sub,
     appProperties: file.appProperties,
     capabilities: {
       canEdit: file.canEdit,
@@ -535,7 +541,7 @@ export async function installFakeGoogle(context: BrowserContext) {
           kind: 'drive#fileList',
           incompleteSearch: false,
           nextPageToken: next,
-          files: page.map(resource),
+          files: page.map(file => resource(file, sub)),
         },
         fields,
         DEFAULT_LIST_FIELDS,
@@ -578,7 +584,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         accounts: [sub],
         ...placed,
       });
-      return reply(route, resource(file), fields, DEFAULT_FILE_FIELDS);
+      return reply(route, resource(file, sub), fields, DEFAULT_FILE_FIELDS);
     }
 
     if (method === 'POST' && path === '/drive/v3/files') {
@@ -601,7 +607,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         accounts: [sub],
         ...placed,
       });
-      return reply(route, resource(file), fields, DEFAULT_FILE_FIELDS);
+      return reply(route, resource(file, sub), fields, DEFAULT_FILE_FIELDS);
     }
 
     const match = /^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(path);
@@ -619,7 +625,7 @@ export async function installFakeGoogle(context: BrowserContext) {
           body: file.content,
         });
       }
-      return reply(route, resource(file), fields, DEFAULT_FILE_FIELDS);
+      return reply(route, resource(file, sub), fields, DEFAULT_FILE_FIELDS);
     }
 
     if (method === 'PATCH' && match[1]) {
@@ -635,7 +641,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         dropPatchResponses--;
         return route.abort('connectionreset');
       }
-      return reply(route, resource(file), fields, DEFAULT_FILE_FIELDS);
+      return reply(route, resource(file, sub), fields, DEFAULT_FILE_FIELDS);
     }
 
     if (method === 'PATCH') {
@@ -649,7 +655,7 @@ export async function installFakeGoogle(context: BrowserContext) {
       const update = JSON.parse(body ?? '{}') as { name?: string };
       if (update.name) file.name = update.name;
       file.modifiedTime = nextTime();
-      return reply(route, resource(file), fields, DEFAULT_FILE_FIELDS);
+      return reply(route, resource(file, sub), fields, DEFAULT_FILE_FIELDS);
     }
 
     return driveError(route, 400, 'badRequest');

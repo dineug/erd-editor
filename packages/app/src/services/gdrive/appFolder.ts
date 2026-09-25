@@ -30,9 +30,15 @@ const GONE_KINDS: ReadonlySet<DriveErrorKind> = new Set([
   'forbidden',
 ]);
 
-/** Takes new files, in My Drive: one in the trash, closed to the account or in a shared drive is passed over. */
+/**
+ * Takes new files, in the account's own My Drive: one in the trash, closed to
+ * it, in a shared drive or another person's, shared with it, is passed over.
+ */
 const isOpen = (folder: DriveFolder) =>
-  !folder.trashed && folder.canAddChildren && folder.driveId === null;
+  !folder.trashed &&
+  folder.canAddChildren &&
+  folder.driveId === null &&
+  folder.ownedByMe;
 
 const byAge = (a: DriveFolder, b: DriveFolder) =>
   Date.parse(a.createdTime) - Date.parse(b.createdTime) ||

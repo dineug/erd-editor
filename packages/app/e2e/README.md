@@ -70,7 +70,7 @@ the browser context: the authorize page (it registers a code with the token
 server and sends the popup to the real callback, or denies, closes, or leaves
 Drive out), the GIS script, userinfo, and a Drive in memory that answers only the
 `fields` asked for, pages by two, shows each account only the files it may see,
-refuses an upload without its `uploadType` and a metadata PATCH that is not JSON,
+each owned by one of them (`owner`, which `ownedByMe` answers), refuses an upload without its `uploadType` and a metadata PATCH that is not JSON,
 reads a list's `q` of the terms the app sends (`trashed`, `mimeType`,
 `appProperties has`) and answers any other with a 400, so an unmatched query lists
 nothing, reports a file in the trash or a shared drive through any folder above it

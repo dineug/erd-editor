@@ -517,6 +517,8 @@ export type FakeDriveFile = {
   parents: string[];
   /** The shared drive it sits in; a file inside a folder there inherits it. */
   driveId?: string;
+  /** False for another person's file shared with the account. */
+  ownedByMe: boolean;
   canEdit: boolean;
   canRename: boolean;
   resourceKey: string | null;
@@ -580,7 +582,7 @@ function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const DEFAULT_LIST_FIELDS = `kind,incompleteSearch,nextPageToken,files(${DEFAULT_FILE_FIELDS})`;
 const FILE_SCHEMA = parseFields(
-  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,driveId,appProperties,capabilities(canEdit,canRename,canAddChildren)'
+  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,driveId,ownedByMe,appProperties,capabilities(canEdit,canRename,canAddChildren)'
 );
 const LIST_SCHEMA: FieldTree = new Map([
   ...parseFields('kind,incompleteSearch,nextPageToken'),
@@ -754,6 +756,8 @@ export function createFakeDrive() {
     trashed: ancestry(file).some(entry => entry.trashed),
     parents: file.parents,
     driveId: driveIdOf(file),
+    // Drive leaves ownedByMe out for a shared drive's file.
+    ownedByMe: driveIdOf(file) ? undefined : file.ownedByMe,
     appProperties: file.appProperties,
     capabilities: {
       canEdit: file.canEdit,
@@ -824,6 +828,7 @@ export function createFakeDrive() {
         content: '{}',
         trashed: false,
         parents: ['root'],
+        ownedByMe: true,
         canEdit: true,
         canRename: true,
         resourceKey: null,

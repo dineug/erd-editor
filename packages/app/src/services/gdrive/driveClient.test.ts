@@ -23,7 +23,7 @@ const APP_FOLDER_QUERY =
   "mimeType='application/vnd.google-apps.folder' and appProperties has { key='erdEditorFolder' and value='1' } and trashed=false";
 const MARKER = { erdEditorFolder: '1' };
 const FOLDER_FIELDS =
-  'id,createdTime,trashed,driveId,capabilities(canAddChildren)';
+  'id,createdTime,trashed,driveId,ownedByMe,capabilities(canAddChildren)';
 
 function setup(drive: FakeDrive = createFakeDrive()) {
   const tokens = { current: 'drive-token-1', renewed: 'drive-token-2' };
@@ -391,7 +391,12 @@ describe('createDriveClient', () => {
 
     const folders = await client.findAppFolders();
 
-    const open = { trashed: false, driveId: null, canAddChildren: true };
+    const open = {
+      trashed: false,
+      driveId: null,
+      ownedByMe: true,
+      canAddChildren: true,
+    };
     expect(folders).toEqual(
       expect.arrayContaining([
         { id: renamed.id, createdTime: '2026-09-01T00:00:00.000Z', ...open },
@@ -446,6 +451,7 @@ describe('createDriveClient', () => {
       createdTime: stored.createdTime,
       trashed: false,
       driveId: null,
+      ownedByMe: true,
       canAddChildren: true,
     });
     expect(stored).toMatchObject({
@@ -457,7 +463,7 @@ describe('createDriveClient', () => {
     await expect(client.findAppFolders()).resolves.toEqual([folder]);
   });
 
-  it('reads the folder again, whether it is in the trash, in a shared drive and takes new files', async () => {
+  it('reads the folder again, whether it is in the trash, in a shared drive, its own and takes new files', async () => {
     const { drive, client } = setup();
     const folder = drive.add({
       name: 'Diagrams',
@@ -471,6 +477,7 @@ describe('createDriveClient', () => {
       createdTime: '2026-09-01T00:00:00.000Z',
       trashed: false,
       driveId: null,
+      ownedByMe: true,
       canAddChildren: true,
     });
     const [call] = drive.calls;
@@ -486,9 +493,18 @@ describe('createDriveClient', () => {
     });
     parent.trashed = false;
     parent.driveId = 'team-drive';
+    // Drive leaves ownedByMe out in a shared drive, which reads as not the account's.
     await expect(client.getFolder(folder.id)).resolves.toMatchObject({
       trashed: false,
       driveId: 'team-drive',
+      ownedByMe: false,
+    });
+    delete parent.driveId;
+    folder.ownedByMe = false;
+    await expect(client.getFolder(folder.id)).resolves.toMatchObject({
+      driveId: null,
+      ownedByMe: false,
+      canAddChildren: true,
     });
 
     folder.trashed = true;

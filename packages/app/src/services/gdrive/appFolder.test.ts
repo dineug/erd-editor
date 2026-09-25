@@ -103,7 +103,12 @@ describe('appFolderLockName', () => {
 });
 
 describe('pickAppFolder', () => {
-  const open = { trashed: false, driveId: null, canAddChildren: true };
+  const open = {
+    trashed: false,
+    driveId: null,
+    ownedByMe: true,
+    canAddChildren: true,
+  };
 
   it('takes the oldest by createdTime, then the lowest id, whatever the order', () => {
     const folders = [
@@ -117,7 +122,7 @@ describe('pickAppFolder', () => {
     expect(pickAppFolder([])).toBeNull();
   });
 
-  it('passes over a folder in the trash, closed to new files or in a shared drive', () => {
+  it("passes over a folder in the trash, closed to new files, in a shared drive or another person's", () => {
     const oldest = '2026-09-01T00:00:00.000Z';
 
     expect(
@@ -125,9 +130,10 @@ describe('pickAppFolder', () => {
         { id: 'a', createdTime: oldest, ...open, trashed: true },
         { id: 'b', createdTime: oldest, ...open, canAddChildren: false },
         { id: 'c', createdTime: oldest, ...open, driveId: 'team' },
-        { id: 'd', createdTime: '2026-09-02T00:00:00.000Z', ...open },
+        { id: 'd', createdTime: oldest, ...open, ownedByMe: false },
+        { id: 'e', createdTime: '2026-09-02T00:00:00.000Z', ...open },
       ])?.id
-    ).toBe('d');
+    ).toBe('e');
     expect(
       pickAppFolder([
         { id: 'a', createdTime: oldest, ...open, canAddChildren: false },
@@ -198,6 +204,42 @@ describe('createAppFolder', () => {
     expect(posts(drive)).toHaveLength(2);
   });
 
+  it("passes over another person's older folder shared with the account, open to it, and makes its own", async () => {
+    const drive = createFakeDrive();
+    const shared = addFolder(drive, '2026-01-01T00:00:00.000Z');
+    drive.files.get(shared.id)!.ownedByMe = false;
+    const folders = tab(drive);
+
+    const id = await folders.folderId(SUB);
+
+    expect(id).not.toBe(shared.id);
+    expect(drive.files.get(id)).toMatchObject({
+      parents: ['root'],
+      ownedByMe: true,
+    });
+    expect(posts(drive)).toHaveLength(1);
+    await expect(folders.folderId(SUB)).resolves.toBe(id);
+    await expect(tab(drive).folderId(SUB)).resolves.toBe(id);
+    expect(posts(drive)).toHaveLength(1);
+  });
+
+  it('drops a folder it knows once another person owns it, and makes its own', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    drive.unlisted.add('created-folder-1');
+    const first = await folders.folderId(SUB);
+
+    // Ownership moved, the account still an editor: the folder stays open to it.
+    drive.files.get(first)!.ownedByMe = false;
+    const next = await folders.folderId(SUB);
+
+    expect(next).not.toBe(first);
+    expect(checksOf(drive, first)).toHaveLength(1);
+    await expect(folders.folderId(SUB)).resolves.toBe(next);
+    expect(checksOf(drive, first)).toHaveLength(1);
+    expect(posts(drive)).toHaveLength(2);
+  });
+
   it('takes the oldest of several, as another device would', async () => {
     const drive = createFakeDrive();
     addFolder(drive, '2026-09-03T00:00:00.000Z');
@@ -240,7 +282,7 @@ describe('createAppFolder', () => {
     expect(checksOf(drive, id)).toEqual([]);
     const { url } = lists(drive).at(-1)!;
     expect(url.searchParams.get('fields')).toBe(
-      'nextPageToken,files(id,createdTime,trashed,driveId,capabilities(canAddChildren))'
+      'nextPageToken,files(id,createdTime,trashed,driveId,ownedByMe,capabilities(canAddChildren))'
     );
   });
 
