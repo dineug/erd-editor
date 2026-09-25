@@ -68,6 +68,15 @@ test.describe('the policy pages', () => {
       await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
       await expect(page.locator(`a[href="${ISSUES_URL}"]`)).toHaveCount(1);
 
+      // The two policies link each other and nothing else of the site, / and /gdrive included.
+      const paths = await page.locator('a[href]').evaluateAll(anchors =>
+        anchors
+          .map(anchor => new URL((anchor as HTMLAnchorElement).href))
+          .filter(url => url.origin === location.origin)
+          .map(url => url.pathname)
+      );
+      expect([...new Set(paths)].sort()).toEqual(['/privacy', '/terms']);
+
       // Nothing from another host, which a review may block: no font or image.
       await page.waitForLoadState('networkidle');
       const origin = new URL(page.url()).origin;
