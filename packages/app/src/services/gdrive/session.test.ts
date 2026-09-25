@@ -750,7 +750,8 @@ describe('the open file', () => {
     expect(tab.downloads.map(entry => entry.fileName)).toEqual(['shop.erd']);
     expect(await tab.session.checkDrive()).toBe('skipped');
     await tab.session.takeOver();
-    expect(await tab.session.reload()).toBe(true);
+    expect(await tab.session.reload()).toBe('reloaded');
+    expect(tab.snapshot().notice).toBeNull();
     await settle(10);
     expect(tab.snapshot().controller).toBe(controller);
 
@@ -798,6 +799,42 @@ describe('the open file', () => {
 
     expect(await checking).toBe('failed');
     expect(other.snapshot().notice?.message).toBe(MESSAGES.checkFailed);
+    expect(tab.snapshot().notice).toBeNull();
+  });
+
+  it('says so when Reload from Drive cannot reach Drive or the file no longer opens', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await settle(10);
+    const { epoch } = tab.snapshot().document!;
+
+    browser.drive.failNext('GET', 400, 'badRequest');
+    expect(await tab.session.reload()).toBe('failed');
+    expect(tab.snapshot().notice).toMatchObject({
+      message: MESSAGES.reloadFailed,
+      tone: 'warning',
+    });
+
+    browser.drive.files.get('file-1')!.trashed = true;
+    expect(await tab.session.reload()).toBe('trashed');
+    expect(tab.snapshot().notice?.message).toBe(MESSAGES.reloadRefused.trashed);
+    expect(tab.snapshot().document).toMatchObject({ phase: 'ready', epoch });
+  });
+
+  it('tells a follower tab when its Reload from Drive did not go through', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    const other = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await start(other);
+    await settle(10);
+    expect(other.snapshot().document?.role).toBe('follower');
+
+    browser.drive.failNext('GET', 400, 'badRequest');
+    const reloading = other.session.reload();
+    await settle(20);
+
+    expect(await reloading).toBe('failed');
+    expect(other.snapshot().notice?.message).toBe(MESSAGES.reloadFailed);
     expect(tab.snapshot().notice).toBeNull();
   });
 
@@ -882,7 +919,7 @@ describe('the open file', () => {
 
     expect(tab.session.hasUnsavedChanges()).toBe(false);
     expect(await tab.session.retrySave()).toBe(true);
-    expect(await tab.session.reload()).toBe(false);
+    expect(await tab.session.reload()).toBeNull();
     expect(await tab.session.checkDrive()).toBeNull();
     await tab.session.takeOver();
     tab.session.downloadChanges();

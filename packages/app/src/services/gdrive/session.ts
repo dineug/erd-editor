@@ -25,9 +25,11 @@ import {
 import { createEmptyDocument } from '@/services/gdrive/emptyDocument';
 import {
   type CheckResult,
+  type DocumentRejection,
   type FilesChannel,
   type FilesMessage,
   openFilesChannel,
+  type ReloadResult,
 } from '@/services/gdrive/fileChannel';
 import type { FileLockManagerLike } from '@/services/gdrive/fileLeader';
 import {
@@ -151,6 +153,15 @@ export const MESSAGES = {
   createFailed: "Couldn't create the file",
   importFailed: 'Import failed',
   checkFailed: "Couldn't reach Google Drive. Try again.",
+  reloadFailed: "Couldn't reload from Google Drive. Try again.",
+  reloadRefused: {
+    trashed: "Couldn't reload: the file is in the trash in Google Drive",
+    'too-large': "Couldn't reload: the file in Google Drive is over 64 MB",
+    'google-native':
+      "Couldn't reload: the file in Google Drive isn't an erd-editor document anymore",
+    'not-document':
+      "Couldn't reload: the file in Google Drive isn't an erd-editor document anymore",
+  } satisfies Record<DocumentRejection, string>,
   signOutUnconfirmed:
     "Signed out here. erd-editor's server didn't confirm it, so this browser finishes signing out the next time it connects",
   signOutNotRevoked:
@@ -882,8 +893,22 @@ export function createGdriveSession(deps: SessionDeps) {
     /** Take over saving, or Open from Drive and take over. */
     takeOver: () => controller?.takeOver() ?? Promise.resolve(),
 
-    /** Reload from Drive; the edits not saved go. */
-    reload: () => controller?.reload() ?? Promise.resolve(false),
+    /** Reload from Drive; the edits not saved go. Null without a file; one that did not reload says why. */
+    async reload(): Promise<ReloadResult | null> {
+      const current = controller;
+      if (!current) return null;
+      const result = await current.reload();
+      if (result !== 'reloaded' && controller === current) {
+        showNotice(
+          result === 'failed'
+            ? MESSAGES.reloadFailed
+            : MESSAGES.reloadRefused[result],
+          'warning'
+        );
+        emit();
+      }
+      return result;
+    },
 
     /** Check Drive, from the unconfirmed banner; null without a file. A check that never reached Drive says so. */
     async checkDrive(): Promise<CheckResult | null> {

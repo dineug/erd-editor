@@ -40,10 +40,12 @@ import {
   FLUSH_TIMEOUT_MS,
   FOLLOWER_SEND_WINDOW_MS,
   openFileChannel,
+  RELOAD_TIMEOUT_MS,
 } from '@/services/gdrive/fileChannel';
 import { fileLockName } from '@/services/gdrive/fileLeader';
 import { STEAL_SETTLE_MS } from '@/services/gdrive/saveQueue';
 import { toDriveFingerprint } from '@/utils/documentFingerprint';
+import { MAX_IMPORT_FILE_SIZE } from '@/utils/importFile';
 
 /** A .vuerd file as the version 2 editor saved it: one table, users. */
 const VERSION_2_DOCUMENT = JSON.stringify({
@@ -482,8 +484,9 @@ describe('a remote change', () => {
     expect(a.snapshot().saveState).toBe('conflict');
     const epoch = a.snapshot().epoch;
 
-    await b.controller.reload();
+    const reloading = b.controller.reload();
     await settle(20);
+    expect(await reloading).toBe('reloaded');
 
     expect(a.snapshot()).toMatchObject({ saveState: 'saved', phase: 'ready' });
     expect(a.snapshot().epoch).not.toBe(epoch);
@@ -495,6 +498,39 @@ describe('a remote change', () => {
     await settle(2100);
     expect(env.patches().map(env.tabOf)).toEqual(['a']);
     expect(tableNames(driveContent())).toEqual(['orders', 'people']);
+  });
+
+  it('tells a follower how the leader’s reload went, and reloads in one elected while it waited', async () => {
+    const a = await open('a');
+    const b = await open('b');
+    const { epoch } = b.snapshot();
+
+    env.drive.failNext('GET', 400, 'badRequest');
+    const failed = b.controller.reload();
+    await settle(20);
+    expect(await failed).toBe('failed');
+
+    env.drive.files.get('file-1')!.trashed = true;
+    const refused = b.controller.reload();
+    await settle(20);
+    expect(await refused).toBe('trashed');
+    expect(b.snapshot()).toMatchObject({ phase: 'ready', epoch });
+    env.drive.files.get('file-1')!.trashed = false;
+
+    a.freeze();
+    const unanswered = b.controller.reload();
+    await settle(RELOAD_TIMEOUT_MS);
+    expect(await unanswered).toBe('failed');
+
+    const reloading = b.controller.reload();
+    a.close();
+    tabs.splice(tabs.indexOf(a), 1);
+    await settle(20);
+
+    expect(b.snapshot().role).toBe('leader');
+    expect(await reloading).toBe('reloaded');
+    expect(b.snapshot().epoch).not.toBe(epoch);
+    expect(env.downloads().map(env.tabOf)).toEqual(['a', 'b']);
   });
 });
 
@@ -1363,15 +1399,56 @@ describe('edges of a tab’s life', () => {
     env.drive.failNext('GET', 400, 'badRequest');
     const failed = a.controller.reload();
     await settle(5);
-    expect(await failed).toBe(false);
+    expect(await failed).toBe('failed');
 
     env.drive.bumpRemote('file-1', 'no longer a document');
     const refused = a.controller.reload();
     await settle(5);
-    expect(await refused).toBe(false);
+    expect(await refused).toBe('not-document');
 
     expect(a.snapshot()).toMatchObject({ phase: 'ready', epoch });
     expect(tableNames(a.value())).toEqual(['users']);
+  });
+
+  it('downloads nothing on a reload of a file past 64 MB or in the trash, and keeps the document', async () => {
+    const a = await open('a');
+    const { epoch } = a.snapshot();
+    const file = env.drive.files.get('file-1')!;
+
+    file.size = MAX_IMPORT_FILE_SIZE + 1;
+    const tooLarge = a.controller.reload();
+    await settle(5);
+    expect(await tooLarge).toBe('too-large');
+
+    file.size = undefined;
+    file.trashed = true;
+    const trashed = a.controller.reload();
+    await settle(5);
+    expect(await trashed).toBe('trashed');
+
+    expect(env.downloads()).toHaveLength(1);
+    expect(a.snapshot()).toMatchObject({ phase: 'ready', epoch });
+  });
+
+  it('turns away a file gone to the trash when a waiting tab takes over, and downloads nothing', async () => {
+    env.locks
+      .request(fileLockName(SUB, 'file-1'), {}, () => new Promise(() => {}))
+      .catch(() => {});
+    const b = await open('b');
+    await settle(7500);
+    expect(b.snapshot().phase).toBe('waiting-snapshot');
+    env.drive.files.get('file-1')!.trashed = true;
+
+    const taking = b.controller.takeOver();
+    await settle(20);
+    await taking;
+
+    expect(b.snapshot()).toMatchObject({
+      phase: 'rejected',
+      rejection: 'trashed',
+      role: null,
+    });
+    expect(env.downloads()).toHaveLength(0);
   });
 
   it('waits for a token rather than failing when a load finds none, and lets the lock go', async () => {

@@ -15,6 +15,7 @@ import {
   ACK_TIMEOUT_MS,
   CHECK_TIMEOUT_MS,
   type CheckResult,
+  type DocumentRejection,
   type FileChannel,
   fileChannelName,
   type FileMessage,
@@ -22,7 +23,9 @@ import {
   FOLLOWER_SEND_WINDOW_MS,
   followerHasUnsavedChanges,
   openFileChannel,
+  RELOAD_TIMEOUT_MS,
   type ReloadedMessage,
+  type ReloadResult,
   RENAME_PROBE_MS,
   RENAME_TIMEOUT_MS,
   type RenameRequestMessage,
@@ -94,13 +97,6 @@ export type DocumentPhase =
   | 'not-found'
   | 'waiting-token'
   | 'failed';
-
-/** Why a file opens no editor: in the trash, over 64 MB, a Google Doc, or not a document. */
-export type DocumentRejection =
-  | 'trashed'
-  | 'too-large'
-  | 'google-native'
-  | 'not-document';
 
 export type DocumentRole = 'leader' | 'follower';
 
@@ -192,6 +188,13 @@ function phaseForError(error: unknown): DocumentPhase {
   return error.kind === 'not-found' || error.kind === 'forbidden'
     ? 'not-found'
     : 'failed';
+}
+
+type Waiters<T> = Map<string, (answer: T | null) => void>;
+
+/** Ends the requests still waiting for the leader with answer: null once this tab leads. */
+function endWaiters<T>(waiters: Waiters<T>, answer: T | null) {
+  for (const done of [...waiters.values()]) done(answer);
 }
 
 /**
@@ -364,10 +367,10 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   let changeUnconfirmed = false;
   let lastChangeAt: number | null = null;
   let ackTimer: ReturnType<typeof setTimeout> | null = null;
-  /** A follower's flushes waiting for the leader's answer, by request id. */
-  const flushWaiters = new Map<string, (saved: boolean | null) => void>();
-  /** A follower's Check Drive clicks waiting for the leader's answer, null once this tab leads. */
-  const checkWaiters = new Map<string, (result: CheckResult | null) => void>();
+  // What a follower waits for the leader to answer, by request id: flushes, Check Drive, Reload.
+  const flushWaiters: Waiters<boolean> = new Map();
+  const checkWaiters: Waiters<CheckResult> = new Map();
+  const reloadWaiters: Waiters<ReloadResult> = new Map();
 
   const channel = openFileChannel(
     createChannel,
@@ -514,29 +517,33 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   async function loadFromDrive(
     known: DriveFile | null,
     announce: boolean
-  ): Promise<boolean> {
+  ): Promise<ReloadResult> {
     const loading = epoch;
     const overtaken = () => disposed || role !== 'leader' || epoch !== loading;
     let file: DriveFile;
-    let text: string;
+    let why: DocumentRejection | null;
+    let text = '';
     try {
       file = known ?? (await withRetry(() => drive.getFile(fileId), retry));
-      text = await withRetry(() => drive.download(fileId), retry);
+      // What open turns away is never downloaded here either, a file past 64 MB above all.
+      why = rejectionOf(file);
+      if (!why) text = await withRetry(() => drive.download(fileId), retry);
     } catch (error) {
-      if (overtaken() || initialValue !== null) return false;
+      if (overtaken() || initialValue !== null) return 'failed';
       leader.release();
       role = null;
       setPhase(phaseForError(error));
-      return false;
+      return 'failed';
     }
-    if (overtaken()) return false;
-    if (!isDocumentText(text)) {
-      if (initialValue !== null) return false;
+    if (overtaken()) return 'failed';
+    why ??= isDocumentText(text) ? null : 'not-document';
+    if (why) {
+      if (initialValue !== null) return why;
       // Never saved, never edited: the lock goes to a tab that finds the same.
       leader.release();
       role = null;
-      setPhase('rejected', 'not-document');
-      return false;
+      setPhase('rejected', why);
+      return why;
     }
     dropAdapter();
     adoptMeta(file);
@@ -551,7 +558,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       canEdit,
     });
     setPhase('ready');
-    return true;
+    return 'reloaded';
   }
 
   function requestSnapshot() {
@@ -766,8 +773,9 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     if (disposed) return;
     role = 'leader';
     clearAck();
-    endFlushes(null);
-    endChecks(null);
+    endWaiters(flushWaiters, null);
+    endWaiters(checkWaiters, null);
+    endWaiters(reloadWaiters, null);
     waitingLeader = false;
     if (joining || initialValue === null || !queue) {
       stopJoining();
@@ -801,7 +809,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       ackTimer = null;
       waitingLeader = true;
       refresh();
-      endFlushes(false);
+      endWaiters(flushWaiters, false);
     }, ACK_TIMEOUT_MS);
   }
 
@@ -811,43 +819,26 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     ackTimer = null;
   }
 
-  /** Ends the flushes still waiting: false when no answer will come, null when this tab leads. */
-  function endFlushes(saved: boolean | null) {
-    for (const done of [...flushWaiters.values()]) done(saved);
-  }
-
-  /** Ends the checks still waiting: null when this tab leads, skipped when it closes. */
-  function endChecks(result: CheckResult | null) {
-    for (const done of [...checkWaiters.values()]) done(result);
-  }
-
-  /** Asks the leader to save and waits until that cycle ends: whether nothing was left. */
-  function askLeaderToSave(): Promise<boolean | null> {
+  /**
+   * Sends the leader a request named by a new id and waits for its answer:
+   * unanswered once ms pass, null when this tab comes to lead meanwhile.
+   */
+  function askLeader<T>(
+    waiters: Waiters<T>,
+    ms: number,
+    unanswered: T,
+    send: (requestId: string) => void
+  ): Promise<T | null> {
     const requestId = createId();
     return new Promise(resolve => {
-      const done = (saved: boolean | null) => {
+      const done = (answer: T | null) => {
         clearTimeout(timer);
-        flushWaiters.delete(requestId);
-        resolve(saved);
+        waiters.delete(requestId);
+        resolve(answer);
       };
-      const timer = setTimeout(() => done(false), FLUSH_TIMEOUT_MS);
-      flushWaiters.set(requestId, done);
-      requestSave(requestId);
-    });
-  }
-
-  /** Asks the leader to check Drive and waits for how it went; null when this tab leads meanwhile. */
-  function askLeaderToCheck(): Promise<CheckResult | null> {
-    const requestId = createId();
-    return new Promise(resolve => {
-      const done = (result: CheckResult | null) => {
-        clearTimeout(timer);
-        checkWaiters.delete(requestId);
-        resolve(result);
-      };
-      const timer = setTimeout(() => done('failed'), CHECK_TIMEOUT_MS);
-      checkWaiters.set(requestId, done);
-      channel.post({ type: 'check-request', requestId });
+      const timer = setTimeout(() => done(unanswered), ms);
+      waiters.set(requestId, done);
+      send(requestId);
     });
   }
 
@@ -856,6 +847,14 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     const result = queue ? await queue.checkUnconfirmed() : 'skipped';
     if (requestId !== undefined) {
       channel.post({ type: 'checked', requestId, result });
+    }
+  }
+
+  /** A follower's Reload from Drive, answered once the load ended. */
+  async function reloadFor(requestId: string | undefined) {
+    const result = await loadFromDrive(null, true);
+    if (requestId !== undefined) {
+      channel.post({ type: 'reload-done', requestId, result });
     }
   }
 
@@ -955,7 +954,9 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       case 'checked':
         return checkWaiters.get(message.requestId)?.(message.result);
       case 'reload-request':
-        return answerLater(() => void reload());
+        return answerLater(() => void reloadFor(message.requestId));
+      case 'reload-done':
+        return reloadWaiters.get(message.requestId)?.(message.result);
       case 'rename-request':
         return answerRename(message);
       // Another load's saves never move this one's base: that is another document.
@@ -981,11 +982,17 @@ export function createDocumentController(deps: DocumentControllerDeps) {
 
   // Actions
 
-  async function reload(): Promise<boolean> {
+  async function reload(): Promise<ReloadResult> {
     if (role !== 'leader') {
-      channel.post({ type: 'reload-request' });
-      return true;
+      const result = await askLeader(
+        reloadWaiters,
+        RELOAD_TIMEOUT_MS,
+        'failed',
+        requestId => channel.post({ type: 'reload-request', requestId })
+      );
+      if (result !== null) return result;
     }
+    // This tab leads, or came to while it waited.
     return loadFromDrive(null, true);
   }
 
@@ -1061,14 +1068,22 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       await electing;
     },
 
-    /** Reload from Drive: the leader reads it again, and every tab takes it. */
+    /**
+     * Reload from Drive: the leader reads it again, and every tab takes it. A
+     * follower waits for how it went; a failed or refused reload keeps the document.
+     */
     reload,
 
     /** Check Drive, from the unconfirmed banner: a follower asks the leader and waits for how it went. */
     async checkUnconfirmed(): Promise<CheckResult> {
       if (phase !== 'ready' || !queue || disposed) return 'skipped';
       if (role !== 'leader') {
-        const result = await askLeaderToCheck();
+        const result = await askLeader(
+          checkWaiters,
+          CHECK_TIMEOUT_MS,
+          'failed',
+          requestId => channel.post({ type: 'check-request', requestId })
+        );
         if (result !== null) return result;
       }
       // This tab leads, or came to while it waited.
@@ -1105,7 +1120,12 @@ export function createDocumentController(deps: DocumentControllerDeps) {
         if (wait > 0) await sleep(wait);
       }
       if (role !== 'leader') {
-        const saved = await askLeaderToSave();
+        const saved = await askLeader(
+          flushWaiters,
+          FLUSH_TIMEOUT_MS,
+          false,
+          requestSave
+        );
         if (saved !== null) return saved && !hasUnsavedChanges();
       }
       // This tab leads, or came to while it waited.
@@ -1121,8 +1141,9 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       disposed = true;
       stopJoining();
       clearAck();
-      endFlushes(false);
-      endChecks('skipped');
+      endWaiters(flushWaiters, false);
+      endWaiters(checkWaiters, 'skipped');
+      endWaiters(reloadWaiters, 'failed');
       settleHeldRenames();
       dropAdapter();
       queue?.dispose();

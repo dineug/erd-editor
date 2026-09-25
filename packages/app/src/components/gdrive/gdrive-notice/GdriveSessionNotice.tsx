@@ -16,7 +16,7 @@ interface GdriveSessionNoticeProps {
 
 /**
  * The session's one-line notices: an import, a Drive link it could not read,
- * a rename, create or Drive check that failed, a sign-out.
+ * a rename, create, Drive check or reload that failed, a sign-out.
  */
 const GdriveSessionNotice: React.FC<GdriveSessionNoticeProps> = ({
   session,

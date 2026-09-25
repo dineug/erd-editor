@@ -20,6 +20,8 @@ export const RENAME_TIMEOUT_MS = 30_000;
 export const FLUSH_TIMEOUT_MS = 30_000;
 /** How long a follower's Check Drive waits for the leader's answer, a download included. */
 export const CHECK_TIMEOUT_MS = 30_000;
+/** How long a follower's Reload from Drive waits for the leader's answer, a download included. */
+export const RELOAD_TIMEOUT_MS = 30_000;
 
 export const SAVE_STATES = [
   'saved',
@@ -59,6 +61,21 @@ export const CHECK_RESULTS = [
 /** How Check Drive ended: saving again, a conflict, Drive out of reach, or nothing to check. */
 export type CheckResult = (typeof CHECK_RESULTS)[number];
 
+const DOCUMENT_REJECTIONS = [
+  'trashed',
+  'too-large',
+  'google-native',
+  'not-document',
+] as const;
+
+/** Why a file opens no editor: in the trash, over 64 MB, a Google Doc, or not a document. */
+export type DocumentRejection = (typeof DOCUMENT_REJECTIONS)[number];
+
+const RELOAD_RESULTS = ['reloaded', 'failed', ...DOCUMENT_REJECTIONS] as const;
+
+/** How Reload from Drive ended: the new document, Drive out of reach, or a file that no longer opens. */
+export type ReloadResult = (typeof RELOAD_RESULTS)[number];
+
 /** A save a leader announced before its PATCH, known by the fingerprint of what it sent. */
 export type SaveAttempt = { attemptId: string; fingerprint: string };
 
@@ -97,6 +114,13 @@ export type CheckedMessage = {
   result: CheckResult;
 };
 
+/** The leader's answer to a follower's Reload from Drive, once its load ended. */
+export type ReloadDoneMessage = {
+  type: 'reload-done';
+  requestId: string;
+  result: ReloadResult;
+};
+
 /** The leader's answer to a flush's save-request, once the cycle it asked for ended. */
 export type FlushedMessage = {
   type: 'flushed';
@@ -132,7 +156,8 @@ type Body =
   | FlushedMessage
   | { type: 'check-request'; requestId?: string }
   | CheckedMessage
-  | { type: 'reload-request' }
+  | { type: 'reload-request'; requestId?: string }
+  | ReloadDoneMessage
   | ({ type: 'saving' } & SaveAttempt)
   | SavedMessage
   | { type: 'failed'; attemptId: string }
@@ -159,6 +184,17 @@ export function isSaveState(value: unknown): value is SaveState {
 
 const isCheckResult = (value: unknown): value is CheckResult =>
   (CHECK_RESULTS as readonly unknown[]).includes(value);
+
+const isReloadResult = (value: unknown): value is ReloadResult =>
+  (RELOAD_RESULTS as readonly unknown[]).includes(value);
+
+/** A request to the leader, which names itself by requestId when it waits for the answer. */
+const readRequest =
+  (type: 'save-request' | 'check-request' | 'reload-request'): Reader =>
+  ({ requestId }) => {
+    if (requestId === undefined) return { type };
+    return isString(requestId) ? { type, requestId } : null;
+  };
 
 function readAttempt(value: unknown): SaveAttempt | null {
   return isRecord(value) &&
@@ -200,23 +236,21 @@ const readers: Record<Body['type'], Reader> = {
   },
   status: ({ state }) =>
     isSaveState(state) ? { type: 'status', state } : null,
-  'save-request': ({ requestId }) => {
-    if (requestId === undefined) return { type: 'save-request' };
-    return isString(requestId) ? { type: 'save-request', requestId } : null;
-  },
+  'save-request': readRequest('save-request'),
   flushed: ({ requestId, saved }) =>
     isString(requestId) && isBoolean(saved)
       ? { type: 'flushed', requestId, saved }
       : null,
-  'check-request': ({ requestId }) => {
-    if (requestId === undefined) return { type: 'check-request' };
-    return isString(requestId) ? { type: 'check-request', requestId } : null;
-  },
+  'check-request': readRequest('check-request'),
   checked: ({ requestId, result }) =>
     isString(requestId) && isCheckResult(result)
       ? { type: 'checked', requestId, result }
       : null,
-  'reload-request': () => ({ type: 'reload-request' }),
+  'reload-request': readRequest('reload-request'),
+  'reload-done': ({ requestId, result }) =>
+    isString(requestId) && isReloadResult(result)
+      ? { type: 'reload-done', requestId, result }
+      : null,
   saving: data => {
     const attempt = readAttempt(data);
     return attempt && { type: 'saving', ...attempt };

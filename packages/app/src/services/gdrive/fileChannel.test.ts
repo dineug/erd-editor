@@ -111,6 +111,9 @@ describe('readFileMessage', () => {
     { type: 'rename-claim', epoch: 'e1', requestId: 'r3', from: 'tab-2' },
     { type: 'check-request', epoch: 'e1', requestId: 'c1' },
     { type: 'checked', epoch: null, requestId: 'c1', result: 'resumed' },
+    { type: 'reload-request', epoch: 'e1', requestId: 'l1' },
+    { type: 'reload-done', epoch: 'e2', requestId: 'l1', result: 'reloaded' },
+    { type: 'reload-done', epoch: 'e1', requestId: 'l2', result: 'too-large' },
   ];
 
   it.each(valid)('reads $type', message => {
@@ -157,6 +160,9 @@ describe('readFileMessage', () => {
       { type: 'check-request', requestId: 7 },
       { type: 'checked', requestId: 'c1', result: 'maybe' },
       { type: 'checked', result: 'failed' },
+      { type: 'reload-request', requestId: 7 },
+      { type: 'reload-done', requestId: 'l1', result: 'maybe' },
+      { type: 'reload-done', result: 'failed' },
     ];
     for (const message of invalid) expect(readFileMessage(message)).toBeNull();
   });
