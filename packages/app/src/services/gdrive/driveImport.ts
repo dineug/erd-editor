@@ -23,6 +23,8 @@ export type DriveUpload = { name: string; content: string };
 
 export type DriveImportDeps = {
   drive: Pick<DriveClient, 'createFile'>;
+  /** The folder the uploads go in, asked for only once there is one to make. */
+  folderId: () => Promise<string>;
   /** SQL, DBML, AML or GraphQL to a document; the default loads the editor on demand. */
   convert?: (source: SourceImport) => Promise<string>;
   now?: () => number;
@@ -86,21 +88,35 @@ export async function planDriveImport(
 }
 
 /**
- * Uploads every document the files hold to My Drive as a new .erd.json, one
- * after another; a file Drive refuses is counted and the rest go on.
+ * Uploads every document the files hold to the folder as a new .erd.json, one
+ * after another; a file Drive refuses is counted and the rest go on, and a
+ * folder that cannot be had counts every upload as failed.
  */
 export async function importToDrive(
-  { drive, convert = convertWithEditor, now = Date.now }: DriveImportDeps,
+  {
+    drive,
+    folderId,
+    convert = convertWithEditor,
+    now = Date.now,
+  }: DriveImportDeps,
   files: File[]
 ): Promise<{ created: DriveFile[]; result: DriveImportResult }> {
   const at = now();
   const items = await Promise.all(files.map(file => readImportFile(file, at)));
   const { uploads, result } = await planDriveImport(items, convert);
   const created: DriveFile[] = [];
+  if (!uploads.length) return { created, result };
 
+  let parentId: string;
+  try {
+    parentId = await folderId();
+  } catch {
+    result.failed += uploads.length;
+    return { created, result };
+  }
   for (const { name, content } of uploads) {
     try {
-      created.push(await drive.createFile({ name, parentId: null, content }));
+      created.push(await drive.createFile({ name, parentId, content }));
       result.imported += 1;
     } catch {
       result.failed += 1;

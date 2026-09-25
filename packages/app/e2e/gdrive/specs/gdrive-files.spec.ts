@@ -9,6 +9,7 @@ import {
 } from '../../support/gdrive/documents';
 import {
   ACCOUNT,
+  APP_FOLDER_PROPERTIES,
   type FakeGoogle,
   FOLDER_MIME,
   installFakeGoogle,
@@ -27,6 +28,20 @@ async function signedIn(context: Parameters<typeof GdrivePage.open>[0]) {
   const app = await GdrivePage.open(context);
   await app.signIn();
   return app;
+}
+
+/** The one ERD Editor folder the app made in My Drive. */
+function onlyAppFolder() {
+  const folders = google.appFolders();
+  expect(folders).toHaveLength(1);
+  expect(folders[0]).toMatchObject({
+    name: 'ERD Editor',
+    mimeType: FOLDER_MIME,
+    parents: ['root'],
+    appProperties: APP_FOLDER_PROPERTIES,
+    trashed: false,
+  });
+  return folders[0];
 }
 
 /** The names under each date group, top to bottom. */
@@ -177,7 +192,7 @@ test.describe('creating from Google Drive', () => {
     ).toHaveCount(0);
   });
 
-  test("says when it can't see the folder, and creates in My Drive instead", async ({
+  test("says when it can't see the folder, and creates in the ERD Editor folder instead", async ({
     context,
   }) => {
     google.add({
@@ -202,12 +217,14 @@ test.describe('creating from Google Drive', () => {
       })
     ).toBeVisible();
 
+    expect(google.appFolders()).toEqual([]);
     await dialog
-      .getByRole('button', { name: 'Create in My Drive instead' })
+      .getByRole('button', { name: 'Create in the ERD Editor folder' })
       .click();
 
     await app.waitForEditor();
-    expect(google.files.get('created-1')?.parents).toEqual(['root']);
+    const folder = onlyAppFolder();
+    expect(google.files.get('created-1')?.parents).toEqual([folder.id]);
   });
 });
 
@@ -228,6 +245,39 @@ test.describe('the sidebar', () => {
     await expect(
       menu.getByRole('menuitem', { name: 'Rename' })
     ).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  test('creates a new file in one ERD Editor folder, which the next reuses and the list leaves out', async ({
+    context,
+  }) => {
+    const app = await signedIn(context);
+    const newFile = async (name: string) => {
+      await app.sidebar().getByRole('button', { name: 'New file' }).click();
+      const input = app.sidebar().getByLabel('New file name');
+      await input.fill(name);
+      await input.press('Enter');
+    };
+
+    await newFile('orders');
+    await expect(app.page).toHaveURL(/\/gdrive\?file=created-1$/);
+    await app.waitForEditor();
+    const folder = onlyAppFolder();
+    expect(google.files.get('created-1')).toMatchObject({
+      name: 'orders.erd.json',
+      parents: [folder.id],
+    });
+
+    await newFile('invoices');
+    await expect(app.page).toHaveURL(/\/gdrive\?file=created-2$/);
+    expect(onlyAppFolder().id).toBe(folder.id);
+    expect(google.files.get('created-2')?.parents).toEqual([folder.id]);
+
+    await app.page.reload();
+    await app.waitForEditor();
+    await expect
+      .poll(async () => (await app.fileNames()).sort())
+      .toEqual(['invoices.erd.json', 'orders.erd.json']);
+    expect(google.calls('POST', '/drive/v3/files')).toHaveLength(1);
   });
 
   test('imports documents as new .erd.json files and refuses a backup', async ({
@@ -271,15 +321,40 @@ test.describe('the sidebar', () => {
     ).toHaveText(
       'Imported 2 files to Google Drive · Skipped 1 backup: backups stay in the local app'
     );
-    expect([...google.files.values()].map(file => file.name).sort()).toEqual([
+    const folder = onlyAppFolder();
+    const imported = [...google.files.values()].filter(
+      file => file.mimeType !== FOLDER_MIME
+    );
+    expect(imported.map(file => file.name).sort()).toEqual([
       'foo.erd.json',
       'shop.erd.json',
     ]);
-    const shop = [...google.files.values()].find(
-      file => file.name === 'shop.erd.json'
-    )!;
+    for (const file of imported) expect(file.parents).toEqual([folder.id]);
+    const shop = imported.find(file => file.name === 'shop.erd.json')!;
     expect(tableNames(shop.content)).toEqual(['users']);
     await app.waitForEditor();
+
+    await app.sidebar().getByRole('button', { name: 'Import' }).click();
+    const again = app.page.waitForEvent('filechooser');
+    await app.page.getByRole('menuitem', { name: 'Import files' }).click();
+    await (
+      await again
+    ).setFiles({
+      name: 'bar.erd.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(documentWithTable('bar')),
+    });
+    await expect(
+      app.page
+        .getByRole('status')
+        .filter({ hasText: 'Imported 1 file to Google Drive' })
+    ).toBeVisible();
+    expect(onlyAppFolder().id).toBe(folder.id);
+    expect(google.files.get('created-3')).toMatchObject({
+      name: 'bar.erd.json',
+      parents: [folder.id],
+    });
+    expect(await app.fileNames()).not.toContain('ERD Editor');
   });
 
   test('shows the account, Sign out and the policy links, and links to nothing of /', async ({

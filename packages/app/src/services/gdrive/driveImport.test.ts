@@ -39,7 +39,7 @@ function fakeDrive(refuse: (file: NewDriveFile) => boolean = () => false) {
         modifiedTime: '2026-09-25T09:00:00.000Z',
         size: file.content.length,
         trashed: false,
-        parents: ['root'],
+        parents: [file.parentId],
         canEdit: true,
         canRename: true,
       };
@@ -96,12 +96,19 @@ describe('planDriveImport', () => {
   });
 });
 
+const FOLDER_ID = 'app-folder';
+
+function folder() {
+  return vi.fn(async () => FOLDER_ID);
+}
+
 describe('importToDrive', () => {
-  it('uploads each document to My Drive and keeps foo.erd.json as it is', async () => {
+  it('uploads each document to the folder and keeps foo.erd.json as it is', async () => {
     const drive = fakeDrive();
+    const folderId = folder();
 
     const { created, result: counted } = await importToDrive(
-      { drive, convert: async ({ value }) => `from:${value}` },
+      { drive, folderId, convert: async ({ value }) => `from:${value}` },
       [
         new File([USERS_DOCUMENT], 'foo.erd.json'),
         new File(['create table a (id int);'], 'shop.sql'),
@@ -110,29 +117,68 @@ describe('importToDrive', () => {
     );
 
     expect(drive.created).toEqual([
-      { name: 'foo.erd.json', parentId: null, content: USERS_DOCUMENT },
+      { name: 'foo.erd.json', parentId: FOLDER_ID, content: USERS_DOCUMENT },
       {
         name: 'shop.erd.json',
-        parentId: null,
+        parentId: FOLDER_ID,
         content: 'from:create table a (id int);',
       },
     ]);
     expect(created.map(file => file.id)).toEqual(['created-1', 'created-2']);
     expect(counted).toEqual(result({ imported: 2, backups: 1 }));
+    expect(folderId).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for no folder when nothing is left to upload', async () => {
+    const drive = fakeDrive();
+    const folderId = folder();
+
+    const { result: counted } = await importToDrive({ drive, folderId }, [
+      new File([BACKUP], 'erd-editor-backup.json'),
+      new File(['not json'], 'notes.json'),
+    ]);
+
+    expect(folderId).not.toHaveBeenCalled();
+    expect(counted).toEqual(result({ backups: 1, invalid: 1 }));
+  });
+
+  it('counts every upload as failed when the folder cannot be had', async () => {
+    const drive = fakeDrive();
+
+    const { created, result: counted } = await importToDrive(
+      {
+        drive,
+        folderId: async () => {
+          throw new Error('offline');
+        },
+      },
+      [
+        new File([USERS_DOCUMENT], 'a.erd'),
+        new File([USERS_DOCUMENT], 'b.erd'),
+        new File([BACKUP], 'erd-editor-backup.json'),
+      ]
+    );
+
+    expect(created).toEqual([]);
+    expect(drive.createFile).not.toHaveBeenCalled();
+    expect(counted).toEqual(result({ failed: 2, backups: 1 }));
   });
 
   it('parses a source with the editor by default, and counts a parse failure', async () => {
     const drive = fakeDrive();
 
-    const { result: counted } = await importToDrive({ drive }, [
-      new File(['table users { id int }'], 'shop.dbml'),
-      new File(['broken'], 'bad.sql'),
-    ]);
+    const { result: counted } = await importToDrive(
+      { drive, folderId: folder() },
+      [
+        new File(['table users { id int }'], 'shop.dbml'),
+        new File(['broken'], 'bad.sql'),
+      ]
+    );
 
     expect(drive.created).toEqual([
       {
         name: 'shop.erd.json',
-        parentId: null,
+        parentId: FOLDER_ID,
         content: 'converted:table users { id int }',
       },
     ]);
@@ -145,7 +191,7 @@ describe('importToDrive', () => {
     Object.defineProperty(big, 'size', { value: MAX_IMPORT_FILE_SIZE + 1 });
 
     const { created, result: counted } = await importToDrive(
-      { drive, now: () => 0 },
+      { drive, folderId: folder(), now: () => 0 },
       [
         new File([USERS_DOCUMENT], 'first.erd'),
         new File([USERS_DOCUMENT], 'second.erd'),

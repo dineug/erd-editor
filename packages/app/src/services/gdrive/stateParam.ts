@@ -14,7 +14,7 @@ export type DriveState =
     }
   | {
       action: 'create';
-      /** Null creates in My Drive. */
+      /** Null when Drive names no folder. */
       folderId: string | null;
       folderResourceKey: string | null;
       userId: string | null;

@@ -199,6 +199,22 @@ function openState(fileId: string, extra: Record<string, unknown> = {}) {
   return JSON.stringify({ action: 'open', ids: [fileId], ...extra });
 }
 
+/** The multipart creates of files, which the folder's JSON create is not. */
+function uploads(browser: Browser) {
+  return browser.drive
+    .callsTo('POST')
+    .filter(call => call.url.pathname === '/upload/drive/v3/files');
+}
+
+/** The ERD Editor folders in the fake Drive, found as the app finds them. */
+function appFolders(browser: Browser) {
+  return [...browser.drive.files.values()].filter(
+    file =>
+      file.mimeType === FOLDER_MIME &&
+      file.appProperties?.erdEditorFolder === '1'
+  );
+}
+
 function patches(browser: Browser, fileId: string) {
   return browser.drive
     .callsTo('PATCH')
@@ -556,7 +572,7 @@ describe("Drive's state", () => {
     expect(browser.drive.callsTo('POST')).toHaveLength(1);
   });
 
-  it('says it cannot see a folder, and offers My Drive when Drive refuses it', async () => {
+  it('says it cannot see a folder, and offers the ERD Editor folder when Drive refuses it', async () => {
     const tab = openTab(browser, {
       state: JSON.stringify({ action: 'create', folderId: 'hidden' }),
       file: null,
@@ -565,21 +581,25 @@ describe("Drive's state", () => {
 
     expect(tab.snapshot().create?.folderName).toBeNull();
 
-    browser.drive.failNext('POST', 404, 'notFound');
     await tab.session.confirmCreate('orders');
     expect(tab.snapshot().create?.status).toBe('folder-refused');
+    expect(appFolders(browser)).toEqual([]);
 
     await tab.session.confirmCreate('orders', true);
     await settle(10);
 
-    expect(browser.drive.callsTo('POST').at(-1)?.body).not.toContain('parents');
+    const [folder] = appFolders(browser);
+    expect(uploads(browser).at(-1)?.body).toContain(
+      `"parents":["${folder.id}"]`
+    );
+    expect(browser.drive.files.get('created-1')?.parents).toEqual([folder.id]);
     expect(tab.navigations.at(-1)).toEqual({
       fileId: 'created-1',
       replace: true,
     });
   });
 
-  it('creates in My Drive for a state without a folder, and reports a failure', async () => {
+  it('creates in the ERD Editor folder for a state without a folder, and reports a failure', async () => {
     const tab = openTab(browser, {
       state: JSON.stringify({ action: 'create' }),
       file: null,
@@ -591,9 +611,24 @@ describe("Drive's state", () => {
       folderName: null,
     });
 
-    browser.drive.failNext('POST', 500);
+    browser.drive.failNext(
+      'POST',
+      500,
+      'backendError',
+      url => url.pathname === '/upload/drive/v3/files'
+    );
     await tab.session.confirmCreate('orders');
     expect(tab.snapshot().create?.status).toBe('failed');
+
+    await tab.session.confirmCreate('orders');
+    await settle(10);
+
+    const folders = appFolders(browser);
+    expect(folders).toHaveLength(1);
+    expect(browser.drive.files.get('created-1')?.parents).toEqual([
+      folders[0].id,
+    ]);
+    expect(tab.snapshot().create).toBeNull();
   });
 
   it('cancels a create back to the list, the state dropped', async () => {
@@ -1269,23 +1304,85 @@ describe('the list', () => {
     expect(tab.snapshot().notice?.message).toBe(MESSAGES.renameFailed);
   });
 
-  it('creates a new file in My Drive and opens it', async () => {
+  it('creates a new file in the ERD Editor folder and opens it, the folder never listed', async () => {
     const tab = openTab(browser);
     await start(tab);
 
     await tab.session.newFile('orders');
     await settle(10);
 
-    const post = browser.drive.callsTo('POST')[0];
+    const [folder] = appFolders(browser);
+    expect(folder).toMatchObject({ name: 'ERD Editor', parents: ['root'] });
+    const [post] = uploads(browser);
     expect(post.body).toContain('"name":"orders.erd.json"');
-    expect(post.body).not.toContain('parents');
+    expect(post.body).toContain(`"parents":["${folder.id}"]`);
     expect(post.body).toContain(EMPTY_DOCUMENT);
+    expect(browser.drive.files.get('created-1')?.parents).toEqual([folder.id]);
     expect(tab.navigations).toEqual([{ fileId: 'created-1', replace: false }]);
     expect(tab.snapshot().document?.phase).toBe('ready');
+
+    await tab.session.newFile('invoices');
+    expect(appFolders(browser)).toHaveLength(1);
+    expect(browser.drive.files.get('created-2')?.parents).toEqual([folder.id]);
+    await tab.session.refreshFiles();
+    expect(
+      tab
+        .snapshot()
+        .files.map(file => file.name)
+        .sort()
+    ).toEqual([
+      'blog.erd',
+      'invoices.erd.json',
+      'orders.erd.json',
+      'shop.erd.json',
+    ]);
 
     browser.drive.failNext('POST', 500);
     await tab.session.newFile('again');
     expect(tab.snapshot().notice?.message).toBe(MESSAGES.createFailed);
+  });
+
+  it('creates nothing when the folder cannot be looked up, and says so', async () => {
+    const tab = openTab(browser);
+    await start(tab);
+    browser.drive.failNext(
+      'GET',
+      500,
+      'backendError',
+      url => url.searchParams.get('q')?.includes('appProperties') ?? false
+    );
+
+    await tab.session.newFile('orders');
+
+    expect(browser.drive.callsTo('POST')).toEqual([]);
+    expect(tab.snapshot().notice?.message).toBe(MESSAGES.createFailed);
+  });
+
+  it("puts every tab's new files in the one folder, made again once trashed", async () => {
+    const first = openTab(browser);
+    const second = openTab(browser);
+    await start(first);
+    await start(second);
+
+    await Promise.all([
+      first.session.newFile('orders'),
+      second.session.importFiles([new File([USERS_DOCUMENT], 'shop.erd')]),
+    ]);
+
+    const [folder] = appFolders(browser);
+    expect(appFolders(browser)).toHaveLength(1);
+    expect(
+      uploads(browser).map(call =>
+        call.body?.includes(`"parents":["${folder.id}"]`)
+      )
+    ).toEqual([true, true]);
+
+    browser.drive.files.get(folder.id)!.trashed = true;
+    await first.session.newFile('invoices');
+
+    const fresh = appFolders(browser).find(entry => !entry.trashed)!;
+    expect(fresh.id).not.toBe(folder.id);
+    expect(browser.drive.files.get('created-3')?.parents).toEqual([fresh.id]);
   });
 
   it('imports documents as new files, refuses a backup, and opens the last', async () => {
@@ -1308,10 +1405,14 @@ describe('the list', () => {
     await settle(10);
 
     expect(
-      browser.drive
-        .callsTo('POST')
-        .map(call => /"name":"([^"]+)"/.exec(call.body ?? '')?.[1])
+      uploads(browser).map(
+        call => /"name":"([^"]+)"/.exec(call.body ?? '')?.[1]
+      )
     ).toEqual(['shop.erd.json', 'blog.erd.json']);
+    const [folder] = appFolders(browser);
+    for (const id of ['created-1', 'created-2']) {
+      expect(browser.drive.files.get(id)?.parents).toEqual([folder.id]);
+    }
     expect(tab.snapshot().notice).toMatchObject({
       message:
         'Imported 2 files to Google Drive · Skipped 1 backup: backups stay in the local app',
@@ -1322,6 +1423,8 @@ describe('the list', () => {
 
     await tab.session.importFiles([new File([USERS_DOCUMENT], 'one.erd')]);
     expect(tab.snapshot().notice?.tone).toBe('success');
+    expect(appFolders(browser)).toHaveLength(1);
+    expect(browser.drive.files.get('created-3')?.parents).toEqual([folder.id]);
     await tab.session.importFiles([]);
   });
 

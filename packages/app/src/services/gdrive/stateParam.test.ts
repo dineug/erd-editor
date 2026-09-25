@@ -61,7 +61,7 @@ describe('parseDriveState', () => {
     });
   });
 
-  it('creates in My Drive when no folder is named', () => {
+  it('reads no folder when none is named', () => {
     expect(parseDriveState(state({ action: 'create' }))).toEqual({
       action: 'create',
       folderId: null,

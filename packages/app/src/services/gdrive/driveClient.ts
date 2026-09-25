@@ -20,6 +20,15 @@ export const LIST_FIELDS = `nextPageToken,files(${FILE_FIELDS})`;
 export const SAVE_FIELDS = 'id,modifiedTime';
 export const RENAME_FIELDS = 'id,name,modifiedTime';
 export const NAME_FIELDS = 'name';
+export const FOLDER_FIELDS = 'id,createdTime';
+export const FOLDER_LIST_FIELDS = `nextPageToken,files(${FOLDER_FIELDS})`;
+
+export const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+/** The name the ERD Editor folder starts with; the person may rename it. */
+export const APP_FOLDER_NAME = 'ERD Editor';
+/** The marker that finds the folder again, wherever it was moved and whatever it is called. */
+export const APP_FOLDER_PROPERTY = 'erdEditorFolder';
+export const APP_FOLDER_QUERY = `mimeType='${FOLDER_MIME_TYPE}' and appProperties has { key='${APP_FOLDER_PROPERTY}' and value='1' } and trashed=false`;
 
 export const RETRY_LIMIT = 3;
 export const RETRY_BASE_MS = 1000;
@@ -48,6 +57,9 @@ export type DriveFile = {
   canEdit: boolean;
   canRename: boolean;
 };
+
+/** A folder of the app's, as the lookup reads it: the oldest one wins. */
+export type DriveFolder = { id: string; createdTime: string };
 
 export type DriveSaveResult = { id: string; modifiedTime: string };
 export type DriveRenameResult = DriveSaveResult & { name: string };
@@ -100,8 +112,8 @@ export type DriveClientDeps = {
 
 export type NewDriveFile = {
   name: string;
-  /** Null creates in My Drive. */
-  parentId: string | null;
+  /** Always a folder: nothing is created loose in My Drive. */
+  parentId: string;
   content: string;
 };
 
@@ -153,6 +165,15 @@ export function parseDriveFile(value: unknown): DriveFile {
       : [],
     canEdit: capabilities?.canEdit === true,
     canRename: capabilities?.canRename === true,
+  };
+}
+
+function parseDriveFolder(value: unknown): DriveFolder {
+  const raw = asRecord(value);
+  if (!raw) throw invalidResponse();
+  return {
+    id: readString(raw, 'id'),
+    createdTime: readString(raw, 'createdTime'),
   };
 }
 
@@ -287,6 +308,26 @@ export function createDriveClient(deps: DriveClientDeps) {
   const callJson = async (request: DriveRequest) =>
     readJson(await call(request));
 
+  /** Every page of a files.list, in the order its params ask for. */
+  const listAll = async <T>(
+    params: Record<string, string>,
+    read: (value: unknown) => T
+  ): Promise<T[]> => {
+    const items: T[] = [];
+    let pageToken: string | null = null;
+    do {
+      const body = await callJson({
+        method: 'GET',
+        url: `${DRIVE_API}/files?${query(pageToken ? { ...params, pageToken } : params)}`,
+      });
+      const page = Array.isArray(body.files) ? body.files : [];
+      items.push(...page.map(read));
+      const next = body.nextPageToken;
+      pageToken = typeof next === 'string' && next ? next : null;
+    } while (pageToken);
+    return items;
+  };
+
   return {
     /** Drive's resourceKeys from ?state=, sent with every later call for those files. */
     rememberResourceKeys(keys: Record<string, string>) {
@@ -297,27 +338,46 @@ export function createDriveClient(deps: DriveClientDeps) {
 
     /** Every page of what drive.file shows this app, newest first, listed files only. */
     async listFiles(): Promise<DriveFile[]> {
-      const files: DriveFile[] = [];
-      let pageToken: string | null = null;
-      do {
-        const params: Record<string, string> = {
+      const files = await listAll(
+        {
           q: 'trashed=false',
           orderBy: 'modifiedTime desc',
           pageSize: LIST_PAGE_SIZE,
           spaces: 'drive',
           fields: LIST_FIELDS,
-        };
-        if (pageToken) params.pageToken = pageToken;
-        const body = await callJson({
-          method: 'GET',
-          url: `${DRIVE_API}/files?${query(params)}`,
-        });
-        const page = Array.isArray(body.files) ? body.files : [];
-        files.push(...page.map(parseDriveFile).filter(isListedFile));
-        const next = body.nextPageToken;
-        pageToken = typeof next === 'string' && next ? next : null;
-      } while (pageToken);
-      return files;
+        },
+        parseDriveFile
+      );
+      return files.filter(isListedFile);
+    },
+
+    /** Every folder of the app's not in the trash, found by its marker, never by name. */
+    async findAppFolders(): Promise<DriveFolder[]> {
+      return await listAll(
+        {
+          q: APP_FOLDER_QUERY,
+          pageSize: LIST_PAGE_SIZE,
+          spaces: 'drive',
+          fields: FOLDER_LIST_FIELDS,
+        },
+        parseDriveFolder
+      );
+    },
+
+    /** A new ERD Editor folder in My Drive, carrying the marker; never retried. */
+    async createAppFolder(): Promise<DriveFolder> {
+      return parseDriveFolder(
+        await callJson({
+          method: 'POST',
+          url: `${DRIVE_API}/files?${query({ fields: FOLDER_FIELDS })}`,
+          headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+          body: JSON.stringify({
+            name: APP_FOLDER_NAME,
+            mimeType: FOLDER_MIME_TYPE,
+            appProperties: { [APP_FOLDER_PROPERTY]: '1' },
+          }),
+        })
+      );
     },
 
     async getFile(fileId: string): Promise<DriveFile> {
@@ -392,9 +452,11 @@ export function createDriveClient(deps: DriveClientDeps) {
       content,
     }: NewDriveFile): Promise<DriveFile> {
       const boundary = createBoundary();
-      const metadata = parentId
-        ? { name, mimeType: NEW_FILE_MIME_TYPE, parents: [parentId] }
-        : { name, mimeType: NEW_FILE_MIME_TYPE };
+      const metadata = {
+        name,
+        mimeType: NEW_FILE_MIME_TYPE,
+        parents: [parentId],
+      };
       return parseDriveFile(
         await callJson({
           method: 'POST',
@@ -402,7 +464,7 @@ export function createDriveClient(deps: DriveClientDeps) {
             uploadType: 'multipart',
             fields: FILE_FIELDS,
           })}`,
-          fileId: parentId ?? undefined,
+          fileId: parentId,
           headers: {
             'Content-Type': `multipart/related; boundary=${boundary}`,
           },

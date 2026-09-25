@@ -19,6 +19,9 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 // Spelled out, not imported: a misspelled field in the client must fail here.
 const FILE_FIELDS =
   'id,name,mimeType,modifiedTime,size,trashed,parents,capabilities(canEdit,canRename)';
+const APP_FOLDER_QUERY =
+  "mimeType='application/vnd.google-apps.folder' and appProperties has { key='erdEditorFolder' and value='1' } and trashed=false";
+const MARKER = { erdEditorFolder: '1' };
 
 function setup(drive: FakeDrive = createFakeDrive()) {
   const tokens = { current: 'drive-token-1', renewed: 'drive-token-2' };
@@ -68,6 +71,11 @@ describe('createDriveClient', () => {
     ];
     for (const name of names) drive.add({ name });
     drive.add({ name: 'folder.erd', mimeType: FOLDER_MIME });
+    drive.add({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+    });
     drive.add({
       name: 'link.erd',
       mimeType: 'application/vnd.google-apps.shortcut',
@@ -308,21 +316,27 @@ describe('createDriveClient', () => {
     expect(drive.files.get(created.id)?.content).toBe('{"version":"3.0.0"}');
   });
 
-  it('creates in My Drive without a folder', async () => {
+  it('names the folder in the metadata, so a create never lands loose in My Drive', async () => {
     const { drive, client } = setup();
+    const folder = drive.add({ name: 'ERD Editor', mimeType: FOLDER_MIME });
 
-    const created = await client.createFile({
+    await client.createFile({
       name: 'orders.erd.json',
-      parentId: null,
+      parentId: folder.id,
       content: '{}',
     });
 
-    expect(created.parents).toEqual(['root']);
-    expect(drive.calls[0].body).not.toContain('"parents"');
+    const [metadata] = drive.calls[0].body!.split('\r\n\r\n')[1].split('\r\n');
+    expect(JSON.parse(metadata)).toEqual({
+      name: 'orders.erd.json',
+      mimeType: 'application/json',
+      parents: [folder.id],
+    });
   });
 
   it('makes its own multipart boundary by default', async () => {
     const drive = createFakeDrive();
+    const folder = drive.add({ name: 'ERD Editor', mimeType: FOLDER_MIME });
     const client = createDriveClient({
       fetch: drive.fetch,
       getAccessToken: async () => 'drive-token-1',
@@ -331,13 +345,131 @@ describe('createDriveClient', () => {
 
     await client.createFile({
       name: 'a.erd.json',
-      parentId: null,
+      parentId: folder.id,
       content: '{}',
     });
 
     expect(drive.calls[0].headers.get('Content-Type')).toMatch(
       /^multipart\/related; boundary=erd-editor-[A-Za-z0-9_-]{24}$/
     );
+  });
+
+  it('finds the ERD Editor folders by their marker alone, every page, with explicit fields', async () => {
+    const { drive, client } = setup();
+    const renamed = drive.add({
+      name: 'Diagrams',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+      createdTime: '2026-09-01T00:00:00.000Z',
+      parents: ['folder-9'],
+    });
+    const second = drive.add({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+    });
+    const third = drive.add({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+    });
+    drive.add({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+      trashed: true,
+    });
+    drive.add({ name: 'ERD Editor', mimeType: FOLDER_MIME });
+    drive.add({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: { erdEditorFolder: '0' },
+    });
+    drive.add({ name: 'ERD Editor.erd', appProperties: MARKER });
+
+    const folders = await client.findAppFolders();
+
+    expect(folders).toEqual(
+      expect.arrayContaining([
+        { id: renamed.id, createdTime: '2026-09-01T00:00:00.000Z' },
+        { id: second.id, createdTime: second.createdTime },
+        { id: third.id, createdTime: third.createdTime },
+      ])
+    );
+    expect(folders).toHaveLength(3);
+    const lists = drive.callsTo('GET');
+    expect(lists.map(call => call.url.searchParams.get('pageToken'))).toEqual([
+      null,
+      '2',
+    ]);
+    for (const { url } of lists) {
+      expect(url.origin + url.pathname).toBe(
+        'https://www.googleapis.com/drive/v3/files'
+      );
+      expect(url.searchParams.get('q')).toBe(APP_FOLDER_QUERY);
+      expect(url.searchParams.get('fields')).toBe(
+        'nextPageToken,files(id,createdTime)'
+      );
+      expect(url.searchParams.get('spaces')).toBe('drive');
+      expect(url.searchParams.get('supportsAllDrives')).toBe('true');
+    }
+  });
+
+  it('creates the ERD Editor folder in My Drive with its marker, in one JSON POST', async () => {
+    const { drive, client } = setup();
+
+    const folder = await client.createAppFolder();
+
+    const [call] = drive.calls;
+    expect(call.method).toBe('POST');
+    expect(call.url.origin + call.url.pathname).toBe(
+      'https://www.googleapis.com/drive/v3/files'
+    );
+    expect(call.url.searchParams.get('fields')).toBe('id,createdTime');
+    expect(call.url.searchParams.get('supportsAllDrives')).toBe('true');
+    expect(call.url.searchParams.get('uploadType')).toBeNull();
+    expect(call.headers.get('Content-Type')).toBe(
+      'application/json; charset=UTF-8'
+    );
+    expect(JSON.parse(call.body ?? '')).toEqual({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+    });
+    const stored = drive.files.get(folder.id)!;
+    expect(folder).toEqual({ id: stored.id, createdTime: stored.createdTime });
+    expect(stored).toMatchObject({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      parents: ['root'],
+      appProperties: MARKER,
+    });
+    await expect(client.findAppFolders()).resolves.toEqual([folder]);
+  });
+
+  it.each([
+    ['a listed folder that is no object', { files: [null] }],
+    ['a listed folder without createdTime', { files: [{ id: 'x' }] }],
+  ])('refuses %s as an invalid response', async (_label, body) => {
+    const client = createDriveClient({
+      fetch: receiverChecked(async () => jsonReply(body)),
+      getAccessToken: async () => 't',
+      onUnauthorized: async token => token,
+    });
+
+    await expect(driveError(client.findAppFolders())).resolves.toMatchObject({
+      kind: 'invalid-response',
+    });
+  });
+
+  it('never creates the folder twice: a POST is not retried', async () => {
+    const { drive, client } = setup();
+    drive.failNetworkNext('POST');
+
+    await expect(
+      withRetry(() => client.createAppFolder(), { sleep: async () => {} })
+    ).rejects.toMatchObject({ kind: 'network', retryable: false });
+    expect(drive.callsTo('POST')).toHaveLength(1);
   });
 
   it('renews the token once on a 401 and sends the same request again', async () => {
@@ -409,7 +541,7 @@ describe('createDriveClient', () => {
             ? client.saveContent(file, '{}')
             : client.createFile({
                 name: 'a.erd.json',
-                parentId: null,
+                parentId: 'folder-1',
                 content: '{}',
               });
       const error = await driveError(call);
@@ -490,7 +622,7 @@ describe('createDriveClient', () => {
             ? client.saveContent(file, '{}')
             : client.createFile({
                 name: 'a.erd.json',
-                parentId: null,
+                parentId: 'folder-1',
                 content: '{}',
               });
 
@@ -676,7 +808,7 @@ describe('withRetry', () => {
         () =>
           client.createFile({
             name: 'a.erd.json',
-            parentId: null,
+            parentId: 'folder-1',
             content: '{}',
           }),
         { sleep: async () => {} }
@@ -703,5 +835,63 @@ describe('withRetry', () => {
   it('adds up to a quarter second of jitter', () => {
     expect(backoffDelay(0, () => 0.5)).toBe(1125);
     expect(backoffDelay(2, () => 0.999)).toBe(4249);
+  });
+});
+
+describe('the fake Drive', () => {
+  const list = ({ fetch: send }: FakeDrive, q: string) =>
+    send(
+      `https://www.googleapis.com/drive/v3/files?${new URLSearchParams({ q, fields: 'files(id)' })}`,
+      { headers: { Authorization: 'Bearer drive-token-1' } }
+    );
+
+  it('lists only what a query matches, and refuses a query it cannot read', async () => {
+    const drive = createFakeDrive();
+    const folder = drive.add({
+      name: 'ERD Editor',
+      mimeType: FOLDER_MIME,
+      appProperties: MARKER,
+    });
+    drive.add({ name: 'a.erd' });
+
+    await expect((await list(drive, APP_FOLDER_QUERY)).json()).resolves.toEqual(
+      { files: [{ id: folder.id }] }
+    );
+    const otherKey = APP_FOLDER_QUERY.replace('erdEditorFolder', 'other');
+    await expect((await list(drive, otherKey)).json()).resolves.toEqual({
+      files: [],
+    });
+    for (const q of [
+      "name = 'ERD Editor'",
+      `${APP_FOLDER_QUERY} or trashed=true`,
+      'trashed=false and',
+    ]) {
+      const refused = await list(drive, q);
+      expect(refused.status).toBe(400);
+    }
+  });
+
+  it('creates into a folder it can see alone, and into the trash with a trashed one', async () => {
+    const { drive, client } = setup();
+    const shared = drive.add({
+      name: 'Shared',
+      mimeType: FOLDER_MIME,
+      resourceKey: 'key',
+    });
+    const trashed = drive.add({
+      name: 'Old',
+      mimeType: FOLDER_MIME,
+      trashed: true,
+    });
+    const create = (parentId: string) =>
+      client.createFile({ name: 'a.erd.json', parentId, content: '{}' });
+
+    await expect(driveError(create('missing'))).resolves.toMatchObject({
+      kind: 'not-found',
+    });
+    await expect(driveError(create(shared.id))).resolves.toMatchObject({
+      kind: 'not-found',
+    });
+    await expect(create(trashed.id)).resolves.toMatchObject({ trashed: true });
   });
 });

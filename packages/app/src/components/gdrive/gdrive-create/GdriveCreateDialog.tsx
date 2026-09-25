@@ -15,13 +15,13 @@ interface GdriveCreateDialogProps {
 
 /** Where the file goes; a folderId in the link could name someone else's folder, so it is said. */
 function folderText({ folderId, folderName }: CreateRequest) {
-  if (!folderId) return 'In My Drive';
+  if (!folderId) return 'In the ERD Editor folder';
   if (folderName === undefined) return 'In a folder…';
   if (folderName === null) return "In a folder ERD Editor can't see";
   return `In the folder “${folderName}”`;
 }
 
-/** Google Drive's New: a name, then the file, in the folder Drive sent or in My Drive. */
+/** Google Drive's New: a name, then the file, in the folder Drive sent or in the ERD Editor folder. */
 const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
   session,
   request,
@@ -29,8 +29,8 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
   const [name, setName] = useState('');
   const creating = request.status === 'creating';
 
-  const create = (inMyDrive: boolean) => {
-    void settleReported(session.confirmCreate)(name, inMyDrive);
+  const create = (inAppFolder: boolean) => {
+    void settleReported(session.confirmCreate)(name, inAppFolder);
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -66,7 +66,7 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
             {request.status === 'folder-refused' ? (
               <Text size="2" color="red">
                 ERD Editor can&apos;t create files in this folder. Create it in
-                My Drive instead?
+                the ERD Editor folder instead?
               </Text>
             ) : request.status === 'failed' ? (
               <Text size="2" color="red">
@@ -95,7 +95,7 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
                 disabled={creating}
                 onClick={() => create(true)}
               >
-                Create in My Drive instead
+                Create in the ERD Editor folder
               </Button>
             ) : null}
             <Button

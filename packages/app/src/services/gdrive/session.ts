@@ -1,4 +1,5 @@
 import { isLoginHint } from '@/server/auth/contract';
+import { createAppFolder } from '@/services/gdrive/appFolder';
 import {
   createDocumentController,
   type DocumentController,
@@ -65,7 +66,7 @@ export type FilesState = 'loading' | 'ready' | 'failed';
 /** The create dialog a Drive New asks for; folderName is undefined while it loads and null when hidden. */
 export type CreateRequest = {
   key: number;
-  /** Null creates in My Drive. */
+  /** Null when Drive named no folder: the file goes in the ERD Editor folder. */
   folderId: string | null;
   folderName: string | null | undefined;
   status: 'idle' | 'creating' | 'folder-refused' | 'failed';
@@ -226,6 +227,7 @@ export function createGdriveSession(deps: SessionDeps) {
     retry,
   } = deps;
 
+  const appFolder = createAppFolder({ drive, locks });
   const listeners = new Set<() => void>();
   let location: SessionLocation = { state: null, file: null };
   /** The state already acted on, so a render that still carries it does not act twice. */
@@ -648,7 +650,7 @@ export function createGdriveSession(deps: SessionDeps) {
 
   async function createDriveFile(
     input: string,
-    parentId: string | null
+    parentId: string
   ): Promise<DriveFile> {
     const file = await drive.createFile({
       name: toNewFileName(input),
@@ -802,11 +804,15 @@ export function createGdriveSession(deps: SessionDeps) {
       emit();
     },
 
-    /** The sidebar's New file: an empty document in My Drive, then opened. */
+    /** The sidebar's New file: an empty document in the ERD Editor folder, then opened. */
     async newFile(input: string): Promise<void> {
       if (!account) return;
+      const { sub } = account;
       try {
-        const file = await createDriveFile(input, null);
+        const file = await createDriveFile(
+          input,
+          await appFolder.folderId(sub)
+        );
         navigate(file.id, { replace: false });
       } catch {
         showNotice(MESSAGES.createFailed, 'warning');
@@ -814,16 +820,19 @@ export function createGdriveSession(deps: SessionDeps) {
       emit();
     },
 
-    /** The create dialog's Create, or Create in My Drive instead. */
-    async confirmCreate(input: string, inMyDrive = false): Promise<void> {
+    /** The create dialog's Create, in Drive's folder or else the ERD Editor folder; or Create in the ERD Editor folder. */
+    async confirmCreate(input: string, inAppFolder = false): Promise<void> {
       const request = create;
       if (!request || request.status === 'creating' || !account) return;
+      const { sub } = account;
       create = { ...request, status: 'creating' };
       emit();
       try {
         const file = await createDriveFile(
           input,
-          inMyDrive ? null : request.folderId
+          inAppFolder || !request.folderId
+            ? await appFolder.folderId(sub)
+            : request.folderId
         );
         if (create?.key !== request.key) return;
         create = null;
@@ -837,7 +846,7 @@ export function createGdriveSession(deps: SessionDeps) {
         create = {
           ...request,
           status:
-            refused && !inMyDrive && request.folderId
+            refused && !inAppFolder && request.folderId
               ? 'folder-refused'
               : 'failed',
         };
@@ -854,15 +863,16 @@ export function createGdriveSession(deps: SessionDeps) {
       emit();
     },
 
-    /** Imports documents as new files in My Drive and opens the last one. */
+    /** Imports documents as new files in the ERD Editor folder and opens the last one. */
     async importFiles(list: File[]): Promise<void> {
       if (!account || importing || !list.length) return;
+      const { sub } = account;
       importing = true;
       emit();
       const before = location;
       try {
         const { created, result } = await importToDrive(
-          { drive, convert, now },
+          { drive, folderId: () => appFolder.folderId(sub), convert, now },
           list
         );
         for (const file of created) {

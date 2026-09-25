@@ -508,6 +508,9 @@ export type FakeDriveFile = {
   name: string;
   mimeType: string;
   modifiedTime: string;
+  createdTime: string;
+  /** Drive's private per-app properties; a file without any leaves them out. */
+  appProperties?: Record<string, string>;
   content: string;
   trashed: boolean;
   parents: string[];
@@ -574,12 +577,66 @@ function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const DEFAULT_LIST_FIELDS = `kind,incompleteSearch,nextPageToken,files(${DEFAULT_FILE_FIELDS})`;
 const FILE_SCHEMA = parseFields(
-  'kind,id,name,mimeType,modifiedTime,size,trashed,parents,capabilities(canEdit,canRename)'
+  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,appProperties,capabilities(canEdit,canRename)'
 );
 const LIST_SCHEMA: FieldTree = new Map([
   ...parseFields('kind,incompleteSearch,nextPageToken'),
   ['files', FILE_SCHEMA],
 ]);
+
+type FilePredicate = (file: FakeDriveFile) => boolean;
+
+/** The only terms files.list reads here, each spelled as the client sends it. */
+const QUERY_TERMS: Array<[RegExp, (match: string[]) => FilePredicate]> = [
+  [
+    /^trashed\s*=\s*(true|false)$/,
+    ([, value]) =>
+      file =>
+        file.trashed === (value === 'true'),
+  ],
+  [
+    /^mimeType\s*=\s*'([^']*)'$/,
+    ([, type]) =>
+      file =>
+        file.mimeType === type,
+  ],
+  [
+    /^appProperties has \{ key='([^']*)' and value='([^']*)' \}$/,
+    ([, key, value]) =>
+      file =>
+        file.appProperties?.[key] === value,
+  ],
+];
+
+/** Splits q on the and between terms, not the one inside a has { ... }. */
+function queryTerms(q: string): string[] {
+  const terms: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < q.length; index++) {
+    if (q[index] === '{') depth++;
+    if (q[index] === '}') depth--;
+    if (depth === 0 && q.startsWith(' and ', index)) {
+      terms.push(q.slice(start, index));
+      start = index + ' and '.length;
+    }
+  }
+  return [...terms, q.slice(start)];
+}
+
+/**
+ * A files.list q as a predicate: every term has to hold, and a term it cannot
+ * read makes the whole query null, Drive's 400, never a match.
+ */
+function parseDriveQuery(q: string): FilePredicate | null {
+  const predicates: FilePredicate[] = [];
+  for (const term of queryTerms(q)) {
+    const known = QUERY_TERMS.find(([pattern]) => pattern.test(term.trim()));
+    if (!known) return null;
+    predicates.push(known[1](known[0].exec(term.trim())!));
+  }
+  return file => predicates.every(predicate => predicate(file));
+}
 
 function driveError(status: number, reason: string): Response {
   return jsonReply(
@@ -593,6 +650,13 @@ function driveError(status: number, reason: string): Response {
     status
   );
 }
+
+type NewFileMetadata = {
+  name: string;
+  mimeType?: string;
+  parents?: string[];
+  appProperties?: Record<string, string>;
+};
 
 function parseMultipart(contentType: string, body: string) {
   const boundary = /boundary=([^;]+)/.exec(contentType)?.[1];
@@ -611,9 +675,9 @@ function parseMultipart(contentType: string, body: string) {
 }
 
 /**
- * Drive v3 in memory and no more lenient: only the fields asked for, a 400 for
- * a field it lacks, pages of two, a media PATCH's Content-Type as the mimeType,
- * read-only files refuse writes, a resource key is required. Checks the receiver.
+ * Drive v3 in memory, no more lenient: only the fields and query terms it has,
+ * pages of two, a media PATCH's Content-Type as its mimeType, read-only files
+ * refuse writes, resource keys and a visible parent required. Checks the receiver.
  */
 export function createFakeDrive() {
   const files = new Map<string, FakeDriveFile>();
@@ -645,6 +709,7 @@ export function createFakeDrive() {
   };
   let clock = Date.UTC(2026, 8, 25, 9);
   let created = 0;
+  let createdFolders = 0;
 
   const nextTime = () => new Date((clock += 1000)).toISOString();
 
@@ -654,11 +719,30 @@ export function createFakeDrive() {
     name: file.name,
     mimeType: file.mimeType,
     modifiedTime: file.modifiedTime,
+    createdTime: file.createdTime,
     size: String(file.size ?? new TextEncoder().encode(file.content).length),
     trashed: file.trashed,
     parents: file.parents,
+    appProperties: file.appProperties,
     capabilities: { canEdit: file.canEdit, canRename: file.canRename },
   });
+
+  const isHidden = (file: FakeDriveFile, headers: Headers) =>
+    !!file.resourceKey &&
+    !(headers.get('X-Goog-Drive-Resource-Keys') ?? '')
+      .split(',')
+      .includes(`${file.id}/${file.resourceKey}`);
+
+  /**
+   * Where a create lands: My Drive without parents, else a parent it can see,
+   * whose trash the new file shares; null is Drive's 404.
+   */
+  const placement = (parents: string[] | undefined, headers: Headers) => {
+    if (!parents?.length) return { parents: ['root'], trashed: false };
+    const parent = files.get(parents[0]);
+    if (!parent || isHidden(parent, headers)) return null;
+    return { parents, trashed: parent.trashed };
+  };
 
   const reply = (
     value: unknown,
@@ -681,10 +765,12 @@ export function createFakeDrive() {
     pageSize: 2,
 
     add(partial: Partial<FakeDriveFile> & { name: string }): FakeDriveFile {
+      const time = nextTime();
       const file: FakeDriveFile = {
         id: `file-${files.size + 1}`,
         mimeType: 'application/json',
-        modifiedTime: nextTime(),
+        modifiedTime: time,
+        createdTime: time,
         content: '{}',
         trashed: false,
         parents: ['root'],
@@ -784,12 +870,11 @@ export function createFakeDrive() {
     const path = url.pathname;
 
     if (method === 'GET' && path === '/drive/v3/files') {
+      const q = url.searchParams.get('q');
+      const matches = q === null ? () => true : parseDriveQuery(q);
+      if (!matches) return driveError(400, 'invalid');
       const listed = [...files.values()]
-        .filter(
-          file =>
-            !(url.searchParams.get('q') ?? '').includes('trashed=false') ||
-            !file.trashed
-        )
+        .filter(matches)
         .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
       const start = Number(url.searchParams.get('pageToken') ?? 0);
       const size = Math.min(
@@ -818,31 +903,42 @@ export function createFakeDrive() {
           ? parseMultipart(headers.get('Content-Type') ?? '', body)
           : null;
       if (!parts) return driveError(400, 'badRequest');
-      const metadata = JSON.parse(parts[0].body) as {
-        name: string;
-        mimeType?: string;
-        parents?: string[];
-      };
+      const metadata = JSON.parse(parts[0].body) as NewFileMetadata;
+      const placed = placement(metadata.parents, headers);
+      if (!placed) return driveError(404, 'notFound');
       const file = drive.add({
         id: `created-${++created}`,
         name: metadata.name,
         mimeType: metadata.mimeType ?? parts[1].type,
-        parents: metadata.parents ?? ['root'],
+        appProperties: metadata.appProperties,
         content: parts[1].body,
+        ...placed,
+      });
+      return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
+    }
+
+    if (method === 'POST' && path === '/drive/v3/files') {
+      // A create without content, a folder's: Drive reads its metadata from JSON alone.
+      if (!headers.get('Content-Type')?.startsWith('application/json')) {
+        return driveError(400, 'badRequest');
+      }
+      const metadata = JSON.parse(body ?? '{}') as NewFileMetadata;
+      const placed = placement(metadata.parents, headers);
+      if (!placed) return driveError(404, 'notFound');
+      const file = drive.add({
+        id: `created-folder-${++createdFolders}`,
+        name: metadata.name,
+        mimeType: metadata.mimeType ?? 'application/octet-stream',
+        appProperties: metadata.appProperties,
+        content: '',
+        ...placed,
       });
       return reply(resource(file), fields, DEFAULT_FILE_FIELDS);
     }
 
     const match = /^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(path);
     const file = match && files.get(decodeURIComponent(match[2]));
-    const keys = headers.get('X-Goog-Drive-Resource-Keys') ?? '';
-    if (
-      !file ||
-      (file.resourceKey &&
-        !keys.split(',').includes(`${file.id}/${file.resourceKey}`))
-    ) {
-      return driveError(404, 'notFound');
-    }
+    if (!file || isHidden(file, headers)) return driveError(404, 'notFound');
 
     if (method === 'GET' && !match[1]) {
       return url.searchParams.get('alt') === 'media'
