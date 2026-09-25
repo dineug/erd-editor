@@ -61,6 +61,19 @@ describe('parseDriveState', () => {
     });
   });
 
+  it('reads the empty folder key Drive sends for a folder without one', () => {
+    expect(
+      parseDriveState(
+        '{"folderId":"folder-1","action":"create","userId":"42","folderResourceKey":""}'
+      )
+    ).toEqual({
+      action: 'create',
+      folderId: 'folder-1',
+      folderResourceKey: null,
+      userId: '42',
+    });
+  });
+
   it('reads no folder when none is named', () => {
     expect(parseDriveState(state({ action: 'create' }))).toEqual({
       action: 'create',
@@ -99,10 +112,6 @@ describe('parseDriveState', () => {
       ]
     ),
     ['a malformed folder', state({ action: 'create', folderId: '../x' })],
-    [
-      'an empty folder key',
-      state({ action: 'create', folderId: 'f', folderResourceKey: '' }),
-    ],
     [
       'a folder key with a comma',
       state({ action: 'create', folderId: 'f', folderResourceKey: '0-a,b/c' }),

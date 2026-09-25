@@ -92,7 +92,11 @@ export function parseDriveState(raw: string | null): ParsedDriveState {
 
   if (state.action === 'create') {
     const folderId = optional(state.folderId, isDriveId);
-    const folderResourceKey = optional(state.folderResourceKey, isResourceKey);
+    // Drive sends an empty folderResourceKey for a folder that has no key.
+    const folderResourceKey = optional(
+      state.folderResourceKey === '' ? null : state.folderResourceKey,
+      isResourceKey
+    );
     if (folderId === undefined || folderResourceKey === undefined) {
       return 'invalid';
     }
