@@ -222,5 +222,81 @@ describe('toDriveFingerprint', () => {
       here.destroy();
       there.destroy();
     });
+
+    it('is the same for two replicas that applied two adds in opposite orders', () => {
+      vi.useFakeTimers({ now: Date.UTC(2026, 8, 25) });
+      const here = createPeerStore({ nickname: 'here', presence: false });
+      const there = createPeerStore({ nickname: 'there', presence: false });
+      here.setInitialValue(VALUE);
+      there.setInitialValue(VALUE);
+      const fromHere: unknown[][] = [];
+      const fromThere: unknown[][] = [];
+      here.subscribe(actions => fromHere.push(actions));
+      there.subscribe(actions => fromThere.push(actions));
+
+      // Each tab adds a table before the other's batch arrives.
+      const [mine] = here.dispatch([
+        tableActions$.addTableAction$(),
+      ]).createdIds;
+      const [theirs] = there.dispatch([
+        tableActions$.addTableAction$(),
+      ]).createdIds;
+      here.flushStreamBuffers();
+      there.flushStreamBuffers();
+      vi.advanceTimersByTime(1000);
+      for (const actions of fromThere) here.receive(actions as any);
+      for (const actions of fromHere) there.receive(actions as any);
+
+      const order = (value: string) =>
+        JSON.parse(value).doc.tableIds.filter((id: string) =>
+          [mine, theirs].includes(id)
+        );
+      expect(order(here.value)).toEqual([mine, theirs]);
+      expect(order(there.value)).toEqual([theirs, mine]);
+      expect(toDriveFingerprint(there.value)).toBe(
+        toDriveFingerprint(here.value)
+      );
+      here.destroy();
+      there.destroy();
+    });
+  });
+
+  describe('in any order', () => {
+    /** LIVE with a second memo, relationship and index, so every list has two. */
+    const TWO_OF_EACH = changed(({ doc, collections }) => {
+      const copy = (ids: string, entities: string, from: string) => {
+        const id = `${from}2`;
+        collections[entities][id] = { ...collections[entities][from], id };
+        doc[ids].push(id);
+      };
+      copy('memoIds', 'memoEntities', 'note');
+      copy('relationshipIds', 'relationshipEntities', 'placed');
+      copy('indexIds', 'indexEntities', 'byOrder');
+    }, LIVE);
+
+    it.each([
+      ['tableIds', 'tableEntities'],
+      ['memoIds', 'memoEntities'],
+      ['relationshipIds', 'relationshipEntities'],
+      ['indexIds', 'indexEntities'],
+    ])('holds %s and %s to no order', (ids, entities) => {
+      const reordered = changed(({ doc, collections }) => {
+        doc[ids].reverse();
+        collections[entities] = Object.fromEntries(
+          Object.entries(collections[entities]).reverse()
+        );
+      }, TWO_OF_EACH);
+
+      expect(JSON.parse(reordered).doc[ids]).toHaveLength(2);
+      expect(toDriveFingerprint(reordered)).toBe(
+        toDriveFingerprint(TWO_OF_EACH)
+      );
+    });
+
+    it('still tells an entity the document gained apart', () => {
+      expect(toDriveFingerprint(TWO_OF_EACH)).not.toBe(
+        toDriveFingerprint(LIVE)
+      );
+    });
   });
 });

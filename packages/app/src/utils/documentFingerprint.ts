@@ -124,14 +124,39 @@ function reachable(doc: any, collections: Record<string, Record<string, any>>) {
   };
 }
 
+const byKey = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * The document's id lists and every collection in id order. Replicas apply
+ * concurrent adds in the order each receives them, and no action reorders
+ * these lists, so their order is where the replicas came from, not an edit.
+ */
+function inIdOrder(doc: any, collections: Record<string, Record<string, any>>) {
+  return {
+    doc: {
+      ...doc,
+      tableIds: [...doc.tableIds].sort(byKey),
+      relationshipIds: [...doc.relationshipIds].sort(byKey),
+      indexIds: [...doc.indexIds].sort(byKey),
+      memoIds: [...doc.memoIds].sort(byKey),
+    },
+    collections: mapValues(collections, entities =>
+      Object.fromEntries(
+        Object.entries(entities).sort(([a], [b]) => byKey(a, b))
+      )
+    ),
+  };
+}
+
 /**
  * What a Drive save compares: the document and every setting but the view's.
  * A Drive file is the whole document, so a changed database or column order
- * has to reach it, while a zoom, a scroll, a collected tombstone never does.
+ * has to reach it, while a zoom, a scroll or a collected tombstone never does.
  */
 export function toDriveFingerprint(value: string) {
   const json = JSON.parse(value);
-  const { doc, collections } = reachable(json.doc, json.collections);
+  const live = reachable(json.doc, json.collections);
+  const { doc, collections } = inIdOrder(live.doc, live.collections);
   return JSON.stringify({
     doc,
     collections: withoutDerived(withoutMeta(collections)),
