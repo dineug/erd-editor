@@ -404,10 +404,11 @@ export function followerHasUnsavedChanges({
   return changeUnconfirmed || FOLLOWER_UNSAVED_STATES.has(state);
 }
 
-/** The Drive list's news across tabs: a file renamed or created elsewhere. */
+/** The Drive list's news across tabs: a file renamed, created or saved elsewhere. */
 export type FilesMessage =
   | { type: 'renamed'; fileId: string; name: string; modifiedTime: string }
-  | { type: 'created'; file: DriveFile };
+  | { type: 'created'; file: DriveFile }
+  | { type: 'saved'; fileId: string; modifiedTime: string };
 
 function readDriveFile(value: unknown): DriveFile | null {
   if (!isRecord(value)) return null;
@@ -443,6 +444,12 @@ export function readFilesMessage(data: unknown): FilesMessage | null {
     const { fileId, name, modifiedTime } = data;
     return isString(fileId) && isString(name) && isString(modifiedTime)
       ? { type: 'renamed', fileId, name, modifiedTime }
+      : null;
+  }
+  if (data.type === 'saved') {
+    const { fileId, modifiedTime } = data;
+    return isString(fileId) && isString(modifiedTime)
+      ? { type: 'saved', fileId, modifiedTime }
       : null;
   }
   const file = data.type === 'created' ? readDriveFile(data.file) : null;

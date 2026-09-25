@@ -160,6 +160,9 @@ const SIGNED_IN: ReadonlySet<TokenStatus> = new Set<TokenStatus>([
   'fallback-expired',
 ]);
 
+/** Whether RFC 3339 time a is after b; a time that does not parse never is. */
+const isAfter = (a: string, b: string) => Date.parse(a) > Date.parse(b);
+
 function screenOf(
   status: TokenStatus,
   expectedUserId: string | null,
@@ -309,11 +312,21 @@ export function createGdriveSession(deps: SessionDeps) {
     ];
   }
 
+  /** A save's modifiedTime for the list, whose sort and date groups follow it; never an older one. */
+  function patchModifiedTime(fileId: string, modifiedTime: string): boolean {
+    const listed = files.find(file => file.id === fileId);
+    if (!listed || !isAfter(modifiedTime, listed.modifiedTime)) return false;
+    patchFile(fileId, { modifiedTime });
+    return true;
+  }
+
   function onFilesMessage(message: FilesMessage) {
     if (message.type === 'created') {
       if (!files.some(file => file.id === message.file.id)) {
         upsertFile(message.file);
       }
+    } else if (message.type === 'saved') {
+      patchModifiedTime(message.fileId, message.modifiedTime);
     } else {
       patchFile(message.fileId, {
         name: message.name,
@@ -371,12 +384,23 @@ export function createGdriveSession(deps: SessionDeps) {
     controller = null;
   }
 
+  /**
+   * The open file's name and saves reach the list; the leader, the one tab
+   * that saves, tells the account's other tabs of a save too.
+   */
   function onDocument(current: DocumentController) {
     if (current !== controller) return;
-    const { name } = current.getSnapshot();
+    const { name, modifiedTime, role } = current.getSnapshot();
     const listed = files.find(file => file.id === current.fileId);
     if (name && listed && listed.name !== name) {
       patchFile(current.fileId, { name });
+    }
+    if (
+      modifiedTime &&
+      patchModifiedTime(current.fileId, modifiedTime) &&
+      role === 'leader'
+    ) {
+      announce({ type: 'saved', fileId: current.fileId, modifiedTime });
     }
     emit();
   }

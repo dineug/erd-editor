@@ -93,6 +93,8 @@ export type DocumentSnapshot = {
   accessLost: boolean;
   /** A new one with every load of the document, which makes the editor anew. */
   epoch: string | null;
+  /** Drive's modifiedTime as this tab last knew it, from a load, a save or a rename. */
+  modifiedTime: string | null;
 };
 
 /** The editor as the controller drives it: the element, or a headless peer store. */
@@ -141,6 +143,7 @@ const INITIAL: DocumentSnapshot = {
   saveState: 'saved',
   accessLost: false,
   epoch: null,
+  modifiedTime: null,
 };
 
 function rejectionOf(file: DriveFile): DocumentRejection | null {
@@ -380,6 +383,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       // A file that loaded read-only starts so; reaching it from editable took a save.
       accessLost: canEdit && state === 'readonly',
       epoch,
+      modifiedTime: queue?.getBase().modifiedTime ?? null,
     };
     const changed = (Object.keys(next) as Array<keyof DocumentSnapshot>).some(
       key => next[key] !== snapshot[key]

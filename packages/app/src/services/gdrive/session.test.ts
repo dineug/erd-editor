@@ -940,6 +940,37 @@ describe('the list', () => {
     expect(names).toContain('market.erd.json');
   });
 
+  it('moves the open file up the list with every save, in every tab of the account', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-2' });
+    const other = openTab(browser);
+    await start(tab);
+    await start(other);
+    await settle(10);
+    const listed = (of: Tab, fileId: string) =>
+      of.snapshot().files.find(file => file.id === fileId)?.modifiedTime;
+    const before = listed(tab, 'file-2')!;
+
+    tab.editor.addTable('orders');
+    await settle(2000);
+    await settle(10);
+
+    const saved = browser.drive.files.get('file-2')!.modifiedTime;
+    expect(Date.parse(saved)).toBeGreaterThan(Date.parse(before));
+    expect(tab.snapshot().document?.modifiedTime).toBe(saved);
+    expect(listed(tab, 'file-2')).toBe(saved);
+    expect(listed(other, 'file-2')).toBe(saved);
+    expect(tab.snapshot().files[0].id).toBe('file-2');
+
+    // News of an older save moves no entry back.
+    browser.hub.create(`${FILES_CHANNEL_PREFIX}/sub-1`).postMessage({
+      type: 'saved',
+      fileId: 'file-2',
+      modifiedTime: before,
+    });
+    await settle(10);
+    expect(listed(other, 'file-2')).toBe(saved);
+  });
+
   it('renames the open file through its leader and keeps its extension', async () => {
     const tab = openTab(browser, { state: null, file: 'file-1' });
     const other = openTab(browser);
