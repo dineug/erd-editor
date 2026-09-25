@@ -1,0 +1,10 @@
+# No other site may frame the Google Drive editor, where a lured click on
+# Sign out or Reload from Drive could cost unsaved edits. The router also takes
+# /gdrive in another case, which these rules miss; isFramed in the app covers it.
+/gdrive
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+
+/gdrive/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
