@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Privacy Policy · ERD Editor</title>
+    <meta
+      name="description"
+      content="How erd-editor.io handles your data, including what it receives from Google Drive."
+    />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link
+      rel="icon"
+      href="/erd-editor_icon.svg"
+      sizes="any"
+      type="image/svg+xml"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --background: #fcfcfd;
+        --text: #1c2024;
+        --muted: #60646c;
+        --line: #d9d9e0;
+        --link: #0d74ce;
+        --code: #f0f0f3;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #111113;
+          --text: #edeef0;
+          --muted: #b0b4ba;
+          --line: #363a3f;
+          --link: #70b8ff;
+          --code: #212225;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background-color: var(--background);
+        color: var(--text);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          'Helvetica Neue',
+          Arial,
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      header,
+      main,
+      footer {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
+        padding-top: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      header .home {
+        margin-right: auto;
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      a {
+        color: var(--link);
+      }
+
+      h1 {
+        margin: 32px 0 4px;
+        font-size: 32px;
+        line-height: 1.25;
+      }
+
+      h2 {
+        margin: 36px 0 8px;
+        font-size: 22px;
+        line-height: 1.3;
+      }
+
+      h3 {
+        margin: 24px 0 4px;
+        font-size: 17px;
+      }
+
+      .effective {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      code {
+        padding: 1px 4px;
+        border-radius: 4px;
+        background-color: var(--code);
+        font-size: 0.9em;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      footer {
+        margin-top: 48px;
+        padding-top: 16px;
+        padding-bottom: 32px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="home">ERD Editor</span>
+      <a href="/privacy" aria-current="page">Privacy</a>
+      <a href="/terms">Terms</a>
+    </header>
+    <main>
+      <h1>Privacy Policy</h1>
+      <p class="effective">Effective date: September 25, 2026</p>
+
+      <p>
+        erd-editor.io is a free, open-source editor for Entity-Relationship
+        Diagrams, run by dineug. This policy explains what the site does with
+        your information, and in particular with the data it receives from
+        Google when you edit files in Google Drive.
+      </p>
+
+      <h2>The local editor</h2>
+      <p>
+        The editor at erd-editor.io keeps your schemas in your browser's own
+        storage (IndexedDB). Their content leaves your device only when you
+        export them or start a live collaboration session. Their names can
+        also reach the analytics and error reports described below. A session
+        connects browsers directly and uses public relays only to introduce
+        them; what passes through a relay is encrypted with a key that stays in
+        the invite link after the <code>#</code>, a part of the address
+        browsers never send to a server.
+      </p>
+
+      <h2>Google Drive</h2>
+
+      <h3>What ERD Editor can access</h3>
+      <p>
+        When you sign in with Google at erd-editor.io/gdrive, ERD Editor asks
+        Google for:
+      </p>
+      <ul>
+        <li>
+          <code>drive.file</code>, access to only the files you open with
+          ERD Editor or create with it. ERD Editor cannot see, read or change
+          any other file in your Google Drive.
+        </li>
+        <li>
+          <code>drive.install</code>, so that ERD Editor can appear in Google
+          Drive's Open with and New menus.
+        </li>
+        <li>
+          Your Google account's email address and account ID
+          (<code>openid</code>, <code>email</code>), to show which account is
+          signed in and to keep the files of different accounts apart.
+        </li>
+      </ul>
+      <p>
+        The files you create or import at erd-editor.io/gdrive go in a folder
+        named ERD Editor, which ERD Editor creates in your My Drive the first
+        time it needs one. ERD Editor never picks an ERD Editor folder someone
+        else shares with you. It keeps using its own folder after you rename
+        it or move it elsewhere in your My Drive, and makes a new one if the
+        folder is deleted, in the trash, moved to a shared drive, owned by
+        someone else, or no longer lets you add files to it. It also makes a
+        new one after you sign out of ERD Editor or remove its access from
+        your Google Account, since that ends its access to the files it
+        created or opened, the folder included: the earlier folder and the
+        files in it stay in your Google Drive, but ERD Editor can no longer
+        list them. A file you start from Google Drive's New menu goes in the
+        folder you started it from, or in the ERD Editor folder when Google
+        Drive names none. When it names one, you can choose the ERD Editor
+        folder instead, which ERD Editor also suggests if it cannot create
+        files in yours.
+      </p>
+
+      <h3>Your files never pass through our server</h3>
+      <p>
+        The content, names and list of your files travel directly between your
+        browser and Google Drive. They never pass through an ERD Editor server,
+        and ERD Editor keeps no copy of them, not even in your browser's
+        storage: reopening a file reads it from Google Drive again.
+      </p>
+
+      <h3>The server keeps encrypted cookies in your browser and no database</h3>
+      <p>
+        ERD Editor has one small server part, a sign-in relay at
+        erd-editor.io/api/auth, running on Cloudflare Pages Functions. It
+        exchanges the code Google gives at sign-in for tokens and renews the
+        short-lived access token your tabs use. It has no database and keeps
+        no record of you or your files.
+      </p>
+      <p>
+        The refresh token that keeps you signed in is stored only in your
+        browser, in a cookie that is encrypted with a key only the relay holds,
+        that scripts on the page cannot read, and that your browser sends to
+        erd-editor.io alone. The cookie lasts 180 days from the last time
+        ERD Editor used it, and never more than a year from the time you last
+        signed in, after which you sign in again. While you sign in, a second
+        cookie, protected the same way, holds that sign-in's state, including
+        the Google account ID to sign in with when ERD Editor or Google Drive
+        already knows it; it lasts at most 10 minutes and is deleted when the
+        sign-in completes.
+        The access token lives only in the memory of your open ERD Editor
+        tabs. The relay's logs record what happened, such as a sign-in, and
+        never a token, code, cookie or anything about your files. Cloudflare,
+        which hosts the site, processes each request's IP address and headers
+        as any web host does.
+      </p>
+
+      <h3>Signing out revokes access</h3>
+      <p>
+        Signing out of ERD Editor revokes ERD Editor's access at Google and
+        deletes the cookie that holds the refresh token. Google revokes an
+        app's access for your whole account, so every other device where you
+        use ERD Editor with the same Google account has to sign in again. You
+        can also remove ERD Editor's access at any time from your Google
+        Account's
+        <a href="https://myaccount.google.com/permissions"
+          >third-party connections</a
+        >.
+      </p>
+
+      <h3>Analytics, error reports and fonts</h3>
+      <p>
+        erd-editor.io uses Google Analytics to count visits to the local
+        editor, and Sentry to report errors. On the local editor, Google
+        Analytics records the page's title, which names the schema you have
+        open, and an error report can carry the labels of the controls you
+        clicked, the name of a schema among them. Google Analytics is not
+        loaded on the Google Drive pages (erd-editor.io/gdrive) or during
+        sign-in, so it receives nothing from them. There, Sentry keeps no
+        record of what you click or type, and none of the requests to Google.
+        Before a report leaves your browser, the addresses of Google Drive's
+        requests and of the Drive pages lose their file IDs, which become a
+        placeholder, and their query strings. Error reports never carry your
+        Drive files' content or names, your tokens, or your Google account ID
+        or email address.
+      </p>
+      <p>
+        The editor's pages, the Google Drive pages included, load their font
+        from Google Fonts, which receives your IP address and your browser's
+        details with each request, as any site a page loads a file from does.
+        This policy and the terms load nothing from another site.
+      </p>
+
+      <h3>Limited Use</h3>
+      <p>
+        ERD Editor's use and transfer to any other app of information received
+        from Google APIs will adhere to the
+        <a
+          href="https://developers.google.com/terms/api-services-user-data-policy"
+          >Google API Services User Data Policy</a
+        >, including the Limited Use requirements. ERD Editor uses Google user
+        data only to provide the Google Drive editing you see in the app. It
+        does not sell that data, use it for advertising, let people read it, or
+        use it to train artificial intelligence or machine learning models.
+      </p>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li>
+          Sign out, or remove ERD Editor's access from your Google Account, to
+          end its access to your Google Drive.
+        </li>
+        <li>
+          Clear this site's data in your browser to delete the cookies and
+          everything the local editor stored.
+        </li>
+        <li>
+          Your files in Google Drive stay yours; ERD Editor never deletes one.
+        </li>
+      </ul>
+
+      <h2>Changes to this policy</h2>
+      <p>
+        A change to this policy is published on this page with a new effective
+        date.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        For a question or a request about this policy, open an issue at
+        <a href="https://github.com/dineug/erd-editor/issues"
+          >github.com/dineug/erd-editor/issues</a
+        >. Issues are public, so leave personal details out of them.
+      </p>
+    </main>
+    <footer>
+      <a href="/terms">Terms of Service</a>
+    </footer>
+  </body>
+</html>

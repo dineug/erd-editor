@@ -1,6 +1,6 @@
 import { css } from '@emotion/react';
 
-import { rowButton } from '@/components/sidebar/sidebar-item/SidebarItem.styles';
+import { rowButton } from '@/components/sidebar/sidebar-item/sidebar-item-view/SidebarItemView.styles';
 
 // Border-box, or the ghost padding pushes the button past the sidebar's edge
 // and focusing it scrolls the whole sidebar sideways.

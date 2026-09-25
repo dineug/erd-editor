@@ -79,11 +79,22 @@ test.describe('leadership across tabs', () => {
     // rejoin the room before the guest's grace period runs out.
     await leader.close();
 
-    // The guest's shared store buffers while it has no host and flushes on
-    // reconnect, so this edit lands only if the successor really took over.
+    // An edit the guest makes before it sees the leader go is sent to the closed
+    // tab and lost. This nickname is typed after the leader closed, so only a
+    // guest the successor reaches can have told it.
+    await guest.setNickname('Ada');
+    await successor.openParticipants();
+    await expect
+      .poll(() => successor.participants(), { timeout: 40_000 })
+      .toEqual(['Host (you) Host', 'Ada']);
+    await successor.page.keyboard.press('Escape');
+    await expect(successor.page.getByRole('dialog')).toHaveCount(0);
+
+    // The successor holds the only connection left, so this edit lands only if
+    // it really took over.
     const fromGuest = await guest.addTable();
     await expect
-      .poll(() => successor.tableIds(), { timeout: 40_000 })
+      .poll(() => successor.tableIds())
       .toEqual(expect.arrayContaining([seeded, fromGuest]));
 
     // ...and the new host reaches the guest from then on.

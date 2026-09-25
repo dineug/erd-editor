@@ -1,4 +1,4 @@
-<!-- Generated: 2026-08-27 | Updated: 2026-09-23 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-25 -->
 
 # erd-editor
 
@@ -14,7 +14,7 @@
 | `package.json` | Root scripts (`build`, `test`, `check`, `format`, `lint`, `size`, `peer-graph`, `cache:clear`) |
 | `pnpm-workspace.yaml` | `packages/*`, the catalog (`vite` → `@voidzero-dev/vite-plus-core`, Vitest, the exact `effect` / `@effect/platform-node` pin), the `typescript` override, the `packageExtensions` entry that makes platform-node's `redis` peer optional |
 | `tsconfig.app.json` | Base every TS package extends (ES2022, strict, bundler resolution) except `vscode-extension`, a Node config |
-| `tsconfig.json` | Root program: `tools/` and every package's Vite / Vitest config, which no package program covers |
+| `tsconfig.json` | Root program: `tools/`, every package's Vite / Vitest config, which no package program covers, and `functions/`, whose auth handlers it checks without the DOM lib |
 | `build-target.ts` | `BROWSER_TARGET` / `BROWSER_TARGET_QUERY` — the one browser floor for every library build and `app` |
 | `tools/vite/library-config.ts` | `defineLibraryConfig` (the whole config of eight library packages, one `src/index.ts` build each), `createLibraryTasks` (task contract of all nine library packages; `erd-editor` uses it alone) |
 | `tools/vite/package-metadata.ts` | Task inputs derived from tsconfig files and manifests; `createExternal` |
@@ -32,6 +32,7 @@
 | `packages/` | The 15 workspace packages, each with its own `AGENTS.md` |
 | `data/` | Import fixtures for hand-testing (SQL, GraphQL SDL, DBML, AML v1/v2, `test.json`); `schema-sql-parser`'s tests read `sakila.sql` |
 | `docker/` | A `docker-compose.yml` per SQL vendor for running generated DDL; Databricks and Snowflake are cloud-only and have none |
+| `functions/` | Cloudflare Pages Functions for erd-editor.io: `api/auth/[[route]].ts` only re-exports `packages/app/src/server/auth/pages.ts` (see `packages/app/AGENTS.md`) |
 | `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents (see Contracts) |
 | `.github/` | The two workflows (see Testing), the `setup-workspace` action |
 | `.vite-hooks/` | `pre-commit` runs `vp staged`, `commit-msg` runs commitlint; only the generated `_/` is gitignored |
@@ -55,7 +56,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `vscode-extension` | `vuerd-vscode` | VSCode extension host, published, and the document hub coding agents join, on effect layers |
 | `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
 | `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published |
-| `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io |
+| `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io, with `/gdrive`, its Google Drive editor, whose OAuth relay is the one Pages Function (`functions/`) |
 | `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published: effect's `McpServer` over stdio, one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
 
 ## For AI Agents
@@ -127,7 +128,8 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | --- | --- |
 | JetBrains Marketplace | the plugin `<id>`, its signing certificate and the listing text from `packages/intellij-plugin/README.md` |
 | `json-schema/schema.json` on `main` | the `$schema` of every saved `.erd` / `.vuerd` file: `erd-editor-schema` stamps its raw GitHub URL, so moving or renaming it leaves existing files pointing at a dead URL |
+| erd-editor.io's paths `/privacy`, `/terms`, `/gdrive` and `/api/auth/callback` | the Google Cloud console, set by hand: the OAuth consent screen and the Workspace Marketplace listing link the two policy pages, Drive's Open with and New open `/gdrive`, and the production web client registers the callback as its one redirect URI (`http://localhost:5175/api/auth/callback` belongs to a separate client in a Testing project); moving one, or asking for another scope than `packages/app/src/server/auth/contract.ts` lists, is a console change first |
 
-Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`, `@dineug/erd-editor-mcp`) — is manual: no token or key is in the repository and no workflow uploads anything.
+Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`, `@dineug/erd-editor-mcp`) — is manual: no token or key is in the repository and no workflow uploads anything. So are the Google Workspace Marketplace listing (its assets in `packages/app/google-workspace/`) and the Pages variables the relay reads (`GOOGLE_CLIENT_SECRET`, `COOKIE_KEY`, `VITE_GOOGLE_CLIENT_ID`).
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

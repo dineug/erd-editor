@@ -11,7 +11,7 @@ import Sidebar from '@/components/sidebar/Sidebar';
 import SidebarSash from '@/components/sidebar-sash/SidebarSash';
 import Viewer from '@/components/viewer/Viewer';
 
-const APP_TITLE = 'erd-editor';
+const APP_TITLE = 'ERD Editor';
 
 interface AppProps {}
 

@@ -19,18 +19,18 @@ test.describe('the schema in the URL', () => {
     await expect(app.page).toHaveURL(schemaUrl(two.id));
     await app.selectSchema('one');
     await expect(app.page).toHaveURL(schemaUrl(one.id));
-    await expect(app.page).toHaveTitle('one · erd-editor');
+    await expect(app.page).toHaveTitle('one · ERD Editor');
 
     await app.page.reload();
     await app.waitForEditor();
     await expect(app.page).toHaveURL(schemaUrl(one.id));
     await expect(app.schemaItem('one')).toHaveAttribute('aria-current', 'page');
-    await expect(app.page).toHaveTitle('one · erd-editor');
+    await expect(app.page).toHaveTitle('one · ERD Editor');
 
     await app.page.goBack();
     await expect(app.page).toHaveURL(schemaUrl(two.id));
     await expect(app.schemaItem('two')).toHaveAttribute('aria-current', 'page');
-    await expect(app.page).toHaveTitle('two · erd-editor');
+    await expect(app.page).toHaveTitle('two · ERD Editor');
 
     await app.page.goForward();
     await expect(app.page).toHaveURL(schemaUrl(one.id));
@@ -50,7 +50,7 @@ test.describe('the schema in the URL', () => {
       await app.page.goto(`/?schema=${param}`);
       await expect(app.page).toHaveURL(schemaUrl(null));
       await expect(app.page.getByText('No schema open')).toBeVisible();
-      await expect(app.page).toHaveTitle('erd-editor');
+      await expect(app.page).toHaveTitle('ERD Editor');
     }
   });
 });

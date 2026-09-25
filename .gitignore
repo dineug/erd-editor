@@ -17,6 +17,9 @@ packages/vscode-extension/public
 packages/vscode-extension/out
 packages/vscode-extension/.vscode-test
 
+# Local secrets for the dev server, such as packages/app/.env.local
+.env*.local
+
 # Log files
 npm-debug.log*
 yarn-debug.log*

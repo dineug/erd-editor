@@ -1,7 +1,8 @@
 import { css } from '@emotion/react';
 
 // The row's buttons stay hidden, and so out of the Tab order, until the row is
-// hovered, holds focus or has its menu open.
+// hovered, holds focus or has its menu open; a trailing element that sets
+// visibility: visible itself, like a running session's trigger, stays shown.
 export const item = css`
   border-radius: var(--radius-2);
   cursor: default;
@@ -17,14 +18,17 @@ export const item = css`
     visibility: hidden;
   }
 
-  & > .collaborative {
+  & > .item-trailing {
+    display: flex;
+    flex: none;
+    align-items: center;
     visibility: hidden;
   }
 
   &:focus-within,
   &[data-open-menu='true'] {
     & > .item-menu,
-    & > .collaborative {
+    & > .item-trailing {
       visibility: visible;
     }
   }
@@ -34,11 +38,8 @@ export const hover = css`
   &:hover {
     background-color: var(--gray-a3);
 
-    & > .item-menu {
-      visibility: visible;
-    }
-
-    & > .collaborative {
+    & > .item-menu,
+    & > .item-trailing {
       visibility: visible;
     }
   }

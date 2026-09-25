@@ -11,7 +11,7 @@ import {
  * reach of Playwright locators. Reopening the boundary before any page script
  * runs — and only here, in the e2e suite — lets the specs drive the real editor.
  */
-async function reopenShadowRoots(page: Page) {
+export async function reopenShadowRoots(page: Page) {
   await page.addInitScript(() => {
     const attachShadow = Element.prototype.attachShadow;
     Element.prototype.attachShadow = function (init: ShadowRootInit) {
@@ -27,7 +27,7 @@ const CANVAS = 'erd-editor [data-testid="erd-canvas"]';
  * synchronously — the authoritative view of editor state rather than a rendering
  * of it.
  */
-async function tableIds(page: Page): Promise<string[]> {
+export async function tableIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const editor = document.querySelector('erd-editor') as any;
     if (!editor) throw new Error('erd-editor is not mounted');
@@ -467,19 +467,25 @@ export class AppPage {
  * (200, 100) on, so the scan keeps to the strips above and left of them.
  */
 async function freeCanvasPoint(page: Page) {
-  return await page.locator(CANVAS).evaluate(stage => {
-    const root = stage.getRootNode() as Document | ShadowRoot;
-    const { left, top, width, height } = stage.getBoundingClientRect();
+  // A schema just opened mounts a new editor, whose canvas stays 0x0 until its
+  // viewport is measured, so the scan runs again until it finds a point.
+  let point = { x: 0, y: 0 };
+  await expect(async () => {
+    point = await page.locator(CANVAS).evaluate(stage => {
+      const root = stage.getRootNode() as Document | ShadowRoot;
+      const { left, top, width, height } = stage.getBoundingClientRect();
 
-    for (let y = 40; y < height - 40; y += 20) {
-      for (let x = 40; x < width - 40; x += 20) {
-        if (x > 160 && y > 60) break;
-        const hit = root.elementFromPoint(left + x, top + y);
-        if (hit && stage.contains(hit)) return { x, y };
+      for (let y = 40; y < height - 40; y += 20) {
+        for (let x = 40; x < width - 40; x += 20) {
+          if (x > 160 && y > 60) break;
+          const hit = root.elementFromPoint(left + x, top + y);
+          if (hit && stage.contains(hit)) return { x, y };
+        }
       }
-    }
-    throw new Error('Every point of the canvas is covered');
-  });
+      throw new Error(`No free point on the ${width}x${height} canvas`);
+    });
+  }).toPass({ timeout: 15_000 });
+  return point;
 }
 
 /**
@@ -487,7 +493,7 @@ async function freeCanvasPoint(page: Page) {
  * inside the shadow root, so the canvas has to be clicked first for the keydown
  * to reach the binding.
  */
-async function addTable(page: Page) {
+export async function addTable(page: Page) {
   const before = await tableIds(page);
 
   await page.locator(CANVAS).click({ position: await freeCanvasPoint(page) });

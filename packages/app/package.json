@@ -9,11 +9,13 @@
     "test:dev": "vp test dev",
     "test:coverage": "vp test run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "e2e": "vp run --filter @dineug/erd-editor --fail-if-no-match build && playwright test",
+    "e2e": "vp run --filter @dineug/erd-editor --fail-if-no-match build && { playwright test; r1=$?; playwright test --config e2e/gdrive/playwright.config.ts; r2=$?; [ $r1 -eq 0 ] && [ $r2 -eq 0 ]; }",
     "e2e:dev": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "e2e:report": "playwright show-report e2e/.report",
-    "e2e:typecheck": "tsc -p e2e/tsconfig.json"
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json",
+    "google-workspace:assets": "playwright test --config e2e/gdrive/assets.config.ts",
+    "google-workspace:check": "node google-workspace/check-assets.mjs"
   },
   "dependencies": {
     "@dineug/erd-editor": "workspace:*",

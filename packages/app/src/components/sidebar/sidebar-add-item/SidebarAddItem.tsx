@@ -2,9 +2,12 @@ import { Flex, TextField } from '@radix-ui/themes';
 import { isEmpty } from 'es-toolkit/compat';
 import { useState } from 'react';
 
-import * as itemStyles from '@/components/sidebar/sidebar-item/SidebarItem.styles';
+import * as itemStyles from '@/components/sidebar/sidebar-item/sidebar-item-view/SidebarItemView.styles';
 
 interface SidebarAddItemProps {
+  /** The name of the field. */
+  inputLabel: string;
+  inputPlaceholder: string;
   onConfirm: (name: string) => void;
   onCancel: () => void;
 }
@@ -42,8 +45,8 @@ const SidebarAddItem: React.FC<SidebarAddItemProps> = props => {
       <TextField.Root
         css={[itemStyles.text, itemStyles.input]}
         value={name}
-        placeholder="schema name"
-        aria-label="New schema name"
+        placeholder={props.inputPlaceholder}
+        aria-label={props.inputLabel}
         autoFocus
         onChange={handleChange}
         onBlur={handleStopEditing}

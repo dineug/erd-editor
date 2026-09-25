@@ -2,16 +2,18 @@ import { join } from 'node:path';
 
 import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite-plus';
+import { defineConfig, loadEnv, type Plugin } from 'vite-plus';
 
 import { BROWSER_TARGET, BROWSER_TARGET_QUERY } from '../../build-target';
+import { createAuthDevMiddleware } from './src/server/auth/nodeAdapter';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const GTAG_ID = 'G-3VBWD4V1JX';
 
 /**
- * Injects the analytics snippet in production only, replacing the
- * <%= gtag %> placeholder HtmlWebpackPlugin used to substitute.
+ * Injects the analytics snippet in production only. Added from script, never
+ * on /gdrive or on a sign-in popup a deploy answered with the app, in any case
+ * or percent-encoding the router matches, it keeps Google user data out.
  */
 function gtag(isProduction: boolean): Plugin {
   return {
@@ -22,18 +24,81 @@ function gtag(isProduction: boolean): Plugin {
         isProduction
           ? html.replace(
               '</body>',
-              `  <script async src="https://www.googletagmanager.com/gtag/js?id=${GTAG_ID}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
+              `  <script>
+      var gtagPath = location.pathname;
+      try {
+        gtagPath = decodeURI(gtagPath);
+      } catch (error) {}
+      gtagPath = gtagPath.toLowerCase();
+      if (!gtagPath.startsWith('/gdrive') && !gtagPath.startsWith('/api/auth')) {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () {
+          dataLayer.push(arguments);
+        };
+        gtag('js', new Date());
+        gtag('config', '${GTAG_ID}');
+        var gtagScript = document.createElement('script');
+        gtagScript.async = true;
+        gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=${GTAG_ID}';
+        document.head.appendChild(gtagScript);
       }
-      gtag('js', new Date());
-      gtag('config', '${GTAG_ID}');
     </script>
   </body>`
             )
           : html,
+    },
+  };
+}
+
+/**
+ * Serves /api/auth/* from the handlers the Pages Function runs. Added straight
+ * away, not from a returned hook, it precedes Vite's transform, static and SPA
+ * fallback middlewares; Vite's request, cors and host checks still run first.
+ */
+function gdriveDevServer(mode: string): Plugin {
+  return {
+    name: 'gdrive-dev-server',
+    apply: 'serve',
+    configureServer(server) {
+      // Secrets come from the env or packages/app/.env.local.
+      const env = loadEnv(mode, import.meta.dirname, '');
+      server.middlewares.use(
+        createAuthDevMiddleware({
+          getEnv: () => ({
+            GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
+            COOKIE_KEY: env.COOKIE_KEY,
+            VITE_GOOGLE_CLIENT_ID: env.VITE_GOOGLE_CLIENT_ID,
+          }),
+          // Only the e2e harness sets this, pointing Google's token and revoke
+          // endpoints at its fake; the Pages Function never reads it.
+          oauthBaseUrl: env.ERD_EDITOR_E2E_GOOGLE_OAUTH_URL || undefined,
+        })
+      );
+    },
+  };
+}
+
+const POLICY_PAGES = new Set(['/privacy', '/terms']);
+
+/**
+ * Answers /privacy and /terms with their files in public/, as Pages does for an
+ * extensionless path. Vite would send them the app, whose catch-all route leads
+ * to /, so the policy spec would read the wrong page.
+ */
+function policyPages(): Plugin {
+  return {
+    name: 'policy-pages',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const url = req.url ?? '';
+        const queryAt = url.indexOf('?');
+        const pathname = queryAt === -1 ? url : url.slice(0, queryAt);
+        if (POLICY_PAGES.has(pathname)) {
+          req.url = `${pathname}.html${url.slice(pathname.length)}`;
+        }
+        next();
+      });
     },
   };
 }
@@ -64,8 +129,8 @@ export default defineConfig(({ mode }) => {
         injectRegister: null,
         manifestFilename: 'manifest.json',
         manifest: {
-          name: 'erd-editor',
-          short_name: 'erd-editor',
+          name: 'ERD Editor',
+          short_name: 'ERD Editor',
           description: 'Entity-Relationship Diagram Editor App',
           start_url: '/',
           scope: '/',
@@ -102,6 +167,10 @@ export default defineConfig(({ mode }) => {
       }),
 
       gtag(isProduction),
+
+      gdriveDevServer(mode),
+
+      policyPages(),
     ],
 
     /**
@@ -182,6 +251,9 @@ export default defineConfig(({ mode }) => {
           // input은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
           // 자동 추적에 안 잡히는 tsc가 다시 돈다.
           command: ['tsc --noEmit', 'vp build'],
+          // Listed so the Google client id compiled into /gdrive reaches the
+          // build and keys its cache; a task otherwise runs in a clean env.
+          env: ['VITE_GOOGLE_CLIENT_ID'],
           dependsOn: [
             {
               task: 'build',
@@ -203,6 +275,7 @@ export default defineConfig(({ mode }) => {
               pattern: 'packages/erd-editor/dist/**/*.d.ts',
               base: 'workspace',
             },
+            { pattern: 'functions/**', base: 'workspace' },
             '!**/*.tsbuildinfo',
             '!dist/**',
           ],
@@ -234,6 +307,7 @@ export default defineConfig(({ mode }) => {
               pattern: 'packages/erd-editor/dist/**/*.d.ts',
               base: 'workspace',
             },
+            { pattern: 'functions/**', base: 'workspace' },
             '!**/*.tsbuildinfo',
           ],
         },

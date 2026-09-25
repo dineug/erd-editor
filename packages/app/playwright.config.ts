@@ -62,11 +62,16 @@ export default defineConfig({
     {
       command: `pnpm exec vp dev --port ${PORT} --strictPort`,
       url: BASE_URL,
-      reuseExistingServer: !process.env.CI,
+      // Never a server started by hand: one on 5175 may carry a real Google
+      // client from packages/app/.env.local, and this run needs none.
+      reuseExistingServer: false,
       timeout: 180_000,
       stdout: 'ignore',
       stderr: 'pipe',
-      env: { ERD_EDITOR_NOSTR_RELAY_URLS: RELAY_URL },
+      env: {
+        ERD_EDITOR_NOSTR_RELAY_URLS: RELAY_URL,
+        VITE_GOOGLE_CLIENT_ID: '',
+      },
     },
   ],
 });
