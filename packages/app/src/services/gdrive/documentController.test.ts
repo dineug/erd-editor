@@ -1,5 +1,6 @@
 import {
   settingsActions,
+  SharedFollowingActionTypes,
   tableActions,
   tableActions$,
 } from '@dineug/erd-editor/peer.js';
@@ -29,6 +30,7 @@ import {
 import {
   createDocumentController,
   NO_LOCKS_JOIN_MS,
+  NON_EDIT_ACTIONS,
   renameDriveFile,
 } from '@/services/gdrive/documentController';
 import {
@@ -96,6 +98,11 @@ async function open(name: string, options: Partial<TabOptions> = {}) {
 
 const driveContent = (fileId = 'file-1') =>
   env.drive.files.get(fileId)!.content;
+
+const saveRequestsOf = (tab: string) =>
+  env.sent.filter(
+    ({ tab: from, message }) => from === tab && message.type === 'save-request'
+  );
 
 /** The other tabs apply an edit later, by their own clock, which stamps its entity meta. */
 const deliverLater = () => vi.setSystemTime(Date.now() + 1000);
@@ -1051,6 +1058,51 @@ describe('the page around it', () => {
     expect(env.patches()).toHaveLength(0);
   });
 
+  it("counts another tab's edit as no follower's own: nothing unsaved, no save-request", async () => {
+    const a = await open('a');
+    const b = await open('b');
+
+    a.addTable('orders');
+    await settle(5);
+
+    expect(tableNames(b.value())).toEqual(['orders', 'users']);
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
+    await settle(2005);
+    expect(saveRequestsOf('b')).toHaveLength(0);
+    expect(env.patches()).toHaveLength(1);
+  });
+
+  it('asks for no save after a follower zooms', async () => {
+    await open('a');
+    const b = await open('b');
+
+    b.edit([settingsActions.changeZoomLevelAction({ value: 0.5 })]);
+
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
+    await settle(10_000);
+    expect(saveRequestsOf('b')).toHaveLength(0);
+    expect(env.patches()).toHaveLength(0);
+  });
+
+  it('counts nothing a follower does on a file it may not edit', async () => {
+    env.drive.files.get('file-1')!.canEdit = false;
+    await open('a');
+    const b = await open('b');
+
+    b.editor.press();
+    b.addTable('orders');
+
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
+    await settle(10_000);
+    expect(saveRequestsOf('b')).toHaveLength(0);
+  });
+
+  it('takes every view action a replica follows for no edit', () => {
+    for (const type of SharedFollowingActionTypes) {
+      expect(NON_EDIT_ACTIONS.has(type)).toBe(true);
+    }
+  });
+
   it('flushes before a switch, in the leader and in a follower', async () => {
     const a = await open('a');
     const b = await open('b');
@@ -1414,13 +1466,12 @@ describe('edges of a tab’s life', () => {
   it('tells the other tabs of a PATCH Drive refused, so none waits on it', async () => {
     const a = await open('a');
     const b = await open('b');
-    // Refused twice: a's own save, then the one b's save-request asks for.
-    env.drive.failNext('PATCH', 400, 'badRequest');
+    // b takes the edit from a and asks for no save of its own.
     env.drive.failNext('PATCH', 400, 'badRequest');
     a.addTable('orders');
     await settle(2005);
     expect(a.snapshot().saveState).toBe('failed');
-    expect(env.patches()).toHaveLength(2);
+    expect(env.patches()).toHaveLength(1);
 
     env.drive.bumpRemote('file-1');
     a.close();

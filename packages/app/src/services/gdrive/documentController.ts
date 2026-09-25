@@ -64,6 +64,23 @@ const PRESENCE_ACTIONS: ReadonlySet<unknown> = new Set([
 const isPresence = (action: unknown) =>
   PRESENCE_ACTIONS.has((action as { type?: unknown } | null)?.type);
 
+/**
+ * What a local batch carries besides edits: the view a replica follows
+ * (SharedFollowingActionTypes) and the LWW handshake the replicas exchange.
+ */
+export const NON_EDIT_ACTIONS: ReadonlySet<unknown> = new Set([
+  'settings.changeZoomLevel',
+  'settings.streamZoomLevel',
+  'settings.scrollTo',
+  'settings.streamScrollTo',
+  'settings.changeCanvasType',
+  'editor.getLWW',
+  'editor.mergeLWW',
+]);
+
+const isEdit = (action: unknown) =>
+  !NON_EDIT_ACTIONS.has((action as { type?: unknown } | null)?.type);
+
 export type DocumentPhase =
   | 'loading'
   | 'waiting-snapshot'
@@ -637,6 +654,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     const offLocal = next.subscribeLocal(batch => {
       const actions = batch.filter(action => !isPresence(action));
       if (actions.length) channel.post({ type: 'actions', actions });
+      if (actions.some(isEdit)) onLocalEdit();
     });
     const pending = buffered.filter(entry => entry.epoch === epoch);
     buffered = [];
@@ -722,15 +740,27 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     });
   }
 
+  /** Whether this tab's edits count: never on a file it may not edit. */
+  function isEditable(): boolean {
+    return canEdit && saveState() !== 'readonly';
+  }
+
+  /** Any change, another tab's and a zoom included: the leader's fingerprint tells an edit. */
   function onChange() {
+    if (role === 'leader') queue?.notifyChange();
+  }
+
+  /** A follower's own edit, sent on the channel: unconfirmed until a leader status follows it. */
+  function onLocalEdit() {
+    if (role === 'leader' || !isEditable()) return;
     lastChangeAt = now();
-    if (role !== 'leader') changeUnconfirmed = true;
+    changeUnconfirmed = true;
     queue?.notifyChange();
   }
 
   /** An edit may be on its way, still in the shared store's send buffer: a follower counts it at once. */
   function onInput() {
-    lastChangeAt = now();
+    if (isEditable()) lastChangeAt = now();
   }
 
   // Leadership
