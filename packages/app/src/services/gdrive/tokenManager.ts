@@ -37,6 +37,7 @@ import type {
   LockManagerLike,
   StorageLike,
 } from '@/services/gdrive/types';
+import { isRecord, sleep } from '@/services/gdrive/util';
 import { safeCallback } from '@/utils/safeCallback';
 
 export const TOKEN_CHANNEL = '@dineug/erd-editor-app/gdrive-token';
@@ -154,10 +155,6 @@ type GisAttempt = { intentional: boolean; asked: Asked };
 type GisResult =
   | { kind: 'response'; response: GisTokenResponse }
   | { kind: 'error'; error: GisError };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
 
 function readSession(value: unknown): Session | null {
   if (!isRecord(value) || !isRecord(value.account)) return null;
@@ -313,10 +310,6 @@ const RECONNECT_RESULTS: Partial<Record<TokenStatus, SignInResult>> = {
   'fallback-expired': 'unavailable',
   'scope-missing': 'scope-missing',
 };
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 /**
  * The access token of /gdrive, in memory and shared by this browser's tabs,
@@ -594,7 +587,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
   /** Waits a moment for another tab's token; true once one fresher than stale arrived. */
   async function adoptFromTabs(stale: string | null): Promise<boolean> {
     post({ type: 'request' });
-    await delay(ADOPT_WAIT_MS);
+    await sleep(ADOPT_WAIT_MS);
     return isFresh(session, stale);
   }
 

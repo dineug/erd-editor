@@ -1,3 +1,5 @@
+import { isRecord } from '@/services/gdrive/util';
+
 /**
  * What Drive's Open with and New put in ?state=, as its UI integration sends it.
  * userId is the OpenID sub of the account Drive was using, null when absent.
@@ -22,10 +24,6 @@ export type ParsedDriveState = DriveState | 'invalid' | null;
 
 const DRIVE_ID = /^[A-Za-z0-9_-]{1,256}$/;
 const USER_ID = /^[^\s]{1,256}$/;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isDriveId(value: unknown): value is string {
   return typeof value === 'string' && DRIVE_ID.test(value);

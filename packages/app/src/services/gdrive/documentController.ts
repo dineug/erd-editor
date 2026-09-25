@@ -45,6 +45,7 @@ import {
 } from '@/services/gdrive/saveQueue';
 import type { TokenManager } from '@/services/gdrive/tokenManager';
 import type { CreateChannel } from '@/services/gdrive/types';
+import { sleep } from '@/services/gdrive/util';
 import { toDriveFingerprint } from '@/utils/documentFingerprint';
 import { downloadFile } from '@/utils/file';
 import { isEditorDocument, MAX_IMPORT_FILE_SIZE } from '@/utils/importFile';
@@ -186,9 +187,6 @@ function phaseForError(error: unknown): DocumentPhase {
     ? 'not-found'
     : 'failed';
 }
-
-const sleep = (ms: number) =>
-  new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /**
  * Asks the file's leader to rename it and waits for its answer. With probe,

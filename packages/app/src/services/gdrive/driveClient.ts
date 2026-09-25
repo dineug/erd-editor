@@ -4,6 +4,7 @@ import {
   NEW_FILE_MIME_TYPE,
 } from '@/services/gdrive/driveFileName';
 import type { FetchLike } from '@/services/gdrive/types';
+import { asRecord, sleep } from '@/services/gdrive/util';
 
 export const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 export const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
@@ -114,12 +115,6 @@ type DriveRequest = {
   headers?: Record<string, string>;
   body?: string;
 };
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
 
 function invalidResponse(): DriveError {
   return new DriveError('invalid-response', 200, null, false);
@@ -430,10 +425,6 @@ export function backoffDelay(attempt: number, random: () => number): number {
   return RETRY_BASE_MS * 2 ** attempt + Math.floor(random() * RETRY_JITTER_MS);
 }
 
-function sleepFor(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 /**
  * Runs the whole cycle again after a network error, a 5xx or a rate limit, up
  * to three times with backoff. Never one PATCH alone: a lost response may hide
@@ -442,7 +433,7 @@ function sleepFor(ms: number): Promise<void> {
 export async function withRetry<T>(
   cycle: () => Promise<T>,
   {
-    sleep = sleepFor,
+    sleep: wait = sleep,
     retries = RETRY_LIMIT,
     random = Math.random,
   }: RetryOptions = {}
@@ -458,7 +449,7 @@ export async function withRetry<T>(
       ) {
         throw error;
       }
-      await sleep(backoffDelay(attempt, random));
+      await wait(backoffDelay(attempt, random));
     }
   }
 }

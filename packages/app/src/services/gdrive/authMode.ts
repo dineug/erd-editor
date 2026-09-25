@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon';
 
 import type { FetchLike, StorageLike } from '@/services/gdrive/types';
+import { asRecord } from '@/services/gdrive/util';
 
 export const RELAY_START_PATH = '/api/auth/start';
 export const RELAY_TOKEN_PATH = '/api/auth/token';
@@ -55,10 +56,7 @@ async function readJson(
   response: Response
 ): Promise<Record<string, unknown> | null> {
   try {
-    const value: unknown = await response.json();
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : null;
+    return asRecord(await response.json());
   } catch {
     return null;
   }

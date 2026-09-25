@@ -1,8 +1,9 @@
 import type { DriveFile } from '@/services/gdrive/driveClient';
+import { fileLockName } from '@/services/gdrive/fileLeader';
 import type { CreateChannel } from '@/services/gdrive/types';
+import { isRecord } from '@/services/gdrive/util';
 import { safeCallback } from '@/utils/safeCallback';
 
-export const FILE_CHANNEL_PREFIX = '@dineug/erd-editor-app/gdrive-file';
 export const FILES_CHANNEL_PREFIX = '@dineug/erd-editor-app/gdrive-files';
 
 /** The waits between a follower's hellos; after the last one it offers to take over. */
@@ -154,10 +155,6 @@ const isString = (value: unknown): value is string => typeof value === 'string';
 const isBoolean = (value: unknown): value is boolean =>
   typeof value === 'boolean';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 export function isSaveState(value: unknown): value is SaveState {
   return (SAVE_STATES as readonly unknown[]).includes(value);
 }
@@ -299,10 +296,8 @@ export function readFileMessage(data: unknown): FileMessage | null {
   return body && { ...body, epoch };
 }
 
-/** A file's channel for one account, beside its lock of the same name. */
-export function fileChannelName(sub: string, fileId: string): string {
-  return `${FILE_CHANNEL_PREFIX}/${sub}/${fileId}`;
-}
+/** A file's channel for one account: its lock's name, so the tabs that share one share the other. */
+export const fileChannelName = fileLockName;
 
 export type FileChannel = {
   /** Posts with the current epoch; a closed channel posts nothing. */
