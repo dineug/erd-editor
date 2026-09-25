@@ -115,7 +115,7 @@ size of each PNG against `google-workspace/assets.json`.
 | `policy.spec.ts`        | `/privacy` and `/terms` with JavaScript off: 200, no script, the points each must make, no email address or governing law, GitHub Issues, no request to another origin, both themes; `/`'s `<noscript>` links; the sidebar's links in a new tab, none to `/gdrive` |
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, the account switch and the ways out of it, Drive left out, a stray callback link, a preview origin, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
-| `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename; import; the account, Sign out and the policy links; v2 saved as v3 only once edited; files never saved |
+| `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename, disabled for a file Drive lets the account view only or not rename; import; the account, Sign out and the policy links; v2 saved as v3 only once edited; files never saved |
 | `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, a save Drive kept refusing and Try again, edit access lost with the edits downloaded, tabs and their leader, the next leader after one gone past its PATCH and Check Drive, `beforeunload` right after an edit, a frame |
 
 ## Reading a failure

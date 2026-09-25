@@ -367,6 +367,11 @@ test.describe('what is never saved', () => {
         () => (document.querySelector('erd-editor') as any).readonly
       )
     ).toBe(true);
+    const menu = await app.fileMenu('shared.erd');
+    await expect(
+      menu.getByRole('menuitem', { name: 'Rename' })
+    ).toHaveAttribute('aria-disabled', 'true');
+    await app.page.keyboard.press('Escape');
 
     await app.page.waitForTimeout(3000);
     expect(google.patches('foreign')).toHaveLength(0);

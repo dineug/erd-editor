@@ -217,7 +217,8 @@ export async function installFakeGoogle(context: BrowserContext) {
         trashed: false,
         parents: ['root'],
         canEdit: true,
-        canRename: true,
+        // Drive lets no viewer rename, so a seed that may not edit may not rename.
+        canRename: seed.canEdit ?? true,
         resourceKey: null,
         hidden: false,
         accounts: [ACCOUNT.sub],
