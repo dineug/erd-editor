@@ -273,7 +273,7 @@ test.describe('the sidebar', () => {
     await app.waitForEditor();
   });
 
-  test('shows the account and Sign out, and links nowhere in the app', async ({
+  test('shows the account and Sign out, and links to nothing of /', async ({
     context,
   }) => {
     const app = await signedIn(context);
@@ -282,12 +282,14 @@ test.describe('the sidebar', () => {
     await expect(
       app.sidebar().getByRole('button', { name: 'Sign out' })
     ).toBeVisible();
+    // The local app's routes; the policy pages may be linked.
     expect(
       await app.page.locator('a[href]').evaluateAll(links =>
         links
           .map(link => new URL((link as HTMLAnchorElement).href))
           .filter(url => url.origin === location.origin)
           .map(url => url.pathname)
+          .filter(pathname => pathname === '/' || pathname.startsWith('/live'))
       )
     ).toEqual([]);
   });

@@ -50,8 +50,8 @@ test.describe('the fallback to Google’s token client', () => {
       expect(auth.paths).toEqual(['/api/auth/token']);
 
       await app.signOut();
-      expect(google.gisRevoked).toHaveLength(1);
-      expect(auth.count('/api/auth/logout')).toBe(1);
+      await expect.poll(() => google.gisRevoked.length).toBe(1);
+      await expect.poll(() => auth.count('/api/auth/logout')).toBe(1);
       expect(auth.count('/api/auth/start')).toBe(0);
     });
   }

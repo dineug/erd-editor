@@ -52,8 +52,9 @@ test.describe('saving to Drive', () => {
     await app.addTable();
     const editedAt = Date.now();
     await app.expectSaveState('saving');
+    // Saving shows before the metadata GET and the PATCH go out.
+    await expect.poll(() => google.patches('shop').length).toBe(1);
     const patches = google.patches('shop');
-    expect(patches).toHaveLength(1);
     expect(patches[0].at - editedAt).toBeGreaterThan(1500);
     const patchIndex = google.requests.indexOf(patches[0]);
     expect(google.requests[patchIndex - 1]).toMatchObject({ method: 'GET' });
@@ -168,7 +169,7 @@ test.describe('tabs of one file', () => {
     ).toBeVisible();
   });
 
-  test('after a lost answer the next leader stops as unconfirmed, and Check Drive resumes', async ({
+  test('a leader gone after its PATCH, before saved, leaves the next unconfirmed, and Check Drive resumes', async ({
     context,
   }) => {
     const leader = await openShop(context);
@@ -176,17 +177,26 @@ test.describe('tabs of one file', () => {
     google.dropNextPatchResponse();
 
     await leader.addTable();
-    await follower.expectSaveState('unconfirmed');
+    // Gone once its PATCH landed, a second before its own retry would look.
+    await expect
+      .poll(() => google.patches('shop').length, { intervals: [25] })
+      .toBe(1);
+    const patchedAt = google.patches('shop')[0].at;
     await leader.close();
 
+    await follower.expectSaveState('unconfirmed');
     await expect(
       follower.page
         .getByRole('alert')
         .filter({ hasText: "Couldn't confirm the last save" })
     ).toBeVisible();
-    const patches = google.patches('shop').length;
+    expect(
+      google
+        .calls('GET', '/drive/v3/files/shop', leader.page)
+        .filter(request => request.at >= patchedAt)
+    ).toEqual([]);
     await follower.page.waitForTimeout(3000);
-    expect(google.patches('shop')).toHaveLength(patches);
+    expect(google.patches('shop')).toHaveLength(1);
 
     // The lost PATCH did land: the file holds what the attempt sent.
     await follower.page.getByRole('button', { name: 'Check Drive' }).click();
@@ -204,10 +214,9 @@ test.describe('tabs of one file', () => {
     const leader = await openShop(context);
     const follower = await openShop(context);
 
+    // Closed at once, before the element reports the change 200 ms on: the
+    // press that made it counts, and the tab asks for the next 500 ms.
     await follower.addTable();
-    // The element reports a change 200 ms after it, and the tab counts the
-    // next 500 ms as still leaving: a close in between asks.
-    await follower.page.waitForTimeout(300);
     expect(await closeAsked(follower.page)).toBe(true);
     await expect.poll(() => google.patches('shop').length).toBe(1);
     await follower.expectSaveState('saved');

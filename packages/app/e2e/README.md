@@ -93,7 +93,7 @@ server's own `/__framer`: Chrome blocks a routed origin from framing localhost.
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, the account switch, Drive left out, a stray callback link, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
 | `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states; rename; import; v2 saved as v3 only once edited; files never saved |
-| `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, tabs and their leader, Check Drive after a lost answer, `beforeunload`, a frame |
+| `gdrive/specs/gdrive-save.spec.ts` | The debounced save, a zoom saving nothing, the conflict banner, tabs and their leader, the next leader after one gone past its PATCH and Check Drive, `beforeunload` right after an edit, a frame |
 
 ## Reading a failure
 

@@ -92,10 +92,13 @@ test.describe('signing in through the relay', () => {
 
     await app.signOut();
 
-    expect((await oauthServerState()).revokes).toBe(1);
-    expect(
-      (await context.cookies()).some(entry => entry.name === REFRESH_COOKIE)
-    ).toBe(false);
+    // Sign in shows first; the relay's logout finishes after it.
+    await expect.poll(async () => (await oauthServerState()).revokes).toBe(1);
+    await expect
+      .poll(async () =>
+        (await context.cookies()).some(entry => entry.name === REFRESH_COOKIE)
+      )
+      .toBe(false);
     await app.page.reload();
     await expect(app.signInButton()).toBeVisible();
   });
