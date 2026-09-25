@@ -23,7 +23,7 @@ const PAGES = [
       [
         'Google Analytics is not loaded on the Google Drive pages',
         'file IDs, which become a placeholder',
-        "never carry your files' content or names",
+        "never carry your Drive files' content or names",
       ],
       ['including the Limited Use requirements'],
       ['Effective date:'],

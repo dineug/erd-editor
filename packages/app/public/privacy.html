@@ -150,12 +150,13 @@
       <h2>The local editor</h2>
       <p>
         The editor at erd-editor.io keeps your schemas in your browser's own
-        storage (IndexedDB). They leave your device only when you export them
-        or start a live collaboration session. A session connects browsers
-        directly and uses public relays only to introduce them; what passes
-        through a relay is encrypted with a key that stays in the invite link
-        after the <code>#</code>, a part of the address browsers never send to
-        a server.
+        storage (IndexedDB). Their content leaves your device only when you
+        export them or start a live collaboration session. Their names can
+        also reach the analytics and error reports described below. A session
+        connects browsers directly and uses public relays only to introduce
+        them; what passes through a relay is encrypted with a key that stays in
+        the invite link after the <code>#</code>, a part of the address
+        browsers never send to a server.
       </p>
 
       <h2>Google Drive</h2>
@@ -227,17 +228,27 @@
         >.
       </p>
 
-      <h3>Analytics and error reports</h3>
+      <h3>Analytics, error reports and fonts</h3>
       <p>
         erd-editor.io uses Google Analytics to count visits to the local
-        editor, and Sentry to report errors. Google Analytics is not loaded on
-        the Google Drive pages (erd-editor.io/gdrive) or during sign-in, so it
-        receives nothing from them. There, Sentry keeps no record of what you
-        click or type, and none of the requests to Google. Before a report
-        leaves your browser, the addresses of Google Drive's requests and of
-        the Drive pages lose their file IDs, which become a placeholder, and
-        their query strings. Error reports never carry your files' content or
-        names, your tokens, or your Google account ID or email address.
+        editor, and Sentry to report errors. On the local editor, Google
+        Analytics records the page's title, which names the schema you have
+        open, and an error report can carry the labels of the controls you
+        clicked, the name of a schema among them. Google Analytics is not
+        loaded on the Google Drive pages (erd-editor.io/gdrive) or during
+        sign-in, so it receives nothing from them. There, Sentry keeps no
+        record of what you click or type, and none of the requests to Google.
+        Before a report leaves your browser, the addresses of Google Drive's
+        requests and of the Drive pages lose their file IDs, which become a
+        placeholder, and their query strings. Error reports never carry your
+        Drive files' content or names, your tokens, or your Google account ID
+        or email address.
+      </p>
+      <p>
+        The editor's pages, the Google Drive pages included, load their font
+        from Google Fonts, which receives your IP address and your browser's
+        details with each request, as any site a page loads a file from does.
+        This policy and the terms load nothing from another site.
       </p>
 
       <h3>Limited Use</h3>

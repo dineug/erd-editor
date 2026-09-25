@@ -79,7 +79,8 @@ page. `support/gdrive/fakeAuth.ts` makes `/api/auth/*` fail its JSON contract
 for the fallback spec. The clickjacking check frames `/gdrive` from the token
 server's own `/__framer`: Chrome blocks a routed origin from framing localhost.
 Neither dev server reads `public/_headers`, so the check covers the app's own
-refusal (`isFramed`) alone.
+refusal (`isFramed`) alone; `src/pagesHeaders.test.ts` holds the file's two
+`/gdrive` rules in the unit tests.
 
 **Static policy pages.** Pages answers `/privacy` and `/terms` with their files
 in `public/`; `vp dev` would answer them with the app, so `policyPages` in
@@ -92,8 +93,11 @@ that case in `index.html`.
 `gdrive/assets.config.ts` is not a third run. `google-workspace:assets` runs it
 on run 2's servers to render `google-workspace/`: the icons and the card banner
 from `public/erd-editor_icon.svg`, and the screenshot from `/gdrive` with a few
-files listed and `src/assets/bookstore.dbml` imported. `google-workspace:check`
-then reads the size of each PNG against `google-workspace/assets.json`.
+files listed and `src/assets/bookstore.dbml` imported. The screenshot's page
+runs on a clock installed at one fixed date, from which the listed files' dates
+are counted too, so its date groups read alike on every render, and it is taken
+once two screenshots in a row match. `google-workspace:check` then reads the
+size of each PNG against `google-workspace/assets.json`.
 
 ## What the specs cover
 

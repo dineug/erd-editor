@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { expect, type Page, test } from '@playwright/test';
@@ -26,6 +26,8 @@ const ASSETS: Asset[] = JSON.parse(
 const ICON_URL = `data:image/svg+xml;base64,${readFileSync(
   join(PACKAGE_ROOT, 'public', 'erd-editor_icon.svg')
 ).toString('base64')}`;
+/** Noon on one day in the renderer's own zone, so the date groups read alike on every render. */
+const RENDERED_AT = new Date(2026, 8, 25, 12);
 
 function assetsOf(kind: Asset['kind']) {
   return ASSETS.filter(asset => asset.kind === kind);
@@ -43,6 +45,22 @@ async function render(page: Page, asset: Asset, markup: string) {
     path: join(ASSET_DIR, asset.file),
     omitBackground: true,
   });
+}
+
+/** Screenshots the page until two shots in a row match, and returns the last. */
+async function stillScreenshot(page: Page): Promise<Buffer> {
+  const shots: Buffer[] = [];
+  await expect
+    .poll(
+      async () => {
+        shots.unshift(await page.screenshot());
+        shots.length = Math.min(shots.length, 2);
+        return shots.length === 2 && shots[0].equals(shots[1]);
+      },
+      { intervals: [250] }
+    )
+    .toBe(true);
+  return shots[0];
 }
 
 test.describe('the Google Workspace Marketplace assets', () => {
@@ -74,8 +92,10 @@ test.describe('the Google Workspace Marketplace assets', () => {
   for (const asset of assetsOf('screenshot')) {
     test(`${asset.file}, a Drive file open in /gdrive`, async ({ context }) => {
       await resetOAuthServer();
+      // Time runs from there, so timers fire; the file the import creates takes
+      // the real time, which reads as Today however far ahead it is.
+      await context.clock.install({ time: RENDERED_AT });
       const google = await installFakeGoogle(context);
-      const now = new Date();
       const others = [
         { name: 'orders.erd', days: 1 },
         { name: 'blog.vuerd', days: 2 },
@@ -87,7 +107,7 @@ test.describe('the Google Workspace Marketplace assets', () => {
         google.add({
           id: `file-${index}`,
           name,
-          modifiedTime: daysAgo(days, now),
+          modifiedTime: daysAgo(days, RENDERED_AT),
         })
       );
 
@@ -131,10 +151,12 @@ test.describe('the Google Workspace Marketplace assets', () => {
       await app.page.mouse.move(asset.width / 2, asset.height / 2);
       await app.page.mouse.wheel(156, -36);
       await app.page.mouse.move(asset.width - 1, asset.height - 1);
-      // The editor settles its connectors a frame or two after the load.
-      await app.page.waitForTimeout(1000);
 
-      await app.page.screenshot({ path: join(ASSET_DIR, asset.file) });
+      // The editor settles its connectors a frame or two after the load.
+      writeFileSync(
+        join(ASSET_DIR, asset.file),
+        await stillScreenshot(app.page)
+      );
     });
   }
 });
