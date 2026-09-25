@@ -99,14 +99,12 @@ that case in `index.html`.
 
 ## Marketplace assets
 
-`gdrive/assets.config.ts` is not a third run. `google-workspace:assets` runs it
-on run 2's servers to render `google-workspace/`: the icons and the card banner
-from `public/erd-editor_icon.svg`, and the screenshot from `/gdrive` with a few
-files listed and `src/assets/bookstore.dbml` imported. The screenshot's page
-runs on a clock installed at one fixed date, from which the listed files' dates
-are counted too, so its date groups read alike on every render, and it is taken
-once two screenshots in a row match. `google-workspace:check` then reads the
-size of each PNG against `google-workspace/assets.json`.
+`gdrive/assets.config.ts` is not a third run and starts no server.
+`google-workspace:assets` runs it to render `google-workspace/` from
+`public/erd-editor_icon.svg`: the icons, each on a page at its `assets.json`
+scale, so an `@2x` file is the SVG drawn at twice the pixels, and the card
+banner. `google-workspace:check` then reads the size of each PNG against
+`google-workspace/assets.json`.
 
 ## What the specs cover
 

@@ -14,7 +14,7 @@
     "e2e:headed": "playwright test --headed",
     "e2e:report": "playwright show-report e2e/.report",
     "e2e:typecheck": "tsc -p e2e/tsconfig.json",
-    "google-workspace:assets": "vp run --filter @dineug/erd-editor --fail-if-no-match build && playwright test --config e2e/gdrive/assets.config.ts",
+    "google-workspace:assets": "playwright test --config e2e/gdrive/assets.config.ts",
     "google-workspace:check": "node google-workspace/check-assets.mjs"
   },
   "dependencies": {

@@ -17,7 +17,7 @@ function pngSize(buffer) {
 }
 
 // assets.json is what google-workspace:assets renders: the Drive UI
-// integration's and the Marketplace's icons, the card banner, the screenshot.
+// integration's and the Marketplace's icons, at 2x, and the card banner.
 const assets = JSON.parse(
   readFileSync(new URL('assets.json', DIRECTORY), 'utf8')
 );
