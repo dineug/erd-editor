@@ -1,6 +1,7 @@
 import {
   GOOGLE_REVOKE_URL,
   hasDriveFileScope,
+  isLoginHint,
   SCOPES,
 } from '@/server/auth/contract';
 import {
@@ -805,13 +806,14 @@ export function createTokenManager(deps: TokenManagerDeps) {
   /**
    * Sign in, or Try again: the relay's popup, or the token client until the
    * midnight the tabs share, read again here. Call it inside the click handler.
-   * A login hint picks the account, as a Drive state's userId does.
+   * A login hint picks the account; one the relay would refuse asks for one.
    */
   function signIn({
-    loginHint = null,
+    loginHint: requested = null,
   }: { loginHint?: string | null } = {}): Promise<SignInResult> {
     const pending = joinPending(true);
     if (pending) return pending;
+    const loginHint = requested && isLoginHint(requested) ? requested : null;
     if (!shouldTryServer(storage, now())) {
       if (snapshot.mode === 'server') {
         // Another tab found the relay unavailable since this one decided.

@@ -14,19 +14,7 @@ export type OAuthState = {
 /** The opener's attempt id: 16 random bytes in base64url. */
 export const ATTEMPT_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 
-const LOGIN_HINT_MAX_LENGTH = 256;
-const SUBJECT_PATTERN = /^[0-9]+$/;
-const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
-
 const encoder = new TextEncoder();
-
-/** An account id or an email address, the two things a Drive state or a person supplies. */
-export function isLoginHint(value: string): boolean {
-  return (
-    value.length <= LOGIN_HINT_MAX_LENGTH &&
-    (SUBJECT_PATTERN.test(value) || EMAIL_PATTERN.test(value))
-  );
-}
 
 export function createOAuthState(
   attempt: string | null,

@@ -248,7 +248,7 @@ describe('signing in', () => {
     });
     const tab = openTab(browser, {
       state: openState('keyed', {
-        userId: 'sub-1',
+        userId: '1001',
         resourceKeys: { keyed: 'key-1' },
       }),
       file: null,
@@ -266,7 +266,7 @@ describe('signing in', () => {
     const snapshot = tab.snapshot();
     expect(snapshot.screen).toBe('workspace');
     expect(snapshot.token.account).toEqual({
-      sub: 'sub-1',
+      sub: '1001',
       email: 'person@example.com',
     });
     expect(tab.navigations).toEqual([{ fileId: 'keyed', replace: true }]);
@@ -331,7 +331,66 @@ describe('signing in', () => {
     tab.session.reconnect();
 
     expect(tab.opened).toHaveLength(1);
-    expect(tab.opened[0]).toContain('login_hint=sub-1');
+    expect(tab.opened[0]).toContain('login_hint=1001');
+  });
+
+  it("signs in with the account Drive's state names, through the popup and the token client", async () => {
+    browser.relay.signedIn = false;
+    const state = openState('file-1', { userId: '1002' });
+    const tab = openTab(browser, { state, file: null });
+    await start(tab);
+
+    tab.session.signIn();
+    expect(tab.opened).toHaveLength(1);
+    expect(
+      new URL(tab.opened[0], 'https://erd-editor.io').searchParams.get(
+        'login_hint'
+      )
+    ).toBe('1002');
+
+    browser.relay.queue(htmlReply(200));
+    const fallen = openTab(browser, { state, file: null });
+    await start(fallen);
+    expect(fallen.snapshot().token.mode).toBe('fallback');
+
+    fallen.session.signIn();
+    expect(fallen.gis.requests).toEqual([{ prompt: '', login_hint: '1002' }]);
+  });
+
+  it('hints the account a 401 signed out, never one a sign-out left', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await settle(10);
+    browser.relay.signedIn = false;
+    browser.drive.tokens.clear();
+    tab.events.dispatchEvent(new Event('focus'));
+    await settle(ADOPT_WAIT_MS + 10);
+    expect(tab.snapshot().screen).toBe('sign-in');
+
+    tab.session.signIn();
+    expect(tab.opened.at(-1)).toContain('login_hint=1001');
+    tab.session.cancelSignIn();
+    await settle(10);
+
+    // A person's sign-out elsewhere: the edits keep the file, not the hint.
+    for (let n = 1; n <= 100; n++) browser.drive.tokens.add(`access-${n}`);
+    browser.relay.signedIn = true;
+    tab.session.signIn();
+    await finishPopup(browser, tab);
+    await settle(10);
+    expect(tab.snapshot().screen).toBe('workspace');
+    tab.editor.addTable('orders');
+    const other = openTab(browser);
+    await start(other);
+    await other.session.signOut();
+    await settle(10);
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'sign-in',
+      keptChanges: true,
+    });
+
+    tab.session.signIn();
+    expect(tab.opened.at(-1)).not.toContain('login_hint');
   });
 
   it('shows offline without deciding anything', async () => {
@@ -365,17 +424,18 @@ describe('signing in', () => {
 describe("Drive's state", () => {
   it('asks for the account the state names, and switching signs in with it as the hint', async () => {
     const tab = openTab(browser, {
-      state: openState('file-1', { userId: 'sub-2' }),
+      state: openState('file-1', { userId: '1002' }),
       file: null,
     });
     await start(tab);
 
     expect(tab.snapshot().screen).toBe('account-mismatch');
+    expect(tab.snapshot().hintRefused).toBe(false);
     expect(tab.navigations).toEqual([]);
 
     tab.session.switchAccount();
-    expect(tab.opened.at(-1)).toContain('login_hint=sub-2');
-    browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+    expect(tab.opened.at(-1)).toContain('login_hint=1002');
+    browser.relay.account = { sub: '1002', email: 'other@example.com' };
     await finishPopup(browser, tab);
     await settle(10);
 
@@ -385,8 +445,25 @@ describe("Drive's state", () => {
     expect(tab.snapshot().document?.phase).toBe('ready');
   });
 
+  it('drops a userId the relay would refuse as a hint: Switch account asks, and the screen says so', async () => {
+    const tab = openTab(browser, {
+      state: openState('file-1', { userId: 'drive-user' }),
+      file: null,
+    });
+    await start(tab);
+
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'account-mismatch',
+      hintRefused: true,
+    });
+
+    tab.session.switchAccount();
+    expect(tab.opened).toHaveLength(1);
+    expect(tab.opened[0]).not.toContain('login_hint');
+  });
+
   it("leaves a state for another account for this account's files", async () => {
-    const state = openState('file-1', { userId: 'sub-2' });
+    const state = openState('file-1', { userId: '1002' });
     const tab = openTab(browser, { state, file: null });
     await start(tab);
     expect(tab.snapshot().screen).toBe('account-mismatch');
@@ -400,7 +477,7 @@ describe("Drive's state", () => {
       document: null,
       filesState: 'ready',
     });
-    expect(tab.snapshot().token.account?.sub).toBe('sub-1');
+    expect(tab.snapshot().token.account?.sub).toBe('1001');
 
     // A render that still carries the state acts on it no more.
     tab.session.setLocation({ state, file: null });
@@ -447,7 +524,7 @@ describe("Drive's state", () => {
       action: 'create',
       folderId: 'folder-1',
       folderResourceKey: 'folder-key',
-      userId: 'sub-1',
+      userId: '1001',
     });
     const tab = openTab(browser, { state, file: null });
     await start(tab);
@@ -848,7 +925,7 @@ describe('another account', () => {
     await settle(10);
 
     // Another tab signs in with a second account; this one was left alone.
-    browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+    browser.relay.account = { sub: '1002', email: 'other@example.com' };
     browser.relay.signedIn = true;
     other.session.signIn();
     await finishPopup(browser, other);
@@ -859,7 +936,7 @@ describe('another account', () => {
       stranded: { name: 'shop.erd.json', email: 'person@example.com' },
       keptChanges: true,
     });
-    expect(tab.snapshot().token.account?.sub).toBe('sub-2');
+    expect(tab.snapshot().token.account?.sub).toBe('1002');
     expect(tab.session.hasUnsavedChanges()).toBe(true);
     await settle(10_000);
     expect(patches(browser, 'file-1')).toHaveLength(0);
@@ -882,7 +959,7 @@ describe('another account', () => {
 
   it('lists the new account’s files when it signs in while the old one’s list is out', async () => {
     const tab = openTab(browser, {
-      state: openState('file-1', { userId: 'sub-2' }),
+      state: openState('file-1', { userId: '1002' }),
       file: null,
     });
     await start(tab);
@@ -894,7 +971,7 @@ describe('another account', () => {
     const lists = browser.drive.callsTo('GET').filter(call => isList(call.url));
 
     tab.session.switchAccount();
-    browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+    browser.relay.account = { sub: '1002', email: 'other@example.com' };
     await finishPopup(browser, tab);
     await settle(10);
 
@@ -907,7 +984,7 @@ describe('another account', () => {
     await settle(10);
     expect(tab.snapshot().filesState).toBe('ready');
     expect(tab.snapshot().files).toHaveLength(2);
-    expect(tab.snapshot().token.account?.sub).toBe('sub-2');
+    expect(tab.snapshot().token.account?.sub).toBe('1002');
   });
 });
 
@@ -959,7 +1036,7 @@ describe('the list', () => {
   it('follows the files another tab created or renamed', async () => {
     const tab = openTab(browser);
     await start(tab);
-    const channel = browser.hub.create(`${FILES_CHANNEL_PREFIX}/sub-1`);
+    const channel = browser.hub.create(`${FILES_CHANNEL_PREFIX}/1001`);
     const file = {
       id: 'file-9',
       name: 'elsewhere.erd.json',
@@ -1009,7 +1086,7 @@ describe('the list', () => {
     expect(tab.snapshot().files[0].id).toBe('file-2');
 
     // News of an older save moves no entry back.
-    browser.hub.create(`${FILES_CHANNEL_PREFIX}/sub-1`).postMessage({
+    browser.hub.create(`${FILES_CHANNEL_PREFIX}/1001`).postMessage({
       type: 'saved',
       fileId: 'file-2',
       modifiedTime: before,
@@ -1051,7 +1128,7 @@ describe('the list', () => {
     await tab.session.newFile('orders');
     await tab.session.renameFile('file-2', 'journal');
     // News older than the list's answer loses to it.
-    browser.hub.create(`${FILES_CHANNEL_PREFIX}/sub-1`).postMessage({
+    browser.hub.create(`${FILES_CHANNEL_PREFIX}/1001`).postMessage({
       type: 'renamed',
       fileId: 'file-1',
       name: 'stale.erd.json',
@@ -1236,7 +1313,7 @@ describe('dispose', () => {
     tab.events.dispatchEvent(new Event('focus'));
     await settle(10);
 
-    expect(browser.hub.openCount(`${FILES_CHANNEL_PREFIX}/sub-1`)).toBe(0);
+    expect(browser.hub.openCount(`${FILES_CHANNEL_PREFIX}/1001`)).toBe(0);
     expect(listener).not.toHaveBeenCalled();
   });
 

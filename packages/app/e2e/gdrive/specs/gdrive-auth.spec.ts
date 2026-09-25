@@ -125,7 +125,7 @@ test.describe('signing in through the relay', () => {
     await expect(app.page).toHaveURL(/\/gdrive\?file=file-2$/);
   });
 
-  test('asks for the account Drive used and switches with it as the hint', async ({
+  test('signs in with the account Drive used as the hint', async ({
     context,
   }) => {
     // Drive shows each account the files it opened with erd-editor alone.
@@ -139,7 +139,38 @@ test.describe('signing in through the relay', () => {
       context,
       `/gdrive?state=${encodeURIComponent(state)}`
     );
+
     await app.throughPopup(app.signInButton());
+
+    expect(google.authorizeRequests).toHaveLength(1);
+    expect(google.authorizeRequests[0].searchParams.get('login_hint')).toBe(
+      OTHER_ACCOUNT.sub
+    );
+    expect(google.authorizeRequests[0].searchParams.get('prompt')).toBe(
+      'consent'
+    );
+    await app.waitForEditor();
+    await expect(app.sidebar().getByText(OTHER_ACCOUNT.email)).toBeVisible();
+    await expect(app.page).toHaveURL(/\/gdrive\?file=file-1$/);
+  });
+
+  test('asks for the account Drive used and switches with it as the hint', async ({
+    context,
+  }) => {
+    google.files.get('file-1')!.accounts = [OTHER_ACCOUNT.sub];
+    const state = JSON.stringify({
+      action: 'open',
+      ids: ['file-1'],
+      userId: OTHER_ACCOUNT.sub,
+    });
+    // Signed in already, with the account Drive did not use.
+    const first = await GdrivePage.open(context);
+    await first.signIn();
+    await first.close();
+    const app = await GdrivePage.open(
+      context,
+      `/gdrive?state=${encodeURIComponent(state)}`
+    );
     await expect(
       app.page.getByText('Google Drive sent this for another account')
     ).toBeVisible();
@@ -170,8 +201,10 @@ test.describe('signing in through the relay', () => {
     )}`;
     const mismatch = (page: Page) =>
       page.getByText('Google Drive sent this for another account');
+    const first = await GdrivePage.open(context);
+    await first.signIn();
+    await first.close();
     const app = await GdrivePage.open(context, path);
-    await app.throughPopup(app.signInButton());
     await expect(mismatch(app.page)).toBeVisible();
 
     await app.page.getByRole('button', { name: 'Show my files' }).click();

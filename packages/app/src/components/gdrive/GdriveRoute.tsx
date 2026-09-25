@@ -91,11 +91,14 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
           {download}
         </GdriveNotice>
       );
-    case 'account-mismatch':
+    case 'account-mismatch': {
+      const choose = snapshot.hintRefused
+        ? " erd-editor couldn't preselect that account, so choose it when Google asks."
+        : '';
       return (
         <GdriveNotice
           title="Google Drive sent this for another account"
-          description={`You're signed in as ${token.account?.email ?? 'another account'}. Switch to the account Google Drive used to open it, or go on with this account's files.`}
+          description={`You're signed in as ${token.account?.email ?? 'another account'}. Switch to the account Google Drive used to open it, or go on with this account's files.${choose}`}
         >
           <Button
             size="2"
@@ -128,6 +131,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
           {download}
         </GdriveNotice>
       );
+    }
     case 'account-changed':
       return (
         <GdriveNotice

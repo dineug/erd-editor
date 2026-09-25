@@ -1,3 +1,4 @@
+import { isLoginHint } from '@/server/auth/contract';
 import {
   createDocumentController,
   type DocumentController,
@@ -101,6 +102,8 @@ export type SessionSnapshot = {
   stranded: StrandedChanges | null;
   /** Off the workspace: whether the file an account screen replaced holds edits Drive lacks. */
   keptChanges: boolean;
+  /** On account-mismatch: Drive's userId is no login hint, so Switch account cannot preselect it. */
+  hintRefused: boolean;
   create: CreateRequest | null;
   leave: LeaveRequest | null;
   notice: SessionNotice | null;
@@ -252,6 +255,10 @@ export function createGdriveSession(deps: SessionDeps) {
       keptChanges:
         screen !== 'workspace' &&
         (stranded !== null || (controller?.hasUnsavedChanges() ?? false)),
+      hintRefused:
+        screen === 'account-mismatch' &&
+        expectedUserId !== null &&
+        !isLoginHint(expectedUserId),
       create,
       leave,
       notice,
@@ -590,6 +597,19 @@ export function createGdriveSession(deps: SessionDeps) {
     if (account) void refreshFiles();
   }
 
+  /**
+   * The account a sign-in asks Google for: the one Drive's state names, else
+   * the one a 401 signed out, never one a person's sign-out left.
+   */
+  function signInHint(): string | null {
+    const parsed = parseDriveState(location.state);
+    if (parsed && parsed !== 'invalid' && parsed.userId) return parsed.userId;
+    const token = tokens.getSnapshot();
+    return token.status === 'signed-out' && !token.bySignOut
+      ? (account?.sub ?? null)
+      : null;
+  }
+
   // Creating
 
   async function createDriveFile(
@@ -642,9 +662,9 @@ export function createGdriveSession(deps: SessionDeps) {
       emit();
     },
 
-    /** Sign in, Continue with Google or Try again; call it in the click handler. */
+    /** Sign in, Continue with Google or Try again, with signInHint's account; call it in the click handler. */
     signIn() {
-      void tokens.signIn();
+      void tokens.signIn({ loginHint: signInHint() });
     },
 
     /** Signs in with the account Drive's state named; call it in the click handler. */

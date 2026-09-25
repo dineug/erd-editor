@@ -179,7 +179,7 @@ describe('createTokenManager', () => {
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'server',
         mode: 'server',
-        account: { sub: 'sub-1', email: 'person@example.com' },
+        account: { sub: '1001', email: 'person@example.com' },
         expiresAt: NOON + ADOPT_WAIT_MS + 3600 * 1000,
         error: null,
       });
@@ -200,7 +200,7 @@ describe('createTokenManager', () => {
       expect(browser.relay.count(USERINFO_URL)).toBe(1);
       expect(second.manager.getSnapshot()).toMatchObject({
         status: 'server',
-        account: { sub: 'sub-1' },
+        account: { sub: '1001' },
       });
       await expect(second.manager.getAccessToken()).resolves.toBe('access-1');
     });
@@ -373,7 +373,7 @@ describe('createTokenManager', () => {
 
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'scope-missing',
-        account: { sub: 'sub-1' },
+        account: { sub: '1001' },
       });
       await expect(tab.manager.getAccessToken()).rejects.toMatchObject({
         status: 'scope-missing',
@@ -468,6 +468,26 @@ describe('createTokenManager', () => {
   });
 
   describe('signing in with the relay popup', () => {
+    it.each([
+      ['an account id', '1002', '1002'],
+      ['an email address', 'person@example.com', 'person@example.com'],
+      ['markup', '<script>', null],
+      ['a hint with a space', 'some one@example.com', null],
+      ['an overlong hint', `${'1'.repeat(257)}`, null],
+    ])(
+      'passes %s on as the login hint only when the relay takes it',
+      async (_, hint, expected) => {
+        browser.relay.signedIn = false;
+        const tab = openTab(browser);
+        await start(tab);
+
+        void tab.manager.signIn({ loginHint: hint });
+
+        const url = new URL(tab.opened[0], 'https://erd-editor.io');
+        expect(url.searchParams.get('login_hint')).toBe(expected);
+      }
+    );
+
     it('opens the popup and takes the token once the callback reports', async () => {
       browser.relay.signedIn = false;
       const tab = openTab(browser);
@@ -489,7 +509,7 @@ describe('createTokenManager', () => {
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'server',
         signingIn: false,
-        account: { sub: 'sub-1' },
+        account: { sub: '1001' },
       });
     });
 
@@ -499,21 +519,21 @@ describe('createTokenManager', () => {
       const second = openTab(browser);
       await start(second);
 
-      const result = first.manager.signIn({ loginHint: 'sub-2' });
-      expect(first.opened[0]).toContain('login_hint=sub-2');
-      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      const result = first.manager.signIn({ loginHint: '1002' });
+      expect(first.opened[0]).toContain('login_hint=1002');
+      browser.relay.account = { sub: '1002', email: 'other@example.com' };
       finishPopup(browser, first);
       await flush();
 
       await expect(result).resolves.toBe('done');
       expect(first.manager.getSnapshot()).toMatchObject({
         status: 'server',
-        account: { sub: 'sub-2', email: 'other@example.com' },
+        account: { sub: '1002', email: 'other@example.com' },
       });
       await flush();
       expect(second.manager.getSnapshot()).toMatchObject({
         status: 'account-changed',
-        account: { sub: 'sub-1' },
+        account: { sub: '1001' },
       });
       await expect(second.manager.getAccessToken()).rejects.toMatchObject({
         status: 'account-changed',
@@ -523,7 +543,7 @@ describe('createTokenManager', () => {
     it('stops a tab whose own renewal comes back for another account', async () => {
       const tab = openTab(browser);
       await start(tab);
-      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      browser.relay.account = { sub: '1002', email: 'other@example.com' };
 
       await vi.advanceTimersByTimeAsync(
         3600 * 1000 - REFRESH_MARGIN_MS + ADOPT_WAIT_MS
@@ -630,7 +650,7 @@ describe('createTokenManager', () => {
 
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'server',
-        account: { sub: 'sub-1' },
+        account: { sub: '1001' },
       });
     });
 
@@ -720,14 +740,14 @@ describe('createTokenManager', () => {
       const tab = openTab(browser);
       await start(tab);
 
-      const result = tab.manager.signIn({ loginHint: 'sub-2' });
+      const result = tab.manager.signIn({ loginHint: '1002' });
       await tab.manager.signOut();
 
       await expect(result).resolves.toBe('cancelled');
       expect(tab.popup.state.closeCalls).toBe(1);
       expect(browser.relay.signedIn).toBe(false);
       // Its callback was already under way and sets a cookie after the logout.
-      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      browser.relay.account = { sub: '1002', email: 'other@example.com' };
       browser.relay.signedIn = true;
       finishPopup(browser, tab);
       await flush();
@@ -753,7 +773,7 @@ describe('createTokenManager', () => {
       const second = openTab(browser);
       await start(second);
 
-      const result = second.manager.signIn({ loginHint: 'sub-2' });
+      const result = second.manager.signIn({ loginHint: '1002' });
       await first.manager.signOut();
       await flush();
 
@@ -778,7 +798,7 @@ describe('createTokenManager', () => {
       await start(first);
       const second = openTab(browser);
       await start(second);
-      const result = second.manager.signIn({ loginHint: 'sub-2' });
+      const result = second.manager.signIn({ loginHint: '1002' });
       browser.relay.queue(jsonReply({ error: 'invalid_grant' }, 401));
 
       const renewal = expect(
@@ -794,14 +814,14 @@ describe('createTokenManager', () => {
         bySignOut: false,
       });
 
-      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      browser.relay.account = { sub: '1002', email: 'other@example.com' };
       finishPopup(browser, second);
       await flush();
 
       await expect(result).resolves.toBe('done');
       expect(second.manager.getSnapshot()).toMatchObject({
         status: 'server',
-        account: { sub: 'sub-2' },
+        account: { sub: '1002' },
       });
     });
 
@@ -813,8 +833,8 @@ describe('createTokenManager', () => {
       const renewal = tab.manager.onUnauthorized('access-1');
       await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
       expect(browser.relay.tokenCalls()).toBe(2);
-      const result = tab.manager.signIn({ loginHint: 'sub-2' });
-      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      const result = tab.manager.signIn({ loginHint: '1002' });
+      browser.relay.account = { sub: '1002', email: 'other@example.com' };
       finishPopup(browser, tab);
       await flush();
       await expect(result).resolves.toBe('done');
@@ -823,7 +843,7 @@ describe('createTokenManager', () => {
       await expect(renewal).resolves.toBe('access-3');
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'server',
-        account: { sub: 'sub-2' },
+        account: { sub: '1002' },
       });
       expect(browser.relay.count(USERINFO_URL)).toBe(2);
     });
@@ -837,15 +857,15 @@ describe('createTokenManager', () => {
       const renewal = expect(
         second.manager.onUnauthorized('access-1')
       ).rejects.toMatchObject({ status: 'account-changed' });
-      void first.manager.signIn({ loginHint: 'sub-2' });
-      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      void first.manager.signIn({ loginHint: '1002' });
+      browser.relay.account = { sub: '1002', email: 'other@example.com' };
       finishPopup(browser, first);
       await vi.advanceTimersByTimeAsync(ADOPT_WAIT_MS);
       await renewal;
 
       expect(browser.relay.tokenCalls()).toBe(2);
       expect(first.manager.getSnapshot().account).toMatchObject({
-        sub: 'sub-2',
+        sub: '1002',
       });
     });
 
@@ -953,7 +973,7 @@ describe('createTokenManager', () => {
       browser.storage.setItem(LOGOUT_PENDING_KEY, '1');
       // The callback replaced the cookie a failed logout left behind.
       browser.relay.signedIn = true;
-      browser.relay.account = { sub: 'sub-2', email: 'other@example.com' };
+      browser.relay.account = { sub: '1002', email: 'other@example.com' };
 
       const result = tab.manager.signIn();
       tab.popup.state.closed = true;
@@ -967,7 +987,7 @@ describe('createTokenManager', () => {
       expect(browser.storage.items.has(LOGOUT_PENDING_KEY)).toBe(false);
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'server',
-        account: { sub: 'sub-2' },
+        account: { sub: '1002' },
       });
     });
   });
@@ -1023,7 +1043,7 @@ describe('createTokenManager', () => {
       await expect(signInWithGis(tab)).resolves.toBe('done');
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'fallback',
-        account: { sub: 'sub-1' },
+        account: { sub: '1001' },
       });
 
       // A second tab, a 401, a renewal on a click, the expiry and a reconnect.
@@ -1035,7 +1055,7 @@ describe('createTokenManager', () => {
       click(tab, document.createElement('button'));
       expect(tab.gis.requests.at(-1)).toEqual({
         prompt: '',
-        login_hint: 'sub-1',
+        login_hint: '1001',
       });
       tab.gis.respond(grant(browser));
       await flush();
@@ -1097,11 +1117,17 @@ describe('createTokenManager', () => {
       tab.gis.fail('popup_closed');
       await flush();
 
-      void tab.manager.signIn({ loginHint: 'sub-9' });
+      void tab.manager.signIn({ loginHint: '1009' });
       expect(tab.gis.requests.at(-1)).toEqual({
         prompt: '',
-        login_hint: 'sub-9',
+        login_hint: '1009',
       });
+      tab.gis.fail('popup_closed');
+      await flush();
+
+      // A hint the relay would refuse is no hint for the token client either.
+      void tab.manager.signIn({ loginHint: '<b>1009</b>' });
+      expect(tab.gis.requests.at(-1)).toEqual({ prompt: 'select_account' });
     });
 
     it.each([
@@ -1193,7 +1219,7 @@ describe('createTokenManager', () => {
       click(tab, document.createElement('button'));
       expect(tab.gis.requests).toEqual([
         { prompt: 'select_account' },
-        { prompt: '', login_hint: 'sub-1' },
+        { prompt: '', login_hint: '1001' },
       ]);
     });
 
@@ -1249,7 +1275,7 @@ describe('createTokenManager', () => {
       expect(tab.manager.getSnapshot()).toMatchObject({
         status: 'fallback-expired',
         renewDue: true,
-        account: { sub: 'sub-1' },
+        account: { sub: '1001' },
       });
       await expect(tab.manager.getAccessToken()).rejects.toMatchObject({
         status: 'fallback-expired',
@@ -1258,7 +1284,7 @@ describe('createTokenManager', () => {
       const reconnect = tab.manager.reconnect();
       expect(tab.gis.requests.at(-1)).toEqual({
         prompt: '',
-        login_hint: 'sub-1',
+        login_hint: '1001',
       });
       tab.gis.respond(grant(browser));
       await expect(reconnect).resolves.toBe('done');
@@ -1317,9 +1343,9 @@ describe('createTokenManager', () => {
 
       expect(tab.gis.requests).toEqual([
         { prompt: 'select_account' },
-        { prompt: '', login_hint: 'sub-1' },
+        { prompt: '', login_hint: '1001' },
         { prompt: 'select_account' },
-        { prompt: '', login_hint: 'sub-1' },
+        { prompt: '', login_hint: '1001' },
       ]);
     });
 
@@ -1332,7 +1358,7 @@ describe('createTokenManager', () => {
       tab.gis.fail('popup_closed');
       await flush();
 
-      const signIn = tab.manager.signIn({ loginHint: 'sub-1' });
+      const signIn = tab.manager.signIn({ loginHint: '1001' });
       tab.gis.respond(grant(browser));
       await expect(signIn).resolves.toBe('done');
       await vi.advanceTimersByTimeAsync(3599 * 1000 - REFRESH_MARGIN_MS);
@@ -1346,7 +1372,7 @@ describe('createTokenManager', () => {
         'signs in with the cookie the fallback kept',
         true,
         'done',
-        { status: 'server', mode: 'server', account: { sub: 'sub-1' } },
+        { status: 'server', mode: 'server', account: { sub: '1001' } },
       ],
       [
         'leaves Sign in on a 401',
@@ -1425,7 +1451,7 @@ describe('createTokenManager', () => {
         expect(tab.manager.getSnapshot()).toMatchObject({
           status: 'server',
           mode: 'server',
-          account: { sub: 'sub-1' },
+          account: { sub: '1001' },
         });
       }
     );
@@ -1672,7 +1698,7 @@ describe('createTokenManager', () => {
         expiresAt: Date.now() + HOUR * 2,
         renewAt: Date.now() + HOUR,
         scope: null,
-        account: { sub: 'sub-1', email: 'person@example.com' },
+        account: { sub: '1001', email: 'person@example.com' },
         mode: 'server',
       };
 
@@ -2041,7 +2067,7 @@ describe('fetchUserInfo', () => {
     const token = relay.issue();
 
     await expect(fetchUserInfo(relay.fetch, token)).resolves.toEqual({
-      sub: 'sub-1',
+      sub: '1001',
       email: 'person@example.com',
     });
   });

@@ -286,7 +286,7 @@ export function createFakeRelay() {
     signedIn: true,
     expiresIn: 3600,
     scope: GRANTED_SCOPE as string | null,
-    account: { sub: 'sub-1', email: 'person@example.com' },
+    account: { sub: '1001', email: 'person@example.com' },
     /** Userinfo fails while set, as on a network error. */
     userInfoDown: false,
 

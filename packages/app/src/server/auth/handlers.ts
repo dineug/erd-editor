@@ -5,7 +5,7 @@ import {
   renderCallbackPage,
   toCallbackError,
 } from './callbackPage';
-import { hasDriveFileScope, SCOPES } from './contract';
+import { hasDriveFileScope, isLoginHint, SCOPES } from './contract';
 import {
   clearRefreshCookie,
   clearStateCookie,
@@ -28,7 +28,6 @@ import { html, json, redirect } from './http';
 import {
   ATTEMPT_PATTERN,
   createOAuthState,
-  isLoginHint,
   openOAuthState,
   pkceChallenge,
   safeEqual,
