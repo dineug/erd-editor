@@ -275,6 +275,37 @@ describe('start', () => {
     }
   );
 
+  it.each(['cross-site', 'same-site', 'none'])(
+    'refuses a navigation whose Sec-Fetch-Site is %s with 403 JSON and no cookie',
+    async site => {
+      const { call, events } = setup();
+
+      const response = await call(`/api/auth/start?attempt=${ATTEMPT}`, {
+        headers: { 'Sec-Fetch-Site': site },
+      });
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ error: 'forbidden' });
+      expect(response.headers.getSetCookie()).toEqual([]);
+      expectNoCors(response);
+      expect(events).toEqual([]);
+    }
+  );
+
+  it.each<[string, Record<string, string>]>([
+    ['a same-origin navigation', { 'Sec-Fetch-Site': 'same-origin' }],
+    ['a request without Sec-Fetch-Site', {}],
+  ])('lets %s through to Google', async (_, headers) => {
+    const { call } = setup();
+
+    const response = await call(`/api/auth/start?attempt=${ATTEMPT}`, {
+      headers,
+    });
+
+    expect(response.status).toBe(302);
+    expect(setCookie(response, STATE_COOKIE)).not.toBe('');
+  });
+
   it.each([
     ['a short attempt', 'attempt=abc'],
     ['a long attempt', `attempt=${ATTEMPT}x`],

@@ -78,6 +78,11 @@ function callbackPage(result: CallbackResult, cookies: string[]): Response {
  * that each browser receives a refresh token of its own.
  */
 export const handleStart: AuthHandler = async (request, secrets, deps) => {
+  // Another site's navigation would replace the state cookie of a sign-in under way.
+  const site = request.headers.get('Sec-Fetch-Site');
+  if (site !== null && site !== 'same-origin') {
+    return json({ error: 'forbidden' }, { status: 403 });
+  }
   if (!secrets) return notConfigured(deps);
   const url = new URL(request.url);
   const attempt = url.searchParams.get('attempt');
