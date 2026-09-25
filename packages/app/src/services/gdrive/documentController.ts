@@ -43,7 +43,10 @@ import {
   type SaveQueue,
   type SaveQueueInit,
 } from '@/services/gdrive/saveQueue';
-import type { TokenManager } from '@/services/gdrive/tokenManager';
+import {
+  type TokenManager,
+  TokenUnavailableError,
+} from '@/services/gdrive/tokenManager';
 import type { CreateChannel } from '@/services/gdrive/types';
 import { sleep } from '@/services/gdrive/util';
 import { toDriveFingerprint } from '@/utils/documentFingerprint';
@@ -82,12 +85,14 @@ export const NON_EDIT_ACTIONS: ReadonlySet<unknown> = new Set([
 const isEdit = (action: unknown) =>
   !NON_EDIT_ACTIONS.has((action as { type?: unknown } | null)?.type);
 
+/** Where the file stands; waiting-token is a load that found no token, which the session opens again. */
 export type DocumentPhase =
   | 'loading'
   | 'waiting-snapshot'
   | 'ready'
   | 'rejected'
   | 'not-found'
+  | 'waiting-token'
   | 'failed';
 
 /** Why a file opens no editor: in the trash, over 64 MB, a Google Doc, or not a document. */
@@ -179,9 +184,12 @@ function isDocumentText(text: string): boolean {
   }
 }
 
+/** What a failed load shows: without a token, or with one lacking drive.file, it waits for the next. */
 function phaseForError(error: unknown): DocumentPhase {
-  return error instanceof DriveError &&
-    (error.kind === 'not-found' || error.kind === 'forbidden')
+  if (error instanceof TokenUnavailableError) return 'waiting-token';
+  if (!(error instanceof DriveError)) return 'failed';
+  if (error.kind === 'scope-missing') return 'waiting-token';
+  return error.kind === 'not-found' || error.kind === 'forbidden'
     ? 'not-found'
     : 'failed';
 }

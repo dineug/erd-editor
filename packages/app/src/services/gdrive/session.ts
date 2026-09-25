@@ -163,6 +163,12 @@ const SIGNED_IN: ReadonlySet<TokenStatus> = new Set<TokenStatus>([
   'fallback-expired',
 ]);
 
+/** The statuses that hold a token for Drive. */
+const HOLDS_TOKEN: ReadonlySet<TokenStatus> = new Set<TokenStatus>([
+  'server',
+  'fallback',
+]);
+
 /** Whether RFC 3339 time a is after b; a time that does not parse never is. */
 const isAfter = (a: string, b: string) => Date.parse(a) > Date.parse(b);
 
@@ -412,6 +418,14 @@ export function createGdriveSession(deps: SessionDeps) {
     emit();
   }
 
+  /** The open file again, from a new controller. */
+  function reopenDocument() {
+    const fileId = controller?.fileId;
+    if (!fileId || !account) return;
+    closeDocument();
+    openDocument(fileId);
+  }
+
   function openDocument(fileId: string) {
     const sub = account!.sub;
     const next = createDocumentController({
@@ -592,6 +606,13 @@ export function createGdriveSession(deps: SessionDeps) {
       leaveAccount();
     }
     evaluate();
+    // A file whose load found no token opens once the tab has one, with no click.
+    if (
+      HOLDS_TOKEN.has(token.status) &&
+      controller?.getSnapshot().phase === 'waiting-token'
+    ) {
+      reopenDocument();
+    }
     emit();
   }
 
@@ -893,10 +914,7 @@ export function createGdriveSession(deps: SessionDeps) {
 
     /** Opens the file again after it failed to load. */
     reopen() {
-      const fileId = controller?.fileId;
-      if (!fileId || !account) return;
-      closeDocument();
-      openDocument(fileId);
+      reopenDocument();
       emit();
     },
 

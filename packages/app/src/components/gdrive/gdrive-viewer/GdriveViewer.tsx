@@ -115,6 +115,13 @@ const DocumentView: React.FC<DocumentViewProps> = ({
           description="It may have been deleted, or this Google account can't open it."
         />
       );
+    case 'waiting-token':
+      return (
+        <GdriveNotice
+          title="Waiting for Google"
+          description="This file opens once your Google session is back."
+        />
+      );
     case 'failed':
       return (
         <GdriveNotice

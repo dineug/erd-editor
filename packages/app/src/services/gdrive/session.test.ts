@@ -801,6 +801,61 @@ describe('the open file', () => {
     expect(tab.snapshot().notice).toBeNull();
   });
 
+  it('opens a file the fallback had no token for once Google reconnects, with no second click', async () => {
+    vi.setSystemTime(new Date('2026-09-25T09:00:00Z'));
+    browser.relay.queue(htmlReply(200));
+    const tab = openTab(browser);
+    await start(tab);
+    tab.session.signIn();
+    tab.gis.respond({
+      access_token: browser.relay.issue(),
+      expires_in: 3600,
+      scope: 'https://www.googleapis.com/auth/drive.file openid email',
+    });
+    await settle(10);
+    await settle(3600 * 1000);
+    expect(tab.snapshot()).toMatchObject({
+      screen: 'workspace',
+      token: { status: 'fallback-expired' },
+    });
+
+    tab.session.openFile('file-1');
+    await settle(10);
+    expect(tab.snapshot().document?.phase).toBe('waiting-token');
+
+    tab.session.reconnect();
+    tab.gis.respond({
+      access_token: browser.relay.issue(),
+      expires_in: 3600,
+      scope: 'https://www.googleapis.com/auth/drive.file openid email',
+    });
+    await settle(10);
+
+    expect(tab.snapshot().document?.phase).toBe('ready');
+    expect(tableNames(tab.editor.store.value)).toEqual(['users']);
+  });
+
+  it('opens a file a 401 stopped mid-open once the same account signs back in', async () => {
+    const tab = openTab(browser);
+    await start(tab);
+    browser.relay.signedIn = false;
+    browser.drive.tokens.clear();
+
+    tab.session.openFile('file-1');
+    await settle(ADOPT_WAIT_MS + 10);
+    expect(tab.snapshot().screen).toBe('sign-in');
+    expect(tab.snapshot().document?.phase).toBe('waiting-token');
+
+    for (let n = 1; n <= 100; n++) browser.drive.tokens.add(`access-${n}`);
+    tab.session.signIn();
+    browser.relay.signedIn = true;
+    await finishPopup(browser, tab);
+    await settle(10);
+
+    expect(tab.snapshot().screen).toBe('workspace');
+    expect(tab.snapshot().document?.phase).toBe('ready');
+  });
+
   it('keeps edits to download once Drive takes edit access away', async () => {
     const tab = openTab(browser, { state: null, file: 'file-1' });
     await start(tab);

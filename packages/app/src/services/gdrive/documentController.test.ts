@@ -1374,6 +1374,25 @@ describe('edges of a tab’s life', () => {
     expect(tableNames(a.value())).toEqual(['users']);
   });
 
+  it('waits for a token rather than failing when a load finds none, and lets the lock go', async () => {
+    env.tokenStatus.current = 'fallback-expired';
+    const x = await open('x');
+    expect(x.snapshot()).toMatchObject({ phase: 'waiting-token', role: null });
+    env.tokenStatus.current = null;
+
+    env.drive.failNext(
+      'GET',
+      403,
+      'insufficientPermissions',
+      url => url.searchParams.get('alt') === 'media'
+    );
+    const y = await open('y');
+    expect(y.snapshot()).toMatchObject({ phase: 'waiting-token', role: null });
+
+    const a = await open('a');
+    expect(a.snapshot()).toMatchObject({ phase: 'ready', role: 'leader' });
+  });
+
   it('gives every tab that waited the document one of them took over', async () => {
     env.locks
       .request(fileLockName(SUB, 'file-1'), {}, () => new Promise(() => {}))
