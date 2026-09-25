@@ -23,6 +23,7 @@ import {
   createFakeRelay,
   createLockManager,
   htmlReply,
+  jsonReply,
   receiverChecked,
 } from '@/__test-utils__/gdrive';
 import { AUTH_CHANNEL } from '@/server/auth/contract';
@@ -1274,6 +1275,25 @@ describe('signing out', () => {
     await tab.session.signOut();
 
     expect(tab.snapshot().notice?.message).toBe(MESSAGES.signOutUnconfirmed);
+    expect(browser.relay.revoked).toEqual(['access-1']);
+  });
+
+  it('says other devices may stay signed in when nobody revoked the grant', async () => {
+    const tab = openTab(browser);
+    await start(tab);
+    browser.relay.queueLogout(jsonReply({ ok: true, revoked: false }));
+    browser.relay.revokeDown = true;
+
+    await tab.session.signOut();
+
+    expect(tab.snapshot().screen).toBe('sign-in');
+    expect(tab.snapshot().notice).toMatchObject({
+      message: MESSAGES.signOutNotRevoked,
+      tone: 'warning',
+    });
+    expect(MESSAGES.signOutNotRevoked).toContain(
+      'myaccount.google.com/permissions'
+    );
   });
 
   it('asks before a sign-out whose save fails, and signs out anyway', async () => {

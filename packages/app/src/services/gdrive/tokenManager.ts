@@ -9,6 +9,7 @@ import {
   recordLogoutPending,
   recordServerUnavailable,
   RELAY_TIMEOUT_MS,
+  type RelayLogoutResult,
   type RelayToken,
   type RelayTokenResult,
   requestRelayLogout,
@@ -75,6 +76,12 @@ export type RelayMode = 'server' | 'fallback';
 export type GoogleAccount = { sub: string; email: string };
 
 export type SignInResult = OAuthPopupOutcome['kind'];
+
+/**
+ * A sign-out, always done here: confirmed once the relay cleared its cookie,
+ * revoked once the grant ended, which signs the account's other devices out.
+ */
+export type SignOutResult = RelayLogoutResult;
 
 export type TokenSnapshot = {
   status: TokenStatus;
@@ -258,14 +265,14 @@ export async function fetchUserInfo(
 
 /**
  * Revokes the grant behind an access token at Google, the refresh token
- * included. A form POST, so no preflight; its answer changes nothing.
+ * included: true once Google says so. A form POST, so no preflight.
  */
 export async function revokeAtGoogle(
   send: FetchLike,
   accessToken: string
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await withTimeout(RELAY_TIMEOUT_MS, signal =>
+    const response = await withTimeout(RELAY_TIMEOUT_MS, signal =>
       send(GOOGLE_REVOKE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -273,9 +280,32 @@ export async function revokeAtGoogle(
         signal,
       })
     );
+    return response.ok;
   } catch {
     // The logout left pending still clears the cookie before its next use.
+    return false;
   }
+}
+
+/** The token client's own revoke: true once GIS reports it went through. */
+function revokeWithGis(
+  oauth2: GisOAuth2,
+  accessToken: string
+): Promise<boolean> {
+  return withTimeout(
+    RELAY_TIMEOUT_MS,
+    signal =>
+      new Promise<boolean>(resolve => {
+        signal.addEventListener('abort', () => resolve(false));
+        try {
+          oauth2.revoke(accessToken, response =>
+            resolve(response?.successful === true)
+          );
+        } catch {
+          resolve(false);
+        }
+      })
+  );
 }
 
 /** What a Reconnect Google through the relay reports when it ends without a token. */
@@ -338,7 +368,10 @@ export function createTokenManager(deps: TokenManagerDeps) {
   /** Counts the sign-ins this tab finished, so a renewal asked for before one is dropped. */
   let signInEpoch = 0;
   /** Relay logouts run one after another, so the last one sent sets the pending flag last. */
-  let loggingOut: Promise<boolean> = Promise.resolve(true);
+  let loggingOut: Promise<RelayLogoutResult> = Promise.resolve({
+    confirmed: true,
+    revoked: true,
+  });
   /** The latest sign-out of any tab, so a token issued before it is not adopted. */
   let signedOutAt = -Infinity;
   let renewTimer: ReturnType<typeof setTimeout> | undefined;
@@ -578,7 +611,7 @@ export function createTokenManager(deps: TokenManagerDeps) {
    */
   async function relayToken(): Promise<RelayTokenResult> {
     if (isLogoutPending(storage)) {
-      if (!(await requestRelayLogout({ fetch: send }))) {
+      if (!(await requestRelayLogout({ fetch: send })).confirmed) {
         return isOnline() ? { kind: 'unavailable' } : { kind: 'offline' };
       }
       recordLogoutPending(storage, false);
@@ -860,12 +893,12 @@ export function createTokenManager(deps: TokenManagerDeps) {
     return track(popup.result.then(finishPopup));
   }
 
-  /** Whether the relay cleared its cookie; unconfirmed, the next token request logs out first. */
-  function logOutAtRelay(): Promise<boolean> {
+  /** The relay's logout; unconfirmed, the next token request logs out first. */
+  function logOutAtRelay(): Promise<RelayLogoutResult> {
     loggingOut = loggingOut.then(async () => {
-      const confirmed = await requestRelayLogout({ fetch: send });
-      recordLogoutPending(storage, !confirmed);
-      return confirmed;
+      const result = await requestRelayLogout({ fetch: send });
+      recordLogoutPending(storage, !result.confirmed);
+      return result;
     });
     return loggingOut;
   }
@@ -980,31 +1013,29 @@ export function createTokenManager(deps: TokenManagerDeps) {
     },
 
     /**
-     * Signs every tab out and revokes the grant; true once the relay confirmed
-     * it cleared its cookie. Otherwise a live token is revoked at Google, and
-     * the logout goes ahead of the next token request, in any tab or visit.
+     * Signs every tab out and revokes the grant. A token client's token is
+     * revoked through GIS; a live token the relay did not revoke, at Google.
+     * Unconfirmed, the logout goes ahead of the next token request.
      */
-    async signOut(): Promise<boolean> {
+    async signOut(): Promise<SignOutResult> {
       const previous = session;
       // A sign-in still open must not bring the account back afterwards.
       endSignIns();
       markSignedOut(now());
       clearSession('signed-out', snapshot.mode, true);
       post({ type: 'signed-out', at: signedOutAt, fromSignOut: true });
-      let revoked = false;
-      if (previous?.mode === 'fallback' && oauth2) {
-        try {
-          oauth2.revoke(previous.accessToken);
-          revoked = true;
-        } catch {
-          // The relay's logout below still revokes the grant.
-        }
+      const gisRevoke =
+        previous?.mode === 'fallback' && oauth2
+          ? revokeWithGis(oauth2, previous.accessToken)
+          : null;
+      const relay = await logOutAtRelay();
+      let revoked = relay.revoked;
+      if (gisRevoke) {
+        revoked = (await gisRevoke) || revoked;
+      } else if (!revoked && previous && now() < previous.expiresAt) {
+        revoked = await revokeAtGoogle(send, previous.accessToken);
       }
-      const confirmed = await logOutAtRelay();
-      if (!confirmed && !revoked && previous && now() < previous.expiresAt) {
-        await revokeAtGoogle(send, previous.accessToken);
-      }
-      return confirmed;
+      return { confirmed: relay.confirmed, revoked };
     },
 
     dispose() {

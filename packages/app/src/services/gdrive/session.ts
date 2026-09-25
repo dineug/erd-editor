@@ -153,6 +153,8 @@ export const MESSAGES = {
   checkFailed: "Couldn't reach Google Drive. Try again.",
   signOutUnconfirmed:
     "Signed out here. erd-editor's server didn't confirm it, so this browser finishes signing out the next time it connects",
+  signOutNotRevoked:
+    "Signed out here, but Google didn't confirm it removed erd-editor's access, so your other devices may stay signed in until you remove it at myaccount.google.com/permissions",
 };
 
 const SIGNED_IN: ReadonlySet<TokenStatus> = new Set<TokenStatus>([
@@ -629,8 +631,9 @@ export function createGdriveSession(deps: SessionDeps) {
   async function finishSignOut() {
     leaveAccount();
     emit();
-    const confirmed = await tokens.signOut();
-    if (!confirmed) showNotice(MESSAGES.signOutUnconfirmed, 'warning');
+    const { confirmed, revoked } = await tokens.signOut();
+    if (!revoked) showNotice(MESSAGES.signOutNotRevoked, 'warning');
+    else if (!confirmed) showNotice(MESSAGES.signOutUnconfirmed, 'warning');
     emit();
   }
 

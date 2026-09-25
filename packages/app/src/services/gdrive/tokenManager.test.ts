@@ -1594,6 +1594,47 @@ describe('createTokenManager', () => {
       });
     });
 
+    it.each([
+      ['refuses', true, false],
+      ['goes through', false, true],
+    ])(
+      'reports whether a token client revoke that %s ended the grant, the relay never having revoked',
+      async (_label, fails, revoked) => {
+        const tab = openTab(browser);
+        await fallenBack(tab);
+        await signInWithGis(tab);
+        browser.relay.queueLogout(htmlReply(403));
+        if (fails) {
+          tab.gis.oauth2.revoke = (_token, done) =>
+            done?.({ successful: false, error: 'invalid_token' });
+        }
+
+        await expect(tab.manager.signOut()).resolves.toEqual({
+          confirmed: false,
+          revoked,
+        });
+
+        // The token client's revoke stands for Google's; no second one goes out.
+        expect(browser.relay.revoked).toEqual([]);
+      }
+    );
+
+    it('gives up on a token client revoke that never answers', async () => {
+      const tab = openTab(browser);
+      await fallenBack(tab);
+      await signInWithGis(tab);
+      tab.gis.oauth2.revoke = () => {};
+      browser.relay.queueLogout(htmlReply(403));
+
+      const result = tab.manager.signOut();
+      await vi.advanceTimersByTimeAsync(RELAY_TIMEOUT_MS);
+
+      await expect(result).resolves.toEqual({
+        confirmed: false,
+        revoked: false,
+      });
+    });
+
     it('still logs out at the relay when revoking throws', async () => {
       const tab = openTab(browser);
       await fallenBack(tab);
@@ -1616,7 +1657,10 @@ describe('createTokenManager', () => {
       expect(tab.manager.getSnapshot().status).toBe('fallback-expired');
       browser.relay.queueLogout(htmlReply(403));
 
-      await expect(tab.manager.signOut()).resolves.toBe(false);
+      await expect(tab.manager.signOut()).resolves.toEqual({
+        confirmed: false,
+        revoked: false,
+      });
 
       expect(browser.storage.items.has(LOGOUT_PENDING_KEY)).toBe(true);
       expect(browser.relay.signedIn).toBe(true);
@@ -1776,7 +1820,10 @@ describe('createTokenManager', () => {
       const second = openTab(browser);
       await start(second);
 
-      await expect(first.manager.signOut()).resolves.toBe(true);
+      await expect(first.manager.signOut()).resolves.toEqual({
+        confirmed: true,
+        revoked: true,
+      });
       await flush();
 
       expect(first.manager.getSnapshot().bySignOut).toBe(true);
@@ -1796,7 +1843,10 @@ describe('createTokenManager', () => {
       await start(first);
       browser.relay.queueLogout('network-error');
 
-      await expect(first.manager.signOut()).resolves.toBe(false);
+      await expect(first.manager.signOut()).resolves.toEqual({
+        confirmed: false,
+        revoked: true,
+      });
 
       expect(browser.relay.revoked).toEqual(['access-1']);
       expect(browser.storage.items.has(LOGOUT_PENDING_KEY)).toBe(true);
@@ -1811,6 +1861,41 @@ describe('createTokenManager', () => {
         account: null,
       });
       expect(browser.storage.items.has(LOGOUT_PENDING_KEY)).toBe(false);
+    });
+
+    it('revokes a live token at Google itself when the relay cleared its cookie without revoking', async () => {
+      const tab = openTab(browser);
+      await start(tab);
+      browser.relay.queueLogout(jsonReply({ ok: true, revoked: false }));
+
+      await expect(tab.manager.signOut()).resolves.toEqual({
+        confirmed: true,
+        revoked: true,
+      });
+
+      expect(browser.relay.revoked).toEqual(['access-1']);
+      expect(browser.storage.items.has(LOGOUT_PENDING_KEY)).toBe(false);
+    });
+
+    it('signs out here when neither the relay nor Google revoked the grant, and says so', async () => {
+      const tab = openTab(browser);
+      await start(tab);
+      browser.relay.queueLogout(jsonReply({ ok: true, revoked: false }));
+      browser.relay.revokeDown = true;
+
+      await expect(tab.manager.signOut()).resolves.toEqual({
+        confirmed: true,
+        revoked: false,
+      });
+
+      expect(tab.manager.getSnapshot()).toMatchObject({
+        status: 'signed-out',
+        account: null,
+        bySignOut: true,
+      });
+      await expect(tab.manager.getAccessToken()).rejects.toBeInstanceOf(
+        TokenUnavailableError
+      );
     });
 
     it('ignores a token another tab sent before it heard of the sign-out', async () => {
@@ -2100,18 +2185,21 @@ describe('revokeAtGoogle', () => {
   it('POSTs the token as a form, calling fetch without a receiver', async () => {
     const relay = createFakeRelay();
 
-    await revokeAtGoogle(relay.fetch, 'access-9');
+    await expect(revokeAtGoogle(relay.fetch, 'access-9')).resolves.toBe(true);
 
     expect(relay.revoked).toEqual(['access-9']);
     expect(relay.count(GOOGLE_REVOKE_URL)).toBe(1);
   });
 
-  it('settles quietly on a network error', async () => {
+  it.each([
+    ['a network error', () => Promise.reject(new TypeError('failed'))],
+    [
+      'a refusal',
+      () => Promise.resolve(jsonReply({ error: 'invalid_token' }, 400)),
+    ],
+  ])('settles quietly on %s, as not revoked', async (_label, reply) => {
     await expect(
-      revokeAtGoogle(
-        receiverChecked(() => Promise.reject(new TypeError('failed'))),
-        'access-9'
-      )
-    ).resolves.toBeUndefined();
+      revokeAtGoogle(receiverChecked(reply), 'access-9')
+    ).resolves.toBe(false);
   });
 });

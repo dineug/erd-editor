@@ -137,20 +137,26 @@ export async function requestRelayToken({
 }
 
 /**
- * Whether the relay cleared the cookie; a failure, ten seconds of silence
- * included, is not an error to the caller.
+ * What the relay's logout did: confirmed once it cleared the cookie, revoked
+ * once Google ended the grant, which a missing cookie or Google's failure leaves
+ * false.
  */
+export type RelayLogoutResult = { confirmed: boolean; revoked: boolean };
+
+/** The relay's logout; a failure, ten seconds of silence included, is not an error to the caller. */
 export async function requestRelayLogout({
   fetch: send,
   timeoutMs = RELAY_TIMEOUT_MS,
-}: Pick<RelayDeps, 'fetch' | 'timeoutMs'>): Promise<boolean> {
+}: Pick<RelayDeps, 'fetch' | 'timeoutMs'>): Promise<RelayLogoutResult> {
   try {
     return await withTimeout(timeoutMs, async signal => {
       const response = await send(RELAY_LOGOUT_PATH, relayPost(signal));
-      return response.ok && (await readJson(response))?.ok === true;
+      const body = response.ok ? await readJson(response) : null;
+      const confirmed = body?.ok === true;
+      return { confirmed, revoked: confirmed && body?.revoked === true };
     });
   } catch {
-    return false;
+    return { confirmed: false, revoked: false };
   }
 }
 

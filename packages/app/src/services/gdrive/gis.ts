@@ -29,9 +29,19 @@ export type GisTokenClient = {
   requestAccessToken(overrides?: GisTokenRequest): void;
 };
 
+/** What revoke's callback gets; successful is false when Google refused or could not be reached. */
+export type GisRevocationResponse = {
+  successful: boolean;
+  error?: string;
+  error_description?: string;
+};
+
 export type GisOAuth2 = {
   initTokenClient(config: GisTokenClientConfig): GisTokenClient;
-  revoke(accessToken: string, done?: () => void): void;
+  revoke(
+    accessToken: string,
+    done?: (response: GisRevocationResponse) => void
+  ): void;
 };
 
 export const GIS_SCRIPT_URL = 'https://accounts.google.com/gsi/client';

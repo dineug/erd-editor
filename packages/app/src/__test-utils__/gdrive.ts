@@ -289,6 +289,8 @@ export function createFakeRelay() {
     account: { sub: '1001', email: 'person@example.com' },
     /** Userinfo fails while set, as on a network error. */
     userInfoDown: false,
+    /** Google's revoke fails while set, as on a network error. */
+    revokeDown: false,
 
     /** Answers the next token calls, in order, before the default behaviour. */
     queue(...next: RelayReply[]) {
@@ -361,6 +363,7 @@ export function createFakeRelay() {
         );
       }
       if (url === GOOGLE_REVOKE_URL) {
+        if (relay.revokeDown) throw new TypeError('fetch failed');
         const token = new URLSearchParams(String(init?.body ?? '')).get(
           'token'
         );
@@ -423,7 +426,7 @@ export function createFakeGis() {
     },
     revoke(token, done) {
       revoked.push(token);
-      done?.();
+      done?.({ successful: true });
     },
   };
 

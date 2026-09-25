@@ -184,7 +184,10 @@ describe('requestRelayLogout', () => {
       return jsonReply({ ok: true, revoked: true });
     });
 
-    await expect(requestRelayLogout({ fetch })).resolves.toBe(true);
+    await expect(requestRelayLogout({ fetch })).resolves.toEqual({
+      confirmed: true,
+      revoked: true,
+    });
     expect(calls[0].input).toBe(RELAY_LOGOUT_PATH);
     expect(calls[0].init).toMatchObject({
       method: 'POST',
@@ -193,16 +196,34 @@ describe('requestRelayLogout', () => {
   });
 
   it.each([
+    ['revoked: false', { ok: true, revoked: false }],
+    ['no revoked', { ok: true }],
+  ])(
+    'reads a cleared cookie whose answer says %s as not revoked',
+    async (_label, body) => {
+      await expect(
+        requestRelayLogout({
+          fetch: receiverChecked(() => Promise.resolve(jsonReply(body))),
+        })
+      ).resolves.toEqual({ confirmed: true, revoked: false });
+    }
+  );
+
+  it.each([
     ['an HTML answer', () => Promise.resolve(htmlReply(200))],
     [
       'a refusal',
       () => Promise.resolve(jsonReply({ error: 'forbidden' }, 403)),
     ],
     ['a network error', () => Promise.reject(new TypeError('failed'))],
+    [
+      'a revoke without ok',
+      () => Promise.resolve(jsonReply({ revoked: true })),
+    ],
   ])('reads %s as not logged out, without throwing', async (_label, reply) => {
     await expect(
       requestRelayLogout({ fetch: receiverChecked(reply) })
-    ).resolves.toBe(false);
+    ).resolves.toEqual({ confirmed: false, revoked: false });
   });
 
   it('gives up after the timeout, so a sign-out never hangs', async () => {
@@ -212,7 +233,10 @@ describe('requestRelayLogout', () => {
     const result = requestRelayLogout({ fetch: stalledFetch(signals) });
     await vi.advanceTimersByTimeAsync(RELAY_TIMEOUT_MS);
 
-    await expect(result).resolves.toBe(false);
+    await expect(result).resolves.toEqual({
+      confirmed: false,
+      revoked: false,
+    });
     expect(signals.map(signal => signal.aborted)).toEqual([true]);
   });
 });

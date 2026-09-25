@@ -169,7 +169,10 @@ const GIS_SCRIPT = `(() => {
         },
         revoke(token, done) {
           fetch(base + '/revoke?token=' + encodeURIComponent(token), { method: 'POST' })
-            .finally(() => done && done());
+            .then(
+              response => done && done({ successful: response.ok }),
+              () => done && done({ successful: false, error: 'network' })
+            );
         },
       },
     },
