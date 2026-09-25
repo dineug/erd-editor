@@ -17,8 +17,7 @@ import {
   jsonReply,
   receiverChecked,
 } from '@/__test-utils__/gdrive';
-import { AUTH_CHANNEL } from '@/server/auth/callbackPage';
-import { GOOGLE_REVOKE_URL } from '@/server/auth/google';
+import { AUTH_CHANNEL, GOOGLE_REVOKE_URL } from '@/server/auth/contract';
 import {
   LOGOUT_PENDING_KEY,
   RELAY_LOGOUT_PATH,

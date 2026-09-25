@@ -1,6 +1,7 @@
 import { type AuthEnv, parseAuthEnv } from './config';
+import { GOOGLE_REVOKE_URL } from './contract';
 import { importCookieKey } from './cookieCrypto';
-import { GOOGLE_REVOKE_URL, GOOGLE_TOKEN_URL } from './google';
+import { GOOGLE_TOKEN_URL } from './google';
 import {
   type AuthHandler,
   handleCallback,

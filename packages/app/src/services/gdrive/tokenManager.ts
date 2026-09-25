@@ -2,7 +2,7 @@ import {
   GOOGLE_REVOKE_URL,
   hasDriveFileScope,
   SCOPES,
-} from '@/server/auth/google';
+} from '@/server/auth/contract';
 import {
   isLogoutPending,
   recordLogoutPending,

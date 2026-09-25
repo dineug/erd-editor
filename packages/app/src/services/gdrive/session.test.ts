@@ -25,7 +25,7 @@ import {
   htmlReply,
   receiverChecked,
 } from '@/__test-utils__/gdrive';
-import { AUTH_CHANNEL } from '@/server/auth/callbackPage';
+import { AUTH_CHANNEL } from '@/server/auth/contract';
 import { RELAY_LOGOUT_PATH } from '@/services/gdrive/authMode';
 import {
   createDriveClient,

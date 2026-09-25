@@ -1,5 +1,5 @@
 import { randomBase64Url } from '@/server/auth/base64url';
-import { AUTH_CHANNEL, CALLBACK_MARKER } from '@/server/auth/callbackPage';
+import { AUTH_CHANNEL, CALLBACK_MARKER } from '@/server/auth/contract';
 import {
   RELAY_START_PATH,
   type RelayToken,

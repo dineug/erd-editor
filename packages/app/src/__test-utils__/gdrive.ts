@@ -1,8 +1,7 @@
 import { vi } from 'vite-plus/test';
 
 import { GRANTED_SCOPE } from '@/__test-utils__/googleOAuth';
-import { CALLBACK_MARKER } from '@/server/auth/callbackPage';
-import { GOOGLE_REVOKE_URL } from '@/server/auth/google';
+import { CALLBACK_MARKER, GOOGLE_REVOKE_URL } from '@/server/auth/contract';
 import {
   RELAY_LOGOUT_PATH,
   RELAY_TOKEN_PATH,

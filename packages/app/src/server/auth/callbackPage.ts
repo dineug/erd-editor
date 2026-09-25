@@ -1,3 +1,4 @@
+import { CALLBACK_MARKER } from './contract';
 import { escapeHtml } from './http';
 
 /** Every failure the page can report. Nothing from the request is shown or echoed. */
@@ -14,9 +15,6 @@ export type CallbackResult = {
   error: CallbackError | null;
   attempt: string | null;
 };
-
-export const CALLBACK_MARKER = 'erd-editor-auth-callback';
-export const AUTH_CHANNEL = '@dineug/erd-editor-app/gdrive-auth';
 
 /**
  * Constant text with no interpolation: the result reaches it through the

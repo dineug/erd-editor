@@ -1,7 +1,7 @@
 // @vitest-environment node
 /// <reference types="node" />
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 
 import { describe, expect, it } from 'vite-plus/test';
@@ -27,6 +27,11 @@ const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"]+)['"]/g;
 const NODE_GLOBAL =
   /\b(?:Buffer|process|require|__dirname|__filename|global)\b/g;
 
+// The only server modules client code may import: they import nothing and only
+// declare, so no server code or side effect rides into the /gdrive chunk.
+const CLIENT_SHARED = ['@/server/auth/contract', '@/server/auth/base64url'];
+const TOP_LEVEL_DECLARATION = /^(?:export\s+)?(?:const|function|type)\s/;
+
 /** Source without comments, which may well say process or require in prose. */
 function code(source: string): string {
   return source
@@ -42,6 +47,29 @@ function specifiers(source: string): string[] {
 
 function nodeGlobals(source: string): string[] {
   return [...code(source).matchAll(NODE_GLOBAL)].map(match => match[0]);
+}
+
+/** Top-level lines of code that neither declare nor close a declaration. */
+function topLevelStatements(source: string): string[] {
+  return code(source)
+    .split('\n')
+    .filter(line => /^\S/.test(line))
+    .filter(line => !TOP_LEVEL_DECLARATION.test(line) && !/^[\]})]/.test(line));
+}
+
+/** Every source under src outside src/server, tests and their helpers left out. */
+function clientSources(dir = join(PACKAGE_ROOT, 'src')): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return ['server', '__test-utils__'].includes(entry.name)
+        ? []
+        : clientSources(path);
+    }
+    return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)
+      ? [path]
+      : [];
+  });
 }
 
 function resolveImport(from: string, specifier: string): string {
@@ -115,6 +143,39 @@ describe('the Pages Functions graph', () => {
         "import { a } from './a';\nimport 'effect';\nconst b = await import('node:crypto');"
       )
     ).toEqual(['./a', 'effect', 'node:crypto']);
+  });
+});
+
+describe('what the client takes from src/server', () => {
+  const shared = clientSources().flatMap(file =>
+    specifiers(readFileSync(file, 'utf8'))
+      .filter(specifier => specifier.startsWith('@/server/'))
+      .map(specifier => [relative(PACKAGE_ROOT, file), specifier])
+  );
+
+  it('imports only the shared modules', () => {
+    expect(shared.length).toBeGreaterThan(0);
+    for (const [file, specifier] of shared) {
+      expect(CLIENT_SHARED, file).toContain(specifier);
+    }
+  });
+
+  it.each(CLIENT_SHARED)('%s imports nothing and only declares', name => {
+    const source = readFileSync(
+      join(PACKAGE_ROOT, 'src', `${name.slice('@/'.length)}.ts`),
+      'utf8'
+    );
+
+    expect(specifiers(source)).toEqual([]);
+    expect(topLevelStatements(source)).toEqual([]);
+  });
+
+  it('would catch a statement with a side effect', () => {
+    expect(
+      topLevelStatements(
+        'export const A = [\n  1,\n];\nfunction b() {\n  return A;\n}\nglobalThis.x = b();\n'
+      )
+    ).toEqual(['globalThis.x = b();']);
   });
 });
 

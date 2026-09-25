@@ -5,6 +5,7 @@ import {
   renderCallbackPage,
   toCallbackError,
 } from './callbackPage';
+import { hasDriveFileScope, SCOPES } from './contract';
 import {
   clearRefreshCookie,
   clearStateCookie,
@@ -20,10 +21,8 @@ import { type CookieKey } from './cookieCrypto';
 import {
   exchangeCode,
   GOOGLE_AUTHORIZE_URL,
-  hasDriveFileScope,
   refreshAccessToken,
   revokeToken,
-  SCOPES,
 } from './google';
 import { html, json, redirect } from './http';
 import {

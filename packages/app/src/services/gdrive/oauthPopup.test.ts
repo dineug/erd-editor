@@ -8,7 +8,7 @@ import {
 } from 'vite-plus/test';
 
 import { createChannelHub, createFakePopup } from '@/__test-utils__/gdrive';
-import { AUTH_CHANNEL } from '@/server/auth/callbackPage';
+import { AUTH_CHANNEL } from '@/server/auth/contract';
 import type { RelayTokenResult } from '@/services/gdrive/authMode';
 import {
   CALLBACK_GRACE_MS,

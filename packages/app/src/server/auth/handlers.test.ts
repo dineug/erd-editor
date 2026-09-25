@@ -19,13 +19,12 @@ import {
 } from '@/__test-utils__/googleOAuth';
 import { type AuthEnv, type AuthEvent, handleAuthRequest } from '@/server/auth';
 import {
-  AUTH_CHANNEL,
-  CALLBACK_MARKER,
   type CallbackError,
   renderCallbackPage,
   toCallbackError,
 } from '@/server/auth/callbackPage';
 import { parseCookieKey } from '@/server/auth/config';
+import { AUTH_CHANNEL, CALLBACK_MARKER } from '@/server/auth/contract';
 import {
   REFRESH_COOKIE,
   REFRESH_COOKIE_AAD,

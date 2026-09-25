@@ -3,15 +3,6 @@ import type { ResolvedAuthDeps } from './types';
 export const GOOGLE_AUTHORIZE_URL =
   'https://accounts.google.com/o/oauth2/v2/auth';
 export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-export const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
-
-export const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-export const SCOPES = [
-  DRIVE_FILE_SCOPE,
-  'https://www.googleapis.com/auth/drive.install',
-  'openid',
-  'email',
-];
 
 export type TokenGrant = {
   accessToken: string;
@@ -140,8 +131,4 @@ export async function revokeToken(
   if (!response) return false;
   if (response.ok) return true;
   return (await readJson(response))?.error === 'invalid_token';
-}
-
-export function hasDriveFileScope(scope: string): boolean {
-  return scope.split(' ').includes(DRIVE_FILE_SCOPE);
 }
