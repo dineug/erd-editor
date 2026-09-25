@@ -279,8 +279,9 @@ test.describe('the sidebar', () => {
     expect(onlyAppFolder().id).toBe(folder.id);
     expect(google.files.get('created-2')?.parents).toEqual([folder.id]);
 
-    // A new page knows no folder: it finds the one it made by its marker alone.
-    folder.name = 'Diagrams';
+    // A new page knows no folder: it finds the one it made by its marker alone,
+    // and leaves it out of the list for being a folder, whatever its name.
+    folder.name = 'Diagrams.erd.json';
     folder.parents = ['projects'];
     await app.page.reload();
     await app.waitForEditor();

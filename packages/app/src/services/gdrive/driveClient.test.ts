@@ -22,7 +22,8 @@ const FILE_FIELDS =
 const APP_FOLDER_QUERY =
   "mimeType='application/vnd.google-apps.folder' and appProperties has { key='erdEditorFolder' and value='1' } and trashed=false";
 const MARKER = { erdEditorFolder: '1' };
-const FOLDER_FIELDS = 'id,createdTime,trashed,capabilities(canAddChildren)';
+const FOLDER_FIELDS =
+  'id,createdTime,trashed,driveId,capabilities(canAddChildren)';
 
 function setup(drive: FakeDrive = createFakeDrive()) {
   const tokens = { current: 'drive-token-1', renewed: 'drive-token-2' };
@@ -390,7 +391,7 @@ describe('createDriveClient', () => {
 
     const folders = await client.findAppFolders();
 
-    const open = { trashed: false, canAddChildren: true };
+    const open = { trashed: false, driveId: null, canAddChildren: true };
     expect(folders).toEqual(
       expect.arrayContaining([
         { id: renamed.id, createdTime: '2026-09-01T00:00:00.000Z', ...open },
@@ -444,6 +445,7 @@ describe('createDriveClient', () => {
       id: stored.id,
       createdTime: stored.createdTime,
       trashed: false,
+      driveId: null,
       canAddChildren: true,
     });
     expect(stored).toMatchObject({
@@ -455,7 +457,7 @@ describe('createDriveClient', () => {
     await expect(client.findAppFolders()).resolves.toEqual([folder]);
   });
 
-  it('reads the folder again, whether it is in the trash and takes new files', async () => {
+  it('reads the folder again, whether it is in the trash, in a shared drive and takes new files', async () => {
     const { drive, client } = setup();
     const folder = drive.add({
       name: 'Diagrams',
@@ -468,12 +470,26 @@ describe('createDriveClient', () => {
       id: folder.id,
       createdTime: '2026-09-01T00:00:00.000Z',
       trashed: false,
+      driveId: null,
       canAddChildren: true,
     });
     const [call] = drive.calls;
     expect(call.url.pathname).toBe(`/drive/v3/files/${folder.id}`);
     expect(call.url.searchParams.get('fields')).toBe(FOLDER_FIELDS);
     expect(call.url.searchParams.get('supportsAllDrives')).toBe('true');
+
+    const parent = drive.add({ name: 'Projects', mimeType: FOLDER_MIME });
+    folder.parents = [parent.id];
+    parent.trashed = true;
+    await expect(client.getFolder(folder.id)).resolves.toMatchObject({
+      trashed: true,
+    });
+    parent.trashed = false;
+    parent.driveId = 'team-drive';
+    await expect(client.getFolder(folder.id)).resolves.toMatchObject({
+      trashed: false,
+      driveId: 'team-drive',
+    });
 
     folder.trashed = true;
     folder.canEdit = false;
@@ -942,6 +958,75 @@ describe('the fake Drive', () => {
         kind: 'forbidden',
       });
     }
-    await expect(create(trashed.id)).resolves.toMatchObject({ trashed: true });
+    const created = await create(trashed.id);
+    expect(created.trashed).toBe(true);
+    trashed.trashed = false;
+    await expect(client.getFile(created.id)).resolves.toMatchObject({
+      trashed: false,
+    });
+  });
+
+  it('puts a file in the trash and the shared drive of the folders above it', async () => {
+    const { drive, client } = setup();
+    const send = drive.fetch;
+    const top = drive.add({ name: 'Top', mimeType: FOLDER_MIME });
+    const inner = drive.add({
+      name: 'Inner',
+      mimeType: FOLDER_MIME,
+      parents: [top.id],
+    });
+    const file = drive.add({ name: 'a.erd', parents: [inner.id] });
+    // A loop of parents, which Drive never has, ends the walk all the same.
+    top.parents = [inner.id];
+    const listed = async () =>
+      (await client.listFiles()).map(entry => entry.name);
+    const get = (path: string, init: RequestInit = {}) =>
+      send(`https://www.googleapis.com${path}`, {
+        ...init,
+        headers: { Authorization: 'Bearer drive-token-1', ...init.headers },
+      });
+
+    top.trashed = true;
+    await expect(client.getFile(file.id)).resolves.toMatchObject({
+      trashed: true,
+    });
+    await expect(listed()).resolves.toEqual([]);
+    top.trashed = false;
+    await expect(listed()).resolves.toEqual(['a.erd']);
+
+    // Out of a list unless it asks for every drive, and out of reach unless it supports them.
+    top.driveId = 'team-drive';
+    await expect(listed()).resolves.toEqual([]);
+    const everywhere = await get(
+      '/drive/v3/files?includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id,driveId)'
+    );
+    await expect(everywhere.json()).resolves.toEqual({
+      files: expect.arrayContaining([{ id: file.id, driveId: 'team-drive' }]),
+    });
+    expect((await get(`/drive/v3/files/${file.id}?fields=id`)).status).toBe(
+      404
+    );
+    await expect(client.getFile(file.id)).resolves.toMatchObject({
+      name: 'a.erd',
+    });
+    const upload = await get('/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'multipart/related; boundary=b' },
+      body: [
+        '--b',
+        'Content-Type: application/json',
+        '',
+        JSON.stringify({ name: 'b.erd.json', parents: [inner.id] }),
+        '--b',
+        'Content-Type: application/json',
+        '',
+        '{}',
+        '--b--',
+      ].join('\r\n'),
+    });
+    expect(upload.status).toBe(404);
+    await expect(
+      client.createFile({ name: 'c.erd.json', parentId: inner.id, content: '' })
+    ).resolves.toMatchObject({ parents: [inner.id] });
   });
 });

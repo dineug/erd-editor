@@ -231,6 +231,8 @@ export function createGdriveSession(deps: SessionDeps) {
     drive,
     locks,
     isCurrent: sub => account?.sub === sub,
+    // Called right after isCurrent held, so the open channel is the account's.
+    share: (_sub, folderId) => announce({ type: 'folder', folderId }),
   });
   const listeners = new Set<() => void>();
   let location: SessionLocation = { state: null, file: null };
@@ -351,6 +353,11 @@ export function createGdriveSession(deps: SessionDeps) {
   }
 
   function onFilesMessage(message: FilesMessage) {
+    if (message.type === 'folder') {
+      // The channel is the signed-in account's, closed when it leaves.
+      appFolder.learn(account!.sub, message.folderId);
+      return;
+    }
     if (message.type === 'created') {
       if (!files.some(file => file.id === message.file.id)) {
         upsertFile(message.file);

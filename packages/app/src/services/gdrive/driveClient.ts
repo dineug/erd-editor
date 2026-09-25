@@ -21,7 +21,7 @@ export const SAVE_FIELDS = 'id,modifiedTime';
 export const RENAME_FIELDS = 'id,name,modifiedTime';
 export const NAME_FIELDS = 'name';
 export const FOLDER_FIELDS =
-  'id,createdTime,trashed,capabilities(canAddChildren)';
+  'id,createdTime,trashed,driveId,capabilities(canAddChildren)';
 export const FOLDER_LIST_FIELDS = `nextPageToken,files(${FOLDER_FIELDS})`;
 
 export const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
@@ -65,6 +65,8 @@ export type DriveFolder = {
   createdTime: string;
   /** Itself or through a parent, as Drive reports it. */
   trashed: boolean;
+  /** The shared drive it was moved to, which no list of the app's shows; null in My Drive. */
+  driveId: string | null;
   canAddChildren: boolean;
 };
 
@@ -182,6 +184,7 @@ function parseDriveFolder(value: unknown): DriveFolder {
     id: readString(raw, 'id'),
     createdTime: readString(raw, 'createdTime'),
     trashed: raw.trashed === true,
+    driveId: typeof raw.driveId === 'string' ? raw.driveId : null,
     canAddChildren: asRecord(raw.capabilities)?.canAddChildren === true,
   };
 }

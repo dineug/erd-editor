@@ -599,6 +599,39 @@ describe("Drive's state", () => {
     });
   });
 
+  it('offers the ERD Editor folder when Drive refuses a create in a folder the account can only view', async () => {
+    browser.drive.add({
+      id: 'viewed',
+      name: 'Team designs',
+      mimeType: FOLDER_MIME,
+      canEdit: false,
+    });
+    const tab = openTab(browser, {
+      state: JSON.stringify({ action: 'create', folderId: 'viewed' }),
+      file: null,
+    });
+    await start(tab);
+    expect(tab.snapshot().create?.folderName).toBe('Team designs');
+
+    await tab.session.confirmCreate('orders');
+    expect(tab.snapshot().create?.status).toBe('folder-refused');
+    expect(uploads(browser)).toHaveLength(1);
+    expect(appFolders(browser)).toEqual([]);
+
+    await tab.session.confirmCreate('orders', true);
+    await settle(10);
+
+    const [folder] = appFolders(browser);
+    expect(browser.drive.files.get('created-1')).toMatchObject({
+      name: 'orders.erd.json',
+      parents: [folder.id],
+    });
+    expect(tab.navigations.at(-1)).toEqual({
+      fileId: 'created-1',
+      replace: true,
+    });
+  });
+
   it('creates in the ERD Editor folder for a state without a folder, and reports a failure', async () => {
     const tab = openTab(browser, {
       state: JSON.stringify({ action: 'create' }),
@@ -1324,6 +1357,8 @@ describe('the list', () => {
     await tab.session.newFile('invoices');
     expect(appFolders(browser)).toHaveLength(1);
     expect(browser.drive.files.get('created-2')?.parents).toEqual([folder.id]);
+    // A name the list would show, were it not a folder.
+    browser.drive.files.get(folder.id)!.name = 'Diagrams.erd.json';
     await tab.session.refreshFiles();
     expect(
       tab
@@ -1379,6 +1414,40 @@ describe('the list', () => {
 
     expect(browser.drive.callsTo('POST')).toEqual([]);
     expect(tab.snapshot().notice?.message).toBe(MESSAGES.createFailed);
+  });
+
+  it("tells the account's other tabs of a folder no list shows yet, so their files go in it too", async () => {
+    const first = openTab(browser);
+    const second = openTab(browser);
+    await start(first);
+    await start(second);
+    browser.drive.unlisted.add('created-folder-1');
+
+    await first.session.newFile('orders');
+    await settle(10);
+    await second.session.importFiles([new File([USERS_DOCUMENT], 'shop.erd')]);
+    await settle(10);
+
+    expect(appFolders(browser).map(folder => folder.id)).toEqual([
+      'created-folder-1',
+    ]);
+    expect(browser.drive.files.get('created-2')?.parents).toEqual([
+      'created-folder-1',
+    ]);
+    expect(
+      browser.hub.posted.filter(
+        entry => (entry.message as { type: string }).type === 'folder'
+      )
+    ).toEqual([
+      {
+        name: `${FILES_CHANNEL_PREFIX}/1001`,
+        message: { type: 'folder', folderId: 'created-folder-1' },
+      },
+      {
+        name: `${FILES_CHANNEL_PREFIX}/1001`,
+        message: { type: 'folder', folderId: 'created-folder-1' },
+      },
+    ]);
   });
 
   it("puts every tab's new files in the one folder, made again once trashed", async () => {

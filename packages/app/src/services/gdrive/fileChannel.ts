@@ -422,11 +422,12 @@ export function followerHasUnsavedChanges({
   return changeUnconfirmed || FOLLOWER_UNSAVED_STATES.has(state);
 }
 
-/** The Drive list's news across tabs: a file renamed, created or saved elsewhere. */
+/** The Drive list's news across tabs: a file renamed, created or saved elsewhere, or an ERD Editor folder no list shows yet. */
 export type FilesMessage =
   | { type: 'renamed'; fileId: string; name: string; modifiedTime: string }
   | { type: 'created'; file: DriveFile }
-  | { type: 'saved'; fileId: string; modifiedTime: string };
+  | { type: 'saved'; fileId: string; modifiedTime: string }
+  | { type: 'folder'; folderId: string };
 
 function readDriveFile(value: unknown): DriveFile | null {
   if (!isRecord(value)) return null;
@@ -470,6 +471,10 @@ export function readFilesMessage(data: unknown): FilesMessage | null {
       ? { type: 'saved', fileId, modifiedTime }
       : null;
   }
+  if (data.type === 'folder') {
+    const { folderId } = data;
+    return isString(folderId) ? { type: 'folder', folderId } : null;
+  }
   const file = data.type === 'created' ? readDriveFile(data.file) : null;
   return file && { type: 'created', file };
 }
@@ -480,7 +485,7 @@ export type FilesChannel = {
   close(): void;
 };
 
-/** The account's channel for the Drive list, so every tab's sidebar follows a rename or a new file. */
+/** The account's channel for the Drive list, so every tab's sidebar follows a rename or a new file, and its folder lookup a new folder. */
 export function openFilesChannel(
   createChannel: CreateChannel,
   sub: string

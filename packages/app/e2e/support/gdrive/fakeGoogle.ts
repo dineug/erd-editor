@@ -45,12 +45,13 @@ export type DriveFileSeed = {
   mimeType?: string;
   /** Milliseconds; files added later are newer by default. */
   modifiedTime?: number;
-  /** Milliseconds; the modifiedTime it starts with by default. */
-  createdTime?: number;
   /** Drive's private per-app properties, which a query can match. */
   appProperties?: Record<string, string>;
+  /** Its own flag: Drive reports a file trashed through a parent too. */
   trashed?: boolean;
   parents?: string[];
+  /** The shared drive it sits in; a file inside a folder there inherits it. */
+  driveId?: string;
   canEdit?: boolean;
   canRename?: boolean;
   resourceKey?: string | null;
@@ -61,11 +62,12 @@ export type DriveFileSeed = {
 };
 
 type DriveFile = Required<
-  Omit<DriveFileSeed, 'modifiedTime' | 'createdTime' | 'appProperties'>
+  Omit<DriveFileSeed, 'modifiedTime' | 'appProperties' | 'driveId'>
 > & {
   modifiedTime: string;
   createdTime: string;
   appProperties?: Record<string, string>;
+  driveId?: string;
 };
 
 export type DriveRequest = {
@@ -125,7 +127,7 @@ function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
 
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const FILE_SCHEMA = parseFields(
-  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,appProperties,capabilities(canEdit,canRename,canAddChildren)'
+  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,driveId,appProperties,capabilities(canEdit,canRename,canAddChildren)'
 );
 const LIST_SCHEMA: FieldTree = new Map([
   ...parseFields('kind,incompleteSearch,nextPageToken'),
@@ -140,15 +142,20 @@ const canAddChildren = (file: DriveFile) =>
 const PAGE_SIZE = 2;
 const DEFAULT_LIST_FIELDS = `kind,incompleteSearch,nextPageToken,files(${DEFAULT_FILE_FIELDS})`;
 
+/** Reads a file with its parents: a file sits in its folders' trash and shared drive. */
+type Ancestry = (file: DriveFile) => DriveFile[];
+
 type FilePredicate = (file: DriveFile) => boolean;
 
 /** The only terms files.list reads here, each spelled as the app sends it. */
-const QUERY_TERMS: Array<[RegExp, (match: string[]) => FilePredicate]> = [
+const QUERY_TERMS: Array<
+  [RegExp, (match: string[], ancestry: Ancestry) => FilePredicate]
+> = [
   [
     /^trashed\s*=\s*(true|false)$/,
-    ([, value]) =>
+    ([, value], ancestry) =>
       file =>
-        file.trashed === (value === 'true'),
+        ancestry(file).some(entry => entry.trashed) === (value === 'true'),
   ],
   [
     /^mimeType\s*=\s*'([^']*)'$/,
@@ -181,12 +188,12 @@ function queryTerms(q: string): string[] {
 }
 
 /** A files.list q as a predicate, or null for a term it cannot read: Drive's 400, never a match. */
-function parseDriveQuery(q: string): FilePredicate | null {
+function parseDriveQuery(q: string, ancestry: Ancestry): FilePredicate | null {
   const predicates: FilePredicate[] = [];
   for (const term of queryTerms(q)) {
     const known = QUERY_TERMS.find(([pattern]) => pattern.test(term.trim()));
     if (!known) return null;
-    predicates.push(known[1](known[0].exec(term.trim())!));
+    predicates.push(known[1](known[0].exec(term.trim())!, ancestry));
   }
   return file => predicates.every(predicate => predicate(file));
 }
@@ -305,10 +312,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         accounts: [ACCOUNT.sub],
         ...seed,
         modifiedTime,
-        createdTime:
-          seed.createdTime === undefined
-            ? modifiedTime
-            : new Date(seed.createdTime).toISOString(),
+        createdTime: modifiedTime,
       };
       files.set(file.id, file);
       return file;
@@ -382,6 +386,22 @@ export async function installFakeGoogle(context: BrowserContext) {
     },
   };
 
+  const ancestry: Ancestry = file => {
+    const chain = [file];
+    for (let index = 0; index < chain.length; index++) {
+      for (const id of chain[index].parents) {
+        const parent = files.get(id);
+        if (parent && !chain.includes(parent)) chain.push(parent);
+      }
+    }
+    return chain;
+  };
+  const driveIdOf = (file: DriveFile) =>
+    ancestry(file).find(entry => entry.driveId)?.driveId;
+  /** Drive leaves a shared drive's files out unless the request supports them. */
+  const inReach = (file: DriveFile, url: URL, param: string) =>
+    !driveIdOf(file) || url.searchParams.get(param) === 'true';
+
   const resource = (file: DriveFile) => ({
     kind: 'drive#file',
     id: file.id,
@@ -390,8 +410,9 @@ export async function installFakeGoogle(context: BrowserContext) {
     modifiedTime: file.modifiedTime,
     createdTime: file.createdTime,
     size: String(Buffer.byteLength(file.content)),
-    trashed: file.trashed,
+    trashed: ancestry(file).some(entry => entry.trashed),
     parents: file.parents,
+    driveId: driveIdOf(file),
     appProperties: file.appProperties,
     capabilities: {
       canEdit: file.canEdit,
@@ -445,26 +466,36 @@ export async function installFakeGoogle(context: BrowserContext) {
       .split(',')
       .includes(`${file.id}/${file.resourceKey}`);
 
+  /** What a request can reach: a file drive.file shows the account, with its key, in reach. */
+  const reachable = (
+    file: DriveFile,
+    request: Request,
+    url: URL,
+    sub: string
+  ) =>
+    visible(file, sub) &&
+    hasKey(file, request) &&
+    inReach(file, url, 'supportsAllDrives');
+
   /**
    * Where a create lands: My Drive without parents, else a folder the account
-   * can see (404) and add to (403), whose trash the new file shares.
+   * can reach (404) and add to (403), whose trash and shared drive the new file shares.
    */
   const placement = (
     parents: string[] | undefined,
     request: Request,
+    url: URL,
     sub: string
-  ):
-    | { parents: string[]; trashed: boolean }
-    | { status: number; reason: string } => {
-    if (!parents?.length) return { parents: ['root'], trashed: false };
+  ): { parents: string[] } | { status: number; reason: string } => {
+    if (!parents?.length) return { parents: ['root'] };
     const parent = files.get(parents[0]);
-    if (!parent || !visible(parent, sub) || !hasKey(parent, request)) {
+    if (!parent || !reachable(parent, request, url, sub)) {
       return { status: 404, reason: 'notFound' };
     }
     if (!canAddChildren(parent)) {
       return { status: 403, reason: 'insufficientFilePermissions' };
     }
-    return { parents, trashed: parent.trashed };
+    return { parents };
   };
 
   async function drive(route: Route, request: Request, url: URL, sub: string) {
@@ -482,10 +513,15 @@ export async function installFakeGoogle(context: BrowserContext) {
 
     if (method === 'GET' && path === '/drive/v3/files') {
       const q = url.searchParams.get('q');
-      const matches = q === null ? () => true : parseDriveQuery(q);
+      const matches = q === null ? () => true : parseDriveQuery(q, ancestry);
       if (!matches) return driveError(route, 400, 'invalid');
       const listed = [...files.values()]
-        .filter(file => visible(file, sub) && matches(file))
+        .filter(
+          file =>
+            visible(file, sub) &&
+            inReach(file, url, 'includeItemsFromAllDrives') &&
+            matches(file)
+        )
         .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
       const start = Number(url.searchParams.get('pageToken') ?? 0);
       const page = listed.slice(start, start + PAGE_SIZE);
@@ -529,7 +565,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         : [];
       if (parts.length !== 2) return driveError(route, 400, 'badRequest');
       const metadata = JSON.parse(parts[0]) as NewFileMetadata;
-      const placed = placement(metadata.parents, request, sub);
+      const placed = placement(metadata.parents, request, url, sub);
       if ('status' in placed) {
         return driveError(route, placed.status, placed.reason);
       }
@@ -552,7 +588,7 @@ export async function installFakeGoogle(context: BrowserContext) {
         return driveError(route, 400, 'badRequest');
       }
       const metadata = JSON.parse(body ?? '{}') as NewFileMetadata;
-      const placed = placement(metadata.parents, request, sub);
+      const placed = placement(metadata.parents, request, url, sub);
       if ('status' in placed) {
         return driveError(route, placed.status, placed.reason);
       }
@@ -570,7 +606,7 @@ export async function installFakeGoogle(context: BrowserContext) {
 
     const match = /^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(path);
     const file = match ? files.get(decodeURIComponent(match[2])) : undefined;
-    if (!match || !file || !visible(file, sub) || !hasKey(file, request)) {
+    if (!match || !file || !reachable(file, request, url, sub)) {
       return driveError(route, 404, 'notFound');
     }
 

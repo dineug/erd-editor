@@ -512,8 +512,11 @@ export type FakeDriveFile = {
   /** Drive's private per-app properties; a file without any leaves them out. */
   appProperties?: Record<string, string>;
   content: string;
+  /** Its own flag: Drive reports a file trashed through a parent too. */
   trashed: boolean;
   parents: string[];
+  /** The shared drive it sits in; a file inside a folder there inherits it. */
+  driveId?: string;
   canEdit: boolean;
   canRename: boolean;
   resourceKey: string | null;
@@ -577,7 +580,7 @@ function isKnownSelection(tree: FieldTree, schema: FieldTree): boolean {
 const DEFAULT_FILE_FIELDS = 'kind,id,name,mimeType';
 const DEFAULT_LIST_FIELDS = `kind,incompleteSearch,nextPageToken,files(${DEFAULT_FILE_FIELDS})`;
 const FILE_SCHEMA = parseFields(
-  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,appProperties,capabilities(canEdit,canRename,canAddChildren)'
+  'kind,id,name,mimeType,modifiedTime,createdTime,size,trashed,parents,driveId,appProperties,capabilities(canEdit,canRename,canAddChildren)'
 );
 const LIST_SCHEMA: FieldTree = new Map([
   ...parseFields('kind,incompleteSearch,nextPageToken'),
@@ -590,15 +593,20 @@ const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const canAddChildren = (file: FakeDriveFile) =>
   file.mimeType === FOLDER_MIME_TYPE && file.canEdit;
 
+/** Reads a file with its parents: a file sits in its folders' trash and shared drive. */
+type Ancestry = (file: FakeDriveFile) => FakeDriveFile[];
+
 type FilePredicate = (file: FakeDriveFile) => boolean;
 
 /** The only terms files.list reads here, each spelled as the client sends it. */
-const QUERY_TERMS: Array<[RegExp, (match: string[]) => FilePredicate]> = [
+const QUERY_TERMS: Array<
+  [RegExp, (match: string[], ancestry: Ancestry) => FilePredicate]
+> = [
   [
     /^trashed\s*=\s*(true|false)$/,
-    ([, value]) =>
+    ([, value], ancestry) =>
       file =>
-        file.trashed === (value === 'true'),
+        ancestry(file).some(entry => entry.trashed) === (value === 'true'),
   ],
   [
     /^mimeType\s*=\s*'([^']*)'$/,
@@ -634,12 +642,12 @@ function queryTerms(q: string): string[] {
  * A files.list q as a predicate: every term has to hold, and a term it cannot
  * read makes the whole query null, Drive's 400, never a match.
  */
-function parseDriveQuery(q: string): FilePredicate | null {
+function parseDriveQuery(q: string, ancestry: Ancestry): FilePredicate | null {
   const predicates: FilePredicate[] = [];
   for (const term of queryTerms(q)) {
     const known = QUERY_TERMS.find(([pattern]) => pattern.test(term.trim()));
     if (!known) return null;
-    predicates.push(known[1](known[0].exec(term.trim())!));
+    predicates.push(known[1](known[0].exec(term.trim())!, ancestry));
   }
   return file => predicates.every(predicate => predicate(file));
 }
@@ -682,8 +690,8 @@ function parseMultipart(contentType: string, body: string) {
 
 /**
  * Drive v3 in memory, no more lenient: only the fields and query terms it has,
- * pages of two, a media PATCH's Content-Type as its mimeType, read-only files
- * refuse writes, a parent it can see, key included, and add to. Checks the receiver.
+ * pages of two, trash and shared drives through parents, a media PATCH's type
+ * as its mimeType, writes refused, a parent it can see and add to. Checks the receiver.
  */
 export function createFakeDrive() {
   const files = new Map<string, FakeDriveFile>();
@@ -719,6 +727,22 @@ export function createFakeDrive() {
 
   const nextTime = () => new Date((clock += 1000)).toISOString();
 
+  const ancestry: Ancestry = file => {
+    const chain = [file];
+    for (let index = 0; index < chain.length; index++) {
+      for (const id of chain[index].parents) {
+        const parent = files.get(id);
+        if (parent && !chain.includes(parent)) chain.push(parent);
+      }
+    }
+    return chain;
+  };
+  const driveIdOf = (file: FakeDriveFile) =>
+    ancestry(file).find(entry => entry.driveId)?.driveId;
+  /** Drive leaves a shared drive's files out unless the request supports them. */
+  const inReach = (file: FakeDriveFile, url: URL, param: string) =>
+    !driveIdOf(file) || url.searchParams.get(param) === 'true';
+
   const resource = (file: FakeDriveFile) => ({
     kind: 'drive#file',
     id: file.id,
@@ -727,8 +751,9 @@ export function createFakeDrive() {
     modifiedTime: file.modifiedTime,
     createdTime: file.createdTime,
     size: String(file.size ?? new TextEncoder().encode(file.content).length),
-    trashed: file.trashed,
+    trashed: ancestry(file).some(entry => entry.trashed),
     parents: file.parents,
+    driveId: driveIdOf(file),
     appProperties: file.appProperties,
     capabilities: {
       canEdit: file.canEdit,
@@ -745,18 +770,26 @@ export function createFakeDrive() {
 
   /**
    * Where a create lands: My Drive without parents, else a parent it can see
-   * (404) and add to (403), whose trash the new file shares.
+   * (404) and add to (403), whose trash and shared drive the new file shares.
    */
-  const placement = (parents: string[] | undefined, headers: Headers) => {
-    if (!parents?.length) return { parents: ['root'], trashed: false };
+  const placement = (
+    parents: string[] | undefined,
+    url: URL,
+    headers: Headers
+  ) => {
+    if (!parents?.length) return { parents: ['root'] };
     const parent = files.get(parents[0]);
-    if (!parent || isHidden(parent, headers)) {
+    if (
+      !parent ||
+      isHidden(parent, headers) ||
+      !inReach(parent, url, 'supportsAllDrives')
+    ) {
       return driveError(404, 'notFound');
     }
     if (!canAddChildren(parent)) {
       return driveError(403, 'insufficientFilePermissions');
     }
-    return { parents, trashed: parent.trashed };
+    return { parents };
   };
 
   const reply = (
@@ -888,10 +921,15 @@ export function createFakeDrive() {
 
     if (method === 'GET' && path === '/drive/v3/files') {
       const q = url.searchParams.get('q');
-      const matches = q === null ? () => true : parseDriveQuery(q);
+      const matches = q === null ? () => true : parseDriveQuery(q, ancestry);
       if (!matches) return driveError(400, 'invalid');
       const listed = [...files.values()]
-        .filter(file => !drive.unlisted.has(file.id) && matches(file))
+        .filter(
+          file =>
+            !drive.unlisted.has(file.id) &&
+            inReach(file, url, 'includeItemsFromAllDrives') &&
+            matches(file)
+        )
         .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
       const start = Number(url.searchParams.get('pageToken') ?? 0);
       const size = Math.min(
@@ -921,7 +959,7 @@ export function createFakeDrive() {
           : null;
       if (!parts) return driveError(400, 'badRequest');
       const metadata = JSON.parse(parts[0].body) as NewFileMetadata;
-      const placed = placement(metadata.parents, headers);
+      const placed = placement(metadata.parents, url, headers);
       if (placed instanceof Response) return placed;
       const file = drive.add({
         id: `created-${++created}`,
@@ -940,7 +978,7 @@ export function createFakeDrive() {
         return driveError(400, 'badRequest');
       }
       const metadata = JSON.parse(body ?? '{}') as NewFileMetadata;
-      const placed = placement(metadata.parents, headers);
+      const placed = placement(metadata.parents, url, headers);
       if (placed instanceof Response) return placed;
       const file = drive.add({
         id: `created-folder-${++createdFolders}`,
@@ -955,7 +993,13 @@ export function createFakeDrive() {
 
     const match = /^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(path);
     const file = match && files.get(decodeURIComponent(match[2]));
-    if (!file || isHidden(file, headers)) return driveError(404, 'notFound');
+    if (
+      !file ||
+      isHidden(file, headers) ||
+      !inReach(file, url, 'supportsAllDrives')
+    ) {
+      return driveError(404, 'notFound');
+    }
 
     if (method === 'GET' && !match[1]) {
       return url.searchParams.get('alt') === 'media'

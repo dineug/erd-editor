@@ -73,11 +73,15 @@ Drive out), the GIS script, userinfo, and a Drive in memory that answers only th
 refuses an upload without its `uploadType` and a metadata PATCH that is not JSON,
 reads a list's `q` of the terms the app sends (`trashed`, `mimeType`,
 `appProperties has`) and answers any other with a 400, so an unmatched query lists
-nothing, creates a file only in a folder the account can see and add to
-(`canAddChildren`, a 404 or a 403 otherwise) and in the trash when that folder is,
-creates the ERD Editor folder from a JSON POST (`appFolders()` finds it by its
-marker), records each request with its tab, and can hold PATCHes,
-lose a PATCH's answer or fail the next requests. Any other Google host aborts. The browser follows a redirect past every route, so the relay's `start`
+nothing, reports a file in the trash or a shared drive through any folder above it
+(`trashed`, `driveId`), leaves a shared drive's files out of a list without
+`includeItemsFromAllDrives` and out of reach without `supportsAllDrives`, puts a
+create that names no parent in My Drive (`root`), as Drive does, which the ERD
+Editor folder's JSON POST relies on (so the specs check each new file's `parents`
+to catch a file left loose there), and one that names a parent only in a folder
+the account can reach and add to (`canAddChildren`, a 404 or a 403 otherwise),
+finds the ERD Editor folders by their marker (`appFolders()`), records each request
+with its tab, and can hold PATCHes, lose a PATCH's answer or fail the next requests. Any other Google host aborts. The browser follows a redirect past every route, so the relay's `start`
 is routed too: its real answer, cookie included, comes back as a page that
 navigates to the authorize URL, marked so the popup does not take it for a stray
 page. `support/gdrive/fakeAuth.ts` makes `/api/auth/*` fail its JSON contract

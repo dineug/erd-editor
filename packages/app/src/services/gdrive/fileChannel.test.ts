@@ -278,7 +278,7 @@ describe('the files channel', () => {
     expect(hub.openCount(`${FILES_CHANNEL_PREFIX}/${SUB}`)).toBe(1);
   });
 
-  it('reads only a whole file, a whole rename and a whole save', () => {
+  it('reads only a whole file, a whole rename, a whole save and a folder id', () => {
     expect(readFilesMessage(null)).toBeNull();
     expect(readFilesMessage({ type: 'deleted', fileId: 'f' })).toBeNull();
     expect(readFilesMessage({ type: 'renamed', fileId: 'f' })).toBeNull();
@@ -299,6 +299,11 @@ describe('the files channel', () => {
     expect(
       readFilesMessage({ type: 'created', file: { ...FILE, size: null } })
     ).toEqual({ type: 'created', file: { ...FILE, size: null } });
+    expect(readFilesMessage({ type: 'folder', folderId: 1 })).toBeNull();
+    expect(readFilesMessage({ type: 'folder', folderId: 'f' })).toEqual({
+      type: 'folder',
+      folderId: 'f',
+    });
   });
 
   it('lets a listener go', async () => {

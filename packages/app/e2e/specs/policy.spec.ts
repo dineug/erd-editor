@@ -10,10 +10,14 @@ const PAGES = [
   {
     path: '/privacy',
     heading: 'Privacy Policy',
-    // The seven points the policy has to make, one entry each, in the page's
+    // The eight points the policy has to make, one entry each, in the page's
     // own words; a point with several parts pins each part.
     phrases: [
       ['drive.file'],
+      [
+        'named ERD Editor, which ERD Editor creates in your My Drive',
+        'makes a new one if the folder is deleted, in the trash, moved to a shared drive',
+      ],
       ['never pass through an ERD Editor server'],
       ['encrypted with a key only the relay holds', 'It has no database'],
       [

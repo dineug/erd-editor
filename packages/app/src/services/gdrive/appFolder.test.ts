@@ -9,6 +9,7 @@ import {
 import {
   AccountChangedError,
   APP_FOLDER_LOCK_PREFIX,
+  type AppFolderDeps,
   appFolderLockName,
   createAppFolder,
   pickAppFolder,
@@ -23,19 +24,42 @@ const SUB = '1001';
 function tab(
   drive: FakeDrive,
   locks: FakeLockManager | null = createLockManager(),
-  isCurrent: (sub: string) => boolean = () => true
+  isCurrent: (sub: string) => boolean = () => true,
+  share?: AppFolderDeps['share']
 ) {
   const client = createDriveClient({
     fetch: drive.fetch,
     getAccessToken: async () => 'drive-token-1',
     onUnauthorized: async token => token,
   });
-  return createAppFolder({ drive: client, locks, isCurrent });
+  return createAppFolder({ drive: client, locks, isCurrent, share });
 }
 
-function addFolder(drive: FakeDrive, createdTime?: string, name = 'Diagrams') {
+type Tab = ReturnType<typeof tab>;
+
+/**
+ * Tabs of one browser: shared locks, and what one shares reaches the others a
+ * task later, as the account's files channel delivers it.
+ */
+function browserTabs(drive: FakeDrive, count: number) {
+  const locks = createLockManager();
+  const shared: Array<{ folderId: string; lockHeld: boolean }> = [];
+  const tabs: Tab[] = [];
+  for (let n = 0; n < count; n++) {
+    const self: Tab = tab(drive, locks, undefined, (sub, folderId) => {
+      shared.push({ folderId, lockHeld: locks.isHeld(appFolderLockName(sub)) });
+      for (const other of tabs) {
+        if (other !== self) setTimeout(() => other.learn(sub, folderId), 0);
+      }
+    });
+    tabs.push(self);
+  }
+  return { tabs, shared };
+}
+
+function addFolder(drive: FakeDrive, createdTime?: string) {
   return drive.add({
-    name,
+    name: 'Diagrams',
     mimeType: FOLDER_MIME,
     appProperties: MARKER,
     ...(createdTime ? { createdTime } : {}),
@@ -66,7 +90,7 @@ describe('appFolderLockName', () => {
 });
 
 describe('pickAppFolder', () => {
-  const open = { trashed: false, canAddChildren: true };
+  const open = { trashed: false, driveId: null, canAddChildren: true };
 
   it('takes the oldest by createdTime, then the lowest id, whatever the order', () => {
     const folders = [
@@ -80,19 +104,20 @@ describe('pickAppFolder', () => {
     expect(pickAppFolder([])).toBeNull();
   });
 
-  it('passes over a folder in the trash or closed to new files', () => {
+  it('passes over a folder in the trash, closed to new files or in a shared drive', () => {
     const oldest = '2026-09-01T00:00:00.000Z';
 
     expect(
       pickAppFolder([
         { id: 'a', createdTime: oldest, ...open, trashed: true },
         { id: 'b', createdTime: oldest, ...open, canAddChildren: false },
-        { id: 'c', createdTime: '2026-09-02T00:00:00.000Z', ...open },
+        { id: 'c', createdTime: oldest, ...open, driveId: 'team' },
+        { id: 'd', createdTime: '2026-09-02T00:00:00.000Z', ...open },
       ])?.id
-    ).toBe('c');
+    ).toBe('d');
     expect(
       pickAppFolder([
-        { id: 'a', createdTime: oldest, trashed: false, canAddChildren: false },
+        { id: 'a', createdTime: oldest, ...open, canAddChildren: false },
       ])
     ).toBeNull();
   });
@@ -190,7 +215,7 @@ describe('createAppFolder', () => {
     expect(drive.files.get('created-folder-2')?.appProperties).toEqual(MARKER);
   });
 
-  it('keeps the id per account and checks it before each use, without looking again', async () => {
+  it('lists on every use, one request once the list shows the folder, and per account', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
     const id = await folders.folderId(SUB);
@@ -198,17 +223,37 @@ describe('createAppFolder', () => {
 
     await expect(folders.folderId(SUB)).resolves.toBe(id);
 
-    expect(lists(drive)).toHaveLength(listed);
-    const check = drive.callsTo('GET').at(-1)!;
-    expect(check.url.pathname).toBe(`/drive/v3/files/${id}`);
-    expect(check.url.searchParams.get('fields')).toBe(
-      'id,createdTime,trashed,capabilities(canAddChildren)'
+    expect(lists(drive)).toHaveLength(listed + 1);
+    expect(checksOf(drive, id)).toEqual([]);
+    const { url } = lists(drive).at(-1)!;
+    expect(url.searchParams.get('fields')).toBe(
+      'nextPageToken,files(id,createdTime,trashed,driveId,capabilities(canAddChildren))'
     );
     await folders.folderId('2002');
-    expect(lists(drive)).toHaveLength(listed + 1);
+    expect(lists(drive)).toHaveLength(listed + 2);
   });
 
-  it('looks again once the cached folder is deleted, and again once it is in the trash', async () => {
+  it('moves a tab to an older folder a list shows again, so it and a new tab agree', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    const first = await folders.folderId(SUB);
+
+    drive.files.get(first)!.trashed = true;
+    const second = await folders.folderId(SUB);
+    expect(second).not.toBe(first);
+
+    // Taken out of the trash: older than the one made meanwhile.
+    drive.files.get(first)!.trashed = false;
+    await expect(folders.folderId(SUB)).resolves.toBe(first);
+    await expect(tab(drive).folderId(SUB)).resolves.toBe(first);
+    expect(posts(drive)).toHaveLength(2);
+
+    const other = addFolder(drive, '2026-01-01T00:00:00.000Z');
+    await expect(folders.folderId(SUB)).resolves.toBe(other.id);
+    await expect(tab(drive).folderId(SUB)).resolves.toBe(other.id);
+  });
+
+  it('looks again once the folder is deleted, and again once it is in the trash', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
     const first = await folders.folderId(SUB);
@@ -222,6 +267,40 @@ describe('createAppFolder', () => {
     expect(third).not.toBe(second);
     expect(posts(drive)).toHaveLength(3);
     await expect(folders.folderId(SUB)).resolves.toBe(third);
+  });
+
+  it('passes over a folder in the trash through its parent, which the list leaves out too', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    const first = await folders.folderId(SUB);
+    const parent = drive.add({ name: 'Projects', mimeType: FOLDER_MIME });
+    drive.files.get(first)!.parents = [parent.id];
+    drive.files.get(parent.id)!.trashed = true;
+
+    const next = await folders.folderId(SUB);
+
+    expect(next).not.toBe(first);
+    expect(drive.files.get(first)?.trashed).toBe(false);
+    expect(checksOf(drive, first)).toHaveLength(1);
+    expect(posts(drive)).toHaveLength(2);
+    // The older folder would win a list that showed it.
+    await expect(tab(drive).folderId(SUB)).resolves.toBe(next);
+  });
+
+  it('passes over a folder moved to a shared drive, which no list shows', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    const first = await folders.folderId(SUB);
+
+    drive.files.get(first)!.driveId = 'team-drive';
+    const next = await folders.folderId(SUB);
+
+    expect(next).not.toBe(first);
+    expect(checksOf(drive, first)).toHaveLength(1);
+    await expect(folders.folderId(SUB)).resolves.toBe(next);
+    await expect(tab(drive).folderId(SUB)).resolves.toBe(next);
+    expect(checksOf(drive, first)).toHaveLength(1);
+    expect(posts(drive)).toHaveLength(2);
   });
 
   it('forgets a folder found gone, so a lookup that fails after it asks for it no more', async () => {
@@ -241,46 +320,74 @@ describe('createAppFolder', () => {
     expect(checksOf(drive, gone)).toHaveLength(1);
   });
 
-  it('keeps a folder the list has shown, and moves to the oldest left once it is gone', async () => {
+  it('uses the folder it knows when the list fails, and lists again on the next use', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
-    const mine = await folders.folderId(SUB);
-    const other = addFolder(drive, '2026-01-01T00:00:00.000Z');
+    drive.unlisted.add('created-folder-1');
+    const made = await folders.folderId(SUB);
+    drive.failNext('GET', 500, 'backendError', isList);
 
-    await expect(folders.folderId(SUB)).resolves.toBe(mine);
-    drive.files.delete(mine);
-    await expect(folders.folderId(SUB)).resolves.toBe(other.id);
+    await expect(folders.folderId(SUB)).resolves.toBe(made);
+    expect(checksOf(drive, made)).toHaveLength(1);
+
+    drive.unlisted.clear();
+    const listed = lists(drive).length;
+    await expect(folders.folderId(SUB)).resolves.toBe(made);
+    expect(lists(drive)).toHaveLength(listed + 1);
+    expect(checksOf(drive, made)).toHaveLength(1);
+    expect(posts(drive)).toHaveLength(1);
   });
 
-  it('looks again while the list has yet to show a folder it made, and moves to an older one it then shows', async () => {
+  it('checks a folder it made while the list leaves it out, and moves to an older one the list then shows', async () => {
     const drive = createFakeDrive();
-    const locks = createLockManager();
     drive.unlisted.add('created-folder-1');
-    const first = tab(drive, locks);
+    const first = tab(drive);
     const made = await first.folderId(SUB);
     expect(made).toBe('created-folder-1');
 
-    // Another tab of this browser, whose list misses it too, makes a second.
+    // Another device, told nothing, whose list misses it too, makes a second.
     drive.unlisted.add('created-folder-2');
-    const second = tab(drive, locks);
+    const second = tab(drive);
     await expect(second.folderId(SUB)).resolves.toBe('created-folder-2');
 
-    const listed = lists(drive).length;
     await expect(first.folderId(SUB)).resolves.toBe(made);
-    expect(lists(drive)).toHaveLength(listed + 1);
+    expect(checksOf(drive, made)).toHaveLength(1);
     expect(posts(drive)).toHaveLength(2);
 
     drive.unlisted.clear();
     await expect(second.folderId(SUB)).resolves.toBe(made);
     await expect(first.folderId(SUB)).resolves.toBe(made);
-    const settled = lists(drive).length;
+    const settled = drive.calls.length;
     await expect(second.folderId(SUB)).resolves.toBe(made);
     await expect(first.folderId(SUB)).resolves.toBe(made);
-    expect(lists(drive)).toHaveLength(settled);
+    expect(drive.calls.slice(settled).every(call => isList(call.url))).toBe(
+      true
+    );
+    expect(drive.calls).toHaveLength(settled + 2);
     expect(posts(drive)).toHaveLength(2);
   });
 
-  it('keeps a folder it made when the list after it fails, and looks again on the next use', async () => {
+  it('tells the browser before letting go of the lock of a folder no list shows yet, and a tab told of it uses it', async () => {
+    const drive = createFakeDrive();
+    const { tabs, shared } = browserTabs(drive, 2);
+    drive.unlisted.add('created-folder-1');
+
+    const made = await tabs[0].folderId(SUB);
+    expect(shared).toEqual([{ folderId: made, lockHeld: true }]);
+
+    // Its list misses the folder too, as the next lock holder's might.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await expect(tabs[1].folderId(SUB)).resolves.toBe(made);
+    expect(posts(drive)).toHaveLength(1);
+    expect(checksOf(drive, made)).toHaveLength(1);
+
+    drive.unlisted.clear();
+    await expect(tabs[1].folderId(SUB)).resolves.toBe(made);
+    await expect(tabs[0].folderId(SUB)).resolves.toBe(made);
+    expect(shared).toHaveLength(2);
+  });
+
+  it('keeps a folder it made when the list after it fails, and lists again on the next use', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
     const release = drive.hold('POST');
@@ -298,10 +405,10 @@ describe('createAppFolder', () => {
 
   it('keeps nothing of a lookup another account signed in during, whatever call it overtook', async () => {
     let current = SUB;
-    /** Holds the call when names, and lets it go once another account signed in. */
+    /** Holds the matching call and releases it once another account signs in. */
     const overtaken = async (
       drive: FakeDrive,
-      folders: ReturnType<typeof tab>,
+      folders: Tab,
       method: string,
       when: (url: URL) => boolean
     ) => {
@@ -336,9 +443,14 @@ describe('createAppFolder', () => {
     expect(posts(drive)).toHaveLength(1);
     expect(posts(relisted)).toHaveLength(1);
 
+    // A list that fails once another account signed in.
+    drive.failNext('GET', 500, 'backendError', isList);
+    await overtaken(drive, folders, 'GET', isList);
+
     // The check: another account's token finds no such folder, which is kept all the same.
     const id = 'created-folder-1';
     const folder = drive.files.get(id)!;
+    drive.unlisted.add(id);
     const release = drive.hold('GET', url => !isList(url));
     const run = folders.folderId(SUB);
     await until(() => checksOf(drive, id).length === 1);
@@ -349,16 +461,22 @@ describe('createAppFolder', () => {
 
     current = SUB;
     drive.files.set(id, folder);
-    const listed = lists(drive).length;
     await expect(folders.folderId(SUB)).resolves.toBe(id);
-    expect(lists(drive)).toHaveLength(listed);
+    expect(checksOf(drive, id)).toHaveLength(2);
+    expect(posts(drive)).toHaveLength(1);
   });
 
   it('passes on a check that fails otherwise, and keeps the id for the next call', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
+    drive.unlisted.add('created-folder-1');
     const id = await folders.folderId(SUB);
-    drive.failNext('GET', 403, 'insufficientFilePermissions');
+    drive.failNext(
+      'GET',
+      403,
+      'insufficientFilePermissions',
+      url => !isList(url)
+    );
 
     await expect(folders.folderId(SUB)).rejects.toMatchObject({
       kind: 'forbidden',
@@ -377,6 +495,16 @@ describe('createAppFolder', () => {
     });
     const id = await folders.folderId(SUB);
     expect(drive.files.get(id)?.name).toBe('ERD Editor');
+  });
+
+  it('passes on a failed first list when it knows no folder', async () => {
+    const drive = createFakeDrive();
+    drive.failNext('GET', 500, 'backendError', isList);
+
+    await expect(tab(drive).folderId(SUB)).rejects.toMatchObject({
+      kind: 'server',
+    });
+    expect(posts(drive)).toEqual([]);
   });
 
   it('shares one lookup among the calls of a tab made while it runs', async () => {
