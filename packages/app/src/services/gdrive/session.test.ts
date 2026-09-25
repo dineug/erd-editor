@@ -371,7 +371,6 @@ describe("Drive's state", () => {
     await start(tab);
 
     expect(tab.snapshot().screen).toBe('account-mismatch');
-    expect(tab.snapshot().expectedUserId).toBe('sub-2');
     expect(tab.navigations).toEqual([]);
 
     tab.session.switchAccount();
@@ -398,7 +397,6 @@ describe("Drive's state", () => {
     expect(tab.navigations).toEqual([{ fileId: null, replace: true }]);
     expect(tab.snapshot()).toMatchObject({
       screen: 'workspace',
-      expectedUserId: null,
       document: null,
       filesState: 'ready',
     });

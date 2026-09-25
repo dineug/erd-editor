@@ -13,7 +13,7 @@ import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import { authControl } from '@/components/gdrive/authControl';
 import GdriveLeaveDialog from '@/components/gdrive/gdrive-confirm/GdriveLeaveDialog';
 import GdriveCreateDialog from '@/components/gdrive/gdrive-create/GdriveCreateDialog';
-import GdriveImportNotice from '@/components/gdrive/gdrive-notice/GdriveImportNotice';
+import GdriveSessionNotice from '@/components/gdrive/gdrive-notice/GdriveSessionNotice';
 import GdriveNotice from '@/components/gdrive/gdrive-screens/GdriveNotice';
 import GdriveSignIn from '@/components/gdrive/gdrive-screens/GdriveSignIn';
 import GdriveSidebar from '@/components/gdrive/gdrive-sidebar/GdriveSidebar';
@@ -272,7 +272,7 @@ const GdriveApp: React.FC<{ clientId: string }> = ({ clientId }) => {
       {snapshot.leave ? (
         <GdriveLeaveDialog session={session} request={snapshot.leave} />
       ) : null}
-      <GdriveImportNotice session={session} notice={snapshot.notice} />
+      <GdriveSessionNotice session={session} notice={snapshot.notice} />
     </>
   );
 };

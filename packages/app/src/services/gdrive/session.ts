@@ -92,8 +92,6 @@ export type SessionNotice = {
 export type SessionSnapshot = {
   screen: SessionScreen;
   token: TokenSnapshot;
-  /** The account Drive's state asked for, while another one is signed in. */
-  expectedUserId: string | null;
   files: DriveFile[];
   filesState: FilesState;
   /** The open file's controller, which the editor attaches to. */
@@ -210,6 +208,7 @@ export function createGdriveSession(deps: SessionDeps) {
   let location: SessionLocation = { state: null, file: null };
   /** The state already acted on, so a render that still carries it does not act twice. */
   let handledState: string | null = null;
+  /** The account Drive's state asked for, while another one is signed in. */
   let expectedUserId: string | null = null;
   let account: GoogleAccount | null = null;
   let files: DriveFile[] = [];
@@ -242,7 +241,6 @@ export function createGdriveSession(deps: SessionDeps) {
     return {
       screen,
       token,
-      expectedUserId,
       files,
       filesState,
       controller,

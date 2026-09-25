@@ -4,18 +4,21 @@ import { useEffect } from 'react';
 
 import type { GdriveSession, SessionNotice } from '@/services/gdrive';
 
-import * as styles from './GdriveImportNotice.styles';
+import * as styles from './GdriveSessionNotice.styles';
 
 /** A success goes by itself; a warning, such as an unconfirmed sign-out, stays longer. */
 const AUTO_DISMISS = { success: 5000, warning: 12_000 };
 
-interface GdriveImportNoticeProps {
+interface GdriveSessionNoticeProps {
   session: GdriveSession;
   notice: SessionNotice | null;
 }
 
-/** The session's one-line notices: an import, a rename or create that failed, a sign-out. */
-const GdriveImportNotice: React.FC<GdriveImportNoticeProps> = ({
+/**
+ * The session's one-line notices: an import, a Drive link it could not read,
+ * a rename, create or Drive check that failed, a sign-out.
+ */
+const GdriveSessionNotice: React.FC<GdriveSessionNoticeProps> = ({
   session,
   notice,
 }) => {
@@ -64,4 +67,4 @@ const GdriveImportNotice: React.FC<GdriveImportNoticeProps> = ({
   );
 };
 
-export default GdriveImportNotice;
+export default GdriveSessionNotice;
