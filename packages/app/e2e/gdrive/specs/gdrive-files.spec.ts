@@ -192,6 +192,32 @@ test.describe('creating from Google Drive', () => {
     ).toHaveCount(0);
   });
 
+  test('creates in the ERD Editor folder when Drive names no folder', async ({
+    context,
+  }) => {
+    const app = await signedIn(context);
+    const state = JSON.stringify({ action: 'create' });
+
+    await app.page.goto(`/gdrive?state=${encodeURIComponent(state)}`);
+    const dialog = app.page.getByRole('dialog', {
+      name: 'New file in Google Drive',
+    });
+    await expect(dialog.getByText('In the ERD Editor folder')).toBeVisible();
+    await expect(
+      dialog.getByRole('button', { name: 'Create in the ERD Editor folder' })
+    ).toHaveCount(0);
+    await dialog.getByLabel('File name').fill('orders');
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+
+    await app.waitForEditor();
+    await expect(app.page).toHaveURL(/\/gdrive\?file=created-1$/);
+    const folder = onlyAppFolder();
+    expect(google.files.get('created-1')).toMatchObject({
+      name: 'orders.erd.json',
+      parents: [folder.id],
+    });
+  });
+
   test("says when it can't see the folder, and creates in the ERD Editor folder instead", async ({
     context,
   }) => {

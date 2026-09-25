@@ -32,6 +32,7 @@ import {
   createDriveClient,
   DRIVE_API,
   DRIVE_UPLOAD_API,
+  RETRY_LIMIT,
 } from '@/services/gdrive/driveClient';
 import { FILES_CHANNEL_PREFIX } from '@/services/gdrive/fileChannel';
 import {
@@ -1400,20 +1401,25 @@ describe('the list', () => {
     expect(tab.snapshot().notice?.message).toBe(MESSAGES.createFailed);
   });
 
-  it('creates nothing when the folder cannot be looked up, and says so', async () => {
+  it('creates nothing when the folder cannot be looked up, says so, and looks again after a failure that may pass', async () => {
     const tab = openTab(browser);
     await start(tab);
-    browser.drive.failNext(
-      'GET',
-      500,
-      'backendError',
-      url => url.searchParams.get('q')?.includes('appProperties') ?? false
-    );
+    const isLookup = (url: URL) =>
+      url.searchParams.get('q')?.includes('appProperties') ?? false;
+    for (let n = 0; n <= RETRY_LIMIT; n++) {
+      browser.drive.failNext('GET', 500, 'backendError', isLookup);
+    }
 
     await tab.session.newFile('orders');
 
     expect(browser.drive.callsTo('POST')).toEqual([]);
     expect(tab.snapshot().notice?.message).toBe(MESSAGES.createFailed);
+
+    browser.drive.failNext('GET', 503, 'backendError', isLookup);
+    await tab.session.newFile('orders');
+    await settle(10);
+    const [folder] = appFolders(browser);
+    expect(browser.drive.files.get('created-1')?.parents).toEqual([folder.id]);
   });
 
   it("tells the account's other tabs of a folder no list shows yet, so their files go in it too", async () => {
@@ -1552,6 +1558,35 @@ describe('signing out', () => {
     expect(tab.snapshot().files).toEqual([]);
     expect(tab.snapshot().controller).toBeNull();
     expect(tab.snapshot().notice).toBeNull();
+  });
+
+  it("forgets the account's folders, so a sign-in again reads none its revoked grant may close", async () => {
+    const tab = openTab(browser);
+    await start(tab);
+    browser.drive.unlisted.add('created-folder-1');
+    await tab.session.newFile('orders');
+    await settle(10);
+
+    await tab.session.signOut();
+    await settle(10);
+    browser.relay.signedIn = false;
+    tab.session.signIn();
+    browser.relay.signedIn = true;
+    await finishPopup(browser, tab);
+    expect(tab.snapshot().token.account?.sub).toBe('1001');
+    await tab.session.newFile('invoices');
+    await settle(10);
+
+    expect(
+      browser.drive
+        .callsTo('GET')
+        .filter(
+          call => call.url.pathname === '/drive/v3/files/created-folder-1'
+        )
+    ).toEqual([]);
+    expect(browser.drive.files.get('created-2')?.parents).toEqual([
+      'created-folder-2',
+    ]);
   });
 
   it('says when the relay did not confirm it', async () => {

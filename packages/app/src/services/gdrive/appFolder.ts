@@ -1,7 +1,10 @@
 import {
   type DriveClient,
   DriveError,
+  type DriveErrorKind,
   type DriveFolder,
+  type RetryOptions,
+  withRetry,
 } from '@/services/gdrive/driveClient';
 import type { FileLockManagerLike } from '@/services/gdrive/fileLeader';
 
@@ -20,6 +23,12 @@ export class AccountChangedError extends Error {
     super('The account changed while its ERD Editor folder was looked up');
   }
 }
+
+/** A check's answer for a folder out of reach: deleted, or no longer covered by a grant a sign-out revoked. */
+const GONE_KINDS: ReadonlySet<DriveErrorKind> = new Set([
+  'not-found',
+  'forbidden',
+]);
 
 /** Takes new files, in My Drive: one in the trash, closed to the account or in a shared drive is passed over. */
 const isOpen = (folder: DriveFolder) =>
@@ -40,8 +49,10 @@ export type AppFolderDeps = {
   locks: Pick<FileLockManagerLike, 'request'> | null;
   /** Whether sub is still the signed-in account, whose token the Drive calls carry. */
   isCurrent: (sub: string) => boolean;
-  /** Tells the account's other tabs of a folder no list shows yet, while the lock is still held. */
+  /** Tells the account's other tabs of a folder it made, or one no list showed, while the lock is still held. */
   share?: (sub: string, folderId: string) => void;
+  /** The reads, the list and the check, run again after a transient failure; the create never does. */
+  retry?: RetryOptions;
 };
 
 /**
@@ -54,6 +65,7 @@ export function createAppFolder({
   locks,
   isCurrent,
   share,
+  retry,
 }: AppFolderDeps) {
   /** Per account, the folders this tab used, made or heard of: a list may lag a create, or fail. */
   const known = new Map<string, Set<string>>();
@@ -69,12 +81,19 @@ export function createAppFolder({
     if (!isCurrent(sub)) throw new AccountChangedError();
   };
 
-  /** The folder as Drive has it now, or null once deleted. */
-  const reread = async (id: string) => {
+  /** A read with the account's token, whose every attempt first checks that sub still holds it. */
+  const read = <T>(sub: string, call: () => Promise<T>) =>
+    withRetry(async () => {
+      stillCurrent(sub);
+      return await call();
+    }, retry);
+
+  /** The folder as Drive has it now, or null once out of reach. */
+  const reread = async (sub: string, id: string) => {
     try {
-      return await drive.getFolder(id);
+      return await read(sub, () => drive.getFolder(id));
     } catch (error) {
-      if (error instanceof DriveError && error.kind === 'not-found') {
+      if (error instanceof DriveError && GONE_KINDS.has(error.kind)) {
         return null;
       }
       throw error;
@@ -90,7 +109,7 @@ export function createAppFolder({
     const open: DriveFolder[] = [];
     for (const id of ids) {
       if (listed.some(folder => folder.id === id)) continue;
-      const folder = await reread(id);
+      const folder = await reread(sub, id);
       stillCurrent(sub);
       if (folder && isOpen(folder)) open.push(folder);
       else ids.delete(id);
@@ -101,9 +120,10 @@ export function createAppFolder({
   // Looks inside the lock: another tab may have created one while this one waited.
   const lookUp = async (sub: string) => {
     const ids = knownOf(sub);
+    const list = () => read(sub, () => drive.findAppFolders());
     let listed: DriveFolder[];
     try {
-      listed = await drive.findAppFolders();
+      listed = await list();
     } catch (error) {
       stillCurrent(sub);
       const fallback = pickAppFolder(await recheck(sub, ids, []));
@@ -115,19 +135,21 @@ export function createAppFolder({
       ...(await recheck(sub, ids, listed)),
       ...listed,
     ]);
+    const made = !chosen;
     if (!chosen) {
       const created = await drive.createAppFolder();
       stillCurrent(sub);
       ids.add(created.id);
       // Another device may have made one meanwhile: both move to the older.
-      listed = await drive.findAppFolders().catch(() => []);
+      listed = await list().catch(() => []);
       chosen = [created, ...listed.filter(isOpen)].sort(byAge)[0];
     }
     // Nothing is awaited from here, so share tells the tabs of this very account.
     stillCurrent(sub);
     const { id } = chosen;
     ids.add(id);
-    if (!listed.some(folder => folder.id === id)) share?.(sub, id);
+    // A list that shows a folder just made says nothing of the next tab's list.
+    if (made || !listed.some(folder => folder.id === id)) share?.(sub, id);
     return id;
   };
 
@@ -153,6 +175,11 @@ export function createAppFolder({
     /** A folder another tab of the account made or chose, which the next lookup here weighs too. */
     learn(sub: string, folderId: string) {
       knownOf(sub).add(folderId);
+    },
+
+    /** Drops the account's folders as it leaves the tab: the grant a sign-out revokes may close them to it. */
+    forget(sub: string) {
+      known.delete(sub);
     },
   };
 }

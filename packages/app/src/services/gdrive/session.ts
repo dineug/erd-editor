@@ -233,6 +233,7 @@ export function createGdriveSession(deps: SessionDeps) {
     isCurrent: sub => account?.sub === sub,
     // Called right after isCurrent held, so the open channel is the account's.
     share: (_sub, folderId) => announce({ type: 'folder', folderId }),
+    retry,
   });
   const listeners = new Set<() => void>();
   let location: SessionLocation = { state: null, file: null };
@@ -536,6 +537,7 @@ export function createGdriveSession(deps: SessionDeps) {
     closeDocument();
     filesChannel?.close();
     filesChannel = null;
+    if (account) appFolder.forget(account.sub);
     account = null;
     setFiles([]);
     filesState = 'loading';

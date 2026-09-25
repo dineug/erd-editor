@@ -14,7 +14,7 @@ import {
   createAppFolder,
   pickAppFolder,
 } from '@/services/gdrive/appFolder';
-import { createDriveClient } from '@/services/gdrive/driveClient';
+import { createDriveClient, RETRY_LIMIT } from '@/services/gdrive/driveClient';
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const MARKER = { erdEditorFolder: '1' };
@@ -32,7 +32,13 @@ function tab(
     getAccessToken: async () => 'drive-token-1',
     onUnauthorized: async token => token,
   });
-  return createAppFolder({ drive: client, locks, isCurrent, share });
+  return createAppFolder({
+    drive: client,
+    locks,
+    isCurrent,
+    share,
+    retry: { sleep: async () => {}, random: () => 0 },
+  });
 }
 
 type Tab = ReturnType<typeof tab>;
@@ -74,6 +80,13 @@ const checksOf = (drive: FakeDrive, id: string) =>
   drive
     .callsTo('GET')
     .filter(call => call.url.pathname === `/drive/v3/files/${id}`);
+
+/** Fails the next GETs of URLs when matches, one for every attempt withRetry makes. */
+function failGets(drive: FakeDrive, when: (url: URL) => boolean) {
+  for (let n = 0; n <= RETRY_LIMIT; n++) {
+    drive.failNext('GET', 500, 'backendError', when);
+  }
+}
 
 /** Real timers here: waits a task at a time until the fake Drive has seen enough. */
 async function until(done: () => boolean) {
@@ -215,7 +228,7 @@ describe('createAppFolder', () => {
     expect(drive.files.get('created-folder-2')?.appProperties).toEqual(MARKER);
   });
 
-  it('lists on every use, one request once the list shows the folder, and per account', async () => {
+  it('lists on every use, one request once the list shows the folder', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
     const id = await folders.folderId(SUB);
@@ -229,8 +242,38 @@ describe('createAppFolder', () => {
     expect(url.searchParams.get('fields')).toBe(
       'nextPageToken,files(id,createdTime,trashed,driveId,capabilities(canAddChildren))'
     );
-    await folders.folderId('2002');
+  });
+
+  it('keeps what it knows per account, so another account lists for itself and never reads it', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    drive.unlisted.add('created-folder-1');
+    const mine = await folders.folderId(SUB);
+    folders.learn(SUB, 'heard-of');
+    const listed = lists(drive).length;
+
+    await expect(folders.folderId('2002')).resolves.toBe('created-folder-2');
+
     expect(lists(drive)).toHaveLength(listed + 2);
+    expect(checksOf(drive, mine)).toEqual([]);
+    expect(checksOf(drive, 'heard-of')).toEqual([]);
+    await expect(folders.folderId(SUB)).resolves.toBe(mine);
+    expect(checksOf(drive, mine)).toHaveLength(1);
+  });
+
+  it('forgets what it knew of an account that left, so a sign-in again reads none of it', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    drive.unlisted.add('created-folder-1');
+    const made = await folders.folderId(SUB);
+    folders.forget('2002');
+    folders.forget(SUB);
+
+    // The grant a sign-out revoked leaves the folder out of the account's lists.
+    const next = await folders.folderId(SUB);
+
+    expect(next).not.toBe(made);
+    expect(checksOf(drive, made)).toEqual([]);
   });
 
   it('moves a tab to an older folder a list shows again, so it and a new tab agree', async () => {
@@ -308,7 +351,7 @@ describe('createAppFolder', () => {
     const folders = tab(drive);
     const gone = await folders.folderId(SUB);
     drive.files.delete(gone);
-    drive.failNext('GET', 500, 'backendError', isList);
+    failGets(drive, isList);
 
     await expect(folders.folderId(SUB)).rejects.toMatchObject({
       kind: 'server',
@@ -325,7 +368,7 @@ describe('createAppFolder', () => {
     const folders = tab(drive);
     drive.unlisted.add('created-folder-1');
     const made = await folders.folderId(SUB);
-    drive.failNext('GET', 500, 'backendError', isList);
+    failGets(drive, isList);
 
     await expect(folders.folderId(SUB)).resolves.toBe(made);
     expect(checksOf(drive, made)).toHaveLength(1);
@@ -387,13 +430,36 @@ describe('createAppFolder', () => {
     expect(shared).toHaveLength(2);
   });
 
+  it('tells the browser of a folder it made though its own list shows it, since the next holder may list before Drive has caught up', async () => {
+    const drive = createFakeDrive();
+    const { tabs, shared } = browserTabs(drive, 2);
+    // The third list, the second tab's: the first lists, creates and lists again.
+    const release = drive.hold(
+      'GET',
+      url => isList(url) && lists(drive).length === 3
+    );
+
+    const first = tabs[0].folderId(SUB);
+    const second = tabs[1].folderId(SUB);
+    await expect(first).resolves.toBe('created-folder-1');
+    expect(shared).toEqual([{ folderId: 'created-folder-1', lockHeld: true }]);
+    await until(() => lists(drive).length === 3);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    drive.unlisted.add('created-folder-1');
+    release();
+
+    await expect(second).resolves.toBe('created-folder-1');
+    expect(posts(drive)).toHaveLength(1);
+    expect(checksOf(drive, 'created-folder-1')).toHaveLength(1);
+  });
+
   it('keeps a folder it made when the list after it fails, and lists again on the next use', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
     const release = drive.hold('POST');
     const run = folders.folderId(SUB);
     await until(() => posts(drive).length === 1);
-    drive.failNext('GET', 500, 'backendError', isList);
+    failGets(drive, isList);
     release();
 
     await expect(run).resolves.toBe('created-folder-1');
@@ -466,22 +532,49 @@ describe('createAppFolder', () => {
     expect(posts(drive)).toHaveLength(1);
   });
 
-  it('passes on a check that fails otherwise, and keeps the id for the next call', async () => {
+  it('forgets a folder a check finds closed to it, as a revoked grant leaves one, and takes another', async () => {
     const drive = createFakeDrive();
     const folders = tab(drive);
     drive.unlisted.add('created-folder-1');
     const id = await folders.folderId(SUB);
-    drive.failNext(
-      'GET',
-      403,
-      'insufficientFilePermissions',
-      url => !isList(url)
-    );
+    drive.failNext('GET', 403, 'appNotAuthorizedToFile', url => !isList(url));
+
+    const next = await folders.folderId(SUB);
+
+    expect(next).not.toBe(id);
+    expect(checksOf(drive, id)).toHaveLength(1);
+    await expect(folders.folderId(SUB)).resolves.toBe(next);
+    expect(checksOf(drive, id)).toHaveLength(1);
+    expect(posts(drive)).toHaveLength(2);
+  });
+
+  it('passes on a check that keeps failing otherwise, and keeps the id for the next call', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    drive.unlisted.add('created-folder-1');
+    const id = await folders.folderId(SUB);
+    failGets(drive, url => !isList(url));
 
     await expect(folders.folderId(SUB)).rejects.toMatchObject({
-      kind: 'forbidden',
+      kind: 'server',
     });
+    expect(checksOf(drive, id)).toHaveLength(RETRY_LIMIT + 1);
     await expect(folders.folderId(SUB)).resolves.toBe(id);
+    expect(posts(drive)).toHaveLength(1);
+  });
+
+  it('reads again after a failure that may pass, the list and the check alike', async () => {
+    const drive = createFakeDrive();
+    const folders = tab(drive);
+    drive.unlisted.add('created-folder-1');
+    drive.failNext('GET', 503, 'backendError', isList);
+
+    await expect(folders.folderId(SUB)).resolves.toBe('created-folder-1');
+    expect(lists(drive)).toHaveLength(3);
+
+    drive.failNext('GET', 429, 'rateLimitExceeded', url => !isList(url));
+    await expect(folders.folderId(SUB)).resolves.toBe('created-folder-1');
+    expect(checksOf(drive, 'created-folder-1')).toHaveLength(2);
     expect(posts(drive)).toHaveLength(1);
   });
 
@@ -493,13 +586,14 @@ describe('createAppFolder', () => {
     await expect(folders.folderId(SUB)).rejects.toMatchObject({
       kind: 'server',
     });
+    expect(posts(drive)).toHaveLength(1);
     const id = await folders.folderId(SUB);
     expect(drive.files.get(id)?.name).toBe('ERD Editor');
   });
 
   it('passes on a failed first list when it knows no folder', async () => {
     const drive = createFakeDrive();
-    drive.failNext('GET', 500, 'backendError', isList);
+    failGets(drive, isList);
 
     await expect(tab(drive).folderId(SUB)).rejects.toMatchObject({
       kind: 'server',
