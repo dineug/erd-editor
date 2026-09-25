@@ -1,7 +1,9 @@
 import { Button, Link, Spinner } from '@radix-ui/themes';
+import { useSetAtom } from 'jotai';
 import { Download, ExternalLink, RotateCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import { authControl } from '@/components/gdrive/authControl';
 import GdriveLeaveDialog from '@/components/gdrive/gdrive-confirm/GdriveLeaveDialog';
 import GdriveCreateDialog from '@/components/gdrive/gdrive-create/GdriveCreateDialog';
@@ -30,9 +32,24 @@ interface ScreenProps {
   snapshot: SessionSnapshot;
 }
 
-/** Everything but the workspace: checking, offline and the account screens. */
+/**
+ * Everything but the workspace: checking, offline and the account screens. A
+ * file open when one replaced the editor keeps its edits here, to download.
+ */
 const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
   const { token } = snapshot;
+  const download =
+    snapshot.controller && snapshot.document?.phase === 'ready' ? (
+      <Button
+        size="2"
+        variant="outline"
+        color="gray"
+        onClick={() => session.downloadChanges()}
+      >
+        <Download size={16} />
+        Download my changes
+      </Button>
+    ) : null;
 
   switch (snapshot.screen) {
     case 'offline':
@@ -43,7 +60,11 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
         />
       );
     case 'sign-in':
-      return <GdriveSignIn session={session} token={token} />;
+      return (
+        <GdriveSignIn session={session} token={token}>
+          {download}
+        </GdriveSignIn>
+      );
     case 'scope-missing':
       return (
         <GdriveNotice
@@ -60,6 +81,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             <RotateCw size={16} />
             Try again
           </Button>
+          {download}
         </GdriveNotice>
       );
     case 'account-mismatch':
@@ -77,6 +99,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
           >
             Switch account
           </Button>
+          {download}
         </GdriveNotice>
       );
     case 'account-changed':
@@ -94,17 +117,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             <RotateCw size={16} />
             Reload
           </Button>
-          {snapshot.controller ? (
-            <Button
-              size="2"
-              variant="outline"
-              color="gray"
-              onClick={() => session.downloadChanges()}
-            >
-              <Download size={16} />
-              Download my changes
-            </Button>
-          ) : null}
+          {download}
         </GdriveNotice>
       );
     default:
@@ -119,6 +132,15 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
 /** The signed-in account's files: the sidebar, the open file and its dialogs. */
 const Workspace: React.FC<ScreenProps> = ({ session, snapshot }) => {
   const [adding, setAdding] = useState(false);
+  const setSidebarSash = useSetAtom(sidebarSashAtom);
+
+  // The sash is shared with /, so the sidebar may be folded away.
+  const startAdding = () => {
+    setSidebarSash(draft => {
+      draft.open = true;
+    });
+    setAdding(true);
+  };
 
   const handleImport = async () => {
     const files = await pickFiles(IMPORT_ACCEPT);
@@ -138,7 +160,7 @@ const Workspace: React.FC<ScreenProps> = ({ session, snapshot }) => {
       <GdriveViewer
         session={session}
         snapshot={snapshot}
-        onNewFile={() => setAdding(true)}
+        onNewFile={startAdding}
         onImport={importFiles}
       />
       <SidebarSash />

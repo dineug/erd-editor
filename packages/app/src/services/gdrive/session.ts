@@ -136,6 +136,7 @@ export const MESSAGES = {
   renameFailed: "Couldn't rename the file",
   createFailed: "Couldn't create the file",
   importFailed: 'Import failed',
+  checkFailed: "Couldn't reach Google Drive. Try again.",
   signOutUnconfirmed:
     "Signed out here. erd-editor's server didn't confirm it, so this browser finishes signing out the next time it connects",
 };
@@ -196,6 +197,8 @@ export function createGdriveSession(deps: SessionDeps) {
   let files: DriveFile[] = [];
   let filesState: FilesState = 'loading';
   let listing: Promise<void> | null = null;
+  /** What this tab created or renamed while a list was on its way, which its answer may predate. */
+  let touched: Map<string, DriveFile> | null = null;
   let filesChannel: FilesChannel | null = null;
   let controller: DocumentController | null = null;
   let offController: (() => void) | null = null;
@@ -250,12 +253,34 @@ export function createGdriveSession(deps: SessionDeps) {
 
   function upsertFile(file: DriveFile) {
     setFiles([file, ...files.filter(entry => entry.id !== file.id)]);
+    touched?.set(file.id, file);
   }
 
   function patchFile(fileId: string, patch: Partial<DriveFile>) {
     setFiles(
-      files.map(file => (file.id === fileId ? { ...file, ...patch } : file))
+      files.map(file => {
+        if (file.id !== fileId) return file;
+        const next = { ...file, ...patch };
+        touched?.set(fileId, next);
+        return next;
+      })
     );
+  }
+
+  /** A list with what changed here meanwhile put back, unless Drive's answer is newer. */
+  function withTouched(listed: DriveFile[], local: Map<string, DriveFile>) {
+    const byId = new Map(listed.map(file => [file.id, file]));
+    const added = [...local.values()].filter(file => !byId.has(file.id));
+    return [
+      ...added,
+      ...listed.map(file => {
+        const mine = local.get(file.id);
+        return mine &&
+          Date.parse(mine.modifiedTime) >= Date.parse(file.modifiedTime)
+          ? mine
+          : file;
+      }),
+    ];
   }
 
   function onFilesMessage(message: FilesMessage) {
@@ -277,16 +302,19 @@ export function createGdriveSession(deps: SessionDeps) {
     const sub = account?.sub;
     if (!sub) return Promise.resolve();
     listing ??= (async () => {
+      const local = new Map<string, DriveFile>();
+      touched = local;
       try {
         const listed = await withRetry(() => drive.listFiles(), retry);
         if (account?.sub !== sub) return;
-        setFiles(listed);
+        setFiles(withTouched(listed, local));
         filesState = 'ready';
       } catch {
         if (account?.sub === sub && filesState !== 'ready') {
           filesState = 'failed';
         }
       } finally {
+        touched = null;
         listing = null;
         emit();
       }
@@ -730,9 +758,15 @@ export function createGdriveSession(deps: SessionDeps) {
     /** Reload from Drive; the edits not saved go. */
     reload: () => controller?.reload() ?? Promise.resolve(false),
 
-    /** Check Drive, from the unconfirmed banner; null without a file. */
+    /** Check Drive, from the unconfirmed banner; null without a file. A check that never reached Drive says so. */
     async checkDrive(): Promise<CheckResult | null> {
-      return controller ? controller.checkUnconfirmed() : null;
+      if (!controller) return null;
+      const result = await controller.checkUnconfirmed();
+      if (result === 'failed') {
+        showNotice(MESSAGES.checkFailed, 'warning');
+        emit();
+      }
+      return result;
     },
 
     /** Try again after a failed save. */

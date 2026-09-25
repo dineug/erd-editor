@@ -35,6 +35,7 @@ import {
   ACK_TIMEOUT_MS,
   fileChannelName,
   FLUSH_TIMEOUT_MS,
+  FOLLOWER_SEND_WINDOW_MS,
   openFileChannel,
 } from '@/services/gdrive/fileChannel';
 import { fileLockName } from '@/services/gdrive/fileLeader';
@@ -132,6 +133,30 @@ describe('one tab', () => {
     expect(env.patches()).toHaveLength(1);
     expect(tableNames(driveContent())).toEqual(['orders', 'users']);
     expect(a.snapshot().saveState).toBe('saved');
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('saves what an editor left before its change came, once another attaches', async () => {
+    const a = await open('a');
+    // The element reports a change 200 ms on; a screen replaced it before then.
+    const [id] = a.editor.store.dispatch([
+      tableActions$.addTableAction$(),
+    ]).createdIds;
+    a.editor.store.dispatch([
+      tableActions.changeTableNameAction({ id, value: 'orders' }),
+    ]);
+    expect(a.controller.hasUnsavedChanges()).toBe(true);
+    await settle(2000);
+    expect(env.patches()).toHaveLength(0);
+
+    const next = createPeerEditor('a');
+    a.editors.push(next);
+    a.controller.attach(next.adapter);
+    expect(tableNames(next.store.value)).toEqual(['orders', 'users']);
+    await settle(2000);
+
+    expect(env.patches()).toHaveLength(1);
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
     expect(a.controller.hasUnsavedChanges()).toBe(false);
   });
 });
@@ -869,6 +894,18 @@ describe('the page around it', () => {
 
     expect(env.patches()).toHaveLength(1);
     expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
+  });
+
+  it('has a follower ask before closing right after a press, before any change comes', async () => {
+    await open('a');
+    const b = await open('b');
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
+
+    b.editor.press();
+    expect(b.controller.hasUnsavedChanges()).toBe(true);
+    await settle(FOLLOWER_SEND_WINDOW_MS);
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
+    expect(env.patches()).toHaveLength(0);
   });
 
   it('flushes before a switch, in the leader and in a follower', async () => {

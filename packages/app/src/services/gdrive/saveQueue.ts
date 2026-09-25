@@ -53,7 +53,7 @@ export type SaveBroadcast =
 export type SaveQueueDeps = {
   drive: Pick<DriveClient, 'getFile' | 'saveContent' | 'download' | 'rename'>;
   fileId: string;
-  /** The editor's value, or null while no editor is attached. */
+  /** The document: the editor's value, what a detached one left, or null before any. */
   getValue: () => string | null;
   /** Whether this tab leads, as far as it knows now. */
   isLeader: () => boolean;

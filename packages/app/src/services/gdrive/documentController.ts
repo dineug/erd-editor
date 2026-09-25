@@ -101,6 +101,8 @@ export type EditorAdapter = {
   applyRemote(actions: unknown[]): void;
   /** Any change, remote ones included, as the element's change event. */
   onChange(listener: () => void): () => void;
+  /** A press or a key in the editor, which may start an edit its change event reports 200 ms on. */
+  onInput(listener: () => void): () => void;
 };
 
 export type DocumentDrive = Pick<
@@ -400,7 +402,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       {
         drive,
         fileId,
-        getValue: () => adapter?.getValue() ?? null,
+        // A detached editor left its document, edits included, in initialValue.
+        getValue: () => adapter?.getValue() ?? initialValue,
         isLeader: () => role === 'leader' && !disposed,
         isStillLeader: () => leader.isStillLeader(),
         requestSave,
@@ -625,11 +628,13 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     adapter = next;
     for (const entry of pending) next.applyRemote(entry.actions);
     const offChange = next.onChange(onChange);
+    const offInput = next.onInput(onInput);
 
     const detach = () => {
       if (adapter !== next) return;
       offLocal();
       offChange();
+      offInput();
       // The next editor of this load starts from this one's document, edits included.
       initialValue = next.getValue();
       adapter = null;
@@ -649,6 +654,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   function startLeading(next: EditorAdapter, current: SaveQueue) {
     if (current.getBase().fingerprint !== null) {
       startAnswering(next, current);
+      // An editor attached again, or a snapshot's, may hold edits no save has taken.
+      if (current.hasUnsavedChanges()) current.notifyChange();
       return;
     }
     queueMicrotask(() => {
@@ -704,6 +711,11 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     lastChangeAt = now();
     if (role !== 'leader') changeUnconfirmed = true;
     queue?.notifyChange();
+  }
+
+  /** An edit may be on its way, still in the shared store's send buffer: a follower counts it at once. */
+  function onInput() {
+    lastChangeAt = now();
   }
 
   // Leadership

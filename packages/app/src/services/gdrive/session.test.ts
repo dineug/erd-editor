@@ -12,6 +12,7 @@ import {
   documentWith,
   type PeerEditor,
   settle,
+  tableNames,
   USERS_DOCUMENT,
 } from '@/__test-utils__/driveDocument';
 import {
@@ -135,17 +136,22 @@ function openTab(browser: Browser, initial?: SessionLocation) {
     retry: { sleep: async () => {}, random: () => 0 },
   });
 
-  // Mounts an editor for every document load, as GdriveEditor does.
-  let mounted: unknown = null;
+  // Mounts an editor for every document load while the workspace shows, as
+  // GdriveEditor does, and unmounts it when an account screen takes its place.
+  let mounted: { key: string; detach: () => void } | null = null;
   const mount = () => {
-    const { controller, document } = session.getSnapshot();
-    if (!controller || document?.phase !== 'ready') return;
-    const key = `${controller.fileId}/${document.epoch}`;
-    if (key === mounted) return;
-    mounted = key;
+    const { screen, controller, document } = session.getSnapshot();
+    const key =
+      screen === 'workspace' && controller && document?.phase === 'ready'
+        ? `${controller.fileId}/${document.epoch}`
+        : null;
+    if (key === (mounted?.key ?? null)) return;
+    mounted?.detach();
+    mounted = null;
+    if (key === null) return;
     const editor = createPeerEditor(`editor-${editors.length}`);
     editors.push(editor);
-    controller.attach(editor.adapter);
+    mounted = { key, detach: controller!.attach(editor.adapter) };
   };
   session.subscribe(() => queueMicrotask(mount));
   if (initial) session.setLocation(initial);
@@ -629,6 +635,24 @@ describe('the open file', () => {
     expect(tab.snapshot().document?.phase).toBe('ready');
   });
 
+  it('says so when Check Drive cannot reach Drive, and resumes once it can', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    await start(tab);
+    await settle(10);
+    browser.drive.loseNextResponse('PATCH');
+    tab.editor.addTable('orders');
+    await settle(2010);
+    expect(tab.snapshot().document?.saveState).toBe('unconfirmed');
+
+    browser.drive.failNext('GET', 500);
+    expect(await tab.session.checkDrive()).toBe('failed');
+    expect(tab.snapshot().notice?.message).toBe(MESSAGES.checkFailed);
+    expect(tab.snapshot().document?.saveState).toBe('unconfirmed');
+
+    expect(await tab.session.checkDrive()).toBe('resumed');
+    expect(tab.snapshot().document?.saveState).toBe('saved');
+  });
+
   it('does nothing for the file actions without a file', async () => {
     const tab = openTab(browser);
     await start(tab);
@@ -662,6 +686,36 @@ describe('the open file', () => {
     await settle(10);
     expect(tab.snapshot().screen).toBe('workspace');
     expect(tab.snapshot().controller).toBe(controller);
+  });
+
+  it('keeps counting the edits an account screen took the editor from, and saves them back', async () => {
+    const tab = openTab(browser, { state: null, file: 'file-1' });
+    const other = openTab(browser);
+    await start(tab);
+    await start(other);
+    await settle(10);
+    tab.editor.addTable('orders');
+
+    await other.session.signOut();
+    await settle(10);
+    expect(tab.snapshot().screen).toBe('sign-in');
+    expect(tab.session.hasUnsavedChanges()).toBe(true);
+    tab.session.downloadChanges();
+    expect(tableNames(tab.downloads[0].text)).toEqual(['orders', 'users']);
+
+    // The save it had coming waits for a token instead of passing for saved.
+    await settle(2000);
+    expect(tab.snapshot().document?.saveState).toBe('paused');
+    expect(patches(browser, 'file-1')).toHaveLength(0);
+
+    tab.session.signIn();
+    browser.relay.signedIn = true;
+    await finishPopup(browser, tab);
+    await settle(10);
+    expect(tab.snapshot().screen).toBe('workspace');
+    expect(tableNames(tab.editor.store.value)).toEqual(['orders', 'users']);
+    expect(patches(browser, 'file-1')).toHaveLength(1);
+    expect(tab.session.hasUnsavedChanges()).toBe(false);
   });
 });
 
@@ -759,6 +813,40 @@ describe('the list', () => {
     expect(
       other.snapshot().files.find(file => file.id === 'file-1')?.name
     ).toBe('market.erd.json');
+  });
+
+  it('keeps what it created or renamed while a list was on its way', async () => {
+    const tab = openTab(browser);
+    await start(tab);
+    const release = browser.drive.holdAnswer(
+      'GET',
+      url => url.pathname === '/drive/v3/files'
+    );
+    tab.events.dispatchEvent(new Event('focus'));
+    await settle(10);
+
+    await tab.session.newFile('orders');
+    await tab.session.renameFile('file-2', 'journal');
+    // News older than the list's answer loses to it.
+    browser.hub.create(`${FILES_CHANNEL_PREFIX}/sub-1`).postMessage({
+      type: 'renamed',
+      fileId: 'file-1',
+      name: 'stale.erd.json',
+      modifiedTime: '2000-01-01T00:00:00.000Z',
+    });
+    await settle(10);
+    expect(tab.snapshot().files.map(file => file.name)).toContain(
+      'stale.erd.json'
+    );
+    release();
+    await settle(10);
+
+    expect(
+      tab
+        .snapshot()
+        .files.map(file => file.name)
+        .sort()
+    ).toEqual(['journal.erd', 'orders.erd.json', 'shop.erd.json']);
   });
 
   it('renames a file no tab has open at Drive', async () => {

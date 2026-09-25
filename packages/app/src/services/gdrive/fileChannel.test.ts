@@ -563,6 +563,7 @@ describe('the file protocol, from another tab', () => {
       'applyRemote',
       'applyRemote',
       'onChange',
+      'onInput',
     ]);
     expect(tableNames(editor.store.value)).toEqual(['orders', 'users']);
     editor.destroy();

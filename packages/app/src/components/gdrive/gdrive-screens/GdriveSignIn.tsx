@@ -61,13 +61,19 @@ const ERRORS = {
 interface GdriveSignInProps {
   session: GdriveSession;
   token: TokenSnapshot;
+  /** What else the screen offers, under the sign-in. */
+  children?: React.ReactNode;
 }
 
 /**
  * Sign in with Google through erd-editor's popup, or Continue with Google on
  * Google's own token popup while the sign-in server is unavailable.
  */
-const GdriveSignIn: React.FC<GdriveSignInProps> = ({ session, token }) => {
+const GdriveSignIn: React.FC<GdriveSignInProps> = ({
+  session,
+  token,
+  children,
+}) => {
   const fallback = token.mode === 'fallback';
 
   if (token.signingIn) {
@@ -119,6 +125,7 @@ const GdriveSignIn: React.FC<GdriveSignInProps> = ({ session, token }) => {
             {ERRORS[token.error]}
           </Text>
         ) : null}
+        {children}
       </Flex>
     </GdriveNotice>
   );

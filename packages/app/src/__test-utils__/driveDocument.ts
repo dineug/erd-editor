@@ -72,6 +72,7 @@ export function createPeerEditor(nickname: string, presence = false) {
   const store = createPeerStore({ nickname, presence });
   const changes = new Set<() => void>();
   const changed = () => [...changes].forEach(listener => listener());
+  const inputs = new Set<() => void>();
 
   const adapter: EditorAdapter = {
     getValue: () => store.value,
@@ -85,6 +86,12 @@ export function createPeerEditor(nickname: string, presence = false) {
       changes.add(listener);
       return () => {
         changes.delete(listener);
+      };
+    },
+    onInput: listener => {
+      inputs.add(listener);
+      return () => {
+        inputs.delete(listener);
       };
     },
   };
@@ -101,6 +108,8 @@ export function createPeerEditor(nickname: string, presence = false) {
     store,
     adapter,
     edit,
+    /** A press in the element, whose edit, if any, the change event reports later. */
+    press: () => [...inputs].forEach(listener => listener()),
     /** Adds a table named tableName, the edit most tests make. */
     addTable(tableName: string) {
       const [id] = edit([tableActions$.addTableAction$()]).createdIds;

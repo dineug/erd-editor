@@ -56,13 +56,38 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
         editor.addEventListener('change', listener);
         return () => editor.removeEventListener('change', listener);
       },
+      // Captured before the element's handlers. A drag it began ends wherever
+      // the pointer is let go, so the window hears that; a key counts on its
+      // release, which a reload shortcut unloads the page before.
+      onInput: listener => {
+        let pressed = false;
+        const handlePointerDown = () => {
+          pressed = true;
+        };
+        const handlePointerUp = () => {
+          if (!pressed) return;
+          pressed = false;
+          listener();
+        };
+        editor.addEventListener('pointerdown', handlePointerDown, true);
+        editor.addEventListener('keyup', listener, true);
+        window.addEventListener('pointerup', handlePointerUp, true);
+        return () => {
+          editor.removeEventListener('pointerdown', handlePointerDown, true);
+          editor.removeEventListener('keyup', listener, true);
+          window.removeEventListener('pointerup', handlePointerUp, true);
+        };
+      },
     };
-    // A load that another replaced meanwhile throws; its successor mounts anew.
+    // A load another replaced before this effect ran takes no editor; its
+    // successor mounts anew. Past that check, a throw is a bug.
     let detach = () => {};
-    try {
-      detach = controller.attach(adapter);
-    } catch (error) {
-      reportError(error);
+    if (controller.getSnapshot().phase === 'ready') {
+      try {
+        detach = controller.attach(adapter);
+      } catch (error) {
+        reportError(error);
+      }
     }
 
     const handleChangePresetTheme = (event: Event) => {
