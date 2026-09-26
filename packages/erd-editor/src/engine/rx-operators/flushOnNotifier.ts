@@ -1,4 +1,4 @@
-import { map, Observable, switchMap, take } from 'rxjs';
+import { map, Observable, race, switchMap, take, timer } from 'rxjs';
 
 import type { StreamBufferOperator } from '@/engine/rx-operators/groupByStreamActions';
 
@@ -16,5 +16,19 @@ export const flushOnNotifier =
           take(1),
           map(() => actions)
         )
+      )
+    );
+
+/**
+ * Closes a stream buffer after groupByStreamActions' 200 ms quiet period, or
+ * at once when the notifier fires: the editor keeps its timing, and a host
+ * can still send what is held before it lets the store go.
+ */
+export const quietPeriodOrNotifier =
+  (notifier$: Observable<unknown>, quietMs = 200): StreamBufferOperator =>
+  source$ =>
+    source$.pipe(
+      switchMap(actions =>
+        race(timer(quietMs), notifier$.pipe(take(1))).pipe(map(() => actions))
       )
     );

@@ -449,7 +449,7 @@ describe('createSharedStore stream flushing', () => {
   const recolor = (color: string, prevColor: string) =>
     changeTableColorAction({ id: 't1', color, prevColor });
 
-  it('keeps each compressor settling for 200 ms without the flag, where flushStreamBuffers does nothing', () => {
+  it('keeps each compressor settling for 200 ms without the flag, unless flushStreamBuffers sends the batch first', () => {
     vi.useFakeTimers();
     const fixture = make();
     fixture.store.dispatchSync(addTable('t1'));
@@ -457,12 +457,19 @@ describe('createSharedStore stream flushing', () => {
     fixture.reset();
 
     fixture.store.dispatchSync(recolor('#f00', ''));
-    fixture.shared.flushStreamBuffers();
     // One quiet period on each side of the circuit breaker.
     vi.advanceTimersByTime(399);
     expect(fixture.seen).toHaveLength(0);
 
     vi.advanceTimersByTime(1);
+    expect(fixture.types()).toEqual(['table.changeColor']);
+
+    fixture.reset();
+    fixture.store.dispatchSync(recolor('#0f0', '#f00'));
+    vi.advanceTimersByTime(100);
+    expect(fixture.seen).toHaveLength(0);
+
+    fixture.shared.flushStreamBuffers();
     expect(fixture.types()).toEqual(['table.changeColor']);
   });
 
