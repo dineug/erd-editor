@@ -1,6 +1,7 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.core.StreamReadConstraints
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
@@ -17,6 +18,11 @@ object WebviewScripts {
     val mapper = jacksonObjectMapper().apply {
         configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         setSerializationInclusion(JsonInclude.Include.NON_NULL)
+        // A save carries the whole document as one string, and Jackson refuses a string longer than
+        // 20,000,000 characters by default: the save of a diagram that large was dropped.
+        factory.setStreamReadConstraints(
+            StreamReadConstraints.builder().maxStringLength(Int.MAX_VALUE).build()
+        )
     }
 
     /**

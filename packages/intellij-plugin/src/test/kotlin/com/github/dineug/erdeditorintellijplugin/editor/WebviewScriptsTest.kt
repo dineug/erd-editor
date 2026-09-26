@@ -80,6 +80,17 @@ class WebviewScriptsTest {
     }
 
     @Test
+    fun `a document of more than 20 million characters still parses`() {
+        val value = "a".repeat(21_000_000)
+        val save = WebviewScripts.mapper.readValue(
+            """{"type":"hostSaveValueCommand","payload":{"value":"$value"}}""",
+            HostBridgeCommand::class.java
+        )
+
+        assertEquals(value.length, (save as HostBridgeCommand.SaveValue).payload.value.length)
+    }
+
+    @Test
     fun `target origin is the plugin domain`() {
         val script = WebviewScripts.postMessageScript("{}")
 
