@@ -322,7 +322,10 @@ const make = Effect.gen(function* () {
     }
 
     if (isLive(existing)) {
-      if (existing.connected) return existing;
+      // A JetBrains IDE closing a project sends documentClosed and takes its
+      // folder out of the lock; a call before its hub ends the connection, or
+      // with a hub that keeps it, finds the released session still connected.
+      if (existing.connected && !existing.released) return existing;
       const exited = !process.isAlive(existing.pid);
       // A window that closes its connections without documentClosed, as VS
       // Code deactivating does, may still hold the document in an editor.

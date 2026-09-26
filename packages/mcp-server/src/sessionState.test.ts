@@ -346,6 +346,84 @@ describe('an editor that lets go of the document, as the Obsidian plugin does wh
   });
 });
 
+describe('a project a JetBrains IDE closes, before its hub ends the connection to the document', () => {
+  const OTHER = '/other';
+
+  beforeEach(() => {
+    hub.destroy();
+    io.removeLock(hub.pid);
+    io.alive.delete(hub.pid);
+    hub = createFakeHub(io, {
+      pid: 6363,
+      workspaceFolders: ['/work', OTHER],
+      ide: 'intellij',
+    });
+  });
+
+  /**
+   * One lock serves every project: the closed one's peers hear documentClosed, then its folder
+   * leaves. The fake hub keeps the connection open, which a JetBrains IDE's hub ends soon after.
+   */
+  const closeProject = async () => {
+    hub.close(DOCUMENT);
+    hub.setFolders([OTHER]);
+    await settle();
+  };
+
+  it('edits the file once the editor let go and the folder left the lock, the connection open', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+
+    await closeProject();
+    expect(hub.connections.size).toBe(1);
+    const asked = hub.requests.length;
+
+    const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    expect(memo).toMatchObject({
+      mode: 'headless',
+      notes: [fellBackNote('intellij', false)],
+    });
+    expect(JSON.parse(io.read(DOCUMENT)).doc.memoIds).toEqual(memo.createdIds);
+    expect(hub.requests.slice(asked)).toEqual([]);
+    await settle();
+    expect(hub.connections.size).toBe(0);
+  });
+
+  it('reads the file too, and the next write stays on disk', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    await closeProject();
+
+    const read = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+    });
+    expect(read.isError).toBe(false);
+    expect(JSON.parse(read.texts[1]).notes).toEqual([
+      fellBackNote('intellij', false),
+    ]);
+
+    const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    expect(memo.mode).toBe('headless');
+    expect(memo.notes).toBeUndefined();
+  });
+
+  it('keeps editing live a document of a project still open, over its own connection', async () => {
+    const kept = `${OTHER}/kept.erd.json`;
+    io.put(kept, emptyDocument());
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    await mcp.ok('erd_add_table', { path: kept });
+
+    await closeProject();
+
+    const memo = await mcp.ok('erd_add_memo', { path: kept });
+    expect(memo.mode).toBe('live');
+    expect(memo.notes).toBeUndefined();
+    expect(hub.webview(kept).state.doc.memoIds).toEqual(memo.createdIds);
+  });
+});
+
 describe('two agents on one document (AC-P13, AC-P17)', () => {
   it('converge with the editor, and each undo reverts only its own edit', async () => {
     const a = await connect('agent-a');

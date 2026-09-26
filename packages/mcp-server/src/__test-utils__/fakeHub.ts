@@ -67,6 +67,8 @@ export type FakeHub = {
   readonlyPaths: Set<string>;
   lock: () => LockRecord;
   writeLock: () => void;
+  /** Rewrites the lock with these folders, as an IDE does when it opens or closes a project. */
+  setFolders: (folders: string[]) => void;
   /** The user opens the document in an ERD editor. */
   open: (path: string) => FakeDocument;
   /** The user closes the editor; joined peers hear documentClosed. */
@@ -110,7 +112,8 @@ export function createFakeHub(
   io: MemoryHost,
   options: FakeHubOptions
 ): FakeHub {
-  const { pid, workspaceFolders } = options;
+  const { pid } = options;
+  let { workspaceFolders } = options;
   const ide = options.ide ?? 'vscode';
   const token = options.token ?? `token-${pid}`;
   const serving = options.hub ?? true;
@@ -388,6 +391,10 @@ export function createFakeHub(
     readonlyPaths: new Set(),
     lock,
     writeLock: () => io.writeLock(pid, lock()),
+    setFolders: folders => {
+      workspaceFolders = folders;
+      hub.writeLock();
+    },
     open: path => {
       const document = open(path);
       hub.writeLock();
