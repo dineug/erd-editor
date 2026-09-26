@@ -57,7 +57,6 @@ import {
 } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { focusEvent } from '@/utils/internalEvents';
-import { isComposing } from '@/utils/keyboard-shortcut';
 import { isPinchWheel } from '@/utils/pinch';
 import { isHighLevelTable } from '@/utils/validation';
 
@@ -273,13 +272,6 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
     if (!isPinchWheel(event)) event.stopPropagation();
   };
 
-  const handleKeydown = (event: KeyboardEvent) => {
-    // While an IME is composing, Escape cancels the composition and the field
-    // stays, which is what the same key does in any other textarea.
-    if (event.key !== 'Escape' || isComposing(event)) return;
-    textarea.value?.blur();
-  };
-
   /**
    * Opens on the glyph the click landed on, with the box held at the line the
    * scene was showing. Left to the caret, the browser would pull the box to it
@@ -327,7 +319,6 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
       spellcheck="false"
       prop:value={props.target.value}
       on:input={handleInput}
-      on:keydown={handleKeydown}
       on:scroll={handleScroll}
       on:wheel={handleWheel}
       on:blur={handleBlur}

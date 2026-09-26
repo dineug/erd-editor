@@ -100,6 +100,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 - An overlay over the canvas joins the `canDrag` `closest()` list in `Erd.tsx` (`.content-compass`, `.floating-toolbar`, …; `ErdViewer.tsx` has its own) or a press on it starts a pan.
 - A header press lifts the table only past `CLICK_DRAG_MIN_MOVE` (`clickKinds`, `canvas/useMoveEntity.ts`); the drag layer is off the hit canvas, so lifting at once keeps a double click from opening the cell editor.
 - `YIELDS_TO_A_CARET` (`hooks/useKeyBindingMap.ts`) stands `selectAllTable` and `handTool` down in a text field, per binding, because `Enter` / `Escape` must still reach `handleShortcut` from the cell editor.
+- **Escape is two presses**, decided in the `stop` branch of `erd/useErdShortcut.ts` from the state it arrives in. An open cell or memo editor, or a relationship being drawn, takes the press alone (`editTableEndAction` / `editMemoEndAction` / `drawEndRelationshipAction`; focus, selection and typed text stay) and the branch calls `preventDefault`, so a host that skips a prevented Escape (Obsidian's workspace, a page's own dialog) leaves it be; any other Escape unselects as before and goes on unprevented. The memo textarea has no Escape handler of its own: a trusted press drains microtasks between listeners, so its blur would end the edit before the branch looked, which only a real key shows (`erd/useErdShortcut.browser.test.tsx`). A composing Escape never reaches `shortcut$` (`useKeyBindingMap`).
 
 **Peer store (`peer.js`)**
 

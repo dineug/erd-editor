@@ -296,7 +296,8 @@ Verified against the running editor, not inferred:
 | `$mod` + wheel                | zooms in 0.03 steps                                 |
 | `$mod+Equal` / `$mod+Minus`   | zooms in 0.04 steps                                 |
 | double-click a cell           | opens an `<input>`; edits commit as you type        |
-| `Escape` while editing        | ends edit mode — it does **not** revert the value   |
+| `Escape` while editing        | ends only the edit, prevented; does **not** revert  |
+| `Escape` with no edit open    | unselects, and reaches the page unprevented         |
 
 Column reordering is **not** native HTML5 drag-and-drop any more. `konva/jsx.d.ts`
 types `draggable` and every `on:drag*` as `never`, so the row runs on the same

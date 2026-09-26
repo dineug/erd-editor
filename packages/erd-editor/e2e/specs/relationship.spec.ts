@@ -404,6 +404,16 @@ test.describe('inline editing', () => {
     erd,
   }) => {
     await erd.seed(twoTables());
+    // What a host page hears of each Escape, past the closed shadow root.
+    await erd.page.evaluate(() => {
+      const heard: boolean[] = [];
+      Reflect.set(window, '__escapes', heard);
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') heard.push(event.defaultPrevented);
+      });
+    });
+    const escapes = () =>
+      erd.page.evaluate(() => Reflect.get(window, '__escapes') as boolean[]);
 
     const nameCell = erd.cell(erd.tableEl('users'), 'tableName');
     await erd.editCell(nameCell, 'accounts');
@@ -414,5 +424,15 @@ test.describe('inline editing', () => {
     await expect(nameCell.locator('input')).toHaveCount(0);
     await expect(nameCell.locator('div.edit-input')).toHaveText('accounts');
     expect((await erd.table('users')).name).toBe('accounts');
+    // That press is the edit's alone: the table and its cell stay as they were,
+    // and the page is told the key was spent.
+    await expect(erd.selectedTables()).toHaveCount(1);
+    await expect(erd.focusRing(nameCell)).toBeVisible();
+    expect(await escapes()).toEqual([true]);
+
+    await erd.press(Shortcut.stop);
+    await expect(erd.selectedTables()).toHaveCount(0);
+    await expect(erd.focusRings()).toHaveCount(0);
+    expect(await escapes()).toEqual([true, false]);
   });
 });
