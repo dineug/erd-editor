@@ -39,6 +39,7 @@ import {
   type HubVault,
   pidSandbox,
 } from '@/hub';
+import { scopeKeysOf } from '@/keys';
 import { type ErdEditorModule, loadErdEditor } from '@/loadErdEditor';
 import {
   ACCENT_COLORS,
@@ -106,9 +107,12 @@ export default class ErdEditorPlugin extends Plugin {
     });
     this.registry = registry;
 
+    const editorKeys = scopeKeysOf(
+      this.erdEditor.createKeyBindingMap?.() ?? {}
+    );
     this.registerView(
       VIEW_TYPE_ERD,
-      leaf => new ErdView(leaf, registry, this.theme)
+      leaf => new ErdView(leaf, registry, this.theme, editorKeys)
     );
     this.registerExtensions(DIAGRAM_EXTENSIONS, VIEW_TYPE_ERD);
 

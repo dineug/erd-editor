@@ -89,8 +89,8 @@ for (const name of ['legacy.vuerd', 'legacy.vuerd.json']) {
 const BROKEN = '{"doc": <<<<<<< HEAD';
 writeFileSync(join(vault, 'broken.erd'), BROKEN);
 writeFileSync(join(vault, 'untitled.erd'), '');
-// What the tab seed, the slow close, the outside conflict, the theme and the
-// coding agent work on; notes.md is no diagram and never listed.
+// What the tab seed, the slow close, the outside conflict, the theme, the
+// coding agent and the keys work on; notes.md is no diagram and never listed.
 for (const name of [
   'deferred.erd',
   'slow-close.erd',
@@ -100,6 +100,7 @@ for (const name of [
   'agent.erd',
   'closed.erd',
   'background.erd',
+  'keys.erd',
 ]) {
   writeFileSync(join(vault, name), '');
 }
@@ -356,8 +357,8 @@ async function pressAddTable(page) {
   await page.keyboard.press('Alt+KeyN');
 }
 
-/** Alt+N in the first tab of the file, focused the way a click focuses it. */
-async function pressAddTableIn(page, path) {
+/** Makes the first tab of the file the active one and focuses its editor, as a click does. */
+async function focusDiagram(page, path) {
   await page.evaluate(path => {
     const { workspace } = window.app;
     const leaf = workspace
@@ -367,6 +368,11 @@ async function pressAddTableIn(page, path) {
     leaf.view.contentEl.querySelector('erd-editor').focus();
   }, path);
   await sleep(150);
+}
+
+/** Alt+N in the first tab of the file, focused the way a click focuses it. */
+async function pressAddTableIn(page, path) {
+  await focusDiagram(page, path);
   await page.keyboard.press('Alt+KeyN');
 }
 
@@ -496,10 +502,10 @@ function findNode(node, match) {
 }
 
 /**
- * Clicks what pick finds in the editor's closed shadow root, which only the
- * DevTools protocol reaches: pick runs there with the root and arg.
+ * Runs fn on the closed shadow root of the file's editor, which only the
+ * DevTools protocol reaches, with the root and arg; returns what fn returns.
  */
-async function clickInEditor(page, path, pick, arg) {
+async function inEditor(page, path, fn, arg) {
   await page.evaluate(path => {
     for (const leaf of window.app.workspace.getLeavesOfType('erd-editor')) {
       const editor = leaf.view.contentEl.querySelector('erd-editor');
@@ -519,25 +525,56 @@ async function clickInEditor(page, path, pick, arg) {
         node.attributes?.includes('data-smoke')
     );
     const shadow = host?.shadowRoots?.[0];
-    if (!shadow) return false;
+    if (!shadow) return null;
     const { object } = await cdp.send('DOM.resolveNode', {
       nodeId: shadow.nodeId,
     });
     const { result } = await cdp.send('Runtime.callFunctionOn', {
       objectId: object.objectId,
-      functionDeclaration: `function (arg) {
-        const element = (${pick})(this, arg);
-        element?.click();
-        return Boolean(element);
-      }`,
+      functionDeclaration: `function (arg) { return (${fn})(this, arg); }`,
       arguments: [{ value: arg }],
       returnByValue: true,
     });
-    return result.value === true;
+    return result.value;
   } finally {
     await cdp.detach().catch(() => undefined);
   }
 }
+
+/** Clicks what pick finds in the editor's shadow root: pick runs there with the root and arg. */
+const clickInEditor = (page, path, pick, arg) =>
+  inEditor(
+    page,
+    path,
+    `(root, arg) => {
+      const element = (${pick})(root, arg);
+      element?.click();
+      return Boolean(element);
+    }`,
+    arg
+  ).then(clicked => clicked === true);
+
+/** The document the first tab of the file shows, as its editor serializes it. */
+const editorValue = (page, path) =>
+  page.evaluate(
+    path =>
+      window.app.workspace
+        .getLeavesOfType('erd-editor')
+        .find(leaf => leaf.view.file?.path === path)
+        ?.view.contentEl.querySelector('erd-editor').value ?? null,
+    path
+  );
+
+/** The column count of each table in a v3 document's text. */
+function columnCounts(text) {
+  if (!text) return [];
+  const { doc, collections } = JSON.parse(text);
+  return doc.tableIds.map(id => collections.tableEntities[id].columnIds.length);
+}
+
+/** The view type of the active leaf, which decides whose scope Obsidian asks about a key first. */
+const activeViewType = page =>
+  page.evaluate(() => window.app.workspace.activeLeaf?.view.getViewType());
 
 /** Adds a table with the editor's own shortcut and waits for the save. */
 async function addTableAndWaitForSave(page, path) {
@@ -1148,6 +1185,111 @@ try {
     created === 'Untitled 1.erd',
     String(created)
   );
+
+  // ---- Keys Obsidian binds to commands of its own, which the ERD tab passes to the editor ----
+  await openDiagram(page, 'keys.erd');
+  await sleep(1_000);
+  // Alt+N selects and focuses the new table, which Alt+Enter adds a column to.
+  await pressAddTableIn(page, 'keys.erd');
+  await sleep(300);
+  const addColumnIn = await activeViewType(page);
+  await page.keyboard.press('Alt+Enter');
+  const shownColumns = await waitFor(async () => {
+    const counts = columnCounts(await editorValue(page, 'keys.erd'));
+    return counts.length === 1 && counts[0] === 1 ? counts : null;
+  }, 2_000);
+  const savedColumns = await waitFor(
+    async () => {
+      const text = readFileSync(join(vault, 'keys.erd'), 'utf8');
+      const counts = columnCounts(text);
+      return counts.length === 1 && counts[0] === 1 ? counts : null;
+    },
+    AUTOSAVE_MS + 3_000,
+    100
+  );
+  step(
+    "Alt+Enter, Obsidian's follow link, adds a column to the focused table in the ERD tab, then in the file",
+    addColumnIn === 'erd-editor' && Boolean(shownColumns && savedColumns),
+    JSON.stringify({
+      addColumnIn,
+      shown: columnCounts(await editorValue(page, 'keys.erd')),
+      saved: columnCounts(readFileSync(join(vault, 'keys.erd'), 'utf8')),
+    })
+  );
+
+  const quickSearchOpen = () =>
+    inEditor(page, 'keys.erd', root =>
+      Boolean(root.querySelector('.quick-search'))
+    );
+  await focusDiagram(page, 'keys.erd');
+  const searchIn = await activeViewType(page);
+  const searchBefore = await quickSearchOpen();
+  await page.keyboard.press('ControlOrMeta+KeyK');
+  const searchOpened = await waitFor(quickSearchOpen, 2_000, 100);
+  await page.keyboard.press('Escape');
+  const searchClosed = await waitFor(
+    async () => (await quickSearchOpen()) === false,
+    2_000,
+    100
+  );
+  step(
+    "Mod+K, Obsidian's insert link, opens the editor's quick search in the ERD tab, and Escape closes it",
+    searchIn === 'erd-editor' &&
+      searchBefore === false &&
+      Boolean(searchOpened) &&
+      Boolean(searchClosed),
+    JSON.stringify({ searchIn, searchBefore, searchOpened, searchClosed })
+  );
+
+  // Nothing waits to be saved, so only Mod+S can write the edit this early.
+  await sleep(AUTOSAVE_MS + 500);
+  const tablesBeforeSave = tableCount('keys.erd');
+  await pressAddTableIn(page, 'keys.erd');
+  const editedAt = Date.now();
+  await sleep(REPLICA_SETTLE_MS);
+  const saveIn = await activeViewType(page);
+  await page.keyboard.press('ControlOrMeta+KeyS');
+  const savedByKey = await waitFor(
+    async () => tableCount('keys.erd') === tablesBeforeSave + 1,
+    AUTOSAVE_MS,
+    50
+  );
+  const savedAfter = Date.now() - editedAt;
+  step(
+    'Mod+S in the ERD tab writes an edit before the 2 s autosave would',
+    saveIn === 'erd-editor' &&
+      Boolean(savedByKey) &&
+      savedAfter < AUTOSAVE_MS,
+    JSON.stringify({ saveIn, savedAfter, tables: tableCount('keys.erd') })
+  );
+
+  await focusDiagram(page, 'keys.erd');
+  const paletteIn = await activeViewType(page);
+  await page.keyboard.press('ControlOrMeta+KeyP');
+  const palettePrompt = await waitFor(
+    () =>
+      page.evaluate(
+        () =>
+          document.querySelector('.modal-container .prompt-input')
+            ?.placeholder ?? null
+      ),
+    2_000,
+    100
+  );
+  await page.keyboard.press('Escape');
+  const paletteClosed = await waitFor(
+    () => page.evaluate(() => !document.querySelector('.modal-container')),
+    2_000,
+    100
+  );
+  step(
+    "Mod+P in the ERD tab still opens Obsidian's command palette, and Escape closes it",
+    paletteIn === 'erd-editor' &&
+      Boolean(palettePrompt) &&
+      Boolean(paletteClosed),
+    JSON.stringify({ paletteIn, palettePrompt, paletteClosed })
+  );
+  await closeDiagram(page, 'keys.erd');
 
   const workerTargets = await page
     .context()

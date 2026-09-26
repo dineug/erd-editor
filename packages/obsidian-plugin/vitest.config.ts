@@ -16,7 +16,12 @@ export default defineConfig({
       reporter: ['text', 'json-summary'],
       // main.ts, ErdView.ts and loadErdEditor.ts run only inside Obsidian,
       // which the smoke drives.
-      include: ['src/hub/**/*.ts', 'src/settings.ts', 'src/tabSave.ts'],
+      include: [
+        'src/hub/**/*.ts',
+        'src/keys.ts',
+        'src/settings.ts',
+        'src/tabSave.ts',
+      ],
       exclude: ['src/**/*.test.ts'],
       thresholds: {
         perFile: true,

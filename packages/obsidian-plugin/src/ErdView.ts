@@ -6,9 +6,16 @@ import {
   webviewInitialValueCommand,
   webviewReplicationCommand,
 } from '@dineug/erd-editor-webview-bridge';
-import { Notice, TextFileView, type TFile, type WorkspaceLeaf } from 'obsidian';
+import {
+  Notice,
+  Scope,
+  TextFileView,
+  type TFile,
+  type WorkspaceLeaf,
+} from 'obsidian';
 
 import { type DocumentRegistry, type HubTab } from '@/hub';
+import { type ScopeKey } from '@/keys';
 import { type ResolvedTheme, type ThemeHost } from '@/settings';
 import {
   currentValue,
@@ -94,12 +101,19 @@ export class ErdView extends TextFileView implements HubTab {
   constructor(
     leaf: WorkspaceLeaf,
     private readonly registry: DocumentRegistry<ErdView>,
-    private readonly theme: ThemeHost
+    private readonly theme: ThemeHost,
+    editorKeys: readonly ScopeKey[]
   ) {
     super(leaf);
     // A plaintext view merges an outside change into unsaved edits as text,
     // which can break the JSON; a diagram takes the file's version instead.
     Object.assign(this, { isPlaintext: false });
+    // Obsidian runs a command bound to a key before the page sees the key. The
+    // active view's scope answers first, and true lets the key through untouched.
+    this.scope = new Scope(this.app.scope);
+    for (const { modifiers, key } of editorKeys) {
+      this.scope.register(modifiers, key, () => true);
+    }
   }
 
   getViewType(): string {

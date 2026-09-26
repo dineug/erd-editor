@@ -1,4 +1,5 @@
 import type {
+  createKeyBindingMap,
   setExportFileCallback,
   setImportFileCallback,
 } from '@dineug/erd-editor';
@@ -6,6 +7,8 @@ import type {
 export interface ErdEditorModule {
   setExportFileCallback: typeof setExportFileCallback;
   setImportFileCallback: typeof setImportFileCallback;
+  /** Missing from a module an earlier plugin version loaded, which the window keeps until a restart. */
+  createKeyBindingMap?: typeof createKeyBindingMap;
 }
 
 const MODULE_KEY = Symbol.for('erd-editor-obsidian/module');
