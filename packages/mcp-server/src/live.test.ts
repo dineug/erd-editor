@@ -609,9 +609,7 @@ describe('a live session beyond the transition table', () => {
 
     await expect(io.run(session.save)).rejects.toMatchObject({
       code: 'notSaved',
-      message: expect.stringMatching(
-        /could not confirm that every edit reached it, or VS Code kept the tab unsaved/
-      ),
+      message: `The editor did not save ${DOCUMENT}: it could not confirm that every edit reached it, or the editor kept it unsaved, as VS Code does when the file changed on disk. Check the editor, then call erd_save again.`,
     });
   });
 

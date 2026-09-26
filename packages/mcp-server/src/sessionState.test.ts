@@ -17,7 +17,8 @@ import {
 } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { CLOSED_NOTE, makeLiveSession, RESEED_NOTE } from '@/session/live';
-import { FELL_BACK_NOTE } from '@/session/manager';
+import { fellBackNote } from '@/session/manager';
+import { documentReader } from '@/tools/read';
 
 const DOCUMENT = '/work/state.erd.json';
 
@@ -152,7 +153,10 @@ describe('LiveSession transitions (AC-P13)', () => {
 
     const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
     expect(refused.isError).toBe(true);
-    expect(refused.json.error.code).toBe('hubGone');
+    expect(refused.json.error).toEqual({
+      code: 'hubGone',
+      message: `The VS Code window (pid 6161) that served ${DOCUMENT} still runs, but its lock file is gone and the connection closed, so nothing was written. Reload that window, or close it to edit the file directly.`,
+    });
     expect(io.read(DOCUMENT)).toBe(onDisk);
   });
 
@@ -166,7 +170,31 @@ describe('LiveSession transitions (AC-P13)', () => {
     await settle();
 
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
-    expect(memo).toMatchObject({ mode: 'headless', notes: [FELL_BACK_NOTE] });
+    expect(memo).toMatchObject({
+      mode: 'headless',
+      notes: [
+        'The VS Code window that served this document has exited, so this call edited the file on disk instead; edits made through that window can no longer be undone.',
+      ],
+    });
+    expect(memo.notes).toEqual([fellBackNote('vscode', true)]);
+    expect(JSON.parse(io.read(DOCUMENT)).doc.memoIds).toEqual(memo.createdIds);
+  });
+
+  it('drops to the file under VS Code too once the editor closed the document before the connection went', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+
+    hub.close(DOCUMENT);
+    await settle();
+    io.removeLock(hub.pid);
+    hub.disconnectAll();
+    await settle();
+
+    const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    expect(memo).toMatchObject({
+      mode: 'headless',
+      notes: [fellBackNote('vscode', false)],
+    });
     expect(JSON.parse(io.read(DOCUMENT)).doc.memoIds).toEqual(memo.createdIds);
   });
 
@@ -178,6 +206,143 @@ describe('LiveSession transitions (AC-P13)', () => {
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
     expect(memo.mode).toBe('live');
     expect(hub.webview(DOCUMENT).state.doc.memoIds).toEqual(memo.createdIds);
+  });
+});
+
+describe('an editor that lets go of the document, as the Obsidian plugin does when turned off', () => {
+  beforeEach(() => {
+    hub.destroy();
+    io.removeLock(hub.pid);
+    io.alive.delete(hub.pid);
+    hub = createFakeHub(io, {
+      pid: 6262,
+      workspaceFolders: ['/work'],
+      ide: 'obsidian',
+    });
+  });
+
+  /** Turned off: every joined peer hears documentClosed, then the lock and the connections go. */
+  const turnOff = async () => {
+    hub.close(DOCUMENT);
+    await settle();
+    io.removeLock(hub.pid);
+    hub.disconnectAll();
+    await settle();
+  };
+
+  it('edits the file once the editor said documentClosed and its lock is gone, the process running on', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+
+    await turnOff();
+    expect(io.alive.has(hub.pid)).toBe(true);
+
+    const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    expect(memo).toMatchObject({
+      mode: 'headless',
+      notes: [
+        'The Obsidian window that served this document no longer serves it, so this call edited the file on disk instead; edits made through that window can no longer be undone.',
+      ],
+    });
+    expect(memo.notes).toEqual([fellBackNote('obsidian', false)]);
+    expect(JSON.parse(io.read(DOCUMENT)).doc.memoIds).toEqual(memo.createdIds);
+  });
+
+  it('reads the file too, and the next write stays on disk', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    await turnOff();
+
+    const read = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+    });
+    expect(read.isError).toBe(false);
+    expect(JSON.parse(read.texts[1]).notes).toEqual([
+      fellBackNote('obsidian', false),
+    ]);
+
+    const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    expect(memo.mode).toBe('headless');
+    expect(memo.notes).toBeUndefined();
+  });
+
+  it('refuses a write, naming Obsidian, when the connection closed with no documentClosed first', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    const onDisk = io.read(DOCUMENT);
+
+    io.removeLock(hub.pid);
+    hub.disconnectAll();
+    await settle();
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error).toEqual({
+      code: 'hubGone',
+      message: `The Obsidian window (pid 6262) that served ${DOCUMENT} still runs, but its lock file is gone and the connection closed, so nothing was written. Turn the ERD Editor plugin back on, or close that window to edit the file directly.`,
+    });
+    expect(io.read(DOCUMENT)).toBe(onDisk);
+  });
+
+  it('forgets a documentClosed once it connects again, so a later hang-up without one still refuses', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    hub.close(DOCUMENT);
+    await settle();
+    // The window hangs up and keeps its lock, as a reload of the same pid does.
+    hub.disconnectAll();
+    await settle();
+
+    const read = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+    });
+    expect(read.isError).toBe(false);
+    const onDisk = io.read(DOCUMENT);
+
+    io.removeLock(hub.pid);
+    hub.disconnectAll();
+    await settle();
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error.code).toBe('hubGone');
+    expect(io.read(DOCUMENT)).toBe(onDisk);
+  });
+
+  it('holds the file again once a write joined the reopened document after documentClosed', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    hub.close(DOCUMENT);
+    await settle();
+
+    const reopened = await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    expect(reopened.mode).toBe('live');
+    const onDisk = io.read(DOCUMENT);
+
+    io.removeLock(hub.pid);
+    hub.disconnectAll();
+    await settle();
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error.code).toBe('hubGone');
+    expect(io.read(DOCUMENT)).toBe(onDisk);
+  });
+
+  it('says which editor it serves, and whether that editor let go of the document since a write joined', async () => {
+    const session = await live();
+    await io.run(session.runTool('erd_add_table', {}));
+    expect(session).toMatchObject({ ide: 'obsidian', released: false });
+
+    hub.close(DOCUMENT);
+    await settle();
+    expect(session.released).toBe(true);
+
+    await io.run(session.read(documentReader('snapshot')));
+    expect(session.released).toBe(true);
+
+    await io.run(session.runTool('erd_add_memo', {}));
+    expect(session.released).toBe(false);
+    await io.run(session.close);
   });
 });
 

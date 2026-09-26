@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { ARG_COPY, describeArg, describeTool, TOOL_COPY } from '@/tools/copy';
+import {
+  ARG_COPY,
+  describeArg,
+  describeTool,
+  SERVER_INSTRUCTIONS,
+  TOOL_COPY,
+} from '@/tools/copy';
 import { actionTools } from '@/tools/registry';
 import { SESSION_TOOL_NAMES } from '@/tools/toolkit';
 
@@ -88,5 +94,32 @@ describe('the prose table covers the surface exactly', () => {
         expect(prose).not.toMatch(/[`*#]|\n/);
       }
     }
+  });
+});
+
+describe('the words sent before any editor is found', () => {
+  const liveTexts = [
+    SERVER_INSTRUCTIONS,
+    describeTool('erd_list_documents'),
+    describeTool('erd_open_document'),
+    describeTool('erd_save'),
+  ];
+
+  it('names both editors a document can be live in, and neither alone', () => {
+    for (const text of liveTexts) {
+      expect(text).toContain('VS Code');
+      expect(text).toContain('Obsidian');
+    }
+  });
+
+  it('says VS Code keeps agent edits unsaved until erd_save and Obsidian saves them itself', () => {
+    for (const text of [SERVER_INSTRUCTIONS, describeTool('erd_save')]) {
+      expect(text).toMatch(/VS Code keeps (them|edits) unsaved until/);
+      expect(text).toMatch(/Obsidian saves them as it saves the user’s edits/);
+    }
+  });
+
+  it('keeps the server instructions in plain sentences too', () => {
+    expect(SERVER_INSTRUCTIONS).not.toMatch(/[`*#]|\n/);
   });
 });

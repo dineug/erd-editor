@@ -20,6 +20,7 @@ import {
 import {
   type HubClientOptions,
   HubConnector,
+  type HubWindow,
   makeHubClient,
   REQUEST_TIMEOUT_MS,
 } from '@/hub/client';
@@ -44,8 +45,14 @@ const run = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
     effect.pipe(Scope.provide(scope), Effect.provide(StderrLogger))
   );
 
+/** The window every pair reaches, named as a VS Code lock names it. */
+const WINDOW = { pid: 7, ide: 'vscode' };
+
 /** A client over a socket pair whose hub end the spec drives by hand, in a scope of its own. */
-async function pair(options: Partial<HubClientOptions> = {}) {
+async function pair(
+  options: Partial<HubClientOptions> = {},
+  hubWindow: HubWindow = WINDOW
+) {
   const { client, server } = createSocketPair();
   const sent: any[] = [];
   server.onData(chunk => {
@@ -54,7 +61,7 @@ async function pair(options: Partial<HubClientOptions> = {}) {
   });
   const own = Scope.forkUnsafe(scope);
   const hub = await run(
-    makeHubClient(client, 7, { client: 'c', ...options }).pipe(
+    makeHubClient(client, hubWindow, { client: 'c', ...options }).pipe(
       Scope.provide(own)
     )
   );
@@ -596,7 +603,7 @@ describe('the hub client', () => {
     const { client, server } = createSocketPair();
     const chunks: string[] = [];
     server.onData(chunk => chunks.push(chunk));
-    const hub = await run(makeHubClient(client, 7, { client: 'c' }));
+    const hub = await run(makeHubClient(client, WINDOW, { client: 'c' }));
 
     const opened = run(
       hub.request('openDocument', {
@@ -637,7 +644,7 @@ describe('the hub client', () => {
             writeAll: () => Effect.void,
           }),
         }),
-        7,
+        WINDOW,
         { client: 'c' }
       )
     );
@@ -684,15 +691,68 @@ describe('the hub client', () => {
   });
 });
 
+describe('the window a hub client names', () => {
+  it.each([
+    ['obsidian', 'the Obsidian window'],
+    ['zed', 'the zed window'],
+    ['', 'an editor window'],
+  ])(
+    'names the window by the ide %j of its lock, in both disconnects',
+    async (ide, named) => {
+      const { server, client } = await pair({}, { pid: 7, ide });
+
+      const pending = run(client.request('save', { path: '/a.erd.json' }));
+      await settle();
+      server.destroy();
+
+      await expect(pending).rejects.toMatchObject({
+        code: 'disconnected',
+        message: `The connection to ${named} (pid 7) closed before it answered save`,
+      });
+      await expect(
+        run(client.request('save', { path: '/a.erd.json' }))
+      ).rejects.toMatchObject({
+        code: 'disconnected',
+        message: `The connection to ${named} (pid 7) is closed`,
+      });
+    }
+  );
+
+  it.each([
+    ['obsidian', 'The Obsidian window'],
+    ['', 'An editor window'],
+  ])('names the window by the ide %j in a timeout', async (ide, named) => {
+    const { client } = await pair({}, { pid: 7, ide });
+
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fiber = yield* Effect.forkChild(
+          client.request('listDocuments', {})
+        );
+        yield* TestClock.adjust(REQUEST_TIMEOUT_MS);
+        return yield* Effect.flip(Fiber.join(fiber));
+      }).pipe(Effect.provide(TestClock.layer()))
+    );
+
+    expect(error).toMatchObject({
+      code: 'timeout',
+      message: `${named} (pid 7) did not answer listDocuments within ${REQUEST_TIMEOUT_MS} ms`,
+    });
+  });
+});
+
 describe('the hub connector', () => {
-  const candidate = (protocolVersion = HUB_PROTOCOL_VERSION) => ({
+  const candidate = (
+    protocolVersion = HUB_PROTOCOL_VERSION,
+    ide = 'vscode'
+  ) => ({
     pid: 11,
     mtimeMs: 1,
     record: {
       pipe: pipePath('/home/agent', 11, 'linux'),
       workspaceFolders: ['/work'],
       documents: [],
-      ide: 'vscode',
+      ide,
       version: '2.9.0',
       protocolVersion,
       token: 'secret',
@@ -789,4 +849,23 @@ describe('the hub connector', () => {
       message: expect.stringContaining('(refused)'),
     });
   });
+
+  it.each([
+    ['vscode', 'The VS Code window', 'extension'],
+    ['obsidian', 'The Obsidian window', 'plugin'],
+    ['zed', 'The zed window', 'extension or plugin'],
+  ])(
+    'names the %s window and what to check when its hub does not accept',
+    async (ide, named, addOn) => {
+      const io = createMemoryHost();
+      io.connect = pipe =>
+        Effect.fail(new HubUnreachable({ pipe, message: 'refused' }));
+      const lock = candidate(HUB_PROTOCOL_VERSION, ide);
+
+      await expect(connect(io, lock)).rejects.toMatchObject({
+        code: 'hubUnreachable',
+        message: `${named} with pid 11 advertises an ERD Editor hub at ${lock.record.pipe}, but it did not accept a connection (refused). Nothing was written; reload that window or check the ERD Editor ${addOn}.`,
+      });
+    }
+  );
 });

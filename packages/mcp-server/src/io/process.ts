@@ -7,7 +7,7 @@ import { Context, Effect, Layer } from 'effect';
 export type ProcessInfoShape = {
   /** The working directory relative document paths resolve against. */
   readonly cwd: string;
-  /** Where the lock directory of every VS Code window on this machine lives. */
+  /** Where the lock directory of every editor window on this machine lives. */
   readonly homeDir: string;
   readonly platform: Platform;
   /** A fresh id, for a temp file name. */

@@ -31,7 +31,7 @@ afterEach(async () => {
 });
 
 describe('protocol version mismatch (AC-M5)', () => {
-  it('names the extension as the side to update when the lock is older', async () => {
+  it('names the extension or plugin as the side to update when the lock is older', async () => {
     createFakeHub(io, {
       pid: 9191,
       workspaceFolders: ['/work'],
@@ -41,7 +41,7 @@ describe('protocol version mismatch (AC-M5)', () => {
     const refused = await mcp.call('erd_add_table', { path: DOCUMENT });
     expect(refused.json.error.code).toBe('protocolMismatch');
     expect(refused.json.error.message).toContain(
-      'Update the ERD Editor extension'
+      'Update the ERD Editor extension or plugin in the editor'
     );
   });
 

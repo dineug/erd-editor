@@ -16,6 +16,7 @@ import {
 import { SessionError, SessionErrorCode } from '@/errors';
 import { HubConnector } from '@/hub/client';
 import { HubDiscovery } from '@/hub/discovery';
+import { capitalize, hostWords } from '@/hub/host';
 import { FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import { realPath, resolveDocumentPath, sessionKey } from '@/paths';
@@ -49,14 +50,22 @@ export const SWEEP_INTERVAL_MS = 60_000;
 /** The nickname a peer shows when the client sent no name. */
 export const DEFAULT_CLIENT_NAME = 'agent';
 
-export const FELL_BACK_NOTE =
-  'The VS Code window that served this document has exited, so this call edited the file on disk instead; edits made through that window can no longer be undone.';
+/** A live session went to the file: its window exited, or it let go of the document and its lock. */
+export function fellBackNote(ide: string, exited: boolean): string {
+  const subject = capitalize(hostWords(ide).theWindow);
+  const gone = exited ? 'has exited' : 'no longer serves it';
+  return `${subject} that served this document ${gone}, so this call edited the file on disk instead; edits made through that window can no longer be undone.`;
+}
 
-export const LEFT_DISK_NOTE =
-  'A VS Code window now serves this document, so this call read it from the editor; edits made on disk earlier stay but can no longer be undone.';
+/** A read found a hub over a document a disk session held. */
+export function leftDiskNote(ide: string): string {
+  return `${capitalize(hostWords(ide).aWindow)} now serves this document, so this call read it from the editor; edits made on disk earlier stay but can no longer be undone.`;
+}
 
-export const DISK_READ_NOTE =
-  'Read from the file on disk: the VS Code window holding this document cannot be reached, so edits not yet saved in its editor are missing.';
+/** A read went to the file under a window that holds the document but cannot be asked. */
+export function diskReadNote(ide: string): string {
+  return `Read from the file on disk: ${hostWords(ide).theWindow} holding this document cannot be reached, so edits not yet saved in its editor are missing.`;
+}
 
 export type Mode = SessionMode | 'blocked';
 
@@ -132,23 +141,29 @@ const Arrival = Context.Reference<number | undefined>(
 type Intent = 'read' | 'write';
 
 function blockedError(path: string, candidate: LockCandidate): SessionError {
+  const { aWindow, enableHub } = hostWords(candidate.record.ide);
   return new SessionError(
     SessionErrorCode.blocked,
-    `${path} belongs to a VS Code window (pid ${candidate.pid}) whose ERD Editor hub is turned off or failed to start, so edits are refused: the open editor would overwrite them. Trust the workspace and turn on the dineug.erd-editor.agentHub.enabled setting, or reload the window, then call again. Reading still works.`
+    `${path} belongs to ${aWindow} (pid ${candidate.pid}) whose ERD Editor hub is turned off or failed to start, so edits are refused: the open editor would overwrite them. ${enableHub} Reading still works.`
   );
 }
 
-function hubAppearedError(path: string, pid: number): SessionError {
+function hubAppearedError(
+  path: string,
+  candidate: LockCandidate
+): SessionError {
+  const subject = capitalize(hostWords(candidate.record.ide).aWindow);
   return new SessionError(
     SessionErrorCode.hubAppeared,
-    `A VS Code window (pid ${pid}) now serves ${path}, so this edit was not written to the file under its editor. Call the tool again to edit through that window.`
+    `${subject} (pid ${candidate.pid}) now serves ${path}, so this edit was not written to the file under its editor. Call the tool again to edit through that window.`
   );
 }
 
-function hubGoneError(path: string, pid: number): SessionError {
+function hubGoneError(path: string, session: LiveSession): SessionError {
+  const { theWindow, hubGoneRemedy } = hostWords(session.ide);
   return new SessionError(
     SessionErrorCode.hubGone,
-    `The VS Code window (pid ${pid}) that served ${path} still runs, but its lock file is gone and the connection closed, so nothing was written. Reload that window, or close it to edit the file directly.`
+    `${capitalize(theWindow)} (pid ${session.pid}) that served ${path} still runs, but its lock file is gone and the connection closed, so nothing was written. ${hubGoneRemedy}`
   );
 }
 
@@ -162,7 +177,7 @@ const failOnDefect = <A>(call: SessionCall<A>): SessionCall<A> =>
 /**
  * One session per document, chosen again on every call: a write never lands
  * on disk under an editor, and a live session falls back to the file only
- * when its window has exited, saying so.
+ * when its window has exited or let go of the document, saying so.
  */
 const make = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem;
@@ -270,9 +285,9 @@ const make = Effect.gen(function* () {
     ).pipe(Effect.map(session => put(key, session)));
 
   /**
-   * The session for a call, or null when a read should come from disk. The
-   * rules: a hub false lock refuses writes, a new hub closes a disk session,
-   * and a live session goes to disk only once its window has exited.
+   * The session for a call, or null, with a note, when a read should come from
+   * disk. A hub false lock refuses writes, a new hub closes a disk session, and
+   * a live session goes to disk once its window has exited or let go of it.
    */
   const acquire = Effect.fn('SessionManager.acquire')(function* (
     key: string,
@@ -288,6 +303,7 @@ const make = Effect.gen(function* () {
       if (intent === 'write') {
         return yield* blockedError(path, resolution.candidate);
       }
+      notes.push(diskReadNote(resolution.candidate.record.ide));
       return null;
     }
 
@@ -295,9 +311,9 @@ const make = Effect.gen(function* () {
       if (existing && !isLive(existing)) {
         yield* drop(key);
         if (intent === 'write') {
-          return yield* hubAppearedError(path, resolution.candidate.pid);
+          return yield* hubAppearedError(path, resolution.candidate);
         }
-        notes.push(LEFT_DISK_NOTE);
+        notes.push(leftDiskNote(resolution.candidate.record.ide));
       } else if (isLive(existing)) {
         existing.setCandidate(resolution.candidate);
         return existing;
@@ -307,12 +323,16 @@ const make = Effect.gen(function* () {
 
     if (isLive(existing)) {
       if (existing.connected) return existing;
-      if (process.isAlive(existing.pid)) {
-        if (intent === 'write') return yield* hubGoneError(path, existing.pid);
+      const exited = !process.isAlive(existing.pid);
+      // A window that closes its connections without documentClosed, as VS
+      // Code deactivating does, may still hold the document in an editor.
+      if (!exited && !existing.released) {
+        if (intent === 'write') return yield* hubGoneError(path, existing);
+        notes.push(diskReadNote(existing.ide));
         return null;
       }
       yield* drop(key);
-      notes.push(FELL_BACK_NOTE);
+      notes.push(fellBackNote(existing.ide, exited));
     } else if (existing) {
       // A create on a file deleted under the session starts over from a new file.
       if (!create || (yield* exists(path))) return existing;
@@ -489,7 +509,6 @@ const make = Effect.gen(function* () {
           const session = yield* acquire(key, path, 'read', resolution, notes);
           if (!session) {
             const text = yield* withServices(readFromDisk(path, reader));
-            notes.push(DISK_READ_NOTE);
             const mode: Mode =
               resolution.kind === 'blocked' ? 'blocked' : 'headless';
             return { text, notes, mode, path };
