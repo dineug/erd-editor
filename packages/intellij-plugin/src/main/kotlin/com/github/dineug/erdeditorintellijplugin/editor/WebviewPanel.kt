@@ -5,7 +5,11 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefApp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import org.cef.CefApp
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
@@ -26,11 +30,10 @@ class WebviewPanel(
         private val bridge: WebviewBridge,
         private val file: VirtualFile,
         private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>>
-) : Disposable {
+) : Disposable.Parent {
     companion object {
         private const val DOMAIN = WebviewScripts.DOMAIN
         private const val PLUGIN_URL = WebviewScripts.PLUGIN_URL
-        private val mapper = WebviewScripts.mapper
         val isSupported = JBCefApp.isSupported()
 
         private val schemeHandlerRegistered = AtomicBoolean(false)
@@ -72,6 +75,10 @@ class WebviewPanel(
     @Volatile
     private var isDisposed: Boolean = false
 
+    // Host commands for this page, encoded and run by one consumer in the order they were
+    // dispatched, whichever thread dispatched them; nothing is encoded on the caller's thread.
+    private val scripts = Channel<WebviewBridgeCommand>(Channel.UNLIMITED)
+
     init {
         initSchemeHandler()
     }
@@ -86,6 +93,7 @@ class WebviewPanel(
     init {
         Disposer.register(parentDisposable, this)
         initPanel()
+        launchScriptJob()
     }
 
     private fun initPanel() {
@@ -187,22 +195,44 @@ class WebviewPanel(
         )
     }
 
+    /**
+     * A failure is logged and the next command still runs: letting one escape would end the only
+     * consumer, and the page would silently receive nothing more for the rest of the session.
+     */
+    private fun launchScriptJob() = coroutineScope.launch(CoroutineName("${file.name}: scripts")) {
+        for (command in scripts) {
+            try {
+                runJS(WebviewScripts.scriptFor(command))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn("${file.name}: could not run ${command::class.simpleName}", e)
+            }
+        }
+    }
+
     fun dispatch(action: WebviewBridgeCommand) {
-        val json = mapper.writeValueAsString(action)
         logger.debug("${file.name}: dispatch")
-        runJS(WebviewScripts.postMessageScript(json))
+        scripts.trySend(action)
     }
 
     fun dispatchBroadcast(action: WebviewBridgeCommand) {
-        val json = mapper.writeValueAsString(action)
         logger.debug("${file.name}: dispatchBroadcast")
 
-        val script = WebviewScripts.postMessageScript(json)
         // Snapshot before iterating: this runs on a background dispatcher while the EDT may be
         // opening or closing peer editors for the same file.
         docToEditorsMap[file].orEmpty().toList()
             .filter { it !== parentDisposable && it.isWebviewPanelInitialized }
-            .forEach { editor -> editor.webviewPanel.runJS(script) }
+            .forEach { editor -> editor.webviewPanel.dispatch(action) }
+    }
+
+    /**
+     * The Disposer disposes children first, the browser among them, and this panel last. Scripts run
+     * on the consumer's thread, so the flag goes up before the tree is torn down; a script already
+     * past the check can still meet a disposed browser, and the consumer logs that and moves on.
+     */
+    override fun beforeTreeDispose() {
+        isDisposed = true
     }
 
     override fun dispose() {

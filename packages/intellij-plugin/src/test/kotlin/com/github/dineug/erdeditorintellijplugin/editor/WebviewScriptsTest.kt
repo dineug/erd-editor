@@ -2,8 +2,13 @@ package com.github.dineug.erdeditorintellijplugin.editor
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Regression tests for the webview bridge payload encoding.
@@ -88,6 +93,67 @@ class WebviewScriptsTest {
         )
 
         assertEquals(value.length, (save as HostBridgeCommand.SaveValue).payload.value.length)
+    }
+
+    @Test
+    fun `a command's script posts the command as its JSON`() {
+        val command = WebviewBridgeCommand.UpdateReadonly(true)
+
+        assertEquals(
+            WebviewScripts.postMessageScript(WebviewScripts.mapper.writeValueAsString(command)),
+            WebviewScripts.scriptFor(command)
+        )
+    }
+
+    @Test
+    fun `one replication batch relayed to several pages is encoded once`() {
+        val actions = WebviewScripts.mapper.readTree("""[{"type":"x","payload":{"a":null}}]""")
+        val command = WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(actions))
+        val first = WebviewScripts.scriptFor(command)
+
+        assertEquals(
+            WebviewScripts.postMessageScript(WebviewScripts.mapper.writeValueAsString(command)),
+            first
+        )
+        assertSame(first, WebviewScripts.scriptFor(command))
+        // Each page may get its own command object; the actions node is what they share.
+        assertSame(
+            first,
+            WebviewScripts.scriptFor(
+                WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(actions))
+            )
+        )
+
+        val another = WebviewScripts.scriptFor(
+            WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(actions.deepCopy()))
+        )
+        assertNotSame("another batch is encoded afresh", first, another)
+        assertEquals(first, another)
+    }
+
+    @Test
+    fun `pages asking for one batch at the same time share one encoding`() {
+        // Large enough that encoding takes a while, so the consumers ask while it runs.
+        val actions = WebviewScripts.mapper.createArrayNode().apply {
+            repeat(200_000) { addObject().put("type", "x").putNull("payload") }
+        }
+        val pages = 8
+        val start = CyclicBarrier(pages)
+        val pool = Executors.newFixedThreadPool(pages)
+        try {
+            val scripts = List(pages) {
+                pool.submit<String> {
+                    start.await()
+                    WebviewScripts.scriptFor(
+                        WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(actions))
+                    )
+                }
+            }.map { it.get(30, TimeUnit.SECONDS) }
+
+            scripts.forEach { assertSame("every page gets the one encoding", scripts[0], it) }
+        } finally {
+            pool.shutdownNow()
+        }
     }
 
     @Test
