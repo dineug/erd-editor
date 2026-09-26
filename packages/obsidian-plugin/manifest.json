@@ -1,0 +1,10 @@
+{
+  "id": "erd-editor",
+  "name": "ERD Editor",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.7",
+  "description": "Edit Entity-Relationship Diagrams in .erd files: design tables and relationships, import SQL and export DDL.",
+  "author": "dineug",
+  "authorUrl": "https://github.com/dineug",
+  "isDesktopOnly": true
+}

@@ -29,7 +29,7 @@
 
 | Directory | Purpose |
 | --- | --- |
-| `packages/` | The 15 workspace packages, each with its own `AGENTS.md` |
+| `packages/` | The 16 workspace packages, each with its own `AGENTS.md` |
 | `data/` | Import fixtures for hand-testing (SQL, GraphQL SDL, DBML, AML v1/v2, `test.json`); `schema-sql-parser`'s tests read `sakila.sql` |
 | `docker/` | A `docker-compose.yml` per SQL vendor for running generated DDL; Databricks and Snowflake are cloud-only and have none |
 | `functions/` | Cloudflare Pages Functions for erd-editor.io: `api/auth/[[route]].ts` only re-exports `packages/app/src/server/auth/pages.ts` (see `packages/app/AGENTS.md`) |
@@ -39,7 +39,7 @@
 
 ## Package Map
 
-Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `mcp-server` joins only its tail (`mcp-server` → `erd-editor` → `erd-editor-schema`; it also names `erd-editor-schema` and `r-html` itself, for the parser and the action types), and its other dependency, `agent-hub`, which `vuerd-vscode` inlines too, depends on no workspace package; `effect` is its one peer. `intellij-plugin` is Gradle, outside the graph, fed by `intellij-webview`'s build.
+Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `erd-editor-schema`. `mcp-server` joins only its tail (`mcp-server` → `erd-editor` → `erd-editor-schema`; it also names `erd-editor-schema` and `r-html` itself, for the parser and the action types), and its other dependency, `agent-hub`, which `vuerd-vscode` inlines too, depends on no workspace package; `effect` is its one peer. `intellij-plugin` is Gradle, outside the graph, fed by `intellij-webview`'s build. `obsidian-plugin` depends on `erd-editor` alone and bundles its UMD build.
 
 | `packages/` | npm name | |
 | --- | --- | --- |
@@ -56,6 +56,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | `vscode-extension` | `vuerd-vscode` | VSCode extension host, published, and the document hub coding agents join, on effect layers |
 | `intellij-webview` | `@dineug/erd-editor-intellij-webview` | IntelliJ webview bundle, over `window.cefQuery` |
 | `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin, published |
+| `obsidian-plugin` | `@dineug/erd-editor-obsidian-plugin` | Obsidian plugin, whose `dist/` is the plugin folder; released from `dineug/erd-editor-obsidian-plugin`, which carries this repository as a submodule |
 | `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io, with `/gdrive`, its Google Drive editor, whose OAuth relay is the one Pages Function (`functions/`) |
 | `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, published: effect's `McpServer` over stdio, one tool per editing op, live through a VS Code window's hub or headless on the file; one ESM file with nothing external but node builtins |
 
@@ -103,6 +104,7 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 - `pnpm size`, after `pnpm build`: gzip of every script reachable from `erd-editor`'s `exports` vs `packages/erd-editor/.size-baseline.json`. `budgetGzip` is a regression watch; re-pin with `--set-budget --budget-gzip <bytes> --budget-note <why>`.
 - `pnpm peer-graph`, after `pnpm build`: the scripts `erd-editor`'s `peer.js` reaches must hold no `SharedWorker`, `customElements`, `document.`, `window.` or `navigator.` and import only `deepmerge`, `es-toolkit` (and `/compat`), `graphql`, `luxon`, `nanoid`, `rxjs`. `erd-editor`'s `src/peer/imports.test.ts` holds the sources to the same two rules in `pnpm test`; change both allowlists together.
 - `pnpm --filter <pkg> e2e`, outside `pnpm test`: Playwright for `@dineug/erd-editor`, `@dineug/erd-editor-app`, `@dineug/r-html`; `@vscode/test-cli` for `vuerd-vscode` (`xvfb-run -a` on Linux). Each runs in its own CI job.
+- `pnpm --filter @dineug/erd-editor-obsidian-plugin smoke`, outside `pnpm test` and CI: the built plugin in a real Obsidian (`/Applications/Obsidian.app`) on a throwaway vault and user data directory, driven over CDP.
 - SQL-generation changes: `docker/<vendor>/` plus `data/*.sql` is the manual loop.
 - CI `ci.yml`: `check` (`pnpm check`, then builds `app`'s and `vuerd-vscode`'s dependencies for their `typecheck` scripts, which read siblings' `dist/**/*.d.ts`), `ci` (`pnpm test`, every package's `test:coverage`, `pnpm build`, `pnpm peer-graph`, `pnpm size`), `e2e`, `app-e2e`, `r-html-e2e`, `vscode-extension-e2e`.
 - `intellij-plugin.yml` is separate so its `cancel-in-progress` never reaches `ci.yml`; a `gate` job stands in for a `paths` filter, which would leave the check Pending forever.
@@ -127,9 +129,10 @@ Build order follows workspace dependencies; the longest chain is `vuerd-vscode` 
 | What | Who reads it |
 | --- | --- |
 | JetBrains Marketplace | the plugin `<id>`, its signing certificate and the listing text from `packages/intellij-plugin/README.md` |
+| `dineug/erd-editor-obsidian-plugin` | this repository as a submodule: it releases `packages/obsidian-plugin/dist/` as the assets of a GitHub release tagged with the manifest version, and keeps a copy of the package's `manifest.json` at its root, where Obsidian looks for the latest version. The manifest `id` (`erd-editor`) cannot change once the plugin is in the community directory |
 | `json-schema/schema.json` on `main` | the `$schema` of every saved `.erd` / `.vuerd` file: `erd-editor-schema` stamps its raw GitHub URL, so moving or renaming it leaves existing files pointing at a dead URL |
 | erd-editor.io's paths `/privacy`, `/terms`, `/gdrive` and `/api/auth/callback` | the Google Cloud console, set by hand: the OAuth consent screen and the Workspace Marketplace listing link the two policy pages, Drive's Open with and New open `/gdrive`, and the production web client registers the callback as its one redirect URI (`http://localhost:5175/api/auth/callback` belongs to a separate client in a Testing project); moving one, or asking for another scope than `packages/app/src/server/auth/contract.ts` lists, is a console change first |
 
-Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`, `@dineug/erd-editor-mcp`) — is manual: no token or key is in the repository and no workflow uploads anything. So are the Google Workspace Marketplace listing (its assets in `packages/app/google-workspace/`) and the Pages variables the relay reads (`GOOGLE_CLIENT_SECRET`, `COOKIE_KEY`, `VITE_GOOGLE_CLIENT_ID`).
+Publishing — JetBrains, the VS Code Marketplace (`dineug.vuerd-vscode`), npm (`@dineug/erd-editor`, `@dineug/erd-editor-mcp`), Obsidian (a release of `dineug/erd-editor-obsidian-plugin`) — is manual: no token or key is in the repository and no workflow uploads anything. So are the Google Workspace Marketplace listing (its assets in `packages/app/google-workspace/`) and the Pages variables the relay reads (`GOOGLE_CLIENT_SECRET`, `COOKIE_KEY`, `VITE_GOOGLE_CLIENT_ID`).
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
