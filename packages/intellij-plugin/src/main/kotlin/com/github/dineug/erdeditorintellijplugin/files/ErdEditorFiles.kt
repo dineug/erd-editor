@@ -9,7 +9,7 @@ class ErdEditorFiles {
                 file == null -> false
                 file.isDirectory || !file.exists() -> false
 
-                arrayOf(".erd", ".erd.json").any { ext -> file.name.endsWith(ext) } -> true
+                arrayOf(".erd", ".erd.json", ".vuerd", ".vuerd.json").any { ext -> file.name.endsWith(ext) } -> true
 
                 else -> false
             }
