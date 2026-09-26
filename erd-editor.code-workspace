@@ -37,6 +37,10 @@
       "path": "packages/intellij-plugin",
     },
     {
+      "name": "obsidian-plugin",
+      "path": "packages/obsidian-plugin",
+    },
+    {
       "name": "app",
       "path": "packages/app",
     },
@@ -55,6 +59,10 @@
     {
       "name": "agent-hub",
       "path": "packages/agent-hub",
+    },
+    {
+      "name": "agent-hub-host",
+      "path": "packages/agent-hub-host",
     },
     {
       "name": "mcp-server",

@@ -755,51 +755,26 @@ describe('the memo body editor over the scene', () => {
     expect(asked).toBe(1);
   });
 
-  it('closes the memo editor when Escape is pressed in it', async () => {
-    const fixture = await editMemo();
-
-    memoTextareaOf(fixture.mounted).dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
-    );
-    await flush();
-
-    expect(fixture.app.store.state.editor.editMemoId).toBeNull();
-  });
-
-  // Escape mid-composition cancels the composition in any textarea and leaves
-  // the field standing; closing here would commit a half-formed syllable.
-  it.each([
-    ['isComposing', { isComposing: true }],
-    ['keyCode 229', { keyCode: 229 }],
-  ])(
-    'keeps the memo editor open on Escape while the IME reports %s',
-    async (_label, composing) => {
+  // Escape is the key bindings' to answer, and they read the memo edit off the
+  // store before ending it, so the textarea ending it first would hide it.
+  it.each(['Escape', 'a'])(
+    'leaves the memo editor open on %s, and the press unprevented',
+    async key => {
       const fixture = await editMemo();
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
 
-      memoTextareaOf(fixture.mounted).dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Escape',
-          bubbles: true,
-          ...composing,
-        })
-      );
+      memoTextareaOf(fixture.mounted).dispatchEvent(event);
       await flush();
 
       expect(fixture.app.store.state.editor.editMemoId).toBe(fixture.memoId);
       expect(memoTextareas(fixture.mounted).length).toBe(1);
+      expect(event.defaultPrevented).toBe(false);
     }
   );
-
-  it('leaves the memo editor open on any other key', async () => {
-    const fixture = await editMemo();
-
-    memoTextareaOf(fixture.mounted).dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'a', bubbles: true })
-    );
-    await flush();
-
-    expect(fixture.app.store.state.editor.editMemoId).toBe(fixture.memoId);
-  });
 
   it('keeps a wheel over the memo editor off the canvas below it', async () => {
     const fixture = await editMemo();

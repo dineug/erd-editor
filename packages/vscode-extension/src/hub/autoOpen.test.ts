@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import {
+  ERD_FILE_EXTENSIONS,
+  OPEN_READY_TIMEOUT_MS,
+} from '@dineug/erd-editor-agent-hub-host';
 import { Effect } from 'effect';
 import {
   afterEach,
@@ -12,11 +16,7 @@ import {
 } from 'vite-plus/test';
 
 import { VIEW_TYPE } from '@/constants/viewType';
-import {
-  ERD_FILE_EXTENSIONS,
-  ERD_FILE_GLOB,
-  OPEN_READY_TIMEOUT_MS,
-} from '@/hub/handlers';
+import { ERD_FILE_GLOB } from '@/hub/handlers';
 
 import {
   createConnection,

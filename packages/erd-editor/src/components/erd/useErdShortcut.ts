@@ -9,6 +9,7 @@ import {
   changeOpenMapAction,
   changeZenModeAction,
   drawEndRelationshipAction,
+  editMemoEndAction,
   editTableAction,
   editTableEndAction,
   focusMoveTableAction,
@@ -153,6 +154,7 @@ export function useErdShortcut(ctx: Ctx) {
 
   const handleShortcut = ({
     type,
+    event,
   }: {
     type: KeyBindingName;
     event: KeyboardEvent;
@@ -263,8 +265,24 @@ export function useErdShortcut(ctx: Ctx) {
     }
 
     if (type === KeyBindingName.stop) {
+      // An open editor or a draw takes the press alone, and the next one
+      // unselects. Read before the host takes the focus, whose blur ends an
+      // open editor on its own.
+      const endsEdit =
+        isEditingText(editor) || Boolean(editor.drawRelationship);
       ctx.host.dispatchEvent(forceFocusEvent());
-      store.dispatch(drawEndRelationshipAction(), unselectAllAction$());
+
+      if (endsEdit) {
+        // Spent here, so a host listening for Escape leaves it alone.
+        event.preventDefault();
+        store.dispatch(
+          drawEndRelationshipAction(),
+          editTableEndAction(),
+          editMemoEndAction()
+        );
+      } else {
+        store.dispatch(drawEndRelationshipAction(), unselectAllAction$());
+      }
     }
 
     type === KeyBindingName.undo && store.undo();

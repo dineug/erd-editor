@@ -30,6 +30,7 @@ import {
 import { Socket } from 'effect/unstable/socket';
 
 import { SessionError, SessionErrorCode } from '@/errors';
+import { capitalize, hostWords } from '@/hub/host';
 import { type ConnectPipe, connectPipe } from '@/io/netSocket';
 
 /** How long a request may go unanswered; the hub's own waits all end well inside it. */
@@ -67,6 +68,9 @@ export type HubClient = {
   /** Hangs up; whatever is pending fails as disconnected. */
   readonly close: Effect.Effect<void>;
 };
+
+/** The window a connection reaches, as its lock names it: the pid, and the ide its refusals name. */
+export type HubWindow = { readonly pid: number; readonly ide: string };
 
 export type HubClientOptions = {
   /** The MCP client's name, which hello carries to the hub. */
@@ -131,10 +135,12 @@ function refusedAnswer(method: string, frame: Record<string, any>): Answer {
  */
 export const makeHubClient = (
   socket: Socket.Socket,
-  pid: number,
+  hubWindow: HubWindow,
   options: HubClientOptions
 ): Effect.Effect<HubClient, never, Scope.Scope> =>
   Effect.gen(function* () {
+    const { pid } = hubWindow;
+    const { theWindow } = hostWords(hubWindow.ide);
     const scope = yield* Effect.scope;
     const writer = yield* socket.writer;
     const inbound = yield* Queue.unbounded<Frame, Cause.Done>();
@@ -151,7 +157,7 @@ export const makeHubClient = (
     const disconnected = (method: string) =>
       new SessionError(
         SessionErrorCode.disconnected,
-        `The connection to the VS Code window (pid ${pid}) closed before it answered ${method}`
+        `The connection to ${theWindow} (pid ${pid}) closed before it answered ${method}`
       );
 
     const settleAll = () => {
@@ -329,7 +335,7 @@ export const makeHubClient = (
           return Effect.fail(
             new SessionError(
               SessionErrorCode.disconnected,
-              `The connection to the VS Code window (pid ${pid}) is closed`
+              `The connection to ${theWindow} (pid ${pid}) is closed`
             )
           );
         }
@@ -353,7 +359,7 @@ export const makeHubClient = (
               Effect.fail(
                 new SessionError(
                   SessionErrorCode.timeout,
-                  `The VS Code window (pid ${pid}) did not answer ${method} within ${REQUEST_TIMEOUT_MS} ms`
+                  `${capitalize(theWindow)} (pid ${pid}) did not answer ${method} within ${REQUEST_TIMEOUT_MS} ms`
                 )
               ),
           }),
@@ -407,6 +413,7 @@ export const make = (dial: ConnectPipe): HubConnectorShape => ({
       );
     }
 
+    const { theWindow, addOn } = hostWords(record.ide);
     const scope = yield* Scope.fork(yield* Effect.scope);
     return yield* Effect.gen(function* () {
       const socket = yield* dial(record.pipe).pipe(
@@ -414,11 +421,15 @@ export const make = (dial: ConnectPipe): HubConnectorShape => ({
           error =>
             new SessionError(
               SessionErrorCode.hubUnreachable,
-              `The VS Code window with pid ${pid} advertises an ERD Editor hub at ${record.pipe}, but it did not accept a connection (${error.message}). Nothing was written; reload that window or check the ERD Editor extension.`
+              `${capitalize(theWindow)} with pid ${pid} advertises an ERD Editor hub at ${record.pipe}, but it did not accept a connection (${error.message}). Nothing was written; reload that window or check the ERD Editor ${addOn}.`
             )
         )
       );
-      const client = yield* makeHubClient(socket, pid, options);
+      const client = yield* makeHubClient(
+        socket,
+        { pid, ide: record.ide },
+        options
+      );
       const hello = yield* client.request('hello', {
         token: record.token,
         protocolVersion: HUB_PROTOCOL_VERSION,

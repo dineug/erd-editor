@@ -104,8 +104,9 @@ project folder: it resolves relative document paths against its working director
    schema.erd.json, related to users and products"_.
 3. Watch the change land on the canvas, then save with `Ctrl`/`Cmd`+`S`, or ask the agent to save.
 
-A diagram that is not open yet opens in the ERD Editor on the agent's first edit. With no VS Code
-window on the document's folder, the agent edits the file on disk instead.
+A diagram that is not open yet opens in the ERD Editor on the agent's first edit. With no editor
+window on the document's folder, a VS Code window or an Obsidian vault window with the ERD Editor
+plugin, the agent edits the file on disk instead.
 
 The agent connects only in a trusted workspace, and the `dineug.erd-editor.agentHub.enabled`
 setting turns it off for the window. Either way it can still read the diagrams from disk, but it

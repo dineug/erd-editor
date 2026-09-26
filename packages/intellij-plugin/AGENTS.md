@@ -23,6 +23,7 @@ The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd` / `.erd.j
 | --- | --- |
 | `src/main/kotlin/…/editor/` | Provider, `ErdEditor`, JCEF panel, scheme handler, `WebviewBridge` / `WebviewScripts` |
 | `src/main/kotlin/…/files/`, `…/settings/` | File recognition and icon; theme persistence over the message bus |
+| `src/main/resources/icons/` | The file icon, the logo's two tables and their link in 1 px lines on the 16 px grid, with no page, as the New UI draws file types, in its purple, the color of its `sql` and `json` icons: `erd-editor-file-icon.svg` light (`#834DF0`), `_dark.svg` dark (`#B589EC`), which `IconLoader` picks under a dark theme. A filled page with the tables cut out blurred at 1.25x and 1.5x |
 
 ## For AI Agents
 

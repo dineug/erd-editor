@@ -44,9 +44,16 @@ class ErdEditorFilesTest {
     }
 
     @Test
+    fun `accepts vuerd extensions`() {
+        assertTrue(ErdEditorFiles.isErdEditorFile(StubVirtualFile("schema.vuerd")))
+        assertTrue(ErdEditorFiles.isErdEditorFile(StubVirtualFile("schema.vuerd.json")))
+    }
+
+    @Test
     fun `rejects other files`() {
         assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("schema.json")))
         assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("erd")))
+        assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("vuerd")))
         assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("Main.kt")))
     }
 

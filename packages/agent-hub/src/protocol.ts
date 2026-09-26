@@ -251,7 +251,7 @@ export class HubRequestError extends Schema.TaggedError<HubRequestError>()(
 export function protocolMismatchMessage(hub: number, client: number): string {
   const action =
     hub < client
-      ? `Update the ERD Editor extension in the IDE until its hub speaks protocol ${client}`
+      ? `Update the ERD Editor extension or plugin in the editor until its hub speaks protocol ${client}`
       : `Update the MCP server (npx -y @dineug/erd-editor-mcp@latest) until it speaks protocol ${hub}`;
 
   return `The ERD Editor hub speaks protocol ${hub} but the client speaks protocol ${client}. ${action}.`;

@@ -430,13 +430,14 @@ describe('protocolMismatchMessage', () => {
     expect(HUB_PROTOCOL_VERSION).toBe(1);
   });
 
-  it('tells an older hub to update the IDE extension', () => {
+  it('tells an older hub to update the extension or plugin, naming no one editor', () => {
     const message = protocolMismatchMessage(1, 2);
 
-    expect(message).toContain('hub speaks protocol 1');
-    expect(message).toContain('client speaks protocol 2');
-    expect(message).toContain('Update the ERD Editor extension in the IDE');
+    expect(message).toBe(
+      'The ERD Editor hub speaks protocol 1 but the client speaks protocol 2. Update the ERD Editor extension or plugin in the editor until its hub speaks protocol 2.'
+    );
     expect(message).not.toContain('@dineug/erd-editor-mcp');
+    expect(message).not.toMatch(/VS Code|Obsidian|IDE/);
   });
 
   it('tells an older client to update the MCP server', () => {
@@ -445,6 +446,6 @@ describe('protocolMismatchMessage', () => {
     expect(message).toContain('hub speaks protocol 3');
     expect(message).toContain('client speaks protocol 2');
     expect(message).toContain('@dineug/erd-editor-mcp@latest');
-    expect(message).not.toContain('extension in the IDE');
+    expect(message).not.toContain('extension or plugin');
   });
 });

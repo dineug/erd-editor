@@ -108,7 +108,7 @@ describe('affectsHubEnabled', () => {
   });
 });
 
-describe('the hub by trust and setting', () => {
+describe('this window as the hub host', () => {
   beforeEach(() => {
     resetVscodeMock();
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -118,7 +118,7 @@ describe('the hub by trust and setting', () => {
     vi.restoreAllMocks();
   });
 
-  it('writes only a hub false lock in an untrusted window, and never listens', async () => {
+  it('names vscode, and writes only a hub false lock in an untrusted window', async () => {
     workspace.isTrusted = false;
     const { io } = start();
     await flush();
@@ -134,7 +134,6 @@ describe('the hub by trust and setting', () => {
       token: '',
       hub: false,
     });
-    expect(io.files.get(io.lockPath())?.mode).toBe(0o600);
   });
 
   it('writes only a hub false lock when the setting is off', async () => {
@@ -162,50 +161,10 @@ describe('the hub by trust and setting', () => {
     });
   });
 
-  it('keeps a hub false lock when trust is granted but the pipe cannot listen', async () => {
-    workspace.isTrusted = false;
-    const { io } = start();
-    await flush();
-    io.failListenOnce();
-    io.fs.rename.mockClear();
-
-    fireGrantWorkspaceTrust();
-    await flush();
-
-    expect(io.listen).toHaveBeenCalledTimes(1);
-    expect(io.fs.rename).toHaveBeenCalledTimes(1);
-    expect(io.lock()).toMatchObject({ hub: false, pipe: '', token: '' });
-  });
-
-  it('retries listening on the next trust event after a failure', async () => {
-    const io = createMemoryHub();
-    io.failListenOnce();
-    start(io);
-    await flush();
-
-    fireGrantWorkspaceTrust();
-    await flush();
-
-    expect(io.listen).toHaveBeenCalledTimes(2);
-    expect(io.lock()).toMatchObject({ hub: true, token: 'token-2' });
-  });
-
-  it('keeps serving through a trust event in a window that was already trusted', async () => {
-    const { io } = start();
-    await flush();
-
-    fireGrantWorkspaceTrust();
-    await flush();
-
-    expect(io.listen).toHaveBeenCalledTimes(1);
-    expect(io.lock()).toMatchObject({ hub: true, token: 'token-1' });
-  });
-
-  it('turns the lock to hub false before closing the pipe when the setting goes off', async () => {
+  it('turns the lock to hub false when the setting goes off, and serves again when it comes back', async () => {
     const { io } = start();
     await flush();
     const client = io.connect(SOCKET);
-    io.fs.rename.mockClear();
 
     setHubSetting(false);
     fireConfigurationChange([AGENT_HUB_ENABLED_SETTING]);
@@ -213,21 +172,6 @@ describe('the hub by trust and setting', () => {
 
     expect(io.lock()).toMatchObject({ hub: false, pipe: '', token: '' });
     expect(client.closed).toBe(true);
-    expect(io.servers.has(SOCKET)).toBe(false);
-    expect(io.files.has(SOCKET)).toBe(false);
-    // A client that reads the lock in between finds hub false, never a pipe
-    // that no longer answers.
-    expect(io.fs.rename.mock.invocationCallOrder[0]).toBeLessThan(
-      io.closeListener.mock.invocationCallOrder[0]
-    );
-  });
-
-  it('serves again with a new token when the setting comes back on', async () => {
-    const { io } = start();
-    await flush();
-    setHubSetting(false);
-    fireConfigurationChange([AGENT_HUB_ENABLED_SETTING]);
-    await flush();
 
     setHubSetting(true);
     fireConfigurationChange([AGENT_HUB_ENABLED_SETTING]);
@@ -270,76 +214,36 @@ describe('the hub by trust and setting', () => {
     });
   });
 
-  it('guards with a hub false lock on the next document change when the setting cannot be read at start', async () => {
-    workspace.getConfiguration.mockImplementationOnce(() => {
-      throw new Error('settings.json is not JSON');
-    });
+  it('stops listening to trust, setting and folder events once closed', async () => {
+    workspace.isTrusted = false;
     const { io, hub } = start();
     await flush();
-    // The registry publishes the documents it already holds as the hub builds,
-    // so the guarding lock is there before the setting can be read again.
-    expect(io.lock()).toMatchObject({ hub: false, documents: [] });
 
-    await hub.setDocuments(['/elsewhere/a.erd.json']);
-    expect(io.lock()).toMatchObject({
-      hub: false,
-      documents: ['/elsewhere/a.erd.json'],
-    });
-
+    await hub.close();
     fireGrantWorkspaceTrust();
+    fireConfigurationChange([AGENT_HUB_ENABLED_SETTING]);
+    fireWorkspaceFoldersChange([{ uri: Uri.file('/ws') }]);
     await flush();
-    expect(io.lock()).toMatchObject({ hub: true, token: 'token-1' });
-  });
-});
 
-describe('the lock of a window without folders', () => {
-  beforeEach(() => {
-    resetVscodeMock();
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it.each([
-    ['undefined', undefined],
-    ['empty', []],
-  ])(
-    'is written when workspaceFolders is %s, and lists the open documents',
-    async (_label, folders) => {
-      workspace.workspaceFolders = folders;
-      const io = createMemoryHub();
-      io.addFile('/notes/loose.erd.json');
-      const { hub } = start(io);
-
-      await hub.setDocuments(['/notes/loose.erd.json']);
-
-      expect(io.lock()).toMatchObject({
-        hub: true,
-        workspaceFolders: [],
-        documents: ['/notes/loose.erd.json'],
-      });
-    }
-  );
-
-  it('lists the documents in a hub false lock too, since that lock guards them', async () => {
-    workspace.isTrusted = false;
-    const io = createMemoryHub();
-    const { hub } = start(io);
-
-    await hub.setDocuments(['/notes/loose.erd.json']);
-
-    expect(io.lock()).toMatchObject({
-      hub: false,
-      documents: ['/notes/loose.erd.json'],
-    });
+    expect(io.listen).not.toHaveBeenCalled();
+    expect(io.lock()).toBeUndefined();
   });
 });
 
 describe('the workspace folders of the lock', () => {
   beforeEach(() => {
     resetVscodeMock();
+  });
+
+  it.each([
+    ['undefined', undefined],
+    ['empty', []],
+  ])('lists none when workspaceFolders is %s', async (_label, folders) => {
+    workspace.workspaceFolders = folders;
+    const { io } = start();
+    await flush();
+
+    expect(io.lock()).toMatchObject({ hub: true, workspaceFolders: [] });
   });
 
   it('lists the real path of every file folder and leaves virtual folders out', async () => {
@@ -371,14 +275,5 @@ describe('the workspace folders of the lock', () => {
     await flush();
 
     expect(io.lock()?.workspaceFolders).toEqual(['/a', '/b']);
-  });
-
-  it('keeps a folder whose realpath fails under the path VSCode reported', async () => {
-    const io = createMemoryHub();
-    workspace.workspaceFolders = [{ uri: Uri.file('/gone') }];
-    start(io);
-    await flush();
-
-    expect(io.lock()?.workspaceFolders).toEqual(['/gone']);
   });
 });

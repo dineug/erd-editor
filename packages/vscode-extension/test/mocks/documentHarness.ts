@@ -1,4 +1,8 @@
 import { type HubNotification } from '@dineug/erd-editor-agent-hub';
+import {
+  type HubConnection,
+  hubLoggerLayer,
+} from '@dineug/erd-editor-agent-hub-host';
 import { Effect, FileSystem } from 'effect';
 import {
   Bridge,
@@ -16,8 +20,6 @@ import { ErdEditor } from '@/erd-editor';
 import { ErdEditorProvider } from '@/erd-editor-provider';
 import { type WebviewRelay } from '@/hub/documentRegistry';
 import { createDocumentHandler } from '@/hub/handlers';
-import { type HubConnection } from '@/hub/server';
-import * as HubLogger from '@/hub/services/HubLogger';
 
 import {
   createMemoryHub,
@@ -56,6 +58,7 @@ export function createConnection(id = 1): MockConnection {
     notify: vi.fn((notification: HubNotification) => {
       notifications.push(notification);
     }),
+    drain: () => Promise.resolve(),
     notifications,
   };
 }
@@ -207,7 +210,7 @@ export function createDocumentHarness(options: MemoryHubOptions = {}) {
    * extension, not stdout under effect's default format.
    */
   const run = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
-    Effect.runPromise(Effect.provide(effect, HubLogger.layer));
+    Effect.runPromise(Effect.provide(effect, hubLoggerLayer));
   const runFailure = <A, E>(effect: Effect.Effect<A, E>): Promise<E> =>
     run(Effect.flip(effect));
 

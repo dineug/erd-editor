@@ -49,7 +49,7 @@ describe('effect is imported from its documented entries', () => {
       expect.arrayContaining([
         '../extension.ts',
         './index.ts',
-        './server.ts',
+        './vscodeHost.ts',
         '../utils/index.ts',
         '../../test/mocks/hubLayers.ts',
         '../../test/integration/agent-hub.test.ts',
@@ -62,11 +62,7 @@ describe('effect is imported from its documented entries', () => {
     const seen = new Set(Object.values(sources).flatMap(effectSpecifiers));
 
     expect([...seen]).toEqual(
-      expect.arrayContaining([
-        'effect',
-        'effect/unstable/socket',
-        '@effect/platform-node/NodeFileSystem',
-      ])
+      expect.arrayContaining(['effect', 'effect/unstable/socket'])
     );
   });
 

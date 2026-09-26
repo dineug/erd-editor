@@ -135,6 +135,30 @@ test('standard library factory preserves build policies', () => {
   assert.equal(config.worker, undefined);
 });
 
+test('a node library keeps its builtins as imports and targets node', () => {
+  const config = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+    node: true,
+  });
+  const external = config.build?.rolldownOptions?.external;
+
+  assert.equal(config.build?.target, 'node22');
+  assert.ok(external instanceof RegExp);
+  for (const specifier of ['node:net', 'net', 'node:fs/promises', 'stylis']) {
+    assert.equal(external.test(specifier), true, specifier);
+  }
+  for (const specifier of ['netx', 'node:netx', 'stylish']) {
+    assert.equal(external.test(specifier), false, specifier);
+  }
+
+  const browser = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+  }).build?.rolldownOptions?.external;
+  assert.ok(browser instanceof RegExp);
+  assert.equal(browser.test('node:net'), false);
+  assert.equal(browser.test('net'), false);
+});
+
 test('a library that spawns a worker gets the shared worker build', () => {
   const external = /^stylis(?:\/.+)*$/;
   assert.deepEqual(createWorkerOptions(external), {
@@ -302,6 +326,23 @@ new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsCo
   assert.ok(both);
   assert.equal((both.match(/__toDataUrl\(/g) ?? []).length, 3);
   assert.doesNotMatch(both, /encodeURIComponent/);
+
+  // A worker module reached through require() is initialized lazily, and
+  // rolldown then declares the source apart from where it assigns it.
+  const lazy = `var jsContent$3;
+var init_worker = __esmMin((() => {
+\tjsContent$3 = "self.onconnect = () => {};";
+}));
+new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsContent$3), o);`;
+  assert.equal(
+    readStringLiteral(lazy, 'jsContent$3'),
+    'self.onconnect = () => {};'
+  );
+  assert.match(rewriteInlineWorkers(lazy) ?? '', /__toDataUrl\(jsContent\$3\)/);
+  assert.equal(
+    readStringLiteral('if (jsContent == "a") {}', 'jsContent'),
+    null
+  );
   assert.equal(
     base64UrlLength('abcd'),
     'data:text/javascript;base64,'.length + 8

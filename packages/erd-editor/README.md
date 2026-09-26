@@ -160,6 +160,24 @@ erd-editor {
 | `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options. |
 
+## Key bindings
+
+`createKeyBindingMap()` returns the shortcuts an editor listens for until `setKeyBindingMap`
+changes them, as a new map on every call. Each is a [tinykeys](https://github.com/jamiebuilds/tinykeys)
+chord that names its key by `KeyboardEvent.code`, where `$mod` is Cmd on macOS and Ctrl elsewhere.
+
+```js
+import { createKeyBindingMap } from '@dineug/erd-editor';
+
+const shortcuts = Object.values(createKeyBindingMap())
+  .flat()
+  .map(({ shortcut }) => shortcut); // '$mod+KeyK', 'Alt+Enter', ...
+```
+
+The editor listens on its own element, so a host that takes keys before the page does, with
+global hotkeys or a capture-phase `keydown` listener, has to let these through while the editor
+is focused. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types come with it.
+
 ## Syntax highlighting
 
 The SQL and code-generation panels are highlighted by [Shiki](https://shiki.style), in a shared

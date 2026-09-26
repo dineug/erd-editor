@@ -38,6 +38,22 @@ export const MAX_PIPE_PATH_BYTES = 100;
 const LOCK_FILE_NAME = /^([1-9]\d*)\.json$/;
 const encoder = new TextEncoder();
 
+/** The editors whose lock ide is not the name a person knows them by. */
+const IDE_DISPLAY_NAMES: ReadonlyMap<string, string> = new Map([
+  ['vscode', 'VS Code'],
+  ['obsidian', 'Obsidian'],
+]);
+
+/**
+ * The editor a lock's ide names, as an agent reads it: VS Code and Obsidian by
+ * name, any other ide as it is spelled, trimmed, and a blank one as an editor.
+ * The ide itself stays an open string, so a lock from a new host still parses.
+ */
+export function ideDisplayName(ide: string): string {
+  const trimmed = ide.trim();
+  return IDE_DISPLAY_NAMES.get(trimmed) ?? (trimmed || 'an editor');
+}
+
 export function lockDirPath(homeDir: string): string {
   return `${homeDir.replace(/[\\/]+$/, '')}/.erd-editor/ide`;
 }

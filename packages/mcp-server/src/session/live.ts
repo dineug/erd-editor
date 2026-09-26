@@ -42,7 +42,11 @@ export type LiveSession = DocumentSession & {
   readonly mode: 'live';
   /** The pid of the window this session talks to. */
   readonly pid: number;
+  /** The ide of that window's lock, which names the editor in what the session says of it. */
+  readonly ide: string;
   readonly connected: boolean;
+  /** The editor let go of the document: it said documentClosed, and no write joined since. */
+  readonly released: boolean;
   /** The window discovery picked for this call; another pid moves the session there. */
   readonly setCandidate: (candidate: LockCandidate) => void;
   /** Opens the editor if needed and joins, as a write does; create writes an empty document first. */
@@ -76,9 +80,9 @@ const attempt = <A>(evaluate: () => A) =>
   Effect.try({ try: evaluate, catch: error => error });
 
 /**
- * A document inside a VS Code window. A write opens the editor if needed and
- * joins, so the peer holds the editor's state and clock; each outbound batch
- * is an applyActions request, one at a time, and the call waits for them.
+ * A document inside an editor window, VS Code or Obsidian. A write opens the
+ * editor if needed and joins, so the peer holds its state and clock; each
+ * outbound batch is an applyActions request, one at a time, awaited.
  */
 export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
   options: LiveSessionOptions
@@ -98,6 +102,8 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
   let edits = 0;
   /** The editor closed with this agent's edits behind it; every call says so until a reseed. */
   let closedAfterEdits = false;
+  /** Set by documentClosed; a write's join or a new connection clears it, a read's join may be answered from disk. */
+  let released = false;
   let subscribed = false;
   let closed = false;
   let callErrors: unknown[] | null = null;
@@ -116,6 +122,7 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
       peer.receive(notification.params.actions as any[]);
     } else {
       if (edits > 0) closedAfterEdits = true;
+      released = true;
       forget('reconnecting');
     }
   };
@@ -187,6 +194,8 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
       })
       .pipe(Scope.provide(scope));
     connection = client;
+    // A documentClosed a closed connection carried says nothing of this one.
+    released = false;
     return client;
   });
 
@@ -211,6 +220,7 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
         closedAfterEdits = false;
         joined = registered ? 'registered' : 'seeded';
         state = 'ready';
+        if (registered) released = false;
 
         if (registered && !subscribed) {
           subscribed = true;
@@ -365,8 +375,14 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
     get pid() {
       return candidate.pid;
     },
+    get ide() {
+      return candidate.record.ide;
+    },
     get connected() {
       return connection !== null && !connection.closed;
+    },
+    get released() {
+      return released;
     },
 
     setCandidate: next => {
@@ -394,8 +410,8 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
       }),
 
     // The hub answers saved false both when it could not confirm every edit
-    // reached the editor and when VS Code kept the tab dirty, so the message
-    // names both.
+    // reached the editor and when the editor kept the file unsaved, as VS Code
+    // does with a tab whose file changed on disk, so the message names both.
     save: Effect.gen(function* () {
       const notes = yield* begin;
       const client = yield* ensureConnected;
@@ -404,7 +420,7 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
       if (!saved) {
         return yield* new SessionError(
           'notSaved',
-          `The editor did not save ${path}: it could not confirm that every edit reached it, or VS Code kept the tab unsaved (for example because the file changed on disk). Check the editor, then call erd_save again.`
+          `The editor did not save ${path}: it could not confirm that every edit reached it, or the editor kept it unsaved, as VS Code does when the file changed on disk. Check the editor, then call erd_save again.`
         );
       }
       return { saved, notes } satisfies SaveOutcome;

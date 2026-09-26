@@ -11,7 +11,7 @@ export type ToolCopy = {
 
 /** What the client hands the model once, beside the tool list. */
 export const SERVER_INSTRUCTIONS =
-  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Never write a document file yourself. When a VS Code window has the document, edits appear live in its ERD editor and stay unsaved until erd_save; otherwise they are written to the file at once.';
+  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Never write a document file yourself. When an editor window serves the document (the ERD Editor extension in VS Code or its plugin in Obsidian), edits appear live in its ERD editor: VS Code keeps them unsaved until erd_save, while Obsidian saves them as it saves the user’s edits and erd_save writes them at once. Otherwise they are written to the file at once.';
 
 const TABLE_ID = 'Table id, from erd_list or the createdIds of erd_add_table.';
 const COLUMN_ID =
@@ -67,11 +67,11 @@ const importer = (language: string): ToolCopy => ({
 export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   erd_list_documents: {
     description:
-      'Lists ERD documents with path, open, active, dirty and readonly. With a VS Code window serving the working directory it lists that window; otherwise the ERD files under the working directory.',
+      'Lists ERD documents with path, open, active, dirty and readonly. With an editor window serving the working directory (the VS Code extension or the Obsidian plugin) it lists that window; otherwise the ERD files under the working directory.',
   },
   erd_open_document: {
     description:
-      'Opens a document for editing, in the VS Code ERD editor when a window serves it. With create it makes the file first if missing; a name with no extension gets .erd.json.',
+      'Opens a document for editing, in the ERD editor of the window that serves it, if one does (the VS Code extension or the Obsidian plugin). With create it makes the file first if missing; a name with no extension gets .erd.json.',
     args: {
       create: 'True to create an empty document when the file does not exist.',
     },
@@ -126,7 +126,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_save: {
     description:
-      'Saves a document the VS Code editor holds to disk. Edits stay unsaved in the editor until this is called. On disk, with no editor, edits are written at once and this does nothing.',
+      'Saves a document an editor window holds to disk. VS Code keeps edits unsaved until this is called; Obsidian saves them as it saves the user’s edits, and this writes them at once. On disk, with no editor, edits are written at once and this does nothing.',
   },
   erd_undo: {
     description:

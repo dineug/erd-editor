@@ -865,6 +865,11 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
     await erd.press('Escape');
     await expect(erd.memoEditor).toHaveCount(0);
     expect((await erd.memo(MEMO_ID)).value).toBe(MEMO_VALUE);
+    // The press closed the editor alone; the next one takes the selection.
+    const selectedMemos = erd.canvas.locator('.memo[data-selected]');
+    await expect(selectedMemos).toHaveCount(1);
+    await erd.press('Escape');
+    await expect(selectedMemos).toHaveCount(0);
 
     await openMemoEditor(erd);
     await erd.press('Tab');

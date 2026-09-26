@@ -23,7 +23,14 @@ import { join } from 'node:path';
 import * as NodePath from '@effect/platform-node/NodePath';
 import { Effect, Fiber, FileSystem, Layer, Stream } from 'effect';
 import { Socket } from 'effect/unstable/socket';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { isPlatformReason } from '@/errors';
 import * as NodeFs from '@/io/fileSystem';
@@ -66,6 +73,22 @@ describe('the process', () => {
   it('tells a live pid from a dead one', () => {
     expect(isAlive(process.pid)).toBe(true);
     expect(isAlive(2 ** 22 + 12345)).toBe(false);
+  });
+
+  it('takes a pid it may not signal for alive on Windows only, and any other failure for dead', () => {
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
+      throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+    });
+
+    // An elevated window of this user on Windows; another user's process on POSIX.
+    expect(isAlive(4, 'win32')).toBe(true);
+    expect(isAlive(4, 'darwin')).toBe(false);
+    expect(isAlive(4, 'linux')).toBe(false);
+    kill.mockImplementation(() => {
+      throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
+    });
+    expect(isAlive(4, 'win32')).toBe(false);
+    kill.mockRestore();
   });
 
   it('answers the specs from fixed values, ids counted per layer', async () => {

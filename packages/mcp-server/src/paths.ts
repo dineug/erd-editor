@@ -3,7 +3,7 @@ import { Effect, FileSystem, Path } from 'effect';
 import { SessionError, SessionErrorCode } from '@/errors';
 import { ProcessInfo } from '@/io/process';
 
-/** The extensions the VS Code custom editor opens, which the hub also insists on. */
+/** The extensions the ERD editors of VS Code and Obsidian open, which their hubs also insist on. */
 export const ERD_EXTENSIONS: readonly string[] = [
   'erd',
   'vuerd',

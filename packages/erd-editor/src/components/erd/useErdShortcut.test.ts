@@ -26,6 +26,7 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import {
   FocusType,
+  isEditingText,
   SelectType,
   VisualizationMode,
 } from '@/engine/modules/editor/state';
@@ -37,6 +38,7 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { toScenePoint } from '@/konva/scene/viewport';
@@ -77,6 +79,16 @@ const shortcut = (app: AppContext, type: string) =>
     type: type as KeyBindingName,
     event: new KeyboardEvent('keydown'),
   });
+
+/** Escape as the key binding hands it over, cancelable as a real press is. */
+const pressStop = (app: AppContext) => {
+  const event = new KeyboardEvent('keydown', {
+    key: 'Escape',
+    cancelable: true,
+  });
+  app.shortcut$.next({ type: KeyBindingName.stop, event });
+  return event;
+};
 
 const seedTable = (app: AppContext) => {
   app.store.dispatchSync(addTableAction$());
@@ -238,19 +250,28 @@ describe('useErdShortcut - removal and stop', () => {
     document.body.removeEventListener(focusEvent.type, listener);
   });
 
-  it('stops the draw mode, clears the selection and force-focuses the host', async () => {
+  it('stops the draw mode, then clears the selection, force-focusing the host each time', async () => {
     const app = await setup();
     const listener = vi.fn();
     document.body.addEventListener(forceFocusEvent.type, listener);
-    seedTable(app);
+    const tableId = seedTable(app);
     shortcut(app, KeyBindingName.relationshipZeroN);
     await flush();
 
-    shortcut(app, KeyBindingName.stop);
+    pressStop(app);
     await flush();
 
     expect(listener).toHaveBeenCalledTimes(1);
     expect(app.store.state.editor.drawRelationship).toBeNull();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      [tableId]: SelectType.table,
+    });
+    expect(app.store.state.editor.focusTable?.tableId).toBe(tableId);
+
+    pressStop(app);
+    await flush();
+
+    expect(listener).toHaveBeenCalledTimes(2);
     expect(app.store.state.editor.selectedMap).toEqual({});
     expect(app.store.state.editor.focusTable).toBeNull();
     document.body.removeEventListener(forceFocusEvent.type, listener);
@@ -1534,17 +1555,30 @@ describe('useErdShortcut - what a text editor never takes', () => {
     expect(seeded.app.store.state.editor.focusTable?.focusType).toBe(before);
   });
 
-  it.each(EDITING_STATES)('%s still answers stop', async (_name, enter) => {
-    const seeded = await seedScene();
-    enter(seeded);
-    await flush();
+  it.each(EDITING_STATES)(
+    '%s still answers stop, the edit first and the selection next',
+    async (_name, enter) => {
+      const seeded = await seedScene();
+      enter(seeded);
+      await flush();
+      const { editor } = seeded.app.store.state;
+      const selectedMap = { ...editor.selectedMap };
 
-    shortcut(seeded.app, KeyBindingName.stop);
-    await flush();
+      const first = pressStop(seeded.app);
+      await flush();
 
-    expect(seeded.app.store.state.editor.focusTable).toBeNull();
-    expect(seeded.app.store.state.editor.selectedMap).toEqual({});
-  });
+      expect(isEditingText(editor)).toBe(false);
+      expect(editor.selectedMap).toEqual(selectedMap);
+      expect(first.defaultPrevented).toBe(true);
+
+      const second = pressStop(seeded.app);
+      await flush();
+
+      expect(editor.focusTable).toBeNull();
+      expect(editor.selectedMap).toEqual({});
+      expect(second.defaultPrevented).toBe(false);
+    }
+  );
 
   it.each(EDITING_STATES)(
     '%s still answers undo and redo',
@@ -1598,5 +1632,133 @@ describe('useErdShortcut - what a text editor never takes', () => {
 
     expect(setData).not.toHaveBeenCalled();
     expect(preventDefault).not.toHaveBeenCalled();
+  });
+});
+
+const focusTableCell =
+  (focusType: FocusType) =>
+  ({ app, tableId }: Seeded) =>
+    app.store.dispatchSync(focusTableAction({ tableId, focusType }));
+
+const focusColumnCell =
+  (focusType: FocusType) =>
+  ({ app, tableId, columnId }: Seeded) =>
+    app.store.dispatchSync(
+      focusColumnAction({
+        tableId,
+        columnId,
+        focusType,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+
+const startCellEdit = ({ app }: Seeded) =>
+  app.store.dispatchSync(editTableAction());
+
+/**
+ * What Escape can end short of the selection: how the scene is focused before,
+ * then the gesture that opens the edit on top of it.
+ */
+const ENDABLE = [
+  ['a table name', focusTableCell(FocusType.tableName), startCellEdit],
+  ['a table comment', focusTableCell(FocusType.tableComment), startCellEdit],
+  ['a column name', focusColumnCell(FocusType.columnName), startCellEdit],
+  [
+    'a column data type',
+    focusColumnCell(FocusType.columnDataType),
+    startCellEdit,
+  ],
+  ['a column default', focusColumnCell(FocusType.columnDefault), startCellEdit],
+  ['a column comment', focusColumnCell(FocusType.columnComment), startCellEdit],
+  [
+    'a memo body',
+    ({ app, memoId }: Seeded) =>
+      app.store.dispatchSync(selectMemoAction$(memoId, false)),
+    ({ app, memoId }: Seeded) =>
+      app.store.dispatchSync(editMemoAction({ id: memoId })),
+  ],
+  [
+    'a relationship draw',
+    () => {},
+    ({ app }: Seeded) =>
+      app.store.dispatchSync(
+        drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+      ),
+  ],
+] as const;
+
+describe('useErdShortcut - Escape ends an edit before it unselects', () => {
+  const enter = async (
+    focus: (seeded: Seeded) => unknown,
+    start: (seeded: Seeded) => unknown
+  ) => {
+    const seeded = await seedScene();
+    focus(seeded);
+    await flush();
+    const before = snapshot(seeded.app);
+    start(seeded);
+    await flush();
+    return { seeded, before };
+  };
+
+  it.each(ENDABLE)(
+    'ends %s alone, leaving focus and selection as they were',
+    async (_name, focus, start) => {
+      const { seeded, before } = await enter(focus, start);
+      expect(Object.keys(before.selectedMap)).not.toHaveLength(0);
+      expect(snapshot(seeded.app)).not.toEqual(before);
+
+      const first = pressStop(seeded.app);
+      await flush();
+
+      expect(snapshot(seeded.app)).toEqual(before);
+      expect(first.defaultPrevented).toBe(true);
+    }
+  );
+
+  it.each(ENDABLE)(
+    'unselects on the press after %s ended, and leaves that one to the host',
+    async (_name, focus, start) => {
+      const { seeded } = await enter(focus, start);
+      pressStop(seeded.app);
+      await flush();
+
+      const second = pressStop(seeded.app);
+      await flush();
+
+      const { editor } = seeded.app.store.state;
+      expect(editor.selectedMap).toEqual({});
+      expect(editor.focusTable).toBeNull();
+      expect(second.defaultPrevented).toBe(false);
+    }
+  );
+
+  it('unselects at once and leaves the press to the host while nothing is edited', async () => {
+    const seeded = await seedScene();
+    expect(seeded.app.store.state.editor.focusTable).not.toBeNull();
+
+    const event = pressStop(seeded.app);
+    await flush();
+
+    const { editor } = seeded.app.store.state;
+    expect(editor.selectedMap).toEqual({});
+    expect(editor.focusTable).toBeNull();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('keeps the text a cell editor was given when Escape ends it', async () => {
+    const seeded = await seedScene();
+    focusTableCell(FocusType.tableName)(seeded);
+    startCellEdit(seeded);
+    seeded.app.store.dispatchSync(
+      changeTableNameAction({ id: seeded.tableId, value: 'accounts' })
+    );
+    await flush();
+
+    pressStop(seeded.app);
+    await flush();
+
+    expect(getTable(seeded.app, seeded.tableId)?.name).toBe('accounts');
   });
 });

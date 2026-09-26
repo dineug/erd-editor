@@ -20,6 +20,7 @@ import { connectMcp, type McpHarness, settle } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { HubDiscovery } from '@/hub/discovery';
 import { CLOSED_NOTE, RESEED_NOTE } from '@/session/live';
+import { diskReadNote, leftDiskNote } from '@/session/manager';
 
 const DOCUMENT = '/work/app/db/model.erd.json';
 
@@ -144,7 +145,10 @@ describe('discovery again on every write (AC-M4)', () => {
     const hub = createFakeHub(io, { pid: 8181, workspaceFolders: ['/work'] });
 
     const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
-    expect(refused.json.error.code).toBe('hubAppeared');
+    expect(refused.json.error).toEqual({
+      code: 'hubAppeared',
+      message: `A VS Code window (pid 8181) now serves ${DOCUMENT}, so this edit was not written to the file under its editor. Call the tool again to edit through that window.`,
+    });
     expect(io.read(DOCUMENT)).toBe(onDisk);
 
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
@@ -171,11 +175,45 @@ describe('discovery again on every write (AC-M4)', () => {
       path: DOCUMENT,
       format: 'snapshot',
     });
-    expect(JSON.parse(read.texts[1]).notes[0]).toMatch(
-      /now serves this document/
-    );
+    expect(JSON.parse(read.texts[1]).notes).toEqual([
+      'A VS Code window now serves this document, so this call read it from the editor; edits made on disk earlier stay but can no longer be undone.',
+    ]);
+    expect(leftDiskNote('vscode')).toBe(JSON.parse(read.texts[1]).notes[0]);
     expect(hub.methods()).toEqual(['join']);
     hub.destroy();
+  });
+
+  it('names an Obsidian window that took the document over, in the refusal and in the note', async () => {
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    const hub = createFakeHub(io, {
+      pid: 8888,
+      workspaceFolders: ['/work'],
+      ide: 'obsidian',
+    });
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error).toEqual({
+      code: 'hubAppeared',
+      message: `An Obsidian window (pid 8888) now serves ${DOCUMENT}, so this edit was not written to the file under its editor. Call the tool again to edit through that window.`,
+    });
+
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    hub.destroy();
+    io.removeLock(hub.pid);
+    io.alive.delete(hub.pid);
+    await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    const again = createFakeHub(io, {
+      pid: 8989,
+      workspaceFolders: ['/work'],
+      ide: 'obsidian',
+    });
+    const read = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+    });
+    expect(JSON.parse(read.texts[1]).notes).toEqual([leftDiskNote('obsidian')]);
+    expect(leftDiskNote('obsidian')).toMatch(/^An Obsidian window now serves/);
+    again.destroy();
   });
 
   it('follows the document to the window that opened it', async () => {
@@ -225,6 +263,7 @@ describe('discovery again on every write (AC-M4)', () => {
     });
     expect(read.isError).toBe(false);
     expect(read.json.tables).toEqual([]);
+    expect(JSON.parse(read.texts[1]).notes).toEqual([diskReadNote('vscode')]);
     hub.destroy();
   });
 });

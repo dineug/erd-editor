@@ -5,7 +5,7 @@
 
 ## Purpose
 
-A headless replica of the open document in a dedicated module `Worker`, so the IDE host receives the serialized value without stringifying on the UI thread. `mountWebview` in `webview-client` spawns it, feeds it `webviewInitialValueCommand` and every editor action as `webviewReplicationCommand`, and relays the `hostSaveValueCommand` it posts after each store `change` — the value both IDE hosts write to disk. `private: true`.
+A headless replica of the open document in a dedicated module `Worker`, so the IDE host receives the serialized value without stringifying on the UI thread. `mountWebview` in `webview-client` spawns it, feeds it `webviewInitialValueCommand` and every editor action as `webviewReplicationCommand`, and relays the `hostSaveValueCommand` it posts after each store `change` — the value both IDE hosts write to disk. `obsidian-plugin`'s `ErdView` drives it the same way, one replica per tab, inlined into its `main.js`. `private: true`.
 
 ## Key Files
 

@@ -1,15 +1,15 @@
 # @dineug/erd-editor-mcp
 
 > An MCP server that lets a coding agent edit [erd-editor](https://github.com/dineug/erd-editor)
-> diagrams, live in VS Code or straight on disk
+> diagrams, live in VS Code or Obsidian, or straight on disk
 
 Claude Code, Codex and any other client of the [Model Context Protocol](https://modelcontextprotocol.io)
 get one tool per editing operation on an `.erd.json` document: add a table, rename a column,
 relate two tables, import a DDL dump, read the schema back as SQL. When the document is open in
-the [ERD Editor VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode),
-the agent joins the editor as a collaborator: every call shows up on the canvas as it happens, with
-the agent's focus on the cell it is editing. With no editor around, the same tools edit the file
-itself.
+the [ERD Editor VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
+or the [ERD Editor Obsidian plugin](https://github.com/dineug/erd-editor-obsidian-plugin), the agent
+joins the editor as a collaborator: every call shows up on the canvas as it happens, with the
+agent's focus on the cell it is editing. With no editor around, the same tools edit the file itself.
 
 ![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
 
@@ -41,22 +41,28 @@ against its working directory, so start it in your project.
 
 ## Live and headless
 
-For every edit the server looks for a VS Code window that holds the document, through the lock
-files the extension keeps in `~/.erd-editor/ide/`:
+For every edit the server looks for an editor window that holds the document, a VS Code window
+with the ERD Editor extension or an Obsidian vault window with the ERD Editor plugin, through the
+lock files each keeps in `~/.erd-editor/ide/`:
 
 | What it finds | What an edit does |
 | --- | --- |
-| A window whose workspace contains the document, or that has it open | **Live.** Opens the document in the ERD editor if needed, joins the editing session and applies the change there. Edits appear at once and stay unsaved until the agent calls `erd_save` (or you save). The agent's `erd_undo` reverts only its own edits. |
+| A window whose workspace or vault contains the document, or that has it open | **Live.** Opens the document in the ERD editor if needed, joins the editing session and applies the change there. Edits appear at once. VS Code keeps them unsaved until the agent calls `erd_save` (or you save); Obsidian saves them about two seconds later, as it saves your own edits, and `erd_save` writes them at once. The agent's `erd_undo` reverts only its own edits. |
 | No window | **Headless.** Loads the file, applies the change and replaces the file atomically. `erd_save` has nothing to do. |
 | A window with its hub off | **Refused.** Reads still work, from disk. Writing the file under an open editor would be overwritten by its next save, so the server does not. |
 
-The live hub runs in trusted workspaces and is on by default. Turn it off with the VS Code setting
-`dineug.erd-editor.agentHub.enabled`; the window then still guards its documents from headless
-writes. The extension activates in workspaces that contain `.erd`, `.erd.json`, `.vuerd` or
-`.vuerd.json` files.
+In VS Code the live hub runs in trusted workspaces and is on by default. Turn it off with the
+setting `dineug.erd-editor.agentHub.enabled`; the window then still guards its documents from
+headless writes. The extension activates in workspaces that contain `.erd`, `.erd.json`, `.vuerd`
+or `.vuerd.json` files.
+
+In Obsidian the live hub runs in every vault window while the ERD Editor plugin is enabled, and is
+on by default. Turn it off with the plugin's coding-agent setting; the vault window then still
+guards its files from headless writes.
 
 The server never falls back to the file on its own while a window holds a document: if the
-connection drops it reconnects, and only when that window has exited does it edit the file and say
+connection drops it reconnects, and only when that window has exited, or has closed the document
+and stopped serving it, as Obsidian does when the plugin is disabled, does it edit the file and say
 so in the result.
 
 ## Documents

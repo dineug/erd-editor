@@ -40,6 +40,8 @@ export type FakeHubOptions = {
   helloProtocolVersion?: number;
   /** The protocol the lock advertises. */
   lockProtocolVersion?: number;
+  /** The ide the lock and hello name, vscode unless a spec plays another host such as obsidian. */
+  ide?: string;
 };
 
 type Failure = { code: HubErrorCode; message: string };
@@ -100,15 +102,16 @@ function lineReader() {
 }
 
 /**
- * The hub as vscode-extension serves it, over memory pipes: openDocument quick
- * for an open file, join from disk without registering for a closed one,
- * applyActions only after a join, and a relay both ways.
+ * The hub as vscode-extension serves it, and the Obsidian plugin by its rules,
+ * over memory pipes: openDocument quick for an open file, join from disk without
+ * registering for a closed one, applyActions only after a join, a relay both ways.
  */
 export function createFakeHub(
   io: MemoryHost,
   options: FakeHubOptions
 ): FakeHub {
   const { pid, workspaceFolders } = options;
+  const ide = options.ide ?? 'vscode';
   const token = options.token ?? `token-${pid}`;
   const serving = options.hub ?? true;
   const pipe = serving ? pipePath(io.home, pid, io.platform) : '';
@@ -169,7 +172,7 @@ export function createFakeHub(
     pipe,
     workspaceFolders,
     documents: Array.from(documents.keys()),
-    ide: 'vscode',
+    ide,
     version: '2.9.0',
     protocolVersion: options.lockProtocolVersion ?? HUB_PROTOCOL_VERSION,
     token: serving ? token : '',
@@ -350,7 +353,7 @@ export function createFakeHub(
             method,
             result: {
               protocolVersion: version,
-              ide: 'vscode',
+              ide,
               version: '2.9.0',
             },
           });

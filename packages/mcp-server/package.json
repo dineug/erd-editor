@@ -1,7 +1,7 @@
 {
   "name": "@dineug/erd-editor-mcp",
   "version": "0.1.0",
-  "description": "MCP server that lets a coding agent edit erd-editor documents, live in VS Code or on disk",
+  "description": "MCP server that lets a coding agent edit erd-editor documents, live in VS Code or Obsidian, or on disk",
   "type": "module",
   "bin": {
     "erd-editor-mcp": "./dist/erd-editor-mcp.js"

@@ -14,10 +14,12 @@ import {
   actionsFilter,
   bufferCircuitBreaker,
   ignoreTagFilter,
-  sharedStreamActionsCompressor,
 } from '@/engine/rx-operators';
 import { createSharedStreamActionsCompressor } from '@/engine/rx-operators/createSharedStreamActionsCompressor';
-import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
+import {
+  flushOnNotifier,
+  quietPeriodOrNotifier,
+} from '@/engine/rx-operators/flushOnNotifier';
 import { RxStore } from '@/engine/rx-store';
 import { attachActionsTag, attachActionTag, Tag } from '@/engine/tag';
 import { Unsubscribe } from '@/internal-types';
@@ -30,8 +32,8 @@ export type SharedStore = {
   dispatchSync: (actions: Array<AnyAction> | AnyAction) => void;
   subscribe: (fn: (value: AnyAction[]) => void) => Unsubscribe;
   /**
-   * Sends the stream groups still held back from the peers, now. A no-op
-   * unless the store was created with manualStreamFlush.
+   * Sends the stream groups still held back from the peers, now, rather than
+   * after their quiet period: what a host calls before it lets a store go.
    */
   flushStreamBuffers: () => void;
   destroy: () => void;
@@ -50,7 +52,7 @@ export type SharedStoreInternalOptions = {
 // A compressor stands on each side of the circuit breaker. A Subject emits to a
 // copy of its observers, so a group the first one closes arms in the second too
 // late for that tick and waits for the next.
-const MANUAL_FLUSH_TICKS = 2;
+const FLUSH_TICKS = 2;
 
 const hasSharedFollowingActionTypes = arrayHas<string>(
   SharedFollowingActionTypes
@@ -71,9 +73,9 @@ export function createSharedStore(
   const openingNotifier$ = new Subject<void>();
   const closingNotifier$ = new Subject<void>();
   const flush$ = new Subject<void>();
-  const compressor = manualStreamFlush
-    ? createSharedStreamActionsCompressor(flushOnNotifier(flush$))
-    : sharedStreamActionsCompressor;
+  const compressor = createSharedStreamActionsCompressor(
+    manualStreamFlush ? flushOnNotifier(flush$) : quietPeriodOrNotifier(flush$)
+  );
 
   let isConnection = true;
   let firstSubscribe = true;
@@ -182,9 +184,7 @@ export function createSharedStore(
   };
 
   const flushStreamBuffers = () => {
-    if (!manualStreamFlush) return;
-
-    for (let tick = 0; tick < MANUAL_FLUSH_TICKS; tick++) {
+    for (let tick = 0; tick < FLUSH_TICKS; tick++) {
       flush$.next();
     }
   };
