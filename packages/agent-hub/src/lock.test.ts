@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  ideDisplayName,
   LOCK_DIR_MODE,
   LOCK_FILE_MODE,
   lockDirPath,
@@ -161,6 +162,33 @@ describe('parseLock', () => {
     ['hub', 1],
   ])('refuses %s of the wrong type (%j)', (field, value) => {
     expect(parseLock(JSON.stringify({ ...record, [field]: value }))).toBeNull();
+  });
+});
+
+describe('ideDisplayName', () => {
+  it.each([
+    ['vscode', 'VS Code'],
+    ['obsidian', 'Obsidian'],
+    [' obsidian\n', 'Obsidian'],
+    ['zed', 'zed'],
+    ['  JetBrains Fleet ', 'JetBrains Fleet'],
+    ['VSCode', 'VSCode'],
+    ['', 'an editor'],
+    [' \t', 'an editor'],
+  ])('names the ide %j as %j', (ide, name) => {
+    expect(ideDisplayName(ide)).toBe(name);
+  });
+
+  it('reads no inherited key as a name', () => {
+    expect(ideDisplayName('constructor')).toBe('constructor');
+    expect(ideDisplayName('__proto__')).toBe('__proto__');
+  });
+
+  it('keeps the ide an open string, so the lock of a host it does not name still parses', () => {
+    const other: LockRecord = { ...record, ide: 'zed' };
+
+    expect(parseLock(serializeLock(other))).toEqual(other);
+    expect(parseLock(serializeLock({ ...record, ide: '' }))?.ide).toBe('');
   });
 });
 

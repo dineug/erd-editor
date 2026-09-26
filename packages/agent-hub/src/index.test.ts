@@ -32,6 +32,7 @@ describe('public api surface', () => {
         'HubRequestError',
         'HubResponse',
         'HubToPeerMessage',
+        'ideDisplayName',
         'isAuthorized',
         'isInside',
         'isSamePath',

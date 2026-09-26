@@ -20,6 +20,7 @@ export {
   type RefusedFrame,
 } from './framing';
 export {
+  ideDisplayName,
   LOCK_DIR_MODE,
   LOCK_FILE_MODE,
   lockDirPath,
