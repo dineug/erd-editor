@@ -2,6 +2,7 @@ package com.github.dineug.erdeditorintellijplugin.editor
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.databind.JsonNode
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.progress.ProcessCanceledException
 import kotlinx.coroutines.*
@@ -94,7 +95,8 @@ sealed class HostBridgeCommand {
 data class HostExportFileCommandPayload(val value: String, val fileName: String)
 data class HostImportFileCommandPayload(val type: String, val op: String, val accept: String)
 data class HostSaveValueCommandPayload(val value: String)
-data class HostSaveReplicationCommandPayload(val actions: Any)
+// A tree, not Any: Any reads objects as maps, whose null entries the NON_NULL mapper then drops.
+data class HostSaveReplicationCommandPayload(val actions: JsonNode)
 data class HostSaveThemeCommandPayload(val appearance: String, val grayColor: String, val accentColor: String)
 
 sealed class WebviewBridgeCommand {
@@ -117,4 +119,4 @@ sealed class WebviewBridgeCommand {
 data class WebviewImportFileCommandPayload(val type: String, val op: String, val value: String)
 data class WebviewInitialValueCommandPayload(val value: String)
 data class WebviewUpdateThemeCommandPayload(val appearance: String?, val grayColor: String?, val accentColor: String?)
-data class WebviewReplicationCommandPayload(val actions: Any)
+data class WebviewReplicationCommandPayload(val actions: JsonNode)

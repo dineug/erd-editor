@@ -211,7 +211,7 @@ class WebviewBridgeCommandTest {
         )
         assertEquals(
             "webviewReplicationCommand",
-            typeOf(WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(listOf<Any>())))
+            typeOf(WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(mapper.createArrayNode())))
         )
         assertEquals(
             "webviewImportFileCommand",
@@ -236,6 +236,28 @@ class WebviewBridgeCommandTest {
         assertEquals("graphql", payload.get("type").asText())
         assertEquals("set", payload.get("op").asText())
         assertEquals("type User { id: ID! }", payload.get("value").asText())
+    }
+
+    @Test
+    fun `null fields inside relayed actions survive the round trip`() {
+        // A coding agent's presence clears its focus with a null; dropping the key corrupts it.
+        val actions = """[{"type":"sharedFocusTracker","payload":{"focus":null,"at":1.5},""" +
+            """"version":3},{"type":"x","payload":{"list":[null,1,null],"big":1e21}}]"""
+        val received = mapper.readValue(
+            """{"type":"hostSaveReplicationCommand","payload":{"actions":$actions}}""",
+            HostBridgeCommand::class.java
+        ) as HostBridgeCommand.SaveReplication
+
+        val relayed = mapper.readTree(
+            mapper.writeValueAsString(
+                WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(received.payload.actions))
+            )
+        )
+
+        assertEquals(mapper.readTree(actions), relayed.get("payload").get("actions"))
+        val focus = relayed.get("payload").get("actions").get(0).get("payload")
+        assertTrue("the null focus must be sent, not dropped", focus.has("focus"))
+        assertTrue(focus.get("focus").isNull)
     }
 
     @Test
