@@ -642,13 +642,14 @@ try {
     return svg
       ? {
           icon: svg.classList.contains('erd-editor'),
-          page: Boolean(svg.querySelector('path[fill-rule="evenodd"]')),
+          tables: svg.querySelectorAll('rect').length,
+          stroke: getComputedStyle(svg.querySelector('rect')).strokeWidth,
         }
       : null;
   });
   step(
     'ERD tab shows the ERD Editor icon',
-    tabIcon?.icon === true && tabIcon.page,
+    tabIcon?.icon === true && tabIcon.tables === 2,
     JSON.stringify(tabIcon)
   );
 
