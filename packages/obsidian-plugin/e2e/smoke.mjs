@@ -20,6 +20,8 @@ const OBSIDIAN =
   '/Applications/Obsidian.app/Contents/MacOS/Obsidian';
 const PORT = Number(process.env.SMOKE_PORT ?? 9333);
 const KEEP = process.env.SMOKE_KEEP === '1';
+// The replica answers 200 ms after the last change; this leaves it room.
+const REPLICA_SETTLE_MS = 600;
 
 const root = resolve(import.meta.dirname, '..');
 const work = mkdtempSync(join(tmpdir(), 'erd-obsidian-smoke-'));
@@ -338,13 +340,15 @@ try {
       readFileSync(fixture, 'utf8')
   );
 
+  // Past the replica's 200 ms, short of the 2 s save: closing writes its value.
   await openDiagram(page, 'schema.erd');
   const beforeQuickClose = tableCount('schema.erd');
   await sleep(1_000);
   await pressAddTable(page);
+  await sleep(REPLICA_SETTLE_MS);
   await closeDiagram(page, 'schema.erd');
   step(
-    'an edit made just before closing is saved',
+    'an edit is saved when its tab closes before the timed save',
     Boolean(
       await waitFor(
         async () => tableCount('schema.erd') === beforeQuickClose + 1,
@@ -439,7 +443,46 @@ try {
   console.log(`worker targets: ${JSON.stringify(workerTargets)}`);
 
   step('no page errors', errors.length === 0, errors.join(' | '));
-  if (!KEEP) await browser.close();
+
+  if (!KEEP) {
+    // Quitting does not wait out the 2 s save: the tab's quit task writes the
+    // replica's last value. Last, since it ends the app.
+    await page.evaluate(async () => {
+      const file = await window.app.vault.create('quit.erd', '');
+      await window.app.workspace.getLeaf('tab').openFile(file);
+    });
+    await sleep(1_200);
+    await pressAddTable(page);
+    const editedAt = Date.now();
+    await sleep(400);
+    await page.evaluate(() => {
+      setTimeout(() => window.require('@electron/remote').app.quit(), 100);
+    });
+    // Obsidian holds the window with beforeunload while it quits, and a
+    // connected Playwright would answer that dialog and throw.
+    await browser.close();
+    const closed = await waitFor(
+      () =>
+        fetch(`http://127.0.0.1:${PORT}/json/list`)
+          .then(response => response.json())
+          .then(
+            targets =>
+              !targets.some(({ url }) =>
+                url.startsWith('app://obsidian.md/index.html')
+              )
+          ),
+      10_000,
+      100
+    );
+    // Gone before the 2 s save could run, the window leaves the quit task as
+    // the only way the edit reached the file.
+    const closedAfter = Date.now() - editedAt;
+    step(
+      'quitting before the timed save keeps the edit',
+      Boolean(closed) && closedAfter < 2_000 && tableCount('quit.erd') === 1,
+      JSON.stringify({ closedAfter })
+    );
+  }
 } catch (error) {
   step('smoke run', false, error.message);
 } finally {

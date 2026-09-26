@@ -1,5 +1,4 @@
 import type { ErdEditorElement } from '@dineug/erd-editor';
-import { ChangeActionTypes } from '@dineug/erd-editor/peer.js';
 import { createReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
 import {
   Bridge,
@@ -15,8 +14,6 @@ export const VIEW_TYPE_ERD = 'erd-editor';
 export const DIAGRAM_EXTENSIONS = ['erd', 'vuerd'];
 
 const DIAGRAM_JSON_SUFFIX = /\.(erd|vuerd)$/;
-
-const CHANGE_ACTION_TYPES = new Set<string>(ChangeActionTypes);
 
 /**
  * The tabs showing each file, like the webviews vscode-extension keeps per
@@ -57,7 +54,7 @@ function isReadableDiagram(text: string): boolean {
 /**
  * One diagram file in a tab. A replica of the document in a worker serializes
  * it for every save, as in the IDE hosts, so the tab never stringifies a large
- * schema on the main thread while it is being edited.
+ * schema on the main thread, not even when it closes.
  */
 export class ErdView extends TextFileView {
   private editor: ErdEditorElement | null = null;
@@ -71,9 +68,6 @@ export class ErdView extends TextFileView {
   private loadedData = '';
   /** The document as the replica last serialized it, which a save writes. */
   private replicaValue: string | null = null;
-  /** A change action reached this tab's replica since the load. */
-  private changed = false;
-  private unloading = false;
   private unreadable = false;
 
   constructor(leaf: WorkspaceLeaf) {
@@ -106,6 +100,14 @@ export class ErdView extends TextFileView {
     this.registerEvent(
       this.app.workspace.on('css-change', () => this.syncAppearance())
     );
+    // Quitting does not wait out the 2 s save, which the app would take with it
+    // (checked with the smoke's last step); the replica's last value is written
+    // as a quit task instead.
+    this.registerEvent(
+      this.app.workspace.on('quit', tasks => {
+        tasks.add(() => this.save());
+      })
+    );
 
     // The file may have loaded before the view opened.
     if (this.file) {
@@ -124,14 +126,12 @@ export class ErdView extends TextFileView {
   }
 
   async onUnloadFile(file: TFile): Promise<void> {
-    // A drag the shared store still holds goes out first, to this tab's replica
-    // and the other tabs, so it counts as a change and is not dropped here.
+    // A drag the shared store still holds goes out to the other tabs first,
+    // which keep it; the tab itself saves the replica's last value.
     this.sharedStore?.flushStreamBuffers();
-    this.unloading = true;
     try {
       await super.onUnloadFile(file);
     } finally {
-      this.unloading = false;
       this.leave();
     }
   }
@@ -142,12 +142,7 @@ export class ErdView extends TextFileView {
     if (!this.isWriter()) {
       return (this as unknown as SavedData).lastSavedData ?? this.loadedData;
     }
-    // Closing or switching files cannot wait for the replica, so a document
-    // changed since the load is serialized here, once; other saves take its.
-    const data =
-      this.unloading && this.changed && this.editor
-        ? this.editor.value
-        : (this.replicaValue ?? this.loadedData);
+    const data = this.replicaValue ?? this.loadedData;
     if (this.session) handedByFile.set(this.session, data);
     return data;
   }
@@ -158,10 +153,9 @@ export class ErdView extends TextFileView {
 
     if (clear) {
       if (this.file) this.join(this.file);
-      // A tab opened beside another starts from what that one shows, saved or
-      // not; a drag still held there goes out first, or it would arrive twice.
+      // A tab opened beside another starts from that one's replica value, saved
+      // or not; a drag still held there reaches it once it subscribes.
       const peer = this.tabs().find(tab => tab !== this && tab.hasDocument());
-      peer?.sharedStore?.flushStreamBuffers();
       this.loadDocument(peer?.currentValue() ?? data);
     } else {
       // The write of this file's writer coming back, which this tab already shows.
@@ -182,7 +176,6 @@ export class ErdView extends TextFileView {
   clear(): void {
     this.loadedData = '';
     this.replicaValue = null;
-    this.changed = false;
     this.unreadable = false;
   }
 
@@ -250,9 +243,9 @@ export class ErdView extends TextFileView {
     return Boolean(this.sharedStore);
   }
 
-  /** The document as this tab shows it, serialized here only once it has changed. */
+  /** The document as this tab's replica last serialized it, as a new webview starts in the IDE hosts. */
   private currentValue(): string {
-    return this.changed && this.editor ? this.editor.value : this.loadedData;
+    return this.replicaValue ?? this.loadedData;
   }
 
   /** Another tab's edit, applied as the IDE hosts apply one from another webview. */
@@ -263,9 +256,6 @@ export class ErdView extends TextFileView {
   }
 
   private replicate(actions: Actions): void {
-    if (actions.some(({ type }) => CHANGE_ACTION_TYPES.has(type))) {
-      this.changed = true;
-    }
     this.replica?.postMessage(
       Bridge.executeCommand(webviewReplicationCommand, { actions })
     );
@@ -287,7 +277,6 @@ export class ErdView extends TextFileView {
     editor.setInitialValue(value);
     this.loadedData = data;
     this.replicaValue = null;
-    this.changed = false;
 
     if (this.unreadable) {
       new Notice(
