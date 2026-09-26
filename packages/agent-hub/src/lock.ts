@@ -42,12 +42,13 @@ const encoder = new TextEncoder();
 const IDE_DISPLAY_NAMES: ReadonlyMap<string, string> = new Map([
   ['vscode', 'VS Code'],
   ['obsidian', 'Obsidian'],
+  ['intellij', 'JetBrains IDE'],
 ]);
 
 /**
- * The editor a lock's ide names, as an agent reads it: VS Code and Obsidian by
- * name, any other ide as it is spelled, trimmed, and a blank one as an editor.
- * The ide itself stays an open string, so a lock from a new host still parses.
+ * The editor a lock's ide names, as an agent reads it: VS Code, Obsidian and a
+ * JetBrains IDE by name, any other ide as spelled, trimmed, a blank one as an
+ * editor. The ide stays an open string, so a lock from a new host still parses.
  */
 export function ideDisplayName(ide: string): string {
   const trimmed = ide.trim();

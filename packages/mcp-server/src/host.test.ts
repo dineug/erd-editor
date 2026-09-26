@@ -34,7 +34,7 @@ describe('hostWords', () => {
 
   it.each([
     ['zed', 'the zed window', 'a zed window'],
-    ['  intellij ', 'the intellij window', 'an intellij window'],
+    ['  fleet ', 'the fleet window', 'a fleet window'],
     [' obsidian', 'the Obsidian window', 'an Obsidian window'],
   ])(
     'names the ide %j as its lock spells it, trimmed',

@@ -170,6 +170,8 @@ describe('ideDisplayName', () => {
     ['vscode', 'VS Code'],
     ['obsidian', 'Obsidian'],
     [' obsidian\n', 'Obsidian'],
+    ['intellij', 'JetBrains IDE'],
+    [' intellij\n', 'JetBrains IDE'],
     ['zed', 'zed'],
     ['  JetBrains Fleet ', 'JetBrains Fleet'],
     ['VSCode', 'VSCode'],
