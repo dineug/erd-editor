@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-23 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-27 -->
 
 # erd-editor
 
@@ -13,7 +13,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Public entry: registers `<erd-editor>` as a side effect; exports `ErdEditorElement` (type), `setExportFileCallback`, `setImportFileCallback` |
+| `src/index.ts` | Public entry: registers `<erd-editor>` as a side effect; exports `ErdEditorElement` (type), `setExportFileCallback`, `setImportFileCallback`, and `createKeyBindingMap` with `KeyBindingMap` / `KeyBindingName` / `ShortcutOption` (types), the default shortcuts, which `obsidian-plugin` keeps Obsidian's hotkeys off; pinned by `src/index.test.ts` |
 | `src/engine/index.ts` | `@dineug/erd-editor/engine.js` — `createReplicationStore` only, pinned by `src/engine/index.test.ts` |
 | `src/peer/index.ts` | `@dineug/erd-editor/peer.js` — `createPeerStore` / `PeerStoreError`, the per-module `actions$` / `actions` barrels, the action type lists, the `constants/schema` and `constants/layout` values, `createSchemaSQL` and the vendor list, `measureTableSize` (the box a table takes once a text measure has sized its text, on copies, which `mcp-server`'s `erd_list` reports); pinned by `src/peer/index.test.ts` (44 keys, no flat `actions`) |
 | `src/engine/peer-store.ts` | `createPeerStore`: an `RxStore` (`manualStreamFlush`, `observable: false`) and a `SharedStore` like an element's; `dispatch` returns the batches, history entries and created ids it measured, `undo` / `redo` revert its own dispatches only and name the label they reverted, `setInitialValue` is the one reseed |

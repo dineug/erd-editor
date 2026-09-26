@@ -13,6 +13,7 @@ afterEach(() => {
 describe('@dineug/erd-editor entry point', () => {
   it('exposes exactly the documented public surface', () => {
     expect(Object.keys(index).sort()).toEqual([
+      'createKeyBindingMap',
       'setExportFileCallback',
       'setImportFileCallback',
     ]);
@@ -32,6 +33,19 @@ describe('@dineug/erd-editor entry point', () => {
     expect(editor.destroy).toBeTypeOf('function');
     expect(editor.setInitialValue).toBeTypeOf('function');
     expect(editor.setKeyBindingMap).toBeTypeOf('function');
+  });
+
+  it('exports the default key bindings, a fresh map on every call', () => {
+    const keyBindingMap = index.createKeyBindingMap();
+
+    expect(keyBindingMap.search).toEqual([
+      { shortcut: '$mod+KeyK', preventDefault: true, stopPropagation: true },
+    ]);
+    expect(keyBindingMap.addColumn).toEqual([
+      { shortcut: 'Alt+Enter', preventDefault: true },
+    ]);
+    expect(index.createKeyBindingMap()).toEqual(keyBindingMap);
+    expect(index.createKeyBindingMap()).not.toBe(keyBindingMap);
   });
 
   it('re-exports setExportFileCallback so exports can be intercepted', () => {
