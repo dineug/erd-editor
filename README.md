@@ -5,9 +5,9 @@
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
 Design a database schema visually, import one you already have from SQL DDL, GraphQL SDL,
-DBML or AML, export DDL, and generate code from the result — in the browser, in VS Code or
-IntelliJ, or embedded in your own page as a custom element. One editor and one document format
-across all of them.
+DBML or AML, export DDL, and generate code from the result — in the browser, in VS Code,
+IntelliJ or Obsidian, or embedded in your own page as a custom element. One editor and one
+document format across all of them.
 
 ## Where to use it
 
@@ -16,9 +16,11 @@ across all of them.
 | **Web app** | [erd-editor.io](https://erd-editor.io) | Installable PWA, works offline, real-time collaboration |
 | **VS Code** | [Marketplace](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) | Opens `.erd.json` files in a custom editor |
 | **IntelliJ** | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23594-erd-editor) | Same, for IntelliJ-based IDEs |
+| **Obsidian** | [Plugin repository](https://github.com/dineug/erd-editor-obsidian-plugin) | Opens `.erd` and `.erd.json` files in a vault tab |
 | **Your app** | `npm install @dineug/erd-editor` | The framework-free `<erd-editor>` custom element |
 
-To try it in an IDE, create an empty file with a `.erd.json` extension and open it.
+To try it in an IDE, create an empty file with a `.erd.json` extension and open it. In Obsidian,
+run **Create new diagram** from the command palette.
 
 ## Features
 
@@ -122,10 +124,11 @@ flowchart TB
 This is a pnpm workspace. Two packages are published to npm:
 [`@dineug/erd-editor`](./packages/erd-editor), the editor itself, syntax highlighting
 included, and [`@dineug/erd-editor-mcp`](./packages/mcp-server), the MCP server that lets a
-coding agent such as Claude Code or Codex edit diagrams. Everything else is internal.
+coding agent such as Claude Code or Codex edit diagrams, live in VS Code or Obsidian or straight on
+disk. Everything else is internal.
 
 <details>
-<summary>All 15 packages</summary>
+<summary>All 17 packages</summary>
 
 | Package | Description |
 | --- | --- |
@@ -139,11 +142,13 @@ coding agent such as Claude Code or Codex edit diagrams. Everything else is inte
 | [`vscode-webview`](./packages/vscode-webview) | The bundle inside the VS Code webview |
 | [`webview-client`](./packages/webview-client) | The editor mounted into an IDE webview, host protocol wired, shared by both IDE bundles |
 | [`webview-bridge`](./packages/webview-bridge) | Typed host ↔ webview command protocol |
-| [`replication-store-worker`](./packages/replication-store-worker) | Headless document replica for the VS Code host |
+| [`replication-store-worker`](./packages/replication-store-worker) | Headless document replica the IDE hosts and the Obsidian plugin save through |
 | [`intellij-webview`](./packages/intellij-webview) | The bundle inside the IntelliJ plugin's editor panel |
 | [`intellij-plugin`](./packages/intellij-plugin) | The published IntelliJ plugin — Kotlin and Gradle, not TypeScript |
-| [`agent-hub`](./packages/agent-hub) | The protocol between an IDE window and a coding agent's MCP server: messages, lock files, framing |
-| [`mcp-server`](./packages/mcp-server) | The published MCP server — one tool per editing operation, live in VS Code or headless on disk |
+| [`obsidian-plugin`](./packages/obsidian-plugin) | The Obsidian plugin, released from [erd-editor-obsidian-plugin](https://github.com/dineug/erd-editor-obsidian-plugin) |
+| [`agent-hub`](./packages/agent-hub) | The protocol between an editor window and a coding agent's MCP server: messages, lock files, framing |
+| [`agent-hub-host`](./packages/agent-hub-host) | The editor window's side of that protocol, shared by the VS Code extension and the Obsidian plugin |
+| [`mcp-server`](./packages/mcp-server) | The published MCP server — one tool per editing operation, live in VS Code or Obsidian or headless on disk |
 
 </details>
 

@@ -8,9 +8,6 @@ export interface ErdEditorModule {
   setImportFileCallback: typeof setImportFileCallback;
 }
 
-/** Obsidian evaluates main.js as CommonJS, and the bundler resolves the one call. */
-declare function require(id: string): unknown;
-
 const MODULE_KEY = Symbol.for('erd-editor-obsidian/module');
 
 /**
@@ -23,6 +20,7 @@ export function loadErdEditor(): ErdEditorModule {
     symbol,
     ErdEditorModule | undefined
   >;
+  // Obsidian evaluates main.js as CommonJS, and the bundler resolves the one call.
   scope[MODULE_KEY] ??= require('@dineug/erd-editor') as ErdEditorModule;
   return scope[MODULE_KEY];
 }

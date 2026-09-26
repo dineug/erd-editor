@@ -7,17 +7,26 @@
   "scripts": {
     "dev": "vp run --filter @dineug/erd-editor-obsidian-plugin^... build && vp build --watch",
     "smoke": "node e2e/smoke.mjs",
+    "test:dev": "vp test dev",
+    "test:coverage": "vp test run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",
+    "@dineug/erd-editor-agent-hub": "workspace:*",
+    "@dineug/erd-editor-agent-hub-host": "workspace:*",
     "@dineug/erd-editor-replication-store-worker": "workspace:*",
     "@dineug/erd-editor-webview-bridge": "workspace:*",
+    "@effect/platform-node": "catalog:",
     "@playwright/test": "^1.62.1",
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "catalog:",
+    "effect": "catalog:",
     "monkey-around": "^3.0.0",
     "obsidian": "^1.13.1",
     "typescript": "7.0.2",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   }
 }

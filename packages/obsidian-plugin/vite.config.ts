@@ -56,6 +56,29 @@ function inlineUrlWorkers(): Plugin {
   };
 }
 
+/**
+ * Fails the build where a node builtin resolved to Vite's browser stub, which
+ * only warns and leaves the hub a net module without createServer at runtime.
+ * It reads the module ids, since the minified code keeps no trace of the stub.
+ */
+function noBrowserExternal(): Plugin {
+  return {
+    name: 'no-browser-external',
+    generateBundle(_, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (
+          output.type === 'chunk' &&
+          output.moduleIds.some(id => id.includes('__vite-browser-external'))
+        ) {
+          this.error(
+            `${output.fileName} imports a node builtin through the browser stub; list it in external`
+          );
+        }
+      }
+    },
+  };
+}
+
 /** Puts manifest.json and styles.css beside main.js, so dist is the plugin folder. */
 function pluginFiles(): Plugin {
   const files = ['manifest.json', 'styles.css'].map(name =>
@@ -79,10 +102,61 @@ function pluginFiles(): Plugin {
   };
 }
 
+type TaskInput =
+  | string
+  | { auto: true }
+  | { pattern: string; base: 'workspace' };
+
+const dependsOn: Array<{
+  task: string;
+  from: Array<'dependencies' | 'devDependencies' | 'peerDependencies'>;
+}> = [
+  {
+    task: 'build',
+    from: ['dependencies', 'devDependencies', 'peerDependencies'],
+  },
+];
+
+/** What tsc --noEmit reads, which it does out of sight of the input tracer. */
+const typeInputs: TaskInput[] = [
+  { auto: true },
+  'src/**',
+  'package.json',
+  'vite.config.ts',
+  'tsconfig.json',
+  { pattern: 'tsconfig.app.json', base: 'workspace' },
+  {
+    pattern: 'packages/agent-hub/dist/**/*.d.ts',
+    base: 'workspace',
+  },
+  {
+    pattern: 'packages/agent-hub-host/dist/**/*.d.ts',
+    base: 'workspace',
+  },
+  {
+    pattern: 'packages/erd-editor/dist/**/*.d.ts',
+    base: 'workspace',
+  },
+  {
+    pattern: 'packages/replication-store-worker/dist/**/*.d.ts',
+    base: 'workspace',
+  },
+  {
+    pattern: 'packages/webview-bridge/dist/**/*.d.ts',
+    base: 'workspace',
+  },
+  '!**/*.tsbuildinfo',
+];
+
 export default defineConfig({
   // manifest.json and styles.css are emitted by pluginFiles; nothing else is static.
   publicDir: false,
-  plugins: [inlineUrlWorkers(), base64InlineWorkers(), pluginFiles()],
+  plugins: [
+    inlineUrlWorkers(),
+    base64InlineWorkers(),
+    pluginFiles(),
+    noBrowserExternal(),
+  ],
 
   worker: {
     // Every worker is a module worker started from a data or blob url, so it
@@ -100,13 +174,15 @@ export default defineConfig({
       fileName: () => 'main.js',
     },
     rolldownOptions: {
-      // Obsidian loads main.js as CommonJS and provides these at runtime.
+      // Obsidian loads main.js as CommonJS and provides these at runtime; the
+      // renderer runs Node, whose builtins the hub imports with the node: prefix.
       external: [
         'obsidian',
         'electron',
         /^@codemirror\//,
         /^@lezer\//,
         ...builtinModules,
+        ...builtinModules.map(name => `node:${name}`),
       ],
       output: { exports: 'default' },
     },
@@ -122,38 +198,20 @@ export default defineConfig({
     tasks: {
       build: {
         command: ['tsc --noEmit', 'vp build'],
-        dependsOn: [
-          {
-            task: 'build',
-            from: ['dependencies', 'devDependencies', 'peerDependencies'],
-          },
-        ],
+        dependsOn,
         input: [
-          { auto: true },
-          'src/**',
-          'package.json',
-          'vite.config.ts',
-          'tsconfig.json',
+          ...typeInputs,
           'manifest.json',
           'styles.css',
-          { pattern: 'tsconfig.app.json', base: 'workspace' },
           { pattern: 'tools/vite/inline-worker.ts', base: 'workspace' },
-          {
-            pattern: 'packages/erd-editor/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/replication-store-worker/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          '!**/*.tsbuildinfo',
           '!dist/**',
         ],
         output: ['dist/**'],
+      },
+      test: {
+        command: ['tsc --noEmit', 'vp test run'],
+        dependsOn,
+        input: [...typeInputs, 'vitest.config.ts'],
       },
     },
   },

@@ -4,7 +4,9 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // The renderer runs Node: the hub listens on a socket and writes its lock.
+    "types": ["node"]
   },
   "include": ["src"]
 }

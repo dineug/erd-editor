@@ -8,28 +8,36 @@ import {
 } from '@dineug/erd-editor-webview-bridge';
 import { Notice, TextFileView, type TFile, type WorkspaceLeaf } from 'obsidian';
 
+import { type DocumentRegistry, type HubTab } from '@/hub';
+import { type ResolvedTheme, type ThemeHost } from '@/settings';
+import {
+  currentValue,
+  hasUnsavedValue,
+  seedValue,
+  type TabSaveState,
+  viewData,
+} from '@/tabSave';
+
 export const VIEW_TYPE_ERD = 'erd-editor';
 
 /** The extensions Obsidian can register; vuerd is the legacy document the editor migrates. */
 export const DIAGRAM_EXTENSIONS = ['erd', 'vuerd'];
 
-const DIAGRAM_JSON_SUFFIX = /\.(erd|vuerd)$/;
+/** Matched without regard to case, as the hub and the MCP server match a diagram file name. */
+const DIAGRAM_JSON_SUFFIX = /\.(erd|vuerd)$/i;
 
-/**
- * The tabs showing each file, like the webviews vscode-extension keeps per
- * document: a tab hands the others every edit as it makes it, and the first
- * tab alone writes the file, since overlapping writes leave it marked saving.
- */
-const tabsByFile = new WeakMap<TFile, ErdView[]>();
-
-/** What a file's writer last handed Obsidian to save, which its other tabs already show. */
+/** What a file's writer last handed Obsidian to save, which its other tabs already show; an outside change drops it. */
 const handedByFile = new WeakMap<TFile, string>();
 
 type SharedStore = ReturnType<ErdEditorElement['getSharedStore']>;
 type Actions = Parameters<Parameters<SharedStore['subscribe']>[0]>[0];
 
-/** The core TextFileView field a save compares against; not in the public types. */
-type SavedData = { lastSavedData: string | null };
+/** The core TextFileView fields a save reads and sets; not in the public types. */
+type SaveState = { lastSavedData: string | null; saving: boolean };
+
+/** How often, and how long at most, saveDocument waits out a save already under way. */
+const SAVING_POLL_MS = 50;
+const SAVING_WAIT_MS = 2_000;
 
 /** A .erd.json or .vuerd.json file, which Obsidian itself sees as json. */
 export function isDiagramJson(file: TFile): boolean {
@@ -56,7 +64,7 @@ function isReadableDiagram(text: string): boolean {
  * it for every save, as in the IDE hosts, so the tab never stringifies a large
  * schema on the main thread, not even when it closes.
  */
-export class ErdView extends TextFileView {
+export class ErdView extends TextFileView implements HubTab {
   private editor: ErdEditorElement | null = null;
   private replica: Worker | null = null;
   private disposeReplica: (() => void) | null = null;
@@ -69,8 +77,25 @@ export class ErdView extends TextFileView {
   /** The document as the replica last serialized it, which a save writes. */
   private replicaValue: string | null = null;
   private unreadable = false;
+  /** Stops the load a tab opened beside others may still wait for. */
+  private pendingSeed: (() => void) | null = null;
+  /**
+   * Set while the tab lets go of its file. Obsidian's closing save clears the
+   * tab before it writes, and the tab stays the writer until the write is done,
+   * so no tab opening meanwhile may take its document from it.
+   */
+  private unloading = false;
 
-  constructor(leaf: WorkspaceLeaf) {
+  /**
+   * The registry keeps the tabs of each file, as vscode-extension keeps the
+   * webviews of a document: a tab hands the others every edit it makes, and
+   * the first alone writes the file, since overlapping writes leave it saving.
+   */
+  constructor(
+    leaf: WorkspaceLeaf,
+    private readonly registry: DocumentRegistry<ErdView>,
+    private readonly theme: ThemeHost
+  ) {
     super(leaf);
     // A plaintext view merges an outside change into unsaved edits as text,
     // which can break the JSON; a diagram takes the file's version instead.
@@ -94,18 +119,23 @@ export class ErdView extends TextFileView {
 
   async onOpen(): Promise<void> {
     this.contentEl.addClass('erd-editor-view');
-    this.editor = this.contentEl.createEl('erd-editor');
-    this.syncAppearance();
+    const editor = this.contentEl.createEl('erd-editor');
+    this.editor = editor;
+    // What the builder picks becomes the theme of every open diagram, as in VS Code.
+    editor.enableThemeBuilder = true;
+    editor.addEventListener('changePresetTheme', this.handlePickedTheme);
+    this.applyTheme(this.theme.current());
 
-    this.registerEvent(
-      this.app.workspace.on('css-change', () => this.syncAppearance())
-    );
-    // Quitting does not wait out the 2 s save, which the app would take with it
-    // (checked with the smoke's last step); the replica's last value is written
-    // as a quit task instead.
+    // Quitting does not wait out the 2 s save, so a value not yet written goes
+    // as a quit task. Only then: any task turns a reload into closing the window.
     this.registerEvent(
       this.app.workspace.on('quit', tasks => {
-        tasks.add(() => this.save());
+        if (this.hasUnsavedValue()) tasks.add(() => this.save());
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on('active-leaf-change', leaf => {
+        if (leaf === this.leaf) this.registry.setActive(this);
       })
     );
 
@@ -120,12 +150,17 @@ export class ErdView extends TextFileView {
     await super.onClose();
     this.leave();
     this.stopReplica();
+    this.editor?.removeEventListener(
+      'changePresetTheme',
+      this.handlePickedTheme
+    );
     this.editor?.destroy();
     this.editor?.remove();
     this.editor = null;
   }
 
   async onUnloadFile(file: TFile): Promise<void> {
+    this.unloading = true;
     // A drag the shared store still holds goes out to the other tabs first,
     // which keep it; the tab itself saves the replica's last value.
     this.sharedStore?.flushStreamBuffers();
@@ -133,17 +168,17 @@ export class ErdView extends TextFileView {
       await super.onUnloadFile(file);
     } finally {
       this.leave();
+      this.unloading = false;
     }
   }
 
   getViewData(): string {
-    if (this.unreadable) return this.loadedData;
-    // Handing back what was last saved is what keeps a second tab from writing.
-    if (!this.isWriter()) {
-      return (this as unknown as SavedData).lastSavedData ?? this.loadedData;
+    const state = this.tabState();
+    const data = viewData(state);
+    // Only the writer's own value is one the other tabs already show.
+    if (this.session && state.writer && !state.seeding && !state.unreadable) {
+      handedByFile.set(this.session, data);
     }
-    const data = this.replicaValue ?? this.loadedData;
-    if (this.session) handedByFile.set(this.session, data);
     return data;
   }
 
@@ -153,24 +188,25 @@ export class ErdView extends TextFileView {
 
     if (clear) {
       if (this.file) this.join(this.file);
-      // A tab opened beside another starts from that one's replica value, saved
-      // or not; a drag still held there reaches it once it subscribes.
-      const peer = this.tabs().find(tab => tab !== this && tab.hasDocument());
-      this.loadDocument(peer?.currentValue() ?? data);
-    } else {
-      // The write of this file's writer coming back, which this tab already shows.
-      const handed = this.session && handedByFile.get(this.session);
-      if (!this.unreadable && (data === this.replicaValue || data === handed)) {
-        return;
+      if (this.app.workspace.getActiveViewOfType(ErdView) === this) {
+        this.registry.setActive(this);
       }
-      this.loadDocument(data);
+      this.seed(data);
+      return;
     }
 
-    if (this.unreadable) {
-      this.closeSharedStore();
-    } else if (!this.sharedStore) {
-      this.openSharedStore();
+    // The write of this file's writer coming back, which this tab already shows.
+    const handed = this.session && handedByFile.get(this.session);
+    if (!this.unreadable && (data === this.replicaValue || data === handed)) {
+      return;
     }
+    // An outside change: every tab takes the file's version, a waiting one too.
+    // What the writer handed is no longer the file's, and a seed must not load it.
+    if (this.session && data !== handed) handedByFile.delete(this.session);
+    this.cancelSeed();
+    this.loadDocument(data);
+    this.registry.loaded(this, data, true);
+    this.syncSharedStore();
   }
 
   clear(): void {
@@ -179,8 +215,71 @@ export class ErdView extends TextFileView {
     this.unreadable = false;
   }
 
-  private tabs(): ErdView[] {
-    return (this.session && tabsByFile.get(this.session)) || [this];
+  /** An agent batch or another tab's edit, applied as the IDE hosts apply one from another webview. */
+  receive(actions: unknown[]): void {
+    if (!this.sharedStore) return;
+    this.sharedStore.dispatch(actions as Actions);
+    this.replicate(actions as Actions);
+  }
+
+  /** erd_save through the hub: writes now, then answers whether the file holds what the tab shows. */
+  async saveDocument(): Promise<boolean> {
+    try {
+      await this.save();
+      // A save already under way returned at once; it saves again once done.
+      for (
+        let waited = 0;
+        this.saveState().saving && waited < SAVING_WAIT_MS;
+        waited += SAVING_POLL_MS
+      ) {
+        await new Promise(resolve =>
+          window.setTimeout(resolve, SAVING_POLL_MS)
+        );
+      }
+      const { saving, lastSavedData } = this.saveState();
+      return !saving && lastSavedData === currentValue(this.tabState());
+    } catch (error) {
+      // The core save has shown the failure already.
+      console.error(error);
+      return false;
+    }
+  }
+
+  lastSaved(): string | null {
+    return this.saveState().lastSavedData;
+  }
+
+  /** The theme every open diagram shows; one the tab's own builder picked is on screen already. */
+  applyTheme(theme: ResolvedTheme): void {
+    this.editor?.setPresetTheme(theme);
+  }
+
+  private readonly handlePickedTheme = (event: Event): void => {
+    this.theme.picked((event as CustomEvent<unknown>).detail);
+  };
+
+  private saveState(): SaveState {
+    return this as unknown as SaveState;
+  }
+
+  /** What a save would write and the file does not hold yet; only the writer writes. */
+  private hasUnsavedValue(): boolean {
+    return hasUnsavedValue(this.tabState());
+  }
+
+  private tabState(): TabSaveState {
+    return {
+      unreadable: this.unreadable,
+      seeding: this.pendingSeed !== null,
+      writer: this.isWriter(),
+      loaded: this.loadedData,
+      replica: this.replicaValue,
+      saved: this.lastSaved(),
+    };
+  }
+
+  private tabs(): readonly ErdView[] {
+    return (this.session && this.registry.tabsOf(this.session)) || [this];
   }
 
   private isWriter(): boolean {
@@ -189,22 +288,73 @@ export class ErdView extends TextFileView {
 
   private join(file: TFile): void {
     this.leave();
-    tabsByFile.set(file, [...(tabsByFile.get(file) ?? []), this]);
+    this.registry.addTab(file, this);
     this.session = file;
   }
 
   private leave(): void {
+    this.cancelSeed();
     this.closeSharedStore();
     const file = this.session;
     if (!file) return;
-    const tabs = (tabsByFile.get(file) ?? []).filter(tab => tab !== this);
-    if (tabs.length) {
-      tabsByFile.set(file, tabs);
-    } else {
-      tabsByFile.delete(file);
-      handedByFile.delete(file);
-    }
+    this.registry.removeTab(this);
+    if (!this.registry.tabsOf(file)) handedByFile.delete(file);
     this.session = null;
+  }
+
+  /**
+   * Loads the tab once every edit its file's other tabs made is in their
+   * replica values. Until then it has no replica, is read-only, hands back
+   * what the file holds and is not ready, so it neither writes nor takes an edit.
+   */
+  private seed(data: string): void {
+    this.stopReplica();
+    this.loadedData = data;
+    this.replicaValue = null;
+    this.unreadable = false;
+    if (this.editor) this.editor.readonly = true;
+    this.syncHubState();
+
+    let seeded = false;
+    const cancel = this.registry.seedWhenQuiet(this, () => {
+      seeded = true;
+      this.pendingSeed = null;
+      // A drag still held in the other tab reaches this one once it subscribes.
+      const peer = this.tabs().find(tab => tab !== this && tab.hasDocument());
+      const value = seedValue({
+        peer: peer && currentValue(peer.tabState()),
+        handed: this.session ? handedByFile.get(this.session) : undefined,
+        file: this.data,
+        opened: data,
+      });
+      this.loadDocument(value);
+      this.registry.loaded(this, value, false);
+      this.syncSharedStore();
+    });
+    this.pendingSeed = seeded ? null : cancel;
+  }
+
+  private cancelSeed(): void {
+    this.pendingSeed?.();
+    this.pendingSeed = null;
+  }
+
+  /** Opens the shared store on a readable document, closes it on an unreadable one. */
+  private syncSharedStore(): void {
+    if (this.unreadable) {
+      this.closeSharedStore();
+    } else if (!this.sharedStore) {
+      this.openSharedStore();
+    }
+    this.syncHubState();
+  }
+
+  /** Ready for the hub once loaded with its shared store open; an unreadable tab is a read-only view. */
+  private syncHubState(): void {
+    this.registry.setTabState(this, {
+      live: Boolean(this.sharedStore),
+      unreadable: this.unreadable,
+    });
   }
 
   /**
@@ -226,6 +376,7 @@ export class ErdView extends TextFileView {
       for (const tab of this.tabs()) {
         if (tab !== this) tab.receive(actions);
       }
+      this.registry.relay(this, actions);
     });
     this.disposeSharedStore = () => {
       unsubscribe();
@@ -234,25 +385,16 @@ export class ErdView extends TextFileView {
   }
 
   private closeSharedStore(): void {
+    if (!this.sharedStore) return;
     this.disposeSharedStore?.();
     this.disposeSharedStore = null;
     this.sharedStore = null;
+    this.syncHubState();
   }
 
+  /** A tab another may seed from: its document open, and not being let go of. */
   private hasDocument(): boolean {
-    return Boolean(this.sharedStore);
-  }
-
-  /** The document as this tab's replica last serialized it, as a new webview starts in the IDE hosts. */
-  private currentValue(): string {
-    return this.replicaValue ?? this.loadedData;
-  }
-
-  /** Another tab's edit, applied as the IDE hosts apply one from another webview. */
-  private receive(actions: Actions): void {
-    if (!this.sharedStore) return;
-    this.sharedStore.dispatch(actions);
-    this.replicate(actions);
+    return Boolean(this.sharedStore) && !this.unloading;
   }
 
   private replicate(actions: Actions): void {
@@ -313,6 +455,7 @@ export class ErdView extends TextFileView {
       hostSaveValueCommand,
       ({ value }) => {
         this.replicaValue = value;
+        this.registry.valueSaved(this, value);
         if (this.isWriter()) this.requestSave();
       }
     );
@@ -334,11 +477,5 @@ export class ErdView extends TextFileView {
     this.disposeReplica?.();
     this.disposeReplica = null;
     this.replica = null;
-  }
-
-  private syncAppearance(): void {
-    this.editor?.setPresetTheme({
-      appearance: document.body.hasClass('theme-dark') ? 'dark' : 'light',
-    });
   }
 }
