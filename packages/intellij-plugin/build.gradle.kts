@@ -57,7 +57,7 @@ dependencies {
 intellijPlatform {
     projectName = properties("pluginName").get()
 
-    // The plugin contributes no Settings UI, so there is nothing to index.
+    // The one settings page is found by its name; indexing its checkbox is not worth an IDE run per build.
     buildSearchableOptions = false
 
     pluginConfiguration {
@@ -138,15 +138,39 @@ changelog {
 }
 
 // Configure Gradle Kover Plugin - read more: https://github.com/Kotlin/kotlinx-kover#configuration
+// The agent hub's core is measured per class, as the TypeScript packages are per file; the JCEF
+// classes cannot run headless, and the Windows-only JNA code runs on Windows alone.
 kover {
     reports {
+        filters {
+            includes {
+                packages("com.github.dineug.erdeditorintellijplugin.hub")
+            }
+            excludes {
+                classes("*.hub.transport.NamedPipe*", "*.hub.win.*")
+            }
+        }
         total {
             xml {
                 onCheck = true
             }
         }
+        verify {
+            rule("hub core, per class") {
+                groupBy = kotlinx.kover.gradle.plugin.dsl.GroupingEntityType.CLASS
+                minBound(80, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE)
+                minBound(80, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH)
+            }
+        }
     }
 }
+
+// The shared conformance corpora of packages/agent-hub and packages/agent-hub-host: the hub tests
+// read the vectors the TypeScript hub is held to, so a change to either side shows up in both.
+val hubCorpora = listOf(
+    "../agent-hub/src/__fixtures__/conformance.json",
+    "../agent-hub-host/src/__fixtures__/conformance.json",
+)
 
 tasks {
     // Build the webview bundle into src/main/resources/assets. `@dineug/erd-editor-intellij-webview`
@@ -205,6 +229,22 @@ tasks {
 
     wrapper {
         gradleVersion = properties("gradleVersion").get()
+    }
+
+    test {
+        inputs.files(hubCorpora).withPropertyName("hubCorpora").withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty("erd.hub.wireCorpus", file(hubCorpora[0]).absolutePath)
+        systemProperty("erd.hub.hostCorpus", file(hubCorpora[1]).absolutePath)
+        systemProperty("erd.hub.mainSources", file("src/main/kotlin").absolutePath)
+        // HubImportsTest reads the hub's sources: an unused import changes no class file.
+        inputs.dir("src/main/kotlin/com/github/dineug/erdeditorintellijplugin/hub")
+            .withPropertyName("hubSources").withPathSensitivity(PathSensitivity.RELATIVE)
+    }
+
+    // The POSIX-only suites skip on Windows by design, so their classes fall under the per-class
+    // bound there; the gate is measured on macOS and Linux only.
+    named("koverVerify") {
+        onlyIf { !System.getProperty("os.name").startsWith("Windows") }
     }
 
     runIde {
