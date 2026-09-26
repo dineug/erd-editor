@@ -10,6 +10,7 @@ import {
 import { Effect, Layer } from 'effect';
 import { around } from 'monkey-around';
 import {
+  addIcon,
   type App,
   FileSystemAdapter,
   normalizePath,
@@ -17,6 +18,7 @@ import {
   type OpenViewState,
   Plugin,
   PluginSettingTab,
+  removeIcon,
   Setting,
   TFile,
   TFolder,
@@ -39,6 +41,7 @@ import {
   type HubVault,
   pidSandbox,
 } from '@/hub';
+import { ERD_ICON, ERD_ICON_SVG } from '@/icon';
 import { scopeKeysOf } from '@/keys';
 import { type ErdEditorModule, loadErdEditor } from '@/loadErdEditor';
 import {
@@ -107,6 +110,8 @@ export default class ErdEditorPlugin extends Plugin {
     });
     this.registry = registry;
 
+    addIcon(ERD_ICON, ERD_ICON_SVG);
+    this.register(() => removeIcon(ERD_ICON));
     const editorKeys = scopeKeysOf(
       this.erdEditor.createKeyBindingMap?.() ?? {}
     );
@@ -155,7 +160,7 @@ export default class ErdEditorPlugin extends Plugin {
         menu.addItem(item =>
           item
             .setTitle('New ERD')
-            .setIcon('database')
+            .setIcon(ERD_ICON)
             .onClick(() => this.createDiagram(file))
         );
       })

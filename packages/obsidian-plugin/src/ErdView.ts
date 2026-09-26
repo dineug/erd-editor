@@ -15,6 +15,7 @@ import {
 } from 'obsidian';
 
 import { type DocumentRegistry, type HubTab } from '@/hub';
+import { ERD_ICON } from '@/icon';
 import { type ScopeKey } from '@/keys';
 import { type ResolvedTheme, type ThemeHost } from '@/settings';
 import {
@@ -128,7 +129,7 @@ export class ErdView extends TextFileView implements HubTab {
   }
 
   getIcon(): string {
-    return 'database';
+    return ERD_ICON;
   }
 
   async onOpen(): Promise<void> {

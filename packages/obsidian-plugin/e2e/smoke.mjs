@@ -636,6 +636,22 @@ try {
   const erd = await openDiagram(page, 'schema.erd');
   step('.erd opens in the ERD view', Boolean(erd), JSON.stringify(erd));
 
+  const tabIcon = await page.evaluate(() => {
+    const leaf = window.app.workspace.getMostRecentLeaf();
+    const svg = leaf?.tabHeaderInnerIconEl?.querySelector('svg');
+    return svg
+      ? {
+          icon: svg.classList.contains('erd-editor'),
+          page: Boolean(svg.querySelector('path[fill-rule="evenodd"]')),
+        }
+      : null;
+  });
+  step(
+    'ERD tab shows the ERD Editor icon',
+    tabIcon?.icon === true && tabIcon.page,
+    JSON.stringify(tabIcon)
+  );
+
   const contain = await page.evaluate(
     () =>
       getComputedStyle(
