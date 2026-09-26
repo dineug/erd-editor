@@ -256,11 +256,18 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function createExternal(manifest: PackageManifest): RegExp | undefined {
-  const dependencies = Object.keys({
-    ...manifest.peerDependencies,
-    ...manifest.dependencies,
-  });
+/** The manifest's dependencies and peers as bare imports, and each builtin named in both spellings. */
+export function createExternal(
+  manifest: PackageManifest,
+  builtins: readonly string[] = []
+): RegExp | undefined {
+  const dependencies = [
+    ...Object.keys({
+      ...manifest.peerDependencies,
+      ...manifest.dependencies,
+    }),
+    ...builtins.flatMap(name => [name, `node:${name}`]),
+  ];
   if (!dependencies.length) return undefined;
 
   return new RegExp(

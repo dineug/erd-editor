@@ -135,6 +135,30 @@ test('standard library factory preserves build policies', () => {
   assert.equal(config.worker, undefined);
 });
 
+test('a node library keeps its builtins as imports and targets node', () => {
+  const config = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+    node: true,
+  });
+  const external = config.build?.rolldownOptions?.external;
+
+  assert.equal(config.build?.target, 'node22');
+  assert.ok(external instanceof RegExp);
+  for (const specifier of ['node:net', 'net', 'node:fs/promises', 'stylis']) {
+    assert.equal(external.test(specifier), true, specifier);
+  }
+  for (const specifier of ['netx', 'node:netx', 'stylish']) {
+    assert.equal(external.test(specifier), false, specifier);
+  }
+
+  const browser = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+  }).build?.rolldownOptions?.external;
+  assert.ok(browser instanceof RegExp);
+  assert.equal(browser.test('node:net'), false);
+  assert.equal(browser.test('net'), false);
+});
+
 test('a library that spawns a worker gets the shared worker build', () => {
   const external = /^stylis(?:\/.+)*$/;
   assert.deepEqual(createWorkerOptions(external), {

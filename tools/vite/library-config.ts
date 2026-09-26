@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { builtinModules } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +22,12 @@ export interface DtsPluginOptions {
 interface LibraryConfigOptions {
   dts: (options: DtsPluginOptions) => PluginOption;
   minify?: false;
+  /**
+   * A library that runs on Node: its builtins stay imports, bare or with the
+   * node: prefix, and it targets the Node floor its engines field declares.
+   * Without it a builtin resolves to an empty browser stub and still builds.
+   */
+  node?: true;
   /**
    * One output module per source file, mirrored under dist. For a library
    * another bundler consumes, that bundler then prunes at file granularity,
@@ -96,7 +103,10 @@ export function createLibraryConfig(
   options: LibraryConfigOptions
 ): ViteUserConfig {
   const metadata = loadLibraryMetadata(packageDir);
-  const external = createExternal(metadata.manifest);
+  const external = createExternal(
+    metadata.manifest,
+    options.node ? builtinModules : []
+  );
   const output = options.preserveModules
     ? { preserveModules: true, preserveModulesRoot: join(packageDir, 'src') }
     : undefined;
@@ -117,7 +127,7 @@ export function createLibraryConfig(
       tasks: createLibraryTasks(packageDir),
     },
     build: {
-      target: BROWSER_TARGET,
+      target: options.node ? 'node22' : BROWSER_TARGET,
       ...(options.minify === false ? { minify: false } : {}),
       lib: {
         entry: ['./src/index.ts'],
