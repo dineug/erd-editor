@@ -21,13 +21,23 @@ export class ProcessInfo extends Context.Service<
   ProcessInfoShape
 >()('@dineug/erd-editor-mcp/ProcessInfo') {}
 
-/** Signal 0 checks existence only; EPERM means another user's process, never this user's window. */
-export function isAlive(pid: number): boolean {
+/**
+ * Signal 0 checks existence only. EPERM is an elevated window of this user on
+ * Windows, so it is alive there; on POSIX it is another user's process, which
+ * a lock in this user's home never names, so a reused pid still counts dead.
+ */
+export function isAlive(
+  pid: number,
+  platform: Platform = process.platform
+): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    return (
+      platform === 'win32' &&
+      (error as { code?: unknown } | null)?.code === 'EPERM'
+    );
   }
 }
 
