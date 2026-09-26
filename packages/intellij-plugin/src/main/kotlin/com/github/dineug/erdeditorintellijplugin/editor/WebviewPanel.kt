@@ -5,10 +5,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefApp
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.cef.CefApp
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
@@ -113,20 +110,10 @@ class WebviewPanel(
                     return false
                 }
 
-                // Parsing runs inside a native CEF upcall; an unknown command or malformed payload
-                // must not throw across that boundary.
-                val action = try {
-                    mapper.readValue(request, HostBridgeCommand::class.java)
-                } catch (e: Exception) {
-                    logger.warn("${file.name}: unparseable bridge command: $request", e)
-                    return false
-                }
-
-                coroutineScope.launch(Dispatchers.IO + CoroutineName(this::class.java.simpleName)) {
-                    bridge.emit(action)
-                }
-
-                return true
+                // Only enqueued here, in the order CEF delivers the queries: the bridge's consumer
+                // parses, so nothing can throw across this native upcall and a save carrying the
+                // whole document never holds up the CEF thread.
+                return request != null && bridge.offer(request)
             }
         }.also { routerHandler ->
             messageRouter.addHandler(routerHandler, true)

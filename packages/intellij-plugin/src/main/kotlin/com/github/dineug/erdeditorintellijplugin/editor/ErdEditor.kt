@@ -51,7 +51,7 @@ class ErdEditor(
     val isWebviewPanelInitialized: Boolean get() = this::webviewPanel.isInitialized
     private val jcefUnsupported by lazy { JCEFUnsupportedViewPanel() }
     private val toolbarAndWebView: JPanel
-    private val bridge = WebviewBridge()
+    private val bridge = WebviewBridge { file.name }
     private val savePayload = MutableStateFlow<String?>(null)
 
     private val coroutineScope: CoroutineScope =
@@ -287,6 +287,7 @@ class ErdEditor(
 
     override fun dispose() {
         isDisposed = true
+        bridge.close()
         docToEditorsMap.computeIfPresent(file) { _, editors ->
             editors.remove(this)
             if (editors.isEmpty()) null else editors
