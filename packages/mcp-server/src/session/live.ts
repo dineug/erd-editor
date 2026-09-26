@@ -13,6 +13,7 @@ import { Deferred, Effect, Exit, Queue, Scope } from 'effect';
 
 import { isSessionError, SessionError } from '@/errors';
 import { type HubClient, HubConnector } from '@/hub/client';
+import { hostWords } from '@/hub/host';
 import { ProcessInfo } from '@/io/process';
 import { assertDocumentText, stripBom } from '@/session/disk';
 import {
@@ -80,9 +81,9 @@ const attempt = <A>(evaluate: () => A) =>
   Effect.try({ try: evaluate, catch: error => error });
 
 /**
- * A document inside an editor window, VS Code or Obsidian. A write opens the
- * editor if needed and joins, so the peer holds its state and clock; each
- * outbound batch is an applyActions request, one at a time, awaited.
+ * A document inside an editor: VS Code, Obsidian or a JetBrains IDE. A write
+ * opens the editor if needed and joins, so the peer holds its state and clock;
+ * each outbound batch is an applyActions request, one at a time, awaited.
  */
 export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
   options: LiveSessionOptions
@@ -410,17 +411,18 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
       }),
 
     // The hub answers saved false both when it could not confirm every edit
-    // reached the editor and when the editor kept the file unsaved, as VS Code
-    // does with a tab whose file changed on disk, so the message names both.
+    // reached the editor and when the editor did not write the file, for a
+    // reason its host gives, so the message names both.
     save: Effect.gen(function* () {
       const notes = yield* begin;
       const client = yield* ensureConnected;
       yield* awaitOutbound;
       const { saved } = yield* client.request('save', { path });
       if (!saved) {
+        const { unsavedReason } = hostWords(candidate.record.ide);
         return yield* new SessionError(
           'notSaved',
-          `The editor did not save ${path}: it could not confirm that every edit reached it, or the editor kept it unsaved, as VS Code does when the file changed on disk. Check the editor, then call erd_save again.`
+          `The editor did not save ${path}: it could not confirm that every edit reached it, or ${unsavedReason}. Check the editor, then call erd_save again.`
         );
       }
       return { saved, notes } satisfies SaveOutcome;

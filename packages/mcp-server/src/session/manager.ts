@@ -52,9 +52,9 @@ export const DEFAULT_CLIENT_NAME = 'agent';
 
 /** A live session went to the file: its window exited, or it let go of the document and its lock. */
 export function fellBackNote(ide: string, exited: boolean): string {
-  const subject = capitalize(hostWords(ide).theWindow);
+  const { theWindow, thatWindow } = hostWords(ide);
   const gone = exited ? 'has exited' : 'no longer serves it';
-  return `${subject} that served this document ${gone}, so this call edited the file on disk instead; edits made through that window can no longer be undone.`;
+  return `${capitalize(theWindow)} that served this document ${gone}, so this call edited the file on disk instead; edits made through ${thatWindow} can no longer be undone.`;
 }
 
 /** A read found a hub over a document a disk session held. */
@@ -152,10 +152,10 @@ function hubAppearedError(
   path: string,
   candidate: LockCandidate
 ): SessionError {
-  const subject = capitalize(hostWords(candidate.record.ide).aWindow);
+  const { aWindow, thatWindow } = hostWords(candidate.record.ide);
   return new SessionError(
     SessionErrorCode.hubAppeared,
-    `${subject} (pid ${candidate.pid}) now serves ${path}, so this edit was not written to the file under its editor. Call the tool again to edit through that window.`
+    `${capitalize(aWindow)} (pid ${candidate.pid}) now serves ${path}, so this edit was not written to the file under its editor. Call the tool again to edit through ${thatWindow}.`
   );
 }
 

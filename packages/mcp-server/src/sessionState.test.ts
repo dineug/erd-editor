@@ -381,8 +381,11 @@ describe('a project a JetBrains IDE closes, before its hub ends the connection t
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
     expect(memo).toMatchObject({
       mode: 'headless',
-      notes: [fellBackNote('intellij', false)],
+      notes: [
+        'The JetBrains IDE that served this document no longer serves it, so this call edited the file on disk instead; edits made through that IDE can no longer be undone.',
+      ],
     });
+    expect(memo.notes).toEqual([fellBackNote('intellij', false)]);
     expect(JSON.parse(io.read(DOCUMENT)).doc.memoIds).toEqual(memo.createdIds);
     expect(hub.requests.slice(asked)).toEqual([]);
     await settle();
@@ -406,6 +409,23 @@ describe('a project a JetBrains IDE closes, before its hub ends the connection t
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
     expect(memo.mode).toBe('headless');
     expect(memo.notes).toBeUndefined();
+  });
+
+  it('refuses a write, naming the IDE, when the connection closed with no documentClosed first', async () => {
+    const mcp = await connect();
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    const onDisk = io.read(DOCUMENT);
+
+    io.removeLock(hub.pid);
+    hub.disconnectAll();
+    await settle();
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error).toEqual({
+      code: 'hubGone',
+      message: `The JetBrains IDE (pid 6363) that served ${DOCUMENT} still runs, but its lock file is gone and the connection closed, so nothing was written. Turn the ERD Editor plugin back on, or quit that IDE to edit the file directly.`,
+    });
+    expect(io.read(DOCUMENT)).toBe(onDisk);
   });
 
   it('keeps editing live a document of a project still open, over its own connection', async () => {

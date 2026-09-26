@@ -413,7 +413,7 @@ export const make = (dial: ConnectPipe): HubConnectorShape => ({
       );
     }
 
-    const { theWindow, addOn } = hostWords(record.ide);
+    const { theWindow, unreachableRemedy } = hostWords(record.ide);
     const scope = yield* Scope.fork(yield* Effect.scope);
     return yield* Effect.gen(function* () {
       const socket = yield* dial(record.pipe).pipe(
@@ -421,7 +421,7 @@ export const make = (dial: ConnectPipe): HubConnectorShape => ({
           error =>
             new SessionError(
               SessionErrorCode.hubUnreachable,
-              `${capitalize(theWindow)} with pid ${pid} advertises an ERD Editor hub at ${record.pipe}, but it did not accept a connection (${error.message}). Nothing was written; reload that window or check the ERD Editor ${addOn}.`
+              `${capitalize(theWindow)} with pid ${pid} advertises an ERD Editor hub at ${record.pipe}, but it did not accept a connection (${error.message}). Nothing was written; ${unreachableRemedy}.`
             )
         )
       );

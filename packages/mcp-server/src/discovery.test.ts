@@ -66,6 +66,33 @@ describe('discovery (AC-M4)', () => {
     expect(selected).toMatchObject({ kind: 'live', candidate: { pid: 2 } });
   });
 
+  it('ranks each document by the deepest folder, one IDE lock listing several projects', async () => {
+    io.alive.add(1).add(2).add(3);
+    io.writeLock(1, {
+      ...lockOf(1, ['/work/shop', '/work/app']),
+      ide: 'intellij',
+    });
+    io.writeLock(2, lockOf(2, ['/work/app/db']));
+    io.writeLock(3, lockOf(3, ['/work']));
+
+    expect(await discover(io, '/work/shop/model.erd.json')).toMatchObject({
+      kind: 'live',
+      candidate: { pid: 1 },
+    });
+    expect(await discover(io, '/work/app/model.erd.json')).toMatchObject({
+      kind: 'live',
+      candidate: { pid: 1 },
+    });
+    expect(await discover(io, DOCUMENT)).toMatchObject({
+      kind: 'live',
+      candidate: { pid: 2 },
+    });
+    expect(await discover(io, '/work/other/model.erd.json')).toMatchObject({
+      kind: 'live',
+      candidate: { pid: 3 },
+    });
+  });
+
   it('deletes the lock, temp file and socket of a dead window, and skips it', async () => {
     io.writeLock(3, lockOf(3, ['/work']));
     io.put(`${lockFilePath(io.home, 3)}.tmp`, '{}');
@@ -213,6 +240,41 @@ describe('discovery again on every write (AC-M4)', () => {
     });
     expect(JSON.parse(read.texts[1]).notes).toEqual([leftDiskNote('obsidian')]);
     expect(leftDiskNote('obsidian')).toMatch(/^An Obsidian window now serves/);
+    again.destroy();
+  });
+
+  it('names a JetBrains IDE that took the document over, in the refusal and in the note', async () => {
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    const hub = createFakeHub(io, {
+      pid: 9191,
+      workspaceFolders: ['/work'],
+      ide: 'intellij',
+    });
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error).toEqual({
+      code: 'hubAppeared',
+      message: `A JetBrains IDE (pid 9191) now serves ${DOCUMENT}, so this edit was not written to the file under its editor. Call the tool again to edit through that IDE.`,
+    });
+
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    hub.destroy();
+    io.removeLock(hub.pid);
+    io.alive.delete(hub.pid);
+    await mcp.ok('erd_add_memo', { path: DOCUMENT });
+    const again = createFakeHub(io, {
+      pid: 9292,
+      workspaceFolders: ['/work'],
+      ide: 'intellij',
+    });
+    const read = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+    });
+    expect(JSON.parse(read.texts[1]).notes).toEqual([
+      'A JetBrains IDE now serves this document, so this call read it from the editor; edits made on disk earlier stay but can no longer be undone.',
+    ]);
+    expect(leftDiskNote('intellij')).toBe(JSON.parse(read.texts[1]).notes[0]);
     again.destroy();
   });
 

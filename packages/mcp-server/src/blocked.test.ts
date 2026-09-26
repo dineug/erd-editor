@@ -160,6 +160,30 @@ describe('a hub false lock of another host', () => {
     expect(io.read(NOTE)).toBe(original);
   });
 
+  it('names a JetBrains IDE and its Coding agents setting, never a window', async () => {
+    createFakeHub(io, {
+      pid: 7474,
+      workspaceFolders: [VAULT],
+      hub: false,
+      ide: 'intellij',
+    });
+
+    const refused = await mcp.call('erd_add_table', { path: NOTE });
+    const read = await mcp.call('erd_read', { path: NOTE, format: 'json' });
+
+    expect(refused.json.error).toEqual({
+      code: 'blocked',
+      message: `${NOTE} belongs to a JetBrains IDE (pid 7474) whose ERD Editor hub is turned off or failed to start, so edits are refused: the open editor would overwrite them. Turn on Coding agents under Settings | Tools | ERD Editor in that IDE, or restart that IDE if it is on, then call again. Reading still works.`,
+    });
+    expect(JSON.parse(read.texts[1])).toEqual({
+      notes: [
+        'Read from the file on disk: the JetBrains IDE holding this document cannot be reached, so edits not yet saved in its editor are missing.',
+      ],
+    });
+    expect(diskReadNote('intellij')).toBe(JSON.parse(read.texts[1]).notes[0]);
+    expect(io.read(NOTE)).toBe(original);
+  });
+
   it('names a host it does not know by its ide, with a remedy for any editor', async () => {
     createFakeHub(io, {
       pid: 7373,
