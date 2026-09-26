@@ -43,9 +43,9 @@ export const assertErdFile = (
 };
 
 /**
- * A refusal every host answers alike where the situation is the same, so an
- * agent reads one text in either editor. Each below is pinned once, in this
- * package's specs; a host's own situations keep their own words.
+ * One text per situation every host meets, the Kotlin hub of intellij-plugin
+ * too, pinned once in __fixtures__/conformance.json; a situation only one host
+ * has keeps that host's own words.
  */
 function refusal(code: HubErrorCode, message: string): HubRequestError {
   return new HubRequestError({ code, message });
@@ -65,7 +65,7 @@ export const createNeedsInitialValue = (): HubRequestError =>
     'openDocument with create needs a string initialValue, the bytes of an empty document'
   );
 
-/** The editor itself refused to open the file; editor is the host's name, VS Code or Obsidian. */
+/** The editor itself refused to open the file; editor is the host's name, VS Code, Obsidian or the IDE's product name. */
 export const editorCouldNotOpen = (
   editor: string,
   path: string,

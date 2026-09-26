@@ -1,8 +1,4 @@
-import {
-  HubErrorCode,
-  HubRequestError,
-  type Platform,
-} from '@dineug/erd-editor-agent-hub';
+import { HubErrorCode, type Platform } from '@dineug/erd-editor-agent-hub';
 import { Effect } from 'effect';
 import {
   afterEach,
@@ -25,7 +21,7 @@ import {
   runMemory,
   startMemoryHub,
 } from '@/__test-utils__/hubLayers';
-import { authorizePath, realpathOrSelf, resolveRealPath } from '@/authz';
+import { realpathOrSelf, resolveRealPath } from '@/authz';
 
 const LOCK = '/home/user/.erd-editor/ide/4242.json';
 
@@ -39,98 +35,39 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// The resolve and authorize tables are vectors of __fixtures__/conformance.json,
+// each over a machine of its own; what stays here watches the file system calls.
 describe('resolveRealPath', () => {
   const resolve = (io: MemoryHub, path: string, platform: Platform = 'linux') =>
     runMemory(io, resolveRealPath(path, platform));
 
-  it('resolves a symlink anywhere in an existing path', async () => {
-    const io = createMemoryHub();
-    io.addFile('/real/ws/a.erd.json');
-    io.links.set('/ws', '/real/ws');
-
-    expect(await resolve(io, '/ws/a.erd.json')).toBe('/real/ws/a.erd.json');
-  });
-
-  it('resolves the longest existing prefix of a document about to be created', async () => {
-    const io = createMemoryHub();
-    io.addDir('/real/ws');
-    io.links.set('/ws', '/real/ws');
-
-    expect(await resolve(io, '/ws/new/b.erd.json')).toBe(
-      '/real/ws/new/b.erd.json'
-    );
-  });
-
-  it('hands back a relative path untouched, for paths.ts to reject', async () => {
+  it('asks the file system nothing about a relative path', async () => {
     const io = createMemoryHub();
 
-    expect(await resolve(io, 'ws/a.erd.json')).toBe('ws/a.erd.json');
+    await resolve(io, 'ws/a.erd.json');
     expect(io.fs.realPath).not.toHaveBeenCalled();
   });
 
-  it('gives null when not even the root resolves', async () => {
+  it('climbs no further than the root', async () => {
     const io = createMemoryHub();
     io.fs.realPath.mockImplementation((path: string) =>
       Effect.fail(missing(path))
     );
 
-    expect(await resolve(io, '/ws/a.erd.json')).toBeNull();
+    await resolve(io, '/ws/a.erd.json');
     expect(io.fs.realPath).toHaveBeenLastCalledWith('/');
   });
 
-  it('gives null for a dangling symlink, which a write would follow to its target', async () => {
-    const io = createMemoryHub();
-    io.addDir('/ws');
-    io.links.set('/ws/schema.erd.json', '/outside/planted.erd.json');
-
-    expect(await resolve(io, '/ws/schema.erd.json')).toBeNull();
-    expect(await resolve(io, '/ws/schema.erd.json/x.erd.json')).toBeNull();
-  });
-
-  it('gives null for a missing directory followed by .., which join would fold onto an unresolved link', async () => {
-    const io = createMemoryHub();
-    io.addDir('/ws');
-    io.addDir('/outside');
-    io.links.set('/ws/link', '/outside');
-
-    expect(await resolve(io, '/ws/missing/../link/x.erd.json')).toBeNull();
-  });
-
-  it('lets the file system resolve .. behind a directory that exists', async () => {
-    const io = createMemoryHub();
-    io.addDir('/ws/sub');
-    io.fs.realPath.mockImplementation((path: string) =>
-      path === '/ws/sub/..' ? Effect.succeed('/ws') : Effect.fail(missing(path))
-    );
-
-    expect(await resolve(io, '/ws/sub/../new.erd.json')).toBe(
-      '/ws/new.erd.json'
-    );
-  });
-
-  it('gives null, without climbing, when realpath fails for any reason but a missing entry', async () => {
+  it('neither climbs nor looks at the entry when realpath fails for any reason but a missing one', async () => {
     const io = createMemoryHub();
     io.addFile('/ws/loop.erd.json');
     io.fs.realPath.mockImplementationOnce((path: string) =>
       Effect.fail(fsError('Busy', 'realPath', path))
     );
 
-    expect(await resolve(io, '/ws/loop.erd.json')).toBeNull();
+    await resolve(io, '/ws/loop.erd.json');
     expect(io.fs.realPath).toHaveBeenCalledTimes(1);
     expect(io.env.lstat).not.toHaveBeenCalled();
-  });
-
-  it('walks win32 paths with win32 separators', async () => {
-    const io = createMemoryHub();
-    io.fs.realPath.mockImplementation((path: string) =>
-      path === 'C:\\ws'
-        ? Effect.succeed('C:\\Real\\ws')
-        : Effect.fail(missing(path))
-    );
-
-    expect(await resolve(io, 'C:\\ws\\new.erd.json', 'win32')).toBe(
-      'C:\\Real\\ws\\new.erd.json'
-    );
   });
 });
 
@@ -141,60 +78,6 @@ describe('realpathOrSelf', () => {
 
     expect(await runMemory(io, realpathOrSelf('/ws'))).toBe('/ws');
     expect(await runMemory(io, realpathOrSelf('/gone'))).toBe('/gone');
-  });
-});
-
-describe('authorizePath', () => {
-  const scope = { folders: ['/a/b'], documents: ['/loose/c.erd.json'] };
-  const authorize = (io: MemoryHub, target: string) =>
-    runMemory(io, authorizePath('linux', scope, target));
-
-  it('returns the real path inside a folder, or of an open document', async () => {
-    const io = createMemoryHub();
-    io.addFile('/a/b/x.erd.json');
-    io.addFile('/loose/c.erd.json');
-
-    await expect(authorize(io, '/a/b/x.erd.json')).resolves.toBe(
-      '/a/b/x.erd.json'
-    );
-    await expect(authorize(io, '/loose/c.erd.json')).resolves.toBe(
-      '/loose/c.erd.json'
-    );
-  });
-
-  it.each([
-    ['a sibling folder sharing a prefix', '/a/bc/x.erd.json'],
-    ['a document next to an open one', '/loose/d.erd.json'],
-    ['a relative path', 'a/b/x.erd.json'],
-    ['a path climbing out with ..', '/a/b/../../etc/passwd'],
-  ])('refuses %s with outsideWorkspace', async (_label, target) => {
-    const io = createMemoryHub();
-
-    await expect(authorize(io, target)).rejects.toMatchObject({
-      code: HubErrorCode.outsideWorkspace,
-    });
-  });
-
-  it('refuses a symlink inside the folder that leads out of it', async () => {
-    const io = createMemoryHub();
-    io.addFile('/etc/passwd');
-    io.links.set('/a/b/escape', '/etc');
-
-    await expect(authorize(io, '/a/b/escape/passwd')).rejects.toBeInstanceOf(
-      HubRequestError
-    );
-  });
-
-  it('refuses a dangling symlink inside the folder with outsideWorkspace', async () => {
-    const io = createMemoryHub();
-    io.addDir('/a/b');
-    io.links.set('/a/b/x.erd.json', '/etc/planted.erd.json');
-
-    await expect(authorize(io, '/a/b/x.erd.json')).rejects.toMatchObject({
-      code: HubErrorCode.outsideWorkspace,
-      message:
-        '/a/b/x.erd.json has no real path the hub can check, such as a dangling link',
-    });
   });
 });
 

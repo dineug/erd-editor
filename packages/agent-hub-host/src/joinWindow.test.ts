@@ -2,25 +2,15 @@ import { Effect } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
-  actionType,
   actionVersion,
   createQuietState,
-  drainJoinQueue,
   dropRecipient,
-  filterJoinQueue,
-  hasChangeAction,
   JOIN_QUIET_CAP_MS,
-  maxVersion,
   noteChange,
   noteSave,
   REPLICA_DEBOUNCE_MS,
   waitForQuiet,
 } from '@/joinWindow';
-
-const add = (version?: number, type = 'table.add') =>
-  version === undefined
-    ? { type, payload: {} }
-    : { type, payload: {}, version };
 
 /** A view double: the quiet state reads nothing of one but its identity. */
 const view = (name: string) => ({ name });
@@ -34,34 +24,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// The action, filter and drain tables are vectors of __fixtures__/conformance.json;
+// NaN, which JSON cannot hold, stays here.
 describe('action fields', () => {
-  it('reads a finite numeric version and a string type, nothing else', () => {
-    expect(actionVersion({ version: 4 })).toBe(4);
-    expect(actionVersion({ version: '4' })).toBeUndefined();
+  it('reads NaN as no version', () => {
     expect(actionVersion({ version: Number.NaN })).toBeUndefined();
-    expect(actionVersion([4])).toBeUndefined();
-    expect(actionVersion(null)).toBeUndefined();
-    expect(actionType({ type: 'memo.add' })).toBe('memo.add');
-    expect(actionType({ type: 3 })).toBe('unknown');
-  });
-
-  it('takes the highest version, skipping the version-less compressed stream actions', () => {
-    expect(maxVersion(3, [add(7), add(), add(5)])).toBe(7);
-    expect(maxVersion(9, [add(2), { type: 'table.move' }])).toBe(9);
-    expect(maxVersion(0, [])).toBe(0);
-  });
-
-  it('counts anything but presence and the LWW handshake as a change', () => {
-    expect(
-      hasChangeAction([
-        { type: 'editor.getLWW' },
-        { type: 'editor.mergeLWW' },
-        { type: 'editor.sharedFocusTracker' },
-      ])
-    ).toBe(false);
-    expect(hasChangeAction([{ type: 'editor.getLWW' }, add(1)])).toBe(true);
-    expect(hasChangeAction([{ payload: {} }])).toBe(true);
-    expect(hasChangeAction([])).toBe(false);
   });
 });
 
@@ -209,81 +176,5 @@ describe('quiet state', () => {
     noteSave(state, view('reopened'), 0);
     await microtasks();
     expect(woken).toBe(true);
-  });
-});
-
-describe('filterJoinQueue', () => {
-  it('drops what the snapshot holds and what has no version, counting by source and type', () => {
-    const { batches, dropped, droppedCount } = filterJoinQueue(
-      [
-        { source: 'webview', actions: [add(3), add(5), add(6)] },
-        {
-          source: 'peer',
-          actions: [add(undefined, 'table.move'), add(2, 'memo.add')],
-        },
-        { source: 'webview', actions: [add(undefined, 'table.move')] },
-        { source: 'peer', actions: [add(9, 'memo.add')] },
-      ],
-      5
-    );
-
-    expect(batches).toEqual([
-      { source: 'webview', actions: [add(6)] },
-      { source: 'peer', actions: [add(9, 'memo.add')] },
-    ]);
-    expect(dropped).toEqual({
-      webview: { 'table.add': 2, 'table.move': 1 },
-      peer: { 'table.move': 1, 'memo.add': 1 },
-    });
-    expect(droppedCount).toBe(5);
-  });
-
-  it('keeps everything newer than the snapshot', () => {
-    expect(filterJoinQueue([{ source: 'peer', actions: [add(1)] }], 0)).toEqual(
-      {
-        batches: [{ source: 'peer', actions: [add(1)] }],
-        dropped: {},
-        droppedCount: 0,
-      }
-    );
-  });
-});
-
-describe('drainJoinQueue', () => {
-  it('filters the captured batches, logs the drop, and hands on the later ones whole', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const later = { source: 'peer' as const, actions: [add(1)] };
-
-    const delivered = drainJoinQueue(
-      [
-        { source: 'webview', actions: [add(4), add(6)] },
-        { source: 'peer', actions: [add(undefined, 'table.move')] },
-        later,
-      ],
-      2,
-      5,
-      '/ws/a.erd'
-    );
-
-    expect(delivered).toEqual([
-      { source: 'webview', actions: [add(6)] },
-      later,
-    ]);
-    expect(warn).toHaveBeenCalledWith(
-      '[erd-editor hub]',
-      'dropped 2 queued actions joining /ws/a.erd: versioned at most 5, or unversioned',
-      { webview: { 'table.add': 1 }, peer: { 'table.move': 1 } }
-    );
-    warn.mockRestore();
-  });
-
-  it('logs nothing when the snapshot holds none of the queue', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
-    expect(
-      drainJoinQueue([{ source: 'peer', actions: [add(8)] }], 1, 5, '/ws/a.erd')
-    ).toEqual([{ source: 'peer', actions: [add(8)] }]);
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
   });
 });
