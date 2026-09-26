@@ -18,8 +18,8 @@
         <fileEditorProvider implementation="com.github.dineug.erdeditorintellijplugin.editor.ErdEditorProvider" />
         <iconProvider implementation="com.github.dineug.erdeditorintellijplugin.files.ErdEditorIconProvider" />
         <applicationConfigurable parentId="tools"
-            instance="com.github.dineug.erdeditorintellijplugin.settings.AgentHubConfigurable"
-            id="com.github.dineug.erdeditorintellijplugin.settings.AgentHubConfigurable"
+            instance="com.github.dineug.erdeditorintellijplugin.settings.ErdEditorConfigurable"
+            id="com.github.dineug.erdeditorintellijplugin.settings.ErdEditorConfigurable"
             displayName="ERD Editor" />
     </extensions>
 </idea-plugin>

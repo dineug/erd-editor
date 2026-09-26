@@ -9,9 +9,8 @@ import com.intellij.util.messages.Topic
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * The Coding agents setting. It is its own component because a theme pick copies a whole new
- * [ErdEditorAppSettings.State] over the old one, which would reset a flag stored beside the theme;
- * both components share erd-editor.xml under their own names.
+ * The Coding agents setting. It is its own component, so the theme's state never carries the flag
+ * and each is read and written apart; both components share erd-editor.xml under their own names.
  */
 @Service(Service.Level.APP)
 @State(

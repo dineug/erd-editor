@@ -47,7 +47,9 @@ opens its own file chooser for both; the file does not have to be inside the pro
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** to jump to any table, **time travel** through this session's edit history, and
   **undo / redo**
-- **Theming** — the theme you pick on the canvas is remembered across restarts
+- **Theming** — pick the appearance, gray color and accent color on the canvas or under
+  **Settings | Tools | ERD Editor**, remembered across restarts. Auto, the default appearance,
+  follows the IDE's light or dark theme and switches with it
 
 Edits are written to the file a fraction of a second after you stop changing it; the tab never shows as modified.
 
@@ -114,7 +116,7 @@ The plugin compiles against JDK 21; Gradle's toolchain resolver fetches it if yo
 | --- | --- |
 | `src/main/kotlin/.../editor/` | The file editor, JCEF webview, scheme handler and the webview ↔ IDE bridge |
 | `src/main/kotlin/.../files/` | `.erd.json` recognition and the file icon |
-| `src/main/kotlin/.../settings/` | Theme persistence |
+| `src/main/kotlin/.../settings/` | The theme and Coding agents settings, and the settings page that edits them |
 | `src/main/resources/META-INF/plugin.xml` | Plugin manifest |
 | `src/main/resources/assets/` | The webview bundle, written here by `packages/intellij-webview` |
 

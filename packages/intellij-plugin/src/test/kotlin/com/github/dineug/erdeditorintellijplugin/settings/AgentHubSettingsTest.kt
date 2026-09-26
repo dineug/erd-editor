@@ -76,8 +76,8 @@ class AgentHubSettingsTest {
         assertNotEquals(theme.name, hub.name)
         assertEquals(theme.storages.single().value, hub.storages.single().value)
 
-        // A theme pick copies a whole theme State over the old one, so the flag must not be one of
-        // its fields, nor a theme field one of the flag's.
+        // Each component is read and written apart, so the flag must not be one of the theme's
+        // fields, nor a theme field one of the flag's.
         val themeFields = ErdEditorAppSettings.State::class.java.declaredFields.map { it.name }.toSet()
         val hubFields = AgentHubSettings.State::class.java.declaredFields.map { it.name }.toSet()
         assertEquals(setOf("appearance", "grayColor", "accentColor"), themeFields)

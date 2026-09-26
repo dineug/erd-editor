@@ -1,6 +1,8 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
 import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
+import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorTheme
+import com.intellij.ide.ui.LafManagerListener
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
@@ -61,6 +63,11 @@ class ErdEditor(
         val busConnection = ApplicationManager.getApplication().messageBus.connect(this)
         with(busConnection) {
             subscribe(ErdEditorAppSettings.SettingsChangedListener.TOPIC, this@ErdEditor)
+            // Auto shows the IDE's light or dark, so a new look and feel may change what it shows.
+            subscribe(LafManagerListener.TOPIC, LafManagerListener {
+                val settings = ErdEditorAppSettings.instance
+                if (settings.theme.appearance == ErdEditorTheme.AUTO) onSettingsChange(settings)
+            })
         }
 
         initViewIfSupported().also {
@@ -83,18 +90,9 @@ class ErdEditor(
             bridge.subscribe(coroutineScope) { action ->
                 when (action) {
                     is HostBridgeCommand.Initial -> {
-                        val settings = ErdEditorAppSettings.instance
                         val value = file.inputStream.use { it.reader(Charsets.UTF_8).readText() }
 
-                        webviewPanel.dispatch(
-                            WebviewBridgeCommand.UpdateTheme(
-                                WebviewUpdateThemeCommandPayload(
-                                    settings.state.appearance,
-                                    settings.state.grayColor,
-                                    settings.state.accentColor
-                                )
-                            )
-                        )
+                        webviewPanel.dispatch(updateThemeCommand(ErdEditorAppSettings.instance))
                         webviewPanel.dispatch(
                             WebviewBridgeCommand.UpdateReadonly(file.isWritable.not())
                         )
@@ -158,12 +156,11 @@ class ErdEditor(
                     }
 
                     is HostBridgeCommand.SaveTheme -> {
-                        val settings = ErdEditorAppSettings.instance
-                        settings.setTheme(ErdEditorAppSettings.State(
+                        ErdEditorAppSettings.instance.setThemeFromBuilder(
                             action.payload.appearance,
                             action.payload.grayColor,
                             action.payload.accentColor
-                        ))
+                        )
                     }
                 }
             }
@@ -250,16 +247,16 @@ class ErdEditor(
 
     override fun onSettingsChange(settings: ErdEditorAppSettings) {
         if (this::webviewPanel.isInitialized) {
-            webviewPanel.dispatch(
-                WebviewBridgeCommand.UpdateTheme(
-                    WebviewUpdateThemeCommandPayload(
-                        settings.state.appearance,
-                        settings.state.grayColor,
-                        settings.state.accentColor
-                    )
-                )
-            )
+            webviewPanel.dispatch(updateThemeCommand(settings))
         }
+    }
+
+    // The page shows auto as dark, so it only ever gets the light or dark auto stands for now.
+    private fun updateThemeCommand(settings: ErdEditorAppSettings): WebviewBridgeCommand {
+        val theme = settings.shownTheme
+        return WebviewBridgeCommand.UpdateTheme(
+            WebviewUpdateThemeCommandPayload(theme.appearance, theme.grayColor, theme.accentColor)
+        )
     }
 
     override fun getComponent(): JComponent = toolbarAndWebView

@@ -239,6 +239,10 @@ tasks {
         // HubImportsTest reads the hub's sources: an unused import changes no class file.
         inputs.dir("src/main/kotlin/com/github/dineug/erdeditorintellijplugin/hub")
             .withPropertyName("hubSources").withPathSensitivity(PathSensitivity.RELATIVE)
+        // ErdEditorThemeTest holds the settings page's value lists to the ones the page picks from.
+        val bridgeTheme = file("../webview-bridge/src/theme.ts")
+        inputs.file(bridgeTheme).withPropertyName("bridgeTheme").withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty("erd.bridgeTheme", bridgeTheme.absolutePath)
     }
 
     // The POSIX-only suites skip on Windows by design, so their classes fall under the per-class
