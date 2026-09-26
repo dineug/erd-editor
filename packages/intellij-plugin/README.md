@@ -49,7 +49,7 @@ opens its own file chooser for both; the file does not have to be inside the pro
   **undo / redo**
 - **Theming** — the theme you pick on the canvas is remembered across restarts
 
-Editing marks the tab dirty like any other file; the diagram is written to disk when you save.
+Edits are written to the file a fraction of a second after you stop changing it; the tab never shows as modified.
 
 ## Requirements
 
