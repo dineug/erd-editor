@@ -17,5 +17,9 @@
         <notificationGroup id="ERD Editor" displayType="BALLOON" />
         <fileEditorProvider implementation="com.github.dineug.erdeditorintellijplugin.editor.ErdEditorProvider" />
         <iconProvider implementation="com.github.dineug.erdeditorintellijplugin.files.ErdEditorIconProvider" />
+        <applicationConfigurable parentId="tools"
+            instance="com.github.dineug.erdeditorintellijplugin.settings.AgentHubConfigurable"
+            id="com.github.dineug.erdeditorintellijplugin.settings.AgentHubConfigurable"
+            displayName="ERD Editor" />
     </extensions>
 </idea-plugin>
