@@ -11,6 +11,8 @@
   },
   "devDependencies": {
     "@dineug/erd-editor": "workspace:*",
+    "@dineug/erd-editor-replication-store-worker": "workspace:*",
+    "@dineug/erd-editor-webview-bridge": "workspace:*",
     "@playwright/test": "^1.62.1",
     "monkey-around": "^3.0.0",
     "obsidian": "^1.13.1",

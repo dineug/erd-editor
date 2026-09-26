@@ -1,38 +1,57 @@
 import { readFileSync } from 'node:fs';
-import { builtinModules, createRequire } from 'node:module';
+import { builtinModules } from 'node:module';
 import { dirname, join } from 'node:path';
 
 import { defineConfig, type Plugin } from 'vite-plus';
 
-const UMD_ID = '@dineug/erd-editor/umd';
-const RESOLVED_UMD_ID = '\0erd-editor-umd';
+import { base64InlineWorkers } from '../../tools/vite/inline-worker.ts';
+
+/** The dist files of the workspace packages that construct a worker from a url. */
+const WORKER_HOSTS =
+  /[\\/](erd-editor|(?:erd-editor-)?replication-store-worker)[\\/]dist[\\/].*\.js$/;
+
+/** The one spelling those packages emit; the comma before the options goes with the url. */
+const URL_WORKER =
+  /new (SharedWorker|Worker)\(new URL\("(\.\.?\/[^"]+)", import\.meta\.url\)(?:,\s*|(?=\)))/g;
 
 /**
- * The UMD build carries its workers as data URLs; the ESM build spawns them
- * from import.meta.url, which a CommonJS main.js does not have. Its package is
- * type module, so the UMD is wrapped here to give it a CommonJS scope to fill.
+ * Obsidian loads main.js alone, with no file beside it to spawn a worker from,
+ * so every url worker in those dist files becomes Vite's inline worker: a
+ * shared one as a data url, which base64InlineWorkers re-encodes, the replica as a blob.
  */
-function erdEditorUmd(): Plugin {
-  const umdPath = join(
-    dirname(createRequire(import.meta.url).resolve('@dineug/erd-editor')),
-    'erd-editor.umd.js'
-  );
-
+function inlineUrlWorkers(): Plugin {
   return {
-    name: 'erd-editor-umd',
+    name: 'inline-url-workers',
     enforce: 'pre',
-    resolveId: id => (id === UMD_ID ? RESOLVED_UMD_ID : null),
-    load(id) {
-      if (id !== RESOLVED_UMD_ID) return null;
-      this.addWatchFile(umdPath);
-      return [
-        'const module = { exports: {} };',
-        'const exports = module.exports;',
-        '(function () {',
-        readFileSync(umdPath, 'utf8'),
-        '}).call(exports);',
-        'export const { setExportFileCallback, setImportFileCallback } = module.exports;',
-      ].join('\n');
+    transform(code, id) {
+      if (!WORKER_HOSTS.test(id)) return null;
+
+      const imports: string[] = [];
+      const rewritten = code.replace(
+        URL_WORKER,
+        (_, kind: string, url: string) => {
+          const query = kind === 'SharedWorker' ? 'sharedworker' : 'worker';
+          const file = join(dirname(id), url);
+          imports.push(
+            `import __InlineWorker${imports.length} from ${JSON.stringify(`${file}?${query}&inline`)};`
+          );
+          return `new __InlineWorker${imports.length - 1}(`;
+        }
+      );
+      if (!imports.length) return null;
+      return { code: `${imports.join('\n')}\n${rewritten}`, map: null };
+    },
+    generateBundle(_, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (
+          output.type === 'chunk' &&
+          /new (?:Shared)?Worker\(new URL\(/.test(output.code)
+        ) {
+          this.error(
+            `a url worker in ${output.fileName} survived; its spelling changed`
+          );
+        }
+      }
     },
   };
 }
@@ -63,7 +82,16 @@ function pluginFiles(): Plugin {
 export default defineConfig({
   // manifest.json and styles.css are emitted by pluginFiles; nothing else is static.
   publicDir: false,
-  plugins: [erdEditorUmd(), pluginFiles()],
+  plugins: [inlineUrlWorkers(), base64InlineWorkers(), pluginFiles()],
+
+  worker: {
+    // Every worker is a module worker started from a data or blob url, so it
+    // can neither call importScripts nor import a chunk by a relative path.
+    format: 'es',
+    rolldownOptions: {
+      output: { codeSplitting: false },
+    },
+  },
 
   build: {
     lib: {
@@ -109,13 +137,17 @@ export default defineConfig({
           'manifest.json',
           'styles.css',
           { pattern: 'tsconfig.app.json', base: 'workspace' },
+          { pattern: 'tools/vite/inline-worker.ts', base: 'workspace' },
           {
             pattern: 'packages/erd-editor/dist/**/*.d.ts',
             base: 'workspace',
           },
-          // Bundled whole by erdEditorUmd, not reached through an import.
           {
-            pattern: 'packages/erd-editor/dist/erd-editor.umd.js',
+            pattern: 'packages/replication-store-worker/dist/**/*.d.ts',
+            base: 'workspace',
+          },
+          {
+            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
             base: 'workspace',
           },
           '!**/*.tsbuildinfo',

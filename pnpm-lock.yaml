@@ -459,6 +459,12 @@ importers:
       '@dineug/erd-editor':
         specifier: workspace:*
         version: link:../erd-editor
+      '@dineug/erd-editor-replication-store-worker':
+        specifier: workspace:*
+        version: link:../replication-store-worker
+      '@dineug/erd-editor-webview-bridge':
+        specifier: workspace:*
+        version: link:../webview-bridge
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1

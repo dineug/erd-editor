@@ -1,4 +1,12 @@
 import type { ErdEditorElement } from '@dineug/erd-editor';
+import { ChangeActionTypes } from '@dineug/erd-editor/peer.js';
+import { createReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
+import {
+  Bridge,
+  hostSaveValueCommand,
+  webviewInitialValueCommand,
+  webviewReplicationCommand,
+} from '@dineug/erd-editor-webview-bridge';
 import { Notice, TextFileView, type TFile, type WorkspaceLeaf } from 'obsidian';
 
 export const VIEW_TYPE_ERD = 'erd-editor';
@@ -7,6 +15,24 @@ export const VIEW_TYPE_ERD = 'erd-editor';
 export const DIAGRAM_EXTENSIONS = ['erd', 'vuerd'];
 
 const DIAGRAM_JSON_SUFFIX = /\.(erd|vuerd)$/;
+
+const CHANGE_ACTION_TYPES = new Set<string>(ChangeActionTypes);
+
+/**
+ * The tabs showing each file, like the webviews vscode-extension keeps per
+ * document: a tab hands the others every edit as it makes it, and the first
+ * tab alone writes the file, since overlapping writes leave it marked saving.
+ */
+const tabsByFile = new WeakMap<TFile, ErdView[]>();
+
+/** What a file's writer last handed Obsidian to save, which its other tabs already show. */
+const handedByFile = new WeakMap<TFile, string>();
+
+type SharedStore = ReturnType<ErdEditorElement['getSharedStore']>;
+type Actions = Parameters<Parameters<SharedStore['subscribe']>[0]>[0];
+
+/** The core TextFileView field a save compares against; not in the public types. */
+type SavedData = { lastSavedData: string | null };
 
 /** A .erd.json or .vuerd.json file, which Obsidian itself sees as json. */
 export function isDiagramJson(file: TFile): boolean {
@@ -28,13 +54,26 @@ function isReadableDiagram(text: string): boolean {
   }
 }
 
-/** One diagram file in a tab: the file text is the editor's JSON document. */
+/**
+ * One diagram file in a tab. A replica of the document in a worker serializes
+ * it for every save, as in the IDE hosts, so the tab never stringifies a large
+ * schema on the main thread while it is being edited.
+ */
 export class ErdView extends TextFileView {
   private editor: ErdEditorElement | null = null;
-  /** The file text as loaded, handed back while the document is unchanged. */
+  private replica: Worker | null = null;
+  private disposeReplica: (() => void) | null = null;
+  /** The file this tab shares with its other tabs, and the store it shares it through. */
+  private session: TFile | null = null;
+  private sharedStore: SharedStore | null = null;
+  private disposeSharedStore: (() => void) | null = null;
+  /** The document as loaded, handed back while nothing has changed it. */
   private loadedData = '';
-  /** editor.value right after the load, which tells an edit from the load itself. */
-  private loadedValue: string | null = null;
+  /** The document as the replica last serialized it, which a save writes. */
+  private replicaValue: string | null = null;
+  /** A change action reached this tab's replica since the load. */
+  private changed = false;
+  private unloading = false;
   private unreadable = false;
 
   constructor(leaf: WorkspaceLeaf) {
@@ -61,68 +100,251 @@ export class ErdView extends TextFileView {
 
   async onOpen(): Promise<void> {
     this.contentEl.addClass('erd-editor-view');
-
-    const editor = this.contentEl.createEl('erd-editor');
-    this.editor = editor;
+    this.editor = this.contentEl.createEl('erd-editor');
     this.syncAppearance();
 
-    this.registerDomEvent(editor, 'change', () => this.requestSave());
     this.registerEvent(
       this.app.workspace.on('css-change', () => this.syncAppearance())
     );
 
     // The file may have loaded before the view opened.
     if (this.file) {
-      this.loadDocument(this.data ?? '');
+      this.setViewData(this.data ?? '', true);
     }
   }
 
   async onClose(): Promise<void> {
     // The core close saves through getViewData; destroy() would empty the document first.
     await super.onClose();
+    this.leave();
+    this.stopReplica();
     this.editor?.destroy();
     this.editor?.remove();
     this.editor = null;
   }
 
-  getViewData(): string {
-    if (!this.editor || this.loadedValue === null || this.unreadable) {
-      return this.loadedData;
+  async onUnloadFile(file: TFile): Promise<void> {
+    // A drag the shared store still holds goes out first, to this tab's replica
+    // and the other tabs, so it counts as a change and is not dropped here.
+    this.sharedStore?.flushStreamBuffers();
+    this.unloading = true;
+    try {
+      await super.onUnloadFile(file);
+    } finally {
+      this.unloading = false;
+      this.leave();
     }
-    const value = this.editor.value;
-    // Opening a file must not rewrite it: a .vuerd would migrate, any file reformat.
-    return value === this.loadedValue ? this.loadedData : value;
+  }
+
+  getViewData(): string {
+    if (this.unreadable) return this.loadedData;
+    // Handing back what was last saved is what keeps a second tab from writing.
+    if (!this.isWriter()) {
+      return (this as unknown as SavedData).lastSavedData ?? this.loadedData;
+    }
+    // Closing or switching files cannot wait for the replica, so a document
+    // changed since the load is serialized here, once; other saves take its.
+    const data =
+      this.unloading && this.changed && this.editor
+        ? this.editor.value
+        : (this.replicaValue ?? this.loadedData);
+    if (this.session) handedByFile.set(this.session, data);
+    return data;
   }
 
   setViewData(data: string, clear: boolean): void {
     this.data = data;
     if (!this.editor) return;
-    // Another view of this file saved what this one already shows; keep its undo.
-    if (!clear && !this.unreadable && data === this.editor.value) return;
-    this.loadDocument(data);
+
+    if (clear) {
+      if (this.file) this.join(this.file);
+      // A tab opened beside another starts from what that one shows, saved or
+      // not; a drag still held there goes out first, or it would arrive twice.
+      const peer = this.tabs().find(tab => tab !== this && tab.hasDocument());
+      peer?.sharedStore?.flushStreamBuffers();
+      this.loadDocument(peer?.currentValue() ?? data);
+    } else {
+      // The write of this file's writer coming back, which this tab already shows.
+      const handed = this.session && handedByFile.get(this.session);
+      if (!this.unreadable && (data === this.replicaValue || data === handed)) {
+        return;
+      }
+      this.loadDocument(data);
+    }
+
+    if (this.unreadable) {
+      this.closeSharedStore();
+    } else if (!this.sharedStore) {
+      this.openSharedStore();
+    }
   }
 
   clear(): void {
     this.loadedData = '';
-    this.loadedValue = null;
+    this.replicaValue = null;
+    this.changed = false;
     this.unreadable = false;
   }
 
+  private tabs(): ErdView[] {
+    return (this.session && tabsByFile.get(this.session)) || [this];
+  }
+
+  private isWriter(): boolean {
+    return this.tabs()[0] === this;
+  }
+
+  private join(file: TFile): void {
+    this.leave();
+    tabsByFile.set(file, [...(tabsByFile.get(file) ?? []), this]);
+    this.session = file;
+  }
+
+  private leave(): void {
+    this.closeSharedStore();
+    const file = this.session;
+    if (!file) return;
+    const tabs = (tabsByFile.get(file) ?? []).filter(tab => tab !== this);
+    if (tabs.length) {
+      tabsByFile.set(file, tabs);
+    } else {
+      tabsByFile.delete(file);
+      handedByFile.delete(file);
+    }
+    this.session = null;
+  }
+
+  /**
+   * Opened once the document is in the editor: its first subscription asks the
+   * other tabs for their last-writer-wins state, which they answer through
+   * theirs, so an edit made here is not taken there for an older one.
+   */
+  private openSharedStore(): void {
+    const { editor } = this;
+    if (!editor) return;
+
+    const sharedStore = editor.getSharedStore({
+      mouseTracker: false,
+      focusTracker: false,
+    });
+    this.sharedStore = sharedStore;
+    const unsubscribe = sharedStore.subscribe(actions => {
+      this.replicate(actions);
+      for (const tab of this.tabs()) {
+        if (tab !== this) tab.receive(actions);
+      }
+    });
+    this.disposeSharedStore = () => {
+      unsubscribe();
+      sharedStore.destroy();
+    };
+  }
+
+  private closeSharedStore(): void {
+    this.disposeSharedStore?.();
+    this.disposeSharedStore = null;
+    this.sharedStore = null;
+  }
+
+  private hasDocument(): boolean {
+    return Boolean(this.sharedStore);
+  }
+
+  /** The document as this tab shows it, serialized here only once it has changed. */
+  private currentValue(): string {
+    return this.changed && this.editor ? this.editor.value : this.loadedData;
+  }
+
+  /** Another tab's edit, applied as the IDE hosts apply one from another webview. */
+  private receive(actions: Actions): void {
+    if (!this.sharedStore) return;
+    this.sharedStore.dispatch(actions);
+    this.replicate(actions);
+  }
+
+  private replicate(actions: Actions): void {
+    if (actions.some(({ type }) => CHANGE_ACTION_TYPES.has(type))) {
+      this.changed = true;
+    }
+    this.replica?.postMessage(
+      Bridge.executeCommand(webviewReplicationCommand, { actions })
+    );
+  }
+
   private loadDocument(data: string): void {
-    const editor = this.editor;
+    const { editor } = this;
     if (!editor) return;
 
     this.unreadable = !isReadableDiagram(data);
+    const value = this.unreadable ? '' : data;
+
     editor.readonly = this.unreadable;
-    editor.setInitialValue(this.unreadable ? '' : data);
+    if (this.unreadable) {
+      this.stopReplica();
+    } else {
+      this.startReplica(value);
+    }
+    editor.setInitialValue(value);
     this.loadedData = data;
-    this.loadedValue = editor.value;
+    this.replicaValue = null;
+    this.changed = false;
 
     if (this.unreadable) {
       new Notice(
         `${this.file?.path ?? 'This file'} is not a diagram the editor can read. It is open read-only and left as it is.`
       );
     }
+  }
+
+  /**
+   * A replica per load: one started for an earlier document could still post a
+   * value of it after the next one loads, and that value would be saved over it.
+   */
+  private startReplica(value: string): void {
+    this.stopReplica();
+
+    const replica = createReplicationStoreWorker({
+      name: 'erd-editor-obsidian/replication-store-worker',
+    });
+    const bridge = new Bridge();
+    const handleMessage = (event: MessageEvent) => {
+      bridge.executeAction(event.data);
+    };
+    const handleError = (event: Event) => {
+      console.error('[erd-editor] the replica worker failed', event);
+      new Notice(
+        'ERD Editor stopped saving this diagram in the background. It is saved when the tab closes.'
+      );
+    };
+
+    replica.addEventListener('message', handleMessage);
+    replica.addEventListener('error', handleError);
+    replica.addEventListener('messageerror', handleError);
+    const disposeCommand = bridge.registerCommand(
+      hostSaveValueCommand,
+      ({ value }) => {
+        this.replicaValue = value;
+        if (this.isWriter()) this.requestSave();
+      }
+    );
+    replica.postMessage(
+      Bridge.executeCommand(webviewInitialValueCommand, { value })
+    );
+
+    this.replica = replica;
+    this.disposeReplica = () => {
+      disposeCommand();
+      replica.removeEventListener('message', handleMessage);
+      replica.removeEventListener('error', handleError);
+      replica.removeEventListener('messageerror', handleError);
+      replica.terminate();
+    };
+  }
+
+  private stopReplica(): void {
+    this.disposeReplica?.();
+    this.disposeReplica = null;
+    this.replica = null;
   }
 
   private syncAppearance(): void {

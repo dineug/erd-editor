@@ -248,6 +248,69 @@ try {
     Boolean(await addTableAndWaitForSave(page, 'model.erd.json'))
   );
 
+  // A second tab of the open file, split beside it: an edit in either shows in
+  // the other long before the save, and neither tab reloads the document.
+  await page.evaluate(async () => {
+    const { workspace, vault } = window.app;
+    const a = workspace.getMostRecentLeaf();
+    const b = workspace.createLeafBySplit(a, 'vertical');
+    await b.openFile(vault.getAbstractFileByPath('model.erd.json'));
+    window.__split = [a, b];
+    window.__reloads = 0;
+    for (const leaf of window.__split) {
+      const editor = leaf.view.contentEl.querySelector('erd-editor');
+      const load = editor.setInitialValue.bind(editor);
+      editor.setInitialValue = value => {
+        window.__reloads++;
+        load(value);
+      };
+    }
+  });
+  const splitTables = () =>
+    page.evaluate(() =>
+      window.__split.map(
+        leaf =>
+          JSON.parse(leaf.view.contentEl.querySelector('erd-editor').value).doc
+            .tableIds.length
+      )
+    );
+  const pressIn = async index => {
+    await page.evaluate(
+      index =>
+        window.__split[index].view.contentEl.querySelector('erd-editor').focus(),
+      index
+    );
+    await page.keyboard.press('Alt+KeyN');
+    await sleep(150);
+  };
+  await sleep(500);
+  const [splitBefore] = await splitTables();
+  await pressIn(0);
+  const afterA = await splitTables();
+  await pressIn(1);
+  const afterB = await splitTables();
+  const splitSaved = await waitFor(
+    async () =>
+      (await page.evaluate(
+        () =>
+          window.app.vault.getAbstractFileByPath('model.erd.json')?.saving ===
+          false
+      )) && tableCount('model.erd.json') === splitBefore + 2,
+    6_000,
+    500
+  );
+  await sleep(1_000);
+  const reloads = await page.evaluate(() => window.__reloads);
+  step(
+    'two tabs of one file stay in step as edits happen',
+    afterA.every(n => n === splitBefore + 1) &&
+      afterB.every(n => n === splitBefore + 2) &&
+      Boolean(splitSaved) &&
+      reloads === 0,
+    JSON.stringify({ splitBefore, afterA, afterB, reloads })
+  );
+  await page.evaluate(() => window.__split[1].detach());
+
   const vuerd = await openDiagram(page, 'legacy.vuerd');
   step(
     '.vuerd opens its v2 document',
@@ -289,6 +352,17 @@ try {
       )
     )
   );
+  // Two tabs showed schema.erd here. Overlapping writes leave the file's
+  // saving flag set, and Obsidian then reads its cache over any outside change.
+  const settled = await waitFor(
+    () =>
+      page.evaluate(
+        () =>
+          window.app.vault.getAbstractFileByPath('schema.erd')?.saving === false
+      ),
+    3_000
+  );
+  step('closing two tabs of one file writes it once', Boolean(settled));
 
   const broken = await openDiagram(page, 'broken.erd');
   const readonly = await page.evaluate(
