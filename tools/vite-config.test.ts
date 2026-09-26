@@ -302,6 +302,23 @@ new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsCo
   assert.ok(both);
   assert.equal((both.match(/__toDataUrl\(/g) ?? []).length, 3);
   assert.doesNotMatch(both, /encodeURIComponent/);
+
+  // A worker module reached through require() is initialized lazily, and
+  // rolldown then declares the source apart from where it assigns it.
+  const lazy = `var jsContent$3;
+var init_worker = __esmMin((() => {
+\tjsContent$3 = "self.onconnect = () => {};";
+}));
+new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsContent$3), o);`;
+  assert.equal(
+    readStringLiteral(lazy, 'jsContent$3'),
+    'self.onconnect = () => {};'
+  );
+  assert.match(rewriteInlineWorkers(lazy) ?? '', /__toDataUrl\(jsContent\$3\)/);
+  assert.equal(
+    readStringLiteral('if (jsContent == "a") {}', 'jsContent'),
+    null
+  );
   assert.equal(
     base64UrlLength('abcd'),
     'data:text/javascript;base64,'.length + 8

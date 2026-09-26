@@ -20,10 +20,13 @@ const TO_DATA_URL = `function __toDataUrl(source) {
 \treturn "data:text/javascript;base64," + btoa(binary);
 }`;
 
-/** Reads the string literal a var, const or let of that name is assigned, escapes honoured. */
+/**
+ * Reads the string literal assigned to that name, escapes honoured: in its
+ * declaration, or in the assignment a lazily initialized module splits from it.
+ */
 export function readStringLiteral(code: string, ident: string): string | null {
   const declaration = new RegExp(
-    `(?:var|const|let)\\s+${ident.replace(/\$/g, '\\$')}\\s*=\\s*"`
+    `(?<![\\w$.])${ident.replace(/\$/g, '\\$')}\\s*=\\s*"`
   ).exec(code);
   if (!declaration) return null;
 
