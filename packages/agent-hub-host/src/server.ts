@@ -27,6 +27,12 @@ export type HubConnection = {
   readonly client: string;
   /** Sends a notification to the peer; dropped once the connection has closed. */
   notify: (notification: HubNotification) => void;
+  /**
+   * Resolves once every frame queued before the call has been written to the
+   * socket, or once the connection stopped writing, so a host going away can
+   * let its last notifications out before the listener destroys the socket.
+   */
+  drain: () => Promise<void>;
 };
 
 /**
@@ -59,6 +65,9 @@ type Outbound = string | Socket.CloseEvent;
 
 /** One frame as the reader decodes it: a request, or JSON that fits none. */
 type Frame = Result.Result<PeerToHubMessage, RefusedFrame>;
+
+/** A drain call waiting for the frame count it saw to be written. */
+type DrainWaiter = { target: number; resolve: () => void };
 
 /** What the hub checks of a hello before it lets a peer in. */
 type Hello = {
@@ -170,9 +179,28 @@ export const serveConnection = (
     const outbound = yield* Queue.unbounded<Outbound, Cause.Done>();
     let open = true;
     let connection: HubConnection | null = null;
+    let queued = 0;
+    let written = 0;
+    let writing = true;
+    const drains = new Set<DrainWaiter>();
+
+    const offer = (frame: string) => {
+      if (Queue.offerUnsafe(outbound, frame)) queued++;
+    };
+    const settleDrains = () => {
+      for (const waiter of drains) {
+        if (writing && written < waiter.target) continue;
+        drains.delete(waiter);
+        waiter.resolve();
+      }
+    };
+    const drain = (): Promise<void> =>
+      !writing || written >= queued
+        ? Promise.resolve()
+        : new Promise(resolve => void drains.add({ target: queued, resolve }));
 
     const send = (message: unknown) => {
-      if (open) Queue.offerUnsafe(outbound, encodeFrame(message));
+      if (open) offer(encodeFrame(message));
     };
     const hangUp = () => {
       open = false;
@@ -273,13 +301,9 @@ export const serveConnection = (
           id: nextConnectionId(),
           client: hello.client,
           notify: (notification: HubNotification) => {
-            if (open) {
-              Queue.offerUnsafe(
-                outbound,
-                encodeHubNotificationFrame(notification)
-              );
-            }
+            if (open) offer(encodeHubNotificationFrame(notification));
           },
+          drain,
         };
         return peer;
       });
@@ -394,25 +418,36 @@ export const serveConnection = (
     // The two halves run apart rather than as one duplex channel: a write that
     // cannot reach a peer must leave the reader serving, and hanging up has to
     // destroy the socket even once the reader has failed.
-    const writing = yield* Effect.forkChild(
+    const writes = yield* Effect.forkChild(
       Effect.scoped(
         Effect.gen(function* () {
           const writer = yield* socket.writer;
           yield* Stream.fromQueue(outbound).pipe(
             Stream.runForEach(chunk =>
-              writer
-                .write(chunk)
-                .pipe(
-                  Effect.catch(failure =>
-                    Effect.logWarning(
-                      'could not write to a peer',
-                      failure.reason
-                    )
-                  )
+              writer.write(chunk).pipe(
+                Effect.catch(failure =>
+                  Effect.logWarning('could not write to a peer', failure.reason)
+                ),
+                // Taken or refused, a frame counts as written, so a drain
+                // never outlasts a peer the hub can no longer write to.
+                Effect.ensuring(
+                  Effect.sync(() => {
+                    if (typeof chunk !== 'string') return;
+                    written++;
+                    settleDrains();
+                  })
                 )
+              )
             )
           );
         })
+      ).pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
+            writing = false;
+            settleDrains();
+          })
+        )
       )
     );
     const incoming = yield* Queue.unbounded<Frame, Cause.Done>();
@@ -465,5 +500,5 @@ export const serveConnection = (
     );
     // The frames still queued, a hang-up's close among them, reach the peer
     // before this scope closes and takes the writer with it.
-    yield* Fiber.await(writing);
+    yield* Fiber.await(writes);
   });

@@ -5,20 +5,6 @@ import {
   type LockRecord,
   type Platform,
 } from '@dineug/erd-editor-agent-hub';
-import {
-  DocumentHub,
-  type DocumentHubShape,
-  documentHubLayer,
-  HubEnvError,
-  HubEnvironment,
-  type HubEnvironmentShape,
-  HubListener,
-  HubListenError,
-  hubLoggerLayer,
-  lockFileLayer,
-  serveConnection,
-  type ServeOptions,
-} from '@dineug/erd-editor-agent-hub-host';
 import type { Array as Arr } from 'effect';
 import {
   Effect,
@@ -35,12 +21,54 @@ import {
 import { Socket } from 'effect/unstable/socket';
 import { type Mock, vi } from 'vite-plus/test';
 
+import * as LockFile from '@/lockFile';
+import { type HubHandler, serveConnection, type ServeOptions } from '@/server';
 import {
-  DocumentRegistry,
-  type DocumentRegistryService,
-} from '@/hub/documentRegistry';
-import * as HubHandlers from '@/hub/handlers';
-import * as VscodeHost from '@/hub/vscodeHost';
+  DocumentHub,
+  type DocumentHubShape,
+  layer as documentHubLayer,
+} from '@/services/DocumentHub';
+import {
+  HubEnvError,
+  HubEnvironment,
+  type HubEnvironmentShape,
+} from '@/services/HubEnvironment';
+import {
+  type DocumentPublisher,
+  HubDocuments,
+  HubHandlerService,
+  HubHost,
+  type Unsubscribe,
+} from '@/services/HubHost';
+import { HubListener, HubListenError } from '@/services/HubListener';
+import * as HubLogger from '@/services/HubLogger';
+
+/** A handler double whose every member is a vi.fn answering a plausible result. */
+export function createHubHandler() {
+  return {
+    listDocuments: vi.fn<HubHandler['listDocuments']>(() =>
+      Effect.succeed({ documents: [] })
+    ),
+    openDocument: vi.fn<HubHandler['openDocument']>(({ path }) =>
+      Effect.succeed({ path, opened: true, webviews: 1 })
+    ),
+    join: vi.fn<HubHandler['join']>(() =>
+      Effect.succeed({
+        initialValue: '{}',
+        snapshotVersion: 0,
+        readonly: false,
+      })
+    ),
+    applyActions: vi.fn<HubHandler['applyActions']>(() =>
+      Effect.succeed({ webviews: 1 })
+    ),
+    leave: vi.fn<HubHandler['leave']>(() => Effect.succeed({})),
+    save: vi.fn<HubHandler['save']>(() => Effect.succeed({ saved: true })),
+    disconnect: vi.fn<HubHandler['disconnect']>(),
+  } satisfies HubHandler;
+}
+
+export type MockHubHandler = ReturnType<typeof createHubHandler>;
 
 /** The hello frame a current client sends, with overrides for the failure cases. */
 export function helloFrame(
@@ -99,6 +127,8 @@ export type MemorySocketPair = {
   write: Mock<(chunk: string) => void>;
   /** The CloseEvent the hub writes when it hangs up on a peer. */
   destroy: Mock<() => void>;
+  /** Holds every write from now on until the function it returns is called, as a full socket does. */
+  hold: () => () => void;
 };
 
 /**
@@ -106,7 +136,7 @@ export type MemorySocketPair = {
  * spec sees the same frames a real client would. The transport carries text,
  * as the node adapter does under setEncoding.
  */
-function createMemorySocketPair(): MemorySocketPair {
+export function createMemorySocketPair(): MemorySocketPair {
   const inbox: string[] = [];
   const received: unknown[] = [];
   const writes: string[] = [];
@@ -156,7 +186,8 @@ function createMemorySocketPair(): MemorySocketPair {
     receive(chunk);
   });
   const destroy = vi.fn(hangUp);
-  const writeOne = (chunk: Uint8Array | string) =>
+  let held: Promise<void> | null = null;
+  const writeNow = (chunk: Uint8Array | string) =>
     Effect.try({
       try: () =>
         write(typeof chunk === 'string' ? chunk : textDecoder.decode(chunk)),
@@ -165,6 +196,21 @@ function createMemorySocketPair(): MemorySocketPair {
           reason: new Socket.SocketWriteError({ cause: cause as Error }),
         }),
     });
+  const writeOne = (chunk: Uint8Array | string) =>
+    Effect.suspend(() => {
+      const gate = held;
+      return gate
+        ? Effect.promise(() => gate).pipe(Effect.andThen(writeNow(chunk)))
+        : writeNow(chunk);
+    });
+  const hold = () => {
+    let release!: () => void;
+    held = new Promise(resolve => (release = resolve));
+    return () => {
+      held = null;
+      release();
+    };
+  };
 
   const socket = Socket.make({
     reader: Effect.succeed({
@@ -215,7 +261,7 @@ function createMemorySocketPair(): MemorySocketPair {
     close: hangUp,
   };
 
-  return { socket, client, write, destroy };
+  return { socket, client, write, destroy, hold };
 }
 
 type MemoryFile = { data: string; mode: number; socket: boolean };
@@ -460,7 +506,7 @@ export function createMemoryHub(options: MemoryHubOptions = {}) {
     Layer.succeed(HubListener, {
       listen: listen as unknown as (typeof HubListener)['Service']['listen'],
     })
-  ).pipe(Layer.provideMerge(hubLoggerLayer));
+  ).pipe(Layer.provideMerge(HubLogger.layer));
 
   return {
     files,
@@ -528,7 +574,7 @@ export function connectToLock(hub: MemoryHub): MemoryClient {
 
 /** Runs one of the hub's effects under its logger, as the hub's own runtime does. */
 export const runHub = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
-  Effect.runPromise(Effect.provide(effect, hubLoggerLayer));
+  Effect.runPromise(Effect.provide(effect, HubLogger.layer));
 
 /** What a spec accepts connections through, in place of the hub's listener. */
 export type MemoryHubServer = {
@@ -561,80 +607,128 @@ export function createMemoryHubServer(options: ServeOptions): MemoryHubServer {
   };
 }
 
-/** The registry's layer over the memory machine, as registryLive is over the node one. */
-export function memoryRegistryLive(
+/** Runs an effect of the hub's over the memory machine, as the hub's runtime does. */
+export const runMemory = <A, E>(
   io: MemoryHub,
-  registry: DocumentRegistry
-): Layer.Layer<DocumentRegistryService> {
-  return DocumentRegistry.layer(registry).pipe(Layer.provide(io.layer));
-}
+  effect: Effect.Effect<A, E, FileSystem.FileSystem | HubEnvironment>
+): Promise<A> => Effect.runPromise(Effect.provide(effect, io.layer));
 
-/** A registry whose layer has not built yet, and what builds and closes it. */
-export type PendingRegistry = {
-  readonly registry: DocumentRegistry;
-  /** Builds the layer, which runs the queued IO in arrival order. */
-  readonly attach: () => void;
-  /** Closes the layer, as disposing the runtime does. */
-  readonly close: () => Promise<void>;
-};
-
-export function createPendingRegistry(io: MemoryHub): PendingRegistry {
-  const registry = DocumentRegistry.makeUnsafe(io.env.platform);
-  const scope = Effect.runSync(Scope.make());
-
-  return {
-    registry,
-    attach: () =>
-      void Effect.runSync(
-        Layer.buildWithScope(memoryRegistryLive(io, registry), scope)
-      ),
-    close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
-  };
-}
-
-/** A registry whose layer has built, as it has by the time the hub serves. */
-export function createMemoryRegistry(io: MemoryHub): DocumentRegistry {
-  const pending = createPendingRegistry(io);
-  pending.attach();
-  return pending.registry;
-}
-
-/** What a spec drives instead of the runtime activate builds. */
-export type MemoryHubHandle = {
-  /** Settles once the hub layer has built, with what the extension holds. */
-  readonly ready: Promise<DocumentHubShape>;
-  readonly setDocuments: (documents: string[]) => Promise<void>;
-  /** Disposes the runtime, which is what deactivate does. */
-  readonly close: () => Promise<void>;
-};
-
-/**
- * The hub's layer over the memory machine, as documentHubLive composes it over
- * the node one: this window as its host, the registry as its documents, and
- * the real request handlers.
- */
-export function memoryHubLive(
-  io: MemoryHub
-): Layer.Layer<DocumentHub, never, DocumentRegistryService> {
-  return documentHubLayer.pipe(
-    Layer.provide(HubHandlers.layer),
-    Layer.provide(VscodeHost.layer),
-    Layer.provide(VscodeHost.registryDocuments),
-    Layer.provide(lockFileLayer),
-    Layer.provide(io.layer)
+/** The lock file service over the memory layers, for the specs that call it directly. */
+export function memoryLockFile(io: MemoryHub): Promise<LockFile.LockFileShape> {
+  return Effect.runPromise(
+    Effect.service(LockFile.LockFile).pipe(
+      Effect.provide(LockFile.layer),
+      Effect.provide(io.layer)
+    )
   );
 }
 
+/** What a spec makes the host answer at the start. */
+export type MemoryHostOptions = {
+  ide?: string;
+  enabled?: boolean;
+  folders?: string[];
+};
+
 /**
- * Builds the hub over the memory layers, the way activate builds it over the
- * node ones. The runtime starts building at once, so a spec awaits flush for
- * the first lock exactly as it did before.
+ * A host double: set enabled or roots, then fire the matching event, as a
+ * host does once its own state changed. isEnabled and folders are vi.fn, so a
+ * spec can make either throw.
  */
-export function startMemoryHub(io: MemoryHub): MemoryHubHandle {
-  const registry = DocumentRegistry.makeUnsafe(io.env.platform);
+export function createMemoryHost(options: MemoryHostOptions = {}) {
+  const enabledListeners = new Set<() => void>();
+  const folderListeners = new Set<() => void>();
+  const subscribe =
+    (listeners: Set<() => void>) =>
+    (listener: () => void): Unsubscribe => {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    };
+
+  const host = {
+    ide: options.ide ?? 'memory-ide',
+    /** What isEnabled answers. */
+    enabled: options.enabled ?? true,
+    /** What folders answers. */
+    roots: options.folders ?? [],
+    isEnabled: vi.fn((): boolean => host.enabled),
+    folders: vi.fn((): readonly string[] => host.roots),
+    onEnabledChange: vi.fn(subscribe(enabledListeners)),
+    onFoldersChange: vi.fn(subscribe(folderListeners)),
+    fireEnabledChange: () => {
+      for (const listener of [...enabledListeners]) listener();
+    },
+    fireFoldersChange: () => {
+      for (const listener of [...folderListeners]) listener();
+    },
+    /** The listeners the hub still holds. */
+    subscriptions: () => enabledListeners.size + folderListeners.size,
+  };
+
+  return host;
+}
+
+export type MemoryHost = ReturnType<typeof createMemoryHost>;
+
+/**
+ * A documents double. Like a host's registry, it publishes what it holds the
+ * moment the hub hands it the publisher; publish is a later change.
+ */
+export function createMemoryDocuments(open: string[] = []) {
+  let publisher: DocumentPublisher | null = null;
+
+  return {
+    setPublisher: vi.fn((next: DocumentPublisher) => {
+      publisher = next;
+      return next(open);
+    }),
+    /** Publishes through the hub's publisher, as the host does on a change. */
+    publish: (documents: string[]): Promise<void> => {
+      if (!publisher) throw new Error('the hub has handed over no publisher');
+      return publisher(documents);
+    },
+  };
+}
+
+export type MemoryDocuments = ReturnType<typeof createMemoryDocuments>;
+
+/** The doubles a spec may hand startMemoryHub in place of the default ones. */
+export type MemoryHubParts = {
+  handler?: HubHandler;
+  host?: MemoryHost;
+  documents?: MemoryDocuments;
+};
+
+/** What a spec drives instead of the runtime a host builds. */
+export type MemoryHubHandle = {
+  readonly host: MemoryHost;
+  readonly documents: MemoryDocuments;
+  /** Settles once the hub layer has built, with what the host holds. */
+  readonly ready: Promise<DocumentHubShape>;
+  readonly setDocuments: (documents: string[]) => Promise<void>;
+  /** Disposes the runtime, which is what a host does on its way out. */
+  readonly close: () => Promise<void>;
+};
+
+/**
+ * Builds the hub over the memory layers, the way a host builds it over the
+ * node ones. The runtime starts building at once, so a spec awaits flush for
+ * the first lock.
+ */
+export function startMemoryHub(
+  io: MemoryHub,
+  parts: MemoryHubParts = {}
+): MemoryHubHandle {
+  const host = parts.host ?? createMemoryHost();
+  const documents = parts.documents ?? createMemoryDocuments();
   const runtime = ManagedRuntime.make(
-    memoryHubLive(io).pipe(
-      Layer.provide(memoryRegistryLive(io, registry)),
+    documentHubLayer.pipe(
+      Layer.provide(
+        Layer.succeed(HubHandlerService, parts.handler ?? createHubHandler())
+      ),
+      Layer.provide(Layer.succeed(HubHost, host)),
+      Layer.provide(Layer.succeed(HubDocuments, documents)),
+      Layer.provide(LockFile.layer),
       Layer.provideMerge(io.layer)
     )
   );
@@ -644,9 +738,10 @@ export function startMemoryHub(io: MemoryHub): MemoryHubHandle {
   const settled = ready.catch(() => null);
 
   return {
+    host,
+    documents,
     ready,
-    setDocuments: documents =>
-      settled.then(hub => hub?.setDocuments(documents)),
+    setDocuments: paths => settled.then(hub => hub?.setDocuments(paths)),
     close: () => Effect.runPromise(runtime.disposeEffect),
   };
 }

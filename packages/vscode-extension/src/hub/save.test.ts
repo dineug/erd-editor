@@ -1,5 +1,9 @@
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
 import {
+  REPLICA_DEBOUNCE_MS,
+  SAVE_QUIET_CAP_MS,
+} from '@dineug/erd-editor-agent-hub-host';
+import {
   afterEach,
   beforeEach,
   describe,
@@ -8,9 +12,6 @@ import {
   vi,
 } from 'vite-plus/test';
 import type { Uri as VscodeUri } from 'vscode';
-
-import { SAVE_QUIET_CAP_MS } from '@/hub/handlers';
-import { REPLICA_DEBOUNCE_MS } from '@/hub/joinWindow';
 
 import {
   createConnection,

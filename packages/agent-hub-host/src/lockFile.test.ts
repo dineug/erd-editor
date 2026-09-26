@@ -17,20 +17,16 @@ import {
 
 import {
   connectToLock,
+  createMemoryHost,
   createMemoryHub,
   flush,
   fsError,
+  type MemoryHost,
   type MemoryHub,
   memoryLockFile,
   runHub,
   startMemoryHub,
-} from '../../test/mocks/hubLayers';
-import {
-  fireWorkspaceFoldersChange,
-  resetVscodeMock,
-  Uri,
-  workspace,
-} from '../../test/mocks/vscode';
+} from '@/__test-utils__/hubLayers';
 
 const HOME = '/home/user';
 const LOCK_DIR = `${HOME}/.erd-editor/ide`;
@@ -48,12 +44,14 @@ const record: LockRecord = {
   hub: true,
 };
 
-function start(io: MemoryHub = createMemoryHub()) {
-  return { hub: startMemoryHub(io), io };
+function start(
+  io: MemoryHub = createMemoryHub(),
+  host: MemoryHost = createMemoryHost()
+) {
+  return { hub: startMemoryHub(io, { host }), io };
 }
 
 beforeEach(() => {
-  resetVscodeMock();
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
 
@@ -119,6 +117,22 @@ describe('LockFile.remove', () => {
     await expect(runHub(lock.remove)).resolves.toBeUndefined();
 
     expect(io.files.size).toBe(0);
+  });
+});
+
+describe('LockFile.removeSync', () => {
+  it('deletes the lock and its temp file before it returns, and never throws when neither exists', async () => {
+    const io = createMemoryHub();
+    io.addFile(LOCK);
+    io.addFile(`${LOCK}.tmp`);
+    const lock = await memoryLockFile(io);
+
+    lock.removeSync();
+    expect(io.files.size).toBe(0);
+    expect(() => lock.removeSync()).not.toThrow();
+    expect(io.env.removeFileSync).toHaveBeenCalledTimes(4);
+    expect(io.env.removeFileSync).toHaveBeenNthCalledWith(1, LOCK);
+    expect(io.env.removeFileSync).toHaveBeenNthCalledWith(2, `${LOCK}.tmp`);
   });
 });
 
@@ -225,18 +239,17 @@ describe('the hub lock file', () => {
     expect(io.files.get(LOCK)?.mode).toBe(0o600);
   });
 
-  it('names the socket, a random token and this extension in the lock', async () => {
-    workspace.workspaceFolders = [{ uri: Uri.file('/ws') }];
+  it('names the socket, a random token and the host in the lock', async () => {
     const io = createMemoryHub();
     io.addDir('/ws');
-    start(io);
+    start(io, createMemoryHost({ ide: 'obsidian', folders: ['/ws'] }));
     await flush();
 
     expect(io.lock()).toEqual({
       pipe: SOCKET,
       workspaceFolders: ['/ws'],
       documents: [],
-      ide: 'vscode',
+      ide: 'obsidian',
       version: '0.0.0-mock',
       protocolVersion: HUB_PROTOCOL_VERSION,
       token: 'token-1',
@@ -253,7 +266,7 @@ describe('the hub lock file', () => {
     );
   });
 
-  it('removes a socket file a dead process with this pid left before listening', async () => {
+  it('removes a socket file a dead process or an earlier hub left at its path before listening', async () => {
     const io = createMemoryHub();
     io.addFile(SOCKET);
     start(io);
@@ -348,8 +361,10 @@ describe('the hub on dispose', () => {
   });
 
   it('deletes a hub false lock too', async () => {
-    workspace.isTrusted = false;
-    const { hub, io } = start();
+    const { hub, io } = start(
+      createMemoryHub(),
+      createMemoryHost({ enabled: false })
+    );
     await flush();
 
     await hub.close();
@@ -475,10 +490,11 @@ describe('the documents of the lock', () => {
   it('keeps the folders in the hub false lock of a hub that failed to listen', async () => {
     const io = createMemoryHub();
     io.failListenOnce();
-    start(io);
+    const { hub } = start(io);
     await flush();
 
-    fireWorkspaceFoldersChange([{ uri: Uri.file('/ws') }]);
+    hub.host.roots = ['/ws'];
+    hub.host.fireFoldersChange();
     await flush();
 
     expect(io.lock()).toMatchObject({ hub: false, workspaceFolders: ['/ws'] });

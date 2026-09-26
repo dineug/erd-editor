@@ -1,12 +1,30 @@
 import { posix, win32 } from 'node:path';
 
 import {
-  HubErrorCode,
-  HubRequestError,
+  type HubRequestError,
   isSamePath,
   type JoinResult,
   type Platform,
 } from '@dineug/erd-editor-agent-hub';
+import {
+  type ActionSource,
+  closedDuringJoin,
+  createQuietState,
+  type DocumentPublisher,
+  drainJoinQueue,
+  dropRecipient,
+  hasChangeAction,
+  type HubConnection,
+  type JoinPeer,
+  maxVersion,
+  noteChange,
+  noteSave,
+  type QueuedBatch,
+  type QuietState,
+  realpathOrSelf,
+  waitForQuiet,
+  warnUnsafe,
+} from '@dineug/erd-editor-agent-hub-host';
 import {
   Bridge,
   webviewReplicationCommand,
@@ -15,23 +33,7 @@ import { Context, Effect, FiberSet, FileSystem, Layer } from 'effect';
 import type * as vscode from 'vscode';
 
 import { type ErdDocument } from '@/erd-document';
-import { realpathOrSelf } from '@/hub/authz';
-import {
-  type ActionSource,
-  createQuietState,
-  dropRecipient,
-  filterJoinQueue,
-  hasChangeAction,
-  maxVersion,
-  noteChange,
-  noteSave,
-  type QueuedBatch,
-  type QuietState,
-  waitForQuiet,
-} from '@/hub/joinWindow';
 import { isReadonlyUri } from '@/hub/readonlyUri';
-import { type HubConnection } from '@/hub/server';
-import { warnUnsafe } from '@/hub/services/HubLogger';
 import { textDecoder } from '@/utils';
 
 /** The three calls ErdEditor makes from its bridge handlers. */
@@ -40,19 +42,10 @@ export type WebviewRelay = Pick<
   'onWebviewReady' | 'onWebviewActions' | 'onValueSaved'
 >;
 
-/** Receives the real paths of the open file documents, which the lock lists. */
-export type DocumentPublisher = (documents: string[]) => Promise<void>;
-
 /** Runs the IO half of a register under the runtime that built the registry's layer. */
 type IoRunner = (
   io: Effect.Effect<void, never, FileSystem.FileSystem>
 ) => Promise<void>;
-
-type Peer = {
-  connection: HubConnection;
-  /** Deliveries wait here while the peer is inside its join window; null after it. */
-  queue: QueuedBatch[] | null;
-};
 
 type Entry = {
   document: ErdDocument;
@@ -63,9 +56,9 @@ type Entry = {
   webviews: Set<vscode.Webview>;
   panels: Map<vscode.Webview, vscode.WebviewPanel>;
   ready: Set<vscode.Webview>;
-  peers: Map<HubConnection, Peer>;
+  peers: Map<HubConnection, JoinPeer>;
   observedVersion: number;
-  quiet: QuietState;
+  quiet: QuietState<vscode.Webview>;
 };
 
 type ReadyWaiter = {
@@ -402,10 +395,9 @@ export class DocumentRegistry {
     connection: HubConnection
   ): Effect.Effect<JoinResult, HubRequestError> {
     const entries = this.entries;
-    const closedDuringJoin = (path: string) => this.closedDuringJoin(path);
     const endJoinWindow = (
       entry: Entry,
-      peer: Peer,
+      peer: JoinPeer,
       queue: QueuedBatch[],
       captured: number,
       snapshotVersion: number
@@ -418,7 +410,7 @@ export class DocumentRegistry {
       }
 
       const queue: QueuedBatch[] = [];
-      const peer: Peer = { connection, queue };
+      const peer: JoinPeer = { connection, queue };
       entry.peers.set(connection, peer);
 
       yield* waitForQuiet(entry.quiet);
@@ -495,14 +487,10 @@ export class DocumentRegistry {
     }
   }
 
-  /**
-   * Only the first captured batches predate the snapshot and go through the
-   * filters; a batch queued between the capture and this timer is not in the
-   * snapshot, so it goes out whole, in order.
-   */
+  /** Ends the peer's join window, unless it left or joined again since. */
   private endJoinWindow(
     entry: Entry,
-    peer: Peer,
+    peer: JoinPeer,
     queue: QueuedBatch[],
     captured: number,
     snapshotVersion: number
@@ -510,26 +498,14 @@ export class DocumentRegistry {
     if (entry.peers.get(peer.connection) !== peer) return;
 
     peer.queue = null;
-    const { batches, dropped, droppedCount } = filterJoinQueue(
-      queue.slice(0, captured),
-      snapshotVersion
-    );
-    if (droppedCount) {
-      warnUnsafe(
-        `dropped ${droppedCount} queued actions joining ${entry.path}: versioned at most ${snapshotVersion}, or unversioned`,
-        dropped
-      );
-    }
-    for (const { source, actions } of [...batches, ...queue.slice(captured)]) {
+    for (const { source, actions } of drainJoinQueue(
+      queue,
+      captured,
+      snapshotVersion,
+      entry.path
+    )) {
       this.deliverToPeer(entry.document, peer.connection, actions, source);
     }
-  }
-
-  private closedDuringJoin(path: string): HubRequestError {
-    return new HubRequestError({
-      code: HubErrorCode.notOpen,
-      message: `${path} closed, or the peer left it, before the join finished`,
-    });
   }
 
   private attach(run: IoRunner): void {

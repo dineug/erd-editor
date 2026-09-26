@@ -1,4 +1,5 @@
 import { type Platform } from '@dineug/erd-editor-agent-hub';
+import { warnUnsafe } from '@dineug/erd-editor-agent-hub-host';
 import { Effect, ManagedRuntime } from 'effect';
 import * as vscode from 'vscode';
 
@@ -11,7 +12,6 @@ import {
   DocumentRegistry,
   type DocumentRegistryService,
 } from '@/hub/documentRegistry';
-import { warnUnsafe } from '@/hub/services/HubLogger';
 
 /** How long deactivate waits for the lock, the pipe and the sessions to go. */
 const DISPOSE_TIMEOUT = '5 seconds';

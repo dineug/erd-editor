@@ -13,11 +13,10 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { authorizePath, realpathOrSelf, resolveRealPath } from '@/hub/authz';
-
 import {
   connectToLock,
   createHubHandler,
+  createMemoryHost,
   createMemoryHub,
   flush,
   fsError,
@@ -25,15 +24,14 @@ import {
   type MockHubHandler,
   runMemory,
   startMemoryHub,
-} from '../../test/mocks/hubLayers';
-import { resetVscodeMock, Uri, workspace } from '../../test/mocks/vscode';
+} from '@/__test-utils__/hubLayers';
+import { authorizePath, realpathOrSelf, resolveRealPath } from '@/authz';
 
 const LOCK = '/home/user/.erd-editor/ide/4242.json';
 
 const missing = (path: string) => fsError('NotFound', 'realPath', path);
 
 beforeEach(() => {
-  resetVscodeMock();
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
 
@@ -200,8 +198,13 @@ describe('authorizePath', () => {
   });
 });
 
-function startHub(io: MemoryHub, handler: MockHubHandler) {
-  return startMemoryHub(io, handler);
+/** Starts the hub in a host with these root folders. */
+function startHub(
+  io: MemoryHub,
+  handler: MockHubHandler,
+  folders: string[] = []
+) {
+  return startMemoryHub(io, { handler, host: createMemoryHost({ folders }) });
 }
 
 /** Sends one request after hello and hands back its response. */
@@ -224,11 +227,10 @@ describe('path authorization at the hub entry', () => {
   ])(
     'refuses %s outside the workspace, calls no handler and creates no file',
     async (method, params) => {
-      workspace.workspaceFolders = [{ uri: Uri.file('/ws') }];
       const io = createMemoryHub();
       io.addDir('/ws');
       const handler = createHubHandler();
-      startHub(io, handler);
+      startHub(io, handler, ['/ws']);
       await flush();
       io.fs.writeFileString.mockClear();
 
@@ -247,12 +249,11 @@ describe('path authorization at the hub entry', () => {
   );
 
   it('lets a path inside a workspace folder through under its real path', async () => {
-    workspace.workspaceFolders = [{ uri: Uri.file('/link') }];
     const io = createMemoryHub();
     io.addFile('/real/a.erd.json');
     io.links.set('/link', '/real');
     const handler = createHubHandler();
-    startHub(io, handler);
+    startHub(io, handler, ['/link']);
     await flush();
 
     const response = await ask(io, {
@@ -274,10 +275,9 @@ describe('path authorization at the hub entry', () => {
   ])(
     'compares paths by the platform this window runs on: %s',
     async (platform, expected) => {
-      workspace.workspaceFolders = [{ uri: Uri.file('/WS') }];
       const io = createMemoryHub({ platform });
       io.addDir('/WS');
-      startHub(io, createHubHandler());
+      startHub(io, createHubHandler(), ['/WS']);
       await flush();
 
       const response = await ask(io, {
@@ -291,12 +291,11 @@ describe('path authorization at the hub entry', () => {
   );
 
   it('refuses a dangling symlink in the workspace and creates nothing at its target', async () => {
-    workspace.workspaceFolders = [{ uri: Uri.file('/ws') }];
     const io = createMemoryHub();
     io.addDir('/ws');
     io.links.set('/ws/schema.erd.json', '/outside/planted.erd.json');
     const handler = createHubHandler();
-    startHub(io, handler);
+    startHub(io, handler, ['/ws']);
     await flush();
 
     const response = await ask(io, {
@@ -314,48 +313,41 @@ describe('path authorization at the hub entry', () => {
   });
 
   describe('in a window without folders', () => {
-    it.each([
-      ['undefined', undefined],
-      ['empty', []],
-    ])(
-      'with workspaceFolders %s, admits the open document and nothing else',
-      async (_label, folders) => {
-        workspace.workspaceFolders = folders;
-        const io = createMemoryHub();
-        io.addFile('/notes/open.erd.json');
-        io.addFile('/notes/closed.erd.json');
-        const handler = createHubHandler();
-        const hub = startHub(io, handler);
-        await hub.setDocuments(['/notes/open.erd.json']);
+    it('admits the open document and nothing else', async () => {
+      const io = createMemoryHub();
+      io.addFile('/notes/open.erd.json');
+      io.addFile('/notes/closed.erd.json');
+      const handler = createHubHandler();
+      const hub = startHub(io, handler);
+      await hub.setDocuments(['/notes/open.erd.json']);
 
-        const joined = await ask(io, {
-          id: 2,
-          method: 'join',
-          params: { path: '/notes/open.erd.json' },
-        });
-        const unopened = await ask(io, {
-          id: 3,
-          method: 'join',
-          params: { path: '/notes/closed.erd.json' },
-        });
-        const created = await ask(io, {
-          id: 4,
-          method: 'openDocument',
-          params: { path: '/notes/new.erd.json', create: true },
-        });
+      const joined = await ask(io, {
+        id: 2,
+        method: 'join',
+        params: { path: '/notes/open.erd.json' },
+      });
+      const unopened = await ask(io, {
+        id: 3,
+        method: 'join',
+        params: { path: '/notes/closed.erd.json' },
+      });
+      const created = await ask(io, {
+        id: 4,
+        method: 'openDocument',
+        params: { path: '/notes/new.erd.json', create: true },
+      });
 
-        expect(joined).toMatchObject({ ok: true });
-        expect(unopened).toMatchObject({
-          ok: false,
-          error: { code: HubErrorCode.outsideWorkspace },
-        });
-        expect(created).toMatchObject({
-          ok: false,
-          error: { code: HubErrorCode.outsideWorkspace },
-        });
-        expect(handler.openDocument).not.toHaveBeenCalled();
-      }
-    );
+      expect(joined).toMatchObject({ ok: true });
+      expect(unopened).toMatchObject({
+        ok: false,
+        error: { code: HubErrorCode.outsideWorkspace },
+      });
+      expect(created).toMatchObject({
+        ok: false,
+        error: { code: HubErrorCode.outsideWorkspace },
+      });
+      expect(handler.openDocument).not.toHaveBeenCalled();
+    });
 
     it('stops admitting a document once it is closed', async () => {
       const io = createMemoryHub();

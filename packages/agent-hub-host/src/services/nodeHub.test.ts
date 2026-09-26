@@ -5,19 +5,10 @@ import { connect, type Socket as NetSocket } from 'node:net';
 import * as os from 'node:os';
 import { join } from 'node:path';
 
-import { HubErrorCode, type Platform } from '@dineug/erd-editor-agent-hub';
+import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import type { Cause } from 'effect';
-import {
-  Effect,
-  Exit,
-  FileSystem,
-  Layer,
-  ManagedRuntime,
-  Queue,
-  Scope,
-  Stream,
-} from 'effect';
+import { Effect, Exit, FileSystem, Layer, Queue, Scope, Stream } from 'effect';
 import { Socket } from 'effect/unstable/socket';
 import {
   afterEach,
@@ -27,24 +18,16 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
-import type { Uri as VscodeUri } from 'vscode';
 
-import { ErdDocument } from '@/erd-document';
-import { registryLive } from '@/hub';
-import { authorizePath, realpathOrSelf } from '@/hub/authz';
-import { DocumentRegistry } from '@/hub/documentRegistry';
+import { authorizePath, realpathOrSelf } from '@/authz';
 import {
   HubEnvironment,
+  isAlive,
   layer as hubEnvironmentLayer,
   makeNodeEnvironment,
-} from '@/hub/services/HubEnvironment';
-import {
-  HubListener,
-  layer as hubListenerLayer,
-} from '@/hub/services/HubListener';
-import * as NativeFileSystem from '@/hub/services/nativeFileSystem';
-
-import { Uri } from '../../../test/mocks/vscode';
+} from '@/services/HubEnvironment';
+import { HubListener, layer as hubListenerLayer } from '@/services/HubListener';
+import * as NativeFileSystem from '@/services/nativeFileSystem';
 
 const env = makeNodeEnvironment('2.9.0');
 
@@ -73,7 +56,7 @@ function readUntilEnd(client: NetSocket): Promise<string> {
 }
 
 describe('HubEnvironment over node', () => {
-  it('reports the home, temp directory, platform, pid and extension version', () => {
+  it('reports the home, temp directory, platform, pid and host version', () => {
     expect(env.homeDir).toBe(os.homedir());
     expect(env.tmpDir).toBe(os.tmpdir());
     expect(env.platform).toBe(process.platform);
@@ -108,6 +91,23 @@ describe('HubEnvironment over node', () => {
     expect(env.isAlive(exited.pid)).toBe(false);
   });
 
+  it('takes a pid it may not signal for alive on Windows only, as an elevated window of this user answers there', () => {
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
+      throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+    });
+
+    expect(isAlive(4, 'win32')).toBe(true);
+    // On POSIX a lock in this user's home never names another user's process.
+    expect(isAlive(4, 'darwin')).toBe(false);
+    expect(isAlive(4, 'linux')).toBe(false);
+    expect(env.isAlive(4)).toBe(process.platform === 'win32');
+    kill.mockImplementation(() => {
+      throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
+    });
+    expect(isAlive(4, 'win32')).toBe(false);
+    kill.mockRestore();
+  });
+
   it('lstats a dangling symlink that realpath cannot resolve', async () => {
     const link = join(dir, 'dangling');
     await fs.symlink(join(dir, 'nowhere'), link);
@@ -126,41 +126,17 @@ describe('HubEnvironment over node', () => {
       Effect.runPromise(env.lstat(join(file, 'under-a-file')))
     ).rejects.toMatchObject({ reason: 'Other' });
   });
-});
 
-/**
- * Opens a document at each path in a registry over the node layer, the one
- * activate builds, and gives the keys it filed them under.
- */
-async function registryKeys(...paths: string[]): Promise<string[]> {
-  const registry = DocumentRegistry.makeUnsafe(process.platform as Platform);
-  const runtime = ManagedRuntime.make(registryLive(registry));
-  await runtime.runPromise(Effect.void);
-  for (const path of paths) {
-    await registry.register(
-      ErdDocument.create(
-        Uri.file(path) as unknown as VscodeUri,
-        new Uint8Array()
-      )
-    );
-  }
-  await runtime.dispose();
-  return registry.documents().map(({ path }) => path);
-}
+  it('deletes a file before it returns, and never throws for one that is gone or cannot go', async () => {
+    const file = join(dir, 'a.json');
+    await fs.writeFile(file, '{}');
 
-describe('the registry over the node layer', () => {
-  it('keys a document by its real path, and one that is gone by the path it was given', async () => {
-    const target = join(dir, 'target');
-    await fs.mkdir(target);
-    await fs.writeFile(join(target, 'a.erd.json'), '{}');
-    await fs.symlink(target, join(dir, 'link'));
+    env.removeFileSync(file);
 
-    expect(
-      await registryKeys(join(dir, 'link', 'a.erd.json'), join(dir, 'gone'))
-    ).toEqual([
-      join(await fs.realpath(target), 'a.erd.json'),
-      join(dir, 'gone'),
-    ]);
+    expect(existsSync(file)).toBe(false);
+    expect(() => env.removeFileSync(file)).not.toThrow();
+    expect(() => env.removeFileSync(dir)).not.toThrow();
+    expect(existsSync(dir)).toBe(true);
   });
 });
 
@@ -177,7 +153,6 @@ describe('the hub file system', () => {
     // A case-insensitive disk (macOS, Windows) finds the file either way.
     const expected = existsSync(typed) ? spelled : typed;
 
-    expect(await registryKeys(typed)).toEqual([expected]);
     expect(await onNative(realpathOrSelf(typed))).toBe(expected);
   });
 
@@ -189,7 +164,6 @@ describe('the hub file system', () => {
     // APFS finds it either way, and VS Code hands a macOS path over as NFC.
     const expected = existsSync(given) ? onDisk : given;
 
-    expect(await registryKeys(given)).toEqual([expected]);
     expect(await onNative(realpathOrSelf(given))).toBe(expected);
   });
 

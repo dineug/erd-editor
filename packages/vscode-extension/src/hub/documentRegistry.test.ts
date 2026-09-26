@@ -1,4 +1,5 @@
 import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import { REPLICA_DEBOUNCE_MS } from '@dineug/erd-editor-agent-hub-host';
 import { Effect } from 'effect';
 import {
   afterEach,
@@ -11,7 +12,6 @@ import {
 import type { Uri as VscodeUri, WebviewPanel } from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
-import { REPLICA_DEBOUNCE_MS } from '@/hub/joinWindow';
 import { textDecoder } from '@/utils';
 
 import {

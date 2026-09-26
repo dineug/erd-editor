@@ -14,8 +14,6 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { type ServeOptions } from '@/hub/server';
-
 import {
   createHubHandler,
   createMemoryHubServer,
@@ -23,7 +21,8 @@ import {
   helloFrame,
   type MemoryHubServer,
   type MockHubHandler,
-} from '../../test/mocks/hubLayers';
+} from '@/__test-utils__/hubLayers';
+import { type HubConnection, type ServeOptions } from '@/server';
 
 const TOKEN = '6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f';
 
@@ -898,6 +897,77 @@ describe('notify', () => {
     expect(client.received).toEqual([
       { method: 'actions', params: { path: '/a', actions: [{ type: 'x' }] } },
     ]);
+  });
+});
+
+describe('drain', () => {
+  const closed = (path: string) => ({
+    method: 'documentClosed' as const,
+    params: { path },
+  });
+
+  async function peerWithCalls() {
+    const connection = await connectAuthenticated();
+    connection.client.send({ id: 2, method: 'listDocuments', params: {} });
+    await flush();
+    connection.client.received.length = 0;
+    return {
+      ...connection,
+      peer: peerOf(handler.listDocuments) as HubConnection,
+    };
+  }
+
+  it('resolves once the frames queued before it reached the socket, not before', async () => {
+    const { client, hold, peer } = await peerWithCalls();
+    const release = hold();
+    let drained = false;
+
+    peer.notify(closed('/a'));
+    peer.notify(closed('/b'));
+    const draining = peer.drain().then(() => (drained = true));
+    await flush();
+    expect(drained).toBe(false);
+    expect(client.received).toEqual([]);
+
+    release();
+    await draining;
+    expect(client.received).toEqual([closed('/a'), closed('/b')]);
+  });
+
+  it('resolves at once when every frame is already written', async () => {
+    const { peer } = await peerWithCalls();
+
+    await expect(peer.drain()).resolves.toBeUndefined();
+  });
+
+  it('counts a frame the socket refused as written, logging it', async () => {
+    const { peer, write } = await peerWithCalls();
+    write.mockImplementationOnce(() => {
+      throw new Error('EPIPE');
+    });
+
+    peer.notify(closed('/a'));
+    await peer.drain();
+
+    expect(console.warn).toHaveBeenCalledWith(
+      '[erd-editor hub]',
+      'could not write to a peer',
+      expect.anything()
+    );
+  });
+
+  it('resolves for a connection that stopped writing, whatever it still held', async () => {
+    const { client, hold, peer } = await peerWithCalls();
+    const release = hold();
+    peer.notify(closed('/a'));
+    const draining = peer.drain();
+
+    client.close();
+    release();
+    await draining;
+
+    peer.notify(closed('/b'));
+    await expect(peer.drain()).resolves.toBeUndefined();
   });
 });
 

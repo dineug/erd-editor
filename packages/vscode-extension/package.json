@@ -48,6 +48,7 @@
   },
   "devDependencies": {
     "@dineug/erd-editor-agent-hub": "workspace:*",
+    "@dineug/erd-editor-agent-hub-host": "workspace:*",
     "@dineug/erd-editor-webview-bridge": "workspace:*",
     "@dineug/erd-editor-vscode-webview": "workspace:*",
     "@effect/platform-node": "catalog:",

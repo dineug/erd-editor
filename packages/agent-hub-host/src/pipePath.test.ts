@@ -12,14 +12,12 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { choosePipePath, socketFilePaths, tmpPipePath } from '@/hub/pipePath';
-
 import {
   createMemoryHub,
   flush,
   startMemoryHub,
-} from '../../test/mocks/hubLayers';
-import { resetVscodeMock } from '../../test/mocks/vscode';
+} from '@/__test-utils__/hubLayers';
+import { choosePipePath, socketFilePaths, tmpPipePath } from '@/pipePath';
 
 const PID = 4242;
 
@@ -97,7 +95,6 @@ describe('socketFilePaths', () => {
 
 describe('the hub under a home too long for a socket path', () => {
   beforeEach(() => {
-    resetVscodeMock();
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 

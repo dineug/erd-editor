@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { unlinkSync } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 
@@ -23,7 +24,7 @@ export type HubEnvironmentShape = {
   readonly tmpDir: string;
   readonly platform: Platform;
   readonly pid: number;
-  /** The extension version the lock advertises. */
+  /** The host version the lock advertises, its extension's or its plugin's. */
   readonly version: string;
   readonly randomToken: Effect.Effect<string>;
   readonly isAlive: (pid: number) => boolean;
@@ -32,6 +33,11 @@ export type HubEnvironmentShape = {
    * NotFound when there is none; the last link is never followed.
    */
   readonly lstat: (path: string) => Effect.Effect<void, HubEnvError>;
+  /**
+   * Deletes a file before it returns and never throws, for a host that goes
+   * down without awaiting the hub's close. A file already gone is no error.
+   */
+  readonly removeFileSync: (path: string) => void;
 };
 
 /**
@@ -42,31 +48,47 @@ export type HubEnvironmentShape = {
 export class HubEnvironment extends Context.Service<
   HubEnvironment,
   HubEnvironmentShape
->()('vuerd-vscode/hub/HubEnvironment') {}
+>()('@dineug/erd-editor-agent-hub-host/HubEnvironment') {}
 
 function errnoOf(error: unknown): unknown {
   return (error as { code?: unknown } | null)?.code;
 }
 
-/** Signal 0 checks existence only; EPERM means another user's process, never this user's window. */
-function isAlive(pid: number): boolean {
+/**
+ * Signal 0 checks existence only. EPERM is an elevated window of this user on
+ * Windows, so it is alive there; on POSIX it is another user's process, which
+ * a lock in this user's home never names, so a reused pid still counts dead.
+ */
+export function isAlive(
+  pid: number,
+  platform: Platform = process.platform as Platform
+): boolean {
   try {
     process.kill(pid, 0);
     return true;
+  } catch (error) {
+    return platform === 'win32' && errnoOf(error) === 'EPERM';
+  }
+}
+
+function removeFileSync(path: string): void {
+  try {
+    unlinkSync(path);
   } catch {
-    return false;
+    // Missing, or out of reach: nothing is left to do while the host goes down.
   }
 }
 
 export function makeNodeEnvironment(version: string): HubEnvironmentShape {
+  const platform = process.platform as Platform;
   return {
     homeDir: homedir(),
     tmpDir: tmpdir(),
-    platform: process.platform as Platform,
+    platform,
     pid: process.pid,
     version,
     randomToken: Effect.sync(() => randomUUID()),
-    isAlive,
+    isAlive: pid => isAlive(pid, platform),
     lstat: path =>
       Effect.tryPromise({
         try: () => lstat(path),
@@ -77,6 +99,7 @@ export function makeNodeEnvironment(version: string): HubEnvironmentShape {
             message: String(error),
           }),
       }).pipe(Effect.asVoid),
+    removeFileSync,
   };
 }
 

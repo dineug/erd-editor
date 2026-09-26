@@ -9,7 +9,7 @@ import {
 import type { PlatformError } from 'effect';
 import { Effect, FileSystem } from 'effect';
 
-import { HubEnvironment } from '@/hub/services/HubEnvironment';
+import { HubEnvironment } from '@/services/HubEnvironment';
 
 /** What the lock advertises; paths.ts compares against it, both sides resolved by realpath. */
 export type AuthzScope = {

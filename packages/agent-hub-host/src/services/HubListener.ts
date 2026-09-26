@@ -3,8 +3,8 @@ import * as net from 'node:net';
 import { Context, Effect, Layer, Queue, Schema, Scope, Stream } from 'effect';
 import { Socket } from 'effect/unstable/socket';
 
-import { warnUnsafe } from '@/hub/services/HubLogger';
-import { fromNetSocket } from '@/hub/services/netSocket';
+import { warnUnsafe } from '@/services/HubLogger';
+import { fromNetSocket } from '@/services/netSocket';
 
 /** The listener could not bind the pipe; the hub then writes a hub false lock. */
 export class HubListenError extends Schema.TaggedError<HubListenError>()(
@@ -25,7 +25,7 @@ export type HubListenerShape = {
 export class HubListener extends Context.Service<
   HubListener,
   HubListenerShape
->()('vuerd-vscode/hub/HubListener') {}
+>()('@dineug/erd-editor-agent-hub-host/HubListener') {}
 
 const listen = (
   pipe: string

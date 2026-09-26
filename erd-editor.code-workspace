@@ -61,6 +61,10 @@
       "path": "packages/agent-hub",
     },
     {
+      "name": "agent-hub-host",
+      "path": "packages/agent-hub-host",
+    },
+    {
       "name": "mcp-server",
       "path": "packages/mcp-server",
     },

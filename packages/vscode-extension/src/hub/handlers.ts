@@ -4,55 +4,42 @@ import {
   HubRequestError,
   isSamePath,
 } from '@dineug/erd-editor-agent-hub';
+import {
+  assertErdFile,
+  closedBeforeSave,
+  createNeedsInitialValue,
+  editorCouldNotOpen,
+  ERD_FILE_EXTENSIONS,
+  fileMissing,
+  folderMissing,
+  type HubHandler,
+  HubHandlerService,
+  notJoined,
+  notOpenInEditor,
+  notReadyForActions,
+  OPEN_READY_TIMEOUT_MS,
+  openTimedOut,
+  realpathOrSelf,
+  SAVE_QUIET_CAP_MS,
+  stripBom,
+  unsettledSave,
+} from '@dineug/erd-editor-agent-hub-host';
 import type { PlatformError } from 'effect';
-import { Context, Effect, FileSystem, Layer } from 'effect';
+import { Effect, FileSystem, Layer } from 'effect';
 import * as vscode from 'vscode';
 
 import { VIEW_TYPE } from '@/constants/viewType';
 import { type ErdDocument } from '@/erd-document';
-import { realpathOrSelf } from '@/hub/authz';
 import {
   type DocumentRegistry,
   DocumentRegistryService,
 } from '@/hub/documentRegistry';
 import { isReadonlyUri } from '@/hub/readonlyUri';
-import { type HubHandler } from '@/hub/server';
-
-/** The file extensions of the custom editor selector, which a test holds this to. */
-export const ERD_FILE_EXTENSIONS: readonly string[] = [
-  'erd',
-  'vuerd',
-  'erd.json',
-  'vuerd.json',
-];
 
 /** The activation glob of package.json, which a test holds this to. */
 export const ERD_FILE_GLOB = `**/*.{${ERD_FILE_EXTENSIONS.join(',')}}`;
 
 const EXCLUDE_GLOB = '**/node_modules/**';
-
-/**
- * How long openDocument waits for the first webview to report ready. It loads
- * html and parses the bundle, far slower than a replica save.
- */
-export const OPEN_READY_TIMEOUT_MS = 5_000;
-
-/**
- * How long save waits for the replicas to hold every edit before it gives up
- * with saved false. Longer than the join cap, since the caller asked for the
- * edit on disk and saving without it would be a silent loss.
- */
-export const SAVE_QUIET_CAP_MS = 2_000;
-
-/** The hub's request half, so the connection server needs no vscode of its own. */
-export class HubHandlerService extends Context.Service<
-  HubHandlerService,
-  HubHandler
->()('vuerd-vscode/hub/HubHandler') {}
-
-function notOpen(message: string): HubRequestError {
-  return new HubRequestError({ code: HubErrorCode.notOpen, message });
-}
 
 function isNotFound(error: PlatformError.PlatformError): boolean {
   return error.reason._tag === 'NotFound';
@@ -60,28 +47,6 @@ function isNotFound(error: PlatformError.PlatformError): boolean {
 
 function isAlreadyExists(error: PlatformError.PlatformError): boolean {
   return error.reason._tag === 'AlreadyExists';
-}
-
-/** Refuses a path the ERD editor does not own, before anything opens, reads or writes it. */
-function erdFileProblem(path: string): HubRequestError | null {
-  const name = path.toLowerCase();
-  if (ERD_FILE_EXTENSIONS.some(extension => name.endsWith(`.${extension}`))) {
-    return null;
-  }
-  return new HubRequestError({
-    code: HubErrorCode.badRequest,
-    message: `${path} is not an ERD file; the hub serves ${ERD_FILE_EXTENSIONS.map(extension => `.${extension}`).join(', ')} only`,
-  });
-}
-
-const assertErdFile = (path: string) => {
-  const problem = erdFileProblem(path);
-  return problem ? Effect.fail(problem) : Effect.void;
-};
-
-/** TextDecoder drops a byte order mark when the editor reads a file; the hub does too. */
-function stripBom(text: string): string {
-  return text.startsWith('﻿') ? text.slice(1) : text;
 }
 
 /**
@@ -139,14 +104,7 @@ export function createDocumentHandler(
   ): Effect.Effect<A, HubRequestError> =>
     task.pipe(
       Effect.catch(error =>
-        isNotFound(error)
-          ? Effect.fail(
-              new HubRequestError({
-                code: HubErrorCode.notFound,
-                message: `${path} does not exist`,
-              })
-            )
-          : Effect.die(error)
+        isNotFound(error) ? Effect.fail(fileMissing(path)) : Effect.die(error)
       )
     );
 
@@ -162,25 +120,12 @@ export function createDocumentHandler(
         return;
       }
       if (typeof initialValue !== 'string') {
-        return yield* Effect.fail(
-          new HubRequestError({
-            code: HubErrorCode.badRequest,
-            message:
-              'openDocument with create needs a string initialValue, the bytes of an empty document',
-          })
-        );
+        return yield* Effect.fail(createNeedsInitialValue());
       }
       yield* fs.writeFileString(path, initialValue, { flag: 'wx' }).pipe(
         Effect.catch(error => {
           if (isAlreadyExists(error)) return Effect.void;
-          if (isNotFound(error)) {
-            return Effect.fail(
-              new HubRequestError({
-                code: HubErrorCode.notFound,
-                message: `The folder of ${path} does not exist`,
-              })
-            );
-          }
+          if (isNotFound(error)) return Effect.fail(folderMissing(path));
           return Effect.die(error);
         })
       );
@@ -197,8 +142,7 @@ export function createDocumentHandler(
             { preserveFocus: true, preview: false }
           )
         ),
-      catch: error =>
-        notOpen(`VS Code could not open ${path} in the ERD editor: ${error}`),
+      catch: error => editorCouldNotOpen('VS Code', path, error),
     }).pipe(Effect.asVoid);
 
   /**
@@ -305,13 +249,7 @@ export function createDocumentHandler(
         );
 
         const document = yield* ready;
-        if (!document) {
-          return yield* Effect.fail(
-            notOpen(
-              `No ERD editor on ${path} reported ready within ${OPEN_READY_TIMEOUT_MS} ms`
-            )
-          );
-        }
+        if (!document) return yield* Effect.fail(openTimedOut(path));
         return {
           path,
           opened: true,
@@ -347,16 +285,10 @@ export function createDocumentHandler(
           );
         }
         if (!document || registry.readyWebviewCount(document) === 0) {
-          return yield* Effect.fail(
-            notOpen(
-              `${path} is not open in an ERD editor that is ready; open it with openDocument, then join`
-            )
-          );
+          return yield* Effect.fail(notReadyForActions(path));
         }
         if (!registry.isJoined(document, connection)) {
-          return yield* Effect.fail(
-            notOpen(`Join ${path} before applying actions to it`)
-          );
+          return yield* Effect.fail(notJoined(path));
         }
 
         return {
@@ -374,11 +306,7 @@ export function createDocumentHandler(
       Effect.gen(function* () {
         yield* assertErdFile(path);
         const document = registry.find(path);
-        if (!document) {
-          return yield* Effect.fail(
-            notOpen(`${path} is not open in an ERD editor`)
-          );
-        }
+        if (!document) return yield* Effect.fail(notOpenInEditor(path));
         if (isReadonlyUri(document.uri)) {
           return yield* Effect.fail(
             new HubRequestError({
@@ -391,14 +319,10 @@ export function createDocumentHandler(
         // An edit reaches document.content only once the replicas save it.
         const settled = yield* registry.whenQuiet(document, SAVE_QUIET_CAP_MS);
         if (registry.findWritable(path) !== document) {
-          return yield* Effect.fail(
-            notOpen(`${path} closed before it could be saved`)
-          );
+          return yield* Effect.fail(closedBeforeSave(path));
         }
         if (!settled) {
-          yield* Effect.logWarning(
-            `${path} has an edit no replica saved within ${SAVE_QUIET_CAP_MS} ms; its bytes may lack it, so nothing was saved`
-          );
+          yield* Effect.logWarning(unsettledSave(path));
           return { saved: false };
         }
         return { saved: yield* saveThroughEditor(document) };

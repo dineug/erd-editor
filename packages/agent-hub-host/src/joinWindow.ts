@@ -1,11 +1,20 @@
 import { Deferred, Duration, Effect } from 'effect';
-import type * as vscode from 'vscode';
+
+import { type HubConnection } from '@/server';
+import { warnUnsafe } from '@/services/HubLogger';
 
 /** Where an action reached the hub from; drops at a join are counted per source. */
 export type ActionSource = 'webview' | 'peer';
 
 /** One delivery held back while its peer was inside the join window. */
 export type QueuedBatch = { source: ActionSource; actions: unknown[] };
+
+/** A joined agent peer of one document, as each host's registry holds it. */
+export type JoinPeer = {
+  connection: HubConnection;
+  /** Deliveries wait here while the peer is inside its join window; null after it. */
+  queue: QueuedBatch[] | null;
+};
 
 /** Dropped actions counted by source, then by action type. */
 export type DropCounts = Partial<Record<ActionSource, Record<string, number>>>;
@@ -65,13 +74,13 @@ export function maxVersion(current: number, actions: unknown[]): number {
 
 /**
  * Whether a document is between a change and the replica saves it causes.
- * Every webview the change reached runs its own replica, so the last of their
+ * Every view the change reached runs its own replica, so the last of their
  * saves, not the first, is the one that makes the content current.
  */
-export type QuietState = {
+export type QuietState<View> = {
   pending: boolean;
-  /** The ready webviews the pending change went to, copied as it was noted; each owes one save. */
-  awaiting: Set<vscode.Webview>;
+  /** The ready views the pending change went to, copied as it was noted; each owes one save. */
+  awaiting: Set<View>;
   saves: number;
   /** A save reaching the hub before this instant was sent before its replica held the latest peer batch. */
   countFrom: number;
@@ -79,7 +88,7 @@ export type QuietState = {
   settled: Deferred.Deferred<void> | null;
 };
 
-export function createQuietState(): QuietState {
+export function createQuietState<View>(): QuietState<View> {
   return {
     pending: false,
     awaiting: new Set(),
@@ -92,13 +101,13 @@ export function createQuietState(): QuietState {
 /**
  * The hub sends a peer batch at now, so a save holding it cannot arrive within
  * the replica debounce. A relay can reach the hub after its replica saved, as
- * both leave the webview at once, so a relay bounds nothing.
+ * both leave the view at once, so a relay bounds nothing.
  */
-export function noteChange(
-  state: QuietState,
+export function noteChange<View>(
+  state: QuietState<View>,
   source: ActionSource,
   now: number,
-  recipients: Iterable<vscode.Webview>
+  recipients: Iterable<View>
 ): void {
   state.pending = true;
   state.saves = 0;
@@ -111,36 +120,33 @@ export function noteChange(
 
 /**
  * A save outside a pending change, or too early to hold the latest peer batch,
- * is ignored. One from a webview the change never reached settles nothing on
- * its own, since it leaves every awaited save still owed.
+ * is ignored. One from a view the change never reached settles nothing on its
+ * own, since it leaves every awaited save still owed.
  */
-export function noteSave(
-  state: QuietState,
-  webview: vscode.Webview,
+export function noteSave<View>(
+  state: QuietState<View>,
+  view: View,
   now: number
 ): void {
   if (!state.pending || now < state.countFrom) return;
 
   state.saves++;
-  state.awaiting.delete(webview);
+  state.awaiting.delete(view);
   settle(state);
 }
 
 /**
- * A closed webview owes no save, so its removal can be what settles a pending
+ * A closed view owes no save, so its removal can be what settles a pending
  * change the replicas left have already saved. One no replica saved keeps
  * waiting all the same, as a change is owed a save even with none left.
  */
-export function dropRecipient(
-  state: QuietState,
-  webview: vscode.Webview
-): void {
-  state.awaiting.delete(webview);
+export function dropRecipient<View>(state: QuietState<View>, view: View): void {
+  state.awaiting.delete(view);
   settle(state);
 }
 
-/** Settles once every awaited webview has saved or gone and at least one save came. */
-function settle(state: QuietState): void {
+/** Settles once every awaited view has saved or gone and at least one save came. */
+function settle<View>(state: QuietState<View>): void {
   if (!state.pending || state.awaiting.size > 0 || state.saves < 1) return;
 
   state.pending = false;
@@ -154,8 +160,8 @@ function settle(state: QuietState): void {
  * false at capMs. Never fails: join captures what the document holds either
  * way, while save refuses to write bytes that may lack an edit.
  */
-export function waitForQuiet(
-  state: QuietState,
+export function waitForQuiet<View>(
+  state: QuietState<View>,
   capMs: number = JOIN_QUIET_CAP_MS
 ): Effect.Effect<boolean> {
   return Effect.suspend(() => {
@@ -197,4 +203,28 @@ export function filterJoinQueue(
   }
 
   return { batches, dropped, droppedCount };
+}
+
+/**
+ * What a join window hands its peer once it ends. Only the first captured
+ * batches predate the snapshot and go through filterJoinQueue, a drop logged;
+ * a batch queued after the capture is not in the snapshot and goes out whole.
+ */
+export function drainJoinQueue(
+  queue: QueuedBatch[],
+  captured: number,
+  snapshotVersion: number,
+  path: string
+): QueuedBatch[] {
+  const { batches, dropped, droppedCount } = filterJoinQueue(
+    queue.slice(0, captured),
+    snapshotVersion
+  );
+  if (droppedCount) {
+    warnUnsafe(
+      `dropped ${droppedCount} queued actions joining ${path}: versioned at most ${snapshotVersion}, or unversioned`,
+      dropped
+    );
+  }
+  return [...batches, ...queue.slice(captured)];
 }

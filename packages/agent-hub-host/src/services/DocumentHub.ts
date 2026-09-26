@@ -15,18 +15,15 @@ import {
   Scope,
   Stream,
 } from 'effect';
-import * as vscode from 'vscode';
 
-import { authorizePath, realpathOrSelf } from '@/hub/authz';
-import { affectsHubEnabled, isHubEnabled } from '@/hub/config';
-import { DocumentRegistryService } from '@/hub/documentRegistry';
-import { HubHandlerService } from '@/hub/handlers';
-import { LockFile } from '@/hub/lockFile';
-import { choosePipePath } from '@/hub/pipePath';
-import { serveConnection } from '@/hub/server';
-import { HubEnvironment } from '@/hub/services/HubEnvironment';
-import { HubListener } from '@/hub/services/HubListener';
-import { warnUnsafe } from '@/hub/services/HubLogger';
+import { authorizePath, realpathOrSelf } from '@/authz';
+import { LockFile } from '@/lockFile';
+import { choosePipePath, socketFilePaths } from '@/pipePath';
+import { serveConnection } from '@/server';
+import { HubEnvironment } from '@/services/HubEnvironment';
+import { HubDocuments, HubHandlerService, HubHost } from '@/services/HubHost';
+import { HubListener } from '@/services/HubListener';
+import { warnUnsafe } from '@/services/HubLogger';
 
 export type DocumentHubShape = {
   /**
@@ -37,12 +34,18 @@ export type DocumentHubShape = {
   readonly setDocuments: (documents: string[]) => Promise<void>;
   /** Deletes the lock, then closes the pipe and deletes the socket; idempotent. */
   readonly close: () => Promise<void>;
+  /**
+   * Deletes the lock and the socket files before it returns, for a host whose
+   * process or page goes down without awaiting close; nothing writes the lock
+   * after it. Best effort and idempotent, and close may still follow.
+   */
+  readonly releaseSync: () => void;
 };
 
 export class DocumentHub extends Context.Service<
   DocumentHub,
   DocumentHubShape
->()('vuerd-vscode/hub/DocumentHub') {}
+>()('@dineug/erd-editor-agent-hub-host/DocumentHub') {}
 
 type Serving = {
   scope: Scope.Closeable;
@@ -50,22 +53,21 @@ type Serving = {
   token: string;
 };
 
-const IDE = 'vscode';
-
 /** How long an editor opening waits, once the hub is up, for the lock to list it. */
 const PUBLISH_WAIT = '1 second';
 
 /**
  * Serves this window's documents over a per-window pipe that its lock file
  * advertises. Every state change runs on one queue, so the lock on disk always
- * follows the order of trust, setting, folder and document events.
+ * follows the order of the host's enabled, folder and document events.
  */
 const make = Effect.gen(function* () {
   const env = yield* HubEnvironment;
   const listener = yield* HubListener;
   const lock = yield* LockFile;
   const handler = yield* HubHandlerService;
-  const registry = yield* DocumentRegistryService;
+  const host = yield* HubHost;
+  const documentSource = yield* HubDocuments;
   const fs = yield* FileSystem.FileSystem;
   // Every island below runs on this, so its logs reach the same hub logger the
   // layer installed; a bare runPromise would start from an empty context.
@@ -80,6 +82,8 @@ const make = Effect.gen(function* () {
   let enabled: boolean | null = null;
   let serving: Serving | null = null;
   let closed = false;
+  /** Set by releaseSync: the lock is gone and no write may bring it back. */
+  let released = false;
   let closing: Promise<void> | null = null;
   let queue = Promise.resolve();
   /** Startup and apply tasks queued or running, the ones that may listen. */
@@ -112,7 +116,7 @@ const make = Effect.gen(function* () {
       pipe: serving?.pipe ?? '',
       workspaceFolders: folders,
       documents,
-      ide: IDE,
+      ide: host.ide,
       version: env.version,
       protocolVersion: HUB_PROTOCOL_VERSION,
       token: serving?.token ?? '',
@@ -128,21 +132,28 @@ const make = Effect.gen(function* () {
             Effect.logWarning(`could not write ${lockPath}`, error).pipe(
               Effect.as(false)
             ),
-          onSuccess: () => lock.write(lockRecord()),
+          onSuccess: () =>
+            released
+              ? Effect.succeed(false)
+              : lock.write(lockRecord()).pipe(Effect.map(keepUnlessReleased)),
         })
       )
     );
 
-  const realFolders = (): Promise<string[]> => {
-    const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+  /**
+   * A release that came while the write was on disk ran before its rename
+   * could land, so the lock that rename left is deleted again here.
+   */
+  function keepUnlessReleased(written: boolean): boolean {
+    if (!released) return written;
+    lock.removeSync();
+    return false;
+  }
 
-    return run(
-      Effect.forEach(
-        workspaceFolders.filter(folder => folder.uri.scheme === 'file'),
-        folder => realpathOrSelf(folder.uri.fsPath)
-      )
-    ).then(paths => [...paths]);
-  };
+  const realFolders = (): Promise<string[]> =>
+    run(Effect.forEach(host.folders(), folder => realpathOrSelf(folder))).then(
+      paths => [...paths]
+    );
 
   const serve = (scope: Scope.Closeable, pipe: string, token: string) =>
     Effect.gen(function* () {
@@ -154,7 +165,7 @@ const make = Effect.gen(function* () {
         Stream.runForEach(socket =>
           serveConnection(
             socket,
-            { token, ide: IDE, version: env.version, handler, authorize },
+            { token, ide: host.ide, version: env.version, handler, authorize },
             () => nextConnectionId++
           ).pipe(Effect.scoped, Effect.forkIn(scope))
         ),
@@ -178,7 +189,8 @@ const make = Effect.gen(function* () {
           recursive: true,
           mode: LOCK_DIR_MODE,
         });
-        // Only a dead process with this pid can have left a socket file here.
+        // A dead process with this pid can have left a socket file here, and so
+        // can an earlier hub of this very process, a reload or a re-enable.
         if (env.platform !== 'win32') {
           yield* fs.remove(pipe).pipe(Effect.ignore);
         }
@@ -210,12 +222,12 @@ const make = Effect.gen(function* () {
   }
 
   /**
-   * Moves to the state trust and the setting ask for. Enabling listens before
-   * the lock names the pipe; disabling rewrites the lock before the pipe goes.
-   * A hub that fails to serve falls back to hub false, never to no lock at all.
+   * Moves to the state the host asks for. Enabling listens before the lock
+   * names the pipe; disabling rewrites the lock before the pipe goes. A hub
+   * that fails to serve falls back to hub false, never to no lock at all.
    */
   async function apply(): Promise<void> {
-    const want = isHubEnabled();
+    const want = host.isEnabled();
     if (want === enabled && want === (serving !== null)) return;
 
     enabled = want;
@@ -252,9 +264,9 @@ const make = Effect.gen(function* () {
   }
 
   /**
-   * What the registry publishes through. The write always queues in order; an
-   * editor opening waits for it with no listen ahead and for PUBLISH_WAIT at
-   * most, so neither a hub coming up nor a task stalling the queue holds it.
+   * What the host's documents publish through. The write always queues in
+   * order; an editor opening waits for it with no listen ahead and for
+   * PUBLISH_WAIT at most, so neither a hub coming up nor a stalled task holds it.
    */
   function publish(next: string[]): Promise<void> {
     const written = setDocuments(next);
@@ -276,7 +288,7 @@ const make = Effect.gen(function* () {
   function close(): Promise<void> {
     if (!closing) {
       closed = true;
-      listeners.forEach(listener => listener.dispose());
+      unsubscribe();
       closing = queue.then(async () => {
         const previous = serving;
         serving = null;
@@ -287,13 +299,27 @@ const make = Effect.gen(function* () {
     return closing;
   }
 
-  const listeners = [
-    vscode.workspace.onDidGrantWorkspaceTrust(() => enqueueListen(apply)),
-    vscode.workspace.onDidChangeConfiguration(event => {
-      if (affectsHubEnabled(event)) enqueueListen(apply);
-    }),
-    vscode.workspace.onDidChangeWorkspaceFolders(() => enqueue(updateFolders)),
+  function releaseSync(): void {
+    if (released) return;
+    closed = true;
+    released = true;
+    unsubscribe();
+    lock.removeSync();
+    for (const socket of socketFilePaths(
+      env.homeDir,
+      env.tmpDir,
+      env.pid,
+      env.platform
+    )) {
+      env.removeFileSync(socket);
+    }
+  }
+
+  const subscriptions = [
+    host.onEnabledChange(() => enqueueListen(apply)),
+    host.onFoldersChange(() => void enqueue(updateFolders)),
   ];
+  const unsubscribe = () => subscriptions.splice(0).forEach(end => end());
 
   enqueueListen(async () => {
     await run(lock.cleanStale);
@@ -304,12 +330,12 @@ const make = Effect.gen(function* () {
   // The first publish is not awaited: it queues behind the startup task, and
   // holding the acquire open until that ran would bind the pipe and write a
   // lock even for a window disposed in the same tick.
-  yield* Effect.sync(() => void registry.setPublisher(publish));
+  yield* Effect.sync(() => void documentSource.setPublisher(publish));
 
-  return { setDocuments, close };
+  return { setDocuments, close, releaseSync };
 });
 
-/** The lock and the pipe go with the runtime, in that order, on deactivate. */
+/** The lock and the pipe go with the runtime, in that order, when the host disposes it. */
 export const layer: Layer.Layer<
   DocumentHub,
   never,
@@ -317,7 +343,8 @@ export const layer: Layer.Layer<
   | HubListener
   | LockFile
   | HubHandlerService
-  | DocumentRegistryService
+  | HubHost
+  | HubDocuments
   | FileSystem.FileSystem
 > = Layer.effect(
   DocumentHub,

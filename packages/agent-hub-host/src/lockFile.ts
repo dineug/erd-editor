@@ -8,20 +8,22 @@ import {
 } from '@dineug/erd-editor-agent-hub';
 import { Context, Effect, FileSystem, Layer } from 'effect';
 
-import { socketFilePaths } from '@/hub/pipePath';
-import { HubEnvironment } from '@/hub/services/HubEnvironment';
+import { socketFilePaths } from '@/pipePath';
+import { HubEnvironment } from '@/services/HubEnvironment';
 
 export type LockFileShape = {
   /** Rewrites this window's lock atomically; false when the write failed. */
   readonly write: (record: LockRecord) => Effect.Effect<boolean>;
   /** Deletes this window's lock and its leftover temp file. */
   readonly remove: Effect.Effect<void>;
+  /** Deletes the same two before it returns, for a host going down unawaited; never throws. */
+  readonly removeSync: () => void;
   /** Deletes the lock, temp file and socket of every window whose pid is dead. */
   readonly cleanStale: Effect.Effect<void>;
 };
 
 export class LockFile extends Context.Service<LockFile, LockFileShape>()(
-  'vuerd-vscode/hub/LockFile'
+  '@dineug/erd-editor-agent-hub-host/LockFile'
 ) {}
 
 const tempPath = (lockPath: string): string => `${lockPath}.tmp`;
@@ -78,6 +80,10 @@ export const layer: Layer.Layer<
           )
         ),
       remove: removeLock(fs, lockPath).pipe(Effect.ignore),
+      removeSync: () => {
+        env.removeFileSync(lockPath);
+        env.removeFileSync(tempPath(lockPath));
+      },
       cleanStale: Effect.gen(function* () {
         const locks = yield* readLockDirectory(env.homeDir);
         const others = locks.filter(lock => lock.pid !== env.pid);

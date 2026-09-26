@@ -10,14 +10,14 @@ type Pull = Effect.Effect<
 >;
 
 /**
- * A Socket over node:net, without platform-node's NodeSocket, which re-exports
- * ws at its top level and would ship it in the VSIX. A CloseEvent destroys the
- * connection at once; letting the writer's scope close ends it after the flush.
+ * A Socket over node:net, without platform-node's NodeSocket, whose top level
+ * re-exports ws into every host's bundle. A CloseEvent destroys the connection
+ * at once; letting the writer's scope close ends it after the flush.
  */
 export function fromNetSocket(conn: net.Socket): Socket.Socket {
   // Attached here, where the connection is accepted, rather than with the
   // reader's own: a reset peer emits error right before close, and until some
-  // listener is on it that error throws in the extension host.
+  // listener is on it that error throws in the host.
   conn.on('error', () => undefined);
 
   const reader: Socket.Socket['reader'] = Effect.gen(function* () {

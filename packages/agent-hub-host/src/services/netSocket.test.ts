@@ -7,7 +7,7 @@ import { Effect } from 'effect';
 import { Socket } from 'effect/unstable/socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { fromNetSocket } from '@/hub/services/netSocket';
+import { fromNetSocket } from '@/services/netSocket';
 
 let dir: string;
 let server: net.Server;

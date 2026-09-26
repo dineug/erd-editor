@@ -8,7 +8,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { layer, warnUnsafe } from '@/hub/services/HubLogger';
+import { layer, warnUnsafe } from '@/services/HubLogger';
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
