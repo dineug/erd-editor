@@ -113,7 +113,12 @@ class WebviewPanel(
                 // Only enqueued here, in the order CEF delivers the queries: the bridge's consumer
                 // parses, so nothing can throw across this native upcall and a save carrying the
                 // whole document never holds up the CEF thread.
-                return request != null && bridge.offer(request)
+                if (request == null || !bridge.offer(request)) return false
+
+                // The page ignores the answer, but the router keeps a query it took pending, in the
+                // browser and in the renderer, until it is answered or the page goes away.
+                callback?.success("")
+                return true
             }
         }.also { routerHandler ->
             messageRouter.addHandler(routerHandler, true)
