@@ -4,6 +4,42 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-28
+
+### Added
+
+- Let a coding agent edit your diagrams. Claude Code, Codex or any other MCP client joins the
+  editor through the `@dineug/erd-editor-mcp` MCP server like a collaborator: each change shows up
+  on the canvas as it happens and is saved as your own edits are, and the agent's undo reverts only
+  its own edits. See Coding agents in the plugin description to set it up.
+- An agent edits only the diagrams of trusted projects, and the new Settings | Tools | ERD Editor →
+  Coding agents setting turns it off for the whole IDE. An agent can then still read the diagrams
+  from disk, but never writes one behind the editor.
+- Pick the appearance, gray color and accent color under Settings | Tools | ERD Editor too.
+- Reset the zoom to 100% by clicking the percentage on the bottom toolbar, on the ERD canvas and
+  the Visualization tab.
+- `.vuerd` and `.vuerd.json` files open in the ERD Editor too.
+
+### Changed
+
+- The appearance now defaults to Auto, which follows the IDE's light or dark theme. To keep the
+  editor dark under a light IDE theme, pick Dark again.
+- The file icon is redrawn in lines, with a variant for dark themes.
+
+### Fixed
+
+- Escape while editing a cell or a memo, or while drawing a relationship, now ends only that edit;
+  the next Escape clears the selection.
+- Right-clicking a table that lies over a relationship line opens the table's menu.
+- After a table is dragged in one editor, the other editors of the same diagram show where it
+  ended up at once, and they receive every change in the order it was made.
+- In a 2025.2 IDE, opening a second diagram no longer leaves its tab empty.
+- Diagrams over 20 million characters are saved again; every save of one was dropped.
+- ERD files open in the ERD Editor whatever the letter case of their extension, such as
+  `SCHEMA.ERD`.
+- Editing no longer leaves an unanswered browser query behind for every change, which added up
+  over a long session.
+
 ## [0.8.0] - 2026-09-19
 
 ### Added

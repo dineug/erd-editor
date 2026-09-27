@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.1] - 2026-09-28
+
+### Fixed
+
+- Escape while editing a cell or a memo, or while drawing a relationship, now ends only that edit;
+  the next Escape clears the selection.
+- Right-clicking a table that lies over a relationship line opens the table's menu.
+- In a folder opened through a symlink, a junction or a mapped drive, a coding agent now edits the
+  diagram in the tab you already have open, instead of opening a second one whose save could undo
+  its edits.
+- On Windows, a VS Code window running as administrator is no longer taken for closed, so an agent
+  no longer edits its diagrams on disk behind the open editor.
+- On Windows, a diagram you just opened no longer stays hidden from agents now and then.
+- On Windows, an agent asks you to rename a diagram whose name Windows cannot store as written,
+  such as `orders:v2.erd` or `NUL.erd`, instead of writing a file other programs read differently.
+
 ## [3.0.0] - 2026-09-24
 
 ### Added
