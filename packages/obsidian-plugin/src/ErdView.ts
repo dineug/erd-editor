@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+
 import type { ErdEditorElement } from '@dineug/erd-editor';
 import { createReplicationStoreWorker } from '@dineug/erd-editor-replication-store-worker';
 import {
@@ -7,8 +9,10 @@ import {
   webviewReplicationCommand,
 } from '@dineug/erd-editor-webview-bridge';
 import {
+  FileSystemAdapter,
   Notice,
   Scope,
+  type Tasks,
   TextFileView,
   type TFile,
   type WorkspaceLeaf,
@@ -20,6 +24,8 @@ import { type ScopeKey } from '@/keys';
 import { type ResolvedTheme, type ThemeHost } from '@/settings';
 import {
   currentValue,
+  type ExitSave,
+  exitSave,
   hasUnsavedValue,
   seedValue,
   type TabSaveState,
@@ -41,7 +47,11 @@ type SharedStore = ReturnType<ErdEditorElement['getSharedStore']>;
 type Actions = Parameters<Parameters<SharedStore['subscribe']>[0]>[0];
 
 /** The core TextFileView fields a save reads and sets; not in the public types. */
-type SaveState = { lastSavedData: string | null; saving: boolean };
+type SaveState = {
+  lastSavedData: string | null;
+  saving: boolean;
+  dirty: boolean;
+};
 
 /** How often, and how long at most, saveDocument waits out a save already under way. */
 const SAVING_POLL_MS = 50;
@@ -141,13 +151,6 @@ export class ErdView extends TextFileView implements HubTab {
     editor.addEventListener('changePresetTheme', this.handlePickedTheme);
     this.applyTheme(this.theme.current());
 
-    // Quitting does not wait out the 2 s save, so a value not yet written goes
-    // as a quit task. Only then: any task turns a reload into closing the window.
-    this.registerEvent(
-      this.app.workspace.on('quit', tasks => {
-        if (this.hasUnsavedValue()) tasks.add(() => this.save());
-      })
-    );
     this.registerEvent(
       this.app.workspace.on('active-leaf-change', leaf => {
         if (leaf === this.leaf) this.registry.setActive(this);
@@ -264,6 +267,17 @@ export class ErdView extends TextFileView implements HubTab {
     return this.saveState().lastSavedData;
   }
 
+  /**
+   * For the quit event and the page hiding, which the plugin handles for every
+   * tab: the unsaved value is on disk before it returns. Only a write already
+   * under way goes on as a quit task, which waits it out and writes again.
+   */
+  saveBeforeExit(tasks?: Tasks): void {
+    if (this.writeBeforeExit() === 'defer') {
+      tasks?.add(() => this.saveDocument());
+    }
+  }
+
   /** The theme every open diagram shows; one the tab's own builder picked is on screen already. */
   applyTheme(theme: ResolvedTheme): void {
     this.editor?.setPresetTheme(theme);
@@ -280,6 +294,41 @@ export class ErdView extends TextFileView implements HubTab {
   /** What a save would write and the file does not hold yet; only the writer writes. */
   private hasUnsavedValue(): boolean {
     return hasUnsavedValue(this.tabState());
+  }
+
+  /**
+   * Writes in place, as the adapter does, and sets what the core save sets, so
+   * no later save writes the value again. The vault hears nothing of it; the
+   * page is going, and its watcher's modify finds the value already saved.
+   */
+  private writeBeforeExit(): ExitSave {
+    const { file } = this;
+    const { adapter } = this.app.vault;
+    if (!file || !(adapter instanceof FileSystemAdapter)) {
+      return this.hasUnsavedValue() ? 'defer' : 'none';
+    }
+    const path = adapter.getFullPath(file.path);
+    const state = this.saveState();
+    const outcome = exitSave(this.tabState(), state.saving, () => {
+      try {
+        return readFileSync(path, 'utf8');
+      } catch {
+        return null;
+      }
+    });
+    if (outcome !== 'write') return outcome;
+
+    const value = this.getViewData();
+    try {
+      writeFileSync(path, value, 'utf8');
+    } catch (error) {
+      console.error(error);
+      return 'defer';
+    }
+    this.data = value;
+    state.lastSavedData = value;
+    state.dirty = false;
+    return 'write';
   }
 
   private tabState(): TabSaveState {

@@ -20,6 +20,7 @@ import {
   PluginSettingTab,
   removeIcon,
   Setting,
+  type Tasks,
   TFile,
   TFolder,
   WorkspaceLeaf,
@@ -175,6 +176,19 @@ export default class ErdEditorPlugin extends Plugin {
         if (this.settings.appearance === 'auto') this.applyTheme();
       })
     );
+    // Windows unloads the page within milliseconds of a quit, quit tasks or
+    // not, and a 1.13 reload fires no quit, so each tab writes before these
+    // return, and before the lock goes, which would send an agent to the file.
+    this.registerEvent(
+      workspace.on('quit', tasks => {
+        this.saveBeforeExit(tasks);
+        this.hub?.releaseSync();
+      })
+    );
+    this.registerDomEvent(window, 'pagehide', () => {
+      this.saveBeforeExit();
+      this.hub?.releaseSync();
+    });
 
     this.settings = readSettings(await this.loadData());
     // A plugin turned off while its settings loaded starts no hub.
@@ -225,6 +239,13 @@ export default class ErdEditorPlugin extends Plugin {
     }
   }
 
+  /** Writes what every ERD tab of this vault has not saved yet, those in popout windows too. */
+  private saveBeforeExit(tasks?: Tasks): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_ERD)) {
+      if (leaf.view instanceof ErdView) leaf.view.saveBeforeExit(tasks);
+    }
+  }
+
   /**
    * One hub per vault window, keyed by the renderer's pid. A window closing,
    * reloading or quitting never runs onunload; the quit event and the page
@@ -260,9 +281,6 @@ export default class ErdEditorPlugin extends Plugin {
       })
     );
     this.hub = hub;
-    this.registerEvent(this.app.workspace.on('quit', () => hub.releaseSync()));
-    // Newer Obsidian fires quit only when the window closes, not on a reload.
-    this.registerDomEvent(window, 'pagehide', () => hub.releaseSync());
     void hub.start();
   }
 

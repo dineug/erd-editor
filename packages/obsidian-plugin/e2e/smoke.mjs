@@ -1848,10 +1848,14 @@ try {
     JSON.stringify({ readNotes: backRead.notes, write: backAdded.text })
   );
 
-  // A reload with a clean ERD tab open. Obsidian 1.12 closes the window
-  // instead when a quit task is queued, which a tab adds only while it holds
-  // an unsaved value; 1.13 fires no quit on a reload, only pagehide.
+  // A reload within the 2 s autosave of an edit. 1.13 fires no quit on a
+  // reload, only pagehide, and 1.12 turns a reload with a quit task queued into
+  // a close: the tab writes the edit before either event returns, and queues none.
   await sleep(AUTOSAVE_MS + 500);
+  const diskBeforeEdit = tableCount('agent.erd');
+  await pressAddTableIn(page, 'agent.erd');
+  await sleep(400);
+  const diskBeforeReload = tableCount('agent.erd');
   const beforeReload = await page.evaluate(() => {
     window.__smokeMarker = true;
     return window.app.workspace
@@ -1859,6 +1863,9 @@ try {
       .map(leaf => ({
         path: leaf.view.file?.path,
         unsaved: leaf.view.hasUnsavedValue?.(),
+        tables: JSON.parse(
+          leaf.view.contentEl.querySelector('erd-editor').value
+        ).doc.tableIds.length,
       }));
   });
   const tokenBeforeReload = readLock(rendererPid)?.token;
@@ -1880,14 +1887,23 @@ try {
       : null;
   }, 15_000);
   const reloadEvents = lockEvents.slice(eventsBeforeReload);
+  const editedTab = beforeReload.find(tab => tab.path === 'agent.erd');
   step(
-    'app:reload with an ERD tab open reloads the window, same pid, a fresh page',
+    'app:reload with an unsaved edit in an ERD tab reloads the window, same pid, a fresh page',
     alive() &&
-      beforeReload.some(tab => tab.path === 'agent.erd') &&
-      beforeReload.every(tab => !tab.unsaved) &&
+      editedTab?.unsaved === true &&
       afterReload.pid === rendererPid &&
       afterReload.marker === null,
     JSON.stringify({ beforeReload, afterReload })
+  );
+  const diskAfterReload = tableCount('agent.erd');
+  step(
+    'a reload before the timed save keeps the edit and stays a reload',
+    afterReload.pid === rendererPid &&
+      editedTab?.tables === diskBeforeEdit + 1 &&
+      diskBeforeReload === diskBeforeEdit &&
+      diskAfterReload === editedTab.tables,
+    JSON.stringify({ diskBeforeEdit, diskBeforeReload, diskAfterReload })
   );
   step(
     'the reload let the lock go before the new hub wrote its own under the same pid',
@@ -1912,31 +1928,89 @@ try {
   step('no page errors', errors.length === 0, errors.join(' | '));
 
   if (!KEEP) {
-    // Quitting does not wait out the 2 s save: the tab's quit task writes the
-    // replica's last value. Last, since it ends the app.
+    // Quitting does not wait out the 2 s save, and on Windows the page unloads
+    // within milliseconds whatever quit tasks hold it: every tab writes the
+    // replica's last value inside the quit event. Last, since it ends the app.
     const quitPipe = readLock(rendererPid)?.pipe;
-    await page.evaluate(async () => {
-      const file = await window.app.vault.create('quit.erd', '');
-      await window.app.workspace.getLeaf('tab').openFile(file);
-    });
+    const quitFiles = ['quit.erd', 'quit-2.erd'];
+    for (const path of quitFiles) {
+      await page.evaluate(async path => {
+        const file = await window.app.vault.create(path, '');
+        await window.app.workspace.getLeaf('tab').openFile(file);
+      }, path);
+    }
     await sleep(1_200);
-    await pressAddTable(page);
+    // A quit listener added after the plugin's runs after it, still inside
+    // the event, and notes what each file holds by then.
+    const probe = join(work, 'quit-probe.json');
+    await page.evaluate(
+      ({ probe, paths }) => {
+        const fs = window.require('node:fs');
+        const { vault, workspace } = window.app;
+        workspace.on('quit', () => {
+          const tables = paths.map(path => {
+            try {
+              const full = vault.adapter.getFullPath(path);
+              const text = fs.readFileSync(full, 'utf8');
+              return text ? JSON.parse(text).doc.tableIds.length : 0;
+            } catch {
+              return null;
+            }
+          });
+          fs.appendFileSync(probe, `${JSON.stringify(tables)}\n`);
+        });
+      },
+      { probe, paths: quitFiles }
+    );
     const editedAt = Date.now();
+    for (const path of quitFiles) await pressAddTableIn(page, path);
     await sleep(400);
+    const beforeQuit = await page.evaluate(
+      paths =>
+        paths.map(path =>
+          window.app.workspace
+            .getLeavesOfType('erd-editor')
+            .some(
+              leaf =>
+                leaf.view.file?.path === path && leaf.view.hasUnsavedValue()
+            )
+        ),
+      quitFiles
+    );
+    const diskBeforeQuit = quitFiles.map(tableCount);
     await page.evaluate(() => {
       setTimeout(() => window.require('@electron/remote').app.quit(), 100);
     });
-    // Obsidian holds the window with beforeunload while it quits, and a
-    // connected Playwright would answer that dialog and throw.
+    // Obsidian holds the window with beforeunload while a quit task runs, and
+    // a connected Playwright would answer that dialog and throw.
     await detach();
     const closed = await waitFor(vaultWindowGone, 10_000, 100);
-    // Gone before the 2 s save could run, the window leaves the quit task as
-    // the only way the edit reached the file.
+    // Gone before either 2 s save could run, the window leaves the quit event
+    // as the only way the edits reached the files.
     const closedAfter = Date.now() - editedAt;
+    const inQuit = existsSync(probe)
+      ? readFileSync(probe, 'utf8')
+          .trim()
+          .split('\n')
+          .map(line => JSON.parse(line))
+      : [];
+    const afterQuit = quitFiles.map(tableCount);
     step(
-      'quitting before the timed save keeps the edit',
-      Boolean(closed) && closedAfter < 2_000 && tableCount('quit.erd') === 1,
-      JSON.stringify({ closedAfter })
+      "quitting before the timed save keeps every tab's edit, on disk before the quit event returns",
+      Boolean(closed) &&
+        closedAfter < 2_000 &&
+        beforeQuit.every(Boolean) &&
+        diskBeforeQuit.every(tables => tables === 0) &&
+        inQuit.length === 1 &&
+        inQuit[0].every(tables => tables === 1) &&
+        afterQuit.every(tables => tables === 1),
+      JSON.stringify({
+        closedAfter,
+        beforeQuit,
+        diskBeforeQuit,
+        inQuit,
+        afterQuit,
+      })
     );
     const gone = await waitFor(
       async () => !existsSync(lockPath(rendererPid)) && pipeGone(quitPipe),
