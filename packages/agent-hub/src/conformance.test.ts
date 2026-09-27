@@ -32,6 +32,7 @@ import {
   isSamePath,
   longestPrefixIndex,
   toSegments,
+  unsafeSegment,
 } from '@/paths';
 import {
   HUB_PROTOCOL_VERSION,
@@ -121,6 +122,11 @@ type WireCorpus = {
       target: string;
       platform: string;
       error: Refusal | null;
+    }>;
+    unsafeSegment: Array<{
+      path: string;
+      platform: string;
+      segment: string | null;
     }>;
   };
   ideDisplayName: Array<{ ide: string; name: string }>;
@@ -392,6 +398,13 @@ describe('paths', () => {
       );
 
       expect(outcome).toEqual(error);
+    }
+  );
+
+  it.each(paths.unsafeSegment)(
+    'finds $segment unsafe in $path on $platform',
+    ({ path, platform, segment }) => {
+      expect(unsafeSegment(path, platform)).toBe(segment);
     }
   );
 });

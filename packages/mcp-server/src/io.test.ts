@@ -59,7 +59,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-const node = Layer.mergeAll(NodeFs.layer, NodePath.layer);
+const node = Layer.mergeAll(NodeFs.layer, NodePath.layer, Process.layer);
 const onNode = <A, E>(
   effect: Effect.Effect<A, E, Layer.Success<typeof node>>
 ) => Effect.runPromise(Effect.provide(effect, node));
@@ -257,6 +257,27 @@ describe('the node file system, as the sessions read its failures', () => {
 
   it('lists nothing under a folder it cannot read', async () => {
     expect(await onNode(listDiskDocuments(join(dir, 'none')))).toEqual([]);
+  });
+
+  it('leaves out on Windows the names Node wrote there as given, which Win32 callers read otherwise', async () => {
+    await writeFile(join(dir, 'a.erd.json'), '{}');
+    await writeFile(join(dir, 'con .erd.json'), '{}');
+    await writeFile(join(dir, 'NUL.erd'), '{}');
+    await mkdir(join(dir, 'sub.'));
+    await writeFile(join(dir, 'sub.', 'x.erd'), '{}');
+
+    const listed = await onNode(listDiskDocuments(dir));
+
+    expect(listed.map(({ path }) => path)).toEqual(
+      process.platform === 'win32'
+        ? [join(dir, 'a.erd.json')]
+        : [
+            join(dir, 'a.erd.json'),
+            join(dir, 'con .erd.json'),
+            join(dir, 'NUL.erd'),
+            join(dir, 'sub.', 'x.erd'),
+          ]
+    );
   });
 });
 

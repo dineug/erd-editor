@@ -21,7 +21,7 @@ import {
   runMemory,
   startMemoryHub,
 } from '@/__test-utils__/hubLayers';
-import { realpathOrSelf, resolveRealPath } from '@/authz';
+import { authorizePath, realpathOrSelf, resolveRealPath } from '@/authz';
 
 const LOCK = '/home/user/.erd-editor/ide/4242.json';
 
@@ -69,6 +69,28 @@ describe('resolveRealPath', () => {
     expect(io.fs.realPath).toHaveBeenCalledTimes(1);
     expect(io.env.lstat).not.toHaveBeenCalled();
   });
+});
+
+describe('authorizePath', () => {
+  it.each(['C:\\ws\\COM1.erd', 'C:\\ws\\a:b.erd', 'C:\\ws\\sub.\\a.erd'])(
+    'refuses %s on win32 before it asks the file system anything',
+    async target => {
+      const io = createMemoryHub({ platform: 'win32' });
+
+      const refusal = await runMemory(
+        io,
+        authorizePath(
+          'win32',
+          { folders: ['C:\\ws'], documents: [] },
+          target
+        ).pipe(Effect.flip)
+      );
+
+      expect(refusal.code).toBe(HubErrorCode.badRequest);
+      expect(io.fs.realPath).not.toHaveBeenCalled();
+      expect(io.env.lstat).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('realpathOrSelf', () => {

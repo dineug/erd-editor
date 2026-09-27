@@ -40,6 +40,45 @@ export function toSegments(fsPath: string, platform: Platform): string[] {
   return [root, ...rest.filter(segment => segment !== '' && segment !== '.')];
 }
 
+/** What Win32 refuses in a name, beside every character below U+0020. */
+const REFUSED_CHARACTERS = '<>:"|?*';
+
+/** A device name; without the u flag, i folds ASCII letters only. */
+const DEVICE =
+  /^(?:con|prn|aux|nul|com[0-9\u00b9\u00b2\u00b3]|lpt[0-9\u00b9\u00b2\u00b3])$/i;
+
+function isUnsafeName(name: string): boolean {
+  return (
+    [...name].some(char => char < ' ' || REFUSED_CHARACTERS.includes(char)) ||
+    name.endsWith('.') ||
+    name.endsWith(' ') ||
+    DEVICE.test(name.split('.')[0].replace(/ +$/, ''))
+  );
+}
+
+/**
+ * On win32, the first name in fsPath that Windows does not store as written:
+ * one holding a colon or another refused character, ending in a dot or space,
+ * or a device such as NUL.erd. Null elsewhere; .. and a \\?\ drive pass.
+ */
+export function unsafeSegment(
+  fsPath: string,
+  platform: Platform
+): string | null {
+  if (platform !== 'win32') return null;
+
+  const segments = toSegments(fsPath, platform);
+  let names =
+    segments.length > 0 && isRoot(segments[0], platform)
+      ? segments.slice(1)
+      : segments;
+  if (segments[0] === '//') {
+    if (names[0] === '?') names = names.slice(1);
+    if (names.length > 0 && DRIVE.test(names[0])) names = names.slice(1);
+  }
+  return names.find(name => name !== '..' && isUnsafeName(name)) ?? null;
+}
+
 /** Segments ready for comparison, or null for a path that must match nothing. */
 function comparable(fsPath: string, platform: Platform): string[] | null {
   const segments = toSegments(fsPath, platform);

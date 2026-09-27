@@ -76,6 +76,38 @@ describe('erd_list_documents (AC-M6)', () => {
     });
   });
 
+  it.each([
+    ['win32', ['/work/a.erd.json']],
+    [
+      'linux',
+      [
+        '/work/a.erd.json',
+        '/work/NUL.erd',
+        '/work/orders:v2.erd',
+        '/work/sub./x.erd',
+      ],
+    ],
+  ])(
+    'leaves out on %s every name a call there refuses',
+    async (platform, paths) => {
+      const host = createMemoryHost({ platform });
+      const names = ['a.erd.json', 'NUL.erd', 'orders:v2.erd', 'sub./x.erd'];
+      for (const name of names) host.put(`/work/${name}`, emptyDocument());
+      const harness = await connectMcp({ host });
+
+      try {
+        const listed = await harness.ok('erd_list_documents');
+
+        expect(listed).toEqual({
+          mode: 'headless',
+          documents: paths.map(closed),
+        });
+      } finally {
+        await harness.close();
+      }
+    }
+  );
+
   it('stops at its depth and count limits', async () => {
     const deep = `/work/${Array.from({ length: MAX_LIST_DEPTH + 1 }, (_, i) => `d${i}`).join('/')}`;
     io.put(`${deep}/too-deep.erd.json`, '{}');

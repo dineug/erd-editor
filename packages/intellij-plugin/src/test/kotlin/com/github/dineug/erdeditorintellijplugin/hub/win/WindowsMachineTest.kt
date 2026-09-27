@@ -1,7 +1,12 @@
 package com.github.dineug.erdeditorintellijplugin.hub.win
 
+import com.github.dineug.erdeditorintellijplugin.hub.AuthScope
+import com.github.dineug.erdeditorintellijplugin.hub.Authz
 import com.github.dineug.erdeditorintellijplugin.hub.HUB_PROTOCOL_VERSION
+import com.github.dineug.erdeditorintellijplugin.hub.HubErrorCode
 import com.github.dineug.erdeditorintellijplugin.hub.HubPlatform
+import com.github.dineug.erdeditorintellijplugin.hub.HubRequestError
+import com.github.dineug.erdeditorintellijplugin.hub.HubTexts
 import com.github.dineug.erdeditorintellijplugin.hub.HubTimings
 import com.github.dineug.erdeditorintellijplugin.hub.LockFile
 import com.github.dineug.erdeditorintellijplugin.hub.LockPaths
@@ -9,15 +14,21 @@ import com.github.dineug.erdeditorintellijplugin.hub.LockRecord
 import com.github.dineug.erdeditorintellijplugin.hub.MachineEnvironment
 import com.github.dineug.erdeditorintellijplugin.hub.NioFileSystem
 import com.github.dineug.erdeditorintellijplugin.hub.ProcessQuery
+import com.github.dineug.erdeditorintellijplugin.hub.RealPathResult
 import com.github.dineug.erdeditorintellijplugin.hub.serializeLock
 import com.github.dineug.erdeditorintellijplugin.hub.testing.RecordingLog
 import com.github.dineug.erdeditorintellijplugin.hub.win.testing.Integrity
 import com.github.dineug.erdeditorintellijplugin.hub.win.testing.RestrictedToken
+import com.sun.jna.platform.win32.Kernel32
+import com.sun.jna.platform.win32.WinBase
+import com.sun.jna.platform.win32.WinNT
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
@@ -35,7 +46,7 @@ import kotlin.concurrent.thread
  * as CI's test-windows job demands. Liveness asks WindowsProcess as this process and, on the test
  * thread, under restricted copies of its token (RestrictedToken): the integrity levels and accounts
  * an IDE meets, where ProcessHandle, the rule before, found no process. The lock write meets the
- * real refusal of a move over a lock another handle holds open.
+ * real refusal of a move over a lock another handle holds open, and authorization a real stream.
  */
 class WindowsMachineTest {
     private val own = ProcessHandle.current().pid()
@@ -123,6 +134,33 @@ class WindowsMachineTest {
             assertEquals(listOf("could not write ${lock.lockPath}"), log.texts)
             val refusal = log.lines.single().second
             assertTrue(refusal.toString(), refusal is AccessDeniedException)
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `refuses a stream of an existing file, which the native realpath resolves, before it looks the path up`() {
+        val dir = Files.createTempDirectory("hub-authz-").toRealPath()
+        try {
+            val env = MachineEnvironment(dir.resolve("home").toString(), dir.toString(), HubPlatform.WIN32, 4242, "0.0.0-test")
+            val ws = Files.createDirectory(dir.resolve("ws")).toString()
+            Files.writeString(Path.of(ws, "notes.txt"), "notes")
+            val stream = "$ws\\notes.txt:x.erd"
+            // The JDK refuses a colon in a name, so the stream is made through CreateFileW, as Node makes one.
+            val handle = Kernel32.INSTANCE.CreateFile(
+                stream, WinNT.GENERIC_WRITE, 0, null, WinNT.CREATE_NEW, WinNT.FILE_ATTRIBUTE_NORMAL, null,
+            )
+            assertNotEquals("CreateFileW failed with ${Kernel32.INSTANCE.GetLastError()}", WinBase.INVALID_HANDLE_VALUE, handle)
+            Kernel32.INSTANCE.CloseHandle(handle)
+            assertTrue(env.realPath(stream).toString(), env.realPath(stream) is RealPathResult.Ok)
+
+            val refusal = assertThrows(HubRequestError::class.java) {
+                Authz(env).authorizePath(AuthScope(listOf(ws), emptyList()), stream)
+            }
+
+            assertEquals(HubErrorCode.BAD_REQUEST, refusal.code)
+            assertEquals(HubTexts.unsafeName(stream, "notes.txt:x.erd"), refusal.message)
         } finally {
             dir.toFile().deleteRecursively()
         }

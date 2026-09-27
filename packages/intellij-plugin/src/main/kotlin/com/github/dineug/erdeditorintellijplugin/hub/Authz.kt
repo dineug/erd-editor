@@ -10,7 +10,7 @@ data class AuthScope(val folders: List<String>, val documents: List<String>) {
 /**
  * Path authorization over the machine's native realpath, as packages/agent-hub-host's authz.ts:
  * a peer's path counts under its real spelling, so a symlink never leads a write out of the
- * workspace. Nothing here throws on a bad path; it answers null or the outsideWorkspace refusal.
+ * workspace. Nothing here throws on a bad path but a refusal: null, or badRequest or outsideWorkspace.
  */
 class Authz(private val env: HubEnvironment) {
     /**
@@ -41,12 +41,24 @@ class Authz(private val env: HubEnvironment) {
     /** The native realpath, or the path unchanged on any failure: how the lock lists folders and documents. */
     fun realpathOrSelf(path: String): String = (realPathOf(path) as? RealPathResult.Ok)?.path ?: path
 
-    /** Returns the real path, or throws HubRequestError(OUTSIDE_WORKSPACE, noRealPath/outsideWorkspace). */
+    /**
+     * Returns the real path, or throws HubRequestError: BAD_REQUEST unsafeName for a name Windows
+     * does not store as written, checked before the climb opens anything, so WindowsRealPath never
+     * meets a device or a stream, and again on the real path; else OUTSIDE_WORKSPACE noRealPath or
+     * outsideWorkspace.
+     */
     fun authorizePath(scope: AuthScope, target: String): String {
+        refuseUnsafeName(target)
         val real = resolveRealPath(target)
             ?: throw HubRequestError(HubErrorCode.OUTSIDE_WORKSPACE, HubTexts.noRealPath(target))
+        refuseUnsafeName(real)
         HubPaths.authorize(scope.folders, scope.documents, real, env.platform)
         return real
+    }
+
+    private fun refuseUnsafeName(path: String) {
+        val segment = HubPaths.unsafeSegment(path, env.platform) ?: return
+        throw HubRequestError(HubErrorCode.BAD_REQUEST, HubTexts.unsafeName(path, segment))
     }
 
     private fun realPathOf(path: String): RealPathResult = try {

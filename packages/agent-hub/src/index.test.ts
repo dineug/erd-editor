@@ -55,6 +55,7 @@ describe('public api surface', () => {
         'selectHub',
         'serializeLock',
         'toSegments',
+        'unsafeSegment',
       ].sort()
     );
   });

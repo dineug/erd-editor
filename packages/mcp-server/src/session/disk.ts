@@ -1,5 +1,5 @@
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
-import type { DocumentInfo } from '@dineug/erd-editor-agent-hub';
+import { type DocumentInfo, unsafeSegment } from '@dineug/erd-editor-agent-hub';
 import { Effect, FileSystem, Path } from 'effect';
 
 import {
@@ -8,6 +8,7 @@ import {
   SessionError,
   SessionErrorCode,
 } from '@/errors';
+import { ProcessInfo } from '@/io/process';
 import { isErdPath } from '@/paths';
 import type { DocumentReader } from '@/tools/read';
 
@@ -130,14 +131,15 @@ export const readFromDisk = Effect.fn('readFromDisk')(function* (
 
 /**
  * ERD files under root, none of them open: what a listing shows with no hub
- * to ask. An entry is looked at only when its name could be walked or listed;
- * a symlink is never walked, as a directory entry of its own kind.
+ * to ask. An entry is looked at only when its name could be walked or listed,
+ * and one Windows alters never is; a symlink is never walked.
  */
 export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
   root: string
 ) {
   const fs = yield* FileSystem.FileSystem;
   const paths = yield* Path.Path;
+  const { platform } = yield* ProcessInfo;
   const documents: DocumentInfo[] = [];
 
   const isDirectory = (path: string) =>
@@ -166,6 +168,8 @@ export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
           !name.startsWith('.') &&
           !SKIPPED_DIRECTORIES.has(name);
         if (!walkable && !isErdPath(name)) continue;
+        // Every call on such a name is refused, so the listing never offers it.
+        if (unsafeSegment(name, platform) !== null) continue;
 
         const path = paths.join(dir, name);
         if (yield* isDirectory(path)) {

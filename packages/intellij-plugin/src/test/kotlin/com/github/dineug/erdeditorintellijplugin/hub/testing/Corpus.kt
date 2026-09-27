@@ -180,6 +180,11 @@ class PathsCorpus(node: JsonNode) {
         )
     }
 
+    /** segment is the first name of path Windows does not store as written, or null. */
+    val unsafeSegment: List<UnsafeSegmentCase> = node.req("unsafeSegment").map {
+        UnsafeSegmentCase(it.req("path").str(), it.req("platform").platform(), it.req("segment").strOrNull())
+    }
+
     data class SegmentsCase(val path: String, val platform: HubPlatform, val segments: List<String>)
     data class InsideCase(val parent: String, val child: String, val platform: HubPlatform, val result: Boolean)
     data class SamePathCase(val a: String, val b: String, val platform: HubPlatform, val result: Boolean)
@@ -194,6 +199,7 @@ class PathsCorpus(node: JsonNode) {
         val folders: List<String>, val documents: List<String>, val target: String,
         val platform: HubPlatform, val error: CorpusRefusal?,
     )
+    data class UnsafeSegmentCase(val path: String, val platform: HubPlatform, val segment: String?)
 }
 
 class HostCorpus(val root: JsonNode) {

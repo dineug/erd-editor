@@ -71,4 +71,9 @@ object HubTexts {
 
     fun outsideWorkspace(real: String): String =
         "$real is neither inside a workspace folder nor an open document"
+
+    /** segment is HubPaths.unsafeSegment of path, quoted as JSON.stringify quotes it. */
+    fun unsafeName(path: String, segment: String): String =
+        "$path holds ${HubJson.quote(segment)}, which Windows does not store as written: a colon names a stream " +
+            "of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped"
 }

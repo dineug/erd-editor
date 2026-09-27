@@ -81,6 +81,17 @@ class HubPathsTest {
     }
 
     @Test
+    fun `finds the first name Windows does not store as written, on win32 only`() {
+        for (case in paths.unsafeSegment) {
+            assertEquals(
+                "${case.path} on ${case.platform}",
+                case.segment,
+                HubPaths.unsafeSegment(case.path, case.platform),
+            )
+        }
+    }
+
+    @Test
     fun `takes only an ASCII letter and a colon for a drive`() {
         assertEquals(listOf("1:", "a"), HubPaths.toSegments("1:\\a", HubPlatform.WIN32))
         assertFalse(HubPaths.isInside("1:\\a", "1:\\a\\b", HubPlatform.WIN32))

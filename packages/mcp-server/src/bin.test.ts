@@ -4,6 +4,7 @@ import {
   copyFile,
   mkdir,
   mkdtemp,
+  readdir,
   realpath,
   rm,
   writeFile,
@@ -60,10 +61,14 @@ function leadingImports(source: string): string[] {
  */
 function exchange(
   file: string,
-  messages: object[]
+  messages: object[],
+  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
 ): Promise<{ lines: any[]; code: number | null }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [file], { cwd: tmpdir() });
+    const child = spawn(process.execPath, [file], {
+      cwd: tmpdir(),
+      ...options,
+    });
     let stdout = '';
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', chunk => {
@@ -162,6 +167,55 @@ describe('the built single file (AC-M9, AC-P7)', () => {
     expect(lines.every(line => line.jsonrpc === '2.0')).toBe(true);
     expect(code).toBe(0);
     await rm(dir, { recursive: true, force: true });
+  }, 20_000);
+
+  it('refuses on Windows a new document named with a colon, which Node would write as a stream of another file, and creates it elsewhere', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'erd-mcp-home-'));
+    const cwd = await mkdtemp(join(tmpdir(), 'erd-mcp-cwd-'));
+
+    try {
+      const { lines } = await exchange(
+        bin,
+        [
+          {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: '2025-06-18',
+              capabilities: {},
+              clientInfo: { name: 'bin-test', version: '1.0.0' },
+            },
+          },
+          { jsonrpc: '2.0', method: 'notifications/initialized' },
+          {
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/call',
+            params: {
+              name: 'erd_open_document',
+              arguments: { path: 'orders:v2.erd', create: true },
+            },
+          },
+        ],
+        { cwd, env: { ...process.env, HOME: home, USERPROFILE: home } }
+      );
+      const { result } = lines.find(line => line.id === 2);
+
+      if (process.platform === 'win32') {
+        expect(result.isError).toBe(true);
+        expect(JSON.parse(result.content[0].text).error.code).toBe(
+          'invalidPath'
+        );
+        expect(await readdir(cwd)).toEqual([]);
+      } else {
+        expect(result.isError).toBeFalsy();
+        expect(await readdir(cwd)).toEqual(['orders:v2.erd']);
+      }
+    } finally {
+      await rm(home, { recursive: true, force: true });
+      await rm(cwd, { recursive: true, force: true });
+    }
   }, 20_000);
 });
 

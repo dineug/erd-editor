@@ -41,6 +41,7 @@ export {
   longestPrefixIndex,
   type Platform,
   toSegments,
+  unsafeSegment,
 } from './paths';
 export {
   DocumentInfo,

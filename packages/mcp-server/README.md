@@ -41,6 +41,11 @@ args = ["-y", "@dineug/erd-editor-mcp"]
 Run `npx -y @dineug/erd-editor-mcp` as a stdio server. It resolves relative document paths
 against its working directory, so start it in your project.
 
+On Windows it refuses a document name with a colon, such as `orders:v2.erd`, a device name such
+as `NUL.erd` or `CON.erd`, or a name ending in a dot or a space, and leaves such files out when it
+lists documents from disk: Windows would store another file than the one named. Use `-` in place
+of `:`.
+
 ## Live and headless
 
 For every edit the server looks for an editor that holds the document, a VS Code window with the

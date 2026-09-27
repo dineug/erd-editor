@@ -54,6 +54,22 @@ class AuthzTest {
     }
 
     @Test
+    fun `refuses on win32 a name Windows does not store as written before it opens anything`() {
+        for ((target, segment) in listOf("C:\\ws\\COM1.erd" to "COM1.erd", "C:\\ws\\a:b.erd" to "a:b.erd")) {
+            val machine = CorpusMachine(HubPlatform.WIN32, emptyMap(), listOf(target), emptyList())
+            val scope = AuthScope(listOf("C:\\ws"), emptyList())
+
+            val refusal = assertThrows(target, HubRequestError::class.java) {
+                Authz(machine).authorizePath(scope, target)
+            }
+
+            assertEquals(HubErrorCode.BAD_REQUEST, refusal.code)
+            assertEquals(HubTexts.unsafeName(target, segment), refusal.message)
+            assertEquals(emptyList<String>(), machine.realPathCalls + machine.lstatCalls)
+        }
+    }
+
+    @Test
     fun `asks the file system nothing about a relative path`() {
         val env = FakeEnvironment()
 
@@ -231,8 +247,14 @@ class AuthzTest {
             Authz(machine(root)).authorizePath(AuthScope(listOf(ws), emptyList()), target)
         }
 
-        assertEquals(HubErrorCode.OUTSIDE_WORKSPACE, refusal.code)
-        assertEquals("$target has no real path the hub can check, such as a dangling link", refusal.message)
+        // Windows refuses every character below U+0020 in a name, so the hub does before any lookup.
+        if (HubPlatform.current().isWindows) {
+            assertEquals(HubErrorCode.BAD_REQUEST, refusal.code)
+            assertEquals(HubTexts.unsafeName(target, "a\u0000.erd"), refusal.message)
+        } else {
+            assertEquals(HubErrorCode.OUTSIDE_WORKSPACE, refusal.code)
+            assertEquals("$target has no real path the hub can check, such as a dangling link", refusal.message)
+        }
     }
 
     @Test

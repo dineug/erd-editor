@@ -16,6 +16,11 @@
   it on disk behind the open editor, or keep agents out of the window until the setting was
   toggled. The window now tries the update again, and repairs the file a second later if it still
   fails.
+- On Windows, a coding agent is refused a diagram whose name Windows does not store as written:
+  one with a colon, such as `orders:v2.erd`, which Windows keeps as a hidden part of the file
+  `orders`, a device name such as `NUL.erd`, or a name or folder ending in a dot or a space. Other
+  Windows programs would open another file under such a name than the one the agent edited; the
+  agent is now told to rename it.
 
 ## [3.0.0] - 2026-09-24
 

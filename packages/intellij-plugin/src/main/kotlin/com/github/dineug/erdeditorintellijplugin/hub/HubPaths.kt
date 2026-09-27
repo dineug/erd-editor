@@ -1,5 +1,7 @@
 package com.github.dineug.erdeditorintellijplugin.hub
 
+import java.util.regex.Pattern
+
 /** A Node process.platform, as the peer names its own and the corpus spells it. */
 enum class HubPlatform(val node: String) {
     WIN32("win32"),
@@ -91,6 +93,22 @@ object HubPaths {
         }
     }
 
+    /**
+     * On win32, the first name in path that Windows does not store as written: one holding a colon
+     * or another refused character, ending in a dot or space, or a device such as NUL.erd. Null
+     * elsewhere; ".." and a "\\?\" prefix with its drive are no names.
+     */
+    fun unsafeSegment(path: String, platform: HubPlatform): String? {
+        if (!platform.isWindows) return null
+        val segments = toSegments(path, platform)
+        var names = if (segments.isNotEmpty() && isRoot(segments[0], platform)) segments.drop(1) else segments
+        if (segments.firstOrNull() == "//") {
+            if (names.firstOrNull() == "?") names = names.drop(1)
+            if (names.isNotEmpty() && isDrive(names[0])) names = names.drop(1)
+        }
+        return names.firstOrNull { it != ".." && isUnsafeName(it) }
+    }
+
     /** Segments ready for comparison, or null for a path that must match nothing. */
     private fun comparable(path: String, platform: HubPlatform): List<String>? {
         val segments = toSegments(path, platform)
@@ -107,4 +125,20 @@ object HubPaths {
 
     private fun startsWith(child: List<String>, parent: List<String>): Boolean =
         child.size >= parent.size && parent.indices.all { parent[it] == child[it] }
+
+    /** What Win32 refuses in a name, beside every character below U+0020. */
+    private const val REFUSED_CHARACTERS = "<>:\"|?*"
+
+    // A device name. CASE_INSENSITIVE alone folds ASCII letters only, as JavaScript's i flag
+    // without u does, where Kotlin's RegexOption.IGNORE_CASE would add UNICODE_CASE.
+    private val DEVICE: Pattern = Pattern.compile(
+        "(?:con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])",
+        Pattern.CASE_INSENSITIVE,
+    )
+
+    // The stem before the first dot loses trailing spaces only, as paths.ts's replace does, never
+    // trim(), which would also take a tab or U+00A0 off the end.
+    private fun isUnsafeName(name: String): Boolean =
+        name.any { it < ' ' || it in REFUSED_CHARACTERS } || name.endsWith('.') || name.endsWith(' ') ||
+            DEVICE.matcher(name.substringBefore('.').trimEnd(' ')).matches()
 }
