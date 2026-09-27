@@ -113,6 +113,11 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
    * A rename keeps size and mtime, so the temp file's stat is the new baseline.
    */
   const persist = Effect.gen(function* () {
+    // The engine sets a key's not-null, a relationship's foreign-key mark and
+    // the relationship sort in a microtask after the dispatch, which one
+    // scheduler turn lets run before the value is taken.
+    yield* Effect.yieldNow;
+    const text = peer.value;
     const temp = paths.join(
       paths.dirname(path),
       `.${paths.basename(path)}.${yield* randomId}.tmp`
@@ -120,7 +125,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
     const removeTemp = Effect.ignore(fs.remove(temp));
 
     yield* Effect.gen(function* () {
-      yield* fs.writeFileString(temp, peer.value, {
+      yield* fs.writeFileString(temp, text, {
         mode: loaded.mode | 0o200,
       });
       const written = yield* stat(temp);

@@ -11,7 +11,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createPeerStore } from '@dineug/erd-editor/peer.js';
+import { bHas, createPeerStore } from '@dineug/erd-editor/peer.js';
+import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import * as NodePath from '@effect/platform-node/NodePath';
 import { Effect, Layer } from 'effect';
 import {
@@ -44,6 +45,8 @@ import { documentReader, readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/solo.erd.json';
+
+const { ColumnOption, ColumnUIKey } = SchemaV3Constants;
 
 let io: MemoryHost;
 let mcp: McpHarness;
@@ -275,6 +278,102 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
     const document = JSON.parse(io.read(DOCUMENT));
     expect(document.doc.tableIds).toEqual([]);
     expect(document.doc.memoIds).toEqual(memo.createdIds);
+  });
+});
+
+describe('headless: what the engine adds after an edit reaches the file', () => {
+  const onDisk = () => JSON.parse(io.read(DOCUMENT));
+  const columnOnDisk = (columnId: string) =>
+    onDisk().collections.tableColumnEntities[columnId];
+  const isForeignKey = (columnId: string) =>
+    bHas(columnOnDisk(columnId).ui.keys, ColumnUIKey.foreignKey);
+  /** Each relationship's two ends, where the relationship sort placed them. */
+  const placements = (document: any) =>
+    Object.values<any>(document.collections.relationshipEntities).map(
+      ({ id, start, end }) => ({ id, start, end })
+    );
+
+  /** A table with one column, both made by the tools. */
+  async function tableWithColumn() {
+    const [tableId] = (await mcp.ok('erd_add_table', { path: DOCUMENT }))
+      .createdIds;
+    const [columnId] = (
+      await mcp.ok('erd_add_column', { path: DOCUMENT, tableId })
+    ).createdIds;
+    return { tableId, columnId };
+  }
+
+  it('writes the not-null a primary key brings, and the undo of the key', async () => {
+    const { tableId, columnId } = await tableWithColumn();
+
+    await mcp.ok('erd_set_column_primary_key', {
+      path: DOCUMENT,
+      tableId,
+      columnId,
+      value: true,
+    });
+    expect(columnOnDisk(columnId).options).toBe(
+      ColumnOption.primaryKey | ColumnOption.notNull
+    );
+
+    // The engine set the not-null outside the history, so an undo takes back
+    // the key alone, in an editor too.
+    await mcp.ok('erd_undo', { path: DOCUMENT });
+    expect(columnOnDisk(columnId).options).toBe(ColumnOption.notNull);
+  });
+
+  it('writes the foreign-key mark and the placement a link brings, and the undo takes the mark off', async () => {
+    const start = await tableWithColumn();
+    const end = await tableWithColumn();
+
+    await mcp.ok('erd_link_columns', {
+      path: DOCUMENT,
+      startTableId: start.tableId,
+      startColumnIds: [start.columnId],
+      endTableId: end.tableId,
+      endColumnIds: [end.columnId],
+      relationshipType: 'ZeroN',
+    });
+    expect(isForeignKey(end.columnId)).toBe(true);
+    const session = JSON.parse(
+      await mcp.text('erd_read', { path: DOCUMENT, format: 'json' })
+    );
+    // The placement alone: identification and startRelationshipType follow the
+    // session's load too, behind a 10 ms throttle, so a link inside that window
+    // gets them changed in the session after its write.
+    expect(placements(onDisk())).toEqual(placements(session));
+
+    await mcp.ok('erd_undo', { path: DOCUMENT });
+    expect(isForeignKey(end.columnId)).toBe(false);
+  });
+
+  it('writes the key columns a relationship adds, not-null and marked, and the undo takes them out', async () => {
+    const [startTableId] = (await mcp.ok('erd_add_table', { path: DOCUMENT }))
+      .createdIds;
+    const [endTableId] = (await mcp.ok('erd_add_table', { path: DOCUMENT }))
+      .createdIds;
+    const before = onDisk();
+
+    await mcp.ok('erd_add_relationship', {
+      path: DOCUMENT,
+      startTableId,
+      endTableId,
+      relationshipType: 'ZeroN',
+    });
+    const { tableEntities } = onDisk().collections;
+    const [primaryKey] = tableEntities[startTableId].columnIds;
+    const [foreignKey] = tableEntities[endTableId].columnIds;
+    expect(columnOnDisk(primaryKey).options).toBe(
+      ColumnOption.primaryKey | ColumnOption.notNull
+    );
+    expect(isForeignKey(foreignKey)).toBe(true);
+
+    await mcp.ok('erd_undo', { path: DOCUMENT });
+    const undone = onDisk();
+    expect(undone.doc).toEqual(before.doc);
+    for (const tableId of [startTableId, endTableId]) {
+      expect(undone.collections.tableEntities[tableId].columnIds).toEqual([]);
+    }
   });
 });
 
