@@ -5,7 +5,14 @@ import { connect, type Socket as NetSocket } from 'node:net';
 import * as os from 'node:os';
 import { join } from 'node:path';
 
-import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import {
+  HUB_PROTOCOL_VERSION,
+  HubErrorCode,
+  lockDirPath,
+  lockFilePath,
+  type LockRecord,
+  serializeLock,
+} from '@dineug/erd-editor-agent-hub';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import type { Cause } from 'effect';
 import { Effect, Exit, FileSystem, Layer, Queue, Scope, Stream } from 'effect';
@@ -21,6 +28,7 @@ import {
 
 import { specPipePath } from '@/__test-utils__/platform';
 import { authorizePath, realpathOrSelf } from '@/authz';
+import * as LockFile from '@/lockFile';
 import {
   HubEnvironment,
   isAlive,
@@ -379,5 +387,47 @@ describe('authorizePath over the real file system', () => {
       join(ws, 'new', 'b.erd.json')
     );
     expect(await fs.readdir(outside)).toEqual([]);
+  });
+});
+
+describe('LockFile over node', () => {
+  it('lands its write over a lock another handle holds open, on Windows once the handle lets go', async () => {
+    const home = await fs.realpath(dir);
+    const lockPath = lockFilePath(home, env.pid);
+    await fs.mkdir(lockDirPath(home), { recursive: true });
+    await fs.writeFile(lockPath, 'the old lock');
+    const lock = await Effect.runPromise(
+      Effect.service(LockFile.LockFile).pipe(
+        Effect.provide(LockFile.layer),
+        Effect.provide(
+          Layer.mergeAll(
+            NodeFileSystem.layer,
+            Layer.succeed(HubEnvironment, { ...env, homeDir: home })
+          )
+        )
+      )
+    );
+    // Windows refuses a rename over a file any handle has open, as a reader's does for milliseconds.
+    const reader = await fs.open(lockPath, 'r');
+    const letGo = new Promise<void>(resolve =>
+      setTimeout(() => void reader.close().then(resolve), 100)
+    );
+    const record: LockRecord = {
+      pipe: specPipePath(home, 'lock'),
+      workspaceFolders: [],
+      documents: [],
+      ide: 'spec',
+      version: '2.9.0',
+      protocolVersion: HUB_PROTOCOL_VERSION,
+      token: 'secret',
+      hub: true,
+    };
+
+    const written = await Effect.runPromise(lock.write(record));
+    await letGo;
+
+    expect(written).toBe(true);
+    expect(await fs.readFile(lockPath, 'utf8')).toBe(serializeLock(record));
+    expect(await fs.readdir(lockDirPath(home))).toEqual([`${env.pid}.json`]);
   });
 });

@@ -35,6 +35,7 @@ import java.io.IOException
 import java.nio.file.AccessDeniedException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
@@ -966,6 +967,141 @@ class DocumentHubTest {
         assertNull(closed.documents.publisher)
     }
 
+    @Test
+    fun `rewrites the lock after a failed write, with no change of state, and warns once`() {
+        val fixture = Fixture(timings = REPAIR).start().apply { flush() }
+        fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
+
+        fixture.setDocuments("/elsewhere/a.erd.json")
+        assertEquals("not before the repair", emptyList<String>(), fixture.lock()?.documents)
+
+        awaitUntil(message = "the repair") { fixture.lock()?.documents == listOf("/elsewhere/a.erd.json") }
+        assertEquals(record(documents = listOf("/elsewhere/a.erd.json")), fixture.lock())
+        assertEquals(listOf("could not write $LOCK"), log.texts)
+    }
+
+    @Test
+    fun `doubles the repair delay while the writes keep failing, and starts over once one landed`() {
+        val fixture = Fixture(timings = TIMINGS.copy(lockRepairMs = 100, lockRepairMaxMs = 10_000)).start().apply { flush() }
+        repeat(3) { fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy")) }
+        val begun = System.nanoTime()
+
+        fixture.setDocuments("/elsewhere/a.erd.json")
+        awaitUntil(message = "the third repair") { fixture.lock()?.documents == listOf("/elsewhere/a.erd.json") }
+        val backedOffMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begun)
+        // A timer never fires early: 100, 200 and 400 ms passed, where an undoubled delay takes 300.
+        assertTrue("landed after $backedOffMs ms", backedOffMs >= 700)
+
+        fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
+        fixture.setDocuments("/elsewhere/b.erd.json")
+        // 100 ms again, where the delay kept from before would take 800.
+        awaitUntil(600, "the repair after a landed write") { fixture.lock()?.documents == listOf("/elsewhere/b.erd.json") }
+    }
+
+    @Test
+    fun `waits no longer than the cap between repairs`() {
+        val fixture = Fixture(timings = TIMINGS.copy(lockRepairMs = 100, lockRepairMaxMs = 100)).start().apply { flush() }
+        repeat(5) { fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy")) }
+
+        fixture.setDocuments("/elsewhere/a.erd.json")
+
+        // Five waits of 100 ms, where doubling past the cap would take 3100.
+        awaitUntil(1_500, "the fifth repair") { fixture.lock()?.documents == listOf("/elsewhere/a.erd.json") }
+        assertEquals(List(5) { "could not write $LOCK" }, log.texts)
+    }
+
+    @Test
+    fun `closes the pipe at once when the hub false write fails, and the repair turns the lock hub false`() {
+        val fixture = Fixture(timings = REPAIR).start().apply { flush() }
+        val peer = fixture.connectToLock()
+        fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
+
+        fixture.turn(false)
+        assertTrue(peer.isDestroyed)
+        assertEquals(emptySet<String>(), fixture.listeners.listening)
+        assertEquals("not before the repair", record(), fixture.lock())
+
+        awaitUntil(message = "the repair") { fixture.lock()?.hub == false }
+        assertEquals(record(pipe = "", token = ""), fixture.lock())
+        assertEquals(1, fixture.listeners.listens.size)
+    }
+
+    @Test
+    fun `listens again on the repair when the hub true write after listening failed, and a publish meanwhile never waits`() {
+        val fixture = Fixture(timings = REPAIR)
+        fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
+        fixture.start().flush()
+        assertEquals(emptySet<String>(), fixture.listeners.listening)
+        assertEquals(record(pipe = "", token = ""), fixture.lock())
+        val bind = fixture.listeners.holdListen()
+
+        bind.awaitEntered()
+        fixture.documents.publish(listOf("/ws/a.erd.json")).get(5, TimeUnit.SECONDS)
+        assertEquals(record(pipe = "", token = ""), fixture.lock())
+
+        bind.release()
+        awaitUntil(message = "the lock serves again") { fixture.lock()?.hub == true }
+        fixture.flush()
+        assertEquals(record(token = "token-2", documents = listOf("/ws/a.erd.json")), fixture.lock())
+        assertEquals(setOf(SOCKET), fixture.listeners.listening)
+    }
+
+    @Test
+    fun `holds a publish behind a repair that only rewrites until the lock lists it`() {
+        val fixture = Fixture(timings = REPAIR.copy(publishWaitMs = 20_000)).start().apply { flush() }
+        fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
+        fixture.setDocuments("/elsewhere/a.erd.json")
+        val write = fixture.env.hold(FakeOp.WRITE_NEW_FILE)
+        write.awaitEntered()
+
+        val publishing = fixture.documents.publish(listOf("/elsewhere/b.erd.json"))
+        Thread.sleep(100)
+        assertFalse("a rewrite-only repair is no listen ahead", publishing.isDone)
+
+        write.release()
+        publishing.get(5, TimeUnit.SECONDS)
+        assertEquals(listOf("/elsewhere/b.erd.json"), fixture.lock()?.documents)
+    }
+
+    @Test
+    fun `never runs a repair that was due once close or releaseSync ran`() {
+        for (end in listOf<(DocumentHub) -> Unit>({ it.close() }, { it.releaseSync() })) {
+            val fixture = Fixture(timings = REPAIR).start().apply { flush() }
+            fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
+            fixture.setDocuments("/elsewhere/a.erd.json")
+            val writes = fixture.env.fs.callsOf(FakeOp.WRITE_NEW_FILE).size
+
+            end(fixture.hub)
+            assertEquals("the timer went", 0, (threads.registryExecutor as ScheduledThreadPoolExecutor).queue.size)
+            Thread.sleep(2 * REPAIR.lockRepairMs)
+
+            assertEquals(writes, fixture.env.fs.callsOf(FakeOp.WRITE_NEW_FILE).size)
+            assertEquals(1, fixture.listeners.listens.size)
+            assertNull(fixture.lock())
+        }
+    }
+
+    @Test
+    fun `stops the pipe when close cancels a hub false write waiting out a held lock on Windows`() {
+        val env = FakeEnvironment(platform = HubPlatform.WIN32)
+        val fixture = Fixture(env = env, timings = TIMINGS.copy(lockRenameDelaysMs = listOf(5_000))).start().apply { flush() }
+        val peer = fixture.connectToLock()
+        val moves = env.fs.callsOf(FakeOp.MOVE_REPLACING).size
+        env.failNext(FakeOp.MOVE_REPLACING, AccessDeniedException(LOCK))
+
+        fixture.hub.retire()
+        awaitUntil(message = "the refused move") { env.fs.callsOf(FakeOp.MOVE_REPLACING).size == moves + 1 }
+        val begun = System.nanoTime()
+        assertTrue(fixture.hub.close(1_000))
+        val tookMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begun)
+
+        assertTrue("closed in $tookMs ms, the 5 s delay cancelled", tookMs < 1_000)
+        assertEquals(listOf(WIN32_PIPE), fixture.listeners.closes)
+        assertTrue(peer.isDestroyed)
+        assertNull(fixture.lock())
+        assertEquals(emptyList<String>(), log.texts)
+    }
+
     private companion object {
         const val LOCK_DIR = "/home/user/.erd-editor/ide"
         const val LOCK = "$LOCK_DIR/4242.json"
@@ -976,6 +1112,10 @@ class DocumentHubTest {
         /** A home whose socket path is one byte past the limit. */
         val LONG_HOME = "/" + "h".repeat(LockPaths.MAX_PIPE_PATH_BYTES + 1 - "/.erd-editor/ide/4242.sock".length - 1)
 
-        val TIMINGS = HubTimings(publishWaitMs = 400, closeBoundMs = 2_000)
+        /** A repair a minute out, so no suite but the repair's own ever sees one fire. */
+        val TIMINGS = HubTimings(publishWaitMs = 400, closeBoundMs = 2_000, lockRepairMs = 60_000)
+
+        /** A repair due within a spec, with a margin before it for what the spec checks first. */
+        val REPAIR = TIMINGS.copy(lockRepairMs = 300, lockRepairMaxMs = 300)
     }
 }

@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Duration
 import java.util.concurrent.Callable
 import java.util.concurrent.CancellationException
@@ -24,6 +25,7 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.resume
 
 /** Rethrows a coroutine's cancellation, which the hub neither logs nor folds into a result. */
 internal fun Throwable.rethrowIfCancellation() {
@@ -82,6 +84,15 @@ class HubThreads(private val log: HubLog, val namePrefix: String = "erd-editor-h
         registryExecutor.schedule(Runnable { runLogged(block) }, delayMs, TimeUnit.MILLISECONDS)
     } catch (e: RejectedExecutionException) {
         null
+    }
+
+    /**
+     * Suspends for delayMs on a registry timer, where kotlinx's delay on io would take its global
+     * executor: cancelling the caller cancels the timer at once, and after shutdown it is cancelled.
+     */
+    suspend fun pause(delayMs: Long): Unit = suspendCancellableCoroutine { waiting ->
+        val timer = schedule(delayMs) { waiting.resume(Unit) }
+        if (timer == null) waiting.cancel() else waiting.invokeOnCancellation { timer.cancel(false) }
     }
 
     /**

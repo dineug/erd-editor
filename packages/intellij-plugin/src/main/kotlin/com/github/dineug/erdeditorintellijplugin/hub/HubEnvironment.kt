@@ -52,7 +52,11 @@ interface HubFileSystem {
     /** Creates path, failing when it exists (CREATE_NEW), with posixMode where the file system has modes. */
     fun writeNewFile(path: String, text: String, posixMode: Int?)
 
-    /** An atomic rename over whatever is at to; a rename keeps the source's mode. */
+    /**
+     * An atomic rename over whatever is at to; a rename keeps the source's mode. On Windows it
+     * throws AccessDeniedException while any process holds to open, and a plain FileSystemException
+     * while one holds from; LockFile tries both again.
+     */
     fun moveReplacing(from: String, to: String)
 
     /** The names in dir, in listing order; null when it is missing or cannot be read. */

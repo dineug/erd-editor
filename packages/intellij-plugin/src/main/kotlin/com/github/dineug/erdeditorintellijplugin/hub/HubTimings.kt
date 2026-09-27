@@ -17,4 +17,7 @@ data class HubTimings(
     val threadJoinBoundMs: Long = 500,
     val saveWriteBoundMs: Long = 10_000, // save's write through the EDT, then {"saved":false}
     val foldersDebounceMs: Long = 200, // coalesces rootsChanged storms
+    val lockRenameDelaysMs: List<Long> = listOf(10, 20, 40, 80, 160), // RENAME_BACKOFF doubling, RENAME_RETRIES times
+    val lockRepairMs: Long = 1_000, // LOCK_REPAIR_MS
+    val lockRepairMaxMs: Long = 30_000, // LOCK_REPAIR_MAX_MS
 )

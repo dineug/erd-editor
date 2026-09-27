@@ -17,6 +17,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -27,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * DocumentHub.ts: every state change runs on one StateQueue, so the lock on disk follows the order of
  * the host's enabled, folder and document events. It listens before a lock names the pipe, rewrites
  * the lock before the pipe goes, and a hub that cannot serve writes hub false, never no lock at all.
+ * A lock write that failed is repaired later, on a registry timer that backs off while writes fail.
  */
 class DocumentHub(
     private val env: HubEnvironment,
@@ -58,7 +60,7 @@ class DocumentHub(
     }
 
     private val authz = Authz(env)
-    private val lockFile = LockFile(env, log)
+    private val lockFile = LockFile(env, log, timings.lockRenameDelaysMs, threads::pause)
     private val queue = StateQueue(threads, log)
     private val connectionIds = AtomicInteger()
     private val started = AtomicBoolean()
@@ -78,7 +80,8 @@ class DocumentHub(
     var scope: AuthScope = AuthScope.EMPTY
         private set
 
-    /** Null until the host was first asked; queue tasks only. */
+    /** Null until the host was first asked; written by queue tasks only, read by the repair timer too. */
+    @Volatile
     private var enabled: Boolean? = null
 
     @Volatile
@@ -91,6 +94,12 @@ class DocumentHub(
     /** Set by retire: the hub serves no more, whatever the host asks. */
     @Volatile
     private var retired = false
+
+    // Guarded by repairLock: a failed write's repair is due, its timer, and the delay the next one takes.
+    private val repairLock = Any()
+    private var repairDue = false
+    private var repairTimer: ScheduledFuture<*>? = null
+    private var repairDelayMs = timings.lockRepairMs
 
     /** Subscribes to the host, then sweeps dead locks, reads the folders and moves to the state the host asks for. */
     fun start() {
@@ -174,6 +183,7 @@ class DocumentHub(
         closeOutcome?.let { return it }
         queue.closed = true
         detach()
+        cancelRepair()
         queue.cancelRunning()
         val late = awaitRunning(boundMs)
         if (late == null) {
@@ -198,6 +208,7 @@ class DocumentHub(
         queue.closed = true
         released = true
         detach()
+        cancelRepair()
         lockFile.removeSync()
         for (socket in LockPaths.socketFilePaths(env.homeDir, env.tmpDir, env.pid, env.platform)) {
             env.removeFileSync(socket)
@@ -240,7 +251,8 @@ class DocumentHub(
     /**
      * Moves to the state the host asks for. Enabling listens before the lock names the pipe;
      * disabling rewrites the lock before the pipe goes. A hub that fails to serve falls back to hub
-     * false. A close that cancelled this task stops it before it listens.
+     * false, and listens again on the repair when its lock write failed. A close that cancelled this
+     * task stops it before it listens, and a pipe it was letting go of still stops.
      */
     private suspend fun apply() {
         currentCoroutineContext().ensureActive()
@@ -251,8 +263,12 @@ class DocumentHub(
         if (!want) {
             val previous = serving
             serving = null
-            writeLock()
-            stopServing(previous)
+            try {
+                writeLock()
+            } finally {
+                // close cancels a write waiting out a held lock, and then finds no serving to stop.
+                stopServing(previous)
+            }
             return
         }
 
@@ -321,17 +337,67 @@ class DocumentHub(
         if (!env.platform.isWindows) env.removeFileSync(target.pipe)
     }
 
-    /** Creates the lock directory, which the user may have deleted, then writes the lock unless released. */
-    private fun writeLock(): Boolean {
+    /**
+     * Creates the lock directory, which the user may have deleted, then writes the lock unless
+     * released. A cancelled task writes nothing; a write that failed asks for a repair.
+     */
+    private suspend fun writeLock(): Boolean {
+        currentCoroutineContext().ensureActive()
         try {
             env.fs.makeDirectories(lockFile.lockDir, LockPaths.LOCK_DIR_MODE)
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             log.warn("could not write ${lockFile.lockPath}", e)
-            return false
+            return noteWrite(false)
         }
         if (released) return false
-        return keepUnlessReleased(lockFile.write(record()))
+        return noteWrite(keepUnlessReleased(lockFile.write(record())))
+    }
+
+    /** A write that landed starts the repair delay over; one that failed asks for a repair, unless released. */
+    private fun noteWrite(written: Boolean): Boolean {
+        if (written) {
+            synchronized(repairLock) { repairDelayMs = timings.lockRepairMs }
+        } else if (!released) {
+            requestRepair()
+        }
+        return written
+    }
+
+    /**
+     * Rewrites the lock once the delay passed, doubling it for the next failure up to
+     * lockRepairMaxMs. Queued as a listen only when its apply may listen, a hub not serving and not
+     * off, so a publish behind a repair that only rewrites still waits for its listing.
+     */
+    private fun requestRepair() {
+        synchronized(repairLock) {
+            repairDue = true
+            if (queue.closed || repairTimer != null) return
+            val delayMs = repairDelayMs
+            repairDelayMs = minOf(delayMs * 2, timings.lockRepairMaxMs)
+            repairTimer = threads.schedule(delayMs) {
+                synchronized(repairLock) { repairTimer = null }
+                if (serving == null && enabled != false) queue.enqueueListen(::repair) else queue.enqueue(::repair)
+            }
+        }
+    }
+
+    /** Applies the host's state, which listens again for a hub a failed write took down, then rewrites. */
+    private suspend fun repair() {
+        synchronized(repairLock) {
+            if (!repairDue) return
+            repairDue = false
+        }
+        try {
+            apply()
+        } finally {
+            writeLock()
+        }
+    }
+
+    private fun cancelRepair() = synchronized(repairLock) {
+        repairTimer?.cancel(false)
+        repairTimer = null
     }
 
     /** A release that came while the write was on disk ran before its rename landed, so that lock goes again. */

@@ -18,6 +18,7 @@ import {
   createMemoryHost,
   createMemoryHub,
   flush,
+  fsError,
   type MemoryHost,
   type MemoryHub,
   type MemoryHubParts,
@@ -520,5 +521,210 @@ describe('releaseSync', () => {
 
     expect(io.env.removeFileSync).toHaveBeenCalledTimes(2);
     expect(io.lock()).toBeUndefined();
+  });
+});
+
+describe('the repair of a failed lock write', () => {
+  /** Advances the fake clock, then lets the memory doubles finish as flush does, over setImmediate. */
+  async function settle(ms = 0) {
+    await vi.advanceTimersByTimeAsync(ms);
+    for (let turn = 0; turn < 10; turn++) {
+      await new Promise(resolve => setImmediate(resolve));
+    }
+  }
+
+  function failRenames(io: MemoryHub, times = 1) {
+    for (let failed = 0; failed < times; failed++) {
+      io.fs.rename.mockImplementationOnce((from: string) =>
+        Effect.fail(fsError('Busy', 'rename', from))
+      );
+    }
+  }
+
+  /** Makes the next call of a memory double wait until the returned function is called. */
+  function holdNext(
+    mock: MemoryHub['fs']['rename'] | MemoryHub['listen']
+  ): () => void {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => (release = resolve));
+    const real = mock.getMockImplementation()! as (...args: any[]) => any;
+    mock.mockImplementationOnce(((...args: any[]) =>
+      Effect.promise(() => gate).pipe(
+        Effect.andThen(() => real(...args))
+      )) as any);
+    return () => release();
+  }
+
+  // Only the timers the repair and the retry wait on: effect's scheduler yields through setImmediate.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+
+  it('rewrites the lock a second after a write failed, with no change of state, and warns once', async () => {
+    const { hub, io } = start();
+    await settle();
+    failRenames(io);
+
+    void hub.setDocuments(['/elsewhere/a.erd.json']);
+    await settle(999);
+    expect(io.lock()?.documents).toEqual([]);
+    await settle(1);
+
+    expect(io.lock()).toMatchObject({
+      hub: true,
+      documents: ['/elsewhere/a.erd.json'],
+    });
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledWith(
+      '[erd-editor hub]',
+      `could not write ${LOCK}`,
+      expect.objectContaining({ _tag: 'PlatformError' })
+    );
+  });
+
+  it('backs off 1, 2 and 4 seconds while the writes keep failing, and starts at 1 second again once one landed', async () => {
+    const { hub, io } = start();
+    await settle();
+    const rename = io.fs.rename.getMockImplementation()!;
+    io.fs.rename.mockImplementation((from: string) =>
+      Effect.fail(fsError('Busy', 'rename', from))
+    );
+    void hub.setDocuments(['/elsewhere/a.erd.json']);
+    await settle();
+    io.fs.rename.mockClear();
+
+    for (const [delay, renames] of [
+      [1_000, 1],
+      [2_000, 2],
+      [4_000, 3],
+    ]) {
+      await settle(delay - 1);
+      expect(io.fs.rename).toHaveBeenCalledTimes(renames - 1);
+      await settle(1);
+      expect(io.fs.rename).toHaveBeenCalledTimes(renames);
+    }
+    io.fs.rename.mockImplementation(rename);
+    await settle(8_000);
+    expect(io.lock()?.documents).toEqual(['/elsewhere/a.erd.json']);
+
+    failRenames(io);
+    void hub.setDocuments(['/elsewhere/b.erd.json']);
+    await settle(1_000);
+    expect(io.lock()?.documents).toEqual(['/elsewhere/b.erd.json']);
+  });
+
+  it('closes the pipe at once when the hub false write fails, and the repair turns the lock hub false', async () => {
+    const { hub, io } = start();
+    await settle();
+    const client = io.connect(SOCKET);
+    failRenames(io);
+
+    turn(hub.host, false);
+    await settle();
+    expect(client.closed).toBe(true);
+    expect(io.servers.size).toBe(0);
+    expect(io.lock()).toMatchObject({ hub: true, pipe: SOCKET });
+
+    await settle(1_000);
+    expect(io.lock()).toMatchObject({ hub: false, pipe: '', token: '' });
+    expect(io.listen).toHaveBeenCalledTimes(1);
+  });
+
+  it('listens again on the repair when the hub true write after listening failed, and a publish meanwhile never waits for it', async () => {
+    const io = createMemoryHub();
+    failRenames(io);
+    const { hub } = start(io);
+    await settle();
+    expect(io.servers.size).toBe(0);
+    expect(io.lock()).toMatchObject({ hub: false, pipe: '', token: '' });
+    const bind = holdNext(io.listen);
+
+    await settle(1_000);
+    expect(io.listen).toHaveBeenCalledTimes(2);
+    let published = false;
+    void hub.documents.publish(['/ws/a.erd.json']).then(() => {
+      published = true;
+    });
+    await settle();
+    expect(published).toBe(true);
+
+    bind();
+    await settle();
+    expect(io.lock()).toMatchObject({
+      hub: true,
+      pipe: SOCKET,
+      token: 'token-2',
+      documents: ['/ws/a.erd.json'],
+    });
+    expect(io.servers.has(SOCKET)).toBe(true);
+  });
+
+  it('holds a publish behind a repair that only rewrites until the lock lists it', async () => {
+    const { hub, io } = start();
+    await settle();
+    failRenames(io);
+    void hub.setDocuments(['/elsewhere/a.erd.json']);
+    await settle();
+    const land = holdNext(io.fs.rename);
+    await settle(1_000);
+
+    let published = false;
+    void hub.documents.publish(['/elsewhere/b.erd.json']).then(() => {
+      published = true;
+    });
+    await settle();
+    expect(published).toBe(false);
+
+    land();
+    await settle();
+    expect(published).toBe(true);
+    expect(io.lock()?.documents).toEqual(['/elsewhere/b.erd.json']);
+  });
+
+  it.each(['close', 'releaseSync'] as const)(
+    'never runs a repair that was due once %s ran',
+    async method => {
+      const { hub, io } = start();
+      await settle();
+      failRenames(io);
+      void hub.setDocuments(['/elsewhere/a.erd.json']);
+      await settle();
+      const documentHub = await hub.ready;
+      io.fs.rename.mockClear();
+
+      if (method === 'close') void hub.close();
+      else documentHub.releaseSync();
+      await settle();
+      expect(vi.getTimerCount()).toBe(0);
+      await settle(30_000);
+
+      expect(io.fs.rename).not.toHaveBeenCalled();
+      expect(io.listen).toHaveBeenCalledTimes(1);
+      expect(io.lock()).toBeUndefined();
+    }
+  );
+
+  it('leaves no lock and no temp file when releaseSync comes during a rename Windows keeps refusing', async () => {
+    const io = createMemoryHub({ platform: 'win32' });
+    const { hub } = start(io);
+    await settle();
+    const documentHub = await hub.ready;
+    io.fs.rename.mockClear();
+    for (let refused = 0; refused < 2; refused++) {
+      io.fs.rename.mockImplementationOnce((from: string) =>
+        Effect.fail(fsError('Unknown', 'rename', from))
+      );
+    }
+
+    const writing = hub.setDocuments(['/ws/a.erd.json']);
+    await settle(15);
+    expect(io.fs.rename).toHaveBeenCalledTimes(2);
+    documentHub.releaseSync();
+    await settle(400);
+    await writing;
+
+    expect(io.fs.rename).toHaveBeenCalledTimes(3);
+    expect(io.lock()).toBeUndefined();
+    expect(io.files.has(`${io.lockPath()}.tmp`)).toBe(false);
   });
 });

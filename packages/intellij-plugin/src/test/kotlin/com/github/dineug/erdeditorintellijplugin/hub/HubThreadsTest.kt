@@ -24,6 +24,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -90,6 +91,37 @@ class HubThreadsTest {
         assertTrue("ran after ${ranAfterMs[0]} ms", ranAfterMs[0] >= 50)
         Thread.sleep(60)
         assertFalse(cancelled.get())
+    }
+
+    @Test
+    fun `pauses on a registry timer, which a cancelled caller or a shutdown takes back at once`() {
+        val threads = testThreads.create(log)
+        val start = System.nanoTime()
+
+        val resumedOn = runBlocking {
+            withContext(threads.io) {
+                threads.pause(50)
+                threadName()
+            }
+        }
+        val pausedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)
+        assertTrue("paused $pausedMs ms", pausedMs >= 50)
+        assertTrue(resumedOn, resumedOn.startsWith("${threads.namePrefix}-io-"))
+
+        val registry = threads.registryExecutor as ScheduledThreadPoolExecutor
+        val cancelled = runBlocking {
+            val pausing = launch(threads.io) { threads.pause(60_000) }
+            awaitUntil(message = "the timer queued") { registry.queue.size == 1 }
+            pausing.cancel()
+            pausing.join()
+            pausing.isCancelled
+        }
+        assertTrue(cancelled)
+        assertEquals("the timer went with the caller", 0, registry.queue.size)
+
+        assertTrue(threads.shutdown(2_000))
+        assertThrows(CancellationException::class.java) { runBlocking { threads.pause(10) } }
+        assertEquals(emptyList<Pair<String, Any?>>(), log.lines)
     }
 
     @Test

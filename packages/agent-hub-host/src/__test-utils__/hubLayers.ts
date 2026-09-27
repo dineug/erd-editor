@@ -268,7 +268,7 @@ type MemoryFile = { data: string; mode: number; socket: boolean };
 
 /** The failure a memory fs call answers with, for a spec that makes one fail. */
 export function fsError(
-  tag: 'NotFound' | 'AlreadyExists' | 'PermissionDenied' | 'Busy',
+  tag: 'NotFound' | 'AlreadyExists' | 'PermissionDenied' | 'Busy' | 'Unknown',
   method: string,
   path: string
 ): PlatformError.PlatformError {
