@@ -43,6 +43,20 @@ afterEach(async () => {
   await fs.rm(dir, { recursive: true, force: true });
 });
 
+/** A SystemError as os.getPriority throws one, its errno name under info. */
+function systemError(code: string): Error {
+  return Object.assign(new Error(`uv_os_getpriority returned ${code}`), {
+    code: 'ERR_SYSTEM_ERROR',
+    info: { code, syscall: 'uv_os_getpriority' },
+  });
+}
+
+function failWith(error: Error): (pid: number) => number {
+  return () => {
+    throw error;
+  };
+}
+
 /** Collects everything the peer sends until it closes the connection; a reset fails it. */
 function readUntilEnd(client: NetSocket): Promise<string> {
   client.setEncoding('utf8');
@@ -92,20 +106,51 @@ describe('HubEnvironment over node', () => {
     expect(env.isAlive(exited.pid)).toBe(false);
   });
 
-  it('takes a pid it may not signal for alive on Windows only, as an elevated window of this user answers there', () => {
+  it.each([
+    ['alive', 'is granted', () => 0],
+    ['dead', 'is refused', failWith(systemError('EPERM'))],
+    ['dead', 'finds no process', failWith(systemError('ESRCH'))],
+    ['alive', 'fails any other way', failWith(new Error('ENOMEM'))],
+  ])(
+    'counts a pid Windows refuses to signal %s when the least query right %s',
+    (verdict, _, query) => {
+      const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
+        throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+      });
+
+      expect(isAlive(4, 'win32', query)).toBe(verdict === 'alive');
+      kill.mockRestore();
+    }
+  );
+
+  it('asks no query where the signal decides: POSIX, a pid Windows finds no process for, and one it may signal', () => {
+    const query = vi.fn(() => 0);
     const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
       throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
     });
 
-    expect(isAlive(4, 'win32')).toBe(true);
     // On POSIX a lock in this user's home never names another user's process.
-    expect(isAlive(4, 'darwin')).toBe(false);
-    expect(isAlive(4, 'linux')).toBe(false);
-    expect(env.isAlive(4)).toBe(process.platform === 'win32');
+    expect(isAlive(4, 'darwin', query)).toBe(false);
+    expect(isAlive(4, 'linux', query)).toBe(false);
     kill.mockImplementation(() => {
       throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
     });
-    expect(isAlive(4, 'win32')).toBe(false);
+    expect(isAlive(4, 'win32', query)).toBe(false);
+    kill.mockImplementation(() => true);
+    expect(isAlive(4, 'win32', query)).toBe(true);
+    expect(query).not.toHaveBeenCalled();
+    kill.mockRestore();
+  });
+
+  it('asks the real query of this machine when the signal is refused on Windows, and never on POSIX', () => {
+    const exited = spawnSync(process.execPath, ['-e', '']);
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
+      throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+    });
+
+    // os.getPriority opens this process on Windows and finds the exited one gone.
+    expect(env.isAlive(process.pid)).toBe(process.platform === 'win32');
+    expect(env.isAlive(exited.pid)).toBe(false);
     kill.mockRestore();
   });
 

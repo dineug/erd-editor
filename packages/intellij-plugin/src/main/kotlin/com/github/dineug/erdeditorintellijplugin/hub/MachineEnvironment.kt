@@ -1,5 +1,6 @@
 package com.github.dineug.erdeditorintellijplugin.hub
 
+import com.github.dineug.erdeditorintellijplugin.hub.win.WindowsProcess
 import com.github.dineug.erdeditorintellijplugin.hub.win.WindowsRealPath
 import com.sun.jna.NativeLibrary
 import com.sun.jna.Platform
@@ -122,12 +123,15 @@ class MachineEnvironment(
     /** The POSIX liveness primitive, libc's kill(pid, 0); a test swaps in one that fails. */
     internal var posixSignal0: (Int) -> Int = ::sendSignal0
 
+    /** The Windows liveness question, WindowsProcess's; a test swaps in one that answers as it is told. */
+    internal var windowsQuery: (Int) -> ProcessQuery = WindowsProcess::query
+
     /** The native realpath on Windows, WindowsRealPath's; a test swaps in one that finds nothing. */
     internal var windowsRealPath: (String) -> RealPathResult = WindowsRealPath::realPath
 
     override fun randomToken(): String = UUID.randomUUID().toString()
 
-    override fun isAlive(pid: Long): Boolean = isAlive(pid, platform, posixSignal0, log)
+    override fun isAlive(pid: Long): Boolean = isAlive(pid, platform, posixSignal0, windowsQuery, log)
 
     override fun realPath(path: String): RealPathResult {
         // Node's realpath finds no entry named "", where Path.of("") would stand for the working directory.
@@ -177,6 +181,9 @@ class MachineEnvironment(
         /** Whether the libc binding failed in this JVM, so liveness asks ProcessHandle from then on. */
         private val primitiveFailed = AtomicBoolean(false)
 
+        /** Whether the Windows query failed in this JVM, so every lock counts as live from then on. */
+        private val windowsQueryFailed = AtomicBoolean(false)
+
         /** Production only: the one place the hub reads the real home, temp directory and pid. */
         fun forMachine(
             version: String,
@@ -217,18 +224,20 @@ class MachineEnvironment(
         }
 
         /**
-         * Node's process.kill(pid, 0) rule: a pid outside 1..Int.MAX_VALUE is dead without asking. On
-         * POSIX the signal answers, where a refusal is dead too, until the primitive fails with anything
-         * but IllegalArgumentException; then this JVM asks ProcessHandle, as Windows always does.
+         * The rule of Node's hosts: a pid outside 1..Int.MAX_VALUE is dead without asking. Windows asks
+         * windowsQuery (windowsAlive). On POSIX the signal answers, where a refusal is dead too, until the
+         * primitive fails with anything but IllegalArgumentException; then this JVM asks ProcessHandle.
          */
         fun isAlive(
             pid: Long,
             platform: HubPlatform,
             posixSignal0: (Int) -> Int = ::sendSignal0,
+            windowsQuery: (Int) -> ProcessQuery = WindowsProcess::query,
             log: HubLog? = null,
         ): Boolean {
             if (pid < 1 || pid > Int.MAX_VALUE) return false
-            if (platform.isWindows || primitiveFailed.get()) return processAlive(pid)
+            if (platform.isWindows) return windowsAlive(pid.toInt(), windowsQuery, log)
+            if (primitiveFailed.get()) return processAlive(pid)
             return try {
                 posixSignal0(pid.toInt()) == 0
             } catch (e: IllegalArgumentException) {
@@ -240,6 +249,27 @@ class MachineEnvironment(
             }
         }
 
+        /**
+         * Windows: a process this one may open for the least query right that has not exited is alive,
+         * as is any error the query gives; refused (SYSTEM's, a service's, another user's), exited or
+         * no process is dead. Once the binding throws, this JVM keeps every lock and says so once.
+         */
+        private fun windowsAlive(pid: Int, windowsQuery: (Int) -> ProcessQuery, log: HubLog?): Boolean {
+            if (windowsQueryFailed.get()) return true
+            return try {
+                when (windowsQuery(pid)) {
+                    ProcessQuery.Running, is ProcessQuery.Failed -> true
+                    ProcessQuery.Exited, ProcessQuery.NoSuchProcess, ProcessQuery.Denied -> false
+                }
+            } catch (e: Throwable) {
+                e.rethrowIfCancellation()
+                if (windowsQueryFailed.compareAndSet(false, true)) {
+                    log?.warn("liveness cannot ask Windows, so every lock counts as live: $e")
+                }
+                true
+            }
+        }
+
         /** Obsidian's pidSandbox: a Flatpak on Linux has pids of its own, which name no process outside it. */
         fun pidSandbox(platform: HubPlatform, env: Map<String, String>, flatpakInfoExists: Boolean): Boolean =
             platform == HubPlatform.LINUX && (!env["FLATPAK_ID"].isNullOrEmpty() || flatpakInfoExists)
@@ -248,6 +278,11 @@ class MachineEnvironment(
         internal var livenessFellBack: Boolean
             get() = primitiveFailed.get()
             set(value) = primitiveFailed.set(value)
+
+        /** Whether the Windows query failed in this JVM; a test that made it fail resets it. */
+        internal var windowsLivenessFellBack: Boolean
+            get() = windowsQueryFailed.get()
+            set(value) = windowsQueryFailed.set(value)
 
         /**
          * The variables as Node looks them up: in any case on Windows, as process.env and libuv's

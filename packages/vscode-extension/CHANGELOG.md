@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- On Windows, a coding agent is no longer shut out of a folder's diagrams after a window crashed
+  or the computer restarted and Windows gave that window's old process number to a system
+  service. The window's leftover lock file is now cleared, where the agent was told to reload a
+  window that no longer existed.
+
 ## [3.0.0] - 2026-09-24
 
 ### Added

@@ -42,6 +42,7 @@ class MachineEnvironmentTest {
     @After
     fun tearDown() {
         MachineEnvironment.livenessFellBack = false
+        MachineEnvironment.windowsLivenessFellBack = false
         dir.toFile().deleteRecursively()
     }
 
@@ -130,32 +131,89 @@ class MachineEnvironmentTest {
     }
 
     @Test
-    fun `tells this live process from one that has exited, through the platform's own signal`() {
+    fun `tells this live process from one that has exited, through the platform's own question`() {
         val exited = exitedPid()
 
         assertTrue(env.isAlive(ProcessHandle.current().pid()))
         assertFalse(env.isAlive(exited))
-        // Neither answer came from the ProcessHandle fallback: the JNA natives load in plain JUnit.
+        // Neither answer came from a fallback: the JNA natives load in plain JUnit.
         assertFalse(MachineEnvironment.livenessFellBack)
+        assertFalse(MachineEnvironment.windowsLivenessFellBack)
     }
 
     @Test
-    fun `asks ProcessHandle on Windows`() {
+    fun `asks Windows for the least query right and never signals there, alive while it runs or the query errs`() {
+        val signal = { _: Int -> throw AssertionError("no signal on Windows") }
+        val answers = listOf(
+            ProcessQuery.Running to true,
+            ProcessQuery.Failed(ERROR_NOT_ENOUGH_MEMORY) to true,
+            ProcessQuery.Exited to false,
+            ProcessQuery.NoSuchProcess to false,
+            ProcessQuery.Denied to false,
+        )
+
+        for ((answer, alive) in answers) {
+            val asked = ArrayList<Int>()
+            val query = { pid: Int -> asked += pid; answer }
+
+            assertEquals("$answer", alive, MachineEnvironment.isAlive(4242, HubPlatform.WIN32, signal, query))
+            assertEquals(listOf(4242), asked)
+        }
+        val windows = MachineEnvironment("C:\\Users\\me", "C:\\Temp", HubPlatform.WIN32, 1, "1.0.0")
+        windows.posixSignal0 = signal
+        windows.windowsQuery = { pid -> if (pid == 4242) ProcessQuery.Running else ProcessQuery.Denied }
+
+        assertTrue(windows.isAlive(4242))
+        assertFalse(windows.isAlive(4))
+        assertFalse(MachineEnvironment.windowsLivenessFellBack)
+    }
+
+    @Test
+    fun `keeps every lock once the Windows query fails, and says so once, apart from the POSIX fallback`() {
+        val log = RecordingLog()
+        var queries = 0
+        val broken = { _: Int ->
+            queries++
+            throw UnsatisfiedLinkError("Unable to load library 'kernel32'")
+        }
         val signal = { _: Int -> throw AssertionError("no signal on Windows") }
 
-        assertTrue(MachineEnvironment.isAlive(ProcessHandle.current().pid(), HubPlatform.WIN32, signal))
-        assertFalse(MachineEnvironment.isAlive(exitedPid(), HubPlatform.WIN32, signal))
+        assertTrue(MachineEnvironment.isAlive(4242, HubPlatform.WIN32, signal, broken, log))
+        assertTrue(MachineEnvironment.isAlive(4, HubPlatform.WIN32, signal, { ProcessQuery.Denied }, log))
+        assertTrue(MachineEnvironment.windowsLivenessFellBack)
+        assertEquals(1, queries)
+        assertEquals(listOf("$WINDOWS_FELL_BACK java.lang.UnsatisfiedLinkError: Unable to load library 'kernel32'"), log.texts)
+        // The POSIX fallback stays apart: this JVM still signals there.
+        assertFalse(MachineEnvironment.livenessFellBack)
+        assertFalse(MachineEnvironment.isAlive(4, HubPlatform.LINUX, { -1 }, log = log))
+    }
+
+    @Test
+    fun `asks the Windows query it was built with, and says through its own log, or quietly, that it failed`() {
+        val built = RecordingLog()
+        val machine = MachineEnvironment("C:\\Users\\me", "C:\\Temp", HubPlatform.WIN32, 1, "1.0.0", log = built)
+        machine.windowsQuery = { throw IllegalStateException("kernel32 went away") }
+
+        assertTrue(machine.isAlive(4))
+        assertEquals(listOf("$WINDOWS_FELL_BACK java.lang.IllegalStateException: kernel32 went away"), built.texts)
+
+        MachineEnvironment.windowsLivenessFellBack = false
+        val quiet = MachineEnvironment("C:\\Users\\me", "C:\\Temp", HubPlatform.WIN32, 1, "1.0.0")
+        quiet.windowsQuery = { throw UnsatisfiedLinkError() }
+
+        assertTrue(quiet.isAlive(4))
+        assertTrue(MachineEnvironment.windowsLivenessFellBack)
     }
 
     @Test
     fun `counts a pid it may not signal dead on POSIX, as a lock never names another user's process`() {
         val log = RecordingLog()
 
-        assertFalse(MachineEnvironment.isAlive(4, HubPlatform.DARWIN, { -1 }, log))
+        assertFalse(MachineEnvironment.isAlive(4, HubPlatform.DARWIN, { -1 }, log = log))
         val refused = { _: Int -> throw IllegalArgumentException("Invalid PID") }
 
-        assertFalse(MachineEnvironment.isAlive(4, HubPlatform.LINUX, refused, log))
-        assertTrue(MachineEnvironment.isAlive(4, HubPlatform.LINUX, { 0 }, log))
+        assertFalse(MachineEnvironment.isAlive(4, HubPlatform.LINUX, refused, log = log))
+        assertTrue(MachineEnvironment.isAlive(4, HubPlatform.LINUX, { 0 }, log = log))
         assertEquals(emptyList<String>(), log.texts)
         assertFalse(MachineEnvironment.livenessFellBack)
     }
@@ -181,8 +239,8 @@ class MachineEnvironmentTest {
         }
         val own = ProcessHandle.current().pid()
 
-        assertTrue(MachineEnvironment.isAlive(own, HubPlatform.LINUX, broken, log))
-        assertFalse(MachineEnvironment.isAlive(exitedPid(), HubPlatform.DARWIN, broken, log))
+        assertTrue(MachineEnvironment.isAlive(own, HubPlatform.LINUX, broken, log = log))
+        assertFalse(MachineEnvironment.isAlive(exitedPid(), HubPlatform.DARWIN, broken, log = log))
         assertTrue(MachineEnvironment.livenessFellBack)
         assertEquals(1, signals)
         assertEquals(
@@ -480,5 +538,7 @@ class MachineEnvironmentTest {
 
     private companion object {
         val UUID_V4 = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+        const val WINDOWS_FELL_BACK = "liveness cannot ask Windows, so every lock counts as live:"
+        const val ERROR_NOT_ENOUGH_MEMORY = 8
     }
 }

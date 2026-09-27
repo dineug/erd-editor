@@ -99,9 +99,9 @@ jobs:
           path: packages/mcp-server/dist/erd-editor-mcp.js
           retention-days: 1
 
-  # The Kotlin named-pipe hub, the Windows realpath and the conformance run over
-  # the pipe execute only here. test, not check: check adds only Kover, whose
-  # gate build.gradle.kts turns off on Windows.
+  # The Kotlin named-pipe hub, its Windows realpath and liveness, and the
+  # conformance run over the pipe execute only here. test, not check: check adds
+  # only Kover, whose gate build.gradle.kts turns off on Windows.
   test-windows:
     needs: [gate, build]
     if: >-
@@ -140,11 +140,11 @@ jobs:
         env:
           ERD_MCP_CONFORMANCE: required
 
-      # A suite that skipped still passes, so each of the three that run nowhere
+      # A suite that skipped still passes, so each of the four that run nowhere
       # else must leave one report that ran tests and skipped none, as the plugin's
       # AGENTS.md asks of a Windows run.
       - run: |
-          for suite in NamedPipeTransportTest WindowsRealPathTest McpConformanceTest; do
+          for suite in NamedPipeTransportTest WindowsRealPathTest WindowsMachineTest McpConformanceTest; do
             reports=(build/test-results/test/TEST-*."$suite".xml)
             if [ "${#reports[@]}" -ne 1 ] || [ ! -f "${reports[0]}" ] ||
               ! grep -Eq '<testsuite [^>]*tests="[1-9][0-9]*" skipped="0"' "${reports[0]}"; then

@@ -10,6 +10,24 @@ sealed interface RealPathResult {
     data class Other(val cause: Throwable) : RealPathResult
 }
 
+/**
+ * What Windows answered when asked to open a pid for PROCESS_QUERY_LIMITED_INFORMATION alone, then
+ * for its exit code: running, exited with a handle still open, no process, refused, or any other error.
+ */
+sealed interface ProcessQuery {
+    data object Running : ProcessQuery
+
+    data object Exited : ProcessQuery
+
+    /** ERROR_INVALID_PARAMETER: no process has this pid. */
+    data object NoSuchProcess : ProcessQuery
+
+    /** ERROR_ACCESS_DENIED: SYSTEM's, a service's, a protected process or another user's. */
+    data object Denied : ProcessQuery
+
+    data class Failed(val error: Int) : ProcessQuery
+}
+
 /** lstat without following the last link: a dangling symlink is still an entry. */
 enum class LstatResult { EXISTS, NOT_FOUND, OTHER }
 
@@ -70,7 +88,11 @@ interface HubEnvironment {
     /** A fresh token per listen: UUID.randomUUID().toString(). */
     fun randomToken(): String
 
-    /** Whether a process with this pid runs, as Node's process.kill(pid, 0) answers it. */
+    /**
+     * Whether a process with this pid runs: on POSIX as Node's process.kill(pid, 0) answers it; on
+     * Windows a running process this process may open for the least query right, as the TypeScript
+     * hubs and the MCP server ask when the signal is refused.
+     */
     fun isAlive(pid: Long): Boolean
 
     /**
