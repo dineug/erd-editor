@@ -1,5 +1,6 @@
 package com.github.dineug.erdeditorintellijplugin.settings
 
+import com.github.dineug.erdeditorintellijplugin.agents.AgentHubService
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.dsl.builder.Row
@@ -33,7 +34,8 @@ class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
                 themeComboBox(ErdEditorTheme.ACCENT_COLORS, { it.accentColor }) { accentColor = it }
                     .comment(ACCENT_COLOR_COMMENT)
             }
-            row { checkBox("Coding agents").bindSelected(agents::codingAgents) }.rowComment(COMMENT)
+            row { checkBox("Coding agents").bindSelected(agents::codingAgents) }
+                .rowComment(agentsComment(AgentHubService.whyUnavailable()))
         }
     }
 
@@ -60,6 +62,11 @@ class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
     internal companion object {
         /** A value as the page names it, with a capital, as the Obsidian plugin's dropdowns do. */
         fun optionName(value: String) = value.replaceFirstChar(Char::uppercaseChar)
+
+        /** The switch's comment, and why the IDE runs no hub as a second line when it runs none. */
+        fun agentsComment(unavailableReason: String?): String =
+            if (unavailableReason == null) COMMENT
+            else "$COMMENT<br>Coding agents are unavailable: $unavailableReason"
 
         /** [stored] with each field the page changed; a null is a field the page left alone. */
         fun changed(stored: ErdEditorTheme, appearance: String?, grayColor: String?, accentColor: String?) =

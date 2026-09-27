@@ -21,5 +21,21 @@
             instance="com.github.dineug.erdeditorintellijplugin.settings.ErdEditorConfigurable"
             id="com.github.dineug.erdeditorintellijplugin.settings.ErdEditorConfigurable"
             displayName="ERD Editor" />
+        <postStartupActivity
+            implementation="com.github.dineug.erdeditorintellijplugin.agents.AgentHubStartupActivity" />
     </extensions>
+
+    <!-- The coding-agent hub's platform events; the hub's service is a light @Service. -->
+    <applicationListeners>
+        <listener class="com.github.dineug.erdeditorintellijplugin.agents.AgentHubAppListener"
+            topic="com.intellij.ide.AppLifecycleListener" />
+        <listener class="com.github.dineug.erdeditorintellijplugin.agents.AgentHubProjectCloseListener"
+            topic="com.intellij.openapi.project.ProjectCloseListener" />
+        <listener class="com.github.dineug.erdeditorintellijplugin.agents.AgentHubVfsListener"
+            topic="com.intellij.openapi.vfs.newvfs.BulkFileListener" />
+    </applicationListeners>
+    <projectListeners>
+        <listener class="com.github.dineug.erdeditorintellijplugin.agents.AgentHubRootsListener"
+            topic="com.intellij.openapi.roots.ModuleRootListener" />
+    </projectListeners>
 </idea-plugin>

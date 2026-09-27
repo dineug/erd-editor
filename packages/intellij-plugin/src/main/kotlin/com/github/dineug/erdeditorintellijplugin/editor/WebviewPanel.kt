@@ -17,6 +17,7 @@ import org.cef.browser.CefFrame
 import org.cef.browser.CefMessageRouter
 import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefDisplayHandlerAdapter
+import org.cef.handler.CefFocusHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.intellij.lang.annotations.Language
 import java.io.BufferedInputStream
@@ -83,9 +84,19 @@ class WebviewPanel(
         initSchemeHandler()
     }
 
+    // The editor sets both once the panel exists, and CEF calls them on its own threads. They are
+    // declared before the webview, whose construction starts the page loading.
+    @Volatile
+    var onPageLoadStart: () -> Unit = {}
+
+    /** The page took focus; an agent opening the file shows it without focus, so this never fires then. */
+    @Volatile
+    var onFocus: () -> Unit = {}
+
     private val webview = Webview(
             parentDisposable = this,
-            url = PLUGIN_URL
+            url = PLUGIN_URL,
+            onLoadStart = { onPageLoadStart() }
     )
 
     val component = webview.component
@@ -135,6 +146,16 @@ class WebviewPanel(
                 logger.debug("${file.name}: removing message router")
                 webview.jbCefBrowser.jbCefClient.cefClient.removeMessageRouter(messageRouter)
                 messageRouter.dispose()
+            }
+        }
+
+        object : CefFocusHandlerAdapter() {
+            override fun onGotFocus(browser: CefBrowser?) = onFocus()
+        }.also { focusHandler ->
+            webview.jbCefBrowser.jbCefClient.addFocusHandler(focusHandler, webview.jbCefBrowser.cefBrowser)
+            Disposer.register(this) {
+                logger.debug("${file.name}: removing focus handler")
+                webview.jbCefBrowser.jbCefClient.removeFocusHandler(focusHandler, webview.jbCefBrowser.cefBrowser)
             }
         }
 

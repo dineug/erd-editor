@@ -1,11 +1,20 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.github.dineug.erdeditorintellijplugin.agents.AgentHubService
+import com.github.dineug.erdeditorintellijplugin.hub.document.DocumentFile
+import com.github.dineug.erdeditorintellijplugin.hub.document.DocumentRegistry
+import com.github.dineug.erdeditorintellijplugin.hub.document.HubView
 import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
 import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorTheme
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.application.readAndEdtWriteAction
 import com.intellij.openapi.fileChooser.FileChooserFactory
@@ -37,7 +46,7 @@ class ErdEditor(
         private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>>
 ) : UserDataHolderBase(),
         FileEditor,
-        DumbAware, ErdEditorAppSettings.SettingsChangedListener {
+        DumbAware, ErdEditorAppSettings.SettingsChangedListener, HubView {
 
     // Flipped on the EDT in dispose(), read from coroutine and CEF threads.
     @Volatile
@@ -58,6 +67,14 @@ class ErdEditor(
 
     private val coroutineScope: CoroutineScope =
             CoroutineScope(SupervisorJob() + CoroutineName("${this::class.java.simpleName}:${file.name}"))
+
+    // The coding-agent hub, declared before init builds the page: its first command needs them.
+    private val service = AgentHubService.getInstance()
+    private val timings = service.runtime.timings
+    private val registry = service.runtime.registry
+
+    /** This editor's file as the hub's registry keeps it; null for one no agent reaches, and without JCEF. */
+    private val document: DocumentFile? = if (WebviewPanel.isSupported) service.document(file) else null
 
     init {
         val busConnection = ApplicationManager.getApplication().messageBus.connect(this)
@@ -90,31 +107,37 @@ class ErdEditor(
             bridge.subscribe(coroutineScope) { action ->
                 when (action) {
                     is HostBridgeCommand.Initial -> {
-                        val value = file.inputStream.use { it.reader(Charsets.UTF_8).readText() }
-
                         webviewPanel.dispatch(updateThemeCommand(ErdEditorAppSettings.instance))
                         webviewPanel.dispatch(
                             WebviewBridgeCommand.UpdateReadonly(file.isWritable.not())
                         )
-                        webviewPanel.dispatch(
-                            WebviewBridgeCommand.InitialValue(
-                                WebviewInitialValueCommandPayload(value)
-                            )
-                        )
+                        // Through the VFS, which drops a byte order mark.
+                        val value = file.inputStream.use { it.reader(Charsets.UTF_8).readText() }
+
+                        holdForLock()
+                        // The registry picks the value, its mirror once quiet or the file's, and readies
+                        // the page in the same step, so every batch it injects later follows the value.
+                        postHeld({ sendInitialValue(value) }) { onViewReady(it, this@ErdEditor, value) }
                     }
 
                     is HostBridgeCommand.SaveValue -> {
-                        savePayload.value = action.payload.value
+                        val value = action.payload.value
+                        savePayload.value = value
+                        postForFile { onValueSaved(it, this@ErdEditor, value) }
                     }
 
                     is HostBridgeCommand.SaveReplication -> {
-                        webviewPanel.dispatchBroadcast(
-                            WebviewBridgeCommand.Replication(
-                                WebviewReplicationCommandPayload(
-                                    action.payload.actions
+                        val actions = action.payload.actions
+                        // A held document relays through the registry, to its ready pages and its peers.
+                        postHeld({
+                            webviewPanel.dispatchBroadcast(
+                                WebviewBridgeCommand.Replication(
+                                    WebviewReplicationCommandPayload(
+                                        actions
+                                    )
                                 )
                             )
-                        )
+                        }) { onViewActions(it, this@ErdEditor, actions) }
                     }
 
                     is HostBridgeCommand.ImportFile -> {}
@@ -165,6 +188,18 @@ class ErdEditor(
                 }
             }
 
+            // Posted before the panel exists, whose page starts loading at once, so the page's first
+            // command reaches the registry after them.
+            document?.let { doc ->
+                registry.post {
+                    // Editors the registry let go of (the file renamed away and back) relay among
+                    // themselves; a new one of that file joins them, so every page reaches every other.
+                    if (docToEditorsMap[file].orEmpty().all { it === this@ErdEditor || holds(doc, it) }) {
+                        register(doc)
+                        addView(doc, this@ErdEditor)
+                    }
+                }
+            }
             webviewPanel = WebviewPanel(
                 this,
                 coroutineScope,
@@ -172,9 +207,88 @@ class ErdEditor(
                 file,
                 docToEditorsMap
             )
+            if (document != null) {
+                // A new page holds nothing until it asks for its initial value again.
+                webviewPanel.onPageLoadStart = { postForFile { onViewUnready(it, this@ErdEditor) } }
+                webviewPanel.onFocus = { postForFile { setActive(it) } }
+            }
             launchSaveJob()
         }
     }
+
+    /**
+     * Holds the page's initial value, initialValueHoldMs at most, until the lock lists the file, so an
+     * agent finds the document before the page takes an edit. The hub's threads stopping ends the hold.
+     */
+    private suspend fun holdForLock() {
+        val doc = document ?: return
+        if (hubStopped) return
+        try {
+            withTimeoutOrNull(timings.initialValueHoldMs) {
+                registry.call { awaitListed(doc, timings.initialValueHoldMs) }
+            }
+        } catch (e: CancellationException) {
+            // A call the stopped registry refused; this editor's own cancellation goes on.
+            currentCoroutineContext().ensureActive()
+        }
+    }
+
+    /**
+     * Runs block on the registry thread while it holds this editor as a view of its file, else
+     * unregistered: for a file no agent reaches, an editor the registry let go of (its file renamed to
+     * another extension) or one that joined those, and once the hub's threads stopped.
+     */
+    private fun postHeld(unregistered: () -> Unit, block: DocumentRegistry.(DocumentFile) -> Unit) {
+        val doc = document
+        if (doc == null || hubStopped) return unregistered()
+        registry.post { if (holds(doc)) block(doc) else unregistered() }
+    }
+
+    /** Runs block on the registry thread for this editor's file; the registry ignores a file it does not hold. */
+    private fun postForFile(block: DocumentRegistry.(DocumentFile) -> Unit) {
+        document?.let { doc -> registry.post { block(doc) } }
+    }
+
+    private fun DocumentRegistry.holds(doc: DocumentFile, editor: ErdEditor = this@ErdEditor): Boolean =
+        documents().any { it.file == doc && editor in it.views }
+
+    private val hubStopped: Boolean get() = service.runtime.threads.registryExecutor.isShutdown
+
+    override fun sendInitialValue(value: String) {
+        webviewPanel.dispatch(WebviewBridgeCommand.InitialValue(WebviewInitialValueCommandPayload(value)))
+    }
+
+    override fun inject(actions: ArrayNode) {
+        webviewPanel.dispatch(WebviewBridgeCommand.Replication(WebviewReplicationCommandPayload(actions)))
+    }
+
+    // Before the page exists there is nothing to tell: its first command reads the file's writability.
+    override fun pushReadonly(readonly: Boolean) {
+        if (isWebviewPanelInitialized) webviewPanel.dispatch(WebviewBridgeCommand.UpdateReadonly(readonly))
+    }
+
+    /**
+     * The hub's save: latest() written now rather than after the autosave debounce, read inside the
+     * write action, so an autosave that landed meanwhile is never overwritten with older bytes. Both
+     * run on the EDT at NON_MODAL, in the order they came. Bounded; the hub logs a save that failed.
+     */
+    override suspend fun writeNow(latest: () -> String): Boolean {
+        if (!canWrite()) return false
+        return withTimeoutOrNull(timings.saveWriteBoundMs) {
+            withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                edtWriteAction {
+                    // A tab closed meanwhile flushed its own newer value, and nothing older may follow it.
+                    if (!canWrite()) return@edtWriteAction false
+                    val value = latest()
+                    if (value != lastWrittenValue) writeValue(value)
+                    // Judged inside the action: an autosave queued behind it may write a newer value.
+                    lastWrittenValue == value
+                }
+            }
+        } ?: false
+    }
+
+    private fun canWrite(): Boolean = !isDisposed && file.isValid && file.isWritable
 
     private fun launchSaveJob() = coroutineScope.launch {
         savePayload
@@ -206,6 +320,7 @@ class ErdEditor(
                 stream.write(value.toByteArray(Charsets.UTF_8))
             }
             lastWrittenValue = value
+            postForFile { onWritten(it, value) }
         } catch (e: IOException) {
             reportWriteFailure(e)
         } catch (e: IllegalArgumentException) {
@@ -291,8 +406,10 @@ class ErdEditor(
         }
 
         // Order matters: flush before cancelling, otherwise the cancellation wins the race and the
-        // last edit is lost for good.
+        // last edit is lost for good. The registry hears of the flush first; the last view to go
+        // takes the document out of the lock and tells its peers.
         flushPendingSave()
+        postForFile { removeView(it, this@ErdEditor) }
         coroutineScope.cancel()
     }
 }
