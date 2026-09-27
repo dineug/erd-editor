@@ -454,6 +454,8 @@ class ConnectionServerTest {
         client.connection.finished.get(5, TimeUnit.SECONDS)
         peer.notify(HubNotification.DocumentClosed("/b"))
 
+        // The disconnect is posted to the registry thread, so it can land after finished.
+        awaitUntil(message = "disconnect") { handler.disconnects.isNotEmpty() }
         assertEquals(emptyList<JsonNode>(), client.fresh())
         assertEquals(listOf(peer), handler.disconnects)
     }
