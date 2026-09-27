@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
 import {
@@ -35,7 +36,12 @@ import {
 import { PRIVATE_MODE, specPipePath } from '@/__test-utils__/platform';
 import { isPlatformReason } from '@/errors';
 import * as NodeFs from '@/io/fileSystem';
-import { connectPipe, fromNetSocket, HubUnreachable } from '@/io/netSocket';
+import {
+  connectPipe,
+  fromNetSocket,
+  HubUnreachable,
+  isAccessDenied,
+} from '@/io/netSocket';
 import { isAlive, ProcessInfo } from '@/io/process';
 import * as Process from '@/io/process';
 import { realPath } from '@/paths';
@@ -358,6 +364,70 @@ describe('connectPipe over a real socket, a named pipe on Windows', () => {
     expect(error).toMatchObject({
       pipe,
       message: expect.stringContaining('ENOENT'),
+      denied: false,
     });
+  });
+
+  // Only Windows has a pipe whose descriptor keeps its own user out, and Node
+  // cannot give one a descriptor, so PowerShell serves it; elsewhere EPERM is
+  // never a denied pipe, which the isAccessDenied table below holds.
+  it.runIf(process.platform === 'win32')(
+    'marks a pipe Windows keeps this process out of as denied',
+    async () => {
+      const pipe = specPipePath(dir, 'denied');
+      const script = [
+        "$ErrorActionPreference = 'Stop'",
+        '$security = New-Object System.IO.Pipes.PipeSecurity',
+        "$system = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')",
+        "$security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($system, 'FullControl', 'Allow')))",
+        `$pipe = New-Object System.IO.Pipes.NamedPipeServerStream('${pipe.split('\\').at(-1)}', 'InOut', 1, 'Byte', 'Asynchronous', 0, 0, $security)`,
+        "[Console]::Out.WriteLine('listening')",
+        '[Console]::In.ReadLine() | Out-Null',
+      ].join('; ');
+      const owner = spawn(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', script],
+        { stdio: ['pipe', 'pipe', 'inherit'] }
+      );
+      const exited = new Promise<void>(resolve => owner.once('exit', resolve));
+      try {
+        await new Promise<void>((resolve, reject) => {
+          owner.stdout.setEncoding('utf8');
+          owner.stdout.on('data', (chunk: string) => {
+            if (chunk.includes('listening')) resolve();
+          });
+          owner.once('exit', code =>
+            reject(new Error(`PowerShell exited with ${code}`))
+          );
+        });
+
+        const error = await Effect.runPromise(
+          Effect.scoped(connectPipe(pipe)).pipe(Effect.flip)
+        );
+        expect(error).toMatchObject({
+          pipe,
+          message: `connect EPERM ${pipe}`,
+          denied: true,
+        });
+      } finally {
+        if (owner.exitCode === null) owner.stdin.end();
+        await exited;
+      }
+    },
+    30_000
+  );
+});
+
+describe('isAccessDenied', () => {
+  it.each([
+    ['EPERM', 'win32', true],
+    ['EPERM', 'linux', false],
+    ['EPERM', 'darwin', false],
+    ['EACCES', 'win32', false],
+    ['ECONNREFUSED', 'win32', false],
+    ['ENOENT', 'win32', false],
+    [undefined, 'win32', false],
+  ])('reads %j on %s as denied: %s', (code, platform, denied) => {
+    expect(isAccessDenied(code, platform)).toBe(denied);
   });
 });

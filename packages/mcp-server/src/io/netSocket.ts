@@ -1,14 +1,28 @@
 import * as net from 'node:net';
 
+import type { Platform } from '@dineug/erd-editor-agent-hub';
 import type { Array as Arr } from 'effect';
 import { Effect, Schema, Scope } from 'effect';
 import { Socket } from 'effect/unstable/socket';
 
-/** Nothing accepted a connection at the pipe a lock advertises. */
+/** Nothing accepted a connection at the pipe a lock advertises; denied, Windows kept this process out of it. */
 export class HubUnreachable extends Schema.TaggedError<HubUnreachable>()(
   'HubUnreachable',
-  { pipe: Schema.String, message: Schema.String }
+  {
+    pipe: Schema.String,
+    message: Schema.String,
+    denied: Schema.optionalKey(Schema.Boolean),
+  }
 ) {}
+
+/**
+ * Whether a failed connect is Windows keeping this process out of the pipe:
+ * libuv reports ERROR_ACCESS_DENIED as EPERM, as for an editor started with
+ * more rights than the agent. No other platform's EPERM means that.
+ */
+export function isAccessDenied(code: unknown, platform: Platform): boolean {
+  return platform === 'win32' && code === 'EPERM';
+}
 
 /** Opens a connection to a hub; closing the scope destroys it. */
 export type ConnectPipe = (
@@ -115,16 +129,22 @@ export function fromNetSocket(conn: net.Socket): Socket.Socket {
 
 /**
  * Connects to a hub's unix socket or named pipe. Failing to connect is
- * HubUnreachable with the system's message; once connected, a reset hub's
- * error is left to the close that follows it, which is what the client acts on.
+ * HubUnreachable with the system's message, denied as isAccessDenied reads its
+ * code; once connected, a reset hub's error is left to the close that follows.
  */
 export const connectPipe: ConnectPipe = pipe =>
   Effect.acquireRelease(
     Effect.callback<net.Socket, HubUnreachable>(resume => {
       const conn = net.connect(pipe);
-      const onError = (cause: Error) =>
+      const onError = (cause: NodeJS.ErrnoException) =>
         resume(
-          Effect.fail(new HubUnreachable({ pipe, message: cause.message }))
+          Effect.fail(
+            new HubUnreachable({
+              pipe,
+              message: cause.message,
+              denied: isAccessDenied(cause.code, process.platform),
+            })
+          )
         );
       conn.once('error', onError);
       conn.once('connect', () => {

@@ -23,8 +23,9 @@ import kotlin.concurrent.withLock
  * The hub's listener on Windows: a named pipe, the only local socket Node's net.connect dials there,
  * served as libuv serves one. Every handle is overlapped, since a handle opened for synchronous I/O
  * serializes it, and a blocked read would hold every notification back. The default security
- * descriptor, as libuv's: full control for the creating user, SYSTEM and administrators, read-only
- * for everyone else, who then cannot write the hello a peer needs; remote clients are refused.
+ * descriptor, as libuv's and on purpose: full control for SYSTEM, administrators and the IDE's user
+ * unless it runs elevated, read-only for everyone else, who then cannot write the hello a peer
+ * needs, so an elevated IDE admits elevated agents only; remote clients are refused.
  */
 class NamedPipeListenerFactory(private val io: ExecutorService, private val log: HubLog) : HubListenerFactory {
     override fun listen(pipe: String, onAccept: (HubChannel) -> Unit): HubListener {

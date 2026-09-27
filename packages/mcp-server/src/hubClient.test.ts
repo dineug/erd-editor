@@ -887,4 +887,46 @@ describe('the hub connector', () => {
       });
     }
   );
+
+  it.each([
+    ['vscode', 'The VS Code window', 'that window'],
+    ['obsidian', 'The Obsidian window', 'that window'],
+    ['intellij', 'The JetBrains IDE', 'that IDE'],
+    ['zed', 'The zed window', 'that window'],
+  ])(
+    'tells an agent Windows keeps out of the %s editor to run both with the same rights',
+    async (ide, named, that) => {
+      const io = createMemoryHost();
+      io.connect = pipe =>
+        Effect.fail(
+          new HubUnreachable({
+            pipe,
+            message: `connect EPERM ${pipe}`,
+            denied: true,
+          })
+        );
+      const lock = candidate(HUB_PROTOCOL_VERSION, ide);
+      const { pipe } = lock.record;
+
+      await expect(connect(io, lock)).rejects.toMatchObject({
+        code: 'hubUnreachable',
+        message: `${named} with pid 11 advertises an ERD Editor hub at ${pipe}, but Windows denied this agent access to it (connect EPERM ${pipe}): either ${that} runs with more rights than this agent, as when it was started as administrator and the agent was not, or this agent runs in a sandbox. Nothing was written; run the editor and this agent with the same rights, for example by starting the editor again without administrator rights, then call again.`,
+      });
+    }
+  );
+
+  it('keeps the plain text for a refusal Windows did not deny', async () => {
+    const io = createMemoryHost();
+    io.connect = pipe =>
+      Effect.fail(
+        new HubUnreachable({ pipe, message: 'connect ENOENT', denied: false })
+      );
+
+    await expect(connect(io, candidate())).rejects.toMatchObject({
+      code: 'hubUnreachable',
+      message: expect.stringContaining(
+        'but it did not accept a connection (connect ENOENT). Nothing was written; reload that window'
+      ),
+    });
+  });
 });

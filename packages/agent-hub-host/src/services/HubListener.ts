@@ -46,6 +46,9 @@ const listen = (
           );
 
         server.once('error', onListenError);
+        // Windows keeps libuv's default descriptor on purpose: readableAll and
+        // writableAll would give every account, and remote clients, connect and
+        // create-instance rights to the pipe (see this package's AGENTS.md).
         server.listen(pipe, () => {
           server.off('error', onListenError);
           // A listener error after binding must not throw in the host, and a

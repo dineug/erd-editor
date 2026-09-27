@@ -7,7 +7,7 @@ export const SessionErrorCode = {
   blocked: 'blocked',
   /** A hub took over a document this server was editing on disk. */
   hubAppeared: 'hubAppeared',
-  /** A lock advertises a hub that does not answer. */
+  /** A lock advertises a hub that does not answer, or that Windows keeps this agent out of. */
   hubUnreachable: 'hubUnreachable',
   /** The window that served a document still runs, but its lock is gone. */
   hubGone: 'hubGone',
