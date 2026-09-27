@@ -4,6 +4,7 @@
   "description": "Entity-Relationship Diagram Editor IntelliJ plugin",
   "license": "MIT",
   "scripts": {
-    "mcp-probe": "node e2e/mcp-probe.mjs"
+    "mcp-probe": "node e2e/mcp-probe.mjs",
+    "smoke": "node e2e/smoke.mjs"
   }
 }

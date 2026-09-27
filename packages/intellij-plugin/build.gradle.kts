@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
@@ -160,6 +161,54 @@ kover {
                 groupBy = kotlinx.kover.gradle.plugin.dsl.GroupingEntityType.CLASS
                 minBound(80, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE)
                 minBound(80, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH)
+            }
+        }
+    }
+}
+
+// The live smoke (e2e/smoke.mjs, `pnpm --filter @dineug/erd-editor-intellij-plugin smoke`) runs the
+// IDE through runIdeSmoke on a sandbox of its own, with the robot-server plugin beside ours and JCEF's
+// DevTools port open. Its sandbox dirs carry the task's suffix (config_runIdeSmoke, log_runIdeSmoke).
+// -PsmokePlatformVersion=<version or build> runs another IDE than platformVersion, such as the floor.
+val smokeProject = properties("smokeProject")
+val smokeSandbox = properties("smokeSandbox")
+val smokeCdpPort = properties("smokeCdpPort").orElse("9334")
+val smokeRobotPort = properties("smokeRobotPort").orElse("8082")
+val smokePlatformVersion = properties("smokePlatformVersion")
+
+intellijPlatformTesting {
+    runIde {
+        register("runIdeSmoke") {
+            sandboxDirectory = layout.dir(smokeSandbox.map { File(it) })
+                .orElse(layout.buildDirectory.dir("smoke-sandbox"))
+            // IU before 2025.3, the unified IntelliJ IDEA after it, as intellijIdea(...) picks.
+            type = smokePlatformVersion.map { IntelliJPlatformType.fromCode("IU", it) }
+            version = smokePlatformVersion
+            plugins {
+                robotServerPlugin()
+            }
+            task {
+                dependsOn(tasks.named("verifyWebviewAssets"))
+                // Locals, so the providers below never capture the script (configuration cache).
+                val projectDir = smokeProject
+                val cdpPort = smokeCdpPort
+                val robotPort = smokeRobotPort
+                argumentProviders += CommandLineArgumentProvider { listOfNotNull(projectDir.orNull) }
+                jvmArgumentProviders += CommandLineArgumentProvider {
+                    listOf(
+                        // No trust dialog, no tips, no consent, EULA or settings-import dialog on a fresh sandbox.
+                        "-Didea.trust.all.projects=true",
+                        "-Dide.show.tips.on.startup.default.value=false",
+                        "-Djb.consents.confirmation.enabled=false",
+                        "-Djb.privacy.policy.text=<!--999.999-->",
+                        "-Didea.initially.ask.config=never",
+                        // A registry key, read from the system property first: the DevTools port the
+                        // smoke reaches the editor pages over.
+                        "-Dide.browser.jcef.debug.port=${cdpPort.get()}",
+                        "-Drobot-server.port=${robotPort.get()}",
+                        "-Didea.log.debug.categories=com.github.dineug.erdeditorintellijplugin",
+                    )
+                }
             }
         }
     }
