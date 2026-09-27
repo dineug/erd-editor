@@ -31,12 +31,16 @@ jobs:
             plugin:
               - 'packages/intellij-plugin/**'
               - 'packages/intellij-webview/**'
+              - 'packages/agent-hub/**'
+              - 'packages/agent-hub-host/**'
+              - 'packages/mcp-server/**'
+              - 'packages/webview-bridge/**'
               - '.github/workflows/intellij-plugin.yml'
               - '.github/actions/setup-workspace/**'
 
-  # The webview's upstream packages are left out of the filter on purpose: their
-  # build writes straight into this plugin's resources, so pnpm build in ci.yml
-  # already fails on anything that breaks the bundle.
+  # The four packages after the webview feed the Kotlin tests: corpora, theme
+  # lists, the MCP. Every other upstream package stays out: pnpm build in ci.yml
+  # fails on a broken webview bundle, and mcp-server's tests on a broken MCP.
   build:
     needs: gate
     # The two fallback clauses are the safety net: a gate that misreads the diff
@@ -54,6 +58,8 @@ jobs:
       # produced here. verifyWebviewAssets turns an absent bundle into a build
       # failure rather than a plugin that opens a blank editor.
       - run: pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match build
+      # The conformance run starts this build with node against a Kotlin hub.
+      - run: pnpm exec vp run --filter @dineug/erd-editor-mcp --fail-if-no-match build
 
       # javaVersion in packages/intellij-plugin/gradle.properties. The plugin is
       # compiled against the oldest JDK it must load on.
@@ -63,9 +69,13 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
 
-      # check is the JVM unit tests plus the Kover coverage report.
+      # check is the JVM unit tests, the conformance run and the Kover report
+      # with its per-class gate on the hub core. Without ERD_MCP_CONFORMANCE a
+      # missing MCP build only skips the conformance run; here it fails it.
       - run: ./gradlew check buildPlugin
         working-directory: packages/intellij-plugin
+        env:
+          ERD_MCP_CONFORMANCE: required
 
       - uses: actions/upload-artifact@v7
         if: ${{ failure() }}
@@ -78,6 +88,81 @@ jobs:
         with:
           name: intellij-plugin-distribution
           path: packages/intellij-plugin/build/distributions/*.zip
+          retention-days: 7
+
+      # The MCP is one ESM file with nothing external but node builtins, so
+      # test-windows runs this copy with no workspace. Kept one day: after that,
+      # re-run all jobs, as test-windows alone can no longer download it.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: erd-editor-mcp
+          path: packages/mcp-server/dist/erd-editor-mcp.js
+          retention-days: 1
+
+  # The named-pipe hub, the Windows realpath and the conformance run over the
+  # pipe execute only here. test, not check: check adds only Kover, whose gate
+  # build.gradle.kts turns off on Windows.
+  test-windows:
+    needs: [gate, build]
+    if: >-
+      needs.gate.outputs.plugin == 'true'
+      || github.ref == 'refs/heads/main'
+      || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Node without pnpm: the tests only start node, and the MCP they start it
+      # on comes from build, into the path build.gradle.kts hands them.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v8
+        with:
+          name: erd-editor-mcp
+          path: packages/mcp-server/dist
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+
+      # gradlew.bat: the runner checks gradlew out with CRLF, as no .gitattributes
+      # keeps its LF. Gradle writes no report of a run the bound stops, so the init
+      # script logs each test as it starts and ends: the log shows where it hung.
+      - run: |
+          $events = "$env:RUNNER_TEMP\test-events.gradle"
+          Set-Content $events "allprojects { tasks.withType(Test).configureEach { testLogging.events('started', 'passed', 'skipped', 'failed') } }"
+          .\gradlew.bat test --init-script $events
+        working-directory: packages/intellij-plugin
+        timeout-minutes: 45
+        env:
+          ERD_MCP_CONFORMANCE: required
+
+      # A suite that skipped still passes, so each of the three that run nowhere
+      # else must leave one report that ran tests and skipped none, as the plugin's
+      # AGENTS.md asks of a Windows run.
+      - run: |
+          for suite in NamedPipeTransportTest WindowsRealPathTest McpConformanceTest; do
+            reports=(build/test-results/test/TEST-*."$suite".xml)
+            if [ "${#reports[@]}" -ne 1 ] || [ ! -f "${reports[0]}" ] ||
+              ! grep -Eq '<testsuite [^>]*tests="[1-9][0-9]*" skipped="0"' "${reports[0]}"; then
+              echo "::error::$suite left no single report that ran and skipped none"
+              exit 1
+            fi
+          done
+        shell: bash
+        working-directory: packages/intellij-plugin
+
+      # The XML results too: they are what the check above reads.
+      - uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          name: intellij-plugin-test-report-windows
+          path: |
+            packages/intellij-plugin/build/reports/tests/test
+            packages/intellij-plugin/build/test-results/test
           retention-days: 7
 
   # The IntelliJ Plugin Verifier downloads a full IDEA distribution per IDE in
