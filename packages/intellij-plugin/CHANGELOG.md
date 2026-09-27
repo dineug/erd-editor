@@ -4,22 +4,6 @@
 
 ## [Unreleased]
 
-### Fixed
-
-- A coding agent opening a diagram in a project opened through a mapped or subst drive, a symlink
-  or a junction now uses the editor the Project view opens for that file, instead of a second
-  editor of the same file.
-- On Windows, the file coding agents find the IDE by no longer misses an update when an agent
-  reads it at that moment. A miss could leave a diagram just opened unlisted, so an agent edited
-  it on disk behind the open editor, or keep agents out of the IDE until Coding agents was
-  toggled. The IDE now tries the update again, and repairs the file a second later if it still
-  fails.
-- On Windows, a coding agent is refused a diagram whose name Windows does not store as written:
-  one with a colon, such as `orders:v2.erd`, which Windows keeps as a hidden part of the file
-  `orders`, a device name such as `NUL.erd`, or a name or folder ending in a dot or a space. The
-  IDE and the agent could take such a name for two different files; the agent is now told to
-  rename it.
-
 ## [0.8.0] - 2026-09-19
 
 ### Added

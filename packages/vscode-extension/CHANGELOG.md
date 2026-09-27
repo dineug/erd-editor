@@ -1,27 +1,5 @@
 # Changelog
 
-## [Unreleased]
-
-### Fixed
-
-- On Windows, a coding agent is no longer shut out of a folder's diagrams after a window crashed
-  or the computer restarted and Windows gave that window's old process number to a system
-  service. The window's leftover lock file is now cleared, where the agent was told to reload a
-  window that no longer existed.
-- A coding agent opening a diagram in a folder opened through a mapped or subst drive, a symlink
-  or a junction now uses the editor the Explorer opens for that file. It used to open a second
-  editor of the same file, and saving the editor the agent had not changed could undo its edits.
-- On Windows, the file coding agents find a window by no longer misses an update when an agent
-  reads it at that moment. A miss could leave a diagram just opened unlisted, so an agent edited
-  it on disk behind the open editor, or keep agents out of the window until the setting was
-  toggled. The window now tries the update again, and repairs the file a second later if it still
-  fails.
-- On Windows, a coding agent is refused a diagram whose name Windows does not store as written:
-  one with a colon, such as `orders:v2.erd`, which Windows keeps as a hidden part of the file
-  `orders`, a device name such as `NUL.erd`, or a name or folder ending in a dot or a space. Other
-  Windows programs would open another file under such a name than the one the agent edited; the
-  agent is now told to rename it.
-
 ## [3.0.0] - 2026-09-24
 
 ### Added
