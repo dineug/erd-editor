@@ -1,3 +1,5 @@
+import { stripBom } from '@dineug/erd-editor-agent-hub-host';
+
 /** Where a tab stands, which decides what it hands Obsidian to save. */
 export type TabSaveState = {
   /** The file is no diagram the editor can read; the tab shows it read-only. */
@@ -62,7 +64,8 @@ export function exitSave(
   if (saving) return 'defer';
   const onDisk = readFile();
   if (onDisk === null) return 'defer';
-  return onDisk === state.saved ? 'write' : 'conflict';
+  // Obsidian drops a leading byte order mark as it reads a file, so saved has none.
+  return stripBom(onDisk) === state.saved ? 'write' : 'conflict';
 }
 
 /**

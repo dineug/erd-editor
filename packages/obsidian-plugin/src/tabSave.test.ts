@@ -129,6 +129,11 @@ describe('exitSave', () => {
     expect(exitSave(edited, false, disk(OPENED))).toBe('write');
   });
 
+  it('reads a file opened with a byte order mark as what Obsidian handed the tab, which lacks it', () => {
+    expect(exitSave(edited, false, disk(`﻿${OPENED}`))).toBe('write');
+    expect(exitSave(edited, false, disk(`﻿﻿${OPENED}`))).toBe('conflict');
+  });
+
   it('leaves an outside change, or a write not yet done, as the file holds it', () => {
     expect(exitSave(edited, false, disk(WRITTEN))).toBe('conflict');
     expect(exitSave(edited, false, disk(OPENED.slice(0, 5)))).toBe('conflict');
