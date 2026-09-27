@@ -21,6 +21,7 @@ import org.cef.handler.CefFocusHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.intellij.lang.annotations.Language
 import java.io.BufferedInputStream
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.BorderFactory
@@ -38,6 +39,9 @@ class WebviewPanel(
         val isSupported = JBCefApp.isSupported()
 
         private val schemeHandlerRegistered = AtomicBoolean(false)
+
+        /** The panels whose pages may send queries, for a router that hears another tab's page. */
+        private val livePanels: MutableSet<WebviewPanel> = ConcurrentHashMap.newKeySet()
 
         /**
          * Must run before any browser loads [PLUGIN_URL]. Out-of-process JCEF - the default since
@@ -107,8 +111,31 @@ class WebviewPanel(
         launchScriptJob()
     }
 
+    private val ownBrowser: CefBrowser get() = webview.jbCefBrowser.cefBrowser
+
+    /** Takes a query of this panel's page: enqueued for the bridge, then answered. */
+    private fun take(request: String?, callback: CefQueryCallback?): Boolean {
+        logger.debug("${file.name} disposed: ${isDisposed}")
+
+        if (isDisposed) {
+            logger.debug("${file.name}: disposed")
+            return false
+        }
+
+        // Only enqueued here, in the order CEF delivers the queries: the bridge's consumer parses,
+        // so nothing can throw across this native upcall and a save carrying the whole document
+        // never holds up the CEF thread.
+        if (request == null || !bridge.offer(request)) return false
+
+        // The page ignores the answer, but the router keeps a query it took pending, in the browser
+        // and in the renderer, until it is answered or the page goes away.
+        callback?.success("")
+        return true
+    }
+
     private fun initPanel() {
         Disposer.register(this, webview)
+        livePanels += this
 
         webview.component.border = BorderFactory.createEmptyBorder(2, 2, 2, 2)
 
@@ -122,22 +149,16 @@ class WebviewPanel(
                 persistent: Boolean,
                 callback: CefQueryCallback?
             ): Boolean {
-                logger.debug("${file.name} disposed: ${isDisposed}")
-
-                if (isDisposed) {
-                    logger.debug("${file.name}: disposed")
-                    return false
+                // Out-of-process JCEF at 2025.2 hands the queries of every browser to the router
+                // registered first, whatever client it was added to: a query of another ERD tab's
+                // page goes to that tab's panel, else the page never gets its initial value.
+                val panel = if (isSameBrowser(browser, ownBrowser)) {
+                    this@WebviewPanel
+                } else {
+                    livePanels.firstOrNull { it !== this@WebviewPanel && isSameBrowser(browser, it.ownBrowser) }
+                        ?: return false
                 }
-
-                // Only enqueued here, in the order CEF delivers the queries: the bridge's consumer
-                // parses, so nothing can throw across this native upcall and a save carrying the
-                // whole document never holds up the CEF thread.
-                if (request == null || !bridge.offer(request)) return false
-
-                // The page ignores the answer, but the router keeps a query it took pending, in the
-                // browser and in the renderer, until it is answered or the page goes away.
-                callback?.success("")
-                return true
+                return panel.take(request, callback)
             }
         }.also { routerHandler ->
             messageRouter.addHandler(routerHandler, true)
@@ -254,9 +275,15 @@ class WebviewPanel(
      */
     override fun beforeTreeDispose() {
         isDisposed = true
+        livePanels -= this
     }
 
     override fun dispose() {
         isDisposed = true
+        livePanels -= this
     }
 }
+
+/** Whether a query came from own: the same object or, under out-of-process JCEF, another handle on it. */
+internal fun isSameBrowser(browser: CefBrowser?, own: CefBrowser): Boolean =
+    browser === own || (browser != null && browser.identifier == own.identifier)
