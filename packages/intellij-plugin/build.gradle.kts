@@ -243,6 +243,18 @@ tasks {
         val bridgeTheme = file("../webview-bridge/src/theme.ts")
         inputs.file(bridgeTheme).withPropertyName("bridgeTheme").withPathSensitivity(PathSensitivity.RELATIVE)
         systemProperty("erd.bridgeTheme", bridgeTheme.absolutePath)
+        // McpConformanceTest drives a hub of its own with the built MCP server.
+        // Without node or the build it skips, unless ERD_MCP_CONFORMANCE=required makes that a failure;
+        // ERD_MCP_NODE names a node binary other than the one on PATH.
+        val mcpBin = file("../mcp-server/dist/erd-editor-mcp.js")
+        inputs.files(mcpBin).withPropertyName("mcpServer").withPathSensitivity(PathSensitivity.NONE)
+        systemProperty("erd.mcp.bin", mcpBin.absolutePath)
+        val mcpConformance = providers.environmentVariable("ERD_MCP_CONFORMANCE").orElse("")
+        inputs.property("mcpConformance", mcpConformance)
+        systemProperty("erd.mcp.conformance", mcpConformance.get())
+        val mcpNode = providers.environmentVariable("ERD_MCP_NODE").orElse("")
+        inputs.property("mcpNode", mcpNode)
+        systemProperty("erd.mcp.node", mcpNode.get())
     }
 
     // The POSIX-only suites skip on Windows by design, so their classes fall under the per-class
