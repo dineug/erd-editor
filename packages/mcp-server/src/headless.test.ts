@@ -923,12 +923,19 @@ describe('headless on a real file system', () => {
       icacls(path, '/inheritance:r', '/grant:r', `${userInfo().username}:(F)`);
     }
     const before = { ino: await inode(path), dacl: windows && daclOf(path) };
+    // What the folder gives a new file there depends on the machine, a hosted
+    // runner's temp folder handing out its creator's default DACL, not its own.
+    const fresh = join(dir, 'fresh.erd.json');
+    await writeFile(fresh, '');
+    const folderDacl = windows && daclOf(fresh);
+    await rm(fresh);
     const session = await openReal(path);
 
     await onNode(session.runTool('erd_add_table', {}));
     expect((await stat(path)).mode & 0o777).toBe(PRIVATE_MODE);
     if (windows) {
-      expect(before.dacl).toMatch(/^D:PAI\(A;;FA;;;[^)]+\)$/);
+      expect(before.dacl).toMatch(/^D:P/);
+      expect(before.dacl).not.toBe(folderDacl);
       expect(daclOf(path)).toBe(before.dacl);
       expect(await inode(path)).toBe(before.ino);
       expect(await readdir(dir)).toEqual(['private.erd.json']);

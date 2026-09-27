@@ -66,6 +66,19 @@ const onNode = <A, E>(
   effect: Effect.Effect<A, E, Layer.Success<typeof node>>
 ) => Effect.runPromise(Effect.provide(effect, node));
 
+/** What promise settles with, or a failure naming what did not happen in ms. */
+function within<A>(
+  promise: Promise<A>,
+  ms: number,
+  what: () => string
+): Promise<A> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${what()} in ${ms} ms`)), ms);
+  });
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+}
+
 /** A SystemError as os.getPriority throws one, its errno name under info. */
 function systemError(code: string): Error {
   return Object.assign(new Error(`uv_os_getpriority returned ${code}`), {
@@ -686,23 +699,37 @@ describe('connectPipe over a real socket, a named pipe on Windows', () => {
       ].join('; ');
       const owner = spawn(
         'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', script],
-        { stdio: ['pipe', 'pipe', 'inherit'] }
+        ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
+        { stdio: ['pipe', 'pipe', 'pipe'] }
       );
-      const exited = new Promise<void>(resolve => owner.once('exit', resolve));
+      let output = '';
+      for (const stream of [owner.stdout, owner.stderr]) {
+        stream.setEncoding('utf8');
+        stream.on('data', (chunk: string) => (output += chunk));
+      }
+      const wrote = () => `PowerShell wrote ${JSON.stringify(output)}`;
+      const exited = new Promise<void>(resolve =>
+        owner.once('exit', () => resolve())
+      );
       try {
-        await new Promise<void>((resolve, reject) => {
-          owner.stdout.setEncoding('utf8');
-          owner.stdout.on('data', (chunk: string) => {
-            if (chunk.includes('listening')) resolve();
-          });
-          owner.once('exit', code =>
-            reject(new Error(`PowerShell exited with ${code}`))
-          );
-        });
+        // A hosted runner can take long to start Windows PowerShell the first time.
+        await within(
+          new Promise<void>((resolve, reject) => {
+            owner.stdout.on('data', () => {
+              if (output.includes('listening')) resolve();
+            });
+            owner.once('exit', code =>
+              reject(new Error(`PowerShell exited with ${code}: ${wrote()}`))
+            );
+          }),
+          90_000,
+          () => `no pipe to connect to: ${wrote()}`
+        );
 
-        const error = await Effect.runPromise(
-          Effect.scoped(connectPipe(pipe)).pipe(Effect.flip)
+        const error = await within(
+          Effect.runPromise(Effect.scoped(connectPipe(pipe)).pipe(Effect.flip)),
+          15_000,
+          () => 'connectPipe never settled'
         );
         expect(error).toMatchObject({
           pipe,
@@ -711,10 +738,15 @@ describe('connectPipe over a real socket, a named pipe on Windows', () => {
         });
       } finally {
         if (owner.exitCode === null) owner.stdin.end();
-        await exited;
+        await within(exited, 10_000, () => 'PowerShell kept running').catch(
+          () => {
+            owner.kill();
+            return exited;
+          }
+        );
       }
     },
-    30_000
+    150_000
   );
 });
 
