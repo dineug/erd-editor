@@ -1,6 +1,9 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync, rmSync } from 'node:fs';
 import {
   chmod,
   mkdtemp,
+  open as openFile,
   readdir,
   readFile,
   rm,
@@ -8,10 +11,11 @@ import {
   utimes,
   writeFile,
 } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
 import { bHas, createPeerStore } from '@dineug/erd-editor/peer.js';
+import { HUB_PROTOCOL_VERSION, pipePath } from '@dineug/erd-editor-agent-hub';
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import * as NodePath from '@effect/platform-node/NodePath';
 import { Effect, Layer } from 'effect';
@@ -29,7 +33,7 @@ import {
   emptyDocument,
   SHOP_SQL,
 } from '@/__test-utils__/documents';
-import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
+import { connectMcp, type McpHarness, settle } from '@/__test-utils__/mcp';
 import { fsError } from '@/__test-utils__/memoryFs';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { PRIVATE_MODE } from '@/__test-utils__/platform';
@@ -91,6 +95,26 @@ function reload(text: string) {
   const snapshot = readDocument(peer.state, 'snapshot');
   peer.destroy();
   return snapshot;
+}
+
+/** Runs Windows' icacls, failing the spec when it fails. */
+function icacls(...args: string[]): void {
+  execFileSync(join(process.env.SystemRoot!, 'System32', 'icacls.exe'), args, {
+    windowsHide: true,
+  });
+}
+
+let saves = 0;
+
+/** The DACL of a file on Windows, as the SDDL icacls saves for it. */
+function daclOf(path: string): string {
+  const save = join(tmpdir(), `erd-mcp-dacl-${process.pid}-${++saves}`);
+  icacls(path, '/save', save, '/q');
+  try {
+    return readFileSync(save).toString('utf16le').split('\r\n')[1];
+  } finally {
+    rmSync(save, { force: true });
+  }
 }
 
 describe('headless: no lock, the file itself (AC-M2)', () => {
@@ -481,18 +505,14 @@ describe('headless compare-and-swap (AC-P14)', () => {
     ]);
   });
 
-  it('gives the new file the permission bits of the old one, owner write kept', async () => {
-    for (const [before, after] of [
-      [0o600, 0o600],
-      [0o640, 0o640],
-      [0o444, 0o644],
-    ]) {
+  it('gives the new file the permission bits of the old one', async () => {
+    for (const mode of [0o600, 0o640, 0o644]) {
       io.files.delete(DOCUMENT);
-      io.put(DOCUMENT, emptyDocument(), before);
+      io.put(DOCUMENT, emptyDocument(), mode);
       const session = await open();
 
       await io.run(session.runTool('erd_add_table', {}));
-      expect(io.files.get(DOCUMENT)!.mode).toBe(after);
+      expect(io.files.get(DOCUMENT)!.mode).toBe(mode);
       await io.run(session.close);
     }
   });
@@ -500,8 +520,11 @@ describe('headless compare-and-swap (AC-P14)', () => {
   it('loads the file again when the write itself fails, and reports the system error', async () => {
     const session = await open();
     const rename = io.calls.rename;
-    io.calls.rename = from =>
-      Effect.fail(fsError('PermissionDenied', 'rename', from));
+    let renames = 0;
+    io.calls.rename = from => {
+      renames++;
+      return Effect.fail(fsError('PermissionDenied', 'rename', from));
+    };
 
     await expect(
       io.run(session.runTool('erd_add_table', {}))
@@ -510,6 +533,8 @@ describe('headless compare-and-swap (AC-P14)', () => {
       reason: { _tag: 'PermissionDenied' },
     });
     io.calls.rename = rename;
+    // A rename failing on POSIX is no file held open, so it is tried once.
+    expect(renames).toBe(1);
     expect(io.files.has('/work/.solo.erd.json.id1.tmp')).toBe(false);
     expect(
       JSON.parse((await io.run(session.read(documentReader('snapshot')))).text)
@@ -587,6 +612,266 @@ describe('headless compare-and-swap (AC-P14)', () => {
   });
 });
 
+describe('headless: a read-only document', () => {
+  /** The document on its own, with the mode given. */
+  const putWithMode = (mode: number) => {
+    io.files.delete(DOCUMENT);
+    io.put(DOCUMENT, emptyDocument(), mode);
+  };
+
+  it('refuses a read-only document with readonly and leaves it as it was, then edits it once writable', async () => {
+    putWithMode(0o444);
+    const before = { ...io.files.get(DOCUMENT)! };
+
+    const refused = await mcp.call('erd_add_table', { path: DOCUMENT });
+    expect(refused.json.error).toEqual({
+      code: 'readonly',
+      message: `${DOCUMENT} is read-only, so the edit was not written; make it writable, such as by checking it out in Perforce or TFVC, then call again`,
+    });
+    expect(io.files.get(DOCUMENT)).toEqual(before);
+    expect(io.writes).toEqual(['/work/.solo.erd.json.id1.tmp']);
+    expect(io.files.has('/work/.solo.erd.json.id1.tmp')).toBe(false);
+
+    io.files.get(DOCUMENT)!.mode = 0o644;
+    const added = await mcp.ok('erd_add_table', { path: DOCUMENT });
+    expect(added).not.toHaveProperty('notes');
+    expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds).toEqual(
+      added.createdIds
+    );
+  });
+
+  it('refuses a document that turned read-only between calls by its mode alone, as a checkout reverted does', async () => {
+    await mcp.ok('erd_add_table', { path: DOCUMENT });
+    const written = io.read(DOCUMENT);
+    // Size and mtime stay, so only the stat of the swap sees it.
+    io.files.get(DOCUMENT)!.mode = 0o444;
+
+    const refused = await mcp.call('erd_add_memo', { path: DOCUMENT });
+    expect(refused.json.error.code).toBe('readonly');
+    expect(io.read(DOCUMENT)).toBe(written);
+    const snapshot = JSON.parse(
+      await mcp.text('erd_read', { path: DOCUMENT, format: 'snapshot' })
+    );
+    expect(snapshot.memos).toEqual([]);
+    expect(snapshot.tables).toHaveLength(1);
+  });
+});
+
+describe('headless on Windows: a document another program holds open', () => {
+  let win: MemoryHost;
+  let winMcp: McpHarness;
+  const TEMP = '/work/.solo.erd.json.id1.tmp';
+
+  /** EPERM, which Windows answers a rename over a file any handle has open. */
+  const held = (from: string, tag: 'Unknown' | 'PermissionDenied' | 'Busy') =>
+    fsError(
+      tag,
+      'rename',
+      from,
+      { Unknown: 'EPERM', PermissionDenied: 'EACCES', Busy: 'EBUSY' }[tag]
+    );
+
+  /** Fails the next renames with these tags, then renames again, noting each attempt. */
+  function holdRenames(tags: Array<'Unknown' | 'PermissionDenied' | 'Busy'>) {
+    const rename = win.calls.rename;
+    const events: string[] = [];
+    win.beforeStat = path => {
+      if (path === DOCUMENT) events.push('stat');
+    };
+    win.calls.rename = (from, to) => {
+      events.push('rename');
+      const tag = tags.shift();
+      return tag ? Effect.fail(held(from, tag)) : rename(from, to);
+    };
+    return events;
+  }
+
+  const lockOver = (pid: number, hub: boolean) => {
+    win.alive.add(pid);
+    win.writeLock(pid, {
+      pipe: hub ? pipePath(win.home, pid, 'win32') : '',
+      workspaceFolders: ['/work'],
+      documents: [],
+      ide: 'vscode',
+      version: '2.9.0',
+      protocolVersion: HUB_PROTOCOL_VERSION,
+      token: 't',
+      hub,
+    });
+  };
+
+  const connect = async (testClock = false) => {
+    win = createMemoryHost({ platform: 'win32' });
+    win.put(DOCUMENT, emptyDocument());
+    winMcp = await connectMcp({ host: win, testClock });
+  };
+
+  afterEach(async () => {
+    await winMcp.close();
+  });
+
+  it('retries the swap while the rename is refused, comparing again before each attempt', async () => {
+    await connect();
+    const events = holdRenames(['Unknown', 'PermissionDenied', 'Busy']);
+
+    const added = await winMcp.ok('erd_add_table', { path: DOCUMENT });
+    expect(added).not.toHaveProperty('notes');
+    expect(JSON.parse(win.read(DOCUMENT)).doc.tableIds).toEqual(
+      added.createdIds
+    );
+    // The load's stat and the refresh's, then one per attempt.
+    expect(events).toEqual([
+      'stat',
+      'stat',
+      ...Array.from({ length: 4 }, () => ['stat', 'rename']).flat(),
+    ]);
+    expect(win.files.has(TEMP)).toBe(false);
+  });
+
+  it('answers a write landing between two attempts as a conflict, never writing over it', async () => {
+    await connect();
+    await winMcp.ok('erd_add_memo', { path: DOCUMENT });
+    const theirs = withMemo();
+    const events = holdRenames(['Unknown']);
+    win.beforeStat = path => {
+      if (path !== DOCUMENT) return;
+      events.push('stat');
+      // The refresh, the first attempt, then the second attempt's compare.
+      if (events.filter(event => event === 'stat').length === 3) {
+        win.put(DOCUMENT, theirs);
+      }
+    };
+
+    const conflict = await winMcp.call('erd_add_table', { path: DOCUMENT });
+    expect(conflict.json.error.code).toBe('conflict');
+    expect(win.read(DOCUMENT)).toBe(theirs);
+    // The last stat is the reload's.
+    expect(events).toEqual(['stat', 'stat', 'rename', 'stat', 'stat']);
+    expect([...win.files.keys()].filter(path => path.endsWith('.tmp'))).toEqual(
+      []
+    );
+    const read = await winMcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'snapshot',
+    });
+    expect(read.texts).toHaveLength(1);
+    expect(JSON.parse(read.text).memos).toHaveLength(1);
+  });
+
+  it.each([
+    [true, 'hubAppeared', false],
+    [false, 'blocked', true],
+  ] as const)(
+    'looks for a window again before a retried attempt: a lock with hub %s refuses with %s',
+    async (hub, code, kept) => {
+      await connect();
+      await winMcp.ok('erd_add_memo', { path: DOCUMENT });
+      const onDisk = win.read(DOCUMENT);
+      const rename = win.calls.rename;
+      win.calls.rename = from => {
+        win.calls.rename = rename;
+        // The editor opened the file, which held it, and its lock lists it now.
+        lockOver(4242, hub);
+        return Effect.fail(held(from, 'Unknown'));
+      };
+
+      const refused = await winMcp.call('erd_add_table', { path: DOCUMENT });
+      expect(refused.json.error.code).toBe(code);
+      expect(refused.json.error.message).toContain(`(pid 4242)`);
+      expect(win.read(DOCUMENT)).toBe(onDisk);
+      expect(
+        [...win.files.keys()].filter(path => path.endsWith('.tmp'))
+      ).toEqual([]);
+      // A window that took the document closes the disk session, as at the start of a call.
+      expect(winMcp.manager.paths()).toEqual(kept ? [DOCUMENT] : []);
+    }
+  );
+
+  it('gives up once the retry window is over, loading the file again and quoting the system error', async () => {
+    await connect(true);
+    await winMcp.ok('erd_add_memo', { path: DOCUMENT });
+    let renames = 0;
+    win.calls.rename = from => {
+      renames++;
+      return Effect.fail(held(from, 'Unknown'));
+    };
+
+    let done = false;
+    const pending = winMcp
+      .call('erd_add_table', { path: DOCUMENT })
+      .finally(() => (done = true));
+    for (let step = 0; !done && step < 100; step++) {
+      await winMcp.adjust(100);
+      await settle(1);
+    }
+
+    expect((await pending).json.error).toEqual({
+      code: 'internal',
+      message: 'EPERM: /work/.solo.erd.json.id2.tmp',
+    });
+    // 10, 20, 40 and 80 ms apart, then 100 ms while under 2 s have passed:
+    // the 24th attempt comes 2,050 ms after the first on the clock.
+    expect(renames).toBe(24);
+    expect(win.files.has('/work/.solo.erd.json.id2.tmp')).toBe(false);
+    const snapshot = JSON.parse(
+      await winMcp.text('erd_read', { path: DOCUMENT, format: 'snapshot' })
+    );
+    expect(snapshot.tables).toEqual([]);
+    expect(snapshot.memos).toHaveLength(1);
+  });
+
+  it('writes in place a document whose own ACL a rename would lose, keeping the temp file until then', async () => {
+    await connect();
+    win.files.delete(DOCUMENT);
+    win.put(DOCUMENT, emptyDocument(), 0o600);
+    const asked: string[][] = [];
+    win.access.keepsAccess = (temp, path) => {
+      asked.push([temp, path]);
+      return Effect.succeed(false);
+    };
+    const writeInPlace = win.access.writeInPlace;
+    const present: boolean[] = [];
+    win.access.writeInPlace = (path, text) => {
+      present.push(win.files.has(TEMP));
+      return writeInPlace(path, text);
+    };
+    const rename = vi.spyOn(win.calls, 'rename');
+
+    const added = await winMcp.ok('erd_add_table', { path: DOCUMENT });
+    expect(asked).toEqual([[TEMP, DOCUMENT]]);
+    expect(present).toEqual([true]);
+    expect(rename).not.toHaveBeenCalled();
+    expect(win.writes).toEqual([TEMP, DOCUMENT]);
+    expect(win.files.has(TEMP)).toBe(false);
+    expect(win.files.get(DOCUMENT)!.mode).toBe(0o600);
+    expect(JSON.parse(win.read(DOCUMENT)).doc.tableIds).toEqual(
+      added.createdIds
+    );
+
+    // The in-place write's stat is the baseline, so its own write is no change.
+    const undone = await winMcp.ok('erd_undo', { path: DOCUMENT });
+    expect(undone).not.toHaveProperty('notes');
+    expect(JSON.parse(win.read(DOCUMENT)).doc.tableIds).toEqual([]);
+  });
+
+  it('retries an in-place write another program holds, as it does a rename', async () => {
+    await connect();
+    win.access.keepsAccess = () => Effect.succeed(false);
+    const writeInPlace = win.access.writeInPlace;
+    let attempts = 0;
+    win.access.writeInPlace = (path, text) =>
+      ++attempts === 1
+        ? Effect.fail(fsError('Busy', 'open', path, 'EBUSY'))
+        : writeInPlace(path, text);
+
+    const added = await winMcp.ok('erd_add_table', { path: DOCUMENT });
+    expect(attempts).toBe(2);
+    expect(JSON.parse(win.read(DOCUMENT)).doc.tableIds).toEqual(
+      added.createdIds
+    );
+  });
+});
+
 describe('headless on a real file system', () => {
   let dir: string;
 
@@ -604,10 +889,14 @@ describe('headless on a real file system', () => {
   ) => Effect.runPromise(Effect.provide(effect, node));
   const openReal = (path: string): Promise<HeadlessSession> =>
     onNode(openHeadlessSession({ path, nickname: 'agent' }));
+  const inode = async (path: string) =>
+    (await stat(path, { bigint: true })).ino;
+  const windows = process.platform === 'win32';
 
   it('replaces the file atomically and leaves no temp file behind', async () => {
     const path = join(dir, 'real.erd.json');
     await writeFile(path, `\ufeff${emptyDocument()}`);
+    const before = { ino: await inode(path), dacl: windows && daclOf(path) };
     const session = await openReal(path);
 
     const { run } = await onNode(session.runTool('erd_add_table', {}));
@@ -615,6 +904,9 @@ describe('headless on a real file system', () => {
 
     expect(JSON.parse(text).doc.tableIds).toEqual(run.createdIds);
     expect(await readdir(dir)).toEqual(['real.erd.json']);
+    // A new file took its place, on Windows because its ACL is the folder's.
+    expect(await inode(path)).not.toBe(before.ino);
+    expect(windows && daclOf(path)).toBe(before.dacl);
     expect(reload(text)).toBe(
       (await onNode(session.read(documentReader('snapshot')))).text
     );
@@ -625,12 +917,25 @@ describe('headless on a real file system', () => {
     const path = join(dir, 'private.erd.json');
     await writeFile(path, emptyDocument());
     await chmod(path, 0o600);
+    // Windows keeps only the read-only flag of a mode, so a private file there
+    // is one with an ACL of its own, which a rename would trade for the folder's.
+    if (windows) {
+      icacls(path, '/inheritance:r', '/grant:r', `${userInfo().username}:(F)`);
+    }
+    const before = { ino: await inode(path), dacl: windows && daclOf(path) };
     const session = await openReal(path);
 
     await onNode(session.runTool('erd_add_table', {}));
     expect((await stat(path)).mode & 0o777).toBe(PRIVATE_MODE);
+    if (windows) {
+      expect(before.dacl).toMatch(/^D:PAI\(A;;FA;;;[^)]+\)$/);
+      expect(daclOf(path)).toBe(before.dacl);
+      expect(await inode(path)).toBe(before.ino);
+      expect(await readdir(dir)).toEqual(['private.erd.json']);
+    }
 
-    // The baseline is the temp file's stat, so this holds only if the rename kept it.
+    // The baseline is the stat of its write, so this holds only if the rename,
+    // or the write in place, kept it.
     const undone = await onNode(session.undo);
     expect(undone).toMatchObject({
       result: { label: 'erd_add_table' },
@@ -639,6 +944,77 @@ describe('headless on a real file system', () => {
     expect(JSON.parse(await readFile(path, 'utf8')).doc.tableIds).toEqual([]);
     await onNode(session.close);
   });
+
+  it('refuses a read-only file, leaving it as it was', async () => {
+    const path = join(dir, 'locked.erd.json');
+    const text = emptyDocument();
+    await writeFile(path, text);
+    // On Windows this sets the read-only attribute, which node reads as 0o444.
+    await chmod(path, 0o444);
+    const session = await openReal(path);
+
+    try {
+      await expect(
+        onNode(session.runTool('erd_add_table', {}))
+      ).rejects.toMatchObject({ name: 'SessionError', code: 'readonly' });
+      expect(await readFile(path, 'utf8')).toBe(text);
+      expect((await stat(path)).mode & 0o777).toBe(0o444);
+      expect(await readdir(dir)).toEqual(['locked.erd.json']);
+    } finally {
+      await onNode(session.close);
+      await chmod(path, 0o644);
+    }
+  });
+
+  // Only Windows refuses a rename over a file another handle holds open; the
+  // memory specs above hold the retry on every platform.
+  it.runIf(windows)(
+    'replaces a document another handle holds open once it is let go',
+    async () => {
+      const path = join(dir, 'held.erd.json');
+      await writeFile(path, emptyDocument());
+      const session = await openReal(path);
+      const handle = await openFile(path, 'r');
+      const released = new Promise<void>(resolve =>
+        setTimeout(() => void handle.close().then(resolve), 50)
+      );
+
+      const { run } = await onNode(session.runTool('erd_add_table', {}));
+      await released;
+      expect(JSON.parse(await readFile(path, 'utf8')).doc.tableIds).toEqual(
+        run.createdIds
+      );
+      expect(await readdir(dir)).toEqual(['held.erd.json']);
+      await onNode(session.close);
+    }
+  );
+
+  it.runIf(windows)(
+    'gives up on a document held open past the retry window, leaving it as it was',
+    async () => {
+      const path = join(dir, 'held.erd.json');
+      const text = emptyDocument();
+      await writeFile(path, text);
+      const session = await openReal(path);
+      const handle = await openFile(path, 'r');
+
+      try {
+        const started = performance.now();
+        await expect(
+          onNode(session.runTool('erd_add_table', {}))
+        ).rejects.toMatchObject({
+          reason: { _tag: 'Unknown', cause: { code: 'EPERM' } },
+        });
+        expect(performance.now() - started).toBeGreaterThan(1_900);
+      } finally {
+        await handle.close();
+      }
+      expect(await readFile(path, 'utf8')).toBe(text);
+      expect(await readdir(dir)).toEqual(['held.erd.json']);
+      await onNode(session.close);
+    },
+    15_000
+  );
 
   it('tells a write of the same size stamped within the millisecond of its own', async () => {
     const path = join(dir, 'twin.erd.json');

@@ -1,5 +1,10 @@
+import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { realpath, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join } from 'node:path';
 
+import type { Platform } from '@dineug/erd-editor-agent-hub';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import type { PlatformError } from 'effect';
 import { Context, Effect, FileSystem, Layer, Option } from 'effect';
@@ -74,12 +79,139 @@ const withNativeStat = (fs: FileSystem.FileSystem) =>
       ),
   });
 
-/** NodeFileSystem with the native realpath and node's own stat: the disk the server runs on. */
-export const layer: Layer.Layer<FileSystem.FileSystem | FileStats> =
-  Layer.mergeAll(
-    Layer.effect(
-      FileSystem.FileSystem,
-      FileSystem.FileSystem.useSync(withNativeRealPath)
-    ),
-    Layer.effect(FileStats, FileSystem.FileSystem.useSync(withNativeStat))
-  ).pipe(Layer.provide(NodeFileSystem.layer));
+export type FileAccessShape = {
+  /** Whether renaming temp over path leaves who may open path as it was. */
+  readonly keepsAccess: (temp: string, path: string) => Effect.Effect<boolean>;
+  /** Writes text into path itself, so its ACL and attributes stay; the stat after. */
+  readonly writeInPlace: (
+    path: string,
+    text: string
+  ) => Effect.Effect<FileStat, PlatformError.PlatformError>;
+};
+
+/**
+ * How a headless write keeps a document's access. A rename carries the mode
+ * bits on POSIX, but on Windows the renamed file takes the folder's inherited
+ * ACL, so a document with an ACL of its own is written in place instead.
+ */
+export class FileAccess extends Context.Service<FileAccess, FileAccessShape>()(
+  '@dineug/erd-editor-mcp/FileAccess'
+) {}
+
+/** Runs icacls with args; rejects when it cannot start, fails or runs too long. */
+export type RunIcacls = (args: readonly string[]) => Promise<void>;
+
+/** Windows' own icacls, never one found first on the PATH. */
+const ICACLS = join(
+  process.env.SystemRoot ?? 'C:\\Windows',
+  'System32',
+  'icacls.exe'
+);
+
+/** A program run with no shell and no window, for 5 s at most. */
+export const runProgram =
+  (file: string): RunIcacls =>
+  args =>
+    new Promise((resolve, reject) =>
+      execFile(file, [...args], { windowsHide: true, timeout: 5_000 }, error =>
+        error ? reject(error) : resolve()
+      )
+    );
+
+/**
+ * Whether an icacls /save listing, a name line then its SDDL line, gives the
+ * two names one DACL; a name it does not list has none to compare.
+ */
+export function sameDacl(listing: string, a: string, b: string): boolean {
+  const lines = listing.split(/\r?\n/);
+  const dacl = new Map<string, string>();
+  for (let i = 0; i + 1 < lines.length; i += 2) {
+    dacl.set(lines[i], lines[i + 1]);
+  }
+  const first = dacl.get(a);
+  return first !== undefined && first === dacl.get(b);
+}
+
+export type FileAccessOptions = {
+  platform: Platform;
+  icacls?: RunIcacls;
+};
+
+/**
+ * FileAccess on a file system and its stat. On Windows one icacls /save over
+ * the folder compares the document's DACL with its fresh temp file's; when it
+ * fails, the write goes in place, logged once.
+ */
+export const makeFileAccess = (
+  fs: FileSystem.FileSystem,
+  stats: FileStatsShape,
+  { platform, icacls = runProgram(ICACLS) }: FileAccessOptions
+): FileAccessShape => {
+  let warned = false;
+
+  const compare = (temp: string, path: string) =>
+    Effect.suspend(() => {
+      const save = join(tmpdir(), `erd-editor-mcp-acl-${randomUUID()}`);
+      return Effect.tryPromise(() =>
+        icacls([
+          join(dirname(path), `*${basename(path)}*`),
+          '/save',
+          save,
+          '/q',
+        ])
+      ).pipe(
+        Effect.andThen(fs.readFile(save)),
+        Effect.map(bytes =>
+          sameDacl(
+            new TextDecoder('utf-16le').decode(bytes),
+            basename(path),
+            basename(temp)
+          )
+        ),
+        Effect.ensuring(Effect.ignore(fs.remove(save)))
+      );
+    }).pipe(
+      Effect.catch(error => {
+        if (warned) return Effect.succeed(false);
+        warned = true;
+        return Effect.logWarning(
+          `icacls could not compare the ACL of ${path}, so it is written in place, as every document is while icacls fails (logged once)`,
+          error
+        ).pipe(Effect.as(false));
+      })
+    );
+
+  return FileAccess.of({
+    keepsAccess: (temp, path) =>
+      platform === 'win32' ? compare(temp, path) : Effect.succeed(true),
+
+    // The text goes over the old bytes before the cut, so a reader meanwhile
+    // finds the old document or text that does not parse, never a blank file.
+    writeInPlace: (path, text) =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const file = yield* fs.open(path, { flag: 'r+' });
+          const bytes = new TextEncoder().encode(text);
+          yield* file.writeAll(bytes);
+          yield* file.truncate(bytes.length);
+        })
+      ).pipe(Effect.andThen(stats.stat(path))),
+  });
+};
+
+/** NodeFileSystem with the native realpath, node's own stat and FileAccess: the disk the server runs on. */
+export const layer: Layer.Layer<
+  FileSystem.FileSystem | FileStats | FileAccess
+> = Layer.mergeAll(
+  Layer.effect(
+    FileSystem.FileSystem,
+    FileSystem.FileSystem.useSync(withNativeRealPath)
+  ),
+  Layer.effect(FileStats, FileSystem.FileSystem.useSync(withNativeStat)),
+  Layer.effect(
+    FileAccess,
+    FileSystem.FileSystem.useSync(fs =>
+      makeFileAccess(fs, withNativeStat(fs), { platform: process.platform })
+    )
+  )
+).pipe(Layer.provide(NodeFileSystem.layer));

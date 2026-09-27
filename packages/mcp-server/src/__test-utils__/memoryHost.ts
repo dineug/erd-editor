@@ -6,14 +6,22 @@ import {
 } from '@dineug/erd-editor-agent-hub';
 import { Effect, Layer } from 'effect';
 
-import { createMemoryFs, type MemoryFs } from '@/__test-utils__/memoryFs';
+import {
+  createMemoryFs,
+  fsError,
+  type MemoryFs,
+} from '@/__test-utils__/memoryFs';
 import {
   memoryConnect,
   type ServerSocket,
 } from '@/__test-utils__/memorySocket';
 import * as HubConnector from '@/hub/client';
 import * as HubDiscovery from '@/hub/discovery';
-import { statsFromFileSystem } from '@/io/fileSystem';
+import {
+  FileAccess,
+  type FileAccessShape,
+  statsFromFileSystem,
+} from '@/io/fileSystem';
 import type { ConnectPipe } from '@/io/netSocket';
 import * as ProcessInfo from '@/io/process';
 import { StderrLogger } from '@/logger';
@@ -37,6 +45,14 @@ export type MemoryHost = MemoryFs & {
   readonly servers: Map<string, (socket: ServerSocket) => void>;
   /** How the server reaches a pipe; replace it to make a connection fail. */
   connect: ConnectPipe;
+  /**
+   * FileAccess, each member replaceable: every rename keeps access, and an
+   * in-place write replaces a file's text, mode and all kept, with no rename.
+   */
+  access: {
+    keepsAccess: FileAccessShape['keepsAccess'];
+    writeInPlace: FileAccessShape['writeInPlace'];
+  };
   writeLock: (pid: number, record: LockRecord, mtimeMs?: number) => void;
   removeLock: (pid: number) => void;
   /** Files, paths, the process and hub connections, all in memory. */
@@ -60,6 +76,20 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
   fs.mkdir(lockDirPath(home));
   fs.mkdir(cwd);
 
+  const access: MemoryHost['access'] = {
+    keepsAccess: () => Effect.succeed(true),
+    writeInPlace: (path, text) =>
+      Effect.suspend(() => {
+        if (!fs.files.has(path)) {
+          return Effect.fail(fsError('NotFound', 'open', path));
+        }
+        fs.writes.push(path);
+        fs.put(path, text);
+        const { mtimeMs, mode } = fs.files.get(path)!;
+        return Effect.succeed({ size: text.length, mtimeMs, mode });
+      }),
+  };
+
   const host = Object.assign(fs, {
     home,
     cwd,
@@ -67,6 +97,7 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
     alive,
     servers,
     connect: memoryConnect(servers),
+    access,
     writeLock: (pid: number, record: LockRecord, mtimeMs?: number) => {
       fs.put(lockFilePath(home, pid), serializeLock(record), 0o600);
       if (mtimeMs !== undefined)
@@ -80,6 +111,13 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
   const platformLayer: Layer.Layer<Platform> = Layer.mergeAll(
     fs.layer,
     statsFromFileSystem.pipe(Layer.provide(fs.layer)),
+    Layer.succeed(
+      FileAccess,
+      FileAccess.of({
+        keepsAccess: (temp, path) => host.access.keepsAccess(temp, path),
+        writeInPlace: (path, text) => host.access.writeInPlace(path, text),
+      })
+    ),
     ProcessInfo.layerTest({
       cwd,
       homeDir: home,

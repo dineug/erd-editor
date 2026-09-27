@@ -97,6 +97,7 @@ export const layerWithSessions = <E>(
 export type Platform =
   | FileSystem.FileSystem
   | NodeFs.FileStats
+  | NodeFs.FileAccess
   | Path.Path
   | ProcessInfo.ProcessInfo
   | HubConnector.HubConnector;

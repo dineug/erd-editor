@@ -1,10 +1,11 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
 import {
   chmod,
   mkdir,
   mkdtemp,
+  readFile,
   realpath,
   rm,
   stat as nodeStat,
@@ -19,7 +20,7 @@ import {
   type Socket as NetSocket,
 } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import * as NodePath from '@effect/platform-node/NodePath';
 import { Effect, Fiber, FileSystem, Layer, Stream } from 'effect';
@@ -44,6 +45,7 @@ import {
 } from '@/io/netSocket';
 import { isAlive, ProcessInfo } from '@/io/process';
 import * as Process from '@/io/process';
+import { StderrLogger } from '@/logger';
 import { realPath } from '@/paths';
 import { listDiskDocuments } from '@/session/disk';
 
@@ -256,6 +258,194 @@ describe('the node file system, as the sessions read its failures', () => {
   it('lists nothing under a folder it cannot read', async () => {
     expect(await onNode(listDiskDocuments(join(dir, 'none')))).toEqual([]);
   });
+});
+
+describe('FileAccess, how a headless write keeps a document open to whom it was', () => {
+  /** An icacls /save listing: each name, then its SDDL, in UTF-16LE with CRLF. */
+  const listing = (entries: Array<[string, string]>) =>
+    entries.map(([name, sddl]) => `${name}\r\n${sddl}\r\n`).join('');
+  const INHERITED =
+    'D:(A;ID;FA;;;SY)(A;ID;FA;;;BA)(A;ID;FA;;;S-1-5-21-1-2-3-1001)';
+
+  /** FileAccess on the node disk, with the platform and icacls a spec gives. */
+  const accessOn = (options: NodeFs.FileAccessOptions) =>
+    onNode(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const stats = yield* NodeFs.FileStats;
+        return NodeFs.makeFileAccess(fs, stats, options);
+      })
+    );
+
+  it.each([
+    ['one inherited DACL', INHERITED, INHERITED, true],
+    [
+      'an ACE of its own',
+      `${INHERITED}(A;;FR;;;S-1-5-32-545)`,
+      INHERITED,
+      false,
+    ],
+    ['inheritance off', 'D:PAI(A;;FA;;;S-1-5-21-1-2-3-1001)', INHERITED, false],
+  ])('compares the two DACLs icacls lists: %s is %s', (_, doc, temp, same) => {
+    const saved = listing([
+      ['.doc.erd.json.id1.tmp', temp],
+      ['doc.erd.json', doc],
+      ['bdoc.erd.json', INHERITED],
+    ]);
+    expect(
+      NodeFs.sameDacl(saved, 'doc.erd.json', '.doc.erd.json.id1.tmp')
+    ).toBe(same);
+  });
+
+  it('takes a name icacls did not list for no DACL, never the same one', () => {
+    const saved = listing([['doc.erd.json', INHERITED]]);
+    expect(
+      NodeFs.sameDacl(saved, 'doc.erd.json', '.doc.erd.json.id1.tmp')
+    ).toBe(false);
+    expect(NodeFs.sameDacl(saved, '.doc.erd.json.id1.tmp', 'none')).toBe(false);
+  });
+
+  it('keeps access by the rename on POSIX, without asking icacls', async () => {
+    const icacls = vi.fn(async () => undefined);
+    const access = await accessOn({ platform: 'linux', icacls });
+
+    expect(
+      await Effect.runPromise(access.keepsAccess('/a/.b.tmp', '/a/b'))
+    ).toBe(true);
+    expect(icacls).not.toHaveBeenCalled();
+  });
+
+  it('asks icacls once for the folder on Windows, reads the two names and removes what it saved', async () => {
+    const doc = join(dir, 'doc.erd.json');
+    const temp = join(dir, '.doc.erd.json.id1.tmp');
+    const saved: string[] = [];
+    const icacls = vi.fn(async (args: readonly string[]) => {
+      saved.push(args[2]);
+      await writeFile(
+        args[2],
+        Buffer.from(
+          listing([
+            ['.doc.erd.json.id1.tmp', INHERITED],
+            ['doc.erd.json', INHERITED],
+          ]),
+          'utf16le'
+        )
+      );
+    });
+    const access = await accessOn({ platform: 'win32', icacls });
+
+    const kept = await Effect.runPromise(
+      Effect.all([access.keepsAccess(temp, doc), access.keepsAccess(temp, doc)])
+    );
+    expect(kept).toEqual([true, true]);
+    expect(icacls).toHaveBeenCalledWith([
+      join(dir, '*doc.erd.json*'),
+      '/save',
+      saved[0],
+      '/q',
+    ]);
+    // One file per call, so servers writing in one folder never share it.
+    expect(saved[0]).not.toBe(saved[1]);
+    expect(saved.map(path => existsSync(path))).toEqual([false, false]);
+  });
+
+  it('runs a program as icacls is run, failing on its exit code', async () => {
+    const node = NodeFs.runProgram(process.execPath);
+
+    await expect(node(['-e', ''])).resolves.toBeUndefined();
+    await expect(node(['-e', 'process.exit(3)'])).rejects.toMatchObject({
+      code: 3,
+    });
+    await expect(
+      NodeFs.runProgram(join(dir, 'none.exe'))([])
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('writes in place when icacls fails, and says so once', async () => {
+    const logged = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const icacls = vi.fn(async () => {
+      throw new Error('spawn icacls.exe ENOENT');
+    });
+    const access = await accessOn({ platform: 'win32', icacls });
+    const keeps = (path: string) =>
+      Effect.runPromise(
+        access
+          .keepsAccess(`${path}.tmp`, path)
+          .pipe(Effect.provide(StderrLogger))
+      );
+
+    try {
+      expect(await keeps(join(dir, 'a.erd.json'))).toBe(false);
+      expect(await keeps(join(dir, 'b.erd.json'))).toBe(false);
+      expect(icacls).toHaveBeenCalledTimes(2);
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(logged).toHaveBeenCalledWith(
+        '[erd-editor-mcp]',
+        `icacls could not compare the ACL of ${join(dir, 'a.erd.json')}, so it is written in place, as every document is while icacls fails (logged once)`,
+        expect.anything()
+      );
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it('writes in place: the same file, its mode kept, the old tail cut, and the stat of what it wrote', async () => {
+    const path = join(dir, 'doc.erd.json');
+    await writeFile(path, 'x'.repeat(64));
+    await chmod(path, 0o600);
+    const before = await nodeStat(path, { bigint: true });
+    const access = await accessOn({ platform: process.platform });
+
+    const written = await Effect.runPromise(
+      access.writeInPlace(path, '{"테이블":1}')
+    );
+    const after = await nodeStat(path);
+    expect(await readFile(path, 'utf8')).toBe('{"테이블":1}');
+    expect((await nodeStat(path, { bigint: true })).ino).toBe(before.ino);
+    expect(written).toEqual({
+      size: after.size,
+      mtimeMs: after.mtimeMs,
+      mode: PRIVATE_MODE,
+    });
+    expect(written.size).toBe(Buffer.byteLength('{"테이블":1}'));
+  });
+
+  it('fails an in-place write of a missing file as NotFound', async () => {
+    const access = await accessOn({ platform: process.platform });
+    const missing = await Effect.runPromise(
+      access.writeInPlace(join(dir, 'none.erd.json'), '{}').pipe(Effect.flip)
+    );
+    expect(isPlatformReason(missing, 'NotFound')).toBe(true);
+  });
+
+  // The real icacls exists on Windows alone; the specs above hold the rest.
+  it.runIf(process.platform === 'win32')(
+    'tells an ACL of its own from the folder one through the real icacls',
+    async () => {
+      const inherited = join(dir, 'open.erd.json');
+      const own = join(dir, 'own.erd.json');
+      for (const path of [inherited, own]) {
+        await writeFile(path, '{}');
+        await writeFile(join(dir, `.${basename(path)}.id1.tmp`), '{}');
+      }
+      execFileSync(
+        join(process.env.SystemRoot!, 'System32', 'icacls.exe'),
+        [own, '/grant', '*S-1-5-32-546:(R)'],
+        { windowsHide: true }
+      );
+      const access = await onNode(NodeFs.FileAccess);
+      const keeps = (path: string) =>
+        Effect.runPromise(
+          access.keepsAccess(join(dir, `.${basename(path)}.id1.tmp`), path)
+        );
+
+      expect(await keeps(inherited)).toBe(true);
+      expect(await keeps(own)).toBe(false);
+    },
+    15_000
+  );
 });
 
 describe('connectPipe over a real socket, a named pipe on Windows', () => {

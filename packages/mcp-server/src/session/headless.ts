@@ -5,10 +5,10 @@ import {
   PeerStoreErrorCode,
   type RevertResult,
 } from '@dineug/erd-editor/peer.js';
-import { Effect, FileSystem, Path } from 'effect';
+import { Effect, FileSystem, Path, Schedule } from 'effect';
 
 import { isPlatformReason, SessionError, SessionErrorCode } from '@/errors';
-import { type FileStat, FileStats } from '@/io/fileSystem';
+import { FileAccess, type FileStat, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import {
   createEmptyDocument,
@@ -39,10 +39,28 @@ export type HeadlessSessionOptions = {
   nickname: string;
   /** Writes an empty document first when no file is there. */
   create?: boolean;
+  /** Runs before each retried write, refusing once a window holds the document. */
+  recheck?: Effect.Effect<void, SessionError>;
 };
 
 const sameStat = (a: FileStat, b: FileStat) =>
   a.size === b.size && a.mtimeMs === b.mtimeMs;
+
+/**
+ * What Windows answers a rename over a file any process holds open: libuv's
+ * EPERM, which platform-node folds into Unknown, or EACCES or EBUSY. The tag
+ * alone decides, as in its twin, agent-hub-host's lock write.
+ */
+const isBusyReplace = (error: unknown): boolean =>
+  isPlatformReason(error, 'Unknown') ||
+  isPlatformReason(error, 'PermissionDenied') ||
+  isPlatformReason(error, 'Busy');
+
+/** 10 ms doubling to 100 ms apart, for 2 s in all: a reader holds a file for milliseconds. */
+const SWAP_RETRY = Schedule.min([
+  Schedule.exponential('10 millis'),
+  Schedule.spaced('100 millis'),
+]).pipe(Schedule.upTo({ duration: '2 seconds' }));
 
 /** An exclusive create: a file already there is kept, a missing folder refused. */
 const createIfMissing = (fs: FileSystem.FileSystem, path: string) =>
@@ -59,18 +77,20 @@ const createIfMissing = (fs: FileSystem.FileSystem, path: string) =>
 
 /**
  * Edits the file with no editor in between: each call loads what is on disk
- * if it changed, runs on a peer that sends no presence, and replaces the file
- * atomically, refusing when the file changed during the call.
+ * if it changed, runs on a peer that sends no presence, and replaces the file,
+ * refusing when it changed during the call or is read-only.
  */
 export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
   path,
   nickname,
   create = false,
+  recheck = Effect.void,
 }: HeadlessSessionOptions) {
   const fs = yield* FileSystem.FileSystem;
   const { stat } = yield* FileStats;
+  const access = yield* FileAccess;
   const paths = yield* Path.Path;
-  const { randomId } = yield* ProcessInfo;
+  const { platform, randomId } = yield* ProcessInfo;
   if (create) yield* createIfMissing(fs, path);
 
   const peer: PeerStore = createPeerStore({ nickname, presence: false });
@@ -109,8 +129,8 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
 
   /**
    * Temp file with the document's permission bits (owner write kept, so it can
-   * always be cleaned up), then compare the stat taken at load, then rename.
-   * A rename keeps size and mtime, so the temp file's stat is the new baseline.
+   * always be cleaned up), then the swap: compare the stat taken at load, then
+   * rename, which keeps size and mtime, so the temp file's stat is the baseline.
    */
   const persist = Effect.gen(function* () {
     // The engine sets a key's not-null, a relationship's foreign-key mark and
@@ -123,23 +143,56 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
       `.${paths.basename(path)}.${yield* randomId}.tmp`
     );
     const removeTemp = Effect.ignore(fs.remove(temp));
+    const refuse = (error: SessionError) =>
+      removeTemp.pipe(
+        Effect.andThen(reloadQuietly),
+        Effect.andThen(Effect.fail(error))
+      );
 
     yield* Effect.gen(function* () {
       yield* fs.writeFileString(temp, text, {
         mode: loaded.mode | 0o200,
       });
       const written = yield* stat(temp);
-      const current = yield* stat(path);
-      if (!sameStat(current, loaded)) {
+      const renames = yield* access.keepsAccess(temp, path);
+
+      let attempts = 0;
+      // Each attempt compares again, so a write landing between two is refused;
+      // a retried one first asks whether a window took the document meanwhile.
+      const swap = Effect.gen(function* () {
+        if (attempts++ > 0) yield* recheck.pipe(Effect.catch(refuse));
+        const current = yield* stat(path);
+        if (!sameStat(current, loaded)) {
+          return yield* refuse(
+            new SessionError(
+              SessionErrorCode.conflict,
+              `${path} changed on disk during this call, so the edit was not written; it was loaded again, call the tool again`
+            )
+          );
+        }
+        if (!(current.mode & 0o200)) {
+          return yield* refuse(
+            new SessionError(
+              'readonly',
+              `${path} is read-only, so the edit was not written; make it writable, such as by checking it out in Perforce or TFVC, then call again`
+            )
+          );
+        }
+        if (renames) {
+          yield* fs.rename(temp, path);
+          return written;
+        }
+        const inPlace = yield* access.writeInPlace(path, text);
         yield* removeTemp;
-        yield* reloadQuietly;
-        return yield* new SessionError(
-          SessionErrorCode.conflict,
-          `${path} changed on disk during this call, so the edit was not written; it was loaded again, call the tool again`
-        );
-      }
-      yield* fs.rename(temp, path);
-      loaded = written;
+        return inPlace;
+      });
+
+      // Windows refuses a rename over a file another process has open.
+      loaded = yield* platform === 'win32'
+        ? swap.pipe(
+            Effect.retry({ schedule: SWAP_RETRY, while: isBusyReplace })
+          )
+        : swap;
     }).pipe(
       Effect.catch(error =>
         (error instanceof SessionError

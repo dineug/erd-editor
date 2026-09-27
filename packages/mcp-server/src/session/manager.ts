@@ -13,11 +13,11 @@ import {
   Schedule,
 } from 'effect';
 
-import { SessionError, SessionErrorCode } from '@/errors';
+import { isSessionError, SessionError, SessionErrorCode } from '@/errors';
 import { HubConnector } from '@/hub/client';
 import { HubDiscovery } from '@/hub/discovery';
 import { capitalize, hostWords } from '@/hub/host';
-import { FileStats } from '@/io/fileSystem';
+import { FileAccess, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import { realPath, resolveDocumentPath, sessionKey } from '@/paths';
 import {
@@ -187,6 +187,7 @@ const make = Effect.gen(function* () {
   const clock = yield* Clock.clockWith(Effect.succeed);
   const services = Context.make(FileSystem.FileSystem, fs).pipe(
     Context.add(FileStats, yield* FileStats),
+    Context.add(FileAccess, yield* FileAccess),
     Context.add(Path.Path, yield* Path.Path),
     Context.add(ProcessInfo, process),
     Context.add(HubConnector, connector)
@@ -195,7 +196,12 @@ const make = Effect.gen(function* () {
     effect: Effect.Effect<
       A,
       E,
-      FileSystem.FileSystem | FileStats | Path.Path | ProcessInfo | HubConnector
+      | FileSystem.FileSystem
+      | FileStats
+      | FileAccess
+      | Path.Path
+      | ProcessInfo
+      | HubConnector
     >
   ) => Effect.provideContext(effect, services);
 
@@ -279,9 +285,30 @@ const make = Effect.gen(function* () {
       })
     ).pipe(Effect.map(session => put(key, session)));
 
+  /** What a write retried on Windows asks first: whether a window took the document since the call began. */
+  const stillHeadless = (path: string) =>
+    discovery
+      .discover(path)
+      .pipe(
+        Effect.flatMap(resolution =>
+          resolution.kind === 'headless'
+            ? Effect.void
+            : Effect.fail(
+                resolution.kind === 'live'
+                  ? hubAppearedError(path, resolution.candidate)
+                  : blockedError(path, resolution.candidate)
+              )
+        )
+      );
+
   const newHeadless = (key: string, path: string, create = false) =>
     withServices(
-      openHeadlessSession({ path, nickname: nickname(), create })
+      openHeadlessSession({
+        path,
+        nickname: nickname(),
+        create,
+        recheck: stillHeadless(path),
+      })
     ).pipe(Effect.map(session => put(key, session)));
 
   /**
@@ -405,7 +432,15 @@ const make = Effect.gen(function* () {
           resolution,
           notes
         ))!;
-        const outcome = yield* task(session);
+        // A window that took the document during the write closes the disk
+        // session, as one found at the start does, so the next call joins it.
+        const outcome = yield* task(session).pipe(
+          Effect.tapError(error =>
+            isSessionError(error, SessionErrorCode.hubAppeared)
+              ? drop(key)
+              : Effect.void
+          )
+        );
         return {
           ...outcome,
           notes: [...notes, ...outcome.notes],
@@ -548,6 +583,7 @@ export const layer: Layer.Layer<
   never,
   | FileSystem.FileSystem
   | FileStats
+  | FileAccess
   | Path.Path
   | ProcessInfo
   | HubConnector
