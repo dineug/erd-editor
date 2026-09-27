@@ -91,6 +91,11 @@ class FakeFileSystem(private val delegate: HubFileSystem? = null) : HubFileSyste
         synchronized(lock) { failures.getOrPut(op) { ArrayDeque() }.addLast(error) }
     }
 
+    /** Drops every failure still queued, so the calls after it act. */
+    fun clearFailures() {
+        synchronized(lock) { failures.clear() }
+    }
+
     /** The next call of op waits, after being recorded, until the returned hold is released. */
     fun hold(op: FakeOp, capMs: Long = HOLD_CAP_MS): FakeHold =
         FakeHold(op, capMs).also { hold -> synchronized(lock) { holds.getOrPut(op) { ArrayDeque() }.addLast(hold) } }

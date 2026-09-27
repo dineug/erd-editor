@@ -560,7 +560,7 @@ describe('the repair of a failed lock write', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   });
 
-  it('rewrites the lock a second after a write failed, with no change of state, and warns once', async () => {
+  it('rewrites the lock a second after a write failed, with no change of state, and warns once, then once it landed', async () => {
     const { hub, io } = start();
     await settle();
     failRenames(io);
@@ -574,15 +574,21 @@ describe('the repair of a failed lock write', () => {
       hub: true,
       documents: ['/elsewhere/a.erd.json'],
     });
-    expect(console.warn).toHaveBeenCalledTimes(1);
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(console.warn).toHaveBeenCalledTimes(2);
+    expect(console.warn).toHaveBeenNthCalledWith(
+      1,
       '[erd-editor hub]',
       `could not write ${LOCK}`,
       expect.objectContaining({ _tag: 'PlatformError' })
     );
+    expect(console.warn).toHaveBeenNthCalledWith(
+      2,
+      '[erd-editor hub]',
+      `wrote ${LOCK} again`
+    );
   });
 
-  it('backs off 1, 2 and 4 seconds while the writes keep failing, and starts at 1 second again once one landed', async () => {
+  it('backs off 1, 2 and 4 seconds while the writes keep failing, warning for the first only, and starts over once one landed', async () => {
     const { hub, io } = start();
     await settle();
     const rename = io.fs.rename.getMockImplementation()!;
@@ -603,14 +609,71 @@ describe('the repair of a failed lock write', () => {
       await settle(1);
       expect(io.fs.rename).toHaveBeenCalledTimes(renames);
     }
+    expect(console.warn).toHaveBeenCalledTimes(1);
     io.fs.rename.mockImplementation(rename);
     await settle(8_000);
     expect(io.lock()?.documents).toEqual(['/elsewhere/a.erd.json']);
+    expect(console.warn).toHaveBeenCalledTimes(2);
+    expect(console.warn).toHaveBeenLastCalledWith(
+      '[erd-editor hub]',
+      `wrote ${LOCK} again`
+    );
 
     failRenames(io);
     void hub.setDocuments(['/elsewhere/b.erd.json']);
     await settle(1_000);
     expect(io.lock()?.documents).toEqual(['/elsewhere/b.erd.json']);
+    expect(console.warn).toHaveBeenCalledTimes(4);
+  });
+
+  it('keeps a failing listen and failing writes quiet on the repairs, each warning once, until a write lands', async () => {
+    const io = createMemoryHub();
+    for (let listen = 0; listen < 5; listen++) io.failListenOnce('EACCES');
+    const rename = io.fs.rename.getMockImplementation()!;
+    io.fs.rename.mockImplementation((from: string) =>
+      Effect.fail(fsError('PermissionDenied', 'rename', from))
+    );
+    start(io);
+    await settle();
+    expect(console.warn).toHaveBeenCalledTimes(2);
+
+    for (const delay of [1_000, 2_000, 4_000]) await settle(delay);
+    expect(io.listen).toHaveBeenCalledTimes(4);
+    expect(console.warn).toHaveBeenCalledTimes(2);
+
+    io.fs.rename.mockImplementation(rename);
+    await settle(8_000);
+    expect(io.listen).toHaveBeenCalledTimes(5);
+    expect(io.lock()).toMatchObject({ hub: false });
+    expect(console.warn).toHaveBeenCalledTimes(3);
+    expect(console.warn).toHaveBeenLastCalledWith(
+      '[erd-editor hub]',
+      `wrote ${LOCK} again`
+    );
+  });
+
+  it('warns for a listen that fails while the writes keep failing, since that is another failure', async () => {
+    const { hub, io } = start();
+    await settle();
+    io.fs.rename.mockImplementation((from: string) =>
+      Effect.fail(fsError('Busy', 'rename', from))
+    );
+    void hub.setDocuments(['/elsewhere/a.erd.json']);
+    await settle();
+    expect(console.warn).toHaveBeenCalledTimes(1);
+
+    io.failListenOnce('EACCES');
+    turn(hub.host, false);
+    await settle();
+    turn(hub.host, true);
+    await settle();
+
+    expect(console.warn).toHaveBeenCalledTimes(2);
+    expect(console.warn).toHaveBeenLastCalledWith(
+      '[erd-editor hub]',
+      `could not listen on ${SOCKET}`,
+      expect.objectContaining({ _tag: 'HubListenError' })
+    );
   });
 
   it('closes the pipe at once when the hub false write fails, and the repair turns the lock hub false', async () => {

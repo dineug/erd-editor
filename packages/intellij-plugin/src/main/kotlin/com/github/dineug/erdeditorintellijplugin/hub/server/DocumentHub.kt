@@ -59,8 +59,33 @@ class DocumentHub(
         }
     }
 
+    /**
+     * Set by a failed lock write, cleared by one that lands, and likewise for a listen; written by
+     * queue tasks only. Only the first failure of a run warns, where a lock folder this user may
+     * not write would have the repairs warn every 30 s for good.
+     */
+    @Volatile
+    private var lockFailing = false
+
+    @Volatile
+    private var listenFailing = false
+
+    /** The lock write's warnings, silenced while lock writes keep failing. */
+    private val lockLog = object : HubLog {
+        override fun warn(text: String, detail: Any?) {
+            if (!lockFailing) log.warn(text, detail)
+        }
+    }
+
+    /** The listen's warnings, silenced while listens keep failing. */
+    private val listenLog = object : HubLog {
+        override fun warn(text: String, detail: Any?) {
+            if (!listenFailing) log.warn(text, detail)
+        }
+    }
+
     private val authz = Authz(env)
-    private val lockFile = LockFile(env, log, timings.lockRenameDelaysMs, threads::pause)
+    private val lockFile = LockFile(env, lockLog, timings.lockRenameDelaysMs, threads::pause)
     private val queue = StateQueue(threads, log)
     private val connectionIds = AtomicInteger()
     private val started = AtomicBoolean()
@@ -300,7 +325,8 @@ class DocumentHub(
     private fun listen(): Serving? {
         val pipe = LockPaths.choosePipePath(env.homeDir, env.tmpDir, env.pid, env.platform)
         if (pipe == null) {
-            log.warn("neither ${lockFile.lockDir} nor ${env.tmpDir} leaves room for a socket path")
+            listenLog.warn("neither ${lockFile.lockDir} nor ${env.tmpDir} leaves room for a socket path")
+            listenFailing = true
             return null
         }
         val token = env.randomToken()
@@ -319,14 +345,16 @@ class DocumentHub(
                 connection.finished.whenComplete { _, _ -> connections -= connection }
                 connection.start()
             }
-            Serving(pipe, token, listener, connections)
+            Serving(pipe, token, listener, connections).also { listenFailing = false }
         } catch (e: Exception) {
             e.rethrowIfCancellation()
-            log.warn("could not listen on $pipe", e)
+            listenLog.warn("could not listen on $pipe", e)
+            listenFailing = true
             null
         } catch (e: LinkageError) {
             // A named pipe's JNA natives that fail to load still leave the hub false lock guarding.
-            log.warn("could not listen on $pipe", e)
+            listenLog.warn("could not listen on $pipe", e)
+            listenFailing = true
             null
         }
     }
@@ -347,7 +375,7 @@ class DocumentHub(
             env.fs.makeDirectories(lockFile.lockDir, LockPaths.LOCK_DIR_MODE)
         } catch (e: Exception) {
             e.rethrowIfCancellation()
-            log.warn("could not write ${lockFile.lockPath}", e)
+            lockLog.warn("could not write ${lockFile.lockPath}", e)
             return noteWrite(false)
         }
         if (released) return false
@@ -357,8 +385,11 @@ class DocumentHub(
     /** A write that landed starts the repair delay over; one that failed asks for a repair, unless released. */
     private fun noteWrite(written: Boolean): Boolean {
         if (written) {
+            if (lockFailing) log.warn("wrote ${lockFile.lockPath} again")
+            lockFailing = false
             synchronized(repairLock) { repairDelayMs = timings.lockRepairMs }
         } else if (!released) {
+            lockFailing = true
             requestRepair()
         }
         return written

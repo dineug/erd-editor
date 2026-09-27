@@ -968,7 +968,7 @@ class DocumentHubTest {
     }
 
     @Test
-    fun `rewrites the lock after a failed write, with no change of state, and warns once`() {
+    fun `rewrites the lock after a failed write, with no change of state, and warns once, then once it landed`() {
         val fixture = Fixture(timings = REPAIR).start().apply { flush() }
         fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
 
@@ -976,8 +976,10 @@ class DocumentHubTest {
         assertEquals("not before the repair", emptyList<String>(), fixture.lock()?.documents)
 
         awaitUntil(message = "the repair") { fixture.lock()?.documents == listOf("/elsewhere/a.erd.json") }
+        // The lock shows at its rename, before the repair task logs and ends.
+        fixture.flush()
         assertEquals(record(documents = listOf("/elsewhere/a.erd.json")), fixture.lock())
-        assertEquals(listOf("could not write $LOCK"), log.texts)
+        assertEquals(listOf("could not write $LOCK", "wrote $LOCK again"), log.texts)
     }
 
     @Test
@@ -999,7 +1001,7 @@ class DocumentHubTest {
     }
 
     @Test
-    fun `waits no longer than the cap between repairs`() {
+    fun `waits no longer than the cap between repairs, warning for the first failure only`() {
         val fixture = Fixture(timings = TIMINGS.copy(lockRepairMs = 100, lockRepairMaxMs = 100)).start().apply { flush() }
         repeat(5) { fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy")) }
 
@@ -1007,7 +1009,37 @@ class DocumentHubTest {
 
         // Five waits of 100 ms, where doubling past the cap would take 3100.
         awaitUntil(1_500, "the fifth repair") { fixture.lock()?.documents == listOf("/elsewhere/a.erd.json") }
-        assertEquals(List(5) { "could not write $LOCK" }, log.texts)
+        fixture.flush()
+        assertEquals(listOf("could not write $LOCK", "wrote $LOCK again"), log.texts)
+    }
+
+    @Test
+    fun `keeps a failing listen and failing writes quiet on the repairs, each warning once, until a write lands`() {
+        val fixture = Fixture(timings = TIMINGS.copy(lockRepairMs = 100, lockRepairMaxMs = 100))
+        repeat(1_000) { fixture.env.failNext(FakeOp.MAKE_DIRECTORIES, AccessDeniedException(LOCK_DIR)) }
+
+        fixture.start()
+        awaitUntil(message = "three repairs") { fixture.env.fs.callsOf(FakeOp.MAKE_DIRECTORIES).size >= 12 }
+        assertEquals(listOf("could not listen on $SOCKET", "could not write $LOCK"), log.texts)
+
+        fixture.env.fs.clearFailures()
+        awaitUntil(message = "the repair that lands") { fixture.lock()?.hub == true }
+        fixture.flush()
+        assertEquals(listOf("could not listen on $SOCKET", "could not write $LOCK", "wrote $LOCK again"), log.texts)
+    }
+
+    @Test
+    fun `warns for a listen that fails while the writes keep failing, since that is another failure`() {
+        val fixture = started()
+        repeat(10) { fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy")) }
+        fixture.setDocuments("/elsewhere/a.erd.json")
+        assertEquals(listOf("could not write $LOCK"), log.texts)
+
+        fixture.listeners.failListenOnce()
+        fixture.turn(false)
+        fixture.turn(true)
+
+        assertEquals(listOf("could not write $LOCK", "could not listen on $SOCKET"), log.texts)
     }
 
     @Test

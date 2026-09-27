@@ -12,6 +12,7 @@ import {
   Exit,
   FileSystem,
   Layer,
+  References,
   Scope,
   Stream,
 } from 'effect';
@@ -97,6 +98,13 @@ const make = Effect.gen(function* () {
   let repairDue = false;
   let repairTimer: ReturnType<typeof setTimeout> | undefined;
   let repairDelay = LOCK_REPAIR_MS;
+  /**
+   * Set by a failed lock write, cleared by one that lands, and likewise for a
+   * listen: only the first failure of a run warns, where a lock folder this user
+   * may not write would have the repairs warn every 30 s for good.
+   */
+  let lockFailing = false;
+  let listenFailing = false;
 
   const authorize = (path: string) =>
     authorizePath(env.platform, { folders, documents }, path).pipe(
@@ -132,23 +140,40 @@ const make = Effect.gen(function* () {
     };
   }
 
+  const warnUnless = (failing: boolean, message: string, error: unknown) =>
+    failing ? Effect.void : Effect.logWarning(message, error);
+
+  /** LockFile.write, its own warning silenced while writes keep failing. */
+  const writeRecord = () => {
+    const write = lock.write(lockRecord());
+    return lockFailing
+      ? write.pipe(Effect.provideService(References.MinimumLogLevel, 'Error'))
+      : write;
+  };
+
   const writeLock = (): Promise<boolean> =>
     run(
       fs.makeDirectory(lockDir, { recursive: true, mode: LOCK_DIR_MODE }).pipe(
         Effect.matchEffect({
           onFailure: error =>
-            Effect.logWarning(`could not write ${lockPath}`, error).pipe(
+            warnUnless(lockFailing, `could not write ${lockPath}`, error).pipe(
               Effect.as(false)
             ),
           onSuccess: () =>
             released
               ? Effect.succeed(false)
-              : lock.write(lockRecord()).pipe(Effect.map(keepUnlessReleased)),
+              : writeRecord().pipe(Effect.map(keepUnlessReleased)),
         })
       )
     ).then(written => {
-      if (written) repairDelay = LOCK_REPAIR_MS;
-      else if (!released) requestRepair();
+      if (written) {
+        if (lockFailing) warnUnsafe(`wrote ${lockPath} again`);
+        lockFailing = false;
+        repairDelay = LOCK_REPAIR_MS;
+      } else if (!released) {
+        lockFailing = true;
+        requestRepair();
+      }
       return written;
     });
 
@@ -217,9 +242,12 @@ const make = Effect.gen(function* () {
   async function listen(): Promise<Serving | null> {
     const pipe = choosePipePath(env.homeDir, env.tmpDir, env.pid, env.platform);
     if (pipe === null) {
-      warnUnsafe(
-        `neither ${lockDir} nor ${env.tmpDir} leaves room for a socket path`
-      );
+      if (!listenFailing) {
+        warnUnsafe(
+          `neither ${lockDir} nor ${env.tmpDir} leaves room for a socket path`
+        );
+      }
+      listenFailing = true;
       return null;
     }
     const token = await run(env.randomToken);
@@ -239,13 +267,15 @@ const make = Effect.gen(function* () {
         return true;
       }).pipe(
         Effect.catchCause(cause =>
-          Effect.logWarning(
+          warnUnless(
+            listenFailing,
             `could not listen on ${pipe}`,
             Cause.squash(cause)
           ).pipe(Effect.as(false))
         )
       )
     );
+    listenFailing = !started;
     if (!started) {
       await run(Scope.close(scope, Exit.void));
       return null;
