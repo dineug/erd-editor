@@ -13,7 +13,7 @@
 | --- | --- |
 | `src/bridge.ts` | `Bridge` (`registerCommand`, `executeAction`, static `executeCommand` / `mergeRegister`) and `createCommand` |
 | `src/commands.ts` | The wire catalogue: six `host*` commands (webview → host) and five `webview*` (host → webview) |
-| `src/theme.ts` | `Appearance` / `GrayColor` / `AccentColor` `as const` maps and `ThemeOptions` |
+| `src/theme.ts` | `Appearance` / `GrayColor` / `AccentColor` `as const` maps and `ThemeOptions`; the IntelliJ plugin's `ErdEditorThemeTest` reads this file and fails when its settings page lists other values |
 | `src/safeCallback.ts` | Runs one listener and logs its exception, so one bad listener does not stop the rest |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, minify: false, preserveModules: true })` — the private-library shape |
 
