@@ -130,6 +130,8 @@ these files.
 
 - [Editing Guide](https://docs.erd-editor.io/docs/category/guides) — editing, import and export,
   relationships, quick search, visualization, code generation, settings
+- [MCP](https://docs.erd-editor.io/docs/mcp/introduction) — installing the MCP server, live and
+  headless editing, every tool
 - [Documentation](https://docs.erd-editor.io)
 
 ## Also available
