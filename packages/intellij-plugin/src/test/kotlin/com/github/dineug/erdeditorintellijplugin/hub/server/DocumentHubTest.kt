@@ -388,9 +388,14 @@ class DocumentHubTest {
         fixture.host.fireFoldersChange()
         awaitUntil(message = "the folders task stalled") { fixture.host.foldersCalls.get() == 2 }
 
+        val begun = System.nanoTime()
         val publishing = fixture.documents.publish(listOf("/elsewhere/a.erd.json"))
         assertFalse("not before the wait", publishing.isDone)
         publishing.get(5, TimeUnit.SECONDS)
+        val waitedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begun)
+
+        // A timer never fires early, so the whole wait passed: not at once, and not at a shorter bound.
+        assertTrue("resolved after $waitedMs ms", waitedMs >= TIMINGS.publishWaitMs)
 
         assertEquals(
             listOf("the lock did not list the open documents within 1 second; the editor opens without waiting for it"),

@@ -9,7 +9,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * A HubConnection that keeps every notification it is sent, as the Obsidian suites' connection
- * double does. Like a served connection, it drops what arrives after end(); drain completes at once.
+ * double does. Like a served connection, it drops what arrives after end(); drain completes at once
+ * unless a suite sets drained.
  */
 class RecordingConnection(override val id: Int = 1, override val client: String = "spec") : HubConnection {
     private val recorded = CopyOnWriteArrayList<HubNotification>()
@@ -29,7 +30,11 @@ class RecordingConnection(override val id: Int = 1, override val client: String 
         if (!ended) recorded += notification
     }
 
-    override fun drain(): CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)
+    /** What drain answers; completed unless a suite sets another. */
+    @Volatile
+    var drained: CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)
+
+    override fun drain(): CompletableFuture<Unit> = drained
 
     override fun end() {
         endCalls++

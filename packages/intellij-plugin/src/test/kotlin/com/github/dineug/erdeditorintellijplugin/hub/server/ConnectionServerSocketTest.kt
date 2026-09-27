@@ -3,6 +3,7 @@ package com.github.dineug.erdeditorintellijplugin.hub.server
 import com.github.dineug.erdeditorintellijplugin.hub.HubJson
 import com.github.dineug.erdeditorintellijplugin.hub.HubMethod
 import com.github.dineug.erdeditorintellijplugin.hub.HubPlatform
+import com.github.dineug.erdeditorintellijplugin.hub.HubThreads
 import com.github.dineug.erdeditorintellijplugin.hub.LockPaths
 import com.github.dineug.erdeditorintellijplugin.hub.testing.RecordingHandler
 import com.github.dineug.erdeditorintellijplugin.hub.testing.RecordingLog
@@ -14,11 +15,13 @@ import com.github.dineug.erdeditorintellijplugin.hub.transport.platformListenerF
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.Timeout
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
@@ -43,11 +46,12 @@ class ConnectionServerSocketTest {
     private val served = CopyOnWriteArrayList<ServedConnection>()
     private val peers = CopyOnWriteArrayList<TestPeer>()
     private var dir: Path? = null
+    private lateinit var threads: HubThreads
     private lateinit var listener: HubListener
 
     @Before
     fun setUp() {
-        val threads = testThreads.create(log)
+        threads = testThreads.create(log)
         val platform = HubPlatform.current()
         val pipe = if (platform.isWindows) {
             "\\\\.\\pipe\\erd-editor-ide-test-${UUID.randomUUID()}"
@@ -71,7 +75,7 @@ class ConnectionServerSocketTest {
         dir?.toFile()?.deleteRecursively()
     }
 
-    private fun connect(): TestPeer = TestPeer.connect(listener.pipe).also(peers::add)
+    private fun connect(reading: Boolean = true): TestPeer = TestPeer.connect(listener.pipe, reading).also(peers::add)
 
     private fun request(id: Int, method: String, params: String = "{}") =
         """{"id":$id,"method":"$method","params":$params}"""
@@ -141,12 +145,19 @@ class ConnectionServerSocketTest {
 
     @Test
     fun `keeps the answers it wrote readable when it hangs up on a malformed line`() {
-        val peer = connect()
+        val peer = connect(reading = false)
         peer.send(hello(), request(2, "listDocuments"), request(3, "leave", """{"path":"/a"}"""))
-        peer.receiveFrames(3)
+        awaitUntil(message = "both requests handled") { handler.calls.size == 2 }
+        // Each answer is queued in its handler's registry step; the drain then waits until it is written.
+        threads.callBlocking(5_000) {}
+        handler.calls.last().connection.drain().get(5, TimeUnit.SECONDS)
 
+        // A write of its own, with every answer still unread by the peer.
         peer.sendRaw("{\"id\":4,\n".toByteArray())
+        served.single().finished.get(5, TimeUnit.SECONDS)
+        peer.resume()
 
+        assertEquals(listOf(1, 2, 3), peer.receiveFrames(3).map { HubJson.parse(it).get("id").intValue() })
         assertEquals(emptyList<String>(), peer.awaitEof())
         assertEquals(listOf("hung up on a peer that sent a malformed frame"), log.texts)
     }
@@ -166,7 +177,13 @@ class ConnectionServerSocketTest {
         assertEquals(emptyList<String>(), anonymous.awaitEof())
         served.forEach { it.finished.get(5, TimeUnit.SECONDS) }
         awaitUntil(message = "the authenticated peer disconnected") { handler.disconnects.size == 1 }
+
+        // Sent after the stop, whether the write fails or not: no connection is left to route it.
+        runCatching { authenticated.send(request(2, "listDocuments")) }
+        runCatching { anonymous.send(hello()) }
+        assertThrows(IOException::class.java) { TestPeer.connect(listener.pipe, timeoutMs = 500) }
         assertEquals(emptyList<RecordingHandler.Call>(), handler.calls)
+        assertEquals(1, handler.disconnects.size)
     }
 
     private companion object {
