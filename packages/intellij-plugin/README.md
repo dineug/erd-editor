@@ -1,9 +1,10 @@
 # intellij-plugin
 
 The [ERD Editor](https://plugins.jetbrains.com/plugin/23594-erd-editor) plugin for IntelliJ-based
-IDEs. The Kotlin code here is a thin host layer — it registers the file editor, runs a JCEF webview
-and bridges it to the IDE. The diagram editor itself is `@dineug/erd-editor`, bundled for this
-panel by [`packages/intellij-webview`](../intellij-webview).
+IDEs. The Kotlin code here is the host layer — it registers the file editor, runs a JCEF webview
+and bridges it to the IDE — and the hub coding agents join through the ERD Editor MCP server. The
+diagram editor itself is `@dineug/erd-editor`, bundled for this panel by
+[`packages/intellij-webview`](../intellij-webview).
 
 <!-- Plugin description -->
 Design a database schema visually, without leaving your IDE. Diagrams are plain JSON files in your
@@ -52,6 +53,72 @@ opens its own file chooser for both; the file does not have to be inside the pro
   follows the IDE's light or dark theme and switches with it
 
 Edits are written to the file a fraction of a second after you stop changing it; the tab never shows as modified.
+
+## Coding agents
+
+A coding agent such as Claude Code or Codex can edit the diagrams open in this IDE through the
+[`@dineug/erd-editor-mcp`](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
+MCP server. The agent joins the editor like a collaborator: each change shows up on the canvas as
+it happens, and the agent's undo reverts only its own edits.
+
+### Install the MCP server
+
+The server needs Node.js 22.12 or later. `npx` downloads it the first time the agent starts it, so
+there is nothing else to install.
+
+- **Claude Code** — run `claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp`
+  in your project folder
+- **Codex** — add a `[mcp_servers.erd-editor]` table with `command = "npx"` and
+  `args = ["-y", "@dineug/erd-editor-mcp"]` to `~/.codex/config.toml`, or to `.codex/config.toml`
+  in a trusted project
+- **Any other MCP client** — run `npx -y @dineug/erd-editor-mcp` as a stdio server. Start it in
+  your project folder: it resolves relative document paths against its working directory
+
+### Edit with an agent
+
+1. Open the project in the IDE and trust it.
+2. Start the agent in the project folder and ask in plain words, for example "Add a reviews table
+   to schema.erd.json, related to users and products".
+3. Watch the change land on the canvas. The IDE writes it to the file a fraction of a second after
+   editing stops, as it writes your own edits; asking the agent to save writes it at once.
+
+A diagram that is not open yet opens in the ERD Editor on the agent's first edit, without taking
+the keyboard focus. One IDE serves the diagrams of every project open in it. With no IDE, VS Code
+window or Obsidian vault window with ERD Editor serving the document's folder, the agent edits the
+file on disk instead.
+
+Unticking **Settings | Tools | ERD Editor → Coding agents**, which is on by default, turns the
+connection off for the whole IDE. The agent can still read the diagrams of the open projects from
+disk, but it never writes one behind the editor, where the next save would overwrite the change. A
+project you have not trusted, opened in safe mode, is kept the same way: agents read its diagrams
+but never change them. The [MCP documentation](https://docs.erd-editor.io/docs/mcp/tools) lists
+every tool with its arguments.
+
+The settings page says when coding agents are unavailable: in an IDE without JCEF, where the
+editor cannot run either, and in an IDE installed as a Flatpak, whose sandbox the MCP server cannot
+reach. There the agent edits the files on disk. The ERD Editor does not reload a diagram changed on
+disk while it is open, and your next edit in it would overwrite the agent's, so close the diagram
+first.
+
+### Files outside the project
+
+The plugin accepts connections only from this computer, through a socket file or a named pipe,
+never a network port, and serves only an MCP server that presents the random token of its lock
+file. With **Coding agents** on, the IDE lets that server find it through two files in your home
+folder, outside your projects:
+
+- `~/.erd-editor/ide/<pid>.json` — a lock file, readable by your user account only, naming the
+  folders of every open project, the diagrams open in the IDE and the token. It is rewritten as
+  projects and diagrams open and close.
+- `~/.erd-editor/ide/<pid>.sock` — the local socket the MCP server connects to (a named pipe on
+  Windows; in the system temporary folder when the home folder path is too long for a socket).
+
+Both are removed when the IDE quits and when the plugin is disabled or uninstalled. An IDE that
+starts also removes the ones that exited IDEs and editor windows left behind, as the ERD Editor
+extension for VS Code and plugin for Obsidian do in the same folder. With **Coding agents** off,
+the IDE keeps only the lock file, with no socket, so an agent still knows not to write the
+projects' diagrams behind the editor. Where coding agents are unavailable, the IDE writes none of
+these files.
 
 ## Requirements
 
@@ -104,19 +171,34 @@ pnpm exec vp run --filter @dineug/erd-editor-intellij-webview --fail-if-no-match
 ./gradlew buildWebview   # webview bundle → src/main/resources/assets
 ./gradlew buildPlugin    # distributable zip → build/distributions/
 ./gradlew runIde         # sandbox IDE with the plugin loaded
-./gradlew check          # unit tests
+./gradlew check          # unit tests, and the coding-agent hub's coverage gate
 ./gradlew verifyPlugin   # Plugin Verifier compatibility check
 ```
 
 The plugin compiles against JDK 21; Gradle's toolchain resolver fetches it if your machine has none.
+
+The hub's tests read the conformance vectors of [`packages/agent-hub`](../agent-hub) and
+[`packages/agent-hub-host`](../agent-hub-host), and `check` also runs the MCP server against the
+hub when it is built (`ERD_MCP_CONFORMANCE=required` fails instead of skipping without the build):
+
+```sh
+pnpm exec vp run --filter @dineug/erd-editor-mcp --fail-if-no-match build   # from the repository root
+```
+
+`pnpm --filter @dineug/erd-editor-intellij-plugin smoke` runs the plugin in a sandbox IDE on macOS
+and drives its hub with that server. [`AGENTS.md`](./AGENTS.md) says what the smoke checks, and how
+to check the hub on Windows.
 
 ### Layout
 
 | Path | What it is |
 | --- | --- |
 | `src/main/kotlin/.../editor/` | The file editor, JCEF webview, scheme handler and the webview ↔ IDE bridge |
-| `src/main/kotlin/.../files/` | `.erd.json` recognition and the file icon |
+| `src/main/kotlin/.../files/` | `.erd`, `.vuerd`, `.erd.json` and `.vuerd.json` recognition, in any letter case, and the file icon |
 | `src/main/kotlin/.../settings/` | The theme and Coding agents settings, and the settings page that edits them |
+| `src/main/kotlin/.../hub/` | The coding-agent hub, free of IntelliJ API: the wire format, the lock file, the socket and named pipe, the document registry and the request handlers |
+| `src/main/kotlin/.../agents/` | The hub's IDE side: its service, the folders and trust of the open projects, opening files, the platform events |
+| `e2e/` | The live smoke and `mcp-probe.mjs`, which checks a running IDE's hub with the MCP server |
 | `src/main/resources/META-INF/plugin.xml` | Plugin manifest |
 | `src/main/resources/assets/` | The webview bundle, written here by `packages/intellij-webview` |
 

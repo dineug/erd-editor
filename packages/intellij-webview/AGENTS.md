@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-09-27 -->
 
 # intellij-webview
 
@@ -22,12 +22,13 @@ The bundle the IntelliJ plugin (`packages/intellij-plugin`) embeds. `src/main.ts
 ### Working In This Directory
 
 - **`build` writes outside this package** (`emptyOutDir: true`) into the plugin's gitignored `src/main/resources/assets`. The task's `output` names that directory — drop it and a cache hit replays the log without restoring the bundle, which ships a blank editor. A replay also does not empty it (root `AGENTS.md`): `pnpm cache:clear` and rebuild before packaging.
-- Gradle does not run this build: `buildPlugin` and `runIde` only check the bundle exists. After a webview change run the build below or `./gradlew buildWebview`.
+- Gradle does not run this build: `buildPlugin` and `runIde` only check the bundle exists. After a webview change run the build below or `./gradlew buildWebview`; on Windows the build below only, since `buildWebview` cannot start `pnpm.cmd` there.
 - **`base` stays `/`, only `.html` / `.js` / `.css` may be emitted, `sourcemap: false`** — the plugin's scheme handler serves the URL path from `/assets` on the classpath and sets a MIME type for those three extensions only.
 - **Keep `stripCrossorigin`**: the scheme handler sends no CORS headers, so a `crossorigin` module script is refused and the panel stays blank.
 - **Workers load from their URLs.** The page and every asset share one origin (`https://erd-editor-jetbrains-plugin`), so the editor's four SharedWorkers and the replica worker are emitted as `static/js/<name>.<hash>.js` and constructed from those URLs — no blob rebuild, unlike `vscode-webview`.
 - **The `worker` block**: workers inherit no `build.rolldownOptions.output`, so the naming is repeated; `format: 'es'` because they are module workers and the iife default code-splits through `importScripts`; `codeSplitting: false` because a worker's dynamic import fails with a network error in the IDE, so ELK's split chunk never arrives and layout never runs.
-- **What this host leaves unset**: no `importFile`, so the editor's own file input imports (`ErdEditor.kt` no-ops `hostImportFileCommand`); no `resolveAppearance`, so `'auto'` means dark. `cefQuery`'s `onFailure` is a no-op — a command the plugin rejects vanishes here and shows only in `idea.log`.
+- **What this host leaves unset**: no `importFile`, so the editor's own file input imports (`ErdEditor.kt` no-ops `hostImportFileCommand`); no `resolveAppearance`, so `'auto'` would mean dark, and the plugin resolves Auto by the IDE's light or dark before any theme reaches the page. `onSuccess` and `onFailure` stay no-ops by design: the plugin answers every query it takes with an empty success, so the router keeps none pending, and a command it cannot parse or handle shows only as a WARN in `idea.log`.
+- **The plugin handles the commands in the order `cefQuery` sent them**, over one channel per page, whichever of its message routers hears a query (at 2025.2 the one registered first hears every page's and hands each query to the editor of the page that sent it), as long as CEF calls `onQuery` serially per browser; the plugin's live smoke sends 1,000 and checks the order (step A11). Nothing here numbers them. Should that order ever break, stamp each request with a per-page sequence number here (`{"seq": n, "command": action}`, from 0 at every load) and have `WebviewPanel.kt` restore the order, with a case in `WebviewBridgeCommandTest`.
 - No `build.target`: JCEF's Chromium is the only browser.
 
 ### Testing Requirements
