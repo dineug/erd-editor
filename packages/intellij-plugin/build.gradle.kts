@@ -243,12 +243,16 @@ tasks {
         val bridgeTheme = file("../webview-bridge/src/theme.ts")
         inputs.file(bridgeTheme).withPropertyName("bridgeTheme").withPathSensitivity(PathSensitivity.RELATIVE)
         systemProperty("erd.bridgeTheme", bridgeTheme.absolutePath)
-        // McpConformanceTest drives a hub of its own with the built MCP server.
+        // McpConformanceTest drives a hub of its own with the built MCP server and e2e/mcp-probe.mjs.
         // Without node or the build it skips, unless ERD_MCP_CONFORMANCE=required makes that a failure;
         // ERD_MCP_NODE names a node binary other than the one on PATH.
         val mcpBin = file("../mcp-server/dist/erd-editor-mcp.js")
         inputs.files(mcpBin).withPropertyName("mcpServer").withPathSensitivity(PathSensitivity.NONE)
         systemProperty("erd.mcp.bin", mcpBin.absolutePath)
+        val mcpProbe = file("e2e/mcp-probe.mjs")
+        inputs.files(mcpProbe, file("e2e/mcp.mjs")).withPropertyName("mcpProbe")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty("erd.mcp.probe", mcpProbe.absolutePath)
         val mcpConformance = providers.environmentVariable("ERD_MCP_CONFORMANCE").orElse("")
         inputs.property("mcpConformance", mcpConformance)
         systemProperty("erd.mcp.conformance", mcpConformance.get())

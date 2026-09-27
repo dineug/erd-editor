@@ -87,12 +87,13 @@ class McpConformanceTest {
         val untrusted = realDirectory(env, home.resolve("u"))
         val c = fixture(project, "c.erd.json")
         val d = fixture(project, "d.erd.json")
+        val probed = fixture(project, "p.erd.json")
         val b = fixture(untrusted, "b.erd.json")
         val a = project.resolve("a.erd.json").toString()
         val host = MemoryHost(ide = "intellij", roots = listOf(project.toString(), untrusted.toString()))
         val ide = FakeIdeFacade().apply {
             projects = listOf(ProjectTrust(listOf(project.toString()), true), ProjectTrust(listOf(untrusted.toString()), false))
-            erdFiles = listOf(c, d, b)
+            erdFiles = listOf(c, d, probed, b)
         }
         val runtime = HubRuntime(
             env, host, ide, hooks = hooks, log = log, platform = platform, threads = testThreads.create(log),
@@ -167,6 +168,8 @@ class McpConformanceTest {
         assertEquals(refused.text, HubErrorCode.HUB_DISABLED.wire, refused.errorCode)
         assertEquals(DocumentRules.untrustedProject(b).message, refused.errorMessage)
         mcp.ok("erd_read", mapOf("path" to b, "format" to "json"))
+        assertProbe(node, home, project, "p.erd.json")
+        assertProbe(node, home, untrusted, "b.erd.json", "--expect-untrusted")
 
         // 9. The editor closes under the agent's edits.
         runtime.registry.post { removeView(viewA.file, viewA) }
@@ -189,6 +192,7 @@ class McpConformanceTest {
         assertEquals(blocked.text, "blocked", blocked.errorCode)
         assertTrue(blocked.text, "a JetBrains IDE (pid $pid) whose ERD Editor hub is turned off or failed to start" in blocked.text)
         assertTrue(blocked.text, ENABLE_HUB in blocked.text)
+        assertProbe(node, home, project, "d.erd.json", "--expect-blocked")
         host.turn(true)
         awaitUntil(message = "the lock serves again") { lock(env)?.hub == true }
         val liveD = mcp.ok("erd_add_table", mapOf("path" to "d.erd.json"))
@@ -271,6 +275,23 @@ class McpConformanceTest {
         assertTrue(hello, hello.startsWith("""{"id":1,"ok":true"""))
         assertTrue(join, join.startsWith("""{"id":2,"ok":true,"method":"join""""))
         return peer
+    }
+
+    /** Runs e2e/mcp-probe.mjs, with the same home, as K8's check and the Windows guide run it; it must exit 0. */
+    private fun assertProbe(node: String, home: Path, projectDir: Path, file: String, vararg flags: String) {
+        val probe = Path.of(System.getProperty("erd.mcp.probe") ?: "e2e/mcp-probe.mjs").toAbsolutePath()
+        val output = Files.createTempFile(home, "probe", ".log")
+        val builder = ProcessBuilder(listOf(node, probe.toString(), projectDir.toString(), file) + flags)
+            .redirectErrorStream(true)
+            .redirectOutput(output.toFile())
+        builder.environment()["HOME"] = home.toString()
+        builder.environment()["USERPROFILE"] = home.toString()
+        val process = builder.start()
+        if (!process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            fail("the probe of $file ran past $PROBE_TIMEOUT_SECONDS s:\n${Files.readString(output)}")
+        }
+        assertEquals("the probe of $file ${flags.toList()}:\n${Files.readString(output)}", 0, process.exitValue())
     }
 
     /** The MCP server reads the frames a peer read just now on a connection of its own. */
@@ -392,6 +413,7 @@ class McpConformanceTest {
         const val SAVE_AFTER_MS = 250L
         const val SETTLE_MS = 500L
         const val RETRY_MS = 10_000L
+        const val PROBE_TIMEOUT_SECONDS = 90L
 
         /** registryCallBoundMs + drainCapMs + closeBoundMs + threadJoinBoundMs is 3 s; the rest is a loaded runner's. */
         const val DISPOSE_WITHIN_MS = 5_000L
