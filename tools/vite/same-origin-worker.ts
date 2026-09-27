@@ -1,4 +1,4 @@
-import { dirname, resolve } from 'node:path';
+import { posix } from 'node:path';
 
 import type { Plugin } from 'vite-plus';
 
@@ -40,7 +40,7 @@ export function rewriteUrlWorkersToBlob(
     URL_WORKER,
     (_, kind: string, url: string, tail: string) => {
       const index = sources.length;
-      const file = resolve(dirname(id), url);
+      const file = posix.join(posix.dirname(id), url);
       const query = kind === 'SharedWorker' ? 'sharedworker' : 'worker';
       sources.push(
         `import __workerUrl${index} from ${JSON.stringify(`${file}?${query}&url`)};
