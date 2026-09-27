@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
@@ -57,7 +58,7 @@ dependencies {
 intellijPlatform {
     projectName = properties("pluginName").get()
 
-    // The plugin contributes no Settings UI, so there is nothing to index.
+    // The one settings page is found by its name; indexing its checkbox is not worth an IDE run per build.
     buildSearchableOptions = false
 
     pluginConfiguration {
@@ -138,15 +139,87 @@ changelog {
 }
 
 // Configure Gradle Kover Plugin - read more: https://github.com/Kotlin/kotlinx-kover#configuration
+// The agent hub's core is measured per class, as the TypeScript packages are per file; the JCEF
+// classes cannot run headless, and the Windows-only JNA code runs on Windows alone.
 kover {
     reports {
+        filters {
+            includes {
+                packages("com.github.dineug.erdeditorintellijplugin.hub")
+            }
+            excludes {
+                classes("*.hub.transport.NamedPipe*", "*.hub.win.*")
+            }
+        }
         total {
             xml {
                 onCheck = true
             }
         }
+        verify {
+            rule("hub core, per class") {
+                groupBy = kotlinx.kover.gradle.plugin.dsl.GroupingEntityType.CLASS
+                minBound(80, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE)
+                minBound(80, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH)
+            }
+        }
     }
 }
+
+// The live smoke (e2e/smoke.mjs, `pnpm --filter @dineug/erd-editor-intellij-plugin smoke`) runs the
+// IDE through runIdeSmoke on a sandbox of its own, with the robot-server plugin beside ours and JCEF's
+// DevTools port open. Its sandbox dirs carry the task's suffix (config_runIdeSmoke, log_runIdeSmoke).
+// -PsmokePlatformVersion=<version or build> runs another IDE than platformVersion, such as the floor.
+val smokeProject = properties("smokeProject")
+val smokeSandbox = properties("smokeSandbox")
+val smokeCdpPort = properties("smokeCdpPort").orElse("9334")
+val smokeRobotPort = properties("smokeRobotPort").orElse("8082")
+val smokePlatformVersion = properties("smokePlatformVersion")
+
+intellijPlatformTesting {
+    runIde {
+        register("runIdeSmoke") {
+            sandboxDirectory = layout.dir(smokeSandbox.map { File(it) })
+                .orElse(layout.buildDirectory.dir("smoke-sandbox"))
+            // IU before 2025.3, the unified IntelliJ IDEA after it, as intellijIdea(...) picks.
+            type = smokePlatformVersion.map { IntelliJPlatformType.fromCode("IU", it) }
+            version = smokePlatformVersion
+            plugins {
+                robotServerPlugin()
+            }
+            task {
+                dependsOn(tasks.named("verifyWebviewAssets"))
+                // Locals, so the providers below never capture the script (configuration cache).
+                val projectDir = smokeProject
+                val cdpPort = smokeCdpPort
+                val robotPort = smokeRobotPort
+                argumentProviders += CommandLineArgumentProvider { listOfNotNull(projectDir.orNull) }
+                jvmArgumentProviders += CommandLineArgumentProvider {
+                    listOf(
+                        // No trust dialog, no tips, no consent, EULA or settings-import dialog on a fresh sandbox.
+                        "-Didea.trust.all.projects=true",
+                        "-Dide.show.tips.on.startup.default.value=false",
+                        "-Djb.consents.confirmation.enabled=false",
+                        "-Djb.privacy.policy.text=<!--999.999-->",
+                        "-Didea.initially.ask.config=never",
+                        // A registry key, read from the system property first: the DevTools port the
+                        // smoke reaches the editor pages over.
+                        "-Dide.browser.jcef.debug.port=${cdpPort.get()}",
+                        "-Drobot-server.port=${robotPort.get()}",
+                        "-Didea.log.debug.categories=com.github.dineug.erdeditorintellijplugin",
+                    )
+                }
+            }
+        }
+    }
+}
+
+// The shared conformance corpora of packages/agent-hub and packages/agent-hub-host: the hub tests
+// read the vectors the TypeScript hub is held to, so a change to either side shows up in both.
+val hubCorpora = listOf(
+    "../agent-hub/src/__fixtures__/conformance.json",
+    "../agent-hub-host/src/__fixtures__/conformance.json",
+)
 
 tasks {
     // Build the webview bundle into src/main/resources/assets. `@dineug/erd-editor-intellij-webview`
@@ -205,6 +278,42 @@ tasks {
 
     wrapper {
         gradleVersion = properties("gradleVersion").get()
+    }
+
+    test {
+        inputs.files(hubCorpora).withPropertyName("hubCorpora").withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty("erd.hub.wireCorpus", file(hubCorpora[0]).absolutePath)
+        systemProperty("erd.hub.hostCorpus", file(hubCorpora[1]).absolutePath)
+        systemProperty("erd.hub.mainSources", file("src/main/kotlin").absolutePath)
+        // HubImportsTest reads the hub's sources: an unused import changes no class file.
+        inputs.dir("src/main/kotlin/com/github/dineug/erdeditorintellijplugin/hub")
+            .withPropertyName("hubSources").withPathSensitivity(PathSensitivity.RELATIVE)
+        // ErdEditorThemeTest holds the settings page's value lists to the ones the page picks from.
+        val bridgeTheme = file("../webview-bridge/src/theme.ts")
+        inputs.file(bridgeTheme).withPropertyName("bridgeTheme").withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty("erd.bridgeTheme", bridgeTheme.absolutePath)
+        // McpConformanceTest drives a hub of its own with the built MCP server and e2e/mcp-probe.mjs.
+        // Without node or the build it skips, unless ERD_MCP_CONFORMANCE=required makes that a failure;
+        // ERD_MCP_NODE names a node binary other than the one on PATH.
+        val mcpBin = file("../mcp-server/dist/erd-editor-mcp.js")
+        inputs.files(mcpBin).withPropertyName("mcpServer").withPathSensitivity(PathSensitivity.NONE)
+        systemProperty("erd.mcp.bin", mcpBin.absolutePath)
+        val mcpProbe = file("e2e/mcp-probe.mjs")
+        inputs.files(mcpProbe, file("e2e/mcp.mjs")).withPropertyName("mcpProbe")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty("erd.mcp.probe", mcpProbe.absolutePath)
+        val mcpConformance = providers.environmentVariable("ERD_MCP_CONFORMANCE").orElse("")
+        inputs.property("mcpConformance", mcpConformance)
+        systemProperty("erd.mcp.conformance", mcpConformance.get())
+        val mcpNode = providers.environmentVariable("ERD_MCP_NODE").orElse("")
+        inputs.property("mcpNode", mcpNode)
+        systemProperty("erd.mcp.node", mcpNode.get())
+    }
+
+    // The POSIX-only suites skip on Windows by design, so their classes fall under the per-class
+    // bound there; the gate is measured on macOS and Linux only.
+    named("koverVerify") {
+        onlyIf { !System.getProperty("os.name").startsWith("Windows") }
     }
 
     runIde {

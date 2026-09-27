@@ -5,7 +5,14 @@ import { connect, type Socket as NetSocket } from 'node:net';
 import * as os from 'node:os';
 import { join } from 'node:path';
 
-import { HubErrorCode } from '@dineug/erd-editor-agent-hub';
+import {
+  HUB_PROTOCOL_VERSION,
+  HubErrorCode,
+  lockDirPath,
+  lockFilePath,
+  type LockRecord,
+  serializeLock,
+} from '@dineug/erd-editor-agent-hub';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import type { Cause } from 'effect';
 import { Effect, Exit, FileSystem, Layer, Queue, Scope, Stream } from 'effect';
@@ -19,7 +26,9 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { specPipePath } from '@/__test-utils__/platform';
 import { authorizePath, realpathOrSelf } from '@/authz';
+import * as LockFile from '@/lockFile';
 import {
   HubEnvironment,
   isAlive,
@@ -41,6 +50,20 @@ beforeEach(async () => {
 afterEach(async () => {
   await fs.rm(dir, { recursive: true, force: true });
 });
+
+/** A SystemError as os.getPriority throws one, its errno name under info. */
+function systemError(code: string): Error {
+  return Object.assign(new Error(`uv_os_getpriority returned ${code}`), {
+    code: 'ERR_SYSTEM_ERROR',
+    info: { code, syscall: 'uv_os_getpriority' },
+  });
+}
+
+function failWith(error: Error): (pid: number) => number {
+  return () => {
+    throw error;
+  };
+}
 
 /** Collects everything the peer sends until it closes the connection; a reset fails it. */
 function readUntilEnd(client: NetSocket): Promise<string> {
@@ -91,20 +114,51 @@ describe('HubEnvironment over node', () => {
     expect(env.isAlive(exited.pid)).toBe(false);
   });
 
-  it('takes a pid it may not signal for alive on Windows only, as an elevated window of this user answers there', () => {
+  it.each([
+    ['alive', 'is granted', () => 0],
+    ['dead', 'is refused', failWith(systemError('EPERM'))],
+    ['dead', 'finds no process', failWith(systemError('ESRCH'))],
+    ['alive', 'fails any other way', failWith(new Error('ENOMEM'))],
+  ])(
+    'counts a pid Windows refuses to signal %s when the least query right %s',
+    (verdict, _, query) => {
+      const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
+        throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+      });
+
+      expect(isAlive(4, 'win32', query)).toBe(verdict === 'alive');
+      kill.mockRestore();
+    }
+  );
+
+  it('asks no query where the signal decides: POSIX, a pid Windows finds no process for, and one it may signal', () => {
+    const query = vi.fn(() => 0);
     const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
       throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
     });
 
-    expect(isAlive(4, 'win32')).toBe(true);
     // On POSIX a lock in this user's home never names another user's process.
-    expect(isAlive(4, 'darwin')).toBe(false);
-    expect(isAlive(4, 'linux')).toBe(false);
-    expect(env.isAlive(4)).toBe(process.platform === 'win32');
+    expect(isAlive(4, 'darwin', query)).toBe(false);
+    expect(isAlive(4, 'linux', query)).toBe(false);
     kill.mockImplementation(() => {
       throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
     });
-    expect(isAlive(4, 'win32')).toBe(false);
+    expect(isAlive(4, 'win32', query)).toBe(false);
+    kill.mockImplementation(() => true);
+    expect(isAlive(4, 'win32', query)).toBe(true);
+    expect(query).not.toHaveBeenCalled();
+    kill.mockRestore();
+  });
+
+  it('asks the real query of this machine when the signal is refused on Windows, and never on POSIX', () => {
+    const exited = spawnSync(process.execPath, ['-e', '']);
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
+      throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+    });
+
+    // os.getPriority opens this process on Windows and finds the exited one gone.
+    expect(env.isAlive(process.pid)).toBe(process.platform === 'win32');
+    expect(env.isAlive(exited.pid)).toBe(false);
     kill.mockRestore();
   });
 
@@ -121,9 +175,15 @@ describe('HubEnvironment over node', () => {
   it('keeps any other errno apart from a missing entry', async () => {
     const file = join(dir, 'a.erd.json');
     await fs.writeFile(file, '{}');
+    // ENOTDIR on POSIX. Windows answers ENOENT under a file, and EINVAL for
+    // the root of its pipe namespace, an entry lstat cannot read.
+    const unreadable =
+      process.platform === 'win32'
+        ? '\\\\.\\pipe\\'
+        : join(file, 'under-a-file');
 
     await expect(
-      Effect.runPromise(env.lstat(join(file, 'under-a-file')))
+      Effect.runPromise(env.lstat(unreadable))
     ).rejects.toMatchObject({ reason: 'Other' });
   });
 
@@ -222,7 +282,7 @@ describe('HubListener over node:net', () => {
   }
 
   it('serves text both ways, with a character split across two writes', async () => {
-    const pipe = join(dir, 'hub.sock');
+    const pipe = specPipePath(dir);
     const received: string[] = [];
     const close = await serve(pipe, received);
 
@@ -239,7 +299,7 @@ describe('HubListener over node:net', () => {
   });
 
   it('carries a payload larger than one read without losing a character', async () => {
-    const pipe = join(dir, 'hub.sock');
+    const pipe = specPipePath(dir);
     const received: string[] = [];
     const close = await serve(pipe, received);
     const payload = `${'테이블'.repeat(30_000)}\n`;
@@ -256,7 +316,7 @@ describe('HubListener over node:net', () => {
   });
 
   it('hangs up every peer when its scope closes, so nothing is left connected', async () => {
-    const pipe = join(dir, 'hub.sock');
+    const pipe = specPipePath(dir);
     const received: string[] = [];
     const close = await serve(pipe, received);
     const client = connect(pipe);
@@ -327,5 +387,47 @@ describe('authorizePath over the real file system', () => {
       join(ws, 'new', 'b.erd.json')
     );
     expect(await fs.readdir(outside)).toEqual([]);
+  });
+});
+
+describe('LockFile over node', () => {
+  it('lands its write over a lock another handle holds open, on Windows once the handle lets go', async () => {
+    const home = await fs.realpath(dir);
+    const lockPath = lockFilePath(home, env.pid);
+    await fs.mkdir(lockDirPath(home), { recursive: true });
+    await fs.writeFile(lockPath, 'the old lock');
+    const lock = await Effect.runPromise(
+      Effect.service(LockFile.LockFile).pipe(
+        Effect.provide(LockFile.layer),
+        Effect.provide(
+          Layer.mergeAll(
+            NodeFileSystem.layer,
+            Layer.succeed(HubEnvironment, { ...env, homeDir: home })
+          )
+        )
+      )
+    );
+    // Windows refuses a rename over a file any handle has open, as a reader's does for milliseconds.
+    const reader = await fs.open(lockPath, 'r');
+    const letGo = new Promise<void>(resolve =>
+      setTimeout(() => void reader.close().then(resolve), 100)
+    );
+    const record: LockRecord = {
+      pipe: specPipePath(home, 'lock'),
+      workspaceFolders: [],
+      documents: [],
+      ide: 'spec',
+      version: '2.9.0',
+      protocolVersion: HUB_PROTOCOL_VERSION,
+      token: 'secret',
+      hub: true,
+    };
+
+    const written = await Effect.runPromise(lock.write(record));
+    await letGo;
+
+    expect(written).toBe(true);
+    expect(await fs.readFile(lockPath, 'utf8')).toBe(serializeLock(record));
+    expect(await fs.readdir(lockDirPath(home))).toEqual([`${env.pid}.json`]);
   });
 });

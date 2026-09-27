@@ -7,6 +7,7 @@ import { Effect } from 'effect';
 import { Socket } from 'effect/unstable/socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
+import { specPipePath } from '@/__test-utils__/platform';
 import { fromNetSocket } from '@/services/netSocket';
 
 let dir: string;
@@ -23,7 +24,7 @@ afterEach(async () => {
 
 /** A connected pair: hub is the server end, peer the client end. */
 async function pair(): Promise<{ hub: net.Socket; peer: net.Socket }> {
-  const pipe = join(dir, 'p.sock');
+  const pipe = specPipePath(dir, 'p');
   const accepted = new Promise<net.Socket>(resolve => {
     server = net.createServer(resolve);
   });

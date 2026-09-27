@@ -105,17 +105,20 @@ describe('the words sent before any editor is found', () => {
     describeTool('erd_save'),
   ];
 
-  it('names both editors a document can be live in, and neither alone', () => {
+  it('names the three editors a document can be live in, none left out', () => {
     for (const text of liveTexts) {
       expect(text).toContain('VS Code');
       expect(text).toContain('Obsidian');
+      expect(text).toContain('JetBrains IDE');
     }
   });
 
-  it('says VS Code keeps agent edits unsaved until erd_save and Obsidian saves them itself', () => {
+  it('says VS Code keeps agent edits unsaved until erd_save and Obsidian and JetBrains IDEs save them themselves', () => {
     for (const text of [SERVER_INSTRUCTIONS, describeTool('erd_save')]) {
       expect(text).toMatch(/VS Code keeps (them|edits) unsaved until/);
-      expect(text).toMatch(/Obsidian saves them as it saves the user’s edits/);
+      expect(text).toMatch(
+        /Obsidian and JetBrains IDEs save them as they save the user’s edits/
+      );
     }
   });
 

@@ -1,5 +1,4 @@
 import {
-  type DiscoveryResult,
   type DocumentInfo,
   type LockCandidate,
 } from '@dineug/erd-editor-agent-hub';
@@ -13,11 +12,11 @@ import {
   Schedule,
 } from 'effect';
 
-import { SessionError, SessionErrorCode } from '@/errors';
+import { isSessionError, SessionError, SessionErrorCode } from '@/errors';
 import { HubConnector } from '@/hub/client';
-import { HubDiscovery } from '@/hub/discovery';
+import { HubDiscovery, type Resolution } from '@/hub/discovery';
 import { capitalize, hostWords } from '@/hub/host';
-import { FileStats } from '@/io/fileSystem';
+import { FileAccess, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import { realPath, resolveDocumentPath, sessionKey } from '@/paths';
 import {
@@ -52,9 +51,9 @@ export const DEFAULT_CLIENT_NAME = 'agent';
 
 /** A live session went to the file: its window exited, or it let go of the document and its lock. */
 export function fellBackNote(ide: string, exited: boolean): string {
-  const subject = capitalize(hostWords(ide).theWindow);
+  const { theWindow, thatWindow } = hostWords(ide);
   const gone = exited ? 'has exited' : 'no longer serves it';
-  return `${subject} that served this document ${gone}, so this call edited the file on disk instead; edits made through that window can no longer be undone.`;
+  return `${capitalize(theWindow)} that served this document ${gone}, so this call edited the file on disk instead; edits made through ${thatWindow} can no longer be undone.`;
 }
 
 /** A read found a hub over a document a disk session held. */
@@ -152,10 +151,23 @@ function hubAppearedError(
   path: string,
   candidate: LockCandidate
 ): SessionError {
-  const subject = capitalize(hostWords(candidate.record.ide).aWindow);
+  const { aWindow, thatWindow } = hostWords(candidate.record.ide);
   return new SessionError(
     SessionErrorCode.hubAppeared,
-    `${subject} (pid ${candidate.pid}) now serves ${path}, so this edit was not written to the file under its editor. Call the tool again to edit through that window.`
+    `${capitalize(aWindow)} (pid ${candidate.pid}) now serves ${path}, so this edit was not written to the file under its editor. Call the tool again to edit through ${thatWindow}.`
+  );
+}
+
+/** A window holds the document under another spelling, which is the one to call with. */
+function aliasError(
+  path: string,
+  alias: string,
+  candidate: LockCandidate
+): SessionError {
+  const { aWindow } = hostWords(candidate.record.ide);
+  return new SessionError(
+    SessionErrorCode.invalidPath,
+    `${path} is ${alias} reached another way, such as through a network share or a mapped drive of this computer, and ${aWindow} (pid ${candidate.pid}) holds it under that path; call again with ${alias}.`
   );
 }
 
@@ -187,6 +199,7 @@ const make = Effect.gen(function* () {
   const clock = yield* Clock.clockWith(Effect.succeed);
   const services = Context.make(FileSystem.FileSystem, fs).pipe(
     Context.add(FileStats, yield* FileStats),
+    Context.add(FileAccess, yield* FileAccess),
     Context.add(Path.Path, yield* Path.Path),
     Context.add(ProcessInfo, process),
     Context.add(HubConnector, connector)
@@ -195,7 +208,12 @@ const make = Effect.gen(function* () {
     effect: Effect.Effect<
       A,
       E,
-      FileSystem.FileSystem | FileStats | Path.Path | ProcessInfo | HubConnector
+      | FileSystem.FileSystem
+      | FileStats
+      | FileAccess
+      | Path.Path
+      | ProcessInfo
+      | HubConnector
     >
   ) => Effect.provideContext(effect, services);
 
@@ -279,9 +297,32 @@ const make = Effect.gen(function* () {
       })
     ).pipe(Effect.map(session => put(key, session)));
 
+  /** What a write retried on Windows asks first: whether a window took the document since the call began. */
+  const stillHeadless = (path: string) =>
+    discovery
+      .discover(path)
+      .pipe(
+        Effect.flatMap(resolution =>
+          resolution.kind === 'headless'
+            ? Effect.void
+            : Effect.fail(
+                resolution.alias !== undefined
+                  ? aliasError(path, resolution.alias, resolution.candidate)
+                  : resolution.kind === 'live'
+                    ? hubAppearedError(path, resolution.candidate)
+                    : blockedError(path, resolution.candidate)
+              )
+        )
+      );
+
   const newHeadless = (key: string, path: string, create = false) =>
     withServices(
-      openHeadlessSession({ path, nickname: nickname(), create })
+      openHeadlessSession({
+        path,
+        nickname: nickname(),
+        create,
+        recheck: stillHeadless(path),
+      })
     ).pipe(Effect.map(session => put(key, session)));
 
   /**
@@ -293,11 +334,18 @@ const make = Effect.gen(function* () {
     key: string,
     path: string,
     intent: Intent,
-    resolution: DiscoveryResult,
+    resolution: Resolution,
     notes: Notes,
     create = false
   ) {
     const existing = sessions.get(key)?.session;
+
+    // A window holds the document under another spelling, so a disk session
+    // here would write under its editor; reads are refused alike.
+    if (resolution.kind !== 'headless' && resolution.alias !== undefined) {
+      if (existing) yield* drop(key);
+      return yield* aliasError(path, resolution.alias, resolution.candidate);
+    }
 
     if (resolution.kind === 'blocked') {
       if (intent === 'write') {
@@ -322,7 +370,10 @@ const make = Effect.gen(function* () {
     }
 
     if (isLive(existing)) {
-      if (existing.connected) return existing;
+      // A JetBrains IDE closing a project sends documentClosed and takes its
+      // folder out of the lock; a call before its hub ends the connection, or
+      // with a hub that keeps it, finds the released session still connected.
+      if (existing.connected && !existing.released) return existing;
       const exited = !process.isAlive(existing.pid);
       // A window that closes its connections without documentClosed, as VS
       // Code deactivating does, may still hold the document in an editor.
@@ -402,7 +453,15 @@ const make = Effect.gen(function* () {
           resolution,
           notes
         ))!;
-        const outcome = yield* task(session);
+        // A window that took the document during the write closes the disk
+        // session, as one found at the start does, so the next call joins it.
+        const outcome = yield* task(session).pipe(
+          Effect.tapError(error =>
+            isSessionError(error, SessionErrorCode.hubAppeared)
+              ? drop(key)
+              : Effect.void
+          )
+        );
         return {
           ...outcome,
           notes: [...notes, ...outcome.notes],
@@ -545,6 +604,7 @@ export const layer: Layer.Layer<
   never,
   | FileSystem.FileSystem
   | FileStats
+  | FileAccess
   | Path.Path
   | ProcessInfo
   | HubConnector

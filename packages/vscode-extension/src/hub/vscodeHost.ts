@@ -9,18 +9,22 @@ import * as vscode from 'vscode';
 import { affectsHubEnabled, isHubEnabled } from '@/hub/config';
 import { DocumentRegistryService } from '@/hub/documentRegistry';
 
+/** The file-scheme workspace folders, since a virtual folder guards no path on disk. */
+export function fileFolders(): vscode.WorkspaceFolder[] {
+  return (vscode.workspace.workspaceFolders ?? []).filter(
+    folder => folder.uri.scheme === 'file'
+  );
+}
+
 /**
  * This window as the hub's host: enabled by trust and the setting, its roots
- * the file-scheme workspace folders, since a virtual folder guards no path on
- * disk. Trust and the setting share one event; folders have their own.
+ * the file-scheme workspace folders. Trust and the setting share one event;
+ * folders have their own.
  */
 export const vscodeHost: HubHostShape = {
   ide: 'vscode',
   isEnabled: isHubEnabled,
-  folders: () =>
-    (vscode.workspace.workspaceFolders ?? [])
-      .filter(folder => folder.uri.scheme === 'file')
-      .map(folder => folder.uri.fsPath),
+  folders: () => fileFolders().map(folder => folder.uri.fsPath),
   onEnabledChange: listener => {
     const subscriptions = [
       vscode.workspace.onDidGrantWorkspaceTrust(() => listener()),

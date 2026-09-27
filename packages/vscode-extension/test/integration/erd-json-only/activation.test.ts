@@ -60,7 +60,7 @@ describe('activation in a folder holding only a .erd.json file', () => {
   before(() => {
     const folders = vscode.workspace.workspaceFolders ?? [];
     assert.strictEqual(folders.length, 1);
-    folder = fs.realpathSync(folders[0].uri.fsPath);
+    folder = fs.realpathSync.native(folders[0].uri.fsPath);
   });
 
   it('opened the fixture whose only file is sample.erd.json', () => {

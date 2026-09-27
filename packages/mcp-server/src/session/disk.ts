@@ -1,5 +1,5 @@
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
-import type { DocumentInfo } from '@dineug/erd-editor-agent-hub';
+import { type DocumentInfo, unsafeSegment } from '@dineug/erd-editor-agent-hub';
 import { Effect, FileSystem, Path } from 'effect';
 
 import {
@@ -8,6 +8,7 @@ import {
   SessionError,
   SessionErrorCode,
 } from '@/errors';
+import { ProcessInfo } from '@/io/process';
 import { isErdPath } from '@/paths';
 import type { DocumentReader } from '@/tools/read';
 
@@ -30,6 +31,15 @@ const DOCUMENT_KEYS = new Set([
 /** A listing stops here, so a huge tree cannot stall a call or flood the result. */
 export const MAX_LISTED_DOCUMENTS = 500;
 export const MAX_LIST_DEPTH = 8;
+
+/**
+ * A mode without owner write, the POSIX bit or on Windows the read-only
+ * attribute, which node reads as 0o444: what a headless write refuses and a
+ * disk listing reports as readonly.
+ */
+export function isReadonlyMode(mode: number): boolean {
+  return (mode & 0o200) === 0;
+}
 
 /** The editor drops a byte order mark when it reads a file; so do the sessions. */
 export function stripBom(text: string): string {
@@ -130,28 +140,39 @@ export const readFromDisk = Effect.fn('readFromDisk')(function* (
 
 /**
  * ERD files under root, none of them open: what a listing shows with no hub
- * to ask. An entry is looked at only when its name could be walked or listed;
- * a symlink is never walked, as a directory entry of its own kind.
+ * to ask. An entry is looked at only when its name could be walked or listed,
+ * and one Windows alters never is; a symlink is never walked.
  */
 export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
   root: string
 ) {
   const fs = yield* FileSystem.FileSystem;
   const paths = yield* Path.Path;
+  const { platform } = yield* ProcessInfo;
   const documents: DocumentInfo[] = [];
 
-  const isDirectory = (path: string) =>
-    fs.stat(path).pipe(
+  /**
+   * A directory to walk, else a file and whether it is read-only; a symlink to
+   * a directory is never walked, and it and an entry that does not stat read as
+   * a writable file.
+   */
+  const entryAt = (path: string) => {
+    const writableFile = { directory: false, readonly: false };
+    return fs.stat(path).pipe(
       Effect.flatMap(info =>
         info.type === 'Directory'
           ? fs.readLink(path).pipe(
-              Effect.as(false),
-              Effect.orElseSucceed(() => true)
+              Effect.as(writableFile),
+              Effect.orElseSucceed(() => ({ directory: true, readonly: false }))
             )
-          : Effect.succeed(false)
+          : Effect.succeed({
+              directory: false,
+              readonly: isReadonlyMode(info.mode),
+            })
       ),
-      Effect.orElseSucceed(() => false)
+      Effect.orElseSucceed(() => writableFile)
     );
+  };
 
   const walk = (dir: string, depth: number): Effect.Effect<void> =>
     Effect.gen(function* () {
@@ -166,9 +187,12 @@ export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
           !name.startsWith('.') &&
           !SKIPPED_DIRECTORIES.has(name);
         if (!walkable && !isErdPath(name)) continue;
+        // Every call on such a name is refused, so the listing never offers it.
+        if (unsafeSegment(name, platform) !== null) continue;
 
         const path = paths.join(dir, name);
-        if (yield* isDirectory(path)) {
+        const entry = yield* entryAt(path);
+        if (entry.directory) {
           if (walkable) yield* walk(path, depth + 1);
         } else if (isErdPath(name)) {
           documents.push({
@@ -176,7 +200,7 @@ export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
             open: false,
             active: false,
             dirty: false,
-            readonly: false,
+            readonly: entry.readonly,
           });
         }
       }

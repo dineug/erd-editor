@@ -613,6 +613,31 @@ describe('a live session beyond the transition table', () => {
     });
   });
 
+  it('gives the reason a JetBrains IDE has for a save it did not make', async () => {
+    const ide = createFakeHub(io, {
+      pid: 4646,
+      workspaceFolders: ['/work'],
+      ide: 'intellij',
+    });
+    ide.saveResult = false;
+    const inIde = await io.run(
+      makeLiveSession({
+        path: DOCUMENT,
+        candidate: { pid: ide.pid, record: ide.lock(), mtimeMs: 1 },
+        nickname: 'agent',
+        client: 'agent',
+      })
+    );
+    await io.run(inIde.runTool('erd_add_table', {}));
+
+    await expect(io.run(inIde.save)).rejects.toMatchObject({
+      code: 'notSaved',
+      message: `The editor did not save ${DOCUMENT}: it could not confirm that every edit reached it, or the IDE could not write it, such as while a dialog was open or when the file cannot be written. Check the editor, then call erd_save again.`,
+    });
+    await io.run(inIde.close);
+    ide.destroy();
+  });
+
   it('saves through the hub and reports no notes', async () => {
     await call('erd_add_table');
 

@@ -76,8 +76,11 @@ export type DiscoveryResult =
  */
 export type StaleLock = { pid: number; reason: 'dead' | 'malformed' };
 
-/** A document match outranks any folder prefix; a deeper folder outranks a shallower one. */
-function matchRank(
+/**
+ * A lock's claim on targetPath, the higher the stronger: Infinity for one of
+ * its documents, the depth of its deepest folder holding it, or -1 for none.
+ */
+export function matchRank(
   record: LockRecord,
   targetPath: string,
   platform: Platform
@@ -95,9 +98,11 @@ function matchRank(
     : toSegments(record.workspaceFolders[index], platform).length;
 }
 
-type Ranked = { candidate: LockCandidate; rank: number };
+/** A live lock and its matchRank claim. */
+export type RankedCandidate = { candidate: LockCandidate; rank: number };
 
-function outranks(a: Ranked, b: Ranked): boolean {
+/** Whether a wins over b: the higher rank, then the newer mtimeMs, then the higher pid. */
+export function outranks(a: RankedCandidate, b: RankedCandidate): boolean {
   if (a.rank !== b.rank) return a.rank > b.rank;
   if (a.candidate.mtimeMs !== b.candidate.mtimeMs) {
     return a.candidate.mtimeMs > b.candidate.mtimeMs;
@@ -116,7 +121,7 @@ function pickHub(
   isAlive: (pid: number) => boolean
 ): HubSelection {
   const stale: StaleLock[] = [];
-  let best: Ranked | null = null;
+  let best: RankedCandidate | null = null;
 
   for (const { pid, raw, mtimeMs } of locks) {
     if (!isAlive(pid)) {
@@ -130,7 +135,10 @@ function pickHub(
     }
 
     const rank = matchRank(record, targetPath, platform);
-    const ranked: Ranked = { candidate: { pid, record, mtimeMs }, rank };
+    const ranked: RankedCandidate = {
+      candidate: { pid, record, mtimeMs },
+      rank,
+    };
     if (rank >= 0 && (!best || outranks(ranked, best))) best = ranked;
   }
 

@@ -4,14 +4,18 @@ import com.intellij.openapi.vfs.VirtualFile
 
 class ErdEditorFiles {
     companion object {
+        /** The extensions the ERD editor opens, whatever their letter case (`SCHEMA.ERD` too). */
+        val EXTENSIONS = listOf("erd", "vuerd", "erd.json", "vuerd.json")
+
         fun isErdEditorFile(file: VirtualFile?): Boolean {
             return when {
                 file == null -> false
                 file.isDirectory || !file.exists() -> false
 
-                arrayOf(".erd", ".erd.json", ".vuerd", ".vuerd.json").any { ext -> file.name.endsWith(ext) } -> true
-
-                else -> false
+                else -> {
+                    val name = file.name.lowercase()
+                    EXTENSIONS.any { extension -> name.endsWith(".$extension") }
+                }
             }
         }
     }

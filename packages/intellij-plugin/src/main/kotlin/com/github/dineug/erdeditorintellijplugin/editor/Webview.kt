@@ -19,6 +19,8 @@ import javax.swing.JComponent
 class Webview(
     parentDisposable: Disposable,
     url: String,
+    // Called on a CEF thread as the main frame starts a load: the first page, a reload, the timeout page.
+    private val onLoadStart: () -> Unit = {},
 ) : Disposable {
     companion object {
         private const val LOADING_KEY = 1
@@ -60,6 +62,7 @@ class Webview(
                 frame: CefFrame?,
                 transitionType: CefRequest.TransitionType?
             ) {
+                if (frame?.isMain != false) this@Webview.onLoadStart()
                 alarm.addRequest(
                     { jbCefBrowser.loadHTML(TIMEOUT_HTML) },
                     Registry.intValue("html.editor.timeout", 10000)

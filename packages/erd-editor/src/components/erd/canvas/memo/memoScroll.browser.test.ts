@@ -89,7 +89,10 @@ describe('the clamp every read of a memo scroll goes through', () => {
     editor.memoScrollTopMap[tall.id] = 40;
     expect(getMemoScrollTop(editor, tall)).toBe(40);
 
-    const shorter = { ...tall, value: brokenLines(12) };
+    // About 20 px of travel, whatever leading this machine's face resolves to.
+    const lines = Math.ceil((HEIGHT + 20) / getMemoLineHeightPx());
+    const shorter = { ...tall, value: brokenLines(lines) };
+    expect(getMemoScrollMax(shorter)).toBeGreaterThan(0);
     expect(getMemoScrollMax(shorter)).toBeLessThan(40);
     expect(getMemoScrollTop(editor, shorter)).toBe(getMemoScrollMax(shorter));
 

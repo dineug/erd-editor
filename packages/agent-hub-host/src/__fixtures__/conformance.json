@@ -1,0 +1,1139 @@
+{
+  "$comment": "Read by src/conformance.test.ts and by packages/intellij-plugin's Gradle tests; change both sides together.",
+  "server": {
+    "$comment": "One connection per scenario, served with token, ide and version. authorize(path) answers authorizePrefix + path, or fails with authorizeRefuses[path]; the handler answers every call with answers[method], openDocument's with the path it was handed first, unless the scenario's handlerRefuses[method] makes it fail with that refusal. send: the pieces the peer writes, in order; before the next piece, and before the outcome is read, the reader waits until the hub is idle: every complete frame sent so far answered, refused or skipped, no handler call pending, and the connection read from again, ended or hung up (the TypeScript reader lets ten event-loop turns pass). expect: every frame the hub wrote, newline dropped. then: open, end (it ended the connection after its frames) or hangUp (it destroyed it). authorized: every path authorize was handed, in order, as the peer wrote it; a request whose params are refused never reaches authorize. calls: the handler calls in order, normalized: the path of a method that names one, create by JavaScript truthiness and initialValue when a string on openDocument, actions on applyActions, null otherwise, and the connection's client. logs: the texts the hub logged, in order.",
+    "token": "6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f",
+    "ide": "vscode",
+    "version": "2.9.0",
+    "authorizePrefix": "/real",
+    "authorizeRefuses": {
+      "/etc/passwd": {
+        "code": "outsideWorkspace",
+        "message": "/etc/passwd is neither inside a workspace folder nor an open document"
+      }
+    },
+    "answers": {
+      "listDocuments": {"documents": []},
+      "openDocument": {"opened": true, "webviews": 1},
+      "join": {"initialValue": "{}", "snapshotVersion": 0, "readonly": false},
+      "applyActions": {"webviews": 1},
+      "leave": {},
+      "save": {"saved": true}
+    },
+    "scenarios": [
+      {
+        "name": "answers a hello carrying the lock token",
+        "send": [
+          "{\"id\":7,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":7,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": []
+      },
+      {
+        "name": "refuses a different token of the same length",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"7f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"unauthorized\",\"message\":\"The hello token does not match the lock file of this window\"}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello with a token that is not in the lock file"]
+      },
+      {
+        "name": "refuses a shorter token",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"unauthorized\",\"message\":\"The hello token does not match the lock file of this window\"}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello with a token that is not in the lock file"]
+      },
+      {
+        "name": "refuses a hello without a token",
+        "send": ["{\"id\":1,\"method\":\"hello\",\"params\":{\"protocolVersion\":1,\"client\":\"spec\"}}\n"],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"unauthorized\",\"message\":\"The hello token does not match the lock file of this window\"}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello with a token that is not in the lock file"]
+      },
+      {
+        "name": "refuses a token that is not a string",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":42,\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"unauthorized\",\"message\":\"The hello token does not match the lock file of this window\"}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello with a token that is not in the lock file"]
+      },
+      {
+        "name": "refuses a hello whose params are not an object",
+        "send": ["{\"id\":1,\"method\":\"hello\",\"params\":\"secret\"}\n"],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"unauthorized\",\"message\":\"The hello token does not match the lock file of this window\"}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello with a token that is not in the lock file"]
+      },
+      {
+        "name": "refuses another protocol, naming the side to update",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":2,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"protocolMismatch\",\"message\":\"The ERD Editor hub speaks protocol 1 but the client speaks protocol 2. Update the ERD Editor extension or plugin in the editor until its hub speaks protocol 2.\",\"hubProtocolVersion\":1,\"clientProtocolVersion\":2}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello speaking protocol 2"]
+      },
+      {
+        "name": "reads a protocol that is not a number as protocol 0",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":\"1\",\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"protocolMismatch\",\"message\":\"The ERD Editor hub speaks protocol 1 but the client speaks protocol 0. Update the MCP server (npx -y @dineug/erd-editor-mcp@latest) until it speaks protocol 1.\",\"hubProtocolVersion\":1,\"clientProtocolVersion\":0}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello speaking protocol 0"]
+      },
+      {
+        "name": "echoes a fractional protocol as it was written",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1.5,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"protocolMismatch\",\"message\":\"The ERD Editor hub speaks protocol 1 but the client speaks protocol 1.5. Update the ERD Editor extension or plugin in the editor until its hub speaks protocol 1.5.\",\"hubProtocolVersion\":1,\"clientProtocolVersion\":1.5}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello speaking protocol 1.5"]
+      },
+      {
+        "name": "admits a client name that is not a string as the empty name",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":42}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": ""}
+        ],
+        "logs": []
+      },
+      {
+        "name": "admits a hello without a client under the empty name",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": ""}
+        ],
+        "logs": []
+      },
+      {
+        "name": "answers a hello id written 1.0 as 1",
+        "send": [
+          "{\"id\":1.0,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": []
+      },
+      {
+        "name": "answers a hello id past 2^53 as JSON reads it",
+        "send": [
+          "{\"id\":9007199254740993,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":9007199254740992,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": []
+      },
+      {
+        "name": "hangs up on a first frame that is a request other than hello",
+        "send": ["{\"id\":1,\"method\":\"join\",\"params\":{}}\n"],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer whose first frame was not a hello"]
+      },
+      {
+        "name": "hangs up on a first frame that is a well-formed join",
+        "send": ["{\"id\":1,\"method\":\"join\",\"params\":{\"path\":\"/ws/a.erd.json\"}}\n"],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer whose first frame was not a hello"]
+      },
+      {
+        "name": "hangs up on a first hello without an id",
+        "send": ["{\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\"}}\n"],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer whose first frame was not a hello"]
+      },
+      {
+        "name": "hangs up on a first hello with a fractional id",
+        "send": [
+          "{\"id\":1.5,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer whose first frame was not a hello"]
+      },
+      {
+        "name": "hangs up on a first hello with an id that is a string",
+        "send": [
+          "{\"id\":\"1\",\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer whose first frame was not a hello"]
+      },
+      {
+        "name": "hangs up on a first frame that is an array",
+        "send": [
+          "[{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}]\n"
+        ],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer whose first frame was not a hello"]
+      },
+      {
+        "name": "hangs up on a first frame that is null",
+        "send": ["null\n"],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer whose first frame was not a hello"]
+      },
+      {
+        "name": "hangs up on a first line that is not JSON",
+        "send": ["{\"id\":2,\n"],
+        "expect": [],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer that sent a malformed frame"]
+      },
+      {
+        "name": "ignores the frames a refused client pipelined behind its hello",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"wrong\",\"protocolVersion\":1,\"client\":\"spec\"}}\n{\"id\":2,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"unauthorized\",\"message\":\"The hello token does not match the lock file of this window\"}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello with a token that is not in the lock file"]
+      },
+      {
+        "name": "reads nothing a peer sends after its hello was refused",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"wrong\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"unauthorized\",\"message\":\"The hello token does not match the lock file of this window\"}}"
+        ],
+        "then": "end",
+        "authorized": [],
+        "calls": [],
+        "logs": ["refused a hello with a token that is not in the lock file"]
+      },
+      {
+        "name": "reassembles a frame split across chunks and splits two frames in one",
+        "send": [
+          "{\"id\":1,\"m",
+          "ethod\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n{\"id\":2,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "hangs up on a line that is not JSON and reads nothing after it",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\n{\"id\":3,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer that sent a malformed frame"]
+      },
+      {
+        "name": "hangs up on a frame with text after its JSON value",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":{}} x\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "hangUp",
+        "authorized": [],
+        "calls": [],
+        "logs": ["hung up on a peer that sent a malformed frame"]
+      },
+      {
+        "name": "routes listDocuments to the handler with the client name",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "serves listDocuments without params with empty params",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\"}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "serves listDocuments with params null",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":null}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "serves listDocuments with params [1]",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":[1]}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "serves listDocuments with params \"all\"",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":\"all\"}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "never authorizes a path on listDocuments",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"listDocuments\",\"params\":{\"path\":\"/etc/passwd\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "hands openDocument the authorized real path",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"openDocument\",\"params\":{\"path\":\"/ws/a.erd.json\",\"create\":true,\"initialValue\":\"{}\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"openDocument\",\"result\":{\"path\":\"/real/ws/a.erd.json\",\"opened\":true,\"webviews\":1}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "openDocument", "path": "/real/ws/a.erd.json", "create": true, "initialValue": "{}", "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "opens without create or an initial value",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"openDocument\",\"params\":{\"path\":\"/ws/a.erd.json\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"openDocument\",\"result\":{\"path\":\"/real/ws/a.erd.json\",\"opened\":true,\"webviews\":1}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "openDocument", "path": "/real/ws/a.erd.json", "create": false, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "reads create by truthiness and an initial value only as a string",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"openDocument\",\"params\":{\"path\":\"/ws/a.erd.json\",\"create\":\"yes\",\"initialValue\":7}}\n",
+          "{\"id\":3,\"method\":\"openDocument\",\"params\":{\"path\":\"/ws/b.erd.json\",\"create\":0,\"initialValue\":\"{}\"}}\n",
+          "{\"id\":4,\"method\":\"openDocument\",\"params\":{\"path\":\"/ws/c.erd.json\",\"create\":null,\"initialValue\":null}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"openDocument\",\"result\":{\"path\":\"/real/ws/a.erd.json\",\"opened\":true,\"webviews\":1}}",
+          "{\"id\":3,\"ok\":true,\"method\":\"openDocument\",\"result\":{\"path\":\"/real/ws/b.erd.json\",\"opened\":true,\"webviews\":1}}",
+          "{\"id\":4,\"ok\":true,\"method\":\"openDocument\",\"result\":{\"path\":\"/real/ws/c.erd.json\",\"opened\":true,\"webviews\":1}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json", "/ws/b.erd.json", "/ws/c.erd.json"],
+        "calls": [
+          {"method": "openDocument", "path": "/real/ws/a.erd.json", "create": true, "initialValue": null, "actions": null, "client": "spec"},
+          {"method": "openDocument", "path": "/real/ws/b.erd.json", "create": false, "initialValue": "{}", "actions": null, "client": "spec"},
+          {"method": "openDocument", "path": "/real/ws/c.erd.json", "create": false, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "answers join with the handler's result",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"join\",\"params\":{\"path\":\"/ws/a.erd.json\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"join\",\"result\":{\"initialValue\":\"{}\",\"snapshotVersion\":0,\"readonly\":false}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "join", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "answers leave with the handler's result",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"leave\",\"params\":{\"path\":\"/ws/a.erd.json\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"leave\",\"result\":{}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "leave", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "answers save with the handler's result",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"save\",\"params\":{\"path\":\"/ws/a.erd.json\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"save\",\"result\":{\"saved\":true}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "save", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "answers openDocument outside the workspace with the refusal of authorize",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"openDocument\",\"params\":{\"path\":\"/etc/passwd\",\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"openDocument\",\"error\":{\"code\":\"outsideWorkspace\",\"message\":\"/etc/passwd is neither inside a workspace folder nor an open document\"}}"
+        ],
+        "then": "open",
+        "authorized": ["/etc/passwd"],
+        "calls": [],
+        "logs": ["answered openDocument with outsideWorkspace"]
+      },
+      {
+        "name": "answers join outside the workspace with the refusal of authorize",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"join\",\"params\":{\"path\":\"/etc/passwd\",\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"join\",\"error\":{\"code\":\"outsideWorkspace\",\"message\":\"/etc/passwd is neither inside a workspace folder nor an open document\"}}"
+        ],
+        "then": "open",
+        "authorized": ["/etc/passwd"],
+        "calls": [],
+        "logs": ["answered join with outsideWorkspace"]
+      },
+      {
+        "name": "answers applyActions outside the workspace with the refusal of authorize",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"applyActions\",\"params\":{\"path\":\"/etc/passwd\",\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"applyActions\",\"error\":{\"code\":\"outsideWorkspace\",\"message\":\"/etc/passwd is neither inside a workspace folder nor an open document\"}}"
+        ],
+        "then": "open",
+        "authorized": ["/etc/passwd"],
+        "calls": [],
+        "logs": ["answered applyActions with outsideWorkspace"]
+      },
+      {
+        "name": "answers leave outside the workspace with the refusal of authorize",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"leave\",\"params\":{\"path\":\"/etc/passwd\",\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"leave\",\"error\":{\"code\":\"outsideWorkspace\",\"message\":\"/etc/passwd is neither inside a workspace folder nor an open document\"}}"
+        ],
+        "then": "open",
+        "authorized": ["/etc/passwd"],
+        "calls": [],
+        "logs": ["answered leave with outsideWorkspace"]
+      },
+      {
+        "name": "answers save outside the workspace with the refusal of authorize",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"save\",\"params\":{\"path\":\"/etc/passwd\",\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"save\",\"error\":{\"code\":\"outsideWorkspace\",\"message\":\"/etc/passwd is neither inside a workspace folder nor an open document\"}}"
+        ],
+        "then": "open",
+        "authorized": ["/etc/passwd"],
+        "calls": [],
+        "logs": ["answered save with outsideWorkspace"]
+      },
+      {
+        "name": "answers a path that is not a string with badRequest, authorizing nothing",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"join\",\"params\":{\"path\":7}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"join\",\"error\":{\"code\":\"badRequest\",\"message\":\"join needs a string params.path\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered join with badRequest"]
+      },
+      {
+        "name": "answers an unknown method with badRequest",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"rejoin\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"rejoin\",\"error\":{\"code\":\"badRequest\",\"message\":\"The hub has no method \\\"rejoin\\\"\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered rejoin with badRequest"]
+      },
+      {
+        "name": "answers a second hello with badRequest",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":3,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":3,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"badRequest\",\"message\":\"The hub has no method \\\"hello\\\"\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered hello with badRequest"]
+      },
+      {
+        "name": "answers a prototype key with badRequest",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"toString\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"toString\",\"error\":{\"code\":\"badRequest\",\"message\":\"The hub has no method \\\"toString\\\"\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered toString with badRequest"]
+      },
+      {
+        "name": "answers a request without a method with badRequest",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"\",\"error\":{\"code\":\"badRequest\",\"message\":\"The hub has no method \\\"\\\"\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered  with badRequest"]
+      },
+      {
+        "name": "hands join only the params it knows",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"join\",\"params\":{\"path\":\"/ws/a.erd.json\",\"as\":\"someone\"},\"trace\":\"x\"}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"join\",\"result\":{\"initialValue\":\"{}\",\"snapshotVersion\":0,\"readonly\":false}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "join", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "carries the code of a refusal the handler answers with",
+        "handlerRefuses": {"join": {"code": "notOpen", "message": "no webview is ready"}},
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"join\",\"params\":{\"path\":\"/ws/a.erd.json\"}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"join\",\"error\":{\"code\":\"notOpen\",\"message\":\"no webview is ready\"}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "join", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": ["answered join with notOpen"]
+      },
+      {
+        "name": "hands applyActions its batch, nulls included",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"applyActions\",\"params\":{\"path\":\"/ws/a.erd.json\",\"actions\":[{\"type\":\"table.add\",\"payload\":{\"id\":\"x\",\"comment\":null},\"version\":3},null]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"applyActions\",\"result\":{\"webviews\":1}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "applyActions", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": [{"type": "table.add", "payload": {"id": "x", "comment": null}, "version": 3}, null], "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "carries the code of a refusal of applyActions",
+        "handlerRefuses": {"applyActions": {"code": "notOpen", "message": "no webview is ready"}},
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"applyActions\",\"params\":{\"path\":\"/ws/a.erd.json\",\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"applyActions\",\"error\":{\"code\":\"notOpen\",\"message\":\"no webview is ready\"}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json"],
+        "calls": [
+          {"method": "applyActions", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": [], "client": "spec"}
+        ],
+        "logs": ["answered applyActions with notOpen"]
+      },
+      {
+        "name": "answers applyActions without a path with badRequest",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"applyActions\",\"params\":{\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"applyActions\",\"error\":{\"code\":\"badRequest\",\"message\":\"applyActions needs a string params.path\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered applyActions with badRequest"]
+      },
+      {
+        "name": "answers applyActions without an actions array with badRequest",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"applyActions\",\"params\":{\"path\":\"/ws/a.erd.json\",\"actions\":{}}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"applyActions\",\"error\":{\"code\":\"badRequest\",\"message\":\"applyActions needs an array params.actions\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered applyActions with badRequest"]
+      },
+      {
+        "name": "answers a batch outside the workspace without an actions array with badRequest, not outsideWorkspace",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"applyActions\",\"params\":{\"path\":\"/etc/passwd\",\"actions\":{}}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":false,\"method\":\"applyActions\",\"error\":{\"code\":\"badRequest\",\"message\":\"applyActions needs an array params.actions\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered applyActions with badRequest"]
+      },
+      {
+        "name": "hands batches and the requests behind them over in the order sent",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2,\"method\":\"applyActions\",\"params\":{\"path\":\"/ws/a.erd.json\",\"actions\":[1]}}\n{\"id\":3,\"method\":\"applyActions\",\"params\":{\"path\":\"/ws/a.erd.json\",\"actions\":[2]}}\n{\"id\":4,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"applyActions\",\"result\":{\"webviews\":1}}",
+          "{\"id\":3,\"ok\":true,\"method\":\"applyActions\",\"result\":{\"webviews\":1}}",
+          "{\"id\":4,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": ["/ws/a.erd.json", "/ws/a.erd.json"],
+        "calls": [
+          {"method": "applyActions", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": [1], "client": "spec"},
+          {"method": "applyActions", "path": "/real/ws/a.erd.json", "create": null, "initialValue": null, "actions": [2], "client": "spec"},
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "ignores a notification from a peer",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"method\":\"actions\",\"params\":{\"path\":\"/ws/a.erd.json\",\"actions\":[]}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["ignored a \"actions\" frame without an id: a peer sends requests only"]
+      },
+      {
+        "name": "ignores a frame after hello that is no object",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "[1,2]\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["ignored a \"\" frame without an id: a peer sends requests only"]
+      },
+      {
+        "name": "ignores a request whose id is fractional",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2.5,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["ignored a \"listDocuments\" frame without an id: a peer sends requests only"]
+      },
+      {
+        "name": "ignores a request whose id is a string",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":\"2\",\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["ignored a \"listDocuments\" frame without an id: a peer sends requests only"]
+      },
+      {
+        "name": "answers a negative id",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":-5,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":-5,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "answers an id past 2^53 as JSON reads it",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":9007199254740993,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":9007199254740992,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      },
+      {
+        "name": "answers an id written 1e21 as JavaScript prints it",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":1e21,\"method\":\"rejoin\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":1e+21,\"ok\":false,\"method\":\"rejoin\",\"error\":{\"code\":\"badRequest\",\"message\":\"The hub has no method \\\"rejoin\\\"\"}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [],
+        "logs": ["answered rejoin with badRequest"]
+      },
+      {
+        "name": "answers an id written 2.0 as 2",
+        "send": [
+          "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f\",\"protocolVersion\":1,\"client\":\"spec\"}}\n",
+          "{\"id\":2.0,\"method\":\"listDocuments\",\"params\":{}}\n"
+        ],
+        "expect": [
+          "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+          "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[]}}"
+        ],
+        "then": "open",
+        "authorized": [],
+        "calls": [
+          {"method": "listDocuments", "path": null, "create": null, "initialValue": null, "actions": null, "client": "spec"}
+        ],
+        "logs": []
+      }
+    ]
+  },
+  "documentRules": {
+    "$comment": "erdFile: the badRequest message erdFileProblem answers path with, or null. refusals and logs: the constructor name called with args.",
+    "extensions": ["erd", "vuerd", "erd.json", "vuerd.json"],
+    "openReadyTimeoutMs": 5000,
+    "saveQuietCapMs": 2000,
+    "erdFile": [
+      {"path": "/ws/a.erd", "problem": null},
+      {"path": "/ws/a.vuerd", "problem": null},
+      {"path": "/ws/a.erd.json", "problem": null},
+      {"path": "/ws/a.vuerd.json", "problem": null},
+      {"path": "/ws/A.ERD.JSON", "problem": null},
+      {"path": "/ws/a.Erd", "problem": null},
+      {"path": "C:\\ws\\a.VUERD", "problem": null},
+      {"path": "/ws/schema.sql", "problem": "/ws/schema.sql is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only"},
+      {"path": "/ws/Schema.SQL", "problem": "/ws/Schema.SQL is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only"},
+      {"path": "/ws/erd", "problem": "/ws/erd is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only"},
+      {"path": "/ws/a.json", "problem": "/ws/a.json is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only"},
+      {"path": "/ws/a.erd.bak", "problem": "/ws/a.erd.bak is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only"},
+      {"path": "/ws/a.erdjson", "problem": "/ws/a.erdjson is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only"},
+      {"path": "/ws/.erd", "problem": null}
+    ],
+    "refusals": [
+      {"name": "fileMissing", "args": ["/ws/a.erd"], "code": "notFound", "message": "/ws/a.erd does not exist"},
+      {"name": "folderMissing", "args": ["/ws/a.erd"], "code": "notFound", "message": "The folder of /ws/a.erd does not exist"},
+      {"name": "createNeedsInitialValue", "args": [], "code": "badRequest", "message": "openDocument with create needs a string initialValue, the bytes of an empty document"},
+      {"name": "editorCouldNotOpen", "args": ["Obsidian", "/ws/a.erd", "no leaf"], "code": "notOpen", "message": "Obsidian could not open /ws/a.erd in the ERD editor: no leaf"},
+      {"name": "editorCouldNotOpen", "args": ["IntelliJ IDEA", "C:\\ws\\a.erd", "the IDE cannot find the file"], "code": "notOpen", "message": "IntelliJ IDEA could not open C:\\ws\\a.erd in the ERD editor: the IDE cannot find the file"},
+      {"name": "openTimedOut", "args": ["/ws/a.erd"], "code": "notOpen", "message": "No ERD editor on /ws/a.erd reported ready within 5000 ms"},
+      {"name": "notReadyForActions", "args": ["/ws/a.erd"], "code": "notOpen", "message": "/ws/a.erd is not open in an ERD editor that is ready; open it with openDocument, then join"},
+      {"name": "notJoined", "args": ["/ws/a.erd"], "code": "notOpen", "message": "Join /ws/a.erd before applying actions to it"},
+      {"name": "notOpenInEditor", "args": ["/ws/a.erd"], "code": "notOpen", "message": "/ws/a.erd is not open in an ERD editor"},
+      {"name": "closedBeforeSave", "args": ["/ws/a.erd"], "code": "notOpen", "message": "/ws/a.erd closed before it could be saved"},
+      {"name": "closedDuringJoin", "args": ["/ws/a.erd"], "code": "notOpen", "message": "/ws/a.erd closed, or the peer left it, before the join finished"}
+    ],
+    "logs": [
+      {"name": "unsettledSave", "args": ["/ws/a.erd"], "text": "/ws/a.erd has an edit no replica saved within 2000 ms; its bytes may lack it, so nothing was saved"}
+    ],
+    "stripBom": [
+      {"input": "\ufeff{\"doc\":{}}", "output": "{\"doc\":{}}"},
+      {"input": "{\"doc\":\"\ufeff\"}", "output": "{\"doc\":\"\ufeff\"}"},
+      {"input": "", "output": ""},
+      {"input": "\ufeff", "output": ""},
+      {"input": "\ufeff\ufeff{}", "output": "\ufeff{}"},
+      {"input": " \ufeff{}", "output": " \ufeff{}"}
+    ]
+  },
+  "joinWindow": {
+    "$comment": "A null version is none. filterJoinQueue and drainJoinQueue answer batches; dropped counts by source, then by action type; warning is the text and counts drainJoinQueue logs, or null.",
+    "replicaDebounceMs": 200,
+    "joinQuietCapMs": 500,
+    "nonChangeTypes": [
+      "editor.getLWW",
+      "editor.mergeLWW",
+      "editor.sharedMouseTracker",
+      "editor.sharedFocusTracker",
+      "editor.sharedSelectionTracker",
+      "editor.sharedDragSelectTracker"
+    ],
+    "actionVersion": [
+      {"action": {"version": 4}, "version": 4},
+      {"action": {"type": "table.add", "version": 4.5}, "version": 4.5},
+      {"action": {"version": -1}, "version": -1},
+      {"action": {"version": 0}, "version": 0},
+      {"action": {"version": "4"}, "version": null},
+      {"action": {"version": true}, "version": null},
+      {"action": {"version": null}, "version": null},
+      {"action": {"version": 1e400}, "version": null},
+      {"action": {"type": "table.move"}, "version": null},
+      {"action": [4], "version": null},
+      {"action": null, "version": null},
+      {"action": "table.add", "version": null},
+      {"action": 4, "version": null}
+    ],
+    "actionType": [
+      {"action": {"type": "memo.add"}, "type": "memo.add"},
+      {"action": {"type": 3}, "type": "unknown"},
+      {"action": {"type": null}, "type": "unknown"},
+      {"action": {}, "type": "unknown"},
+      {"action": null, "type": "unknown"},
+      {"action": [{"type": "memo.add"}], "type": "unknown"},
+      {"action": "memo.add", "type": "unknown"}
+    ],
+    "hasChangeAction": [
+      {"actions": [{"type": "editor.getLWW"}, {"type": "editor.mergeLWW"}, {"type": "editor.sharedFocusTracker"}], "result": false},
+      {"actions": [{"type": "editor.getLWW"}, {"type": "editor.mergeLWW"}, {"type": "editor.sharedMouseTracker"}, {"type": "editor.sharedFocusTracker"}, {"type": "editor.sharedSelectionTracker"}, {"type": "editor.sharedDragSelectTracker"}], "result": false},
+      {"actions": [{"type": "editor.getLWW"}, {"type": "table.add", "payload": {}, "version": 1}], "result": true},
+      {"actions": [{"payload": {}}], "result": true},
+      {"actions": [null], "result": true},
+      {"actions": [], "result": false},
+      {"actions": [{"type": "editor.getlww"}], "result": true}
+    ],
+    "maxVersion": [
+      {"current": 3, "actions": [{"type": "table.add", "payload": {}, "version": 7}, {"type": "table.add", "payload": {}}, {"type": "table.add", "payload": {}, "version": 5}], "result": 7},
+      {"current": 9, "actions": [{"type": "table.add", "payload": {}, "version": 2}, {"type": "table.move"}], "result": 9},
+      {"current": 0, "actions": [], "result": 0},
+      {"current": 0, "actions": [{"type": "table.add", "payload": {}, "version": -2}], "result": 0},
+      {"current": 2, "actions": [{"type": "table.add", "payload": {}, "version": 2.5}, {"version": "9"}, null], "result": 2.5},
+      {"current": 1, "actions": [{"version": 1e400}], "result": 1}
+    ],
+    "filterJoinQueue": [
+      {"queue": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}, {"type": "table.add", "payload": {}, "version": 5}, {"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "table.move", "payload": {}}, {"type": "memo.add", "payload": {}, "version": 2}]}, {"source": "webview", "actions": [{"type": "table.move", "payload": {}}]}, {"source": "peer", "actions": [{"type": "memo.add", "payload": {}, "version": 9}]}], "snapshotVersion": 5, "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "memo.add", "payload": {}, "version": 9}]}], "dropped": {"webview": {"table.add": 2, "table.move": 1}, "peer": {"table.move": 1, "memo.add": 1}}, "droppedCount": 5},
+      {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "snapshotVersion": 0, "batches": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "dropped": {}, "droppedCount": 0},
+      {"queue": [{"source": "webview", "actions": [null, {"type": 3, "version": 1}]}], "snapshotVersion": 0, "batches": [{"source": "webview", "actions": [{"type": 3, "version": 1}]}], "dropped": {"webview": {"unknown": 1}}, "droppedCount": 1},
+      {"queue": [], "snapshotVersion": 5, "batches": [], "dropped": {}, "droppedCount": 0}
+    ],
+    "drainJoinQueue": [
+      {"queue": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 4}, {"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "table.move", "payload": {}}]}, {"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "captured": 2, "snapshotVersion": 5, "path": "/ws/a.erd", "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "warning": {"text": "dropped 2 queued actions joining /ws/a.erd: versioned at most 5, or unversioned", "dropped": {"webview": {"table.add": 1}, "peer": {"table.move": 1}}}},
+      {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 8}]}], "captured": 1, "snapshotVersion": 5, "path": "/ws/a.erd", "batches": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 8}]}], "warning": null},
+      {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 2}]}, {"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}]}], "captured": 1, "snapshotVersion": 5, "path": "/ws/b.erd", "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}]}], "warning": {"text": "dropped 1 queued actions joining /ws/b.erd: versioned at most 5, or unversioned", "dropped": {"peer": {"table.add": 1}}}}
+    ]
+  },
+  "pipePath": {
+    "tmpPipePath": [
+      {"tmp": "/var/tmp//", "pid": 4242, "pipe": "/var/tmp/erd-editor-ide-4242.sock"},
+      {"tmp": "/tmp", "pid": 4242, "pipe": "/tmp/erd-editor-ide-4242.sock"},
+      {"tmp": "/tmp/", "pid": 7, "pipe": "/tmp/erd-editor-ide-7.sock"},
+      {"tmp": "C:\\Temp\\", "pid": 12, "pipe": "C:\\Temp/erd-editor-ide-12.sock"},
+      {"tmp": "", "pid": 1, "pipe": "/erd-editor-ide-1.sock"}
+    ],
+    "choosePipePath": [
+      {"home": "/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", "tmp": "/tmp", "pid": 4242, "platform": "linux", "pipe": "/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh/.erd-editor/ide/4242.sock"},
+      {"home": "/Users/me", "tmp": "/var/folders/x/T/", "pid": 4242, "platform": "darwin", "pipe": "/Users/me/.erd-editor/ide/4242.sock"},
+      {"home": "/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", "tmp": "/tmp", "pid": 4242, "platform": "darwin", "pipe": "/tmp/erd-editor-ide-4242.sock"},
+      {"home": "/한한한한한한한한한한한한한한한한한한한한한한한한한한", "tmp": "/tmp", "pid": 4242, "platform": "linux", "pipe": "/tmp/erd-editor-ide-4242.sock"},
+      {"home": "/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", "tmp": "/tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt", "pid": 4242, "platform": "linux", "pipe": null},
+      {"home": "/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", "tmp": "C:\\Temp", "pid": 4242, "platform": "win32", "pipe": "\\\\.\\pipe\\erd-editor-ide-4242"}
+    ],
+    "socketFilePaths": [
+      {"home": "/home/user", "tmp": "/tmp", "pid": 4242, "platform": "linux", "paths": ["/home/user/.erd-editor/ide/4242.sock", "/tmp/erd-editor-ide-4242.sock"]},
+      {"home": "/Users/me/", "tmp": "/var/folders/x/T/", "pid": 7, "platform": "darwin", "paths": ["/Users/me/.erd-editor/ide/7.sock", "/var/folders/x/T/erd-editor-ide-7.sock"]},
+      {"home": "C:\\Users\\me", "tmp": "C:\\Temp", "pid": 4242, "platform": "win32", "paths": []}
+    ]
+  },
+  "authz": {
+    "$comment": "A machine per vector: realPath maps a path equal to a links key, or under it, onto the key's target and succeeds when that path exists, paths compared as strings, case included; only the first key that matches, in the order written, is followed, and only once, so a target under another key is not followed again; lstat finds an entry at a links key even when its target is missing, else where the followed path exists. existing: the paths that exist, each with every ancestor. failing: paths whose realPath fails for a reason other than a missing entry. resolve: resolveRealPath of target is real, null when no safe real path exists. authorize: authorizePath of target with folders and documents is real, or fails with error.",
+    "resolve": [
+      {"platform": "linux", "links": {"/ws": "/real/ws"}, "existing": ["/real/ws/a.erd.json"], "failing": [], "target": "/ws/a.erd.json", "real": "/real/ws/a.erd.json"},
+      {"platform": "linux", "links": {"/ws": "/real/ws"}, "existing": ["/real/ws"], "failing": [], "target": "/ws/new/b.erd.json", "real": "/real/ws/new/b.erd.json"},
+      {"platform": "linux", "links": {}, "existing": [], "failing": [], "target": "ws/a.erd.json", "real": "ws/a.erd.json"},
+      {"platform": "linux", "links": {}, "existing": [], "failing": [], "target": "/ws/a.erd.json", "real": null},
+      {"platform": "linux", "links": {"/ws/schema.erd.json": "/outside/planted.erd.json"}, "existing": ["/ws"], "failing": [], "target": "/ws/schema.erd.json", "real": null},
+      {"platform": "linux", "links": {"/ws/schema.erd.json": "/outside/planted.erd.json"}, "existing": ["/ws"], "failing": [], "target": "/ws/schema.erd.json/x.erd.json", "real": null},
+      {"platform": "linux", "links": {"/ws/link": "/outside"}, "existing": ["/ws", "/outside"], "failing": [], "target": "/ws/missing/../link/x.erd.json", "real": null},
+      {"platform": "linux", "links": {"/ws/sub/..": "/ws"}, "existing": ["/ws/sub"], "failing": [], "target": "/ws/sub/../new.erd.json", "real": "/ws/new.erd.json"},
+      {"platform": "linux", "links": {}, "existing": ["/ws/loop.erd.json"], "failing": ["/ws/loop.erd.json"], "target": "/ws/loop.erd.json", "real": null},
+      {"platform": "linux", "links": {}, "existing": ["/ws"], "failing": ["/ws"], "target": "/ws/new.erd.json", "real": null},
+      {"platform": "win32", "links": {"C:\\ws": "C:\\Real\\ws"}, "existing": ["C:\\Real\\ws"], "failing": [], "target": "C:\\ws\\new.erd.json", "real": "C:\\Real\\ws\\new.erd.json"},
+      {"platform": "win32", "links": {}, "existing": [], "failing": [], "target": "ws\\a.erd.json", "real": "ws\\a.erd.json"}
+    ],
+    "authorize": [
+      {"platform": "linux", "links": {}, "existing": ["/a/b/x.erd.json", "/loose/c.erd.json", "/a/bc"], "failing": [], "folders": ["/a/b"], "documents": ["/loose/c.erd.json"], "target": "/a/b/x.erd.json", "real": "/a/b/x.erd.json", "error": null},
+      {"platform": "linux", "links": {}, "existing": ["/a/b/x.erd.json", "/loose/c.erd.json", "/a/bc"], "failing": [], "folders": ["/a/b"], "documents": ["/loose/c.erd.json"], "target": "/loose/c.erd.json", "real": "/loose/c.erd.json", "error": null},
+      {"platform": "linux", "links": {}, "existing": ["/a/b/x.erd.json", "/loose/c.erd.json", "/a/bc"], "failing": [], "folders": ["/a/b"], "documents": ["/loose/c.erd.json"], "target": "/a/bc/x.erd.json", "real": null, "error": {"code": "outsideWorkspace", "message": "/a/bc/x.erd.json is neither inside a workspace folder nor an open document"}},
+      {"platform": "linux", "links": {}, "existing": ["/a/b/x.erd.json", "/loose/c.erd.json", "/a/bc"], "failing": [], "folders": ["/a/b"], "documents": ["/loose/c.erd.json"], "target": "/loose/d.erd.json", "real": null, "error": {"code": "outsideWorkspace", "message": "/loose/d.erd.json is neither inside a workspace folder nor an open document"}},
+      {"platform": "linux", "links": {}, "existing": ["/a/b/x.erd.json", "/loose/c.erd.json", "/a/bc"], "failing": [], "folders": ["/a/b"], "documents": ["/loose/c.erd.json"], "target": "a/b/x.erd.json", "real": null, "error": {"code": "outsideWorkspace", "message": "a/b/x.erd.json is neither inside a workspace folder nor an open document"}},
+      {"platform": "linux", "links": {}, "existing": ["/a/b/x.erd.json", "/loose/c.erd.json", "/a/bc"], "failing": [], "folders": ["/a/b"], "documents": ["/loose/c.erd.json"], "target": "/a/b/../../etc/passwd", "real": null, "error": {"code": "outsideWorkspace", "message": "/a/b/../../etc/passwd has no real path the hub can check, such as a dangling link"}},
+      {"platform": "linux", "links": {"/a/b/escape": "/etc"}, "existing": ["/etc/passwd", "/a/b"], "failing": [], "folders": ["/a/b"], "documents": [], "target": "/a/b/escape/passwd", "real": null, "error": {"code": "outsideWorkspace", "message": "/etc/passwd is neither inside a workspace folder nor an open document"}},
+      {"platform": "linux", "links": {"/a/b/x.erd.json": "/etc/planted.erd.json"}, "existing": ["/a/b"], "failing": [], "folders": ["/a/b"], "documents": [], "target": "/a/b/x.erd.json", "real": null, "error": {"code": "outsideWorkspace", "message": "/a/b/x.erd.json has no real path the hub can check, such as a dangling link"}},
+      {"platform": "linux", "links": {"/link": "/real"}, "existing": ["/real/a.erd.json"], "failing": [], "folders": ["/real"], "documents": [], "target": "/link/a.erd.json", "real": "/real/a.erd.json", "error": null},
+      {"platform": "darwin", "links": {}, "existing": ["/WS"], "failing": [], "folders": ["/WS"], "documents": [], "target": "/ws/a.erd.json", "real": "/ws/a.erd.json", "error": null},
+      {"platform": "linux", "links": {}, "existing": ["/WS"], "failing": [], "folders": ["/WS"], "documents": [], "target": "/ws/a.erd.json", "real": null, "error": {"code": "outsideWorkspace", "message": "/ws/a.erd.json is neither inside a workspace folder nor an open document"}},
+      {"platform": "win32", "links": {}, "existing": ["C:\\ws"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "C:\\ws\\orders-v2.erd", "real": "C:\\ws\\orders-v2.erd", "error": null},
+      {"platform": "win32", "links": {}, "existing": ["C:\\ws\\notes.txt"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "C:\\ws\\notes.txt:x.erd", "real": null, "error": {"code": "badRequest", "message": "C:\\ws\\notes.txt:x.erd holds \"notes.txt:x.erd\", which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped"}},
+      {"platform": "win32", "links": {}, "existing": ["C:\\ws\\CON.erd"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "C:\\ws\\CON.erd", "real": null, "error": {"code": "badRequest", "message": "C:\\ws\\CON.erd holds \"CON.erd\", which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped"}},
+      {"platform": "win32", "links": {}, "existing": ["C:\\ws"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "C:\\ws\\LPT¹.erd", "real": null, "error": {"code": "badRequest", "message": "C:\\ws\\LPT¹.erd holds \"LPT¹.erd\", which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped"}},
+      {"platform": "win32", "links": {}, "existing": ["C:\\ws"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "C:\\ws\\a\u0001b.erd", "real": null, "error": {"code": "badRequest", "message": "C:\\ws\\a\u0001b.erd holds \"a\\u0001b.erd\", which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped"}},
+      {"platform": "win32", "links": {}, "existing": ["C:\\ws\\sub.\\a.erd"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "C:\\ws\\sub.\\a.erd", "real": null, "error": {"code": "badRequest", "message": "C:\\ws\\sub.\\a.erd holds \"sub.\", which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped"}},
+      {"platform": "win32", "links": {"C:\\ws\\j": "C:\\ws\\sub."}, "existing": ["C:\\ws\\sub.\\a.erd"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "C:\\ws\\j\\a.erd", "real": null, "error": {"code": "badRequest", "message": "C:\\ws\\sub.\\a.erd holds \"sub.\", which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped"}},
+      {"platform": "win32", "links": {}, "existing": ["C:\\ws\\a.erd", "\\\\localhost\\C$\\ws\\a.erd"], "failing": [], "folders": ["C:\\ws"], "documents": [], "target": "\\\\localhost\\C$\\ws\\a.erd", "real": null, "error": {"code": "outsideWorkspace", "message": "\\\\localhost\\C$\\ws\\a.erd is neither inside a workspace folder nor an open document"}},
+      {"platform": "linux", "links": {}, "existing": ["/ws"], "failing": [], "folders": ["/ws"], "documents": [], "target": "/ws/orders:v2.erd", "real": "/ws/orders:v2.erd", "error": null}
+    ]
+  }
+}

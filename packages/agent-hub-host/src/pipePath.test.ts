@@ -17,7 +17,6 @@ import {
   flush,
   startMemoryHub,
 } from '@/__test-utils__/hubLayers';
-import { choosePipePath, socketFilePaths, tmpPipePath } from '@/pipePath';
 
 const PID = 4242;
 
@@ -26,73 +25,10 @@ function homeForSocketBytes(bytes: number) {
   return `/${'h'.repeat(bytes - `/.erd-editor/ide/${PID}.sock`.length - 1)}`;
 }
 
-const FITTING_HOME = homeForSocketBytes(MAX_PIPE_PATH_BYTES);
 const LONG_HOME = homeForSocketBytes(MAX_PIPE_PATH_BYTES + 1);
 
-describe('choosePipePath', () => {
-  it('binds beside the lock file while that path fits', () => {
-    expect(pipePath(FITTING_HOME, PID, 'linux')).toHaveLength(
-      MAX_PIPE_PATH_BYTES
-    );
-    expect(choosePipePath(FITTING_HOME, '/tmp', PID, 'linux')).toBe(
-      `${FITTING_HOME}/.erd-editor/ide/${PID}.sock`
-    );
-  });
-
-  it('falls back to the temp directory one byte over the limit', () => {
-    expect(choosePipePath(LONG_HOME, '/tmp', PID, 'darwin')).toBe(
-      `/tmp/erd-editor-ide-${PID}.sock`
-    );
-  });
-
-  it('counts UTF-8 bytes, not characters', () => {
-    // 26 three-byte characters: the socket path is 53 characters but 105 bytes.
-    const home = `/${'한'.repeat(26)}`;
-    expect(new TextEncoder().encode(pipePath(home, PID, 'linux'))).toHaveLength(
-      105
-    );
-
-    expect(choosePipePath(home, '/tmp', PID, 'linux')).toBe(
-      `/tmp/erd-editor-ide-${PID}.sock`
-    );
-  });
-
-  it('gives up when the temp directory is too long as well', () => {
-    expect(
-      choosePipePath(LONG_HOME, `/${'t'.repeat(100)}`, PID, 'linux')
-    ).toBeNull();
-  });
-
-  it('always uses the named pipe on win32, which the socket limit does not bind', () => {
-    expect(choosePipePath(LONG_HOME, 'C:\\Temp', PID, 'win32')).toBe(
-      `\\\\.\\pipe\\erd-editor-ide-${PID}`
-    );
-  });
-});
-
-describe('tmpPipePath', () => {
-  it('drops the trailing separators of the temp directory', () => {
-    expect(tmpPipePath('/var/tmp//', PID)).toBe(
-      `/var/tmp/erd-editor-ide-${PID}.sock`
-    );
-  });
-});
-
-describe('socketFilePaths', () => {
-  it('lists both places a posix window can bind', () => {
-    expect(socketFilePaths('/home/user', '/tmp', PID, 'linux')).toEqual([
-      `/home/user/.erd-editor/ide/${PID}.sock`,
-      `/tmp/erd-editor-ide-${PID}.sock`,
-    ]);
-  });
-
-  it('lists nothing on win32, where a named pipe leaves no file', () => {
-    expect(socketFilePaths('C:\\Users\\me', 'C:\\Temp', PID, 'win32')).toEqual(
-      []
-    );
-  });
-});
-
+// The tables of choosePipePath, tmpPipePath and socketFilePaths are vectors of
+// __fixtures__/conformance.json; this spec runs the whole hub where they matter.
 describe('the hub under a home too long for a socket path', () => {
   beforeEach(() => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);

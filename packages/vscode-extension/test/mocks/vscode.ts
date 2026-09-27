@@ -101,8 +101,14 @@ export class Uri {
     );
   }
 
+  /**
+   * A drive path as VS Code spells it, its letter lowercased and on Windows
+   * with backslashes; the specs' POSIX paths stay as the memory machine keys them.
+   */
   get fsPath() {
-    return this.path;
+    if (!/^\/[a-zA-Z]:/.test(this.path)) return this.path;
+    const path = `${this.path[1].toLowerCase()}${this.path.slice(2)}`;
+    return process.platform === 'win32' ? path.replaceAll('/', '\\') : path;
   }
 
   with(change: {

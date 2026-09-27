@@ -233,12 +233,7 @@ export class DocumentRegistry {
     if (!entry || !entry.webviews.has(webview)) return;
 
     entry.ready.add(webview);
-    if (isReadonlyUri(document.uri)) return;
-    for (const waiter of Array.from(this.readyWaiters)) {
-      if (isSamePath(waiter.path, entry.path, this.platform)) {
-        waiter.resolve(document);
-      }
-    }
+    this.wake(entry);
   }
 
   /** Only webviews that reported ready count; with none, agent edits are refused. */
@@ -476,6 +471,20 @@ export class DocumentRegistry {
     ];
   }
 
+  /**
+   * Hands a writable document with a ready webview to the waiters on its path,
+   * once it is ready and again once its realpath lands, as a webview ready
+   * under another spelling would otherwise leave an open waiting on the real one.
+   */
+  private wake(entry: Entry): void {
+    if (entry.ready.size === 0 || isReadonlyUri(entry.document.uri)) return;
+    for (const waiter of Array.from(this.readyWaiters)) {
+      if (isSamePath(waiter.path, entry.path, this.platform)) {
+        waiter.resolve(entry.document);
+      }
+    }
+  }
+
   private observe(
     entry: Entry,
     actions: unknown[],
@@ -562,6 +571,7 @@ export class DocumentRegistry {
         Effect.map(path => {
           entry.path = path;
           entry.resolved = true;
+          this.wake(entry);
         })
       );
     });

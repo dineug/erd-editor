@@ -694,6 +694,7 @@ describe('the hub client', () => {
 describe('the window a hub client names', () => {
   it.each([
     ['obsidian', 'the Obsidian window'],
+    ['intellij', 'the JetBrains IDE'],
     ['zed', 'the zed window'],
     ['', 'an editor window'],
   ])(
@@ -720,6 +721,7 @@ describe('the window a hub client names', () => {
 
   it.each([
     ['obsidian', 'The Obsidian window'],
+    ['intellij', 'The JetBrains IDE'],
     ['', 'An editor window'],
   ])('names the window by the ide %j in a timeout', async (ide, named) => {
     const { client } = await pair({}, { pid: 7, ide });
@@ -851,12 +853,29 @@ describe('the hub connector', () => {
   });
 
   it.each([
-    ['vscode', 'The VS Code window', 'extension'],
-    ['obsidian', 'The Obsidian window', 'plugin'],
-    ['zed', 'The zed window', 'extension or plugin'],
+    [
+      'vscode',
+      'The VS Code window',
+      'reload that window or check the ERD Editor extension',
+    ],
+    [
+      'obsidian',
+      'The Obsidian window',
+      'reload that window or check the ERD Editor plugin',
+    ],
+    [
+      'intellij',
+      'The JetBrains IDE',
+      'restart that IDE or check the ERD Editor plugin',
+    ],
+    [
+      'zed',
+      'The zed window',
+      'reload that window or check the ERD Editor extension or plugin',
+    ],
   ])(
-    'names the %s window and what to check when its hub does not accept',
-    async (ide, named, addOn) => {
+    'names the %s editor and what to try when its hub does not accept',
+    async (ide, named, remedy) => {
       const io = createMemoryHost();
       io.connect = pipe =>
         Effect.fail(new HubUnreachable({ pipe, message: 'refused' }));
@@ -864,8 +883,50 @@ describe('the hub connector', () => {
 
       await expect(connect(io, lock)).rejects.toMatchObject({
         code: 'hubUnreachable',
-        message: `${named} with pid 11 advertises an ERD Editor hub at ${lock.record.pipe}, but it did not accept a connection (refused). Nothing was written; reload that window or check the ERD Editor ${addOn}.`,
+        message: `${named} with pid 11 advertises an ERD Editor hub at ${lock.record.pipe}, but it did not accept a connection (refused). Nothing was written; ${remedy}.`,
       });
     }
   );
+
+  it.each([
+    ['vscode', 'The VS Code window', 'that window'],
+    ['obsidian', 'The Obsidian window', 'that window'],
+    ['intellij', 'The JetBrains IDE', 'that IDE'],
+    ['zed', 'The zed window', 'that window'],
+  ])(
+    'tells an agent Windows keeps out of the %s editor to run both with the same rights',
+    async (ide, named, that) => {
+      const io = createMemoryHost();
+      io.connect = pipe =>
+        Effect.fail(
+          new HubUnreachable({
+            pipe,
+            message: `connect EPERM ${pipe}`,
+            denied: true,
+          })
+        );
+      const lock = candidate(HUB_PROTOCOL_VERSION, ide);
+      const { pipe } = lock.record;
+
+      await expect(connect(io, lock)).rejects.toMatchObject({
+        code: 'hubUnreachable',
+        message: `${named} with pid 11 advertises an ERD Editor hub at ${pipe}, but Windows denied this agent access to it (connect EPERM ${pipe}): either ${that} runs with more rights than this agent, as when it was started as administrator and the agent was not, or this agent runs in a sandbox. Nothing was written; run the editor and this agent with the same rights, for example by starting the editor again without administrator rights, then call again.`,
+      });
+    }
+  );
+
+  it('keeps the plain text for a refusal Windows did not deny', async () => {
+    const io = createMemoryHost();
+    io.connect = pipe =>
+      Effect.fail(
+        new HubUnreachable({ pipe, message: 'connect ENOENT', denied: false })
+      );
+
+    await expect(connect(io, candidate())).rejects.toMatchObject({
+      code: 'hubUnreachable',
+      message: expect.stringContaining(
+        'but it did not accept a connection (connect ENOENT). Nothing was written; reload that window'
+      ),
+    });
+  });
 });

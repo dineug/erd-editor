@@ -44,6 +44,9 @@ async function registryKeys(...paths: string[]): Promise<string[]> {
   return registry.documents().map(({ path }) => path);
 }
 
+/** A path as VS Code hands it over, which keys a document that is gone. */
+const given = (path: string) => Uri.file(path).fsPath;
+
 describe('the registry over the node layer', () => {
   it('keys a document by its real path, and one that is gone by the path it was given', async () => {
     const target = join(dir, 'target');
@@ -55,7 +58,7 @@ describe('the registry over the node layer', () => {
       await registryKeys(join(dir, 'link', 'a.erd.json'), join(dir, 'gone'))
     ).toEqual([
       join(await fs.realpath(target), 'a.erd.json'),
-      join(dir, 'gone'),
+      given(join(dir, 'gone')),
     ]);
   });
 
@@ -66,7 +69,7 @@ describe('the registry over the node layer', () => {
     const spelled = join(root, 'CaseDir', 'Doc.erd.json');
     const typed = join(root, 'casedir', 'doc.ERD.json');
     // A case-insensitive disk (macOS, Windows) finds the file either way.
-    const expected = existsSync(typed) ? spelled : typed;
+    const expected = existsSync(typed) ? spelled : given(typed);
 
     expect(await registryKeys(typed)).toEqual([expected]);
   });
@@ -75,10 +78,10 @@ describe('the registry over the node layer', () => {
     const root = await fs.realpath(dir);
     const onDisk = join(root, '프로젝트'.normalize('NFD'));
     await fs.mkdir(onDisk);
-    const given = join(root, '프로젝트'.normalize('NFC'));
+    const nfc = join(root, '프로젝트'.normalize('NFC'));
     // APFS finds it either way, and VS Code hands a macOS path over as NFC.
-    const expected = existsSync(given) ? onDisk : given;
+    const expected = existsSync(nfc) ? onDisk : given(nfc);
 
-    expect(await registryKeys(given)).toEqual([expected]);
+    expect(await registryKeys(nfc)).toEqual([expected]);
   });
 });

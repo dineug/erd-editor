@@ -1,5 +1,6 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
+import com.github.dineug.erdeditorintellijplugin.agents.AgentHubService
 import com.github.dineug.erdeditorintellijplugin.files.ErdEditorFiles
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorPolicy
@@ -22,7 +23,8 @@ import java.util.concurrent.ConcurrentMap
  */
 class ErdEditorProvider : FileEditorProvider, DumbAware {
     // Application-scoped and touched from both the EDT (open/close) and background dispatchers
-    // (replication broadcast), so it has to be concurrent.
+    // (replication broadcast), so it has to be concurrent. It relays the pages of a file the agent
+    // hub's registry does not hold; the registry relays those of the files it does.
     private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>> = ConcurrentHashMap()
 
     override fun accept(project: Project, file: VirtualFile): Boolean = ErdEditorFiles.isErdEditorFile(file)
@@ -30,6 +32,10 @@ class ErdEditorProvider : FileEditorProvider, DumbAware {
     override fun getPolicy() = FileEditorPolicy.HIDE_DEFAULT_EDITOR
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
+        // The first ERD editor starts the agent hub as the first project does: a file can open before
+        // any project activity ran, from the welcome screen or LightEdit. The editor registers itself.
+        AgentHubService.getInstance()
+
         // Grant writing when the platform would otherwise deny it: isWriteAccessAllowed
         // returns false exactly for the non-project files that need unlocking, which is
         // how NonProjectFileWritingAccessProvider.requestWriting picks its denied set.

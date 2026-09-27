@@ -3,6 +3,9 @@ import {
   HubErrorCode,
   HubRequestError,
   isSamePath,
+  longestPrefixIndex,
+  type Platform,
+  toSegments,
 } from '@dineug/erd-editor-agent-hub';
 import {
   assertErdFile,
@@ -25,7 +28,7 @@ import {
   unsettledSave,
 } from '@dineug/erd-editor-agent-hub-host';
 import type { PlatformError } from 'effect';
-import { Effect, FileSystem, Layer } from 'effect';
+import { Effect, FileSystem, Layer, Option } from 'effect';
 import * as vscode from 'vscode';
 
 import { VIEW_TYPE } from '@/constants/viewType';
@@ -35,11 +38,32 @@ import {
   DocumentRegistryService,
 } from '@/hub/documentRegistry';
 import { isReadonlyUri } from '@/hub/readonlyUri';
+import { fileFolders } from '@/hub/vscodeHost';
 
 /** The activation glob of package.json, which a test holds this to. */
 export const ERD_FILE_GLOB = `**/*.{${ERD_FILE_EXTENSIONS.join(',')}}`;
 
 const EXCLUDE_GLOB = '**/node_modules/**';
+
+/** How long an open waits for the workspace folders' real paths before it opens path as is. */
+export const FOLDER_REALPATH_CAP_MS = 1_000;
+
+/**
+ * The deepest real folder holding path, the first on a tie, and the names
+ * below it as path spells them, which a real path spells as the disk does;
+ * null when no folder holds it.
+ */
+export function spelledUnder(
+  realFolders: string[],
+  path: string,
+  platform: Platform
+): { index: number; names: string[] } | null {
+  const index = longestPrefixIndex(realFolders, path, platform);
+  if (index === -1) return null;
+
+  const depth = toSegments(realFolders[index], platform).length;
+  return { index, names: toSegments(path, platform).slice(depth) };
+}
 
 function isNotFound(error: PlatformError.PlatformError): boolean {
   return error.reason._tag === 'NotFound';
@@ -131,16 +155,46 @@ export function createDocumentHandler(
       );
     });
 
-  const openEditor = (path: string) =>
+  /**
+   * The uri the Explorer opens path under, as VS Code keys an editor by uri:
+   * the registered document's own, else path under the folder holding it as
+   * VS Code spells that folder, else path itself. A stalled mount costs 1 s.
+   */
+  const editorUri = (
+    path: string,
+    registered: ErdDocument | undefined
+  ): Effect.Effect<vscode.Uri> =>
+    Effect.gen(function* () {
+      if (registered?.uri.scheme === 'file') return registered.uri;
+      const folders = fileFolders();
+      if (folders.length === 0) return vscode.Uri.file(path);
+
+      const realFolders = yield* withFs(
+        Effect.forEach(
+          folders,
+          ({ uri }) =>
+            realpathOrSelf(uri.fsPath).pipe(
+              Effect.catchDefect(() => Effect.succeed(uri.fsPath))
+            ),
+          { concurrency: 'unbounded' }
+        )
+      ).pipe(Effect.timeoutOption(FOLDER_REALPATH_CAP_MS));
+      const spelled = Option.isSome(realFolders)
+        ? spelledUnder(realFolders.value, path, platform)
+        : null;
+      return spelled
+        ? vscode.Uri.joinPath(folders[spelled.index].uri, ...spelled.names)
+        : vscode.Uri.file(path);
+    });
+
+  const openEditor = (uri: vscode.Uri, path: string) =>
     Effect.tryPromise({
       try: () =>
         Promise.resolve(
-          vscode.commands.executeCommand(
-            'vscode.openWith',
-            vscode.Uri.file(path),
-            VIEW_TYPE,
-            { preserveFocus: true, preview: false }
-          )
+          vscode.commands.executeCommand('vscode.openWith', uri, VIEW_TYPE, {
+            preserveFocus: true,
+            preview: false,
+          })
         ),
       catch: error => editorCouldNotOpen('VS Code', path, error),
     }).pipe(Effect.asVoid);
@@ -237,6 +291,8 @@ export function createDocumentHandler(
           };
         }
 
+        // Before the wait starts, so a stalled mount takes none of its time.
+        const uri = yield* editorUri(path, current);
         const { ready, cancel } = registry.waitForReady(
           path,
           OPEN_READY_TIMEOUT_MS
@@ -244,7 +300,7 @@ export function createDocumentHandler(
         // onError, not tapError: a file system errno the hub has no code for
         // dies, and a waiter left registered holds its timer for five seconds.
         yield* ensureFile(path, create, initialValue).pipe(
-          Effect.flatMap(() => openEditor(path)),
+          Effect.flatMap(() => openEditor(uri, path)),
           Effect.onError(() => Effect.sync(cancel))
         );
 

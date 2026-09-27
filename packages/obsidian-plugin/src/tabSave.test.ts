@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   currentValue,
+  exitSave,
   hasUnsavedValue,
   seedValue,
   type TabSaveState,
@@ -97,6 +98,49 @@ describe('a tab still waiting to load that became the writer', () => {
     };
     expect(viewData(loaded)).toBe(EDITED);
     expect(hasUnsavedValue(loaded)).toBe(true);
+  });
+});
+
+describe('exitSave', () => {
+  const edited: TabSaveState = { ...writer, replica: EDITED };
+  const disk = (text: string | null) => vi.fn(() => text);
+
+  it('has nothing to write, and reads no file, for a tab with no unsaved value', () => {
+    const readFile = disk(OPENED);
+    for (const state of [
+      writer,
+      { ...edited, writer: false },
+      { ...edited, seeding: true, saved: WRITTEN },
+      { ...edited, unreadable: true },
+      { ...edited, saved: null },
+    ]) {
+      expect(exitSave(state, false, readFile)).toBe('none');
+    }
+    expect(readFile).not.toHaveBeenCalled();
+  });
+
+  it('leaves the value to a quit task while a write is under way, without reading the file', () => {
+    const readFile = disk(OPENED);
+    expect(exitSave(edited, true, readFile)).toBe('defer');
+    expect(readFile).not.toHaveBeenCalled();
+  });
+
+  it('writes when the file holds exactly what the tab last loaded or saved', () => {
+    expect(exitSave(edited, false, disk(OPENED))).toBe('write');
+  });
+
+  it('reads a file opened with a byte order mark as what Obsidian handed the tab, which lacks it', () => {
+    expect(exitSave(edited, false, disk(`﻿${OPENED}`))).toBe('write');
+    expect(exitSave(edited, false, disk(`﻿﻿${OPENED}`))).toBe('conflict');
+  });
+
+  it('leaves an outside change, or a write not yet done, as the file holds it', () => {
+    expect(exitSave(edited, false, disk(WRITTEN))).toBe('conflict');
+    expect(exitSave(edited, false, disk(OPENED.slice(0, 5)))).toBe('conflict');
+  });
+
+  it('leaves the value to a quit task when the file cannot be read', () => {
+    expect(exitSave(edited, false, disk(null))).toBe('defer');
   });
 });
 

@@ -44,8 +44,10 @@ describe('public api surface', () => {
         'lockFilePid',
         'LockRecord',
         'longestPrefixIndex',
+        'matchRank',
         'MAX_FRAME_BYTES',
         'MAX_PIPE_PATH_BYTES',
+        'outranks',
         'parseLock',
         'PeerToHubMessage',
         'pipePath',
@@ -55,6 +57,7 @@ describe('public api surface', () => {
         'selectHub',
         'serializeLock',
         'toSegments',
+        'unsafeSegment',
       ].sort()
     );
   });
@@ -65,6 +68,7 @@ describe('public api surface', () => {
     expectTypeOf<publicApi.LockRecord>().toEqualTypeOf<lock.LockRecord>();
     expectTypeOf<publicApi.LockFile>().toEqualTypeOf<discovery.LockFile>();
     expectTypeOf<publicApi.HubSelection>().toEqualTypeOf<discovery.HubSelection>();
+    expectTypeOf<publicApi.RankedCandidate>().toEqualTypeOf<discovery.RankedCandidate>();
     expectTypeOf<publicApi.RefusedFrame>().toEqualTypeOf<framing.RefusedFrame>();
     expectTypeOf<publicApi.HubRequestParams['applyActions']>().toEqualTypeOf<
       protocol.HubRequestParams['applyActions']

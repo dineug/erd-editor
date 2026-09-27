@@ -5,7 +5,7 @@ import type { BatchRun } from '@/tools/batch';
 import type { DocumentReader } from '@/tools/read';
 import type { ToolRun } from '@/tools/run';
 
-/** Live joins an editor window's editing stream, VS Code's or Obsidian's; headless edits the file. */
+/** Live joins an editor's editing stream, VS Code's, Obsidian's or a JetBrains IDE's; headless edits the file. */
 export type SessionMode = 'live' | 'headless';
 
 /**

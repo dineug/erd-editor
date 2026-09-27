@@ -20,14 +20,10 @@ import {
   PeerToHubMessage,
 } from '@/protocol';
 
+// The byte, chunk and blank-line vectors are in __fixtures__/conformance.json;
+// what stays here needs a 64 MiB frame, a schema or a value JSON cannot hold, or is
+// JavaScript's own, as the SyntaxError a notJson message names.
 describe('encodeFrame', () => {
-  it('keeps a value with newlines inside on a single line', () => {
-    const frame = encodeFrame({ text: 'a\nb\r\nc' });
-
-    expect(frame.indexOf('\n')).toBe(frame.length - 1);
-    expect(JSON.parse(frame)).toEqual({ text: 'a\nb\r\nc' });
-  });
-
   it.each([undefined, () => 1, Symbol('x')])(
     'refuses %s, which has no JSON form',
     value => {
@@ -70,61 +66,6 @@ async function failure(chunks: string[]) {
 }
 
 describe('decodeFrames', () => {
-  it('decodes two frames delivered in one chunk', async () => {
-    const { values, exit } = await frames([
-      encodeFrame({ id: 1 }) + encodeFrame({ id: 2 }),
-    ]);
-
-    expect(values).toEqual([{ id: 1 }, { id: 2 }]);
-    expect(Exit.isSuccess(exit)).toBe(true);
-  });
-
-  it('joins a frame split across chunks and finishes one mid-chunk', async () => {
-    const first = encodeFrame({ method: 'actions', params: { path: '/a' } });
-    const second = encodeFrame({ n: 2 });
-
-    const { values } = await frames([
-      first.slice(0, 5),
-      first.slice(5, 20),
-      first.slice(20) + second.slice(0, 4),
-      second.slice(4),
-    ]);
-    expect(values).toEqual([
-      { method: 'actions', params: { path: '/a' } },
-      { n: 2 },
-    ]);
-  });
-
-  it('delivers a frame whose newline arrives alone', async () => {
-    expect((await frames(['{"a":1}', '\n'])).values).toEqual([{ a: 1 }]);
-  });
-
-  it('skips blank and whitespace-only lines and tolerates a carriage return', async () => {
-    const { values } = await frames([
-      '\n\n  \n{"a":1}\r\n\t\n',
-      '\n{"b":2}\n',
-      '\n',
-    ]);
-
-    expect(values).toEqual([{ a: 1 }, { b: 2 }]);
-  });
-
-  it('drops an unterminated tail when the stream ends, as a half-sent frame', async () => {
-    const { values, exit } = await frames(['{"a":1}\n{"b":']);
-
-    expect(values).toEqual([{ a: 1 }]);
-    expect(Exit.isSuccess(exit)).toBe(true);
-  });
-
-  it('decodes any JSON value when the schema is Unknown', async () => {
-    expect((await frames(['1\n"s"\nnull\n[2]\n'])).values).toEqual([
-      1,
-      's',
-      null,
-      [2],
-    ]);
-  });
-
   it('decodes each frame with the schema and types the stream by it', async () => {
     const stream = Stream.fromIterable([
       '{"method":"documentClosed","params":{"path":"/a"}}\n',
@@ -140,12 +81,9 @@ describe('decodeFrames', () => {
     ]);
   });
 
-  it('fails on a line that is not JSON and reads nothing after it', async () => {
-    const { values, error } = await failure(['{"a":1}\n', '{"a":\n{"b":2}\n']);
+  it('names the SyntaxError of a line that is not JSON', async () => {
+    const { error } = await failure(['{"a":\n']);
 
-    expect(values).toEqual([{ a: 1 }]);
-    expect(error).toBeInstanceOf(FrameError);
-    expect(error).toMatchObject({ _tag: 'FrameError', reason: 'notJson' });
     expect(error?.message).toMatch(/^A frame is not JSON: SyntaxError/);
   });
 
@@ -285,19 +223,6 @@ describe('decodeFrameResults', () => {
     >();
   });
 
-  it('still fails the stream on a line that is not JSON, reading nothing after it', async () => {
-    const { values, exit } = await drain(
-      Stream.fromIterable(['1\n', '{"a":\n2\n']).pipe(
-        decodeFrameResults(Schema.Number)
-      )
-    );
-
-    expect(values).toEqual([Result.succeed(1)]);
-    expect(Exit.findErrorOption(exit)).toMatchObject({
-      value: { _tag: 'FrameError', reason: 'notJson' },
-    });
-  });
-
   it('still fails the stream on a frame over MAX_FRAME_BYTES', async () => {
     const { values, exit } = await drain(
       Stream.fromIterable(['a'.repeat(MAX_FRAME_BYTES), 'a\n']).pipe(
@@ -310,16 +235,6 @@ describe('decodeFrameResults', () => {
       value: { reason: 'tooLarge' },
     });
   }, 30_000);
-
-  it('skips blank lines and drops an unterminated tail, as decodeFrames does', async () => {
-    const { values } = await drain(
-      Stream.fromIterable(['\n  \n"a"\r\n', '"b"\n"c']).pipe(
-        decodeFrameResults(Schema.String)
-      )
-    );
-
-    expect(values).toEqual([Result.succeed('a'), Result.succeed('b')]);
-  });
 });
 
 describe('decodePeerToHubFrames', () => {
@@ -413,46 +328,6 @@ describe('decodeHubToPeerFrames', () => {
 });
 
 describe('encodePeerToHubFrame', () => {
-  it('writes a request in schema order, whatever order its fields were given in', () => {
-    const request = {
-      params: { client: 'c', protocolVersion: 1, token: 't' },
-      method: 'hello',
-      id: 1,
-    } as const satisfies PeerToHubMessage;
-
-    expect(encodePeerToHubFrame(request)).toBe(
-      '{"id":1,"method":"hello","params":{"token":"t","protocolVersion":1,"client":"c"}}\n'
-    );
-  });
-
-  it('drops the fields the schema does not know', () => {
-    const request = {
-      id: 2,
-      method: 'save',
-      params: { path: '/a', force: true },
-      sentAt: 1,
-    } as PeerToHubMessage;
-
-    expect(encodePeerToHubFrame(request)).toBe(
-      '{"id":2,"method":"save","params":{"path":"/a"}}\n'
-    );
-  });
-
-  it('keeps any object as listDocuments params and every action as given', () => {
-    expect(
-      encodePeerToHubFrame({ id: 3, method: 'listDocuments', params: {} })
-    ).toBe('{"id":3,"method":"listDocuments","params":{}}\n');
-    expect(
-      encodePeerToHubFrame({
-        id: 4,
-        method: 'applyActions',
-        params: { path: '/a', actions: [{ type: 't', payload: { id: 'x' } }] },
-      })
-    ).toBe(
-      '{"id":4,"method":"applyActions","params":{"path":"/a","actions":[{"type":"t","payload":{"id":"x"}}]}}\n'
-    );
-  });
-
   it('throws what the schema refuses, and what JSON cannot frame', () => {
     expect(() =>
       encodePeerToHubFrame({
@@ -482,39 +357,10 @@ describe('encodePeerToHubFrame', () => {
       '{"id":8,"method":"openDocument","params":{"path":"/a"}}\n'
     );
   });
-
-  it('frames what PeerToHubMessage decodes, byte for byte', () => {
-    const frame =
-      '{"id":7,"method":"openDocument","params":{"path":"/w/a.erd","create":true,"initialValue":"{}"}}\n';
-    const decoded = Schema.decodeUnknownSync(PeerToHubMessage)(
-      JSON.parse(frame)
-    );
-
-    expect(encodePeerToHubFrame(decoded)).toBe(frame);
-  });
 });
 
 describe('encodeHubNotificationFrame', () => {
-  it('writes the bytes encodeFrame writes of the notifications the hub builds', () => {
-    const notifications: HubNotification[] = [
-      { method: 'actions', params: { path: '/a', actions: [{ type: 'x' }] } },
-      { method: 'documentClosed', params: { path: '/a' } },
-    ];
-
-    for (const notification of notifications) {
-      expect(encodeHubNotificationFrame(notification)).toBe(
-        encodeFrame(notification)
-      );
-    }
-  });
-
-  it('drops the fields the schema does not know and throws what it refuses', () => {
-    expect(
-      encodeHubNotificationFrame({
-        params: { path: '/a', reason: 'deleted' },
-        method: 'documentClosed',
-      } as HubNotification)
-    ).toBe('{"method":"documentClosed","params":{"path":"/a"}}\n');
+  it('throws what the schema refuses', () => {
     expect(() =>
       encodeHubNotificationFrame({
         method: 'actions',

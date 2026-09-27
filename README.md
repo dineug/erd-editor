@@ -124,8 +124,8 @@ flowchart TB
 This is a pnpm workspace. Two packages are published to npm:
 [`@dineug/erd-editor`](./packages/erd-editor), the editor itself, syntax highlighting
 included, and [`@dineug/erd-editor-mcp`](./packages/mcp-server), the MCP server that lets a
-coding agent such as Claude Code or Codex edit diagrams, live in VS Code or Obsidian or straight on
-disk. Everything else is internal.
+coding agent such as Claude Code or Codex edit diagrams, live in VS Code, Obsidian or a JetBrains
+IDE, or straight on disk. Everything else is internal.
 
 <details>
 <summary>All 17 packages</summary>
@@ -144,11 +144,11 @@ disk. Everything else is internal.
 | [`webview-bridge`](./packages/webview-bridge) | Typed host ↔ webview command protocol |
 | [`replication-store-worker`](./packages/replication-store-worker) | Headless document replica the IDE hosts and the Obsidian plugin save through |
 | [`intellij-webview`](./packages/intellij-webview) | The bundle inside the IntelliJ plugin's editor panel |
-| [`intellij-plugin`](./packages/intellij-plugin) | The published IntelliJ plugin — Kotlin and Gradle, not TypeScript |
+| [`intellij-plugin`](./packages/intellij-plugin) | The published IntelliJ plugin — Kotlin and Gradle, not TypeScript — with its own Kotlin hub for coding agents |
 | [`obsidian-plugin`](./packages/obsidian-plugin) | The Obsidian plugin, released from [erd-editor-obsidian-plugin](https://github.com/dineug/erd-editor-obsidian-plugin) |
 | [`agent-hub`](./packages/agent-hub) | The protocol between an editor window and a coding agent's MCP server: messages, lock files, framing |
-| [`agent-hub-host`](./packages/agent-hub-host) | The editor window's side of that protocol, shared by the VS Code extension and the Obsidian plugin |
-| [`mcp-server`](./packages/mcp-server) | The published MCP server — one tool per editing operation, live in VS Code or Obsidian or headless on disk |
+| [`agent-hub-host`](./packages/agent-hub-host) | The editor window's side of that protocol, shared by the VS Code extension and the Obsidian plugin; the IntelliJ plugin has a Kotlin port |
+| [`mcp-server`](./packages/mcp-server) | The published MCP server — one tool per editing operation, live in VS Code, Obsidian or a JetBrains IDE, or headless on disk |
 
 </details>
 
@@ -177,8 +177,8 @@ pnpm --filter @dineug/erd-editor dev                                    # a scri
 pnpm --filter @dineug/erd-editor-app dev                                # the web app
 ```
 
-`intellij-plugin` is the exception — it is a Gradle project and declares neither, so its
-commands are run from its own directory.
+`intellij-plugin` is the exception — it is a Gradle project, whose package.json holds only its
+smoke and probe scripts, so its build commands are run from its own directory.
 
 ```sh
 cd packages/intellij-plugin

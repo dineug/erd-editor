@@ -2,17 +2,23 @@ import {
   LOCK_FILE_MODE,
   lockFilePath,
   type LockRecord,
+  type Platform,
   readLockDirectory,
   selectHub,
   serializeLock,
 } from '@dineug/erd-editor-agent-hub';
-import { Context, Effect, FileSystem, Layer } from 'effect';
+import type { PlatformError } from 'effect';
+import { Context, Effect, FileSystem, Layer, Schedule } from 'effect';
 
 import { socketFilePaths } from '@/pipePath';
 import { HubEnvironment } from '@/services/HubEnvironment';
 
 export type LockFileShape = {
-  /** Rewrites this window's lock atomically; false when the write failed. */
+  /**
+   * Rewrites this window's lock atomically; false when the write failed. On
+   * Windows a rename refused while another process holds the lock open is
+   * tried again for about 400 ms first.
+   */
   readonly write: (record: LockRecord) => Effect.Effect<boolean>;
   /** Deletes this window's lock and its leftover temp file. */
   readonly remove: Effect.Effect<void>;
@@ -33,12 +39,27 @@ const removeQuietly = (fs: FileSystem.FileSystem, path: string) =>
   fs.remove(path).pipe(Effect.ignore);
 
 /**
+ * What Windows answers a rename over a file any process holds open, whatever
+ * its share mode: libuv's EPERM, which platform-node folds into Unknown, or
+ * EACCES or EBUSY. Read by tag alone, since the fold keeps no errno.
+ */
+const isBusyReplace = (error: PlatformError.PlatformError): boolean =>
+  error.reason._tag === 'Unknown' ||
+  error.reason._tag === 'PermissionDenied' ||
+  error.reason._tag === 'Busy';
+
+/** Five more tries 10 ms doubling, about 400 ms on Windows' timer; a reader holds a lock for milliseconds. */
+const RENAME_RETRIES = 5;
+const RENAME_BACKOFF = '10 millis';
+
+/**
  * Writes the temp file with LOCK_FILE_MODE, then renames it over the lock: a
  * rename keeps the source's mode, so the lock is never readable by others.
  * A leftover temp goes first, since writeFile keeps an existing file's mode.
  */
 const writeLock = (
   fs: FileSystem.FileSystem,
+  platform: Platform,
   lockPath: string,
   record: LockRecord
 ) =>
@@ -49,7 +70,16 @@ const writeLock = (
     yield* fs.writeFileString(temp, serializeLock(record), {
       mode: LOCK_FILE_MODE,
     });
-    yield* fs.rename(temp, lockPath);
+    const rename = Effect.suspend(() => fs.rename(temp, lockPath));
+    yield* platform === 'win32'
+      ? rename.pipe(
+          Effect.retry({
+            schedule: Schedule.exponential(RENAME_BACKOFF),
+            times: RENAME_RETRIES,
+            while: isBusyReplace,
+          })
+        )
+      : rename;
   });
 
 const removeLock = (fs: FileSystem.FileSystem, lockPath: string) =>
@@ -71,7 +101,7 @@ export const layer: Layer.Layer<
 
     return {
       write: record =>
-        writeLock(fs, lockPath, record).pipe(
+        writeLock(fs, env.platform, lockPath, record).pipe(
           Effect.as(true),
           Effect.catch(error =>
             Effect.logWarning(`could not write ${lockPath}`, error).pipe(

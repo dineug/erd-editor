@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
 import { addCSSHost, html, nextTick, render } from '@dineug/r-html';
 import { beforeAll, describe, expect, it } from 'vite-plus/test';
@@ -36,7 +36,7 @@ function sourceFiles(directory = SRC): string[] {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) return sourceFiles(path);
     if (!entry.name.endsWith('.ts')) return [];
-    return [`src/${path.slice(SRC.length + 1)}`];
+    return [`src/${path.slice(SRC.length + 1).replaceAll(sep, '/')}`];
   });
 }
 

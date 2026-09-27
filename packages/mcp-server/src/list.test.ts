@@ -76,6 +76,58 @@ describe('erd_list_documents (AC-M6)', () => {
     });
   });
 
+  it('reports a file without owner write as readonly, as a headless write refuses it', async () => {
+    io.put('/work/a.erd.json', emptyDocument());
+    io.put('/work/b.erd.json', emptyDocument(), 0o444);
+    io.put('/work/c.erd.json', emptyDocument(), 0o400);
+    io.put('/work/d.erd.json', emptyDocument(), 0o200);
+
+    const listed = await mcp.ok('erd_list_documents');
+
+    expect(listed.documents).toEqual([
+      closed('/work/a.erd.json'),
+      { ...closed('/work/b.erd.json'), readonly: true },
+      { ...closed('/work/c.erd.json'), readonly: true },
+      closed('/work/d.erd.json'),
+    ]);
+    const refused = await mcp.call('erd_add_table', {
+      path: '/work/b.erd.json',
+    });
+    expect(refused.json.error.code).toBe('readonly');
+  });
+
+  it.each([
+    ['win32', ['/work/a.erd.json']],
+    [
+      'linux',
+      [
+        '/work/a.erd.json',
+        '/work/NUL.erd',
+        '/work/orders:v2.erd',
+        '/work/sub./x.erd',
+      ],
+    ],
+  ])(
+    'leaves out on %s every name a call there refuses',
+    async (platform, paths) => {
+      const host = createMemoryHost({ platform });
+      const names = ['a.erd.json', 'NUL.erd', 'orders:v2.erd', 'sub./x.erd'];
+      for (const name of names) host.put(`/work/${name}`, emptyDocument());
+      const harness = await connectMcp({ host });
+
+      try {
+        const listed = await harness.ok('erd_list_documents');
+
+        expect(listed).toEqual({
+          mode: 'headless',
+          documents: paths.map(closed),
+        });
+      } finally {
+        await harness.close();
+      }
+    }
+  );
+
   it('stops at its depth and count limits', async () => {
     const deep = `/work/${Array.from({ length: MAX_LIST_DEPTH + 1 }, (_, i) => `d${i}`).join('/')}`;
     io.put(`${deep}/too-deep.erd.json`, '{}');

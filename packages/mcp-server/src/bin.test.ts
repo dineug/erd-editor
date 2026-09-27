@@ -4,6 +4,7 @@ import {
   copyFile,
   mkdir,
   mkdtemp,
+  readdir,
   realpath,
   rm,
   writeFile,
@@ -60,10 +61,14 @@ function leadingImports(source: string): string[] {
  */
 function exchange(
   file: string,
-  messages: object[]
+  messages: object[],
+  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
 ): Promise<{ lines: any[]; code: number | null }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [file], { cwd: tmpdir() });
+    const child = spawn(process.execPath, [file], {
+      cwd: tmpdir(),
+      ...options,
+    });
     let stdout = '';
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', chunk => {
@@ -162,6 +167,55 @@ describe('the built single file (AC-M9, AC-P7)', () => {
     expect(lines.every(line => line.jsonrpc === '2.0')).toBe(true);
     expect(code).toBe(0);
     await rm(dir, { recursive: true, force: true });
+  }, 20_000);
+
+  it('refuses on Windows a new document named with a colon, which Node would write as a stream of another file, and creates it elsewhere', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'erd-mcp-home-'));
+    const cwd = await mkdtemp(join(tmpdir(), 'erd-mcp-cwd-'));
+
+    try {
+      const { lines } = await exchange(
+        bin,
+        [
+          {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: '2025-06-18',
+              capabilities: {},
+              clientInfo: { name: 'bin-test', version: '1.0.0' },
+            },
+          },
+          { jsonrpc: '2.0', method: 'notifications/initialized' },
+          {
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/call',
+            params: {
+              name: 'erd_open_document',
+              arguments: { path: 'orders:v2.erd', create: true },
+            },
+          },
+        ],
+        { cwd, env: { ...process.env, HOME: home, USERPROFILE: home } }
+      );
+      const { result } = lines.find(line => line.id === 2);
+
+      if (process.platform === 'win32') {
+        expect(result.isError).toBe(true);
+        expect(JSON.parse(result.content[0].text).error.code).toBe(
+          'invalidPath'
+        );
+        expect(await readdir(cwd)).toEqual([]);
+      } else {
+        expect(result.isError).toBeFalsy();
+        expect(await readdir(cwd)).toEqual(['orders:v2.erd']);
+      }
+    } finally {
+      await rm(home, { recursive: true, force: true });
+      await rm(cwd, { recursive: true, force: true });
+    }
   }, 20_000);
 });
 
@@ -302,16 +356,20 @@ async function stopWithCallInFlight(stop: 'stdin' | 'SIGINT') {
 }
 
 describe('the built file with an edit in flight on a hub that stopped answering', () => {
-  it.each([
-    ['stdin', 0],
-    ['SIGINT', 130],
-  ] as const)(
-    'exits when %s ends it, with %d',
-    async (stop, code) => {
-      const exit = await stopWithCallInFlight(stop);
-      console.info(`erd-editor-mcp.js: exit on ${stop} after ${exit.ms} ms`);
-      expect(exit.code).toBe(code);
-    },
+  const exitsWith = async (stop: 'stdin' | 'SIGINT', code: number) => {
+    const exit = await stopWithCallInFlight(stop);
+    console.info(`erd-editor-mcp.js: exit on ${stop} after ${exit.ms} ms`);
+    expect(exit.code).toBe(code);
+  };
+
+  it('exits when stdin ends it, with 0', () => exitsWith('stdin', 0), 20_000);
+
+  // Node's kill is TerminateProcess on Windows whatever the signal, so no
+  // handler runs there; a Ctrl+C reaches a process only through its console,
+  // and manager.test.ts's signal case holds the shutdown it would start.
+  it.skipIf(process.platform === 'win32')(
+    'exits when SIGINT ends it, with 130',
+    () => exitsWith('SIGINT', 130),
     20_000
   );
 });

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { unlinkSync } from 'node:fs';
 import { lstat } from 'node:fs/promises';
-import { homedir, tmpdir } from 'node:os';
+import { getPriority, homedir, tmpdir } from 'node:os';
 
 import { type Platform } from '@dineug/erd-editor-agent-hub';
 import { Context, Effect, Layer, Schema } from 'effect';
@@ -55,19 +55,29 @@ function errnoOf(error: unknown): unknown {
 }
 
 /**
- * Signal 0 checks existence only. EPERM is an elevated window of this user on
- * Windows, so it is alive there; on POSIX it is another user's process, which
- * a lock in this user's home never names, so a reused pid still counts dead.
+ * Signal 0, where a refusal is another user's process, so dead. On Windows a
+ * refusal asks for the least query right, which this user holds on its every
+ * process, an elevated window too, and not on SYSTEM's, a service's or others'.
  */
 export function isAlive(
   pid: number,
-  platform: Platform = process.platform as Platform
+  platform: Platform = process.platform as Platform,
+  query: (pid: number) => number = getPriority
 ): boolean {
   try {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    return platform === 'win32' && errnoOf(error) === 'EPERM';
+    if (platform !== 'win32' || errnoOf(error) !== 'EPERM') return false;
+  }
+  try {
+    query(pid);
+    return true;
+  } catch (error) {
+    // libuv's getpriority opens the process for that right alone. A refusal or
+    // no such process is dead; any other failure keeps the lock, never swept.
+    const code = (error as { info?: { code?: unknown } } | null)?.info?.code;
+    return code !== 'EPERM' && code !== 'ESRCH';
   }
 }
 

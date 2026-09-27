@@ -3,6 +3,9 @@ export {
   type HubSelection,
   type LockCandidate,
   type LockFile,
+  matchRank,
+  outranks,
+  type RankedCandidate,
   readLockDirectory,
   selectHub,
   type StaleLock,
@@ -41,6 +44,7 @@ export {
   longestPrefixIndex,
   type Platform,
   toSegments,
+  unsafeSegment,
 } from './paths';
 export {
   DocumentInfo,

@@ -1,8 +1,11 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.core.StreamReadConstraints
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * JSON and JavaScript plumbing for the webview bridge.
@@ -17,6 +20,11 @@ object WebviewScripts {
     val mapper = jacksonObjectMapper().apply {
         configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         setSerializationInclusion(JsonInclude.Include.NON_NULL)
+        // A save carries the whole document as one string, and Jackson refuses a string longer than
+        // 20,000,000 characters by default: the save of a diagram that large was dropped.
+        factory.setStreamReadConstraints(
+            StreamReadConstraints.builder().maxStringLength(Int.MAX_VALUE).build()
+        )
     }
 
     /**
@@ -36,5 +44,32 @@ object WebviewScripts {
             .replace("\u2028", "\\u2028")
             .replace("\u2029", "\\u2029")
         return "window.postMessage(JSON.parse($literal), 'https://$DOMAIN')"
+    }
+
+    private fun encode(command: WebviewBridgeCommand) =
+        postMessageScript(mapper.writeValueAsString(command))
+
+    /** One batch's script, encoded by the first consumer that reads it while the others wait. */
+    private class EncodedReplication(val actions: JsonNode, command: WebviewBridgeCommand.Replication) {
+        val script: String by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { encode(command) }
+    }
+
+    // Shared by every page's script consumer. It keeps the latest batch, script included, until the
+    // next batch replaces it, so at most one batch outlives its delivery.
+    private val lastReplication = AtomicReference<EncodedReplication?>()
+
+    /**
+     * The script that posts [command] to a page. A replication batch relayed to several pages is
+     * encoded once while it is the latest batch, however many consumers ask for it at the same time;
+     * a batch another one replaced in between is encoded again.
+     */
+    fun scriptFor(command: WebviewBridgeCommand): String {
+        if (command !is WebviewBridgeCommand.Replication) return encode(command)
+
+        val actions = command.payload.actions
+        val encoded = lastReplication.updateAndGet { last ->
+            if (last?.actions === actions) last else EncodedReplication(actions, command)
+        }
+        return encoded!!.script
     }
 }

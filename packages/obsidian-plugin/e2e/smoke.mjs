@@ -23,9 +23,12 @@ import { chromium } from '@playwright/test';
 
 import { startMcp } from './mcp.mjs';
 
+const WIN = process.platform === 'win32';
 const OBSIDIAN =
   process.env.OBSIDIAN_BIN ??
-  '/Applications/Obsidian.app/Contents/MacOS/Obsidian';
+  (WIN
+    ? join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Obsidian', 'Obsidian.exe')
+    : '/Applications/Obsidian.app/Contents/MacOS/Obsidian');
 // An app bundle, obsidian-<version>.asar from Obsidian's own user data folder.
 // A copy in the run's user data loads over the bundled app, as an update does.
 const ASAR = process.env.OBSIDIAN_ASAR;
@@ -49,14 +52,23 @@ const RESEED_NOTE = /joined again from the editor/;
 
 /** Work directories earlier runs left, all but one a kept Obsidian still runs on. */
 function removeEarlierRuns() {
-  const commands = execFileSync('ps', ['-Aww', '-o', 'args='], {
-    encoding: 'utf8',
-  });
+  // Windows has no ps; CIM lists the command lines there.
+  const commands = WIN
+    ? execFileSync(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-Command',
+          'Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine }',
+        ],
+        { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+      )
+    : execFileSync('ps', ['-Aww', '-o', 'args='], { encoding: 'utf8' });
   for (const name of readdirSync(tmpdir())) {
     const dir = join(tmpdir(), name);
     if (!name.startsWith(WORK_PREFIX)) continue;
     if (commands.includes(`--user-data-dir=${join(dir, 'user-data')}`)) continue;
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 40, retryDelay: 250 });
   }
 }
 
@@ -174,13 +186,26 @@ function readLock(pid) {
   }
 }
 
+const PIPE_ROOT = '\\\\.\\pipe\\';
+
+/**
+ * Whether a hub listens at path. On Windows a name the pipe root lists: a stat
+ * of a live pipe connects to it, as a peer would.
+ */
 function isSocket(path) {
   try {
-    return statSync(path).isSocket();
+    return WIN
+      ? path.startsWith(PIPE_ROOT) &&
+          readdirSync(PIPE_ROOT).includes(path.slice(PIPE_ROOT.length))
+      : statSync(path).isSocket();
   } catch {
     return false;
   }
 }
+
+const pipeGone = path => (WIN ? !isSocket(path) : !existsSync(path));
+const expectedPipe = pid =>
+  WIN ? `${PIPE_ROOT}erd-editor-ide-${pid}` : join(LOCK_DIR, `${pid}.sock`);
 
 const mode = path => (statSync(path).mode & 0o777).toString(8);
 const sameSet = (a, b) =>
@@ -271,7 +296,12 @@ const vaultWindowGone = () =>
     .then(
       targets =>
         !targets.some(({ url }) => url.startsWith('app://obsidian.md/index.html'))
-    );
+    )
+    // On Windows the quit ends the process, and its debugging port with it.
+    .catch(error => {
+      if (!alive()) return true;
+      throw error;
+    });
 
 /** Opens a file the way a link click does and waits for the diagram view. */
 async function openDiagram(page, path) {
@@ -1501,11 +1531,13 @@ try {
     JSON.stringify(lock && { ...lock, token: `${lock.token.slice(0, 8)}...` })
   );
   step(
-    'lock: a live socket beside it, a 0600 file in a 0700 folder',
-    lock?.pipe === join(LOCK_DIR, `${rendererPid}.sock`) &&
+    WIN
+      ? 'lock: a live named pipe of the renderer pid (Windows keeps no modes)'
+      : 'lock: a live socket beside it, a 0600 file in a 0700 folder',
+    lock?.pipe === expectedPipe(rendererPid) &&
       isSocket(lock.pipe) &&
-      mode(lockPath(rendererPid)) === '600' &&
-      mode(LOCK_DIR) === '700',
+      (WIN ||
+        (mode(lockPath(rendererPid)) === '600' && mode(LOCK_DIR) === '700')),
     lock && `${lock.pipe} ${mode(lockPath(rendererPid))} ${mode(LOCK_DIR)}`
   );
   await openDiagram(page, 'agent.erd');
@@ -1735,7 +1767,7 @@ try {
       offLock.token === '' &&
       sameSet(offLock.workspaceFolders, [realVault]) &&
       offLock.documents.includes(real('agent.erd')) &&
-      !existsSync(pipe) &&
+      pipeGone(pipe) &&
       data.agentHub === false &&
       blocked.isError &&
       /an Obsidian window \(pid \d+\)/.test(blocked.text) &&
@@ -1772,7 +1804,7 @@ try {
   await page.evaluate(() => window.app.plugins.disablePlugin('erd-editor'));
   const released = await waitFor(
     async () =>
-      !existsSync(lockPath(rendererPid)) && !existsSync(pipeBeforeDisable),
+      !existsSync(lockPath(rendererPid)) && pipeGone(pipeBeforeDisable),
     5_000
   );
   await sleep(500);
@@ -1807,7 +1839,7 @@ try {
   );
   step(
     'plugin enabled again: the lock is back under the same pid, a read finds the window, the agent edits live',
-    back?.pipe === join(LOCK_DIR, `${rendererPid}.sock`) &&
+    back?.pipe === expectedPipe(rendererPid) &&
       backRead.notes.some(note =>
         /^An Obsidian window now serves this document/.test(note)
       ) &&
@@ -1816,10 +1848,14 @@ try {
     JSON.stringify({ readNotes: backRead.notes, write: backAdded.text })
   );
 
-  // A reload with a clean ERD tab open. Obsidian 1.12 closes the window
-  // instead when a quit task is queued, which a tab adds only while it holds
-  // an unsaved value; 1.13 fires no quit on a reload, only pagehide.
+  // A reload within the 2 s autosave of an edit. 1.13 fires no quit on a
+  // reload, only pagehide, and 1.12 turns a reload with a quit task queued into
+  // a close: the tab writes the edit before either event returns, and queues none.
   await sleep(AUTOSAVE_MS + 500);
+  const diskBeforeEdit = tableCount('agent.erd');
+  await pressAddTableIn(page, 'agent.erd');
+  await sleep(400);
+  const diskBeforeReload = tableCount('agent.erd');
   const beforeReload = await page.evaluate(() => {
     window.__smokeMarker = true;
     return window.app.workspace
@@ -1827,6 +1863,9 @@ try {
       .map(leaf => ({
         path: leaf.view.file?.path,
         unsaved: leaf.view.hasUnsavedValue?.(),
+        tables: JSON.parse(
+          leaf.view.contentEl.querySelector('erd-editor').value
+        ).doc.tableIds.length,
       }));
   });
   const tokenBeforeReload = readLock(rendererPid)?.token;
@@ -1848,14 +1887,23 @@ try {
       : null;
   }, 15_000);
   const reloadEvents = lockEvents.slice(eventsBeforeReload);
+  const editedTab = beforeReload.find(tab => tab.path === 'agent.erd');
   step(
-    'app:reload with an ERD tab open reloads the window, same pid, a fresh page',
+    'app:reload with an unsaved edit in an ERD tab reloads the window, same pid, a fresh page',
     alive() &&
-      beforeReload.some(tab => tab.path === 'agent.erd') &&
-      beforeReload.every(tab => !tab.unsaved) &&
+      editedTab?.unsaved === true &&
       afterReload.pid === rendererPid &&
       afterReload.marker === null,
     JSON.stringify({ beforeReload, afterReload })
+  );
+  const diskAfterReload = tableCount('agent.erd');
+  step(
+    'a reload before the timed save keeps the edit and stays a reload',
+    afterReload.pid === rendererPid &&
+      editedTab?.tables === diskBeforeEdit + 1 &&
+      diskBeforeReload === diskBeforeEdit &&
+      diskAfterReload === editedTab.tables,
+    JSON.stringify({ diskBeforeEdit, diskBeforeReload, diskAfterReload })
   );
   step(
     'the reload let the lock go before the new hub wrote its own under the same pid',
@@ -1880,34 +1928,92 @@ try {
   step('no page errors', errors.length === 0, errors.join(' | '));
 
   if (!KEEP) {
-    // Quitting does not wait out the 2 s save: the tab's quit task writes the
-    // replica's last value. Last, since it ends the app.
+    // Quitting does not wait out the 2 s save, and on Windows the page unloads
+    // within milliseconds whatever quit tasks hold it: every tab writes the
+    // replica's last value inside the quit event. Last, since it ends the app.
     const quitPipe = readLock(rendererPid)?.pipe;
-    await page.evaluate(async () => {
-      const file = await window.app.vault.create('quit.erd', '');
-      await window.app.workspace.getLeaf('tab').openFile(file);
-    });
+    const quitFiles = ['quit.erd', 'quit-2.erd'];
+    for (const path of quitFiles) {
+      await page.evaluate(async path => {
+        const file = await window.app.vault.create(path, '');
+        await window.app.workspace.getLeaf('tab').openFile(file);
+      }, path);
+    }
     await sleep(1_200);
-    await pressAddTable(page);
+    // A quit listener added after the plugin's runs after it, still inside
+    // the event, and notes what each file holds by then.
+    const probe = join(work, 'quit-probe.json');
+    await page.evaluate(
+      ({ probe, paths }) => {
+        const fs = window.require('node:fs');
+        const { vault, workspace } = window.app;
+        workspace.on('quit', () => {
+          const tables = paths.map(path => {
+            try {
+              const full = vault.adapter.getFullPath(path);
+              const text = fs.readFileSync(full, 'utf8');
+              return text ? JSON.parse(text).doc.tableIds.length : 0;
+            } catch {
+              return null;
+            }
+          });
+          fs.appendFileSync(probe, `${JSON.stringify(tables)}\n`);
+        });
+      },
+      { probe, paths: quitFiles }
+    );
     const editedAt = Date.now();
+    for (const path of quitFiles) await pressAddTableIn(page, path);
     await sleep(400);
+    const beforeQuit = await page.evaluate(
+      paths =>
+        paths.map(path =>
+          window.app.workspace
+            .getLeavesOfType('erd-editor')
+            .some(
+              leaf =>
+                leaf.view.file?.path === path && leaf.view.hasUnsavedValue()
+            )
+        ),
+      quitFiles
+    );
+    const diskBeforeQuit = quitFiles.map(tableCount);
     await page.evaluate(() => {
       setTimeout(() => window.require('@electron/remote').app.quit(), 100);
     });
-    // Obsidian holds the window with beforeunload while it quits, and a
-    // connected Playwright would answer that dialog and throw.
+    // Obsidian holds the window with beforeunload while a quit task runs, and
+    // a connected Playwright would answer that dialog and throw.
     await detach();
     const closed = await waitFor(vaultWindowGone, 10_000, 100);
-    // Gone before the 2 s save could run, the window leaves the quit task as
-    // the only way the edit reached the file.
+    // Gone before either 2 s save could run, the window leaves the quit event
+    // as the only way the edits reached the files.
     const closedAfter = Date.now() - editedAt;
+    const inQuit = existsSync(probe)
+      ? readFileSync(probe, 'utf8')
+          .trim()
+          .split('\n')
+          .map(line => JSON.parse(line))
+      : [];
+    const afterQuit = quitFiles.map(tableCount);
     step(
-      'quitting before the timed save keeps the edit',
-      Boolean(closed) && closedAfter < 2_000 && tableCount('quit.erd') === 1,
-      JSON.stringify({ closedAfter })
+      "quitting before the timed save keeps every tab's edit, on disk before the quit event returns",
+      Boolean(closed) &&
+        closedAfter < 2_000 &&
+        beforeQuit.every(Boolean) &&
+        diskBeforeQuit.every(tables => tables === 0) &&
+        inQuit.length === 1 &&
+        inQuit[0].every(tables => tables === 1) &&
+        afterQuit.every(tables => tables === 1),
+      JSON.stringify({
+        closedAfter,
+        beforeQuit,
+        diskBeforeQuit,
+        inQuit,
+        afterQuit,
+      })
     );
     const gone = await waitFor(
-      async () => !existsSync(lockPath(rendererPid)) && !existsSync(quitPipe),
+      async () => !existsSync(lockPath(rendererPid)) && pipeGone(quitPipe),
       5_000,
       50
     );
@@ -1948,7 +2054,7 @@ try {
       : [];
     for (const name of left) rmSync(join(LOCK_DIR, name), { force: true });
     if (left.length) step('nothing left in ~/.erd-editor/ide', false, left.join());
-    rmSync(work, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true, maxRetries: 40, retryDelay: 250 });
     if (out !== work) console.log(`screenshot: ${join(out, 'smoke.png')}`);
   }
   console.log(`${passed} passed, ${failed ? 'some failed' : 'none failed'}`);

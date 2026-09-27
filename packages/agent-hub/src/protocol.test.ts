@@ -3,11 +3,6 @@ import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
 import { runTest } from '@/__test-utils__/effect';
 import {
-  encodeFrame,
-  encodeHubNotificationFrame,
-  encodePeerToHubFrame,
-} from '@/framing';
-import {
   DocumentInfo,
   HUB_NOTIFICATION_METHODS,
   HUB_PROTOCOL_VERSION,
@@ -179,78 +174,7 @@ describe('message types', () => {
   });
 });
 
-/** Frames as the MCP server, the hub and the e2e peer write them today. */
-const WIRE = {
-  requests: [
-    '{"id":1,"method":"hello","params":{"token":"t","protocolVersion":1,"client":"claude-code"}}',
-    '{"id":2,"method":"listDocuments","params":{}}',
-    '{"id":3,"method":"openDocument","params":{"path":"/w/a.erd","create":true,"initialValue":"{}"}}',
-    '{"id":4,"method":"openDocument","params":{"path":"/w/a.erd"}}',
-    '{"id":5,"method":"join","params":{"path":"/w/a.erd"}}',
-    '{"id":6,"method":"applyActions","params":{"path":"/w/a.erd","actions":[{"type":"table.add","payload":{"id":"x"}}]}}',
-    '{"id":7,"method":"leave","params":{"path":"/w/a.erd"}}',
-    '{"id":8,"method":"save","params":{"path":"/w/a.erd"}}',
-  ],
-  toPeer: [
-    '{"id":1,"ok":true,"method":"hello","result":{"protocolVersion":1,"ide":"vscode","version":"2.9.0"}}',
-    '{"id":2,"ok":true,"method":"listDocuments","result":{"documents":[{"path":"/w/a.erd","open":true,"active":false,"dirty":false,"readonly":false}]}}',
-    '{"id":3,"ok":true,"method":"openDocument","result":{"path":"/w/a.erd","opened":true,"webviews":1}}',
-    '{"id":5,"ok":true,"method":"join","result":{"initialValue":"{}","snapshotVersion":42,"readonly":false}}',
-    '{"id":6,"ok":true,"method":"applyActions","result":{"webviews":2}}',
-    '{"id":7,"ok":true,"method":"leave","result":{}}',
-    '{"id":8,"ok":true,"method":"save","result":{"saved":true}}',
-    '{"id":8,"ok":false,"method":"save","error":{"code":"notOpen","message":"no webview is ready"}}',
-    `{"id":1,"ok":false,"method":"hello","error":{"code":"protocolMismatch","message":${JSON.stringify(protocolMismatchMessage(1, 2))},"hubProtocolVersion":1,"clientProtocolVersion":2}}`,
-    '{"method":"actions","params":{"path":"/w/a.erd","actions":[{"type":"memo.add"}]}}',
-    '{"method":"documentClosed","params":{"path":"/w/a.erd"}}',
-  ],
-};
-
 describe('message schemas', () => {
-  it.each(WIRE.requests)(
-    'decodes and re-encodes a request to the same bytes: %s',
-    line => {
-      const decoded = Schema.decodeUnknownSync(HubRequest)(JSON.parse(line));
-      const encoded = Schema.encodeSync(HubRequest)(decoded);
-
-      expect(encodeFrame(encoded)).toBe(`${line}\n`);
-    }
-  );
-
-  it.each(WIRE.requests)(
-    'frames a decoded request to the same bytes through encodePeerToHubFrame: %s',
-    line => {
-      const decoded = Schema.decodeUnknownSync(PeerToHubMessage)(
-        JSON.parse(line)
-      );
-
-      expect(encodePeerToHubFrame(decoded)).toBe(`${line}\n`);
-    }
-  );
-
-  it.each(WIRE.toPeer.filter(line => !line.startsWith('{"id"')))(
-    'frames a decoded notification to the same bytes through encodeHubNotificationFrame: %s',
-    line => {
-      const decoded = Schema.decodeUnknownSync(HubNotification)(
-        JSON.parse(line)
-      );
-
-      expect(encodeHubNotificationFrame(decoded)).toBe(`${line}\n`);
-    }
-  );
-
-  it.each(WIRE.toPeer)(
-    'decodes and re-encodes a hub frame to the same bytes: %s',
-    line => {
-      const decoded = Schema.decodeUnknownSync(HubToPeerMessage)(
-        JSON.parse(line)
-      );
-      const encoded = Schema.encodeSync(HubToPeerMessage)(decoded);
-
-      expect(encodeFrame(encoded)).toBe(`${line}\n`);
-    }
-  );
-
   it('carries both versions of a protocol mismatch to the side that is behind', () => {
     const frame = {
       id: 1,
@@ -355,20 +279,6 @@ describe('message schemas', () => {
 });
 
 describe('HubErrorCode', () => {
-  it('pins the nine codes, each equal to its key', () => {
-    expect(HubErrorCode).toEqual({
-      protocolMismatch: 'protocolMismatch',
-      unauthorized: 'unauthorized',
-      outsideWorkspace: 'outsideWorkspace',
-      notFound: 'notFound',
-      notOpen: 'notOpen',
-      readonly: 'readonly',
-      hubDisabled: 'hubDisabled',
-      badRequest: 'badRequest',
-      internal: 'internal',
-    });
-  });
-
   it('decodes exactly the nine codes of the map', () => {
     expect(HubErrorCodeSchema.literals).toEqual(Object.values(HubErrorCode));
     expect(Schema.is(HubErrorCodeSchema)('notOpen')).toBe(true);
@@ -426,26 +336,21 @@ describe('HubRequestError', () => {
 });
 
 describe('protocolMismatchMessage', () => {
-  it('starts at version 1', () => {
-    expect(HUB_PROTOCOL_VERSION).toBe(1);
+  it('names no one editor, whichever side is behind', () => {
+    for (const [hub, client] of [
+      [1, 2],
+      [3, 2],
+    ]) {
+      expect(protocolMismatchMessage(hub, client)).not.toMatch(
+        /VS Code|Obsidian|IDE/
+      );
+    }
   });
 
-  it('tells an older hub to update the extension or plugin, naming no one editor', () => {
-    const message = protocolMismatchMessage(1, 2);
-
-    expect(message).toBe(
-      'The ERD Editor hub speaks protocol 1 but the client speaks protocol 2. Update the ERD Editor extension or plugin in the editor until its hub speaks protocol 2.'
+  it('sends only an older client to the MCP server', () => {
+    expect(protocolMismatchMessage(1, 2)).not.toContain(
+      '@dineug/erd-editor-mcp'
     );
-    expect(message).not.toContain('@dineug/erd-editor-mcp');
-    expect(message).not.toMatch(/VS Code|Obsidian|IDE/);
-  });
-
-  it('tells an older client to update the MCP server', () => {
-    const message = protocolMismatchMessage(3, 2);
-
-    expect(message).toContain('hub speaks protocol 3');
-    expect(message).toContain('client speaks protocol 2');
-    expect(message).toContain('@dineug/erd-editor-mcp@latest');
-    expect(message).not.toContain('extension or plugin');
+    expect(protocolMismatchMessage(3, 2)).not.toContain('extension or plugin');
   });
 });

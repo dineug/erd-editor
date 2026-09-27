@@ -1,3 +1,5 @@
+import { stripBom } from '@dineug/erd-editor-agent-hub-host';
+
 /** Where a tab stands, which decides what it hands Obsidian to save. */
 export type TabSaveState = {
   /** The file is no diagram the editor can read; the tab shows it read-only. */
@@ -35,7 +37,7 @@ export function viewData(state: TabSaveState): string {
   return currentValue(state);
 }
 
-/** A value a save would write that the file does not hold yet, which the quit task writes. */
+/** A value a save would write that the file does not hold yet, which a quit or a page hide writes. */
 export function hasUnsavedValue(state: TabSaveState): boolean {
   return (
     !state.unreadable &&
@@ -43,6 +45,27 @@ export function hasUnsavedValue(state: TabSaveState): boolean {
     state.saved !== null &&
     viewData(state) !== state.saved
   );
+}
+
+/** What a tab does with its unsaved value as the window goes: write it now, leave it to a quit task, or neither. */
+export type ExitSave = 'none' | 'write' | 'defer' | 'conflict';
+
+/**
+ * A write goes only where the file still holds what the tab last loaded or
+ * saved: a write under way would interleave with it, and an outside change the
+ * watcher has not delivered yet wins, as it does while the window is open.
+ */
+export function exitSave(
+  state: TabSaveState,
+  saving: boolean,
+  readFile: () => string | null
+): ExitSave {
+  if (!hasUnsavedValue(state)) return 'none';
+  if (saving) return 'defer';
+  const onDisk = readFile();
+  if (onDisk === null) return 'defer';
+  // Obsidian drops a leading byte order mark as it reads a file, so saved has none.
+  return stripBom(onDisk) === state.saved ? 'write' : 'conflict';
 }
 
 /**

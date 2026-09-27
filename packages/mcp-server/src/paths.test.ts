@@ -69,6 +69,50 @@ describe('document paths', () => {
     ).rejects.toMatchObject({ code: 'invalidPath' });
   });
 
+  it.each([
+    ['orders:v2.erd', false, '/work/orders:v2.erd', 'orders:v2.erd'],
+    [
+      'schema-2026-09-27T10:00.erd',
+      false,
+      '/work/schema-2026-09-27T10:00.erd',
+      'schema-2026-09-27T10:00.erd',
+    ],
+    ['CON.erd', false, '/work/CON.erd', 'CON.erd'],
+    ['sub./x.erd', false, '/work/sub./x.erd', 'sub.'],
+    ['orders:v2', true, '/work/orders:v2.erd.json', 'orders:v2.erd.json'],
+  ])(
+    'refuses %s on win32, a name Windows does not store as written, and resolves it elsewhere',
+    async (input, create, absolute, segment) => {
+      const windows = createMemoryHost({ platform: 'win32' });
+      const linux = createMemoryHost({ platform: 'linux' });
+
+      await expect(
+        windows.run(resolveDocumentPath(input, create))
+      ).rejects.toMatchObject({
+        code: 'invalidPath',
+        message: `${absolute} holds ${JSON.stringify(segment)}, which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped; rename it, for example with - in place of :`,
+      });
+      expect(await linux.run(resolveDocumentPath(input, create))).toBe(
+        absolute
+      );
+    }
+  );
+
+  it('refuses on win32 a real path that meets such a name through a link', async () => {
+    const io = createMemoryHost({ platform: 'win32' });
+    io.links.set('/work/j', '/work/sub.');
+    io.put('/work/sub./a.erd.json', '{}');
+
+    await expect(
+      io.run(resolveDocumentPath('j/a.erd.json'))
+    ).rejects.toMatchObject({
+      code: 'invalidPath',
+      message: expect.stringMatching(
+        /^\/work\/sub\.\/a\.erd\.json holds "sub\."/
+      ),
+    });
+  });
+
   it('resolves a missing file through its existing folders', async () => {
     const io = createMemoryHost();
     io.calls.realPath = path =>

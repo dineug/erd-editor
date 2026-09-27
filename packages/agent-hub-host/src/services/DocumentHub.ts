@@ -12,6 +12,7 @@ import {
   Exit,
   FileSystem,
   Layer,
+  References,
   Scope,
   Stream,
 } from 'effect';
@@ -28,8 +29,8 @@ import { warnUnsafe } from '@/services/HubLogger';
 export type DocumentHubShape = {
   /**
    * Replaces the documents the lock lists, in one atomic rewrite. Resolves
-   * once written and never rejects: a failed write is logged and retried on
-   * the next call, so a broken hub never stops an editor from opening.
+   * once written and never rejects: a failed write is logged and repaired
+   * later, so a broken hub never stops an editor from opening.
    */
   readonly setDocuments: (documents: string[]) => Promise<void>;
   /** Deletes the lock, then closes the pipe and deletes the socket; idempotent. */
@@ -55,6 +56,10 @@ type Serving = {
 
 /** How long an editor opening waits, once the hub is up, for the lock to list it. */
 const PUBLISH_WAIT = '1 second';
+
+/** The first repair after a failed lock write; each that fails again doubles it, up to LOCK_REPAIR_MAX_MS. */
+const LOCK_REPAIR_MS = 1_000;
+const LOCK_REPAIR_MAX_MS = 30_000;
 
 /**
  * Serves this window's documents over a per-window pipe that its lock file
@@ -86,9 +91,20 @@ const make = Effect.gen(function* () {
   let released = false;
   let closing: Promise<void> | null = null;
   let queue = Promise.resolve();
-  /** Startup and apply tasks queued or running, the ones that may listen. */
+  /** Startup, apply and repair tasks queued or running that may listen. */
   let listensAhead = 0;
   let nextConnectionId = 1;
+  /** Set by a failed lock write: the lock on disk may lag the state until a repair runs. */
+  let repairDue = false;
+  let repairTimer: ReturnType<typeof setTimeout> | undefined;
+  let repairDelay = LOCK_REPAIR_MS;
+  /**
+   * Set by a failed lock write, cleared by one that lands, and likewise for a
+   * listen: only the first failure of a run warns, where a lock folder this user
+   * may not write would have the repairs warn every 30 s for good.
+   */
+  let lockFailing = false;
+  let listenFailing = false;
 
   const authorize = (path: string) =>
     authorizePath(env.platform, { folders, documents }, path).pipe(
@@ -124,21 +140,71 @@ const make = Effect.gen(function* () {
     };
   }
 
+  const warnUnless = (failing: boolean, message: string, error: unknown) =>
+    failing ? Effect.void : Effect.logWarning(message, error);
+
+  /** LockFile.write, its own warning silenced while writes keep failing. */
+  const writeRecord = () => {
+    const write = lock.write(lockRecord());
+    return lockFailing
+      ? write.pipe(Effect.provideService(References.MinimumLogLevel, 'Error'))
+      : write;
+  };
+
   const writeLock = (): Promise<boolean> =>
     run(
       fs.makeDirectory(lockDir, { recursive: true, mode: LOCK_DIR_MODE }).pipe(
         Effect.matchEffect({
           onFailure: error =>
-            Effect.logWarning(`could not write ${lockPath}`, error).pipe(
+            warnUnless(lockFailing, `could not write ${lockPath}`, error).pipe(
               Effect.as(false)
             ),
           onSuccess: () =>
             released
               ? Effect.succeed(false)
-              : lock.write(lockRecord()).pipe(Effect.map(keepUnlessReleased)),
+              : writeRecord().pipe(Effect.map(keepUnlessReleased)),
         })
       )
-    );
+    ).then(written => {
+      if (written) {
+        if (lockFailing) warnUnsafe(`wrote ${lockPath} again`);
+        lockFailing = false;
+        repairDelay = LOCK_REPAIR_MS;
+      } else if (!released) {
+        lockFailing = true;
+        requestRepair();
+      }
+      return written;
+    });
+
+  /**
+   * Rewrites the lock once the delay passed, doubling it for the next failure.
+   * It is queued as a listen only when its apply may listen, a hub not serving
+   * and not turned off, so a publish still waits for a rewrite-only repair.
+   */
+  function requestRepair(): void {
+    repairDue = true;
+    if (closed || repairTimer !== undefined) return;
+
+    const delay = repairDelay;
+    repairDelay = Math.min(delay * 2, LOCK_REPAIR_MAX_MS);
+    repairTimer = setTimeout(() => {
+      repairTimer = undefined;
+      if (serving === null && enabled !== false) enqueueListen(repair);
+      else void enqueue(repair);
+    }, delay);
+  }
+
+  /** Applies the host's state, which listens again for a hub a failed write took down, then rewrites. */
+  async function repair(): Promise<void> {
+    if (!repairDue) return;
+    repairDue = false;
+    try {
+      await apply();
+    } finally {
+      await writeLock();
+    }
+  }
 
   /**
    * A release that came while the write was on disk ran before its rename
@@ -176,9 +242,12 @@ const make = Effect.gen(function* () {
   async function listen(): Promise<Serving | null> {
     const pipe = choosePipePath(env.homeDir, env.tmpDir, env.pid, env.platform);
     if (pipe === null) {
-      warnUnsafe(
-        `neither ${lockDir} nor ${env.tmpDir} leaves room for a socket path`
-      );
+      if (!listenFailing) {
+        warnUnsafe(
+          `neither ${lockDir} nor ${env.tmpDir} leaves room for a socket path`
+        );
+      }
+      listenFailing = true;
       return null;
     }
     const token = await run(env.randomToken);
@@ -198,13 +267,15 @@ const make = Effect.gen(function* () {
         return true;
       }).pipe(
         Effect.catchCause(cause =>
-          Effect.logWarning(
+          warnUnless(
+            listenFailing,
             `could not listen on ${pipe}`,
             Cause.squash(cause)
           ).pipe(Effect.as(false))
         )
       )
     );
+    listenFailing = !started;
     if (!started) {
       await run(Scope.close(scope, Exit.void));
       return null;
@@ -222,9 +293,9 @@ const make = Effect.gen(function* () {
   }
 
   /**
-   * Moves to the state the host asks for. Enabling listens before the lock
-   * names the pipe; disabling rewrites the lock before the pipe goes. A hub
-   * that fails to serve falls back to hub false, never to no lock at all.
+   * Moves to the host's state: enabling listens before the lock names the pipe,
+   * disabling rewrites the lock before the pipe goes. A hub failing to serve
+   * falls back to hub false; one whose lock write failed listens on the repair.
    */
   async function apply(): Promise<void> {
     const want = host.isEnabled();
@@ -289,6 +360,7 @@ const make = Effect.gen(function* () {
     if (!closing) {
       closed = true;
       unsubscribe();
+      clearTimeout(repairTimer);
       closing = queue.then(async () => {
         const previous = serving;
         serving = null;
@@ -304,6 +376,7 @@ const make = Effect.gen(function* () {
     closed = true;
     released = true;
     unsubscribe();
+    clearTimeout(repairTimer);
     lock.removeSync();
     for (const socket of socketFilePaths(
       env.homeDir,

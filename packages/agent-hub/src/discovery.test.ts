@@ -5,6 +5,8 @@ import { itEffect } from '@/__test-utils__/effect';
 import {
   type HubSelection,
   type LockFile,
+  matchRank,
+  outranks,
   readLockDirectory,
   selectHub,
 } from '@/discovery';
@@ -12,6 +14,7 @@ import {
   lockDirPath,
   lockFilePath,
   type LockRecord,
+  parseLock,
   serializeLock,
 } from '@/lock';
 
@@ -272,6 +275,44 @@ describe('selectHub', () => {
       stale: [{ pid: 51, reason: 'dead' }],
     });
     expect(isAlive).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('matchRank and outranks, the ranking selectHub decides by', () => {
+  const record = (fields: Partial<LockRecord>): LockRecord =>
+    parseLock(lock({ pid: 1, ...fields }).raw)!;
+
+  it('ranks a document above every folder, a folder by its depth, and no match at -1', () => {
+    const held = record({
+      workspaceFolders: ['/ws', '/ws/app'],
+      documents: ['/ws/app/x.erd'],
+    });
+
+    expect(matchRank(held, '/ws/app/x.erd', 'linux')).toBe(Infinity);
+    expect(matchRank(held, '/ws/app/y.erd', 'linux')).toBe(3);
+    expect(matchRank(held, '/ws/y.erd', 'linux')).toBe(2);
+    expect(matchRank(held, '/other/y.erd', 'linux')).toBe(-1);
+    expect(matchRank(held, 'C:\\WS\\App\\y.erd', 'win32')).toBe(-1);
+    expect(
+      matchRank(
+        record({ workspaceFolders: ['C:\\ws'] }),
+        'c:/WS/y.erd',
+        'win32'
+      )
+    ).toBe(2);
+  });
+
+  it('wins on rank, then on the newer mtime, then on the higher pid', () => {
+    const ranked = (rank: number, mtimeMs: number, pid: number) => ({
+      candidate: { pid, record: record({}), mtimeMs },
+      rank,
+    });
+
+    expect(outranks(ranked(3, 1, 1), ranked(2, 9, 9))).toBe(true);
+    expect(outranks(ranked(2, 9, 9), ranked(3, 1, 1))).toBe(false);
+    expect(outranks(ranked(2, 5, 1), ranked(2, 4, 9))).toBe(true);
+    expect(outranks(ranked(2, 5, 2), ranked(2, 5, 1))).toBe(true);
+    expect(outranks(ranked(2, 5, 1), ranked(2, 5, 1))).toBe(false);
   });
 });
 

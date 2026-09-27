@@ -50,7 +50,17 @@ class ErdEditorFilesTest {
     }
 
     @Test
+    fun `accepts every extension whatever its letter case`() {
+        assertTrue(ErdEditorFiles.isErdEditorFile(StubVirtualFile("SCHEMA.ERD")))
+        assertTrue(ErdEditorFiles.isErdEditorFile(StubVirtualFile("A.Erd.Json")))
+        assertTrue(ErdEditorFiles.isErdEditorFile(StubVirtualFile("x.VUERD")))
+        assertTrue(ErdEditorFiles.isErdEditorFile(StubVirtualFile("x.Vuerd.JSON")))
+    }
+
+    @Test
     fun `rejects other files`() {
+        assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("x.json")))
+        assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("X.JSON")))
         assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("schema.json")))
         assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("erd")))
         assertFalse(ErdEditorFiles.isErdEditorFile(StubVirtualFile("vuerd")))

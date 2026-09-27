@@ -402,6 +402,10 @@ export class HubConnector extends Context.Service<
   HubConnectorShape
 >()('@dineug/erd-editor-mcp/HubConnector') {}
 
+/** What frees a hub Windows keeps an agent out of, the same for every editor. */
+const SAME_RIGHTS =
+  'run the editor and this agent with the same rights, for example by starting the editor again without administrator rights, then call again';
+
 /** The connector over any way of reaching a pipe: the node one, or memory in the specs. */
 export const make = (dial: ConnectPipe): HubConnectorShape => ({
   connect: Effect.fn('HubConnector.connect')(function* (candidate, options) {
@@ -413,7 +417,8 @@ export const make = (dial: ConnectPipe): HubConnectorShape => ({
       );
     }
 
-    const { theWindow, addOn } = hostWords(record.ide);
+    const { theWindow, thatWindow, unreachableRemedy } = hostWords(record.ide);
+    const advertises = `${capitalize(theWindow)} with pid ${pid} advertises an ERD Editor hub at ${record.pipe}`;
     const scope = yield* Scope.fork(yield* Effect.scope);
     return yield* Effect.gen(function* () {
       const socket = yield* dial(record.pipe).pipe(
@@ -421,7 +426,9 @@ export const make = (dial: ConnectPipe): HubConnectorShape => ({
           error =>
             new SessionError(
               SessionErrorCode.hubUnreachable,
-              `${capitalize(theWindow)} with pid ${pid} advertises an ERD Editor hub at ${record.pipe}, but it did not accept a connection (${error.message}). Nothing was written; reload that window or check the ERD Editor ${addOn}.`
+              error.denied
+                ? `${advertises}, but Windows denied this agent access to it (${error.message}): either ${thatWindow} runs with more rights than this agent, as when it was started as administrator and the agent was not, or this agent runs in a sandbox. Nothing was written; ${SAME_RIGHTS}.`
+                : `${advertises}, but it did not accept a connection (${error.message}). Nothing was written; ${unreachableRemedy}.`
             )
         )
       );

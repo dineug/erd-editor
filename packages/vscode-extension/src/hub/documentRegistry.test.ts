@@ -9,7 +9,7 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
-import type { Uri as VscodeUri, WebviewPanel } from 'vscode';
+import type { Uri as VscodeUri, Webview, WebviewPanel } from 'vscode';
 
 import { ErdDocument } from '@/erd-document';
 import { textDecoder } from '@/utils';
@@ -825,6 +825,38 @@ describe('waitForReady', () => {
 
     await vi.advanceTimersByTimeAsync(100);
     expect(settled).toBeNull();
+  });
+
+  it('resolves once the realpath lands of a document whose webview reported ready under another spelling', async () => {
+    const io = createMemoryHub();
+    io.addFile('/real/a.erd.json');
+    io.links.set('/link', '/real');
+    let land!: () => void;
+    const landed = new Promise<void>(resolve => (land = resolve));
+    const realPath = io.fs.realPath.getMockImplementation()!;
+    io.fs.realPath.mockImplementationOnce((path: string) =>
+      Effect.promise(() => landed).pipe(Effect.flatMap(() => realPath(path)))
+    );
+    const registry = createMemoryRegistry(io);
+    const document = ErdDocument.create(
+      Uri.file('/link/a.erd.json') as unknown as VscodeUri,
+      new Uint8Array()
+    );
+    const panel = createWebviewPanel();
+    const registered = registry.register(document);
+    registry.addWebview(document, panel as unknown as WebviewPanel);
+    registry.onWebviewReady(document, panel.webview as unknown as Webview);
+    const { ready } = registry.waitForReady('/real/a.erd.json', 5_000);
+    let settled: unknown = 'pending';
+    void runHub(ready).then(value => (settled = value));
+
+    await flush();
+    expect(settled).toBe('pending');
+    land();
+    await registered;
+    await flush();
+
+    expect(settled).toBe(document);
   });
 
   it('resolves with null after the timeout, or at once on cancel', async () => {

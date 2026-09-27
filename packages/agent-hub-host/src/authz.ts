@@ -5,6 +5,7 @@ import {
   HubErrorCode,
   HubRequestError,
   type Platform,
+  unsafeSegment,
 } from '@dineug/erd-editor-agent-hub';
 import type { PlatformError } from 'effect';
 import { Effect, FileSystem } from 'effect';
@@ -83,12 +84,31 @@ export const resolveRealPath = Effect.fn('resolveRealPath')(function* (
   return yield* resolveFrom(paths, target, []);
 });
 
-/** The real path of target, or a HubRequestError with code outsideWorkspace. */
+/** Refuses a path holding a name Windows does not store as written, with badRequest. */
+const refuseUnsafeName = (path: string, platform: Platform) =>
+  Effect.suspend(() => {
+    const segment = unsafeSegment(path, platform);
+    return segment === null
+      ? Effect.void
+      : Effect.fail(
+          new HubRequestError({
+            code: HubErrorCode.badRequest,
+            message: `${path} holds ${JSON.stringify(segment)}, which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped`,
+          })
+        );
+  });
+
+/**
+ * The real path of target, or a HubRequestError: badRequest for a name Windows
+ * does not store as written, checked before the climb touches the disk and on
+ * the real path, and outsideWorkspace for a path the scope does not hold.
+ */
 export const authorizePath = Effect.fn('authorizePath')(function* (
   platform: Platform,
   scope: AuthzScope,
   target: string
 ) {
+  yield* refuseUnsafeName(target, platform);
   const realPath = yield* resolveRealPath(target, platform);
   if (realPath === null) {
     return yield* Effect.fail(
@@ -98,6 +118,7 @@ export const authorizePath = Effect.fn('authorizePath')(function* (
       })
     );
   }
+  yield* refuseUnsafeName(realPath, platform);
   yield* authorize(scope.folders, scope.documents, realPath, platform);
   return realPath;
 });

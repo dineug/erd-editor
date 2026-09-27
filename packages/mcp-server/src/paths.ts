@@ -1,9 +1,10 @@
+import { unsafeSegment } from '@dineug/erd-editor-agent-hub';
 import { Effect, FileSystem, Path } from 'effect';
 
 import { SessionError, SessionErrorCode } from '@/errors';
 import { ProcessInfo } from '@/io/process';
 
-/** The extensions the ERD editors of VS Code and Obsidian open, which their hubs also insist on. */
+/** The extensions the ERD editors of VS Code, Obsidian and JetBrains IDEs open, which their hubs also insist on. */
 export const ERD_EXTENSIONS: readonly string[] = [
   'erd',
   'vuerd',
@@ -50,17 +51,31 @@ export const realPath = Effect.fn('realPath')(function* (target: string) {
   return yield* climb(target);
 });
 
+/** Refuses a path holding a name Windows does not store as written, with invalidPath. */
+const refuseUnsafeName = (path: string, platform: string) =>
+  Effect.suspend(() => {
+    const segment = unsafeSegment(path, platform);
+    return segment === null
+      ? Effect.void
+      : Effect.fail(
+          new SessionError(
+            SessionErrorCode.invalidPath,
+            `${path} holds ${JSON.stringify(segment)}, which Windows does not store as written: a colon names a stream of another file, NUL, CON, COM1 and the like are devices, and a trailing dot or space is dropped; rename it, for example with - in place of :`
+          )
+        );
+  });
+
 /**
  * The absolute real path of an ERD document an agent named, relative paths
  * against the server's working directory. With create, a name without any
- * extension gets .erd.json; any other non ERD path is refused.
+ * extension gets .erd.json; a non ERD path or one Windows alters is refused.
  */
 export const resolveDocumentPath = Effect.fn('resolveDocumentPath')(function* (
   input: string,
   create = false
 ) {
   const paths = yield* Path.Path;
-  const { cwd } = yield* ProcessInfo;
+  const { cwd, platform } = yield* ProcessInfo;
   if (input.trim() === '') {
     return yield* new SessionError(
       SessionErrorCode.invalidPath,
@@ -78,5 +93,8 @@ export const resolveDocumentPath = Effect.fn('resolveDocumentPath')(function* (
     }
     absolute += DEFAULT_EXTENSION;
   }
-  return yield* realPath(absolute);
+  yield* refuseUnsafeName(absolute, platform);
+  const real = yield* realPath(absolute);
+  yield* refuseUnsafeName(real, platform);
+  return real;
 });

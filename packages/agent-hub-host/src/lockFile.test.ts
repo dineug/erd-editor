@@ -104,6 +104,98 @@ describe('LockFile.write', () => {
       expect.objectContaining({ _tag: 'PlatformError' })
     );
   });
+
+  it('tries a rename once on POSIX, where a held lock never refuses one', async () => {
+    const io = createMemoryHub();
+    io.addDir(LOCK_DIR);
+    const lock = await memoryLockFile(io);
+    io.fs.rename.mockImplementationOnce((from: string) =>
+      Effect.fail(fsError('Busy', 'rename', from))
+    );
+
+    await expect(runHub(lock.write(record))).resolves.toBe(false);
+
+    expect(io.fs.rename).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LockFile.write on win32', () => {
+  /** Fails the next renames with these reason tags, then renames as the memory file system does. */
+  function refuseRenames(
+    io: MemoryHub,
+    ...tags: Parameters<typeof fsError>[0][]
+  ) {
+    for (const tag of tags) {
+      io.fs.rename.mockImplementationOnce((from: string) =>
+        Effect.fail(fsError(tag, 'rename', from))
+      );
+    }
+  }
+
+  async function win32Lock() {
+    const io = createMemoryHub({ platform: 'win32', tmpdir: 'C:\\Temp' });
+    io.addDir(LOCK_DIR);
+    const lock = await memoryLockFile(io);
+    vi.useFakeTimers();
+    return { io, lock };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('tries again a rename refused while another process holds the lock, and lands once it lets go', async () => {
+    const { io, lock } = await win32Lock();
+    // Unknown is libuv's EPERM as platform-node reports it; Busy a held temp file.
+    refuseRenames(io, 'Unknown', 'Busy');
+
+    const writing = runHub(lock.write(record));
+    await vi.advanceTimersByTimeAsync(30);
+
+    await expect(writing).resolves.toBe(true);
+    expect(io.fs.rename).toHaveBeenCalledTimes(3);
+    expect(io.lock()).toEqual(record);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('gives up after five retries over 310 ms, warns once and keeps the old lock', async () => {
+    const { io, lock } = await win32Lock();
+    io.addFile(LOCK, 'the old lock');
+    refuseRenames(io, ...Array(6).fill('PermissionDenied'));
+    let written: boolean | undefined;
+
+    void runHub(lock.write(record)).then(result => (written = result));
+    await vi.advanceTimersByTimeAsync(309);
+    expect(written).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(written).toBe(false);
+    expect(io.fs.rename).toHaveBeenCalledTimes(6);
+    expect(io.files.get(LOCK)?.data).toBe('the old lock');
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledWith(
+      '[erd-editor hub]',
+      `could not write ${LOCK}`,
+      expect.objectContaining({ _tag: 'PlatformError' })
+    );
+
+    const next = runHub(lock.write(record));
+    await vi.advanceTimersByTimeAsync(0);
+    await expect(next).resolves.toBe(true);
+    expect(io.lock()).toEqual(record);
+    expect(io.files.has(`${LOCK}.tmp`)).toBe(false);
+  });
+
+  it('never retries a rename that failed another way', async () => {
+    const { io, lock } = await win32Lock();
+    refuseRenames(io, 'NotFound');
+
+    const writing = runHub(lock.write(record));
+    await vi.advanceTimersByTimeAsync(400);
+
+    await expect(writing).resolves.toBe(false);
+    expect(io.fs.rename).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('LockFile.remove', () => {
@@ -295,7 +387,7 @@ describe('the hub lock file', () => {
     io.fs.makeDirectory.mockImplementation((path: string) =>
       Effect.fail(fsError('PermissionDenied', 'makeDirectory', path))
     );
-    start(io);
+    const { hub } = start(io);
     await flush();
 
     expect(io.listen).not.toHaveBeenCalled();
@@ -305,6 +397,8 @@ describe('the hub lock file', () => {
       `could not write ${LOCK}`,
       expect.objectContaining({ _tag: 'PlatformError' })
     );
+    // Its repair is due in a second; closing cancels it.
+    await hub.close();
   });
 
   it('closes the pipe again and falls back to hub false when the lock cannot be written after listening', async () => {
@@ -312,13 +406,14 @@ describe('the hub lock file', () => {
     io.fs.rename.mockImplementationOnce((from: string) =>
       Effect.fail(fsError('Busy', 'rename', from))
     );
-    start(io);
+    const { hub } = start(io);
     await flush();
 
     expect(io.servers.size).toBe(0);
     expect(io.files.has(SOCKET)).toBe(false);
     expect(io.lock()).toMatchObject({ hub: false, pipe: '', token: '' });
     expect(io.files.has(`${LOCK}.tmp`)).toBe(false);
+    await hub.close();
   });
 
   it('deletes the locks of dead windows on start', async () => {
@@ -457,6 +552,7 @@ describe('the documents of the lock', () => {
 
       await hub.setDocuments(['/ws/a.erd.json']);
       expect(io.lock()?.documents).toEqual(['/ws/a.erd.json']);
+      await hub.close();
     }
   );
 
