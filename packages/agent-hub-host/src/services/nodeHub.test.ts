@@ -19,6 +19,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { specPipePath } from '@/__test-utils__/platform';
 import { authorizePath, realpathOrSelf } from '@/authz';
 import {
   HubEnvironment,
@@ -121,9 +122,15 @@ describe('HubEnvironment over node', () => {
   it('keeps any other errno apart from a missing entry', async () => {
     const file = join(dir, 'a.erd.json');
     await fs.writeFile(file, '{}');
+    // ENOTDIR on POSIX. Windows answers ENOENT under a file, and EINVAL for
+    // the root of its pipe namespace, an entry lstat cannot read.
+    const unreadable =
+      process.platform === 'win32'
+        ? '\\\\.\\pipe\\'
+        : join(file, 'under-a-file');
 
     await expect(
-      Effect.runPromise(env.lstat(join(file, 'under-a-file')))
+      Effect.runPromise(env.lstat(unreadable))
     ).rejects.toMatchObject({ reason: 'Other' });
   });
 
@@ -222,7 +229,7 @@ describe('HubListener over node:net', () => {
   }
 
   it('serves text both ways, with a character split across two writes', async () => {
-    const pipe = join(dir, 'hub.sock');
+    const pipe = specPipePath(dir);
     const received: string[] = [];
     const close = await serve(pipe, received);
 
@@ -239,7 +246,7 @@ describe('HubListener over node:net', () => {
   });
 
   it('carries a payload larger than one read without losing a character', async () => {
-    const pipe = join(dir, 'hub.sock');
+    const pipe = specPipePath(dir);
     const received: string[] = [];
     const close = await serve(pipe, received);
     const payload = `${'테이블'.repeat(30_000)}\n`;
@@ -256,7 +263,7 @@ describe('HubListener over node:net', () => {
   });
 
   it('hangs up every peer when its scope closes, so nothing is left connected', async () => {
-    const pipe = join(dir, 'hub.sock');
+    const pipe = specPipePath(dir);
     const received: string[] = [];
     const close = await serve(pipe, received);
     const client = connect(pipe);

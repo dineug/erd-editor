@@ -23,9 +23,12 @@ import { chromium } from '@playwright/test';
 
 import { startMcp } from './mcp.mjs';
 
+const WIN = process.platform === 'win32';
 const OBSIDIAN =
   process.env.OBSIDIAN_BIN ??
-  '/Applications/Obsidian.app/Contents/MacOS/Obsidian';
+  (WIN
+    ? join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Obsidian', 'Obsidian.exe')
+    : '/Applications/Obsidian.app/Contents/MacOS/Obsidian');
 // An app bundle, obsidian-<version>.asar from Obsidian's own user data folder.
 // A copy in the run's user data loads over the bundled app, as an update does.
 const ASAR = process.env.OBSIDIAN_ASAR;
@@ -49,14 +52,23 @@ const RESEED_NOTE = /joined again from the editor/;
 
 /** Work directories earlier runs left, all but one a kept Obsidian still runs on. */
 function removeEarlierRuns() {
-  const commands = execFileSync('ps', ['-Aww', '-o', 'args='], {
-    encoding: 'utf8',
-  });
+  // Windows has no ps; CIM lists the command lines there.
+  const commands = WIN
+    ? execFileSync(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-Command',
+          'Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine }',
+        ],
+        { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+      )
+    : execFileSync('ps', ['-Aww', '-o', 'args='], { encoding: 'utf8' });
   for (const name of readdirSync(tmpdir())) {
     const dir = join(tmpdir(), name);
     if (!name.startsWith(WORK_PREFIX)) continue;
     if (commands.includes(`--user-data-dir=${join(dir, 'user-data')}`)) continue;
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 40, retryDelay: 250 });
   }
 }
 
@@ -174,13 +186,26 @@ function readLock(pid) {
   }
 }
 
+const PIPE_ROOT = '\\\\.\\pipe\\';
+
+/**
+ * Whether a hub listens at path. On Windows a name the pipe root lists: a stat
+ * of a live pipe connects to it, as a peer would.
+ */
 function isSocket(path) {
   try {
-    return statSync(path).isSocket();
+    return WIN
+      ? path.startsWith(PIPE_ROOT) &&
+          readdirSync(PIPE_ROOT).includes(path.slice(PIPE_ROOT.length))
+      : statSync(path).isSocket();
   } catch {
     return false;
   }
 }
+
+const pipeGone = path => (WIN ? !isSocket(path) : !existsSync(path));
+const expectedPipe = pid =>
+  WIN ? `${PIPE_ROOT}erd-editor-ide-${pid}` : join(LOCK_DIR, `${pid}.sock`);
 
 const mode = path => (statSync(path).mode & 0o777).toString(8);
 const sameSet = (a, b) =>
@@ -271,7 +296,12 @@ const vaultWindowGone = () =>
     .then(
       targets =>
         !targets.some(({ url }) => url.startsWith('app://obsidian.md/index.html'))
-    );
+    )
+    // On Windows the quit ends the process, and its debugging port with it.
+    .catch(error => {
+      if (!alive()) return true;
+      throw error;
+    });
 
 /** Opens a file the way a link click does and waits for the diagram view. */
 async function openDiagram(page, path) {
@@ -1501,11 +1531,13 @@ try {
     JSON.stringify(lock && { ...lock, token: `${lock.token.slice(0, 8)}...` })
   );
   step(
-    'lock: a live socket beside it, a 0600 file in a 0700 folder',
-    lock?.pipe === join(LOCK_DIR, `${rendererPid}.sock`) &&
+    WIN
+      ? 'lock: a live named pipe of the renderer pid (Windows keeps no modes)'
+      : 'lock: a live socket beside it, a 0600 file in a 0700 folder',
+    lock?.pipe === expectedPipe(rendererPid) &&
       isSocket(lock.pipe) &&
-      mode(lockPath(rendererPid)) === '600' &&
-      mode(LOCK_DIR) === '700',
+      (WIN ||
+        (mode(lockPath(rendererPid)) === '600' && mode(LOCK_DIR) === '700')),
     lock && `${lock.pipe} ${mode(lockPath(rendererPid))} ${mode(LOCK_DIR)}`
   );
   await openDiagram(page, 'agent.erd');
@@ -1735,7 +1767,7 @@ try {
       offLock.token === '' &&
       sameSet(offLock.workspaceFolders, [realVault]) &&
       offLock.documents.includes(real('agent.erd')) &&
-      !existsSync(pipe) &&
+      pipeGone(pipe) &&
       data.agentHub === false &&
       blocked.isError &&
       /an Obsidian window \(pid \d+\)/.test(blocked.text) &&
@@ -1772,7 +1804,7 @@ try {
   await page.evaluate(() => window.app.plugins.disablePlugin('erd-editor'));
   const released = await waitFor(
     async () =>
-      !existsSync(lockPath(rendererPid)) && !existsSync(pipeBeforeDisable),
+      !existsSync(lockPath(rendererPid)) && pipeGone(pipeBeforeDisable),
     5_000
   );
   await sleep(500);
@@ -1807,7 +1839,7 @@ try {
   );
   step(
     'plugin enabled again: the lock is back under the same pid, a read finds the window, the agent edits live',
-    back?.pipe === join(LOCK_DIR, `${rendererPid}.sock`) &&
+    back?.pipe === expectedPipe(rendererPid) &&
       backRead.notes.some(note =>
         /^An Obsidian window now serves this document/.test(note)
       ) &&
@@ -1907,7 +1939,7 @@ try {
       JSON.stringify({ closedAfter })
     );
     const gone = await waitFor(
-      async () => !existsSync(lockPath(rendererPid)) && !existsSync(quitPipe),
+      async () => !existsSync(lockPath(rendererPid)) && pipeGone(quitPipe),
       5_000,
       50
     );
@@ -1948,7 +1980,7 @@ try {
       : [];
     for (const name of left) rmSync(join(LOCK_DIR, name), { force: true });
     if (left.length) step('nothing left in ~/.erd-editor/ide', false, left.join());
-    rmSync(work, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true, maxRetries: 40, retryDelay: 250 });
     if (out !== work) console.log(`screenshot: ${join(out, 'smoke.png')}`);
   }
   console.log(`${passed} passed, ${failed ? 'some failed' : 'none failed'}`);

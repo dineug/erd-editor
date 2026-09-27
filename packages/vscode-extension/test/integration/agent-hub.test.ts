@@ -247,9 +247,9 @@ describe('document hub for coding agents', () => {
   before(async () => {
     const folders = vscode.workspace.workspaceFolders ?? [];
     assert.strictEqual(folders.length, 1);
-    folder = fs.realpathSync(folders[0].uri.fsPath);
+    folder = fs.realpathSync.native(folders[0].uri.fsPath);
     documentUri = vscode.Uri.joinPath(folders[0].uri, FIXTURE_FILE);
-    documentPath = fs.realpathSync(documentUri.fsPath);
+    documentPath = fs.realpathSync.native(documentUri.fsPath);
     original = await vscode.workspace.fs.readFile(documentUri);
 
     const extension = vscode.extensions.getExtension(EXTENSION_ID);

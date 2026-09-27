@@ -99,9 +99,9 @@ jobs:
           path: packages/mcp-server/dist/erd-editor-mcp.js
           retention-days: 1
 
-  # The named-pipe hub, the Windows realpath and the conformance run over the
-  # pipe execute only here. test, not check: check adds only Kover, whose gate
-  # build.gradle.kts turns off on Windows.
+  # The Kotlin named-pipe hub, the Windows realpath and the conformance run over
+  # the pipe execute only here. test, not check: check adds only Kover, whose
+  # gate build.gradle.kts turns off on Windows.
   test-windows:
     needs: [gate, build]
     if: >-

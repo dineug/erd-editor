@@ -302,16 +302,20 @@ async function stopWithCallInFlight(stop: 'stdin' | 'SIGINT') {
 }
 
 describe('the built file with an edit in flight on a hub that stopped answering', () => {
-  it.each([
-    ['stdin', 0],
-    ['SIGINT', 130],
-  ] as const)(
-    'exits when %s ends it, with %d',
-    async (stop, code) => {
-      const exit = await stopWithCallInFlight(stop);
-      console.info(`erd-editor-mcp.js: exit on ${stop} after ${exit.ms} ms`);
-      expect(exit.code).toBe(code);
-    },
+  const exitsWith = async (stop: 'stdin' | 'SIGINT', code: number) => {
+    const exit = await stopWithCallInFlight(stop);
+    console.info(`erd-editor-mcp.js: exit on ${stop} after ${exit.ms} ms`);
+    expect(exit.code).toBe(code);
+  };
+
+  it('exits when stdin ends it, with 0', () => exitsWith('stdin', 0), 20_000);
+
+  // Node's kill is TerminateProcess on Windows whatever the signal, so no
+  // handler runs there; a Ctrl+C reaches a process only through its console,
+  // and manager.test.ts's signal case holds the shutdown it would start.
+  it.skipIf(process.platform === 'win32')(
+    'exits when SIGINT ends it, with 130',
+    () => exitsWith('SIGINT', 130),
     20_000
   );
 });

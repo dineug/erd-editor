@@ -31,6 +31,7 @@ import {
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
 import { fsError } from '@/__test-utils__/memoryFs';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
+import { PRIVATE_MODE } from '@/__test-utils__/platform';
 import * as NodeFs from '@/io/fileSystem';
 import * as ProcessInfo from '@/io/process';
 import type { HeadlessSession } from '@/session/headless';
@@ -528,7 +529,7 @@ describe('headless on a real file system', () => {
     const session = await openReal(path);
 
     await onNode(session.runTool('erd_add_table', {}));
-    expect((await stat(path)).mode & 0o777).toBe(0o600);
+    expect((await stat(path)).mode & 0o777).toBe(PRIVATE_MODE);
 
     // The baseline is the temp file's stat, so this holds only if the rename kept it.
     const undone = await onNode(session.undo);

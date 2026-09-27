@@ -72,6 +72,26 @@ jobs:
       # is set to catch an abnormal jump, not every byte.
       - run: pnpm size
 
+  # The hub packages on Windows, where Node listens on named pipes only, and
+  # modes, errnos and path spellings differ. test, not test:coverage: the perFile
+  # gate is measured on Linux, whose memory specs reach each win32 branch.
+  hub-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-workspace
+      # Each test task builds its package's workspace dependencies first, the
+      # erd-editor chain included for the last three.
+      - run: >-
+          pnpm exec vp run
+          --filter "@dineug/erd-editor-agent-hub"
+          --filter "@dineug/erd-editor-agent-hub-host"
+          --filter "@dineug/erd-editor-mcp"
+          --filter "vuerd-vscode"
+          --filter "@dineug/erd-editor-obsidian-plugin"
+          --fail-if-no-match test
+        timeout-minutes: 30
+
   e2e:
     runs-on: ubuntu-latest
     steps:

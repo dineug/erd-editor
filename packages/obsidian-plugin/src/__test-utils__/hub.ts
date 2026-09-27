@@ -273,6 +273,8 @@ export type SocketPeer = {
   close: () => Promise<void>;
 };
 
+let servedPeers = 0;
+
 /**
  * Serves handler on a socket in a temporary folder, as the hub serves a coding
  * agent, and connects one peer that has said hello. What the peer reads is the
@@ -280,7 +282,11 @@ export type SocketPeer = {
  */
 export async function servePeer(handler: HubHandler): Promise<SocketPeer> {
   const dir = await mkdtemp(join(tmpdir(), 'erd-obsidian-hub-'));
-  const pipe = join(dir, 'hub.sock');
+  // Node listens on a named pipe alone on Windows, as the hub itself does there.
+  const pipe =
+    process.platform === 'win32'
+      ? `\\\\.\\pipe\\erd-spec-${process.pid}-${++servedPeers}`
+      : join(dir, 'hub.sock');
   const fibers: Array<Fiber.Fiber<unknown, unknown>> = [];
   const server = createServer(socket => {
     const serve = serveConnection(

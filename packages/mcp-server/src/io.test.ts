@@ -32,6 +32,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { PRIVATE_MODE, specPipePath } from '@/__test-utils__/platform';
 import { isPlatformReason } from '@/errors';
 import * as NodeFs from '@/io/fileSystem';
 import { connectPipe, fromNetSocket, HubUnreachable } from '@/io/netSocket';
@@ -168,7 +169,7 @@ describe('the node file system, as the sessions read its failures', () => {
     const stat = await onNode(NodeFs.FileStats.use(({ stat }) => stat(path)));
     expect(stat).toEqual({
       size: 1,
-      mode: 0o600,
+      mode: PRIVATE_MODE,
       mtimeMs: (await nodeStat(path)).mtimeMs,
     });
     expect(Math.round((stat.mtimeMs % 1) * 4)).toBe(1);
@@ -206,7 +207,7 @@ describe('the node file system, as the sessions read its failures', () => {
   });
 });
 
-describe('connectPipe over a real unix socket', () => {
+describe('connectPipe over a real socket, a named pipe on Windows', () => {
   let server: Server | null = null;
 
   afterEach(async () => {
@@ -217,7 +218,7 @@ describe('connectPipe over a real unix socket', () => {
   });
 
   const listen = async (onConnection: (conn: NetSocket) => void) => {
-    const pipe = join(dir, 'hub.sock');
+    const pipe = specPipePath(dir);
     server = createServer(onConnection);
     await new Promise<void>(resolve => server!.listen(pipe, resolve));
     return pipe;

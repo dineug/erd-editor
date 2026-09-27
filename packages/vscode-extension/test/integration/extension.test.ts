@@ -93,12 +93,12 @@ function getContributedThemeProperty(name: string): any {
 }
 
 /**
- * Both sides of every path comparison go through realpathSync: the host
- * reports resolved paths, and a symlinked checkout would otherwise fail on a
- * difference that means nothing.
+ * Both sides of every path comparison go through the native realpath, which
+ * spells them as the disk does whatever drive-letter case each came in with;
+ * a symlinked checkout would otherwise fail on a difference that means nothing.
  */
 function realPath(target: string): string {
-  return fs.realpathSync(target);
+  return fs.realpathSync.native(target);
 }
 
 /**
