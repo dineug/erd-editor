@@ -20,6 +20,7 @@ import * as HubDiscovery from '@/hub/discovery';
 import {
   FileAccess,
   type FileAccessShape,
+  FileStats,
   statsFromFileSystem,
 } from '@/io/fileSystem';
 import type { ConnectPipe } from '@/io/netSocket';
@@ -53,6 +54,8 @@ export type MemoryHost = MemoryFs & {
     keepsAccess: FileAccessShape['keepsAccess'];
     writeInPlace: FileAccessShape['writeInPlace'];
   };
+  /** What FileStats.identity answers, by spelling; give two spellings one to make them one file. */
+  readonly identities: Map<string, string>;
   writeLock: (pid: number, record: LockRecord, mtimeMs?: number) => void;
   removeLock: (pid: number) => void;
   /** Files, paths, the process and hub connections, all in memory. */
@@ -98,6 +101,7 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
     servers,
     connect: memoryConnect(servers),
     access,
+    identities: new Map<string, string>(),
     writeLock: (pid: number, record: LockRecord, mtimeMs?: number) => {
       fs.put(lockFilePath(home, pid), serializeLock(record), 0o600);
       if (mtimeMs !== undefined)
@@ -110,7 +114,17 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
 
   const platformLayer: Layer.Layer<Platform> = Layer.mergeAll(
     fs.layer,
-    statsFromFileSystem.pipe(Layer.provide(fs.layer)),
+    Layer.effect(
+      FileStats,
+      Effect.gen(function* () {
+        const { stat } = yield* FileStats;
+        return FileStats.of({
+          stat,
+          identity: path =>
+            Effect.sync(() => host.identities.get(path) ?? null),
+        });
+      })
+    ).pipe(Layer.provide(statsFromFileSystem), Layer.provide(fs.layer)),
     Layer.succeed(
       FileAccess,
       FileAccess.of({

@@ -1,13 +1,26 @@
 import {
-  type DiscoveryResult,
+  type LockCandidate,
+  type LockFile,
   lockFilePath,
+  parseLock,
   pipePath,
   readLockDirectory,
   selectHub,
+  type StaleLock,
 } from '@dineug/erd-editor-agent-hub';
 import { Context, Effect, FileSystem, Layer } from 'effect';
 
+import { findAlias } from '@/hub/alias';
+import { FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
+
+/**
+ * What discovery found. alias is set when no lock names the target as it is
+ * spelled but a window holds it the other way, through a share or a drive.
+ */
+export type Resolution =
+  | { kind: 'live' | 'blocked'; candidate: LockCandidate; alias?: string }
+  | { kind: 'headless' };
 
 export type HubDiscoveryShape = {
   /**
@@ -15,7 +28,7 @@ export type HubDiscoveryShape = {
    * every write, so a hub that appeared or went away since the last call is
    * seen. Dead windows' locks are deleted; a malformed live one is left alone.
    */
-  readonly discover: (targetPath: string) => Effect.Effect<DiscoveryResult>;
+  readonly discover: (targetPath: string) => Effect.Effect<Resolution>;
 };
 
 export class HubDiscovery extends Context.Service<
@@ -25,7 +38,10 @@ export class HubDiscovery extends Context.Service<
 
 const make = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem;
+  const stats = yield* FileStats;
   const { homeDir, platform, isAlive } = yield* ProcessInfo;
+  /** The identities of the paths each lock version lists, so a share is asked once per version. */
+  const listedIdentities = new Map<string, Map<string, string | null>>();
 
   const removeQuietly = (path: string) => fs.remove(path).pipe(Effect.ignore);
 
@@ -41,14 +57,68 @@ const make = Effect.gen(function* () {
     }
   });
 
+  const versionOf = ({ pid, mtimeMs }: { pid: number; mtimeMs: number }) =>
+    `${pid}:${mtimeMs}`;
+
+  const listedIdentityOf = (candidate: LockCandidate, path: string) =>
+    Effect.suspend(() => {
+      const version = versionOf(candidate);
+      const known =
+        listedIdentities.get(version) ?? new Map<string, string | null>();
+      listedIdentities.set(version, known);
+      return known.has(path)
+        ? Effect.succeed(known.get(path) ?? null)
+        : stats
+            .identity(path)
+            .pipe(
+              Effect.tap(identity =>
+                Effect.sync(() => known.set(path, identity))
+              )
+            );
+    });
+
+  /** The window holding targetPath the other way, among the locks selectHub kept. */
+  const aliasOf = Effect.fn('HubDiscovery.aliasOf')(function* (
+    targetPath: string,
+    locks: LockFile[],
+    stale: StaleLock[]
+  ) {
+    const skipped = new Set(stale.map(({ pid }) => pid));
+    const candidates = locks.flatMap(({ pid, raw, mtimeMs }) => {
+      const record = skipped.has(pid) ? null : parseLock(raw);
+      return record ? [{ pid, record, mtimeMs }] : [];
+    });
+    const versions = new Set(candidates.map(versionOf));
+    for (const version of listedIdentities.keys()) {
+      if (!versions.has(version)) listedIdentities.delete(version);
+    }
+
+    const alias = yield* findAlias(
+      targetPath,
+      candidates,
+      stats.identity,
+      listedIdentityOf
+    );
+    return alias
+      ? ({
+          kind: alias.candidate.record.hub ? 'live' : 'blocked',
+          candidate: alias.candidate,
+          alias: alias.spelled,
+        } satisfies Resolution)
+      : null;
+  });
+
   const discover = Effect.fn('HubDiscovery.discover')(function* (
     targetPath: string
   ) {
-    const { selected, stale } = yield* readLockDirectory(homeDir).pipe(
-      Effect.flatMap(locks =>
-        selectHub(locks, targetPath, platform, pid => isAlive(pid))
-      ),
+    const locks = yield* readLockDirectory(homeDir).pipe(
       Effect.provideService(FileSystem.FileSystem, fs)
+    );
+    const { selected, stale } = yield* selectHub(
+      locks,
+      targetPath,
+      platform,
+      pid => isAlive(pid)
     );
 
     for (const { pid, reason } of stale) {
@@ -60,15 +130,17 @@ const make = Effect.gen(function* () {
         );
       }
     }
-    return selected;
+    // Only Windows reaches one file both by a drive path and by a share path.
+    if (selected.kind !== 'headless' || platform !== 'win32') return selected;
+    return (yield* aliasOf(targetPath, locks, stale)) ?? selected;
   });
 
   return HubDiscovery.of({ discover });
 });
 
-/** Discovery over the file system and process a layer gives. */
+/** Discovery over the file system, stat and process a layer gives. */
 export const layer: Layer.Layer<
   HubDiscovery,
   never,
-  FileSystem.FileSystem | ProcessInfo
+  FileSystem.FileSystem | FileStats | ProcessInfo
 > = Layer.effect(HubDiscovery, make);

@@ -1,5 +1,4 @@
 import {
-  type DiscoveryResult,
   type DocumentInfo,
   type LockCandidate,
 } from '@dineug/erd-editor-agent-hub';
@@ -15,7 +14,7 @@ import {
 
 import { isSessionError, SessionError, SessionErrorCode } from '@/errors';
 import { HubConnector } from '@/hub/client';
-import { HubDiscovery } from '@/hub/discovery';
+import { HubDiscovery, type Resolution } from '@/hub/discovery';
 import { capitalize, hostWords } from '@/hub/host';
 import { FileAccess, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
@@ -159,6 +158,19 @@ function hubAppearedError(
   );
 }
 
+/** A window holds the document under another spelling, which is the one to call with. */
+function aliasError(
+  path: string,
+  alias: string,
+  candidate: LockCandidate
+): SessionError {
+  const { aWindow } = hostWords(candidate.record.ide);
+  return new SessionError(
+    SessionErrorCode.invalidPath,
+    `${path} is ${alias} reached another way, such as through a network share or a mapped drive of this computer, and ${aWindow} (pid ${candidate.pid}) holds it under that path; call again with ${alias}.`
+  );
+}
+
 function hubGoneError(path: string, session: LiveSession): SessionError {
   const { theWindow, hubGoneRemedy } = hostWords(session.ide);
   return new SessionError(
@@ -294,9 +306,11 @@ const make = Effect.gen(function* () {
           resolution.kind === 'headless'
             ? Effect.void
             : Effect.fail(
-                resolution.kind === 'live'
-                  ? hubAppearedError(path, resolution.candidate)
-                  : blockedError(path, resolution.candidate)
+                resolution.alias !== undefined
+                  ? aliasError(path, resolution.alias, resolution.candidate)
+                  : resolution.kind === 'live'
+                    ? hubAppearedError(path, resolution.candidate)
+                    : blockedError(path, resolution.candidate)
               )
         )
       );
@@ -320,11 +334,18 @@ const make = Effect.gen(function* () {
     key: string,
     path: string,
     intent: Intent,
-    resolution: DiscoveryResult,
+    resolution: Resolution,
     notes: Notes,
     create = false
   ) {
     const existing = sessions.get(key)?.session;
+
+    // A window holds the document under another spelling, so a disk session
+    // here would write under its editor; reads are refused alike.
+    if (resolution.kind !== 'headless' && resolution.alias !== undefined) {
+      if (existing) yield* drop(key);
+      return yield* aliasError(path, resolution.alias, resolution.candidate);
+    }
 
     if (resolution.kind === 'blocked') {
       if (intent === 'write') {

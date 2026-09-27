@@ -22,6 +22,7 @@ import {
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import * as NodePath from '@effect/platform-node/NodePath';
 import { Effect, Fiber, FileSystem, Layer, Stream } from 'effect';
 import { Socket } from 'effect/unstable/socket';
@@ -34,6 +35,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { createMemoryFs } from '@/__test-utils__/memoryFs';
 import { PRIVATE_MODE, specPipePath } from '@/__test-utils__/platform';
 import { isPlatformReason } from '@/errors';
 import * as NodeFs from '@/io/fileSystem';
@@ -233,6 +235,48 @@ describe('the node file system, as the sessions read its failures', () => {
       )
     );
     expect(isPlatformReason(missing, 'NotFound')).toBe(true);
+  });
+
+  it('gives a file one identity by any path to it, another file another, and a missing one none', async () => {
+    const path = join(dir, 'a.erd.json');
+    await writeFile(path, '{}');
+    await writeFile(join(dir, 'b.erd.json'), '{}');
+    await symlink(path, join(dir, 'linked.erd.json'));
+    const identity = (of: string) =>
+      onNode(NodeFs.FileStats.use(stats => stats.identity(of)));
+    const native = await nodeStat(path, { bigint: true });
+
+    expect(await identity(path)).toBe(`${native.dev}:${native.ino}`);
+    expect(await identity(join(dir, 'linked.erd.json'))).toBe(
+      await identity(path)
+    );
+    expect(await identity(join(dir, 'b.erd.json'))).not.toBe(
+      await identity(path)
+    );
+    expect(await identity(join(dir, 'none.erd.json'))).toBeNull();
+  });
+
+  it('reads the identity off File.Info on any file system, none where it has no ino', async () => {
+    const path = join(dir, 'a.erd.json');
+    await writeFile(path, '{}');
+    const identity = (fs: Layer.Layer<FileSystem.FileSystem>, of: string) =>
+      Effect.runPromise(
+        NodeFs.FileStats.use(stats => stats.identity(of)).pipe(
+          Effect.provide(NodeFs.statsFromFileSystem.pipe(Layer.provide(fs)))
+        )
+      );
+    const { dev, ino } = await nodeStat(path, { bigint: true });
+
+    // An NTFS file id can pass 2^53, which File.Info has no ino for.
+    expect(await identity(NodeFileSystem.layer, path)).toBe(
+      ino <= BigInt(Number.MAX_SAFE_INTEGER) ? `${dev}:${ino}` : null
+    );
+    expect(
+      await identity(NodeFileSystem.layer, join(dir, 'none.erd.json'))
+    ).toBeNull();
+    const memory = createMemoryFs();
+    memory.put('/a.erd.json', '{}');
+    expect(await identity(memory.layer, '/a.erd.json')).toBeNull();
   });
 
   it('lists the documents of a tree, never walking a symlinked folder', async () => {

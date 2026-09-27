@@ -42,6 +42,8 @@ export type FileStatsShape = {
   readonly stat: (
     path: string
   ) => Effect.Effect<FileStat, PlatformError.PlatformError>;
+  /** Which file path names, as dev:ino, the same through every spelling of it; null when it cannot be read. */
+  readonly identity: (path: string) => Effect.Effect<string | null>;
 };
 
 /**
@@ -61,11 +63,27 @@ export const statsFromFileSystem: Layer.Layer<
 > = Layer.effect(
   FileStats,
   FileSystem.FileSystem.useSync(fs =>
-    FileStats.of({ stat: path => fs.stat(path).pipe(Effect.map(fromInfo)) })
+    FileStats.of({
+      stat: path => fs.stat(path).pipe(Effect.map(fromInfo)),
+      identity: path =>
+        fs.stat(path).pipe(
+          Effect.map(info =>
+            Option.match(info.ino, {
+              onNone: () => null,
+              onSome: ino => `${info.dev}:${ino}`,
+            })
+          ),
+          Effect.orElseSucceed(() => null)
+        ),
+    })
   )
 );
 
-/** node's stat, mtimeMs fraction and all; a failure is the one fs gives, with its reason tag. */
+/**
+ * node's stat, mtimeMs fraction and all; a failure is the one fs gives, with
+ * its reason tag. The identity takes a bigint stat, since File.Info has no ino
+ * past 2^53, which an NTFS file id can pass.
+ */
 const withNativeStat = (fs: FileSystem.FileSystem) =>
   FileStats.of({
     stat: path =>
@@ -76,6 +94,11 @@ const withNativeStat = (fs: FileSystem.FileSystem) =>
           mode: native.mode & 0o777,
         })),
         Effect.catch(() => fs.stat(path).pipe(Effect.map(fromInfo)))
+      ),
+    identity: path =>
+      Effect.tryPromise(() => stat(path, { bigint: true })).pipe(
+        Effect.map(native => `${native.dev}:${native.ino}`),
+        Effect.orElseSucceed(() => null)
       ),
   });
 
