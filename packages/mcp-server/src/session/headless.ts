@@ -12,6 +12,7 @@ import { FileAccess, type FileStat, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import {
   createEmptyDocument,
+  isReadonlyMode,
   orNotFound,
   readDocumentFile,
 } from '@/session/disk';
@@ -170,7 +171,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
             )
           );
         }
-        if (!(current.mode & 0o200)) {
+        if (isReadonlyMode(current.mode)) {
           return yield* refuse(
             new SessionError(
               'readonly',

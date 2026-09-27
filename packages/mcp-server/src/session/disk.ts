@@ -32,6 +32,15 @@ const DOCUMENT_KEYS = new Set([
 export const MAX_LISTED_DOCUMENTS = 500;
 export const MAX_LIST_DEPTH = 8;
 
+/**
+ * A mode without owner write, the POSIX bit or on Windows the read-only
+ * attribute, which node reads as 0o444: what a headless write refuses and a
+ * disk listing reports as readonly.
+ */
+export function isReadonlyMode(mode: number): boolean {
+  return (mode & 0o200) === 0;
+}
+
 /** The editor drops a byte order mark when it reads a file; so do the sessions. */
 export function stripBom(text: string): string {
   return text.startsWith('﻿') ? text.slice(1) : text;
@@ -142,18 +151,28 @@ export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
   const { platform } = yield* ProcessInfo;
   const documents: DocumentInfo[] = [];
 
-  const isDirectory = (path: string) =>
-    fs.stat(path).pipe(
+  /**
+   * A directory to walk, else a file and whether it is read-only; a symlink to
+   * a directory is never walked, and it and an entry that does not stat read as
+   * a writable file.
+   */
+  const entryAt = (path: string) => {
+    const writableFile = { directory: false, readonly: false };
+    return fs.stat(path).pipe(
       Effect.flatMap(info =>
         info.type === 'Directory'
           ? fs.readLink(path).pipe(
-              Effect.as(false),
-              Effect.orElseSucceed(() => true)
+              Effect.as(writableFile),
+              Effect.orElseSucceed(() => ({ directory: true, readonly: false }))
             )
-          : Effect.succeed(false)
+          : Effect.succeed({
+              directory: false,
+              readonly: isReadonlyMode(info.mode),
+            })
       ),
-      Effect.orElseSucceed(() => false)
+      Effect.orElseSucceed(() => writableFile)
     );
+  };
 
   const walk = (dir: string, depth: number): Effect.Effect<void> =>
     Effect.gen(function* () {
@@ -172,7 +191,8 @@ export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
         if (unsafeSegment(name, platform) !== null) continue;
 
         const path = paths.join(dir, name);
-        if (yield* isDirectory(path)) {
+        const entry = yield* entryAt(path);
+        if (entry.directory) {
           if (walkable) yield* walk(path, depth + 1);
         } else if (isErdPath(name)) {
           documents.push({
@@ -180,7 +200,7 @@ export const listDiskDocuments = Effect.fn('listDiskDocuments')(function* (
             open: false,
             active: false,
             dirty: false,
-            readonly: false,
+            readonly: entry.readonly,
           });
         }
       }

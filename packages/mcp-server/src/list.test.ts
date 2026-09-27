@@ -76,6 +76,26 @@ describe('erd_list_documents (AC-M6)', () => {
     });
   });
 
+  it('reports a file without owner write as readonly, as a headless write refuses it', async () => {
+    io.put('/work/a.erd.json', emptyDocument());
+    io.put('/work/b.erd.json', emptyDocument(), 0o444);
+    io.put('/work/c.erd.json', emptyDocument(), 0o400);
+    io.put('/work/d.erd.json', emptyDocument(), 0o200);
+
+    const listed = await mcp.ok('erd_list_documents');
+
+    expect(listed.documents).toEqual([
+      closed('/work/a.erd.json'),
+      { ...closed('/work/b.erd.json'), readonly: true },
+      { ...closed('/work/c.erd.json'), readonly: true },
+      closed('/work/d.erd.json'),
+    ]);
+    const refused = await mcp.call('erd_add_table', {
+      path: '/work/b.erd.json',
+    });
+    expect(refused.json.error.code).toBe('readonly');
+  });
+
   it.each([
     ['win32', ['/work/a.erd.json']],
     [
