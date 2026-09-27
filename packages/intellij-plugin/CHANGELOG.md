@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- A coding agent opening a diagram in a project opened through a mapped or subst drive, a symlink
+  or a junction now uses the editor the Project view opens for that file, instead of a second
+  editor of the same file.
+
 ## [0.8.0] - 2026-09-19
 
 ### Added

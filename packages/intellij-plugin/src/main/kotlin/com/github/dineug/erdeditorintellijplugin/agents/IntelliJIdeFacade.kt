@@ -22,6 +22,7 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.roots.ContentIterator
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileFilter
 import com.intellij.openapi.wm.IdeFocusManager
 import kotlinx.coroutines.Dispatchers
@@ -46,27 +47,50 @@ class IntelliJIdeFacade(
 
     /**
      * Opens path in the project already showing it, else the one whose folder holds it deepest, else
-     * the last focused one. The open waits out a modal dialog; the handler answers by its own timeout.
+     * the last focused one, as that project's tree spells it, since the VFS keys a file by its path. The
+     * open waits out a modal dialog; the handler answers by its own timeout.
      */
     override suspend fun openInEditor(path: String, known: DocumentFile?) {
-        val (file, candidates) = withContext(threads.io) {
+        val (spelled, fallback, candidates) = withContext(threads.io) {
+            val candidates = host.openProjectRoots().map { (project, roots) ->
+                project to roots.map { SpelledFolder(it, realpathOrSelf(it)) }
+            }
             // The file already registered on the path, perhaps opened through a symlink, is opened as it is.
-            val file = (known as? VirtualFileDocument)?.file?.takeIf { it.isValid }
-                ?: LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(path))
+            val registered = (known as? VirtualFileDocument)?.file?.takeIf { it.isValid }
+            val found = HashMap<String, VirtualFile?>()
+            val spelled = if (registered != null) {
+                emptyMap()
+            } else {
+                candidates.mapNotNull { (project, folders) ->
+                    val spelling = spelledUnder(folders, path, platform) ?: return@mapNotNull null
+                    if (spelling !in found) found[spelling] = findFile(spelling)
+                    found[spelling]?.let { project to it }
+                }.toMap()
+            }
+            val fallback = registered
+                ?: spelled.values.firstOrNull()
+                ?: findFile(path)
                 ?: throw OpenRefused(DocumentRules.REASON_NO_VIRTUAL_FILE)
-            file to host.openProjectRoots().map { (project, roots) -> project to roots.map(::realpathOrSelf) }
+            Triple(spelled, fallback, candidates)
         }
         withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
             val open = ProjectManager.getInstance().openProjects.filter { !it.isDisposed && !it.isDefault }
             val lastFocused = IdeFocusManager.getGlobalInstance().lastFocusedFrame?.project?.takeIf { it in open }
-            val project = open.firstOrNull { FileEditorManager.getInstance(it).isFileOpen(file) }
-                ?: chooseProject(candidates.filter { it.first in open }, path, lastFocused, platform)
+            val fileOf = { owner: Project -> spelled[owner] ?: fallback }
+            val realFolders = candidates.filter { it.first in open }.map { (owner, folders) ->
+                owner to folders.map { it.real }
+            }
+            val project = open.firstOrNull { FileEditorManager.getInstance(it).isFileOpen(fileOf(it)) }
+                ?: chooseProject(realFolders, path, lastFocused, platform)
                 ?: lastFocused
                 ?: open.firstOrNull()
                 ?: throw OpenRefused(DocumentRules.REASON_NO_PROJECT)
-            FileEditorManager.getInstance(project).openFile(file, false)
+            FileEditorManager.getInstance(project).openFile(fileOf(project), false)
         }
     }
+
+    private fun findFile(path: String): VirtualFile? =
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(path))
 
     /**
      * Every ERD file of the open projects' content, node_modules left out, by local path, each once.
@@ -113,6 +137,25 @@ class IntelliJIdeFacade(
         /** Prunes every folder named node_modules, whatever lies under it. */
         val SKIP_NODE_MODULES = VirtualFileFilter { !(it.isDirectory && it.name == NODE_MODULES) }
     }
+}
+
+/** A project folder as the IDE spells it, and its real path. */
+internal data class SpelledFolder(val spelled: String, val real: String)
+
+/**
+ * realPath as the folders spell it: the names below the deepest real folder holding it, the first on
+ * a tie, joined onto that folder's spelling, so they keep the disk's letter case; null when no folder
+ * holds it.
+ */
+internal fun spelledUnder(folders: List<SpelledFolder>, realPath: String, platform: HubPlatform): String? {
+    val index = HubPaths.longestPrefixIndex(folders.map { it.real }, realPath, platform)
+    if (index == -1) return null
+
+    val folder = folders[index]
+    val names = HubPaths.toSegments(realPath, platform).drop(HubPaths.toSegments(folder.real, platform).size)
+    if (names.isEmpty()) return folder.spelled
+    val separator = if (platform.isWindows) "\\" else "/"
+    return folder.spelled.trimEnd('\\', '/') + separator + names.joinToString(separator)
 }
 
 /**

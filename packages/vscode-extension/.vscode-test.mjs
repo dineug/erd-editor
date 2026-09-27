@@ -1,7 +1,14 @@
 import { defineConfig } from '@vscode/test-cli';
-import { readFileSync, mkdirSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const { engines } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8')
@@ -23,6 +30,26 @@ function userDataDir(label) {
 
   mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+/**
+ * A link to a fresh copy of the workspace fixture, a junction on Windows,
+ * which needs no privilege: the Explorer spells its files under the link,
+ * while the hub keys them by the real path.
+ */
+function linkedWorkspace() {
+  const base = join(tmpdir(), 'vuerd-vscode-test-linked');
+  const real = join(base, 'real');
+  const link = join(base, 'link');
+
+  rmSync(base, { recursive: true, force: true });
+  cpSync(
+    fileURLToPath(new URL('./test/fixtures/workspace', import.meta.url)),
+    real,
+    { recursive: true }
+  );
+  symlinkSync(real, link, 'junction');
+  return link;
 }
 
 const mocha = {
@@ -70,6 +97,20 @@ export default defineConfig([
       '--disable-extensions',
       '--disable-gpu',
       `--user-data-dir=${userDataDir('erd-json-only')}`,
+    ],
+  },
+  {
+    // A folder opened through a link: the editor an agent opens must be the
+    // one the Explorer opens, not a second one under the real path.
+    files: 'out/test/integration/linked/*.test.js',
+    workspaceFolder: linkedWorkspace(),
+    mocha,
+    label: 'linked-folder',
+    version: 'stable',
+    launchArgs: [
+      '--disable-extensions',
+      '--disable-gpu',
+      `--user-data-dir=${userDataDir('linked-folder')}`,
     ],
   },
 ]);

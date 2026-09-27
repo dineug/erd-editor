@@ -10,8 +10,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Which project an agent's open lands in when no editor shows the file yet, and which files the
- * listing names. The trust rule itself is TrustSnapshotTest's, in the hub's core.
+ * Which project an agent's open lands in when no editor shows the file yet, under which spelling, and
+ * which files the listing names. The trust rule itself is TrustSnapshotTest's, in the hub's core.
  */
 class IntelliJIdeFacadeTest {
     private val linux = HubPlatform.LINUX
@@ -68,6 +68,43 @@ class IntelliJIdeFacadeTest {
                 HubPlatform.WIN32,
             ),
         )
+    }
+
+    @Test
+    fun `spells a real path under a symlinked root as the root is spelled`() {
+        val folders = listOf(SpelledFolder("/home/me/link/proj", "/data/real/proj"))
+
+        assertEquals("/home/me/link/proj/db/Schema.erd", spelledUnder(folders, "/data/real/proj/db/Schema.erd", linux))
+        assertEquals("/home/me/link/proj", spelledUnder(folders, "/data/real/proj", linux))
+        assertNull(spelledUnder(folders, "/data/real/Proj/a.erd", linux))
+    }
+
+    @Test
+    fun `spells a real path under a subst or mapped drive as the project tree shows it`() {
+        val win32 = HubPlatform.WIN32
+        val subst = listOf(SpelledFolder("R:\\proj", "C:\\real\\proj"))
+        val mapped = listOf(SpelledFolder("N:\\proj", "\\\\server\\share\\proj"))
+
+        assertEquals("R:\\proj\\sub\\B.erd.json", spelledUnder(subst, "C:\\real\\proj\\sub\\B.erd.json", win32))
+        assertEquals("R:\\proj\\a.erd", spelledUnder(subst, "c:\\REAL\\proj\\a.erd", win32))
+        assertEquals("N:\\proj\\a.erd", spelledUnder(mapped, "\\\\server\\share\\proj\\a.erd", win32))
+        assertEquals("R:\\a.erd", spelledUnder(listOf(SpelledFolder("R:\\", "C:\\real")), "C:\\real\\a.erd", win32))
+        assertNull(spelledUnder(subst, "D:\\real\\proj\\a.erd", win32))
+        assertNull(spelledUnder(subst, "C:\\real\\project\\a.erd", win32))
+    }
+
+    @Test
+    fun `the deepest real folder spells the path, the first on a tie`() {
+        val win32 = HubPlatform.WIN32
+        val folders = listOf(
+            SpelledFolder("R:\\", "C:\\real"),
+            SpelledFolder("S:\\proj", "C:\\real\\proj"),
+            SpelledFolder("T:\\proj\\", "c:\\real\\PROJ"),
+        )
+
+        assertEquals("S:\\proj\\a.erd", spelledUnder(folders, "C:\\real\\proj\\a.erd", win32))
+        assertEquals("R:\\other\\a.erd", spelledUnder(folders, "C:\\real\\other\\a.erd", win32))
+        assertNull(spelledUnder(emptyList(), "C:\\real\\a.erd", win32))
     }
 
     @Test

@@ -111,7 +111,9 @@ export function createDocumentHarness(options: MemoryHubOptions = {}) {
   );
 
   workspace.fs.readFile.mockImplementation(async uri =>
-    encoder.encode(io.files.get(uri.fsPath)?.data ?? '<html></html>')
+    encoder.encode(
+      io.files.get(io.resolve(uri.fsPath))?.data ?? '<html></html>'
+    )
   );
   workspace.fs.writeFile.mockImplementation(async (uri, content) => {
     io.addFile(uri.fsPath, decoder.decode(content));
@@ -132,7 +134,7 @@ export function createDocumentHarness(options: MemoryHubOptions = {}) {
     content = '{}',
     uri: Uri = Uri.file(path)
   ): Promise<OpenedEditor> {
-    if (!io.files.has(path)) io.addFile(path, content);
+    if (!io.files.has(io.resolve(path))) io.addFile(path, content);
     const document = await provider.openCustomDocument(
       uri as unknown as VscodeUri,
       { backupId: undefined, untitledDocumentData: undefined }

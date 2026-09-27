@@ -16,12 +16,17 @@ import {
 } from 'vite-plus/test';
 
 import { VIEW_TYPE } from '@/constants/viewType';
-import { ERD_FILE_GLOB } from '@/hub/handlers';
+import {
+  ERD_FILE_GLOB,
+  FOLDER_REALPATH_CAP_MS,
+  spelledUnder,
+} from '@/hub/handlers';
 
 import {
   createConnection,
   createDocumentHarness,
   type DocumentHarness,
+  type OpenedEditor,
 } from '../../test/mocks/documentHarness';
 import { flush, fsError } from '../../test/mocks/hubLayers';
 import {
@@ -36,7 +41,33 @@ import {
 } from '../../test/mocks/vscode';
 
 const PATH = '/ws/a.erd.json';
+const REAL = '/real/proj/a.erd.json';
 const EMPTY_DOCUMENT = '{"$schema":"schema.json","version":"3.0.0"}';
+const OPEN_OPTIONS = { preserveFocus: true, preview: false };
+
+/**
+ * Makes vscode.openWith show the document already open under the same uri, as
+ * VS Code does, and open a new one for any other uri, readying each.
+ */
+function serveOpenWithByUri(
+  harness: DocumentHarness,
+  open: OpenedEditor[]
+): void {
+  commands.executeCommand.mockImplementation(async (...args: unknown[]) => {
+    const [command, uri] = args as [string, Uri];
+    if (command !== 'vscode.openWith') return undefined;
+
+    let editor = open.find(
+      ({ document }) => document.uri.toString() === uri.toString()
+    );
+    if (!editor) {
+      editor = await harness.open(uri.fsPath, '{}', uri);
+      open.push(editor);
+    }
+    harness.ready(editor);
+    return undefined;
+  });
+}
 
 const manifest: {
   activationEvents: string[];
@@ -311,6 +342,197 @@ describe('openDocument', () => {
       code: HubErrorCode.notOpen,
       message: `VS Code could not open ${PATH} in the ERD editor: Error: no such editor`,
     });
+  });
+});
+
+describe('openDocument opens the editor the Explorer opens', () => {
+  const linkedHarness = () => {
+    const harness = createDocumentHarness();
+    harness.io.addFile(REAL, '{}');
+    harness.io.links.set('/link', '/real');
+    harness.io.links.set('/deep', '/real');
+    return harness;
+  };
+  const openWithUris = () =>
+    (commands.executeCommand.mock.calls as unknown[][])
+      .filter(([command]) => command === 'vscode.openWith')
+      .map(([, uri]) => uri);
+
+  it('opens a closed document under the spelling of the workspace folder holding it', async () => {
+    const harness = linkedHarness();
+    workspace.workspaceFolders = [{ uri: Uri.file('/link/proj') }];
+    const open: OpenedEditor[] = [];
+    serveOpenWithByUri(harness, open);
+
+    const result = await harness.run(
+      harness.handler.openDocument({ path: REAL }, createConnection())
+    );
+
+    expect(commands.executeCommand).toHaveBeenCalledWith(
+      'vscode.openWith',
+      Uri.file('/link/proj/a.erd.json'),
+      VIEW_TYPE,
+      OPEN_OPTIONS
+    );
+    expect(result).toEqual({ path: REAL, opened: true, webviews: 1 });
+    expect(harness.registry.documents()).toEqual([
+      { document: open[0].document, path: REAL },
+    ]);
+  });
+
+  it.each([
+    [
+      'the deepest folder holding it',
+      [Uri.file('/link'), Uri.file('/deep/proj')],
+      Uri.file('/deep/proj/a.erd.json'),
+    ],
+    [
+      'the first of two folders on one real path',
+      [Uri.file('/link/proj'), Uri.file('/deep/proj')],
+      Uri.file('/link/proj/a.erd.json'),
+    ],
+    [
+      'a file folder after a virtual one, which guards no path on disk',
+      [Uri.parse('vscode-vfs://github/o/r'), Uri.file('/deep/proj')],
+      Uri.file('/deep/proj/a.erd.json'),
+    ],
+    [
+      'the real path when no folder holds it',
+      [Uri.file('/ws')],
+      Uri.file(REAL),
+    ],
+  ])('spells the path by %s', async (_label, folders, expected) => {
+    const harness = linkedHarness();
+    harness.io.addDir('/ws');
+    workspace.workspaceFolders = folders.map(uri => ({ uri }));
+    serveOpenWithByUri(harness, []);
+
+    await harness.run(
+      harness.handler.openDocument({ path: REAL }, createConnection())
+    );
+
+    expect(openWithUris()).toEqual([expected]);
+  });
+
+  it('takes a folder as given when its realpath dies, and still spells the path by the others', async () => {
+    const harness = linkedHarness();
+    workspace.workspaceFolders = [
+      { uri: Uri.file('/dying') },
+      { uri: Uri.file('/link/proj') },
+    ];
+    const realPath = harness.io.fs.realPath.getMockImplementation()!;
+    harness.io.fs.realPath.mockImplementation((path: string) =>
+      path === '/dying' ? Effect.die(new Error('EIO')) : realPath(path)
+    );
+    serveOpenWithByUri(harness, []);
+
+    await harness.run(
+      harness.handler.openDocument({ path: REAL }, createConnection())
+    );
+
+    expect(openWithUris()).toEqual([Uri.file('/link/proj/a.erd.json')]);
+  });
+
+  it('shows a registered document whose webview is still loading under its own uri, adding no second one', async () => {
+    const harness = linkedHarness();
+    workspace.workspaceFolders = [{ uri: Uri.file('/real/proj') }];
+    const loading = await harness.open(
+      REAL,
+      '{}',
+      Uri.file('/link/proj/a.erd.json')
+    );
+    serveOpenWithByUri(harness, [loading]);
+
+    const result = await harness.run(
+      harness.handler.openDocument({ path: REAL }, createConnection())
+    );
+
+    expect(openWithUris()).toEqual([Uri.file('/link/proj/a.erd.json')]);
+    expect(result).toEqual({ path: REAL, opened: true, webviews: 1 });
+    expect(harness.registry.documents()).toHaveLength(1);
+  });
+
+  it('opens the real path once a folder realpath stalls past its cap, then still waits the whole ready time', async () => {
+    vi.useFakeTimers();
+    const harness = linkedHarness();
+    workspace.workspaceFolders = [
+      { uri: Uri.file('/stalled') },
+      { uri: Uri.file('/link/proj') },
+    ];
+    const realPath = harness.io.fs.realPath.getMockImplementation()!;
+    harness.io.fs.realPath.mockImplementation((path: string) =>
+      path.startsWith('/stalled') ? Effect.never : realPath(path)
+    );
+    const opened = harness.serveOpenWith(false);
+    let result: unknown;
+    void harness
+      .run(harness.handler.openDocument({ path: REAL }, createConnection()))
+      .then(value => (result = value));
+
+    await vi.advanceTimersByTimeAsync(FOLDER_REALPATH_CAP_MS - 1);
+    expect(commands.executeCommand).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(openWithUris()).toEqual([Uri.file(REAL)]);
+
+    await vi.advanceTimersByTimeAsync(OPEN_READY_TIMEOUT_MS - 1);
+    harness.ready(opened[0]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(result).toEqual({ path: REAL, opened: true, webviews: 1 });
+  });
+});
+
+describe('spelledUnder', () => {
+  it.each([
+    [
+      'a subst or mapped drive over a local folder',
+      ['C:\\real\\proj'],
+      'C:\\real\\proj\\sub\\B.erd',
+      { index: 0, names: ['sub', 'B.erd'] },
+    ],
+    [
+      'a folder whose drive letter and names differ in case',
+      ['c:\\REAL\\proj'],
+      'C:\\Real\\Proj\\A.erd',
+      { index: 0, names: ['A.erd'] },
+    ],
+    [
+      'a share',
+      ['\\\\server\\share\\proj'],
+      '\\\\server\\share\\proj\\a.erd',
+      { index: 0, names: ['a.erd'] },
+    ],
+    ['a drive root', ['D:\\'], 'D:\\a.erd', { index: 0, names: ['a.erd'] }],
+    [
+      'the deepest of nested folders',
+      ['C:\\real', 'C:\\real\\proj'],
+      'C:\\real\\proj\\a.erd',
+      { index: 1, names: ['a.erd'] },
+    ],
+    [
+      'the first of two folders on one path',
+      ['C:\\real\\proj', 'c:\\real\\PROJ\\'],
+      'C:\\real\\proj\\a.erd',
+      { index: 0, names: ['a.erd'] },
+    ],
+  ])('places a win32 path under %s', (_label, folders, path, expected) => {
+    expect(spelledUnder(folders, path, 'win32')).toEqual(expected);
+  });
+
+  it('matches POSIX folders by whole segments in their case, and keeps the names as given', () => {
+    expect(
+      spelledUnder(['/real/proj'], '/real/proj/Sub/A.erd', 'linux')
+    ).toEqual({ index: 0, names: ['Sub', 'A.erd'] });
+    expect(
+      spelledUnder(['/real/proj'], '/Real/proj/a.erd', 'linux')
+    ).toBeNull();
+    expect(spelledUnder(['/real/pro'], '/real/proj/a.erd', 'linux')).toBeNull();
+  });
+
+  it('names no folder for a path outside every one', () => {
+    expect(
+      spelledUnder(['C:\\real\\proj'], 'D:\\real\\proj\\a.erd', 'win32')
+    ).toBeNull();
+    expect(spelledUnder([], '/real/proj/a.erd', 'linux')).toBeNull();
   });
 });
 

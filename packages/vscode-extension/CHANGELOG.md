@@ -8,6 +8,9 @@
   or the computer restarted and Windows gave that window's old process number to a system
   service. The window's leftover lock file is now cleared, where the agent was told to reload a
   window that no longer existed.
+- A coding agent opening a diagram in a folder opened through a mapped or subst drive, a symlink
+  or a junction now uses the editor the Explorer opens for that file. It used to open a second
+  editor of the same file, and saving the editor the agent had not changed could undo its edits.
 
 ## [3.0.0] - 2026-09-24
 

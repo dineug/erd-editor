@@ -466,6 +466,8 @@ export function createMemoryHub(options: MemoryHubOptions = {}) {
     files,
     dirs,
     links,
+    /** The path a link spelling names, as the memory realPath resolves it. */
+    resolve: resolveLinks,
     alive,
     servers,
     fs: fsMock,
