@@ -13,7 +13,7 @@ The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd`, `.vuerd`
 | --- | --- |
 | `build.gradle.kts` | Manifest from README and changelog, `buildWebview`, `verifyWebviewAssets`, Verifier range; the Kover per-class gate on the hub core; the `test` task's inputs and system properties (both corpora, the hub's sources, `webview-bridge`'s `theme.ts`, the built MCP server and the probe, `ERD_MCP_CONFORMANCE`, `ERD_MCP_NODE`); `runIdeSmoke` |
 | `gradle.properties` | `pluginVersion`, `platformVersion` (2026.1.4), `pluginSinceBuild` (252), `javaVersion` (21), `gradleVersion` |
-| `README.md` | Marketplace listing: the `<!-- Plugin description -->` markers are required, and the screenshot line is stripped by exact match — leave its URL alone. Its Coding agents section discloses what the hub keeps outside the project; a change to that updates it |
+| `README.md` | Marketplace listing: the `<!-- Plugin description -->` markers are required, and the screenshot line is stripped by exact match — leave its URL alone. JetBrains asks for no disclosure of what the hub keeps in `~/.erd-editor/ide`, unlike Obsidian's policies, so the listing leaves it out, as the VS Code README does |
 | `CHANGELOG.md` | `versionPrefix` is `intellij-plugin-v`; bare `v*` tags belong to the editor |
 | `package.json` | `private`; the scripts `smoke` (`e2e/smoke.mjs`) and `mcp-probe` (`e2e/mcp-probe.mjs`), nothing pnpm builds or tests |
 | `src/main/resources/META-INF/plugin.xml` | The editor provider, the settings page, the hub's startup activity and its four listeners; the services (`AgentHubService` and the two settings) are light `@Service`s it does not declare |

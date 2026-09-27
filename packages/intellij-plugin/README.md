@@ -100,26 +100,6 @@ reach. There the agent edits the files on disk. The ERD Editor does not reload a
 disk while it is open, and your next edit in it would overwrite the agent's, so close the diagram
 first.
 
-### Files outside the project
-
-The plugin accepts connections only from this computer, through a socket file or a named pipe,
-never a network port, and serves only an MCP server that presents the random token of its lock
-file. With **Coding agents** on, the IDE lets that server find it through two files in your home
-folder, outside your projects:
-
-- `~/.erd-editor/ide/<pid>.json` — a lock file, readable by your user account only, naming the
-  folders of every open project, the diagrams open in the IDE and the token. It is rewritten as
-  projects and diagrams open and close.
-- `~/.erd-editor/ide/<pid>.sock` — the local socket the MCP server connects to (a named pipe on
-  Windows; in the system temporary folder when the home folder path is too long for a socket).
-
-Both are removed when the IDE quits and when the plugin is disabled or uninstalled. An IDE that
-starts also removes the ones that exited IDEs and editor windows left behind, as the ERD Editor
-extension for VS Code and plugin for Obsidian do in the same folder. With **Coding agents** off,
-the IDE keeps only the lock file, with no socket, so an agent still knows not to write the
-projects' diagrams behind the editor. Where coding agents are unavailable, the IDE writes none of
-these files.
-
 ## Requirements
 
 - An IntelliJ-based IDE, 2025.2 or later.
