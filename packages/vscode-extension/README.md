@@ -142,6 +142,7 @@ here, so a theme you pick on the canvas persists.
 
 - [Web app](https://erd-editor.io) — installable PWA with real-time collaboration
 - [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
+- [Obsidian plugin](https://community.obsidian.md/plugins/erd-editor)
 - [`@dineug/erd-editor`](https://www.npmjs.com/package/@dineug/erd-editor) — the editor as a
   custom element for your own app
 

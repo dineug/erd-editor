@@ -16,7 +16,7 @@ document format across all of them.
 | **Web app** | [erd-editor.io](https://erd-editor.io) | Installable PWA, works offline, real-time collaboration |
 | **VS Code** | [Marketplace](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) | Opens `.erd.json` files in a custom editor |
 | **IntelliJ** | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23594-erd-editor) | Same, for IntelliJ-based IDEs |
-| **Obsidian** | [Plugin repository](https://github.com/dineug/erd-editor-obsidian-plugin) | Opens `.erd` and `.erd.json` files in a vault tab |
+| **Obsidian** | [Community plugins](https://community.obsidian.md/plugins/erd-editor) | Opens `.erd` and `.erd.json` files in a vault tab |
 | **Your app** | `npm install @dineug/erd-editor` | The framework-free `<erd-editor>` custom element |
 
 To try it in an IDE, create an empty file with a `.erd.json` extension and open it. In Obsidian,

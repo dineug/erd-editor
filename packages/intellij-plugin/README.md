@@ -118,6 +118,7 @@ first.
 
 - [Web app](https://erd-editor.io) — installable PWA with real-time collaboration
 - [VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
+- [Obsidian plugin](https://community.obsidian.md/plugins/erd-editor)
 - [`@dineug/erd-editor`](https://www.npmjs.com/package/@dineug/erd-editor) — the editor as a
   custom element for your own app
 <!-- Plugin description end -->

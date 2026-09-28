@@ -7,7 +7,7 @@ Claude Code, Codex and any other client of the [Model Context Protocol](https://
 get one tool per editing operation on an `.erd.json` document: add a table, rename a column,
 relate two tables, import a DDL dump, read the schema back as SQL. When the document is open in
 the [ERD Editor VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode),
-the [ERD Editor Obsidian plugin](https://github.com/dineug/erd-editor-obsidian-plugin) or the
+the [ERD Editor Obsidian plugin](https://community.obsidian.md/plugins/erd-editor) or the
 [ERD Editor plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) for IntelliJ-based IDEs,
 the agent joins the editor as a collaborator: every call shows up on the canvas as it happens, with
 the agent's focus on the cell it is editing. With no editor around, the same tools edit the file
