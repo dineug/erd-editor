@@ -117,6 +117,8 @@ first.
 ## Also available
 
 - [Web app](https://erd-editor.io) — installable PWA with real-time collaboration
+- [Google Drive app](https://workspace.google.com/marketplace/app/erd_editor/428467403360) — open
+  and save diagrams in Google Drive
 - [VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode)
 - [Obsidian plugin](https://community.obsidian.md/plugins/erd-editor)
 - [`@dineug/erd-editor`](https://www.npmjs.com/package/@dineug/erd-editor) — the editor as a

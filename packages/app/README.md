@@ -14,6 +14,7 @@
 - Backup export and import of every schema, plus import of `.erd`, `.vuerd`, `.json`, SQL, DBML, AML and GraphQL files, from the menu or by dropping them anywhere.
 - A link per schema: the open one is in the URL as `/?schema=<id>`.
 - Light, dark or system theme.
+- A Google Drive editor at `/gdrive`, installed from the [Google Workspace Marketplace](https://workspace.google.com/marketplace/app/erd_editor/428467403360): it opens diagrams from Drive's Open with and New menus and saves back to the same file.
 
 The React shell around the `<erd-editor>` custom element: diagrams are stored in IndexedDB
 through a Comlink worker, tabs stay in sync over a BroadcastChannel, a Workbox service worker

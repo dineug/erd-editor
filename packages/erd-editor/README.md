@@ -9,6 +9,7 @@ framework dependency and renders into a closed shadow root, so it drops into any
 React, Vue, Svelte, or plain HTML — without leaking styles either way.
 
 This is the same editor that powers [erd-editor.io](https://erd-editor.io), the
+[Google Drive app](https://workspace.google.com/marketplace/app/erd_editor/428467403360), the
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode),
 the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and the
 [Obsidian plugin](https://community.obsidian.md/plugins/erd-editor).

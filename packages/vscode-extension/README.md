@@ -141,6 +141,8 @@ here, so a theme you pick on the canvas persists.
 ## Also available
 
 - [Web app](https://erd-editor.io) — installable PWA with real-time collaboration
+- [Google Drive app](https://workspace.google.com/marketplace/app/erd_editor/428467403360) — open
+  and save diagrams in Google Drive
 - [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor)
 - [Obsidian plugin](https://community.obsidian.md/plugins/erd-editor)
 - [`@dineug/erd-editor`](https://www.npmjs.com/package/@dineug/erd-editor) — the editor as a

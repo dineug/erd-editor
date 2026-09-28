@@ -5,22 +5,24 @@
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
 Design a database schema visually, import one you already have from SQL DDL, GraphQL SDL,
-DBML or AML, export DDL, and generate code from the result — in the browser, in VS Code,
-IntelliJ or Obsidian, or embedded in your own page as a custom element. One editor and one
-document format across all of them.
+DBML or AML, export DDL, and generate code from the result — in the browser or Google Drive, in
+VS Code, IntelliJ or Obsidian, or embedded in your own page as a custom element. One editor and
+one document format across all of them.
 
 ## Where to use it
 
 | | Install | |
 | --- | --- | --- |
 | **Web app** | [erd-editor.io](https://erd-editor.io) | Installable PWA, works offline, real-time collaboration |
+| **Google Drive** | [Google Workspace Marketplace](https://workspace.google.com/marketplace/app/erd_editor/428467403360) | Adds ERD Editor to Drive's Open with and New menus, saving back to the same file |
 | **VS Code** | [Marketplace](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) | Opens `.erd.json` files in a custom editor |
 | **IntelliJ** | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23594-erd-editor) | Same, for IntelliJ-based IDEs |
 | **Obsidian** | [Community plugins](https://community.obsidian.md/plugins/erd-editor) | Opens `.erd` and `.erd.json` files in a vault tab |
 | **Your app** | `npm install @dineug/erd-editor` | The framework-free `<erd-editor>` custom element |
 
 To try it in an IDE, create an empty file with a `.erd.json` extension and open it. In Obsidian,
-run **Create new diagram** from the command palette.
+run **Create new diagram** from the command palette. In Google Drive, choose
+**New → More → ERD Editor**.
 
 ## Features
 
