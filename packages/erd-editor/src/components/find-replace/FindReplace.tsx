@@ -16,11 +16,12 @@ import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
-import { isEditingText } from '@/engine/modules/editor/state';
+import { hasMoveKeys, isEditingText } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import {
   createMatcher,
+  DEFAULT_FIND_OPTIONS,
   FindField,
   FindFieldLabel,
   FindFieldList,
@@ -37,6 +38,7 @@ import {
   isComposing,
   isMod,
   KeyBindingName,
+  KeyBindingNameList,
   matchesShortcut,
   toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
@@ -80,12 +82,15 @@ const TAKEOVERS = [
   Open.timeTravel,
 ];
 
-/** The chords a press in the panel still carries to the editor: its own, search, and the document's undo and redo. */
+/** The chords a press in the panel still carries to the editor: its own, search, the document's undo and redo, and the zoom. */
 const PASSING = [
   KeyBindingName.findReplace,
   KeyBindingName.search,
   KeyBindingName.undo,
   KeyBindingName.redo,
+  KeyBindingName.zoomIn,
+  KeyBindingName.zoomOut,
+  KeyBindingName.zoomReset,
 ];
 
 const SCOPE_LABEL: Record<FindField, string> = {
@@ -118,10 +123,12 @@ function countText({ query, error, matches, current }: CountInput): string {
   return `${current + 1} of ${matches.length}`;
 }
 
+/** Whether the panel is drawn: it stands aside, still open, while a dialog it would paint over is up. */
 const isShown = ({ editor, settings }: RootState) =>
   Boolean(editor.openMap[Open.findReplace]) &&
   settings.canvasType === CanvasType.ERD &&
   !editor.openMap[Open.themeBuilder] &&
+  !editor.openMap[Open.tableProperties] &&
   !TAKEOVERS.some(key => editor.openMap[key]);
 
 const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
@@ -192,7 +199,13 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       })
     );
 
-    if (query !== undefined) state.query = query;
+    if (query !== undefined) {
+      // A query handed over is searched the way the palette searched it, not
+      // with whatever options and scopes an earlier search left on.
+      state.query = query;
+      Object.assign(state, DEFAULT_FIND_OPTIONS);
+      state.fields = [...FindFieldList];
+    }
     state.status = '';
     refresh();
     nextTick(focusQuery);
@@ -320,25 +333,46 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   };
 
   /**
-   * Keeps what is typed in the panel off the canvas shortcuts, which would
-   * otherwise read Enter, the arrows or Alt+Backspace as edits of the table
-   * the current match focused. Escape closes the panel instead.
+   * Keeps from the canvas what it would read as an edit of the ringed cell,
+   * its shortcuts bar PASSING and the arrows and Tab, and closes on Escape. Any
+   * other press goes on to the host, so its save or command palette works here.
    */
   const handleKeydown = (event: KeyboardEvent) => {
     const { keyBindingMap } = app.value;
-    const composing = isComposing(event);
+    const matches = (name: KeyBindingName) =>
+      matchesShortcut(event, keyBindingMap[name]);
 
-    if (!composing && matchesShortcut(event, keyBindingMap.stop)) {
+    if (isComposing(event)) {
+      event.stopPropagation();
+    } else if (matches(KeyBindingName.stop)) {
       event.preventDefault();
+      event.stopPropagation();
       close();
     } else if (
-      !composing &&
-      PASSING.some(name => matchesShortcut(event, keyBindingMap[name]))
+      !PASSING.some(matches) &&
+      (hasMoveKeys(event.key) || KeyBindingNameList.some(matches))
     ) {
-      return;
+      event.stopPropagation();
     }
+  };
 
-    event.stopPropagation();
+  /**
+   * Escape pressed anywhere closes the panel, as it closes every other one,
+   * unless something takes it first: an open cell editor or a relationship
+   * being drawn, which that press ends alone, or the palette, which it closes.
+   */
+  const handleStop = () => {
+    const { store } = app.value;
+    const { editor } = store.state;
+
+    if (
+      isShown(store.state) &&
+      !editor.openMap[Open.search] &&
+      !isEditingText(editor) &&
+      !editor.drawRelationship
+    ) {
+      close();
+    }
   };
 
   const toggleOption = (key: 'matchCase' | 'wholeWord' | 'regex') => {
@@ -364,6 +398,9 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       shortcut$
         .pipe(filter(({ type }) => type === KeyBindingName.findReplace))
         .subscribe(handleToggle),
+      shortcut$
+        .pipe(filter(({ type }) => type === KeyBindingName.stop))
+        .subscribe(handleStop),
       emitter.on({
         openFindReplace: ({ payload }) => open(payload?.query),
       }),

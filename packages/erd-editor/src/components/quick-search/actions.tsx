@@ -327,17 +327,9 @@ export function createScopeActions(app: AppContext): Action[] {
 /** How many columns, comments and memos the palette lists for one keyword. */
 export const MATCH_ACTION_LIMIT = 50;
 
-/** What the palette looks in beside the table names, which the fuzzy list already holds. */
-const MATCH_FIELDS = [
-  FindField.columnName,
-  FindField.tableComment,
-  FindField.columnComment,
-  FindField.memo,
-];
-
 /**
  * The columns, comments and memos holding the keyword, in any case, one row a
- * field, up to a limit past which a last row hands the whole list to Find and
+ * field, up to a limit past which a last row hands the search to Find and
  * Replace. A plain substring rather than the fuzzy match: long prose fuzzes into noise.
  */
 export function createMatchActions(app: AppContext, keyword: string): Action[] {
@@ -345,9 +337,15 @@ export function createMatchActions(app: AppContext, keyword: string): Action[] {
   const { matcher } = createMatcher(keyword, DEFAULT_FIND_OPTIONS);
   if (!matcher) return [];
 
-  // One row a field, however often the keyword comes up in its text.
-  const fields = findMatches(store.state, matcher, MATCH_FIELDS).filter(
-    (match, index, matches) => matches[index - 1]?.slot !== match.slot
+  // The panel's own search, which the last row counts, so it names the
+  // number the panel opens on.
+  const matches = findMatches(store.state, matcher);
+  // One row a field, however often the keyword comes up in its text, and no
+  // table name, which the fuzzy list already holds.
+  const fields = matches.filter(
+    (match, index) =>
+      match.field !== FindField.tableName &&
+      matches[index - 1]?.slot !== match.slot
   );
 
   const actions = fields.slice(0, MATCH_ACTION_LIMIT).map<Action>(match => {
@@ -357,7 +355,7 @@ export function createMatchActions(app: AppContext, keyword: string): Action[] {
     return {
       icon: fieldIcon(match.field, 16),
       name: snippetOf(match, 16, 64).text,
-      keywords: location ? `${kind} · ${location}` : kind,
+      keywords: location ? `${location} · ${kind}` : kind,
       perform: ({ store }) => {
         goToErdTarget(store, toErdTarget(match));
       },
@@ -367,7 +365,7 @@ export function createMatchActions(app: AppContext, keyword: string): Action[] {
   if (fields.length > MATCH_ACTION_LIMIT) {
     actions.push({
       icon: <Icon name="search" size={16} />,
-      name: `Show all ${fields.length} in Find and Replace`,
+      name: `Show all ${matches.length} matches in Find and Replace`,
       perform: ({ emitter }) => {
         emitter.emit(openFindReplaceAction({ query: keyword }));
       },

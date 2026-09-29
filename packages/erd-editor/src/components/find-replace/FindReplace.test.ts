@@ -13,11 +13,17 @@ import FindReplace, {
   MATCH_ROW_LIMIT,
   rowWindow,
 } from '@/components/find-replace/FindReplace';
+import {
+  createMatchActions,
+  MATCH_ACTION_LIMIT,
+} from '@/components/quick-search/actions';
 import { Open } from '@/constants/open';
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeZenModeAction,
+  drawEndRelationshipAction,
+  drawStartRelationshipAction,
   editTableAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -197,6 +203,62 @@ describe('FindReplace opening and closing', () => {
     expect(rows()).toHaveLength(5);
   });
 
+  it('searches a query handed over with the default options and every scope, whatever was left on', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await click(button('find-match-case'));
+    await click(button('find-whole-word'));
+    await click(
+      panel()?.querySelector('.find-scope[data-field="memo"]') as Element
+    );
+    await click(button('find-replace-close'));
+
+    await openWith('user(');
+
+    expect(countText()).toBe('No results');
+    for (const name of ['find-regex', 'find-match-case', 'find-whole-word']) {
+      expect(button(name).getAttribute('aria-pressed')).toBe('false');
+    }
+    const scopes = panel()?.querySelectorAll('.find-scope') ?? [];
+    for (const scope of Array.from(scopes)) {
+      expect(scope.getAttribute('aria-pressed')).toBe('true');
+    }
+
+    await openWith('user');
+    expect(countText()).toBe('5 matches');
+  });
+
+  it("opens from the palette's last row on the count that row names", async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await click(
+      panel()?.querySelector('.find-scope[data-field="tableName"]') as Element
+    );
+    await click(button('find-replace-close'));
+    for (let index = 0; index <= MATCH_ACTION_LIMIT; index++) {
+      app.store.dispatchSync(
+        addMemoAction({ id: `m${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeMemoValueAction({ id: `m${index}`, value: 'many user' })
+      );
+    }
+    const last = createMatchActions(app, 'user').at(-1);
+
+    last?.perform?.(app);
+    await flush();
+
+    expect(last?.name).toBe(`Show all ${countText()} in Find and Replace`);
+  });
+
+  it('keeps the options left on when opened with no query', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await click(button('find-replace-close'));
+
+    await openWith();
+
+    expect(button('find-regex').getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('takes the ERD tab when opened from another', async () => {
     app.store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.schemaSQL })
@@ -264,6 +326,26 @@ describe('FindReplace opening and closing', () => {
 
     expect(isOpen()).toBe(true);
     expect(panel()).toBeNull();
+  });
+
+  it('stands aside, still open, while Table Properties is up over the canvas', async () => {
+    await openWith('user');
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: true })
+    );
+    await flush();
+
+    expect(isOpen()).toBe(true);
+    expect(panel()).toBeNull();
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: false })
+    );
+    await flush();
+
+    expect(panel()).not.toBeNull();
+    expect(findInput().value).toBe('user');
   });
 
   it('sits under the toolbar, or at the top in zen mode, which takes the toolbar away', async () => {
@@ -600,13 +682,17 @@ describe('FindReplace keyboard isolation', () => {
     await openWith('user');
   });
 
-  it('keeps what is typed in the panel from the canvas shortcuts', async () => {
+  it('keeps from the canvas its shortcuts and the keys that move its focus ring', async () => {
     for (const init of [
-      { key: 'a', code: 'KeyA' },
       { key: 'Enter', code: 'Enter' },
       { key: 'ArrowDown', code: 'ArrowDown' },
+      { key: 'ArrowLeft', code: 'ArrowLeft' },
       { key: 'Tab', code: 'Tab' },
+      { key: 'Tab', code: 'Tab', shiftKey: true },
+      { key: ' ', code: 'Space' },
+      { key: 'a', code: 'KeyA', ctrlKey: true },
       { key: 'n', code: 'KeyN', altKey: true },
+      { key: 'Backspace', code: 'Backspace', altKey: true },
       { key: 'Backspace', code: 'Backspace', ctrlKey: true },
     ]) {
       await keydown(findInput(), init);
@@ -615,12 +701,15 @@ describe('FindReplace keyboard isolation', () => {
     expect(escaped).toEqual([]);
   });
 
-  it('lets through the chords that edit no text: undo, redo, search and its own', async () => {
+  it('lets through the chords that edit no text: undo, redo, search, zoom and its own', async () => {
     const chords = [
       { key: 'z', code: 'KeyZ', ctrlKey: true },
       { key: 'Z', code: 'KeyZ', ctrlKey: true, shiftKey: true },
       { key: 'k', code: 'KeyK', ctrlKey: true },
       { key: 'H', code: 'KeyH', ctrlKey: true, shiftKey: true },
+      { key: '=', code: 'Equal', ctrlKey: true },
+      { key: '-', code: 'Minus', ctrlKey: true },
+      { key: '0', code: 'Digit0', ctrlKey: true },
     ];
     for (const init of chords) {
       await keydown(findInput(), init);
@@ -631,7 +720,47 @@ describe('FindReplace keyboard isolation', () => {
       'KeyZ',
       'KeyK',
       'KeyH',
+      'Equal',
+      'Minus',
+      'Digit0',
     ]);
+  });
+
+  it('lets the host hear every chord and key the editor binds to nothing', async () => {
+    const presses = [
+      { key: 's', code: 'KeyS', metaKey: true },
+      { key: 's', code: 'KeyS', ctrlKey: true },
+      { key: 'P', code: 'KeyP', metaKey: true, shiftKey: true },
+      { key: 'w', code: 'KeyW', metaKey: true },
+      { key: 'F5', code: 'F5' },
+      { key: 'a', code: 'KeyA' },
+      { key: 'Backspace', code: 'Backspace' },
+    ];
+    for (const init of presses) {
+      await keydown(findInput(), init);
+    }
+    await keydown(button('find-replace-all'), presses[0]);
+
+    expect(escaped.map(({ code }) => code)).toEqual([
+      'KeyS',
+      'KeyS',
+      'KeyP',
+      'KeyW',
+      'F5',
+      'KeyA',
+      'Backspace',
+      'KeyS',
+    ]);
+    expect(escaped.every(event => !event.defaultPrevented)).toBe(true);
+  });
+
+  it('follows a host that remaps a shortcut, keeping the new chord off the canvas', async () => {
+    app.keyBindingMap.addMemo = [{ shortcut: 'Alt+KeyQ' }];
+
+    await keydown(findInput(), { key: 'q', code: 'KeyQ', altKey: true });
+    await keydown(findInput(), { key: 'm', code: 'KeyM', altKey: true });
+
+    expect(escaped.map(({ code }) => code)).toEqual(['KeyM']);
   });
 
   it('stops even a passing chord mid-composition', async () => {
@@ -643,6 +772,38 @@ describe('FindReplace keyboard isolation', () => {
     });
 
     expect(escaped).toEqual([]);
+  });
+
+  it('closes on the Escape the canvas hears, pressed anywhere in the editor', async () => {
+    focusEvents = 0;
+
+    await shortcut(KeyBindingName.stop);
+
+    expect(isOpen()).toBe(false);
+    expect(focusEvents).toBe(1);
+  });
+
+  it('leaves that Escape to what takes it first: a cell editor, a draw or the palette', async () => {
+    app.store.dispatchSync(
+      focusTableAction({ tableId: 'orders' }),
+      editTableAction()
+    );
+    await shortcut(KeyBindingName.stop);
+    expect(isOpen()).toBe(true);
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId: 'orders' }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+    await shortcut(KeyBindingName.stop);
+    expect(isOpen()).toBe(true);
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.search]: true }),
+      drawEndRelationshipAction()
+    );
+    await shortcut(KeyBindingName.stop);
+    expect(isOpen()).toBe(true);
   });
 
   it('closes on Escape, which the canvas never hears', async () => {

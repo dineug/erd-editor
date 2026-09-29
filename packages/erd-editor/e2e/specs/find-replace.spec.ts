@@ -110,6 +110,39 @@ test.describe('Find and Replace', () => {
     await erd.expectKeyboardFocusInside();
   });
 
+  test('leaves the chords the editor does not bind to the host, and still zooms', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(schema());
+    await openFind(erd, 'user');
+    await page.evaluate(() => {
+      Reflect.set(window, '__heard', []);
+      window.addEventListener('keydown', event => {
+        Reflect.get(window, '__heard').push(event.code);
+      });
+    });
+    const heard = () =>
+      page.evaluate(() =>
+        (Reflect.get(window, '__heard') as string[]).filter(
+          code => !/^(Control|Meta|Shift|Alt)/.test(code)
+        )
+      );
+    const before = (await erd.settings()).zoomLevel;
+
+    // A webview host hears save and its command palette through the window.
+    await erd.press('ControlOrMeta+KeyS');
+    await erd.press('ControlOrMeta+Shift+KeyP');
+    await erd.press('ArrowDown');
+    await erd.press(Shortcut.zoomIn);
+
+    expect(await heard()).toEqual(['KeyS', 'KeyP']);
+    await expect
+      .poll(async () => (await erd.settings()).zoomLevel)
+      .toBeGreaterThan(before);
+    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+  });
+
   test('replaces every match as one change, one undo and one batch to a peer', async ({
     erd,
     page,
@@ -175,7 +208,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.page.keyboard.type('login');
     await erd.host
       .locator('.quick-search')
-      .getByText('Column comment · users.email')
+      .getByText('users.email · Column comment')
       .click();
 
     await expect(erd.host.locator('.quick-search')).toHaveCount(0);

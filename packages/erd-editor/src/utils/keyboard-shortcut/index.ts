@@ -48,7 +48,8 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
     { shortcut: '$mod+KeyK', preventDefault: true, stopPropagation: true },
   ],
   // $mod+F is the find of every host and $mod+H hides a mac app. The shifted H
-  // is Replace in Files in VS Code, whose webview never hears a stopped press.
+  // is Replace in Files in VS Code, whose webview never hears a stopped press,
+  // and Method Hierarchy in IntelliJ, whose keymap can take a chord before JCEF.
   [KeyBindingName.findReplace]: [
     {
       shortcut: '$mod+Shift+KeyH',

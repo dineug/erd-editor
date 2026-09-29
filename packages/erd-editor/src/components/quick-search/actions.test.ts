@@ -773,8 +773,8 @@ describe('createMatchActions', () => {
     const actions = createMatchActions(app, 'user');
 
     expect(actions.map(({ name, keywords }) => [name, keywords])).toEqual([
-      ['user_id', 'Column · orders.user_id'],
-      ['user id', 'Column comment · users.id'],
+      ['user_id', 'orders.user_id · Column'],
+      ['user id', 'users.id · Column comment'],
       ['Every user_id points at users.id', 'Memo'],
     ]);
     for (const action of actions) {
@@ -785,7 +785,7 @@ describe('createMatchActions', () => {
   it('leaves the table names to the fuzzy list, which already holds them', () => {
     expect(
       createMatchActions(app, 'orders').map(({ keywords }) => keywords)
-    ).toEqual(['Table comment · orders']);
+    ).toEqual(['orders · Table comment']);
   });
 
   it('has nothing for an empty keyword', () => {
@@ -831,8 +831,11 @@ describe('createMatchActions', () => {
     const elapsed = performance.now() - started;
 
     expect(rows).toHaveLength(MATCH_ACTION_LIMIT + 1);
-    // 400 table comments and 6,000 names and comments each, and eight in the seed.
-    expect(rows.at(-1)?.name).toBe('Show all 12408 in Find and Replace');
+    // Every e the panel would find: one in each of 400 table comments and 6,000
+    // column names, three in each of 6,000 column comments, sixteen in the seed.
+    expect(rows.at(-1)?.name).toBe(
+      'Show all 24416 matches in Find and Replace'
+    );
     // Not a benchmark, only a guard against a search that grows past linear.
     expect(elapsed).toBeLessThan(5000);
   });
@@ -858,8 +861,9 @@ describe('createMatchActions', () => {
     const last = actions.at(-1) as Action;
 
     expect(actions).toHaveLength(MATCH_ACTION_LIMIT + 1);
+    // One in each memo added, and five in the seed: the panel's count.
     expect(last.name).toBe(
-      `Show all ${MATCH_ACTION_LIMIT + 4} in Find and Replace`
+      `Show all ${MATCH_ACTION_LIMIT + 6} matches in Find and Replace`
     );
 
     last.perform?.(app);

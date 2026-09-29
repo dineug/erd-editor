@@ -208,6 +208,39 @@ describe('Find and Replace on a real keyboard', () => {
     expect(stateOf(fixture).editor.selectedMap).toEqual({ users: 'table' });
     expect(stateOf(fixture).editor.focusTable?.columnId).toBe('email');
   });
+
+  it('closes on an Escape pressed on the canvas too', async () => {
+    const fixture = await setup();
+    await press(OPEN_FIND);
+    fixture.root.focus();
+
+    await press('{Escape}');
+
+    expect(panelOf(fixture)).toBeNull();
+  });
+
+  it('lets a chord the editor leaves alone reach the host, and zooms the canvas', async () => {
+    const fixture = await setup();
+    const heard: string[] = [];
+    const modifiers = ['Alt', 'Control', 'Meta', 'Shift'];
+    const listen = (event: KeyboardEvent) => {
+      modifiers.includes(event.key) || heard.push(event.code);
+    };
+    window.addEventListener('keydown', listen);
+    teardowns.push(() => window.removeEventListener('keydown', listen));
+    await press(OPEN_FIND);
+    heard.length = 0;
+
+    // A webview host hears its save and command palette through the window.
+    await press(`{${MOD}>}s{/${MOD}}`);
+    await press(`{${MOD}>}{Shift>}P{/Shift}{/${MOD}}`);
+    await press('{ArrowDown}');
+    await press(`{${MOD}>}={/${MOD}}`);
+
+    expect(heard).toEqual(['KeyS', 'KeyP']);
+    expect(stateOf(fixture).settings.zoomLevel).toBeGreaterThan(1);
+    expect(document.activeElement).toBe(inputOf(fixture, 'find-input'));
+  });
 });
 
 describe('quick search over the fields on a real keyboard', () => {
@@ -224,7 +257,7 @@ describe('quick search over the fields on a real keyboard', () => {
       await press('{ArrowDown}');
       if (selected()?.textContent?.includes('login email')) break;
     }
-    expect(selected()?.textContent).toContain('Column comment · users.email');
+    expect(selected()?.textContent).toContain('users.email · Column comment');
 
     await press('{Enter}');
 

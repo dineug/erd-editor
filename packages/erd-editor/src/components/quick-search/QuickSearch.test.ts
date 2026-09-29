@@ -562,8 +562,8 @@ describe('QuickSearch column, comment and memo matches', () => {
     expect(
       matchRows.map(row => [rowNames()[rows().indexOf(row)], keywordOf(row)])
     ).toEqual([
-      ['user_id', 'Column · orders.user_id'],
-      ['user id', 'Column comment · users.id'],
+      ['user_id', 'orders.user_id · Column'],
+      ['user id', 'users.id · Column comment'],
     ]);
     expect(rowNames()).toContain('Every user_id points at users.id');
     expect(rowNames()).toContain('users');
