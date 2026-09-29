@@ -662,7 +662,7 @@ describe('recalculateTableWidth', () => {
 });
 
 describe('calcAlternateKeyWidth', () => {
-  /** A table of three columns and one unique index over the ones named. */
+  /** A table of three columns and a unique index over each list of columns named. */
   function keyed(show: number, ...keyColumnIds: string[][]) {
     const columns = ['a', 'b', 'c'].map(id =>
       createColumn({
@@ -718,7 +718,7 @@ describe('calcAlternateKeyWidth', () => {
   it('is nothing while the marks are hidden or the table has none', () => {
     expect(
       calcAlternateKeyWidth(
-        ...(Object.values(keyed(0, ['a'])) as [Table, RootState])
+        ...(Object.values(keyed(0, ['a', 'b'])) as [Table, RootState])
       )
     ).toBe(0);
 
@@ -726,9 +726,15 @@ describe('calcAlternateKeyWidth', () => {
     expect(calcAlternateKeyWidth(table, state)).toBe(0);
   });
 
+  it('is nothing for a unique index over one column, which keys no alternate key', () => {
+    const { table, state } = keyed(Show.columnAlternateKey, ['a'], ['c']);
+
+    expect(calcAlternateKeyWidth(table, state)).toBe(0);
+  });
+
   it('widens only a table that shows a mark, by the mark and its margin', () => {
-    const shown = keyed(Show.columnAlternateKey, ['a']);
-    const hidden = keyed(0, ['a']);
+    const shown = keyed(Show.columnAlternateKey, ['a', 'b']);
+    const hidden = keyed(0, ['a', 'b']);
     const widths = calcTableWidths(shown.table, shown.state);
 
     expect(widths.alternateKey).toBe(markWidth('AK1.1'));
@@ -740,12 +746,12 @@ describe('calcAlternateKeyWidth', () => {
   });
 
   it('keeps the room when the default columns set the width', () => {
-    const { table, state } = keyed(Show.columnAlternateKey, ['a']);
+    const { table, state } = keyed(Show.columnAlternateKey, ['a', 'b']);
     for (const id of table.columnIds) {
       state.collections.tableColumnEntities[id].ui.widthName = 0;
     }
     state.settings.show |= Show.columnNotNull | Show.columnUnique;
-    const hidden = keyed(Show.columnNotNull | Show.columnUnique, ['a']);
+    const hidden = keyed(Show.columnNotNull | Show.columnUnique, ['a', 'b']);
     for (const id of hidden.table.columnIds) {
       hidden.state.collections.tableColumnEntities[id].ui.widthName = 0;
     }

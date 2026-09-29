@@ -141,9 +141,7 @@ describe('IndexesIndex', () => {
       const label = alternateKeyOf(mounted) as HTMLElement;
 
       expect(label.textContent).toBe('AK2');
-      expect(label.getAttribute('title')).toBe(
-        'Alternate key number the diagram marks its columns with'
-      );
+      expect(label.getAttribute('title')).toBe('Alternate Key 2');
     });
 
     it('shows no alternate key number for an index that is none', async () => {

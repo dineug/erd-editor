@@ -13,6 +13,7 @@ import * as indexStyles from '@/components/erd/table-properties/table-properties
 import * as keyStyles from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey.styles';
 import TablePropertiesIndexes from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes';
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes.styles';
+import * as separatorStyles from '@/components/primitives/separator/Separator.styles';
 import {
   addIndexAction,
   changeIndexUniqueAction,
@@ -363,10 +364,14 @@ describe('TablePropertiesIndexes', () => {
           ? 'key'
           : row.classList.contains(String(indexStyles.row))
             ? 'index'
-            : 'add'
+            : row.classList.contains(String(styles.addIndexButtonArea))
+              ? 'add'
+              : row.querySelector(`.${String(separatorStyles.separator)}`)
+                ? 'separator'
+                : 'other'
       );
 
-      expect(rowClasses).toEqual(['key', 'key', 'index', 'add']);
+      expect(rowClasses).toEqual(['key', 'key', 'separator', 'index', 'add']);
       expect(keyRowsOf(mounted).map(row => row.textContent)).toEqual([
         'PKPK_',
         'UQUQ__',
@@ -435,26 +440,44 @@ describe('TablePropertiesIndexes', () => {
       expect(checkboxesOf(mounted).some(box => box.checked)).toBe(false);
     });
 
-    it('numbers each unique index keying a column as its alternate key', async () => {
-      app.store.dispatchSync(
-        addIndexAction({ id: 'i2', tableId: TABLE_ID }),
-        addIndexColumnAction({
-          id: 'ic1',
-          indexId: 'i2',
+    it('numbers each unique index over several columns as its alternate key', async () => {
+      const keyed = (indexId: string, ...columnIds: string[]) => [
+        addIndexAction({ id: indexId, tableId: TABLE_ID }),
+        ...columnIds.map(columnId =>
+          addIndexColumnAction({
+            id: `${indexId}-${columnId}`,
+            indexId,
+            tableId: TABLE_ID,
+            columnId,
+          })
+        ),
+        changeIndexUniqueAction({
+          id: indexId,
           tableId: TABLE_ID,
-          columnId: 'c3',
+          value: true,
         }),
-        changeIndexUniqueAction({ id: 'i2', tableId: TABLE_ID, value: true })
+      ];
+      app.store.dispatchSync(
+        ...keyed('i2', 'c3', 'c4'),
+        ...keyed('i3', 'c3'),
+        ...keyed('i4', 'c1', 'c3')
       );
       mounted = await mountAndFlush(template(), app);
 
       expect(
-        indexRowsOf(mounted).map(
-          row =>
-            row.querySelector(`.${String(indexStyles.alternateKey)}`)
-              ?.textContent ?? null
-        )
-      ).toEqual([null, 'AK1']);
+        indexRowsOf(mounted).map(row => [
+          row.querySelector(`.${String(indexStyles.alternateKey)}`)
+            ?.textContent ?? null,
+          row
+            .querySelector(`.${String(indexStyles.alternateKey)}`)
+            ?.getAttribute('title') ?? null,
+        ])
+      ).toEqual([
+        [null, null],
+        ['AK2', 'Alternate Key 2'],
+        [null, null],
+        ['AK1', 'Alternate Key 1'],
+      ]);
     });
   });
 });

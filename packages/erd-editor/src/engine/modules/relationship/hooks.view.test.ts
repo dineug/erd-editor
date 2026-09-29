@@ -405,27 +405,36 @@ describe('the view sort hook on the document actions', () => {
     expect(sorts('document')).toBe(1);
   });
 
-  it('does not sort the view for an alternate key, whose mark a view never draws', async () => {
-    const store = createScene();
-    await openFocused(store);
+  it.each([
+    [0, 0],
+    [Show.columnAlternateKey, 1],
+  ])(
+    'does not sort the view for an alternate key, whose mark a view never draws (show %i)',
+    async (show, documentSorts) => {
+      const store = createScene();
+      await openFocused(store);
+      store.state.settings.show = show;
 
-    store.dispatchSync(
-      shared(addIndexAction({ id: 'i1', tableId: 't1' })),
-      shared(
-        addIndexColumnAction({
-          id: 'ic1',
-          indexId: 'i1',
-          tableId: 't1',
-          columnId: 'c-t1',
-        })
-      ),
-      shared(changeIndexUniqueAction({ id: 'i1', tableId: 't1', value: true }))
-    );
-    await settle();
+      store.dispatchSync(
+        shared(addIndexAction({ id: 'i1', tableId: 't1' })),
+        shared(
+          addIndexColumnAction({
+            id: 'ic1',
+            indexId: 'i1',
+            tableId: 't1',
+            columnId: 'c-t1',
+          })
+        ),
+        shared(
+          changeIndexUniqueAction({ id: 'i1', tableId: 't1', value: true })
+        )
+      );
+      await settle();
 
-    expect(sorts('flow')).toBe(0);
-    expect(sorts('document')).toBe(1);
-  });
+      expect(sorts('flow')).toBe(0);
+      expect(sorts('document')).toBe(documentSorts);
+    }
+  );
 
   /** AC-13. A neighbour leaving the view is a change to what it shows, though its id has already left. */
   it('sorts the view when a connector it showed is removed', async () => {

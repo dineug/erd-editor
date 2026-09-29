@@ -95,6 +95,12 @@ describe('visualization Table', () => {
           tableId: TABLE_ID,
           columnId: 'c2',
         }),
+        addIndexColumnAction({
+          id: 'ic2',
+          indexId: 'i1',
+          tableId: TABLE_ID,
+          columnId: 'c1',
+        }),
         changeIndexUniqueAction({ id: 'i1', tableId: TABLE_ID, value: true })
       );
     });
@@ -111,7 +117,7 @@ describe('visualization Table', () => {
       );
       mounted = await mountAndFlush(tableTemplate(table), app);
 
-      expect(marksOf(mounted)).toEqual(['', 'AK1.1']);
+      expect(marksOf(mounted)).toEqual(['AK1.2', 'AK1.1']);
     });
   });
 

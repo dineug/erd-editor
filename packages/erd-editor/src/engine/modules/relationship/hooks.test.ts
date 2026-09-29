@@ -547,13 +547,19 @@ describe('relationship/hooks relationshipSortHook', () => {
 
   it('re-measures a table once an index action gives it an alternate key mark', async () => {
     const { store } = createTestAppContext();
-    const table = createTable({ id: 't1', name: 't1', columnIds: ['c1'] });
-    store.state.collections.tableEntities.t1 = table;
-    store.state.collections.tableColumnEntities.c1 = createColumn({
-      id: 'c1',
-      tableId: 't1',
-      name: 'c1',
+    const table = createTable({
+      id: 't1',
+      name: 't1',
+      columnIds: ['c1', 'c2'],
     });
+    store.state.collections.tableEntities.t1 = table;
+    for (const id of table.columnIds) {
+      store.state.collections.tableColumnEntities[id] = createColumn({
+        id,
+        tableId: 't1',
+        name: id,
+      });
+    }
     store.state.doc.tableIds.push('t1');
     store.dispatchSync(
       changeShowAction({ show: Show.columnAlternateKey, value: true })
@@ -569,6 +575,12 @@ describe('relationship/hooks relationshipSortHook', () => {
         tableId: 't1',
         columnId: 'c1',
       }),
+      addIndexColumnAction({
+        id: 'ic2',
+        indexId: 'i1',
+        tableId: 't1',
+        columnId: 'c2',
+      }),
       changeIndexUniqueAction({ id: 'i1', tableId: 't1', value: true })
     );
     await settle();
@@ -580,6 +592,21 @@ describe('relationship/hooks relationshipSortHook', () => {
       before
     );
     store.destroy();
+  });
+
+  it('sorts on an index action only while the marks are shown', async () => {
+    const store = createTestStore();
+    const { fire } = await run(relationshipSortHook, store);
+
+    fire(addIndexAction.type);
+    fire(changeIndexUniqueAction.type);
+    await settle();
+    expect(relationshipSort).not.toHaveBeenCalled();
+
+    store.state.settings.show |= Show.columnAlternateKey;
+    fire(addIndexColumnAction.type);
+    await settle();
+    expect(relationshipSort).toHaveBeenCalledTimes(1);
   });
 
   it('routes around a table that appeared between the two ends', async () => {

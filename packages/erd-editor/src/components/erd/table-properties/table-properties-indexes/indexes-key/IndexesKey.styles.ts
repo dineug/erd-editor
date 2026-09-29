@@ -38,3 +38,8 @@ export const name = css`
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
+
+export const lock = css`
+  flex-shrink: 0;
+  margin-left: auto;
+`;

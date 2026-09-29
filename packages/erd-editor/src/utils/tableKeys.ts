@@ -3,7 +3,6 @@ import { query } from '@dineug/erd-editor-schema';
 import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
-import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 
 type KeyState = Pick<RootState, 'doc' | 'collections'>;
@@ -67,15 +66,15 @@ export function getColumnKeys(
 }
 
 /**
- * The table's alternate keys, AK1 first: its unique indexes in document order,
- * one column or several, each with the columns of the table it keys in key
- * order. Counting single-column ones too keeps a number when a key gains a column.
+ * The table's alternate keys, AK1 first: its unique indexes over two or more
+ * of its columns, ordered by where those columns stand in the table. Neither
+ * an undo nor a peer's concurrent add reorders them, as the index list would.
  */
 export function getAlternateKeys(
   { doc, collections }: KeyState,
   table: Table
 ): AlternateKey[] {
-  const hasColumn = arrayHas(table.columnIds);
+  const positions = new Map(table.columnIds.map((id, index) => [id, index]));
   const indexColumns = query(collections).collection('indexColumnEntities');
 
   return query(collections)
@@ -87,9 +86,38 @@ export function getAlternateKeys(
       columnIds: indexColumns
         .selectByIds(index.indexColumnIds)
         .map(indexColumn => indexColumn.columnId)
-        .filter(hasColumn),
+        .filter(columnId => positions.has(columnId)),
     }))
-    .filter(key => key.columnIds.length > 0);
+    .filter(key => key.columnIds.length > 1)
+    .sort((a, b) => compareKeys(a, b, positions));
+}
+
+/**
+ * Key by key column, by table position: the key whose first column stands
+ * higher comes first, a key that is the other's prefix before it, and two keys
+ * over the same columns by their ids.
+ */
+function compareKeys(
+  a: AlternateKey,
+  b: AlternateKey,
+  positions: Map<string, number>
+): number {
+  const length = Math.min(a.columnIds.length, b.columnIds.length);
+
+  for (let index = 0; index < length; index++) {
+    const order =
+      (positions.get(a.columnIds[index]) as number) -
+      (positions.get(b.columnIds[index]) as number);
+    if (order) return order;
+  }
+
+  if (a.columnIds.length !== b.columnIds.length) {
+    return a.columnIds.length - b.columnIds.length;
+  }
+
+  // Two indexes never share an id, and a code unit order is the same on every
+  // replica, which a locale's collation need not be.
+  return a.indexId < b.indexId ? -1 : 1;
 }
 
 /**

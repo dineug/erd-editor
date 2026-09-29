@@ -10,7 +10,7 @@ import {
   timer,
 } from 'rxjs';
 
-import { ColumnOption, StartRelationshipType } from '@/constants/schema';
+import { ColumnOption, Show, StartRelationshipType } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
 import {
   initialLoadJsonAction,
@@ -165,21 +165,6 @@ const isMoveOnly = arrayHas<string>([
 const sortWindow = ({ tags }: AnyAction) =>
   !isNil(tags) && bHas(tags, Tag.drag) ? timer(5) : timer(0, asapScheduler);
 
-const relationshipSortHook: HookEffect = (action$, getState) =>
-  action$
-    .pipe(
-      // Invalidation reads every action, the sort reads one per window. Putting
-      // this after the throttle would drop the width-changing action whenever
-      // it shared a window with a move.
-      tap(action => {
-        if (!isMoveOnly(action.type)) invalidateTableWidths();
-      }),
-      throttle(sortWindow, { leading: false, trailing: true })
-    )
-    .subscribe(() => {
-      relationshipSort(getState());
-    });
-
 /**
  * The actions that add, drop or reshape an alternate key, whose mark widens
  * its table in the document while the setting shows the marks.
@@ -191,6 +176,32 @@ const alternateKeyActions = [
   addIndexColumnAction,
   removeIndexColumnAction,
 ];
+
+const isAlternateKeyAction = arrayHas<string>(
+  alternateKeyActions.map(action => action.type)
+);
+
+const relationshipSortHook: HookEffect = (action$, getState) =>
+  action$
+    .pipe(
+      // An index changes no width while the marks are hidden, and a checkbox
+      // in the Indexes tab would otherwise sort the whole document.
+      filter(
+        action =>
+          !isAlternateKeyAction(action.type) ||
+          bHas(getState().settings.show, Show.columnAlternateKey)
+      ),
+      // Invalidation reads every action, the sort reads one per window. Putting
+      // this after the throttle would drop the width-changing action whenever
+      // it shared a window with a move.
+      tap(action => {
+        if (!isMoveOnly(action.type)) invalidateTableWidths();
+      }),
+      throttle(sortWindow, { leading: false, trailing: true })
+    )
+    .subscribe(() => {
+      relationshipSort(getState());
+    });
 
 /**
  * Document actions a view never sees the effect of: a view draws no memo and

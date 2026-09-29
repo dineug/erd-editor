@@ -1,5 +1,6 @@
 import { FC } from '@dineug/r-html';
 
+import Icon from '@/components/primitives/icon/Icon';
 import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import { COLUMN_UNIQUE_WIDTH } from '@/constants/layout';
 import type { ColumnKey } from '@/utils/tableKeys';
@@ -13,20 +14,14 @@ export type IndexesKeyProps = {
 };
 
 const KIND_LABEL: Record<ColumnKey['kind'], { text: string; title: string }> = {
-  primaryKey: {
-    text: 'PK',
-    title: 'Primary key, declared by the columns marked PK',
-  },
-  unique: {
-    text: 'UQ',
-    title: 'Unique, declared by the column marked UQ',
-  },
+  primaryKey: { text: 'PK', title: 'Primary Key' },
+  unique: { text: 'UQ', title: 'Unique Column' },
 };
 
 /**
  * A key the table's columns declare, listed beside the indexes so every key
- * shows in one place. It has no name input and no remove button: selecting it
- * only shows its columns, and the columns are where it is changed.
+ * shows in one place. A lock stands where an index has its remove button:
+ * selecting it only shows its columns, and the columns are where it changes.
  */
 const IndexesKey: FC<IndexesKeyProps> = props => {
   const handleSelect = () => {
@@ -52,6 +47,7 @@ const IndexesKey: FC<IndexesKeyProps> = props => {
           />
         </div>
         <div class={['column-col', styles.name]}>{columnKey.name}</div>
+        <Icon class={styles.lock} size={12} name="lock" title="Read Only" />
       </div>
     );
   };

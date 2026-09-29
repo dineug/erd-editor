@@ -7,6 +7,8 @@ import IndexesCheckboxColumn from '@/components/erd/table-properties/table-prope
 import IndexesColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn';
 import IndexesKey from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey';
 import Icon from '@/components/primitives/icon/Icon';
+import Separator from '@/components/primitives/separator/Separator';
+import { TABLE_PADDING } from '@/constants/layout';
 import { addIndexAction$ } from '@/engine/modules/index/generator.actions';
 import { attachChangeOnlyTag$ } from '@/engine/tag';
 import { Index } from '@/internal-types';
@@ -81,6 +83,9 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
               />
             )
           )}
+          {columnKeys.length ? (
+            <Separator space={4} padding={TABLE_PADDING} />
+          ) : null}
           {repeat(
             indexes,
             index => index.id,

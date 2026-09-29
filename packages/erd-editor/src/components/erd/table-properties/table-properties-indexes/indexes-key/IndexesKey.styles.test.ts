@@ -13,9 +13,16 @@ const staticText = (literals: { strings: TemplateStringsArray }) =>
   [...literals.strings].join(' ');
 
 describe('IndexesKey.styles', () => {
-  it('exports the row and name tokens', () => {
-    expect(Object.keys(styles)).toEqual(['row', 'name']);
-    expect(new Set(Object.values(styles).map(String)).size).toBe(2);
+  it('exports the row, name and lock tokens', () => {
+    expect(Object.keys(styles)).toEqual(['row', 'name', 'lock']);
+    expect(new Set(Object.values(styles).map(String)).size).toBe(3);
+  });
+
+  it('pushes the lock to the end of the row, where an index keeps its remove button', () => {
+    const text = staticText(styles.lock);
+
+    expect(text).toContain('margin-left: auto');
+    expect(text).toContain('flex-shrink: 0');
   });
 
   it('keeps its row a class of its own, apart from an editable index row', () => {

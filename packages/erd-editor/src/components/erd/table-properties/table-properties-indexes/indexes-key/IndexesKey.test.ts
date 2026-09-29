@@ -69,25 +69,28 @@ describe('IndexesKey', () => {
     const [chipCell, nameCell] = Array.from(row.children) as HTMLElement[];
     const chip = chipCell.firstElementChild as HTMLElement;
 
-    expect(row.getAttribute('title')).toBe(
-      'Primary key, declared by the columns marked PK'
-    );
+    expect(row.getAttribute('title')).toBe('Primary Key');
     expect(chip.textContent?.trim()).toBe('PK');
     expect(chip.classList.contains('checked')).toBe(true);
     expect(chip.style.width).toBe(`${COLUMN_UNIQUE_WIDTH}px`);
     expect(nameCell.textContent).toBe('PK_users');
     expect(nameCell.classList.contains(String(styles.name))).toBe(true);
     expect(row.querySelector('input')).toBeNull();
-    expect(row.querySelector('.icon')).toBeNull();
+    expect(
+      Array.from(row.querySelectorAll('.icon')).map(icon =>
+        icon.getAttribute('title')
+      )
+    ).toEqual(['Read Only']);
+    expect(
+      row.querySelector('.icon')?.classList.contains(String(styles.lock))
+    ).toBe(true);
   });
 
   it('shows a unique column as a checked UQ chip', async () => {
     mounted = await mountAndFlush(template(UNIQUE), app);
     const row = rowOf(mounted);
 
-    expect(row.getAttribute('title')).toBe(
-      'Unique, declared by the column marked UQ'
-    );
+    expect(row.getAttribute('title')).toBe('Unique Column');
     expect(row.textContent).toContain('UQ');
     expect(row.textContent).toContain('UQ_users_email');
   });
