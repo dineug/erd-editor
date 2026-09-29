@@ -20,6 +20,7 @@ import {
   setThemeOptionsAction,
   toggleSearchAction,
 } from '@/utils/emitter';
+import { FindField } from '@/utils/find-replace';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -187,9 +188,11 @@ describe('action creators', () => {
       type: 'toggleSearch',
       payload: undefined,
     });
-    expect(openFindReplaceAction({ query: 'user' })).toEqual({
+    expect(
+      openFindReplaceAction({ query: 'user', fields: [FindField.memo] })
+    ).toEqual({
       type: 'openFindReplace',
-      payload: { query: 'user' },
+      payload: { query: 'user', fields: [FindField.memo] },
     });
     expect(openFindReplaceAction()).toEqual({
       type: 'openFindReplace',

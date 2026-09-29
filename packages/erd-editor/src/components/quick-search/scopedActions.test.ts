@@ -195,6 +195,48 @@ describe('paletteRows without a prefix', () => {
     ]);
   });
 
+  it('lists the commands a word only fuzzes to, then offers the word to the prefixes', () => {
+    expect(names(rowsFor('posts'))).toEqual([
+      'Import',
+      'Export',
+      'Search tables for "posts"',
+      'Search columns for "posts"',
+      'Search comments & memos for "posts"',
+    ]);
+
+    // Names a schema gives its tables, each of which Fuse fuzzes to commands.
+    for (const keyword of ['roles', 'users', 'tables', 'accounts', 'notes']) {
+      const rows = rowsFor(keyword);
+      const commands = rows.slice(0, -3);
+
+      expect(commands.length).toBeGreaterThan(0);
+      expect(commands.every(row => row.insert === undefined)).toBe(true);
+      expect(rows.slice(-3).map(row => row.insert)).toEqual([
+        `#${keyword}`,
+        `@${keyword}`,
+        `"${keyword}`,
+      ]);
+    }
+  });
+
+  it('offers no prefix while a command listed holds the keyword, in its name or keywords, or by its Hangul letters', () => {
+    const held = ['auto', 'LAYOUT', 'new t', 'relationship', 'rename'];
+    for (const keyword of held) {
+      const offers = rowsFor(keyword).some(row => row.insert !== undefined);
+      expect(offers).toBe(false);
+    }
+
+    const choseong = parsePaletteQuery('ㅅㅇㅈ');
+    const korean: Action[] = [{ name: '사용자 추가' }];
+    expect(paletteRows(app, korean, choseong)).toEqual(korean);
+    expect(names(paletteRows(app, [{ name: 'Tab' }], choseong))).toEqual([
+      'Tab',
+      'Search tables for "ㅅㅇㅈ"',
+      'Search columns for "ㅅㅇㅈ"',
+      'Search comments & memos for "ㅅㅇㅈ"',
+    ]);
+  });
+
   it('types in a query each of those rows lists the document by', () => {
     const [tables, columns, text] = rowsFor('email');
 

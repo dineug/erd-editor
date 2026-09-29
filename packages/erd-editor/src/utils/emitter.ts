@@ -12,6 +12,12 @@ import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import type { FindField } from '@/utils/find-replace/findMatches';
 import { safeCallback } from '@/utils/safeCallback';
 
+/** A search the palette hands Find and Replace: the query, and the kinds of text it searches in. */
+export type FindReplaceQuery = {
+  query: string;
+  fields: FindField[];
+};
+
 const InternalActionType = {
   openColorPicker: 'openColorPicker',
   closeColorPicker: 'closeColorPicker',
@@ -57,11 +63,7 @@ type InternalActionMap = {
   };
   [InternalActionType.schemaGC]: void;
   [InternalActionType.toggleSearch]: void;
-  [InternalActionType.openFindReplace]: {
-    query?: string;
-    /** The kinds of text the handed query is searched in; every kind when left out. */
-    fields?: FindField[];
-  } | void;
+  [InternalActionType.openFindReplace]: FindReplaceQuery | void;
   [InternalActionType.openThemeBuilder]: void;
   [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
   [InternalActionType.mouseTrackerStart]: void;

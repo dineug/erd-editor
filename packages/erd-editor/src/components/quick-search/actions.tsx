@@ -35,6 +35,7 @@ import {
 import { RootState } from '@/engine/state';
 import { getOriginToPlace } from '@/konva/scene/viewport';
 import {
+  FindReplaceQuery,
   openAutomaticTablePlacementAction,
   openFindReplaceAction,
 } from '@/utils/emitter';
@@ -47,7 +48,6 @@ import {
   importSchemaSQL,
 } from '@/utils/file/importFile';
 import {
-  FindField,
   FindFieldLabel,
   FindMatch,
   locationOf,
@@ -412,7 +412,7 @@ export function createMatchAction(state: RootState, match: FindMatch): Action {
 /** The row handing a search to Find and Replace, named with the count the panel opens on. */
 export function createShowAllAction(
   count: number,
-  payload: { query: string; fields?: FindField[] }
+  payload: FindReplaceQuery
 ): Action {
   return {
     icon: <Icon name="search" size={16} />,

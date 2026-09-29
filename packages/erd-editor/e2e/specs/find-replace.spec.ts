@@ -276,7 +276,7 @@ test.describe('quick search over columns, comments and memos', () => {
       .toEqual(['users_email:columnName']);
   });
 
-  test('lists the commands alone once the prefix is deleted', async ({
+  test('lists the commands and no table or field once the prefix is deleted', async ({
     erd,
   }) => {
     await erd.seed(schema());
@@ -298,6 +298,10 @@ test.describe('quick search over columns, comments and memos', () => {
     );
     await expect(palette.getByText(/^users\s*Table$/)).toHaveCount(0);
     await expect(palette.getByText('users.id · Column comment')).toHaveCount(0);
+    // No command holds us, so the prefixes follow the commands it fuzzes to.
+    await expect(palette.locator('.scrollbar > div').last()).toHaveText(
+      /^"\s*Search comments & memos for "us"$/
+    );
   });
 
   test('offers the prefixes once no command holds what is typed, and the keys type one in', async ({
@@ -312,14 +316,14 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.press(Shortcut.search);
     await erd.page.keyboard.type('users');
 
-    await expect(palette.locator('.quick-search-empty')).toHaveText(
-      'No commands match'
-    );
     await expect(rows).toHaveText([
       /^#\s*Search tables for "users"$/,
       /^@\s*Search columns for "users"$/,
       /^"\s*Search comments & memos for "users"$/,
     ]);
+    // The narrowing left no command, but users typed afresh fuzzes to two, so
+    // the list never says that none matches.
+    await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
 
     await erd.page.keyboard.press('ArrowDown');
     await erd.page.keyboard.press('Enter');
@@ -335,6 +339,42 @@ test.describe('quick search over columns, comments and memos', () => {
 
     await expect(palette).toHaveCount(0);
     await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+  });
+
+  test('offers a table name pasted in, or left once its # is deleted, below the commands it fuzzes to', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const rows = palette.locator('.scrollbar > div');
+    const input = palette.locator('input');
+    const listed = [
+      /^Zero One/,
+      /^Zero N/,
+      /^#\s*Search tables for "users"$/,
+      /^@\s*Search columns for "users"$/,
+      /^"\s*Search comments & memos for "users"$/,
+    ];
+
+    await erd.press(Shortcut.search);
+    await erd.page.keyboard.insertText('users');
+
+    await expect(rows).toHaveText(listed);
+    await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
+
+    for (const key of ['ArrowUp', 'ArrowUp', 'ArrowUp', 'Enter']) {
+      await erd.page.keyboard.press(key);
+    }
+    await expect(input).toHaveValue('#users');
+    await expect(rows.first()).toHaveText(/^users\s*Table$/);
+
+    await erd.page.keyboard.press('Home');
+    await erd.page.keyboard.press('Delete');
+
+    await expect(input).toHaveValue('users');
+    await expect(palette.locator('.quick-search-scope')).toHaveCount(0);
+    await expect(rows).toHaveText(listed);
   });
 });
 

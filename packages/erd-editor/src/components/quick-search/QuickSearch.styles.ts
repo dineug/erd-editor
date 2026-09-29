@@ -83,7 +83,7 @@ export const hintItem = css`
   }
 `;
 
-/* What the list says when no command holds what is typed, above the prefixes it offers instead. */
+/* The line saying no command matches what is typed even loosely, above the prefixes offered. */
 export const empty = css`
   padding: 0 16px 12px;
   color: var(--placeholder);

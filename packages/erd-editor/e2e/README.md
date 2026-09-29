@@ -107,16 +107,20 @@ undo and one batch to a wired peer, and a jump to a table taller than the
 canvas lands on its name. It holds down the palette prefixes too, the only way
 to its tables, columns, comments and memos: a `"` search lands on a column
 comment from another tab, a `?` help row types its prefix in with the input
-still focused, a `@table.col` search goes to that column, deleting the `#` of
-`#us` leaves the commands alone, and a word no command holds (`users`) lists
-`No commands match` and the three prefixes that search the document, whose row
-the arrows and Enter pick types its prefix before the word (`#users`). Under
-Chromium's own IME composition (`Input.imeSetComposition` over a CDP session)
-it holds down the Hangul search: every step a Korean IME hands over while
-typing `#사용` keeps the table 사용자 listed, a word composed with no prefix
-lists no table or comment until a prefix row types `"` before it, `#ㅈㅁ` finds
-주문 내역 by its initials, an arrow or Enter pressed mid-syllable is left to the
-IME and picks nothing, and `@사` goes to a column by an unfinished syllable.
+still focused, a `@table.col` search goes to that column, and deleting the `#`
+of `#us` leaves commands and no table or field. A word no command holds lists
+the three prefixes that search the document last, whose row the arrows and
+Enter pick types its prefix before the word (`#users`): below nothing when
+`users` is typed one key at a time and narrows to no command, and below the two
+commands it fuzzes to when it is pasted or its `#` deleted, with no
+`No commands match` line either way, since the level still fuzzes to those
+two. Under Chromium's own IME composition (`Input.imeSetComposition` over a
+CDP session) it holds down the Hangul search: every step a Korean IME hands
+over while typing `#사용` keeps the table 사용자 listed, a word composed with no
+prefix lists `No commands match` and no table or comment until a prefix row
+types `"` before it, `#ㅈㅁ` finds 주문 내역 by its initials, an arrow or Enter
+pressed mid-syllable is left to the IME and picks nothing, and `@사` goes to a
+column by an unfinished syllable.
 `zoom-overlay.spec.ts` holds the quick search's list without a prefix to the
 commands, the seeded tables showing only after `#`.
 

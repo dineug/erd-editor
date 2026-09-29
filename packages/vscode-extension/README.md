@@ -49,8 +49,8 @@ only; they do not appear in the Command Palette.
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
-- **Quick search** — `Ctrl`/`Cmd`+`K` to jump to any table, column, comment or memo, or run any
-  editor command
+- **Quick search** — `Ctrl`/`Cmd`+`K` to run any editor command, or to jump to a table after `#`,
+  a column after `@`, and a comment or memo after `"`
 - **Find and replace** — `Ctrl`/`Cmd`+`Shift`+`H` across table and column names, comments and
   memos, with match case, whole word and regular expressions; one undo takes back a Replace All
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it

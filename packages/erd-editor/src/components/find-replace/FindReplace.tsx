@@ -23,6 +23,7 @@ import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { hasMoveKeys, isEditingText } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { FindReplaceQuery } from '@/utils/emitter';
 import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
@@ -189,7 +190,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     input?.select();
   };
 
-  const open = (query?: string, fields?: FindField[]) => {
+  const open = (handed?: FindReplaceQuery) => {
     const { store } = app.value;
     const { editor } = store.state;
     if (TAKEOVERS.some(key => editor.openMap[key])) return;
@@ -204,14 +205,14 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       })
     );
 
-    if (query !== undefined) {
+    if (handed) {
       // A query handed over is searched the way the palette searched it, not
       // with whatever options and scopes an earlier search left on.
-      state.query = query;
+      state.query = handed.query;
       Object.assign(state, DEFAULT_FIND_OPTIONS);
-      state.fields = fields
-        ? FindFieldList.filter(field => fields.includes(field))
-        : [...FindFieldList];
+      state.fields = FindFieldList.filter(field =>
+        handed.fields.includes(field)
+      );
     }
     state.status = '';
     refresh();
@@ -420,7 +421,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         .pipe(filter(({ type }) => type === KeyBindingName.stop))
         .subscribe(handleStop),
       emitter.on({
-        openFindReplace: ({ payload }) => open(payload?.query, payload?.fields),
+        openFindReplace: ({ payload }) => open(payload ?? undefined),
       }),
       // A peer, an undo or an edit on the canvas changes what matches.
       new Observable<void>(subscriber =>

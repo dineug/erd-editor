@@ -56,13 +56,15 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     rows: [] as Action[],
     submenu: false,
     scope: null as PaletteScope | null,
+    /** Whether no command of the level matches what is typed with no prefix, even loosely. */
+    missed: false,
     index: -1,
   });
 
   const byFilter = (actions: Action[]) =>
     actions.filter(action => (action.filter ? action.filter(app.value) : true));
 
-  /** What the list shows: the level's commands, their fuzzy hits, or at the top level a scope's rows or the prefixes offered. */
+  /** What the list shows: the level's commands or their fuzzy hits, at the top level the prefixes offered below them, or a scope's rows. */
   const getActions = () => byFilter(state.rows);
 
   const setLevel = (actions: Action[]) => {
@@ -70,6 +72,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     state.actions = scopeBase(actions, null);
     state.rows = state.actions;
     state.scope = null;
+    state.missed = false;
   };
 
   /** What is typed, read for a prefix at the top level only; a submenu filters its own rows. */
@@ -86,22 +89,30 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const setActions = (value: string) => {
     const query = readQuery(value);
     const base = scopeBase(state.prevActions, query.scope);
+    const search = (from: Action[]) =>
+      isEmpty(query.keyword)
+        ? base
+        : searchActions(byFilter(from), query.keyword);
     // Only the unscoped list, the commands, narrows inside its last hits, as
     // the owner pinned. A scope searches its whole base, and a prefix change
     // restarts from the level.
     const narrow = query.scope === null && state.scope === null;
-    const from = narrow ? state.actions : base;
 
     state.index = -1;
     state.scope = query.scope;
-    state.actions = isEmpty(query.keyword)
-      ? base
-      : searchActions(byFilter(from), query.keyword);
+    state.actions = search(narrow ? state.actions : base);
     // Rows read from the document are looked up afresh on every keystroke,
     // never narrowed from the last list, and only at the top level.
     state.rows = state.submenu
       ? state.actions
       : paletteRows(app.value, state.actions, query);
+    // The narrowing can drop a command the level still fuzzes to, so whether
+    // none matches at all is asked of the whole level.
+    state.missed =
+      !state.submenu &&
+      query.scope === null &&
+      !isEmpty(query.keyword) &&
+      !search(base).length;
   };
 
   /** Types a prefix for the reader, as a help row or a hint does, and leaves the caret after it. */
@@ -120,17 +131,6 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     const { scope, keyword, table } = readQuery(state.keyword);
     if (!scope) return [state.keyword];
     return table ? [keyword, table] : [keyword];
-  };
-
-  /** Whether what is typed, with no prefix, holds no command, so the list offers the prefixes instead. */
-  const missesCommands = (): boolean => {
-    const { scope, keyword } = readQuery(state.keyword);
-    return (
-      !state.submenu &&
-      !scope &&
-      !isEmpty(keyword) &&
-      !byFilter(state.actions).length
-    );
   };
 
   const scrollIntoView = () => {
@@ -327,7 +327,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
               ))}
             </div>
           ) : null}
-          {missesCommands() ? (
+          {state.missed ? (
             <div class={['quick-search-empty', styles.empty]}>
               No commands match
             </div>

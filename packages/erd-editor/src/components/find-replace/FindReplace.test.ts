@@ -36,7 +36,7 @@ import {
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
 import { openFindReplaceAction } from '@/utils/emitter';
-import { FindField } from '@/utils/find-replace';
+import { FindField, FindFieldList } from '@/utils/find-replace';
 import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -94,9 +94,12 @@ const shortcut = async (type: KeyBindingName) => {
   await flush();
 };
 
+/** Opens the panel, handed a query searched in every kind of text, or with none. */
 const openWith = async (query?: string) => {
   app.emitter.emit(
-    openFindReplaceAction(query === undefined ? undefined : { query })
+    openFindReplaceAction(
+      query === undefined ? undefined : { query, fields: [...FindFieldList] }
+    )
   );
   await flush();
 };

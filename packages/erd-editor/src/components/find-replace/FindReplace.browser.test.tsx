@@ -345,7 +345,7 @@ describe('quick search prefixes on a real keyboard', () => {
     expect(rowKinds(fixture).every(kind => kind === 'Table')).toBe(true);
   });
 
-  it('lists the commands alone once the prefix is deleted', async () => {
+  it('lists the commands and no table or field once the prefix is deleted, the word offered below', async () => {
     const fixture = await setup();
 
     await press(OPEN_SEARCH);
@@ -358,7 +358,13 @@ describe('quick search prefixes on a real keyboard', () => {
     expect(scopeOf(fixture)).toBeNull();
     expect(rowKinds(fixture)).not.toContain('Table');
     expect(rowKinds(fixture).some(kind => kind.includes('·'))).toBe(false);
+    // No command holds us, so the prefixes follow those it fuzzes to.
     expect(rowNames(fixture)).toContain('Auto Layout');
+    expect(rowNames(fixture).slice(-3)).toEqual([
+      'Search tables for "us"',
+      'Search columns for "us"',
+      'Search comments & memos for "us"',
+    ]);
   });
 
   it('types a prefix picked by the keys before a word no command holds', async () => {

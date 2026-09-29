@@ -27,7 +27,7 @@ import * as styles from './QuickSearch.styles';
 /** How many rows a prefixed list shows, few enough to draw at once. */
 export const SCOPED_ACTION_LIMIT = 100;
 
-/** The scopes that search the document, which a search with no prefix offers once no command holds it. */
+/** The scopes that search the document, which a search with no prefix offers once no command listed holds it. */
 const DOCUMENT_SCOPES: ReadonlyArray<PaletteScope> = [
   PaletteScope.tables,
   PaletteScope.columns,
@@ -70,8 +70,8 @@ export function scopeBase(
 
 /**
  * What the top level lists for a query, from the fuzzy hits of its scope: the
- * commands, the tables, or rows read from the document for the columns, the
- * free text and the help; with no prefix and no command hit, the prefixes.
+ * commands, then the prefixes when none holds the keyword; the tables; or rows
+ * read from the document for the columns, the free text and the help.
  */
 export function paletteRows(
   app: AppContext,
@@ -80,7 +80,11 @@ export function paletteRows(
 ): Action[] {
   switch (scope) {
     case null:
-      return keyword && !found.length ? createPrefixActions(keyword) : found;
+      // Fuse fuzzes most words to some command, so a hit alone never means
+      // the keyword names one: only a command holding it keeps them away.
+      return keyword && !found.some(keywordHolder(keyword))
+        ? [...found, ...createPrefixActions(keyword)]
+        : found;
     case PaletteScope.commands:
       return found;
     case PaletteScope.tables:
@@ -221,8 +225,8 @@ export function createHelpActions(keyword = ''): Action[] {
 
 /**
  * The prefixes that search the document as rows offering the keyword to one,
- * what a search with no prefix lists once no command holds it: choosing one
- * types its prefix before the keyword, so users becomes #users.
+ * what a search with no prefix lists below its commands once none holds it:
+ * choosing one types its prefix before the keyword, so users becomes #users.
  */
 export function createPrefixActions(keyword: string): Action[] {
   return PALETTE_PREFIXES.filter(({ scope }) =>

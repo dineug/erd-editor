@@ -343,6 +343,8 @@ describe('QuickSearch keyword filtering', () => {
 
     expect(narrowed).not.toContain('Auto Layout');
     expect(rowNames()).not.toContain('Auto Layout');
+    // The level still holds it, so the list never says no command matches.
+    expect(mounted?.container.querySelector('.quick-search-empty')).toBeNull();
   });
 
   it('resets the selection when the keyword changes', async () => {
@@ -677,10 +679,11 @@ describe('QuickSearch with no command matching', () => {
     mounted?.container.querySelector('.quick-search-scope')?.textContent ??
     null;
 
-  const OFFERED = [
-    'Search tables for "orders"',
-    'Search columns for "orders"',
-    'Search comments & memos for "orders"',
+  /** The rows offering a word to the prefixes that search the document. */
+  const offered = (word: string) => [
+    `Search tables for "${word}"`,
+    `Search columns for "${word}"`,
+    `Search comments & memos for "${word}"`,
   ];
 
   beforeEach(() => {
@@ -693,7 +696,7 @@ describe('QuickSearch with no command matching', () => {
     await type('orders');
 
     expect(empty()?.textContent?.trim()).toBe('No commands match');
-    expect(rowNames()).toEqual(OFFERED);
+    expect(rowNames()).toEqual(offered('orders'));
     expect(
       rows().map(row => row.querySelector(`.${styles.prefix}`)?.textContent)
     ).toEqual(['#', '@', '"']);
@@ -765,17 +768,68 @@ describe('QuickSearch with no command matching', () => {
     expect(rows()).toHaveLength(0);
   });
 
+  it('lists the commands a word only fuzzes to, and offers the word below them', async () => {
+    await open();
+
+    await type('posts');
+
+    expect(empty()).toBeNull();
+    expect(rowNames()).toEqual(['Import', 'Export', ...offered('posts')]);
+
+    for (const key of ['ArrowUp', 'ArrowUp', 'ArrowUp', 'Enter']) {
+      await keydown(key);
+    }
+
+    expect(input().value).toBe('#posts');
+    expect(scopeLabel()).toBe('Tables');
+  });
+
+  it('offers a table name pasted in, or left once its # is deleted, below the commands it fuzzes to', async () => {
+    await open();
+
+    await type('users');
+    const pasted = rowNames();
+    await type('#users');
+    expect(rowNames()[0]).toBe('users');
+    await type('users');
+
+    expect(rowNames()).toEqual(pasted);
+    expect(pasted.slice(0, -3)).toEqual(['Zero One', 'Zero N']);
+    expect(pasted.slice(-3)).toEqual(offered('users'));
+    expect(empty()).toBeNull();
+  });
+
+  it('says no command matches only when the level fuzzes to none, however far the list narrowed', async () => {
+    await open();
+
+    for (const value of ['u', 'us', 'use', 'user', 'users']) {
+      await type(value);
+    }
+    // The narrowing left no command, though users typed afresh fuzzes to two.
+    expect(rowNames()).toEqual(offered('users'));
+    expect(empty()).toBeNull();
+
+    for (const value of ['user', 'use', 'us', 'u']) {
+      await type(value);
+      expect(rowNames()).toEqual(offered(value));
+      expect(empty()).toBeNull();
+    }
+
+    await type('qqqq');
+    expect(empty()?.textContent?.trim()).toBe('No commands match');
+
+    await type('auto');
+    expect(rowNames()).toEqual(offered('auto'));
+    expect(empty()).toBeNull();
+  });
+
   it('offers the prefixes once the narrowing leaves no command, and the commands again once cleared', async () => {
     await open();
 
     for (const value of ['u', 'us', 'use', 'user', 'users']) {
       await type(value);
     }
-    expect(rowNames()).toEqual([
-      'Search tables for "users"',
-      'Search columns for "users"',
-      'Search comments & memos for "users"',
-    ]);
+    expect(rowNames()).toEqual(offered('users'));
 
     await type('');
 
