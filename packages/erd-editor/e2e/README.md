@@ -104,7 +104,10 @@ a DOM panel the port left on native drag and drop:
 for columns, comments and memos in the real element: what is typed into the
 panel never reaches a canvas shortcut, a replace all is one change event, one
 undo and one batch to a wired peer, and a jump to a table taller than the
-canvas lands on its name.
+canvas lands on its name. It holds down the palette prefixes too: a `?` help
+row types its prefix in with the input still focused, a `@table.col` search
+goes to that column, and deleting the `#` of `#us` brings back the rows that
+are not tables.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
