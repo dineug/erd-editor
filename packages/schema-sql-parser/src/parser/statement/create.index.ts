@@ -1,24 +1,21 @@
 import {
-  isAscValue,
-  isCommaToken,
-  isCreateUniqueIndex,
-  isDescValue,
-  isIndexValue,
+  isConcurrentlyValue,
+  isExistsValue,
+  isIfValue,
   isLeftParentToken,
   isNewStatement,
+  isNotValue,
+  isOnlyValue,
   isOnValue,
-  isRightParentToken,
   isSemicolonToken,
   isStringToken,
   isUniqueValue,
+  matchCreateIndex,
+  matchKeyModifier,
+  matchQualifiedName,
 } from '@/parser/helper';
-import {
-  CreateIndex,
-  IndexColumn,
-  RefPos,
-  SortType,
-  StatementType,
-} from '@/parser/statement';
+import { CreateIndex, RefPos, StatementType } from '@/parser/statement';
+import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
 export function createIndexParser(tokens: Token[], $pos: RefPos) {
@@ -27,15 +24,36 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
   const isUnique = isUniqueValue(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
-  const isRightParent = isRightParentToken(tokens);
-  const isComma = isCommaToken(tokens);
-  const isIndex = isIndexValue(tokens);
   const isOn = isOnValue(tokens);
-  const isDesc = isDescValue(tokens);
-  const isAsc = isAscValue(tokens);
-  const createUniqueIndex = isCreateUniqueIndex(tokens);
+  const isOnly = isOnlyValue(tokens);
+  const isConcurrently = isConcurrentlyValue(tokens);
+  const isIf = isIfValue(tokens);
+  const isNot = isNotValue(tokens);
+  const isExists = isExistsValue(tokens);
+  const createIndex = matchCreateIndex(tokens);
+  const qualifiedName = matchQualifiedName(tokens);
+  const keyModifier = matchKeyModifier(tokens);
 
   const isToken = () => $pos.value < tokens.length;
+
+  // A qualified name keeps its last segment: pg_dump writes ON public.t, and
+  // Oracle names both the index and the table "HR"."T".
+  const readName = () => {
+    const span = qualifiedName($pos.value);
+    if (!span) return '';
+
+    $pos.value += span;
+    return tokens[$pos.value - 1].value;
+  };
+
+  const skipKeyModifiers = () => {
+    let span = keyModifier($pos.value);
+
+    while (span) {
+      $pos.value += span;
+      span = keyModifier($pos.value);
+    }
+  };
 
   const ast: CreateIndex = {
     type: StatementType.createIndex,
@@ -45,11 +63,25 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
     columns: [],
   };
 
-  $pos.value += createUniqueIndex($pos.value) ? 2 : 1;
+  // The dispatch loop only reaches here where the header matched, but this
+  // parser is exported: a zero span would leave $pos on CREATE.
+  $pos.value += createIndex($pos.value) || 1;
+
+  // PostgreSQL may build the index CONCURRENTLY, skip it IF NOT EXISTS, and
+  // leave it unnamed: CREATE INDEX ON t (a).
+  if (isConcurrently($pos.value)) {
+    $pos.value++;
+  }
+
+  if (isIf($pos.value) && isNot($pos.value + 1) && isExists($pos.value + 2)) {
+    $pos.value += 3;
+  }
+
+  if (!isOn($pos.value)) {
+    ast.name = readName();
+  }
 
   while (isToken() && !newStatement($pos.value)) {
-    let token = tokens[$pos.value];
-
     // The terminator ends the statement; without it the loop runs on into
     // whatever follows, and a COMMENT ON right after is swallowed.
     if (isSemicolon($pos.value)) {
@@ -57,56 +89,23 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
       break;
     }
 
-    if (isIndex($pos.value)) {
-      token = tokens[++$pos.value];
+    // Only the first ON names the table: SQL Server's ON [PRIMARY] after the
+    // key list names a filegroup.
+    if (isOn($pos.value) && !ast.tableName) {
+      $pos.value++;
 
-      if (isString($pos.value)) {
-        ast.name = token.value;
+      // pg_dump's ON ONLY, unless the table is itself named only.
+      if (isOnly($pos.value) && isString($pos.value + 1)) {
+        $pos.value++;
       }
 
-      continue;
-    }
+      ast.tableName = readName();
 
-    if (isOn($pos.value)) {
-      token = tokens[++$pos.value];
-
-      if (isString($pos.value)) {
-        ast.tableName = token.value;
-        token = tokens[++$pos.value];
+      if (ast.tableName) {
+        skipKeyModifiers();
 
         if (isLeftParent($pos.value)) {
-          token = tokens[++$pos.value];
-          let indexColumn: IndexColumn = {
-            name: '',
-            sort: SortType.asc,
-          };
-
-          while (isToken() && !isRightParent($pos.value)) {
-            if (
-              isString($pos.value) &&
-              !isDesc($pos.value) &&
-              !isAsc($pos.value)
-            ) {
-              indexColumn.name = token.value;
-            }
-            if (isDesc($pos.value)) {
-              indexColumn.sort = SortType.desc;
-            }
-            if (isComma($pos.value)) {
-              ast.columns.push(indexColumn);
-              indexColumn = {
-                name: '',
-                sort: SortType.asc,
-              };
-            }
-            token = tokens[++$pos.value];
-          }
-
-          if (!ast.columns.includes(indexColumn) && indexColumn.name !== '') {
-            ast.columns.push(indexColumn);
-          }
-
-          $pos.value++;
+          ast.columns = indexColumnsParser(tokens, $pos);
         }
       }
 

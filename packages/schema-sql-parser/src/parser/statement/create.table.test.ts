@@ -707,6 +707,25 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
+  it('reads no key list after a column level UNIQUE', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a NUMBER UNIQUE USING INDEX (CREATE UNIQUE INDEX ix ON t (a)),\n' +
+        ' b NUMBER CONSTRAINT uq_b UNIQUE USING INDEX TABLESPACE users,\n' +
+        ' c NUMBER UNIQUE KEY,\n' +
+        ' t NUMBER\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'NUMBER', unique: true }),
+      column({ name: 'b', dataType: 'NUMBER', unique: true }),
+      column({ name: 'c', dataType: 'NUMBER', unique: true }),
+      column({ name: 't', dataType: 'NUMBER' }),
+    ]);
+    expect(ast.indexes).toEqual([]);
+  });
+
   it('keeps a column level UNIQUE NULLS NOT DISTINCT on its column', () => {
     const { ast } = parse(
       'CREATE TABLE t (a INT UNIQUE NULLS NOT DISTINCT NOT NULL, b INT);'

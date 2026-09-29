@@ -76,6 +76,7 @@ export const isClusterValue = createValueEqual('CLUSTER');
 export const isByValue = createValueEqual('BY');
 export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
+export const isConcurrentlyValue = createValueEqual('CONCURRENTLY');
 
 // What a constraint may carry after its key list, from Databricks' NOT
 // ENFORCED RELY to ANSI's DEFERRABLE INITIALLY DEFERRED. The column branch runs
@@ -108,20 +109,16 @@ const ReferentialActions: ReadonlyArray<ReadonlyArray<string>> = [
 ];
 const MatchKinds: ReadonlyArray<string> = ['FULL', 'PARTIAL', 'SIMPLE'];
 
-// The unquoted word at pos in upper case, '' for anything else: a quoted
-// token names something, so it never spells a keyword.
-const matchKeyword = (tokens: Token[]) => (pos: number) => {
-  const token = tokens[pos];
-  return token && token.type === TokenType.string && !token.quoted
-    ? token.value.toUpperCase()
-    : '';
-};
-
 // How many tokens a reference's trailing clause spans: ON DELETE SET NULL,
 // MATCH FULL. The action is optional, so MySQL's ON UPDATE CURRENT_TIMESTAMP
 // spans two and leaves its value to be skipped.
 export const matchReferentialClause = (tokens: Token[]) => {
-  const word = matchKeyword(tokens);
+  const word = (pos: number) => {
+    const token = tokens[pos];
+    return token && token.type === TokenType.string && !token.quoted
+      ? token.value.toUpperCase()
+      : '';
+  };
 
   return (pos: number) => {
     if (word(pos) === 'ON' && ['DELETE', 'UPDATE'].includes(word(pos + 1))) {
@@ -144,6 +141,15 @@ export const isIndexKind = (tokens: Token[]) => {
   const isKey = isKeyValue(tokens);
   return (pos: number) =>
     (isFulltext(pos) || isSpatial(pos)) && (isIndex(pos + 1) || isKey(pos + 1));
+};
+
+// The unquoted word at pos in upper case, '' for anything else: a quoted
+// token names something, so it never spells a keyword.
+const matchKeyword = (tokens: Token[]) => (pos: number) => {
+  const token = tokens[pos];
+  return token && token.type === TokenType.string && !token.quoted
+    ? token.value.toUpperCase()
+    : '';
 };
 
 // How many tokens a key modifier spans where a unique key's name may stand:
@@ -333,20 +339,32 @@ export const isCreateTable = (tokens: Token[]) => {
   return (pos: number) => createTable(pos) > 0;
 };
 
-export const isCreateUniqueIndex = (tokens: Token[]) => {
+// How many tokens the header spans through INDEX, 0 when there is no CREATE
+// INDEX at pos. SQL Server writes its clustering in between, CREATE UNIQUE
+// NONCLUSTERED INDEX, and SSMS scripts every index that way.
+export const matchCreateIndex = (tokens: Token[]) => {
   const isCreate = isCreateValue(tokens);
-  const isIndex = isIndexValue(tokens);
   const isUnique = isUniqueValue(tokens);
-  return (pos: number) =>
-    isCreate(pos) && isUnique(pos + 1) && isIndex(pos + 2);
+  const isIndex = isIndexValue(tokens);
+  const word = matchKeyword(tokens);
+
+  return (pos: number) => {
+    if (!isCreate(pos)) return 0;
+
+    let cursor = pos + 1;
+
+    if (isUnique(cursor)) cursor++;
+    if (word(cursor) === 'CLUSTERED' || word(cursor) === 'NONCLUSTERED') {
+      cursor++;
+    }
+
+    return isIndex(cursor) ? cursor + 1 - pos : 0;
+  };
 };
 
 export const isCreateIndex = (tokens: Token[]) => {
-  const isCreate = isCreateValue(tokens);
-  const isIndex = isIndexValue(tokens);
-  const createUniqueIndex = isCreateUniqueIndex(tokens);
-  return (pos: number) =>
-    (isCreate(pos) && isIndex(pos + 1)) || createUniqueIndex(pos);
+  const createIndex = matchCreateIndex(tokens);
+  return (pos: number) => createIndex(pos) > 0;
 };
 
 export const isAlterTable = (tokens: Token[]) => {
@@ -380,6 +398,15 @@ export const matchQualifiedName = (tokens: Token[]) => {
   };
 };
 
+// What the optional symbol after CONSTRAINT can never be: the words that open
+// the constraint itself.
+const ConstraintBodies: ReadonlyArray<string> = [
+  'UNIQUE',
+  'PRIMARY',
+  'FOREIGN',
+  'CHECK',
+];
+
 // How many tokens the ALTER TABLE ADD head spans, 0 when there is none at pos,
 // and whether ONLY was read as the keyword rather than the table name. The name
 // is measured rather than counted, which lets a three-part name through.
@@ -390,6 +417,7 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
   const isConstraint = isConstraintValue(tokens);
   const isString = isStringToken(tokens);
   const qualifiedName = matchQualifiedName(tokens);
+  const word = matchKeyword(tokens);
 
   // ONLY is optional, and it is also a legal table name: both readings are
   // tried, the one that reaches ADD wins.
@@ -403,8 +431,14 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
     if (!isAdd(cursor)) return 0;
     cursor++;
 
-    if (isConstraint(cursor) && isString(cursor + 1)) {
-      cursor += 2;
+    // The symbol is optional, and MySQL's CONSTRAINT UNIQUE (a) names nothing:
+    // read as the symbol, UNIQUE would leave the key nothing to open it.
+    if (isConstraint(cursor)) {
+      cursor++;
+
+      if (isString(cursor) && !ConstraintBodies.includes(word(cursor))) {
+        cursor++;
+      }
     }
 
     return cursor - pos;
@@ -459,14 +493,11 @@ export const isAlterTableAddForeignKey = (tokens: Token[]) => {
   };
 };
 
-export const isAlterTableAddUnique = (tokens: Token[]) => {
+// Any ALTER TABLE name ADD, whatever it adds: one statement may add several
+// keys, and a unique key can follow a clause of another kind.
+export const isAlterTableAdd = (tokens: Token[]) => {
   const alterTableAdd = matchAlterTableAdd(tokens);
-  const isUnique = isUniqueValue(tokens);
-
-  return (pos: number) => {
-    const length = alterTableAdd(pos);
-    return length > 0 && isUnique(pos + length);
-  };
+  return (pos: number) => alterTableAdd(pos) > 0;
 };
 
 const DataTypes: ReadonlyArray<string> = Array.from(

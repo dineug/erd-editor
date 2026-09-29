@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   isAddValue,
   isAlterTable,
+  isAlterTableAdd,
   isAlterTableAddForeignKey,
   isAlterTableAddOnly,
   isAlterTableAddPrimaryKey,
-  isAlterTableAddUnique,
   isAlterTableOnly,
   isAlterValue,
   isAscValue,
@@ -25,7 +25,6 @@ import {
   isConstraintValue,
   isCreateIndex,
   isCreateTable,
-  isCreateUniqueIndex,
   isCreateValue,
   isDataType,
   isDefaultValue,
@@ -60,6 +59,7 @@ import {
   isTableValue,
   isUniqueValue,
   isUseValue,
+  matchCreateIndex,
   matchCreateTable,
   matchDataType,
   matchKeyModifier,
@@ -472,19 +472,34 @@ describe('matchCreateTable', () => {
   );
 });
 
-describe('isCreateUniqueIndex', () => {
-  it('matches CREATE UNIQUE INDEX', () => {
-    const tokens = words('CREATE', 'UNIQUE', 'INDEX', 'idx');
-
-    expect(isCreateUniqueIndex(tokens)(0)).toBe(true);
+describe('matchCreateIndex', () => {
+  it.each([
+    [['CREATE', 'INDEX', 'idx'], 2],
+    [['CREATE', 'UNIQUE', 'INDEX', 'idx'], 3],
+    [['CREATE', 'NONCLUSTERED', 'INDEX', 'idx'], 3],
+    [['CREATE', 'UNIQUE', 'CLUSTERED', 'INDEX', 'idx'], 4],
+    [['CREATE', 'UNIQUE', 'NONCLUSTERED', 'INDEX', 'idx'], 4],
+  ])('spans %j through INDEX', (values, span) => {
+    expect(matchCreateIndex(words(...values))(0)).toBe(span);
   });
 
   it.each([
-    ['CREATE', 'INDEX', 'idx'],
     ['CREATE', 'UNIQUE', 'idx'],
+    ['CREATE', 'NONCLUSTERED', 'idx'],
+    ['CREATE', 'CLUSTERED', 'UNIQUE', 'INDEX'],
     ['ALTER', 'UNIQUE', 'INDEX'],
   ])('rejects %s %s %s', (...values) => {
-    expect(isCreateUniqueIndex(words(...values))(0)).toBe(false);
+    expect(matchCreateIndex(words(...values))(0)).toBe(0);
+  });
+
+  it('reads a quoted clustering word as no keyword', () => {
+    const tokens = [
+      ...words('CREATE'),
+      quoted('NONCLUSTERED'),
+      ...words('INDEX'),
+    ];
+
+    expect(matchCreateIndex(tokens)(0)).toBe(0);
   });
 });
 
@@ -577,7 +592,7 @@ describe('a fully qualified ALTER TABLE target', () => {
       'ALTER TABLE db.sch.t ADD FOREIGN KEY (a) REFERENCES db.sch.o (b);',
       isAlterTableAddForeignKey,
     ],
-    ['ALTER TABLE db.sch.t ADD UNIQUE (a);', isAlterTableAddUnique],
+    ['ALTER TABLE db.sch.t ADD UNIQUE (a);', isAlterTableAdd],
     [
       'ALTER TABLE db.sch.t ADD CONSTRAINT pk PRIMARY KEY (id);',
       isAlterTableAddPrimaryKey,
@@ -853,114 +868,65 @@ describe('isAlterTableAddForeignKey', () => {
   });
 });
 
-describe('isAlterTableAddUnique with ONLY', () => {
+describe('isAlterTableAdd with ONLY', () => {
   it('matches ALTER TABLE ONLY name ADD UNIQUE', () => {
     const tokens = words('ALTER', 'TABLE', 'ONLY', 'user', 'ADD', 'UNIQUE');
 
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
+    expect(isAlterTableAdd(tokens)(0)).toBe(true);
   });
 
-  it('matches ALTER TABLE ONLY name ADD CONSTRAINT uq UNIQUE', () => {
-    const tokens = words(
-      'ALTER',
-      'TABLE',
-      'ONLY',
-      'user',
-      'ADD',
-      'CONSTRAINT',
-      'uq_user',
-      'UNIQUE'
-    );
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('matches a schema qualified ALTER TABLE ONLY public.user ADD UNIQUE', () => {
-    const tokens = [
-      ...words('ALTER', 'TABLE', 'ONLY', 'public'),
-      period,
-      ...words('user', 'ADD', 'UNIQUE'),
-    ];
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('matches a schema qualified variant with a named constraint', () => {
+  it('matches a schema qualified ALTER TABLE ONLY public.user ADD', () => {
     const tokens = [
       ...words('ALTER', 'TABLE', 'ONLY', 'public'),
       period,
       ...words('user', 'ADD', 'CONSTRAINT', 'uq_user', 'UNIQUE'),
     ];
 
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('rejects the primary key variant', () => {
-    const tokens = words(
-      'ALTER',
-      'TABLE',
-      'ONLY',
-      'user',
-      'ADD',
-      'PRIMARY',
-      'KEY'
-    );
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(false);
+    expect(isAlterTableAdd(tokens)(0)).toBe(true);
   });
 });
 
-describe('isAlterTableAddUnique', () => {
-  it('matches ALTER TABLE name ADD UNIQUE', () => {
-    const tokens = words('ALTER', 'TABLE', 'user', 'ADD', 'UNIQUE');
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
+describe('isAlterTableAdd', () => {
+  it.each([
+    ['ALTER TABLE user ADD UNIQUE (a);'],
+    ['ALTER TABLE user ADD CONSTRAINT uq_user UNIQUE (a);'],
+    ['ALTER TABLE public.user ADD UNIQUE (a);'],
+    ['ALTER TABLE user ADD PRIMARY KEY (id), ADD UNIQUE KEY uq (a, b);'],
+    ['ALTER TABLE user ADD KEY idx (a), ADD UNIQUE KEY uq (a, b);'],
+    ['ALTER TABLE user ADD COLUMN a INT;'],
+  ])('matches %s', sql => {
+    expect(isAlterTableAdd(tokenizer(sql))(0)).toBe(true);
   });
 
-  it('matches ALTER TABLE name ADD CONSTRAINT uq UNIQUE', () => {
-    const tokens = words(
-      'ALTER',
-      'TABLE',
-      'user',
-      'ADD',
-      'CONSTRAINT',
-      'uq_user',
-      'UNIQUE'
-    );
+  it.each([
+    ['ALTER TABLE user DROP COLUMN a;'],
+    ['ALTER INDEX idx RENAME TO idx_2;'],
+    ['CREATE TABLE user (a INT);'],
+  ])('rejects %s', sql => {
+    expect(isAlterTableAdd(tokenizer(sql))(0)).toBe(false);
+  });
+});
 
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
+describe('a CONSTRAINT keyword with no symbol', () => {
+  it.each([
+    [
+      'ALTER TABLE t ADD CONSTRAINT PRIMARY KEY (id);',
+      isAlterTableAddPrimaryKey,
+    ],
+    [
+      'ALTER TABLE t ADD CONSTRAINT FOREIGN KEY (a) REFERENCES o (b);',
+      isAlterTableAddForeignKey,
+    ],
+  ])('leaves the key it opens to be matched: %s', (sql, matcher) => {
+    expect(matcher(tokenizer(sql))(0)).toBe(true);
   });
 
-  it('matches a schema qualified ALTER TABLE public.user ADD UNIQUE', () => {
-    const tokens = [
-      ...words('ALTER', 'TABLE', 'public'),
-      period,
-      ...words('user', 'ADD', 'UNIQUE'),
-    ];
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('matches a schema qualified variant with a named constraint', () => {
-    const tokens = [
-      ...words('ALTER', 'TABLE', 'public'),
-      period,
-      ...words('user', 'ADD', 'CONSTRAINT', 'uq_user', 'UNIQUE'),
-    ];
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('falls back to the ONLY variant', () => {
-    const tokens = words('ALTER', 'TABLE', 'ONLY', 'user', 'ADD', 'UNIQUE');
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('rejects an ADD PRIMARY KEY statement', () => {
-    const tokens = words('ALTER', 'TABLE', 'user', 'ADD', 'PRIMARY', 'KEY');
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(false);
+  it('still reads a quoted symbol spelled like a keyword as the symbol', () => {
+    expect(
+      isAlterTableAddPrimaryKey(
+        tokenizer('ALTER TABLE t ADD CONSTRAINT "UNIQUE" PRIMARY KEY (id);')
+      )(0)
+    ).toBe(true);
   });
 });
 

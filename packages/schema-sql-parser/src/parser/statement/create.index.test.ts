@@ -113,19 +113,121 @@ describe('createIndexParser', () => {
     expect(ast.columns).toEqual([]);
   });
 
-  it('takes the schema as the table name for a qualified target', () => {
+  it('takes the last segment of a qualified target', () => {
     const { ast } = parse('CREATE INDEX idx_a ON public.t (a);');
 
-    expect(ast.tableName).toBe('public');
-    expect(ast.columns).toEqual([]);
-  });
-
-  it('uses the next token as the name when the index name is omitted', () => {
-    const { ast } = parse('CREATE INDEX ON t (a);');
-
-    expect(ast.name).toBe('ON');
     expect(ast.tableName).toBe('t');
     expect(ast.columns).toEqual([{ name: 'a', sort: SortType.asc }]);
+  });
+
+  it('leaves the name empty when the index name is omitted', () => {
+    const { ast } = parse('CREATE INDEX ON t (a);');
+
+    expect(ast.name).toBe('');
+    expect(ast.tableName).toBe('t');
+    expect(ast.columns).toEqual([{ name: 'a', sort: SortType.asc }]);
+  });
+
+  it('reads the unique index pg_dump writes', () => {
+    const { ast } = parse(
+      'CREATE UNIQUE INDEX i_1 ON public.sp_region USING btree (code, name);'
+    );
+
+    expect(ast).toEqual({
+      type: StatementType.createIndex,
+      name: 'i_1',
+      unique: true,
+      tableName: 'sp_region',
+      columns: [
+        { name: 'code', sort: SortType.asc },
+        { name: 'name', sort: SortType.asc },
+      ],
+    });
+  });
+
+  it('reads the ON ONLY of a partitioned table, and a table named only', () => {
+    const partitioned = parse(
+      'CREATE UNIQUE INDEX i ON ONLY public.t USING btree (a, b);'
+    ).ast;
+    const named = parse('CREATE INDEX i ON only (a);').ast;
+
+    expect(partitioned.tableName).toBe('t');
+    expect(partitioned.columns.map(column => column.name)).toEqual(['a', 'b']);
+    expect(named.tableName).toBe('only');
+    expect(named.columns.map(column => column.name)).toEqual(['a']);
+  });
+
+  it('reads CONCURRENTLY and IF NOT EXISTS as no name', () => {
+    const { ast } = parse(
+      'CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq ON t (a, b);'
+    );
+
+    expect(ast.name).toBe('uq');
+    expect(ast.tableName).toBe('t');
+    expect(ast.columns.map(column => column.name)).toEqual(['a', 'b']);
+  });
+
+  it('reads the index SSMS scripts, clustering and filegroup included', () => {
+    const { ast, tokens, $pos } = parse(
+      'CREATE UNIQUE NONCLUSTERED INDEX [uq_ab] ON [dbo].[t] ([a] ASC, [b] DESC) ' +
+        'WITH (PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]\nGO\n' +
+        'CREATE TABLE z (i INT);'
+    );
+
+    expect(ast).toEqual({
+      type: StatementType.createIndex,
+      name: 'uq_ab',
+      unique: true,
+      tableName: 't',
+      columns: [
+        { name: 'a', sort: SortType.asc },
+        { name: 'b', sort: SortType.desc },
+      ],
+    });
+    expect(tokens[$pos.value].value).toBe('CREATE');
+  });
+
+  it('reads the qualified index and table names Oracle writes', () => {
+    const { ast } = parse(
+      'CREATE UNIQUE INDEX "HR"."UQ_AB" ON "HR"."T" ("A", "B") TABLESPACE "USERS";'
+    );
+
+    expect(ast.name).toBe('UQ_AB');
+    expect(ast.tableName).toBe('T');
+    expect(ast.columns.map(column => column.name)).toEqual(['A', 'B']);
+  });
+
+  it('keeps the column of a key part with a prefix length', () => {
+    const { ast } = parse('CREATE UNIQUE INDEX uq ON t (email(191), b);');
+
+    expect(ast.columns.map(column => column.name)).toEqual(['email', 'b']);
+  });
+
+  it('records no column for a key with an expression part', () => {
+    const cases = [
+      'CREATE UNIQUE INDEX uq ON t (lower(email));',
+      'CREATE UNIQUE INDEX uq ON public.t USING btree (lower((email)::text), b);',
+      'CREATE UNIQUE INDEX uq ON t ((a + b), c);',
+    ];
+
+    for (const source of cases) {
+      expect(parse(source).ast.columns).toEqual([]);
+    }
+  });
+
+  it('reads the columns of a MySQL index whose method comes first', () => {
+    const { ast } = parse('CREATE UNIQUE INDEX uq USING BTREE ON t (a, b);');
+
+    expect(ast.name).toBe('uq');
+    expect(ast.tableName).toBe('t');
+    expect(ast.columns.map(column => column.name)).toEqual(['a', 'b']);
+  });
+
+  it('steps past CREATE when called where no index header stands', () => {
+    const { ast, $pos } = parse('CREATE x;');
+
+    expect(ast.name).toBe('x');
+    expect($pos.value).toBe(3);
   });
 
   it('stops before the next statement', () => {

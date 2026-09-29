@@ -430,13 +430,19 @@ function createTableColumnsParser(
         token = tokens[++$pos.value];
       }
 
+      // A column's own UNIQUE has no name and no key list. What follows is
+      // another attribute, or Oracle's USING INDEX (...) the loop skips.
+      if (column.name) {
+        column.unique = true;
+        continue;
+      }
+
       skipKeyModifiers();
 
-      // Only a table constraint names its index. Inside a column definition the
-      // next word is another attribute -- NOT NULL, COMMENT, DEFAULT.
+      // Only a table constraint names its index.
       let name = constraintName;
 
-      if (!column.name && isString($pos.value)) {
+      if (isString($pos.value)) {
         name = tokens[$pos.value].value;
         $pos.value++;
         skipKeyModifiers();
@@ -454,8 +460,6 @@ function createTableColumnsParser(
             ...indexColumns.map(indexColumn => indexColumn.name.toUpperCase())
           );
         }
-      } else {
-        column.unique = true;
       }
 
       continue;

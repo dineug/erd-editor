@@ -27,6 +27,12 @@ export function indexColumnsParser(
 
   const isToken = () => $pos.value < tokens.length;
 
+  // A prefix length is a number alone in its group: email(191).
+  const isPrefixLength = (pos: number) =>
+    isString(pos + 1) &&
+    /^\d+$/.test(tokens[pos + 1].value) &&
+    isRightParent(pos + 2);
+
   const indexColumns: IndexColumn[] = [];
   let indexColumn: IndexColumn = {
     name: '',
@@ -36,10 +42,11 @@ export function indexColumnsParser(
   $pos.value++;
 
   while (isToken() && !isRightParent($pos.value)) {
-    // A prefix length, email(191), or a functional key part, ((a + b)), is a
-    // group of its own: its ) closes no list, and its words name no column.
+    // A prefix length, email(191), or a functional key part, ((a + b)) or
+    // PostgreSQL's lower(email), is a group of its own: its ) closes no list,
+    // and its words name no column.
     if (isLeftParent($pos.value)) {
-      expression ||= !indexColumn.name;
+      expression ||= !indexColumn.name || !isPrefixLength($pos.value);
       let depth = 0;
 
       while (isToken()) {

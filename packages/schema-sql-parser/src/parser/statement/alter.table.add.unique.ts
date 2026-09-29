@@ -1,11 +1,16 @@
 import {
+  isAddValue,
   isAlterTableAddOnly,
+  isCommaToken,
   isConstraintValue,
+  isForeignValue,
   isIndexValue,
   isKeyValue,
   isLeftParentToken,
   isNewStatement,
   isPeriodToken,
+  isPrimaryValue,
+  isRightParentToken,
   isSemicolonToken,
   isStringToken,
   isTableValue,
@@ -16,17 +21,30 @@ import { AlterTableAddUnique, RefPos, StatementType } from '@/parser/statement';
 import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
-export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
+/**
+ * Reads every unique key an ALTER TABLE adds, one statement each, and leaves
+ * $pos past it. Its other clauses are skipped: phpMyAdmin adds a primary key
+ * and all the unique keys of a table in one ALTER, each clause its own ADD.
+ */
+export function alterTableAddUniqueParser(
+  tokens: Token[],
+  $pos: RefPos
+): AlterTableAddUnique[] {
   const newStatement = isNewStatement(tokens);
   const isSemicolon = isSemicolonToken(tokens);
   const isString = isStringToken(tokens);
+  const isComma = isCommaToken(tokens);
+  const isAdd = isAddValue(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isPeriod = isPeriodToken(tokens);
   const isTable = isTableValue(tokens);
   const isUnique = isUniqueValue(tokens);
+  const isPrimary = isPrimaryValue(tokens);
+  const isForeign = isForeignValue(tokens);
   const isKey = isKeyValue(tokens);
   const isIndex = isIndexValue(tokens);
   const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
   const keyModifier = matchKeyModifier(tokens);
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
@@ -41,18 +59,56 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
     }
   };
 
-  const ast: AlterTableAddUnique = {
-    type: StatementType.alterTableAddUnique,
-    name: '',
-    constraintName: '',
-    columns: [],
+  const skipGroup = () => {
+    let depth = 0;
+
+    while (isToken()) {
+      if (isLeftParent($pos.value)) {
+        depth++;
+      } else if (isRightParent($pos.value) && --depth === 0) {
+        $pos.value++;
+        return;
+      }
+
+      $pos.value++;
+    }
   };
+
+  const keys: AlterTableAddUnique[] = [];
+  let name = '';
+  // The CONSTRAINT symbol of the clause being read. A clause ends at its comma,
+  // so the symbol of a foreign key after a unique key never names that key.
+  let constraintName = '';
 
   $pos.value++;
 
-  while (isToken() && !newStatement($pos.value)) {
-    let token = tokens[$pos.value];
+  if (isTable($pos.value)) {
+    $pos.value++;
 
+    if (isOnly) {
+      $pos.value++;
+    }
+
+    if (isString($pos.value)) {
+      name = tokens[$pos.value].value;
+      $pos.value++;
+
+      // db.schema.t is what SnowDDL writes, and one period was all this
+      // consumed -- the middle segment became the name and the last was
+      // left to be read as something else.
+      while (isPeriod($pos.value)) {
+        if (!isString($pos.value + 1)) {
+          $pos.value++;
+          break;
+        }
+
+        name = tokens[$pos.value + 1].value;
+        $pos.value += 2;
+      }
+    }
+  }
+
+  while (isToken() && !newStatement($pos.value)) {
     // The terminator ends the statement; without it the loop runs on into
     // whatever follows, and a COMMENT ON right after is swallowed.
     if (isSemicolon($pos.value)) {
@@ -60,39 +116,30 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
       break;
     }
 
-    if (isTable($pos.value)) {
-      token = tokens[++$pos.value];
+    if (isComma($pos.value) || isAdd($pos.value)) {
+      constraintName = '';
+      $pos.value++;
+      continue;
+    }
 
-      if (isOnly) {
-        token = tokens[++$pos.value];
-      }
-
-      if (isString($pos.value)) {
-        ast.name = token.value;
-        $pos.value++;
-
-        // db.schema.t is what SnowDDL writes, and one period was all this
-        // consumed -- the middle segment became the name and the last was
-        // left to be read as something else.
-        while (isPeriod($pos.value)) {
-          if (!isString($pos.value + 1)) {
-            $pos.value++;
-            break;
-          }
-
-          ast.name = tokens[$pos.value + 1].value;
-          $pos.value += 2;
-        }
-      }
-
+    // A CHECK or a foreign key's column list is no key list, and no word in
+    // it opens a clause.
+    if (isLeftParent($pos.value)) {
+      skipGroup();
       continue;
     }
 
     if (isConstraint($pos.value)) {
-      token = tokens[++$pos.value];
+      $pos.value++;
 
-      if (isString($pos.value) && !isUnique($pos.value)) {
-        ast.constraintName = token.value;
+      // The symbol is optional: CONSTRAINT UNIQUE (a) names nothing.
+      if (
+        isString($pos.value) &&
+        !isUnique($pos.value) &&
+        !isPrimary($pos.value) &&
+        !isForeign($pos.value)
+      ) {
+        constraintName = tokens[$pos.value].value;
         $pos.value++;
       }
 
@@ -102,22 +149,34 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
     // MySQL names the index after UNIQUE KEY, and that name is the one the
     // index takes when a CONSTRAINT symbol stands before it too.
     if (isUnique($pos.value)) {
-      token = tokens[++$pos.value];
+      $pos.value++;
 
       if (isKey($pos.value) || isIndex($pos.value)) {
-        token = tokens[++$pos.value];
+        $pos.value++;
       }
 
       skipKeyModifiers();
 
+      let keyName = constraintName;
+      constraintName = '';
+
       if (isString($pos.value)) {
-        ast.constraintName = tokens[$pos.value].value;
+        keyName = tokens[$pos.value].value;
         $pos.value++;
         skipKeyModifiers();
       }
 
       if (isLeftParent($pos.value)) {
-        ast.columns = indexColumnsParser(tokens, $pos);
+        const columns = indexColumnsParser(tokens, $pos);
+
+        if (columns.length) {
+          keys.push({
+            type: StatementType.alterTableAddUnique,
+            name,
+            constraintName: keyName,
+            columns,
+          });
+        }
       }
 
       continue;
@@ -126,5 +185,5 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
     $pos.value++;
   }
 
-  return ast;
+  return keys;
 }

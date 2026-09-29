@@ -1212,6 +1212,52 @@ CREATE UNIQUE INDEX IDX_B on B (a, b DESC)
 }
 ```
 
+### CREATE UNIQUE INDEX from dump tools
+
+```sql
+CREATE UNIQUE INDEX i_1 ON public.sp_region USING btree (code, name);
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_ab] ON [dbo].[t] ([a] ASC, [b] DESC) WITH (PAD_INDEX = OFF) ON [PRIMARY]
+GO
+CREATE UNIQUE INDEX "HR"."UQ_AB" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.index",
+      "name": "i_1",
+      "unique": true,
+      "tableName": "sp_region",
+      "columns": [
+        { "name": "code", "sort": "ASC" },
+        { "name": "name", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "UQ_ab",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "DESC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "UQ_AB",
+      "unique": true,
+      "tableName": "T",
+      "columns": [
+        { "name": "A", "sort": "ASC" },
+        { "name": "B", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
 ### Alter Table Add PRIMARY KEY
 
 ```sql
@@ -1405,6 +1451,53 @@ ALTER TABLE users ADD CONSTRAINT sym UNIQUE INDEX uq_ab (a, b DESC);
       "columns": [
         { "name": "a", "sort": "ASC" },
         { "name": "b", "sort": "DESC" }
+      ]
+    }
+  ]
+}
+```
+
+### Alter Table Add several keys
+
+```sql
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_tenant_login` (`tenant`,`login`),
+  ADD UNIQUE KEY `uq_email` (`email`),
+  ADD KEY `idx_tenant` (`tenant`);
+ALTER TABLE users ADD CONSTRAINT UNIQUE (a, b), ADD CONSTRAINT fk_x FOREIGN KEY (x) REFERENCES y (id);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "users",
+      "columnNames": ["id"]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_tenant_login",
+      "columns": [
+        { "name": "tenant", "sort": "ASC" },
+        { "name": "login", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_email",
+      "columns": [{ "name": "email", "sort": "ASC" }]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "ASC" }
       ]
     }
   ]

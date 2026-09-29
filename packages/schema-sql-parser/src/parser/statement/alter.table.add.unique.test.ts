@@ -1,14 +1,23 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { schemaSQLParser } from '@/parser';
 import { RefPos, SortType, StatementType } from '@/parser/statement';
 import { alterTableAddUniqueParser } from '@/parser/statement/alter.table.add.unique';
 import { Token, tokenizer } from '@/parser/tokenizer';
 
+const EMPTY_KEY = {
+  type: StatementType.alterTableAddUnique,
+  name: '',
+  constraintName: '',
+  columns: [],
+};
+
+// The first key the statement adds, or an empty one where it adds none.
 const parse = (source: string, start = 0) => {
   const tokens = tokenizer(source);
   const $pos: RefPos = { value: start };
-  const ast = alterTableAddUniqueParser(tokens, $pos);
-  return { ast, $pos, tokens };
+  const keys = alterTableAddUniqueParser(tokens, $pos);
+  return { ast: keys[0] ?? EMPTY_KEY, keys, $pos, tokens };
 };
 
 const names = (source: string) =>
@@ -16,9 +25,18 @@ const names = (source: string) =>
 
 const parseTokens = (tokens: Token[], start = 0) => {
   const $pos: RefPos = { value: start };
-  const ast = alterTableAddUniqueParser(tokens, $pos);
-  return { ast, $pos };
+  const keys = alterTableAddUniqueParser(tokens, $pos);
+  return { ast: keys[0] ?? EMPTY_KEY, $pos };
 };
+
+// Every key the whole source adds, through the dispatch loop.
+const keysOf = (source: string) =>
+  schemaSQLParser(source)
+    .filter(statement => statement.type === StatementType.alterTableAddUnique)
+    .map(statement => ({
+      name: statement.constraintName,
+      columns: statement.columns.map(column => column.name),
+    }));
 
 describe('alterTableAddUniqueParser', () => {
   it('stops on the terminator instead of reading the statement after it', () => {
@@ -182,10 +200,14 @@ describe('alterTableAddUniqueParser', () => {
     expect(ast.columns.map(column => column.name)).toEqual(['a', 'b']);
   });
 
-  it('collects no columns when UNIQUE has no column list', () => {
-    const { ast } = parse('ALTER TABLE users ADD UNIQUE;');
+  it('adds no key when UNIQUE has no column list', () => {
+    expect(parse('ALTER TABLE users ADD UNIQUE;').keys).toEqual([]);
+  });
 
-    expect(ast.columns).toEqual([]);
+  it('adds no key for a column the statement adds as unique', () => {
+    expect(
+      parse('ALTER TABLE users ADD COLUMN c INT UNIQUE NOT NULL;').keys
+    ).toEqual([]);
   });
 
   it('collects the columns parsed so far when the list is unterminated', () => {
@@ -204,23 +226,17 @@ describe('alterTableAddUniqueParser', () => {
     expect(tokens[$pos.value].value).toBe('CREATE');
   });
 
-  it('returns an empty statement when a new statement follows ALTER immediately', () => {
-    const { ast, $pos } = parse('ALTER SELECT');
+  it('adds no key when a new statement follows ALTER immediately', () => {
+    const { keys, $pos } = parse('ALTER SELECT');
 
-    expect(ast).toEqual({
-      type: StatementType.alterTableAddUnique,
-      name: '',
-      constraintName: '',
-      columns: [],
-    });
+    expect(keys).toEqual([]);
     expect($pos.value).toBe(1);
   });
 
-  it('returns an empty statement when there are no tokens after ALTER', () => {
-    const { ast, $pos } = parse('ALTER');
+  it('adds no key when there are no tokens after ALTER', () => {
+    const { keys, $pos } = parse('ALTER');
 
-    expect(ast.name).toBe('');
-    expect(ast.columns).toEqual([]);
+    expect(keys).toEqual([]);
     expect($pos.value).toBe(1);
   });
 
@@ -241,5 +257,97 @@ describe('alterTableAddUniqueParser', () => {
     expect(ast.name).toBe('users');
     expect(ast.constraintName).toBe('uq_email');
     expect(ast.columns.map(column => column.name)).toEqual(['email']);
+  });
+});
+
+describe('an ALTER TABLE that adds several keys', () => {
+  it('adds one key per UNIQUE clause, each with its own name', () => {
+    expect(
+      keysOf(
+        'ALTER TABLE t ADD CONSTRAINT uq_ab UNIQUE (a, b), ADD CONSTRAINT uq_c UNIQUE (c);'
+      )
+    ).toEqual([
+      { name: 'uq_ab', columns: ['a', 'b'] },
+      { name: 'uq_c', columns: ['c'] },
+    ]);
+  });
+
+  it('reads the unique keys phpMyAdmin adds after the primary key', () => {
+    const statements = schemaSQLParser(
+      'ALTER TABLE `t` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `uq_ab` (`a`,`b`), ' +
+        'ADD UNIQUE KEY `uq_c` (`c`), ADD KEY `idx_d` (`d`);'
+    );
+
+    expect(statements.map(statement => statement.type)).toEqual([
+      StatementType.alterTableAddPrimaryKey,
+      StatementType.alterTableAddUnique,
+      StatementType.alterTableAddUnique,
+    ]);
+    expect(
+      keysOf(
+        'ALTER TABLE `t` ADD UNIQUE KEY `uq_ab` (`a`,`b`), ADD KEY `idx_d` (`d`);'
+      )
+    ).toEqual([{ name: 'uq_ab', columns: ['a', 'b'] }]);
+  });
+
+  it('never names a key by the CONSTRAINT symbol of a later clause', () => {
+    expect(
+      keysOf(
+        'ALTER TABLE t ADD CONSTRAINT uq_ab UNIQUE (a, b), ' +
+          'ADD CONSTRAINT fk_x FOREIGN KEY (x) REFERENCES y (id);'
+      )
+    ).toEqual([{ name: 'uq_ab', columns: ['a', 'b'] }]);
+    expect(
+      keysOf(
+        'ALTER TABLE t ADD CONSTRAINT fk_x FOREIGN KEY (x) REFERENCES y (id), ADD UNIQUE (a, b);'
+      )
+    ).toEqual([{ name: '', columns: ['a', 'b'] }]);
+  });
+
+  it('keeps the foreign key a statement adds beside a unique key', () => {
+    const [foreignKey] = schemaSQLParser(
+      'ALTER TABLE t ADD CONSTRAINT fk_x FOREIGN KEY (x) REFERENCES y (id), ADD UNIQUE (a, b);'
+    );
+
+    expect(foreignKey).toMatchObject({
+      type: StatementType.alterTableAddForeignKey,
+      columnNames: ['x'],
+      refTableName: 'y',
+    });
+  });
+
+  it('reads no word inside a CHECK as a clause', () => {
+    expect(
+      keysOf(
+        "ALTER TABLE t ADD CONSTRAINT ck CHECK (s IN ('a', 'b')), ADD UNIQUE KEY uq (a, b);"
+      )
+    ).toEqual([{ name: 'uq', columns: ['a', 'b'] }]);
+  });
+
+  it('reaches a key the CONSTRAINT keyword opens with no symbol', () => {
+    expect(keysOf('ALTER TABLE t ADD CONSTRAINT UNIQUE (a, b);')).toEqual([
+      { name: '', columns: ['a', 'b'] },
+    ]);
+    expect(keysOf('ALTER TABLE t ADD CONSTRAINT UNIQUE KEY k (a, b);')).toEqual(
+      [{ name: 'k', columns: ['a', 'b'] }]
+    );
+  });
+
+  it('reads a unique key after a clause that adds a column', () => {
+    expect(
+      keysOf('ALTER TABLE t ADD COLUMN c INT, ADD UNIQUE (a, c);')
+    ).toEqual([{ name: '', columns: ['a', 'c'] }]);
+  });
+
+  it('leaves the next statement to the dispatch loop', () => {
+    const statements = schemaSQLParser(
+      'ALTER TABLE t ADD PRIMARY KEY (id), ADD UNIQUE (a, b)\nCREATE TABLE z (i INT);'
+    );
+
+    expect(statements.map(statement => statement.type)).toEqual([
+      StatementType.alterTableAddPrimaryKey,
+      StatementType.alterTableAddUnique,
+      StatementType.createTable,
+    ]);
   });
 });

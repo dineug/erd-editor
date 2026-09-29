@@ -325,6 +325,47 @@ describe('schemaSQLParserToSchemaJson', () => {
       );
     });
 
+    it('reads every key one ALTER TABLE adds, phpMyAdmin style', () => {
+      const schema = parse(`
+        CREATE TABLE \`t\` (\`id\` int, \`a\` int, \`b\` int, \`c\` int, \`x\` int);
+        CREATE TABLE \`y\` (\`id\` int);
+        ALTER TABLE \`t\`
+          ADD PRIMARY KEY (\`id\`),
+          ADD UNIQUE KEY \`uq_ab\` (\`a\`,\`b\`),
+          ADD UNIQUE KEY \`uq_c\` (\`c\`),
+          ADD KEY \`idx_x\` (\`x\`);
+        ALTER TABLE t ADD CONSTRAINT uq_bc UNIQUE (b, c),
+          ADD CONSTRAINT fk_x FOREIGN KEY (x) REFERENCES y (id);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(columnByName(schema, t, 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_bc', unique: true, columns: ['b ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('reads the composite unique index a dump tool writes on a qualified table', () => {
+      const schema = parse(`
+        CREATE TABLE public.sp_region (id INT, code INT, name VARCHAR(20));
+        CREATE UNIQUE INDEX i_1 ON public.sp_region USING btree (code, name);
+        CREATE UNIQUE NONCLUSTERED INDEX [i_2] ON [dbo].[sp_region] ([name] ASC, [code] DESC)
+          WITH (PAD_INDEX = OFF) ON [PRIMARY]
+        GO
+        CREATE UNIQUE INDEX "HR"."I_3" ON "HR"."SP_REGION" ("ID", "CODE");
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'i_1', unique: true, columns: ['code ASC', 'name ASC'] },
+        { name: 'i_2', unique: true, columns: ['name ASC', 'code DESC'] },
+        { name: 'I_3', unique: true, columns: ['id ASC', 'code ASC'] },
+      ]);
+    });
+
     it('matches table and column names case-insensitively', () => {
       const schema = parse(`
         CREATE TABLE t (a INT);
