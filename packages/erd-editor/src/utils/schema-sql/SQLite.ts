@@ -6,10 +6,12 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
+  ALL_REFERENTIAL_ACTIONS,
   autoName,
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   formatSize,
   formatSpace,
   FormatTableOptions,
@@ -154,6 +156,14 @@ export function formatTable(
         }
       });
 
+      // SQLite takes every action, enforced once PRAGMA foreign_keys is on.
+      const actions = formatReferentialActions(
+        relationship,
+        ALL_REFERENTIAL_ACTIONS
+      )
+        .map(clause => ` ${clause}`)
+        .join('');
+
       if (relationships.length - 1 > i) {
         buffer.push(
           `  FOREIGN KEY (${formatNames(
@@ -162,7 +172,7 @@ export function formatTable(
           )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
             columns.start,
             bracket
-          )}),`
+          )})${actions},`
         );
       } else {
         buffer.push(
@@ -172,7 +182,7 @@ export function formatTable(
           )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
             columns.start,
             bracket
-          )})`
+          )})${actions}`
         );
       }
     }

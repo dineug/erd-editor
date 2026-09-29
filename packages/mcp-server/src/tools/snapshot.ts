@@ -13,7 +13,7 @@ import {
   SaveSettingType,
   Show,
 } from '@dineug/erd-editor/peer.js';
-import { query } from '@dineug/erd-editor-schema';
+import { query, SchemaV3Constants } from '@dineug/erd-editor-schema';
 
 type Names = Readonly<Record<string, string | number>>;
 
@@ -43,6 +43,8 @@ export type AgentSnapshotTable = {
 export type AgentSnapshotRelationship = {
   id: string;
   relationshipType: string;
+  onDelete: string;
+  onUpdate: string;
   start: { tableId: string; columnIds: string[] };
   end: { tableId: string; columnIds: string[] };
 };
@@ -108,6 +110,10 @@ const flagsOf = (names: Names, mask: number): Record<string, boolean> =>
 export const relationshipTypeName = (value: number): string =>
   nameOf(RelationshipType, value);
 
+/** The name the tools take for an ON DELETE or ON UPDATE action. */
+export const referentialActionName = (value: number): string =>
+  nameOf(SchemaV3Constants.ReferentialAction, value);
+
 type Select = ReturnType<typeof query>;
 type TableEntity = RootState['collections']['tableEntities'][string];
 type RelationshipEntity =
@@ -167,12 +173,16 @@ export function toSnapshotTable(
 export function toSnapshotRelationship({
   id,
   relationshipType,
+  onDelete,
+  onUpdate,
   start,
   end,
 }: RelationshipEntity): AgentSnapshotRelationship {
   return {
     id,
     relationshipType: relationshipTypeName(relationshipType),
+    onDelete: referentialActionName(onDelete),
+    onUpdate: referentialActionName(onUpdate),
     start: { tableId: start.tableId, columnIds: [...start.columnIds] },
     end: { tableId: end.tableId, columnIds: [...end.columnIds] },
   };

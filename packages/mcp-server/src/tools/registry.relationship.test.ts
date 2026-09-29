@@ -240,3 +240,71 @@ describe('erd_link_columns relates columns that already exist', () => {
     expect(peer.state.doc.relationshipIds).toEqual([SEED.relationship]);
   });
 });
+
+describe.each([
+  ['erd_change_relationship_on_delete', 'onDelete', 'ON DELETE'],
+  ['erd_change_relationship_on_update', 'onUpdate', 'ON UPDATE'],
+] as const)('%s sets one referential action', (tool, field, clause) => {
+  const snapshotRelationship = (peer: PeerStore) =>
+    JSON.parse(readDocument(peer.state, 'snapshot')).relationships[0];
+
+  it('writes the action by name, which the snapshot and the DDL read back', () => {
+    const peer = seededPeer();
+
+    const run = runTool(peer, tool, {
+      relationshipId: SEED.relationship,
+      [field]: 'setNull',
+    });
+
+    expect(run).toMatchObject({ batches: 1, historyEntries: 1 });
+    expect(run.actions.map(({ type }) => type)).toEqual([
+      field === 'onDelete'
+        ? 'relationship.changeOnDelete'
+        : 'relationship.changeOnUpdate',
+    ]);
+    expect(snapshotRelationship(peer)[field]).toBe('setNull');
+    expect(readDocument(peer.state, 'sql', 'PostgreSQL')).toContain(
+      `    ${clause} SET NULL;`
+    );
+  });
+
+  it('takes the action back with one undo, and leaves the other alone', () => {
+    const peer = seededPeer();
+    const other = field === 'onDelete' ? 'onUpdate' : 'onDelete';
+
+    runTool(peer, tool, {
+      relationshipId: SEED.relationship,
+      [field]: 'cascade',
+    });
+    expect(snapshotRelationship(peer)[other]).toBe('none');
+    peer.undo();
+
+    expect(snapshotRelationship(peer)[field]).toBe('none');
+  });
+
+  it('refuses an action it does not name and a removed relationship', () => {
+    const peer = seededPeer();
+
+    const badAction = refusal(() =>
+      runTool(peer, tool, {
+        relationshipId: SEED.relationship,
+        [field]: 'SET NULL',
+      })
+    );
+    runTool(peer, 'erd_remove_relationship', {
+      relationshipId: SEED.relationship,
+    });
+    const gone = refusal(() =>
+      runTool(peer, tool, {
+        relationshipId: SEED.relationship,
+        [field]: 'cascade',
+      })
+    );
+
+    expect(badAction.code).toBe(ToolErrorCode.invalidArgs);
+    expect(badAction.message).toBe(
+      `${field} must be one of none, noAction, cascade, setNull, setDefault, restrict`
+    );
+    expect(gone.code).toBe(ToolErrorCode.notFound);
+  });
+});

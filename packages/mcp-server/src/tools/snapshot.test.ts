@@ -55,6 +55,8 @@ describe('the agent snapshot', () => {
       {
         id: SEED.relationship,
         relationshipType: 'OneN',
+        onDelete: 'none',
+        onUpdate: 'none',
         start: { tableId: SEED.users, columnIds: [SEED.userId] },
         end: { tableId: SEED.orders, columnIds: [SEED.orderUser] },
       },

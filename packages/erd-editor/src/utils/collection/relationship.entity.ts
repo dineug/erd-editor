@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 
 import {
   Direction,
+  ReferentialAction,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
@@ -18,6 +19,8 @@ export const createRelationship = (
       identification: false,
       relationshipType: RelationshipType.ZeroN,
       startRelationshipType: StartRelationshipType.dash,
+      onDelete: ReferentialAction.none,
+      onUpdate: ReferentialAction.none,
       start: {
         tableId: '',
         columnIds: [],

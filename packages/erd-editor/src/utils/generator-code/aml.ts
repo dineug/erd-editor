@@ -10,6 +10,7 @@ import {
   FormatTableOptions,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 const BARE_IDENTIFIER = /^[A-Za-z_][0-9A-Za-z_]*$/;
@@ -286,7 +287,11 @@ function createAMLContext(state: RootState): AMLContext {
       }
       used.add(key);
 
-      if (child.columns.length === 1) {
+      // An inline relation's properties are its attribute's, so a relation
+      // with actions is written standalone.
+      const properties = formatRelationProperties(relationship);
+
+      if (child.columns.length === 1 && properties === '') {
         const [columnId] = relationship.end.columnIds;
 
         context.inlineRelations.set(
@@ -298,7 +303,9 @@ function createAMLContext(state: RootState): AMLContext {
         return;
       }
 
-      context.relationLines.push(`rel ${childText} ${arrow} ${parentText}`);
+      context.relationLines.push(
+        `rel ${childText} ${arrow} ${parentText}${properties}`
+      );
     });
 
   return context;
@@ -308,6 +315,14 @@ function formatEndpoint({ table, columns }: Endpoint): string {
   return `${quoteIdentifier(table)}(${columns
     .map(quoteIdentifier)
     .join(', ')})`;
+}
+
+function formatRelationProperties(relationship: Relationship): string {
+  const properties = referentialActionEntries(relationship).map(
+    ({ key, sql }) => `${key}: ${quoteIdentifier(sql.toLowerCase())}`
+  );
+
+  return properties.length ? ` {${properties.join(', ')}}` : '';
 }
 
 function relationshipArrow(relationship: Relationship): string {

@@ -166,8 +166,10 @@ export function toClipboardRelationships(
     .filter(
       ({ start, end }) => hasTableId(start.tableId) && hasTableId(end.tableId)
     )
-    .map(({ relationshipType, start, end }) => ({
+    .map(({ relationshipType, onDelete, onUpdate, start, end }) => ({
       relationshipType,
+      onDelete,
+      onUpdate,
       start: { tableId: start.tableId, columnIds: [...start.columnIds] },
       end: { tableId: end.tableId, columnIds: [...end.columnIds] },
     }));

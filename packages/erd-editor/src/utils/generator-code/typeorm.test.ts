@@ -6,6 +6,7 @@ import {
   ColumnUIKey,
   Database,
   NameCase,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -1098,6 +1099,41 @@ describe('generator-code/typeorm', () => {
       );
       expect(render(state, user)).toContain(
         '  @JoinColumn([{ name: "team_id", referencedColumnName: "id" }])'
+      );
+    });
+
+    it('passes the referential actions to the owning side only', () => {
+      const { state, team, user } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.noAction,
+      });
+
+      const lines = render(state, user);
+      const head = lines.indexOf(
+        '  @ManyToOne(() => Team, (team) => team.userList, {'
+      );
+
+      expect(lines.slice(head, head + 4)).toEqual([
+        '  @ManyToOne(() => Team, (team) => team.userList, {',
+        '    onDelete: "CASCADE",',
+        '    onUpdate: "NO ACTION",',
+        '  })',
+      ]);
+      expect(render(state, team)).toContain(
+        '  @OneToMany(() => User, (user) => user.team)'
+      );
+    });
+
+    it('leaves SET DEFAULT out, which TypeORM would write as DEFAULT', () => {
+      const { state, user } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.setDefault,
+        onUpdate: ReferentialAction.setNull,
+      });
+
+      expect(render(state, user)).toContain(
+        '  @ManyToOne(() => Team, (team) => team.userList, { onUpdate: "SET NULL" })'
       );
     });
 

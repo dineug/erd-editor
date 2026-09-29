@@ -6,10 +6,12 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
+  ALL_REFERENTIAL_ACTIONS,
   autoName,
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   FormatRelationOptions,
   formatSize,
   formatSpace,
@@ -22,6 +24,9 @@ import {
   primaryKeyColumns,
   toOrderName,
 } from './utils';
+
+// Snowflake accepts every action for compatibility and enforces none.
+const REFERENTIAL_ACTIONS = ALL_REFERENTIAL_ACTIONS;
 
 // The double quote is Snowflake's only identifier delimiter, and a quoted name
 // is case sensitive where a bare one folds to upper case. So settings
@@ -205,8 +210,12 @@ function formatRelation(
       `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
         columns.start,
         bracket
-      )});`
+      )})`,
+      ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS).map(
+        clause => `    ${clause}`
+      )
     );
+    buffer[buffer.length - 1] += ';';
   }
 }
 

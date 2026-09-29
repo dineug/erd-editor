@@ -47,7 +47,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 | `src/services/` | SharedWorker services: `schema-gc/` and `export-png/` fall back in-process; `elk-layout/` refuses a host with no worker; `shiki/` answers null (plain text) |
 | `src/utils/` | `schema-sql/` (DDL per vendor), `generator-code/`, importers `schema-{sql,graphql,dbml,aml}-parser/` (in the last three `parser.ts` / `tokenizer.ts` own the grammar or `graphql` AST, `convert.ts` never sees it), `draw-relationship/`, `table-clipboard/`, `keyboard-shortcut/` |
 | `src/themes/`, `src/styles/` | Tokens and radix palette (`LightThemeConfig`); global style fragments and `elevation.styles.ts`'s `floatingShadow` |
-| `src/__test-utils__/`, `src/__jsx-parity__/` | Vitest mount helpers and the peer fixtures, `peerSeed.ts` (seed document and `SEED` ids, `createUserStore`, `createSession` wiring a peer store to a user store, `comparable`) and `peerScenarios.ts` (action arrays with their focus and label, no tool names; `SEED_SCENARIOS` holds one edit per shape of change on the seed, 53: every entity module's, every setting, every import) — out of dts and coverage; the JSX parity gates |
+| `src/__test-utils__/`, `src/__jsx-parity__/` | Vitest mount helpers and the peer fixtures, `peerSeed.ts` (seed document and `SEED` ids, `createUserStore`, `createSession` wiring a peer store to a user store, `comparable`) and `peerScenarios.ts` (action arrays with their focus and label, no tool names; `SEED_SCENARIOS` holds one edit per shape of change on the seed, 55: every entity module's, every setting, every import) — out of dts and coverage; the JSX parity gates |
 | `e2e/` | Playwright: `fixture/`, `support/` (page object, seeds, `sceneMirror.ts`), `specs/`, `bench/` (never in CI), `README.md` |
 
 ## For AI Agents
@@ -150,6 +150,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
   - `dbml.ts` repairs, since DBML rejects what others render oddly: duplicate tables renamed, typeless or repeated columns dropped (and the tables they empty), a `Ref` kept only when both ends resolve, identifiers double-quoted, comments as `Note`. `dbml.test.ts` parses with `@dbml/parse`.
   - `aml.ts` repairs likewise but keeps typeless attributes, writes `nullable`, always quotes types. DBML and AML highlight as `sql` (`LanguageToLangMap`).
   - `schema-sql/Snowflake.ts`: `bracketType` decides whether to quote, since a quoted name is case sensitive.
+  - A relationship's `onDelete` / `onUpdate` (`ReferentialAction`, `none` by default) write no clause while unset, so the output stays byte for byte what it was. Each vendor file's `REFERENTIAL_ACTIONS` names what its DDL writes and drops the rest, leaving the database default: MySQL and MariaDB refuse SET DEFAULT, SQL Server has no RESTRICT, Oracle writes only ON DELETE CASCADE or SET NULL, Databricks only NO ACTION. The code generators write the actions as set, for the ORM to judge, but `typeorm.ts` leaves SET DEFAULT out (TypeORM writes it `DEFAULT`) and `jpa.ts` writes none (JPA has no option); `aml.ts` writes a relationship with actions as a `rel` statement, since AML hands an inline relation's properties to its attribute.
 
 ## Dependencies
 

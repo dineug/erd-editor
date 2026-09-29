@@ -13,6 +13,7 @@ import {
   getPrimitiveType,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 const LINE_LIMIT = 80;
@@ -1165,15 +1166,22 @@ function createReferences(
 
       const carrier = carrierOf(state, context, table, endColumns[0].id);
       const target = `${parentNaming.constName}.${referenced}`;
+      const actions = referentialActionEntries(relationship).map(
+        ({ key, sql }) => `${key}: "${sql.toLowerCase()}"`
+      );
+      const options = actions.length ? `, { ${actions.join(', ')} }` : '';
 
       if (!context.cyclic.has(relationship.id)) {
-        references.set(carrier, `.references(() => ${target})`);
+        references.set(carrier, `.references(() => ${target}${options})`);
         return;
       }
 
       const annotation = ANY_COLUMN[context.dialect];
       imports.types.add(annotation);
-      references.set(carrier, `.references((): ${annotation} => ${target})`);
+      references.set(
+        carrier,
+        `.references((): ${annotation} => ${target}${options})`
+      );
     });
 
   return references;
@@ -1267,7 +1275,7 @@ function reaches(
 }
 
 type Extra =
-  | { kind: 'object'; builder: string; entries: string[] }
+  | { kind: 'object'; builder: string; entries: string[]; chain?: string[] }
   | { kind: 'call'; head: string; args: string[] };
 
 type ExtrasOptions = {
@@ -1314,8 +1322,12 @@ function createExtras(
 
 function inlineExtra(extra: Extra): string {
   return extra.kind === 'object'
-    ? `${extra.builder}({ ${extra.entries.join(', ')} })`
+    ? `${extra.builder}({ ${extra.entries.join(', ')} })${chainOf(extra)}`
     : `${extra.head}(${extra.args.join(', ')})`;
+}
+
+function chainOf(extra: Extract<Extra, { kind: 'object' }>): string {
+  return (extra.chain ?? []).join('');
 }
 
 function formatExtra(buffer: string[], indent: string, extra: Extra) {
@@ -1329,7 +1341,7 @@ function formatExtra(buffer: string[], indent: string, extra: Extra) {
   if (extra.kind === 'object') {
     buffer.push(`${indent}${extra.builder}({`);
     extra.entries.forEach(entry => buffer.push(`${indent}${INDENT}${entry},`));
-    buffer.push(`${indent}}),`);
+    buffer.push(`${indent}})${chainOf(extra)},`);
     return;
   }
 
@@ -1354,7 +1366,7 @@ function createForeignKeys(
         relationship.end.tableId === table.id &&
         !context.inlined.has(relationship.id)
     )
-    .flatMap(({ startTable, startColumns, endColumns }) => {
+    .flatMap(({ relationship, startTable, startColumns, endColumns }) => {
       const parentNaming = getNaming(state, context, startTable);
       const own = endColumns.map(column => naming.columnNames.get(column.id));
       const target = startColumns.map(column =>
@@ -1380,6 +1392,9 @@ function createForeignKeys(
             `columns: [${columns}]`,
             `foreignColumns: [${foreignColumns}]`,
           ],
+          chain: referentialActionEntries(relationship).map(
+            ({ key, sql }) => `.${key}("${sql.toLowerCase()}")`
+          ),
         },
       ];
     });

@@ -7,6 +7,7 @@ import {
   ColumnUIKey,
   Database,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
@@ -91,7 +92,15 @@ function rel(
 ): AMLRelation {
   const [srcCardinality, refCardinality] = ARROWS[arrow];
 
-  return { src, ref, srcCardinality, refCardinality, polymorphic };
+  return {
+    src,
+    ref,
+    srcCardinality,
+    refCardinality,
+    polymorphic,
+    onDelete: '',
+    onUpdate: '',
+  };
 }
 
 const tablesOf = (schema: ERDEditorSchemaV3): Table[] =>
@@ -652,6 +661,37 @@ describe('schema-aml-parser/convert', () => {
       );
 
       expect(edgesOf(schema)).toEqual(['users(id) -> posts(user_id)']);
+    });
+
+    it('reads the referential actions of a relation, unset when absent', () => {
+      const schema = convert(
+        twoTables(
+          [
+            {
+              ...rel(at('posts', ['user_id']), '->', at('users', ['id'])),
+              onDelete: 'cascade',
+              onUpdate: 'set_null',
+            },
+            rel(at('posts', ['editor_id']), '->', at('users', ['id'])),
+          ],
+          entity('posts', {
+            attributes: [
+              attr('user_id', { typeName: 'int' }),
+              attr('editor_id', { typeName: 'int' }),
+            ],
+          })
+        )
+      );
+
+      expect(
+        relationshipsOf(schema).map(({ onDelete, onUpdate }) => [
+          onDelete,
+          onUpdate,
+        ])
+      ).toEqual([
+        [ReferentialAction.cascade, ReferentialAction.setNull],
+        [ReferentialAction.none, ReferentialAction.none],
+      ]);
     });
 
     it('marks the child attribute as a foreign key', () => {

@@ -1,6 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
+import { ReferentialAction } from '@/constants/schema';
 import { arrayHas } from '@/utils/arrayHas';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 
@@ -12,7 +13,10 @@ export const addRelationshipAction = createAction<
 
 const addRelationship: ReducerType<typeof ActionType.addRelationship> = (
   { doc, collections, lww },
-  { payload: { id, relationshipType, start, end }, version },
+  {
+    payload: { id, relationshipType, onDelete, onUpdate, start, end },
+    version,
+  },
   { clock }
 ) => {
   const safeVersion = version ?? clock.getVersion();
@@ -22,6 +26,8 @@ const addRelationship: ReducerType<typeof ActionType.addRelationship> = (
       createRelationship({
         id,
         relationshipType,
+        onDelete: onDelete ?? ReferentialAction.none,
+        onUpdate: onUpdate ?? ReferentialAction.none,
         start: {
           tableId: start.tableId,
           columnIds: start.columnIds,
@@ -76,14 +82,52 @@ const changeRelationshipType: ReducerType<
   });
 };
 
+export const changeRelationshipOnDeleteAction = createAction<
+  ActionMap[typeof ActionType.changeRelationshipOnDelete]
+>(ActionType.changeRelationshipOnDelete);
+
+const changeRelationshipOnDelete: ReducerType<
+  typeof ActionType.changeRelationshipOnDelete
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('relationshipEntities');
+
+  collection.replaceOperator(lww, safeVersion, id, 'onDelete', () => {
+    collection.updateOne(id, relationship => {
+      relationship.onDelete = value;
+    });
+  });
+};
+
+export const changeRelationshipOnUpdateAction = createAction<
+  ActionMap[typeof ActionType.changeRelationshipOnUpdate]
+>(ActionType.changeRelationshipOnUpdate);
+
+const changeRelationshipOnUpdate: ReducerType<
+  typeof ActionType.changeRelationshipOnUpdate
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('relationshipEntities');
+
+  collection.replaceOperator(lww, safeVersion, id, 'onUpdate', () => {
+    collection.updateOne(id, relationship => {
+      relationship.onUpdate = value;
+    });
+  });
+};
+
 export const relationshipReducers = {
   [ActionType.addRelationship]: addRelationship,
   [ActionType.removeRelationship]: removeRelationship,
   [ActionType.changeRelationshipType]: changeRelationshipType,
+  [ActionType.changeRelationshipOnDelete]: changeRelationshipOnDelete,
+  [ActionType.changeRelationshipOnUpdate]: changeRelationshipOnUpdate,
 };
 
 export const actions = {
   addRelationshipAction,
   removeRelationshipAction,
   changeRelationshipTypeAction,
+  changeRelationshipOnDeleteAction,
+  changeRelationshipOnUpdateAction,
 };

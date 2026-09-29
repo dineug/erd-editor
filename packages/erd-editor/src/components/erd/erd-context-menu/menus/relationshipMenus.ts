@@ -2,8 +2,12 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { NotationIconName } from '@/components/primitives/icon/icons';
-import { RelationshipType } from '@/constants/schema';
-import { changeRelationshipTypeAction } from '@/engine/modules/relationship/atom.actions';
+import { ReferentialAction, RelationshipType } from '@/constants/schema';
+import {
+  changeRelationshipOnDeleteAction,
+  changeRelationshipOnUpdateAction,
+  changeRelationshipTypeAction,
+} from '@/engine/modules/relationship/atom.actions';
 
 type Menu = {
   iconName: NotationIconName;
@@ -63,4 +67,48 @@ export function createRelationshipMenus(
       },
     };
   });
+}
+
+export type ReferentialActionField = 'onDelete' | 'onUpdate';
+
+const referentialActionMenus: Array<{ name: string; value: number }> = [
+  { name: 'Not set', value: ReferentialAction.none },
+  { name: 'NO ACTION', value: ReferentialAction.noAction },
+  { name: 'CASCADE', value: ReferentialAction.cascade },
+  { name: 'SET NULL', value: ReferentialAction.setNull },
+  { name: 'SET DEFAULT', value: ReferentialAction.setDefault },
+  { name: 'RESTRICT', value: ReferentialAction.restrict },
+];
+
+const changeReferentialAction = {
+  onDelete: changeRelationshipOnDeleteAction,
+  onUpdate: changeRelationshipOnUpdateAction,
+} as const;
+
+/** The ON DELETE or ON UPDATE choices of a relationship, its own one checked. */
+export function createReferentialActionMenus(
+  { store }: AppContext,
+  field: ReferentialActionField,
+  relationshipId?: string
+) {
+  if (!relationshipId) return [];
+
+  const { collections } = store.state;
+  const relationship = query(collections)
+    .collection('relationshipEntities')
+    .selectById(relationshipId);
+  if (!relationship) return [];
+
+  return referentialActionMenus.map(menu => ({
+    checked: menu.value === relationship[field],
+    name: menu.name,
+    onClick: () => {
+      store.dispatch(
+        changeReferentialAction[field]({
+          id: relationshipId,
+          value: menu.value,
+        })
+      );
+    },
+  }));
 }

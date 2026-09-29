@@ -4,6 +4,7 @@ import {
   relationshipActions$,
   RelationshipType,
 } from '@dineug/erd-editor/peer.js';
+import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
 import type { ActionTool, ToolArg } from '@/tools/registry';
@@ -19,6 +20,12 @@ const RELATIONSHIP_TYPE: ToolArg = {
   kind: { type: 'enum', values: RelationshipType },
   required: true,
 };
+
+const referentialActionArg = (name: 'onDelete' | 'onUpdate'): ToolArg => ({
+  name,
+  kind: { type: 'enum', values: SchemaV3Constants.ReferentialAction },
+  required: true,
+});
 
 const tableArg = (name: string): ToolArg => ({
   name,
@@ -137,6 +144,44 @@ export const relationshipTools: readonly ActionTool[] = [
       relationshipActions.changeRelationshipTypeAction({
         id: relationshipId,
         value: relationshipType,
+      }),
+    ],
+  },
+  {
+    name: 'erd_change_relationship_on_delete',
+    kind: 'atom',
+    atomReason:
+      'The relationship module has no generator that changes a referential action; the context menu dispatches this atom itself.',
+    actionTypes: ['relationship.changeOnDelete'],
+    undoable: true,
+    stream: false,
+    expectedBatches: 1,
+    expectedHistory: 1,
+    snapshotPaths: ['relationships[relationshipId].onDelete'],
+    args: [RELATIONSHIP_ID, referentialActionArg('onDelete')],
+    toActions: ({ relationshipId, onDelete }) => [
+      relationshipActions.changeRelationshipOnDeleteAction({
+        id: relationshipId,
+        value: onDelete,
+      }),
+    ],
+  },
+  {
+    name: 'erd_change_relationship_on_update',
+    kind: 'atom',
+    atomReason:
+      'The relationship module has no generator that changes a referential action; the context menu dispatches this atom itself.',
+    actionTypes: ['relationship.changeOnUpdate'],
+    undoable: true,
+    stream: false,
+    expectedBatches: 1,
+    expectedHistory: 1,
+    snapshotPaths: ['relationships[relationshipId].onUpdate'],
+    args: [RELATIONSHIP_ID, referentialActionArg('onUpdate')],
+    toActions: ({ relationshipId, onUpdate }) => [
+      relationshipActions.changeRelationshipOnUpdateAction({
+        id: relationshipId,
+        value: onUpdate,
       }),
     ],
   },

@@ -13,12 +13,14 @@ describe('relationship/actions', () => {
       addRelationship: 'relationship.add',
       removeRelationship: 'relationship.remove',
       changeRelationshipType: 'relationship.changeType',
+      changeRelationshipOnDelete: 'relationship.changeOnDelete',
+      changeRelationshipOnUpdate: 'relationship.changeOnUpdate',
     });
   });
 
   it('namespaces every action type under "relationship."', () => {
     const values = Object.values(ActionType);
-    expect(values).toHaveLength(3);
+    expect(values).toHaveLength(5);
 
     for (const type of values) {
       expect(type.startsWith('relationship.')).toBe(true);

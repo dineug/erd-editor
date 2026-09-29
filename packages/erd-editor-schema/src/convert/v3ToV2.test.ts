@@ -18,6 +18,7 @@ const {
   Language,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   Show,
   StartRelationshipType,
@@ -629,6 +630,19 @@ describe('v3ToV2', () => {
       expect(r1.relationshipType).toBe('ZeroN');
       expect(r1.start.direction).toBe('bottom');
       expect(r1.end.direction).toBe('bottom');
+    });
+
+    it('leaves the referential actions behind, since v2 has no slot for them', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.collections.relationshipEntities.r1.onDelete =
+        ReferentialAction.cascade;
+      schemaV3.collections.relationshipEntities.r1.onUpdate =
+        ReferentialAction.setNull;
+
+      const [r1] = v3ToV2(schemaV3).relationship.relationships;
+
+      expect(r1).not.toHaveProperty('onDelete');
+      expect(r1).not.toHaveProperty('onUpdate');
     });
 
     it('maps ZeroN and OneOnly relationship types', () => {

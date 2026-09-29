@@ -88,6 +88,14 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
       relationshipId: SEED.relationship,
       relationshipType: 'ZeroOne',
     },
+    erd_change_relationship_on_delete: {
+      relationshipId: SEED.relationship,
+      onDelete: 'cascade',
+    },
+    erd_change_relationship_on_update: {
+      relationshipId: SEED.relationship,
+      onUpdate: 'setNull',
+    },
     erd_add_index: { tableId: SEED.users },
     erd_remove_index: { indexId: SEED.index },
     erd_change_index_name: { indexId: SEED.index, value: 'orders_note_idx' },

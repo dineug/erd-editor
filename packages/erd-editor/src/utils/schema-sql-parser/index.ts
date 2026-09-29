@@ -32,6 +32,7 @@ import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { toReferentialAction } from '@/utils/referentialAction';
 import { canvasSizeInRange, textInRange } from '@/utils/validation';
 
 import { findByName } from './utils';
@@ -313,6 +314,8 @@ function convertRelationship(
             )
         ),
         relationshipType: RelationshipType.ZeroN,
+        onDelete: toReferentialAction(foreignKey.onDelete),
+        onUpdate: toReferentialAction(foreignKey.onUpdate),
         start: {
           tableId: startTable.id,
           columnIds: startColumns.map(column => column.id),

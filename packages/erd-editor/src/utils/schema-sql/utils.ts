@@ -1,4 +1,10 @@
-import { BracketTypeMap, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketTypeMap,
+  ColumnOption,
+  OrderType,
+  ReferentialAction,
+  ReferentialActionToSQL,
+} from '@/constants/schema';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
@@ -155,4 +161,51 @@ export function toOrderName(orderType: number) {
     default:
       return '';
   }
+}
+
+/** The actions a vendor accepts after ON DELETE and after ON UPDATE. */
+export type ReferentialActionSupport = {
+  onDelete: ReadonlyArray<number>;
+  onUpdate: ReadonlyArray<number>;
+};
+
+export const REFERENTIAL_ACTIONS: ReadonlyArray<number> = [
+  ReferentialAction.noAction,
+  ReferentialAction.cascade,
+  ReferentialAction.setNull,
+  ReferentialAction.setDefault,
+  ReferentialAction.restrict,
+];
+
+export const ALL_REFERENTIAL_ACTIONS: ReferentialActionSupport = {
+  onDelete: REFERENTIAL_ACTIONS,
+  onUpdate: REFERENTIAL_ACTIONS,
+};
+
+/** Every action but the ones a vendor refuses, on both events. */
+export function withoutReferentialAction(
+  ...refused: number[]
+): ReferentialActionSupport {
+  const actions = REFERENTIAL_ACTIONS.filter(value => !refused.includes(value));
+  return { onDelete: actions, onUpdate: actions };
+}
+
+/**
+ * ON DELETE, then ON UPDATE, each where the relationship sets one the vendor
+ * accepts; an action it would refuse is left out, so the default applies.
+ */
+export function formatReferentialActions(
+  { onDelete, onUpdate }: Pick<Relationship, 'onDelete' | 'onUpdate'>,
+  support: ReferentialActionSupport
+): string[] {
+  const clauses: string[] = [];
+
+  if (support.onDelete.includes(onDelete)) {
+    clauses.push(`ON DELETE ${ReferentialActionToSQL[onDelete]}`);
+  }
+  if (support.onUpdate.includes(onUpdate)) {
+    clauses.push(`ON UPDATE ${ReferentialActionToSQL[onUpdate]}`);
+  }
+
+  return clauses;
 }

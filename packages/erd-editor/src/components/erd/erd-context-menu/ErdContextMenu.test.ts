@@ -35,6 +35,7 @@ import {
   CanvasType,
   ColumnOption,
   Database,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
@@ -128,9 +129,12 @@ function labelsOf(items: HTMLElement[]): string[] {
 }
 
 function findItem(items: HTMLElement[], label: string): HTMLElement {
-  const item = items.find(el =>
-    (el.textContent ?? '').replace(/\s+/g, ' ').includes(label)
-  );
+  const text = (el: HTMLElement) =>
+    (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+  // An exact label wins, so Delete is not taken for On Delete above it.
+  const item =
+    items.find(el => text(el) === label) ??
+    items.find(el => text(el).includes(label));
   if (!item) throw new Error(`menu item not found: ${label}`);
   return item;
 }
@@ -560,7 +564,61 @@ describe('ErdContextMenu / relationship type', () => {
       relationshipId: RELATIONSHIP_ID,
     });
 
-    expect(labelsOf(rootItems())).toEqual(['Relationship Type', 'Delete']);
+    expect(labelsOf(rootItems())).toEqual([
+      'Relationship Type',
+      'On Delete',
+      'On Update',
+      'Delete',
+    ]);
+  });
+
+  it.each([
+    ['On Delete', 'onDelete'],
+    ['On Update', 'onUpdate'],
+  ] as const)(
+    'sets the %s action from its submenu, checking the one it holds',
+    async (label, field) => {
+      seedRelationship();
+      await mountMenu({
+        type: ErdContextMenuType.relationship,
+        relationshipId: RELATIONSHIP_ID,
+      });
+      const checkedOf = (items: HTMLElement[]) =>
+        labelsOf(items.filter(item => item.querySelector('svg')));
+
+      let items = itemsOf(await openSubMenu(findItem(rootItems(), label)));
+
+      expect(labelsOf(items)).toEqual([
+        'Not set',
+        'NO ACTION',
+        'CASCADE',
+        'SET NULL',
+        'SET DEFAULT',
+        'RESTRICT',
+      ]);
+      expect(checkedOf(items)).toEqual(['Not set']);
+
+      await click(findItem(items, 'CASCADE'));
+
+      const relationship = query(app.store.state.collections)
+        .collection('relationshipEntities')
+        .selectById(RELATIONSHIP_ID);
+      expect(relationship?.[field]).toBe(ReferentialAction.cascade);
+      expect(onClose).not.toHaveBeenCalled();
+
+      items = itemsOf(await openSubMenu(findItem(rootItems(), label)));
+      expect(checkedOf(items)).toEqual(['CASCADE']);
+    }
+  );
+
+  it('renders empty action submenus without a relationship id', async () => {
+    await mountMenu({ type: ErdContextMenuType.relationship });
+
+    for (const label of ['On Delete', 'On Update']) {
+      const sub = await openSubMenu(findItem(rootItems(), label));
+
+      expect(itemsOf(sub)).toHaveLength(0);
+    }
   });
 
   it('changes the relationship type from the submenu: a choice keeps the menu open, an action closes it', async () => {

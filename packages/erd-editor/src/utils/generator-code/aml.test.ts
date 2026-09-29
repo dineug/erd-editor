@@ -6,6 +6,7 @@ import {
   Database,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -23,6 +24,7 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createCode, formatTable } from '@/utils/generator-code/aml';
+import { parseAMLModel } from '@/utils/schema-aml-parser/parser';
 
 type StateInput = {
   tables?: Table[];
@@ -926,6 +928,30 @@ describe('generator-code/aml', () => {
         'user',
         '  id int pk',
         '',
+      ]);
+    });
+
+    it('writes a relationship with actions as a rel statement with properties', () => {
+      const state = createRelationshipState({
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.setNull,
+      });
+
+      expect(childLine(state)).toBe('  user_id int');
+      expect(relLines(state)).toEqual([
+        'rel post(user_id) -> user(id) {onDelete: cascade, onUpdate: "set null"}',
+      ]);
+    });
+
+    it('writes properties the AML importer reads back as the same actions', () => {
+      const result = parseAMLModel(
+        createCode(
+          createRelationshipState({ onUpdate: ReferentialAction.noAction })
+        )
+      );
+
+      expect(result.ok && result.model.relations).toMatchObject([
+        { onDelete: '', onUpdate: 'no action' },
       ]);
     });
 

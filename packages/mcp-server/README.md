@@ -111,7 +111,7 @@ refused with how to narrow it.
 | Session | `erd_list_documents`, `erd_open_document`, `erd_list`, `erd_get`, `erd_read`, `erd_save`, `erd_undo`, `erd_redo` |
 | Tables | `erd_add_table`, `erd_remove_table`, `erd_change_table_name`, `erd_change_table_comment`, `erd_change_table_color`, `erd_move_table`, `erd_move_tables`, `erd_sort_tables` |
 | Columns | `erd_add_column`, `erd_remove_columns`, `erd_change_column_name`, `erd_change_column_data_type`, `erd_change_column_default`, `erd_change_column_comment`, `erd_set_column_primary_key`, `erd_set_column_unique`, `erd_set_column_not_null`, `erd_set_column_auto_increment`, `erd_move_column` |
-| Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type` |
+| Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
 | Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
 | Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_language`, `erd_set_table_name_case`, `erd_set_column_name_case`, `erd_set_bracket_type`, `erd_set_relationship_data_type_sync`, `erd_set_relationship_optimization`, `erd_set_column_order`, `erd_set_max_width_comment`, `erd_set_ignore_save_settings`, `erd_set_show` |

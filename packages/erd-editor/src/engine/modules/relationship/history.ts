@@ -6,6 +6,8 @@ import { PushUndoHistory } from '@/engine/history.actions';
 import { ActionType } from './actions';
 import {
   addRelationshipAction,
+  changeRelationshipOnDeleteAction,
+  changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
   removeRelationshipAction,
 } from './atom.actions';
@@ -31,6 +33,8 @@ const removeRelationship: PushUndoHistory = (
     addRelationshipAction({
       id: relationship.id,
       relationshipType: relationship.relationshipType,
+      onDelete: relationship.onDelete,
+      onUpdate: relationship.onUpdate,
       start: pick(relationship.start, ['tableId', 'columnIds']),
       end: pick(relationship.end, ['tableId', 'columnIds']),
     })
@@ -55,8 +59,46 @@ const changeRelationshipType: PushUndoHistory = (
   );
 };
 
+const changeRelationshipOnDelete: PushUndoHistory = (
+  undoActions,
+  { payload: { id } }: ReturnType<typeof changeRelationshipOnDeleteAction>,
+  { collections }
+) => {
+  const relationship = query(collections)
+    .collection('relationshipEntities')
+    .selectById(id);
+  if (!relationship) return;
+
+  undoActions.push(
+    changeRelationshipOnDeleteAction({
+      id,
+      value: relationship.onDelete,
+    })
+  );
+};
+
+const changeRelationshipOnUpdate: PushUndoHistory = (
+  undoActions,
+  { payload: { id } }: ReturnType<typeof changeRelationshipOnUpdateAction>,
+  { collections }
+) => {
+  const relationship = query(collections)
+    .collection('relationshipEntities')
+    .selectById(id);
+  if (!relationship) return;
+
+  undoActions.push(
+    changeRelationshipOnUpdateAction({
+      id,
+      value: relationship.onUpdate,
+    })
+  );
+};
+
 export const relationshipPushUndoHistoryMap = {
   [ActionType.addRelationship]: addRelationship,
   [ActionType.removeRelationship]: removeRelationship,
   [ActionType.changeRelationshipType]: changeRelationshipType,
+  [ActionType.changeRelationshipOnDelete]: changeRelationshipOnDelete,
+  [ActionType.changeRelationshipOnUpdate]: changeRelationshipOnUpdate,
 };

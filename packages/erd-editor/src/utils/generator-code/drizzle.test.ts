@@ -7,6 +7,7 @@ import {
   Database,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -368,6 +369,27 @@ describe('generator-code/drizzle', () => {
 
       expect(['', ...render(state, table), ''].join('\n')).toBe(
         createCode(state)
+      );
+    });
+
+    it('passes the referential actions to an inline reference', () => {
+      const { state, user } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.cascade,
+      });
+
+      expect(render(state, user)).toContain(
+        '  teamId: int("team_id").references(() => Team.id, { onDelete: "cascade" }),'
+      );
+
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onUpdate: ReferentialAction.setNull,
+      });
+      const lines = render(state, user);
+      const head = lines.indexOf('  teamId: int("team_id")');
+
+      expect(lines[head + 1]).toBe(
+        '    .references(() => Team.id, { onDelete: "cascade", onUpdate: "set null" }),'
       );
     });
 
@@ -1145,6 +1167,23 @@ describe('generator-code/drizzle', () => {
         '  table => [primaryKey({ columns: [table.regionCode, table.orgNumber] })]',
         ');',
         '',
+      ]);
+    });
+
+    it('chains the referential actions onto a composite foreignKey', () => {
+      const state = createForeignKeyFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.restrict,
+        onUpdate: ReferentialAction.noAction,
+      });
+      const lines = createCode(state).split('\n');
+      const head = lines.indexOf('    foreignKey({');
+
+      expect(lines.slice(head, head + 4)).toEqual([
+        '    foreignKey({',
+        '      columns: [table.regionCode, table.orgNumber],',
+        '      foreignColumns: [Organization.regionCode, Organization.orgNumber],',
+        '    }).onDelete("restrict").onUpdate("no action"),',
       ]);
     });
 

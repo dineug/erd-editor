@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, ReferentialAction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -11,6 +11,7 @@ import {
   FormatCommentOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   FormatRelationOptions,
   formatSize,
   formatSpace,
@@ -21,10 +22,18 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  ReferentialActionSupport,
   toOrderName,
   unique,
   uniqueColumns,
 } from './utils';
+
+// Oracle has no ON UPDATE and writes only CASCADE or SET NULL after ON
+// DELETE; its default already refuses the change NO ACTION would.
+const REFERENTIAL_ACTIONS: ReferentialActionSupport = {
+  onDelete: [ReferentialAction.cascade, ReferentialAction.setNull],
+  onUpdate: [],
+};
 
 export function createSchema(state: RootState): string {
   const {
@@ -268,8 +277,12 @@ function formatRelation(
       `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
         columns.start,
         bracket
-      )});`
+      )})`,
+      ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS).map(
+        clause => `    ${clause}`
+      )
     );
+    buffer[buffer.length - 1] += ';';
   }
 }
 

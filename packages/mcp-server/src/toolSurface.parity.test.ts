@@ -14,7 +14,7 @@ const fixture = readToolSurfaceFixture();
 
 /**
  * The tools that advertise no result schema: the read tools answer plain
- * text, added by hand. The 60 toolkit tools declare theirs; the recording has none.
+ * text, added by hand. The 62 toolkit tools declare theirs; the recording has none.
  */
 const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
   'erd_read',
@@ -25,6 +25,8 @@ const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
 /** The tools the server gained after the recording was made. */
 const ADDED_TOOLS: readonly string[] = [
   'erd_batch',
+  'erd_change_relationship_on_delete',
+  'erd_change_relationship_on_update',
   'erd_get',
   'erd_list',
   'erd_move_tables',
@@ -67,9 +69,9 @@ const recorded = () =>
     }));
 
 describe('the tool surface against the SDK-based server recording', () => {
-  it('holds the 59 recorded tools and the 4 added since', () => {
+  it('holds the 59 recorded tools and the 6 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(63);
+    expect(tools).toHaveLength(65);
     expect(fixture.filter(({ name }) => ADDED_TOOLS.includes(name))).toEqual(
       []
     );
@@ -103,7 +105,7 @@ describe('the tool surface against the SDK-based server recording', () => {
         hasOutputSchema: !PLAIN_TEXT_TOOLS.has(name),
       }))
     );
-    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(60);
+    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(62);
   });
 
   it('takes an object for its arguments, in every tool', () => {

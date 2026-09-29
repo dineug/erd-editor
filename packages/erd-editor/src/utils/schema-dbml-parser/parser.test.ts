@@ -432,6 +432,8 @@ ${source}`).refs;
           operator: '<',
           left: { schemaName: '', tableName: 'a', columnNames: ['x'] },
           right: { schemaName: '', tableName: 'b', columnNames: ['p'] },
+          onDelete: '',
+          onUpdate: '',
         },
       ]);
     });
@@ -460,6 +462,8 @@ ${source}`).refs;
         operator: '<',
         left: { schemaName: '', tableName: 'a', columnNames: ['x'] },
         right: { schemaName: '', tableName: 'b', columnNames: ['p'] },
+        onDelete: '',
+        onUpdate: '',
       });
     });
 
@@ -470,11 +474,17 @@ ${source}`).refs;
       });
     });
 
-    it('ignores the referential actions, which have no slot', () => {
+    it('reads the referential actions as written', () => {
       expect(
         refsOf('Ref: a.x < b.p [delete: cascade, update: no action]')[0]
-          .operator
-      ).toBe('<');
+      ).toMatchObject({
+        operator: '<',
+        onDelete: 'cascade',
+        onUpdate: 'no action',
+      });
+      expect(
+        refsOf('Ref r {\n  a.x < b.p [update: set default, color: #fff]\n}')[0]
+      ).toMatchObject({ onDelete: '', onUpdate: 'set default' });
     });
 
     it('reads several refs', () => {

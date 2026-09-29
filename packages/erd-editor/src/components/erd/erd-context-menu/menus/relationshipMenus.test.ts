@@ -3,8 +3,11 @@ import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { createRelationshipMenus } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
-import { RelationshipType } from '@/constants/schema';
+import {
+  createReferentialActionMenus,
+  createRelationshipMenus,
+} from '@/components/erd/erd-context-menu/menus/relationshipMenus';
+import { ReferentialAction, RelationshipType } from '@/constants/schema';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 
 let app: AppContext;
@@ -88,5 +91,75 @@ describe('relationshipMenus', () => {
     const result = createRelationshipMenus(app, RELATIONSHIP_ID);
     expect(result[0].checked).toBe(false);
     expect(result[1].checked).toBe(true);
+  });
+});
+
+describe('referentialActionMenus', () => {
+  const relationship = () =>
+    query(app.store.state.collections)
+      .collection('relationshipEntities')
+      .selectById(RELATIONSHIP_ID);
+
+  it('returns nothing without a relationship to read', () => {
+    expect(createReferentialActionMenus(app, 'onDelete')).toEqual([]);
+    expect(createReferentialActionMenus(app, 'onUpdate', 'missing')).toEqual(
+      []
+    );
+  });
+
+  it('offers every action after Not set, checking the unset one first', () => {
+    addRelationship(RelationshipType.ZeroN);
+
+    const result = createReferentialActionMenus(
+      app,
+      'onDelete',
+      RELATIONSHIP_ID
+    );
+
+    expect(result.map(menu => menu.name)).toEqual([
+      'Not set',
+      'NO ACTION',
+      'CASCADE',
+      'SET NULL',
+      'SET DEFAULT',
+      'RESTRICT',
+    ]);
+    expect(result.filter(menu => menu.checked).map(menu => menu.name)).toEqual([
+      'Not set',
+    ]);
+  });
+
+  it.each([
+    ['onDelete', 'onUpdate'],
+    ['onUpdate', 'onDelete'],
+  ] as const)(
+    'changes %s alone and checks its new value',
+    async (field, other) => {
+      addRelationship(RelationshipType.ZeroN);
+
+      createReferentialActionMenus(app, field, RELATIONSHIP_ID)
+        .find(menu => menu.name === 'SET NULL')
+        ?.onClick();
+      await flush();
+
+      expect(relationship()?.[field]).toBe(ReferentialAction.setNull);
+      expect(relationship()?.[other]).toBe(ReferentialAction.none);
+      expect(
+        createReferentialActionMenus(app, field, RELATIONSHIP_ID)
+          .filter(menu => menu.checked)
+          .map(menu => menu.name)
+      ).toEqual(['SET NULL']);
+    }
+  );
+
+  it('goes back to Not set', async () => {
+    addRelationship(RelationshipType.ZeroN);
+
+    createReferentialActionMenus(app, 'onUpdate', RELATIONSHIP_ID)[2].onClick();
+    await flush();
+    createReferentialActionMenus(app, 'onUpdate', RELATIONSHIP_ID)[0].onClick();
+    await flush();
+
+    expect(relationship()?.onUpdate).toBe(ReferentialAction.none);
   });
 });

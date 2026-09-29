@@ -9,6 +9,8 @@ import { Memo } from '@/v3/schema/memo.entity';
 import {
   Direction,
   DirectionList,
+  ReferentialAction,
+  ReferentialActionList,
   Relationship,
   RelationshipType,
   RelationshipTypeList,
@@ -76,6 +78,8 @@ export const SchemaV3Constants = {
   RelationshipTypeList,
   StartRelationshipType,
   StartRelationshipTypeList,
+  ReferentialAction,
+  ReferentialActionList,
   Direction,
   DirectionList,
   ColumnOption,

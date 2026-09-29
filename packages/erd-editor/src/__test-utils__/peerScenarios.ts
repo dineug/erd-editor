@@ -10,6 +10,7 @@ import {
   Language,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   SaveSettingType,
   Show,
@@ -47,6 +48,8 @@ import {
 } from '@/engine/modules/memo/generator.actions';
 import {
   addRelationshipAction,
+  changeRelationshipOnDeleteAction,
+  changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
@@ -407,6 +410,20 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
       changeRelationshipTypeAction({
         id: SEED.relationship,
         value: RelationshipType.ZeroOne,
+      }),
+    ]),
+  setRelationshipOnDelete: () =>
+    edit('setRelationshipOnDelete', [
+      changeRelationshipOnDeleteAction({
+        id: SEED.relationship,
+        value: ReferentialAction.cascade,
+      }),
+    ]),
+  setRelationshipOnUpdate: () =>
+    edit('setRelationshipOnUpdate', [
+      changeRelationshipOnUpdateAction({
+        id: SEED.relationship,
+        value: ReferentialAction.setNull,
       }),
     ]),
 

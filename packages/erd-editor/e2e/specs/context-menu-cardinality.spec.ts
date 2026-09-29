@@ -4,6 +4,7 @@ import {
   ColumnUIKey,
   createSchema,
   type ErdDocument,
+  ReferentialAction,
   RelationshipType,
 } from '../support/schema';
 
@@ -127,5 +128,54 @@ test.describe('connector context menu', () => {
       // from the new type rather than added beside the old one.
       await expect(erd.canvas.locator('.relationship')).toHaveCount(1);
     }
+  });
+
+  test('the menu sets the ON DELETE and ON UPDATE of the connector under the pointer', async ({
+    erd,
+  }) => {
+    await erd.seed(linkedTables());
+
+    // The seed leaves both out, as a document saved before them does.
+    expect(await erd.relationship(RELATIONSHIP_ID)).toMatchObject({
+      onDelete: ReferentialAction.none,
+      onUpdate: ReferentialAction.none,
+    });
+
+    for (const { label, field, choice, value } of [
+      {
+        label: 'On Delete',
+        field: 'onDelete',
+        choice: 'CASCADE',
+        value: ReferentialAction.cascade,
+      },
+      {
+        label: 'On Update',
+        field: 'onUpdate',
+        choice: 'SET NULL',
+        value: ReferentialAction.setNull,
+      },
+    ] as const) {
+      await erd.clickAt(await erd.sceneHitPoint(RELATIONSHIP_ID), {
+        button: 'right',
+      });
+      await erd.contextMenu.getByText(label, { exact: true }).hover();
+      await expect(erd.contextMenu).toHaveCount(2);
+      await expect(erd.contextMenu.nth(1)).toContainText(
+        'Not setNO ACTIONCASCADESET NULLSET DEFAULTRESTRICT'
+      );
+
+      await erd.contextMenu.nth(1).getByText(choice, { exact: true }).click();
+
+      await expect
+        .poll(async () => (await erd.relationship(RELATIONSHIP_ID))[field])
+        .toBe(value);
+    }
+
+    // The first choice survives the second, each field its own register.
+    expect(await erd.relationship(RELATIONSHIP_ID)).toMatchObject({
+      onDelete: ReferentialAction.cascade,
+      onUpdate: ReferentialAction.setNull,
+    });
+    await expect(erd.canvas.locator('.relationship')).toHaveCount(1);
   });
 });

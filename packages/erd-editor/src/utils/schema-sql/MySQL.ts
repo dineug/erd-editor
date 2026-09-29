@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, ReferentialAction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -10,6 +10,7 @@ import {
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   FormatRelationOptions,
   formatSize,
   formatSpace,
@@ -23,7 +24,14 @@ import {
   toOrderName,
   unique,
   uniqueColumns,
+  withoutReferentialAction,
 } from './utils';
+
+// InnoDB, and so MySQL, rejects a table whose foreign key says SET DEFAULT,
+// though the parser accepts it; NO ACTION reads as RESTRICT.
+const REFERENTIAL_ACTIONS = withoutReferentialAction(
+  ReferentialAction.setDefault
+);
 
 export function createSchema(state: RootState): string {
   const {
@@ -214,8 +222,12 @@ function formatRelation(
       `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
         columns.start,
         bracket
-      )});`
+      )})`,
+      ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS).map(
+        clause => `    ${clause}`
+      )
     );
+    buffer[buffer.length - 1] += ';';
   }
 }
 

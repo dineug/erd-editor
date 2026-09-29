@@ -4,6 +4,7 @@ import { FC, onMounted } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
+import { LucideIconName } from '@/components/primitives/icon/icons';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
@@ -29,7 +30,11 @@ import { createDatabaseMenus } from './menus/databaseMenus';
 import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
 import { createExportMenus } from './menus/exportMenus';
 import { createImportMenus } from './menus/importMenus';
-import { createRelationshipMenus } from './menus/relationshipMenus';
+import {
+  createReferentialActionMenus,
+  createRelationshipMenus,
+  ReferentialActionField,
+} from './menus/relationshipMenus';
 import { createShowMenus } from './menus/showMenus';
 import { createTablePlacementMenus } from './menus/tablePlacementMenus';
 
@@ -39,6 +44,15 @@ export const ErdContextMenuType = {
   relationship: 'relationship',
 } as const;
 export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
+
+const referentialActionItems: Array<{
+  field: ReferentialActionField;
+  iconName: LucideIconName;
+  name: string;
+}> = [
+  { field: 'onDelete', iconName: 'trash-2', name: 'On Delete' },
+  { field: 'onUpdate', iconName: 'refresh-cw', name: 'On Update' },
+];
 
 export type ErdContextMenuProps = {
   type: ErdContextMenuType;
@@ -248,6 +262,40 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
+              {referentialActionItems.map(({ field, iconName, name }) => (
+                <ContextMenu.Item
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name={iconName} size={14} />}
+                      name={name}
+                      right={chevronRightIcon}
+                    />
+                  }
+                  subChildren={
+                    <>
+                      {createReferentialActionMenus(
+                        app.value,
+                        field,
+                        props.relationshipId
+                      ).map(menu => (
+                        <ContextMenu.Item
+                          onClick={menu.onClick}
+                          children={
+                            <ContextMenu.Menu
+                              icon={
+                                menu.checked ? (
+                                  <Icon name="check" size={14} />
+                                ) : null
+                              }
+                              name={menu.name}
+                            />
+                          }
+                        />
+                      ))}
+                    </>
+                  }
+                />
+              ))}
               <ContextMenu.Item
                 onClick={handleRemoveRelationship}
                 children={<ContextMenu.Menu name="Delete" />}

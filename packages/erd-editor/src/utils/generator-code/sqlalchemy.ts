@@ -15,6 +15,7 @@ import {
   getPrimitiveType,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 // A class body sees module scope, so every identifier this generator can put
@@ -252,15 +253,20 @@ function formatClass(
 
   context.relationships
     .filter(({ relationship }) => relationship.end.tableId === table.id)
-    .forEach(({ startTable, startColumns, endColumns }) => {
+    .forEach(({ relationship, startTable, startColumns, endColumns }) => {
       const parentNaming = getNaming(state, context, startTable);
+      const actions = referentialActionEntries(relationship).map(
+        ({ key, sql }) => `${key.toLowerCase()}="${sql}"`
+      );
 
       if (endColumns.length === 1) {
         addSqlalchemy(imports, 'ForeignKey');
         const target = `${startTable.name}.${columnKey(parentNaming, startColumns[0])}`;
         const carrier = columnRef(naming, endColumns[0]);
         const values = foreignKeys.get(carrier) ?? [];
-        values.push(`ForeignKey("${escapeString(target)}")`);
+        values.push(
+          `ForeignKey(${[`"${escapeString(target)}"`, ...actions].join(', ')})`
+        );
         foreignKeys.set(carrier, values);
         return;
       }
@@ -275,6 +281,7 @@ function formatClass(
               column => `${startTable.name}.${columnKey(parentNaming, column)}`
             )
           ),
+          ...actions,
         ],
       });
     });

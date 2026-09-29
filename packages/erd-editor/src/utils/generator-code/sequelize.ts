@@ -15,6 +15,7 @@ import {
   getPrimitiveType,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 const SEQUELIZE_NAMES = [
@@ -439,6 +440,11 @@ function formatAssociations(
       const method = hasNRelationship(relationship.relationshipType)
         ? 'hasMany'
         : 'hasOne';
+      // Both sides write the one foreign key attribute, whichever runs last
+      // winning, so each carries the actions.
+      const actions = referentialActionEntries(relationship).map(
+        ({ key, sql }) => `${key}: "${sql}"`
+      );
 
       formatGroup(
         lines,
@@ -450,6 +456,7 @@ function formatAssociations(
             `foreignKey: "${escapeString(foreignKey)}"`,
             `sourceKey: "${escapeString(referenced)}"`,
             `as: "${escapeString(inverse)}"`,
+            ...actions,
           ],
         },
         ');'
@@ -464,6 +471,7 @@ function formatAssociations(
             `foreignKey: "${escapeString(foreignKey)}"`,
             `targetKey: "${escapeString(referenced)}"`,
             `as: "${escapeString(owning)}"`,
+            ...actions,
           ],
         },
         ');'

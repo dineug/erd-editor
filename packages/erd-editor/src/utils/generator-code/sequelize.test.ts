@@ -6,6 +6,7 @@ import {
   ColumnUIKey,
   Database,
   NameCase,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -387,6 +388,34 @@ describe('generator-code/sequelize', () => {
         ');',
         '',
       ]);
+    });
+
+    it('passes the referential actions to both association calls', () => {
+      const { state } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.setDefault,
+      });
+      const code = createCode(state);
+
+      expect(code).toContain(
+        [
+          'Team.hasMany(User, {',
+          '  foreignKey: "teamId",',
+          '  sourceKey: "id",',
+          '  as: "userList",',
+          '  onDelete: "CASCADE",',
+          '  onUpdate: "SET DEFAULT",',
+          '});',
+          'User.belongsTo(Team, {',
+          '  foreignKey: "teamId",',
+          '  targetKey: "id",',
+          '  as: "team",',
+          '  onDelete: "CASCADE",',
+          '  onUpdate: "SET DEFAULT",',
+          '});',
+        ].join('\n')
+      );
     });
 
     it('runs every association call after every init call', () => {

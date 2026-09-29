@@ -6,11 +6,13 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
+  ALL_REFERENTIAL_ACTIONS,
   autoName,
   FormatColumnOptions,
   FormatCommentOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   FormatRelationOptions,
   formatSize,
   formatSpace,
@@ -23,6 +25,9 @@ import {
   primaryKeyColumns,
   toOrderName,
 } from './utils';
+
+// PostgreSQL takes every action on both events.
+const REFERENTIAL_ACTIONS = ALL_REFERENTIAL_ACTIONS;
 
 export function createSchema(state: RootState): string {
   const {
@@ -214,8 +219,12 @@ function formatRelation(
       `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
         columns.start,
         bracket
-      )});`
+      )})`,
+      ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS).map(
+        clause => `    ${clause}`
+      )
     );
+    buffer[buffer.length - 1] += ';';
   }
 }
 

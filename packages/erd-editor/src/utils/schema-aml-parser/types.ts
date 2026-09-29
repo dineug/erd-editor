@@ -27,6 +27,12 @@ export type AMLRelation = {
   refCardinality: AMLCardinality;
   /** -item_kind=User>; the discriminator has no editor slot and is dropped. */
   polymorphic: boolean;
+  /**
+   * A standalone rel's onDelete and onUpdate properties as written, set null
+   * say; '' otherwise, since an inline relation's properties are its attribute's.
+   */
+  onDelete: string;
+  onUpdate: string;
 };
 
 /**

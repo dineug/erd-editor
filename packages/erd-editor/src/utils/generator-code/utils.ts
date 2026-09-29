@@ -1,6 +1,10 @@
 import { camelCase, snakeCase } from 'es-toolkit';
 
-import { NameCase, RelationshipType } from '@/constants/schema';
+import {
+  NameCase,
+  ReferentialActionToSQL,
+  RelationshipType,
+} from '@/constants/schema';
 import {
   DatabaseHintMap,
   DataTypeHint,
@@ -82,4 +86,35 @@ export function getNameCase(name: string, nameCase: number): string {
       break;
   }
   return changeName;
+}
+
+export type ReferentialActionEntry = {
+  key: 'onDelete' | 'onUpdate';
+  action: number;
+  sql: string;
+};
+
+/** The actions a relationship sets, ON DELETE first, each with its SQL spelling. */
+export function referentialActionEntries({
+  onDelete,
+  onUpdate,
+}: Pick<Relationship, 'onDelete' | 'onUpdate'>): ReferentialActionEntry[] {
+  const entries: ReferentialActionEntry[] = [];
+
+  if (ReferentialActionToSQL[onDelete]) {
+    entries.push({
+      key: 'onDelete',
+      action: onDelete,
+      sql: ReferentialActionToSQL[onDelete],
+    });
+  }
+  if (ReferentialActionToSQL[onUpdate]) {
+    entries.push({
+      key: 'onUpdate',
+      action: onUpdate,
+      sql: ReferentialActionToSQL[onUpdate],
+    });
+  }
+
+  return entries;
 }

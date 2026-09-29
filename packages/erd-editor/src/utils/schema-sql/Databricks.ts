@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, ReferentialAction } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -10,6 +10,7 @@ import {
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   FormatRelationOptions,
   formatSize,
   formatSpace,
@@ -19,6 +20,7 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  ReferentialActionSupport,
   toOrderName,
   unique,
   uniqueColumns,
@@ -31,6 +33,12 @@ const BRACKET = '`';
 // Keys are never enforced. RELY is what lets the optimizer act on the
 // declaration, which is the only reason to export one at all.
 const CONSTRAINT_OPTIONS = 'NOT ENFORCED RELY';
+
+// A foreign key option may only be NO ACTION, on either event.
+const REFERENTIAL_ACTIONS: ReferentialActionSupport = {
+  onDelete: [ReferentialAction.noAction],
+  onUpdate: [ReferentialAction.noAction],
+};
 
 export function createSchema(state: RootState): string {
   const {
@@ -210,10 +218,14 @@ function formatRelation(
 
     buffer.push(`    FOREIGN KEY (${formatNames(columns.end, BRACKET)})`);
     buffer.push(
-      `    REFERENCES ${BRACKET}${startTable.name}${BRACKET} (${formatNames(
-        columns.start,
-        BRACKET
-      )}) ${CONSTRAINT_OPTIONS};`
+      [
+        `    REFERENCES ${BRACKET}${startTable.name}${BRACKET} (${formatNames(
+          columns.start,
+          BRACKET
+        )})`,
+        ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS),
+        `${CONSTRAINT_OPTIONS};`,
+      ].join(' ')
     );
   }
 }

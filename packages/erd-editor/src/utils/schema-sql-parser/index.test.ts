@@ -6,6 +6,7 @@ import {
   ColumnUIKey,
   Database,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
@@ -13,6 +14,7 @@ import { createEngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createSchemaSQL } from '@/utils/schema-sql';
@@ -477,6 +479,35 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(relationship.identification).toBe(false);
     });
 
+    it('keeps the ON DELETE and ON UPDATE actions of every foreign key form', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT, PRIMARY KEY (id));
+        CREATE TABLE shops (id INT PRIMARY KEY);
+        CREATE TABLE orders (
+          id INT PRIMARY KEY,
+          user_id INT REFERENCES users (id) ON DELETE CASCADE,
+          shop_id INT,
+          FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE SET NULL ON UPDATE NO ACTION
+        );
+        CREATE TABLE items (order_id INT);
+        ALTER TABLE items ADD CONSTRAINT fk FOREIGN KEY (order_id) REFERENCES orders (id) ON UPDATE RESTRICT ON DELETE SET DEFAULT;
+        CREATE TABLE notes (order_id INT);
+        ALTER TABLE notes ADD FOREIGN KEY (order_id) REFERENCES orders (id);
+      `);
+
+      expect(
+        relationshipsOf(schema).map(({ onDelete, onUpdate }) => [
+          onDelete,
+          onUpdate,
+        ])
+      ).toEqual([
+        [ReferentialAction.cascade, ReferentialAction.none],
+        [ReferentialAction.setNull, ReferentialAction.noAction],
+        [ReferentialAction.setDefault, ReferentialAction.restrict],
+        [ReferentialAction.none, ReferentialAction.none],
+      ]);
+    });
+
     it('relates an inline REFERENCES without a column list to the primary key', () => {
       const schema = parse(`
         CREATE TABLE users (id INT PRIMARY KEY, name TEXT);
@@ -495,6 +526,7 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(relationship.end.columnIds).toEqual([
         columnByName(schema, posts, 'user_id').id,
       ]);
+      expect(relationship.onDelete).toBe(ReferentialAction.cascade);
       expect(
         columnByName(schema, tableByName(schema, 'links'), 'pair_a').ui.keys
       ).toBe(0);
@@ -772,6 +804,76 @@ describe('schemaSQLParserToSchemaJson', () => {
         'id',
       ]);
     });
+  });
+
+  describe('referential action round trip', () => {
+    function relatedState(): RootState {
+      const state = {
+        ...schemaV3Parser({}),
+        editor: {},
+        lww: {},
+      } as unknown as RootState;
+
+      state.collections.tableColumnEntities = {
+        'col-id': createColumn({
+          id: 'col-id',
+          tableId: 'tbl-users',
+          name: 'id',
+          dataType: 'INT',
+          options: ColumnOption.primaryKey | ColumnOption.notNull,
+        }),
+        'col-user-id': createColumn({
+          id: 'col-user-id',
+          tableId: 'tbl-posts',
+          name: 'user_id',
+          dataType: 'INT',
+        }),
+      };
+      state.collections.tableEntities = {
+        'tbl-users': createTable({
+          id: 'tbl-users',
+          name: 'users',
+          columnIds: ['col-id'],
+        }),
+        'tbl-posts': createTable({
+          id: 'tbl-posts',
+          name: 'posts',
+          columnIds: ['col-user-id'],
+        }),
+      };
+      state.collections.relationshipEntities = {
+        'rel-1': createRelationship({
+          id: 'rel-1',
+          onDelete: ReferentialAction.cascade,
+          onUpdate: ReferentialAction.setNull,
+          start: { tableId: 'tbl-users', columnIds: ['col-id'] },
+          end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
+        }),
+      };
+      state.doc.tableIds = ['tbl-users', 'tbl-posts'];
+      state.doc.relationshipIds = ['rel-1'];
+
+      return state;
+    }
+
+    it.each([
+      Database.PostgreSQL,
+      Database.MySQL,
+      Database.MariaDB,
+      Database.MSSQL,
+      Database.SQLite,
+      Database.Snowflake,
+    ])(
+      'keeps the actions of a %s export when the SQL is imported back',
+      database => {
+        const [relationship] = relationshipsOf(
+          parse(createSchemaSQL(relatedState(), database))
+        );
+
+        expect(relationship.onDelete).toBe(ReferentialAction.cascade);
+        expect(relationship.onUpdate).toBe(ReferentialAction.setNull);
+      }
+    );
   });
 
   describe('default round trip', () => {

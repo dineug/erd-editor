@@ -18,6 +18,8 @@ export const RelationshipTypeList = SchemaV3Constants.RelationshipTypeList;
 export const StartRelationshipType = SchemaV3Constants.StartRelationshipType;
 export const StartRelationshipTypeList =
   SchemaV3Constants.StartRelationshipTypeList;
+export const ReferentialAction = SchemaV3Constants.ReferentialAction;
+export const ReferentialActionList = SchemaV3Constants.ReferentialActionList;
 export const Direction = SchemaV3Constants.Direction;
 export const DirectionList = SchemaV3Constants.DirectionList;
 export const ColumnOption = SchemaV3Constants.ColumnOption;
@@ -35,6 +37,15 @@ export const BracketTypeMap: Record<number, string> = {
   [BracketType.backtick]: '`',
   [BracketType.doubleQuote]: '"',
   [BracketType.singleQuote]: "'",
+};
+
+/** The clause each action writes after ON DELETE / ON UPDATE; none writes none. */
+export const ReferentialActionToSQL: Record<number, string> = {
+  [ReferentialAction.noAction]: 'NO ACTION',
+  [ReferentialAction.cascade]: 'CASCADE',
+  [ReferentialAction.setNull]: 'SET NULL',
+  [ReferentialAction.setDefault]: 'SET DEFAULT',
+  [ReferentialAction.restrict]: 'RESTRICT',
 };
 
 export const ColumnTypeToName: Record<number, string> = {

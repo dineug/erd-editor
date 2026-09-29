@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { ColumnOption, NameCase } from '@/constants/schema';
+import { ColumnOption, NameCase, ReferentialAction } from '@/constants/schema';
 import { PrimitiveType, PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
@@ -15,6 +15,7 @@ import {
   getPrimitiveType,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 const TYPEORM_NAMES = [
@@ -514,7 +515,8 @@ function formatRelation(
         memberBuffer,
         INDENT,
         decorator,
-        relationArguments(parentNaming, startTable, relationship, INVERSE)
+        relationArguments(parentNaming, startTable, relationship, INVERSE),
+        { open: '{', entries: relationOptions(relationship) }
       );
 
       formatDecorator(memberBuffer, INDENT, 'JoinColumn', [], {
@@ -567,6 +569,17 @@ function formatRelation(
       );
       pushMember(buffer, memberBuffer);
     });
+}
+
+/**
+ * The owning side's onDelete and onUpdate. TypeORM spells SET DEFAULT as
+ * DEFAULT and writes that word into its DDL, which no database takes, so it
+ * is left to the default.
+ */
+function relationOptions(relationship: Relationship): string[] {
+  return referentialActionEntries(relationship)
+    .filter(({ action }) => action !== ReferentialAction.setDefault)
+    .map(({ key, sql }) => `${key}: "${sql}"`);
 }
 
 function relationArguments(
