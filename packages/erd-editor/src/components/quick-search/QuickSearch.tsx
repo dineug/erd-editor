@@ -85,9 +85,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const setActions = (value: string) => {
     const query = readQuery(value);
     const base = scopeBase(state.prevActions, query.scope);
-    // The fuzzy search narrows inside its last hits while the scope holds;
-    // a prefix typed, changed or taken away starts again from the whole level.
-    const from = query.scope === state.scope ? state.actions : base;
+    // Only the unscoped list narrows inside its last hits, as the owner pinned;
+    // a scope searches its whole base on each keystroke, so a Hangul jamo typed
+    // mid-syllable empties nothing for good, and a prefix change starts over.
+    const narrow = query.scope === null && state.scope === null;
+    const from = narrow ? state.actions : base;
 
     state.index = -1;
     state.scope = query.scope;

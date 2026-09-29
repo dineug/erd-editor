@@ -791,17 +791,37 @@ describe('QuickSearch prefixes', () => {
     expect(scopeLabel()).toBeNull();
   });
 
-  it('narrows inside a scope as the mixed list does, and starts over when the prefix changes', async () => {
+  it('searches the whole scope on each keystroke, while the mixed list still narrows', async () => {
     await open();
     await type('>Memo');
     await type('>Auto Layout');
-    expect(rowNames()).not.toContain('Auto Layout');
+    expect(rowNames()).toContain('Auto Layout');
 
     await type('#Memo');
     expect(scopeLabel()).toBe('Tables');
     await type('>Auto Layout');
-
     expect(rowNames()).toContain('Auto Layout');
+
+    await type('Memo');
+    await type('Auto Layout');
+
+    expect(scopeLabel()).toBeNull();
+    expect(rowNames()).not.toContain('Auto Layout');
+  });
+
+  it('finds a Hangul table name an IME composes one jamo at a time', async () => {
+    app.store.dispatchSync(
+      addTableAction({ id: 'ko', ui: { x: 0, y: 0, zIndex: 1 } }),
+      changeTableNameAction({ id: 'ko', value: '사용자' })
+    );
+    await open();
+
+    // The values a Korean IME hands the input while it composes the word.
+    for (const value of ['#', '#ㅅ', '#사', '#상', '#사요', '#사용']) {
+      await type(value);
+    }
+
+    expect(rowNames()).toEqual(['사용자']);
   });
 
   it('lists the columns alone after @, narrowed by the table before a dot', async () => {
