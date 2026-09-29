@@ -89,6 +89,12 @@ const tableNames = () =>
       : []
   );
 
+/** The index of the row the arrows stand on, or -1. */
+const selected = () =>
+  Array.from(
+    mounted?.container.querySelectorAll(`.${styles.action}`) ?? []
+  ).findIndex(row => row.classList.contains('selected'));
+
 /** The marks lit in the name of the row at the index given. */
 const lit = (index = 0) => {
   const row = mounted?.container
@@ -102,12 +108,15 @@ const lit = (index = 0) => {
 
 /**
  * Types 사용자 the way a two-set Korean keyboard does, one jamo a key, and
- * reads the input and the list after each: ㅅ, 사, 상, 사요, 사용, 사용ㅈ, 사용자.
+ * reads the input, the list and its tables after each: ㅅ, 사, 상, 사요, 사용,
+ * 사용ㅈ, 사용자.
  */
-async function typeSayongja(): Promise<Array<[string, string[]]>> {
+async function typeSayongja(): Promise<
+  Array<[value: string, names: string[], tables: string[]]>
+> {
   const input = mounted?.container.querySelector('input') as HTMLInputElement;
-  const seen: Array<[string, string[]]> = [];
-  const read = () => seen.push([input.value, rowNames()]);
+  const seen: Array<[string, string[], string[]]> = [];
+  const read = () => seen.push([input.value, rowNames(), tableNames()]);
 
   for (const step of ['ㅅ', '사', '상']) {
     await compose(step);
@@ -145,13 +154,43 @@ describe('quick search under a Korean IME', () => {
       '사용자',
       '사용자',
     ]);
-    for (const [, names] of seen) {
-      expect(names).toContain('사용자');
+    // The column 사용자 is looked up afresh on each keystroke; the table row
+    // is what the narrowed list has to keep.
+    for (const [, , tables] of seen) {
+      expect(tables).toContain('사용자');
     }
     expect(events).toContain('compositionstart');
     expect(events).toContain('compositionend');
     expect(input.value).toBe('사용자');
     expect(rowNames()[0]).toBe('사용자');
+    expect(tableNames()[0]).toBe('사용자');
+  });
+
+  it('leaves an arrow or Enter pressed mid-syllable to the IME, and acts on the next', async () => {
+    const { app, input } = await setup();
+    const composing: boolean[] = [];
+    input.addEventListener('keydown', event =>
+      composing.push(event.isComposing)
+    );
+
+    await commit('사용');
+    await compose('ㅈ');
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{Enter}');
+    await flush();
+
+    expect(composing).toEqual([true, true]);
+    expect(selected()).toBe(-1);
+    expect(app.store.state.editor.openMap.search).toBe(true);
+
+    await commit('자');
+    await userEvent.keyboard('{ArrowDown}');
+    expect(selected()).toBe(0);
+    await userEvent.keyboard('{Enter}');
+    await flush();
+
+    expect(app.store.state.editor.openMap.search).toBe(false);
+    expect(app.store.state.editor.selectedMap).toEqual({ users: 'table' });
   });
 
   it('keeps it in a scope a real key typed, and finds a table by its initials', async () => {

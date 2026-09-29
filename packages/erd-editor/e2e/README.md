@@ -109,8 +109,9 @@ row types its prefix in with the input still focused, a `@table.col` search
 goes to that column, and deleting the `#` of `#us` brings back the rows that
 are not tables. Under Chromium's own IME composition (`Input.imeSetComposition`
 over a CDP session) it holds down the Hangul search: every step a Korean IME
-hands over while typing 사용 keeps 사용자 listed, `#ㅈㅁ` finds 주문 내역 by
-its initials, and `@사` goes to a column by an unfinished syllable.
+hands over while typing 사용 keeps the table 사용자 listed, `#ㅈㅁ` finds 주문
+내역 by its initials, an arrow or Enter pressed mid-syllable is left to the IME
+and picks nothing, and `@사` goes to a column by an unfinished syllable.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

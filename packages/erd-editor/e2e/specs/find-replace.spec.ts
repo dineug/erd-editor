@@ -354,10 +354,10 @@ test.describe('quick search under a Korean IME', () => {
     const palette = erd.host.locator('.quick-search');
     const input = palette.locator('input');
     const { compose, commit } = await ime(page);
+    // The table row, which the narrowed list has to keep; the column 사용자
+    // is looked up afresh on each keystroke.
     const listed = () =>
-      expect(
-        palette.getByText('사용자', { exact: true }).first()
-      ).toBeVisible();
+      expect(palette.getByText(/^사용자\s*Table$/)).toBeVisible();
 
     await erd.press(Shortcut.search);
     for (const [step, value] of [
@@ -382,6 +382,34 @@ test.describe('quick search under a Korean IME', () => {
 
     await expect(palette.getByText('상품', { exact: true })).toHaveCount(0);
     await expect(palette.getByText('주문한 사용자')).toHaveCount(1);
+  });
+
+  test('picks a row by the keys only once the IME has finished the syllable', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(koreanSchema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const { compose, commit } = await ime(page);
+
+    await erd.press(Shortcut.search);
+    await erd.page.keyboard.type('#');
+    await compose('ㅈ');
+    await compose('ㅈㅁ');
+    await erd.page.keyboard.press('ArrowDown');
+    await erd.page.keyboard.press('Enter');
+
+    await expect(palette).toHaveCount(1);
+    await expect(palette.locator('.selected')).toHaveCount(0);
+
+    await commit('ㅈㅁ');
+    await erd.page.keyboard.press('ArrowDown');
+    await expect(palette.locator('.selected')).toHaveText(/^주문 내역/);
+    await erd.page.keyboard.press('Enter');
+
+    await expect(palette).toHaveCount(0);
+    await expect(erd.tableEl('orders')).toHaveAttribute('data-selected', '');
   });
 
   test('goes to a table by its initials and to a column by an unfinished syllable', async ({

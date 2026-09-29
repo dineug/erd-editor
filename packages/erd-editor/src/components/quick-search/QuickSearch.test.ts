@@ -86,11 +86,12 @@ const shortcut = async (type: KeyBindingName) => {
 
 const open = () => shortcut(KeyBindingName.search);
 
-const keydown = async (key: string) => {
+const keydown = async (key: string, init: KeyboardEventInit = {}) => {
   const event = new KeyboardEvent('keydown', {
     key,
     bubbles: true,
     cancelable: true,
+    ...init,
   });
   input().dispatchEvent(event);
   await flush();
@@ -1011,17 +1012,18 @@ describe('QuickSearch Hangul', () => {
     seedHangulDocument(app);
   });
 
-  it('keeps 사용자 in the narrowed list at every step a Korean IME hands over', async () => {
+  it('keeps the table 사용자 in the narrowed list at every step a Korean IME hands over', async () => {
     for (const steps of [IME_SAYONG, IME_CHOSEONG]) {
       await open();
 
-      const seen = await compose('', steps);
-
-      for (const names of seen) {
-        expect(names).toContain('사용자');
+      // The column 사용자 is looked up afresh on each keystroke, so only the
+      // table row shows the narrowed list kept it.
+      for (const step of steps) {
+        await type(step);
+        expect(rowNamed('사용자', 'Table')).toBeDefined();
       }
       // The table named with it first, before the fields holding it.
-      expect(seen.at(-1)?.[0]).toBe('사용자');
+      expect(rows()[0]).toBe(rowNamed('사용자', 'Table'));
       await open();
     }
   });
@@ -1097,6 +1099,29 @@ describe('QuickSearch Hangul', () => {
     await type('#ㅈㅁ');
     expect(rowNames()).toEqual(['주문 내역']);
     expect(highlighted(rows()[0])).toEqual(['주문']);
+  });
+
+  it('leaves a key pressed mid-syllable to the IME, and acts on the one sent once it is done', async () => {
+    await open();
+    await type('ㅅㅇㅈ');
+
+    // Chrome marks a key the IME holds isComposing; Safari sends keyCode 229.
+    for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
+      await keydown('ArrowDown', init);
+      expect(selectedIndex()).toBe(-1);
+    }
+    await keydown('ArrowDown');
+    expect(selectedIndex()).toBe(0);
+
+    for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
+      const event = await keydown('Enter', init);
+      expect(isOpen()).toBe(true);
+      expect(event.defaultPrevented).toBe(false);
+    }
+    await keydown('Enter');
+
+    expect(isOpen()).toBe(false);
+    expect(app.store.state.editor.selectedMap).toEqual({ users: 'table' });
   });
 
   it('spells each text once while the palette is open, and lets the forms go as it closes', async () => {

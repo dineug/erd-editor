@@ -20,7 +20,7 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import { arrayHas } from '@/utils/arrayHas';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { Action, createScopeActions, searchActions } from './actions';
 import { clearHangulForms, findPaletteChunks } from './hangul';
@@ -207,7 +207,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    if (!hasAutocompleteKey(event.key)) return;
+    // A key pressed mid-syllable belongs to the IME, which finishes it first,
+    // and Chrome on a Mac sends that Enter again once it has: only that one acts.
+    if (isComposing(event) || !hasAutocompleteKey(event.key)) return;
 
     keyMap[event.key]?.(event);
   };
