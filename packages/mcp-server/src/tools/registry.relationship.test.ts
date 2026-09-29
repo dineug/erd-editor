@@ -161,6 +161,24 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
     ]);
   });
 
+  it('keeps a key name of several words, numbered only for a name the child has', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_change_column_name', {
+      tableId: SEED.users,
+      columnId: SEED.userId,
+      value: 'user_id',
+    });
+
+    const [intoEmpty] = relate(peer, SEED.users, SEED.empty).createdIds;
+    const [intoOrders] = relate(peer, SEED.users, SEED.orders).createdIds;
+
+    const columns = peer.state.collections.tableColumnEntities;
+    expect([columns[intoEmpty].name, columns[intoOrders].name]).toEqual([
+      'user_id',
+      'user_id_2',
+    ]);
+  });
+
   it('names after an unnamed parent the key alone and keeps the names through a later rename', () => {
     const peer = seededPeer();
     runTool(peer, 'erd_change_table_name', { tableId: SEED.users, value: '' });
