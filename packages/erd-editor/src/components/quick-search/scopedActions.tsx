@@ -6,6 +6,7 @@ import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
   FindField,
+  FindMatch,
   findMatches,
   Matcher,
   walkFields,
@@ -15,18 +16,23 @@ import {
   Action,
   createMatchAction,
   createShowAllAction,
-  FieldHit,
   holdsAsTyped,
   keywordHolder,
-  rankPaletteActions,
   searchActions,
 } from './actions';
-import { hangulQueryOf, matchText, rankHits } from './hangul';
+import { hangulQueryOf, matchText, rankHits, TextHit } from './hangul';
 import { PALETTE_PREFIXES, PaletteQuery, PaletteScope } from './paletteQuery';
 import * as styles from './QuickSearch.styles';
 
-/** How many rows a prefixed list shows: more than the mixed list, since one kind fills it, still few enough to draw at once. */
+/** How many rows a prefixed list shows, few enough to draw at once. */
 export const SCOPED_ACTION_LIMIT = 100;
+
+/** The scopes that search the document, which a search with no prefix offers once no command holds it. */
+const DOCUMENT_SCOPES: ReadonlyArray<PaletteScope> = [
+  PaletteScope.tables,
+  PaletteScope.columns,
+  PaletteScope.text,
+];
 
 /** What the double quote searches: the free text, never a name. */
 export const TEXT_FIELDS: FindField[] = [
@@ -43,9 +49,9 @@ const matcherOf = (keyword: string): Matcher | null =>
   createMatcher(keyword, DEFAULT_FIND_OPTIONS).matcher;
 
 /**
- * The rows of a level a scope hands to the fuzzy search: all of them without
- * a prefix, the commands or the tables alone, and none for a scope whose rows
- * are read from the document.
+ * The rows of a level a scope hands to the fuzzy search: the commands without
+ * a prefix and after >, the tables after # alone, and none for a scope whose
+ * rows are read from the document. A submenu holds commands only.
  */
 export function scopeBase(
   actions: Action[],
@@ -53,7 +59,6 @@ export function scopeBase(
 ): Action[] {
   switch (scope) {
     case null:
-      return actions;
     case PaletteScope.commands:
       return actions.filter(action => !action.tableId);
     case PaletteScope.tables:
@@ -65,8 +70,8 @@ export function scopeBase(
 
 /**
  * What the top level lists for a query, from the fuzzy hits of its scope: the
- * mixed list around the fields, the commands, the tables, or rows read from
- * the document for the columns, the free text and the help.
+ * commands, the tables, or rows read from the document for the columns, the
+ * free text and the help; with no prefix and no command hit, the prefixes.
  */
 export function paletteRows(
   app: AppContext,
@@ -74,6 +79,8 @@ export function paletteRows(
   { scope, keyword, table }: PaletteQuery
 ): Action[] {
   switch (scope) {
+    case null:
+      return keyword && !found.length ? createPrefixActions(keyword) : found;
     case PaletteScope.commands:
       return found;
     case PaletteScope.tables:
@@ -84,8 +91,6 @@ export function paletteRows(
       return createFieldActions(app, TEXT_FIELDS, keyword);
     case PaletteScope.help:
       return createHelpActions(keyword);
-    default:
-      return keyword ? rankPaletteActions(app, found, keyword) : found;
   }
 }
 
@@ -115,6 +120,9 @@ export function rankTableActions(
     createShowAllAction(count, { query: keyword, fields: TABLE_FIELDS }),
   ];
 }
+
+/** A field a search found, and how it holds the keyword. */
+type FieldHit = { match: FindMatch; hit: TextHit };
 
 /** Whether a table is one a column search names: any without a table part, else those whose name holds it, Hangul letters too. */
 function tableFilter(
@@ -192,16 +200,36 @@ function listFieldActions(
   return rows;
 }
 
+/** A prefix character drawn as a key, the icon of a row that types it. */
+const prefixIcon = (prefix: string) => (
+  <span class={styles.prefix}>{prefix}</span>
+);
+
 /** The prefixes as rows, each typing its character into the input when chosen; a keyword fuzzes them. */
 export function createHelpActions(keyword = ''): Action[] {
   const rows = PALETTE_PREFIXES.filter(
     ({ scope }) => scope !== PaletteScope.help
   ).map<Action>(({ prefix, label, description }) => ({
-    icon: <span class={styles.prefix}>{prefix}</span>,
+    icon: prefixIcon(prefix),
     name: label,
     keywords: description,
     insert: prefix,
   }));
 
   return keyword ? searchActions(rows, keyword) : rows;
+}
+
+/**
+ * The prefixes that search the document as rows offering the keyword to one,
+ * what a search with no prefix lists once no command holds it: choosing one
+ * types its prefix before the keyword, so users becomes #users.
+ */
+export function createPrefixActions(keyword: string): Action[] {
+  return PALETTE_PREFIXES.filter(({ scope }) =>
+    DOCUMENT_SCOPES.includes(scope)
+  ).map<Action>(({ prefix, label }) => ({
+    icon: prefixIcon(prefix),
+    name: `Search ${label.toLowerCase()} for "${keyword}"`,
+    insert: `${prefix}${keyword}`,
+  }));
 }

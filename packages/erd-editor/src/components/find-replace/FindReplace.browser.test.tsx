@@ -257,7 +257,7 @@ describe('quick search over the fields on a real keyboard', () => {
       );
 
     await press(`{${MOD}>}k{/${MOD}}`);
-    await press('login');
+    await press('"login');
     for (let step = 0; step < 20; step++) {
       await press('{ArrowDown}');
       if (selected()?.textContent?.includes('login email')) break;
@@ -345,7 +345,7 @@ describe('quick search prefixes on a real keyboard', () => {
     expect(rowKinds(fixture).every(kind => kind === 'Table')).toBe(true);
   });
 
-  it('lists every kind of row again once the prefix is deleted', async () => {
+  it('lists the commands alone once the prefix is deleted', async () => {
     const fixture = await setup();
 
     await press(OPEN_SEARCH);
@@ -356,8 +356,35 @@ describe('quick search prefixes on a real keyboard', () => {
 
     expect(searchInput(fixture)?.value).toBe('us');
     expect(scopeOf(fixture)).toBeNull();
-    expect(rowKinds(fixture).some(kind => kind !== 'Table')).toBe(true);
-    expect(rowNames(fixture)).toContain('user_id');
+    expect(rowKinds(fixture)).not.toContain('Table');
+    expect(rowKinds(fixture).some(kind => kind.includes('·'))).toBe(false);
+    expect(rowNames(fixture)).toContain('Auto Layout');
+  });
+
+  it('types a prefix picked by the keys before a word no command holds', async () => {
+    const fixture = await setup();
+
+    await press(OPEN_SEARCH);
+    await press('email');
+    expect(
+      paletteOf(fixture)?.querySelector('.quick-search-empty')?.textContent
+    ).toContain('No commands match');
+
+    await press('{ArrowDown}{ArrowDown}{Enter}');
+
+    expect(searchInput(fixture)?.value).toBe('@email');
+    expect(document.activeElement).toBe(searchInput(fixture));
+    expect(scopeOf(fixture)).toBe('Columns');
+    expect(rowNames(fixture)).toEqual(['email']);
+
+    await press('{ArrowDown}{Enter}');
+
+    expect(paletteOf(fixture)).toBeNull();
+    expect(stateOf(fixture).editor.focusTable).toMatchObject({
+      tableId: 'users',
+      columnId: 'email',
+      focusType: 'columnName',
+    });
   });
 
   it('opens Find and Replace on column names alone from a column search past its limit', async () => {

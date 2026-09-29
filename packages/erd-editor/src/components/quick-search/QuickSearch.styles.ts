@@ -83,6 +83,13 @@ export const hintItem = css`
   }
 `;
 
+/* What the list says when no command holds what is typed, above the prefixes it offers instead. */
+export const empty = css`
+  padding: 0 16px 12px;
+  color: var(--placeholder);
+  ${typography.paragraph};
+`;
+
 /* A prefix character drawn as a key, in the hint and in the help rows. */
 export const prefix = css`
   display: inline-flex;

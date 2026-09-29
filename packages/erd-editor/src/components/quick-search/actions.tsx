@@ -47,29 +47,16 @@ import {
   importSchemaSQL,
 } from '@/utils/file/importFile';
 import {
-  createMatcher,
-  DEFAULT_FIND_OPTIONS,
   FindField,
   FindFieldLabel,
-  FindFieldList,
   FindMatch,
-  findMatches,
   locationOf,
   snippetOf,
-  walkFields,
 } from '@/utils/find-replace';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
-import {
-  HangulQuery,
-  hangulQueryOf,
-  HangulTier,
-  hangulTier,
-  matchText,
-  rankHits,
-  TextHit,
-} from './hangul';
+import { HangulQuery, hangulQueryOf, HangulTier, hangulTier } from './hangul';
 
 export type Action = {
   icon?: DOMTemplateLiterals | null;
@@ -156,40 +143,7 @@ function rankHangulActions(
   ];
 }
 
-/** How many tables the palette lists for one keyword, the closest first. */
-export const TABLE_ACTION_LIMIT = 20;
-
-/**
- * The palette's top level rows for a keyword: the commands and tables holding
- * it, Hangul letters too, the fields holding it, then the looser fuzzy hits,
- * tables capped, so neither a large document nor a loose hit buries a field.
- */
-export function rankPaletteActions(
-  app: AppContext,
-  found: Action[],
-  keyword: string
-): Action[] {
-  const holds = keywordHolder(keyword);
-
-  const ranked = [...found.filter(holds), ...found.filter(row => !holds(row))];
-  const tables = ranked.filter(row => row.tableId);
-  const shown = new Set(tables.slice(0, TABLE_ACTION_LIMIT));
-  const rows = ranked.filter(row => !row.tableId || shown.has(row));
-  const loose = rows.findIndex(row => !holds(row));
-  const split = loose === -1 ? rows.length : loose;
-  // A table holding the keyword as typed that the cap left out is one Find
-  // and Replace lists; one holding it by its Hangul letters alone is not.
-  const more = tables
-    .slice(TABLE_ACTION_LIMIT)
-    .some(row => holdsAsTyped(row, keyword));
-
-  return [
-    ...rows.slice(0, split),
-    ...createMatchActions(app, keyword, more),
-    ...rows.slice(split),
-  ];
-}
-
+/** The palette's top level: the commands of every tab, then a jump to each table, which only the # prefix lists. */
 export function createScopeActions(app: AppContext): Action[] {
   const { store, keyBindingMap } = app;
   const { settings } = store.state;
@@ -438,57 +392,6 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     ...createTableActions(app),
   ];
-}
-
-/** How many columns, comments and memos the palette lists for one keyword. */
-export const MATCH_ACTION_LIMIT = 50;
-
-/** The kinds of field the mixed list reads: every one but the table names, which its fuzzy rows hold. */
-const MATCH_FIELDS: ReadonlyArray<FindField> = FindFieldList.filter(
-  field => field !== FindField.tableName
-);
-
-/** A field a search found, and how it holds the keyword. */
-export type FieldHit = { match: FindMatch; hit: TextHit };
-
-/**
- * The columns, comments and memos holding the keyword, in any case or by its
- * Hangul letters, one row a field, up to a limit past which, or when more is
- * set, a last row hands the search over. No fuzz: long prose fuzzes into noise.
- */
-export function createMatchActions(
-  app: AppContext,
-  keyword: string,
-  more = false
-): Action[] {
-  const { state } = app.store;
-  const { matcher } = createMatcher(keyword, DEFAULT_FIND_OPTIONS);
-  if (!matcher) return [];
-
-  const hangul = hangulQueryOf(keyword);
-  const found: FieldHit[] = [];
-  for (const field of walkFields(state, MATCH_FIELDS)) {
-    const hit = matchText(field.text, matcher, hangul);
-    if (!hit) continue;
-    found.push({ match: { ...field, start: hit.start, end: hit.end }, hit });
-  }
-  const ranked = hangul ? rankHits(found) : found;
-
-  const actions = ranked
-    .slice(0, MATCH_ACTION_LIMIT)
-    .map(({ match }) => createMatchAction(state, match));
-
-  // The panel matches as typed alone, so the row hands over only a search
-  // that leaves out a field the panel finds, and names the panel's count.
-  const hidden = ranked
-    .slice(MATCH_ACTION_LIMIT)
-    .some(({ hit }) => hit.literal);
-  if (more || hidden) {
-    const count = findMatches(state, matcher).length;
-    actions.push(createShowAllAction(count, { query: keyword }));
-  }
-
-  return actions;
 }
 
 /** The row for one field a search found, saying where it is, which stands the reader on it when chosen. */

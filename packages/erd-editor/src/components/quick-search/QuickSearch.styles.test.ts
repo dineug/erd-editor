@@ -16,6 +16,7 @@ describe('QuickSearch.styles', () => {
       styles.scope,
       styles.hint,
       styles.hintItem,
+      styles.empty,
       styles.prefix,
       styles.list,
       styles.action,
@@ -42,6 +43,7 @@ describe('QuickSearch.styles', () => {
       styles.scope,
       styles.hint,
       styles.hintItem,
+      styles.empty,
       styles.prefix,
       styles.list,
       styles.action,
@@ -118,6 +120,14 @@ describe('QuickSearch.styles', () => {
     expect(item).toContain('&:hover');
     expect(item).toContain('color: var(--active)');
     expect(styles.hintItem.values).toContain(typography.paragraph);
+  });
+
+  it('dims the line saying no command matches like the hint, above the list', () => {
+    const text = staticText(styles.empty);
+
+    expect(text).toContain('padding: 0 16px 12px');
+    expect(text).toContain('color: var(--placeholder)');
+    expect(styles.empty.values).toContain(typography.paragraph);
   });
 
   it('draws a prefix character as a key in the code font', () => {

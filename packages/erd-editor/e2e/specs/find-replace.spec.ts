@@ -237,7 +237,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.focusHost();
 
     await erd.press(Shortcut.search);
-    await erd.page.keyboard.type('login');
+    await erd.page.keyboard.type('"login');
     await erd.host
       .locator('.quick-search')
       .getByText('users.email · Column comment')
@@ -276,7 +276,7 @@ test.describe('quick search over columns, comments and memos', () => {
       .toEqual(['users_email:columnName']);
   });
 
-  test('lists every kind of row again once the prefix is deleted', async ({
+  test('lists the commands alone once the prefix is deleted', async ({
     erd,
   }) => {
     await erd.seed(schema());
@@ -285,14 +285,56 @@ test.describe('quick search over columns, comments and memos', () => {
 
     await erd.press(Shortcut.search);
     await erd.page.keyboard.type('#us');
-    await expect(palette.getByText('users.id · Column comment')).toHaveCount(0);
+    await expect(palette.getByText(/^users\s*Table$/)).toHaveCount(1);
 
     await erd.page.keyboard.press('ArrowLeft');
     await erd.page.keyboard.press('ArrowLeft');
     await erd.page.keyboard.press('Backspace');
 
     await expect(palette.locator('input')).toHaveValue('us');
-    await expect(palette.getByText('users.id · Column comment')).toHaveCount(1);
+    await expect(palette.locator('.quick-search-scope')).toHaveCount(0);
+    await expect(palette.getByText('Auto Layout', { exact: true })).toHaveCount(
+      1
+    );
+    await expect(palette.getByText(/^users\s*Table$/)).toHaveCount(0);
+    await expect(palette.getByText('users.id · Column comment')).toHaveCount(0);
+  });
+
+  test('offers the prefixes once no command holds what is typed, and the keys type one in', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const rows = palette.locator('.scrollbar > div');
+    const input = palette.locator('input');
+
+    await erd.press(Shortcut.search);
+    await erd.page.keyboard.type('users');
+
+    await expect(palette.locator('.quick-search-empty')).toHaveText(
+      'No commands match'
+    );
+    await expect(rows).toHaveText([
+      /^#\s*Search tables for "users"$/,
+      /^@\s*Search columns for "users"$/,
+      /^"\s*Search comments & memos for "users"$/,
+    ]);
+
+    await erd.page.keyboard.press('ArrowDown');
+    await erd.page.keyboard.press('Enter');
+
+    await expect(input).toHaveValue('#users');
+    await expect(input).toBeFocused();
+    await expect(palette.locator('.quick-search-scope')).toHaveText('Tables');
+    await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
+
+    await erd.page.keyboard.press('ArrowDown');
+    await expect(palette.locator('.selected')).toHaveText(/^users/);
+    await erd.page.keyboard.press('Enter');
+
+    await expect(palette).toHaveCount(0);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
   });
 });
 
@@ -345,7 +387,7 @@ test.describe('quick search under a Korean IME', () => {
     };
   }
 
-  test('keeps 사용자 listed at every step the IME composes', async ({
+  test('keeps 사용자 listed under # at every step the IME composes', async ({
     erd,
     page,
   }) => {
@@ -354,16 +396,15 @@ test.describe('quick search under a Korean IME', () => {
     const palette = erd.host.locator('.quick-search');
     const input = palette.locator('input');
     const { compose, commit } = await ime(page);
-    // The table row, which the narrowed list has to keep; the column 사용자
-    // is looked up afresh on each keystroke.
     const listed = () =>
       expect(palette.getByText(/^사용자\s*Table$/)).toBeVisible();
 
     await erd.press(Shortcut.search);
+    await erd.page.keyboard.type('#');
     for (const [step, value] of [
-      ['ㅅ', 'ㅅ'],
-      ['사', '사'],
-      ['상', '상'],
+      ['ㅅ', '#ㅅ'],
+      ['사', '#사'],
+      ['상', '#상'],
     ]) {
       await compose(step);
       await expect(input).toHaveValue(value);
@@ -371,8 +412,8 @@ test.describe('quick search under a Korean IME', () => {
     }
     await commit('사');
     for (const [step, value] of [
-      ['요', '사요'],
-      ['용', '사용'],
+      ['요', '#사요'],
+      ['용', '#사용'],
     ]) {
       await compose(step);
       await expect(input).toHaveValue(value);
@@ -381,6 +422,33 @@ test.describe('quick search under a Korean IME', () => {
     await commit('용');
 
     await expect(palette.getByText('상품', { exact: true })).toHaveCount(0);
+  });
+
+  test('lists no table or comment for a word composed with no prefix, and offers it to the prefixes', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(koreanSchema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const input = palette.locator('input');
+    const { compose, commit } = await ime(page);
+
+    await erd.press(Shortcut.search);
+    await compose('사');
+    await commit('사');
+    await compose('용');
+    await commit('용');
+
+    await expect(input).toHaveValue('사용');
+    await expect(palette.locator('.quick-search-empty')).toBeVisible();
+    await expect(palette.getByText(/^사용자\s*Table$/)).toHaveCount(0);
+    await expect(palette.getByText('주문한 사용자')).toHaveCount(0);
+
+    await erd.page.keyboard.press('ArrowUp');
+    await erd.page.keyboard.press('Enter');
+
+    await expect(input).toHaveValue('"사용');
     await expect(palette.getByText('주문한 사용자')).toHaveCount(1);
   });
 

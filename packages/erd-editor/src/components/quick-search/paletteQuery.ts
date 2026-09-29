@@ -51,7 +51,7 @@ export const PALETTE_PREFIXES: ReadonlyArray<PalettePrefix> = [
 ];
 
 export type PaletteQuery = {
-  /** The kind of row the prefix asks for, or null for the mixed list. */
+  /** The kind of row the prefix asks for, or null with no prefix, which lists the commands. */
   scope: PaletteScope | null;
   /** What is searched for, without the prefix, the space after it or the table part. */
   keyword: string;

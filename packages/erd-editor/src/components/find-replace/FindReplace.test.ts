@@ -14,9 +14,10 @@ import FindReplace, {
   rowWindow,
 } from '@/components/find-replace/FindReplace';
 import {
-  createMatchActions,
-  MATCH_ACTION_LIMIT,
-} from '@/components/quick-search/actions';
+  createFieldActions,
+  SCOPED_ACTION_LIMIT,
+  TEXT_FIELDS,
+} from '@/components/quick-search/scopedActions';
 import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
@@ -237,13 +238,13 @@ describe('FindReplace opening and closing', () => {
       panel()?.querySelector('.find-scope[data-field="tableName"]') as Element
     );
     await click(button('find-replace-close'));
-    for (let index = 0; index <= MATCH_ACTION_LIMIT; index++) {
+    for (let index = 0; index <= SCOPED_ACTION_LIMIT; index++) {
       app.store.dispatchSync(
         addMemoAction({ id: `m${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
         changeMemoValueAction({ id: `m${index}`, value: 'many user' })
       );
     }
-    const last = createMatchActions(app, 'user').at(-1);
+    const last = createFieldActions(app, TEXT_FIELDS, 'user').at(-1);
 
     last?.perform?.(app);
     await flush();

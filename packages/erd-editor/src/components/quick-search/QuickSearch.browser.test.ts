@@ -79,7 +79,7 @@ const rowNames = () =>
       []
   ).map(name => (name.textContent ?? '').trim());
 
-/** The names of the table rows, which the unscoped list narrows keystroke by keystroke. */
+/** The names of the table rows, which only the # prefix lists. */
 const tableNames = () =>
   Array.from(
     mounted?.container.querySelectorAll(`.${styles.action}`) ?? []
@@ -139,7 +139,7 @@ async function typeSayongja(): Promise<
 }
 
 describe('quick search under a Korean IME', () => {
-  it('keeps 사용자 in the narrowed list at every step the IME composes', async () => {
+  it('lists no table at any step the IME composes with no prefix, and hands the word to # by the keys', async () => {
     const { input, events } = await setup();
 
     const seen = await typeSayongja();
@@ -154,20 +154,23 @@ describe('quick search under a Korean IME', () => {
       '사용자',
       '사용자',
     ]);
-    // The column 사용자 is looked up afresh on each keystroke; the table row
-    // is what the narrowed list has to keep.
-    for (const [, , tables] of seen) {
-      expect(tables).toContain('사용자');
+    for (const [value, names, tables] of seen) {
+      expect(tables).toEqual([]);
+      expect(names[0]).toBe(`Search tables for "${value}"`);
     }
     expect(events).toContain('compositionstart');
     expect(events).toContain('compositionend');
-    expect(input.value).toBe('사용자');
-    expect(rowNames()[0]).toBe('사용자');
-    expect(tableNames()[0]).toBe('사용자');
+
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await flush();
+
+    expect(input.value).toBe('#사용자');
+    expect(tableNames()).toEqual(['사용자']);
   });
 
   it('leaves an arrow or Enter pressed mid-syllable to the IME, and acts on the next', async () => {
     const { app, input } = await setup();
+    await userEvent.keyboard('#');
     const composing: boolean[] = [];
     input.addEventListener('keydown', event =>
       composing.push(event.isComposing)
@@ -228,9 +231,10 @@ describe('quick search under a Korean IME', () => {
     expect(lit(1)).toEqual(['사용']);
   });
 
-  it('keeps a table in the narrowed list through the cluster a Windows IME composes of two initials', async () => {
+  it('keeps a table under # through the cluster a Windows IME composes of two initials', async () => {
     const { input } = await setup(seedClusterTables);
 
+    await userEvent.keyboard('#');
     for (const step of ['ㅂ', 'ㅄ']) {
       await compose(step);
       expect(tableNames().sort()).toEqual(['배송지', '부서']);
@@ -238,7 +242,7 @@ describe('quick search under a Korean IME', () => {
     await commit('ㅄ');
     await compose('ㅈ');
 
-    expect(input.value).toBe('ㅄㅈ');
+    expect(input.value).toBe('#ㅄㅈ');
     expect(tableNames()).toEqual(['배송지']);
   });
 });

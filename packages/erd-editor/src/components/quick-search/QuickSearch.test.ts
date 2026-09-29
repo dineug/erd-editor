@@ -17,7 +17,6 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
-import { TABLE_ACTION_LIMIT } from '@/components/quick-search/actions';
 import { hangulFormsOf } from '@/components/quick-search/hangul';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
@@ -323,12 +322,16 @@ describe('QuickSearch keyword filtering', () => {
     expect(rowNames()).toHaveLength(12);
   });
 
-  it('renders an empty list when nothing matches', async () => {
+  it('lists no command when nothing matches, only the prefixes to search the document by', async () => {
     await open();
 
     await type('qqqqqqqqqq');
 
-    expect(rows()).toHaveLength(0);
+    expect(rowNames()).toEqual([
+      'Search tables for "qqqqqqqqqq"',
+      'Search columns for "qqqqqqqqqq"',
+      'Search comments & memos for "qqqqqqqqqq"',
+    ]);
   });
 
   it('searches inside the already narrowed list rather than the full scope', async () => {
@@ -401,7 +404,7 @@ describe('QuickSearch keyboard navigation', () => {
 
   it('does not preventDefault on the arrows when the list is empty', async () => {
     await open();
-    await type('qqqqqqqqqq');
+    await type('#qqqqqqqqqq');
 
     expect((await keydown('ArrowDown')).defaultPrevented).toBe(false);
     expect((await keydown('ArrowUp')).defaultPrevented).toBe(false);
@@ -554,12 +557,23 @@ describe('QuickSearch mouse interaction', () => {
 });
 
 describe('QuickSearch table actions', () => {
+  it('lists no table without the # prefix', async () => {
+    app.store.dispatchSync(addTableAction$());
+    await open();
+
+    expect(rowNames()).not.toContain('unnamed');
+
+    await type('unnamed');
+
+    expect(rowNames()).not.toContain('unnamed');
+  });
+
   it('scrolls to and selects a table picked from the palette', async () => {
     app.store.dispatchSync(addTableAction$());
     const tableId = app.store.state.doc.tableIds[0];
     await open();
 
-    await type('unnamed');
+    await type('#unnamed');
     expect(rowNames()).toContain('unnamed');
 
     const row = rows()[rowNames().indexOf('unnamed')];
@@ -574,54 +588,32 @@ describe('QuickSearch column, comment and memo matches', () => {
   const keywordOf = (row: HTMLDivElement) =>
     (row.querySelector(`.${styles.keyword}`)?.textContent ?? '').trim();
 
+  /** Whether a row is the document's: a table, or a field saying where it is. */
+  const isDocumentRow = (row: HTMLDivElement) =>
+    keywordOf(row) === 'Table' || keywordOf(row).includes('·');
+
   beforeEach(() => {
     seedFindDocument(app);
   });
 
-  it('lists the fields holding the keyword below the rows naming it, each saying where it is', async () => {
+  it('lists no table, column, comment or memo without a prefix, for no keyword or any', async () => {
     await open();
+    expect(rows().some(isDocumentRow)).toBe(false);
 
-    await type('user');
-
-    const matchRows = rows().filter(row => keywordOf(row).includes('·'));
-    expect(
-      matchRows.map(row => [rowNames()[rows().indexOf(row)], keywordOf(row)])
-    ).toEqual([
-      ['user_id', 'orders.user_id · Column'],
-      ['user id', 'users.id · Column comment'],
-    ]);
-    // The table named with it first; a looser fuzzy hit would come after all four.
-    expect(rowNames().slice(0, 4)).toEqual([
-      'users',
-      'user_id',
-      'user id',
-      'Every user_id points at users.id',
-    ]);
-  });
-
-  it('lists the fields before tables that only fuzz to the keyword, and no more tables than the cap', async () => {
-    for (let index = 0; index < TABLE_ACTION_LIMIT + 10; index++) {
-      app.store.dispatchSync(
-        addTableAction({ id: `t${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
-        changeTableNameAction({ id: `t${index}`, value: `mail_${index}` })
-      );
+    for (const keyword of ['u', 'user', 'login', 'Every', 'orders']) {
+      await type('');
+      await type(keyword);
+      expect(rows().some(isDocumentRow)).toBe(false);
+      expect(rowNames().some(name => name.startsWith('Show all'))).toBe(false);
     }
-    await open();
-
-    await type('email');
-
-    expect(rowNames().slice(0, 2)).toEqual(['email', 'login email']);
-    const tables = rowNames().filter(name => name.startsWith('mail_'));
-    expect(tables.length).toBeGreaterThan(0);
-    expect(tables.length).toBeLessThanOrEqual(TABLE_ACTION_LIMIT);
   });
 
   it('looks the fields up afresh on each keystroke rather than inside the last list', async () => {
     await open();
-    await type('login');
+    await type('"login');
     expect(rowNames()).toContain('login email');
 
-    await type('primary');
+    await type('"primary');
 
     expect(rowNames()).toContain('primary id');
     expect(rowNames()).not.toContain('login email');
@@ -629,7 +621,7 @@ describe('QuickSearch column, comment and memo matches', () => {
 
   it('stands the reader on the column cell picked and closes', async () => {
     await open();
-    await type('user_id');
+    await type('@user_id');
     const index = rowNames().indexOf('user_id');
 
     await click(rows()[index]);
@@ -646,7 +638,7 @@ describe('QuickSearch column, comment and memo matches', () => {
       changeCanvasTypeAction({ value: CanvasType.schemaSQL })
     );
     await open();
-    await type('login');
+    await type('"login');
 
     await click(rows()[rowNames().indexOf('login email')]);
 
@@ -674,6 +666,147 @@ describe('QuickSearch column, comment and memo matches', () => {
     expect(isOpen()).toBe(false);
     expect(app.store.state.editor.openMap[Open.findReplace]).toBeFalsy();
     expect(openedFindReplace).toBe(1);
+  });
+});
+
+describe('QuickSearch with no command matching', () => {
+  const empty = () =>
+    mounted?.container.querySelector('.quick-search-empty') ?? null;
+
+  const scopeLabel = () =>
+    mounted?.container.querySelector('.quick-search-scope')?.textContent ??
+    null;
+
+  const OFFERED = [
+    'Search tables for "orders"',
+    'Search columns for "orders"',
+    'Search comments & memos for "orders"',
+  ];
+
+  beforeEach(() => {
+    seedFindDocument(app);
+  });
+
+  it('says so, and offers what is typed to the prefixes that search the document', async () => {
+    await open();
+
+    await type('orders');
+
+    expect(empty()?.textContent?.trim()).toBe('No commands match');
+    expect(rowNames()).toEqual(OFFERED);
+    expect(
+      rows().map(row => row.querySelector(`.${styles.prefix}`)?.textContent)
+    ).toEqual(['#', '@', '"']);
+    expect(scopeLabel()).toBeNull();
+    expect(mounted?.container.querySelector('.quick-search-hint')).toBeNull();
+  });
+
+  it('types the prefix of the row clicked before what is typed, the palette left open', async () => {
+    await open();
+    await type('orders');
+
+    await click(rows()[0]);
+
+    expect(isOpen()).toBe(true);
+    expect(input().value).toBe('#orders');
+    expect(rowNames()[0]).toBe('orders');
+    expect(scopeLabel()).toBe('Tables');
+    expect(empty()).toBeNull();
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('reaches those rows by the arrows and Enter', async () => {
+    await open();
+    await type('email');
+    expect(empty()).not.toBeNull();
+
+    await keydown('ArrowUp');
+    await keydown('Enter');
+
+    expect(input().value).toBe('"email');
+    expect(scopeLabel()).toBe('Comments & memos');
+    expect(rowNames()).toEqual(['login email']);
+    expect(selectedIndex()).toBe(-1);
+
+    await keydown('ArrowDown');
+    await keydown('Enter');
+
+    expect(isOpen()).toBe(false);
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId: 'email',
+      focusType: 'columnComment',
+    });
+  });
+
+  it('says nothing while a command holds the keyword, under a prefix or in a submenu', async () => {
+    await open();
+
+    await type('auto');
+    expect(empty()).toBeNull();
+    expect(rowNames()[0]).toBe('Auto Layout');
+
+    await type('');
+    await type('#qqqq');
+    expect(empty()).toBeNull();
+    expect(rows()).toHaveLength(0);
+
+    await type('>orders');
+    expect(empty()).toBeNull();
+    expect(rows()).toHaveLength(0);
+
+    await type('   ');
+    expect(empty()).toBeNull();
+
+    await type('');
+    await keydown('ArrowDown');
+    await keydown('Enter');
+    await type('orders');
+    expect(empty()).toBeNull();
+    expect(rows()).toHaveLength(0);
+  });
+
+  it('offers the prefixes once the narrowing leaves no command, and the commands again once cleared', async () => {
+    await open();
+
+    for (const value of ['u', 'us', 'use', 'user', 'users']) {
+      await type(value);
+    }
+    expect(rowNames()).toEqual([
+      'Search tables for "users"',
+      'Search columns for "users"',
+      'Search comments & memos for "users"',
+    ]);
+
+    await type('');
+
+    expect(empty()).toBeNull();
+    expect(rowNames()).toEqual([
+      'Tab',
+      'Database',
+      'Import',
+      'Export',
+      'New Table',
+      'New Memo',
+      'Zero One',
+      'Zero N',
+      'One Only',
+      'One N',
+      'Auto Layout',
+      'Find and Replace',
+    ]);
+  });
+
+  it('lights what is typed in the rows it offers', async () => {
+    await open();
+    await type('orders');
+
+    const marks = rows().map(row =>
+      Array.from(row.querySelectorAll(`.${highlightStyles.highlighted}`)).map(
+        mark => mark.textContent
+      )
+    );
+
+    expect(marks).toEqual([['orders'], ['orders'], ['orders']]);
   });
 });
 
@@ -771,7 +904,7 @@ describe('QuickSearch prefixes', () => {
     expect(rowNames()).not.toContain('orders');
   });
 
-  it('lists the tables alone after #, and picks one as the mixed list does', async () => {
+  it('lists the tables alone after #, and goes to the one picked', async () => {
     await open();
 
     await type('#');
@@ -788,19 +921,20 @@ describe('QuickSearch prefixes', () => {
     expect(isOpen()).toBe(false);
   });
 
-  it('searches the whole list again once the prefix is taken away', async () => {
+  it('lists the commands alone again once the prefix is taken away', async () => {
     await open();
     await type('#us');
     expect(rows().every(isTableRow)).toBe(true);
 
     await type('us');
 
-    expect(rows().some(row => !isTableRow(row))).toBe(true);
-    expect(rowNames()).toContain('user_id');
+    expect(rows().some(isTableRow)).toBe(false);
+    expect(rowNames()).not.toContain('user_id');
+    expect(rowNames()).toContain('Auto Layout');
     expect(scopeLabel()).toBeNull();
   });
 
-  it('searches the whole scope on each keystroke, while the mixed list still narrows', async () => {
+  it('searches the whole scope on each keystroke, while the list with no prefix still narrows', async () => {
     await open();
     await type('>Memo');
     await type('>Auto Layout');
@@ -1012,31 +1146,23 @@ describe('QuickSearch Hangul', () => {
     seedHangulDocument(app);
   });
 
-  it('keeps the table 사용자 in the narrowed list at every step a Korean IME hands over', async () => {
+  it('offers each step a Korean IME hands over to the prefixes, and # goes on to the table 사용자', async () => {
     for (const steps of [IME_SAYONG, IME_CHOSEONG]) {
       await open();
 
-      // The column 사용자 is looked up afresh on each keystroke, so only the
-      // table row shows the narrowed list kept it.
       for (const step of steps) {
         await type(step);
-        expect(rowNamed('사용자', 'Table')).toBeDefined();
+        expect(rowNames()).toEqual([
+          `Search tables for "${step}"`,
+          `Search columns for "${step}"`,
+          `Search comments & memos for "${step}"`,
+        ]);
       }
-      // The table named with it first, before the fields holding it.
+      await keydown('ArrowDown');
+      await keydown('Enter');
+
+      expect(input().value).toBe(`#${steps.at(-1)}`);
       expect(rows()[0]).toBe(rowNamed('사용자', 'Table'));
-      await open();
-    }
-  });
-
-  it('keeps a table in the narrowed list through each cluster a Windows IME composes of its initials', async () => {
-    seedClusterTables(app);
-
-    for (const [name, steps] of IME_CLUSTERS) {
-      await open();
-      for (const step of steps) {
-        await type(step);
-        expect(rowNamed(name, 'Table')).toBeDefined();
-      }
       await open();
     }
   });
@@ -1052,18 +1178,6 @@ describe('QuickSearch Hangul', () => {
         }
       }
     }
-  });
-
-  it('still narrows inside the last list, leaving out rows the IME steps passed by', async () => {
-    await open();
-
-    await compose('', ['ㅅ', '사', '상']);
-    expect(rowNames()).toContain('상품');
-
-    // 상품 dropped at 사요 does not come back once the list has narrowed past it.
-    await compose('', ['사요', '상']);
-    expect(rowNamed('상품', 'Table')).toBeUndefined();
-    expect(rowNamed('사용자', 'Table')).toBeDefined();
   });
 
   it('keeps 사용자 at every step inside the #, @ and " scopes', async () => {
@@ -1090,8 +1204,9 @@ describe('QuickSearch Hangul', () => {
     await type('#상');
     expect(highlighted(rowNamed('사용자'))).toEqual(['사용']);
 
-    await type('ㅅㅇㅈ');
+    await type('#ㅅㅇㅈ');
     expect(highlighted(rowNamed('사용자', 'Table'))).toEqual(['사용자']);
+    await type('@ㅅㅇㅈ');
     expect(
       highlighted(rowNamed('사용자', '주문 내역.사용자 · Column'))
     ).toEqual(['사용자', '사용자']);
@@ -1103,7 +1218,7 @@ describe('QuickSearch Hangul', () => {
 
   it('leaves a key pressed mid-syllable to the IME, and acts on the one sent once it is done', async () => {
     await open();
-    await type('ㅅㅇㅈ');
+    await type('#ㅅㅇㅈ');
 
     // Chrome marks a key the IME holds isComposing; Safari sends keyCode 229.
     for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
@@ -1126,10 +1241,10 @@ describe('QuickSearch Hangul', () => {
 
   it('spells each text once while the palette is open, and lets the forms go as it closes', async () => {
     await open();
-    await type('ㅅㅇㅈ');
+    await type('@ㅅㅇㅈ');
     const kept = hangulFormsOf('사용자');
 
-    await type('ㅅㅇ');
+    await type('@ㅅㅇ');
     expect(hangulFormsOf('사용자')).toBe(kept);
 
     await shortcut(KeyBindingName.stop);

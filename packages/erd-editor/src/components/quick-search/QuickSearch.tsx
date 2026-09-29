@@ -62,13 +62,13 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const byFilter = (actions: Action[]) =>
     actions.filter(action => (action.filter ? action.filter(app.value) : true));
 
-  /** What the list shows: the level, the keyword's fuzzy hits, or at the top level those ranked around the fields. */
+  /** What the list shows: the level's commands, their fuzzy hits, or at the top level a scope's rows or the prefixes offered. */
   const getActions = () => byFilter(state.rows);
 
   const setLevel = (actions: Action[]) => {
     state.prevActions = actions;
-    state.actions = actions;
-    state.rows = actions;
+    state.actions = scopeBase(actions, null);
+    state.rows = state.actions;
     state.scope = null;
   };
 
@@ -86,9 +86,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const setActions = (value: string) => {
     const query = readQuery(value);
     const base = scopeBase(state.prevActions, query.scope);
-    // Only the unscoped list narrows inside its last hits, as the owner pinned;
-    // each step a Korean IME hands over spells on from the last, so it keeps
-    // its rows. A scope searches its whole base, and a prefix change restarts.
+    // Only the unscoped list, the commands, narrows inside its last hits, as
+    // the owner pinned. A scope searches its whole base, and a prefix change
+    // restarts from the level.
     const narrow = query.scope === null && state.scope === null;
     const from = narrow ? state.actions : base;
 
@@ -120,6 +120,17 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     const { scope, keyword, table } = readQuery(state.keyword);
     if (!scope) return [state.keyword];
     return table ? [keyword, table] : [keyword];
+  };
+
+  /** Whether what is typed, with no prefix, holds no command, so the list offers the prefixes instead. */
+  const missesCommands = (): boolean => {
+    const { scope, keyword } = readQuery(state.keyword);
+    return (
+      !state.submenu &&
+      !scope &&
+      !isEmpty(keyword) &&
+      !byFilter(state.actions).length
+    );
   };
 
   const scrollIntoView = () => {
@@ -314,6 +325,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                   {label}
                 </button>
               ))}
+            </div>
+          ) : null}
+          {missesCommands() ? (
+            <div class={['quick-search-empty', styles.empty]}>
+              No commands match
             </div>
           ) : null}
           <div class={['scrollbar', styles.list]}>

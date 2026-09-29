@@ -14,10 +14,7 @@ import { AppContext } from '@/components/appContext';
 import {
   Action,
   createScopeActions,
-  MATCH_ACTION_LIMIT,
-  rankPaletteActions,
   searchActions,
-  TABLE_ACTION_LIMIT,
 } from '@/components/quick-search/actions';
 import {
   PaletteScope,
@@ -26,6 +23,7 @@ import {
 import {
   createFieldActions,
   createHelpActions,
+  createPrefixActions,
   paletteRows,
   rankTableActions,
   scopeBase,
@@ -133,10 +131,10 @@ afterEach(() => {
 });
 
 describe('scopeBase', () => {
-  it('hands the fuzzy search the whole level, its commands or its tables, and nothing for the rest', () => {
+  it('hands the fuzzy search the commands with no prefix or after >, the tables after #, and nothing for the rest', () => {
     const level = visible();
 
-    expect(scopeBase(level, null)).toBe(level);
+    expect(names(scopeBase(level, null))).toEqual(ERD_COMMANDS);
     expect(names(scopeBase(level, PaletteScope.commands))).toEqual(
       ERD_COMMANDS
     );
@@ -155,14 +153,67 @@ describe('scopeBase', () => {
 });
 
 describe('paletteRows without a prefix', () => {
-  it('lists the level for no keyword and the mixed ranking for one', () => {
-    expect(names(rowsFor(''))).toEqual(names(visible()));
+  /** Whether a row is the document's: a table, or a column, comment or memo saying where it is. */
+  const isDocumentRow = (row: Action) =>
+    Boolean(row.tableId || row.keywords?.includes(' · '));
 
-    const found = searchActions(visible(), 'user');
-    expect(pairs(rowsFor('user'))).toEqual(
-      pairs(rankPaletteActions(app, found, 'user'))
+  it('lists the commands alone for no keyword, the same rows > lists', () => {
+    expect(names(rowsFor(''))).toEqual(ERD_COMMANDS);
+    expect(names(rowsFor(''))).toEqual(names(rowsFor('>')));
+    expect(names(visible())).toEqual([...ERD_COMMANDS, 'orders', 'users']);
+  });
+
+  it('fuzzes the commands alone, however many tables, columns, comments and memos hold the keyword', () => {
+    expect(rowsFor('auto')[0].name).toBe('Auto Layout');
+    expect(names(rowsFor('replace'))[0]).toBe('Find and Replace');
+
+    for (const keyword of ['user', 'users', 'us', 'id', 'login', 'Every']) {
+      const rows = rowsFor(keyword);
+      expect(rows.some(isDocumentRow)).toBe(false);
+      expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
+    }
+  });
+
+  it('offers the keyword to the prefixes that search the document once no command holds it', () => {
+    const rows = rowsFor('orders');
+
+    expect(rows.map(({ name, insert }) => [name, insert])).toEqual([
+      ['Search tables for "orders"', '#orders'],
+      ['Search columns for "orders"', '@orders'],
+      ['Search comments & memos for "orders"', '"orders'],
+    ]);
+    for (const row of rows) {
+      expect(row.icon).toBeTruthy();
+      expect(row.perform).toBeUndefined();
+      expect(row.next).toBeUndefined();
+    }
+    expect(rowsFor('  orders ')).toHaveLength(3);
+    expect(createPrefixActions('users.em').map(row => row.insert)).toEqual([
+      '#users.em',
+      '@users.em',
+      '"users.em',
+    ]);
+  });
+
+  it('types in a query each of those rows lists the document by', () => {
+    const [tables, columns, text] = rowsFor('email');
+
+    expect(names(rowsFor(tables.insert as string))).toEqual([]);
+    expect(pairs(rowsFor(columns.insert as string))).toEqual([
+      ['email', 'users.email · Column'],
+    ]);
+    expect(pairs(rowsFor(text.insert as string))).toEqual([
+      ['login email', 'users.email · Column comment'],
+    ]);
+    expect(rowsFor(rowsFor('orders')[0].insert as string)[0].name).toBe(
+      'orders'
     );
-    expect(names(rowsFor('user')).slice(0, 2)).toEqual(['users', 'user_id']);
+  });
+
+  it('offers nothing after a prefix whose scope holds no row, the commands of > included', () => {
+    for (const value of ['>orders', '#email', '@qqqq', '"qqqq']) {
+      expect(rowsFor(value)).toEqual([]);
+    }
   });
 });
 
@@ -208,10 +259,9 @@ describe('paletteRows / # tables', () => {
     expect(rowsFor('#auto')).toEqual([]);
   });
 
-  it('lists more tables than the mixed list, capped, and hands the rest to Find and Replace', () => {
+  it('lists the tables up to its cap and hands the rest to Find and Replace', () => {
     const count = SCOPED_ACTION_LIMIT + 20;
     addTables(count, index => `item_${index}`);
-    expect(SCOPED_ACTION_LIMIT).toBeGreaterThan(TABLE_ACTION_LIMIT);
 
     const rows = rowsFor('#item');
     const last = rows.at(-1);
@@ -444,12 +494,6 @@ describe('paletteRows / ? help', () => {
   });
 });
 
-describe('the mixed list beside the scoped ones', () => {
-  it('keeps its own limits', () => {
-    expect(MATCH_ACTION_LIMIT).toBeLessThan(SCOPED_ACTION_LIMIT);
-  });
-});
-
 describe('paletteRows / Hangul', () => {
   const STEPS = [...IME_SAYONG, ...IME_CHOSEONG];
 
@@ -474,9 +518,13 @@ describe('paletteRows / Hangul', () => {
     seedHangulDocument(app);
   });
 
-  it('keeps 사용자 in every scope at each step an IME hands over', () => {
+  it('keeps 사용자 in every scope at each step an IME hands over, and offers each step to them with no prefix', () => {
     for (const step of STEPS) {
-      expect(names(rowsFor(step))).toContain('사용자');
+      expect(rowsFor(step).map(row => row.insert)).toEqual([
+        `#${step}`,
+        `@${step}`,
+        `"${step}`,
+      ]);
       expect(names(rowsFor(`#${step}`))).toContain('사용자');
       expect(names(rowsFor(`@${step}`))).toContain('사용자');
       expect(names(rowsFor(`"${step}`))).toContain('주문한 사용자');
@@ -490,7 +538,7 @@ describe('paletteRows / Hangul', () => {
 
     for (const [name, steps] of IME_CLUSTERS) {
       for (const step of steps) {
-        for (const prefix of ['', '#', '@', '"']) {
+        for (const prefix of ['#', '@', '"']) {
           expect(names(rowsFor(`${prefix}${step}`))).toContain(name);
         }
       }
@@ -521,6 +569,31 @@ describe('paletteRows / Hangul', () => {
       ['사용자 고유 번호', '사용자.아이디 · Column comment'],
       ['사용자 한 명이 여러 주문을 남긴다', 'Memo'],
       ['주문한 사용자', '주문 내역.사용자 · Column comment'],
+    ]);
+  });
+
+  it('lists the fields an IME step or the initials spell whole, from the start, then inside, each tier in document order', () => {
+    const fields = [FindField.columnName, ...TEXT_FIELDS];
+
+    expect(names(createFieldActions(app, fields, 'ㅅㅇㅈ'))).toEqual([
+      '사용자',
+      '사용자 고유 번호',
+      '사용자 한 명이 여러 주문을 남긴다',
+      '주문한 사용자',
+    ]);
+    expect(names(createFieldActions(app, fields, '사요'))).toEqual([
+      '사용자 고유 번호',
+      '사용자',
+      '사용자 한 명이 여러 주문을 남긴다',
+      '주문한 사용자',
+    ]);
+    // 상품명 holds 상 as typed; 사용 only spells it across two syllables.
+    expect(names(createFieldActions(app, fields, '상'))).toEqual([
+      '상품명',
+      '사용자 고유 번호',
+      '사용자',
+      '사용자 한 명이 여러 주문을 남긴다',
+      '주문한 사용자',
     ]);
   });
 

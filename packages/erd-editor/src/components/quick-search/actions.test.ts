@@ -9,12 +9,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { seedFindDocument } from '@/__test-utils__/findSeed';
-import {
-  IME_CHOSEONG,
-  IME_SAYONG,
-  seedHangulDocument,
-} from '@/__test-utils__/hangulSeed';
+import { IME_CHOSEONG, IME_SAYONG } from '@/__test-utils__/hangulSeed';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
@@ -25,12 +20,8 @@ import { menus as tableNameCaseMenus } from '@/components/generator-code/generat
 import {
   Action,
   allScopeActions,
-  createMatchActions,
   createScopeActions,
-  MATCH_ACTION_LIMIT,
-  rankPaletteActions,
   searchActions,
-  TABLE_ACTION_LIMIT,
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { START_X, START_Y } from '@/constants/layout';
@@ -45,25 +36,14 @@ import {
   viewOpenAction,
 } from '@/engine/modules/editor/view.actions';
 import {
-  addMemoAction,
-  changeMemoValueAction,
-} from '@/engine/modules/memo/atom.actions';
-import {
   changeCanvasTypeAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
-  addTableAction,
-  changeTableCommentAction,
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
-import {
-  addColumnAction,
-  changeColumnCommentAction,
-  changeColumnNameAction,
-} from '@/engine/modules/table-column/atom.actions';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { setExportFileCallback } from '@/utils/file/exportFile';
@@ -292,7 +272,7 @@ describe('createScopeActions', () => {
     ]);
   });
 
-  it('keeps the tabs, Find and Replace and the table jumps in the visualization and settings canvases', () => {
+  it('keeps the tabs, Find and Replace and the table jumps # lists in the visualization and settings canvases', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
@@ -787,307 +767,6 @@ describe('createScopeActions / Find and Replace', () => {
   });
 });
 
-describe('createMatchActions', () => {
-  beforeEach(() => {
-    seedFindDocument(app);
-  });
-
-  it('lists the columns, comments and memos holding the keyword, one row a field', () => {
-    const actions = createMatchActions(app, 'user');
-
-    expect(actions.map(({ name, keywords }) => [name, keywords])).toEqual([
-      ['user_id', 'orders.user_id · Column'],
-      ['user id', 'users.id · Column comment'],
-      ['Every user_id points at users.id', 'Memo'],
-    ]);
-    for (const action of actions) {
-      expect(action.icon).toBeTruthy();
-    }
-  });
-
-  it('leaves the table names to the fuzzy list, which already holds them', () => {
-    expect(
-      createMatchActions(app, 'orders').map(({ keywords }) => keywords)
-    ).toEqual(['orders · Table comment']);
-  });
-
-  it('has nothing for an empty keyword', () => {
-    expect(createMatchActions(app, '')).toEqual([]);
-  });
-
-  it('stands the reader on the column cell picked, from any tab', async () => {
-    setCanvasType(CanvasType.generatorCode);
-    const [column] = createMatchActions(app, 'user_id');
-
-    column.perform?.(app);
-    await flush();
-
-    const { editor, settings } = app.store.state;
-    expect(settings.canvasType).toBe(CanvasType.ERD);
-    expect(editor.focusTable).toMatchObject({
-      tableId: 'orders',
-      columnId: 'orders_user_id',
-    });
-  });
-
-  it('stays bounded over a schema of hundreds of tables', () => {
-    const actions: AnyAction[] = [];
-    for (let table = 0; table < 400; table++) {
-      const tableId = `t${table}`;
-      actions.push(
-        addTableAction({ id: tableId, ui: { x: 0, y: 0, zIndex: 1 } }),
-        changeTableCommentAction({ id: tableId, value: `table ${table}` })
-      );
-      for (let column = 0; column < 15; column++) {
-        const id = `${tableId}c${column}`;
-        actions.push(
-          addColumnAction({ id, tableId }),
-          changeColumnNameAction({ id, tableId, value: `name_${column}` }),
-          changeColumnCommentAction({ id, tableId, value: 'the same comment' })
-        );
-      }
-    }
-    app.store.dispatchSync(actions);
-
-    const started = performance.now();
-    const rows = createMatchActions(app, 'e');
-    const elapsed = performance.now() - started;
-
-    expect(rows).toHaveLength(MATCH_ACTION_LIMIT + 1);
-    // Every e the panel would find: one in each of 400 table comments and 6,000
-    // column names, three in each of 6,000 column comments, sixteen in the seed.
-    expect(rows.at(-1)?.name).toBe(
-      'Show all 24416 matches in Find and Replace'
-    );
-    // Not a benchmark, only a guard against a search that grows past linear.
-    expect(elapsed).toBeLessThan(5000);
-  });
-
-  it('hands the search over when asked to, however few fields hold it', () => {
-    const actions = createMatchActions(app, 'user', true);
-
-    expect(names(actions)).toEqual([
-      'user_id',
-      'user id',
-      'Every user_id points at users.id',
-      'Show all 5 matches in Find and Replace',
-    ]);
-  });
-
-  it('stops at the limit and hands the whole list to Find and Replace', () => {
-    for (let index = 0; index <= MATCH_ACTION_LIMIT; index++) {
-      app.store.dispatchSync(
-        addMemoAction({
-          id: `memo-${index}`,
-          ui: { x: 0, y: 0, zIndex: 1 },
-        }),
-        changeMemoValueAction({ id: `memo-${index}`, value: 'many user' })
-      );
-    }
-    const opened: unknown[] = [];
-    app.emitter.on({
-      openFindReplace: action => {
-        opened.push(action);
-      },
-    });
-
-    const actions = createMatchActions(app, 'user');
-    const last = actions.at(-1) as Action;
-
-    expect(actions).toHaveLength(MATCH_ACTION_LIMIT + 1);
-    // One in each memo added, and five in the seed: the panel's count.
-    expect(last.name).toBe(
-      `Show all ${MATCH_ACTION_LIMIT + 6} matches in Find and Replace`
-    );
-
-    last.perform?.(app);
-
-    expect(opened).toEqual([openFindReplaceAction({ query: 'user' })]);
-  });
-});
-
-/** Rows the palette lists for a field, which say where the field is. */
-const isFieldRow = (action: Action) =>
-  Boolean(action.keywords?.includes(' · '));
-
-/** The rows the palette shows for a keyword typed or pasted in one go. */
-const paletteSearch = (keyword: string) =>
-  rankPaletteActions(
-    app,
-    searchActions(
-      scope().filter(action => action.filter?.(app) ?? true),
-      keyword
-    ),
-    keyword
-  );
-
-const TABLE_WORDS = [
-  'user',
-  'account',
-  'order',
-  'product',
-  'invoice',
-  'payment',
-  'email',
-  'login',
-  'session',
-  'address',
-  'customer',
-  'employee',
-  'department',
-  'category',
-  'comment',
-  'message',
-  'notification',
-  'audit',
-  'shipment',
-  'coupon',
-];
-
-const TABLE_ENDINGS = [
-  's',
-  '_logs',
-  '_history',
-  '_settings',
-  '_items',
-  '_events',
-  '_tokens',
-  '_roles',
-  '_profiles',
-  '_attempts',
-  '_archive',
-  '_links',
-  '_stats',
-  '_queue',
-  '_versions',
-  '_drafts',
-  '_imports',
-  '_exports',
-  '_reports',
-  '_snapshots',
-];
-
-/** 400 tables named the way a real schema names them, each with the columns one would have. */
-function seedLargeSchema() {
-  const actions: AnyAction[] = [];
-
-  TABLE_WORDS.forEach(word => {
-    TABLE_ENDINGS.forEach(ending => {
-      const tableId = `${word}${ending}`;
-      actions.push(
-        addTableAction({ id: tableId, ui: { x: 0, y: 0, zIndex: 1 } }),
-        changeTableNameAction({ id: tableId, value: tableId })
-      );
-      ['id', `${word}_id`, 'created_at', 'updated_at', 'status'].forEach(
-        (name, index) => {
-          const id = `${tableId}.${index}`;
-          actions.push(
-            addColumnAction({ id, tableId }),
-            changeColumnNameAction({ id, tableId, value: name })
-          );
-        }
-      );
-    });
-  });
-  const users = 'users';
-  actions.push(
-    addColumnAction({ id: 'users.email', tableId: users }),
-    changeColumnNameAction({
-      id: 'users.email',
-      tableId: users,
-      value: 'email',
-    }),
-    changeColumnCommentAction({
-      id: 'users.email',
-      tableId: users,
-      value: 'where the login link goes',
-    })
-  );
-  app.store.dispatchSync(actions);
-}
-
-describe('rankPaletteActions', () => {
-  beforeEach(() => {
-    setCanvasType(CanvasType.ERD);
-  });
-
-  it('puts the rows holding the keyword as typed first, then the fields, then looser hits', () => {
-    seedFindDocument(app);
-
-    const rows = paletteSearch('user');
-
-    expect(names(rows).slice(0, 4)).toEqual([
-      'users',
-      'user_id',
-      'user id',
-      'Every user_id points at users.id',
-    ]);
-    for (const row of rows.slice(4)) {
-      expect(row.name.toLowerCase()).not.toContain('user');
-    }
-  });
-
-  it('keeps a command holding the keyword in its keywords ahead of the fields', () => {
-    seedFindDocument(app);
-
-    expect(names(paletteSearch('replace'))[0]).toBe('Find and Replace');
-  });
-
-  it('lists the fields right below the tables named with the keyword in a schema of 400 tables', () => {
-    seedLargeSchema();
-    expect(app.store.state.doc.tableIds).toHaveLength(400);
-
-    const rows = paletteSearch('email');
-    const firstField = rows.findIndex(isFieldRow);
-
-    // The twenty tables named email, none of the looser hits the cap leaves out.
-    expect(firstField).toBe(TABLE_ACTION_LIMIT);
-    for (const row of rows.slice(0, firstField)) {
-      expect(row.tableId).toBeDefined();
-      expect(row.name).toContain('email');
-    }
-    expect(rows[firstField]).toMatchObject({
-      name: 'email',
-      keywords: 'users.email · Column',
-    });
-    expect(rows.filter(row => row.tableId)).toHaveLength(TABLE_ACTION_LIMIT);
-    expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
-  });
-
-  it('hands the tables the cap leaves out to Find and Replace', () => {
-    for (let index = 0; index <= TABLE_ACTION_LIMIT; index++) {
-      addTable(`item_${index}`);
-    }
-
-    const rows = paletteSearch('item');
-
-    expect(rows.filter(row => row.tableId)).toHaveLength(TABLE_ACTION_LIMIT);
-    // Below the rows holding the keyword, which no field does here.
-    expect(rows[TABLE_ACTION_LIMIT].name).toBe(
-      `Show all ${TABLE_ACTION_LIMIT + 1} matches in Find and Replace`
-    );
-  });
-
-  it('keeps every table row a keyword in no table name lists to the cap, after the fields', () => {
-    seedLargeSchema();
-
-    for (const keyword of ['login', 'user_id', 'created_at']) {
-      const rows = paletteSearch(keyword);
-      const firstField = rows.findIndex(isFieldRow);
-      const tableRows = rows.filter(row => row.tableId);
-
-      expect(tableRows.length).toBeLessThanOrEqual(TABLE_ACTION_LIMIT);
-      expect(firstField).toBeGreaterThan(-1);
-      for (const row of rows.slice(0, firstField)) {
-        expect(row.name.toLowerCase()).toContain(keyword);
-      }
-      expect(rows.length).toBeLessThanOrEqual(
-        ERD_TOOLBOX.length + TABLE_ACTION_LIMIT + MATCH_ACTION_LIMIT + 1
-      );
-    }
-  });
-});
-
 describe('searchActions / Hangul', () => {
   const rows = (...list: string[]): Action[] => list.map(name => ({ name }));
 
@@ -1155,137 +834,5 @@ describe('searchActions / Hangul', () => {
         'ㅌㅇㅂ'
       )
     ).toEqual([]);
-  });
-});
-
-describe('rankPaletteActions / Hangul', () => {
-  beforeEach(() => {
-    setCanvasType(CanvasType.ERD);
-    seedHangulDocument(app);
-  });
-
-  it('puts a table held by its initials above the fields, which follow whole, from the start, then inside', () => {
-    const rows = paletteSearch('ㅅㅇㅈ');
-
-    expect(rows.map(({ name, keywords }) => [name, keywords])).toEqual([
-      ['사용자', 'Table'],
-      ['사용자', '주문 내역.사용자 · Column'],
-      ['사용자 고유 번호', '사용자.아이디 · Column comment'],
-      ['사용자 한 명이 여러 주문을 남긴다', 'Memo'],
-      ['주문한 사용자', '주문 내역.사용자 · Column comment'],
-    ]);
-  });
-
-  it('keeps a table an IME has only half spelled above the fields', () => {
-    for (const step of IME_SAYONG) {
-      const rows = paletteSearch(step);
-      const firstField = rows.findIndex(isFieldRow);
-
-      expect(names(rows.slice(0, firstField))).toContain('사용자');
-    }
-    expect(names(paletteSearch('ㅈㅁ')).slice(0, 1)).toEqual(['주문 내역']);
-  });
-
-  it('hands Find and Replace only the tables the cap leaves out that hold the keyword as typed', () => {
-    for (let index = 0; index <= TABLE_ACTION_LIMIT; index++) {
-      addTable(`사용자_${index}`);
-    }
-
-    for (const keyword of ['ㅅㅇㅈ', '사요']) {
-      const rows = paletteSearch(keyword);
-      expect(rows.filter(row => row.tableId)).toHaveLength(TABLE_ACTION_LIMIT);
-      expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
-    }
-
-    // Twenty-two table names, a column name, two comments and the memo.
-    expect(names(paletteSearch('사용')).at(-1)).toBe(
-      `Show all ${TABLE_ACTION_LIMIT + 6} matches in Find and Replace`
-    );
-  });
-});
-
-describe('createMatchActions / Hangul', () => {
-  const addMemos = (count: number, value: (index: number) => string) => {
-    const actions: AnyAction[] = [];
-    for (let index = 0; index < count; index++) {
-      const id = `ko-${app.store.state.doc.memoIds.length}-${index}`;
-      actions.push(
-        addMemoAction({ id, ui: { x: 0, y: 0, zIndex: 1 } }),
-        changeMemoValueAction({ id, value: value(index) })
-      );
-    }
-    app.store.dispatchSync(actions);
-  };
-
-  beforeEach(() => {
-    seedHangulDocument(app);
-  });
-
-  it('lists the fields an IME step or the initials spell, whole, from the start, then inside', () => {
-    expect(names(createMatchActions(app, 'ㅅㅇㅈ'))).toEqual([
-      '사용자',
-      '사용자 고유 번호',
-      '사용자 한 명이 여러 주문을 남긴다',
-      '주문한 사용자',
-    ]);
-    // Within a tier the fields keep the document's order.
-    expect(names(createMatchActions(app, '사요'))).toEqual([
-      '사용자 고유 번호',
-      '사용자',
-      '사용자 한 명이 여러 주문을 남긴다',
-      '주문한 사용자',
-    ]);
-  });
-
-  it('puts the fields holding the keyword as typed above those only its letters spell', () => {
-    // 상품명 holds 상 as typed; 사용 only spells it across two syllables.
-    expect(names(createMatchActions(app, '상'))).toEqual([
-      '상품명',
-      '사용자 고유 번호',
-      '사용자',
-      '사용자 한 명이 여러 주문을 남긴다',
-      '주문한 사용자',
-    ]);
-  });
-
-  it('leaves the fields only its letters spell to the limit, never one holding it as typed', () => {
-    addMemos(MATCH_ACTION_LIMIT, index => `사용 ${index}`);
-    addMemos(1, () => '상자');
-
-    const actions = createMatchActions(app, '상');
-
-    expect(names(actions).slice(0, 2)).toEqual(['상품명', '상자']);
-    expect(actions).toHaveLength(MATCH_ACTION_LIMIT);
-    expect(names(actions).some(name => name.startsWith('Show all'))).toBe(
-      false
-    );
-  });
-
-  it('offers no hand-off past the limit when the fields hold the keyword only by its Hangul letters', () => {
-    addMemos(MATCH_ACTION_LIMIT + 5, index => `사용자 메모 ${index}`);
-
-    for (const keyword of ['ㅅㅇㅈ', '사요']) {
-      const actions = createMatchActions(app, keyword);
-      expect(actions).toHaveLength(MATCH_ACTION_LIMIT);
-      expect(names(actions).some(name => name.startsWith('Show all'))).toBe(
-        false
-      );
-    }
-
-    // The panel's count of 사용 as typed: the memos added and five in the seed.
-    expect(names(createMatchActions(app, '사용')).at(-1)).toBe(
-      `Show all ${MATCH_ACTION_LIMIT + 10} matches in Find and Replace`
-    );
-  });
-
-  it('hands over the keyword when the limit leaves out a field holding it as typed', () => {
-    addMemos(MATCH_ACTION_LIMIT, index => `상자 ${index}`);
-
-    const actions = createMatchActions(app, '상');
-
-    // The table 상품, the column 상품명 and the memos: the panel's count.
-    expect(actions.at(-1)?.name).toBe(
-      `Show all ${MATCH_ACTION_LIMIT + 2} matches in Find and Replace`
-    );
   });
 });
