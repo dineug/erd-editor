@@ -12,8 +12,11 @@ import {
   showErdTab,
   showErdTargetAction$,
 } from '@/components/erd/goToErdTarget';
-import { CanvasType, Show } from '@/constants/schema';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { CanvasType, RelationshipType, Show } from '@/constants/schema';
+import {
+  changeViewportAction,
+  drawStartRelationshipAction,
+} from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
@@ -22,7 +25,10 @@ import {
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 
 const VIEWPORT = { width: 800, height: 600 };
@@ -192,6 +198,46 @@ describe('showErdTargetAction$', () => {
     );
 
     expect(batches.flat()).toEqual([]);
+  });
+});
+
+describe('showErdTargetAction$ with a relationship being drawn', () => {
+  it('neither starts nor finishes the relationship, however many jumps are made', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      changeColumnPrimaryKeyAction({ id: 'c0', tableId: 'tall', value: true }),
+      addTableAction({ id: 'other', ui: { x: 900, y: 60, zIndex: 3 } }),
+      addColumnAction({ id: 'o0', tableId: 'other' }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c0', FocusType.columnName))
+    );
+    app.store.dispatchSync(
+      showErdTargetAction$({ kind: 'table', tableId: 'other' })
+    );
+
+    const { doc, collections, editor } = app.store.state;
+    expect(doc.relationshipIds).toEqual([]);
+    expect(collections.tableEntities.other.columnIds).toEqual(['o0']);
+    expect(editor.drawRelationship).toMatchObject({
+      relationshipType: RelationshipType.OneN,
+      start: null,
+    });
+    expect(editor.selectedMap).toEqual({ other: SelectType.table });
+  });
+
+  it('brings the table jumped to in front of everything else', () => {
+    const app = seed();
+
+    app.store.dispatchSync(
+      showErdTargetAction$({ kind: 'table', tableId: 'tall' })
+    );
+
+    const { tall } = app.store.state.collections.tableEntities;
+    const { note } = app.store.state.collections.memoEntities;
+    expect(tall.ui.zIndex).toBeGreaterThan(note.ui.zIndex);
   });
 });
 

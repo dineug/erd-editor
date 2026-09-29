@@ -5,14 +5,16 @@ import type { GeneratorAction } from '@/engine/generator.actions';
 import {
   focusColumnAction,
   focusTableAction,
+  selectAction,
+  unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType } from '@/engine/modules/editor/state';
+import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeCanvasTypeAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
+import { changeZIndexAction } from '@/engine/modules/table/atom.actions';
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
 import {
@@ -22,6 +24,7 @@ import {
   type Rect,
 } from '@/konva/scene/metrics';
 import { getOriginToPlace, toScreenPoint } from '@/konva/scene/viewport';
+import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { isHighLevelTable } from '@/utils/validation';
 
@@ -91,6 +94,25 @@ function visibleFocusType(state: RootState, focusType: FocusType): FocusType {
 }
 
 /**
+ * Selects the table alone and brings it to the front, as a press on it does,
+ * bar the press's part in a relationship being drawn: a jump only shows, so it
+ * never starts or finishes one, which would add a relationship and a column.
+ */
+function* selectTable({ doc, collections }: RootState, tableId: string) {
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds);
+  const memos = query(collections)
+    .collection('memoEntities')
+    .selectByIds(doc.memoIds);
+
+  yield unselectAllAction();
+  yield selectAction({ [tableId]: SelectType.table });
+  yield changeZIndexAction({ id: tableId, zIndex: nextZIndex(tables, memos) });
+  yield focusTableAction({ tableId });
+}
+
+/**
  * Stands the reader on a table, a column cell or a memo the way the Go to ERD
  * button stands them on a table, with the focus ring on the cell asked for. A
  * column is scrolled to by its own row, which a tall table may hold off screen.
@@ -120,7 +142,7 @@ export const showErdTargetAction$ = (
 
     if (target.kind === 'table') {
       yield* scrollIntoView(state, getTableRect(state, table), covered);
-      yield selectTableAction$(table.id, false);
+      yield* selectTable(state, table.id);
       if (target.focusType) {
         yield focusTableAction({
           tableId: table.id,
@@ -138,7 +160,7 @@ export const showErdTargetAction$ = (
       ? getTableRect(state, table)
       : getColumnRect(state, table, index);
     yield* scrollIntoView(state, rect, covered);
-    yield selectTableAction$(table.id, false);
+    yield* selectTable(state, table.id);
     yield focusColumnAction({
       tableId: table.id,
       columnId: target.columnId,
