@@ -1258,6 +1258,63 @@ CREATE UNIQUE INDEX "HR"."UQ_AB" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
 }
 ```
 
+### CREATE UNIQUE INDEX key parts and partial indexes
+
+```sql
+CREATE UNIQUE INDEX uq_ab ON public.t USING btree (a, b DESC NULLS LAST);
+CREATE UNIQUE INDEX uq_ba ON public.t USING btree (b text_pattern_ops, a COLLATE "C");
+CREATE UNIQUE INDEX uq_live ON public.t USING btree (a, b) WHERE (deleted_at IS NULL);
+CREATE UNIQUE NONCLUSTERED INDEX [uq_set] ON [dbo].[t] ([a] ASC, [b] ASC) WHERE ([a] IS NOT NULL AND [b] IS NOT NULL) WITH (PAD_INDEX = OFF) ON [PRIMARY]
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.index",
+      "name": "uq_ab",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "DESC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "uq_ba",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "b", "sort": "ASC" },
+        { "name": "a", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "uq_live",
+      "unique": false,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "uq_set",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
 ### Alter Table Add PRIMARY KEY
 
 ```sql

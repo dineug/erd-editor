@@ -33,6 +33,20 @@ describe('indexColumnsParser', () => {
     expect(tokens[$pos.value].value).toBe(',');
   });
 
+  it('names each column by its first word, past a collation, an operator class and a null order', () => {
+    const { columns, $pos, tokens } = parse(
+      '(a COLLATE "C" DESC, b text_pattern_ops, c DESC NULLS LAST, d NULLS FIRST), z'
+    );
+
+    expect(columns).toEqual([
+      { name: 'a', sort: SortType.desc },
+      { name: 'b', sort: SortType.asc },
+      { name: 'c', sort: SortType.desc },
+      { name: 'd', sort: SortType.asc },
+    ]);
+    expect(tokens[$pos.value].value).toBe(',');
+  });
+
   it('records no column for a key with an expression part', () => {
     const { columns, $pos, tokens } = parse('(id, (lower(email))), z');
 

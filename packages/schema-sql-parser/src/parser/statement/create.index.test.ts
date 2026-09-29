@@ -145,6 +145,68 @@ describe('createIndexParser', () => {
     });
   });
 
+  it('names each key part of pg_dump by its column, past its null order, operator class and collation', () => {
+    const sorted = parse(
+      'CREATE UNIQUE INDEX uq_ab ON public.t USING btree (a, b DESC NULLS LAST);'
+    ).ast;
+    const classed = parse(
+      'CREATE UNIQUE INDEX uq_ba ON public.t USING btree (b text_pattern_ops, a COLLATE "C");'
+    ).ast;
+
+    expect(sorted.columns).toEqual([
+      { name: 'a', sort: SortType.asc },
+      { name: 'b', sort: SortType.desc },
+    ]);
+    expect(classed.columns).toEqual([
+      { name: 'b', sort: SortType.asc },
+      { name: 'a', sort: SortType.asc },
+    ]);
+  });
+
+  it.each([
+    'WHERE deleted_at IS NULL',
+    'WHERE (active)',
+    'WHERE a IS NOT NULL AND deleted_at IS NULL',
+    'WHERE a IS NOT NULL OR b IS NOT NULL',
+    'WHERE c IS NOT NULL',
+    'WHERE a IS NULL',
+  ])('reads a partial unique index as not unique: %s', where => {
+    const { ast, tokens, $pos } = parse(
+      `CREATE UNIQUE INDEX uq ON public.t USING btree (a, b) ${where}; CREATE TABLE z (i INT);`
+    );
+
+    expect(ast.unique).toBe(false);
+    expect(ast.columns.map(column => column.name)).toEqual(['a', 'b']);
+    expect(tokens[$pos.value].value).toBe('CREATE');
+  });
+
+  it.each([
+    ['PostgreSQL', 'WHERE a IS NOT NULL;'],
+    ['SQLite', 'WHERE "a" IS NOT NULL AND "b" IS NOT NULL;'],
+    [
+      'SQL Server',
+      'WHERE ([a] IS NOT NULL AND ([B] IS NOT NULL)) WITH (PAD_INDEX = OFF) ON [PRIMARY]\nGO\n',
+    ],
+    ['a dump without terminators', 'WHERE a IS NOT NULL\nGO\n'],
+  ])(
+    'keeps unique a %s index whose WHERE drops only rows with a NULL key',
+    (_vendor, where) => {
+      const { ast, tokens, $pos } = parse(
+        `CREATE UNIQUE INDEX uq ON t (a, b) ${where}CREATE TABLE z (i INT);`
+      );
+
+      expect(ast.unique).toBe(true);
+      expect(tokens[$pos.value].value).toBe('CREATE');
+    }
+  );
+
+  it('leaves a partial index that is not unique as it is', () => {
+    const { ast } = parse('CREATE INDEX i ON t (a) WHERE a > 0;');
+
+    expect(ast.unique).toBe(false);
+    expect(ast.columns.map(column => column.name)).toEqual(['a']);
+  });
+
   it('reads the ON ONLY of a partitioned table, and a table named only', () => {
     const partitioned = parse(
       'CREATE UNIQUE INDEX i ON ONLY public.t USING btree (a, b);'

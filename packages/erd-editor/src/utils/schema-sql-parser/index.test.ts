@@ -366,6 +366,23 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('keeps every column of a pg_dump key whose parts carry a null order, an operator class or a collation', () => {
+      const schema = parse(`
+        CREATE TABLE public.t (a integer NOT NULL, b integer NOT NULL, deleted_at timestamp);
+        CREATE UNIQUE INDEX uq_ab ON public.t USING btree (a, b DESC NULLS LAST);
+        CREATE UNIQUE INDEX uq_ba ON public.t USING btree (b text_pattern_ops, a COLLATE "C");
+        CREATE UNIQUE INDEX uq_live ON public.t USING btree (a, b) WHERE (deleted_at IS NULL);
+        CREATE UNIQUE INDEX uq_set ON public.t USING btree (a, b) WHERE (a IS NOT NULL);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b DESC'] },
+        { name: 'uq_ba', unique: true, columns: ['b ASC', 'a ASC'] },
+        { name: 'uq_live', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_set', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
     it('matches table and column names case-insensitively', () => {
       const schema = parse(`
         CREATE TABLE t (a INT);

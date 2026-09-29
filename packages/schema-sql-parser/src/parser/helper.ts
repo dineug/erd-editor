@@ -77,6 +77,9 @@ export const isByValue = createValueEqual('BY');
 export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
 export const isConcurrentlyValue = createValueEqual('CONCURRENTLY');
+export const isWhereValue = createValueEqual('WHERE');
+export const isAndValue = createValueEqual('AND');
+export const isOrValue = createValueEqual('OR');
 
 // What a constraint may carry after its key list, from Databricks' NOT
 // ENFORCED RELY to ANSI's DEFERRABLE INITIALLY DEFERRED. The column branch runs

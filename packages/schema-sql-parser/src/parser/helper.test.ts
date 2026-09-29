@@ -9,6 +9,7 @@ import {
   isAlterTableAddPrimaryKey,
   isAlterTableOnly,
   isAlterValue,
+  isAndValue,
   isAscValue,
   isAuto_incrementValue,
   isAutoIncrementValue,
@@ -46,6 +47,7 @@ import {
   isNullValue,
   isOnlyValue,
   isOnValue,
+  isOrValue,
   isPeriodToken,
   isPrimaryValue,
   isReferencesValue,
@@ -59,6 +61,7 @@ import {
   isTableValue,
   isUniqueValue,
   isUseValue,
+  isWhereValue,
   matchCreateIndex,
   matchCreateTable,
   matchDataType,
@@ -155,6 +158,9 @@ describe('token value predicates', () => {
     ['isCharacterValue', isCharacterValue, 'CHARACTER'],
     ['isSetValue', isSetValue, 'SET'],
     ['isCollateValue', isCollateValue, 'COLLATE'],
+    ['isWhereValue', isWhereValue, 'WHERE'],
+    ['isAndValue', isAndValue, 'AND'],
+    ['isOrValue', isOrValue, 'OR'],
   ];
 
   it.each(cases)(

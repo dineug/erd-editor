@@ -59,7 +59,14 @@ export function indexColumnsParser(
         $pos.value++;
       }
     }
-    if (isString($pos.value) && !isDesc($pos.value) && !isAsc($pos.value)) {
+    // The first word names the column. What follows it is a sort or words
+    // that name none: COLLATE "C", an operator class, NULLS LAST.
+    if (
+      !indexColumn.name &&
+      isString($pos.value) &&
+      !isDesc($pos.value) &&
+      !isAsc($pos.value)
+    ) {
       indexColumn.name = tokens[$pos.value].value;
     }
     if (isDesc($pos.value)) {
