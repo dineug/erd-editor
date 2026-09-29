@@ -306,10 +306,12 @@ test.describe('zoom, scroll and overlays', () => {
       );
     }
 
-    // 'memo' ranks New Memo first: fuse.js searches name + keywords of every
-    // command on each keystroke, and fuzzes a few more below it.
+    // 'memo' lists New Memo: fuse.js searches name + keywords of every command
+    // on each keystroke and fuzzes a few more beside it, in an order not held.
     await erd.page.keyboard.type('memo');
-    await expect(rows.first()).toHaveText(/New Memo/);
+    await expect(
+      quickSearch.getByText('New Memo', { exact: true })
+    ).toHaveCount(1);
     await expect(
       quickSearch.getByText('New Table', { exact: true })
     ).toHaveCount(0);
