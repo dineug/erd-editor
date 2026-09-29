@@ -1,16 +1,19 @@
 import {
   isAlterTableAddOnly,
   isConstraintValue,
+  isIndexValue,
+  isKeyValue,
   isLeftParentToken,
   isNewStatement,
   isPeriodToken,
-  isRightParentToken,
   isSemicolonToken,
   isStringToken,
   isTableValue,
   isUniqueValue,
+  matchKeyModifier,
 } from '@/parser/helper';
 import { AlterTableAddUnique, RefPos, StatementType } from '@/parser/statement';
+import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
 export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
@@ -21,16 +24,28 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
   const isPeriod = isPeriodToken(tokens);
   const isTable = isTableValue(tokens);
   const isUnique = isUniqueValue(tokens);
+  const isKey = isKeyValue(tokens);
+  const isIndex = isIndexValue(tokens);
   const isLeftParent = isLeftParentToken(tokens);
-  const isRightParent = isRightParentToken(tokens);
+  const keyModifier = matchKeyModifier(tokens);
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
 
+  const skipKeyModifiers = () => {
+    let span = keyModifier($pos.value);
+
+    while (span) {
+      $pos.value += span;
+      span = keyModifier($pos.value);
+    }
+  };
+
   const ast: AlterTableAddUnique = {
     type: StatementType.alterTableAddUnique,
     name: '',
-    columnNames: [],
+    constraintName: '',
+    columns: [],
   };
 
   $pos.value++;
@@ -76,27 +91,33 @@ export function alterTableAddUniqueParser(tokens: Token[], $pos: RefPos) {
     if (isConstraint($pos.value)) {
       token = tokens[++$pos.value];
 
-      if (isString($pos.value)) {
+      if (isString($pos.value) && !isUnique($pos.value)) {
+        ast.constraintName = token.value;
         $pos.value++;
       }
 
       continue;
     }
 
+    // MySQL names the index after UNIQUE KEY, and that name is the one the
+    // index takes when a CONSTRAINT symbol stands before it too.
     if (isUnique($pos.value)) {
       token = tokens[++$pos.value];
 
-      if (isLeftParent($pos.value)) {
+      if (isKey($pos.value) || isIndex($pos.value)) {
         token = tokens[++$pos.value];
+      }
 
-        while (isToken() && !isRightParent($pos.value)) {
-          if (isString($pos.value)) {
-            ast.columnNames.push(token.value);
-          }
-          token = tokens[++$pos.value];
-        }
+      skipKeyModifiers();
 
+      if (isString($pos.value)) {
+        ast.constraintName = tokens[$pos.value].value;
         $pos.value++;
+        skipKeyModifiers();
+      }
+
+      if (isLeftParent($pos.value)) {
+        ast.columns = indexColumnsParser(tokens, $pos);
       }
 
       continue;

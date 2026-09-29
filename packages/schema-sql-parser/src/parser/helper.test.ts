@@ -62,6 +62,7 @@ import {
   isUseValue,
   matchCreateTable,
   matchDataType,
+  matchKeyModifier,
   matchQualifiedName,
   matchReferentialClause,
 } from '@/parser/helper';
@@ -286,6 +287,30 @@ describe('matchReferentialClause', () => {
     expect(
       matchReferentialClause([quoted('on'), ...words('DELETE', 'CASCADE')])(0)
     ).toBe(0);
+  });
+});
+
+describe('matchKeyModifier', () => {
+  const span = (sql: string) => matchKeyModifier(tokenizer(sql))(0);
+
+  it('spans what may stand between UNIQUE and its key list', () => {
+    expect(span('NONCLUSTERED (a)')).toBe(1);
+    expect(span('clustered (a)')).toBe(1);
+    expect(span('USING BTREE (a)')).toBe(2);
+    expect(span('NULLS DISTINCT (a)')).toBe(2);
+    expect(span('nulls not distinct (a)')).toBe(3);
+  });
+
+  it('spans a USING whose method is missing by the keyword alone', () => {
+    expect(span('USING (a)')).toBe(1);
+  });
+
+  it('leaves a name, a list and an incomplete NULLS to the caller', () => {
+    expect(span('uq_a (a)')).toBe(0);
+    expect(span('(a)')).toBe(0);
+    expect(span('NULLS FIRST')).toBe(0);
+    expect(span('NULLS NOT NULL')).toBe(0);
+    expect(matchKeyModifier([quoted('clustered')])(0)).toBe(0);
   });
 });
 

@@ -13,6 +13,8 @@ import { createEngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { createIndex } from '@/utils/collection/index.entity';
+import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createSchemaSQL } from '@/utils/schema-sql';
@@ -57,6 +59,24 @@ const relationshipsOf = (schema: Schema): Relationship[] =>
 
 const indexesOf = (schema: Schema): Index[] =>
   schema.doc.indexIds.map(id => schema.collections.indexEntities[id]);
+
+const uniqueColumnNamesOf = (schema: Schema, table: Table): string[] =>
+  columnsOf(schema, table)
+    .filter(column => bHas(column.options, ColumnOption.unique))
+    .map(column => column.name);
+
+/** Each index as its name, its unique flag and its columns with their sort. */
+const indexShapesOf = (schema: Schema) =>
+  indexesOf(schema).map(index => ({
+    name: index.name,
+    unique: index.unique,
+    columns: index.indexColumnIds.map(id => {
+      const { columnId, orderType } =
+        schema.collections.indexColumnEntities[id];
+      const { name } = schema.collections.tableColumnEntities[columnId];
+      return `${name} ${orderType === OrderType.DESC ? 'DESC' : 'ASC'}`;
+    }),
+  }));
 
 describe('schemaSQLParserToSchemaJson', () => {
   it('produces a v3 schema envelope for an empty source', () => {
@@ -282,6 +302,27 @@ describe('schemaSQLParserToSchemaJson', () => {
         bHas(columnByName(schema, t, 'b').options, ColumnOption.unique)
       ).toBe(true);
       expect(columnByName(schema, t, 'c').options).toBe(0);
+    });
+
+    it('records an ADD UNIQUE over several columns as one unique index', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT);
+        ALTER TABLE t ADD CONSTRAINT uq_ab UNIQUE (a, b);
+        ALTER TABLE t ADD UNIQUE KEY uq_bc (b, c DESC);
+        ALTER TABLE t ADD UNIQUE (a, c);
+        ALTER TABLE t ADD UNIQUE INDEX uq_c (c);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_bc', unique: true, columns: ['b ASC', 'c DESC'] },
+        { name: '', unique: true, columns: ['a ASC', 'c ASC'] },
+      ]);
+      expect(indexesOf(schema).every(index => index.tableId === t.id)).toBe(
+        true
+      );
     });
 
     it('matches table and column names case-insensitively', () => {
@@ -597,6 +638,38 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('converts every composite UNIQUE spelling in CREATE TABLE into one unique index', () => {
+      const schema = parse(`
+        CREATE TABLE sp_region (
+          id INT,
+          code INT,
+          name VARCHAR(20),
+          email VARCHAR(40),
+          PRIMARY KEY (id),
+          UNIQUE (code, name),
+          UNIQUE KEY uq_name_code (name, code),
+          CONSTRAINT uq_code_email UNIQUE (code, email),
+          UNIQUE KEY uq_email (email)
+        );
+      `);
+      const region = tableByName(schema, 'sp_region');
+
+      expect(uniqueColumnNamesOf(schema, region)).toEqual(['email']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: true, columns: ['code ASC', 'name ASC'] },
+        {
+          name: 'uq_name_code',
+          unique: true,
+          columns: ['name ASC', 'code ASC'],
+        },
+        {
+          name: 'uq_code_email',
+          unique: true,
+          columns: ['code ASC', 'email ASC'],
+        },
+      ]);
+    });
+
     it('skips index columns that do not resolve, keeping the rest', () => {
       const schema = parse(`
         CREATE TABLE posts (id INT);
@@ -817,6 +890,165 @@ describe('schemaSQLParserToSchemaJson', () => {
             ])
           )
         ).toEqual(defaults);
+      }
+    );
+  });
+
+  describe('unique round trip', () => {
+    /**
+     * One table with every shape of uniqueness the editor exports: a column
+     * flag, a composite unique index, a single-column unique index and a
+     * plain index beside them.
+     */
+    function uniqueState(): RootState {
+      const state = {
+        ...schemaV3Parser({}),
+        editor: {},
+        lww: {},
+      } as unknown as RootState;
+      const columns = [
+        ['id', ColumnOption.primaryKey | ColumnOption.notNull],
+        ['email', ColumnOption.unique | ColumnOption.notNull],
+        ['code', ColumnOption.notNull],
+        ['name', ColumnOption.notNull],
+        ['tenant', 0],
+      ].map(([name, options]) =>
+        createColumn({
+          id: `col-${name}`,
+          tableId: 'tbl-region',
+          name: name as string,
+          dataType: 'INT',
+          options: options as number,
+        })
+      );
+      const indexes: Array<[string, boolean, Array<[string, number]>]> = [
+        [
+          'uq_code_name',
+          true,
+          [
+            ['code', OrderType.ASC],
+            ['name', OrderType.DESC],
+          ],
+        ],
+        ['idx_tenant', false, [['tenant', OrderType.ASC]]],
+        ['uq_tenant', true, [['tenant', OrderType.ASC]]],
+      ];
+
+      state.collections.tableColumnEntities = Object.fromEntries(
+        columns.map(column => [column.id, column])
+      );
+      state.collections.tableEntities = {
+        'tbl-region': createTable({
+          id: 'tbl-region',
+          name: 'region',
+          columnIds: columns.map(column => column.id),
+        }),
+      };
+      state.doc.tableIds = ['tbl-region'];
+
+      for (const [name, unique, parts] of indexes) {
+        const index = createIndex({
+          id: `idx-${name}`,
+          name,
+          tableId: 'tbl-region',
+          unique,
+        });
+
+        for (const [columnName, orderType] of parts) {
+          const indexColumn = createIndexColumn({
+            id: `${index.id}-${columnName}`,
+            indexId: index.id,
+            columnId: `col-${columnName}`,
+            orderType,
+          });
+          index.indexColumnIds.push(indexColumn.id);
+          index.seqIndexColumnIds.push(indexColumn.id);
+          state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
+        }
+
+        state.collections.indexEntities[index.id] = index;
+        state.doc.indexIds.push(index.id);
+      }
+
+      return state;
+    }
+
+    const toState = (schema: Schema) =>
+      ({ ...schema, editor: {}, lww: {} }) as unknown as RootState;
+
+    it.each([
+      Database.MySQL,
+      Database.MariaDB,
+      Database.MSSQL,
+      Database.Oracle,
+      Database.PostgreSQL,
+      Database.SQLite,
+    ])('re-imports a %s export to the model it was written from', database => {
+      const sql = createSchemaSQL(uniqueState(), database);
+      const schema = parse(sql);
+
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'region'))
+      ).toEqual(['email']);
+      expect(indexShapesOf(schema)).toEqual([
+        {
+          name: 'uq_code_name',
+          unique: true,
+          columns: ['code ASC', 'name DESC'],
+        },
+        { name: 'idx_tenant', unique: false, columns: ['tenant ASC'] },
+        { name: 'uq_tenant', unique: true, columns: ['tenant ASC'] },
+      ]);
+      expect(createSchemaSQL(toState(schema), database)).toBe(sql);
+    });
+
+    it('re-imports the composite UNIQUE a Snowflake export writes as one unique index', () => {
+      const sql = createSchemaSQL(uniqueState(), Database.Snowflake);
+      const schema = parse(sql);
+
+      expect(sql).toContain('ADD CONSTRAINT uq_code_name UNIQUE (code, name);');
+      // Snowflake has no secondary index, so the plain one is a comment, and
+      // a unique one over one column is the same constraint as its UQ flag.
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'region'))
+      ).toEqual(['email', 'tenant']);
+      expect(indexShapesOf(schema)).toEqual([
+        {
+          name: 'uq_code_name',
+          unique: true,
+          columns: ['code ASC', 'name ASC'],
+        },
+      ]);
+
+      const again = parse(createSchemaSQL(toState(schema), Database.Snowflake));
+
+      expect(indexShapesOf(again)).toEqual(indexShapesOf(schema));
+      expect(uniqueColumnNamesOf(again, tableByName(again, 'region'))).toEqual([
+        'email',
+        'tenant',
+      ]);
+    });
+
+    it('re-imports a Databricks export, which declares no uniqueness, with no index', () => {
+      const schema = parse(createSchemaSQL(uniqueState(), Database.Databricks));
+
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'region'))
+      ).toEqual([]);
+      expect(indexesOf(schema)).toEqual([]);
+    });
+
+    it.each([Database.MySQL, Database.PostgreSQL, Database.Snowflake])(
+      'never adds an index over repeated %s round trips',
+      database => {
+        let schema = parse(createSchemaSQL(uniqueState(), database));
+        const count = indexesOf(schema).length;
+
+        for (let cycle = 0; cycle < 3; cycle++) {
+          schema = parse(createSchemaSQL(toState(schema), database));
+        }
+
+        expect(indexesOf(schema)).toHaveLength(count);
       }
     );
   });

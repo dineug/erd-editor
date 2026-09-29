@@ -82,7 +82,9 @@ export type IndexColumn = {
 export type AlterTableAddUnique = {
   type: typeof StatementType.alterTableAddUnique;
   name: string;
-  columnNames: string[];
+  /** The key's own name: an index name after UNIQUE KEY, else the CONSTRAINT symbol. */
+  constraintName: string;
+  columns: IndexColumn[];
 };
 
 export type AlterTableAddPrimaryKey = {

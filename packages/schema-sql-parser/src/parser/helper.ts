@@ -108,16 +108,20 @@ const ReferentialActions: ReadonlyArray<ReadonlyArray<string>> = [
 ];
 const MatchKinds: ReadonlyArray<string> = ['FULL', 'PARTIAL', 'SIMPLE'];
 
+// The unquoted word at pos in upper case, '' for anything else: a quoted
+// token names something, so it never spells a keyword.
+const matchKeyword = (tokens: Token[]) => (pos: number) => {
+  const token = tokens[pos];
+  return token && token.type === TokenType.string && !token.quoted
+    ? token.value.toUpperCase()
+    : '';
+};
+
 // How many tokens a reference's trailing clause spans: ON DELETE SET NULL,
 // MATCH FULL. The action is optional, so MySQL's ON UPDATE CURRENT_TIMESTAMP
 // spans two and leaves its value to be skipped.
 export const matchReferentialClause = (tokens: Token[]) => {
-  const word = (pos: number) => {
-    const token = tokens[pos];
-    return token && token.type === TokenType.string && !token.quoted
-      ? token.value.toUpperCase()
-      : '';
-  };
+  const word = matchKeyword(tokens);
 
   return (pos: number) => {
     if (word(pos) === 'ON' && ['DELETE', 'UPDATE'].includes(word(pos + 1))) {
@@ -140,6 +144,23 @@ export const isIndexKind = (tokens: Token[]) => {
   const isKey = isKeyValue(tokens);
   return (pos: number) =>
     (isFulltext(pos) || isSpatial(pos)) && (isIndex(pos + 1) || isKey(pos + 1));
+};
+
+// How many tokens a key modifier spans where a unique key's name may stand:
+// PostgreSQL's NULLS [NOT] DISTINCT, SQL Server's CLUSTERED and MySQL's USING
+// BTREE. Left unclaimed, its first word would be read as the key's name.
+export const matchKeyModifier = (tokens: Token[]) => {
+  const word = matchKeyword(tokens);
+
+  return (pos: number) => {
+    const first = word(pos);
+
+    if (first === 'CLUSTERED' || first === 'NONCLUSTERED') return 1;
+    if (first === 'USING') return word(pos + 1) ? 2 : 1;
+    if (first !== 'NULLS') return 0;
+    if (word(pos + 1) === 'DISTINCT') return 2;
+    return word(pos + 1) === 'NOT' && word(pos + 2) === 'DISTINCT' ? 3 : 0;
+  };
 };
 
 // Angle brackets are not break characters, so a nested type arrives glued to

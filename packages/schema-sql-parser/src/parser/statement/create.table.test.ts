@@ -615,12 +615,106 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
-  it('applies an anonymous UNIQUE constraint over several columns', () => {
+  it('records an anonymous UNIQUE over several columns as one unique index', () => {
     const { ast } = parse('CREATE TABLE t (a INT, b INT, UNIQUE (a, b));');
 
     expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes).toEqual([
+      {
+        name: '',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'b', sort: SortType.asc },
+        ],
+      },
+    ]);
+  });
+
+  it('records every spelling of a composite UNIQUE as one unique index', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT, b INT, c INT, d INT,\n' +
+        ' UNIQUE KEY uq_ab (a, b DESC),\n' +
+        ' UNIQUE INDEX uq_bc (b, c),\n' +
+        ' CONSTRAINT uq_cd UNIQUE (c, d),\n' +
+        ' CONSTRAINT sym UNIQUE KEY uq_ad (a, d),\n' +
+        ' CONSTRAINT uq_bd UNIQUE KEY (b, d),\n' +
+        ' UNIQUE KEY (a, c)\n' +
+        ');'
+    );
+
+    expect(ast.columns.every(column => !column.unique)).toBe(true);
+    expect(
+      ast.indexes.map(({ name, unique, columns }) => [
+        name,
+        unique,
+        columns.map(({ name, sort }) => `${name} ${sort}`).join(', '),
+      ])
+    ).toEqual([
+      ['uq_ab', true, 'a ASC, b DESC'],
+      ['uq_bc', true, 'b ASC, c ASC'],
+      ['uq_cd', true, 'c ASC, d ASC'],
+      ['uq_ad', true, 'a ASC, d ASC'],
+      ['uq_bd', true, 'b ASC, d ASC'],
+      ['', true, 'a ASC, c ASC'],
+    ]);
+  });
+
+  it('keeps a CONSTRAINT name to the item it opens', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a INT, b INT, CONSTRAINT pk PRIMARY KEY (a), UNIQUE (a, b));'
+    );
+
+    expect(ast.indexes).toEqual([
+      {
+        name: '',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'b', sort: SortType.asc },
+        ],
+      },
+    ]);
+  });
+
+  it('reads no key modifier as the name of a composite UNIQUE', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT, b INT,\n' +
+        ' CONSTRAINT uq_mssql UNIQUE NONCLUSTERED (a, b),\n' +
+        ' CONSTRAINT uq_pg UNIQUE NULLS NOT DISTINCT (a, b),\n' +
+        ' UNIQUE NULLS DISTINCT (b, a),\n' +
+        ' UNIQUE KEY uq_hash USING HASH (a, b),\n' +
+        ' UNIQUE KEY USING BTREE (b, a),\n' +
+        ' UNIQUE CLUSTERED (a)\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'INT', unique: true }),
-      column({ name: 'b', dataType: 'INT', unique: true }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes.map(index => index.name)).toEqual([
+      'uq_mssql',
+      'uq_pg',
+      '',
+      'uq_hash',
+      '',
+    ]);
+  });
+
+  it('keeps a column level UNIQUE NULLS NOT DISTINCT on its column', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a INT UNIQUE NULLS NOT DISTINCT NOT NULL, b INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', unique: true, nullable: false }),
+      column({ name: 'b', dataType: 'INT' }),
     ]);
   });
 
@@ -646,12 +740,15 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
-  it('swallows the following keyword when CONSTRAINT has no name', () => {
+  it('reads the key after a CONSTRAINT that has no name', () => {
     const { ast } = parse(
-      'CREATE TABLE t (a INT, CONSTRAINT PRIMARY KEY (a));'
+      'CREATE TABLE t (a INT, b INT, CONSTRAINT PRIMARY KEY (a), CONSTRAINT UNIQUE (b));'
     );
 
-    expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', primaryKey: true }),
+      column({ name: 'b', dataType: 'INT', unique: true }),
+    ]);
   });
 
   it('parses INDEX and KEY definitions with sort directions', () => {

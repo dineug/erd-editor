@@ -98,8 +98,9 @@ describe('Statement discriminators', () => {
         case StatementType.createIndex:
           return `${statement.type}:${statement.unique}`;
         case StatementType.alterTableAddPrimaryKey:
-        case StatementType.alterTableAddUnique:
           return `${statement.type}:${statement.columnNames.join()}`;
+        case StatementType.alterTableAddUnique:
+          return `${statement.type}:${statement.columns.map(({ name }) => name).join()}`;
         case StatementType.alterTableAddForeignKey:
           return `${statement.type}:${statement.refTableName}`;
       }

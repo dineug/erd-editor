@@ -863,7 +863,7 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         },
         {
@@ -873,11 +873,26 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         }
       ],
-      "indexes": [],
+      "indexes": [
+        {
+          "name": "",
+          "unique": true,
+          "columns": [
+            {
+              "name": "b",
+              "sort": "ASC"
+            },
+            {
+              "name": "c",
+              "sort": "ASC"
+            }
+          ]
+        }
+      ],
       "foreignKeys": []
     },
     {
@@ -892,7 +907,7 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         },
         {
@@ -902,11 +917,26 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         }
       ],
-      "indexes": [],
+      "indexes": [
+        {
+          "name": "UC_B",
+          "unique": true,
+          "columns": [
+            {
+              "name": "b",
+              "sort": "ASC"
+            },
+            {
+              "name": "c",
+              "sort": "ASC"
+            }
+          ]
+        }
+      ],
       "foreignKeys": []
     }
   ]
@@ -1307,12 +1337,17 @@ ALTER TABLE Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
     }
   ]
 }
@@ -1331,12 +1366,46 @@ ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
+### Alter Table Add UNIQUE KEY
+
+```sql
+ALTER TABLE users ADD UNIQUE KEY uq_email (email);
+ALTER TABLE users ADD CONSTRAINT sym UNIQUE INDEX uq_ab (a, b DESC);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_email",
+      "columns": [{ "name": "email", "sort": "ASC" }]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_ab",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "DESC" }
+      ]
     }
   ]
 }
@@ -1413,22 +1482,32 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
     }
   ]
 }

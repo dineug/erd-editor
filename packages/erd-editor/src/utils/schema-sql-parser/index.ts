@@ -107,7 +107,7 @@ function getStatementMap(statements: Statement[]): StatementMap {
         }
         break;
       case StatementType.alterTableAddUnique:
-        if (statement.name && statement.columnNames.length) {
+        if (statement.name && statement.columns.length) {
           map.uniques.push(statement);
         }
         break;
@@ -163,8 +163,20 @@ function mergeTables({
     const table = findByName(tables, unique.name);
     if (!table) return;
 
-    unique.columnNames.forEach(columnName => {
-      const column = findByName(table.columns, columnName);
+    // Several columns are one composite key, which a unique flag on each of
+    // them would make stricter. One column keeps the flag it always set, and
+    // with it the UQ_<table>_<column> the export writes comes back unchanged.
+    if (unique.columns.length > 1) {
+      table.indexes.push({
+        name: unique.constraintName,
+        unique: true,
+        columns: unique.columns,
+      });
+      return;
+    }
+
+    unique.columns.forEach(({ name }) => {
+      const column = findByName(table.columns, name);
       if (!column) return;
 
       column.unique = true;

@@ -1,5 +1,4 @@
 import {
-  isAscValue,
   isAutoIncrementValue,
   isCharacterSet,
   isClusterBy,
@@ -9,7 +8,6 @@ import {
   isConstraintState,
   isConstraintValue,
   isDefaultValue,
-  isDescValue,
   isEqualToken,
   isForeignValue,
   isIndexKind,
@@ -28,6 +26,7 @@ import {
   isUniqueValue,
   matchCreateTable,
   matchDataType,
+  matchKeyModifier,
   matchNestedDataType,
   matchReferentialClause,
 } from '@/parser/helper';
@@ -37,11 +36,10 @@ import {
   CreateTableColumns,
   ForeignKey,
   Index,
-  IndexColumn,
   RefPos,
-  SortType,
   StatementType,
 } from '@/parser/statement';
+import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
 export function createTableParser(tokens: Token[], $pos: RefPos) {
@@ -218,8 +216,6 @@ function createTableColumnsParser(
   const isNot = isNotValue(tokens);
   const isDefault = isDefaultValue(tokens);
   const isComment = isCommentValue(tokens);
-  const isDesc = isDescValue(tokens);
-  const isAsc = isAscValue(tokens);
   const isKey = isKeyValue(tokens);
   const isEqual = isEqualToken(tokens);
   const characterSet = isCharacterSet(tokens);
@@ -228,6 +224,7 @@ function createTableColumnsParser(
   const dataType = matchDataType(tokens);
   const nestedDataType = matchNestedDataType(tokens);
   const referentialClause = matchReferentialClause(tokens);
+  const keyModifier = matchKeyModifier(tokens);
   const indexKind = isIndexKind(tokens);
 
   const isToken = () => $pos.value < tokens.length;
@@ -241,57 +238,13 @@ function createTableColumnsParser(
     isKey(pos) ||
     indexKind(pos);
 
-  // Reads a key list from its ( through its ), each column with its sort.
-  const indexColumnsParser = () => {
-    const indexColumns: IndexColumn[] = [];
-    let indexColumn: IndexColumn = {
-      name: '',
-      sort: SortType.asc,
-    };
-    let expression = false;
-    $pos.value++;
+  const skipKeyModifiers = () => {
+    let span = keyModifier($pos.value);
 
-    while (isToken() && !isRightParent($pos.value)) {
-      // A prefix length, email(191), or a functional key part, ((a + b)), is a
-      // group of its own: its ) closes no list, and its words name no column.
-      if (isLeftParent($pos.value)) {
-        expression ||= !indexColumn.name;
-        let depth = 0;
-
-        while (isToken()) {
-          if (isLeftParent($pos.value)) {
-            depth++;
-          } else if (isRightParent($pos.value) && --depth === 0) {
-            break;
-          }
-
-          $pos.value++;
-        }
-      }
-      if (isString($pos.value) && !isDesc($pos.value) && !isAsc($pos.value)) {
-        indexColumn.name = tokens[$pos.value].value;
-      }
-      if (isDesc($pos.value)) {
-        indexColumn.sort = SortType.desc;
-      }
-      if (isComma($pos.value)) {
-        indexColumns.push(indexColumn);
-        indexColumn = {
-          name: '',
-          sort: SortType.asc,
-        };
-      }
-      $pos.value++;
+    while (span) {
+      $pos.value += span;
+      span = keyModifier($pos.value);
     }
-
-    if (indexColumn.name !== '') {
-      indexColumns.push(indexColumn);
-    }
-
-    $pos.value++;
-    // Without its expression the key is another one, and a unique key left
-    // with a single column would mark that column unique.
-    return expression ? [] : indexColumns;
   };
 
   const columns: Column[] = [];
@@ -313,6 +266,9 @@ function createTableColumnsParser(
   // Set while the item is a table constraint or index: until its comma no word
   // may become a column name or a data type -- USING BTREE, ON [PRIMARY].
   let constraintItem = false;
+  // The name a CONSTRAINT gives the item it opens, which a UNIQUE over several
+  // columns keeps unless it names its index itself.
+  let constraintName = '';
 
   while (isToken()) {
     let token = tokens[$pos.value];
@@ -390,7 +346,14 @@ function createTableColumnsParser(
     if (isConstraint($pos.value)) {
       token = tokens[++$pos.value];
 
-      if (isString($pos.value)) {
+      // The symbol is optional: CONSTRAINT UNIQUE (a) names nothing.
+      if (
+        isString($pos.value) &&
+        !isUnique($pos.value) &&
+        !isPrimary($pos.value) &&
+        !isForeign($pos.value)
+      ) {
+        constraintName = token.value;
         $pos.value++;
       }
 
@@ -445,7 +408,7 @@ function createTableColumnsParser(
         token = tokens[++$pos.value];
 
         if (isLeftParent($pos.value)) {
-          const indexColumns = indexColumnsParser();
+          const indexColumns = indexColumnsParser(tokens, $pos);
 
           if (indexColumns.length) {
             indexes.push({
@@ -462,26 +425,28 @@ function createTableColumnsParser(
 
     if (isUnique($pos.value)) {
       token = tokens[++$pos.value];
-      const uniqueIndex = isIndex($pos.value);
 
-      if (isKey($pos.value) || uniqueIndex) {
+      if (isKey($pos.value) || isIndex($pos.value)) {
         token = tokens[++$pos.value];
       }
+
+      skipKeyModifiers();
 
       // Only a table constraint names its index. Inside a column definition the
       // next word is another attribute -- NOT NULL, COMMENT, DEFAULT.
-      let name = '';
+      let name = constraintName;
 
       if (!column.name && isString($pos.value)) {
-        name = token.value;
-        token = tokens[++$pos.value];
+        name = tokens[$pos.value].value;
+        $pos.value++;
+        skipKeyModifiers();
       }
 
-      // Several columns under one named UNIQUE INDEX are one composite key;
-      // marking each column unique would export a stricter one.
-      if (uniqueIndex && name && isLeftParent($pos.value)) {
-        const indexColumns = indexColumnsParser();
+      if (isLeftParent($pos.value)) {
+        const indexColumns = indexColumnsParser(tokens, $pos);
 
+        // Several columns under one UNIQUE are one composite key, in whatever
+        // spelling; marking each column unique would export a stricter one.
         if (indexColumns.length > 1) {
           indexes.push({ name, unique: true, columns: indexColumns });
         } else {
@@ -489,21 +454,6 @@ function createTableColumnsParser(
             ...indexColumns.map(indexColumn => indexColumn.name.toUpperCase())
           );
         }
-
-        continue;
-      }
-
-      if (isLeftParent($pos.value)) {
-        token = tokens[++$pos.value];
-
-        while (isToken() && !isRightParent($pos.value)) {
-          if (isString($pos.value)) {
-            uniqueColumnNames.push(token.value.toUpperCase());
-          }
-          token = tokens[++$pos.value];
-        }
-
-        $pos.value++;
       } else {
         column.unique = true;
       }
@@ -654,6 +604,7 @@ function createTableColumnsParser(
         nullable: true,
       };
       constraintItem = false;
+      constraintName = '';
       $pos.value++;
       continue;
     }
