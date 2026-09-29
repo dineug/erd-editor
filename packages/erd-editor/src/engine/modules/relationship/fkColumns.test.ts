@@ -112,6 +112,24 @@ describe('toForeignKeyNames', () => {
     ]);
   });
 
+  it('lets a member that keeps its name claim it before a prefixed one, in either order', () => {
+    expect(toForeignKeyNames('user', ['id', 'user_id'], [])).toEqual([
+      'user_id_2',
+      'user_id',
+    ]);
+    expect(toForeignKeyNames('user', ['user_id', 'id'], [])).toEqual([
+      'user_id',
+      'user_id_2',
+    ]);
+  });
+
+  it('numbers a kept member only for the end table, never for a prefixed one', () => {
+    expect(toForeignKeyNames('user', ['id', 'user_id'], ['user_id'])).toEqual([
+      'user_id_3',
+      'user_id_2',
+    ]);
+  });
+
   it('never numbers an empty name, however many the end table holds', () => {
     expect(toForeignKeyNames('user', ['', 'id'], ['', ''])).toEqual([
       '',

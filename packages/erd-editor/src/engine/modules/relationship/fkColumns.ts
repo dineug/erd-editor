@@ -41,8 +41,8 @@ function prefixKeyName(tableName: string, keyName: string): string {
 
 /**
  * Names the foreign key column of each key after the start table, user_id for
- * the key id of user, and numbers a name the end table or an earlier key took,
- * user_id_2, without case; a key with no name gives a column with none.
+ * the key id of user, and numbers a name the end table or another key took,
+ * user_id_2, without case; the keys that keep their own names claim them first.
  */
 export function toForeignKeyNames(
   startTableName: string,
@@ -50,19 +50,27 @@ export function toForeignKeyNames(
   endColumnNames: string[]
 ): string[] {
   const taken = new Set(endColumnNames.map(toNameKey).filter(Boolean));
+  const bases = keyNames.map(keyName => prefixKeyName(startTableName, keyName));
+  const names = [...bases];
+  const isKept = (index: number) => bases[index] === keyNames[index].trim();
+  const indexes = bases.map((_, index) => index);
 
-  return keyNames.map(keyName => {
-    const base = prefixKeyName(startTableName, keyName);
-    if (!base) return base;
+  for (const index of [
+    ...indexes.filter(isKept),
+    ...indexes.filter(index => !isKept(index)),
+  ]) {
+    const base = bases[index];
+    if (!base) continue;
 
     let name = base;
     for (let suffix = 2; taken.has(toNameKey(name)); suffix++) {
       name = `${base}${SEPARATOR}${suffix}`;
     }
     taken.add(toNameKey(name));
+    names[index] = name;
+  }
 
-    return name;
-  });
+  return names;
 }
 
 /**
