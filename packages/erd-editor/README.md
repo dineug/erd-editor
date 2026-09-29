@@ -159,7 +159,7 @@ erd-editor {
 
 | Event | Description |
 | --- | --- |
-| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too; with Save Scroll Information or Save Zoom Information off, `value` comes back as it was, so compare it with what you saved before writing a file. |
+| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too, and with Save Scroll Information or Save Zoom Information off leaves `value` as it was. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options. |
 
 ## Key bindings
