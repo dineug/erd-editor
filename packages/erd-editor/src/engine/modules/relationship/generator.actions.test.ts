@@ -16,8 +16,10 @@ import {
   actions$,
   addRelationshipAction$,
 } from '@/engine/modules/relationship/generator.actions';
+import { changeRelationshipDataTypeSyncAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -29,6 +31,7 @@ import {
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { changeColumnDataTypeAction$ } from '@/engine/modules/table-column/generator.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
 import { bHas } from '@/utils/bit';
@@ -77,9 +80,13 @@ const emptyColumn = { name: '', dataType: '', default: '', comment: '' };
 function seedTable(
   store: Store | RxStore,
   id: string,
-  columns: SeedColumn[] = []
+  columns: SeedColumn[] = [],
+  name = ''
 ) {
   store.dispatchSync(addTableAction({ id, ui: { x: 0, y: 0, zIndex: 2 } }));
+  if (name) {
+    store.dispatchSync(changeTableNameAction({ id, value: name }));
+  }
 
   for (const column of columns) {
     const payload = { id: column.id, tableId: id };
@@ -210,7 +217,7 @@ describe('addRelationshipAction$', () => {
     ]);
   });
 
-  it('copies onto the start table when it is also the end table', () => {
+  it('copies onto the start table when it is also the end table, numbering the name', () => {
     seedTable(store, 't1', [idColumn]);
 
     expect(
@@ -220,7 +227,7 @@ describe('addRelationshipAction$', () => {
       )
     ).toEqual([
       [
-        ...foreignKeyActions('id-1', 't1', idColumn),
+        ...foreignKeyActions('id-1', 't1', { ...idColumn, name: 'id_2' }),
         addRelationshipAction({
           id: 'id-2',
           relationshipType: RelationshipType.OneOnly,
@@ -229,6 +236,46 @@ describe('addRelationshipAction$', () => {
         }),
       ],
     ]);
+  });
+
+  it('names every foreign key after a named start table', () => {
+    seedTable(store, 't1', [idColumn, codeColumn], 'country');
+    seedTable(store, 't2', [nameColumn], 'city');
+
+    expect(
+      yieldsOf(store, addRelationshipAction$('t1', 't2', RelationshipType.OneN))
+    ).toEqual([
+      [
+        ...foreignKeyActions('id-1', 't2', {
+          ...idColumn,
+          name: 'country_id',
+        }),
+        ...foreignKeyActions('id-2', 't2', {
+          ...codeColumn,
+          name: 'country_code',
+        }),
+        addRelationshipAction({
+          id: 'id-3',
+          relationshipType: RelationshipType.OneN,
+          start: { tableId: 't1', columnIds: ['c1', 'c2'] },
+          end: { tableId: 't2', columnIds: ['id-1', 'id-2'] },
+        }),
+      ],
+    ]);
+  });
+
+  it('leaves the foreign key of a new, unnamed primary key unnamed', () => {
+    seedTable(store, 't1', [nameColumn], 'country');
+    seedTable(store, 't2', [], 'city');
+
+    const [[, , ...rest]] = yieldsOf(
+      store,
+      addRelationshipAction$('t1', 't2', RelationshipType.ZeroN)
+    ) as AnyAction[][];
+
+    expect(rest.slice(0, 6)).toEqual(
+      foreignKeyActions('id-2', 't2', emptyColumn)
+    );
   });
 
   it('creates the primary key on a self relationship without one as well', () => {
@@ -408,6 +455,62 @@ describe('addRelationshipAction$ through a real store', () => {
       'c3',
       primaryKeyId,
     ]);
+  });
+
+  it('numbers repeated relationships and self references apart, one undo each', () => {
+    const rxStore = createRxTestStore();
+    seedTable(rxStore, 't1', [idColumn], 'user');
+    seedTable(rxStore, 't2', [], 'post');
+    const namesOf = (tableId: string) =>
+      rxStore.state.collections.tableEntities[tableId].columnIds.map(
+        id => columnOf(rxStore, id).name
+      );
+    const relate = (endTableId: string) => {
+      rxStore.dispatchSync(
+        addRelationshipAction$('t1', endTableId, RelationshipType.ZeroN)
+      );
+      vi.advanceTimersByTime(300);
+    };
+
+    relate('t2');
+    relate('t2');
+    relate('t1');
+    relate('t1');
+
+    expect(namesOf('t2')).toEqual(['user_id', 'user_id_2']);
+    expect(namesOf('t1')).toEqual(['id', 'user_id', 'user_id_2']);
+    expect(relationshipsOf(rxStore).map(({ end }) => end.tableId)).toEqual([
+      't2',
+      't2',
+      't1',
+      't1',
+    ]);
+
+    rxStore.undo();
+    expect(namesOf('t1')).toEqual(['id', 'user_id']);
+
+    rxStore.redo();
+    expect(namesOf('t1')).toEqual(['id', 'user_id', 'user_id_2']);
+  });
+
+  it('keeps the data type sync on a foreign key named after its table', () => {
+    const rxStore = createRxTestStore();
+    seedTable(rxStore, 't1', [idColumn], 'user');
+    seedTable(rxStore, 't2', [], 'post');
+    rxStore.dispatchSync(changeRelationshipDataTypeSyncAction({ value: true }));
+    rxStore.dispatchSync(
+      addRelationshipAction$('t1', 't2', RelationshipType.OneN)
+    );
+
+    rxStore.dispatchSync(
+      changeColumnDataTypeAction$({ id: 'c1', tableId: 't1', value: 'bigint' })
+    );
+
+    const [relationship] = relationshipsOf(rxStore);
+    expect(columnOf(rxStore, relationship.end.columnIds[0])).toMatchObject({
+      name: 'user_id',
+      dataType: 'bigint',
+    });
   });
 
   it('dispatches nothing and records no history for an unknown table', () => {

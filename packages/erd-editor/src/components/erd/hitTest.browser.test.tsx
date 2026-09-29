@@ -7,6 +7,8 @@ import {
   render,
   useProvider,
 } from '@dineug/r-html';
+import type { Group } from 'konva/lib/Group';
+import type { Text } from 'konva/lib/shapes/Text';
 import { type Stage, stages } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -21,12 +23,22 @@ import * as erdStyles from '@/components/erd/Erd.styles';
 import { type SceneHit, sceneHit } from '@/components/erd/hitTest';
 import { themeContext } from '@/components/themeContext';
 import { RelationshipType } from '@/constants/schema';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeViewportAction,
+  drawStartRelationshipAction,
+} from '@/engine/modules/editor/atom.actions';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  changeColumnNameAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
@@ -573,6 +585,59 @@ describe('Erd - routing what the scene answered', () => {
     await flush();
 
     expect(editor.app.store.state.editor.selectedMap).toEqual({});
+  });
+});
+
+describe('Erd - drawing a relationship with a press on each table', () => {
+  /** Arms a draw, then presses the start table and the end table in turn. */
+  async function drawBetween(editor: Editor, startId: string, endId: string) {
+    editor.app.store.dispatchSync(
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+    for (const tableId of [startId, endId]) {
+      await settle();
+      pressOn(editor, 'mousedown', centerOf(editor.stage, `#table-${tableId}`));
+      window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    }
+    await settle();
+  }
+
+  const columnNamesOf = ({ app }: Editor, tableId: string) =>
+    app.store.state.collections.tableEntities[tableId].columnIds.map(
+      id => app.store.state.collections.tableColumnEntities[id].name
+    );
+
+  const rowTextsOf = ({ app, stage }: Editor, tableId: string) =>
+    app.store.state.collections.tableEntities[tableId].columnIds.map(id =>
+      stage
+        .findOne<Group>(`#column-${id}`)!
+        .find<Text>('.cell-text')
+        .map(node => node.text())
+    );
+
+  it('names the foreign keys after the parent, numbered apart, and draws the rows', async () => {
+    const editor = await mountEditor();
+    const { store } = editor.app;
+    const [keyId] = store.state.collections.tableEntities.t1.columnIds;
+    store.dispatchSync(
+      changeTableNameAction({ id: 't1', value: 'user' }),
+      changeColumnNameAction({ id: keyId, tableId: 't1', value: 'id' }),
+      changeColumnPrimaryKeyAction({ id: keyId, tableId: 't1', value: true })
+    );
+
+    await drawBetween(editor, 't1', 't2');
+    await drawBetween(editor, 't1', 't2');
+    await drawBetween(editor, 't1', 't1');
+
+    expect(store.state.doc.relationshipIds).toHaveLength(4);
+    expect(columnNamesOf(editor, 't2')).toEqual(['', 'user_id', 'user_id_2']);
+    expect(columnNamesOf(editor, 't1')).toEqual(['id', 'user_id']);
+    expect(
+      rowTextsOf(editor, 't2')
+        .slice(1)
+        .map(texts => texts[0])
+    ).toEqual(['user_id', 'user_id_2']);
+    expect(rowTextsOf(editor, 't1')[1][0]).toBe('user_id');
   });
 });
 

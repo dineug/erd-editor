@@ -211,7 +211,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
 
   erd_add_relationship: {
     description:
-      'Relates two tables: copies the parent primary key into the child as foreign key columns, creating a primary key column first if the parent has none. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.',
+      'Relates two tables: copies the parent primary key into the child as foreign key columns, creating a primary key column first if the parent has none. Each foreign key column is named parent table, underscore, key (users_id for the key id of users), the key name alone when it already starts with the table name, and numbered (users_id_2) when the child already has that name. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.',
     args: {
       startTableId:
         'Parent table id, the referenced side that holds the primary key.',

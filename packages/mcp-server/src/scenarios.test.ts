@@ -119,7 +119,7 @@ describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
     expect(tableNamed(document, 'users').columns).toMatchObject([
       { name: 'id', dataType: 'BIGINT', primaryKey: true },
     ]);
-    expect(fk).toMatchObject({ dataType: 'BIGINT' });
+    expect(fk).toMatchObject({ name: 'users_id', dataType: 'BIGINT' });
     expect(document.relationships).toMatchObject([
       {
         relationshipType: 'OneN',

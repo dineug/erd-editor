@@ -73,7 +73,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
       start: { tableId: SEED.users, columnIds: [SEED.userId] },
       end: { tableId: SEED.orders, columnIds: [foreignKeyId] },
     });
-    expect(foreignKey).toMatchObject({ name: 'id', dataType: 'INT' });
+    expect(foreignKey).toMatchObject({ name: 'users_id', dataType: 'INT' });
     expect(bHas(foreignKey.options, ColumnOption.notNull)).toBe(true);
   });
 
@@ -131,7 +131,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
     }
   });
 
-  it('relates a table to itself', () => {
+  it('relates a table to itself, the foreign key named apart from its key', () => {
     const peer = seededPeer();
 
     const run = relate(peer, SEED.users, SEED.users);
@@ -143,6 +143,38 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
       start: { tableId: SEED.users, columnIds: [SEED.userId] },
       end: { tableId: SEED.users, columnIds: [foreignKeyId] },
     });
+    expect(peer.state.collections.tableColumnEntities[foreignKeyId].name).toBe(
+      'users_id'
+    );
+  });
+
+  it('numbers the foreign key of a second relationship into one child', () => {
+    const peer = seededPeer();
+
+    const [first] = relate(peer, SEED.users, SEED.orders).createdIds;
+    const [second] = relate(peer, SEED.users, SEED.orders).createdIds;
+
+    const columns = peer.state.collections.tableColumnEntities;
+    expect([columns[first].name, columns[second].name]).toEqual([
+      'users_id',
+      'users_id_2',
+    ]);
+  });
+
+  it('leaves the foreign key of a key it had to create unnamed, like that key', () => {
+    const peer = seededPeer();
+
+    const [primaryKeyId, foreignKeyId] = relate(
+      peer,
+      SEED.empty,
+      SEED.users
+    ).createdIds;
+
+    const columns = peer.state.collections.tableColumnEntities;
+    expect([columns[primaryKeyId].name, columns[foreignKeyId].name]).toEqual([
+      '',
+      '',
+    ]);
   });
 
   it('takes the whole call back with one undo', () => {
