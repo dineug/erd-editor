@@ -13,6 +13,6 @@ export function fieldIcon(field: FindField, size = 14): DOMTemplateLiterals {
     case FindField.memo:
       return <Icon name="sticky-note" size={size} />;
     default:
-      return <Icon name="message-square-text" size={size} />;
+      return <Icon name="message-square" size={size} />;
   }
 }

@@ -22,9 +22,9 @@ describe('fieldIcon', () => {
   it('draws each kind of text a match is found in with its own icon', async () => {
     const expected: Array<[FindField, string]> = [
       [FindField.tableName, 'table-2'],
-      [FindField.tableComment, 'message-square-text'],
+      [FindField.tableComment, 'message-square'],
       [FindField.columnName, 'columns-2'],
-      [FindField.columnComment, 'message-square-text'],
+      [FindField.columnComment, 'message-square'],
       [FindField.memo, 'sticky-note'],
     ];
 

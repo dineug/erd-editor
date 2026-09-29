@@ -1103,6 +1103,7 @@ describe('QuickSearch prefixes', () => {
 
     expect(rowNames()).toEqual(['user id', 'Every user_id points at users.id']);
     expect(scopeLabel()).toBe('Comments & memos');
+    expect(rows().map(iconOf)).toEqual(['message-square', 'sticky-note']);
 
     await type('"user id"');
 
