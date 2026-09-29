@@ -21,8 +21,13 @@ import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import * as styles from '@/components/erd/time-travel/TimeTravel.styles';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import * as sliderStyles from '@/components/primitives/slider/Slider.styles';
+import { SaveSettingType } from '@/constants/schema';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -70,11 +75,13 @@ const addTable = (id: string) =>
 type Setup = {
   tableIds?: string[];
   viewport?: { width: number; height: number };
+  view?: { originX: number; originY: number; zoomLevel: number };
 };
 
 async function setup({
   tableIds = ['t1', 't2'],
   viewport = { width: 1000, height: 800 },
+  view,
 }: Setup = {}) {
   const histories: History[] = [];
   const originApp: AppContext = createTestAppContext({
@@ -85,6 +92,13 @@ async function setup({
   originApp.store.dispatchSync(changeViewportAction(viewport));
   for (const id of tableIds) {
     originApp.store.dispatchSync(addTable(id));
+  }
+  if (view) {
+    const { originX, originY, zoomLevel } = view;
+    originApp.store.dispatchSync(
+      scrollToAction({ originX, originY }),
+      changeZoomLevelAction({ value: zoomLevel })
+    );
   }
   await flush();
 
@@ -242,6 +256,26 @@ describe('TimeTravel', () => {
 
       expect(parseFloat(viewport.style.width)).toBeCloseTo(handle.width, 3);
       expect(parseFloat(viewport.style.height)).toBeCloseTo(handle.height, 3);
+    });
+
+    it('opens on the scroll and zoom the reader left a new document at, which its file leaves out', async () => {
+      const { originApp } = await setup({
+        tableIds: ['t1'],
+        view: { originX: 120, originY: 80, zoomLevel: 1.5 },
+      });
+      expect(originApp.store.state.settings.ignoreSaveSettings).toBe(
+        SaveSettingType.scroll | SaveSettingType.zoomLevel
+      );
+
+      const stages: Record<string, Stage> = Reflect.get(
+        globalThis,
+        '__erdStages'
+      );
+      const [table] = stages.canvas.find('.table');
+
+      expect(table.getAbsoluteScale().x).toBeCloseTo(1.5, 5);
+      expect(table.getAbsolutePosition().x).toBeCloseTo(120, 5);
+      expect(table.getAbsolutePosition().y).toBeCloseTo(80, 5);
     });
 
     it('follows later viewport changes on the origin store', async () => {

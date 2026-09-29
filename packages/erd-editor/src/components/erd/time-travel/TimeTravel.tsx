@@ -24,6 +24,7 @@ import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
+import { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -34,6 +35,17 @@ export type TimeTravelProps = {
   onChange: (cursor: number) => void;
   onClose: () => void;
 };
+
+/**
+ * The reader's document at the scroll and zoom they are looking at, either of
+ * which the file leaves out while its switch is off, as both are in a new one.
+ */
+function toPreviewJson(state: RootState): string {
+  const { originX, originY, zoomLevel } = state.settings;
+  const json = JSON.parse(toJson(state));
+  Object.assign(json.settings, { originX, originY, zoomLevel });
+  return JSON.stringify(json);
+}
 
 const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
@@ -70,7 +82,7 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
   // the screen it is shown on rather than against the store's default size.
   store.dispatchSync(
     changeViewportAction(getViewport()),
-    initialLoadJsonAction$(toJson(originApp.store.state))
+    initialLoadJsonAction$(toPreviewJson(originApp.store.state))
   );
 
   const runTimeTravel = (cursor: number) => {

@@ -455,6 +455,17 @@ describe('useErdEditorAttachElement', () => {
       expect(app.store.state.doc.tableIds).toHaveLength(1);
       expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
     });
+
+    it('keeps the switches of the file clear() empties, which stays that file', async () => {
+      const { app, ctx } = await setup();
+      ctx.setInitialValue(file);
+      ctx.setSchemaSQL('CREATE TABLE a (id INT);');
+
+      ctx.clear();
+
+      expect(app.store.state.doc.tableIds).toEqual([]);
+      expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(0);
+    });
   });
 
   it('round-trips the document through the value accessor', async () => {

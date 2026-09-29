@@ -123,6 +123,19 @@ describe('createReplicationStore', () => {
     expect(parse(store).settings.ignoreSaveSettings).toBe(0);
   });
 
+  it('setInitialValue shows text it cannot read as a new document, since it names no switch', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = make();
+
+    store.setInitialValue('<<<<<<< HEAD\n{"version":"3.0.0"}\n=======');
+    await settle();
+
+    expect(error).toHaveBeenCalled();
+    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).settings.ignoreSaveSettings).toBe(OFF);
+    error.mockRestore();
+  });
+
   it('setInitialValue loads a v3 document', async () => {
     const store = make();
     const now = Date.now();
