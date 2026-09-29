@@ -23,7 +23,7 @@ import { focusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { Action, createScopeActions, searchActions } from './actions';
-import { findPaletteChunks } from './hangul';
+import { clearHangulForms, findPaletteChunks } from './hangul';
 import {
   PALETTE_PREFIXES,
   PaletteQuery,
@@ -139,6 +139,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const handleClose = () => {
     const { store } = app.value;
     store.dispatch(changeOpenMapAction({ [Open.search]: false }));
+    clearHangulForms();
     emitFocus();
   };
 
@@ -226,6 +227,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     if (!isEditingText(editor)) {
       const opened = !editor.openMap[Open.search];
       store.dispatch(changeOpenMapAction({ [Open.search]: opened }));
+      clearHangulForms();
 
       if (opened) {
         setLevel(createScopeActions(app.value));
@@ -261,7 +263,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       shortcut$
         .pipe(filter(({ type }) => type === KeyBindingName.search))
         .subscribe(handleToggleSearch),
-      emitter.on({ toggleSearch: handleToggleSearch })
+      emitter.on({ toggleSearch: handleToggleSearch }),
+      clearHangulForms
     );
   });
 

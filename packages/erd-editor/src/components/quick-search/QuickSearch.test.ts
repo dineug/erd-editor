@@ -18,6 +18,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
 import { TABLE_ACTION_LIMIT } from '@/components/quick-search/actions';
+import { hangulFormsOf } from '@/components/quick-search/hangul';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
 import {
@@ -1096,6 +1097,34 @@ describe('QuickSearch Hangul', () => {
     await type('#ㅈㅁ');
     expect(rowNames()).toEqual(['주문 내역']);
     expect(highlighted(rows()[0])).toEqual(['주문']);
+  });
+
+  it('spells each text once while the palette is open, and lets the forms go as it closes', async () => {
+    await open();
+    await type('ㅅㅇㅈ');
+    const kept = hangulFormsOf('사용자');
+
+    await type('ㅅㅇ');
+    expect(hangulFormsOf('사용자')).toBe(kept);
+
+    await shortcut(KeyBindingName.stop);
+    expect(isOpen()).toBe(false);
+    const afterStop = hangulFormsOf('사용자');
+    expect(afterStop).not.toBe(kept);
+    expect(afterStop).toEqual(kept);
+
+    await open();
+    const afterOpen = hangulFormsOf('사용자');
+    expect(afterOpen).not.toBe(afterStop);
+
+    await open();
+    expect(isOpen()).toBe(false);
+    const afterToggle = hangulFormsOf('사용자');
+    expect(afterToggle).not.toBe(afterOpen);
+
+    mounted?.unmount();
+    mounted = null;
+    expect(hangulFormsOf('사용자')).not.toBe(afterToggle);
   });
 
   it('goes to the column a Hangul search found', async () => {

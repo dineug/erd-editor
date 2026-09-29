@@ -3,8 +3,8 @@ import { findAll } from 'highlight-words-core';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  clearHangulForms,
   findPaletteChunks,
-  HANGUL_CACHE_LIMIT,
   hangulFormsOf,
   HangulQuery,
   hangulQueryOf,
@@ -116,21 +116,21 @@ describe('hangulFormsOf', () => {
     expect(getChoseong('\u1109')).toBe('ㅅ');
   });
 
-  it('keeps a text a generation past the limit, then spells it again', () => {
+  it('keeps a text however many others are spelled, until the forms are cleared', () => {
     const first = hangulFormsOf('캐시 확인');
     expect(hangulFormsOf('캐시 확인')).toBe(first);
 
-    for (let index = 0; index < HANGUL_CACHE_LIMIT; index++) {
+    // More texts than a document of a thousand tables of thirty columns holds.
+    for (let index = 0; index < 120_000; index++) {
       hangulFormsOf(`가${index}`);
     }
     expect(hangulFormsOf('캐시 확인')).toBe(first);
 
-    for (let index = 0; index < HANGUL_CACHE_LIMIT * 2; index++) {
-      hangulFormsOf(`나${index}`);
-    }
+    clearHangulForms();
     const again = hangulFormsOf('캐시 확인');
     expect(again).not.toBe(first);
     expect(again).toEqual(first);
+    clearHangulForms();
   });
 });
 

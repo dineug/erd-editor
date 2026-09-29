@@ -131,28 +131,22 @@ function spell(text: string, withOffsets: boolean): Spelling {
   return { jamo, choseong, jamoAt, jamoTo, choseongAt, choseongTo };
 }
 
-/** How many texts one generation of the cache keeps; the one before stays readable, so a larger document still reads mostly from it. */
-export const HANGUL_CACHE_LIMIT = 50_000;
+let keptForms = new Map<string, HangulForms>();
 
-let recent = new Map<string, HangulForms>();
-let older = new Map<string, HangulForms>();
-
-/** A text's forms, spelled once and kept, since the palette reads every field again on each keystroke. */
+/** A text's forms, spelled once and kept until the palette next opens or closes, since it reads every field again on each keystroke. */
 export function hangulFormsOf(text: string): HangulForms {
-  const cached = recent.get(text);
-  if (cached) return cached;
-
-  let forms = older.get(text);
+  let forms = keptForms.get(text);
   if (!forms) {
     const { jamo, choseong } = spell(text, false);
     forms = { jamo, choseong };
+    keptForms.set(text, forms);
   }
-  if (recent.size >= HANGUL_CACHE_LIMIT) {
-    older = recent;
-    recent = new Map();
-  }
-  recent.set(text, forms);
   return forms;
+}
+
+/** Lets go of every form kept, as the palette opens and closes: they last one open and outlive no text the document dropped. */
+export function clearHangulForms(): void {
+  keptForms = new Map();
 }
 
 export type HangulQuery = {
