@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   addOperator,
+  createSchema,
   migrateScrollToOrigin,
   parser,
   parserV2,
@@ -30,6 +31,18 @@ describe('public entry point', () => {
 
   it('exposes the v3 parser', () => {
     expect(schemaV3Parser({}).version).toBe('3.0.0');
+  });
+
+  it('exposes the factory of a document created from nothing', () => {
+    const { ignoreSaveSettings } = createSchema().settings;
+
+    expect(ignoreSaveSettings).toBe(
+      SchemaV3Constants.SaveSettingType.scroll |
+        SchemaV3Constants.SaveSettingType.zoomLevel
+    );
+    expect(parser(toJson(createSchema())).settings.ignoreSaveSettings).toBe(
+      ignoreSaveSettings
+    );
   });
 
   it('exposes the collections query factory', () => {

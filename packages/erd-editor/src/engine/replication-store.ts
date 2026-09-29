@@ -1,7 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
-import { isEmpty } from 'es-toolkit/compat';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
 import { ChangeActionTypes } from '@/engine/actions';
@@ -20,8 +19,8 @@ import { createHooks } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
 import { procGC } from '@/services/schema-gc/procGC';
 import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
+import { toLoadValue } from '@/utils/loadValue';
 import { safeCallback } from '@/utils/safeCallback';
-import { toSafeString } from '@/utils/validation';
 
 type ListenerRecord = {
   [P in keyof InternalActionMap]: (payload: InternalActionMap[P]) => void;
@@ -101,10 +100,7 @@ export function createReplicationStore(
 
   const setInitialValue = (value: string) => {
     baseline = null;
-    const safeValue = toSafeString(value);
-    store.dispatchSync(
-      initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
-    );
+    store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
     schemaGCService.run(toJson(store.state)).then(gcIds => {
       const isChange =
         gcIds.tableIds.length ||

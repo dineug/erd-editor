@@ -73,9 +73,11 @@ of them.
 
 ### Keeping diffs clean
 
-By default the document also stores the canvas scroll position and zoom level, so panning around
-changes the file. Turn off **Save Scroll Information** and **Save Zoom Information** in the
-editor's settings to keep changes, and a git history of the vault, limited to the schema.
+A new diagram leaves the canvas scroll position and zoom level out of the file, so panning around
+never changes it. An existing file keeps storing whatever it was saved with, and older files store
+both: turn off **Save Scroll Information** and **Save Zoom Information** in the editor's settings
+to keep changes, and a git history of the vault, limited to the schema, or turn them on for a
+diagram that should open where you left it.
 
 ## Coding agents
 

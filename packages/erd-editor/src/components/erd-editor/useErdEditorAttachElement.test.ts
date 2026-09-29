@@ -1,3 +1,4 @@
+import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import {
   AnyAction,
   createRef,
@@ -28,6 +29,7 @@ import {
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
 import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
+import { SaveSettingType } from '@/constants/schema';
 import {
   dragSelectRectAction,
   editTableAction,
@@ -385,6 +387,49 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof app.store.state.settings.databaseName).toBe('string');
   });
 
+  describe('the save switches of what a host loads', () => {
+    const OFF = SaveSettingType.scroll | SaveSettingType.zoomLevel;
+    const file = '{"version":"3.0.0"}';
+
+    it('shows an element given no value a new document, both switches off', async () => {
+      const { app, ctx } = await setup();
+
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+      expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(OFF);
+    });
+
+    it('loads an empty initial value, a new file, as a new document', async () => {
+      const { app, ctx } = await setup();
+      ctx.setInitialValue(file);
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+
+      ctx.setInitialValue('');
+
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+    });
+
+    it('keeps a file without the field saving its view', async () => {
+      const { app, ctx } = await setup();
+
+      ctx.setInitialValue(file);
+
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+    });
+
+    it('sends the new document an empty value loads, which any peer parses', async () => {
+      const { app, ctx } = await setup();
+      ctx.value = file;
+      const sent: AnyAction[] = [];
+      app.store.subscribe(actions => sent.push(...actions));
+
+      ctx.value = '';
+
+      const load = sent.find(({ type }) => type === 'editor.loadJson');
+      expect(load?.payload).toEqual({ value: toJson(createSchema()) });
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+    });
+  });
+
   it('round-trips the document through the value accessor', async () => {
     const { app, ctx } = await setup();
 
@@ -518,7 +563,7 @@ describe('useErdEditorAttachElement', () => {
 
     ctx.setDiffValue(null as any);
     expect(openDiffViewer).toHaveBeenLastCalledWith(
-      openDiffViewerAction({ value: '{}' })
+      openDiffViewerAction({ value: toJson(createSchema()) })
     );
   });
 

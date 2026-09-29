@@ -59,7 +59,10 @@ editor.addEventListener('change', () => {
 });
 ```
 
-`setInitialValue('')` starts an empty document.
+`setInitialValue('')` starts a new document, as an element given no value shows: it saves neither
+the scroll nor the zoom (Save Scroll Information and Save Zoom Information off), so looking around
+leaves `value` as it was. A document loaded from text keeps the switches it names, and one that
+names none saves both.
 
 ### Server-side rendering
 

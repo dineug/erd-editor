@@ -502,7 +502,7 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
     edit('setIgnoreSaveSettings', [
       changeIgnoreSaveSettingsAction({
         saveSettingType: SaveSettingType.scroll,
-        value: true,
+        value: false,
       }),
     ]),
 

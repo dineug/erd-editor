@@ -87,6 +87,10 @@ describe('createReplicationStore', () => {
     expect(Object.isFrozen(store)).toBe(true);
   });
 
+  it('starts as a new document, which saves neither the scroll nor the zoom', () => {
+    expect(parse(make()).settings.ignoreSaveSettings).toBe(OFF);
+  });
+
   it('setInitialValue falls back to an empty document for blank input', async () => {
     const store = make();
 
@@ -94,6 +98,7 @@ describe('createReplicationStore', () => {
     await settle();
 
     expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).settings.ignoreSaveSettings).toBe(OFF);
   });
 
   it('setInitialValue coerces non-string input to an empty document', async () => {
@@ -103,6 +108,19 @@ describe('createReplicationStore', () => {
     await settle();
 
     expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).settings.ignoreSaveSettings).toBe(OFF);
+  });
+
+  it.each([
+    ['a v3 file without the field', '{"version":"3.0.0"}'],
+    ['a v2 file', '{"canvas":{"width":3000}}'],
+  ])('setInitialValue keeps saving the view of %s', async (_, file) => {
+    const store = make();
+
+    store.setInitialValue(file);
+    await settle();
+
+    expect(parse(store).settings.ignoreSaveSettings).toBe(0);
   });
 
   it('setInitialValue loads a v3 document', async () => {
@@ -304,8 +322,17 @@ describe('createReplicationStore', () => {
    * would be pulled onto it against a frame nobody looks through and drift from the source.
    */
   describe('the view of a replica', () => {
-    it('keeps an absolute scroll exactly as it arrives', () => {
+    /** A replica of a file that saves its view, so the value shows the origin. */
+    function makeSavingView(): ReplicationStore {
       const store = make();
+      store.dispatchSync(
+        changeIgnoreSaveSettingsAction({ saveSettingType: OFF, value: false })
+      );
+      return store;
+    }
+
+    it('keeps an absolute scroll exactly as it arrives', () => {
+      const store = makeSavingView();
       store.dispatchSync(addTable('t1'));
 
       store.dispatchSync(
@@ -317,9 +344,9 @@ describe('createReplicationStore', () => {
     });
 
     it('keeps a streamed scroll unclamped, with content and without', () => {
-      const withContent = make();
+      const withContent = makeSavingView();
       withContent.dispatchSync(addTable('t1'));
-      const empty = make();
+      const empty = makeSavingView();
 
       for (const store of [withContent, empty]) {
         store.dispatchSync(scrollToAction({ originX: -40_000, originY: 0 }));
@@ -346,18 +373,25 @@ describe('createReplicationStore', () => {
       streamZoomLevelAction({ value: 0.25 }),
     ];
 
-    /** A replica holding one table, whose own debounced change has gone out. */
-    function loaded(ignoreSaveSettings = 0) {
+    /**
+     * A replica holding one table, whose own debounced change has gone out,
+     * with the switches given, or a new document's when none are.
+     */
+    function loaded(ignoreSaveSettings?: number) {
       vi.useFakeTimers();
       const store = make();
       store.dispatchSync(addTable('t1'));
-      if (ignoreSaveSettings) {
-        store.dispatchSync(
+      if (ignoreSaveSettings !== undefined) {
+        store.dispatchSync([
+          changeIgnoreSaveSettingsAction({
+            saveSettingType: OFF,
+            value: false,
+          }),
           changeIgnoreSaveSettingsAction({
             saveSettingType: ignoreSaveSettings,
             value: true,
-          })
-        );
+          }),
+        ]);
       }
       vi.advanceTimersByTime(250);
       const change = vi.fn();
@@ -365,8 +399,24 @@ describe('createReplicationStore', () => {
       return { store, change };
     }
 
-    it('is saved by default, as the file keeps where the diagram was left', () => {
+    it('changes nothing for a new document, whose switches both start off', () => {
       const { store, change } = loaded();
+      const before = store.value;
+
+      store.dispatchSync(view);
+      vi.advanceTimersByTime(250);
+
+      expect(change).toHaveBeenCalledWith({ value: before, changed: false });
+      expect(parse(store).settings).toMatchObject({
+        ignoreSaveSettings: OFF,
+        originX: 0,
+        originY: 0,
+        zoomLevel: 1,
+      });
+    });
+
+    it('is saved with both switches on, as a file keeps where the diagram was left', () => {
+      const { store, change } = loaded(0);
       const before = store.value;
 
       store.dispatchSync(view);
@@ -530,6 +580,45 @@ describe('createReplicationStore', () => {
 
       expect(opened).not.toBe(file);
       expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
+    });
+
+    it('changes nothing for a view change on a new empty file, whose first edit writes both switches off', async () => {
+      const { store, change } = await open('');
+      const opened = store.value;
+
+      store.dispatchSync([scroll, changeZoomLevelAction({ value: 0.5 })]);
+      vi.advanceTimersByTime(250);
+      expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
+
+      store.dispatchSync(addTable('t1'));
+      vi.advanceTimersByTime(250);
+      expect(change).toHaveBeenLastCalledWith({
+        value: store.value,
+        changed: true,
+      });
+      expect(parse(store).settings).toMatchObject({
+        ignoreSaveSettings: OFF,
+        originX: 0,
+        originY: 0,
+        zoomLevel: 1,
+      });
+    });
+
+    it('saves a view change on a file without the field, as the release that wrote it did', async () => {
+      const { store, change } = await open('{"version":"3.0.0"}');
+
+      store.dispatchSync(scroll);
+      vi.advanceTimersByTime(250);
+
+      expect(change).toHaveBeenCalledWith({
+        value: store.value,
+        changed: true,
+      });
+      expect(parse(store).settings).toMatchObject({
+        ignoreSaveSettings: 0,
+        originX: -100,
+        originY: 50,
+      });
     });
 
     it('takes a load that came while a change was pending as the value, changing nothing', async () => {

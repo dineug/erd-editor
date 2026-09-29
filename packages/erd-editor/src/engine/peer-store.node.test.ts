@@ -87,6 +87,7 @@ describe('peer store in a realm with no DOM (AC-E2)', () => {
     const seed = JSON.parse(createSeedValue());
     seed.settings.originX = -4000;
     seed.settings.originY = -3000;
+    seed.settings.ignoreSaveSettings = 0;
     const peer = peerOf();
 
     peer.setInitialValue(JSON.stringify(seed));
