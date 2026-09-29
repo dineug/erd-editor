@@ -10,7 +10,12 @@ import {
 } from 'vite-plus/test';
 
 import { IME_CHOSEONG, IME_SAYONG } from '@/__test-utils__/hangulSeed';
-import { createTestAppContext, flush } from '@/__test-utils__/index';
+import { iconNameOf } from '@/__test-utils__/icon';
+import {
+  createTestAppContext,
+  flush,
+  mountAndFlush,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
@@ -66,6 +71,15 @@ const find = (actions: Action[], name: string): Action => {
 };
 
 const names = (actions: Action[]) => actions.map(action => action.name);
+
+/** The registered icon a row draws, mounted on its own. */
+const iconOf = async ({ icon }: Action) => {
+  if (!icon) return null;
+  const mounted = await mountAndFlush(icon, app);
+  const name = iconNameOf(mounted.container);
+  mounted.unmount();
+  return name;
+};
 
 const visibleNames = () =>
   names(scope().filter(action => action.filter?.(app) ?? true));
@@ -282,6 +296,12 @@ describe('createScopeActions', () => {
         names(scope().filter(action => action.filter?.(app) ?? true))
       ).toEqual(['Tab', 'Find and Replace', 'users']);
     }
+  });
+
+  it('draws New Table with the table icon every other table row carries', async () => {
+    setCanvasType(CanvasType.ERD);
+
+    expect(await iconOf(find(scope(), 'New Table'))).toBe('table-2');
   });
 
   it('takes the New Table and New Memo shortcuts from the key binding map', () => {
@@ -692,11 +712,11 @@ describe('createScopeActions / table actions', () => {
     }
   );
 
-  it('carries no icon on table actions', () => {
+  it('carries the table icon on table actions, drawn as the rows of a field found are', async () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
-    expect(find(scope(), 'users').icon).toBeUndefined();
+    expect(await iconOf(find(scope(), 'users'))).toBe('table-2');
   });
 });
 

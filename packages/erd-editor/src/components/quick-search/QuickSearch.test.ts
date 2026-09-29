@@ -9,6 +9,7 @@ import {
   seedClusterTables,
   seedHangulDocument,
 } from '@/__test-utils__/hangulSeed';
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   flush,
@@ -927,6 +928,9 @@ describe('QuickSearch prefixes', () => {
   const isTableRow = (row: HTMLDivElement) =>
     row.querySelector(`.${styles.keyword}`)?.textContent?.trim() === 'Table';
 
+  const iconOf = (row: HTMLDivElement) =>
+    iconNameOf(row.querySelector(`.${styles.icon}`));
+
   beforeEach(() => {
     seedFindDocument(app);
   });
@@ -997,6 +1001,8 @@ describe('QuickSearch prefixes', () => {
     await type('#us');
     expect(rows().every(isTableRow)).toBe(true);
     expect(highlighted(rows()[0])).toEqual(['us']);
+    // In the icon slot a column, comment or memo row draws its own in.
+    expect(rows().map(iconOf)).toEqual(rows().map(() => 'table-2'));
 
     await click(rows()[rowNames().indexOf('users')]);
 
@@ -1070,6 +1076,7 @@ describe('QuickSearch prefixes', () => {
     await type('@em');
     expect(rowNames()).toEqual(['email']);
     expect(scopeLabel()).toBe('Columns');
+    expect(iconOf(rows()[0])).toBe('columns-2');
 
     await type('@users.');
     expect(rowNames()).toEqual(['id', 'email']);

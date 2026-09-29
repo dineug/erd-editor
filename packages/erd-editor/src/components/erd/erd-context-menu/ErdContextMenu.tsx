@@ -266,7 +266,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleAddTable}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="table" size={14} />}
+                    icon={<Icon name="table-2" size={14} />}
                     name="New Table"
                     right={
                       <Kbd shortcut={keyBindingMap.addTable[0]?.shortcut} />

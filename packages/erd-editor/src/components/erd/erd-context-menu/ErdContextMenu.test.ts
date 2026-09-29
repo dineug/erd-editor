@@ -16,6 +16,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   flush,
@@ -182,6 +183,13 @@ describe('ErdContextMenu / ERD type', () => {
       'Auto Layout',
       'Diff Viewer',
     ]);
+  });
+
+  it('draws New Table with the table icon the rest of the editor shows a table by', async () => {
+    await mountMenu();
+
+    expect(iconNameOf(findItem(rootItems(), 'New Table'))).toBe('table-2');
+    expect(iconNameOf(findItem(rootItems(), 'New Memo'))).toBe('sticky-note');
   });
 
   it('adds a table and closes the menu', async () => {

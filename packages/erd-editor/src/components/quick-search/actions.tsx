@@ -48,6 +48,7 @@ import {
   importSchemaSQL,
 } from '@/utils/file/importFile';
 import {
+  FindField,
   FindFieldLabel,
   FindMatch,
   locationOf,
@@ -248,7 +249,7 @@ export function createScopeActions(app: AppContext): Action[] {
       },
     },
     {
-      icon: <Icon name="table" size={16} />,
+      icon: <Icon name="table-2" size={16} />,
       name: 'New Table',
       shortcut: keyBindingMap.addTable[0]?.shortcut,
       perform: ({ store }) => {
@@ -434,6 +435,7 @@ function createTableActions({ store }: AppContext): Action[] {
     .selectByIds(tableIds)
     .sort(orderByNameASC)
     .map<Action>(table => ({
+      icon: fieldIcon(FindField.tableName, 16),
       name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
       keywords: 'Table',
       tableId: table.id,

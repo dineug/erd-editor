@@ -7,7 +7,7 @@ import { FindField } from '@/utils/find-replace';
 export function fieldIcon(field: FindField, size = 14): DOMTemplateLiterals {
   switch (field) {
     case FindField.tableName:
-      return <Icon name="table" size={size} />;
+      return <Icon name="table-2" size={size} />;
     case FindField.columnName:
       return <Icon name="columns-2" size={size} />;
     case FindField.memo:
