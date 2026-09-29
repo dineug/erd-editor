@@ -164,8 +164,8 @@ export function mountWebview(host: WebviewHost): WebviewClient {
     bridge.registerCommand(webviewUpdateReadonlyCommand, readonly => {
       editor.readonly = readonly;
     }),
-    workerBridge.registerCommand(hostSaveValueCommand, ({ value }) => {
-      dispatch(Bridge.executeCommand(hostSaveValueCommand, { value }));
+    workerBridge.registerCommand(hostSaveValueCommand, payload => {
+      dispatch(Bridge.executeCommand(hostSaveValueCommand, payload));
     })
   );
 

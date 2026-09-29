@@ -94,7 +94,8 @@ sealed class HostBridgeCommand {
 }
 data class HostExportFileCommandPayload(val value: String, val fileName: String)
 data class HostImportFileCommandPayload(val type: String, val op: String, val accept: String)
-data class HostSaveValueCommandPayload(val value: String)
+/** changed is false for a change that left the value as it was; a page that sends none means true. */
+data class HostSaveValueCommandPayload(val value: String, val changed: Boolean = true)
 // A tree, not Any: Any reads objects as maps, whose null entries the NON_NULL mapper then drops.
 data class HostSaveReplicationCommandPayload(val actions: JsonNode)
 data class HostSaveThemeCommandPayload(val appearance: String, val grayColor: String, val accentColor: String)

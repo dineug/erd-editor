@@ -209,11 +209,11 @@ class DocumentRegistry(
         JoinWindow.dropRecipient(entry.quiet, view)
     }
 
-    /** A replica saved, so the content is current for what its view had seen. */
-    fun onValueSaved(file: DocumentFile, view: HubView, value: String) {
+    /** A replica saved, so the content is current for what its view had seen; a null value changed nothing. */
+    fun onValueSaved(file: DocumentFile, view: HubView, value: String?) {
         val entry = entries[file] ?: return
         if (view !in entry.views) return
-        entry.content = value
+        if (value != null) entry.content = value
         JoinWindow.noteSave(entry.quiet, view, clock.nowMs())
     }
 

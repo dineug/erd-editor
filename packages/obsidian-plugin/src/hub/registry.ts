@@ -203,15 +203,15 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
   }
 
   /**
-   * A replica saved, so the content is current for what its tab had seen. The
-   * tab is the one whose replica saved, since only the saves of those a change
-   * reached say the content holds that change.
+   * A replica saved, so the content is current for what its tab had seen; only
+   * the saves of tabs a change reached say the content holds that change. No
+   * value: the change left the document as it was, and the content stays.
    */
-  valueSaved(tab: T, value: string): void {
+  valueSaved(tab: T, value?: string): void {
     const entry = this.entryOfTab.get(tab);
     if (!entry) return;
 
-    entry.content = value;
+    if (value !== undefined) entry.content = value;
     noteSave(entry.quiet, tab, performance.now());
   }
 

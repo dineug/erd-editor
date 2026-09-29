@@ -117,6 +117,15 @@ for (const name of [
   writeFileSync(join(vault, name), '');
 }
 writeFileSync(join(vault, 'notes.md'), '# notes');
+// Both save switches off and no origin, as releases before the origin wrote it:
+// the bytes are not the replica's, and a zoom or a scroll must not rewrite them.
+const VIEW_ONLY = JSON.stringify({
+  version: '3.0.0',
+  settings: { ignoreSaveSettings: 3, zoomLevel: 1 },
+  doc: { tableIds: [], relationshipIds: [], indexIds: [], memoIds: [] },
+  collections: {},
+});
+writeFileSync(join(vault, 'view-only.erd'), VIEW_ONLY);
 writeFileSync(
   join(userData, 'obsidian.json'),
   JSON.stringify({
@@ -1923,6 +1932,54 @@ try {
     'the agent reaches the reloaded window and edits live',
     reloadAdded.json?.mode === 'live' && Boolean(reloadShown),
     reloadAdded.text.slice(0, 300)
+  );
+
+  // The timed save and the close both write only a value the replica marked
+  // changed, so a zoom and a scroll leave view-only.erd's bytes as they were.
+  await openDiagram(page, 'view-only.erd');
+  await sleep(REPLICA_SETTLE_MS);
+  const zoomIn = root => root.querySelector('[title^="Zoom in"]');
+  const zoomed =
+    (await clickInEditor(page, 'view-only.erd', zoomIn)) &&
+    (await clickInEditor(page, 'view-only.erd', zoomIn));
+  const zoomShown = await inEditor(
+    page,
+    'view-only.erd',
+    root => root.querySelector('.zoom-level')?.textContent ?? null
+  );
+  const viewBox = await page.evaluate(() => {
+    const { x, y, width, height } = window.app.workspace
+      .getMostRecentLeaf()
+      .view.contentEl.querySelector('erd-editor')
+      .getBoundingClientRect();
+    return { x, y, width, height };
+  });
+  await page.mouse.move(
+    viewBox.x + viewBox.width / 2,
+    viewBox.y + viewBox.height / 2
+  );
+  for (let i = 0; i < 3; i++) {
+    await page.mouse.wheel(0, 240);
+    await sleep(50);
+  }
+  await sleep(REPLICA_SETTLE_MS + AUTOSAVE_MS + 500);
+  const viewOnlySaved = readFileSync(real('view-only.erd'), 'utf8');
+  await closeDiagram(page, 'view-only.erd');
+  await sleep(1_000);
+  const viewOnlyClosed = readFileSync(real('view-only.erd'), 'utf8');
+  step(
+    'a zoom and a scroll with both save switches off leave a file an older release wrote as it was, saved and closed',
+    zoomed &&
+      Boolean(zoomShown) &&
+      zoomShown !== '100%' &&
+      viewOnlySaved === VIEW_ONLY &&
+      viewOnlyClosed === VIEW_ONLY,
+    JSON.stringify({
+      zoomed,
+      zoomShown,
+      saved: viewOnlySaved.slice(0, 120),
+      closed: viewOnlyClosed.slice(0, 120),
+    })
   );
 
   step('no page errors', errors.length === 0, errors.join(' | '));

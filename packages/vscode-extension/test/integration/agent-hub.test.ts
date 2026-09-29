@@ -344,6 +344,67 @@ describe('document hub for coding agents', () => {
     });
   });
 
+  it('leaves a file an older release wrote clean and unwritten after a view change it does not save', async () => {
+    // Both save switches off and no origin, as releases before the origin wrote
+    // it: the replica's value never has these bytes, so only its changed flag
+    // keeps the tab clean.
+    const [workspaceFolder] = vscode.workspace.workspaceFolders ?? [];
+    const legacyUri = vscode.Uri.joinPath(
+      workspaceFolder.uri,
+      'legacy-view.erd'
+    );
+    const legacyPath = path.join(folder, 'legacy-view.erd');
+    const bytes = JSON.stringify({
+      version: '3.0.0',
+      settings: { ignoreSaveSettings: 3, zoomLevel: 1 },
+      doc: { tableIds: [], relationshipIds: [], indexIds: [], memoIds: [] },
+      collections: {},
+    });
+    fs.writeFileSync(legacyPath, bytes);
+    try {
+      const peer = await connectPeer('e2e-view');
+      await peer.call('openDocument', { path: legacyPath });
+      await delay(500);
+      const joined = await peer.call('join', { path: legacyPath });
+      const meta = { editorId: 'agent-hub-e2e', nickname: 'e2e' };
+      const version = joined.snapshotVersion + 1;
+      const view = [
+        { type: 'settings.scrollTo', payload: { originX: -240, originY: 120 } },
+        { type: 'settings.changeZoomLevel', payload: { value: 0.5 } },
+      ].map(action => ({ ...action, version, tags: 1, meta }));
+
+      await peer.call('applyActions', { path: legacyPath, actions: view });
+      // Well past the replica round trip, which dirties a tab in about 250 ms.
+      await delay(1_000);
+
+      assert.ok(erdTabs().every(tab => !tab.isDirty));
+      assert.deepStrictEqual(await peer.call('save', { path: legacyPath }), {
+        saved: true,
+      });
+      assert.strictEqual(fs.readFileSync(legacyPath, 'utf8'), bytes);
+
+      const tableId = `e2e${Date.now()}`;
+      await peer.call('applyActions', {
+        path: legacyPath,
+        actions: tableBatch(tableId, version + 1),
+      });
+      await waitUntil('an edit turns the ERD tab dirty', () =>
+        erdTabs().some(tab => tab.isDirty)
+      );
+      assert.deepStrictEqual(await peer.call('save', { path: legacyPath }), {
+        saved: true,
+      });
+      const onDisk = JSON.parse(fs.readFileSync(legacyPath, 'utf8'));
+      assert.ok(onDisk.doc.tableIds.includes(tableId));
+    } finally {
+      if (erdTabs().some(tab => tab.isDirty)) {
+        await vscode.workspace.save(legacyUri);
+      }
+      await closeAllEditors();
+      fs.rmSync(legacyPath, { force: true });
+    }
+  });
+
   it('hands one peer batch to the other peer, and never back to its sender', async () => {
     const a = await connectPeer('e2e-a');
     const b = await connectPeer('e2e-b');

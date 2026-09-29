@@ -253,7 +253,10 @@ describe('ErdEditor', () => {
       const update = vi.spyOn(document, 'update');
 
       webview.__receive(
-        Bridge.executeCommand(hostSaveValueCommand, { value: 'héllo' })
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: 'héllo',
+          changed: true,
+        })
       );
       await flush();
 
@@ -272,11 +275,39 @@ describe('ErdEditor', () => {
       });
 
       webview.__receive(
-        Bridge.executeCommand(hostSaveValueCommand, { value: 'saved' })
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: 'saved',
+          changed: true,
+        })
       );
       await flush();
 
       expect(contentThen).toEqual(encoder.encode('saved'));
+      expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
+      expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
+    });
+
+    it('leaves content and the tab as they are for a save that changed nothing, and still reports it', async () => {
+      const { webview, document, registry } = await bootstrap({
+        content: '{"written":"by an older release"}',
+      });
+      const update = vi.spyOn(document, 'update');
+      const dirtied = vi.fn();
+      document.onDidChangeContent(dirtied);
+
+      webview.__receive(
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: '{"written":"by this replica"}',
+          changed: false,
+        })
+      );
+      await flush();
+
+      expect(update).not.toHaveBeenCalled();
+      expect(dirtied).not.toHaveBeenCalled();
+      expect(document.content).toEqual(
+        encoder.encode('{"written":"by an older release"}')
+      );
       expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
       expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
     });
@@ -862,6 +893,7 @@ describe('ErdEditor', () => {
       const bridge = bridgeOf(editor);
       const save = Bridge.executeCommand(hostSaveValueCommand, {
         value: 'ignored',
+        changed: true,
       });
 
       bridge.executeAction(save);
