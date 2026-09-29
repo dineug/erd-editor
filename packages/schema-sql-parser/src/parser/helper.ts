@@ -77,6 +77,9 @@ export const isClusterValue = createValueEqual('CLUSTER');
 export const isByValue = createValueEqual('BY');
 export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
+export const isWithValue = createValueEqual('WITH');
+export const isCheckValue = createValueEqual('CHECK');
+export const isNocheckValue = createValueEqual('NOCHECK');
 
 // What a constraint may carry after its key list, from Databricks' NOT
 // ENFORCED RELY to ANSI's DEFERRABLE INITIALLY DEFERRED. The column branch runs
@@ -384,6 +387,9 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
   const isAdd = isAddValue(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isString = isStringToken(tokens);
+  const isWith = isWithValue(tokens);
+  const isCheck = isCheckValue(tokens);
+  const isNocheck = isNocheckValue(tokens);
   const qualifiedName = matchQualifiedName(tokens);
 
   // ONLY is optional, and it is also a legal table name: both readings are
@@ -394,6 +400,12 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
     const name = qualifiedName(cursor);
     if (!name) return 0;
     cursor += name;
+
+    // SQL Server says whether the rows already there are checked, and the
+    // scripts SSMS writes always do: ALTER TABLE t WITH CHECK ADD CONSTRAINT.
+    if (isWith(cursor) && (isCheck(cursor + 1) || isNocheck(cursor + 1))) {
+      cursor += 2;
+    }
 
     if (!isAdd(cursor)) return 0;
     cursor++;

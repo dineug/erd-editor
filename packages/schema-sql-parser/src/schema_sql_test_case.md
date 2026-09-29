@@ -2016,3 +2016,72 @@ ALTER TABLE items ADD CONSTRAINT fk_items_orders FOREIGN KEY (order_id) REFERENC
   ]
 }
 ```
+
+### SQL Server WITH CHECK ADD CONSTRAINT
+
+```sql
+CREATE TABLE [dbo].[b](
+	[id] [int] NOT NULL,
+	[a_id] [int] NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[b]  WITH CHECK ADD  CONSTRAINT [FK_b_a] FOREIGN KEY([a_id])
+REFERENCES [dbo].[a] ([id])
+ON UPDATE SET NULL
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[b] CHECK CONSTRAINT [FK_b_a]
+GO
+ALTER TABLE [dbo].[b] WITH NOCHECK ADD CONSTRAINT [UQ_b] UNIQUE ([a_id])
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "b",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "a_id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "b",
+      "columnNames": ["a_id"],
+      "refTableName": "a",
+      "refColumnNames": ["id"],
+      "onDelete": "CASCADE",
+      "onUpdate": "SET NULL"
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "b",
+      "columnNames": ["a_id"]
+    }
+  ]
+}
+```

@@ -505,6 +505,32 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('keeps the actions of a foreign key SSMS scripts WITH CHECK', () => {
+      const schema = parse(`
+        CREATE TABLE [dbo].[a](
+          [id] [int] IDENTITY(1,1) NOT NULL,
+          CONSTRAINT [PK_a] PRIMARY KEY CLUSTERED ([id] ASC)
+        ) ON [PRIMARY]
+        GO
+        CREATE TABLE [dbo].[b]([a_id] [int] NULL) ON [PRIMARY]
+        GO
+        ALTER TABLE [dbo].[b]  WITH CHECK ADD  CONSTRAINT [FK_b_a] FOREIGN KEY([a_id])
+        REFERENCES [dbo].[a] ([id])
+        ON DELETE CASCADE
+        GO
+        ALTER TABLE [dbo].[b] CHECK CONSTRAINT [FK_b_a]
+        GO
+      `);
+      const [relationship] = relationshipsOf(schema);
+
+      expect(relationshipsOf(schema)).toHaveLength(1);
+      expect(relationship.end.columnIds).toEqual([
+        columnByName(schema, tableByName(schema, 'b'), 'a_id').id,
+      ]);
+      expect(relationship.onDelete).toBe(ReferentialAction.cascade);
+      expect(relationship.onUpdate).toBe(ReferentialAction.none);
+    });
+
     it('relates an inline REFERENCES without a column list to the primary key', () => {
       const schema = parse(`
         CREATE TABLE users (id INT PRIMARY KEY, name TEXT);

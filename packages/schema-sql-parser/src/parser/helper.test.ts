@@ -595,6 +595,37 @@ describe('a fully qualified ALTER TABLE target', () => {
   });
 });
 
+describe('SQL Server WITH CHECK before ADD', () => {
+  it.each([
+    [
+      'ALTER TABLE [dbo].[b] WITH CHECK ADD CONSTRAINT [fk] FOREIGN KEY([a_id]) REFERENCES [dbo].[a] ([id]);',
+      isAlterTableAddForeignKey,
+    ],
+    [
+      'ALTER TABLE b WITH NOCHECK ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+      isAlterTableAddForeignKey,
+    ],
+    [
+      'ALTER TABLE b with check ADD CONSTRAINT pk PRIMARY KEY (id);',
+      isAlterTableAddPrimaryKey,
+    ],
+    [
+      'ALTER TABLE b WITH CHECK ADD CONSTRAINT uq UNIQUE (a_id);',
+      isAlterTableAddUnique,
+    ],
+  ])('matches %s', (sql, matcher) => {
+    expect(matcher(tokenizer(sql))(0)).toBe(true);
+  });
+
+  it.each([
+    'ALTER TABLE b WITH ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+    'ALTER TABLE b WITH [CHECK] ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+    'ALTER TABLE b CHECK ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+  ])('refuses %s', sql => {
+    expect(isAlterTableAddForeignKey(tokenizer(sql))(0)).toBe(false);
+  });
+});
+
 describe('isAlterTableAddPrimaryKey with ONLY', () => {
   it('matches ALTER TABLE ONLY name ADD PRIMARY KEY', () => {
     const tokens = words(
