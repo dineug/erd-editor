@@ -37,6 +37,7 @@ import {
 } from '@/engine/modules/index/atom.actions';
 import {
   addIndexColumnAction,
+  moveIndexColumnAction,
   removeIndexColumnAction,
 } from '@/engine/modules/index-column/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
@@ -65,6 +66,7 @@ import {
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
+  moveColumnAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { RootState } from '@/engine/state';
@@ -166,8 +168,9 @@ const sortWindow = ({ tags }: AnyAction) =>
   !isNil(tags) && bHas(tags, Tag.drag) ? timer(5) : timer(0, asapScheduler);
 
 /**
- * The actions that add, drop or reshape an alternate key, whose mark widens
- * its table in the document while the setting shows the marks.
+ * The actions that add, drop, reshape or renumber an alternate key, whose mark
+ * widens its table in the document while the setting shows the marks. A column
+ * move renumbers the keys, an index column move their members.
  */
 const alternateKeyActions = [
   addIndexAction,
@@ -175,6 +178,8 @@ const alternateKeyActions = [
   changeIndexUniqueAction,
   addIndexColumnAction,
   removeIndexColumnAction,
+  moveIndexColumnAction,
+  moveColumnAction,
 ];
 
 const isAlternateKeyAction = arrayHas<string>(
@@ -204,9 +209,9 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
     });
 
 /**
- * Document actions a view never sees the effect of: a view draws no memo and
- * no alternate key mark, and reads none of the show bits or the comment width,
- * so its geometry is the same on either side of them.
+ * Document actions a view's geometry never sees: a view draws no memo and no
+ * alternate key mark, reads none of the show bits or the comment width, and a
+ * column move reorders its rows without resizing a box.
  */
 const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,

@@ -3,6 +3,7 @@ import { createAction } from '@dineug/r-html';
 
 import { arrayHas } from '@/utils/arrayHas';
 import { createIndex } from '@/utils/collection/index.entity';
+import { invalidateTableIndexes } from '@/utils/tableKeys';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 
@@ -22,6 +23,7 @@ const addIndex: ReducerType<typeof ActionType.addIndex> = (
     .addOperator(lww, safeVersion, id, () => {
       if (!arrayHas(doc.indexIds)(id)) {
         doc.indexIds.push(id);
+        invalidateTableIndexes();
       }
     });
 };
@@ -42,6 +44,7 @@ const removeIndex: ReducerType<typeof ActionType.removeIndex> = (
       const index = doc.indexIds.indexOf(id);
       if (index !== -1) {
         doc.indexIds.splice(index, 1);
+        invalidateTableIndexes();
       }
     });
 };

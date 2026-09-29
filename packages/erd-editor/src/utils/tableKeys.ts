@@ -2,10 +2,73 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import { Table } from '@/internal-types';
+import { IndexEntities, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 type KeyState = Pick<RootState, 'doc' | 'collections'>;
+
+/**
+ * Bumped by the two reducers that push an id onto the document's index list or
+ * splice one out. An index never changes table, so those are the only writes
+ * that regroup the list; replacing it or the entities is caught by identity.
+ */
+let indexListGeneration = 0;
+
+export function invalidateTableIndexes() {
+  indexListGeneration++;
+}
+
+type TableIndexes = {
+  generation: number;
+  entities: IndexEntities;
+  byTable: Map<string, string[]>;
+};
+
+/** One grouping per index list, keyed on the list itself, so two stores never share one. */
+const tableIndexesCache = new WeakMap<string[], TableIndexes>();
+
+/**
+ * The ids of the table's indexes in list order, from a grouping of the whole
+ * list built once per add or drop, so measuring every table reads the list once
+ * rather than once a table. An observer still re-runs on each add and drop.
+ */
+export function getTableIndexIds(
+  { doc, collections }: KeyState,
+  tableId: string
+): string[] {
+  const { indexIds } = doc;
+  const entities = collections.indexEntities;
+  // The length is the one read an observer keeps on the list: every push and
+  // splice sets it, which is when the grouping is built again.
+  if (!indexIds.length) return [];
+
+  const cached = tableIndexesCache.get(indexIds);
+  if (
+    cached?.generation === indexListGeneration &&
+    cached.entities === entities
+  ) {
+    return cached.byTable.get(tableId) ?? [];
+  }
+
+  const byTable = new Map<string, string[]>();
+  for (const index of query(collections)
+    .collection('indexEntities')
+    .selectByIds(indexIds)) {
+    const ids = byTable.get(index.tableId);
+    if (ids) {
+      ids.push(index.id);
+    } else {
+      byTable.set(index.tableId, [index.id]);
+    }
+  }
+
+  tableIndexesCache.set(indexIds, {
+    generation: indexListGeneration,
+    entities,
+    byTable,
+  });
+  return byTable.get(tableId) ?? [];
+}
 
 /**
  * A key the table's columns declare rather than an index entity: the primary
@@ -71,16 +134,18 @@ export function getColumnKeys(
  * an undo nor a peer's concurrent add reorders them, as the index list would.
  */
 export function getAlternateKeys(
-  { doc, collections }: KeyState,
+  state: KeyState,
   table: Table
 ): AlternateKey[] {
   const positions = new Map(table.columnIds.map((id, index) => [id, index]));
-  const indexColumns = query(collections).collection('indexColumnEntities');
+  const indexColumns = query(state.collections).collection(
+    'indexColumnEntities'
+  );
 
-  return query(collections)
+  return query(state.collections)
     .collection('indexEntities')
-    .selectByIds(doc.indexIds)
-    .filter(index => index.tableId === table.id && index.unique)
+    .selectByIds(getTableIndexIds(state, table.id))
+    .filter(index => index.unique)
     .map(index => ({
       indexId: index.id,
       columnIds: indexColumns

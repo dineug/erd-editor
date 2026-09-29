@@ -1,7 +1,8 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
-import { AnyAction } from '@dineug/r-html';
+import { AnyAction, observer } from '@dineug/r-html';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { flush } from '@/__test-utils__';
 import { ColumnOption } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { createHistory } from '@/engine/history';
@@ -23,6 +24,7 @@ import {
   getAlternateKeyMarks,
   getAlternateKeys,
   getColumnKeys,
+  getTableIndexIds,
 } from '@/utils/tableKeys';
 
 type IndexSpec = {
@@ -163,6 +165,63 @@ describe('getAlternateKeys', () => {
   });
 });
 
+describe('getTableIndexIds', () => {
+  it('lists the indexes of each table in the order of the list', () => {
+    const { state } = createState({}, [
+      { id: 'i1', unique: true, columnIds: ['a', 'b'] },
+      { id: 'i2', unique: false, columnIds: ['a'], tableId: 'other' },
+      { id: 'i3', unique: false, columnIds: ['c'] },
+    ]);
+
+    expect(getTableIndexIds(state, 'region')).toEqual(['i1', 'i3']);
+    expect(getTableIndexIds(state, 'other')).toEqual(['i2']);
+    expect(getTableIndexIds(state, 'none')).toEqual([]);
+  });
+
+  it('reads the list once for every table it answers', () => {
+    const { state } = createState(
+      {},
+      Array.from({ length: 40 }, (_, index) => ({
+        id: `i${index}`,
+        unique: true,
+        columnIds: ['a', 'b'],
+        tableId: `t${index % 20}`,
+      }))
+    );
+    let reads = 0;
+    state.doc.indexIds = new Proxy([...state.doc.indexIds], {
+      get(target, p, receiver) {
+        if (typeof p === 'string' && /^\d+$/.test(p)) reads++;
+        return Reflect.get(target, p, receiver);
+      },
+    });
+
+    for (let index = 0; index < 20; index++) {
+      expect(getTableIndexIds(state, `t${index}`)).toEqual([
+        `i${index}`,
+        `i${index + 20}`,
+      ]);
+    }
+    expect(reads).toBe(40);
+  });
+
+  it('groups again after the list or the entities are replaced', () => {
+    const { state } = createState({}, [
+      { id: 'i1', unique: true, columnIds: ['a', 'b'] },
+      { id: 'i2', unique: true, columnIds: ['a'], tableId: 'other' },
+    ]);
+    expect(getTableIndexIds(state, 'region')).toEqual(['i1']);
+
+    state.doc.indexIds = ['i2'];
+    expect(getTableIndexIds(state, 'region')).toEqual([]);
+
+    state.collections.indexEntities = {
+      i2: createIndex({ id: 'i2', tableId: 'region' }),
+    };
+    expect(getTableIndexIds(state, 'region')).toEqual(['i2']);
+  });
+});
+
 describe('alternate key numbers under undo and collaboration', () => {
   const tableId = 'region';
 
@@ -227,6 +286,67 @@ describe('alternate key numbers under undo and collaboration', () => {
       d: 'AK2.2',
     });
     expect(marks()).toEqual(before);
+  });
+
+  it('follows each add and drop that goes through the reducers', () => {
+    const { store, marks } = setup();
+    store.dispatchSync(
+      addColumnAction({ id: 'x', tableId: 'other' }),
+      addColumnAction({ id: 'y', tableId: 'other' }),
+      ...addUniqueIndex('u1', ['a', 'b'])
+    );
+    expect(marks()).toEqual({ a: 'AK1.1', b: 'AK1.2' });
+
+    store.dispatchSync(
+      addIndexAction({ id: 'o1', tableId: 'other' }),
+      ...addUniqueIndex('u2', ['c', 'd'])
+    );
+    expect(marks()).toEqual({
+      a: 'AK1.1',
+      b: 'AK1.2',
+      c: 'AK2.1',
+      d: 'AK2.2',
+    });
+
+    store.dispatchSync(removeIndexAction({ id: 'u1' }));
+    expect(marks()).toEqual({ c: 'AK1.1', d: 'AK1.2' });
+  });
+
+  it('redraws a table on its own keys and on any add or drop, not on another table key', async () => {
+    const { store, marks } = setup();
+    store.dispatchSync(
+      ...addUniqueIndex('u1', ['a', 'b']),
+      ...addUniqueIndex('o1', ['x', 'y']).map(action => ({
+        ...action,
+        payload: { ...action.payload, tableId: 'other' },
+      }))
+    );
+    let runs = 0;
+    let seen: Record<string, string> = {};
+    const unobserve = observer(() => {
+      seen = marks();
+      runs++;
+    });
+    expect(runs).toBe(1);
+
+    store.dispatchSync(
+      changeIndexUniqueAction({ id: 'o1', tableId: 'other', value: false })
+    );
+    await flush();
+    expect(runs).toBe(1);
+
+    store.dispatchSync(
+      changeIndexUniqueAction({ id: 'u1', tableId, value: false })
+    );
+    await flush();
+    expect(runs).toBe(2);
+    expect(seen).toEqual({});
+
+    store.dispatchSync(...addUniqueIndex('u2', ['c', 'd']));
+    await flush();
+    expect(runs).toBe(3);
+    expect(seen).toEqual({ c: 'AK1.1', d: 'AK1.2' });
+    unobserve();
   });
 
   it('numbers the same on two replicas that received the adds in turn', () => {

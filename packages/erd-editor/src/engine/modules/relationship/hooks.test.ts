@@ -15,14 +15,18 @@ import {
   addIndexAction,
   changeIndexUniqueAction,
 } from '@/engine/modules/index/atom.actions';
-import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
+import {
+  addIndexColumnAction,
+  moveIndexColumnAction,
+} from '@/engine/modules/index-column/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { moveTableAction } from '@/engine/modules/table/atom.actions';
+import { moveColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
-import { calcTableWidths } from '@/utils/calcTable';
+import { calcTableWidths, getWidthGeneration } from '@/utils/calcTable';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
@@ -159,6 +163,8 @@ describe('relationship/hooks registration', () => {
       'index.changeUnique',
       'indexColumn.add',
       'indexColumn.remove',
+      'indexColumn.move',
+      'column.move',
     ]);
   });
 });
@@ -608,6 +614,26 @@ describe('relationship/hooks relationshipSortHook', () => {
     await settle();
     expect(relationshipSort).toHaveBeenCalledTimes(1);
   });
+
+  it.each([moveColumnAction.type, moveIndexColumnAction.type])(
+    'measures again after %s while the marks are shown, since it renumbers them',
+    async type => {
+      const store = createTestStore();
+      const { fire } = await run(relationshipSortHook, store);
+      const generation = getWidthGeneration();
+
+      fire(type);
+      await settle();
+      expect(relationshipSort).not.toHaveBeenCalled();
+      expect(getWidthGeneration()).toBe(generation);
+
+      store.state.settings.show |= Show.columnAlternateKey;
+      fire(type);
+      await settle();
+      expect(relationshipSort).toHaveBeenCalledTimes(1);
+      expect(getWidthGeneration()).toBe(generation + 1);
+    }
+  );
 
   it('routes around a table that appeared between the two ends', async () => {
     // Why table.add is on the subscription list. The route is recomputed from
