@@ -249,4 +249,49 @@ test.describe('quick search over columns, comments and memos', () => {
       .poll(() => erd.focusRingCells())
       .toEqual(['users_email:columnComment']);
   });
+
+  test('narrows to one kind of row by a prefix a help row types in', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const input = palette.locator('input');
+
+    await erd.press(Shortcut.search);
+    await expect(palette.locator('.quick-search-hint button')).toHaveCount(5);
+    await erd.page.keyboard.type('?');
+    await palette.getByText('Columns', { exact: true }).click();
+
+    await expect(input).toHaveValue('@');
+    await expect(input).toBeFocused();
+    await expect(palette.locator('.quick-search-scope')).toHaveText('Columns');
+
+    await erd.page.keyboard.type('users.em');
+    await palette.getByText('users.email · Column', { exact: true }).click();
+
+    await expect(palette).toHaveCount(0);
+    await expect
+      .poll(() => erd.focusRingCells())
+      .toEqual(['users_email:columnName']);
+  });
+
+  test('lists every kind of row again once the prefix is deleted', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+
+    await erd.press(Shortcut.search);
+    await erd.page.keyboard.type('#us');
+    await expect(palette.getByText('users.id · Column comment')).toHaveCount(0);
+
+    await erd.page.keyboard.press('ArrowLeft');
+    await erd.page.keyboard.press('ArrowLeft');
+    await erd.page.keyboard.press('Backspace');
+
+    await expect(palette.locator('input')).toHaveValue('us');
+    await expect(palette.getByText('users.id · Column comment')).toHaveCount(1);
+  });
 });

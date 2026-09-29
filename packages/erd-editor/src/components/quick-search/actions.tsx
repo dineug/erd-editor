@@ -32,6 +32,7 @@ import {
   addTableAction$,
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
+import { RootState } from '@/engine/state';
 import { getOriginToPlace } from '@/konva/scene/viewport';
 import {
   openAutomaticTablePlacementAction,
@@ -50,6 +51,7 @@ import {
   DEFAULT_FIND_OPTIONS,
   FindField,
   FindFieldLabel,
+  FindMatch,
   findMatches,
   locationOf,
   snippetOf,
@@ -64,6 +66,8 @@ export type Action = {
   shortcut?: string;
   /** The table a row jumps to, whose keyword names the kind of row, not the table. */
   tableId?: string;
+  /** What choosing the row types into the input, which stays open, instead of running a command. */
+  insert?: string;
   filter?: (app: AppContext) => boolean;
   perform?: (app: AppContext) => void;
   next?: Action[];
@@ -395,31 +399,44 @@ export function createMatchActions(
       matches[index - 1]?.slot !== match.slot
   );
 
-  const actions = fields.slice(0, MATCH_ACTION_LIMIT).map<Action>(match => {
-    const location = locationOf(store.state, match);
-    const kind = FindFieldLabel[match.field];
-
-    return {
-      icon: fieldIcon(match.field, 16),
-      name: snippetOf(match, 16, 64).text,
-      keywords: location ? `${location} · ${kind}` : kind,
-      perform: ({ store }) => {
-        goToErdTarget(store, toErdTarget(match));
-      },
-    };
-  });
+  const actions = fields
+    .slice(0, MATCH_ACTION_LIMIT)
+    .map(match => createMatchAction(store.state, match));
 
   if (more || fields.length > MATCH_ACTION_LIMIT) {
-    actions.push({
-      icon: <Icon name="search" size={16} />,
-      name: `Show all ${matches.length} matches in Find and Replace`,
-      perform: ({ emitter }) => {
-        emitter.emit(openFindReplaceAction({ query: keyword }));
-      },
-    });
+    actions.push(createShowAllAction(matches.length, { query: keyword }));
   }
 
   return actions;
+}
+
+/** The row for one field a search found, saying where it is, which stands the reader on it when chosen. */
+export function createMatchAction(state: RootState, match: FindMatch): Action {
+  const location = locationOf(state, match);
+  const kind = FindFieldLabel[match.field];
+
+  return {
+    icon: fieldIcon(match.field, 16),
+    name: snippetOf(match, 16, 64).text || 'unnamed',
+    keywords: location ? `${location} · ${kind}` : kind,
+    perform: ({ store }) => {
+      goToErdTarget(store, toErdTarget(match));
+    },
+  };
+}
+
+/** The row handing a search to Find and Replace, named with the count the panel opens on. */
+export function createShowAllAction(
+  count: number,
+  payload: { query: string; fields?: FindField[] }
+): Action {
+  return {
+    icon: <Icon name="search" size={16} />,
+    name: `Show all ${count} matches in Find and Replace`,
+    perform: ({ emitter }) => {
+      emitter.emit(openFindReplaceAction(payload));
+    },
+  };
 }
 
 function createTableActions({ store }: AppContext): Action[] {

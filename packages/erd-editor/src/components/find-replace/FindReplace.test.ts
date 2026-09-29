@@ -35,6 +35,7 @@ import {
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
 import { openFindReplaceAction } from '@/utils/emitter';
+import { FindField } from '@/utils/find-replace';
 import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -248,6 +249,44 @@ describe('FindReplace opening and closing', () => {
     await flush();
 
     expect(last?.name).toBe(`Show all ${countText()} in Find and Replace`);
+  });
+
+  it('searches a query handed over in the scopes it names, and only those', async () => {
+    const pressed = () =>
+      Array.from(panel()?.querySelectorAll('.find-scope') ?? [])
+        .filter(scope => scope.getAttribute('aria-pressed') === 'true')
+        .map(scope => scope.getAttribute('data-field'));
+
+    app.emitter.emit(
+      openFindReplaceAction({ query: 'user', fields: [FindField.columnName] })
+    );
+    await flush();
+
+    expect(pressed()).toEqual([FindField.columnName]);
+    expect(countText()).toBe('1 match');
+
+    app.emitter.emit(
+      openFindReplaceAction({
+        query: 'user',
+        fields: [
+          FindField.memo,
+          FindField.tableComment,
+          FindField.columnComment,
+        ],
+      })
+    );
+    await flush();
+
+    // In the panel's own order, whatever order they were handed in.
+    expect(pressed()).toEqual([
+      FindField.tableComment,
+      FindField.columnComment,
+      FindField.memo,
+    ]);
+    expect(countText()).toBe('3 matches');
+
+    await openWith('user');
+    expect(pressed()).toHaveLength(5);
   });
 
   it('keeps the options left on when opened with no query', async () => {

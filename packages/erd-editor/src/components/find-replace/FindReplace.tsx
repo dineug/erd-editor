@@ -189,7 +189,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     input?.select();
   };
 
-  const open = (query?: string) => {
+  const open = (query?: string, fields?: FindField[]) => {
     const { store } = app.value;
     const { editor } = store.state;
     if (TAKEOVERS.some(key => editor.openMap[key])) return;
@@ -209,7 +209,9 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       // with whatever options and scopes an earlier search left on.
       state.query = query;
       Object.assign(state, DEFAULT_FIND_OPTIONS);
-      state.fields = [...FindFieldList];
+      state.fields = fields
+        ? FindFieldList.filter(field => fields.includes(field))
+        : [...FindFieldList];
     }
     state.status = '';
     refresh();
@@ -418,7 +420,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         .pipe(filter(({ type }) => type === KeyBindingName.stop))
         .subscribe(handleStop),
       emitter.on({
-        openFindReplace: ({ payload }) => open(payload?.query),
+        openFindReplace: ({ payload }) => open(payload?.query, payload?.fields),
       }),
       // A peer, an undo or an edit on the canvas changes what matches.
       new Observable<void>(subscriber =>

@@ -13,6 +13,10 @@ import * as highlightStyles from '@/components/primitives/highlighted-text/Highl
 import { TABLE_ACTION_LIMIT } from '@/components/quick-search/actions';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
+import {
+  SCOPED_ACTION_LIMIT,
+  TEXT_FIELDS,
+} from '@/components/quick-search/scopedActions';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import {
@@ -21,6 +25,10 @@ import {
   editTableAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
+import {
+  addMemoAction,
+  changeMemoValueAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import {
@@ -28,7 +36,7 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
-import { toggleSearchAction } from '@/utils/emitter';
+import { openFindReplaceAction, toggleSearchAction } from '@/utils/emitter';
 import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -40,6 +48,7 @@ let app: AppContext;
 let mounted: Mounted | null = null;
 let focusEvents = 0;
 let openedFindReplace = 0;
+let handedOver: unknown[] = [];
 
 const countFocusEvent = () => {
   focusEvents++;
@@ -101,9 +110,11 @@ async function setup(canvasType: string = CanvasType.ERD) {
   app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
   focusEvents = 0;
   openedFindReplace = 0;
+  handedOver = [];
   app.emitter.on({
-    openFindReplace: () => {
+    openFindReplace: action => {
       openedFindReplace++;
+      handedOver.push(action);
     },
   });
   document.body.addEventListener(InternalEventType.focus, countFocusEvent);
@@ -654,5 +665,262 @@ describe('QuickSearch column, comment and memo matches', () => {
     expect(isOpen()).toBe(false);
     expect(app.store.state.editor.openMap[Open.findReplace]).toBeFalsy();
     expect(openedFindReplace).toBe(1);
+  });
+});
+
+describe('QuickSearch prefixes', () => {
+  const COMMANDS = [
+    'Tab',
+    'Database',
+    'Import',
+    'Export',
+    'New Table',
+    'New Memo',
+    'Zero One',
+    'Zero N',
+    'One Only',
+    'One N',
+    'Auto Layout',
+    'Find and Replace',
+  ];
+
+  const hint = () =>
+    mounted?.container.querySelector<HTMLDivElement>('.quick-search-hint') ??
+    null;
+
+  const hintItems = () =>
+    Array.from(hint()?.querySelectorAll('button') ?? []).map(item =>
+      (item.textContent ?? '').trim()
+    );
+
+  const scopeLabel = () =>
+    mounted?.container.querySelector('.quick-search-scope')?.textContent ??
+    null;
+
+  const highlighted = (row: HTMLDivElement) =>
+    Array.from(row.querySelectorAll(`.${highlightStyles.highlighted}`)).map(
+      mark => mark.textContent
+    );
+
+  const isTableRow = (row: HTMLDivElement) =>
+    row.querySelector(`.${styles.keyword}`)?.textContent?.trim() === 'Table';
+
+  beforeEach(() => {
+    seedFindDocument(app);
+  });
+
+  it('hints at the prefixes while the input is empty, with no scope named', async () => {
+    await open();
+
+    expect(hintItems()).toEqual([
+      '>Commands',
+      '#Tables',
+      '@Columns',
+      '"Comments & memos',
+      '?Help',
+    ]);
+    expect(scopeLabel()).toBeNull();
+
+    await type('u');
+    expect(hint()).toBeNull();
+
+    await type('');
+    expect(hint()).not.toBeNull();
+  });
+
+  it('hints nothing inside a submenu, where a prefix is plain text', async () => {
+    await open();
+    await keydown('ArrowDown');
+    await keydown('Enter');
+
+    expect(hint()).toBeNull();
+
+    await type('>');
+
+    expect(scopeLabel()).toBeNull();
+    for (const name of rowNames()) {
+      expect([
+        'Visualization',
+        'Schema SQL',
+        'Generator Code',
+        'Settings',
+      ]).toContain(name);
+    }
+  });
+
+  it('lists the commands alone after >, a space after it or not, and names the scope', async () => {
+    await open();
+
+    await type('>');
+
+    expect(rowNames()).toEqual(COMMANDS);
+    expect(scopeLabel()).toBe('Commands');
+    expect(hint()).toBeNull();
+
+    await type('> auto');
+    expect(rowNames()[0]).toBe('Auto Layout');
+    expect(rowNames()).not.toContain('orders');
+  });
+
+  it('lists the tables alone after #, and picks one as the mixed list does', async () => {
+    await open();
+
+    await type('#');
+    expect(rowNames()).toEqual(['orders', 'users']);
+    expect(scopeLabel()).toBe('Tables');
+
+    await type('#us');
+    expect(rows().every(isTableRow)).toBe(true);
+    expect(highlighted(rows()[0])).toEqual(['us']);
+
+    await click(rows()[rowNames().indexOf('users')]);
+
+    expect(app.store.state.editor.selectedMap).toEqual({ users: 'table' });
+    expect(isOpen()).toBe(false);
+  });
+
+  it('searches the whole list again once the prefix is taken away', async () => {
+    await open();
+    await type('#us');
+    expect(rows().every(isTableRow)).toBe(true);
+
+    await type('us');
+
+    expect(rows().some(row => !isTableRow(row))).toBe(true);
+    expect(rowNames()).toContain('user_id');
+    expect(scopeLabel()).toBeNull();
+  });
+
+  it('narrows inside a scope as the mixed list does, and starts over when the prefix changes', async () => {
+    await open();
+    await type('>Memo');
+    await type('>Auto Layout');
+    expect(rowNames()).not.toContain('Auto Layout');
+
+    await type('#Memo');
+    expect(scopeLabel()).toBe('Tables');
+    await type('>Auto Layout');
+
+    expect(rowNames()).toContain('Auto Layout');
+  });
+
+  it('lists the columns alone after @, narrowed by the table before a dot', async () => {
+    await open();
+
+    await type('@em');
+    expect(rowNames()).toEqual(['email']);
+    expect(scopeLabel()).toBe('Columns');
+
+    await type('@users.');
+    expect(rowNames()).toEqual(['id', 'email']);
+
+    await type('@users.em');
+    expect(rowNames()).toEqual(['email']);
+    // The column part lit in the name, both parts in where it is.
+    expect(highlighted(rows()[0])).toEqual(['em', 'users', 'em']);
+
+    await click(rows()[0]);
+
+    expect(isOpen()).toBe(false);
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      tableId: 'users',
+      columnId: 'email',
+      focusType: 'columnName',
+    });
+  });
+
+  it('lists the comments and memos alone after a double quote', async () => {
+    await open();
+
+    await type('"user');
+
+    expect(rowNames()).toEqual(['user id', 'Every user_id points at users.id']);
+    expect(scopeLabel()).toBe('Comments & memos');
+  });
+
+  it('hands a scoped search to Find and Replace with its scopes set', async () => {
+    for (let index = 0; index <= SCOPED_ACTION_LIMIT; index++) {
+      app.store.dispatchSync(
+        addMemoAction({ id: `m${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeMemoValueAction({ id: `m${index}`, value: 'many user' })
+      );
+    }
+    await open();
+    await type('" user');
+    const last = rows().at(-1) as HTMLDivElement;
+    expect(rowNames().at(-1)).toBe(
+      `Show all ${SCOPED_ACTION_LIMIT + 4} matches in Find and Replace`
+    );
+
+    await click(last);
+
+    expect(isOpen()).toBe(false);
+    expect(handedOver).toEqual([
+      openFindReplaceAction({ query: 'user', fields: TEXT_FIELDS }),
+    ]);
+  });
+
+  it('lists the prefixes after ?, and a chosen one is typed in with the palette left open', async () => {
+    await open();
+
+    await type('?');
+    expect(rowNames()).toEqual([
+      'Commands',
+      'Tables',
+      'Columns',
+      'Comments & memos',
+    ]);
+    expect(scopeLabel()).toBe('Help');
+
+    await click(rows()[1]);
+
+    expect(isOpen()).toBe(true);
+    expect(input().value).toBe('#');
+    expect(rowNames()).toEqual(['orders', 'users']);
+    expect(scopeLabel()).toBe('Tables');
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('types the prefix of the help row chosen with Enter', async () => {
+    await open();
+    await type('?');
+
+    await keydown('ArrowDown');
+    await keydown('Enter');
+
+    expect(isOpen()).toBe(true);
+    expect(input().value).toBe('>');
+    expect(rowNames()).toEqual(COMMANDS);
+    expect(selectedIndex()).toBe(-1);
+  });
+
+  it('types the prefix of a hint clicked', async () => {
+    await open();
+    const [, , columns] = Array.from(hint()?.querySelectorAll('button') ?? []);
+
+    await click(columns);
+
+    expect(isOpen()).toBe(true);
+    expect(input().value).toBe('@');
+    expect(rowNames()).toEqual(['order_id', 'user_id', 'total', 'id', 'email']);
+  });
+
+  it('keeps the scopes on the other tabs, their commands the tab offers', async () => {
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.settings })
+    );
+    await open();
+
+    await type('>');
+    expect(rowNames()).toEqual(['Tab', 'Find and Replace']);
+
+    await type('#');
+    expect(rowNames()).toEqual(['orders', 'users']);
+
+    await type('@users.em');
+    await click(rows()[0]);
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(app.store.state.editor.focusTable?.columnId).toBe('email');
   });
 });

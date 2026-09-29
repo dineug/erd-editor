@@ -11,7 +11,12 @@ describe('QuickSearch.styles', () => {
     const tokens = [
       styles.root,
       styles.container,
+      styles.field,
       styles.search,
+      styles.scope,
+      styles.hint,
+      styles.hintItem,
+      styles.prefix,
       styles.list,
       styles.action,
       styles.icon,
@@ -32,7 +37,12 @@ describe('QuickSearch.styles', () => {
     const names = [
       styles.root,
       styles.container,
+      styles.field,
       styles.search,
+      styles.scope,
+      styles.hint,
+      styles.hintItem,
+      styles.prefix,
       styles.list,
       styles.action,
       styles.icon,
@@ -84,6 +94,38 @@ describe('QuickSearch.styles', () => {
     expect(text).toContain('min-height: 50px');
     expect(text).toContain('padding: 12px 16px');
     expect(styles.search.values).toContain(fontSize3);
+  });
+
+  it('gives the input the row and the scope label only the room it needs on its right', () => {
+    expect(staticText(styles.field)).toContain('display: flex');
+    expect(staticText(styles.search)).toContain('flex: 1');
+    expect(staticText(styles.search)).toContain('min-width: 0');
+
+    const scope = staticText(styles.scope);
+    expect(scope).toContain('flex-shrink: 0');
+    expect(scope).toContain('margin-right: 16px');
+    expect(scope).toContain('color: var(--accent-color-11)');
+    expect(scope).toContain('background-color: var(--accent-color-3)');
+    expect(styles.scope.values).toContain(typography.paragraph);
+  });
+
+  it('dims the prefix hint like the keyword column, lighting the one pointed at', () => {
+    expect(staticText(styles.hint)).toContain('flex-wrap: wrap');
+
+    const item = staticText(styles.hintItem);
+    expect(item).toContain('color: var(--placeholder)');
+    expect(item).toContain('cursor: pointer');
+    expect(item).toContain('&:hover');
+    expect(item).toContain('color: var(--active)');
+    expect(styles.hintItem.values).toContain(typography.paragraph);
+  });
+
+  it('draws a prefix character as a key in the code font', () => {
+    const text = staticText(styles.prefix);
+
+    expect(text).toContain('border: 1px solid var(--context-menu-border)');
+    expect(text).toContain('color: var(--foreground)');
+    expect(text).toContain('font-family: var(--code-font-family)');
   });
 
   it('scrolls the result list once it passes 400px', () => {

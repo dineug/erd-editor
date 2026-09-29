@@ -19,9 +19,14 @@ import Erd from '@/components/erd/Erd';
 import FindReplace from '@/components/find-replace/FindReplace';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as quickSearchStyles from '@/components/quick-search/QuickSearch.styles';
+import { SCOPED_ACTION_LIMIT } from '@/components/quick-search/scopedActions';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  addColumnAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { whenDrawn } from '@/konva/batchDraw';
 import { hasAppleDevice } from '@/utils/device-detect';
@@ -267,5 +272,120 @@ describe('quick search over the fields on a real keyboard', () => {
       focusType: 'columnComment',
     });
     expect(fixture.mounted.container.querySelector('.quick-search')).toBeNull();
+  });
+});
+
+describe('quick search prefixes on a real keyboard', () => {
+  const OPEN_SEARCH = `{${MOD}>}k{/${MOD}}`;
+
+  const paletteOf = ({ mounted }: Fixture) =>
+    mounted.container.querySelector<HTMLDivElement>('.quick-search');
+  const searchInput = (fixture: Fixture) =>
+    paletteOf(fixture)?.querySelector<HTMLInputElement>('input') ?? null;
+  const rowNames = (fixture: Fixture) =>
+    Array.from(
+      paletteOf(fixture)?.querySelectorAll(`.${quickSearchStyles.name}`) ?? []
+    ).map(name => (name.textContent ?? '').trim());
+  const rowKinds = (fixture: Fixture) =>
+    Array.from(
+      paletteOf(fixture)?.querySelectorAll(`.${quickSearchStyles.action}`) ?? []
+    ).map(row =>
+      (
+        row.querySelector(`.${quickSearchStyles.keyword}`)?.textContent ?? ''
+      ).trim()
+    );
+  const scopeOf = (fixture: Fixture) =>
+    paletteOf(fixture)?.querySelector('.quick-search-scope')?.textContent ??
+    null;
+
+  it('goes to a column named by table and column', async () => {
+    const fixture = await setup();
+
+    await press(OPEN_SEARCH);
+    await press('@users.em');
+
+    expect(scopeOf(fixture)).toBe('Columns');
+    expect(rowNames(fixture)).toEqual(['email']);
+
+    await press('{ArrowDown}{Enter}');
+
+    expect(paletteOf(fixture)).toBeNull();
+    expect(stateOf(fixture).editor.focusTable).toMatchObject({
+      tableId: 'users',
+      columnId: 'email',
+      focusType: 'columnName',
+    });
+  });
+
+  it('types the prefix a help row stands for and keeps the caret in the input', async () => {
+    const fixture = await setup();
+
+    await press(OPEN_SEARCH);
+    expect(
+      paletteOf(fixture)?.querySelector('.quick-search-hint')
+    ).not.toBeNull();
+    await press('?');
+    expect(rowNames(fixture)).toEqual([
+      'Commands',
+      'Tables',
+      'Columns',
+      'Comments & memos',
+    ]);
+
+    await press('{ArrowDown}{ArrowDown}{Enter}');
+
+    expect(searchInput(fixture)?.value).toBe('#');
+    expect(document.activeElement).toBe(searchInput(fixture));
+    expect(scopeOf(fixture)).toBe('Tables');
+
+    await press('us');
+
+    expect(searchInput(fixture)?.value).toBe('#us');
+    expect(rowNames(fixture)[0]).toBe('users');
+    expect(rowKinds(fixture).every(kind => kind === 'Table')).toBe(true);
+  });
+
+  it('lists every kind of row again once the prefix is deleted', async () => {
+    const fixture = await setup();
+
+    await press(OPEN_SEARCH);
+    await press('#us');
+    expect(rowKinds(fixture).every(kind => kind === 'Table')).toBe(true);
+
+    await press('{ArrowLeft}{ArrowLeft}{Backspace}');
+
+    expect(searchInput(fixture)?.value).toBe('us');
+    expect(scopeOf(fixture)).toBeNull();
+    expect(rowKinds(fixture).some(kind => kind !== 'Table')).toBe(true);
+    expect(rowNames(fixture)).toContain('user_id');
+  });
+
+  it('opens Find and Replace on column names alone from a column search past its limit', async () => {
+    const fixture = await setup();
+    const { store } = fixture.mounted.app;
+    store.dispatchSync(
+      Array.from({ length: SCOPED_ACTION_LIMIT + 1 }, (_, index) => [
+        addColumnAction({ id: `col${index}`, tableId: 'orders' }),
+        changeColumnNameAction({
+          id: `col${index}`,
+          tableId: 'orders',
+          value: `col_${index}`,
+        }),
+      ]).flat()
+    );
+    await flush();
+
+    await press(OPEN_SEARCH);
+    await press('@orders.col');
+    await press('{ArrowUp}{Enter}');
+
+    expect(paletteOf(fixture)).toBeNull();
+    expect(inputOf(fixture, 'find-input')?.value).toBe('col');
+    expect(countOf(fixture)).toBe(`${SCOPED_ACTION_LIMIT + 1} matches`);
+    const pressed = Array.from(
+      panelOf(fixture)?.querySelectorAll('.find-scope[aria-pressed="true"]') ??
+        []
+    ).map(scope => scope.getAttribute('data-field'));
+    expect(pressed).toEqual(['columnName']);
   });
 });

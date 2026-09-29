@@ -22,13 +22,16 @@ import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
+import { Action, createScopeActions, searchActions } from './actions';
 import {
-  Action,
-  createScopeActions,
-  rankPaletteActions,
-  searchActions,
-} from './actions';
+  PALETTE_PREFIXES,
+  PaletteQuery,
+  PaletteScope,
+  parsePaletteQuery,
+  scopeLabel,
+} from './paletteQuery';
 import * as styles from './QuickSearch.styles';
+import { paletteRows, scopeBase } from './scopedActions';
 
 export type QuickSearchProps = {};
 
@@ -51,13 +54,12 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     actions: [] as Action[],
     rows: [] as Action[],
     submenu: false,
+    scope: null as PaletteScope | null,
     index: -1,
   });
 
   const byFilter = (actions: Action[]) =>
     actions.filter(action => (action.filter ? action.filter(app.value) : true));
-
-  const getScopeActions = () => byFilter(state.actions);
 
   /** What the list shows: the level, the keyword's fuzzy hits, or at the top level those ranked around the fields. */
   const getActions = () => byFilter(state.rows);
@@ -66,7 +68,14 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     state.prevActions = actions;
     state.actions = actions;
     state.rows = actions;
+    state.scope = null;
   };
+
+  /** What is typed, read for a prefix at the top level only; a submenu filters its own rows. */
+  const readQuery = (value: string): PaletteQuery =>
+    state.submenu
+      ? { scope: null, keyword: value.trim(), table: null }
+      : parsePaletteQuery(value);
 
   const clearKeyword = () => {
     state.keyword = '';
@@ -74,18 +83,40 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   };
 
   const setActions = (value: string) => {
-    const newValue = value.trim();
+    const query = readQuery(value);
+    const base = scopeBase(state.prevActions, query.scope);
+    // The fuzzy search narrows inside its last hits while the scope holds;
+    // a prefix typed, changed or taken away starts again from the whole level.
+    const from = query.scope === state.scope ? state.actions : base;
 
     state.index = -1;
-    state.actions = isEmpty(newValue)
-      ? state.prevActions
-      : searchActions(getScopeActions(), newValue);
-    // The fields are looked up afresh from the document on every keystroke,
+    state.scope = query.scope;
+    state.actions = isEmpty(query.keyword)
+      ? base
+      : searchActions(byFilter(from), query.keyword);
+    // Rows read from the document are looked up afresh on every keystroke,
     // never narrowed from the last list, and only at the top level.
-    state.rows =
-      isEmpty(newValue) || state.submenu
-        ? state.actions
-        : rankPaletteActions(app.value, state.actions, newValue);
+    state.rows = state.submenu
+      ? state.actions
+      : paletteRows(app.value, state.actions, query);
+  };
+
+  /** Types a prefix for the reader, as a help row or a hint does, and leaves the caret after it. */
+  const insertText = (text: string) => {
+    state.keyword = text;
+    setActions(text);
+
+    nextTick(() => {
+      const input = root.value?.querySelector('input');
+      input && lastCursorFocus(input);
+    });
+  };
+
+  /** The words a row lights up: the keyword as typed, or without its prefix, and a column search's table part. */
+  const getSearchWords = (): string[] => {
+    const { scope, keyword, table } = readQuery(state.keyword);
+    if (!scope) return [state.keyword];
+    return table ? [keyword, table] : [keyword];
   };
 
   const scrollIntoView = () => {
@@ -122,6 +153,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       const input = root.value?.querySelector('input');
       input && lastCursorFocus(input);
       clearKeyword();
+    } else if (action.insert !== undefined) {
+      insertText(action.insert);
     } else {
       handleClose();
     }
@@ -236,17 +269,45 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     } = store.state;
     if (!openMap[Open.search]) return null;
 
+    const searchWords = getSearchWords();
+    const topLevel = !state.submenu;
+
     return (
       <div class={styles.root} on:click={handleOutsideClick}>
         <div class={['quick-search', styles.container]} use:ref={ref(root)}>
-          <TextInput
-            class={styles.search}
-            placeholder="Search"
-            autofocus={true}
-            value={state.keyword}
-            onInput={handleInputKeyword}
-            onKeydown={handleKeydown}
-          />
+          <div class={styles.field}>
+            <TextInput
+              class={styles.search}
+              placeholder="Search"
+              autofocus={true}
+              value={state.keyword}
+              onInput={handleInputKeyword}
+              onKeydown={handleKeydown}
+            />
+            {topLevel && state.scope ? (
+              <span class={['quick-search-scope', styles.scope]}>
+                {scopeLabel(state.scope)}
+              </span>
+            ) : null}
+          </div>
+          {topLevel && !state.keyword ? (
+            <div class={['quick-search-hint', styles.hint]}>
+              {PALETTE_PREFIXES.map(({ prefix, label, description }) => (
+                <button
+                  class={styles.hintItem}
+                  type="button"
+                  title={description}
+                  on:click={(event: MouseEvent) => {
+                    event.stopPropagation();
+                    insertText(prefix);
+                  }}
+                >
+                  <span class={styles.prefix}>{prefix}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div class={['scrollbar', styles.list]}>
             {getActions().map((action, index) => (
               <div
@@ -261,7 +322,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                 ) : null}
                 <span class={styles.name}>
                   <HighlightedText
-                    searchWords={[state.keyword]}
+                    searchWords={searchWords}
                     textToHighlight={action.name}
                   />
                 </span>
@@ -270,7 +331,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                     <div class={styles.vertical}></div>
                     <span class={styles.keyword}>
                       <HighlightedText
-                        searchWords={[state.keyword]}
+                        searchWords={searchWords}
                         textToHighlight={action.keywords}
                       />
                     </span>

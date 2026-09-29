@@ -36,11 +36,66 @@ export const container = css`
   overflow: hidden;
 `;
 
+/* The input and, on its right, the scope a prefix narrows to, which leaves the caret where it was. */
+export const field = css`
+  display: flex;
+  align-items: center;
+`;
+
 export const search = css`
+  flex: 1;
+  min-width: 0;
   height: 50px;
   min-height: 50px;
   padding: 12px 16px;
   ${fontSize3};
+`;
+
+export const scope = css`
+  flex-shrink: 0;
+  margin-right: 16px;
+  padding: 0 8px;
+  border: 1px solid var(--accent-color-8);
+  border-radius: 9999px;
+  white-space: nowrap;
+  color: var(--accent-color-11);
+  background-color: var(--accent-color-3);
+  ${typography.paragraph};
+`;
+
+export const hint = css`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 0 16px 12px;
+`;
+
+export const hintItem = css`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--placeholder);
+  cursor: pointer;
+  ${typography.paragraph};
+
+  &:hover {
+    color: var(--active);
+  }
+`;
+
+/* A prefix character drawn as a key, in the hint and in the help rows. */
+export const prefix = css`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--context-menu-border);
+  border-radius: 3px;
+  color: var(--foreground);
+  font-family: var(--code-font-family);
+  ${typography.paragraph};
 `;
 
 export const list = css`

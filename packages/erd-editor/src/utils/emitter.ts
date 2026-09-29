@@ -9,6 +9,7 @@ import { TablePlacement } from '@/constants/tablePlacement';
 import { ValuesType } from '@/internal-types';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import type { FindField } from '@/utils/find-replace/findMatches';
 import { safeCallback } from '@/utils/safeCallback';
 
 const InternalActionType = {
@@ -58,6 +59,8 @@ type InternalActionMap = {
   [InternalActionType.toggleSearch]: void;
   [InternalActionType.openFindReplace]: {
     query?: string;
+    /** The kinds of text the handed query is searched in; every kind when left out. */
+    fields?: FindField[];
   } | void;
   [InternalActionType.openThemeBuilder]: void;
   [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
