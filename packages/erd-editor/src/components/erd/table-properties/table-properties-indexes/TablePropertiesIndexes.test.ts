@@ -15,8 +15,10 @@ import TablePropertiesIndexes from '@/components/erd/table-properties/table-prop
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes.styles';
 import {
   addIndexAction,
+  changeIndexUniqueAction,
   removeIndexAction,
 } from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -431,6 +433,28 @@ describe('TablePropertiesIndexes', () => {
 
       expect(keyRowsOf(mounted)).toHaveLength(1);
       expect(checkboxesOf(mounted).some(box => box.checked)).toBe(false);
+    });
+
+    it('numbers each unique index keying a column as its alternate key', async () => {
+      app.store.dispatchSync(
+        addIndexAction({ id: 'i2', tableId: TABLE_ID }),
+        addIndexColumnAction({
+          id: 'ic1',
+          indexId: 'i2',
+          tableId: TABLE_ID,
+          columnId: 'c3',
+        }),
+        changeIndexUniqueAction({ id: 'i2', tableId: TABLE_ID, value: true })
+      );
+      mounted = await mountAndFlush(template(), app);
+
+      expect(
+        indexRowsOf(mounted).map(
+          row =>
+            row.querySelector(`.${String(indexStyles.alternateKey)}`)
+              ?.textContent ?? null
+        )
+      ).toEqual([null, 'AK1']);
     });
   });
 });

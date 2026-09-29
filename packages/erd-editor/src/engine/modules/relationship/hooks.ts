@@ -30,6 +30,15 @@ import {
   viewStreamScrollToAction,
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
+import {
+  addIndexAction,
+  changeIndexUniqueAction,
+  removeIndexAction,
+} from '@/engine/modules/index/atom.actions';
+import {
+  addIndexColumnAction,
+  removeIndexColumnAction,
+} from '@/engine/modules/index-column/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   addRelationshipAction,
@@ -172,14 +181,27 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
     });
 
 /**
+ * The actions that add, drop or reshape an alternate key, whose mark widens
+ * its table in the document while the setting shows the marks.
+ */
+const alternateKeyActions = [
+  addIndexAction,
+  removeIndexAction,
+  changeIndexUniqueAction,
+  addIndexColumnAction,
+  removeIndexColumnAction,
+];
+
+/**
  * Document actions a view never sees the effect of: a view draws no memo and
- * reads none of the show bits or the comment width, so its geometry is the
- * same on either side of them.
+ * no alternate key mark, and reads none of the show bits or the comment width,
+ * so its geometry is the same on either side of them.
  */
 const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,
   changeMaxWidthCommentAction.type,
   moveMemoAction.type,
+  ...alternateKeyActions.map(action => action.type),
 ]);
 
 /** View actions that move the placement a view is looked at through, and nothing in it. */
@@ -337,6 +359,7 @@ const layoutActions = [
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
   sortTableAction,
+  ...alternateKeyActions,
 ];
 
 /**

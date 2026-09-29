@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import {
   CELL_FONT_SIZE,
+  COLUMN_ALTERNATE_KEY_CHAR_WIDTH,
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_DELETE_WIDTH,
   COLUMN_HEIGHT,
@@ -181,6 +182,14 @@ describe('layout constants', () => {
 
     expect(COLUMN_NOT_NULL_WIDTH).toBeGreaterThan(COLUMN_UNIQUE_WIDTH);
     expect(COLUMN_UNIQUE_WIDTH).toBeGreaterThan(COLUMN_AUTO_INCREMENT_WIDTH);
+  });
+
+  it('sizes an alternate key mark by the code face advance at the cell size', () => {
+    expect(COLUMN_ALTERNATE_KEY_CHAR_WIDTH).toBeCloseTo(CELL_FONT_SIZE * 0.61);
+    // Room enough for AK1.1 before the name, and never the width of a name.
+    expect(Math.ceil('AK1.1'.length * COLUMN_ALTERNATE_KEY_CHAR_WIDTH)).toBe(
+      37
+    );
   });
 
   it('composes the memo header height from the icon row only', () => {

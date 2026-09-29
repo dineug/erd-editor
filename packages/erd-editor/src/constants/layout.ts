@@ -72,6 +72,13 @@ export const COLUMN_MIN_WIDTH = 60;
 export const COLUMN_NOT_NULL_WIDTH = 35;
 export const COLUMN_UNIQUE_WIDTH = 22;
 export const COLUMN_AUTO_INCREMENT_WIDTH = 15;
+
+/**
+ * The advance one alternate key mark character takes. The mark is drawn at the
+ * cell size in the code face, whose glyphs all advance about 0.6 of the size,
+ * so a table is sized by the mark's length alone, in a headless peer too.
+ */
+export const COLUMN_ALTERNATE_KEY_CHAR_WIDTH = CELL_FONT_SIZE * 0.61;
 export const COLUMN_PADDING = 2;
 export const COLUMN_HEIGHT = INPUT_HEIGHT + COLUMN_PADDING * 2;
 

@@ -20,6 +20,8 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
+  SCENE_CODE_FONT_FAMILY,
+  SCENE_FONT_SIZE,
   type SceneMouseEvent,
   TABLE_INSET,
   TRANSPARENT,
@@ -53,8 +55,12 @@ import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import type { ColumnWidth } from '@/utils/calcTable';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 type SceneProps = {
+  source?: GeometrySource;
+  widthAlternateKey?: number;
+  alternateKey?: string;
   selected?: boolean;
   hovered?: boolean;
   ghost?: boolean;
@@ -113,7 +119,7 @@ async function setup({ props = {}, prepare }: SetupOptions = {}) {
     <k-layer name="scene">
       <Column
         column={column}
-        source="document"
+        source={next.source ?? 'document'}
         y={0}
         width={rect.width}
         selected={next.selected ?? false}
@@ -123,6 +129,8 @@ async function setup({ props = {}, prepare }: SetupOptions = {}) {
         widthDataType={widths.dataType}
         widthDefault={widths.default}
         widthComment={widths.comment}
+        widthAlternateKey={next.widthAlternateKey}
+        alternateKey={next.alternateKey}
         focusName={next.focusName ?? false}
         focusDataType={false}
         focusNotNull={false}
@@ -542,6 +550,50 @@ describe('the key cell', () => {
     ui.keys = ColumnUIKey.primaryKey | ColumnUIKey.foreignKey;
     await settle();
     expect(strokesOf(rowOf(stage), 'column-key')).toEqual([theme.keyPFK]);
+  });
+});
+
+describe('the alternate key mark', () => {
+  const markOf = (stage: Stage) =>
+    rowOf(stage).findOne<Text>('.column-alternate-key');
+
+  it('draws none while the table keeps no room for one', async () => {
+    const { stage } = await setup({ props: { alternateKey: 'AK1.1' } });
+
+    expect(markOf(stage)).toBeUndefined();
+  });
+
+  it('stands after the key badge in the code face and moves the cells past it', async () => {
+    const { stage, theme } = await setup({
+      props: { widthAlternateKey: 34, alternateKey: 'AK1.2' },
+    });
+    const mark = markOf(stage) as Text;
+    const start = TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT;
+
+    expect(mark.text()).toBe('AK1.2');
+    expect(mark.x()).toBe(start);
+    expect(mark.width()).toBe(34);
+    expect(mark.fontFamily()).toBe(SCENE_CODE_FONT_FAMILY);
+    expect(mark.fontSize()).toBe(SCENE_FONT_SIZE);
+    expect(mark.fill()).toBe(theme.foreground);
+    expect(mark.listening()).toBe(false);
+    expect(named<Group>(rowOf(stage), 'columnName').x()).toBe(
+      start + 34 + INPUT_MARGIN_RIGHT
+    );
+  });
+
+  it('keeps the room empty in a row that is in no key', async () => {
+    const { stage } = await setup({ props: { widthAlternateKey: 34 } });
+
+    expect((markOf(stage) as Text).text()).toBe('');
+  });
+
+  it('is never drawn by a view', async () => {
+    const { stage } = await setup({
+      props: { source: 'flow', widthAlternateKey: 34, alternateKey: 'AK1.1' },
+    });
+
+    expect(markOf(stage)).toBeUndefined();
   });
 });
 

@@ -10,7 +10,7 @@ import Icon from '@/components/primitives/icon/Icon';
 import { addIndexAction$ } from '@/engine/modules/index/generator.actions';
 import { attachChangeOnlyTag$ } from '@/engine/tag';
 import { Index } from '@/internal-types';
-import { ColumnKey, getColumnKeys } from '@/utils/tableKeys';
+import { ColumnKey, getAlternateKeys, getColumnKeys } from '@/utils/tableKeys';
 
 import * as styles from './TablePropertiesIndexes.styles';
 
@@ -59,6 +59,9 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
       .selectByIds(indexIds)
       .filter(index => index.tableId === tableId);
     const columnKeys = table ? getColumnKeys(store.state, table) : [];
+    const alternateKeyIds = table
+      ? getAlternateKeys(store.state, table).map(key => key.indexId)
+      : [];
 
     const { indexId } = state;
     const selectedIndex = indexes.find(index => index.id === indexId) ?? null;
@@ -84,6 +87,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
             index => (
               <IndexesIndex
                 index={index}
+                alternateKey={alternateKeyIds.indexOf(index.id) + 1}
                 selected={index.id === selectedIndex?.id}
                 onSelect={handleSelectIndex}
               />

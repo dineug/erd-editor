@@ -7,7 +7,11 @@ import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
-import { getColumnKeys } from '@/utils/tableKeys';
+import {
+  getAlternateKeyMarks,
+  getAlternateKeys,
+  getColumnKeys,
+} from '@/utils/tableKeys';
 
 type IndexSpec = {
   id: string;
@@ -97,5 +101,55 @@ describe('getColumnKeys', () => {
     const { state, table } = createState({ a: ColumnOption.notNull });
 
     expect(getColumnKeys(state, table)).toEqual([]);
+  });
+});
+
+describe('getAlternateKeys', () => {
+  it('numbers the unique indexes of the table in document order, any width', () => {
+    const { state, table } = createState({}, [
+      { id: 'i1', unique: false, columnIds: ['a'] },
+      { id: 'i2', unique: true, columnIds: ['c', 'b'] },
+      { id: 'i3', unique: true, columnIds: ['d'] },
+      { id: 'i4', unique: true, columnIds: ['a'], tableId: 'other' },
+    ]);
+
+    expect(getAlternateKeys(state, table)).toEqual([
+      { indexId: 'i2', columnIds: ['c', 'b'] },
+      { indexId: 'i3', columnIds: ['d'] },
+    ]);
+  });
+
+  it('keeps only the columns still in the table, and no key left without one', () => {
+    const { state, table } = createState({}, [
+      { id: 'i1', unique: true, columnIds: ['gone'] },
+      { id: 'i2', unique: true, columnIds: ['a', 'gone', 'e'] },
+      { id: 'i3', unique: true, columnIds: [] },
+    ]);
+
+    expect(getAlternateKeys(state, table)).toEqual([
+      { indexId: 'i2', columnIds: ['a', 'e'] },
+    ]);
+  });
+});
+
+describe('getAlternateKeyMarks', () => {
+  it('marks each member with its key and its place in the key', () => {
+    const { state, table } = createState({}, [
+      { id: 'i1', unique: true, columnIds: ['b', 'a'] },
+      { id: 'i2', unique: true, columnIds: ['c', 'a'] },
+      { id: 'i3', unique: false, columnIds: ['d'] },
+    ]);
+
+    expect(getAlternateKeyMarks(state, table)).toEqual({
+      a: 'AK1.2,AK2.2',
+      b: 'AK1.1',
+      c: 'AK2.1',
+    });
+  });
+
+  it('marks nothing for a table without a unique index', () => {
+    const { state, table } = createState();
+
+    expect(getAlternateKeyMarks(state, table)).toEqual({});
   });
 });

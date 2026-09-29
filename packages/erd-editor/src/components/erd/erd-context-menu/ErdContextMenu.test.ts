@@ -275,6 +275,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Default',
       'Not Null',
       'Unique',
+      'Alternate Key',
       'Auto Increment',
       'Relationship',
     ]);

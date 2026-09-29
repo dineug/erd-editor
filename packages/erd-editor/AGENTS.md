@@ -79,6 +79,11 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 - View channel setters bump `viewVersions` **only on an actual change**; an unconditional bump redraws every static connector on each drag sort.
 - The sort hooks (`engine/modules/relationship/hooks.ts`) open a 5 ms window for a `Tag.drag` action and sort in a microtask otherwise; a timer loses to the next frame, which draws moved tables with stale connectors.
 
+**Keys and alternate keys**
+
+- **A key the columns declare is never an index entity.** `utils/tableKeys.ts` derives, at render time, the primary key and each unique column (`getColumnKeys`, the read-only rows the Indexes tab lists above the indexes) and the alternate keys: every unique index of the table in `doc.indexIds` order, one column or several, numbered AK1 up (`getAlternateKeys`), whose member columns carry `AK<n>.<m>` by their place in `indexColumnIds` (`getAlternateKeyMarks`). Nothing is stored but the `Show.columnAlternateKey` bit, off in every existing document, so no diagram widens until a reader shows the marks.
+- **The marks widen only the tables that carry one.** `calcAlternateKeyWidth` sizes the key area's extra room from the longest mark at `COLUMN_ALTERNATE_KEY_CHAR_WIDTH` per character (the code face at the cell size, no text measure, so the peer sizes it too); `getColumnCellsX` / `getColumnCellSlots` read it from `ColumnWidth.alternateKey`, so the scene row, the edit overlay and the drag ghost stay on one x, and Graph mode's DOM card (`visualization/table/`) draws the same marks in the same room. The five index actions that add, drop or reshape a key are in the sort hook's `layoutActions`, which bumps the width generation the size cache keys on, and in `isDocumentOnly`, since a view draws no mark.
+
 **Coordinates and scrolling**
 
 - **One coordinate canon**: `getSceneOrigin`, `toScreenPoint`, `toScenePoint`, `getOriginToPlace` over `settings.originX` / `originY`. `konva/scene/coordinateAuthority.test.ts` fails on origin-with-zoom arithmetic outside its `AUTHORITY` files.

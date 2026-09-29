@@ -17,6 +17,11 @@ import * as styles from './IndexesIndex.styles';
 
 export type IndexesIndexProps = {
   index: Index;
+  /**
+   * The alternate key this index is, 1 for AK1, which the diagram marks its
+   * columns with; 0 while it is no unique index keying a column.
+   */
+  alternateKey?: number;
   selected: boolean;
   onSelect: (index: Index | null) => void;
 };
@@ -86,6 +91,14 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
             onInput={handleChangeIndexName}
           />
         </div>
+        {props.alternateKey ? (
+          <div
+            class={['column-col', styles.alternateKey]}
+            title="Alternate key number the diagram marks its columns with"
+          >
+            {`AK${props.alternateKey}`}
+          </div>
+        ) : null}
         <Icon
           class={styles.iconButton}
           size={12}

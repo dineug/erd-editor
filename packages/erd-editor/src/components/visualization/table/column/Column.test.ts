@@ -87,6 +87,58 @@ afterEach(() => {
 });
 
 describe('visualization Column', () => {
+  describe('alternate key mark', () => {
+    const markOf = (m: Mounted) =>
+      m.container.querySelector('[data-alternate-key]') as HTMLElement | null;
+
+    it('draws none while the table keeps no room for one', async () => {
+      mounted = await mountAndFlush(columnTemplate(column), app);
+
+      expect(markOf(mounted)).toBeNull();
+    });
+
+    it('draws the mark after the key icon in the room the table keeps', async () => {
+      mounted = await mountAndFlush(
+        html`
+          <${Column}
+            column=${column}
+            widthName=${WIDTH_NAME}
+            widthDataType=${WIDTH_DATA_TYPE}
+            widthDefault=${WIDTH_DEFAULT}
+            widthComment=${WIDTH_COMMENT}
+            widthAlternateKey=${37}
+            alternateKey=${'AK1.2'}
+          />
+        `,
+        app
+      );
+      const mark = markOf(mounted) as HTMLElement;
+
+      expect(rootOf(mounted).children[1]).toBe(mark);
+      expect(mark.textContent).toBe('AK1.2');
+      expect(mark.style.width).toBe('37px');
+      expect(mark.style.fontFamily).toBe('var(--code-font-family)');
+    });
+
+    it('leaves the room empty in a row that is in no key', async () => {
+      mounted = await mountAndFlush(
+        html`
+          <${Column}
+            column=${column}
+            widthName=${WIDTH_NAME}
+            widthDataType=${WIDTH_DATA_TYPE}
+            widthDefault=${WIDTH_DEFAULT}
+            widthComment=${WIDTH_COMMENT}
+            widthAlternateKey=${37}
+          />
+        `,
+        app
+      );
+
+      expect((markOf(mounted) as HTMLElement).textContent).toBe('');
+    });
+  });
+
   describe('root element', () => {
     it('renders the row with the shared canvas column styling and its id', async () => {
       mounted = await mountAndFlush(columnTemplate(column), app);

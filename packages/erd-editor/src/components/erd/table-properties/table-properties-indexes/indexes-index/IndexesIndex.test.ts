@@ -52,15 +52,26 @@ function seedIndex(app: AppContext): Index {
   return app.store.state.collections.indexEntities[INDEX_ID];
 }
 
-function template(index: Index, selected = false, onSelect = vi.fn()) {
+function template(
+  index: Index,
+  selected = false,
+  onSelect = vi.fn(),
+  alternateKey = 0
+) {
   return html`
     <${IndexesIndex}
       index=${index}
+      alternateKey=${alternateKey}
       selected=${selected}
       .onSelect=${onSelect}
     />
   `;
 }
+
+const alternateKeyOf = (mounted: Mounted) =>
+  mounted.container.querySelector(
+    `.${String(styles.alternateKey)}`
+  ) as HTMLElement | null;
 
 let app: AppContext;
 let index: Index;
@@ -123,6 +134,22 @@ describe('IndexesIndex', () => {
       expect(input.getAttribute('type')).toBe('text');
       expect(input.value).toBe('');
       expect(input.classList.contains(String(styles.input))).toBe(true);
+    });
+
+    it('shows the alternate key number a unique index is known by', async () => {
+      mounted = await mountAndFlush(template(index, false, vi.fn(), 2), app);
+      const label = alternateKeyOf(mounted) as HTMLElement;
+
+      expect(label.textContent).toBe('AK2');
+      expect(label.getAttribute('title')).toBe(
+        'Alternate key number the diagram marks its columns with'
+      );
+    });
+
+    it('shows no alternate key number for an index that is none', async () => {
+      mounted = await mountAndFlush(template(index), app);
+
+      expect(alternateKeyOf(mounted)).toBeNull();
     });
 
     it('renders the remove icon as a titled svg button', async () => {

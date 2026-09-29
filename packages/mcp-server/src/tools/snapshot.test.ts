@@ -119,6 +119,7 @@ describe('the agent snapshot', () => {
         columnUnique: false,
         columnNotNull: true,
         relationship: true,
+        columnAlternateKey: false,
       },
       maxWidthComment: -1,
       ignoreSaveSettings: { scroll: false, zoomLevel: false },

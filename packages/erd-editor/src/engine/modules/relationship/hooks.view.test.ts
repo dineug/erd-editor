@@ -18,6 +18,11 @@ import {
   viewSetLayoutAction,
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
+import {
+  addIndexAction,
+  changeIndexUniqueAction,
+} from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
 import {
@@ -393,6 +398,28 @@ describe('the view sort hook on the document actions', () => {
 
     store.dispatchSync(
       shared(changeShowAction({ show: Show.tableComment, value: false }))
+    );
+    await settle();
+
+    expect(sorts('flow')).toBe(0);
+    expect(sorts('document')).toBe(1);
+  });
+
+  it('does not sort the view for an alternate key, whose mark a view never draws', async () => {
+    const store = createScene();
+    await openFocused(store);
+
+    store.dispatchSync(
+      shared(addIndexAction({ id: 'i1', tableId: 't1' })),
+      shared(
+        addIndexColumnAction({
+          id: 'ic1',
+          indexId: 'i1',
+          tableId: 't1',
+          columnId: 'c-t1',
+        })
+      ),
+      shared(changeIndexUniqueAction({ id: 'i1', tableId: 't1', value: true }))
     );
     await settle();
 

@@ -6,6 +6,7 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
+import { typography } from '@/styles/typography.styles';
 
 export const row = css`
   display: flex;
@@ -35,6 +36,12 @@ export const input = css`
 
 export const unique = css`
   cursor: pointer;
+`;
+
+export const alternateKey = css`
+  ${typography.paragraph};
+  color: var(--placeholder);
+  white-space: nowrap;
 `;
 
 export const iconButton = css`

@@ -25,6 +25,10 @@ export type ColumnProps = {
   widthDataType: number;
   widthDefault: number;
   widthComment: number;
+  /** The room the table keeps for alternate key marks, 0 while it draws none. */
+  widthAlternateKey?: number;
+  /** The mark this row carries in that room, as the ERD scene draws it. */
+  alternateKey?: string;
 };
 
 type ColumnOrderTpl = {
@@ -138,6 +142,22 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     return (
       <div class={['column-row', styles.root]} data-id={column.id}>
         <ColumnKey keys={column.ui.keys} />
+        {props.widthAlternateKey ? (
+          <div
+            class="column-col"
+            style={{
+              width: `${props.widthAlternateKey}px`,
+              'min-width': `${props.widthAlternateKey}px`,
+              'box-sizing': 'content-box',
+              color: 'var(--foreground)',
+              'font-family': 'var(--code-font-family)',
+              'white-space': 'nowrap',
+            }}
+            data-alternate-key
+          >
+            {props.alternateKey ?? ''}
+          </div>
+        ) : null}
         {repeat(
           getColumnOrder(),
           ({ columnType }) => columnType,

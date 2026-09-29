@@ -53,6 +53,11 @@ import {
   type SharedFocus,
 } from '@/engine/modules/editor/state';
 import {
+  addIndexAction,
+  changeIndexUniqueAction,
+} from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
+import {
   changeMaxWidthCommentAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -794,6 +799,81 @@ describe('the column rows a table holds', () => {
       TABLE_CORNER_RADIUS,
       TABLE_CORNER_RADIUS,
     ]);
+  });
+});
+
+describe('the alternate key marks a table shows', () => {
+  /** Three rows, and one unique index keying the third then the first. */
+  async function keyed() {
+    const fixture = await setup({ columns: 3 });
+    const { store } = fixture.app;
+    const [first, , third] = fixture.table.columnIds;
+
+    store.dispatchSync(
+      addIndexAction({ id: 'i1', tableId: fixture.table.id }),
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: fixture.table.id,
+        columnId: third,
+      }),
+      addIndexColumnAction({
+        id: 'ic2',
+        indexId: 'i1',
+        tableId: fixture.table.id,
+        columnId: first,
+      }),
+      changeIndexUniqueAction({
+        id: 'i1',
+        tableId: fixture.table.id,
+        value: true,
+      })
+    );
+    await settle();
+
+    return fixture;
+  }
+
+  const marksOf = (stage: Stage) =>
+    rootOf(stage)
+      .find<Text>('.column-alternate-key')
+      .map(mark => mark.text());
+
+  it('draws none until the setting shows them', async () => {
+    const { stage } = await keyed();
+
+    expect(marksOf(stage)).toEqual([]);
+  });
+
+  it('marks each member with its place in the key once shown, and widens the table', async () => {
+    const { app, stage, table } = await keyed();
+    const before = getTableRect(app.store.state, table).width;
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+
+    expect(marksOf(stage)).toEqual(['AK1.2', '', 'AK1.1']);
+    expect(getTableRect(app.store.state, table).width).toBeGreaterThan(before);
+    expect(named<Rect>(rootOf(stage), 'table-body').width()).toBe(
+      getTableRect(app.store.state, table).width - TABLE_BORDER
+    );
+  });
+
+  it('follows the key when it loses its unique flag', async () => {
+    const { app, stage, table } = await keyed();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+
+    app.store.dispatchSync(
+      changeIndexUniqueAction({ id: 'i1', tableId: table.id, value: false })
+    );
+    await settle();
+
+    expect(marksOf(stage)).toEqual([]);
   });
 });
 

@@ -26,6 +26,7 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
+  ALTERNATE_KEY_MARK_X,
   type ColumnCellSlot,
   focusBorderFill,
   getColumnCellSlots,
@@ -114,6 +115,13 @@ export type ColumnProps = {
   widthDataType: number;
   widthDefault: number;
   widthComment: number;
+  /**
+   * The room the table keeps for alternate key marks after the key badge, 0
+   * while it draws none; the same for every row, so the names stay in line.
+   */
+  widthAlternateKey?: number;
+  /** The mark this row carries in that room, AK1.2 or several comma joined. */
+  alternateKey?: string;
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
@@ -544,6 +552,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     return getColumnCellSlots(
       store.state,
       {
+        alternateKey: props.widthAlternateKey ?? 0,
         name: props.widthName,
         comment: props.widthComment,
         dataType: props.widthDataType,
@@ -610,6 +619,22 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           mouseenter: handleKeyMouseenter,
           mouseleave: handleKeyMouseleave,
         })}
+        {props.widthAlternateKey && !view ? (
+          <k-text
+            name="column-alternate-key"
+            x={ALTERNATE_KEY_MARK_X}
+            y={getColumnTextY(props.source)}
+            width={props.widthAlternateKey}
+            height={getColumnTextHeight(props.source, SCENE_CODE_FONT_FAMILY)}
+            text={props.alternateKey ?? ''}
+            fill={theme.foreground}
+            fontFamily={SCENE_CODE_FONT_FAMILY}
+            fontSize={SCENE_FONT_SIZE}
+            verticalAlign="middle"
+            wrap="none"
+            listening={false}
+          />
+        ) : null}
         {repeat(
           getColumnOrder(),
           ({ columnType }) => columnType,

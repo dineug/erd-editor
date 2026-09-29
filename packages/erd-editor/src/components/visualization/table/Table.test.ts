@@ -11,6 +11,11 @@ import { AppContext } from '@/components/appContext';
 import * as styles from '@/components/table-view/Table.styles';
 import Table from '@/components/visualization/table/Table';
 import { Show } from '@/constants/schema';
+import {
+  addIndexAction,
+  changeIndexUniqueAction,
+} from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -73,6 +78,43 @@ afterEach(() => {
 });
 
 describe('visualization Table', () => {
+  describe('alternate key marks', () => {
+    const marksOf = (m: Mounted) =>
+      Array.from(m.container.querySelectorAll('[data-alternate-key]')).map(
+        mark => mark.textContent
+      );
+
+    beforeEach(() => {
+      addColumn('c1', 'code');
+      addColumn('c2', 'name');
+      app.store.dispatchSync(
+        addIndexAction({ id: 'i1', tableId: TABLE_ID }),
+        addIndexColumnAction({
+          id: 'ic1',
+          indexId: 'i1',
+          tableId: TABLE_ID,
+          columnId: 'c2',
+        }),
+        changeIndexUniqueAction({ id: 'i1', tableId: TABLE_ID, value: true })
+      );
+    });
+
+    it('draws none until the setting shows them', async () => {
+      mounted = await mountAndFlush(tableTemplate(table), app);
+
+      expect(marksOf(mounted)).toEqual([]);
+    });
+
+    it('marks the key columns once shown, as the ERD scene does', async () => {
+      app.store.dispatchSync(
+        changeShowAction({ show: Show.columnAlternateKey, value: true })
+      );
+      mounted = await mountAndFlush(tableTemplate(table), app);
+
+      expect(marksOf(mounted)).toEqual(['', 'AK1.1']);
+    });
+  });
+
   describe('root element', () => {
     it('renders a fixed positioned preview at the given coordinates', async () => {
       mounted = await mountAndFlush(tableTemplate(table), app);

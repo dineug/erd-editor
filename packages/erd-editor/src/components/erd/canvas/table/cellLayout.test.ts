@@ -7,6 +7,7 @@ import {
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
+  ALTERNATE_KEY_MARK_X,
   CELL_UNDERLINE_Y,
   type ColumnCellWidths,
   getCellTextBaseline,
@@ -24,6 +25,7 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import {
   COLUMN_HEIGHT,
+  COLUMN_KEY_WIDTH,
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_PADDING,
   COLUMN_UNIQUE_WIDTH,
@@ -47,6 +49,7 @@ import { viewHeaderNameWidth } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 
 const WIDTHS: ColumnCellWidths = {
+  alternateKey: 0,
   name: 60,
   comment: 70,
   dataType: 80,
@@ -157,6 +160,15 @@ describe('the boxes a column row lays out', () => {
         width: 80,
       },
     ]);
+  });
+
+  it('starts past the room its table keeps for alternate key marks', () => {
+    const state = createState();
+    state.settings.columnOrder = [ColumnType.columnName];
+
+    expect(
+      getColumnCellSlots(state, { ...WIDTHS, alternateKey: 34 })[0].x
+    ).toBe(getColumnCellsX() + 34 + INPUT_MARGIN_RIGHT);
   });
 
   it('leaves out a cell its show bit is off for, and closes the gap', () => {
@@ -323,10 +335,21 @@ describe('the offsets a source lays its cells out at', () => {
 
   it('starts the cells past the badge its own source sizes', () => {
     expect(getColumnCellsX()).toBe(getColumnCellsX('document'));
+    expect(getColumnCellsX()).toBe(ALTERNATE_KEY_MARK_X);
+    expect(ALTERNATE_KEY_MARK_X).toBe(
+      TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
+    );
     expect(getColumnCellsX('flow')).toBe(
       TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP
     );
     expect(getColumnCellsX('flow')).toBeGreaterThan(getColumnCellsX());
+  });
+
+  it('puts a document row cell past the alternate key room, and no view cell', () => {
+    expect(getColumnCellsX('document', 40)).toBe(
+      ALTERNATE_KEY_MARK_X + 40 + INPUT_MARGIN_RIGHT
+    );
+    expect(getColumnCellsX('flow', 40)).toBe(getColumnCellsX('flow'));
   });
 
   /**

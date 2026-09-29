@@ -12,16 +12,24 @@ const staticText = (literals: { strings: TemplateStringsArray }) =>
   [...literals.strings].join(' ');
 
 describe('IndexesIndex.styles', () => {
-  it('exports the row, input, unique and iconButton tokens', () => {
+  it('exports the row, input, unique, alternateKey and iconButton tokens', () => {
     expect(Object.keys(styles)).toEqual([
       'row',
       'input',
       'unique',
+      'alternateKey',
       'iconButton',
     ]);
 
     const identifiers = Object.values(styles).map(String);
-    expect(new Set(identifiers).size).toBe(4);
+    expect(new Set(identifiers).size).toBe(5);
+  });
+
+  it('mutes the alternate key number on one line', () => {
+    const text = staticText(styles.alternateKey);
+
+    expect(text).toContain('color: var(--placeholder)');
+    expect(text).toContain('white-space: nowrap');
   });
 
   it('keeps the row transparent until it is hovered', () => {
