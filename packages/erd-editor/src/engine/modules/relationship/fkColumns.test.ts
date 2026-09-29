@@ -30,7 +30,27 @@ describe('isSingleWord', () => {
   });
 
   it('lets digits join the word they sit in', () => {
-    for (const name of ['id2', 'ID2', 'uuid4', '2fa', 'SHA256', 'Base64']) {
+    for (const name of [
+      'id2',
+      'ID2',
+      'uuid4',
+      '2fa',
+      'SHA256',
+      'Base64',
+      'md5sum',
+    ]) {
+      expect(isSingleWord(name), name).toBe(true);
+    }
+  });
+
+  it('reads case across digits, so an acronym running into lower case splits', () => {
+    for (const name of ['ID2code', 'SHA256sum']) {
+      expect(isSingleWord(name), name).toBe(false);
+    }
+  });
+
+  it('takes a compound in one case with no separator as one word', () => {
+    for (const name of ['memberid', 'userid', 'USERID', 'MEMBERID']) {
       expect(isSingleWord(name), name).toBe(true);
     }
   });
@@ -100,6 +120,9 @@ describe('toForeignKeyNames', () => {
     expect(toForeignKeyNames('order item', ['id'], [])).toEqual([
       'order item_id',
     ]);
+    expect(toForeignKeyNames('public.users', ['id'], [])).toEqual([
+      'public.users_id',
+    ]);
   });
 
   it('prefixes users.id, keeps member_id, userId and user_id, numbers a second users_id', () => {
@@ -140,9 +163,24 @@ describe('toForeignKeyNames', () => {
       'tenantCode',
       'IDCard',
       'order no',
+      'order-no',
+      'ID2code',
+      'SHA256sum',
     ]) {
       expect(toForeignKeyNames('user', [key], []), key).toEqual([key]);
     }
+  });
+
+  it('prefixes a compound written in one case, which has no break to keep', () => {
+    expect(toForeignKeyNames('members', ['memberid'], [])).toEqual([
+      'members_memberid',
+    ]);
+    expect(toForeignKeyNames('users', ['USERID'], [])).toEqual([
+      'users_USERID',
+    ]);
+    expect(toForeignKeyNames('files', ['md5sum'], [])).toEqual([
+      'files_md5sum',
+    ]);
   });
 
   it('keeps a plural or versioned acronym and prefixes a capitalized plural', () => {
