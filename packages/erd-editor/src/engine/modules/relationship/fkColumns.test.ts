@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  isSingleWord,
   toForeignKeyActions,
   toForeignKeyNames,
 } from '@/engine/modules/relationship/fkColumns';
@@ -21,6 +22,53 @@ function makeColumn(value: Partial<Column>): Column {
 
 const unnamed = { startTableName: '', endColumnNames: [] };
 
+describe('isSingleWord', () => {
+  it('takes a name of letters and digits in one case run as one word', () => {
+    for (const name of ['id', 'code', 'uuid', 'ID', 'Id', 'UUID', '아이디']) {
+      expect(isSingleWord(name), name).toBe(true);
+    }
+  });
+
+  it('lets digits join the word they sit in', () => {
+    for (const name of ['id2', 'ID2', 'uuid4', '2fa', 'SHA256', 'Base64']) {
+      expect(isSingleWord(name), name).toBe(true);
+    }
+  });
+
+  it('splits words at an underscore or any other character but a letter or digit', () => {
+    for (const name of [
+      'member_id',
+      'user_id',
+      'order_no',
+      'id_2',
+      '_id',
+      'order no',
+      'order-no',
+      'order.no',
+    ]) {
+      expect(isSingleWord(name), name).toBe(false);
+    }
+  });
+
+  it('splits words where the case steps up, or an acronym runs into a word', () => {
+    for (const name of [
+      'userId',
+      'UserID',
+      'tenantCode',
+      'IDCard',
+      'UUIDValue',
+      'id2Code',
+      'ID2Code',
+    ]) {
+      expect(isSingleWord(name), name).toBe(false);
+    }
+  });
+
+  it('takes no empty name as a word', () => {
+    expect(isSingleWord('')).toBe(false);
+  });
+});
+
 describe('toForeignKeyNames', () => {
   it('joins the start table name and the key name with an underscore', () => {
     expect(toForeignKeyNames('user', ['id'], [])).toEqual(['user_id']);
@@ -40,22 +88,69 @@ describe('toForeignKeyNames', () => {
     ]);
   });
 
-  it('keeps a key name that already starts with the table name and an underscore', () => {
-    expect(toForeignKeyNames('user', ['user_id'], [])).toEqual(['user_id']);
-    expect(toForeignKeyNames('User', ['user_id'], [])).toEqual(['user_id']);
-    expect(toForeignKeyNames('user', ['USER_CODE'], [])).toEqual(['USER_CODE']);
+  it('prefixes users.id, keeps member_id, userId and user_id, numbers a second users_id', () => {
+    expect(toForeignKeyNames('users', ['id'], [])).toEqual(['users_id']);
+    expect(toForeignKeyNames('members', ['member_id'], [])).toEqual([
+      'member_id',
+    ]);
+    expect(toForeignKeyNames('user', ['userId'], [])).toEqual(['userId']);
+    expect(toForeignKeyNames('users', ['user_id'], [])).toEqual(['user_id']);
+    expect(toForeignKeyNames('users', ['id'], ['users_id'])).toEqual([
+      'users_id_2',
+    ]);
   });
 
-  it('keeps a key name equal to the table name', () => {
+  it('prefixes a single word key, acronyms and digits included', () => {
+    expect(
+      ['ID', 'Id', 'uuid', 'UUID', 'id2', 'ID2'].map(
+        key => toForeignKeyNames('users', [key], [])[0]
+      )
+    ).toEqual([
+      'users_ID',
+      'users_Id',
+      'users_uuid',
+      'users_UUID',
+      'users_id2',
+      'users_ID2',
+    ]);
+  });
+
+  it('keeps a key name of several words as it is, whatever table it names', () => {
+    for (const key of [
+      'member_id',
+      'user_id',
+      'USER_CODE',
+      'order_no',
+      'userId',
+      'UserID',
+      'tenantCode',
+      'IDCard',
+      'order no',
+    ]) {
+      expect(toForeignKeyNames('user', [key], []), key).toEqual([key]);
+    }
+  });
+
+  it('keeps a single word key equal to the table name, without case', () => {
     expect(toForeignKeyNames('user', ['user'], [])).toEqual(['user']);
     expect(toForeignKeyNames('user', ['USER'], [])).toEqual(['USER']);
   });
 
-  it('prefixes a key name that only begins with the table name', () => {
+  it('prefixes a single word key that only begins with the table name', () => {
     expect(toForeignKeyNames('user', ['username'], [])).toEqual([
       'user_username',
     ]);
-    expect(toForeignKeyNames('user', ['userId'], [])).toEqual(['user_userId']);
+  });
+
+  it('tests each member of a composite key on its own', () => {
+    expect(toForeignKeyNames('orders', ['tenant_id', 'id'], [])).toEqual([
+      'tenant_id',
+      'orders_id',
+    ]);
+    expect(toForeignKeyNames('orders', ['orderNo', 'ID'], [])).toEqual([
+      'orderNo',
+      'orders_ID',
+    ]);
   });
 
   it('falls back to the key name for a blank table name', () => {
@@ -95,9 +190,12 @@ describe('toForeignKeyNames', () => {
     expect(toForeignKeyNames('', ['id'], ['id'])).toEqual(['id_2']);
   });
 
-  it('numbers a key already named after the table when the table holds it', () => {
+  it('numbers a kept key name the end table already holds', () => {
     expect(toForeignKeyNames('user', ['user_id'], ['user_id'])).toEqual([
       'user_id_2',
+    ]);
+    expect(toForeignKeyNames('members', ['member_id'], ['member_id'])).toEqual([
+      'member_id_2',
     ]);
   });
 
@@ -108,8 +206,11 @@ describe('toForeignKeyNames', () => {
     ]);
     expect(toForeignKeyNames('user', ['id', 'id_2'], ['user_id'])).toEqual([
       'user_id_2',
-      'user_id_2_2',
+      'id_2',
     ]);
+    expect(toForeignKeyNames('user', ['id', 'user_id_2'], ['user_id'])).toEqual(
+      ['user_id_3', 'user_id_2']
+    );
   });
 
   it('lets a member that keeps its name claim it before a prefixed one, in either order', () => {

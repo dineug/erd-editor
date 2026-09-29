@@ -20,19 +20,32 @@ export type ForeignKeyNaming = {
 
 const toNameKey = (name: string) => name.trim().toLowerCase();
 
+/** Letters, marks and digits only; any other character splits words. */
+const WORD_CHARACTERS = /^[\p{L}\p{M}\p{N}]+$/u;
+
+/** A lower case letter before an upper case one, or an acronym before a word. */
+const CASE_BOUNDARY = /\p{Ll}\p{Lu}|\p{Lu}\p{Lu}\p{Ll}/u;
+
+/** Marks and digits, which join the word they sit in. */
+const CASELESS = /[\p{M}\p{N}]/gu;
+
 /**
- * Joins the table name and the key name with an underscore, unless either is
- * blank or the key name already is the table name or starts with it and an
- * underscore, compared without case; then the key name stands alone.
+ * Tells a name of one word, id, ID, Id, UUID or id2, from one of several,
+ * user_id, userId, UserID or IDCard: one word is letters and digits with no
+ * case change from lower to upper and no acronym run into a capitalized word.
+ */
+export const isSingleWord = (name: string) =>
+  WORD_CHARACTERS.test(name) && !CASE_BOUNDARY.test(name.replace(CASELESS, ''));
+
+/**
+ * Joins the table name and the key name with an underscore when the key name
+ * is a single word other than the table name, compared without case; a blank
+ * table name, or a key name of several words, leaves the key name alone.
  */
 function prefixKeyName(tableName: string, keyName: string): string {
   const table = tableName.trim();
   const key = keyName.trim();
-  if (!table || !key) return key;
-
-  const tableKey = toNameKey(table);
-  const keyKey = toNameKey(key);
-  if (keyKey === tableKey || keyKey.startsWith(tableKey + SEPARATOR)) {
+  if (!table || !isSingleWord(key) || toNameKey(key) === toNameKey(table)) {
     return key;
   }
 
@@ -40,9 +53,9 @@ function prefixKeyName(tableName: string, keyName: string): string {
 }
 
 /**
- * Names the foreign key column of each key after the start table, user_id for
- * the key id of user, and numbers a name the end table or another key took,
- * user_id_2, without case; the keys that keep their own names claim them first.
+ * Names the foreign key column of each single word key after the start table,
+ * user_id for the key id of user, keeps other key names, and numbers a name
+ * already taken, user_id_2, without case; kept names claim theirs first.
  */
 export function toForeignKeyNames(
   startTableName: string,

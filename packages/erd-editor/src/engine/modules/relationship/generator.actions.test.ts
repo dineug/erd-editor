@@ -264,6 +264,37 @@ describe('addRelationshipAction$', () => {
     ]);
   });
 
+  it('keeps a key name of several words and prefixes the single word beside it', () => {
+    seedTable(
+      store,
+      't1',
+      [
+        { ...idColumn, name: 'member_id' },
+        { ...codeColumn, name: 'code' },
+      ],
+      'members'
+    );
+    seedTable(store, 't2', [], 'posts');
+
+    expect(
+      yieldsOf(store, addRelationshipAction$('t1', 't2', RelationshipType.OneN))
+    ).toEqual([
+      [
+        ...foreignKeyActions('id-1', 't2', { ...idColumn, name: 'member_id' }),
+        ...foreignKeyActions('id-2', 't2', {
+          ...codeColumn,
+          name: 'members_code',
+        }),
+        addRelationshipAction({
+          id: 'id-3',
+          relationshipType: RelationshipType.OneN,
+          start: { tableId: 't1', columnIds: ['c1', 'c2'] },
+          end: { tableId: 't2', columnIds: ['id-1', 'id-2'] },
+        }),
+      ],
+    ]);
+  });
+
   it('leaves the foreign key of a new, unnamed primary key unnamed', () => {
     seedTable(store, 't1', [nameColumn], 'country');
     seedTable(store, 't2', [], 'city');
@@ -511,6 +542,25 @@ describe('addRelationshipAction$ through a real store', () => {
       name: 'user_id',
       dataType: 'bigint',
     });
+  });
+
+  it('numbers a kept key name on a second relationship and a self reference', () => {
+    const rxStore = createRxTestStore();
+    seedTable(rxStore, 't1', [{ ...idColumn, name: 'userId' }], 'user');
+    seedTable(rxStore, 't2', [], 'post');
+    const namesOf = (tableId: string) =>
+      rxStore.state.collections.tableEntities[tableId].columnIds.map(
+        id => columnOf(rxStore, id).name
+      );
+
+    for (const endTableId of ['t2', 't2', 't1']) {
+      rxStore.dispatchSync(
+        addRelationshipAction$('t1', endTableId, RelationshipType.ZeroN)
+      );
+    }
+
+    expect(namesOf('t2')).toEqual(['userId', 'userId_2']);
+    expect(namesOf('t1')).toEqual(['userId', 'userId_2']);
   });
 
   it('dispatches nothing and records no history for an unknown table', () => {

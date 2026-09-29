@@ -169,6 +169,16 @@ describe('selectTableAction$ foreign key copy', () => {
     ]);
   });
 
+  it('keeps a key name of several words the pointer drew from', () => {
+    seedTable('t1', [{ ...idColumn, name: 'UserID' }], 'user');
+    seedTable('t2', [], 'post');
+    startDrawingFrom('t1');
+
+    expect(flattenFromFreshIds(selectTableAction$('t2', false))).toContainEqual(
+      changeColumnNameAction({ id: 'id-1', tableId: 't2', value: 'UserID' })
+    );
+  });
+
   it('copies onto the start table itself when it is also the end table', () => {
     seedTable('t1', [idColumn]);
     startDrawingFrom('t1');

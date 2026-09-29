@@ -639,6 +639,25 @@ describe('Erd - drawing a relationship with a press on each table', () => {
     ).toEqual(['user_id', 'user_id_2']);
     expect(rowTextsOf(editor, 't1')[1][0]).toBe('user_id');
   });
+
+  it('keeps a key name of several words, numbered apart, and draws the rows', async () => {
+    const editor = await mountEditor();
+    const { store } = editor.app;
+    const [keyId] = store.state.collections.tableEntities.t1.columnIds;
+    store.dispatchSync(
+      changeTableNameAction({ id: 't1', value: 'members' }),
+      changeColumnNameAction({ id: keyId, tableId: 't1', value: 'member_id' }),
+      changeColumnPrimaryKeyAction({ id: keyId, tableId: 't1', value: true })
+    );
+
+    await drawBetween(editor, 't1', 't2');
+    await drawBetween(editor, 't1', 't1');
+
+    expect(columnNamesOf(editor, 't2')).toEqual(['', 'member_id']);
+    expect(columnNamesOf(editor, 't1')).toEqual(['member_id', 'member_id_2']);
+    expect(rowTextsOf(editor, 't2')[1][0]).toBe('member_id');
+    expect(rowTextsOf(editor, 't1')[1][0]).toBe('member_id_2');
+  });
 });
 
 /**
