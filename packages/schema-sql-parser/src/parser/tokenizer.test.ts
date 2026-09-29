@@ -23,9 +23,9 @@ describe('TokenType', () => {
 
 describe('tokenizer', () => {
   describe('quoted flag', () => {
-    it('marks every quoting style as quoted', () => {
+    it('marks every quoting style with its opening delimiter', () => {
       expect(tokenizer('`a` "b" \'c\' [d]').map(token => token.quoted)).toEqual(
-        [true, true, true, true]
+        ['`', '"', "'", '[']
       );
     });
 
@@ -95,25 +95,39 @@ describe('tokenizer', () => {
   describe('bracket quoting', () => {
     it('reads a bracket quoted identifier as a single string token', () => {
       expect(tokenizer('[my table]')).toEqual([
-        { type: TokenType.string, value: 'my table', quoted: true },
+        { type: TokenType.string, value: 'my table', quoted: '[' },
       ]);
     });
 
     it('keeps break characters inside brackets', () => {
       expect(tokenizer('[a.b,c(d)]')).toEqual([
-        { type: TokenType.string, value: 'a.b,c(d)', quoted: true },
+        { type: TokenType.string, value: 'a.b,c(d)', quoted: '[' },
       ]);
     });
 
     it('produces an empty string token for an empty bracket pair', () => {
       expect(tokenizer('[]')).toEqual([
-        { type: TokenType.string, value: '', quoted: true },
+        { type: TokenType.string, value: '', quoted: '[' },
+      ]);
+    });
+
+    // ]] is no escape here: a nested array literal closes on it, and read as
+    // one it would carry the literal on through the rest of the source.
+    it('ends a bracket at its first closing bracket, even a doubled one', () => {
+      expect(pairs(tokenizer('ARRAY[[1],[2]], b'))).toEqual([
+        ['string', 'ARRAY'],
+        ['string', '[1'],
+        ['comma', ','],
+        ['string', '2'],
+        ['rightBracket', ']'],
+        ['comma', ','],
+        ['string', 'b'],
       ]);
     });
 
     it('consumes the rest of the source when the bracket is unterminated', () => {
       expect(tokenizer('[abc')).toEqual([
-        { type: TokenType.string, value: 'abc', quoted: true },
+        { type: TokenType.string, value: 'abc', quoted: '[' },
       ]);
     });
 
@@ -140,25 +154,32 @@ describe('tokenizer', () => {
   describe('double quote quoting', () => {
     it('reads a double quoted identifier as a single string token', () => {
       expect(tokenizer('"my table"')).toEqual([
-        { type: TokenType.string, value: 'my table', quoted: true },
+        { type: TokenType.string, value: 'my table', quoted: '"' },
       ]);
     });
 
     it('keeps break characters inside double quotes', () => {
       expect(tokenizer('"a.b;c"')).toEqual([
-        { type: TokenType.string, value: 'a.b;c', quoted: true },
+        { type: TokenType.string, value: 'a.b;c', quoted: '"' },
       ]);
     });
 
     it('produces an empty string token for an empty double quote pair', () => {
       expect(tokenizer('""')).toEqual([
-        { type: TokenType.string, value: '', quoted: true },
+        { type: TokenType.string, value: '', quoted: '"' },
+      ]);
+    });
+
+    it('reads a doubled double quote as one quote of the identifier', () => {
+      expect(tokenizer('"a""b" """"')).toEqual([
+        { type: TokenType.string, value: 'a"b', quoted: '"' },
+        { type: TokenType.string, value: '"', quoted: '"' },
       ]);
     });
 
     it('consumes the rest of the source when the double quote is unterminated', () => {
       expect(tokenizer('"abc')).toEqual([
-        { type: TokenType.string, value: 'abc', quoted: true },
+        { type: TokenType.string, value: 'abc', quoted: '"' },
       ]);
     });
   });
@@ -166,25 +187,37 @@ describe('tokenizer', () => {
   describe('single quote quoting', () => {
     it('reads a single quoted literal as a single string token', () => {
       expect(tokenizer("'hello world'")).toEqual([
-        { type: TokenType.string, value: 'hello world', quoted: true },
+        { type: TokenType.string, value: 'hello world', quoted: "'" },
       ]);
     });
 
     it('keeps break characters inside single quotes', () => {
       expect(tokenizer("'(1,2)'")).toEqual([
-        { type: TokenType.string, value: '(1,2)', quoted: true },
+        { type: TokenType.string, value: '(1,2)', quoted: "'" },
       ]);
     });
 
     it('produces an empty string token for an empty single quote pair', () => {
       expect(tokenizer("''")).toEqual([
-        { type: TokenType.string, value: '', quoted: true },
+        { type: TokenType.string, value: '', quoted: "'" },
+      ]);
+    });
+
+    // Read as two literals, 'it''s' left a stray s behind and a COMMENT kept
+    // only it.
+    it('reads a doubled single quote as one quote of the literal', () => {
+      expect(tokenizer("'it''s' '''' '',x")).toEqual([
+        { type: TokenType.string, value: "it's", quoted: "'" },
+        { type: TokenType.string, value: "'", quoted: "'" },
+        { type: TokenType.string, value: '', quoted: "'" },
+        { type: TokenType.comma, value: ',' },
+        { type: TokenType.string, value: 'x' },
       ]);
     });
 
     it('consumes the rest of the source when the single quote is unterminated', () => {
       expect(tokenizer("'abc")).toEqual([
-        { type: TokenType.string, value: 'abc', quoted: true },
+        { type: TokenType.string, value: 'abc', quoted: "'" },
       ]);
     });
   });
@@ -192,25 +225,31 @@ describe('tokenizer', () => {
   describe('backtick quoting', () => {
     it('reads a backtick quoted identifier as a single string token', () => {
       expect(tokenizer('`my table`')).toEqual([
-        { type: TokenType.string, value: 'my table', quoted: true },
+        { type: TokenType.string, value: 'my table', quoted: '`' },
       ]);
     });
 
     it('keeps break characters inside backticks', () => {
       expect(tokenizer('`a.b`')).toEqual([
-        { type: TokenType.string, value: 'a.b', quoted: true },
+        { type: TokenType.string, value: 'a.b', quoted: '`' },
       ]);
     });
 
     it('produces an empty string token for an empty backtick pair', () => {
       expect(tokenizer('``')).toEqual([
-        { type: TokenType.string, value: '', quoted: true },
+        { type: TokenType.string, value: '', quoted: '`' },
+      ]);
+    });
+
+    it('reads a doubled backtick as one backtick of the identifier', () => {
+      expect(tokenizer('`a``b`')).toEqual([
+        { type: TokenType.string, value: 'a`b', quoted: '`' },
       ]);
     });
 
     it('consumes the rest of the source when the backtick is unterminated', () => {
       expect(tokenizer('`abc')).toEqual([
-        { type: TokenType.string, value: 'abc', quoted: true },
+        { type: TokenType.string, value: 'abc', quoted: '`' },
       ]);
     });
   });

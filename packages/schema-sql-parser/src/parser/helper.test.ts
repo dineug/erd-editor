@@ -71,7 +71,7 @@ const str = (value: string): Token => ({ type: TokenType.string, value });
 const quoted = (value: string): Token => ({
   type: TokenType.string,
   value,
-  quoted: true,
+  quoted: '"',
 });
 const words = (...values: string[]): Token[] => values.map(str);
 const period: Token = { type: TokenType.period, value: '.' };
@@ -428,7 +428,7 @@ describe('matchCreateTable', () => {
   it('refuses a quoted modifier, which is an identifier', () => {
     const tokens: Token[] = [
       { type: TokenType.string, value: 'CREATE' },
-      { type: TokenType.string, value: 'OR', quoted: true },
+      { type: TokenType.string, value: 'OR', quoted: '"' },
       { type: TokenType.string, value: 'TABLE' },
     ];
 

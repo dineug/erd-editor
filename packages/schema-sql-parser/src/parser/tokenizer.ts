@@ -1,11 +1,14 @@
 import { ValuesType } from '@/internal-types';
 
+export type Quote = '"' | "'" | '`' | '[';
+
 export type Token = {
   type: TokenType;
   value: string;
-  // Set on tokens that came out of ", ', backtick or [] quoting, so a
-  // quoted identifier such as key is never read back as the KEY keyword.
-  quoted?: boolean;
+  // The opening delimiter of a token that came out of quoting, so a quoted
+  // identifier such as key is never read back as the KEY keyword, and a
+  // quoted ENUM value can be written back inside the quotes it had.
+  quoted?: Quote;
 };
 
 export const TokenType = {
@@ -71,6 +74,30 @@ export function tokenizer(source: string): Token[] {
   let pos = 0;
 
   const isChar = () => pos < source.length;
+
+  // A doubled quote inside a quoted token is one quote of its value, the way
+  // SQL escapes it: 'it''s'. Not inside brackets, where ]] also ends a nested
+  // array literal, ARRAY[[1, 2]].
+  const readQuoted = (quote: Quote) => {
+    const close = quote === '[' ? ']' : quote;
+    let value = '';
+    pos++;
+
+    while (isChar()) {
+      const char = source[pos];
+
+      if (char === close) {
+        if (quote === '[' || source[pos + 1] !== close) break;
+        pos++;
+      }
+
+      value += char;
+      pos++;
+    }
+
+    tokens.push({ type: TokenType.string, value, quoted: quote });
+    pos++;
+  };
 
   while (isChar()) {
     let char = source[pos];
@@ -152,58 +179,22 @@ export function tokenizer(source: string): Token[] {
     }
 
     if (match.leftBracket(char)) {
-      let value = '';
-      char = source[++pos];
-
-      while (isChar() && !match.rightBracket(char)) {
-        value += char;
-        char = source[++pos];
-      }
-
-      tokens.push({ type: TokenType.string, value, quoted: true });
-      pos++;
+      readQuoted('[');
       continue;
     }
 
     if (match.doubleQuote(char)) {
-      let value = '';
-      char = source[++pos];
-
-      while (isChar() && !match.doubleQuote(char)) {
-        value += char;
-        char = source[++pos];
-      }
-
-      tokens.push({ type: TokenType.string, value, quoted: true });
-      pos++;
+      readQuoted('"');
       continue;
     }
 
     if (match.singleQuote(char)) {
-      let value = '';
-      char = source[++pos];
-
-      while (isChar() && !match.singleQuote(char)) {
-        value += char;
-        char = source[++pos];
-      }
-
-      tokens.push({ type: TokenType.string, value, quoted: true });
-      pos++;
+      readQuoted("'");
       continue;
     }
 
     if (match.backtick(char)) {
-      let value = '';
-      char = source[++pos];
-
-      while (isChar() && !match.backtick(char)) {
-        value += char;
-        char = source[++pos];
-      }
-
-      tokens.push({ type: TokenType.string, value, quoted: true });
-      pos++;
+      readQuoted('`');
       continue;
     }
 
