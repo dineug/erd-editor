@@ -23,7 +23,10 @@ const toNameKey = (name: string) => name.trim().toLowerCase();
 /** Letters, marks and digits only; any other character splits words. */
 const WORD_CHARACTERS = /^[\p{L}\p{M}\p{N}]+$/u;
 
-/** A lower case letter before an upper case one, or an acronym before a word. */
+/**
+ * A lower case letter before an upper case one, or an upper case letter before
+ * a capitalized word, as camelCase splits: IDCard, and so IDs and UUIDv4 too.
+ */
 const CASE_BOUNDARY = /\p{Ll}\p{Lu}|\p{Lu}\p{Lu}\p{Ll}/u;
 
 /** Marks and digits, which join the word they sit in. */

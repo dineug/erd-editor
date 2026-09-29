@@ -64,6 +64,20 @@ describe('isSingleWord', () => {
     }
   });
 
+  it('splits a plural or versioned acronym as camelCase does, but not a capitalized plural', () => {
+    for (const name of ['IDs', 'UUIDs', 'PKs', 'UUIDv4', 'IPv6', 'iD']) {
+      expect(isSingleWord(name), name).toBe(false);
+    }
+    expect(isSingleWord('Ids')).toBe(true);
+  });
+
+  it('finds no case step in a script without case, so only a separator splits it', () => {
+    for (const name of ['회원아이디', '아이디ID']) {
+      expect(isSingleWord(name), name).toBe(true);
+    }
+    expect(isSingleWord('회원_아이디')).toBe(false);
+  });
+
   it('takes no empty name as a word', () => {
     expect(isSingleWord('')).toBe(false);
   });
@@ -129,6 +143,26 @@ describe('toForeignKeyNames', () => {
     ]) {
       expect(toForeignKeyNames('user', [key], []), key).toEqual([key]);
     }
+  });
+
+  it('keeps a plural or versioned acronym and prefixes a capitalized plural', () => {
+    expect(
+      ['IDs', 'UUIDv4', 'Ids'].map(
+        key => toForeignKeyNames('users', [key], [])[0]
+      )
+    ).toEqual(['IDs', 'UUIDv4', 'users_Ids']);
+  });
+
+  it('keeps a key with a leading underscore, numbered against the same name in the child', () => {
+    expect(toForeignKeyNames('users', ['_id'], [])).toEqual(['_id']);
+    expect(toForeignKeyNames('users', ['_id'], ['_id'])).toEqual(['_id_2']);
+  });
+
+  it('prefixes a key in a script without case unless a separator splits it', () => {
+    expect(toForeignKeyNames('회원', ['아이디'], [])).toEqual(['회원_아이디']);
+    expect(toForeignKeyNames('회원', ['회원_아이디'], [])).toEqual([
+      '회원_아이디',
+    ]);
   });
 
   it('keeps a single word key equal to the table name, without case', () => {
