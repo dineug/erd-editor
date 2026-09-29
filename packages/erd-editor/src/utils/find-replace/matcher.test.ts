@@ -38,6 +38,30 @@ describe('createMatcher', () => {
     expect(createMatcher('user(', DEFAULT_FIND_OPTIONS).error).toBeNull();
   });
 
+  it('reads the identity escapes typed in names, which unicode mode refuses', () => {
+    const text = 'user_id a-b x#y key:value';
+
+    expect(texts(text, matcherOf('user\\_id', { regex: true }))).toEqual([
+      'user_id',
+    ]);
+    expect(texts(text, matcherOf('a\\-b', { regex: true }))).toEqual(['a-b']);
+    expect(texts(text, matcherOf('x\\#y', { regex: true }))).toEqual(['x#y']);
+    expect(texts(text, matcherOf('y\\:v', { regex: true }))).toEqual(['y:v']);
+    expect(
+      matcherOf('user\\_(id)', { regex: true }).replace(text, 'u_$1')
+    ).toBe('u_id a-b x#y key:value');
+  });
+
+  it('keeps unicode mode for a pattern that parses there, property classes and all', () => {
+    const matcher = matcherOf('\\p{Lu}\\p{Ll}+', {
+      regex: true,
+      matchCase: true,
+    });
+
+    expect(texts('Éclair and Bob', matcher)).toEqual(['Éclair', 'Bob']);
+    expect(texts('😀x', matcherOf('^.x$', { regex: true }))).toEqual(['😀x']);
+  });
+
   it('finds plain text in any case by default, special characters and all', () => {
     const matcher = matcherOf('user.id');
 

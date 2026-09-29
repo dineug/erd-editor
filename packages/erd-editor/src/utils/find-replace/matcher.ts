@@ -82,6 +82,19 @@ export function expandReplacement(
 }
 
 /**
+ * A typed pattern, in unicode mode where it parses there, for \p{L} and whole
+ * code points, and without it where it does not: unicode mode refuses the
+ * identity escapes people type in names, such as \_ and \-.
+ */
+function compilePattern(source: string, flags: string): RegExp {
+  try {
+    return new RegExp(source, `${flags}u`);
+  } catch {
+    return new RegExp(source, flags);
+  }
+}
+
+/**
  * Builds the search a find and replace runs over every field, or says why
  * there is none: nothing to look for, or a regular expression that does not parse.
  *
@@ -94,10 +107,12 @@ export function createMatcher(
 ): MatcherResult {
   if (!query) return { matcher: null, error: 'empty' };
 
-  const flags = options.matchCase ? 'gu' : 'giu';
+  const flags = options.matchCase ? 'g' : 'gi';
   let pattern: RegExp;
   try {
-    pattern = new RegExp(options.regex ? query : escapeRegExp(query), flags);
+    pattern = options.regex
+      ? compilePattern(query, flags)
+      : new RegExp(escapeRegExp(query), `${flags}u`);
   } catch {
     return { matcher: null, error: 'invalid' };
   }
