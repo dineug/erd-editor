@@ -12,6 +12,8 @@ import {
   HangulTier,
   hangulTier,
   matchText,
+  rankHits,
+  TextHit,
 } from '@/components/quick-search/hangul';
 import { createMatcher, DEFAULT_FIND_OPTIONS } from '@/utils/find-replace';
 
@@ -32,6 +34,9 @@ const matcherOf = (keyword: string) => {
   if (!matcher) throw new Error('no matcher');
   return matcher;
 };
+
+/** The text as macOS stores a file name, each syllable in conjoining jamo. */
+const nfd = (text: string) => text.normalize('NFD');
 
 /** What HighlightedText lights for the words, through the palette's chunks. */
 const lit = (text: string, searchWords: string[]) =>
@@ -66,6 +71,12 @@ describe('hangulQueryOf', () => {
     });
     expect(hangulQueryOf('ㅅㅏ')?.choseong).toBeNull();
   });
+
+  it('splits a cluster a Windows IME composed of two initials, and keeps a double consonant whole', () => {
+    expect(hangulQueryOf('ㅄ')).toEqual({ jamo: 'ㅂㅅ', choseong: 'ㅂㅅ' });
+    expect(hangulQueryOf('ㄳ ㄱ')?.choseong).toBe('ㄱㅅㄱ');
+    expect(hangulQueryOf('ㄲㅅ')?.choseong).toBe('ㄲㅅ');
+  });
 });
 
 describe('hangulFormsOf', () => {
@@ -79,24 +90,44 @@ describe('hangulFormsOf', () => {
     '😀사용 자',
     'Hello World',
     '',
+    nfd('사용자'),
+    nfd('USER_값 없음'),
+    `a${nfd('사')}😀${nfd('용')}`,
+    // A final after an open syllable composes; after a closed one it cannot.
+    '가\u11a8',
+    '각\u11a8',
+    `가${nfd('나')}`,
+    // An archaic initial composes into no modern syllable.
+    '\u1140\u1161',
   ];
 
-  it('spells what disassemble and getChoseong read, lower-cased and without spaces', () => {
+  it('spells what disassemble reads of the text composed and what getChoseong reads, clusters split and spaces dropped', () => {
     for (const text of SAMPLES) {
       const forms = hangulFormsOf(text);
-      expect(forms.jamo).toBe(disassemble(text).toLowerCase());
-      expect(forms.choseong).toBe(getChoseong(text).replace(/\s/g, ''));
+      expect(forms.jamo).toBe(disassemble(text.normalize('NFC')).toLowerCase());
+      expect(forms.choseong).toBe(
+        disassemble(getChoseong(text)).replace(/\s/g, '')
+      );
     }
   });
 
-  it('spells a text once and keeps it, up to a limit it then starts over from', () => {
+  it('reads a lone conjoining initial as its compatibility letter, as getChoseong does', () => {
+    expect(hangulFormsOf('\u1109')).toEqual({ jamo: 'ㅅ', choseong: 'ㅅ' });
+    expect(getChoseong('\u1109')).toBe('ㅅ');
+  });
+
+  it('keeps a text a generation past the limit, then spells it again', () => {
     const first = hangulFormsOf('캐시 확인');
     expect(hangulFormsOf('캐시 확인')).toBe(first);
 
     for (let index = 0; index < HANGUL_CACHE_LIMIT; index++) {
       hangulFormsOf(`가${index}`);
     }
+    expect(hangulFormsOf('캐시 확인')).toBe(first);
 
+    for (let index = 0; index < HANGUL_CACHE_LIMIT * 2; index++) {
+      hangulFormsOf(`나${index}`);
+    }
     const again = hangulFormsOf('캐시 확인');
     expect(again).not.toBe(first);
     expect(again).toEqual(first);
@@ -133,6 +164,36 @@ describe('hangulTier', () => {
     // A compound consonant is one initial, and two jamo.
     expect(hangulTier('ㄳ', queryOf('ㄱㅅ'))).toBe(HangulTier.exact);
     expect(hangulTier('ㄳㄱㅅ', queryOf('ㄱㅅ'))).toBe(HangulTier.prefix);
+  });
+
+  it('holds every value a Windows IME hands over while the initials of a name are typed', () => {
+    const typed: Array<[string, string[]]> = [
+      ['부서', ['ㅂ', 'ㅄ']],
+      ['배송지', ['ㅂ', 'ㅄ', 'ㅄㅈ']],
+      ['검색 기록', ['ㄱ', 'ㄳ', 'ㄳㄱ', 'ㄳㄱㄹ']],
+      ['로그', ['ㄹ', 'ㄺ']],
+      ['가상', ['ㄱ', 'ㄳ']],
+      ['방식', ['ㅂ', 'ㅄ']],
+    ];
+
+    for (const [text, steps] of typed) {
+      for (const step of steps) {
+        expect(hangulTier(text, queryOf(step))).not.toBeNull();
+      }
+    }
+    expect(hangulTier('부서', queryOf('ㅄ'))).toBe(HangulTier.exact);
+    expect(hangulTier('검색 기록', queryOf('ㄳㄱㄹ'))).toBe(HangulTier.exact);
+    // A text's own cluster holds the pair and the cluster alike.
+    expect(hangulTier('ㄳ', queryOf('ㄳ'))).toBe(HangulTier.exact);
+  });
+
+  it('holds a decomposed text as its composed twin', () => {
+    for (const keyword of ['ㅅㅇㅈ', '상', '사용자']) {
+      expect(hangulTier(nfd('사용자'), queryOf(keyword))).toBe(
+        hangulTier('사용자', queryOf(keyword))
+      );
+    }
+    expect(hangulTier(nfd('사용자'), queryOf('ㅅㅇㅈ'))).toBe(HangulTier.exact);
   });
 
   it('holds Hangul after Latin, in any case', () => {
@@ -174,6 +235,18 @@ describe('hangulRanges', () => {
     expect(covered('user😀사', 'user😀사')).toEqual(['user😀사']);
   });
 
+  it('covers a lone cluster and the syllables after it', () => {
+    expect(covered('ㄳ과', 'ㅅㄱ')).toEqual(['ㄳ과', 'ㄳ과']);
+    expect(covered('검색 기록', 'ㄳㄱ')).toEqual(['검색 기']);
+  });
+
+  it('covers every jamo of a decomposed syllable, never part of one', () => {
+    expect(covered(nfd('사용자'), '상')).toEqual([nfd('사용')]);
+    expect(covered(nfd('주문 내역'), 'ㅈㅁㄴㅇ')).toEqual([nfd('주문 내역')]);
+    const mixed = `a${nfd('사')}😀${nfd('용')}`;
+    expect(covered(mixed, 'ㅅㅇ')).toEqual([`${nfd('사')}😀${nfd('용')}`]);
+  });
+
   it('finds nothing in a text without Hangul', () => {
     expect(hangulRanges('users', queryOf('사'))).toEqual([]);
   });
@@ -189,15 +262,44 @@ describe('matchText', () => {
   it('falls back on the Hangul letters, which only the palette reads', () => {
     expect(
       matchText('주문한 사용자', matcherOf('사요'), queryOf('사요'))
-    ).toEqual({ start: 4, end: 6, literal: false });
-    expect(
-      matchText('주문한 사용자', matcherOf('ㅅㅇㅈ'), queryOf('ㅅㅇㅈ'))
-    ).toEqual({ start: 4, end: 7, literal: false });
+    ).toEqual({ start: 4, end: 6, literal: false, tier: HangulTier.inside });
+    expect(matchText('사용자', matcherOf('ㅅㅇㅈ'), queryOf('ㅅㅇㅈ'))).toEqual(
+      { start: 0, end: 3, literal: false, tier: HangulTier.exact }
+    );
   });
 
   it('holds nothing without a Hangul keyword or a Hangul hit', () => {
     expect(matchText('users', matcherOf('xyz'), null)).toBeNull();
     expect(matchText('사용자', matcherOf('주'), queryOf('주'))).toBeNull();
+  });
+});
+
+describe('rankHits', () => {
+  const hitOf = (name: string, hit: TextHit) => ({ name, hit });
+  const typed = (name: string) =>
+    hitOf(name, { start: 0, end: 1, literal: true });
+  const spelled = (name: string, tier: HangulTier) =>
+    hitOf(name, { start: 0, end: 1, literal: false, tier });
+
+  it('puts the hits as typed first as they came, then the spelled ones closest first', () => {
+    const hits = [
+      spelled('inside', HangulTier.inside),
+      typed('typed 1'),
+      spelled('prefix 1', HangulTier.prefix),
+      spelled('exact', HangulTier.exact),
+      typed('typed 2'),
+      spelled('prefix 2', HangulTier.prefix),
+    ];
+
+    expect(rankHits(hits).map(({ name }) => name)).toEqual([
+      'typed 1',
+      'typed 2',
+      'exact',
+      'prefix 1',
+      'prefix 2',
+      'inside',
+    ]);
+    expect(hits[0].name).toBe('inside');
   });
 });
 
@@ -216,5 +318,6 @@ describe('findPaletteChunks', () => {
     expect(lit('user사용자', ['user사'])).toEqual(['user사']);
     expect(lit('사용자 사용', ['사용'])).toEqual(['사용', '사용']);
     expect(lit('😀사용 İ자', ['ㅅㅇ', 'ㅈ'])).toEqual(['사용', '자']);
+    expect(lit(nfd('사용자'), ['상'])).toEqual([nfd('사용')]);
   });
 });

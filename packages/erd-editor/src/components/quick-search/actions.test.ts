@@ -1164,15 +1164,15 @@ describe('rankPaletteActions / Hangul', () => {
     seedHangulDocument(app);
   });
 
-  it('puts a table held by its initials above the fields, which follow in document order', () => {
+  it('puts a table held by its initials above the fields, which follow whole, from the start, then inside', () => {
     const rows = paletteSearch('ㅅㅇㅈ');
 
     expect(rows.map(({ name, keywords }) => [name, keywords])).toEqual([
       ['사용자', 'Table'],
-      ['사용자 고유 번호', '사용자.아이디 · Column comment'],
       ['사용자', '주문 내역.사용자 · Column'],
-      ['주문한 사용자', '주문 내역.사용자 · Column comment'],
+      ['사용자 고유 번호', '사용자.아이디 · Column comment'],
       ['사용자 한 명이 여러 주문을 남긴다', 'Memo'],
+      ['주문한 사용자', '주문 내역.사용자 · Column comment'],
     ]);
   });
 
@@ -1221,24 +1221,44 @@ describe('createMatchActions / Hangul', () => {
     seedHangulDocument(app);
   });
 
-  it('lists the fields an IME step or the initials spell, lit where they hold it', () => {
-    const expected = [
-      '사용자 고유 번호',
+  it('lists the fields an IME step or the initials spell, whole, from the start, then inside', () => {
+    expect(names(createMatchActions(app, 'ㅅㅇㅈ'))).toEqual([
       '사용자',
-      '주문한 사용자',
-      '사용자 한 명이 여러 주문을 남긴다',
-    ];
-
-    expect(names(createMatchActions(app, 'ㅅㅇㅈ'))).toEqual(expected);
-    expect(names(createMatchActions(app, '사요'))).toEqual(expected);
-    // 상 spells the start of 사용 and all of 상품명.
-    expect(names(createMatchActions(app, '상'))).toEqual([
       '사용자 고유 번호',
-      '사용자',
-      '주문한 사용자',
-      '상품명',
       '사용자 한 명이 여러 주문을 남긴다',
+      '주문한 사용자',
     ]);
+    // Within a tier the fields keep the document's order.
+    expect(names(createMatchActions(app, '사요'))).toEqual([
+      '사용자 고유 번호',
+      '사용자',
+      '사용자 한 명이 여러 주문을 남긴다',
+      '주문한 사용자',
+    ]);
+  });
+
+  it('puts the fields holding the keyword as typed above those only its letters spell', () => {
+    // 상품명 holds 상 as typed; 사용 only spells it across two syllables.
+    expect(names(createMatchActions(app, '상'))).toEqual([
+      '상품명',
+      '사용자 고유 번호',
+      '사용자',
+      '사용자 한 명이 여러 주문을 남긴다',
+      '주문한 사용자',
+    ]);
+  });
+
+  it('leaves the fields only its letters spell to the limit, never one holding it as typed', () => {
+    addMemos(MATCH_ACTION_LIMIT, index => `사용 ${index}`);
+    addMemos(1, () => '상자');
+
+    const actions = createMatchActions(app, '상');
+
+    expect(names(actions).slice(0, 2)).toEqual(['상품명', '상자']);
+    expect(actions).toHaveLength(MATCH_ACTION_LIMIT);
+    expect(names(actions).some(name => name.startsWith('Show all'))).toBe(
+      false
+    );
   });
 
   it('offers no hand-off past the limit when the fields hold the keyword only by its Hangul letters', () => {
@@ -1259,12 +1279,13 @@ describe('createMatchActions / Hangul', () => {
   });
 
   it('hands over the keyword when the limit leaves out a field holding it as typed', () => {
-    addMemos(MATCH_ACTION_LIMIT, index => `사용 ${index}`);
-    addMemos(1, () => '상자');
+    addMemos(MATCH_ACTION_LIMIT, index => `상자 ${index}`);
 
     const actions = createMatchActions(app, '상');
 
-    // The table 상품, the column 상품명 and the memo 상자: the panel's count.
-    expect(actions.at(-1)?.name).toBe('Show all 3 matches in Find and Replace');
+    // The table 상품, the column 상품명 and the memos: the panel's count.
+    expect(actions.at(-1)?.name).toBe(
+      `Show all ${MATCH_ACTION_LIMIT + 2} matches in Find and Replace`
+    );
   });
 });

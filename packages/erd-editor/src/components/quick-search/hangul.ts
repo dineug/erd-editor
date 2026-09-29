@@ -9,80 +9,156 @@ const HANGUL = /[ᄀ-ᇿㄱ-ㆎ가-힣]/;
 /** A keyword of initial consonants alone, spaces between them allowed, such as ㅅㅇㅈ for 사용자. */
 const CONSONANTS_ONLY = /^[ㄱ-ㅎ\s]+$/;
 
-const WHITESPACE = /\s+/g;
+/** Conjoining jamo, which spell each syllable of a text stored decomposed (NFD), as macOS names files. */
+const CONJOINING = /[ᄀ-ᇿ]/;
+
+/** The compatibility letter of each modern conjoining initial from U+1100 on, as getChoseong maps them. */
+const INITIALS = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
 
 const isSyllable = (code: number) => code >= 0xac00 && code <= 0xd7a3;
 
 const isConsonant = (code: number) => code >= 0x3131 && code <= 0x314e;
 
+type Letters = {
+  /** The text with its conjoining jamo composed into syllables as NFC composes them, a lone initial made a compatibility letter. */
+  text: string;
+  /** Where in the source each code point of the text starts, and last the source's length. */
+  at: number[];
+};
+
+/**
+ * A decomposed text composed letter by letter, each letter keeping where its
+ * jamo start in the source, so a highlight covers a syllable's every jamo.
+ */
+function compose(source: string): Letters {
+  let text = '';
+  const at: number[] = [];
+  let index = 0;
+
+  while (index < source.length) {
+    const code = source.codePointAt(index) as number;
+    const initial = code - 0x1100;
+    // Past the text's end these read NaN, which no bound holds.
+    const vowel = source.charCodeAt(index + 1) - 0x1161;
+    const final = (offset: number) => source.charCodeAt(offset) - 0x11a7;
+    let letter = String.fromCodePoint(code);
+    let length = letter.length;
+
+    if (initial >= 0 && initial < 19 && vowel >= 0 && vowel < 21) {
+      const open = 0xac00 + (initial * 21 + vowel) * 28;
+      const tail = final(index + 2);
+      const closed = tail > 0 && tail < 28;
+      letter = String.fromCharCode(closed ? open + tail : open);
+      length = closed ? 3 : 2;
+    } else if (initial >= 0 && initial < 19) {
+      letter = INITIALS[initial];
+    } else if (isSyllable(code) && (code - 0xac00) % 28 === 0) {
+      const tail = final(index + 1);
+      if (tail > 0 && tail < 28) {
+        letter = String.fromCharCode(code + tail);
+        length = 2;
+      }
+    }
+
+    text += letter;
+    at.push(index);
+    index += length;
+  }
+  at.push(source.length);
+
+  return { text, at };
+}
+
 export type HangulForms = {
   /** The text spelled in jamo letter by letter and lower-cased, as disassemble spells it. */
   jamo: string;
-  /** The initial of each syllable and each lone consonant, run together, as getChoseong reads them without the spaces. */
+  /** The initial of each syllable and each lone consonant, a cluster split in two, run together without the spaces. */
   choseong: string;
 };
 
 type Spelling = HangulForms & {
   /** Where in the text the letter each unit of the jamo came from starts. */
   jamoAt: number[];
+  /** Where in the text the letter each unit of the jamo came from ends. */
+  jamoTo: number[];
   /** Where in the text the letter each consonant of the choseong came from starts. */
   choseongAt: number[];
+  /** Where in the text the letter each consonant of the choseong came from ends. */
+  choseongTo: number[];
 };
 
 /** One pass over a text's letters for both forms, and where each unit came from when a highlight needs it. */
 function spell(text: string, withOffsets: boolean): Spelling {
-  const groups = disassembleToGroups(text);
+  const letters = CONJOINING.test(text) ? compose(text) : null;
+  const spelled = letters ? letters.text : text;
+  const groups = disassembleToGroups(spelled);
   const jamoAt: number[] = [];
+  const jamoTo: number[] = [];
   const choseongAt: number[] = [];
+  const choseongTo: number[] = [];
   let jamo = '';
   let choseong = '';
   let start = 0;
   let index = 0;
 
   // disassembleToGroups walks the text by code point too, one group a letter.
-  for (const letter of text) {
-    const group = groups[index++];
+  for (const letter of spelled) {
+    const group = groups[index];
+    const from = letters ? letters.at[index] : start;
+    const to = letters ? letters.at[index + 1] : start + letter.length;
     const code = letter.charCodeAt(0);
     const unit = group.join('').toLowerCase();
-    const initial = isSyllable(code)
-      ? group[0]
-      : isConsonant(code)
-        ? letter
-        : '';
+    // A lone cluster counts as the two consonants it joins, since a Windows
+    // IME composes ㄱ then ㅅ into ㄳ, which no syllable has as its initial.
+    const initial = isSyllable(code) ? group[0] : isConsonant(code) ? unit : '';
 
     jamo += unit;
     choseong += initial;
     if (withOffsets) {
-      for (let offset = 0; offset < unit.length; offset++) jamoAt.push(start);
-      if (initial) choseongAt.push(start);
+      for (let offset = 0; offset < unit.length; offset++) {
+        jamoAt.push(from);
+        jamoTo.push(to);
+      }
+      for (let offset = 0; offset < initial.length; offset++) {
+        choseongAt.push(from);
+        choseongTo.push(to);
+      }
     }
     start += letter.length;
+    index++;
   }
 
-  return { jamo, choseong, jamoAt, choseongAt };
+  return { jamo, choseong, jamoAt, jamoTo, choseongAt, choseongTo };
 }
 
-/** How many texts keep their forms, dropped all at once past it: more than every field of a large schema. */
+/** How many texts one generation of the cache keeps; the one before stays readable, so a larger document still reads mostly from it. */
 export const HANGUL_CACHE_LIMIT = 50_000;
 
-const cache = new Map<string, HangulForms>();
+let recent = new Map<string, HangulForms>();
+let older = new Map<string, HangulForms>();
 
 /** A text's forms, spelled once and kept, since the palette reads every field again on each keystroke. */
 export function hangulFormsOf(text: string): HangulForms {
-  const cached = cache.get(text);
+  const cached = recent.get(text);
   if (cached) return cached;
 
-  if (cache.size >= HANGUL_CACHE_LIMIT) cache.clear();
-  const { jamo, choseong } = spell(text, false);
-  const forms = { jamo, choseong };
-  cache.set(text, forms);
+  let forms = older.get(text);
+  if (!forms) {
+    const { jamo, choseong } = spell(text, false);
+    forms = { jamo, choseong };
+  }
+  if (recent.size >= HANGUL_CACHE_LIMIT) {
+    older = recent;
+    recent = new Map();
+  }
+  recent.set(text, forms);
   return forms;
 }
 
 export type HangulQuery = {
   /** The keyword spelled in jamo, which the text's jamo has to hold. */
   jamo: string;
-  /** The consonants of a keyword typed as initials alone, spaces dropped; null for any other keyword. */
+  /** The consonants of a keyword typed as initials alone, a cluster split in two, spaces dropped; null for any other keyword. */
   choseong: string | null;
 };
 
@@ -92,16 +168,15 @@ export type HangulQuery = {
  *
  * @example
  * hangulQueryOf('ㅅㅇㅈ'); // { jamo: 'ㅅㅇㅈ', choseong: 'ㅅㅇㅈ' }
+ * hangulQueryOf('ㅄ'); // { jamo: 'ㅂㅅ', choseong: 'ㅂㅅ' }
  * hangulQueryOf('사요'); // { jamo: 'ㅅㅏㅇㅛ', choseong: null }
  */
 export function hangulQueryOf(keyword: string): HangulQuery | null {
   const text = keyword.trim();
   if (!HANGUL.test(text)) return null;
 
-  return {
-    jamo: spell(text, false).jamo,
-    choseong: CONSONANTS_ONLY.test(text) ? text.replace(WHITESPACE, '') : null,
-  };
+  const { jamo, choseong } = spell(text, false);
+  return { jamo, choseong: CONSONANTS_ONLY.test(text) ? choseong : null };
 }
 
 /** How closely a text holds a Hangul keyword: all of it, from its start, or somewhere inside. */
@@ -139,19 +214,16 @@ export function hangulTier(
 
 /** Every place a form holds the needle, each widened to the whole letters its units came from. */
 function rangesIn(
-  text: string,
   form: string,
   at: number[],
+  to: number[],
   needle: string
 ): TextRange[] {
   const ranges: TextRange[] = [];
   let index = form.indexOf(needle);
 
   while (index !== -1) {
-    const start = at[index];
-    const last = at[index + needle.length - 1];
-    const width = (text.codePointAt(last) ?? 0) > 0xffff ? 2 : 1;
-    ranges.push({ start, end: last + width });
+    ranges.push({ start: at[index], end: to[index + needle.length - 1] });
     index = form.indexOf(needle, index + needle.length);
   }
 
@@ -167,20 +239,29 @@ export function hangulRanges(text: string, query: HangulQuery): TextRange[] {
   if (!HANGUL.test(text)) return [];
 
   const spelling = spell(text, true);
-  const ranges = rangesIn(text, spelling.jamo, spelling.jamoAt, query.jamo);
+  const ranges = rangesIn(
+    spelling.jamo,
+    spelling.jamoAt,
+    spelling.jamoTo,
+    query.jamo
+  );
   if (query.choseong !== null) {
     ranges.push(
-      ...rangesIn(text, spelling.choseong, spelling.choseongAt, query.choseong)
+      ...rangesIn(
+        spelling.choseong,
+        spelling.choseongAt,
+        spelling.choseongTo,
+        query.choseong
+      )
     );
   }
 
   return ranges.sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
-export type TextHit = TextRange & {
-  /** Whether the text holds the keyword as typed, which Find and Replace finds too. */
-  literal: boolean;
-};
+/** Where a text holds the keyword: as typed, which Find and Replace finds too, or by its Hangul letters alone, and how closely. */
+export type TextHit = TextRange &
+  ({ literal: true } | { literal: false; tier: HangulTier });
 
 /**
  * The first place a text holds the keyword: as typed, or failing that by its
@@ -193,10 +274,23 @@ export function matchText(
 ): TextHit | null {
   const [range] = matcher.find(text);
   if (range) return { ...range, literal: true };
-  if (!hangul || hangulTier(text, hangul) === null) return null;
+  if (!hangul) return null;
+
+  const tier = hangulTier(text, hangul);
+  if (tier === null) return null;
 
   const [spelled] = hangulRanges(text, hangul);
-  return { ...spelled, literal: false };
+  return { ...spelled, literal: false, tier };
+}
+
+/**
+ * Hits in a Hangul search's order: those holding the keyword as typed first,
+ * as they came, the way a search without Hangul lists them, then those only its
+ * letters hold, closest first and as they came within a tier.
+ */
+export function rankHits<T extends { hit: TextHit }>(hits: T[]): T[] {
+  const rank = ({ hit }: T) => (hit.literal ? -1 : hit.tier);
+  return [...hits].sort((a, b) => rank(a) - rank(b));
 }
 
 /**

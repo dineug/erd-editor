@@ -67,6 +67,8 @@ import {
   HangulTier,
   hangulTier,
   matchText,
+  rankHits,
+  TextHit,
 } from './hangul';
 
 export type Action = {
@@ -446,6 +448,9 @@ const MATCH_FIELDS: ReadonlyArray<FindField> = FindFieldList.filter(
   field => field !== FindField.tableName
 );
 
+/** A field a search found, and how it holds the keyword. */
+export type FieldHit = { match: FindMatch; hit: TextHit };
+
 /**
  * The columns, comments and memos holding the keyword, in any case or by its
  * Hangul letters, one row a field, up to a limit past which, or when more is
@@ -461,21 +466,23 @@ export function createMatchActions(
   if (!matcher) return [];
 
   const hangul = hangulQueryOf(keyword);
-  const found: Array<{ match: FindMatch; literal: boolean }> = [];
+  const found: FieldHit[] = [];
   for (const field of walkFields(state, MATCH_FIELDS)) {
     const hit = matchText(field.text, matcher, hangul);
     if (!hit) continue;
-    const match = { ...field, start: hit.start, end: hit.end };
-    found.push({ match, literal: hit.literal });
+    found.push({ match: { ...field, start: hit.start, end: hit.end }, hit });
   }
+  const ranked = hangul ? rankHits(found) : found;
 
-  const actions = found
+  const actions = ranked
     .slice(0, MATCH_ACTION_LIMIT)
     .map(({ match }) => createMatchAction(state, match));
 
   // The panel matches as typed alone, so the row hands over only a search
   // that leaves out a field the panel finds, and names the panel's count.
-  const hidden = found.slice(MATCH_ACTION_LIMIT).some(hit => hit.literal);
+  const hidden = ranked
+    .slice(MATCH_ACTION_LIMIT)
+    .some(({ hit }) => hit.literal);
   if (more || hidden) {
     const count = findMatches(state, matcher).length;
     actions.push(createShowAllAction(count, { query: keyword }));

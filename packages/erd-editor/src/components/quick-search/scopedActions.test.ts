@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
   IME_CHOSEONG,
+  IME_CLUSTERS,
   IME_SAYONG,
+  seedClusterTables,
   seedHangulDocument,
 } from '@/__test-utils__/hangulSeed';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
@@ -483,6 +485,19 @@ describe('paletteRows / Hangul', () => {
     expect(rowsFor('>ㅅ')).toEqual([]);
   });
 
+  it('keeps a name in every scope through each cluster a Windows IME composes of its initials', () => {
+    seedClusterTables(app);
+
+    for (const [name, steps] of IME_CLUSTERS) {
+      for (const step of steps) {
+        for (const prefix of ['', '#', '@', '"']) {
+          expect(names(rowsFor(`${prefix}${step}`))).toContain(name);
+        }
+      }
+    }
+    expect(names(rowsFor('#ㅄ'))).toEqual(['부서', '배송지']);
+  });
+
   it('goes to a table by its initials, and to a column by the syllables typed so far', () => {
     expect(names(rowsFor('#ㅈㅁ'))).toEqual(['주문 내역']);
     expect(names(rowsFor('#사요'))).toEqual(['사용자']);
@@ -504,8 +519,15 @@ describe('paletteRows / Hangul', () => {
   it('lists the comments and the memo spelled, and no name', () => {
     expect(pairs(rowsFor('"ㅅㅇㅈ'))).toEqual([
       ['사용자 고유 번호', '사용자.아이디 · Column comment'],
-      ['주문한 사용자', '주문 내역.사용자 · Column comment'],
       ['사용자 한 명이 여러 주문을 남긴다', 'Memo'],
+      ['주문한 사용자', '주문 내역.사용자 · Column comment'],
+    ]);
+  });
+
+  it('lists a column holding the keyword as typed above one its letters spell across syllables', () => {
+    expect(pairs(rowsFor('@상'))).toEqual([
+      ['상품명', '상품.상품명 · Column'],
+      ['사용자', '주문 내역.사용자 · Column'],
     ]);
   });
 
@@ -544,11 +566,17 @@ describe('paletteRows / Hangul', () => {
     expect(hasShowAll(rowsFor('"ㅅㅇㅈ'))).toBe(false);
     expect(hasShowAll(rowsFor('"상'))).toBe(false);
 
+    // 상 spells 사용 in every memo above; this one holds it as typed, so it
+    // goes first and the limit leaves out only memos it spells.
     addMemos(1, () => '상품 설명');
+    expect(names(rowsFor('"상'))[0]).toBe('상품 설명');
+    expect(hasShowAll(rowsFor('"상'))).toBe(false);
 
-    // 상 spells 사용 in every memo above; only this one holds it as typed.
+    addMemos(SCOPED_ACTION_LIMIT, index => `상품 설명 ${index}`);
     const last = rowsFor('"상').at(-1);
-    expect(last?.name).toBe('Show all 1 matches in Find and Replace');
+    expect(last?.name).toBe(
+      `Show all ${SCOPED_ACTION_LIMIT + 1} matches in Find and Replace`
+    );
     expect(handedOver(last)).toEqual([
       openFindReplaceAction({ query: '상', fields: TEXT_FIELDS }),
     ]);
@@ -556,6 +584,7 @@ describe('paletteRows / Hangul', () => {
 
   it('stays quick over hundreds of Korean tables and thousands of columns', () => {
     const actions: AnyAction[] = [];
+    // Every text differs, so the first keystroke spells them all afresh.
     for (let table = 0; table < 600; table++) {
       const tableId = `ko${table}`;
       actions.push(
@@ -566,8 +595,16 @@ describe('paletteRows / Hangul', () => {
         const id = `${tableId}c${column}`;
         actions.push(
           addColumnAction({ id, tableId }),
-          changeColumnNameAction({ id, tableId, value: `사용자_${column}` }),
-          changeColumnCommentAction({ id, tableId, value: '사용자 설명' })
+          changeColumnNameAction({
+            id,
+            tableId,
+            value: `사용자_${table}_${column}`,
+          }),
+          changeColumnCommentAction({
+            id,
+            tableId,
+            value: `${table}번 표 ${column}번 사용자 설명`,
+          })
         );
       }
     }

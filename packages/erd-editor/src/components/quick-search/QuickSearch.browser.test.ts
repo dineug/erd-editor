@@ -11,7 +11,11 @@ import {
   mount,
   type Mounted,
 } from '@/__test-utils__';
-import { seedHangulDocument } from '@/__test-utils__/hangulSeed';
+import {
+  seedClusterTables,
+  seedHangulDocument,
+} from '@/__test-utils__/hangulSeed';
+import type { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
@@ -35,9 +39,10 @@ afterEach(() => {
   mounted = null;
 });
 
-async function setup() {
+async function setup(seed?: (app: AppContext) => void) {
   const app = createTestAppContext();
   seedHangulDocument(app);
+  seed?.(app);
   mounted = mount(html`<${QuickSearch} />`, app);
   await flush();
   app.emitter.emit(toggleSearchAction());
@@ -74,12 +79,26 @@ const rowNames = () =>
       []
   ).map(name => (name.textContent ?? '').trim());
 
-const lit = () =>
+/** The names of the table rows, which the unscoped list narrows keystroke by keystroke. */
+const tableNames = () =>
   Array.from(
-    mounted?.container.querySelectorAll(
-      `.${styles.action}:first-child .${styles.name} .${highlightStyles.highlighted}`
-    ) ?? []
+    mounted?.container.querySelectorAll(`.${styles.action}`) ?? []
+  ).flatMap(row =>
+    row.querySelector(`.${styles.keyword}`)?.textContent?.trim() === 'Table'
+      ? [(row.querySelector(`.${styles.name}`)?.textContent ?? '').trim()]
+      : []
+  );
+
+/** The marks lit in the name of the row at the index given. */
+const lit = (index = 0) => {
+  const row = mounted?.container
+    .querySelectorAll(`.${styles.action}`)
+    .item(index);
+  return Array.from(
+    row?.querySelectorAll(`.${styles.name} .${highlightStyles.highlighted}`) ??
+      []
   ).map(mark => mark.textContent);
+};
 
 /**
  * Types 사용자 the way a two-set Korean keyboard does, one jamo a key, and
@@ -157,7 +176,7 @@ describe('quick search under a Korean IME', () => {
     expect(lit()).toEqual(['주문']);
   });
 
-  it('lights the syllables an unfinished one spells', async () => {
+  it('lights the syllables an unfinished one spells, below a name holding it as typed', async () => {
     await setup();
 
     await userEvent.keyboard('@');
@@ -165,7 +184,22 @@ describe('quick search under a Korean IME', () => {
       await compose(step);
     }
 
-    expect(rowNames()).toEqual(['사용자', '상품명']);
-    expect(lit()).toEqual(['사용']);
+    expect(rowNames()).toEqual(['상품명', '사용자']);
+    expect(lit(0)).toEqual(['상']);
+    expect(lit(1)).toEqual(['사용']);
+  });
+
+  it('keeps a table in the narrowed list through the cluster a Windows IME composes of two initials', async () => {
+    const { input } = await setup(seedClusterTables);
+
+    for (const step of ['ㅂ', 'ㅄ']) {
+      await compose(step);
+      expect(tableNames().sort()).toEqual(['배송지', '부서']);
+    }
+    await commit('ㅄ');
+    await compose('ㅈ');
+
+    expect(input.value).toBe('ㅄㅈ');
+    expect(tableNames()).toEqual(['배송지']);
   });
 });

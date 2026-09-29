@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
   IME_CHOSEONG,
+  IME_CLUSTERS,
   IME_SAYONG,
+  seedClusterTables,
   seedHangulDocument,
 } from '@/__test-utils__/hangulSeed';
 import {
@@ -1020,6 +1022,32 @@ describe('QuickSearch Hangul', () => {
       // The table named with it first, before the fields holding it.
       expect(seen.at(-1)?.[0]).toBe('사용자');
       await open();
+    }
+  });
+
+  it('keeps a table in the narrowed list through each cluster a Windows IME composes of its initials', async () => {
+    seedClusterTables(app);
+
+    for (const [name, steps] of IME_CLUSTERS) {
+      await open();
+      for (const step of steps) {
+        await type(step);
+        expect(rowNamed(name, 'Table')).toBeDefined();
+      }
+      await open();
+    }
+  });
+
+  it('keeps such a name at each of those steps inside the #, @ and " scopes', async () => {
+    seedClusterTables(app);
+    await open();
+
+    for (const [name, steps] of IME_CLUSTERS) {
+      for (const prefix of ['#', '@', '"']) {
+        for (const names of await compose(prefix, steps)) {
+          expect(names).toContain(name);
+        }
+      }
     }
   });
 

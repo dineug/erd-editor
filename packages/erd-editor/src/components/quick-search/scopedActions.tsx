@@ -6,7 +6,6 @@ import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
   FindField,
-  FindMatch,
   findMatches,
   Matcher,
   walkFields,
@@ -16,12 +15,13 @@ import {
   Action,
   createMatchAction,
   createShowAllAction,
+  FieldHit,
   holdsAsTyped,
   keywordHolder,
   rankPaletteActions,
   searchActions,
 } from './actions';
-import { hangulQueryOf, matchText } from './hangul';
+import { hangulQueryOf, matchText, rankHits } from './hangul';
 import { PALETTE_PREFIXES, PaletteQuery, PaletteScope } from './paletteQuery';
 import * as styles from './QuickSearch.styles';
 
@@ -148,35 +148,48 @@ export function createFieldActions(
 ): Action[] {
   const { state } = app.store;
   const matcher = matcherOf(keyword);
-  const hangul = hangulQueryOf(keyword);
   const inTable = tableFilter(state, table);
-  const found: FindMatch[] = [];
-  let hidden = false;
+  if (!matcher) return listFieldActions(state, fields, inTable);
 
+  const hangul = hangulQueryOf(keyword);
+  const found: FieldHit[] = [];
   for (const field of walkFields(state, fields)) {
     if (!inTable(field.tableId)) continue;
 
-    if (matcher) {
-      const hit = matchText(field.text, matcher, hangul);
-      if (!hit) continue;
-      if (found.length < SCOPED_ACTION_LIMIT) {
-        found.push({ ...field, start: hit.start, end: hit.end });
-      } else if (hit.literal) {
-        // Past the limit the walk only looks for a field the panel would find.
-        hidden = true;
-        break;
-      }
-    } else if (field.text || field.field === FindField.columnName) {
-      if (found.length === SCOPED_ACTION_LIMIT) break;
-      found.push({ ...field, start: 0, end: 0 });
-    }
+    const hit = matchText(field.text, matcher, hangul);
+    if (!hit) continue;
+    found.push({ match: { ...field, start: hit.start, end: hit.end }, hit });
+    // Without Hangul every hit is one the panel finds, so one past the limit
+    // settles the last row; a Hangul search ranks them all before it cuts.
+    if (!hangul && found.length > SCOPED_ACTION_LIMIT) break;
   }
 
-  const rows = found.map(match => createMatchAction(state, match));
-  if (!matcher || !hidden) return rows;
+  const ranked = hangul ? rankHits(found) : found;
+  const rows = ranked
+    .slice(0, SCOPED_ACTION_LIMIT)
+    .map(({ match }) => createMatchAction(state, match));
+  if (!ranked.slice(SCOPED_ACTION_LIMIT).some(({ hit }) => hit.literal)) {
+    return rows;
+  }
 
   const count = findMatches(state, matcher, fields).length;
   return [...rows, createShowAllAction(count, { query: keyword, fields })];
+}
+
+/** Every column, or every text that is not empty, of the kinds given, up to the scoped limit: a scope with no keyword yet. */
+function listFieldActions(
+  state: RootState,
+  fields: FindField[],
+  inTable: (tableId: string) => boolean
+): Action[] {
+  const rows: Action[] = [];
+  for (const field of walkFields(state, fields)) {
+    if (rows.length === SCOPED_ACTION_LIMIT) break;
+    if (!inTable(field.tableId)) continue;
+    if (!field.text && field.field !== FindField.columnName) continue;
+    rows.push(createMatchAction(state, { ...field, start: 0, end: 0 }));
+  }
+  return rows;
 }
 
 /** The prefixes as rows, each typing its character into the input when chosen; a keyword fuzzes them. */
