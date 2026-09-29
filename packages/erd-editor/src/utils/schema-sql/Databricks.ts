@@ -20,7 +20,6 @@ import {
   primaryKey,
   primaryKeyColumns,
   toOrderName,
-  unique,
   uniqueColumns,
 } from './utils';
 
@@ -55,20 +54,7 @@ export function createSchema(state: RootState): string {
     formatTable(state, { table, buffer: stringBuffer });
     stringBuffer.push('');
 
-    const columns = query(collections)
-      .collection('tableColumnEntities')
-      .selectByIds(table.columnIds);
-
-    // UNIQUE is not one of the constraints Databricks accepts, so the column
-    // is reported rather than silently dropped.
-    if (unique(columns)) {
-      uniqueColumns(columns).forEach(column => {
-        stringBuffer.push(
-          `-- Databricks does not support UNIQUE constraints: ${BRACKET}${table.name}${BRACKET}.${BRACKET}${column.name}${BRACKET}`
-        );
-        stringBuffer.push('');
-      });
-    }
+    formatUnique(state, { table, buffer: stringBuffer });
   });
 
   relationships.forEach(relationship => {
@@ -133,6 +119,26 @@ export function formatTable(
     buffer.push(`USING DELTA`);
     buffer.push(`COMMENT '${table.comment}';`);
   }
+}
+
+/**
+ * A comment per column the diagram marks unique, after the table: UNIQUE is not
+ * one of the constraints Databricks accepts, so it is reported, never dropped.
+ */
+export function formatUnique(
+  { collections }: RootState,
+  { buffer, table }: FormatTableOptions
+) {
+  const columns = query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(table.columnIds);
+
+  uniqueColumns(columns).forEach(column => {
+    buffer.push(
+      `-- Databricks does not support UNIQUE constraints: ${BRACKET}${table.name}${BRACKET}.${BRACKET}${column.name}${BRACKET}`
+    );
+    buffer.push('');
+  });
 }
 
 function formatColumn(
