@@ -6,6 +6,7 @@ import { OracleTypes } from '@/parser/dataType/Oracle';
 import { PostgreSQLTypes } from '@/parser/dataType/PostgreSQL';
 import { SnowflakeTypes } from '@/parser/dataType/Snowflake';
 import { SQLiteTypes } from '@/parser/dataType/SQLite';
+import { ReferentialAction } from '@/parser/statement';
 import { Token, TokenType } from '@/parser/tokenizer';
 
 const createTypeEqual = (type: string) => (tokens: Token[]) => (pos: number) =>
@@ -99,18 +100,25 @@ export const isConstraintState = (tokens: Token[]) => {
     isImmediate(pos);
 };
 
-const ReferentialActions: ReadonlyArray<ReadonlyArray<string>> = [
-  ['SET', 'NULL'],
-  ['SET', 'DEFAULT'],
-  ['NO', 'ACTION'],
-  ['CASCADE'],
-  ['RESTRICT'],
+const ReferentialActions: ReadonlyArray<ReferentialAction> = [
+  ReferentialAction.setNull,
+  ReferentialAction.setDefault,
+  ReferentialAction.noAction,
+  ReferentialAction.cascade,
+  ReferentialAction.restrict,
 ];
 const MatchKinds: ReadonlyArray<string> = ['FULL', 'PARTIAL', 'SIMPLE'];
 
-// How many tokens a reference's trailing clause spans: ON DELETE SET NULL,
-// MATCH FULL. The action is optional, so MySQL's ON UPDATE CURRENT_TIMESTAMP
-// spans two and leaves its value to be skipped.
+/** A clause a reference may trail; event is '' for MATCH, and span 0 for none. */
+export type ReferentialClause = {
+  span: number;
+  event: 'DELETE' | 'UPDATE' | '';
+  action: ReferentialAction | '';
+};
+
+// How many tokens a reference's trailing clause spans, and which action it
+// names: ON DELETE SET NULL, MATCH FULL. The action is optional, so MySQL's ON
+// UPDATE CURRENT_TIMESTAMP spans two and leaves its value to be skipped.
 export const matchReferentialClause = (tokens: Token[]) => {
   const word = (pos: number) => {
     const token = tokens[pos];
@@ -119,15 +127,23 @@ export const matchReferentialClause = (tokens: Token[]) => {
       : '';
   };
 
-  return (pos: number) => {
-    if (word(pos) === 'ON' && ['DELETE', 'UPDATE'].includes(word(pos + 1))) {
-      const action = ReferentialActions.find(words =>
-        words.every((value, index) => word(pos + 2 + index) === value)
+  return (pos: number): ReferentialClause => {
+    const event = word(pos + 1);
+
+    if (word(pos) === 'ON' && (event === 'DELETE' || event === 'UPDATE')) {
+      const action = ReferentialActions.find(value =>
+        value.split(' ').every((part, index) => word(pos + 2 + index) === part)
       );
-      return 2 + (action?.length ?? 0);
+
+      return action
+        ? { span: 2 + action.split(' ').length, event, action }
+        : { span: 2, event, action: '' };
     }
 
-    return word(pos) === 'MATCH' && MatchKinds.includes(word(pos + 1)) ? 2 : 0;
+    const span =
+      word(pos) === 'MATCH' && MatchKinds.includes(word(pos + 1)) ? 2 : 0;
+
+    return { span, event: '', action: '' };
   };
 };
 

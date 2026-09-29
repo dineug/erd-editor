@@ -3,7 +3,13 @@ import path from 'node:path';
 
 import { describe, expect, it, test } from 'vite-plus/test';
 
-import { CreateTable, schemaSQLParser, SortType, StatementType } from '@/index';
+import {
+  CreateTable,
+  ReferentialAction,
+  schemaSQLParser,
+  SortType,
+  StatementType,
+} from '@/index';
 
 type TestCase = [string, string, string];
 const testCaseList: Array<TestCase> = [];
@@ -98,6 +104,16 @@ describe('public entry surface', () => {
     expect(SortType).toEqual({ asc: 'ASC', desc: 'DESC' });
   });
 
+  it('re-exports the referential actions as their SQL spelling', () => {
+    expect(ReferentialAction).toEqual({
+      noAction: 'NO ACTION',
+      restrict: 'RESTRICT',
+      cascade: 'CASCADE',
+      setNull: 'SET NULL',
+      setDefault: 'SET DEFAULT',
+    });
+  });
+
   it('produces statement types that all belong to StatementType', () => {
     const statements = schemaSQLParser(`
       CREATE TABLE t (id INT);
@@ -148,6 +164,26 @@ describe('data/sakila.sql', () => {
     expect(columns).toHaveLength(89);
     expect(columns.filter(column => !column.dataType)).toEqual([]);
     expect(tables.flatMap(table => table.foreignKeys)).toHaveLength(22);
+  });
+
+  it('keeps the referential actions of every foreign key', () => {
+    const foreignKeys = tables.flatMap(table => table.foreignKeys);
+
+    expect(
+      foreignKeys.filter(
+        ({ onDelete }) => onDelete === ReferentialAction.restrict
+      )
+    ).toHaveLength(21);
+    expect(
+      foreignKeys.filter(
+        ({ onDelete }) => onDelete === ReferentialAction.setNull
+      )
+    ).toHaveLength(1);
+    expect(
+      foreignKeys.every(
+        ({ onUpdate }) => onUpdate === ReferentialAction.cascade
+      )
+    ).toBe(true);
   });
 
   it('keeps what the constraint items declare', () => {

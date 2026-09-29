@@ -34,6 +34,8 @@ export function alterTableAddForeignKeyParser(tokens: Token[], $pos: RefPos) {
     columnNames: [],
     refTableName: '',
     refColumnNames: [],
+    onDelete: '',
+    onUpdate: '',
   };
 
   $pos.value++;
@@ -93,6 +95,8 @@ export function alterTableAddForeignKeyParser(tokens: Token[], $pos: RefPos) {
         ast.columnNames = foreignKey.columnNames;
         ast.refTableName = foreignKey.refTableName;
         ast.refColumnNames = foreignKey.refColumnNames;
+        ast.onDelete = foreignKey.onDelete;
+        ast.onUpdate = foreignKey.onUpdate;
       }
 
       continue;

@@ -65,6 +65,7 @@ import {
   matchQualifiedName,
   matchReferentialClause,
 } from '@/parser/helper';
+import { ReferentialAction } from '@/parser/statement';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
 const str = (value: string): Token => ({ type: TokenType.string, value });
@@ -263,9 +264,10 @@ describe('isCharacterSet', () => {
 });
 
 describe('matchReferentialClause', () => {
-  it('spans ON DELETE or ON UPDATE together with its action', () => {
-    const span = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+  const clause = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+  const span = (sql: string) => clause(sql).span;
 
+  it('spans ON DELETE or ON UPDATE together with its action', () => {
     expect(span('ON DELETE SET NULL, b INT')).toBe(4);
     expect(span('on update set default')).toBe(4);
     expect(span('ON DELETE NO ACTION')).toBe(4);
@@ -274,17 +276,44 @@ describe('matchReferentialClause', () => {
     expect(span('MATCH SIMPLE ON DELETE CASCADE')).toBe(2);
   });
 
-  it('leaves a value that is no referential action to the caller', () => {
-    const span = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+  it('names the event and the action a clause carries', () => {
+    expect(clause('ON DELETE SET NULL')).toEqual({
+      span: 4,
+      event: 'DELETE',
+      action: ReferentialAction.setNull,
+    });
+    expect(clause('on update cascade')).toEqual({
+      span: 3,
+      event: 'UPDATE',
+      action: ReferentialAction.cascade,
+    });
+    expect(clause('ON DELETE NO ACTION').action).toBe(
+      ReferentialAction.noAction
+    );
+    expect(clause('ON UPDATE SET DEFAULT').action).toBe(
+      ReferentialAction.setDefault
+    );
+    expect(clause('ON DELETE RESTRICT').action).toBe(
+      ReferentialAction.restrict
+    );
+    expect(clause('MATCH FULL')).toEqual({ span: 2, event: '', action: '' });
+  });
 
-    expect(span('ON UPDATE CURRENT_TIMESTAMP')).toBe(2);
+  it('leaves a value that is no referential action to the caller', () => {
+    expect(clause('ON UPDATE CURRENT_TIMESTAMP')).toEqual({
+      span: 2,
+      event: 'UPDATE',
+      action: '',
+    });
     expect(span('ON CONFLICT REPLACE')).toBe(0);
     expect(span('MATCH INT')).toBe(0);
+    expect(clause('')).toEqual({ span: 0, event: '', action: '' });
   });
 
   it('rejects a quoted ON, which names a column', () => {
     expect(
       matchReferentialClause([quoted('on'), ...words('DELETE', 'CASCADE')])(0)
+        .span
     ).toBe(0);
   });
 });

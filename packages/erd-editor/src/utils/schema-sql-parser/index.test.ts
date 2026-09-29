@@ -477,6 +477,29 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(relationship.identification).toBe(false);
     });
 
+    it('relates an inline REFERENCES without a column list to the primary key', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY, name TEXT);
+        CREATE TABLE posts (user_id INT REFERENCES users ON DELETE CASCADE);
+        CREATE TABLE pairs (a INT PRIMARY KEY, b INT PRIMARY KEY);
+        CREATE TABLE links (pair_a INT REFERENCES pairs);
+      `);
+      const users = tableByName(schema, 'users');
+      const posts = tableByName(schema, 'posts');
+      const [relationship] = relationshipsOf(schema);
+
+      expect(relationshipsOf(schema)).toHaveLength(1);
+      expect(relationship.start.columnIds).toEqual([
+        columnByName(schema, users, 'id').id,
+      ]);
+      expect(relationship.end.columnIds).toEqual([
+        columnByName(schema, posts, 'user_id').id,
+      ]);
+      expect(
+        columnByName(schema, tableByName(schema, 'links'), 'pair_a').ui.keys
+      ).toBe(0);
+    });
+
     it('creates one relationship per foreign key on the same table', () => {
       const schema = parse(`
         CREATE TABLE a (id INT);

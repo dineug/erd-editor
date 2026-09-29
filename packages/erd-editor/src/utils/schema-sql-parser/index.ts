@@ -179,6 +179,8 @@ function mergeTables({
       columnNames: foreignKey.columnNames,
       refTableName: foreignKey.refTableName,
       refColumnNames: foreignKey.refColumnNames,
+      onDelete: foreignKey.onDelete,
+      onUpdate: foreignKey.onUpdate,
     });
   });
 
@@ -273,12 +275,22 @@ function convertRelationship(
       const startColumns: Column[] = [];
       const endColumns: Column[] = [];
 
-      foreignKey.refColumnNames.forEach(refColumnName => {
-        const column = findByName(sColumns, refColumnName);
-        if (!column) return;
+      // An inline REFERENCES t without a column list names t's primary key.
+      if (foreignKey.refColumnNames.length) {
+        foreignKey.refColumnNames.forEach(refColumnName => {
+          const column = findByName(sColumns, refColumnName);
+          if (!column) return;
 
-        startColumns.push(column);
-      });
+          startColumns.push(column);
+        });
+      } else {
+        startColumns.push(
+          ...sColumns.filter(column =>
+            bHas(column.ui.keys, ColumnUIKey.primaryKey)
+          )
+        );
+        if (startColumns.length !== foreignKey.columnNames.length) return;
+      }
 
       foreignKey.columnNames.forEach(columnName => {
         const column = findByName(eColumns, columnName);

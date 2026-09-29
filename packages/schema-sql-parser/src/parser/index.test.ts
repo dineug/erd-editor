@@ -137,6 +137,8 @@ describe('schemaSQLParser', () => {
         columnNames: ['user_id'],
         refTableName: 'users',
         refColumnNames: ['id'],
+        onDelete: '',
+        onUpdate: '',
       },
     ]);
   });

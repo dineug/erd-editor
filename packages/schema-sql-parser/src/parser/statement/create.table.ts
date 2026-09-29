@@ -221,6 +221,7 @@ function createTableColumnsParser(
   const isDesc = isDescValue(tokens);
   const isAsc = isAscValue(tokens);
   const isKey = isKeyValue(tokens);
+  const isReferences = isReferencesValue(tokens);
   const isEqual = isEqualToken(tokens);
   const characterSet = isCharacterSet(tokens);
   const isCollate = isCollateValue(tokens);
@@ -335,10 +336,28 @@ function createTableColumnsParser(
       continue;
     }
 
-    const referentialLength = referentialClause($pos.value);
+    const { span: referentialLength } = referentialClause($pos.value);
 
     if (referentialLength) {
       $pos.value += referentialLength;
+      continue;
+    }
+
+    // a_id INT REFERENCES a (id) ON DELETE CASCADE keys the column it ends.
+    if (column.name && !constraintItem && isReferences($pos.value)) {
+      const foreignKey: ForeignKey = {
+        columnNames: [column.name],
+        refTableName: '',
+        refColumnNames: [],
+        onDelete: '',
+        onUpdate: '',
+      };
+      referencesParser(tokens, $pos, foreignKey);
+
+      if (foreignKey.refTableName && foreignKey.refColumnNames.length <= 1) {
+        foreignKeys.push(foreignKey);
+      }
+
       continue;
     }
 
@@ -694,8 +713,6 @@ export function parserForeignKeyParser(
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
-  const isReferences = isReferencesValue(tokens);
-  const isPeriod = isPeriodToken(tokens);
   const isKey = isKeyValue(tokens);
 
   const isToken = () => $pos.value < tokens.length;
@@ -704,6 +721,8 @@ export function parserForeignKeyParser(
     columnNames: [],
     refTableName: '',
     refColumnNames: [],
+    onDelete: '',
+    onUpdate: '',
   };
 
   let token = tokens[++$pos.value];
@@ -724,42 +743,7 @@ export function parserForeignKeyParser(
       token = tokens[++$pos.value];
     }
 
-    if (isReferences($pos.value)) {
-      token = tokens[++$pos.value];
-
-      if (isString($pos.value)) {
-        foreignKey.refTableName = token.value;
-        $pos.value++;
-
-        // A three-part REFERENCES left a period unconsumed, so the column
-        // list was never reached: the whole key was dropped and the trailing
-        // segment became a column of the table being defined.
-        while (isPeriod($pos.value)) {
-          if (!isString($pos.value + 1)) {
-            $pos.value++;
-            break;
-          }
-
-          foreignKey.refTableName = tokens[$pos.value + 1].value;
-          $pos.value += 2;
-        }
-
-        token = tokens[$pos.value];
-
-        if (isLeftParent($pos.value)) {
-          token = tokens[++$pos.value];
-
-          while (isToken() && !isRightParent($pos.value)) {
-            if (isString($pos.value)) {
-              foreignKey.refColumnNames.push(token.value);
-            }
-            token = tokens[++$pos.value];
-          }
-
-          token = tokens[++$pos.value];
-        }
-      }
-    }
+    referencesParser(tokens, $pos, foreignKey);
 
     if (
       foreignKey.columnNames.length &&
@@ -770,4 +754,74 @@ export function parserForeignKeyParser(
   }
 
   return null;
+}
+
+/**
+ * Reads REFERENCES t (x, y) and the ON DELETE / ON UPDATE / MATCH clauses right
+ * after it into foreignKey, leaving $pos past them; anything else stays put.
+ */
+function referencesParser(
+  tokens: Token[],
+  $pos: RefPos,
+  foreignKey: ForeignKey
+) {
+  const isString = isStringToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
+  const isReferences = isReferencesValue(tokens);
+  const isPeriod = isPeriodToken(tokens);
+  const referentialClause = matchReferentialClause(tokens);
+
+  const isToken = () => $pos.value < tokens.length;
+
+  if (!isReferences($pos.value)) return;
+
+  let token = tokens[++$pos.value];
+
+  if (!isString($pos.value)) return;
+
+  foreignKey.refTableName = token.value;
+  $pos.value++;
+
+  // A three-part REFERENCES left a period unconsumed, so the column list was
+  // never reached: the whole key was dropped and the trailing segment became a
+  // column of the table being defined.
+  while (isPeriod($pos.value)) {
+    if (!isString($pos.value + 1)) {
+      $pos.value++;
+      break;
+    }
+
+    foreignKey.refTableName = tokens[$pos.value + 1].value;
+    $pos.value += 2;
+  }
+
+  token = tokens[$pos.value];
+
+  if (isLeftParent($pos.value)) {
+    token = tokens[++$pos.value];
+
+    while (isToken() && !isRightParent($pos.value)) {
+      if (isString($pos.value)) {
+        foreignKey.refColumnNames.push(token.value);
+      }
+      token = tokens[++$pos.value];
+    }
+
+    $pos.value++;
+  }
+
+  for (
+    let clause = referentialClause($pos.value);
+    clause.span;
+    clause = referentialClause($pos.value)
+  ) {
+    if (clause.event === 'DELETE' && clause.action) {
+      foreignKey.onDelete = clause.action;
+    } else if (clause.event === 'UPDATE' && clause.action) {
+      foreignKey.onUpdate = clause.action;
+    }
+
+    $pos.value += clause.span;
+  }
 }

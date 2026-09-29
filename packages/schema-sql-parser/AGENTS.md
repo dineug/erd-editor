@@ -11,11 +11,11 @@
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, the statement types; everything else is internal |
+| `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, `ReferentialAction`, the statement types; everything else is internal |
 | `src/parser/tokenizer.ts` | Lexer — `"x"`, `'x'`, `` `x` `` and `[x]` each become one `string` token, delimiters stripped, marked `quoted`; an unpaired `]` emits `rightBracket` |
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, runs a statement parser, else advances one token |
 | `src/parser/helper.ts` | Token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchNestedDataType`, `matchReferentialClause` |
-| `src/parser/statement/` | One parser per statement kind; `index.ts` holds `Statement`, `StatementType`, `SortType`, `RefPos` |
+| `src/parser/statement/` | One parser per statement kind; `index.ts` holds `Statement`, `StatementType`, `SortType`, `ReferentialAction`, `RefPos` |
 | `src/parser/dataType/` | Per-vendor type lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite, Databricks, Snowflake |
 | `src/schema_sql_test_case.md` | End-to-end fixtures read by `index.test.ts` |
 
@@ -29,6 +29,7 @@
 - **Keywords are unquoted `string` tokens compared case-insensitively**; every `is*Value` matcher refuses a `quoted` token, so `` `key` `` is a column and `KEY` an index. `--` and `/* */` comments never become tokens.
 - **A quoted `DEFAULT` goes back into quotes** (`'...'`, inner quotes doubled): `column.default` is raw SQL that every exporter writes after `DEFAULT`, and the lexer has stripped the quotes.
 - **A table constraint or index item yields no column**: `opensConstraintItem` in `statement/create.table.ts` names the tokens that open one; a new opener goes there.
+- **A foreign key keeps its referential actions** in their SQL spelling (`ReferentialAction`), `''` where the clause is absent. `referencesParser` (`statement/create.table.ts`) reads the reference and the `ON DELETE` / `ON UPDATE` / `MATCH` clauses right after it, for a table-level `FOREIGN KEY`, an `ALTER TABLE ... ADD FOREIGN KEY` and an inline column `REFERENCES`, whose missing column list leaves `refColumnNames` empty: the referenced table's primary key. `matchReferentialClause` still skips a clause nothing claimed, MySQL's `ON UPDATE CURRENT_TIMESTAMP` included.
 - `helper.ts` merges all eight `dataType/` lists into one deduplicated uppercase set, so a type added to one vendor widens every dialect.
 - **Type names match word by word, longest first**: write multi-word names in full (`TIMESTAMP WITHOUT TIME ZONE`); `matchDataType` returns the token span, argument lists included. Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`; no test pins the parity, so change both lists together.
 - **The `CREATE ... TABLE` header is measured, not counted**: `matchCreateTable` returns its span over a whitelist of modifiers (`OR REPLACE`, `TRANSIENT`, …), since scanning to the next `TABLE` would claim `CREATE VIEW ... FROM TABLE(...)`. `matchQualifiedName` does the same for an `ALTER TABLE db.schema.t` target.

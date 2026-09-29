@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Column, RefPos, SortType, StatementType } from '@/parser/statement';
+import {
+  Column,
+  ReferentialAction,
+  RefPos,
+  SortType,
+  StatementType,
+} from '@/parser/statement';
 import {
   createTableParser,
   parserForeignKeyParser,
@@ -723,7 +729,13 @@ describe('createTableParser - table level constraints', () => {
     );
 
     expect(ast.foreignKeys).toEqual([
-      { columnNames: ['a'], refTableName: 'other', refColumnNames: ['id'] },
+      {
+        columnNames: ['a'],
+        refTableName: 'other',
+        refColumnNames: ['id'],
+        onDelete: '',
+        onUpdate: '',
+      },
     ]);
   });
 
@@ -740,6 +752,8 @@ describe('createTableParser - table level constraints', () => {
         columnNames: ['a', 'b'],
         refTableName: 'other',
         refColumnNames: ['x', 'y'],
+        onDelete: '',
+        onUpdate: '',
       },
     ]);
   });
@@ -762,6 +776,8 @@ describe('createTableParser - table level constraints', () => {
         columnNames: ['cust_id'],
         refTableName: 'customers',
         refColumnNames: ['id'],
+        onDelete: '',
+        onUpdate: '',
       },
     ]);
   });
@@ -790,6 +806,8 @@ describe('createTableParser - table level constraints', () => {
         columnNames: ['user_id'],
         refTableName: 'users',
         refColumnNames: ['id'],
+        onDelete: '',
+        onUpdate: '',
       },
     ]);
   });
@@ -804,7 +822,13 @@ describe('createTableParser - table level constraints', () => {
 
     expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
     expect(ast.foreignKeys).toEqual([
-      { columnNames: ['a'], refTableName: 'o', refColumnNames: ['x'] },
+      {
+        columnNames: ['a'],
+        refTableName: 'o',
+        refColumnNames: ['x'],
+        onDelete: '',
+        onUpdate: '',
+      },
     ]);
   });
 
@@ -845,20 +869,27 @@ describe('createTableParser - constraint and index items', () => {
     columnNames: ['a_id'],
     refTableName: 'a',
     refColumnNames: ['id'],
+    onDelete: '',
+    onUpdate: '',
   };
 
-  it('consumes the referential actions that trail a FOREIGN KEY', () => {
-    for (const actions of [
-      'ON DELETE RESTRICT ON UPDATE CASCADE',
-      'ON DELETE SET NULL',
-      'MATCH FULL ON DELETE CASCADE',
+  it('reads the referential actions that trail a FOREIGN KEY', () => {
+    for (const [actions, onDelete, onUpdate] of [
+      [
+        'ON DELETE RESTRICT ON UPDATE CASCADE',
+        ReferentialAction.restrict,
+        ReferentialAction.cascade,
+      ],
+      ['ON DELETE SET NULL', ReferentialAction.setNull, ''],
+      ['MATCH FULL ON DELETE CASCADE', ReferentialAction.cascade, ''],
+      ['on update no action', '', ReferentialAction.noAction],
     ]) {
       const { ast } = parse(
         `CREATE TABLE b (id INT, a_id INT, FOREIGN KEY (a_id) REFERENCES a (id) ${actions});`
       );
 
       expect(ast.columns).toEqual(idAndA);
-      expect(ast.foreignKeys).toEqual([foreignKey]);
+      expect(ast.foreignKeys).toEqual([{ ...foreignKey, onDelete, onUpdate }]);
     }
 
     const { ast } = parse(
@@ -869,7 +900,13 @@ describe('createTableParser - constraint and index items', () => {
       ...idAndA,
       column({ name: 'c', dataType: 'INT' }),
     ]);
-    expect(ast.foreignKeys).toEqual([foreignKey]);
+    expect(ast.foreignKeys).toEqual([
+      {
+        ...foreignKey,
+        onDelete: ReferentialAction.setDefault,
+        onUpdate: ReferentialAction.noAction,
+      },
+    ]);
   });
 
   it('keeps the data type of an inline REFERENCES with a SET NULL action', () => {
@@ -882,6 +919,65 @@ describe('createTableParser - constraint and index items', () => {
       column({ name: 'a_id', dataType: 'BIGINT' }),
       column({ name: 'c', dataType: 'INTEGER' }),
     ]);
+  });
+
+  it('keys the column an inline REFERENCES ends, with its actions', () => {
+    const { ast } = parse(
+      'CREATE TABLE b (id INT, a_id BIGINT NOT NULL REFERENCES s.a (id) ON DELETE CASCADE ON UPDATE RESTRICT, c INT REFERENCES a, d INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'INT' }),
+      column({ name: 'a_id', dataType: 'BIGINT', nullable: false }),
+      column({ name: 'c', dataType: 'INT' }),
+      column({ name: 'd', dataType: 'INT' }),
+    ]);
+    expect(ast.foreignKeys).toEqual([
+      {
+        columnNames: ['a_id'],
+        refTableName: 'a',
+        refColumnNames: ['id'],
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.restrict,
+      },
+      {
+        columnNames: ['c'],
+        refTableName: 'a',
+        refColumnNames: [],
+        onDelete: '',
+        onUpdate: '',
+      },
+    ]);
+  });
+
+  it('reads the column attributes that follow an inline REFERENCES', () => {
+    const { ast } = parse(
+      "CREATE TABLE b (a_id INT REFERENCES a (id) NOT NULL DEFAULT 1 COMMENT 'x');"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a_id',
+        dataType: 'INT',
+        nullable: false,
+        default: '1',
+        comment: 'x',
+      }),
+    ]);
+    expect(ast.foreignKeys).toHaveLength(1);
+  });
+
+  it('keys no column from an inline REFERENCES it cannot read', () => {
+    for (const sql of [
+      'CREATE TABLE b (a_id INT REFERENCES (id), z INT);',
+      'CREATE TABLE b (a_id INT REFERENCES a (x, y), z INT);',
+      'CREATE TABLE b (a_id INT REFERENCES',
+    ]) {
+      const { ast } = parse(sql);
+
+      expect(ast.foreignKeys).toEqual([]);
+      expect(ast.columns[0]).toEqual(column({ name: 'a_id', dataType: 'INT' }));
+    }
   });
 
   it('still skips the value of an ON UPDATE that is no referential action', () => {
@@ -949,7 +1045,13 @@ describe('createTableParser - constraint and index items', () => {
         columns: [{ name: 'a_id', sort: SortType.asc }],
       },
     ]);
-    expect(ast.foreignKeys).toEqual([foreignKey]);
+    expect(ast.foreignKeys).toEqual([
+      {
+        ...foreignKey,
+        onDelete: ReferentialAction.noAction,
+        onUpdate: ReferentialAction.noAction,
+      },
+    ]);
   });
 
   it('reads the column of each prefix length key part', () => {
@@ -1161,6 +1263,8 @@ describe('parserForeignKeyParser', () => {
       columnNames: ['a'],
       refTableName: 'o',
       refColumnNames: ['x'],
+      onDelete: '',
+      onUpdate: '',
     });
   });
 
@@ -1189,6 +1293,8 @@ describe('parserForeignKeyParser', () => {
       columnNames: ['a'],
       refTableName: 'sc',
       refColumnNames: ['x'],
+      onDelete: '',
+      onUpdate: '',
     });
   });
 

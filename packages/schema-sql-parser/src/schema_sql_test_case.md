@@ -1093,7 +1093,9 @@ CREATE TABLE b (
         {
           "columnNames": ["b", "c"],
           "refTableName": "b",
-          "refColumnNames": ["b", "c"]
+          "refColumnNames": ["b", "c"],
+          "onDelete": "",
+          "onUpdate": ""
         }
       ]
     },
@@ -1128,7 +1130,9 @@ CREATE TABLE b (
         {
           "columnNames": ["b", "c"],
           "refTableName": "a",
-          "refColumnNames": ["b", "c"]
+          "refColumnNames": ["b", "c"],
+          "onDelete": "",
+          "onUpdate": ""
         }
       ]
     }
@@ -1249,14 +1253,18 @@ FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     },
     {
       "type": "alter.table.add.foreignKey",
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     }
   ]
 }
@@ -1281,14 +1289,18 @@ FOREIGN KEY (PersonID) REFERENCES "public".Persons(PersonID)
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     },
     {
       "type": "alter.table.add.foreignKey",
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     }
   ]
 }
@@ -1387,28 +1399,36 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     },
     {
       "type": "alter.table.add.foreignKey",
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     },
     {
       "type": "alter.table.add.foreignKey",
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     },
     {
       "type": "alter.table.add.foreignKey",
       "name": "Orders",
       "columnNames": ["PersonID"],
       "refTableName": "Persons",
-      "refColumnNames": ["PersonID"]
+      "refColumnNames": ["PersonID"],
+      "onDelete": "",
+      "onUpdate": ""
     },
     {
       "type": "alter.table.add.unique",
@@ -1835,7 +1855,9 @@ COMMENT = 'sales orders'
           "refTableName": "SALESPEOPLE",
           "refColumnNames": [
             "SP_ID"
-          ]
+          ],
+          "onDelete": "",
+          "onUpdate": ""
         }
       ]
     }
@@ -1904,7 +1926,92 @@ ALTER TABLE analytics.dbt_dev.orders ADD FOREIGN KEY (user_id) REFERENCES analyt
       "refTableName": "users",
       "refColumnNames": [
         "user_id"
+      ],
+      "onDelete": "",
+      "onUpdate": ""
+    }
+  ]
+}
+```
+
+### Referential actions
+
+```sql
+CREATE TABLE orders (
+  id INT PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  shop_id INT,
+  FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+ALTER TABLE items ADD CONSTRAINT fk_items_orders FOREIGN KEY (order_id) REFERENCES orders (id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE RESTRICT;
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "orders",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "user_id",
+          "dataType": "INT",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "shop_id",
+          "dataType": "INT",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "columnNames": ["user_id"],
+          "refTableName": "users",
+          "refColumnNames": ["id"],
+          "onDelete": "CASCADE",
+          "onUpdate": ""
+        },
+        {
+          "columnNames": ["shop_id"],
+          "refTableName": "shops",
+          "refColumnNames": ["id"],
+          "onDelete": "SET NULL",
+          "onUpdate": "CASCADE"
+        }
       ]
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "items",
+      "columnNames": ["order_id"],
+      "refTableName": "orders",
+      "refColumnNames": ["id"],
+      "onDelete": "RESTRICT",
+      "onUpdate": "NO ACTION"
     }
   ]
 }
