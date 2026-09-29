@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
+  IME_CHOSEONG,
+  IME_SAYONG,
+  seedHangulDocument,
+} from '@/__test-utils__/hangulSeed';
+import {
   createTestAppContext,
   flush,
   mount,
@@ -969,5 +974,114 @@ describe('QuickSearch prefixes', () => {
 
     expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
     expect(app.store.state.editor.focusTable?.columnId).toBe('email');
+  });
+});
+
+describe('QuickSearch Hangul', () => {
+  const highlighted = (row: HTMLDivElement | undefined) =>
+    Array.from(
+      row?.querySelectorAll(`.${highlightStyles.highlighted}`) ?? []
+    ).map(mark => mark.textContent);
+
+  const rowNamed = (name: string, kind?: string) =>
+    rows().find(
+      row =>
+        (row.querySelector(`.${styles.name}`)?.textContent ?? '').trim() ===
+          name &&
+        (kind === undefined ||
+          (
+            row.querySelector(`.${styles.keyword}`)?.textContent ?? ''
+          ).trim() === kind)
+    );
+
+  /** Types the values an IME hands the input one after another, as it does while composing. */
+  const compose = async (prefix: string, steps: ReadonlyArray<string>) => {
+    const seen: string[][] = [];
+    for (const step of steps) {
+      await type(`${prefix}${step}`);
+      seen.push(rowNames());
+    }
+    return seen;
+  };
+
+  beforeEach(() => {
+    seedHangulDocument(app);
+  });
+
+  it('keeps 사용자 in the narrowed list at every step a Korean IME hands over', async () => {
+    for (const steps of [IME_SAYONG, IME_CHOSEONG]) {
+      await open();
+
+      const seen = await compose('', steps);
+
+      for (const names of seen) {
+        expect(names).toContain('사용자');
+      }
+      // The table named with it first, before the fields holding it.
+      expect(seen.at(-1)?.[0]).toBe('사용자');
+      await open();
+    }
+  });
+
+  it('still narrows inside the last list, leaving out rows the IME steps passed by', async () => {
+    await open();
+
+    await compose('', ['ㅅ', '사', '상']);
+    expect(rowNames()).toContain('상품');
+
+    // 상품 dropped at 사요 does not come back once the list has narrowed past it.
+    await compose('', ['사요', '상']);
+    expect(rowNamed('상품', 'Table')).toBeUndefined();
+    expect(rowNamed('사용자', 'Table')).toBeDefined();
+  });
+
+  it('keeps 사용자 at every step inside the #, @ and " scopes', async () => {
+    const targets: Array<[string, string]> = [
+      ['#', '사용자'],
+      ['@', '사용자'],
+      ['"', '주문한 사용자'],
+    ];
+    await open();
+
+    for (const [prefix, target] of targets) {
+      for (const steps of [IME_SAYONG, IME_CHOSEONG]) {
+        const seen = await compose(prefix, steps);
+        for (const names of seen) {
+          expect(names).toContain(target);
+        }
+      }
+    }
+  });
+
+  it('lights the syllables a Hangul keyword spells, in the name and in where it is', async () => {
+    await open();
+
+    await type('#상');
+    expect(highlighted(rowNamed('사용자'))).toEqual(['사용']);
+
+    await type('ㅅㅇㅈ');
+    expect(highlighted(rowNamed('사용자', 'Table'))).toEqual(['사용자']);
+    expect(
+      highlighted(rowNamed('사용자', '주문 내역.사용자 · Column'))
+    ).toEqual(['사용자', '사용자']);
+
+    await type('#ㅈㅁ');
+    expect(rowNames()).toEqual(['주문 내역']);
+    expect(highlighted(rows()[0])).toEqual(['주문']);
+  });
+
+  it('goes to the column a Hangul search found', async () => {
+    await open();
+    await type('@사');
+    expect(rowNames()).toEqual(['사용자', '상품명']);
+
+    await click(rows()[1]);
+
+    expect(isOpen()).toBe(false);
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      tableId: 'products',
+      columnId: 'products_name',
+      focusType: 'columnName',
+    });
   });
 });

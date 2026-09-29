@@ -23,6 +23,7 @@ import { focusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { Action, createScopeActions, searchActions } from './actions';
+import { findPaletteChunks } from './hangul';
 import {
   PALETTE_PREFIXES,
   PaletteQuery,
@@ -86,8 +87,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     const query = readQuery(value);
     const base = scopeBase(state.prevActions, query.scope);
     // Only the unscoped list narrows inside its last hits, as the owner pinned;
-    // a scope searches its whole base on each keystroke, so a Hangul jamo typed
-    // mid-syllable empties nothing for good, and a prefix change starts over.
+    // each step a Korean IME hands over spells on from the last, so it keeps
+    // its rows. A scope searches its whole base, and a prefix change restarts.
     const narrow = query.scope === null && state.scope === null;
     const from = narrow ? state.actions : base;
 
@@ -326,6 +327,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                   <HighlightedText
                     searchWords={searchWords}
                     textToHighlight={action.name}
+                    findChunks={findPaletteChunks}
                   />
                 </span>
                 {action.keywords ? (
@@ -335,6 +337,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                       <HighlightedText
                         searchWords={searchWords}
                         textToHighlight={action.keywords}
+                        findChunks={findPaletteChunks}
                       />
                     </span>
                   </>

@@ -1,4 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
+import Fuse from 'fuse.js';
 import {
   afterEach,
   beforeEach,
@@ -9,6 +10,11 @@ import {
 } from 'vite-plus/test';
 
 import { seedFindDocument } from '@/__test-utils__/findSeed';
+import {
+  IME_CHOSEONG,
+  IME_SAYONG,
+  seedHangulDocument,
+} from '@/__test-utils__/hangulSeed';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
@@ -1079,5 +1085,186 @@ describe('rankPaletteActions', () => {
         ERD_TOOLBOX.length + TABLE_ACTION_LIMIT + MATCH_ACTION_LIMIT + 1
       );
     }
+  });
+});
+
+describe('searchActions / Hangul', () => {
+  const rows = (...list: string[]): Action[] => list.map(name => ({ name }));
+
+  it('leaves a keyword without Hangul to Fuse alone, its rows and their order', () => {
+    const catalog: Action[] = [
+      ...rows('사용자', 'user사용자', 'users', 'New Memo'),
+      { name: 'orders', keywords: 'Table', tableId: 'orders' },
+    ];
+    const fuse = new Fuse(catalog, {
+      keys: [
+        'name',
+        {
+          name: 'keywords',
+          getFn: action => (action.tableId ? [] : (action.keywords ?? [])),
+        },
+      ],
+    });
+
+    for (const keyword of ['user', 'memo', 'ord', 'qqqq']) {
+      expect(searchActions(catalog, keyword)).toEqual(
+        fuse.search(keyword).map(result => result.item)
+      );
+    }
+  });
+
+  it('keeps 사용자 at every step a Korean IME hands over, where Fuse drops it', () => {
+    const catalog = rows('사용자', '상품', '주문 내역', 'Auto Layout');
+
+    expect(names(searchActions(catalog, 'ㅅ'))).toEqual(['사용자', '상품']);
+    for (const step of [...IME_SAYONG, ...IME_CHOSEONG]) {
+      expect(names(searchActions(catalog, step))).toContain('사용자');
+    }
+    expect(names(searchActions(catalog, '사요'))).toEqual(['사용자']);
+    expect(names(searchActions(catalog, 'ㅈㅁ'))).toEqual(['주문 내역']);
+  });
+
+  it('ranks the rows holding it whole, then from their start, then inside, then what Fuse alone finds', () => {
+    const catalog = rows('주문 사용자 목록', '사용쟈', '사용자 설정', '사용자');
+
+    // 사용쟈 fuzzes to the keyword but does not spell it.
+    expect(names(searchActions(catalog, '사용자'))).toEqual([
+      '사용자',
+      '사용자 설정',
+      '주문 사용자 목록',
+      '사용쟈',
+    ]);
+  });
+
+  it('breaks a tie by the level order where Fuse finds none of the rows, the same each time', () => {
+    const catalog = rows('사용자', '상인', '소원', '주문');
+
+    const first = names(searchActions(catalog, 'ㅅㅇ'));
+
+    expect(first).toEqual(['상인', '소원', '사용자']);
+    expect(names(searchActions(catalog, 'ㅅㅇ'))).toEqual(first);
+  });
+
+  it('reads the keywords of a command, never the Table of a table row', () => {
+    expect(
+      names(searchActions([{ name: 'zzzz', keywords: '관계 그리기' }], 'ㄱㄱ'))
+    ).toEqual(['zzzz']);
+    expect(
+      searchActions(
+        [{ name: 'orders', keywords: '테이블', tableId: 'orders' }],
+        'ㅌㅇㅂ'
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('rankPaletteActions / Hangul', () => {
+  beforeEach(() => {
+    setCanvasType(CanvasType.ERD);
+    seedHangulDocument(app);
+  });
+
+  it('puts a table held by its initials above the fields, which follow in document order', () => {
+    const rows = paletteSearch('ㅅㅇㅈ');
+
+    expect(rows.map(({ name, keywords }) => [name, keywords])).toEqual([
+      ['사용자', 'Table'],
+      ['사용자 고유 번호', '사용자.아이디 · Column comment'],
+      ['사용자', '주문 내역.사용자 · Column'],
+      ['주문한 사용자', '주문 내역.사용자 · Column comment'],
+      ['사용자 한 명이 여러 주문을 남긴다', 'Memo'],
+    ]);
+  });
+
+  it('keeps a table an IME has only half spelled above the fields', () => {
+    for (const step of IME_SAYONG) {
+      const rows = paletteSearch(step);
+      const firstField = rows.findIndex(isFieldRow);
+
+      expect(names(rows.slice(0, firstField))).toContain('사용자');
+    }
+    expect(names(paletteSearch('ㅈㅁ')).slice(0, 1)).toEqual(['주문 내역']);
+  });
+
+  it('hands Find and Replace only the tables the cap leaves out that hold the keyword as typed', () => {
+    for (let index = 0; index <= TABLE_ACTION_LIMIT; index++) {
+      addTable(`사용자_${index}`);
+    }
+
+    for (const keyword of ['ㅅㅇㅈ', '사요']) {
+      const rows = paletteSearch(keyword);
+      expect(rows.filter(row => row.tableId)).toHaveLength(TABLE_ACTION_LIMIT);
+      expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
+    }
+
+    // Twenty-two table names, a column name, two comments and the memo.
+    expect(names(paletteSearch('사용')).at(-1)).toBe(
+      `Show all ${TABLE_ACTION_LIMIT + 6} matches in Find and Replace`
+    );
+  });
+});
+
+describe('createMatchActions / Hangul', () => {
+  const addMemos = (count: number, value: (index: number) => string) => {
+    const actions: AnyAction[] = [];
+    for (let index = 0; index < count; index++) {
+      const id = `ko-${app.store.state.doc.memoIds.length}-${index}`;
+      actions.push(
+        addMemoAction({ id, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeMemoValueAction({ id, value: value(index) })
+      );
+    }
+    app.store.dispatchSync(actions);
+  };
+
+  beforeEach(() => {
+    seedHangulDocument(app);
+  });
+
+  it('lists the fields an IME step or the initials spell, lit where they hold it', () => {
+    const expected = [
+      '사용자 고유 번호',
+      '사용자',
+      '주문한 사용자',
+      '사용자 한 명이 여러 주문을 남긴다',
+    ];
+
+    expect(names(createMatchActions(app, 'ㅅㅇㅈ'))).toEqual(expected);
+    expect(names(createMatchActions(app, '사요'))).toEqual(expected);
+    // 상 spells the start of 사용 and all of 상품명.
+    expect(names(createMatchActions(app, '상'))).toEqual([
+      '사용자 고유 번호',
+      '사용자',
+      '주문한 사용자',
+      '상품명',
+      '사용자 한 명이 여러 주문을 남긴다',
+    ]);
+  });
+
+  it('offers no hand-off past the limit when the fields hold the keyword only by its Hangul letters', () => {
+    addMemos(MATCH_ACTION_LIMIT + 5, index => `사용자 메모 ${index}`);
+
+    for (const keyword of ['ㅅㅇㅈ', '사요']) {
+      const actions = createMatchActions(app, keyword);
+      expect(actions).toHaveLength(MATCH_ACTION_LIMIT);
+      expect(names(actions).some(name => name.startsWith('Show all'))).toBe(
+        false
+      );
+    }
+
+    // The panel's count of 사용 as typed: the memos added and five in the seed.
+    expect(names(createMatchActions(app, '사용')).at(-1)).toBe(
+      `Show all ${MATCH_ACTION_LIMIT + 10} matches in Find and Replace`
+    );
+  });
+
+  it('hands over the keyword when the limit leaves out a field holding it as typed', () => {
+    addMemos(MATCH_ACTION_LIMIT, index => `사용 ${index}`);
+    addMemos(1, () => '상자');
+
+    const actions = createMatchActions(app, '상');
+
+    // The table 상품, the column 상품명 and the memo 상자: the panel's count.
+    expect(actions.at(-1)?.name).toBe('Show all 3 matches in Find and Replace');
   });
 });

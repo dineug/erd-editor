@@ -16,9 +16,12 @@ import {
   Action,
   createMatchAction,
   createShowAllAction,
+  holdsAsTyped,
+  keywordHolder,
   rankPaletteActions,
   searchActions,
 } from './actions';
+import { hangulQueryOf, matchText } from './hangul';
 import { PALETTE_PREFIXES, PaletteQuery, PaletteScope } from './paletteQuery';
 import * as styles from './QuickSearch.styles';
 
@@ -87,22 +90,24 @@ export function paletteRows(
 }
 
 /**
- * The table rows the keyword fuzzes to, those holding it as typed first, up
- * to the scoped limit, past which a table holding it hands the search to Find
- * and Replace over the table names alone.
+ * The table rows the keyword fuzzes to, those holding it as typed or by its
+ * Hangul letters first, up to the scoped limit, past which a table holding it
+ * as typed hands the search to Find and Replace over the table names alone.
  */
 export function rankTableActions(
   app: AppContext,
   found: Action[],
   keyword: string
 ): Action[] {
-  const needle = keyword.toLowerCase();
-  const holds = ({ name }: Action) => name.toLowerCase().includes(needle);
+  const holds = keywordHolder(keyword);
   const ranked = [...found.filter(holds), ...found.filter(row => !holds(row))];
   const rows = ranked.slice(0, SCOPED_ACTION_LIMIT);
   const matcher = matcherOf(keyword);
+  const hidden = ranked
+    .slice(SCOPED_ACTION_LIMIT)
+    .some(row => holdsAsTyped(row, keyword));
 
-  if (!matcher || !ranked.slice(SCOPED_ACTION_LIMIT).some(holds)) return rows;
+  if (!matcher || !hidden) return rows;
 
   const count = findMatches(app.store.state, matcher, TABLE_FIELDS).length;
   return [
@@ -111,7 +116,7 @@ export function rankTableActions(
   ];
 }
 
-/** Whether a table is one a column search names: any without a table part, else those whose name holds it. */
+/** Whether a table is one a column search names: any without a table part, else those whose name holds it, Hangul letters too. */
 function tableFilter(
   { doc, collections }: RootState,
   table: string | null
@@ -119,20 +124,21 @@ function tableFilter(
   const matcher = table ? matcherOf(table) : null;
   if (!matcher) return () => true;
 
+  const hangul = hangulQueryOf(table as string);
   const ids = new Set(
     query(collections)
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
-      .filter(({ name }) => matcher.find(name).length)
+      .filter(({ name }) => matchText(name, matcher, hangul))
       .map(({ id }) => id)
   );
   return tableId => ids.has(tableId);
 }
 
 /**
- * One row a field of the kinds given holding the keyword, or with none every
- * column or text, up to the scoped limit, past which the keyword goes to Find
- * and Replace over those kinds, without the table part the panel has no toggle for.
+ * One row a field of the kinds given holding the keyword, Hangul letters too,
+ * or every column or text, up to the scoped limit, past which one holding it as
+ * typed hands it to Find and Replace over those kinds, without the table part.
  */
 export function createFieldActions(
   app: AppContext,
@@ -142,26 +148,32 @@ export function createFieldActions(
 ): Action[] {
   const { state } = app.store;
   const matcher = matcherOf(keyword);
+  const hangul = hangulQueryOf(keyword);
   const inTable = tableFilter(state, table);
   const found: FindMatch[] = [];
+  let hidden = false;
 
   for (const field of walkFields(state, fields)) {
-    if (found.length > SCOPED_ACTION_LIMIT) break;
     if (!inTable(field.tableId)) continue;
 
     if (matcher) {
-      const [range] = matcher.find(field.text);
-      range && found.push({ ...field, ...range });
+      const hit = matchText(field.text, matcher, hangul);
+      if (!hit) continue;
+      if (found.length < SCOPED_ACTION_LIMIT) {
+        found.push({ ...field, start: hit.start, end: hit.end });
+      } else if (hit.literal) {
+        // Past the limit the walk only looks for a field the panel would find.
+        hidden = true;
+        break;
+      }
     } else if (field.text || field.field === FindField.columnName) {
+      if (found.length === SCOPED_ACTION_LIMIT) break;
       found.push({ ...field, start: 0, end: 0 });
     }
   }
 
-  const rows = found
-    .slice(0, SCOPED_ACTION_LIMIT)
-    .map(match => createMatchAction(state, match));
-
-  if (!matcher || found.length <= SCOPED_ACTION_LIMIT) return rows;
+  const rows = found.map(match => createMatchAction(state, match));
+  if (!matcher || !hidden) return rows;
 
   const count = findMatches(state, matcher, fields).length;
   return [...rows, createShowAllAction(count, { query: keyword, fields })];

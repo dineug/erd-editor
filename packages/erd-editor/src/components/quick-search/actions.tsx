@@ -51,13 +51,23 @@ import {
   DEFAULT_FIND_OPTIONS,
   FindField,
   FindFieldLabel,
+  FindFieldList,
   FindMatch,
   findMatches,
   locationOf,
   snippetOf,
+  walkFields,
 } from '@/utils/find-replace';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
+
+import {
+  HangulQuery,
+  hangulQueryOf,
+  HangulTier,
+  hangulTier,
+  matchText,
+} from './hangul';
 
 export type Action = {
   icon?: DOMTemplateLiterals | null;
@@ -73,6 +83,35 @@ export type Action = {
   next?: Action[];
 };
 
+/** The texts of a row a search reads: its name, and the keywords of a row that is no table. */
+const textsOf = ({ name, keywords, tableId }: Action): string[] =>
+  tableId || !keywords ? [name] : [name, keywords];
+
+/** Whether a row holds the keyword as typed, in any case, in a text a search reads: what Find and Replace would find. */
+export const holdsAsTyped = (action: Action, keyword: string): boolean => {
+  const needle = keyword.toLowerCase();
+  return textsOf(action).some(text => text.toLowerCase().includes(needle));
+};
+
+/** How closely a row holds a Hangul keyword in the texts a search reads, or null. */
+function tierOfAction(action: Action, query: HangulQuery): HangulTier | null {
+  return textsOf(action).reduce<HangulTier | null>((best, text) => {
+    const tier = hangulTier(text, query);
+    return tier !== null && (best === null || tier < best) ? tier : best;
+  }, null);
+}
+
+/**
+ * Whether a row holds the keyword: as typed, or by its Hangul letters, which
+ * an IME spells out one jamo at a time and a choseong search abbreviates.
+ */
+export function keywordHolder(keyword: string): (action: Action) => boolean {
+  const query = hangulQueryOf(keyword);
+  return action =>
+    holdsAsTyped(action, keyword) ||
+    (query !== null && tierOfAction(action, query) !== null);
+}
+
 export function searchActions(actions: Action[], keyword: string): Action[] {
   const fuse = new Fues(actions, {
     keys: [
@@ -84,26 +123,51 @@ export function searchActions(actions: Action[], keyword: string): Action[] {
       },
     ],
   });
-  return fuse.search(keyword).map(result => result.item);
+  const found = fuse.search(keyword).map(result => result.item);
+  const query = hangulQueryOf(keyword);
+
+  return query ? rankHangulActions(actions, found, query) : found;
+}
+
+/**
+ * The rows a Hangul keyword finds: those holding it whole, then from their
+ * start, then inside, each tier in Fuse's order and then the level's, and
+ * last what Fuse alone fuzzes to, which a jamo typed mid-syllable never reaches.
+ */
+function rankHangulActions(
+  actions: Action[],
+  found: Action[],
+  query: HangulQuery
+): Action[] {
+  const fuzzy = new Map(found.map((action, index) => [action, index]));
+  const hits = actions.flatMap((action, index) => {
+    const tier = tierOfAction(action, query);
+    const order = fuzzy.get(action) ?? found.length + index;
+    return tier === null ? [] : [{ action, tier, order }];
+  });
+  hits.sort((a, b) => a.tier - b.tier || a.order - b.order);
+
+  const spelled = new Set(hits.map(hit => hit.action));
+  return [
+    ...hits.map(hit => hit.action),
+    ...found.filter(action => !spelled.has(action)),
+  ];
 }
 
 /** How many tables the palette lists for one keyword, the closest first. */
 export const TABLE_ACTION_LIMIT = 20;
 
 /**
- * The palette's rows for a keyword at its top level, from what it fuzzes to:
- * the commands and tables holding it as typed, the fields holding it, then the
- * looser hits, tables capped, so neither a large document nor a loose hit buries a field.
+ * The palette's top level rows for a keyword: the commands and tables holding
+ * it, Hangul letters too, the fields holding it, then the looser fuzzy hits,
+ * tables capped, so neither a large document nor a loose hit buries a field.
  */
 export function rankPaletteActions(
   app: AppContext,
   found: Action[],
   keyword: string
 ): Action[] {
-  const needle = keyword.toLowerCase();
-  const holds = ({ name, keywords, tableId }: Action) =>
-    name.toLowerCase().includes(needle) ||
-    (!tableId && Boolean(keywords?.toLowerCase().includes(needle)));
+  const holds = keywordHolder(keyword);
 
   const ranked = [...found.filter(holds), ...found.filter(row => !holds(row))];
   const tables = ranked.filter(row => row.tableId);
@@ -111,8 +175,11 @@ export function rankPaletteActions(
   const rows = ranked.filter(row => !row.tableId || shown.has(row));
   const loose = rows.findIndex(row => !holds(row));
   const split = loose === -1 ? rows.length : loose;
-  // A table holding the keyword that the cap left out is one Find and Replace lists.
-  const more = tables.slice(TABLE_ACTION_LIMIT).some(holds);
+  // A table holding the keyword as typed that the cap left out is one Find
+  // and Replace lists; one holding it by its Hangul letters alone is not.
+  const more = tables
+    .slice(TABLE_ACTION_LIMIT)
+    .some(row => holdsAsTyped(row, keyword));
 
   return [
     ...rows.slice(0, split),
@@ -374,37 +441,44 @@ export function createScopeActions(app: AppContext): Action[] {
 /** How many columns, comments and memos the palette lists for one keyword. */
 export const MATCH_ACTION_LIMIT = 50;
 
+/** The kinds of field the mixed list reads: every one but the table names, which its fuzzy rows hold. */
+const MATCH_FIELDS: ReadonlyArray<FindField> = FindFieldList.filter(
+  field => field !== FindField.tableName
+);
+
 /**
- * The columns, comments and memos holding the keyword, in any case, one row a
- * field, up to a limit past which, or when more is set, a last row hands the
- * search to Find and Replace. A plain substring: long prose fuzzes into noise.
+ * The columns, comments and memos holding the keyword, in any case or by its
+ * Hangul letters, one row a field, up to a limit past which, or when more is
+ * set, a last row hands the search over. No fuzz: long prose fuzzes into noise.
  */
 export function createMatchActions(
   app: AppContext,
   keyword: string,
   more = false
 ): Action[] {
-  const { store } = app;
+  const { state } = app.store;
   const { matcher } = createMatcher(keyword, DEFAULT_FIND_OPTIONS);
   if (!matcher) return [];
 
-  // The panel's own search, which the last row counts, so it names the
-  // number the panel opens on.
-  const matches = findMatches(store.state, matcher);
-  // One row a field, however often the keyword comes up in its text, and no
-  // table name, which the fuzzy list already holds.
-  const fields = matches.filter(
-    (match, index) =>
-      match.field !== FindField.tableName &&
-      matches[index - 1]?.slot !== match.slot
-  );
+  const hangul = hangulQueryOf(keyword);
+  const found: Array<{ match: FindMatch; literal: boolean }> = [];
+  for (const field of walkFields(state, MATCH_FIELDS)) {
+    const hit = matchText(field.text, matcher, hangul);
+    if (!hit) continue;
+    const match = { ...field, start: hit.start, end: hit.end };
+    found.push({ match, literal: hit.literal });
+  }
 
-  const actions = fields
+  const actions = found
     .slice(0, MATCH_ACTION_LIMIT)
-    .map(match => createMatchAction(store.state, match));
+    .map(({ match }) => createMatchAction(state, match));
 
-  if (more || fields.length > MATCH_ACTION_LIMIT) {
-    actions.push(createShowAllAction(matches.length, { query: keyword }));
+  // The panel matches as typed alone, so the row hands over only a search
+  // that leaves out a field the panel finds, and names the panel's count.
+  const hidden = found.slice(MATCH_ACTION_LIMIT).some(hit => hit.literal);
+  if (more || hidden) {
+    const count = findMatches(state, matcher).length;
+    actions.push(createShowAllAction(count, { query: keyword }));
   }
 
   return actions;

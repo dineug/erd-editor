@@ -295,3 +295,122 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(palette.getByText('users.id · Column comment')).toHaveCount(1);
   });
 });
+
+test.describe('quick search under a Korean IME', () => {
+  const koreanSchema = () =>
+    createSchema({
+      tables: [
+        {
+          id: 'users',
+          name: '사용자',
+          comment: '서비스에 가입한 회원',
+          x: 120,
+          y: 120,
+          columns: [
+            { id: 'users_id', name: '아이디', comment: '사용자 고유 번호' },
+            { id: 'users_name', name: '이름' },
+          ],
+        },
+        {
+          id: 'orders',
+          name: '주문 내역',
+          x: 560,
+          y: 120,
+          columns: [
+            { id: 'orders_user', name: '사용자', comment: '주문한 사용자' },
+          ],
+        },
+        {
+          id: 'products',
+          name: '상품',
+          x: 1000,
+          y: 120,
+          columns: [{ id: 'products_name', name: '상품명' }],
+        },
+      ],
+      memos: [{ id: 'note', value: '사용자 한 명이 여러 주문을 남긴다' }],
+    });
+
+  /** Chromium's own IME entry points, which fire the composition events a Korean IME does. */
+  async function ime(page: Page) {
+    const client = await page.context().newCDPSession(page);
+    return {
+      compose: (text: string) =>
+        client.send('Input.imeSetComposition', {
+          text,
+          selectionStart: text.length,
+          selectionEnd: text.length,
+        }),
+      commit: (text: string) => client.send('Input.insertText', { text }),
+    };
+  }
+
+  test('keeps 사용자 listed at every step the IME composes', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(koreanSchema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const input = palette.locator('input');
+    const { compose, commit } = await ime(page);
+    const listed = () =>
+      expect(
+        palette.getByText('사용자', { exact: true }).first()
+      ).toBeVisible();
+
+    await erd.press(Shortcut.search);
+    for (const [step, value] of [
+      ['ㅅ', 'ㅅ'],
+      ['사', '사'],
+      ['상', '상'],
+    ]) {
+      await compose(step);
+      await expect(input).toHaveValue(value);
+      await listed();
+    }
+    await commit('사');
+    for (const [step, value] of [
+      ['요', '사요'],
+      ['용', '사용'],
+    ]) {
+      await compose(step);
+      await expect(input).toHaveValue(value);
+      await listed();
+    }
+    await commit('용');
+
+    await expect(palette.getByText('상품', { exact: true })).toHaveCount(0);
+    await expect(palette.getByText('주문한 사용자')).toHaveCount(1);
+  });
+
+  test('goes to a table by its initials and to a column by an unfinished syllable', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(koreanSchema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const { compose } = await ime(page);
+
+    await erd.press(Shortcut.search);
+    await erd.page.keyboard.type('#');
+    await compose('ㅈ');
+    await compose('ㅈㅁ');
+    await expect(palette.getByText('주문 내역', { exact: true })).toHaveCount(
+      1
+    );
+    await expect(palette.getByText('사용자', { exact: true })).toHaveCount(0);
+
+    await erd.page.keyboard.press('ControlOrMeta+KeyA');
+    await erd.page.keyboard.type('@');
+    await compose('ㅅ');
+    await compose('사');
+    await palette.getByText('상품.상품명 · Column', { exact: true }).click();
+
+    await expect(palette).toHaveCount(0);
+    await expect
+      .poll(() => erd.focusRingCells())
+      .toEqual(['products_name:columnName']);
+  });
+});

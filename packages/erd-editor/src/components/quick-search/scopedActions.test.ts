@@ -2,6 +2,11 @@ import { AnyAction } from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { seedFindDocument } from '@/__test-utils__/findSeed';
+import {
+  IME_CHOSEONG,
+  IME_SAYONG,
+  seedHangulDocument,
+} from '@/__test-utils__/hangulSeed';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
@@ -37,6 +42,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnCommentAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { openFindReplaceAction } from '@/utils/emitter';
@@ -439,5 +445,145 @@ describe('paletteRows / ? help', () => {
 describe('the mixed list beside the scoped ones', () => {
   it('keeps its own limits', () => {
     expect(MATCH_ACTION_LIMIT).toBeLessThan(SCOPED_ACTION_LIMIT);
+  });
+});
+
+describe('paletteRows / Hangul', () => {
+  const STEPS = [...IME_SAYONG, ...IME_CHOSEONG];
+
+  const addMemos = (count: number, value: (index: number) => string) => {
+    const actions: AnyAction[] = [];
+    for (let index = 0; index < count; index++) {
+      const id = `ko-${app.store.state.doc.memoIds.length}-${index}`;
+      actions.push(
+        addMemoAction({ id, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeMemoValueAction({ id, value: value(index) })
+      );
+    }
+    app.store.dispatchSync(actions);
+  };
+
+  const hasShowAll = (actions: Action[]) =>
+    names(actions).some(name => name.startsWith('Show all'));
+
+  beforeEach(() => {
+    app.store.destroy();
+    app = createTestAppContext();
+    seedHangulDocument(app);
+  });
+
+  it('keeps 사용자 in every scope at each step an IME hands over', () => {
+    for (const step of STEPS) {
+      expect(names(rowsFor(step))).toContain('사용자');
+      expect(names(rowsFor(`#${step}`))).toContain('사용자');
+      expect(names(rowsFor(`@${step}`))).toContain('사용자');
+      expect(names(rowsFor(`"${step}`))).toContain('주문한 사용자');
+      expect(rowsFor(`#${step}`).every(row => row.tableId)).toBe(true);
+    }
+    expect(rowsFor('>ㅅ')).toEqual([]);
+  });
+
+  it('goes to a table by its initials, and to a column by the syllables typed so far', () => {
+    expect(names(rowsFor('#ㅈㅁ'))).toEqual(['주문 내역']);
+    expect(names(rowsFor('#사요'))).toEqual(['사용자']);
+    expect(pairs(rowsFor('@사'))).toEqual([
+      ['사용자', '주문 내역.사용자 · Column'],
+      ['상품명', '상품.상품명 · Column'],
+    ]);
+  });
+
+  it('reads the table part of a column search by its Hangul letters too', () => {
+    const ofUsers = ['아이디', '이름', '이메일'];
+
+    expect(names(rowsFor('@사용자.'))).toEqual(ofUsers);
+    expect(names(rowsFor('@ㅅㅇㅈ.ㅇ'))).toEqual(ofUsers);
+    expect(names(rowsFor('@ㅈㅁ.ㅅ'))).toEqual(['사용자']);
+    expect(names(rowsFor('@사요.'))).toEqual(ofUsers);
+  });
+
+  it('lists the comments and the memo spelled, and no name', () => {
+    expect(pairs(rowsFor('"ㅅㅇㅈ'))).toEqual([
+      ['사용자 고유 번호', '사용자.아이디 · Column comment'],
+      ['주문한 사용자', '주문 내역.사용자 · Column comment'],
+      ['사용자 한 명이 여러 주문을 남긴다', 'Memo'],
+    ]);
+  });
+
+  it('hands # over past its limit only for a keyword the table names hold as typed', () => {
+    addTables(SCOPED_ACTION_LIMIT + 5, index => `사용자_${index}`);
+
+    for (const keyword of ['#ㅅㅇㅈ', '#사요']) {
+      const rows = rowsFor(keyword);
+      expect(rows).toHaveLength(SCOPED_ACTION_LIMIT);
+      expect(hasShowAll(rows)).toBe(false);
+    }
+
+    const last = rowsFor('#사용').at(-1);
+    expect(last?.name).toBe(
+      `Show all ${SCOPED_ACTION_LIMIT + 6} matches in Find and Replace`
+    );
+    expect(handedOver(last)).toEqual([
+      openFindReplaceAction({ query: '사용', fields: [FindField.tableName] }),
+    ]);
+  });
+
+  it('hands @ over past its limit only for a keyword the column names hold as typed', () => {
+    addColumns('orders', SCOPED_ACTION_LIMIT + 5, index => `사용자_${index}`);
+
+    expect(rowsFor('@ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(hasShowAll(rowsFor('@ㅅㅇㅈ'))).toBe(false);
+    expect(rowsFor('@사용').at(-1)?.name).toBe(
+      `Show all ${SCOPED_ACTION_LIMIT + 6} matches in Find and Replace`
+    );
+  });
+
+  it('hands " over when the limit leaves out a text holding the keyword as typed, and not before', () => {
+    addMemos(SCOPED_ACTION_LIMIT, index => `사용자 메모 ${index}`);
+
+    expect(rowsFor('"ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(hasShowAll(rowsFor('"ㅅㅇㅈ'))).toBe(false);
+    expect(hasShowAll(rowsFor('"상'))).toBe(false);
+
+    addMemos(1, () => '상품 설명');
+
+    // 상 spells 사용 in every memo above; only this one holds it as typed.
+    const last = rowsFor('"상').at(-1);
+    expect(last?.name).toBe('Show all 1 matches in Find and Replace');
+    expect(handedOver(last)).toEqual([
+      openFindReplaceAction({ query: '상', fields: TEXT_FIELDS }),
+    ]);
+  });
+
+  it('stays quick over hundreds of Korean tables and thousands of columns', () => {
+    const actions: AnyAction[] = [];
+    for (let table = 0; table < 600; table++) {
+      const tableId = `ko${table}`;
+      actions.push(
+        addTableAction({ id: tableId, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeTableNameAction({ id: tableId, value: `주문_${table}_내역` })
+      );
+      for (let column = 0; column < 10; column++) {
+        const id = `${tableId}c${column}`;
+        actions.push(
+          addColumnAction({ id, tableId }),
+          changeColumnNameAction({ id, tableId, value: `사용자_${column}` }),
+          changeColumnCommentAction({ id, tableId, value: '사용자 설명' })
+        );
+      }
+    }
+    app.store.dispatchSync(actions);
+
+    const started = performance.now();
+    for (const prefix of ['', '#', '@', '"']) {
+      for (const step of [...STEPS, 'ㅈㅁ']) {
+        rowsFor(`${prefix}${step}`);
+      }
+    }
+    const elapsed = performance.now() - started;
+
+    expect(rowsFor('#ㅈㅁ')).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(rowsFor('@ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
+    // Not a benchmark, only a guard against a search that grows past linear.
+    expect(elapsed).toBeLessThan(5000);
   });
 });
