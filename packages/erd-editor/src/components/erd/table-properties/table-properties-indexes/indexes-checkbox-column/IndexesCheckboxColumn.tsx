@@ -34,6 +34,11 @@ export type IndexesCheckboxColumnProps = {
   // The panel renders this column before an index is picked; the body already
   // reads it as !index and index?.indexColumnIds ?? [].
   index: Index | null;
+  /**
+   * The columns of a key the columns declare, picked instead of an index: they
+   * show checked, and every box stays disabled, since no index owns them.
+   */
+  keyColumnIds?: string[] | null;
 };
 
 type ColumnOrderTpl = {
@@ -171,10 +176,12 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
 
     const tableWidths = calcTableWidths(table, store.state);
 
-    const checkedColumnIds = query(collections)
-      .collection('indexColumnEntities')
-      .selectByIds(index?.indexColumnIds ?? [])
-      .map(indexColumn => indexColumn.columnId);
+    const checkedColumnIds =
+      props.keyColumnIds ??
+      query(collections)
+        .collection('indexColumnEntities')
+        .selectByIds(index?.indexColumnIds ?? [])
+        .map(indexColumn => indexColumn.columnId);
     const hasChecked = arrayHas(checkedColumnIds);
 
     return (

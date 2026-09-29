@@ -5,10 +5,12 @@ import { useAppContext } from '@/components/appContext';
 import IndexesIndex from '@/components/erd/table-properties//table-properties-indexes/indexes-index/IndexesIndex';
 import IndexesCheckboxColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-checkbox-column/IndexesCheckboxColumn';
 import IndexesColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn';
+import IndexesKey from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey';
 import Icon from '@/components/primitives/icon/Icon';
 import { addIndexAction$ } from '@/engine/modules/index/generator.actions';
 import { attachChangeOnlyTag$ } from '@/engine/tag';
 import { Index } from '@/internal-types';
+import { ColumnKey, getColumnKeys } from '@/utils/tableKeys';
 
 import * as styles from './TablePropertiesIndexes.styles';
 
@@ -22,12 +24,18 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
 ) => {
   const app = useAppContext(ctx);
 
+  // An index id, or the id of a key the columns declare: one selection
+  // across both kinds of row.
   const state = observable({
     indexId: null as string | null,
   });
 
   const handleSelectIndex = (index: Index | null) => {
     state.indexId = index?.id ?? null;
+  };
+
+  const handleSelectKey = (columnKey: ColumnKey) => {
+    state.indexId = columnKey.id;
   };
 
   const handleAddIndex = () => {
@@ -43,17 +51,33 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
       collections,
     } = store.state;
 
+    const table = query(collections)
+      .collection('tableEntities')
+      .selectById(tableId);
     const indexes = query(collections)
       .collection('indexEntities')
       .selectByIds(indexIds)
       .filter(index => index.tableId === tableId);
+    const columnKeys = table ? getColumnKeys(store.state, table) : [];
 
     const { indexId } = state;
     const selectedIndex = indexes.find(index => index.id === indexId) ?? null;
+    const selectedKey = columnKeys.find(key => key.id === indexId) ?? null;
 
     return (
       <>
         <div class={styles.leftArea}>
+          {repeat(
+            columnKeys,
+            columnKey => columnKey.id,
+            columnKey => (
+              <IndexesKey
+                columnKey={columnKey}
+                selected={columnKey.id === selectedKey?.id}
+                onSelect={handleSelectKey}
+              />
+            )
+          )}
           {repeat(
             indexes,
             index => index.id,
@@ -74,7 +98,11 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
           </div>
         </div>
         <div class={styles.rightArea}>
-          <IndexesCheckboxColumn tableId={tableId} index={selectedIndex} />
+          <IndexesCheckboxColumn
+            tableId={tableId}
+            index={selectedIndex}
+            keyColumnIds={selectedKey?.columnIds ?? null}
+          />
           {selectedIndex ? <IndexesColumn index={selectedIndex} /> : null}
         </div>
       </>

@@ -10,6 +10,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import * as indexColumnStyles from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn.styles';
 import * as indexStyles from '@/components/erd/table-properties/table-properties-indexes/indexes-index/IndexesIndex.styles';
+import * as keyStyles from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey.styles';
 import TablePropertiesIndexes from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes';
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes.styles';
 import {
@@ -17,7 +18,11 @@ import {
   removeIndexAction,
 } from '@/engine/modules/index/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+  changeColumnUniqueAction,
+} from '@/engine/modules/table-column/atom.actions';
 
 const TABLE_ID = 't1';
 const OTHER_TABLE_ID = 't2';
@@ -51,6 +56,13 @@ const indexRowsOf = (mounted: Mounted) =>
   Array.from(
     mounted.container.querySelectorAll(
       `.${String(styles.leftArea)} > .${String(indexStyles.row)}`
+    )
+  ) as HTMLElement[];
+
+const keyRowsOf = (mounted: Mounted) =>
+  Array.from(
+    mounted.container.querySelectorAll(
+      `.${String(styles.leftArea)} > .${String(keyStyles.row)}`
     )
   ) as HTMLElement[];
 
@@ -319,6 +331,106 @@ describe('TablePropertiesIndexes', () => {
       expect(indexRowsOf(mounted)).toHaveLength(0);
       expect(indexColumnRootOf(mounted)).toBeNull();
       expect(checkboxesOf(mounted)[0].disabled).toBe(true);
+    });
+  });
+
+  describe('keys the columns declare', () => {
+    beforeEach(() => {
+      app.store.dispatchSync(
+        addColumnAction({ id: 'c3', tableId: TABLE_ID }),
+        addColumnAction({ id: 'c4', tableId: TABLE_ID })
+      );
+      app.store.dispatchSync(
+        changeColumnPrimaryKeyAction({
+          id: 'c1',
+          tableId: TABLE_ID,
+          value: true,
+        }),
+        changeColumnUniqueAction({ id: 'c4', tableId: TABLE_ID, value: true }),
+        addIndexAction({ id: 'i1', tableId: TABLE_ID })
+      );
+    });
+
+    it('lists the primary key and each unique column above the indexes', async () => {
+      mounted = await mountAndFlush(template(), app);
+      const left = mounted.container.querySelector(
+        `.${String(styles.leftArea)}`
+      ) as HTMLElement;
+      const rowClasses = Array.from(left.children).map(row =>
+        row.classList.contains(String(keyStyles.row))
+          ? 'key'
+          : row.classList.contains(String(indexStyles.row))
+            ? 'index'
+            : 'add'
+      );
+
+      expect(rowClasses).toEqual(['key', 'key', 'index', 'add']);
+      expect(keyRowsOf(mounted).map(row => row.textContent)).toEqual([
+        'PKPK_',
+        'UQUQ__',
+      ]);
+      expect(keyRowsOf(mounted).some(row => row.querySelector('input'))).toBe(
+        false
+      );
+    });
+
+    it('shows the columns of a selected key checked, every box disabled', async () => {
+      mounted = await mountAndFlush(template(), app);
+
+      click(keyRowsOf(mounted)[1]);
+      await flush();
+
+      expect(
+        keyRowsOf(mounted).map(row => row.classList.contains('selected'))
+      ).toEqual([false, true]);
+      expect(checkboxesOf(mounted).map(box => box.checked)).toEqual([
+        false,
+        false,
+        true,
+      ]);
+      expect(checkboxesOf(mounted).every(box => box.disabled)).toBe(true);
+      expect(indexColumnRootOf(mounted)).toBeNull();
+    });
+
+    it('writes nothing when a box of a selected key is changed', async () => {
+      mounted = await mountAndFlush(template(), app);
+
+      click(keyRowsOf(mounted)[0]);
+      await flush();
+      changeCheckbox(checkboxesOf(mounted)[1], true);
+      await flush();
+
+      expect(app.store.state.collections.indexColumnEntities).toEqual({});
+    });
+
+    it('moves one selection between a key and an index', async () => {
+      mounted = await mountAndFlush(template(), app);
+
+      click(keyRowsOf(mounted)[0]);
+      await flush();
+      click(indexRowsOf(mounted)[0]);
+      await flush();
+
+      expect(
+        keyRowsOf(mounted).map(row => row.classList.contains('selected'))
+      ).toEqual([false, false]);
+      expect(indexRowsOf(mounted)[0].classList.contains('selected')).toBe(true);
+      expect(checkboxesOf(mounted).every(box => !box.disabled)).toBe(true);
+      expect(indexColumnRootOf(mounted)).toBeTruthy();
+    });
+
+    it('drops the row and the selection when its column stops declaring it', async () => {
+      mounted = await mountAndFlush(template(), app);
+
+      click(keyRowsOf(mounted)[1]);
+      await flush();
+      app.store.dispatchSync(
+        changeColumnUniqueAction({ id: 'c4', tableId: TABLE_ID, value: false })
+      );
+      await flush();
+
+      expect(keyRowsOf(mounted)).toHaveLength(1);
+      expect(checkboxesOf(mounted).some(box => box.checked)).toBe(false);
     });
   });
 });
