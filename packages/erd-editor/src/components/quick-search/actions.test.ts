@@ -22,7 +22,9 @@ import {
   createMatchActions,
   createScopeActions,
   MATCH_ACTION_LIMIT,
+  rankPaletteActions,
   searchActions,
+  TABLE_ACTION_LIMIT,
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { START_X, START_Y } from '@/constants/layout';
@@ -167,6 +169,21 @@ describe('searchActions', () => {
     const result = searchActions(catalog, 'customers');
 
     expect(result[0]).toBe(catalog[3]);
+  });
+
+  it('leaves the Table keyword of a table row out, which would fuzz to most words', () => {
+    const tables: Action[] = [
+      { name: 'users', keywords: 'Table', tableId: 'users' },
+      { name: 'orders', keywords: 'Table', tableId: 'orders' },
+    ];
+
+    expect(searchActions(tables, 'email')).toEqual([]);
+    expect(searchActions(tables, 'Table')).toEqual([]);
+    expect(names(searchActions(tables, 'users'))[0]).toBe('users');
+    // The same keyword on a row that is no table is still searched.
+    expect(
+      searchActions([{ name: 'zzzz', keywords: 'Table' }], 'Table')
+    ).toHaveLength(1);
   });
 
   it('never returns more items than it was given', () => {
@@ -840,6 +857,17 @@ describe('createMatchActions', () => {
     expect(elapsed).toBeLessThan(5000);
   });
 
+  it('hands the search over when asked to, however few fields hold it', () => {
+    const actions = createMatchActions(app, 'user', true);
+
+    expect(names(actions)).toEqual([
+      'user_id',
+      'user id',
+      'Every user_id points at users.id',
+      'Show all 5 matches in Find and Replace',
+    ]);
+  });
+
   it('stops at the limit and hands the whole list to Find and Replace', () => {
     for (let index = 0; index <= MATCH_ACTION_LIMIT; index++) {
       app.store.dispatchSync(
@@ -869,5 +897,187 @@ describe('createMatchActions', () => {
     last.perform?.(app);
 
     expect(opened).toEqual([openFindReplaceAction({ query: 'user' })]);
+  });
+});
+
+/** Rows the palette lists for a field, which say where the field is. */
+const isFieldRow = (action: Action) =>
+  Boolean(action.keywords?.includes(' · '));
+
+/** The rows the palette shows for a keyword typed or pasted in one go. */
+const paletteSearch = (keyword: string) =>
+  rankPaletteActions(
+    app,
+    searchActions(
+      scope().filter(action => action.filter?.(app) ?? true),
+      keyword
+    ),
+    keyword
+  );
+
+const TABLE_WORDS = [
+  'user',
+  'account',
+  'order',
+  'product',
+  'invoice',
+  'payment',
+  'email',
+  'login',
+  'session',
+  'address',
+  'customer',
+  'employee',
+  'department',
+  'category',
+  'comment',
+  'message',
+  'notification',
+  'audit',
+  'shipment',
+  'coupon',
+];
+
+const TABLE_ENDINGS = [
+  's',
+  '_logs',
+  '_history',
+  '_settings',
+  '_items',
+  '_events',
+  '_tokens',
+  '_roles',
+  '_profiles',
+  '_attempts',
+  '_archive',
+  '_links',
+  '_stats',
+  '_queue',
+  '_versions',
+  '_drafts',
+  '_imports',
+  '_exports',
+  '_reports',
+  '_snapshots',
+];
+
+/** 400 tables named the way a real schema names them, each with the columns one would have. */
+function seedLargeSchema() {
+  const actions: AnyAction[] = [];
+
+  TABLE_WORDS.forEach(word => {
+    TABLE_ENDINGS.forEach(ending => {
+      const tableId = `${word}${ending}`;
+      actions.push(
+        addTableAction({ id: tableId, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeTableNameAction({ id: tableId, value: tableId })
+      );
+      ['id', `${word}_id`, 'created_at', 'updated_at', 'status'].forEach(
+        (name, index) => {
+          const id = `${tableId}.${index}`;
+          actions.push(
+            addColumnAction({ id, tableId }),
+            changeColumnNameAction({ id, tableId, value: name })
+          );
+        }
+      );
+    });
+  });
+  const users = 'users';
+  actions.push(
+    addColumnAction({ id: 'users.email', tableId: users }),
+    changeColumnNameAction({
+      id: 'users.email',
+      tableId: users,
+      value: 'email',
+    }),
+    changeColumnCommentAction({
+      id: 'users.email',
+      tableId: users,
+      value: 'where the login link goes',
+    })
+  );
+  app.store.dispatchSync(actions);
+}
+
+describe('rankPaletteActions', () => {
+  beforeEach(() => {
+    setCanvasType(CanvasType.ERD);
+  });
+
+  it('puts the rows holding the keyword as typed first, then the fields, then looser hits', () => {
+    seedFindDocument(app);
+
+    const rows = paletteSearch('user');
+
+    expect(names(rows).slice(0, 4)).toEqual([
+      'users',
+      'user_id',
+      'user id',
+      'Every user_id points at users.id',
+    ]);
+    for (const row of rows.slice(4)) {
+      expect(row.name.toLowerCase()).not.toContain('user');
+    }
+  });
+
+  it('keeps a command holding the keyword in its keywords ahead of the fields', () => {
+    seedFindDocument(app);
+
+    expect(names(paletteSearch('replace'))[0]).toBe('Find and Replace');
+  });
+
+  it('lists the fields right below the tables named with the keyword in a schema of 400 tables', () => {
+    seedLargeSchema();
+    expect(app.store.state.doc.tableIds).toHaveLength(400);
+
+    const rows = paletteSearch('email');
+    const firstField = rows.findIndex(isFieldRow);
+
+    // The twenty tables named email, none of the looser hits the cap leaves out.
+    expect(firstField).toBe(TABLE_ACTION_LIMIT);
+    for (const row of rows.slice(0, firstField)) {
+      expect(row.tableId).toBeDefined();
+      expect(row.name).toContain('email');
+    }
+    expect(rows[firstField]).toMatchObject({
+      name: 'email',
+      keywords: 'users.email · Column',
+    });
+    expect(rows.filter(row => row.tableId)).toHaveLength(TABLE_ACTION_LIMIT);
+    expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
+  });
+
+  it('hands the tables the cap leaves out to Find and Replace', () => {
+    for (let index = 0; index <= TABLE_ACTION_LIMIT; index++) {
+      addTable(`item_${index}`);
+    }
+
+    const rows = paletteSearch('item');
+
+    expect(rows.filter(row => row.tableId)).toHaveLength(TABLE_ACTION_LIMIT);
+    // Below the rows holding the keyword, which no field does here.
+    expect(rows[TABLE_ACTION_LIMIT].name).toBe(
+      `Show all ${TABLE_ACTION_LIMIT + 1} matches in Find and Replace`
+    );
+  });
+
+  it('keeps every table row a keyword in no table name lists to the cap, after the fields', () => {
+    seedLargeSchema();
+
+    for (const keyword of ['login', 'user_id', 'created_at']) {
+      const rows = paletteSearch(keyword);
+      const firstField = rows.findIndex(isFieldRow);
+      const tableRows = rows.filter(row => row.tableId);
+
+      expect(tableRows.length).toBeLessThanOrEqual(TABLE_ACTION_LIMIT);
+      expect(firstField).toBeGreaterThan(-1);
+      for (const row of rows.slice(0, firstField)) {
+        expect(row.name.toLowerCase()).toContain(keyword);
+      }
+      expect(rows.length).toBeLessThanOrEqual(
+        ERD_TOOLBOX.length + TABLE_ACTION_LIMIT + MATCH_ACTION_LIMIT + 1
+      );
+    }
   });
 });

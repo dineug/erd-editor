@@ -10,6 +10,7 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
+import { TABLE_ACTION_LIMIT } from '@/components/quick-search/actions';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
 import { Open } from '@/constants/open';
@@ -22,6 +23,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  addTableAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { toggleSearchAction } from '@/utils/emitter';
 import { InternalEventType } from '@/utils/internalEvents';
@@ -553,7 +558,7 @@ describe('QuickSearch column, comment and memo matches', () => {
     seedFindDocument(app);
   });
 
-  it('lists the fields holding the keyword after the fuzzy rows, each saying where it is', async () => {
+  it('lists the fields holding the keyword below the rows naming it, each saying where it is', async () => {
     await open();
 
     await type('user');
@@ -565,8 +570,30 @@ describe('QuickSearch column, comment and memo matches', () => {
       ['user_id', 'orders.user_id · Column'],
       ['user id', 'users.id · Column comment'],
     ]);
-    expect(rowNames()).toContain('Every user_id points at users.id');
-    expect(rowNames()).toContain('users');
+    // The table named with it first; a looser fuzzy hit would come after all four.
+    expect(rowNames().slice(0, 4)).toEqual([
+      'users',
+      'user_id',
+      'user id',
+      'Every user_id points at users.id',
+    ]);
+  });
+
+  it('lists the fields before tables that only fuzz to the keyword, and no more tables than the cap', async () => {
+    for (let index = 0; index < TABLE_ACTION_LIMIT + 10; index++) {
+      app.store.dispatchSync(
+        addTableAction({ id: `t${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeTableNameAction({ id: `t${index}`, value: `mail_${index}` })
+      );
+    }
+    await open();
+
+    await type('email');
+
+    expect(rowNames().slice(0, 2)).toEqual(['email', 'login email']);
+    const tables = rowNames().filter(name => name.startsWith('mail_'));
+    expect(tables.length).toBeGreaterThan(0);
+    expect(tables.length).toBeLessThanOrEqual(TABLE_ACTION_LIMIT);
   });
 
   it('looks the fields up afresh on each keystroke rather than inside the last list', async () => {

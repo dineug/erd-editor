@@ -24,8 +24,8 @@ import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import {
   Action,
-  createMatchActions,
   createScopeActions,
+  rankPaletteActions,
   searchActions,
 } from './actions';
 import * as styles from './QuickSearch.styles';
@@ -49,24 +49,28 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     keyword: '',
     prevActions: [] as Action[],
     actions: [] as Action[],
-    matchActions: [] as Action[],
+    rows: [] as Action[],
     submenu: false,
     index: -1,
   });
 
-  const getScopeActions = () => {
-    return state.actions.filter(action =>
-      action.filter ? action.filter(app.value) : true
-    );
-  };
+  const byFilter = (actions: Action[]) =>
+    actions.filter(action => (action.filter ? action.filter(app.value) : true));
 
-  /** The commands and tables the keyword fuzzes to, then the fields that hold it as typed. */
-  const getActions = () => [...getScopeActions(), ...state.matchActions];
+  const getScopeActions = () => byFilter(state.actions);
+
+  /** What the list shows: the level, the keyword's fuzzy hits, or at the top level those ranked around the fields. */
+  const getActions = () => byFilter(state.rows);
+
+  const setLevel = (actions: Action[]) => {
+    state.prevActions = actions;
+    state.actions = actions;
+    state.rows = actions;
+  };
 
   const clearKeyword = () => {
     state.keyword = '';
     state.index = -1;
-    state.matchActions = [];
   };
 
   const setActions = (value: string) => {
@@ -76,12 +80,12 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     state.actions = isEmpty(newValue)
       ? state.prevActions
       : searchActions(getScopeActions(), newValue);
-    // Looked up afresh from the document on every keystroke, never narrowed
-    // from the last list, and only at the top level, where the tables are.
-    state.matchActions =
+    // The fields are looked up afresh from the document on every keystroke,
+    // never narrowed from the last list, and only at the top level.
+    state.rows =
       isEmpty(newValue) || state.submenu
-        ? []
-        : createMatchActions(app.value, newValue);
+        ? state.actions
+        : rankPaletteActions(app.value, state.actions, newValue);
   };
 
   const scrollIntoView = () => {
@@ -112,8 +116,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       action.perform(app.value);
       handleClose();
     } else if (action.next) {
-      state.prevActions = action.next;
-      state.actions = action.next;
+      setLevel(action.next);
       state.submenu = true;
 
       const input = root.value?.querySelector('input');
@@ -189,9 +192,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       store.dispatch(changeOpenMapAction({ [Open.search]: opened }));
 
       if (opened) {
-        const actions = createScopeActions(app.value);
-        state.prevActions = actions;
-        state.actions = actions;
+        setLevel(createScopeActions(app.value));
         state.submenu = false;
         clearKeyword();
         store.dispatch(

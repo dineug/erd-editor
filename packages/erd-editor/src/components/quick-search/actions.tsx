@@ -62,6 +62,8 @@ export type Action = {
   name: string;
   keywords?: string;
   shortcut?: string;
+  /** The table a row jumps to, whose keyword names the kind of row, not the table. */
+  tableId?: string;
   filter?: (app: AppContext) => boolean;
   perform?: (app: AppContext) => void;
   next?: Action[];
@@ -69,9 +71,50 @@ export type Action = {
 
 export function searchActions(actions: Action[], keyword: string): Action[] {
   const fuse = new Fues(actions, {
-    keys: ['name', 'keywords'],
+    keys: [
+      'name',
+      // A table row's Table would fuzz to most keywords and list every table.
+      {
+        name: 'keywords',
+        getFn: action => (action.tableId ? [] : (action.keywords ?? [])),
+      },
+    ],
   });
   return fuse.search(keyword).map(result => result.item);
+}
+
+/** How many tables the palette lists for one keyword, the closest first. */
+export const TABLE_ACTION_LIMIT = 20;
+
+/**
+ * The palette's rows for a keyword at its top level, from what it fuzzes to:
+ * the commands and tables holding it as typed, the fields holding it, then the
+ * looser hits, tables capped, so neither a large document nor a loose hit buries a field.
+ */
+export function rankPaletteActions(
+  app: AppContext,
+  found: Action[],
+  keyword: string
+): Action[] {
+  const needle = keyword.toLowerCase();
+  const holds = ({ name, keywords, tableId }: Action) =>
+    name.toLowerCase().includes(needle) ||
+    (!tableId && Boolean(keywords?.toLowerCase().includes(needle)));
+
+  const ranked = [...found.filter(holds), ...found.filter(row => !holds(row))];
+  const tables = ranked.filter(row => row.tableId);
+  const shown = new Set(tables.slice(0, TABLE_ACTION_LIMIT));
+  const rows = ranked.filter(row => !row.tableId || shown.has(row));
+  const loose = rows.findIndex(row => !holds(row));
+  const split = loose === -1 ? rows.length : loose;
+  // A table holding the keyword that the cap left out is one Find and Replace lists.
+  const more = tables.slice(TABLE_ACTION_LIMIT).some(holds);
+
+  return [
+    ...rows.slice(0, split),
+    ...createMatchActions(app, keyword, more),
+    ...rows.slice(split),
+  ];
 }
 
 export function createScopeActions(app: AppContext): Action[] {
@@ -329,10 +372,14 @@ export const MATCH_ACTION_LIMIT = 50;
 
 /**
  * The columns, comments and memos holding the keyword, in any case, one row a
- * field, up to a limit past which a last row hands the search to Find and
- * Replace. A plain substring rather than the fuzzy match: long prose fuzzes into noise.
+ * field, up to a limit past which, or when more is set, a last row hands the
+ * search to Find and Replace. A plain substring: long prose fuzzes into noise.
  */
-export function createMatchActions(app: AppContext, keyword: string): Action[] {
+export function createMatchActions(
+  app: AppContext,
+  keyword: string,
+  more = false
+): Action[] {
   const { store } = app;
   const { matcher } = createMatcher(keyword, DEFAULT_FIND_OPTIONS);
   if (!matcher) return [];
@@ -362,7 +409,7 @@ export function createMatchActions(app: AppContext, keyword: string): Action[] {
     };
   });
 
-  if (fields.length > MATCH_ACTION_LIMIT) {
+  if (more || fields.length > MATCH_ACTION_LIMIT) {
     actions.push({
       icon: <Icon name="search" size={16} />,
       name: `Show all ${matches.length} matches in Find and Replace`,
@@ -388,6 +435,7 @@ function createTableActions({ store }: AppContext): Action[] {
     .map<Action>(table => ({
       name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
       keywords: 'Table',
+      tableId: table.id,
       perform: ({ store }) => {
         showErdTab(store);
         const {
