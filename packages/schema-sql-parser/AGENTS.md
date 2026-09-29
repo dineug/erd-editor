@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`@dineug/schema-sql-parser` (private) is a hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of any dialect into a flat `Statement[]` of seven kinds — `create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped, so a real dump imports partially instead of failing. Its only consumer is `packages/erd-editor/src/utils/schema-sql-parser/`, which folds the statements into an `ERDEditorSchemaV3` document.
+`@dineug/schema-sql-parser` (private) is a hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of any dialect into a flat `Statement[]` of seven kinds — `create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped, so a real dump imports partially instead of failing; `CREATE TYPE`, `CREATE DOMAIN` and `CREATE EXTENSION` are among it. Its only consumer is `packages/erd-editor/src/utils/schema-sql-parser/`, which folds the statements into an `ERDEditorSchemaV3` document.
 
 ## Key Files
 
@@ -14,7 +14,7 @@
 | `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, the statement types; everything else is internal |
 | `src/parser/tokenizer.ts` | Lexer — `"x"`, `'x'`, `` `x` `` and `[x]` each become one `string` token, delimiters stripped, `quoted` set to the opening delimiter; a doubled `''`, `""` or ``` `` ``` inside is one character of the value, a doubled `]]` is not (a nested array literal closes on it); an unpaired `]` emits `rightBracket` |
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, runs a statement parser, else advances one token |
-| `src/parser/helper.ts` | Token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchNestedDataType`, `matchReferentialClause` |
+| `src/parser/helper.ts` | Token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchUserDataType`, `matchNestedDataType`, `matchReferentialClause`, `requote` |
 | `src/parser/statement/` | One parser per statement kind; `index.ts` holds `Statement`, `StatementType`, `SortType`, `RefPos` |
 | `src/parser/dataType/` | Per-vendor type lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite, Databricks, Snowflake |
 | `src/schema_sql_test_case.md` | End-to-end fixtures read by `index.test.ts` |
@@ -28,9 +28,11 @@
 - Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in `parser/helper.ts`, a branch in `parser/index.ts`.
 - **Keywords are unquoted `string` tokens compared case-insensitively**; every `is*Value` matcher refuses a `quoted` token, so `` `key` `` is a column and `KEY` an index. `--` and `/* */` comments never become tokens.
 - **A quoted `DEFAULT` goes back into quotes** (`'...'`, inner quotes doubled): `column.default` is raw SQL that every exporter writes after `DEFAULT`, and the lexer has stripped the quotes.
+- **So does a quoted data type argument, in the delimiter it came in** (`requote`): `ENUM('a','b')`, `OBJECT("city" VARCHAR)`; `column.dataType` is raw SQL too. A user type's quoted name keeps its quotes (`"MyType"`, `[dbo].[Phone]`), a listed type's does not (`[int]` → `int`).
+- **A type no list carries is read only where the type stands**, the token right after the column name (`typePos` in `statement/create.table.ts`): `mood`, `public.mood`, `hstore`. A single-quoted literal and the words in `ColumnKeywords` (`helper.ts`) are refused there, since a typeless column (SQLite, a computed `AS`, a `CREATE TABLE AS` column list) puts its first constraint in that place; a column keyword the parser meets there goes into that list, or it becomes the type. Anywhere else an unknown word is an attribute (`INT UNSIGNED`).
 - **A table constraint or index item yields no column**: `opensConstraintItem` in `statement/create.table.ts` names the tokens that open one; a new opener goes there.
 - `helper.ts` merges all eight `dataType/` lists into one deduplicated uppercase set, so a type added to one vendor widens every dialect.
-- **Type names match word by word, longest first**: write multi-word names in full (`TIMESTAMP WITHOUT TIME ZONE`); `matchDataType` returns the token span, argument lists included. Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`; no test pins the parity, so change both lists together.
+- **Type names match word by word, longest first**: write multi-word names in full (`TIMESTAMP WITHOUT TIME ZONE`); `matchDataType` returns the token span, argument lists and an array suffix (`[]`, `[3]`, `ARRAY`) included. An unlisted word in front of a listed type joins it in the type's place (`VARYING CHARACTER(255)`). Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`; no test pins the parity, so change both lists together.
 - **The `CREATE ... TABLE` header is measured, not counted**: `matchCreateTable` returns its span over a whitelist of modifiers (`OR REPLACE`, `TRANSIENT`, …), since scanning to the next `TABLE` would claim `CREATE VIEW ... FROM TABLE(...)`. `matchQualifiedName` does the same for an `ALTER TABLE db.schema.t` target.
 - **Angle-bracket generics are rebalanced in the parser**: `<` / `>` are not break characters, so `matchNestedDataType` rejoins `ARRAY` / `MAP` / `STRUCT` spans and keeps their inner commas from ending the column.
 

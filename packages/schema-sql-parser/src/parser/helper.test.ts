@@ -9,6 +9,8 @@ import {
   isAlterTableAddUnique,
   isAlterTableOnly,
   isAlterValue,
+  isArrayDimensionToken,
+  isArrayValue,
   isAscValue,
   isAuto_incrementValue,
   isAutoIncrementValue,
@@ -64,6 +66,8 @@ import {
   matchDataType,
   matchQualifiedName,
   matchReferentialClause,
+  matchUserDataType,
+  requote,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
@@ -154,6 +158,7 @@ describe('token value predicates', () => {
     ['isCharacterValue', isCharacterValue, 'CHARACTER'],
     ['isSetValue', isSetValue, 'SET'],
     ['isCollateValue', isCollateValue, 'COLLATE'],
+    ['isArrayValue', isArrayValue, 'ARRAY'],
   ];
 
   it.each(cases)(
@@ -1057,5 +1062,108 @@ describe('matchDataType', () => {
     expect(spanOf('notatype')).toBe(0);
     expect(matchDataType([])(0)).toBe(0);
     expect(matchDataType(tokenizer('INT'))(1)).toBe(0);
+  });
+  it('takes an array suffix as part of the span', () => {
+    expect(spanOf('integer[]')).toBe(2);
+    expect(spanOf('text[3][3] NOT NULL')).toBe(3);
+    expect(spanOf('VARCHAR(10) []')).toBe(5);
+    expect(spanOf('integer ARRAY')).toBe(2);
+    expect(spanOf('integer ARRAY[4][2]')).toBe(3);
+    expect(spanOf('TIMESTAMP WITH TIME ZONE[]')).toBe(5);
+    expect(matchDataType([quoted('DOUBLE PRECISION'), period])(0)).toBe(1);
+  });
+
+  it('leaves a bracket quoted name after the type out of the span', () => {
+    expect(spanOf('[int] [name]')).toBe(1);
+  });
+});
+
+describe('isArrayDimensionToken', () => {
+  it('accepts an empty or numeric bracket quoted token', () => {
+    const test = isArrayDimensionToken(tokenizer('[] [12] [a] "1" 1'));
+
+    expect([0, 1, 2, 3, 4, 5].map(test)).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+});
+
+describe('requote', () => {
+  it('writes each quoted token back inside its own delimiters', () => {
+    expect(tokenizer('`a` "b" \'c\' [d] e').map(requote)).toEqual([
+      '`a`',
+      '"b"',
+      "'c'",
+      '[d]',
+      'e',
+    ]);
+  });
+
+  it('doubles the quote a value holds', () => {
+    expect(tokenizer('\'it\'\'s\' "a""b" `c``d`').map(requote)).toEqual([
+      "'it''s'",
+      '"a""b"',
+      '`c``d`',
+    ]);
+  });
+});
+
+describe('matchUserDataType', () => {
+  const spanOf = (source: string) => matchUserDataType(tokenizer(source))(0);
+
+  it('spans a single name the lists lack, quoted or not', () => {
+    expect(spanOf('mood NOT NULL')).toBe(1);
+    expect(spanOf('"My Type"')).toBe(1);
+    expect(spanOf('[Phone]')).toBe(1);
+  });
+
+  it('spans every segment of a qualified name', () => {
+    expect(spanOf('public.mood')).toBe(3);
+    expect(spanOf('"public"."mood",')).toBe(3);
+    expect(spanOf('db.dbo.Phone')).toBe(5);
+    expect(spanOf('public.')).toBe(1);
+  });
+
+  it('spans the argument list and the array suffix', () => {
+    expect(spanOf('halfvec(3) NOT NULL')).toBe(4);
+    expect(spanOf("my_enum('a','b')")).toBe(6);
+    expect(spanOf('public.mood[][]')).toBe(5);
+    expect(spanOf('mood ARRAY[2]')).toBe(3);
+    expect(spanOf('halfvec(3')).toBe(3);
+  });
+
+  it('joins a word the lists lack with the type that follows it', () => {
+    expect(spanOf('VARYING CHARACTER(255) NOT NULL')).toBe(5);
+    expect(spanOf('"x" INT')).toBe(1);
+    expect(spanOf('money.amount')).toBe(3);
+  });
+
+  it('refuses a column keyword, unless it is quoted', () => {
+    for (const keyword of [
+      'NOT',
+      'NULL',
+      'CHECK',
+      'references',
+      'AS',
+      'GENERATED',
+      'WITH',
+      'VISIBLE',
+    ]) {
+      expect(spanOf(`${keyword} x`)).toBe(0);
+    }
+
+    expect(spanOf('"CHECK"')).toBe(1);
+  });
+
+  it('refuses a string literal and anything but a word', () => {
+    expect(spanOf("'mood'")).toBe(0);
+    expect(spanOf('(a)')).toBe(0);
+    expect(matchUserDataType([])(0)).toBe(0);
+    expect(spanOf("public.'x'")).toBe(1);
   });
 });

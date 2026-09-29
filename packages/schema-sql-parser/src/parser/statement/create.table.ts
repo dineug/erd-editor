@@ -1,4 +1,5 @@
 import {
+  isArrayDimensionToken,
   isAscValue,
   isAutoIncrementValue,
   isCharacterSet,
@@ -30,6 +31,8 @@ import {
   matchDataType,
   matchNestedDataType,
   matchReferentialClause,
+  matchUserDataType,
+  requote,
 } from '@/parser/helper';
 import {
   Column,
@@ -208,6 +211,8 @@ function createTableColumnsParser(
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
   const isComma = isCommaToken(tokens);
+  const isPeriod = isPeriodToken(tokens);
+  const isArrayDimension = isArrayDimensionToken(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isIndex = isIndexValue(tokens);
   const isPrimary = isPrimaryValue(tokens);
@@ -226,6 +231,7 @@ function createTableColumnsParser(
   const isCollate = isCollateValue(tokens);
   const constraintState = isConstraintState(tokens);
   const dataType = matchDataType(tokens);
+  const userDataType = matchUserDataType(tokens);
   const nestedDataType = matchNestedDataType(tokens);
   const referentialClause = matchReferentialClause(tokens);
   const indexKind = isIndexKind(tokens);
@@ -313,6 +319,9 @@ function createTableColumnsParser(
   // Set while the item is a table constraint or index: until its comma no word
   // may become a column name or a data type -- USING BTREE, ON [PRIMARY].
   let constraintItem = false;
+  // Where the column's type stands, right after its name: the one place a
+  // word the vendor lists lack is read as a type rather than an attribute.
+  let typePos = -1;
 
   while (isToken()) {
     let token = tokens[$pos.value];
@@ -359,7 +368,7 @@ function createTableColumnsParser(
       !constraintState($pos.value)
     ) {
       column.name = token.value;
-      $pos.value++;
+      typePos = ++$pos.value;
       continue;
     }
 
@@ -592,7 +601,13 @@ function createTableColumnsParser(
       continue;
     }
 
-    const dataTypeLength = dataType($pos.value);
+    const knownLength = dataType($pos.value);
+    const userLength = $pos.value === typePos ? userDataType($pos.value) : 0;
+    // A name the lists lack is still the type in the type's place, mood or
+    // hstore, and so is a qualified one even when its schema is a type name.
+    const userDefined =
+      userLength > 0 && (!knownLength || isPeriod($pos.value + 1));
+    const dataTypeLength = userDefined ? userLength : knownLength;
 
     // A column keeps its first type: the BINARY of VARCHAR(40) BINARY is an
     // attribute, and a constraint item has no type at all.
@@ -616,15 +631,25 @@ function createTableColumnsParser(
           value += ')';
           depth--;
         } else if (depth) {
-          // A structured type spells its fields as words -- Snowflake's
-          // OBJECT(city VARCHAR). Gluing them together loses the field.
+          // A quoted argument goes back into its quotes: ENUM(a,b) is no
+          // valid DDL. A structured type spells its fields as words --
+          // Snowflake's OBJECT(city VARCHAR). Gluing them loses the field.
+          const text = requote(token);
           value +=
             isString($pos.value) &&
             (isString($pos.value - 1) || isRightParent($pos.value - 1))
-              ? ` ${token.value}`
-              : token.value;
+              ? ` ${text}`
+              : text;
+        } else if (isArrayDimension($pos.value)) {
+          value += requote(token);
         } else {
-          value += value ? ` ${token.value}` : token.value;
+          // Only a user type keeps its quotes: "MyType" is case sensitive,
+          // while [int] is how T-SQL writes the INT a list carries.
+          const text = userDefined ? requote(token) : token.value;
+          value +=
+            value && !isPeriod($pos.value) && !isPeriod($pos.value - 1)
+              ? ` ${text}`
+              : text;
         }
 
         $pos.value++;

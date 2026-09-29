@@ -76,6 +76,17 @@ export const isClusterValue = createValueEqual('CLUSTER');
 export const isByValue = createValueEqual('BY');
 export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
+export const isArrayValue = createValueEqual('ARRAY');
+
+// Writes a quoted token back inside the delimiters it came in, doubling the
+// quotes its value holds: ENUM('it''s') is valid DDL only with them.
+export const requote = (token: Token) => {
+  if (!token.quoted) return token.value;
+  if (token.quoted === '[') return `[${token.value}]`;
+
+  const quote = token.quoted;
+  return `${quote}${token.value.replaceAll(quote, quote + quote)}${quote}`;
+};
 
 // What a constraint may carry after its key list, from Databricks' NOT
 // ENFORCED RELY to ANSI's DEFERRABLE INITIALLY DEFERRED. The column branch runs
@@ -485,15 +496,12 @@ const groupByFirstWord = (types: ReadonlyArray<string>) => {
 
 const DataTypeWords = groupByFirstWord(DataTypes);
 
-// How many tokens the data type at pos spans, 0 when there is none. The
-// argument list is part of the span, and it can sit on any word of a
-// multi-word name -- TIMESTAMP(3) WITH TIME ZONE.
-export const matchDataType = (tokens: Token[]) => {
-  const isString = isStringToken(tokens);
+// The end of the argument list opening at pos, past its closing paren.
+const createSkipArguments = (tokens: Token[]) => {
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
 
-  const skipArguments = (pos: number) => {
+  return (pos: number) => {
     let depth = 0;
 
     for (let cursor = pos; cursor < tokens.length; cursor++) {
@@ -508,6 +516,42 @@ export const matchDataType = (tokens: Token[]) => {
     // Unterminated: the permissive parser takes the rest as the argument list.
     return tokens.length;
   };
+};
+
+// PostgreSQL's array brackets, integer[] or text[3][3], reach the parser as
+// bracket-quoted tokens that hold nothing or a length.
+export const isArrayDimensionToken = (tokens: Token[]) => (pos: number) => {
+  const token = tokens[pos];
+  return !!token && token.quoted === '[' && /^\d*$/.test(token.value);
+};
+
+// How many tokens the array suffix at pos spans: [] [3] or the standard's
+// ARRAY with an optional length. Left out, integer[] came in as integer.
+const matchArraySuffix = (tokens: Token[]) => {
+  const isDimension = isArrayDimensionToken(tokens);
+  const isArray = isArrayValue(tokens);
+
+  return (pos: number) => {
+    if (isArray(pos)) return isDimension(pos + 1) ? 2 : 1;
+
+    let cursor = pos;
+
+    while (isDimension(cursor)) {
+      cursor++;
+    }
+
+    return cursor - pos;
+  };
+};
+
+// How many tokens the data type at pos spans, 0 when there is none. The
+// argument list is part of the span, and it can sit on any word of a
+// multi-word name -- TIMESTAMP(3) WITH TIME ZONE.
+export const matchDataType = (tokens: Token[]) => {
+  const isString = isStringToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const skipArguments = createSkipArguments(tokens);
+  const arraySuffix = matchArraySuffix(tokens);
 
   const matchWords = (pos: number, words: string[]) => {
     let cursor = pos;
@@ -537,11 +581,82 @@ export const matchDataType = (tokens: Token[]) => {
 
     for (const words of DataTypeWords.get(value) ?? []) {
       const length = matchWords(pos, words);
-      if (length) return length;
+      if (length) return length + arraySuffix(pos + length);
     }
 
     // A whole multi-word name also arrives as one token when it is quoted.
-    return DataTypes.includes(value) ? 1 : 0;
+    return DataTypes.includes(value) ? 1 + arraySuffix(pos + 1) : 0;
+  };
+};
+
+// Words that may follow a column name without being its type: the column
+// constraints, all a typeless SQLite column has, a computed column's AS, the
+// options of a CREATE TABLE AS column, and EXCLUDE USING, PERIOD FOR.
+const ColumnKeywords: ReadonlyArray<string> = [
+  'AS',
+  'AUTO_INCREMENT',
+  'AUTOINCREMENT',
+  'CHECK',
+  'COLLATE',
+  'COMMENT',
+  'CONSTRAINT',
+  'DEFAULT',
+  'ENCRYPT',
+  'FOR',
+  'FOREIGN',
+  'GENERATED',
+  'IDENTITY',
+  'INVISIBLE',
+  'KEY',
+  'MASKING',
+  'NOT',
+  'NULL',
+  'ON',
+  'PRIMARY',
+  'PROJECTION',
+  'REFERENCES',
+  'UNIQUE',
+  'USING',
+  'VISIBLE',
+  'WITH',
+];
+
+// How many tokens a type no vendor list carries spans at pos, 0 for a keyword
+// or a string literal: mood, "MyType", public.mood[], hstore. Any identifier
+// matches, so the caller decides where a type may stand.
+export const matchUserDataType = (tokens: Token[]) => {
+  const isString = isStringToken(tokens);
+  const isPeriod = isPeriodToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const skipArguments = createSkipArguments(tokens);
+  const arraySuffix = matchArraySuffix(tokens);
+  const dataType = matchDataType(tokens);
+
+  const isName = (pos: number) => isString(pos) && tokens[pos].quoted !== "'";
+
+  return (pos: number) => {
+    const token = tokens[pos];
+    if (!token || !isName(pos)) return 0;
+    if (!token.quoted && ColumnKeywords.includes(token.value.toUpperCase())) {
+      return 0;
+    }
+
+    let cursor = pos + 1;
+
+    // A word the lists lack in front of one they carry is part of its name,
+    // as SQLite reads VARYING CHARACTER(255).
+    const known = token.quoted || isPeriod(cursor) ? 0 : dataType(cursor);
+    if (known) return 1 + known;
+
+    while (isPeriod(cursor) && isName(cursor + 1)) {
+      cursor += 2;
+    }
+
+    if (isLeftParent(cursor)) {
+      cursor = skipArguments(cursor);
+    }
+
+    return cursor + arraySuffix(cursor) - pos;
   };
 };
 

@@ -169,4 +169,19 @@ describe('data/sakila.sql', () => {
       ],
     });
   });
+
+  // Without their quotes the values went back out as ENUM(G,PG,PG-13,...),
+  // which no MySQL accepts.
+  it('keeps the quotes of the ENUM and SET values', () => {
+    const film = table('film')?.columns ?? [];
+
+    expect(film.find(column => column.name === 'rating')?.dataType).toBe(
+      "ENUM('G','PG','PG-13','R','NC-17')"
+    );
+    expect(
+      film.find(column => column.name === 'special_features')?.dataType
+    ).toBe(
+      "SET('Trailers','Commentaries','Deleted Scenes','Behind the Scenes')"
+    );
+  });
 });

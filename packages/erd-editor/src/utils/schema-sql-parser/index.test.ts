@@ -820,4 +820,85 @@ describe('schemaSQLParserToSchemaJson', () => {
       }
     );
   });
+
+  // Import, export for the same vendor, import again: a type no vendor list
+  // carries used to come in empty, and an ENUM without the quotes of its values.
+  describe('data type round trip', () => {
+    const typesOf = (schema: Schema) =>
+      tablesOf(schema).flatMap(table =>
+        columnsOf(schema, table).map(column => column.dataType)
+      );
+    const stateOf = (schema: Schema) =>
+      ({ ...schema, editor: {}, lww: {} }) as unknown as RootState;
+
+    it.each<[string, number, string, string[]]>([
+      [
+        'PostgreSQL',
+        Database.PostgreSQL,
+        'CREATE TABLE person (id serial, current_mood public.mood NOT NULL, zip us_postal, email citext, kind "MyType", tags mood[], grid text[][], scores integer ARRAY);',
+        [
+          'serial',
+          'public.mood',
+          'us_postal',
+          'citext',
+          '"MyType"',
+          'mood[]',
+          'text[][]',
+          'integer ARRAY',
+        ],
+      ],
+      [
+        'MySQL',
+        Database.MySQL,
+        "CREATE TABLE film (rating ENUM('G','PG-13','it''s') NOT NULL, features SET('Trailers','Deleted Scenes'));",
+        ["ENUM('G','PG-13','it''s')", "SET('Trailers','Deleted Scenes')"],
+      ],
+      [
+        'MariaDB',
+        Database.MariaDB,
+        "CREATE TABLE film (rating ENUM('G','') DEFAULT 'G');",
+        ["ENUM('G','')"],
+      ],
+      [
+        'MSSQL',
+        Database.MSSQL,
+        'CREATE TABLE customer ([phone] [dbo].[Phone] NULL, [owner] sysname NOT NULL);',
+        ['[dbo].[Phone]', 'sysname'],
+      ],
+      [
+        'Oracle',
+        Database.Oracle,
+        'CREATE TABLE shape (geom MDSYS.SDO_GEOMETRY, doc SYS.XMLTYPE);',
+        ['MDSYS.SDO_GEOMETRY', 'SYS.XMLTYPE'],
+      ],
+      [
+        'SQLite',
+        Database.SQLite,
+        'CREATE TABLE t (a VARYING CHARACTER(255), b NATIVE CHARACTER(70));',
+        ['VARYING CHARACTER(255)', 'NATIVE CHARACTER(70)'],
+      ],
+      [
+        'Snowflake',
+        Database.Snowflake,
+        'CREATE TABLE t (profile OBJECT("city" VARCHAR, zip NUMBER));',
+        ['OBJECT("city" VARCHAR,zip NUMBER)'],
+      ],
+      [
+        'Databricks',
+        Database.Databricks,
+        'CREATE TABLE t (a my_catalog.my_type, b ARRAY<STRING>);',
+        ['my_catalog.my_type', 'ARRAY<STRING>'],
+      ],
+    ])(
+      'keeps the data types of a %s import through its export',
+      (_, database, sql, expected) => {
+        const imported = parse(sql);
+        const exported = createSchemaSQL(stateOf(imported), database);
+
+        expect(typesOf(imported)).toEqual(expected);
+        expected.forEach(dataType => expect(exported).toContain(dataType));
+        expect(typesOf(parse(exported))).toEqual(expected);
+      }
+    );
+  });
 });

@@ -500,15 +500,223 @@ describe('createTableParser - column options', () => {
     ]);
   });
 
-  it('leaves a type no vendor list carries empty', () => {
-    // Extension types such as citext and hstore are outside every list.
-    const { ast } = parse('CREATE TABLE t (a numrange, b hstore, c citext);');
+  // Extension types such as citext and hstore are outside every list, and
+  // used to come in empty.
+  it('keeps a type no vendor list carries', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a numrange, b hstore, c citext, d ltree);'
+    );
 
     expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'numrange' }),
-      column({ name: 'b', dataType: '' }),
-      column({ name: 'c', dataType: '' }),
+      column({ name: 'b', dataType: 'hstore' }),
+      column({ name: 'c', dataType: 'citext' }),
+      column({ name: 'd', dataType: 'ltree' }),
     ]);
+  });
+});
+
+describe('createTableParser - user defined types', () => {
+  const types = (sql: string) =>
+    parse(sql).ast.columns.map(({ name, dataType }) => [name, dataType]);
+
+  it('keeps the attributes that follow a CREATE TYPE or CREATE DOMAIN type', () => {
+    const { ast } = parse(
+      "CREATE TABLE person (current_mood mood NOT NULL DEFAULT 'ok', zip us_postal UNIQUE COMMENT 'post code', id sysname);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'current_mood',
+        dataType: 'mood',
+        default: "'ok'",
+        nullable: false,
+      }),
+      column({
+        name: 'zip',
+        dataType: 'us_postal',
+        unique: true,
+        comment: 'post code',
+      }),
+      column({ name: 'id', dataType: 'sysname' }),
+    ]);
+  });
+
+  it('keeps a qualified type and the quotes of a quoted one', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a "MyType", b public.mood, c "public"."mood", d [dbo].[Phone] NOT NULL, e money.amount, f pg_catalog."varchar"(10));'
+      )
+    ).toEqual([
+      ['a', '"MyType"'],
+      ['b', 'public.mood'],
+      ['c', '"public"."mood"'],
+      ['d', '[dbo].[Phone]'],
+      ['e', 'money.amount'],
+      ['f', 'pg_catalog."varchar"(10)'],
+    ]);
+  });
+
+  it('still unwraps the quotes of a type the lists carry', () => {
+    expect(
+      types('CREATE TABLE t ([a] [int], [b] [nvarchar](50), "c" "int4");')
+    ).toEqual([
+      ['a', 'int'],
+      ['b', 'nvarchar(50)'],
+      ['c', 'int4'],
+    ]);
+  });
+
+  it('keeps the arguments of a user type', () => {
+    expect(
+      types(
+        "CREATE TABLE t (a halfvec(3), b public.geometry(Point,4326), c my_enum('x','y'));"
+      )
+    ).toEqual([
+      ['a', 'halfvec(3)'],
+      ['b', 'public.geometry(Point,4326)'],
+      ['c', "my_enum('x','y')"],
+    ]);
+  });
+
+  it('keeps the array suffix of any type', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a mood[], b text[][], c integer ARRAY, d integer[3], e int ARRAY[4], f "MyType"[], g character varying(20)[], h public.mood [] NOT NULL, i mood ARRAY);'
+      )
+    ).toEqual([
+      ['a', 'mood[]'],
+      ['b', 'text[][]'],
+      ['c', 'integer ARRAY'],
+      ['d', 'integer[3]'],
+      ['e', 'int ARRAY[4]'],
+      ['f', '"MyType"[]'],
+      ['g', 'character varying(20)[]'],
+      ['h', 'public.mood[]'],
+      ['i', 'mood ARRAY'],
+    ]);
+  });
+
+  it('keeps a word the lists lack in front of a type they carry', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a VARYING CHARACTER(255), b NATIVE CHARACTER(70));'
+      )
+    ).toEqual([
+      ['a', 'VARYING CHARACTER(255)'],
+      ['b', 'NATIVE CHARACTER(70)'],
+    ]);
+  });
+
+  it('reads no type out of the constraint that follows a typeless column', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a,\n' +
+        ' b PRIMARY KEY,\n' +
+        ' c NOT NULL,\n' +
+        ' d NULL,\n' +
+        ' e UNIQUE,\n' +
+        ' f CHECK (f > 0),\n' +
+        ' g REFERENCES o (id) ON DELETE CASCADE,\n' +
+        ' h DEFAULT 0,\n' +
+        ' i COLLATE NOCASE,\n' +
+        ' j CONSTRAINT nn NOT NULL,\n' +
+        ' k AS (a + 1),\n' +
+        ' l GENERATED ALWAYS AS (a * 2) STORED,\n' +
+        " m COMMENT 'x',\n" +
+        ' n WITH MASKING POLICY p,\n' +
+        ' o VISIBLE,\n' +
+        " p 'x'\n" +
+        ');'
+    );
+
+    expect(ast.columns.map(column => column.dataType)).toEqual(
+      Array.from({ length: 16 }, () => '')
+    );
+    expect(ast.columns.map(column => column.name).join('')).toBe(
+      'abcdefghijklmnop'
+    );
+  });
+
+  it('reads a word the lists lack after the type as an attribute', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a INT UNSIGNED ZEROFILL, b mood SPARSE, c VARCHAR(10) BINARY);'
+      )
+    ).toEqual([
+      ['a', 'INT'],
+      ['b', 'mood'],
+      ['c', 'VARCHAR(10)'],
+    ]);
+  });
+
+  // EXCLUDE and PERIOD FOR open no constraint item, so their first word still
+  // reads as a column name; the word after it must not become its type.
+  it('gives no type to a table item that still reads as a column', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a int, EXCLUDE USING gist (a WITH &&), PERIOD FOR SYSTEM_TIME (a, a));'
+      )
+    ).toEqual([
+      ['a', 'int'],
+      ['EXCLUDE', ''],
+      ['PERIOD', ''],
+    ]);
+  });
+
+  it('still reads no column out of a table constraint on a user type', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a mood, CONSTRAINT pk PRIMARY KEY (a) USING INDEX TABLESPACE ts, INDEX idx_a (a) USING BTREE);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'mood', primaryKey: true }),
+    ]);
+    expect(ast.indexes).toEqual([
+      { name: 'idx_a', unique: false, columns: [{ name: 'a', sort: 'ASC' }] },
+    ]);
+  });
+});
+
+describe('createTableParser - quoted type arguments', () => {
+  it('keeps the quotes of an ENUM or SET value', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a ENUM('G','PG-13', 'NC-17') NOT NULL DEFAULT 'G', b SET('Deleted Scenes','Trailers'), c enum(''));"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: "ENUM('G','PG-13','NC-17')",
+        default: "'G'",
+        nullable: false,
+      }),
+      column({ name: 'b', dataType: "SET('Deleted Scenes','Trailers')" }),
+      column({ name: 'c', dataType: "enum('')" }),
+    ]);
+  });
+
+  it('keeps a quote an ENUM value escapes by doubling it', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a ENUM('it''s','''x''') DEFAULT 'it''s', b INT);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: "ENUM('it''s','''x''')",
+        default: "'it''s'",
+      }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+  });
+
+  it('writes an argument back in the quotes it came in', () => {
+    expect(
+      parse(
+        'CREATE TABLE t (a SET("x", \'y\'), b OBJECT("city" VARCHAR, zip NUMBER));'
+      ).ast.columns.map(column => column.dataType)
+    ).toEqual(['SET("x",\'y\')', 'OBJECT("city" VARCHAR,zip NUMBER)']);
   });
 });
 
