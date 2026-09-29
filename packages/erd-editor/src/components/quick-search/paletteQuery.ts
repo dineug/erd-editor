@@ -59,8 +59,29 @@ export type PaletteQuery = {
   table: string | null;
 };
 
-const scopeOf = (value: string) =>
-  PALETTE_PREFIXES.find(({ prefix }) => value.startsWith(prefix));
+/** What a Japanese or Chinese IME types for a prefix character, read as the character it stands for. */
+const WIDE_PREFIXES: Readonly<Record<string, string>> = {
+  '＞': '>',
+  '》': '>',
+  '＃': '#',
+  '＠': '@',
+  '＂': '"',
+  '“': '"',
+  '”': '"',
+  '？': '?',
+};
+
+/** The dot a column search splits on, and the full stops those IMEs type for it. */
+const TABLE_DOT = /[.．。]/;
+
+/** The quote a free text search may close on, typed plain or by those IMEs. */
+const CLOSING_QUOTE = /["＂“”]$/;
+
+const scopeOf = (value: string) => {
+  const head = value.charAt(0);
+  const prefix = WIDE_PREFIXES[head] ?? head;
+  return PALETTE_PREFIXES.find(found => found.prefix === prefix);
+};
 
 /** The label the palette shows beside its input while a prefix narrows the list. */
 export const scopeLabel = (scope: PaletteScope): string =>
@@ -69,12 +90,13 @@ export const scopeLabel = (scope: PaletteScope): string =>
 /** What follows a prefix, trimmed; a free text search may close on the quote it opened with. */
 const readRest = (rest: string, scope: PaletteScope): string =>
   scope === PaletteScope.text
-    ? rest.trim().replace(/"$/, '').trim()
+    ? rest.trim().replace(CLOSING_QUOTE, '').trim()
     : rest.trim();
 
 /**
  * Reads what is typed into the palette: a prefix counts only as the first
- * character, a space may follow it, and a column search splits on its first dot.
+ * character, in its full-width form too, a space may follow it, and a column
+ * search splits on its first dot.
  *
  * @example
  * parsePaletteQuery('@users.em'); // { scope: 'columns', keyword: 'em', table: 'users' }
@@ -84,9 +106,10 @@ export function parsePaletteQuery(value: string): PaletteQuery {
   const found = scopeOf(value);
   if (!found) return { scope: null, keyword: value.trim(), table: null };
 
-  const { prefix, scope } = found;
-  const rest = readRest(value.slice(prefix.length), scope);
-  const dot = scope === PaletteScope.columns ? rest.indexOf('.') : -1;
+  const { scope } = found;
+  // Every prefix, full-width or not, is one character.
+  const rest = readRest(value.slice(1), scope);
+  const dot = scope === PaletteScope.columns ? rest.search(TABLE_DOT) : -1;
 
   return dot === -1
     ? { scope, keyword: rest, table: null }

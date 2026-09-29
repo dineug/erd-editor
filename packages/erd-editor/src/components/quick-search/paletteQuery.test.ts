@@ -46,6 +46,40 @@ describe('parsePaletteQuery', () => {
     }
   );
 
+  it.each([
+    ['＞', PaletteScope.commands],
+    ['》', PaletteScope.commands],
+    ['＃', PaletteScope.tables],
+    ['＠', PaletteScope.columns],
+    ['＂', PaletteScope.text],
+    ['“', PaletteScope.text],
+    ['”', PaletteScope.text],
+    ['？', PaletteScope.help],
+  ])(
+    'reads %s, which a Japanese or Chinese IME types, as the %s scope',
+    (prefix, scope) => {
+      expect(parsePaletteQuery(`${prefix}auto`)).toEqual({
+        scope,
+        keyword: 'auto',
+        table: null,
+      });
+      // A Japanese IME types an ideographic space after it.
+      expect(parsePaletteQuery(`${prefix}\u3000auto`)).toEqual(
+        parsePaletteQuery(`${prefix}auto`)
+      );
+    }
+  );
+
+  it('reads a full-width form only as the first character, and keeps it in any other place', () => {
+    expect(parsePaletteQuery('user＠mail')).toMatchObject({ scope: null });
+    expect(parsePaletteQuery('＃＃hash')).toMatchObject({
+      scope: PaletteScope.tables,
+      keyword: '＃hash',
+    });
+    expect(parsePaletteQuery('“ok')).toMatchObject({ keyword: 'ok' });
+    expect(parsePaletteQuery('«ok')).toMatchObject({ scope: null });
+  });
+
   it('takes a prefix only as the first character', () => {
     expect(parsePaletteQuery(' >auto')).toEqual({
       scope: null,
@@ -96,6 +130,27 @@ describe('parsePaletteQuery', () => {
     });
   });
 
+  it('splits a column search on the full stop a Japanese or Chinese IME types for a dot', () => {
+    expect(parsePaletteQuery('＠用户。邮箱')).toEqual({
+      scope: PaletteScope.columns,
+      keyword: '邮箱',
+      table: '用户',
+    });
+    expect(parsePaletteQuery('@users．em')).toEqual({
+      scope: PaletteScope.columns,
+      keyword: 'em',
+      table: 'users',
+    });
+    expect(parsePaletteQuery('@users。em.x')).toMatchObject({
+      keyword: 'em.x',
+      table: 'users',
+    });
+    expect(parsePaletteQuery('#users。em')).toMatchObject({
+      keyword: 'users。em',
+      table: null,
+    });
+  });
+
   it('drops the one quote a free text search closes on, and no other', () => {
     expect(parsePaletteQuery('"login email"')).toEqual({
       scope: PaletteScope.text,
@@ -110,7 +165,18 @@ describe('parsePaletteQuery', () => {
       scope: PaletteScope.text,
       keyword: '',
     });
+    expect(parsePaletteQuery('“login email”')).toMatchObject({
+      scope: PaletteScope.text,
+      keyword: 'login email',
+    });
+    expect(parsePaletteQuery('”login email”')).toMatchObject({
+      keyword: 'login email',
+    });
+    expect(parsePaletteQuery('"login email＂')).toMatchObject({
+      keyword: 'login email',
+    });
     expect(parsePaletteQuery('#users"')).toMatchObject({ keyword: 'users"' });
+    expect(parsePaletteQuery('#users”')).toMatchObject({ keyword: 'users”' });
     expect(parsePaletteQuery('@users.em"')).toMatchObject({ keyword: 'em"' });
   });
 

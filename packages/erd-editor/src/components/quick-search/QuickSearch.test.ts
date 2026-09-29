@@ -824,6 +824,28 @@ describe('QuickSearch prefixes', () => {
     expect(rowNames()).toEqual(['사용자']);
   });
 
+  it('reads the full-width prefixes a Japanese or Chinese IME types as their own', async () => {
+    await open();
+
+    await type('＃us');
+    expect(rows().every(isTableRow)).toBe(true);
+    expect(scopeLabel()).toBe('Tables');
+
+    await type('＠users。em');
+    expect(rowNames()).toEqual(['email']);
+    expect(highlighted(rows()[0])).toEqual(['em', 'users', 'em']);
+
+    await type('“user id”');
+    expect(rowNames()).toEqual(['user id']);
+
+    await type('》auto');
+    expect(rowNames()[0]).toBe('Auto Layout');
+    expect(scopeLabel()).toBe('Commands');
+
+    await type('？');
+    expect(scopeLabel()).toBe('Help');
+  });
+
   it('lists the columns alone after @, narrowed by the table before a dot', async () => {
     await open();
 
