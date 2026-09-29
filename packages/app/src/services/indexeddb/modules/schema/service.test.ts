@@ -45,6 +45,7 @@ function createFakeDatabase() {
 
   return {
     rows,
+    table,
     db: { table: () => table } as unknown as AppDatabase,
   };
 }
@@ -226,6 +227,7 @@ describe('SchemaService', () => {
   let rows: Map<string, SchemaEntity>;
   let service: SchemaService;
   let postMessage: MockInstance;
+  let writes: MockInstance;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -234,6 +236,7 @@ describe('SchemaService', () => {
 
     const database = createFakeDatabase();
     rows = database.rows;
+    writes = vi.spyOn(database.table, 'update');
     service = new SchemaService(database.db);
   });
 
@@ -342,6 +345,29 @@ describe('SchemaService', () => {
         originY: 0,
         zoomLevel: 1,
       });
+    });
+
+    it('writes nothing for a view change that leaves the stored value as it was', async () => {
+      const row = seed(rows, { value: '' });
+      await service.replication(row.id, zoomAndScroll);
+      await settle();
+      const stored = rows.get(row.id)!.value;
+      expect(stored).not.toBe('');
+      writes.mockClear();
+
+      await service.replication(row.id, zoomAndScroll.slice(0, 4));
+      await settle();
+
+      expect(writes).not.toHaveBeenCalled();
+      expect(rows.get(row.id)!.value).toBe(stored);
+
+      await service.replication(row.id, [renameDatabase('shop')]);
+      await settle();
+
+      expect(writes).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(rows.get(row.id)!.value).settings.databaseName).toBe(
+        'shop'
+      );
     });
 
     it('does not count the tombstones the engine collects on load as an edit', async () => {

@@ -57,7 +57,9 @@ export class SchemaService {
 
   private persist(id: string, value: string) {
     const prev = this.cache.get(id);
-    if (!prev) return;
+    // A change that left the stored value as it was, such as a scroll on a
+    // schema that saves none, has nothing to write.
+    if (!prev || value === prev.value) return;
 
     const fingerprint = toFingerprint(value);
     const edited = fingerprint !== this.fingerprints.get(id);
