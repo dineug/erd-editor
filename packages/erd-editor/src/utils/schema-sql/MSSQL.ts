@@ -22,6 +22,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   toOrderName,
+  toStringLiteral,
   unique,
   uniqueColumns,
 } from './utils';
@@ -173,7 +174,7 @@ function formatComment(
   if (table.comment.trim() !== '') {
     buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
     buffer.push(
-      `  '${table.comment}', 'user', dbo, 'table', '${table.name}'\nGO`
+      `  ${toStringLiteral(table.comment)}, 'user', dbo, 'table', ${toStringLiteral(table.name)}\nGO`
     );
     buffer.push('');
   }
@@ -184,7 +185,7 @@ function formatComment(
       if (column.comment.trim() !== '') {
         buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
         buffer.push(
-          `  '${column.comment}', 'user', dbo, 'table', '${table.name}', 'column', '${column.name}'\nGO`
+          `  ${toStringLiteral(column.comment)}, 'user', dbo, 'table', ${toStringLiteral(table.name)}, 'column', ${toStringLiteral(column.name)}\nGO`
         );
         buffer.push('');
       }

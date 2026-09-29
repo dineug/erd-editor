@@ -21,6 +21,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   toOrderName,
+  toStringLiteral,
   unique,
   uniqueColumns,
 } from './utils';
@@ -131,7 +132,7 @@ export function formatTable(
   if (table.comment.trim() === '') {
     buffer.push(`);`);
   } else {
-    buffer.push(`) COMMENT '${table.comment}';`);
+    buffer.push(`) COMMENT ${toStringLiteral(table.comment)};`);
   }
 }
 
@@ -163,7 +164,7 @@ function formatColumn(
     }
   }
   if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT '${column.comment}'`);
+    stringBuffer.push(`COMMENT ${toStringLiteral(column.comment)}`);
   }
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }

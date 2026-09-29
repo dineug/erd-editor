@@ -749,6 +749,57 @@ describe('schemaSQLParserToSchemaJson', () => {
         'id',
       ]);
     });
+
+    // A dump doubles the quote inside a comment, and the import keeps one;
+    // the export has to double it again or the comment ends early. Databricks
+    // escapes it with a backslash instead, which the importer does not read.
+    const commentsOf = (schema: Schema) =>
+      tablesOf(schema).flatMap(table => [
+        table.comment,
+        ...columnsOf(schema, table).map(column => column.comment),
+      ]);
+
+    it.each<[string, number, string]>([
+      [
+        'MySQL',
+        Database.MySQL,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT 'o''k';",
+      ],
+      [
+        'MariaDB',
+        Database.MariaDB,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT 'o''k';",
+      ],
+      [
+        'PostgreSQL',
+        Database.PostgreSQL,
+        "CREATE TABLE t (a INT, b INT); COMMENT ON TABLE t IS 'o''k'; COMMENT ON COLUMN t.a IS 'it''s';",
+      ],
+      [
+        'Oracle',
+        Database.Oracle,
+        "CREATE TABLE t (a INT, b INT); COMMENT ON TABLE t IS 'o''k'; COMMENT ON COLUMN t.a IS 'it''s';",
+      ],
+      [
+        'Snowflake',
+        Database.Snowflake,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT = 'o''k';",
+      ],
+    ])(
+      'keeps a quote in a %s comment through its export',
+      (_, database, sql) => {
+        const imported = parse(sql);
+        const exported = createSchemaSQL(
+          { ...imported, editor: {}, lww: {} } as unknown as RootState,
+          database
+        );
+
+        expect(commentsOf(imported)).toEqual(["o'k", "it's", '']);
+        expect(exported).toContain("'it''s'");
+        expect(exported).toContain("'o''k'");
+        expect(commentsOf(parse(exported))).toEqual(["o'k", "it's", '']);
+      }
+    );
   });
 
   describe('default round trip', () => {

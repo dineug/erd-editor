@@ -150,6 +150,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
   - `dbml.ts` repairs, since DBML rejects what others render oddly: duplicate tables renamed, typeless or repeated columns dropped (and the tables they empty), a `Ref` kept only when both ends resolve, identifiers double-quoted, comments as `Note`. `dbml.test.ts` parses with `@dbml/parse`.
   - `aml.ts` repairs likewise but keeps typeless attributes, writes `nullable`, always quotes types. DBML and AML highlight as `sql` (`LanguageToLangMap`).
   - `schema-sql/Snowflake.ts`: `bracketType` decides whether to quote, since a quoted name is case sensitive.
+  - `schema-sql/`: a comment, and a name SQL Server's `sp_addextendedproperty` takes, is written through `toStringLiteral` (`utils.ts`), quotes doubled as the importer reads them; `Databricks.ts` escapes a quote and a backslash with a backslash instead, the form every Spark release reads (only the newest read a doubled quote), which the importer does not read back.
 
 ## Dependencies
 
