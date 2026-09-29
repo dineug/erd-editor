@@ -463,6 +463,22 @@ describe('createTableParser - column options', () => {
     ]);
   });
 
+  // Bare, the comment read as words and the name as two fields.
+  it('keeps the quotes of a nested field comment and name', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a STRUCT<name: STRING COMMENT 'it''s > 0', `first name`: STRING>, b INT);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType:
+          "STRUCT<name: STRING COMMENT 'it''s > 0', `first name`: STRING>",
+      }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+  });
+
   it('produces no column for an empty body', () => {
     const { ast } = parse('CREATE TABLE t ();');
 
@@ -551,9 +567,23 @@ describe('createTableParser - user defined types', () => {
       ['a', '"MyType"'],
       ['b', 'public.mood'],
       ['c', '"public"."mood"'],
-      ['d', '[dbo].[Phone]'],
+      ['d', 'dbo.Phone'],
       ['e', 'money.amount'],
       ['f', 'pg_catalog."varchar"(10)'],
+    ]);
+  });
+
+  // T-SQL brackets change no case, so SSMS's [sysname] reads as its [int] does.
+  it('drops the brackets of a user type unless its name needs them', () => {
+    expect(
+      types(
+        'CREATE TABLE [c] ([Name] [sysname] NOT NULL, [Loc] [geography] NULL, [Zip] [my type], [D] [default]);'
+      )
+    ).toEqual([
+      ['Name', 'sysname'],
+      ['Loc', 'geography'],
+      ['Zip', '[my type]'],
+      ['D', '[default]'],
     ]);
   });
 
@@ -597,14 +627,16 @@ describe('createTableParser - user defined types', () => {
     ]);
   });
 
+  // SQLite takes any words as a type; UNSIGNED INTEGER is no listed name.
   it('keeps a word the lists lack in front of a type they carry', () => {
     expect(
       types(
-        'CREATE TABLE t (a VARYING CHARACTER(255), b NATIVE CHARACTER(70));'
+        'CREATE TABLE t (a UNSIGNED INTEGER NOT NULL, b UNSIGNED SMALLINT(5), c VARYING CHARACTER(255));'
       )
     ).toEqual([
-      ['a', 'VARYING CHARACTER(255)'],
-      ['b', 'NATIVE CHARACTER(70)'],
+      ['a', 'UNSIGNED INTEGER'],
+      ['b', 'UNSIGNED SMALLINT(5)'],
+      ['c', 'VARYING CHARACTER(255)'],
     ]);
   });
 
@@ -650,17 +682,45 @@ describe('createTableParser - user defined types', () => {
     ]);
   });
 
-  // EXCLUDE and PERIOD FOR open no constraint item, so their first word still
-  // reads as a column name; the word after it must not become its type.
-  it('gives no type to a table item that still reads as a column', () => {
+  // Each used to read as a column named by its first word, typed by the next.
+  it('reads no column out of a table item a column name could open', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a int, LIKE s INCLUDING ALL, EXCLUDE USING gist (a WITH &&), EXCLUDE (a WITH =), FULLTEXT ft (a), SPATIAL (a), PERIOD FOR SYSTEM_TIME (a, a), SUPPLEMENTAL LOG DATA (ALL) COLUMNS, b mood);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'int' }),
+      column({ name: 'b', dataType: 'mood' }),
+    ]);
+    expect(ast.indexes).toEqual([]);
+  });
+
+  it('still reads a column named by one of those words', () => {
     expect(
       types(
-        'CREATE TABLE t (a int, EXCLUDE USING gist (a WITH &&), PERIOD FOR SYSTEM_TIME (a, a));'
+        'CREATE TABLE t (exclude BOOLEAN, fulltext tsvector, spatial geometry(Point,4326), period INT, supplemental TEXT, "like" s);'
       )
     ).toEqual([
-      ['a', 'int'],
-      ['EXCLUDE', ''],
-      ['PERIOD', ''],
+      ['exclude', 'BOOLEAN'],
+      ['fulltext', 'tsvector'],
+      ['spatial', 'geometry(Point,4326)'],
+      ['period', 'INT'],
+      ['supplemental', 'TEXT'],
+      ['like', 's'],
+    ]);
+  });
+
+  it('gives no type to the TAG or SORT of a CREATE TABLE AS column', () => {
+    expect(
+      types(
+        "CREATE TABLE t (a TAG (k = 'v'), b SORT, c SORT VISIBLE, d tag, e sort[]) AS SELECT 1, 2, 3, 4, 5;"
+      )
+    ).toEqual([
+      ['a', ''],
+      ['b', ''],
+      ['c', ''],
+      ['d', 'tag'],
+      ['e', 'sort[]'],
     ]);
   });
 

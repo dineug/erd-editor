@@ -2060,7 +2060,7 @@ CREATE TABLE [dbo].[Customer] (
         },
         {
           "name": "Phone",
-          "dataType": "[dbo].[Phone]",
+          "dataType": "dbo.Phone",
           "default": "",
           "comment": "",
           "primaryKey": false,
@@ -2070,7 +2070,7 @@ CREATE TABLE [dbo].[Customer] (
         },
         {
           "name": "Owner",
-          "dataType": "[sysname]",
+          "dataType": "sysname",
           "default": "",
           "comment": "",
           "primaryKey": false,

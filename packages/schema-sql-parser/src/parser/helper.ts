@@ -185,7 +185,8 @@ export const matchNestedDataType = (tokens: Token[]) => {
     let depth = 0;
 
     for (let cursor = pos; cursor < tokens.length; cursor++) {
-      depth += angleDepth(tokens[cursor].value);
+      // A field's COMMENT 'a > b' is text, not a bracket.
+      if (!tokens[cursor].quoted) depth += angleDepth(tokens[cursor].value);
       if (depth <= 0) return cursor - pos + 1;
     }
 
@@ -591,7 +592,7 @@ export const matchDataType = (tokens: Token[]) => {
 
 // Words that may follow a column name without being its type: the column
 // constraints, all a typeless SQLite column has, a computed column's AS, the
-// options of a CREATE TABLE AS column, and EXCLUDE USING, PERIOD FOR.
+// options of a CREATE TABLE AS column, and the reserved FOR and USING.
 const ColumnKeywords: ReadonlyArray<string> = [
   'AS',
   'AUTO_INCREMENT',
@@ -621,30 +622,65 @@ const ColumnKeywords: ReadonlyArray<string> = [
   'WITH',
 ];
 
+const isKeyword = (value: string) =>
+  ColumnKeywords.includes(value.toUpperCase());
+
+const isColumnKeyword = (token: Token | undefined) =>
+  !!token && !token.quoted && isKeyword(token.value);
+
+// T-SQL brackets change nothing around a regular name, so a user type sheds
+// them as a listed one does: [sysname] is sysname, [dbo].[Phone] dbo.Phone.
+// A name that needs them keeps them, [my type], and so does "MyType".
+export const requoteTypeName = (token: Token) =>
+  token.quoted === '[' &&
+  /^[A-Za-z_][\w$#@]*$/.test(token.value) &&
+  !isKeyword(token.value)
+    ? token.value
+    : requote(token);
+
 // How many tokens a type no vendor list carries spans at pos, 0 for a keyword
 // or a string literal: mood, "MyType", public.mood[], hstore. Any identifier
 // matches, so the caller decides where a type may stand.
 export const matchUserDataType = (tokens: Token[]) => {
   const isString = isStringToken(tokens);
   const isPeriod = isPeriodToken(tokens);
+  const isComma = isCommaToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
   const skipArguments = createSkipArguments(tokens);
   const arraySuffix = matchArraySuffix(tokens);
   const dataType = matchDataType(tokens);
 
   const isName = (pos: number) => isString(pos) && tokens[pos].quoted !== "'";
+  const endsColumn = (pos: number) =>
+    pos >= tokens.length ||
+    isComma(pos) ||
+    isRightParent(pos) ||
+    isColumnKeyword(tokens[pos]);
+
+  // A CREATE TABLE AS column puts these options where the type would stand,
+  // Snowflake's TAG (k = 'v') and Oracle's SORT, while a PostgreSQL type may
+  // carry either name: the word after it tells which.
+  const isColumnOption = (pos: number) => {
+    const token = tokens[pos];
+    if (token.quoted) return false;
+
+    const word = token.value.toUpperCase();
+    return (
+      (word === 'TAG' && isLeftParent(pos + 1)) ||
+      (word === 'SORT' && endsColumn(pos + 1))
+    );
+  };
 
   return (pos: number) => {
     const token = tokens[pos];
     if (!token || !isName(pos)) return 0;
-    if (!token.quoted && ColumnKeywords.includes(token.value.toUpperCase())) {
-      return 0;
-    }
+    if (isColumnKeyword(token) || isColumnOption(pos)) return 0;
 
     let cursor = pos + 1;
 
-    // A word the lists lack in front of one they carry is part of its name,
-    // as SQLite reads VARYING CHARACTER(255).
+    // A word the lists lack in front of one they carry is part of its name:
+    // SQLite takes any words as a type, UNSIGNED INTEGER among them.
     const known = token.quoted || isPeriod(cursor) ? 0 : dataType(cursor);
     if (known) return 1 + known;
 
@@ -657,6 +693,46 @@ export const matchUserDataType = (tokens: Token[]) => {
     }
 
     return cursor + arraySuffix(cursor) - pos;
+  };
+};
+
+// Table items that open with a word a column may be named too: PostgreSQL's
+// LIKE s and EXCLUDE USING, MySQL's FULLTEXT ft (c) with no INDEX, T-SQL's
+// PERIOD FOR and Oracle's SUPPLEMENTAL LOG. The words after it tell them apart.
+export const isTableItemWord = (tokens: Token[]) => {
+  const isString = isStringToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const dataType = matchDataType(tokens);
+
+  const word = (pos: number) => {
+    const token = tokens[pos];
+    return token && isString(pos) && !token.quoted
+      ? token.value.toUpperCase()
+      : '';
+  };
+  // A name that is no listed type: spatial GEOMETRY(Point, 4326) is a column.
+  const isItemName = (pos: number) =>
+    isString(pos) && tokens[pos].quoted !== "'" && !dataType(pos);
+
+  return (pos: number) => {
+    switch (word(pos)) {
+      case 'LIKE':
+        return isItemName(pos + 1);
+      case 'EXCLUDE':
+        return word(pos + 1) === 'USING' || isLeftParent(pos + 1);
+      case 'FULLTEXT':
+      case 'SPATIAL':
+        return (
+          isLeftParent(pos + 1) ||
+          (isItemName(pos + 1) && isLeftParent(pos + 2))
+        );
+      case 'PERIOD':
+        return word(pos + 1) === 'FOR';
+      case 'SUPPLEMENTAL':
+        return word(pos + 1) === 'LOG';
+      default:
+        return false;
+    }
   };
 };
 

@@ -26,6 +26,7 @@ import {
   isRightParentToken,
   isSemicolonToken,
   isStringToken,
+  isTableItemWord,
   isUniqueValue,
   matchCreateTable,
   matchDataType,
@@ -33,6 +34,7 @@ import {
   matchReferentialClause,
   matchUserDataType,
   requote,
+  requoteTypeName,
 } from '@/parser/helper';
 import {
   Column,
@@ -235,6 +237,7 @@ function createTableColumnsParser(
   const nestedDataType = matchNestedDataType(tokens);
   const referentialClause = matchReferentialClause(tokens);
   const indexKind = isIndexKind(tokens);
+  const tableItemWord = isTableItemWord(tokens);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -245,7 +248,8 @@ function createTableColumnsParser(
     isUnique(pos) ||
     isIndex(pos) ||
     isKey(pos) ||
-    indexKind(pos);
+    indexKind(pos) ||
+    tableItemWord(pos);
 
   // Reads a key list from its ( through its ), each column with its sort.
   const indexColumnsParser = () => {
@@ -333,12 +337,17 @@ function createTableColumnsParser(
       const parts: string[] = [];
 
       while ($pos.value < end) {
-        parts.push(isComma($pos.value) ? ',' : tokens[$pos.value].value);
+        // A field's COMMENT and a backtick name keep their quotes, as a type
+        // argument does: STRUCT<name: STRING COMMENT 'x'>.
+        parts.push(isComma($pos.value) ? ',' : requote(tokens[$pos.value]));
         $pos.value++;
       }
 
+      // A quoted token ends before the colon or bracket written right after
+      // it, so a field name and its colon join back without a space.
       column.dataType = parts.reduce(
-        (acc, part) => (!acc || part === ',' ? acc + part : `${acc} ${part}`),
+        (acc, part) =>
+          !acc || /^[,:>]/.test(part) ? acc + part : `${acc} ${part}`,
         ''
       );
       continue;
@@ -643,9 +652,9 @@ function createTableColumnsParser(
         } else if (isArrayDimension($pos.value)) {
           value += requote(token);
         } else {
-          // Only a user type keeps its quotes: "MyType" is case sensitive,
-          // while [int] is how T-SQL writes the INT a list carries.
-          const text = userDefined ? requote(token) : token.value;
+          // A listed type drops its quotes, [int] being how T-SQL writes INT;
+          // a user type keeps those it needs, "MyType" being case sensitive.
+          const text = userDefined ? requoteTypeName(token) : token.value;
           value +=
             value && !isPeriod($pos.value) && !isPeriod($pos.value - 1)
               ? ` ${text}`

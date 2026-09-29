@@ -59,6 +59,7 @@ import {
   isSemicolonToken,
   isSetValue,
   isStringToken,
+  isTableItemWord,
   isTableValue,
   isUniqueValue,
   isUseValue,
@@ -68,6 +69,7 @@ import {
   matchReferentialClause,
   matchUserDataType,
   requote,
+  requoteTypeName,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
@@ -1113,6 +1115,25 @@ describe('requote', () => {
   });
 });
 
+describe('requoteTypeName', () => {
+  it('drops the brackets around a regular name only', () => {
+    expect(
+      tokenizer(
+        '[sysname] [_a$1#@] [my type] [1st] [default] "Mood" `m` x'
+      ).map(requoteTypeName)
+    ).toEqual([
+      'sysname',
+      '_a$1#@',
+      '[my type]',
+      '[1st]',
+      '[default]',
+      '"Mood"',
+      '`m`',
+      'x',
+    ]);
+  });
+});
+
 describe('matchUserDataType', () => {
   const spanOf = (source: string) => matchUserDataType(tokenizer(source))(0);
 
@@ -1138,7 +1159,8 @@ describe('matchUserDataType', () => {
   });
 
   it('joins a word the lists lack with the type that follows it', () => {
-    expect(spanOf('VARYING CHARACTER(255) NOT NULL')).toBe(5);
+    expect(spanOf('UNSIGNED INTEGER NOT NULL')).toBe(2);
+    expect(spanOf('FOO VARCHAR(10)')).toBe(5);
     expect(spanOf('"x" INT')).toBe(1);
     expect(spanOf('money.amount')).toBe(3);
   });
@@ -1160,10 +1182,58 @@ describe('matchUserDataType', () => {
     expect(spanOf('"CHECK"')).toBe(1);
   });
 
+  it('refuses TAG before its list and SORT where the column ends', () => {
+    expect(spanOf("TAG (k = 'v')")).toBe(0);
+    for (const next of ['', ',', ')', 'VISIBLE', 'NOT NULL']) {
+      expect(spanOf(`SORT ${next}`)).toBe(0);
+    }
+
+    expect(spanOf('tag NOT NULL')).toBe(1);
+    expect(spanOf('sort[]')).toBe(2);
+    expect(spanOf('"SORT",')).toBe(1);
+    expect(spanOf('"TAG"(1)')).toBe(4);
+  });
+
   it('refuses a string literal and anything but a word', () => {
     expect(spanOf("'mood'")).toBe(0);
     expect(spanOf('(a)')).toBe(0);
     expect(matchUserDataType([])(0)).toBe(0);
     expect(spanOf("public.'x'")).toBe(1);
+  });
+});
+
+describe('isTableItemWord', () => {
+  const opens = (source: string) => isTableItemWord(tokenizer(source))(0);
+
+  it('reads the table items a column name could open', () => {
+    for (const item of [
+      'LIKE s INCLUDING ALL',
+      'like public.s',
+      'EXCLUDE USING gist (a WITH &&)',
+      'EXCLUDE (a WITH =)',
+      'FULLTEXT ft (title)',
+      'SPATIAL (g)',
+      'PERIOD FOR SYSTEM_TIME (a, b)',
+      'SUPPLEMENTAL LOG DATA (ALL) COLUMNS',
+    ]) {
+      expect(opens(item)).toBe(true);
+    }
+  });
+
+  it('leaves a column of the same name alone', () => {
+    for (const column of [
+      'like INT',
+      "LIKE 'x'",
+      '`like` s',
+      'exclude BOOLEAN',
+      'fulltext tsvector',
+      'spatial GEOMETRY(Point, 4326)',
+      'period INT',
+      'supplemental TEXT',
+      'mood',
+      '(a)',
+    ]) {
+      expect(opens(column)).toBe(false);
+    }
   });
 });

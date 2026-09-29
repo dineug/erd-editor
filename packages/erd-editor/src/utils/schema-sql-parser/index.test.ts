@@ -913,8 +913,8 @@ describe('schemaSQLParserToSchemaJson', () => {
       [
         'MSSQL',
         Database.MSSQL,
-        'CREATE TABLE customer ([phone] [dbo].[Phone] NULL, [owner] sysname NOT NULL);',
-        ['[dbo].[Phone]', 'sysname'],
+        'CREATE TABLE customer ([phone] [dbo].[Phone] NULL, [owner] [sysname] NOT NULL, [zip] [zip code]);',
+        ['dbo.Phone', 'sysname', '[zip code]'],
       ],
       [
         'Oracle',
@@ -925,8 +925,8 @@ describe('schemaSQLParserToSchemaJson', () => {
       [
         'SQLite',
         Database.SQLite,
-        'CREATE TABLE t (a VARYING CHARACTER(255), b NATIVE CHARACTER(70));',
-        ['VARYING CHARACTER(255)', 'NATIVE CHARACTER(70)'],
+        'CREATE TABLE t (a UNSIGNED INTEGER, b VARYING CHARACTER(255));',
+        ['UNSIGNED INTEGER', 'VARYING CHARACTER(255)'],
       ],
       [
         'Snowflake',
@@ -937,8 +937,12 @@ describe('schemaSQLParserToSchemaJson', () => {
       [
         'Databricks',
         Database.Databricks,
-        'CREATE TABLE t (a my_catalog.my_type, b ARRAY<STRING>);',
-        ['my_catalog.my_type', 'ARRAY<STRING>'],
+        "CREATE TABLE t (a my_catalog.my_type, b ARRAY<STRING>, c STRUCT<name: STRING COMMENT 'the name', `first name`: STRING>);",
+        [
+          'my_catalog.my_type',
+          'ARRAY<STRING>',
+          "STRUCT<name: STRING COMMENT 'the name', `first name`: STRING>",
+        ],
       ],
     ])(
       'keeps the data types of a %s import through its export',
