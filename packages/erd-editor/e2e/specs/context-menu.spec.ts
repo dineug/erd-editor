@@ -358,7 +358,7 @@ test.describe('context menu at the window edge', () => {
   }) => {
     await erd.seed(oneTable());
 
-    const at = { x: 850, y: 258 };
+    const at = { x: 850, y: 226 };
     await erd.hoverAt(at);
     await erd.clickAt(at, { button: 'right' });
     await expect(erd.contextMenuItem('New Table')).toBeVisible();
