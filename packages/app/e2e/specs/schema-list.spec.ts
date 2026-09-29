@@ -37,18 +37,18 @@ test.describe('the schema list', () => {
     await expect.poll(() => app.schemaNames()).toEqual(['first', 'second']);
 
     await app.selectSchema('second');
-    const { updateAt } = await app.storedSchema('second');
+    const { updateAt, value: created } = await app.storedSchema('second');
+    expect(created).toBe('');
     await expect(app.zoomLevel()).toHaveText('100%');
     await app.zoomIn();
     await expect(app.zoomLevel()).not.toHaveText('100%');
-    // The zoom is saved like an edit is, so once it is stored the list has
-    // had every chance to move.
+    // The zoom is stored like an edit is, so once the value is there the list
+    // has had every chance to move. A new schema saves no zoom, so it reads 1.
     await expect
-      .poll(async () => {
-        const { value } = await app.storedSchema('second');
-        return value ? JSON.parse(value).settings.zoomLevel : 1;
-      })
-      .toBeGreaterThan(1);
+      .poll(async () => (await app.storedSchema('second')).value)
+      .not.toBe('');
+    const { settings } = JSON.parse((await app.storedSchema('second')).value);
+    expect(settings).toMatchObject({ ignoreSaveSettings: 3, zoomLevel: 1 });
 
     await app.renameSchema('second', 'renamed');
     await expect

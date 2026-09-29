@@ -428,6 +428,33 @@ describe('useErdEditorAttachElement', () => {
       expect(load?.payload).toEqual({ value: toJson(createSchema()) });
       expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
     });
+
+    it.each([
+      ['setSchemaSQL', 'CREATE TABLE a (id INT);'],
+      ['setSchemaDBML', 'Table a {\n  id int\n}'],
+      ['setSchemaAML', 'a\n  id int pk'],
+      ['setSchemaGraphQL', 'type A { id: ID! }'],
+    ] as const)(
+      'makes %s on an element given no value a new document',
+      async (method, source) => {
+        const { app, ctx } = await setup();
+
+        ctx[method](source);
+
+        expect(app.store.state.doc.tableIds).toHaveLength(1);
+        expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(OFF);
+      }
+    );
+
+    it('keeps the switches of the file a source is imported into', async () => {
+      const { app, ctx } = await setup();
+      ctx.setInitialValue(file);
+
+      ctx.setSchemaSQL('CREATE TABLE a (id INT);');
+
+      expect(app.store.state.doc.tableIds).toHaveLength(1);
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+    });
   });
 
   it('round-trips the document through the value accessor', async () => {
