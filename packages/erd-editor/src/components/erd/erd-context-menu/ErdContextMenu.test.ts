@@ -173,6 +173,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'New TableAlt + N',
       'New MemoAlt + M',
+      'Find and ReplaceCtrl + Shift + H',
       'Relationship',
       'View Option',
       'Database',
@@ -189,6 +190,21 @@ describe('ErdContextMenu / ERD type', () => {
     await click(findItem(rootItems(), 'New Table'));
 
     expect(app.store.state.doc.tableIds).toHaveLength(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for Find and Replace and closes the menu', async () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action.payload);
+      },
+    });
+    await mountMenu();
+
+    await click(findItem(rootItems(), 'Find and Replace'));
+
+    expect(opened).toEqual([undefined]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

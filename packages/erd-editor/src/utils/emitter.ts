@@ -21,6 +21,7 @@ const InternalActionType = {
   paste: 'paste',
   schemaGC: 'schemaGC',
   toggleSearch: 'toggleSearch',
+  openFindReplace: 'openFindReplace',
   openThemeBuilder: 'openThemeBuilder',
   setThemeOptions: 'setThemeOptions',
   mouseTrackerStart: 'mouseTrackerStart',
@@ -55,6 +56,9 @@ type InternalActionMap = {
   };
   [InternalActionType.schemaGC]: void;
   [InternalActionType.toggleSearch]: void;
+  [InternalActionType.openFindReplace]: {
+    query?: string;
+  } | void;
   [InternalActionType.openThemeBuilder]: void;
   [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
   [InternalActionType.mouseTrackerStart]: void;
@@ -140,6 +144,10 @@ export const schemaGCAction = createAction<
 export const toggleSearchAction = createAction<
   InternalActionMap[typeof InternalActionType.toggleSearch]
 >(InternalActionType.toggleSearch);
+
+export const openFindReplaceAction = createAction<
+  InternalActionMap[typeof InternalActionType.openFindReplace]
+>(InternalActionType.openFindReplace);
 
 export const openThemeBuilderAction = createAction<
   InternalActionMap[typeof InternalActionType.openThemeBuilder]

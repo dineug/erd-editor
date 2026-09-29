@@ -1,0 +1,238 @@
+// Find and replace and the palette's field matches on a real keyboard, over
+// the scene they drive: the chords reach the panel through the element's own
+// bindings, and what is typed into the panel has to stop there.
+
+import { createRef, FC, ref, useProvider } from '@dineug/r-html';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { userEvent } from 'vite-plus/test/browser/context';
+
+import {
+  createTestAppContext,
+  createTestTheme,
+  flush,
+  mount,
+  type Mounted,
+} from '@/__test-utils__';
+import { seedFindDocument } from '@/__test-utils__/findSeed';
+import { useAppContext } from '@/components/appContext';
+import Erd from '@/components/erd/Erd';
+import FindReplace from '@/components/find-replace/FindReplace';
+import QuickSearch from '@/components/quick-search/QuickSearch';
+import * as quickSearchStyles from '@/components/quick-search/QuickSearch.styles';
+import { themeContext } from '@/components/themeContext';
+import { Open } from '@/constants/open';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import { whenDrawn } from '@/konva/batchDraw';
+import { hasAppleDevice } from '@/utils/device-detect';
+import { forceFocusEvent } from '@/utils/internalEvents';
+
+/** The key $mod names in the browser the spec runs in, which is what the bindings read too. */
+const MOD = hasAppleDevice() ? 'Meta' : 'Control';
+
+/** The part of ErdEditor that reads the keyboard, around the scene and the two panels. */
+const Editor: FC = (_, ctx) => {
+  const app = useAppContext(ctx);
+  const root = createRef<HTMLDivElement>();
+  useKeyBindingMap(ctx, root);
+
+  const handleKeydown = (event: KeyboardEvent) => {
+    app.value.keydown$.next(event);
+  };
+
+  return () => (
+    <div
+      class="root"
+      use:ref={ref(root)}
+      tabindex="-1"
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+      on:keydown={handleKeydown}
+    >
+      <Erd isDarkMode={false} mouseTracking={false} />
+      <FindReplace readonly={false} />
+      <QuickSearch />
+    </div>
+  );
+};
+
+type Fixture = {
+  mounted: Mounted;
+  root: HTMLDivElement;
+};
+
+const teardowns: Array<() => void> = [];
+
+afterEach(async () => {
+  teardowns.splice(0).forEach(teardown => teardown());
+  await whenDrawn();
+});
+
+async function setup(): Promise<Fixture> {
+  const app = createTestAppContext();
+  const mounted = mount(<Editor />, app);
+  mounted.container.setAttribute(
+    'style',
+    'width: 900px; height: 640px; position: relative;'
+  );
+
+  // useProvider takes a bare element at runtime and types only a component
+  // context, hence the cast; it is r-html's own, not a React hook.
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const themeProvider = useProvider(
+    mounted.container as any,
+    themeContext,
+    createTestTheme()
+  );
+
+  const root = mounted.container.querySelector('.root') as HTMLDivElement;
+  const focusRoot = () => root.focus();
+  document.body.addEventListener(forceFocusEvent.type, focusRoot);
+
+  app.store.dispatchSync(changeViewportAction({ width: 900, height: 640 }));
+  seedFindDocument(app);
+  await flush();
+  await whenDrawn();
+  root.focus();
+
+  teardowns.push(() => {
+    document.body.removeEventListener(forceFocusEvent.type, focusRoot);
+    mounted.unmount();
+    themeProvider.destroy();
+  });
+
+  return { mounted, root };
+}
+
+const press = async (keys: string) => {
+  await userEvent.keyboard(keys);
+  await flush();
+};
+
+const OPEN_FIND = `{${MOD}>}{Shift>}H{/Shift}{/${MOD}}`;
+
+const panelOf = ({ mounted }: Fixture) =>
+  mounted.container.querySelector<HTMLDivElement>('.find-replace');
+const inputOf = (fixture: Fixture, name: string) =>
+  panelOf(fixture)?.querySelector<HTMLInputElement>(`.${name}`) ?? null;
+const countOf = (fixture: Fixture) =>
+  (panelOf(fixture)?.querySelector('.find-count')?.textContent ?? '').trim();
+const stateOf = ({ mounted }: Fixture) => mounted.app.store.state;
+
+describe('Find and Replace on a real keyboard', () => {
+  it('opens on its chord with the caret in the find field', async () => {
+    const fixture = await setup();
+
+    await press(OPEN_FIND);
+
+    expect(panelOf(fixture)).not.toBeNull();
+    expect(document.activeElement).toBe(inputOf(fixture, 'find-input'));
+
+    await press(OPEN_FIND);
+
+    expect(panelOf(fixture)).toBeNull();
+    expect(stateOf(fixture).editor.openMap[Open.findReplace]).toBe(false);
+  });
+
+  it('keeps what is typed off the canvas while Enter walks the matches', async () => {
+    const fixture = await setup();
+    await press(OPEN_FIND);
+
+    await press('user');
+    expect(countOf(fixture)).toBe('5 matches');
+
+    // On the canvas Alt+N adds a table and the arrows move the focus ring.
+    await press('{Alt>}n{/Alt}');
+    await press('{ArrowDown}');
+    await press('{Enter}');
+
+    expect(stateOf(fixture).doc.tableIds).toEqual(['orders', 'users']);
+    expect(countOf(fixture)).toBe('1 of 5');
+    expect(stateOf(fixture).editor.focusTable).toMatchObject({
+      tableId: 'orders',
+      columnId: 'orders_user_id',
+      edit: false,
+    });
+    expect(document.activeElement).toBe(inputOf(fixture, 'find-input'));
+
+    // With that cell ringed, Alt+Backspace would remove its column.
+    await press('{Alt>}{Backspace}{/Alt}');
+    expect(
+      stateOf(fixture).collections.tableEntities.orders.columnIds
+    ).toHaveLength(3);
+
+    await press(`{${MOD}>}a{/${MOD}}user`);
+    await press('{Shift>}{Enter}{/Shift}');
+
+    expect(countOf(fixture)).toBe('5 of 5');
+    expect(stateOf(fixture).editor.selectedMap).toEqual({ note: 'memo' });
+  });
+
+  it('replaces every match in one step that one undo takes back', async () => {
+    const fixture = await setup();
+    await press(OPEN_FIND);
+    await press('user');
+    // Focused rather than clicked: the runner's frame can scroll a click away.
+    inputOf(fixture, 'replace-input')?.focus();
+    await press('member');
+
+    await press(`{${MOD}>}{Enter}{/${MOD}}`);
+
+    const replaced = stateOf(fixture).collections;
+    expect(replaced.tableEntities.users.name).toBe('members');
+    expect(replaced.tableColumnEntities.orders_user_id.name).toBe('member_id');
+    expect(replaced.memoEntities.note.value).toBe(
+      'Every member_id points at members.id'
+    );
+
+    await press(`{${MOD}>}z{/${MOD}}`);
+
+    const restored = stateOf(fixture).collections;
+    expect(restored.tableEntities.users.name).toBe('users');
+    expect(restored.tableColumnEntities.orders_user_id.name).toBe('user_id');
+    expect(restored.memoEntities.note.value).toBe(
+      'Every user_id points at users.id'
+    );
+    expect(document.activeElement).toBe(inputOf(fixture, 'replace-input'));
+  });
+
+  it('closes on Escape and leaves the selection the canvas would have dropped', async () => {
+    const fixture = await setup();
+    await press(OPEN_FIND);
+    await press('login');
+    await press('{Enter}');
+    expect(stateOf(fixture).editor.focusTable?.columnId).toBe('email');
+
+    await press('{Escape}');
+
+    expect(panelOf(fixture)).toBeNull();
+    expect(stateOf(fixture).editor.selectedMap).toEqual({ users: 'table' });
+    expect(stateOf(fixture).editor.focusTable?.columnId).toBe('email');
+  });
+});
+
+describe('quick search over the fields on a real keyboard', () => {
+  it('finds a column by its comment and rings its cell', async () => {
+    const fixture = await setup();
+    const selected = () =>
+      fixture.mounted.container.querySelector<HTMLElement>(
+        `.quick-search .${quickSearchStyles.action}.selected`
+      );
+
+    await press(`{${MOD}>}k{/${MOD}}`);
+    await press('login');
+    for (let step = 0; step < 20; step++) {
+      await press('{ArrowDown}');
+      if (selected()?.textContent?.includes('login email')) break;
+    }
+    expect(selected()?.textContent).toContain('Column comment · users.email');
+
+    await press('{Enter}');
+
+    expect(stateOf(fixture).editor.focusTable).toMatchObject({
+      tableId: 'users',
+      columnId: 'email',
+      focusType: 'columnComment',
+    });
+    expect(fixture.mounted.container.querySelector('.quick-search')).toBeNull();
+  });
+});

@@ -13,6 +13,7 @@ export const KeyBindingName = {
   edit: 'edit',
   stop: 'stop',
   search: 'search',
+  findReplace: 'findReplace',
   undo: 'undo',
   redo: 'redo',
   addTable: 'addTable',
@@ -45,6 +46,15 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.stop]: [{ shortcut: 'Escape' }],
   [KeyBindingName.search]: [
     { shortcut: '$mod+KeyK', preventDefault: true, stopPropagation: true },
+  ],
+  // $mod+F is the find of every host and $mod+H hides a mac app. The shifted H
+  // is Replace in Files in VS Code, whose webview never hears a stopped press.
+  [KeyBindingName.findReplace]: [
+    {
+      shortcut: '$mod+Shift+KeyH',
+      preventDefault: true,
+      stopPropagation: true,
+    },
   ],
   [KeyBindingName.undo]: [
     { shortcut: '$mod+KeyZ', preventDefault: true, stopPropagation: true },
@@ -107,6 +117,32 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
     { shortcut: 'Alt+KeyZ', preventDefault: true, stopPropagation: true },
   ],
 });
+
+const KEYBINDING_MODIFIERS = ['Shift', 'Meta', 'Alt', 'Control'];
+
+/**
+ * Whether the press is one of the chords given, read the way tinykeys reads a
+ * binding: the key by its code or its value, every modifier named held down and
+ * no other. A sequence of presses never matches a single one.
+ */
+export function matchesShortcut(
+  event: KeyboardEvent,
+  options: ReadonlyArray<ShortcutOption>
+): boolean {
+  return options.some(({ shortcut }) => {
+    const presses = parseKeybinding(shortcut);
+    if (presses.length !== 1) return false;
+
+    const [mods, key] = presses[0];
+    return (
+      (key === event.code || key.toUpperCase() === event.key.toUpperCase()) &&
+      mods.every(mod => event.getModifierState(mod)) &&
+      !KEYBINDING_MODIFIERS.some(
+        mod => !mods.includes(mod) && event.getModifierState(mod)
+      )
+    );
+  });
+}
 
 const ModifierKey = {
   Shift: 'Shift',

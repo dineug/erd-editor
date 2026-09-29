@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-38 spec files. Ten of the groups exist because the DOM scene got their subject
+39 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -99,6 +99,11 @@ a DOM panel the port left on native drag and drop:
 | ------------------------------- | ---------------------------------------------------------------- |
 | `connector-frames.spec.ts`      | No draw with a connector end off its table after an undo or redo  |
 | `settings-column-order.spec.ts` | The column order list painted in the order it holds, every frame  |
+
+`find-replace.spec.ts` holds down Find and Replace and the quick search rows
+for columns, comments and memos in the real element: what is typed into the
+panel never reaches a canvas shortcut, and a replace all is one change event,
+one undo and one batch to a wired peer.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

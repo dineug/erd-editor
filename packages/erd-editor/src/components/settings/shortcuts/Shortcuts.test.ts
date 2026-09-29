@@ -17,6 +17,7 @@ const EXPECTED_COMMANDS = [
   'Editing',
   'Stop',
   'Search',
+  'Find and Replace',
   'Undo',
   'Redo',
   'Add Table',

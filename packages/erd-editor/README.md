@@ -25,7 +25,8 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - Export — `.erd.json`, `.sql`, `.png`
 - Force-directed visualization of table relationships
-- Quick search, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
+- Quick search over commands, tables, columns, comments and memos, find and replace, undo / redo,
+  remappable keyboard shortcuts, and a built-in theme builder
 - Collaboration hooks — the editor emits and applies actions; you supply the transport
 
 ## Install

@@ -22,7 +22,12 @@ import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import { Action, createScopeActions, searchActions } from './actions';
+import {
+  Action,
+  createMatchActions,
+  createScopeActions,
+  searchActions,
+} from './actions';
 import * as styles from './QuickSearch.styles';
 
 export type QuickSearchProps = {};
@@ -44,18 +49,24 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     keyword: '',
     prevActions: [] as Action[],
     actions: [] as Action[],
+    matchActions: [] as Action[],
+    submenu: false,
     index: -1,
   });
 
-  const getActions = () => {
+  const getScopeActions = () => {
     return state.actions.filter(action =>
       action.filter ? action.filter(app.value) : true
     );
   };
 
+  /** The commands and tables the keyword fuzzes to, then the fields that hold it as typed. */
+  const getActions = () => [...getScopeActions(), ...state.matchActions];
+
   const clearKeyword = () => {
     state.keyword = '';
     state.index = -1;
+    state.matchActions = [];
   };
 
   const setActions = (value: string) => {
@@ -64,7 +75,13 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     state.index = -1;
     state.actions = isEmpty(newValue)
       ? state.prevActions
-      : searchActions(getActions(), newValue);
+      : searchActions(getScopeActions(), newValue);
+    // Looked up afresh from the document on every keystroke, never narrowed
+    // from the last list, and only at the top level, where the tables are.
+    state.matchActions =
+      isEmpty(newValue) || state.submenu
+        ? []
+        : createMatchActions(app.value, newValue);
   };
 
   const scrollIntoView = () => {
@@ -97,6 +114,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     } else if (action.next) {
       state.prevActions = action.next;
       state.actions = action.next;
+      state.submenu = true;
 
       const input = root.value?.querySelector('input');
       input && lastCursorFocus(input);
@@ -174,6 +192,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
         const actions = createScopeActions(app.value);
         state.prevActions = actions;
         state.actions = actions;
+        state.submenu = false;
         clearKeyword();
         store.dispatch(
           changeOpenMapAction({

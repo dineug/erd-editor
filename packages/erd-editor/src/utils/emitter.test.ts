@@ -11,6 +11,7 @@ import {
   mouseTrackerStartAction,
   openColorPickerAction,
   openDiffViewerAction,
+  openFindReplaceAction,
   openTablePropertiesAction,
   openThemeBuilderAction,
   openToastAction,
@@ -184,6 +185,14 @@ describe('action creators', () => {
     expect(schemaGCAction()).toEqual({ type: 'schemaGC', payload: undefined });
     expect(toggleSearchAction()).toEqual({
       type: 'toggleSearch',
+      payload: undefined,
+    });
+    expect(openFindReplaceAction({ query: 'user' })).toEqual({
+      type: 'openFindReplace',
+      payload: { query: 'user' },
+    });
+    expect(openFindReplaceAction()).toEqual({
+      type: 'openFindReplace',
       payload: undefined,
     });
     expect(openThemeBuilderAction()).toEqual({

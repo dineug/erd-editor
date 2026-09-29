@@ -7,6 +7,9 @@ import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
+import { goToErdTarget, showErdTab } from '@/components/erd/goToErdTarget';
+import { fieldIcon } from '@/components/find-replace/fieldIcon';
+import { toErdTarget } from '@/components/find-replace/matchTarget';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -30,7 +33,10 @@ import {
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
 import { getOriginToPlace } from '@/konva/scene/viewport';
-import { openAutomaticTablePlacementAction } from '@/utils/emitter';
+import {
+  openAutomaticTablePlacementAction,
+  openFindReplaceAction,
+} from '@/utils/emitter';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
   importAML,
@@ -39,6 +45,15 @@ import {
   importJSON,
   importSchemaSQL,
 } from '@/utils/file/importFile';
+import {
+  createMatcher,
+  DEFAULT_FIND_OPTIONS,
+  FindField,
+  FindFieldLabel,
+  findMatches,
+  locationOf,
+  snippetOf,
+} from '@/utils/find-replace';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
@@ -296,17 +311,77 @@ export function createScopeActions(app: AppContext): Action[] {
         return store.state.settings.canvasType === CanvasType.generatorCode;
       },
     },
+    {
+      icon: <Icon name="replace" size={16} />,
+      name: 'Find and Replace',
+      keywords: 'find replace rename',
+      shortcut: keyBindingMap.findReplace[0]?.shortcut,
+      perform: ({ emitter }) => {
+        emitter.emit(openFindReplaceAction());
+      },
+    },
     ...createTableActions(app),
   ];
 }
 
+/** How many columns, comments and memos the palette lists for one keyword. */
+export const MATCH_ACTION_LIMIT = 50;
+
+/** What the palette looks in beside the table names, which the fuzzy list already holds. */
+const MATCH_FIELDS = [
+  FindField.columnName,
+  FindField.tableComment,
+  FindField.columnComment,
+  FindField.memo,
+];
+
+/**
+ * The columns, comments and memos holding the keyword, in any case, one row a
+ * field, up to a limit past which a last row hands the whole list to Find and
+ * Replace. A plain substring rather than the fuzzy match: long prose fuzzes into noise.
+ */
+export function createMatchActions(app: AppContext, keyword: string): Action[] {
+  const { store } = app;
+  const { matcher } = createMatcher(keyword, DEFAULT_FIND_OPTIONS);
+  if (!matcher) return [];
+
+  // One row a field, however often the keyword comes up in its text.
+  const fields = findMatches(store.state, matcher, MATCH_FIELDS).filter(
+    (match, index, matches) => matches[index - 1]?.slot !== match.slot
+  );
+
+  const actions = fields.slice(0, MATCH_ACTION_LIMIT).map<Action>(match => {
+    const location = locationOf(store.state, match);
+    const kind = FindFieldLabel[match.field];
+
+    return {
+      icon: fieldIcon(match.field, 16),
+      name: snippetOf(match, 16, 64).text,
+      keywords: location ? `${kind} · ${location}` : kind,
+      perform: ({ store }) => {
+        goToErdTarget(store, toErdTarget(match));
+      },
+    };
+  });
+
+  if (fields.length > MATCH_ACTION_LIMIT) {
+    actions.push({
+      icon: <Icon name="search" size={16} />,
+      name: `Show all ${fields.length} in Find and Replace`,
+      perform: ({ emitter }) => {
+        emitter.emit(openFindReplaceAction({ query: keyword }));
+      },
+    });
+  }
+
+  return actions;
+}
+
 function createTableActions({ store }: AppContext): Action[] {
   const {
-    settings,
     doc: { tableIds },
     collections,
   } = store.state;
-  if (settings.canvasType !== CanvasType.ERD) return [];
 
   return query(collections)
     .collection('tableEntities')
@@ -316,6 +391,7 @@ function createTableActions({ store }: AppContext): Action[] {
       name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
       keywords: 'Table',
       perform: ({ store }) => {
+        showErdTab(store);
         const {
           settings: { zoomLevel },
         } = store.state;

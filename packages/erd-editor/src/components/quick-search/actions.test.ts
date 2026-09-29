@@ -8,6 +8,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { seedFindDocument } from '@/__test-utils__/findSeed';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
@@ -18,7 +19,9 @@ import { menus as tableNameCaseMenus } from '@/components/generator-code/generat
 import {
   Action,
   allScopeActions,
+  createMatchActions,
   createScopeActions,
+  MATCH_ACTION_LIMIT,
   searchActions,
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
@@ -34,15 +37,27 @@ import {
   viewOpenAction,
 } from '@/engine/modules/editor/view.actions';
 import {
+  addMemoAction,
+  changeMemoValueAction,
+} from '@/engine/modules/memo/atom.actions';
+import {
   changeCanvasTypeAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
+  addTableAction,
+  changeTableCommentAction,
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  addColumnAction,
+  changeColumnCommentAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { toScreenPoint } from '@/konva/scene/viewport';
+import { openFindReplaceAction } from '@/utils/emitter';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import { setImportFileCallback } from '@/utils/file/importFile';
 
@@ -80,6 +95,7 @@ const ERD_TOOLBOX = [
   'One Only',
   'One N',
   'Auto Layout',
+  'Find and Replace',
 ];
 
 const recordActions = () => {
@@ -235,7 +251,7 @@ describe('createScopeActions', () => {
       scope().filter(action => action.filter?.(app) ?? true)
     );
 
-    expect(visible).toEqual(['Tab', 'Database', 'Bracket']);
+    expect(visible).toEqual(['Tab', 'Database', 'Bracket', 'Find and Replace']);
   });
 
   it('keeps only the code generator options in the generator code canvas', () => {
@@ -249,10 +265,11 @@ describe('createScopeActions', () => {
       'Language',
       'Table Name Case',
       'Column Name Case',
+      'Find and Replace',
     ]);
   });
 
-  it('keeps only the Tab action in the visualization and settings canvases', () => {
+  it('keeps the tabs, Find and Replace and the table jumps in the visualization and settings canvases', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
@@ -260,7 +277,7 @@ describe('createScopeActions', () => {
       setCanvasType(canvasType);
       expect(
         names(scope().filter(action => action.filter?.(app) ?? true))
-      ).toEqual(['Tab']);
+      ).toEqual(['Tab', 'Find and Replace', 'users']);
     }
   });
 
@@ -612,12 +629,25 @@ describe('createScopeActions / table actions', () => {
     expect(names(tableActions)).toEqual(['unnamed']);
   });
 
-  it('emits no table actions outside the ERD canvas', () => {
+  it('keeps the table jumps outside the ERD canvas, taking that tab alone first', async () => {
     setCanvasType(CanvasType.ERD);
-    addTable('users');
+    const id = addTable('users', 600, 400);
     setCanvasType(CanvasType.schemaSQL);
+    const batches: string[][] = [];
+    const unsubscribe = app.store.subscribe(list => {
+      batches.push(list.map(action => action.type));
+    });
 
-    expect(scope().filter(action => action.keywords === 'Table')).toEqual([]);
+    find(scope(), 'users').perform?.(app);
+    await flush();
+    unsubscribe();
+
+    const jump = batches.find(batch => batch.includes('settings.scrollTo'));
+    expect(batches[0]).toEqual(['settings.changeCanvasType']);
+    expect(jump).toBeDefined();
+    expect(jump).not.toContain('settings.changeCanvasType');
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(app.store.state.editor.selectedMap[id]).toBeTruthy();
   });
 
   it('scrolls to and selects the table when performed', async () => {
@@ -704,13 +734,136 @@ describe('createScopeActions / no focus actions', () => {
     }
   });
 
-  it('offers the tab switch alone from a Flow, with no table row of any kind', () => {
+  it('offers from a Flow the jump to the ERD for each table, and no Focus row', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
     enterFlow();
 
+    const visible = scope().filter(action => action.filter?.(app) ?? true);
+    expect(names(visible)).toEqual(['Tab', 'Find and Replace', 'users']);
+    expect(find(visible, 'users').keywords).toBe('Table');
+  });
+});
+
+describe('createScopeActions / Find and Replace', () => {
+  it('shows the find and replace chord and asks the panel to open', () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action);
+      },
+    });
+    const action = find(scope(), 'Find and Replace');
+
+    expect(action.shortcut).toBe(app.keyBindingMap.findReplace[0].shortcut);
+    expect(searchActions([action], 'replace')).toEqual([action]);
+
+    action.perform?.(app);
+
+    expect(opened).toEqual([openFindReplaceAction()]);
+  });
+});
+
+describe('createMatchActions', () => {
+  beforeEach(() => {
+    seedFindDocument(app);
+  });
+
+  it('lists the columns, comments and memos holding the keyword, one row a field', () => {
+    const actions = createMatchActions(app, 'user');
+
+    expect(actions.map(({ name, keywords }) => [name, keywords])).toEqual([
+      ['user_id', 'Column · orders.user_id'],
+      ['user id', 'Column comment · users.id'],
+      ['Every user_id points at users.id', 'Memo'],
+    ]);
+    for (const action of actions) {
+      expect(action.icon).toBeTruthy();
+    }
+  });
+
+  it('leaves the table names to the fuzzy list, which already holds them', () => {
     expect(
-      names(scope().filter(action => action.filter?.(app) ?? true))
-    ).toEqual(['Tab']);
+      createMatchActions(app, 'orders').map(({ keywords }) => keywords)
+    ).toEqual(['Table comment · orders']);
+  });
+
+  it('has nothing for an empty keyword', () => {
+    expect(createMatchActions(app, '')).toEqual([]);
+  });
+
+  it('stands the reader on the column cell picked, from any tab', async () => {
+    setCanvasType(CanvasType.generatorCode);
+    const [column] = createMatchActions(app, 'user_id');
+
+    column.perform?.(app);
+    await flush();
+
+    const { editor, settings } = app.store.state;
+    expect(settings.canvasType).toBe(CanvasType.ERD);
+    expect(editor.focusTable).toMatchObject({
+      tableId: 'orders',
+      columnId: 'orders_user_id',
+    });
+  });
+
+  it('stays bounded over a schema of hundreds of tables', () => {
+    const actions: AnyAction[] = [];
+    for (let table = 0; table < 400; table++) {
+      const tableId = `t${table}`;
+      actions.push(
+        addTableAction({ id: tableId, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeTableCommentAction({ id: tableId, value: `table ${table}` })
+      );
+      for (let column = 0; column < 15; column++) {
+        const id = `${tableId}c${column}`;
+        actions.push(
+          addColumnAction({ id, tableId }),
+          changeColumnNameAction({ id, tableId, value: `name_${column}` }),
+          changeColumnCommentAction({ id, tableId, value: 'the same comment' })
+        );
+      }
+    }
+    app.store.dispatchSync(actions);
+
+    const started = performance.now();
+    const rows = createMatchActions(app, 'e');
+    const elapsed = performance.now() - started;
+
+    expect(rows).toHaveLength(MATCH_ACTION_LIMIT + 1);
+    // 400 table comments and 6,000 names and comments each, and eight in the seed.
+    expect(rows.at(-1)?.name).toBe('Show all 12408 in Find and Replace');
+    // Not a benchmark, only a guard against a search that grows past linear.
+    expect(elapsed).toBeLessThan(5000);
+  });
+
+  it('stops at the limit and hands the whole list to Find and Replace', () => {
+    for (let index = 0; index <= MATCH_ACTION_LIMIT; index++) {
+      app.store.dispatchSync(
+        addMemoAction({
+          id: `memo-${index}`,
+          ui: { x: 0, y: 0, zIndex: 1 },
+        }),
+        changeMemoValueAction({ id: `memo-${index}`, value: 'many user' })
+      );
+    }
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action);
+      },
+    });
+
+    const actions = createMatchActions(app, 'user');
+    const last = actions.at(-1) as Action;
+
+    expect(actions).toHaveLength(MATCH_ACTION_LIMIT + 1);
+    expect(last.name).toBe(
+      `Show all ${MATCH_ACTION_LIMIT + 4} in Find and Replace`
+    );
+
+    last.perform?.(app);
+
+    expect(opened).toEqual([openFindReplaceAction({ query: 'user' })]);
   });
 });

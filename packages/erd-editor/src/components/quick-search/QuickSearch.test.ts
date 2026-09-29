@@ -1,6 +1,7 @@
 import { html } from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
+import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
   createTestAppContext,
   flush,
@@ -33,6 +34,7 @@ if (typeof Element.prototype.scrollIntoView !== 'function') {
 let app: AppContext;
 let mounted: Mounted | null = null;
 let focusEvents = 0;
+let openedFindReplace = 0;
 
 const countFocusEvent = () => {
   focusEvents++;
@@ -93,6 +95,12 @@ async function setup(canvasType: string = CanvasType.ERD) {
   app = createTestAppContext();
   app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
   focusEvents = 0;
+  openedFindReplace = 0;
+  app.emitter.on({
+    openFindReplace: () => {
+      openedFindReplace++;
+    },
+  });
   document.body.addEventListener(InternalEventType.focus, countFocusEvent);
   mounted = mount(html`<${QuickSearch} />`, app);
   await flush();
@@ -133,6 +141,7 @@ describe('QuickSearch', () => {
       'One Only',
       'One N',
       'Auto Layout',
+      'Find and Replace',
     ]);
   });
 
@@ -255,7 +264,7 @@ describe('QuickSearch keyword filtering', () => {
     await type('New Memo');
 
     expect(rowNames()).toContain('New Memo');
-    expect(rowNames().length).toBeLessThan(11);
+    expect(rowNames().length).toBeLessThan(12);
     expect(input().value).toBe('New Memo');
   });
 
@@ -276,7 +285,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('');
 
-    expect(rowNames()).toHaveLength(11);
+    expect(rowNames()).toHaveLength(12);
     expect(rowNames()[0]).toBe('Tab');
   });
 
@@ -286,7 +295,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('   ');
 
-    expect(rowNames()).toHaveLength(11);
+    expect(rowNames()).toHaveLength(12);
   });
 
   it('renders an empty list when nothing matches', async () => {
@@ -336,10 +345,10 @@ describe('QuickSearch keyboard navigation', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(selectedIndex()).toBe(0);
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 11; i++) {
       await keydown('ArrowDown');
     }
-    expect(selectedIndex()).toBe(10);
+    expect(selectedIndex()).toBe(11);
 
     await keydown('ArrowDown');
     expect(selectedIndex()).toBe(0);
@@ -351,7 +360,7 @@ describe('QuickSearch keyboard navigation', () => {
     const event = await keydown('ArrowUp');
 
     expect(event.defaultPrevented).toBe(true);
-    expect(selectedIndex()).toBe(10);
+    expect(selectedIndex()).toBe(11);
   });
 
   it('clears the selection on the horizontal arrows', async () => {
@@ -381,7 +390,7 @@ describe('QuickSearch keyboard navigation', () => {
 
     expect(event.cancelBubble).toBe(false);
     expect(isOpen()).toBe(true);
-    expect(rowNames()).toHaveLength(11);
+    expect(rowNames()).toHaveLength(12);
   });
 
   it('performs the selected action on Enter and closes the palette', async () => {
@@ -435,18 +444,18 @@ describe('QuickSearch keyboard navigation', () => {
   it('ignores Enter when the selected index no longer exists', async () => {
     await open();
     await keydown('ArrowUp');
-    expect(selectedIndex()).toBe(10);
+    expect(selectedIndex()).toBe(11);
 
     app.store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.settings })
     );
     await flush();
-    expect(rowNames()).toEqual(['Tab']);
+    expect(rowNames()).toEqual(['Tab', 'Find and Replace']);
 
     await keydown('Enter');
 
     expect(isOpen()).toBe(true);
-    expect(rowNames()).toEqual(['Tab']);
+    expect(rowNames()).toEqual(['Tab', 'Find and Replace']);
   });
 });
 
@@ -533,5 +542,90 @@ describe('QuickSearch table actions', () => {
 
     expect(app.store.state.editor.selectedMap[tableId]).toBeTruthy();
     expect(isOpen()).toBe(false);
+  });
+});
+
+describe('QuickSearch column, comment and memo matches', () => {
+  const keywordOf = (row: HTMLDivElement) =>
+    (row.querySelector(`.${styles.keyword}`)?.textContent ?? '').trim();
+
+  beforeEach(() => {
+    seedFindDocument(app);
+  });
+
+  it('lists the fields holding the keyword after the fuzzy rows, each saying where it is', async () => {
+    await open();
+
+    await type('user');
+
+    const matchRows = rows().filter(row => keywordOf(row).includes('·'));
+    expect(
+      matchRows.map(row => [rowNames()[rows().indexOf(row)], keywordOf(row)])
+    ).toEqual([
+      ['user_id', 'Column · orders.user_id'],
+      ['user id', 'Column comment · users.id'],
+    ]);
+    expect(rowNames()).toContain('Every user_id points at users.id');
+    expect(rowNames()).toContain('users');
+  });
+
+  it('looks the fields up afresh on each keystroke rather than inside the last list', async () => {
+    await open();
+    await type('login');
+    expect(rowNames()).toContain('login email');
+
+    await type('primary');
+
+    expect(rowNames()).toContain('primary id');
+    expect(rowNames()).not.toContain('login email');
+  });
+
+  it('stands the reader on the column cell picked and closes', async () => {
+    await open();
+    await type('user_id');
+    const index = rowNames().indexOf('user_id');
+
+    await click(rows()[index]);
+
+    expect(isOpen()).toBe(false);
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      tableId: 'orders',
+      columnId: 'orders_user_id',
+    });
+  });
+
+  it('switches to the ERD first when a match is picked on another tab', async () => {
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    await open();
+    await type('login');
+
+    await click(rows()[rowNames().indexOf('login email')]);
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(app.store.state.editor.focusTable?.columnId).toBe('email');
+  });
+
+  it('lists no field inside a submenu', async () => {
+    await open();
+    await keydown('ArrowDown');
+    await keydown('Enter');
+
+    await type('user');
+
+    expect(rowNames()).not.toContain('user_id');
+  });
+
+  it('opens Find and Replace from its own row', async () => {
+    await open();
+    await type('Find and Replace');
+    const index = rowNames().indexOf('Find and Replace');
+
+    await click(rows()[index]);
+
+    expect(isOpen()).toBe(false);
+    expect(app.store.state.editor.openMap[Open.findReplace]).toBeFalsy();
+    expect(openedFindReplace).toBe(1);
   });
 });
