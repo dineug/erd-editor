@@ -17,9 +17,11 @@ import {
 import { changeZIndexAction } from '@/engine/modules/table/atom.actions';
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
+import type { Table } from '@/internal-types';
 import {
   getColumnRect,
   getMemoRect,
+  getTableHeaderRect,
   getTableRect,
   type Rect,
 } from '@/konva/scene/metrics';
@@ -39,42 +41,101 @@ export type ErdTarget =
     }
   | { kind: 'memo'; memoId: string };
 
-/**
- * Whether the document rect given is on screen whole, at the document's own
- * placement, right of the strip a panel floating over the left edge covers.
- */
-function isOnScreen(state: RootState, rect: Rect, covered: number): boolean {
-  const { settings } = state;
-  const { viewport } = state.editor;
+/** How far in from the edge of the screen a jump keeps what it shows of a rect too long for it. */
+const EDGE_MARGIN = 40;
+
+type Span = { start: number; end: number };
+
+/** The rect where the screen shows it, at the document's own placement, one span an axis. */
+function toScreenSpans({ settings }: RootState, rect: Rect): [Span, Span] {
   const topLeft = toScreenPoint(settings, rect);
   const bottomRight = toScreenPoint(settings, {
     x: rect.x + rect.width,
     y: rect.y + rect.height,
   });
 
-  return (
-    topLeft.x >= covered &&
-    topLeft.y >= 0 &&
-    bottomRight.x <= viewport.width &&
-    bottomRight.y <= viewport.height
-  );
+  return [
+    { start: topLeft.x, end: bottomRight.x },
+    { start: topLeft.y, end: bottomRight.y },
+  ];
+}
+
+const isWithin = (span: Span, from: number, to: number) =>
+  span.start >= from && span.end <= to;
+
+/**
+ * Where on one axis of the screen the rect is to start: its middle on the
+ * middle of the span shown, or, when it is longer than that span, as near that
+ * as keeps its focus a margin inside the span.
+ */
+function placeOnAxis(rect: Span, focus: Span, from: number, to: number) {
+  const length = rect.end - rect.start;
+  let start = (from + to - length) / 2;
+  if (length <= to - from) return start;
+
+  const offset = focus.start - rect.start;
+  const focusLength = focus.end - focus.start;
+  start = Math.min(start, to - EDGE_MARGIN - offset - focusLength);
+  // The focus's start wins over its end when it is too long to show whole.
+  return Math.max(start, from + EDGE_MARGIN - offset);
 }
 
 /**
  * The scroll that puts the rect in the middle of what the screen shows at the
  * document's own zoom, unless it is shown whole already, since that scroll is
  * the one change of a jump the host hears of.
+ *
+ * @param focus The part of a rect too big for the screen that has to show.
  */
-export function* scrollIntoView(state: RootState, rect: Rect, covered = 0) {
-  if (isOnScreen(state, rect, covered)) return;
+export function* scrollIntoView(
+  state: RootState,
+  rect: Rect,
+  covered = 0,
+  focus = rect
+) {
+  const { width, height } = state.editor.viewport;
+  const [rectX, rectY] = toScreenSpans(state, rect);
+  const [focusX, focusY] = toScreenSpans(state, focus);
+  const fits =
+    rectX.end - rectX.start <= width - covered &&
+    rectY.end - rectY.start <= height;
+  const [shownX, shownY] = fits ? [rectX, rectY] : [focusX, focusY];
+  if (isWithin(shownX, covered, width) && isWithin(shownY, 0, height)) return;
 
-  const { viewport } = state.editor;
-  const origin = getOriginToPlace(
-    state.settings.zoomLevel,
-    { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
-    { x: covered + (viewport.width - covered) / 2, y: viewport.height / 2 }
-  );
+  const origin = getOriginToPlace(state.settings.zoomLevel, rect, {
+    x: placeOnAxis(rectX, focusX, covered, width),
+    y: placeOnAxis(rectY, focusY, 0, height),
+  });
   yield scrollToAction({ originX: origin.x, originY: origin.y });
+}
+
+/**
+ * Where a table shows its name: the band across its top, or, at a zoom far
+ * enough out that the name is all a table draws, the middle of its box.
+ */
+function getTableNameRect(state: RootState, table: Table): Rect {
+  const header = getTableHeaderRect(state, table);
+  if (!isHighLevelTable(state.settings.zoomLevel)) return header;
+
+  const { y, height } = getTableRect(state, table);
+  return { ...header, y: y + (height - header.height) / 2 };
+}
+
+/**
+ * Brings a table on screen whole, or one too big for the screen by where it
+ * shows its name, which a jump or a selection rings, rather than by a middle.
+ */
+export function* scrollTableIntoView(
+  state: RootState,
+  table: Table,
+  covered = 0
+) {
+  yield* scrollIntoView(
+    state,
+    getTableRect(state, table),
+    covered,
+    getTableNameRect(state, table)
+  );
 }
 
 /**
@@ -141,7 +202,7 @@ export const showErdTargetAction$ = (
     if (!table) return;
 
     if (target.kind === 'table') {
-      yield* scrollIntoView(state, getTableRect(state, table), covered);
+      yield* scrollTableIntoView(state, table, covered);
       yield* selectTable(state, table.id);
       if (target.focusType) {
         yield focusTableAction({
@@ -156,10 +217,11 @@ export const showErdTargetAction$ = (
     if (index === -1) return;
 
     // Zoomed out far enough, a table is drawn as its name alone.
-    const rect = isHighLevelTable(state.settings.zoomLevel)
-      ? getTableRect(state, table)
-      : getColumnRect(state, table, index);
-    yield* scrollIntoView(state, rect, covered);
+    if (isHighLevelTable(state.settings.zoomLevel)) {
+      yield* scrollTableIntoView(state, table, covered);
+    } else {
+      yield* scrollIntoView(state, getColumnRect(state, table, index), covered);
+    }
     yield* selectTable(state, table.id);
     yield focusColumnAction({
       tableId: table.id,

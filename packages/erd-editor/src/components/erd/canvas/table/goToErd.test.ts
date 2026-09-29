@@ -15,6 +15,8 @@ import { CanvasType } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { toScreenPoint } from '@/konva/scene/viewport';
 
 const VIEWPORT = { width: 800, height: 600 };
 
@@ -73,6 +75,22 @@ describe('goToErdTable', () => {
     expect(batches[1]).not.toContain('settings.changeCanvasType');
     expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
     expect(Boolean(app.store.state.editor.selectedMap.far)).toBe(true);
+  });
+
+  it('brings a table taller than the screen in by its top, where its name is', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      ...Array.from({ length: 60 }, (_, index) =>
+        addColumnAction({ id: `c${index}`, tableId: 'far' })
+      )
+    );
+
+    goToErdTable(app.store, 'far');
+
+    const { settings, collections } = app.store.state;
+    expect(toScreenPoint(settings, collections.tableEntities.far.ui).y).toBe(
+      40
+    );
   });
 
   it('leaves the scroll out of the second batch for a table already on screen', () => {

@@ -1,17 +1,16 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { scrollIntoView } from '@/components/erd/goToErdTarget';
+import { scrollTableIntoView } from '@/components/erd/goToErdTarget';
 import { CanvasType } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import type { RxStore } from '@/engine/rx-store';
-import { getTableRect } from '@/konva/scene/metrics';
 
 /**
- * Stands the reader on one table in the document, selected, scrolled to the
- * middle of the screen at the document's own zoom unless it is already on
- * screen whole, since that scroll is the one change the host hears of. One that is gone is passed over.
+ * Stands the reader on one table in the document, selected, scrolled on screen
+ * at the document's own zoom the way scrollTableIntoView brings a table, since
+ * that scroll is the one change the host hears of. One that is gone is passed over.
  */
 export const showErdTableAction$ = (tableId: string): GeneratorAction =>
   function* (state) {
@@ -20,7 +19,7 @@ export const showErdTableAction$ = (tableId: string): GeneratorAction =>
       .selectById(tableId);
     if (!table) return;
 
-    yield* scrollIntoView(state, getTableRect(state, table));
+    yield* scrollTableIntoView(state, table);
     yield selectTableAction$(tableId, false);
   };
 

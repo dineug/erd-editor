@@ -184,6 +184,38 @@ test.describe('Find and Replace', () => {
       .toBe('Rename user to member');
   });
 
+  test('lands on the name of a table taller than the canvas, not its middle', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'ledger',
+            name: 'ledger',
+            x: 3000,
+            y: 3000,
+            columns: Array.from({ length: 60 }, (_, index) => ({
+              id: `ledger_${index}`,
+              name: `entry_${index}`,
+            })),
+          },
+        ],
+      })
+    );
+    await openFind(erd, 'ledger');
+
+    await erd.press('Enter');
+
+    await expect.poll(() => erd.focusRingCells()).toEqual(['ledger:tableName']);
+    const canvas = await erd.canvas.boundingBox();
+    const table = await erd.tableEl('ledger').boundingBox();
+    const header = await erd.tableHeaderPoint('ledger');
+    expect(table!.height).toBeGreaterThan(canvas!.height);
+    expect(header.y).toBeGreaterThan(canvas!.y);
+    expect(header.y).toBeLessThan(canvas!.y + canvas!.height / 2);
+  });
+
   test('offers no replace in a read-only editor', async ({ erd, page }) => {
     await erd.seed(schema());
     await page.evaluate(() => {

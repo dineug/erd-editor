@@ -102,8 +102,9 @@ a DOM panel the port left on native drag and drop:
 
 `find-replace.spec.ts` holds down Find and Replace and the quick search rows
 for columns, comments and memos in the real element: what is typed into the
-panel never reaches a canvas shortcut, and a replace all is one change event,
-one undo and one batch to a wired peer.
+panel never reaches a canvas shortcut, a replace all is one change event, one
+undo and one batch to a wired peer, and a jump to a table taller than the
+canvas lands on its name.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

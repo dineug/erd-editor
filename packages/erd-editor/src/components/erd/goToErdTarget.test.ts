@@ -1,6 +1,6 @@
 // The store half of a jump from a search result: the ERD tab alone first, then
 // the scroll, the selection and the ring on the cell, where the scroll comes
-// only for a target not already on screen whole.
+// only for a target not on screen whole, or of one too big for it, its name.
 
 import type { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -23,12 +23,19 @@ import {
   changeCanvasTypeAction,
   changeShowAction,
   changeZoomLevelAction,
+  scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  getColumnRect,
+  getTableHeaderRect,
+  getTableRect,
+} from '@/konva/scene/metrics';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
 
 const VIEWPORT = { width: 800, height: 600 };
@@ -124,17 +131,38 @@ describe('showErdTargetAction$', () => {
     );
   });
 
-  it('scrolls to the whole table when a zoom this far out draws no rows', () => {
+  it('goes by the name in the middle of a table when a zoom this far out draws no rows', () => {
     const app = seed();
+    addFarTallTable(app);
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     const batches = recordBatches(app);
 
+    // The last row of the tall table is below the screen, but its name is not.
     app.store.dispatchSync(
       showErdTargetAction$(column('c59', FocusType.columnName))
     );
-
-    expect(batches.flat()).toContain('settings.scrollTo');
+    expect(batches.flat()).not.toContain('settings.scrollTo');
     expect(app.store.state.editor.focusTable?.columnId).toBe('c59');
+
+    app.store.dispatchSync(
+      showErdTargetAction$({
+        kind: 'column',
+        tableId: 'far',
+        columnId: 'f0',
+        focusType: FocusType.columnName,
+      })
+    );
+
+    const { settings, collections } = app.store.state;
+    const rect = getTableRect(app.store.state, collections.tableEntities.far);
+    expect(rect.height * settings.zoomLevel).toBeGreaterThan(VIEWPORT.height);
+    const middle = toScreenPoint(settings, {
+      x: rect.x + rect.width / 2,
+      y: rect.y + rect.height / 2,
+    });
+    expect(middle.x).toBeCloseTo(VIEWPORT.width / 2, 6);
+    expect(middle.y).toBeCloseTo(VIEWPORT.height / 2, 6);
+    expect(app.store.state.editor.focusTable?.columnId).toBe('f0');
   });
 
   it('rings the table comment, or the name while comments are hidden', () => {
@@ -198,6 +226,114 @@ describe('showErdTargetAction$', () => {
     );
 
     expect(batches.flat()).toEqual([]);
+  });
+});
+
+/** Adds a table of 80 columns far below and right of the screen, taller than it. */
+function addFarTallTable(app: AppContext) {
+  app.store.dispatchSync(
+    addTableAction({ id: 'far', ui: { x: 3000, y: 3000, zIndex: 3 } }),
+    ...Array.from({ length: 80 }, (_, index) =>
+      addColumnAction({ id: `f${index}`, tableId: 'far' })
+    )
+  );
+}
+
+/** Where a table's header band stands on screen, both corners. */
+function headerOnScreen(app: AppContext, tableId: string) {
+  const { settings, collections } = app.store.state;
+  const header = getTableHeaderRect(
+    app.store.state,
+    collections.tableEntities[tableId]
+  );
+  const topLeft = toScreenPoint(settings, header);
+  const bottomRight = toScreenPoint(settings, {
+    x: header.x + header.width,
+    y: header.y + header.height,
+  });
+
+  return { topLeft, bottomRight };
+}
+
+describe('showErdTargetAction$ to a table taller than the screen', () => {
+  const name = (tableId: string) => ({
+    kind: 'table' as const,
+    tableId,
+    focusType: FocusType.tableName,
+  });
+
+  it('leaves the scroll out while the header holding the name is on screen', () => {
+    const app = seed();
+    const { tall } = app.store.state.collections.tableEntities;
+    expect(getTableRect(app.store.state, tall).height).toBeGreaterThan(
+      VIEWPORT.height
+    );
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(showErdTargetAction$(name('tall')));
+
+    expect(batches.flat()).not.toContain('settings.scrollTo');
+    expect(headerOnScreen(app, 'tall').topLeft).toEqual({ x: 60, y: 60 });
+    expect(app.store.state.editor.focusTable?.focusType).toBe(
+      FocusType.tableName
+    );
+  });
+
+  it('brings the header in a margin below the top, not the middle of the table', () => {
+    const app = seed();
+    addFarTallTable(app);
+
+    app.store.dispatchSync(showErdTargetAction$(name('far')));
+
+    const { topLeft, bottomRight } = headerOnScreen(app, 'far');
+    expect(topLeft.y).toBe(40);
+    // Narrower than the screen, the table still stands in its middle across.
+    expect((topLeft.x + bottomRight.x) / 2).toBeCloseTo(VIEWPORT.width / 2, 6);
+  });
+
+  it('keeps the header of a table the panel would cover clear of the panel', () => {
+    const app = seed();
+    addFarTallTable(app);
+
+    app.store.dispatchSync(showErdTargetAction$(name('far'), 300));
+
+    const { topLeft, bottomRight } = headerOnScreen(app, 'far');
+    expect(topLeft.x).toBeGreaterThanOrEqual(300);
+    expect(bottomRight.x).toBeLessThanOrEqual(VIEWPORT.width);
+    expect(topLeft.y).toBe(40);
+  });
+
+  it('scrolls to a header partly above the screen, as to one off it', () => {
+    const app = seed();
+    const tall = app.store.state.collections.tableEntities.tall;
+    app.store.dispatchSync(
+      scrollToAction({ originX: 0, originY: -(tall.ui.y + 10) })
+    );
+
+    app.store.dispatchSync(showErdTargetAction$(name('tall')));
+
+    expect(headerOnScreen(app, 'tall').topLeft.y).toBe(40);
+  });
+
+  it('starts a row wider than the screen a margin in from its left edge', () => {
+    const app = seed();
+    app.store.dispatchSync(changeViewportAction({ width: 200, height: 600 }));
+
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c30', FocusType.columnName))
+    );
+
+    const { settings, collections } = app.store.state;
+    const row = getColumnRect(
+      app.store.state,
+      collections.tableEntities.tall,
+      30
+    );
+    const topLeft = toScreenPoint(settings, row);
+    expect(row.width).toBeGreaterThan(200);
+    expect(topLeft.x).toBe(40);
+    // Shorter than the screen, the row still stands in its middle down.
+    expect(topLeft.y + row.height / 2).toBeCloseTo(300, 6);
   });
 });
 
