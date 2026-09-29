@@ -9,6 +9,7 @@ import {
   autoName,
   Name,
   orderByNameASC,
+  ReferentialActionSupport,
   referentialActionSupport,
 } from '@/utils/schema-sql/utils';
 
@@ -246,6 +247,7 @@ type TableNaming = {
 
 type SchemaContext = {
   dialect: Dialect;
+  actionSupport: ReferentialActionSupport;
   indexNames: Map<string, string>;
   relationships: ResolvedRelationship[];
   namings: Map<string, TableNaming>;
@@ -1173,7 +1175,7 @@ function createReferences(
       const target = `${parentNaming.constName}.${referenced}`;
       const actions = referentialActionEntries(
         relationship,
-        referentialActionSupport(state.settings.database)
+        context.actionSupport
       ).map(({ key, sql }) => `${key}: "${sql.toLowerCase()}"`);
       const options = actions.length ? `, { ${actions.join(', ')} }` : '';
 
@@ -1400,7 +1402,7 @@ function createForeignKeys(
           ],
           chain: referentialActionEntries(
             relationship,
-            referentialActionSupport(state.settings.database)
+            context.actionSupport
           ).map(({ key, sql }) => `.${key}("${sql.toLowerCase()}")`),
         },
       ];
@@ -1941,6 +1943,13 @@ function createSchemaContext(state: RootState): SchemaContext {
   const relationships = resolveRelationships(state);
   const context: SchemaContext = {
     dialect,
+    // The code is pg-core for a database Drizzle has no dialect of, and the
+    // DDL drizzle-kit writes from it is PostgreSQL's, which takes every action.
+    actionSupport: referentialActionSupport(
+      DIALECT_BY_DATABASE[database] === undefined
+        ? Database.PostgreSQL
+        : database
+    ),
     indexNames: createIndexNames(state),
     relationships,
     namings: new Map<string, TableNaming>(),

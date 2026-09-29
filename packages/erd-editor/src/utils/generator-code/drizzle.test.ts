@@ -405,6 +405,29 @@ describe('generator-code/drizzle', () => {
       );
     });
 
+    it.each([
+      Database.Oracle,
+      Database.MSSQL,
+      Database.Databricks,
+      Database.Snowflake,
+    ])(
+      'keeps what PostgreSQL takes in the pg-core code database %i borrows',
+      database => {
+        const { state, user } = createTeamFixture();
+        state.settings.database = database;
+        Object.assign(state.collections.relationshipEntities.r1, {
+          onDelete: ReferentialAction.restrict,
+          onUpdate: ReferentialAction.setDefault,
+        });
+        const lines = render(state, user);
+        const head = lines.indexOf('  teamId: integer("team_id")');
+
+        expect(lines[head + 1]).toBe(
+          '    .references(() => Team.id, { onDelete: "restrict", onUpdate: "set default" }),'
+        );
+      }
+    );
+
     it('carries its own import header for one table of a larger document', () => {
       const { state, user } = createTeamFixture();
 
