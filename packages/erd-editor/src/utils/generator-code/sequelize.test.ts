@@ -392,6 +392,7 @@ describe('generator-code/sequelize', () => {
 
     it('passes the referential actions to both association calls', () => {
       const { state } = createTeamFixture();
+      state.settings.database = Database.PostgreSQL;
       Object.assign(state.collections.relationshipEntities.r1, {
         onDelete: ReferentialAction.cascade,
         onUpdate: ReferentialAction.setDefault,
@@ -416,6 +417,18 @@ describe('generator-code/sequelize', () => {
           '});',
         ].join('\n')
       );
+    });
+
+    it('leaves out an action the database would refuse, as its DDL does', () => {
+      const { state } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.setDefault,
+      });
+      const code = createCode(state);
+
+      expect(code).toContain('  onDelete: "CASCADE",\n});');
+      expect(code).not.toContain('onUpdate');
     });
 
     it('runs every association call after every init call', () => {

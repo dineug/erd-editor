@@ -1,12 +1,11 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  ALL_REFERENTIAL_ACTIONS,
   autoName,
   FormatColumnOptions,
   FormatCommentOptions,
@@ -23,11 +22,11 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  referentialActionSupport,
   toOrderName,
 } from './utils';
 
-// PostgreSQL takes every action on both events.
-const REFERENTIAL_ACTIONS = ALL_REFERENTIAL_ACTIONS;
+const REFERENTIAL_ACTIONS = referentialActionSupport(Database.PostgreSQL);
 
 export function createSchema(state: RootState): string {
   const {

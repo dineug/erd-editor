@@ -5,7 +5,12 @@ import { PrimitiveType } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { autoName, Name, orderByNameASC } from '@/utils/schema-sql/utils';
+import {
+  autoName,
+  Name,
+  orderByNameASC,
+  referentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 import {
   FormatTableOptions,
@@ -1166,9 +1171,10 @@ function createReferences(
 
       const carrier = carrierOf(state, context, table, endColumns[0].id);
       const target = `${parentNaming.constName}.${referenced}`;
-      const actions = referentialActionEntries(relationship).map(
-        ({ key, sql }) => `${key}: "${sql.toLowerCase()}"`
-      );
+      const actions = referentialActionEntries(
+        relationship,
+        referentialActionSupport(state.settings.database)
+      ).map(({ key, sql }) => `${key}: "${sql.toLowerCase()}"`);
       const options = actions.length ? `, { ${actions.join(', ')} }` : '';
 
       if (!context.cyclic.has(relationship.id)) {
@@ -1392,9 +1398,10 @@ function createForeignKeys(
             `columns: [${columns}]`,
             `foreignColumns: [${foreignColumns}]`,
           ],
-          chain: referentialActionEntries(relationship).map(
-            ({ key, sql }) => `.${key}("${sql.toLowerCase()}")`
-          ),
+          chain: referentialActionEntries(
+            relationship,
+            referentialActionSupport(state.settings.database)
+          ).map(({ key, sql }) => `.${key}("${sql.toLowerCase()}")`),
         },
       ];
     });

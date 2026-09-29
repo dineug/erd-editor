@@ -578,6 +578,9 @@ describe('ErdContextMenu / relationship type', () => {
   ] as const)(
     'sets the %s action from its submenu, checking the one it holds',
     async (label, field) => {
+      app.store.dispatchSync(
+        changeDatabaseAction({ value: Database.PostgreSQL })
+      );
       seedRelationship();
       await mountMenu({
         type: ErdContextMenuType.relationship,
@@ -608,6 +611,53 @@ describe('ErdContextMenu / relationship type', () => {
 
       items = itemsOf(await openSubMenu(findItem(rootItems(), label)));
       expect(checkedOf(items)).toEqual(['CASCADE']);
+    }
+  );
+
+  it.each([
+    ['MySQL', Database.MySQL, 'On Delete', ['SET DEFAULT not in MySQL']],
+    [
+      'Oracle',
+      Database.Oracle,
+      'On Update',
+      [
+        'NO ACTION not in Oracle',
+        'CASCADE not in Oracle',
+        'SET NULL not in Oracle',
+        'SET DEFAULT not in Oracle',
+        'RESTRICT not in Oracle',
+      ],
+    ],
+  ] as const)(
+    'notes the %s actions its DDL would drop, keeping them choosable',
+    async (_name, database, label, noted) => {
+      app.store.dispatchSync(changeDatabaseAction({ value: database }));
+      seedRelationship();
+      await mountMenu({
+        type: ErdContextMenuType.relationship,
+        relationshipId: RELATIONSHIP_ID,
+      });
+
+      const items = itemsOf(await openSubMenu(findItem(rootItems(), label)));
+
+      // The note sits in the item's right slot, after the name.
+      const notes = items.flatMap(item => {
+        const note = item.querySelector('span')?.textContent ?? '';
+        const [text] = labelsOf([item]);
+        return note ? [`${text.slice(0, -note.length).trim()} ${note}`] : [];
+      });
+      expect(notes).toEqual(noted);
+
+      await click(
+        findItem(items, noted[noted.length - 1].split(' not in ')[0])
+      );
+
+      const relationship = query(app.store.state.collections)
+        .collection('relationshipEntities')
+        .selectById(RELATIONSHIP_ID);
+      expect(
+        relationship?.[label === 'On Delete' ? 'onDelete' : 'onUpdate']
+      ).not.toBe(ReferentialAction.none);
     }
   );
 

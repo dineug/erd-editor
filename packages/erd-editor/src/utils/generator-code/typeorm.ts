@@ -5,7 +5,12 @@ import { PrimitiveType, PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { autoName, Name, orderByNameASC } from '@/utils/schema-sql/utils';
+import {
+  autoName,
+  Name,
+  orderByNameASC,
+  referentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 import {
   FormatColumnOptions,
@@ -516,7 +521,7 @@ function formatRelation(
         INDENT,
         decorator,
         relationArguments(parentNaming, startTable, relationship, INVERSE),
-        { open: '{', entries: relationOptions(relationship) }
+        { open: '{', entries: relationOptions(state, relationship) }
       );
 
       formatDecorator(memberBuffer, INDENT, 'JoinColumn', [], {
@@ -572,12 +577,18 @@ function formatRelation(
 }
 
 /**
- * The owning side's onDelete and onUpdate. TypeORM spells SET DEFAULT as
- * DEFAULT and writes that word into its DDL, which no database takes, so it
- * is left to the default.
+ * The owning side's onDelete and onUpdate the database takes. TypeORM spells
+ * SET DEFAULT as DEFAULT and writes that word into its DDL, which no database
+ * takes, so it is left to the default.
  */
-function relationOptions(relationship: Relationship): string[] {
-  return referentialActionEntries(relationship)
+function relationOptions(
+  state: RootState,
+  relationship: Relationship
+): string[] {
+  return referentialActionEntries(
+    relationship,
+    referentialActionSupport(state.settings.database)
+  )
     .filter(({ action }) => action !== ReferentialAction.setDefault)
     .map(({ key, sql }) => `${key}: "${sql}"`);
 }

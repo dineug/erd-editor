@@ -393,6 +393,18 @@ describe('generator-code/drizzle', () => {
       );
     });
 
+    it('leaves out an action the database would refuse, as its DDL does', () => {
+      const { state, user } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.setDefault,
+        onUpdate: ReferentialAction.setNull,
+      });
+
+      expect(render(state, user)).toContain(
+        '  teamId: int("team_id").references(() => Team.id, { onUpdate: "set null" }),'
+      );
+    });
+
     it('carries its own import header for one table of a larger document', () => {
       const { state, user } = createTeamFixture();
 

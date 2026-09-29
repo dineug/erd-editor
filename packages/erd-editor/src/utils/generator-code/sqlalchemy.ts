@@ -5,7 +5,12 @@ import { PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { autoName, Name, orderByNameASC } from '@/utils/schema-sql/utils';
+import {
+  autoName,
+  Name,
+  orderByNameASC,
+  referentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 import {
   FormatColumnOptions,
@@ -255,9 +260,10 @@ function formatClass(
     .filter(({ relationship }) => relationship.end.tableId === table.id)
     .forEach(({ relationship, startTable, startColumns, endColumns }) => {
       const parentNaming = getNaming(state, context, startTable);
-      const actions = referentialActionEntries(relationship).map(
-        ({ key, sql }) => `${key.toLowerCase()}="${sql}"`
-      );
+      const actions = referentialActionEntries(
+        relationship,
+        referentialActionSupport(state.settings.database)
+      ).map(({ key, sql }) => `${key.toLowerCase()}="${sql}"`);
 
       if (endColumns.length === 1) {
         addSqlalchemy(imports, 'ForeignKey');

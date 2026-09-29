@@ -12,6 +12,10 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createSchemaSQL } from '@/utils/schema-sql';
+import {
+  ALL_REFERENTIAL_ACTIONS,
+  referentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 function createState(onDelete: number, onUpdate: number): RootState {
   const state = {
@@ -101,6 +105,20 @@ const SUPPORT: Array<[string, number, number[], number[]]> = [
 ];
 
 describe('schema-sql referential actions', () => {
+  it.each(SUPPORT)(
+    'hands the %s support to the code generators and the menu',
+    (_name, database, onDelete, onUpdate) => {
+      expect(referentialActionSupport(database)).toEqual({
+        onDelete,
+        onUpdate,
+      });
+    }
+  );
+
+  it('gives a database it does not know every action', () => {
+    expect(referentialActionSupport(0)).toBe(ALL_REFERENTIAL_ACTIONS);
+  });
+
   describe.each(SUPPORT)('%s', (_name, database, onDelete, onUpdate) => {
     it('writes nothing for a relationship that sets no action', () => {
       const sql = createSchemaSQL(createState(none, none), database);

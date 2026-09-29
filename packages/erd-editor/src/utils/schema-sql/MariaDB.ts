@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption, ReferentialAction } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -21,16 +21,13 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  referentialActionSupport,
   toOrderName,
   unique,
   uniqueColumns,
-  withoutReferentialAction,
 } from './utils';
 
-// MariaDB does not support SET DEFAULT on either event.
-const REFERENTIAL_ACTIONS = withoutReferentialAction(
-  ReferentialAction.setDefault
-);
+const REFERENTIAL_ACTIONS = referentialActionSupport(Database.MariaDB);
 
 export function createSchema(state: RootState): string {
   const {

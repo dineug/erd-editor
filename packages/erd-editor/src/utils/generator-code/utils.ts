@@ -13,6 +13,10 @@ import {
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { pascalCase } from '@/utils';
 import { arrayHas } from '@/utils/arrayHas';
+import {
+  ALL_REFERENTIAL_ACTIONS,
+  ReferentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 export interface FormatTableOptions {
   buffer: string[];
@@ -94,21 +98,24 @@ export type ReferentialActionEntry = {
   sql: string;
 };
 
-/** The actions a relationship sets, ON DELETE first, each with its SQL spelling. */
-export function referentialActionEntries({
-  onDelete,
-  onUpdate,
-}: Pick<Relationship, 'onDelete' | 'onUpdate'>): ReferentialActionEntry[] {
+/**
+ * The actions a relationship sets, ON DELETE first, each with its SQL spelling;
+ * with a support, only those the database's DDL would write too.
+ */
+export function referentialActionEntries(
+  { onDelete, onUpdate }: Pick<Relationship, 'onDelete' | 'onUpdate'>,
+  support: ReferentialActionSupport = ALL_REFERENTIAL_ACTIONS
+): ReferentialActionEntry[] {
   const entries: ReferentialActionEntry[] = [];
 
-  if (ReferentialActionToSQL[onDelete]) {
+  if (support.onDelete.includes(onDelete)) {
     entries.push({
       key: 'onDelete',
       action: onDelete,
       sql: ReferentialActionToSQL[onDelete],
     });
   }
-  if (ReferentialActionToSQL[onUpdate]) {
+  if (support.onUpdate.includes(onUpdate)) {
     entries.push({
       key: 'onUpdate',
       action: onUpdate,

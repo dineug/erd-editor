@@ -4,7 +4,6 @@ import { FC, onMounted } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
-import { LucideIconName } from '@/components/primitives/icon/icons';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
@@ -47,11 +46,10 @@ export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
 
 const referentialActionItems: Array<{
   field: ReferentialActionField;
-  iconName: LucideIconName;
   name: string;
 }> = [
-  { field: 'onDelete', iconName: 'trash-2', name: 'On Delete' },
-  { field: 'onUpdate', iconName: 'refresh-cw', name: 'On Update' },
+  { field: 'onDelete', name: 'On Delete' },
+  { field: 'onUpdate', name: 'On Update' },
 ];
 
 export type ErdContextMenuProps = {
@@ -262,11 +260,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
-              {referentialActionItems.map(({ field, iconName, name }) => (
+              {referentialActionItems.map(({ field, name }) => (
                 <ContextMenu.Item
                   children={
                     <ContextMenu.Menu
-                      icon={<Icon name={iconName} size={14} />}
+                      icon={<Icon name="key-round" size={14} />}
                       name={name}
                       right={chevronRightIcon}
                     />
@@ -288,6 +286,13 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                                 ) : null
                               }
                               name={menu.name}
+                              right={
+                                menu.note ? (
+                                  <span style={{ color: 'var(--placeholder)' }}>
+                                    {menu.note}
+                                  </span>
+                                ) : null
+                              }
                             />
                           }
                         />

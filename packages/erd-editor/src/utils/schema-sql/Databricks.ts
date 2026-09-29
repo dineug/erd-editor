@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption, ReferentialAction } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -20,7 +20,7 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
-  ReferentialActionSupport,
+  referentialActionSupport,
   toOrderName,
   unique,
   uniqueColumns,
@@ -34,11 +34,7 @@ const BRACKET = '`';
 // declaration, which is the only reason to export one at all.
 const CONSTRAINT_OPTIONS = 'NOT ENFORCED RELY';
 
-// A foreign key option may only be NO ACTION, on either event.
-const REFERENTIAL_ACTIONS: ReferentialActionSupport = {
-  onDelete: [ReferentialAction.noAction],
-  onUpdate: [ReferentialAction.noAction],
-};
+const REFERENTIAL_ACTIONS = referentialActionSupport(Database.Databricks);
 
 export function createSchema(state: RootState): string {
   const {

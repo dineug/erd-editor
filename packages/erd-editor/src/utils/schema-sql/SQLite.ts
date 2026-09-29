@@ -1,12 +1,11 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  ALL_REFERENTIAL_ACTIONS,
   autoName,
   FormatColumnOptions,
   FormatIndexOptions,
@@ -21,6 +20,7 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  referentialActionSupport,
   toOrderName,
 } from './utils';
 
@@ -156,10 +156,9 @@ export function formatTable(
         }
       });
 
-      // SQLite takes every action, enforced once PRAGMA foreign_keys is on.
       const actions = formatReferentialActions(
         relationship,
-        ALL_REFERENTIAL_ACTIONS
+        referentialActionSupport(Database.SQLite)
       )
         .map(clause => ` ${clause}`)
         .join('');

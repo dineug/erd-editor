@@ -160,8 +160,9 @@ test.describe('connector context menu', () => {
       });
       await erd.contextMenu.getByText(label, { exact: true }).hover();
       await expect(erd.contextMenu).toHaveCount(2);
+      // The seed is MySQL, whose DDL drops SET DEFAULT: the item says so.
       await expect(erd.contextMenu.nth(1)).toContainText(
-        'Not setNO ACTIONCASCADESET NULLSET DEFAULTRESTRICT'
+        'Not setNO ACTIONCASCADESET NULLSET DEFAULTnot in MySQLRESTRICT'
       );
 
       await erd.contextMenu.nth(1).getByText(choice, { exact: true }).click();

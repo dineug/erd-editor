@@ -16,6 +16,7 @@ import {
   hasOneRelationship,
   referentialActionEntries,
 } from '@/utils/generator-code/utils';
+import { referentialActionSupport } from '@/utils/schema-sql/utils';
 
 describe('generator-code/utils', () => {
   describe('hasOneRelationship', () => {
@@ -209,6 +210,32 @@ describe('generator-code/utils', () => {
           onUpdate: ReferentialAction.none,
         })
       ).toEqual([]);
+    });
+
+    it('keeps only what the DDL of a given database would write', () => {
+      const relationship = {
+        onDelete: ReferentialAction.setDefault,
+        onUpdate: ReferentialAction.cascade,
+      };
+
+      expect(
+        referentialActionEntries(
+          relationship,
+          referentialActionSupport(Database.MySQL)
+        ).map(entry => entry.key)
+      ).toEqual(['onUpdate']);
+      expect(
+        referentialActionEntries(
+          relationship,
+          referentialActionSupport(Database.Oracle)
+        )
+      ).toEqual([]);
+      expect(
+        referentialActionEntries(
+          relationship,
+          referentialActionSupport(Database.PostgreSQL)
+        )
+      ).toHaveLength(2);
     });
   });
 });

@@ -5,7 +5,12 @@ import { PrimitiveType } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { autoName, Name, orderByNameASC } from '@/utils/schema-sql/utils';
+import {
+  autoName,
+  Name,
+  orderByNameASC,
+  referentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 import {
   FormatColumnOptions,
@@ -442,9 +447,10 @@ function formatAssociations(
         : 'hasOne';
       // Both sides write the one foreign key attribute, whichever runs last
       // winning, so each carries the actions.
-      const actions = referentialActionEntries(relationship).map(
-        ({ key, sql }) => `${key}: "${sql}"`
-      );
+      const actions = referentialActionEntries(
+        relationship,
+        referentialActionSupport(state.settings.database)
+      ).map(({ key, sql }) => `${key}: "${sql}"`);
 
       formatGroup(
         lines,

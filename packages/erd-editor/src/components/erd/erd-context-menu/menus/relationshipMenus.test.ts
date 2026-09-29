@@ -7,8 +7,13 @@ import {
   createReferentialActionMenus,
   createRelationshipMenus,
 } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
-import { ReferentialAction, RelationshipType } from '@/constants/schema';
+import {
+  Database,
+  ReferentialAction,
+  RelationshipType,
+} from '@/constants/schema';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 
 let app: AppContext;
 
@@ -127,6 +132,33 @@ describe('referentialActionMenus', () => {
     expect(result.filter(menu => menu.checked).map(menu => menu.name)).toEqual([
       'Not set',
     ]);
+  });
+
+  it('notes the actions the current database would drop, and no others', () => {
+    addRelationship(RelationshipType.ZeroN);
+    const notes = (database: number) => {
+      app.store.dispatchSync(changeDatabaseAction({ value: database }));
+      return createReferentialActionMenus(app, 'onDelete', RELATIONSHIP_ID)
+        .filter(menu => menu.note)
+        .map(menu => `${menu.name} ${menu.note}`);
+    };
+
+    expect(notes(Database.MSSQL)).toEqual(['RESTRICT not in MSSQL']);
+    expect(notes(Database.Databricks)).toEqual([
+      'CASCADE not in Databricks',
+      'SET NULL not in Databricks',
+      'SET DEFAULT not in Databricks',
+      'RESTRICT not in Databricks',
+    ]);
+    expect(notes(Database.PostgreSQL)).toEqual([]);
+
+    // No menu names a database the settings cannot hold, so none is noted.
+    app.store.state.settings.database = 0;
+    expect(
+      createReferentialActionMenus(app, 'onDelete', RELATIONSHIP_ID).map(
+        menu => menu.note
+      )
+    ).toEqual(Array(6).fill(null));
   });
 
   it.each([

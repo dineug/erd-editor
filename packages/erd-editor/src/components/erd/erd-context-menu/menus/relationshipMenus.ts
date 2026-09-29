@@ -8,6 +8,9 @@ import {
   changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
 } from '@/engine/modules/relationship/atom.actions';
+import { referentialActionSupport } from '@/utils/schema-sql/utils';
+
+import { menus as databaseMenus } from './databaseMenus';
 
 type Menu = {
   iconName: NotationIconName;
@@ -85,7 +88,10 @@ const changeReferentialAction = {
   onUpdate: changeRelationshipOnUpdateAction,
 } as const;
 
-/** The ON DELETE or ON UPDATE choices of a relationship, its own one checked. */
+/**
+ * The ON DELETE or ON UPDATE choices of a relationship, its own one checked.
+ * One the current database's DDL would drop stays choosable, with a note.
+ */
 export function createReferentialActionMenus(
   { store }: AppContext,
   field: ReferentialActionField,
@@ -93,15 +99,26 @@ export function createReferentialActionMenus(
 ) {
   if (!relationshipId) return [];
 
-  const { collections } = store.state;
+  const { collections, settings } = store.state;
   const relationship = query(collections)
     .collection('relationshipEntities')
     .selectById(relationshipId);
   if (!relationship) return [];
 
+  const supported = referentialActionSupport(settings.database)[field];
+  const database = databaseMenus.find(
+    menu => menu.value === settings.database
+  )?.name;
+
   return referentialActionMenus.map(menu => ({
     checked: menu.value === relationship[field],
     name: menu.name,
+    note:
+      database &&
+      menu.value !== ReferentialAction.none &&
+      !supported.includes(menu.value)
+        ? `not in ${database}`
+        : null,
     onClick: () => {
       store.dispatch(
         changeReferentialAction[field]({

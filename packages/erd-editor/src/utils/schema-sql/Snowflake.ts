@@ -1,12 +1,11 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  ALL_REFERENTIAL_ACTIONS,
   autoName,
   FormatColumnOptions,
   FormatIndexOptions,
@@ -22,11 +21,11 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  referentialActionSupport,
   toOrderName,
 } from './utils';
 
-// Snowflake accepts every action for compatibility and enforces none.
-const REFERENTIAL_ACTIONS = ALL_REFERENTIAL_ACTIONS;
+const REFERENTIAL_ACTIONS = referentialActionSupport(Database.Snowflake);
 
 // The double quote is Snowflake's only identifier delimiter, and a quoted name
 // is case sensitive where a bare one folds to upper case. So settings

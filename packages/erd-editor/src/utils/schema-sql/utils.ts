@@ -1,6 +1,7 @@
 import {
   BracketTypeMap,
   ColumnOption,
+  Database,
   OrderType,
   ReferentialAction,
   ReferentialActionToSQL,
@@ -188,6 +189,43 @@ export function withoutReferentialAction(
 ): ReferentialActionSupport {
   const actions = REFERENTIAL_ACTIONS.filter(value => !refused.includes(value));
   return { onDelete: actions, onUpdate: actions };
+}
+
+const REFERENTIAL_ACTION_SUPPORT: Record<number, ReferentialActionSupport> = {
+  // A foreign key option may only be NO ACTION, on either event.
+  [Database.Databricks]: {
+    onDelete: [ReferentialAction.noAction],
+    onUpdate: [ReferentialAction.noAction],
+  },
+  // MariaDB does not support SET DEFAULT on either event.
+  [Database.MariaDB]: withoutReferentialAction(ReferentialAction.setDefault),
+  // SQL Server has no RESTRICT; NO ACTION, its default, refuses the change
+  // the same way.
+  [Database.MSSQL]: withoutReferentialAction(ReferentialAction.restrict),
+  // InnoDB, and so MySQL, rejects a table whose foreign key says SET DEFAULT,
+  // though the parser accepts it; NO ACTION reads as RESTRICT.
+  [Database.MySQL]: withoutReferentialAction(ReferentialAction.setDefault),
+  // Oracle has no ON UPDATE and writes only CASCADE or SET NULL after ON
+  // DELETE; its default already refuses the change NO ACTION would.
+  [Database.Oracle]: {
+    onDelete: [ReferentialAction.cascade, ReferentialAction.setNull],
+    onUpdate: [],
+  },
+  [Database.PostgreSQL]: ALL_REFERENTIAL_ACTIONS,
+  // SQLite takes every action, enforced once PRAGMA foreign_keys is on.
+  [Database.SQLite]: ALL_REFERENTIAL_ACTIONS,
+  // Snowflake accepts every action for compatibility and enforces none.
+  [Database.Snowflake]: ALL_REFERENTIAL_ACTIONS,
+};
+
+/**
+ * The actions the DDL of a database writes, which the code generators and the
+ * relationship menu follow too; an unknown database takes every one.
+ */
+export function referentialActionSupport(
+  database: number
+): ReferentialActionSupport {
+  return REFERENTIAL_ACTION_SUPPORT[database] ?? ALL_REFERENTIAL_ACTIONS;
 }
 
 /**
