@@ -131,13 +131,10 @@ afterEach(() => {
 });
 
 describe('scopeBase', () => {
-  it('hands the fuzzy search the commands with no prefix or after >, the tables after #, and nothing for the rest', () => {
+  it('hands the fuzzy search the commands with no prefix, the tables after #, and nothing for the rest', () => {
     const level = visible();
 
     expect(names(scopeBase(level, null))).toEqual(ERD_COMMANDS);
-    expect(names(scopeBase(level, PaletteScope.commands))).toEqual(
-      ERD_COMMANDS
-    );
     expect(names(scopeBase(level, PaletteScope.tables))).toEqual([
       'orders',
       'users',
@@ -157,10 +154,38 @@ describe('paletteRows without a prefix', () => {
   const isDocumentRow = (row: Action) =>
     Boolean(row.tableId || row.keywords?.includes(' · '));
 
-  it('lists the commands alone for no keyword, the same rows > lists', () => {
+  it('lists the commands alone for no keyword', () => {
     expect(names(rowsFor(''))).toEqual(ERD_COMMANDS);
-    expect(names(rowsFor(''))).toEqual(names(rowsFor('>')));
+    expect(names(rowsFor(' '))).toEqual(ERD_COMMANDS);
     expect(names(visible())).toEqual([...ERD_COMMANDS, 'orders', 'users']);
+  });
+
+  it('keeps to what the tab offers', () => {
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.generatorCode })
+    );
+
+    expect(names(rowsFor(''))).toEqual([
+      'Tab',
+      'Language',
+      'Table Name Case',
+      'Column Name Case',
+      'Find and Replace',
+    ]);
+  });
+
+  it('searches the commands for a > typed first, a character like any other', () => {
+    const rows = rowsFor('>auto');
+
+    expect(rows[0].name).toBe('Auto Layout');
+    expect(rows.some(isDocumentRow)).toBe(false);
+    // No command holds >auto as typed, so the word is offered as it stands.
+    expect(rows.slice(-3).map(row => row.insert)).toEqual([
+      '#>auto',
+      '@>auto',
+      '">auto',
+    ]);
+    expect(rowsFor('>users').some(isDocumentRow)).toBe(false);
   });
 
   it('fuzzes the commands alone, however many tables, columns, comments and memos hold the keyword', () => {
@@ -252,42 +277,10 @@ describe('paletteRows without a prefix', () => {
     );
   });
 
-  it('offers nothing after a prefix whose scope holds no row, the commands of > included', () => {
-    for (const value of ['>orders', '#email', '@qqqq', '"qqqq']) {
+  it('offers nothing after a prefix whose scope holds no row', () => {
+    for (const value of ['#email', '@qqqq', '"qqqq']) {
       expect(rowsFor(value)).toEqual([]);
     }
-  });
-});
-
-describe('paletteRows / > commands', () => {
-  it('lists every command of the tab and no table or field', () => {
-    expect(names(rowsFor('>'))).toEqual(ERD_COMMANDS);
-    expect(names(rowsFor('> '))).toEqual(ERD_COMMANDS);
-  });
-
-  it('fuzzes the commands alone', () => {
-    const rows = rowsFor('>auto');
-
-    expect(rows[0].name).toBe('Auto Layout');
-    expect(rows.every(row => !row.tableId)).toBe(true);
-    expect(names(rowsFor('> auto'))).toEqual(names(rows));
-    expect(names(rowsFor('>users'))).not.toContain('users');
-    expect(rowsFor('>users').every(row => !row.tableId)).toBe(true);
-    expect(names(rowsFor('>replace'))[0]).toBe('Find and Replace');
-  });
-
-  it('keeps to what the tab offers', () => {
-    app.store.dispatchSync(
-      changeCanvasTypeAction({ value: CanvasType.generatorCode })
-    );
-
-    expect(names(rowsFor('>'))).toEqual([
-      'Tab',
-      'Language',
-      'Table Name Case',
-      'Column Name Case',
-      'Find and Replace',
-    ]);
   });
 });
 
@@ -517,7 +510,6 @@ describe('paletteRows / ? help', () => {
     const rows = rowsFor('?');
 
     expect(rows.map(({ name, insert }) => [name, insert])).toEqual([
-      ['Commands', '>'],
       ['Tables', '#'],
       ['Columns', '@'],
       ['Comments & memos', '"'],
@@ -532,7 +524,7 @@ describe('paletteRows / ? help', () => {
   it('fuzzes the prefixes by what follows the question mark', () => {
     expect(rowsFor('?column')[0].name).toBe('Columns');
     expect(names(createHelpActions('memos'))).toContain('Comments & memos');
-    expect(createHelpActions()).toHaveLength(4);
+    expect(createHelpActions()).toHaveLength(3);
   });
 });
 
@@ -572,7 +564,6 @@ describe('paletteRows / Hangul', () => {
       expect(names(rowsFor(`"${step}`))).toContain('주문한 사용자');
       expect(rowsFor(`#${step}`).every(row => row.tableId)).toBe(true);
     }
-    expect(rowsFor('>ㅅ')).toEqual([]);
   });
 
   it('keeps a name in every scope through each cluster a Windows IME composes of its initials', () => {

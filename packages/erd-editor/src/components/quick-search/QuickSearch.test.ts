@@ -753,10 +753,6 @@ describe('QuickSearch with no command matching', () => {
     expect(empty()).toBeNull();
     expect(rows()).toHaveLength(0);
 
-    await type('>orders');
-    expect(empty()).toBeNull();
-    expect(rows()).toHaveLength(0);
-
     await type('   ');
     expect(empty()).toBeNull();
 
@@ -887,21 +883,6 @@ describe('QuickSearch with no command matching', () => {
 });
 
 describe('QuickSearch prefixes', () => {
-  const COMMANDS = [
-    'Tab',
-    'Database',
-    'Import',
-    'Export',
-    'New Table',
-    'New Memo',
-    'Zero One',
-    'Zero N',
-    'One Only',
-    'One N',
-    'Auto Layout',
-    'Find and Replace',
-  ];
-
   const hint = () =>
     mounted?.container.querySelector<HTMLDivElement>('.quick-search-hint') ??
     null;
@@ -931,7 +912,6 @@ describe('QuickSearch prefixes', () => {
     await open();
 
     expect(hintItems()).toEqual([
-      '>Commands',
       '#Tables',
       '@Columns',
       '"Comments & memos',
@@ -953,7 +933,7 @@ describe('QuickSearch prefixes', () => {
 
     expect(hint()).toBeNull();
 
-    await type('>');
+    await type('#');
 
     expect(scopeLabel()).toBeNull();
     for (const name of rowNames()) {
@@ -966,18 +946,22 @@ describe('QuickSearch prefixes', () => {
     }
   });
 
-  it('lists the commands alone after >, a space after it or not, and names the scope', async () => {
+  it('reads a > typed first as plain text in the command search, naming no scope', async () => {
     await open();
 
-    await type('>');
+    await type('>auto');
 
-    expect(rowNames()).toEqual(COMMANDS);
-    expect(scopeLabel()).toBe('Commands');
+    expect(scopeLabel()).toBeNull();
     expect(hint()).toBeNull();
-
-    await type('> auto');
     expect(rowNames()[0]).toBe('Auto Layout');
-    expect(rowNames()).not.toContain('orders');
+    expect(rows().some(isTableRow)).toBe(false);
+    expect(rowNames().at(-3)).toBe('Search tables for ">auto"');
+
+    for (const value of ['＞auto', '》auto']) {
+      await type(value);
+      expect(scopeLabel()).toBeNull();
+      expect(rows().some(isTableRow)).toBe(false);
+    }
   });
 
   it('lists the tables alone after #, and goes to the one picked', async () => {
@@ -1012,14 +996,10 @@ describe('QuickSearch prefixes', () => {
 
   it('searches the whole scope on each keystroke, while the list with no prefix still narrows', async () => {
     await open();
-    await type('>Memo');
-    await type('>Auto Layout');
-    expect(rowNames()).toContain('Auto Layout');
-
-    await type('#Memo');
-    expect(scopeLabel()).toBe('Tables');
-    await type('>Auto Layout');
-    expect(rowNames()).toContain('Auto Layout');
+    await type('#ord');
+    expect(rowNames()).not.toContain('users');
+    await type('#users');
+    expect(rowNames()[0]).toBe('users');
 
     await type('Memo');
     await type('Auto Layout');
@@ -1056,10 +1036,6 @@ describe('QuickSearch prefixes', () => {
 
     await type('“user id”');
     expect(rowNames()).toEqual(['user id']);
-
-    await type('》auto');
-    expect(rowNames()[0]).toBe('Auto Layout');
-    expect(scopeLabel()).toBe('Commands');
 
     await type('？');
     expect(scopeLabel()).toBe('Help');
@@ -1130,15 +1106,10 @@ describe('QuickSearch prefixes', () => {
     await open();
 
     await type('?');
-    expect(rowNames()).toEqual([
-      'Commands',
-      'Tables',
-      'Columns',
-      'Comments & memos',
-    ]);
+    expect(rowNames()).toEqual(['Tables', 'Columns', 'Comments & memos']);
     expect(scopeLabel()).toBe('Help');
 
-    await click(rows()[1]);
+    await click(rows()[0]);
 
     expect(isOpen()).toBe(true);
     expect(input().value).toBe('#');
@@ -1155,14 +1126,14 @@ describe('QuickSearch prefixes', () => {
     await keydown('Enter');
 
     expect(isOpen()).toBe(true);
-    expect(input().value).toBe('>');
-    expect(rowNames()).toEqual(COMMANDS);
+    expect(input().value).toBe('#');
+    expect(rowNames()).toEqual(['orders', 'users']);
     expect(selectedIndex()).toBe(-1);
   });
 
   it('types the prefix of a hint clicked', async () => {
     await open();
-    const [, , columns] = Array.from(hint()?.querySelectorAll('button') ?? []);
+    const [, columns] = Array.from(hint()?.querySelectorAll('button') ?? []);
 
     await click(columns);
 
@@ -1176,8 +1147,6 @@ describe('QuickSearch prefixes', () => {
       changeCanvasTypeAction({ value: CanvasType.settings })
     );
     await open();
-
-    await type('>');
     expect(rowNames()).toEqual(['Tab', 'Find and Replace']);
 
     await type('#');

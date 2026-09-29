@@ -50,8 +50,8 @@ const matcherOf = (keyword: string): Matcher | null =>
 
 /**
  * The rows of a level a scope hands to the fuzzy search: the commands without
- * a prefix and after >, the tables after # alone, and none for a scope whose
- * rows are read from the document. A submenu holds commands only.
+ * a prefix, the tables after # alone, and none for a scope whose rows are read
+ * from the document. A submenu holds commands only.
  */
 export function scopeBase(
   actions: Action[],
@@ -59,7 +59,6 @@ export function scopeBase(
 ): Action[] {
   switch (scope) {
     case null:
-    case PaletteScope.commands:
       return actions.filter(action => !action.tableId);
     case PaletteScope.tables:
       return actions.filter(action => action.tableId);
@@ -85,8 +84,6 @@ export function paletteRows(
       return keyword && !found.some(keywordHolder(keyword))
         ? [...found, ...createPrefixActions(keyword)]
         : found;
-    case PaletteScope.commands:
-      return found;
     case PaletteScope.tables:
       return rankTableActions(app, found, keyword);
     case PaletteScope.columns:

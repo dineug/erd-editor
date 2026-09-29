@@ -1,7 +1,6 @@
 import { ValuesType } from '@/internal-types';
 
 export const PaletteScope = {
-  commands: 'commands',
   tables: 'tables',
   columns: 'columns',
   text: 'text',
@@ -18,12 +17,6 @@ export type PalettePrefix = {
 
 /** The characters that, typed first, narrow the palette to one kind of row, in the order its hint lists them. */
 export const PALETTE_PREFIXES: ReadonlyArray<PalettePrefix> = [
-  {
-    prefix: '>',
-    scope: PaletteScope.commands,
-    label: 'Commands',
-    description: 'Run a command of the tab you are on',
-  },
   {
     prefix: '#',
     scope: PaletteScope.tables,
@@ -61,8 +54,6 @@ export type PaletteQuery = {
 
 /** What a Japanese or Chinese IME types for a prefix character, read as the character it stands for. */
 const WIDE_PREFIXES: Readonly<Record<string, string>> = {
-  '＞': '>',
-  '》': '>',
   '＃': '#',
   '＠': '@',
   '＂': '"',

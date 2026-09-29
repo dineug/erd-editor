@@ -259,7 +259,7 @@ test.describe('quick search over columns, comments and memos', () => {
     const input = palette.locator('input');
 
     await erd.press(Shortcut.search);
-    await expect(palette.locator('.quick-search-hint button')).toHaveCount(5);
+    await expect(palette.locator('.quick-search-hint button')).toHaveCount(4);
     await erd.page.keyboard.type('?');
     await palette.getByText('Columns', { exact: true }).click();
 

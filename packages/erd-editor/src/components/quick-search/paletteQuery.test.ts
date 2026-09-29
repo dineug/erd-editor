@@ -22,7 +22,6 @@ describe('parsePaletteQuery', () => {
   });
 
   it.each([
-    ['>', PaletteScope.commands],
     ['#', PaletteScope.tables],
     ['@', PaletteScope.columns],
     ['"', PaletteScope.text],
@@ -47,8 +46,6 @@ describe('parsePaletteQuery', () => {
   );
 
   it.each([
-    ['＞', PaletteScope.commands],
-    ['》', PaletteScope.commands],
     ['＃', PaletteScope.tables],
     ['＠', PaletteScope.columns],
     ['＂', PaletteScope.text],
@@ -80,9 +77,24 @@ describe('parsePaletteQuery', () => {
     expect(parsePaletteQuery('«ok')).toMatchObject({ scope: null });
   });
 
+  it('reads > and the forms an IME types for it as plain text, the list with no prefix being the commands', () => {
+    for (const value of ['>auto', '＞auto', '》auto']) {
+      expect(parsePaletteQuery(value)).toEqual({
+        scope: null,
+        keyword: value,
+        table: null,
+      });
+    }
+    expect(parsePaletteQuery(' > ')).toEqual({
+      scope: null,
+      keyword: '>',
+      table: null,
+    });
+  });
+
   it('takes a prefix only as the first character, past any space typed before it', () => {
-    expect(parsePaletteQuery(' >auto')).toEqual({
-      scope: PaletteScope.commands,
+    expect(parsePaletteQuery(' #auto')).toEqual({
+      scope: PaletteScope.tables,
       keyword: 'auto',
       table: null,
     });
@@ -213,7 +225,6 @@ describe('parsePaletteQuery', () => {
 describe('PALETTE_PREFIXES', () => {
   it('lists one distinct single character per scope, each with a label and a description', () => {
     expect(PALETTE_PREFIXES.map(({ prefix }) => prefix)).toEqual([
-      '>',
       '#',
       '@',
       '"',
@@ -229,7 +240,6 @@ describe('PALETTE_PREFIXES', () => {
   });
 
   it('names each scope for the label beside the input', () => {
-    expect(scopeLabel(PaletteScope.commands)).toBe('Commands');
     expect(scopeLabel(PaletteScope.tables)).toBe('Tables');
     expect(scopeLabel(PaletteScope.columns)).toBe('Columns');
     expect(scopeLabel(PaletteScope.text)).toBe('Comments & memos');

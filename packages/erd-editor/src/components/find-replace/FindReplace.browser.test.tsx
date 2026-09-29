@@ -326,13 +326,12 @@ describe('quick search prefixes on a real keyboard', () => {
     ).not.toBeNull();
     await press('?');
     expect(rowNames(fixture)).toEqual([
-      'Commands',
       'Tables',
       'Columns',
       'Comments & memos',
     ]);
 
-    await press('{ArrowDown}{ArrowDown}{Enter}');
+    await press('{ArrowDown}{Enter}');
 
     expect(searchInput(fixture)?.value).toBe('#');
     expect(document.activeElement).toBe(searchInput(fixture));
