@@ -95,20 +95,23 @@ const readRest = (rest: string, scope: PaletteScope): string =>
 
 /**
  * Reads what is typed into the palette: a prefix counts only as the first
- * character, in its full-width form too, a space may follow it, and a column
- * search splits on its first dot.
+ * character past any space, in its full-width form too, a space may follow it,
+ * and a column search splits on its first dot.
  *
  * @example
  * parsePaletteQuery('@users.em'); // { scope: 'columns', keyword: 'em', table: 'users' }
  * parsePaletteQuery('"login email"'); // { scope: 'text', keyword: 'login email', table: null }
  */
 export function parsePaletteQuery(value: string): PaletteQuery {
-  const found = scopeOf(value);
-  if (!found) return { scope: null, keyword: value.trim(), table: null };
+  // A space typed before a prefix never hides it: read as a keyword, it would
+  // be offered to the prefix rows, which type a second prefix before it.
+  const typed = value.trimStart();
+  const found = scopeOf(typed);
+  if (!found) return { scope: null, keyword: typed.trimEnd(), table: null };
 
   const { scope } = found;
   // Every prefix, full-width or not, is one character.
-  const rest = readRest(value.slice(1), scope);
+  const rest = readRest(typed.slice(1), scope);
   const dot = scope === PaletteScope.columns ? rest.search(TABLE_DOT) : -1;
 
   return dot === -1

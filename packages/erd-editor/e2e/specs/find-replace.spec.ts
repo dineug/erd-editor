@@ -321,9 +321,10 @@ test.describe('quick search over columns, comments and memos', () => {
       /^@\s*Search columns for "users"$/,
       /^"\s*Search comments & memos for "users"$/,
     ]);
-    // The narrowing left no command, but users typed afresh fuzzes to two, so
-    // the list never says that none matches.
-    await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
+    // The narrowing left no command, and no command holds users.
+    await expect(palette.locator('.quick-search-empty')).toHaveText(
+      'No commands match'
+    );
 
     await erd.page.keyboard.press('ArrowDown');
     await erd.page.keyboard.press('Enter');

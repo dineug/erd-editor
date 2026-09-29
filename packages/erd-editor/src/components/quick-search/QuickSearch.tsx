@@ -22,7 +22,12 @@ import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import { Action, createScopeActions, searchActions } from './actions';
+import {
+  Action,
+  createScopeActions,
+  keywordHolder,
+  searchActions,
+} from './actions';
 import { clearHangulForms, findPaletteChunks } from './hangul';
 import {
   PALETTE_PREFIXES,
@@ -56,7 +61,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     rows: [] as Action[],
     submenu: false,
     scope: null as PaletteScope | null,
-    /** Whether no command of the level matches what is typed with no prefix, even loosely. */
+    /** Whether the list shows no command for what is typed with no prefix, and none of the level holds it. */
     missed: false,
     index: -1,
   });
@@ -106,13 +111,14 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     state.rows = state.submenu
       ? state.actions
       : paletteRows(app.value, state.actions, query);
-    // The narrowing can drop a command the level still fuzzes to, so whether
-    // none matches at all is asked of the whole level.
+    // The narrowing can hide a command the level holds, so the line asks the
+    // whole level, by the rule the prefix rows read, never by a loose Fuse hit.
     state.missed =
       !state.submenu &&
       query.scope === null &&
       !isEmpty(query.keyword) &&
-      !search(base).length;
+      !state.actions.length &&
+      !byFilter(base).some(keywordHolder(query.keyword));
   };
 
   /** Types a prefix for the reader, as a help row or a hint does, and leaves the caret after it. */

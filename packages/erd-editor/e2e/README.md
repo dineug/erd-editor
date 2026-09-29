@@ -110,17 +110,16 @@ comment from another tab, a `?` help row types its prefix in with the input
 still focused, a `@table.col` search goes to that column, and deleting the `#`
 of `#us` leaves commands and no table or field. A word no command holds lists
 the three prefixes that search the document last, whose row the arrows and
-Enter pick types its prefix before the word (`#users`): below nothing when
-`users` is typed one key at a time and narrows to no command, and below the two
-commands it fuzzes to when it is pasted or its `#` deleted, with no
-`No commands match` line either way, since the level still fuzzes to those
-two. Under Chromium's own IME composition (`Input.imeSetComposition` over a
-CDP session) it holds down the Hangul search: every step a Korean IME hands
-over while typing `#사용` keeps the table 사용자 listed, a word composed with no
-prefix lists `No commands match` and no table or comment until a prefix row
-types `"` before it, `#ㅈㅁ` finds 주문 내역 by its initials, an arrow or Enter
-pressed mid-syllable is left to the IME and picks nothing, and `@사` goes to a
-column by an unfinished syllable.
+Enter pick types its prefix before the word (`#users`): below the
+`No commands match` line when `users` is typed one key at a time and narrows to
+no command, and below the two commands it fuzzes to, with no such line, when it
+is pasted or its `#` deleted. Under Chromium's own IME composition
+(`Input.imeSetComposition` over a CDP session) it holds down the Hangul search:
+every step a Korean IME hands over while typing `#사용` keeps the table 사용자
+listed, a word composed with no prefix lists `No commands match` and no table or
+comment until a prefix row types `"` before it, `#ㅈㅁ` finds 주문 내역 by its
+initials, an arrow or Enter pressed mid-syllable is left to the IME and picks
+nothing, and `@사` goes to a column by an unfinished syllable.
 `zoom-overlay.spec.ts` holds the quick search's list without a prefix to the
 commands, the seeded tables showing only after `#`.
 

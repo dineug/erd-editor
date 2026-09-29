@@ -80,10 +80,24 @@ describe('parsePaletteQuery', () => {
     expect(parsePaletteQuery('«ok')).toMatchObject({ scope: null });
   });
 
-  it('takes a prefix only as the first character', () => {
+  it('takes a prefix only as the first character, past any space typed before it', () => {
     expect(parsePaletteQuery(' >auto')).toEqual({
+      scope: PaletteScope.commands,
+      keyword: 'auto',
+      table: null,
+    });
+    expect(parsePaletteQuery('  @users.em ')).toEqual({
+      scope: PaletteScope.columns,
+      keyword: 'em',
+      table: 'users',
+    });
+    expect(parsePaletteQuery('\u3000＃users')).toMatchObject({
+      scope: PaletteScope.tables,
+      keyword: 'users',
+    });
+    expect(parsePaletteQuery(' auto ')).toEqual({
       scope: null,
-      keyword: '>auto',
+      keyword: 'auto',
       table: null,
     });
     expect(parsePaletteQuery('auto>')).toMatchObject({ scope: null });

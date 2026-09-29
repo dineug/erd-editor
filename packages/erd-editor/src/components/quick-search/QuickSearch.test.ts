@@ -799,21 +799,27 @@ describe('QuickSearch with no command matching', () => {
     expect(empty()).toBeNull();
   });
 
-  it('says no command matches only when the level fuzzes to none, however far the list narrowed', async () => {
+  it('says no command matches once none is listed and none of the level holds the word', async () => {
     await open();
 
     for (const value of ['u', 'us', 'use', 'user', 'users']) {
       await type(value);
     }
-    // The narrowing left no command, though users typed afresh fuzzes to two.
+    // The narrowing left no command, and afresh users only fuzzes to two, which
+    // never hold it, so the list reads as it does for orders.
     expect(rowNames()).toEqual(offered('users'));
-    expect(empty()).toBeNull();
+    expect(empty()?.textContent?.trim()).toBe('No commands match');
 
-    for (const value of ['user', 'use', 'us', 'u']) {
+    for (const value of ['user', 'use', 'us']) {
       await type(value);
       expect(rowNames()).toEqual(offered(value));
-      expect(empty()).toBeNull();
+      expect(empty()?.textContent?.trim()).toBe('No commands match');
     }
+
+    // Auto Layout holds u, which the narrowing left behind.
+    await type('u');
+    expect(rowNames()).toEqual(offered('u'));
+    expect(empty()).toBeNull();
 
     await type('qqqq');
     expect(empty()?.textContent?.trim()).toBe('No commands match');
@@ -821,6 +827,22 @@ describe('QuickSearch with no command matching', () => {
     await type('auto');
     expect(rowNames()).toEqual(offered('auto'));
     expect(empty()).toBeNull();
+  });
+
+  it('reads a prefix past a space typed before it, which a prefix row drops', async () => {
+    await open();
+
+    await type(' #users');
+
+    expect(scopeLabel()).toBe('Tables');
+    expect(rowNames()[0]).toBe('users');
+    expect(rowNames().some(name => name.startsWith('Search'))).toBe(false);
+
+    await type(' users');
+    await click(rows()[rows().length - 3]);
+
+    expect(input().value).toBe('#users');
+    expect(rowNames()[0]).toBe('users');
   });
 
   it('offers the prefixes once the narrowing leaves no command, and the commands again once cleared', async () => {
