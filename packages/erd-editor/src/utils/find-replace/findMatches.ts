@@ -131,6 +131,31 @@ export function findMatches(
 }
 
 /**
+ * The matches as they will stand once the field a match was found in holds a
+ * new value, before the store has it: that field searched again in the value,
+ * every other one as it was, since no other text moves.
+ */
+export function rematchField(
+  matches: ReadonlyArray<FindMatch>,
+  matcher: Matcher,
+  changed: FindMatch,
+  value: string
+): FindMatch[] {
+  const found = matcher.find(value).map(({ start, end }) => ({
+    ...changed,
+    text: value,
+    start,
+    end,
+  }));
+
+  return [
+    ...matches.filter(match => match.slot < changed.slot),
+    ...found,
+    ...matches.filter(match => match.slot > changed.slot),
+  ];
+}
+
+/**
  * The match a search goes on to once the text before a point has been dealt
  * with: the first one past the offset in the slot given, or in a later slot,
  * wrapping to the first. Minus one when there is none.

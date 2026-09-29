@@ -21,6 +21,7 @@ import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
   changeOpenMapAction,
+  changeViewportAction,
   changeZenModeAction,
   drawEndRelationshipAction,
   drawStartRelationshipAction,
@@ -574,6 +575,34 @@ describe('FindReplace replacing', () => {
     expect(countText()).toBe('1 of 4');
     expect(app.store.state.editor.selectedMap).toEqual({ users: 'table' });
   });
+
+  it.each([
+    ['on screen', { width: 2000, height: 1200 }, false],
+    ['off screen', { width: 400, height: 300 }, true],
+  ])(
+    'takes back a replacement whose next match is %s in one undo, a scroll to it included',
+    async (_, viewport, scrolls) => {
+      app.store.dispatchSync(changeViewportAction(viewport));
+      await keydown(findInput(), { key: 'Enter' });
+      const { originX, originY } = app.store.state.settings;
+      const cursor = app.store.history.cursor;
+
+      await keydown(replaceInput() as HTMLInputElement, { key: 'Enter' });
+
+      // The next match is the users table, right of the orders table.
+      expect(texts().userId).toBe('member_id');
+      expect(countText()).toBe('1 of 4');
+      expect(app.store.state.editor.selectedMap).toEqual({ users: 'table' });
+      expect(app.store.state.settings.originX !== originX).toBe(scrolls);
+      expect(app.store.history.cursor).toBe(cursor + 1);
+
+      app.store.undo();
+      await settle();
+
+      expect(texts().userId).toBe('user_id');
+      expect(app.store.state.settings).toMatchObject({ originX, originY });
+    }
+  );
 
   it('goes past a replacement that holds the query itself', async () => {
     await type(replaceInput() as HTMLInputElement, 'super_user');

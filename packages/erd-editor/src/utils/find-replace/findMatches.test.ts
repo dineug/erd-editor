@@ -5,6 +5,7 @@ import { seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
 import { removeMemoAction } from '@/engine/modules/memo/atom.actions';
 import { removeTableAction } from '@/engine/modules/table/atom.actions';
+import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
 import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
@@ -14,6 +15,7 @@ import {
   findMatches,
   indexAfter,
   Matcher,
+  rematchField,
   walkFields,
 } from '@/utils/find-replace';
 
@@ -118,6 +120,52 @@ describe('findMatches', () => {
         .map(({ id }) => id)
         .every(id => id === 'orders')
     ).toBe(true);
+  });
+});
+
+describe('rematchField', () => {
+  it('searches the new value of the one field again and keeps every other', () => {
+    const matcher = matcherOf('user');
+    const matches = findMatches(app.store.state, matcher);
+    const memo = matches.find(match => match.field === FindField.memo)!;
+
+    const next = rematchField(matches, matcher, memo, 'a user and a user');
+
+    expect(places(next)).toEqual([
+      ...places(matches.filter(match => match.slot < memo.slot)),
+      'memo:note@2',
+      'memo:note@13',
+    ]);
+    expect(next.at(-1)).toMatchObject({ text: 'a user and a user', end: 17 });
+  });
+
+  it('drops the field that no longer holds the query', () => {
+    const matcher = matcherOf('user');
+    const matches = findMatches(app.store.state, matcher);
+    const [first] = matches;
+
+    const next = rematchField(matches, matcher, first, 'member_id');
+
+    expect(places(next)).toEqual(places(matches.slice(1)));
+  });
+
+  it('is what the search finds once the store holds the value', () => {
+    const matcher = matcherOf('user');
+    const matches = findMatches(app.store.state, matcher);
+    const comment = matches.find(
+      match => match.field === FindField.columnComment
+    )!;
+
+    const next = rematchField(matches, matcher, comment, 'the user of users');
+    app.store.dispatchSync(
+      changeColumnCommentAction({
+        id: comment.id,
+        tableId: comment.tableId,
+        value: 'the user of users',
+      })
+    );
+
+    expect(next).toEqual(findMatches(app.store.state, matcher));
   });
 });
 

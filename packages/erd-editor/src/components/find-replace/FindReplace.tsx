@@ -9,7 +9,11 @@ import {
 import { debounceTime, filter, Observable } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
-import { goToErdTarget, showErdTab } from '@/components/erd/goToErdTarget';
+import {
+  goToErdTarget,
+  showErdTab,
+  showErdTargetAction$,
+} from '@/components/erd/goToErdTarget';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
@@ -30,6 +34,7 @@ import {
   indexAfter,
   locationOf,
   Matcher,
+  rematchField,
   snippetOf,
   toReplaceActions,
 } from '@/utils/find-replace';
@@ -279,11 +284,22 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       state.replacement,
       match
     );
-    actions.length && store.dispatchSync(actions);
+    // The next match is looked for in the text the replacement leaves, so the
+    // jump to it rides in the replacement's dispatch and one undo takes back
+    // both, the scroll included, wherever on the canvas that match is.
+    const after = rematchField(result.matches, matcher, match, value);
+    const next = after[indexAfter(after, match.slot, match.start + inserted)];
+    const batch = next
+      ? [...actions, showErdTargetAction$(toErdTarget(next), coveredWidth())]
+      : actions;
+    batch.length && store.dispatchSync(batch);
 
     refresh();
-    const next = indexAfter(result.matches, match.slot, match.start + inserted);
-    next === -1 ? (state.current = -1) : goTo(next);
+    state.status = '';
+    state.current = next
+      ? result.matches.findIndex(found => isSameMatch(found, next))
+      : -1;
+    nextTick(scrollToCurrent);
   };
 
   const handleReplaceAll = () => {
