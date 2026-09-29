@@ -28,6 +28,7 @@ import {
 import {
   type ColumnCellSlot,
   focusBorderFill,
+  getAlternateKeyMarkHeight,
   getAlternateKeyMarkX,
   getColumnCellSlots,
   getColumnTextHeight,
@@ -563,7 +564,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         x={getAlternateKeyMarkX(slots)}
         y={getColumnTextY(props.source)}
         width={props.widthAlternateKey}
-        height={getColumnTextHeight(props.source, SCENE_CODE_FONT_FAMILY)}
+        height={getAlternateKeyMarkHeight()}
         text={props.alternateKey ?? ''}
         fill={theme.foreground}
         fontFamily={SCENE_CODE_FONT_FAMILY}

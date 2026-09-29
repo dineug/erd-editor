@@ -1,6 +1,7 @@
 import {
   FOCUS_BORDER_HEIGHT,
   getSceneFontMetrics,
+  SCENE_CODE_FONT_FAMILY,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
@@ -184,6 +185,16 @@ export function getAlternateKeyMarkX(slots: ColumnCellSlot[]): number {
   const last = slots[slots.length - 1];
 
   return last ? last.x + last.width + INPUT_MARGIN_RIGHT : getColumnCellsX();
+}
+
+/**
+ * The box the mark's code face line is centred in, so it stands on the text
+ * face's baseline, the one the cell before it is drawn on, and not on its own.
+ */
+export function getAlternateKeyMarkHeight(): number {
+  const { ascent, descent } = getSceneFontMetrics(SCENE_CODE_FONT_FAMILY);
+
+  return (getCellTextBaseline() - (ascent - descent) / 2) * 2;
 }
 
 /** The comment width a table draws at, clamped by the setting when it is set. */

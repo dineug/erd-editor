@@ -20,6 +20,7 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
+  getSceneFontMetrics,
   SCENE_CODE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
@@ -599,6 +600,33 @@ describe('the alternate key mark', () => {
     expect(named<Group>(row, 'columnName').x()).toBe(
       TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
     );
+  });
+
+  /** The baseline konva draws a middle aligned line on, down from the row. */
+  const baselineOf = (row: Group, text: Text) => {
+    const { ascent, descent } = getSceneFontMetrics(text.fontFamily());
+
+    return (
+      text.getAbsolutePosition(row).y +
+      text.height() / 2 +
+      (ascent - descent) / 2
+    );
+  };
+
+  it('sits on the baseline of the cell text before it, in its own face', async () => {
+    const { stage } = await setup({
+      props: { widthAlternateKey: 34, alternateKey: 'AK1.2' },
+    });
+    const row = rowOf(stage);
+    const mark = markOf(stage) as Text;
+    const comment = named<Text>(
+      named<Group>(row, 'columnComment'),
+      'cell-text'
+    );
+
+    expect(comment.fontFamily()).not.toBe(mark.fontFamily());
+    expect(baselineOf(row, mark)).toBe(baselineOf(row, comment));
+    expect(Number.isInteger(baselineOf(row, mark))).toBe(true);
   });
 
   it('stays last when the settings order the comment first', async () => {

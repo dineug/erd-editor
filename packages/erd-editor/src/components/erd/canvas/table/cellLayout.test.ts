@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   FOCUS_BORDER_HEIGHT,
   getSceneFontMetrics,
+  SCENE_CODE_FONT_FAMILY,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
   type ColumnCellWidths,
+  getAlternateKeyMarkHeight,
   getAlternateKeyMarkX,
   getCellTextBaseline,
   getCellTextHeight,
@@ -256,6 +258,14 @@ describe('where a row puts its alternate key mark', () => {
 
   it('takes the place of the first cell while the row lays out none', () => {
     expect(getAlternateKeyMarkX([])).toBe(getColumnCellsX());
+  });
+
+  it('centres its code face line on the baseline the text face cells stand on', () => {
+    const { ascent, descent } = getSceneFontMetrics(SCENE_CODE_FONT_FAMILY);
+
+    expect(getAlternateKeyMarkHeight() / 2 + (ascent - descent) / 2).toBe(
+      getCellTextBaseline()
+    );
   });
 });
 
