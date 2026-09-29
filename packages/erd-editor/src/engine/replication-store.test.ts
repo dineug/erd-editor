@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { CanvasType, SaveSettingType } from '@/constants/schema';
 import { unselectAllAction } from '@/engine/modules/editor/atom.actions';
 import {
+  changeCanvasTypeAction,
+  changeIgnoreSaveSettingsAction,
+  changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
+  streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -16,16 +21,15 @@ import {
 import { Tag } from '@/engine/tag';
 
 const DAY = 24 * 60 * 60 * 1000;
+const OFF = SaveSettingType.scroll | SaveSettingType.zoomLevel;
 
 const addTable = (id: string) =>
   addTableAction({ id, ui: { x: 200, y: 100, zIndex: 2 } });
 
 const stores: ReplicationStore[] = [];
 
-function make(): ReplicationStore {
-  const store = createReplicationStore({
-    toWidth: (text: string) => text.length * 10,
-  });
+function make(toWidth = (text: string) => text.length * 10): ReplicationStore {
+  const store = createReplicationStore({ toWidth });
   stores.push(store);
   return store;
 }
@@ -236,6 +240,18 @@ describe('createReplicationStore', () => {
       expect(change).toHaveBeenCalledTimes(1);
     });
 
+    it('reports no change for a load, which a host has just read', async () => {
+      vi.useFakeTimers();
+      const store = make();
+      const change = vi.fn();
+      store.on({ change });
+
+      store.setInitialValue(JSON.stringify({ version: '3.0.0' }));
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(change).not.toHaveBeenCalled();
+    });
+
     it('registers the same listener record only once', () => {
       vi.useFakeTimers();
       const store = make();
@@ -314,6 +330,228 @@ describe('createReplicationStore', () => {
         expect(parse(store).settings.originX).toBe(-40_500);
         expect(parse(store).settings.originY).toBe(250.5);
       }
+    });
+  });
+
+  /**
+   * What a host is handed after a scroll or a zoom. The change still comes, as
+   * every hub waits for one save per change, and changed says whether the value
+   * holds anything new: with both save switches off, a view change holds nothing.
+   */
+  describe('a view change', () => {
+    const view = [
+      scrollToAction({ originX: -320, originY: 180 }),
+      streamScrollToAction({ movementX: 40, movementY: -25 }),
+      changeZoomLevelAction({ value: 0.5 }),
+      streamZoomLevelAction({ value: 0.25 }),
+    ];
+
+    /** A replica holding one table, whose own debounced change has gone out. */
+    function loaded(ignoreSaveSettings = 0) {
+      vi.useFakeTimers();
+      const store = make();
+      store.dispatchSync(addTable('t1'));
+      if (ignoreSaveSettings) {
+        store.dispatchSync(
+          changeIgnoreSaveSettingsAction({
+            saveSettingType: ignoreSaveSettings,
+            value: true,
+          })
+        );
+      }
+      vi.advanceTimersByTime(250);
+      const change = vi.fn();
+      store.on({ change });
+      return { store, change };
+    }
+
+    it('is saved by default, as the file keeps where the diagram was left', () => {
+      const { store, change } = loaded();
+      const before = store.value;
+
+      store.dispatchSync(view);
+      vi.advanceTimersByTime(250);
+
+      expect(change).toHaveBeenCalledTimes(1);
+      expect(change).toHaveBeenCalledWith({
+        value: store.value,
+        changed: true,
+      });
+      expect(store.value).not.toBe(before);
+      expect(parse(store).settings).toMatchObject({
+        originX: -280,
+        originY: 155,
+        zoomLevel: 0.75,
+      });
+    });
+
+    it('changes nothing with both switches off, and is still reported', () => {
+      const { store, change } = loaded(OFF);
+      const before = store.value;
+
+      store.dispatchSync(view);
+      vi.advanceTimersByTime(250);
+
+      expect(change).toHaveBeenCalledTimes(1);
+      expect(change).toHaveBeenCalledWith({ value: before, changed: false });
+      expect(store.value).toBe(before);
+    });
+
+    it('saves only the half of the view whose switch is still on', () => {
+      const { store, change } = loaded(SaveSettingType.scroll);
+      const before = store.value;
+
+      store.dispatchSync(view.slice(0, 2));
+      vi.advanceTimersByTime(250);
+      expect(change).toHaveBeenLastCalledWith({
+        value: before,
+        changed: false,
+      });
+
+      store.dispatchSync(view.slice(2));
+      vi.advanceTimersByTime(250);
+      expect(change).toHaveBeenLastCalledWith({
+        value: store.value,
+        changed: true,
+      });
+      expect(parse(store).settings.zoomLevel).toBe(0.75);
+      expect(parse(store).settings.originX).toBe(0);
+    });
+
+    it('still saves a tab switch, which neither switch covers', () => {
+      const { store, change } = loaded(OFF);
+      const before = store.value;
+
+      store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.settings })
+      );
+      vi.advanceTimersByTime(250);
+
+      expect(change).toHaveBeenCalledWith({
+        value: store.value,
+        changed: true,
+      });
+      expect(store.value).not.toBe(before);
+      expect(parse(store).settings.canvasType).toBe(CanvasType.settings);
+    });
+
+    it('measures each change against the one before it', () => {
+      const { store, change } = loaded(OFF);
+
+      store.dispatchSync(changeTableNameAction({ id: 't1', value: 'users' }));
+      vi.advanceTimersByTime(250);
+      store.dispatchSync(view);
+      vi.advanceTimersByTime(250);
+      store.dispatchSync(changeTableNameAction({ id: 't1', value: 'people' }));
+      vi.advanceTimersByTime(250);
+
+      expect(change.mock.calls.map(([{ changed }]) => changed)).toEqual([
+        true,
+        false,
+        true,
+      ]);
+    });
+  });
+
+  /**
+   * A file the replica would not write as it is: one an older release wrote,
+   * without the origin, or one another machine measured with its own fonts. The
+   * value differs from it from the load on, so only a change action says changed.
+   */
+  describe('changed after a load', () => {
+    const macWidth = (text: string) => Math.round(text.length * 7.1) + 2;
+    const winWidth = (text: string) => Math.round(text.length * 6.6) + 2;
+    const scroll = scrollToAction({ originX: -100, originY: 50 });
+
+    /** One named table, both switches off, as a replica measuring with toWidth saves it. */
+    function savedWith(toWidth: (text: string) => number) {
+      const store = make(toWidth);
+      store.dispatchSync([
+        addTable('t1'),
+        changeTableNameAction({ id: 't1', value: 'customer_accounts' }),
+        changeIgnoreSaveSettingsAction({ saveSettingType: OFF, value: true }),
+      ]);
+      return store.value;
+    }
+
+    /** Opens text and lets the load's own rewrites in: the schema GC and the text widths. */
+    async function open(text: string, toWidth = macWidth) {
+      vi.useFakeTimers();
+      const store = make(toWidth);
+      store.setInitialValue(text);
+      await vi.advanceTimersByTimeAsync(10);
+      const change = vi.fn();
+      store.on({ change });
+      return { store, change };
+    }
+
+    it('reopens a file on the machine that saved it to the same bytes', async () => {
+      const file = savedWith(macWidth);
+
+      const { store } = await open(file, macWidth);
+
+      expect(store.value).toBe(file);
+    });
+
+    it('measures a file another machine saved again, and a view change on it changes nothing', async () => {
+      const file = savedWith(macWidth);
+      const { store, change } = await open(file, winWidth);
+      const opened = store.value;
+
+      store.dispatchSync(scroll);
+      vi.advanceTimersByTime(250);
+
+      expect(opened).not.toBe(file);
+      expect(parse(store).collections.tableEntities.t1.ui.widthName).toBe(
+        winWidth('customer_accounts')
+      );
+      expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
+
+      store.dispatchSync(
+        changeTableNameAction({ id: 't1', value: 'accounts' })
+      );
+      vi.advanceTimersByTime(250);
+      expect(change).toHaveBeenLastCalledWith({
+        value: store.value,
+        changed: true,
+      });
+    });
+
+    it('changes nothing for a view change on a file an older release saved without the origin', async () => {
+      const legacy = JSON.parse(savedWith(macWidth));
+      delete legacy.settings.originX;
+      delete legacy.settings.originY;
+      const file = JSON.stringify(legacy, null, 2);
+      const { store, change } = await open(file);
+      const opened = store.value;
+
+      store.dispatchSync(scroll);
+      vi.advanceTimersByTime(250);
+
+      expect(opened).not.toBe(file);
+      expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
+    });
+
+    it('takes a load that came while a change was pending as the value, changing nothing', async () => {
+      vi.useFakeTimers();
+      const store = make();
+      const change = vi.fn();
+      store.on({ change });
+
+      store.dispatchSync(addTable('t1'));
+      store.setInitialValue(savedWith(winWidth));
+      await vi.advanceTimersByTimeAsync(250);
+      const opened = store.value;
+      store.dispatchSync(scroll);
+      vi.advanceTimersByTime(250);
+
+      expect(change.mock.calls).toEqual([
+        [{ value: opened, changed: false }],
+        [{ value: opened, changed: false }],
+      ]);
+      expect(parse(store).collections.tableEntities.t1.name).toBe(
+        'customer_accounts'
+      );
     });
   });
 

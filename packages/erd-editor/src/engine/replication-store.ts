@@ -14,7 +14,7 @@ import {
   validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-import { actionsFilter } from '@/engine/rx-operators';
+import { actionsFilter, notEmptyActions } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
@@ -32,11 +32,26 @@ const InternalActionType = {
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 type InternalActionMap = {
-  [InternalActionType.change]: void;
+  [InternalActionType.change]: ReplicationChange;
+};
+
+/**
+ * What a change hands its listeners: the document serialized, and whether the
+ * change actions since the last change, or since the load, left it byte for
+ * byte as it was, as a scroll or a zoom the file does not save does.
+ */
+export type ReplicationChange = {
+  value: string;
+  changed: boolean;
 };
 
 export type ReplicationStore = {
   readonly value: string;
+  /**
+   * A change comes 200 ms after the last change action, even one that left the
+   * value as it was (changed false): a hub waits for each as a save, and a host
+   * writes nothing for such a one, whatever bytes its file holds.
+   */
   on: (listeners: Partial<ListenerRecord>) => Unsubscribe;
   setInitialValue: (value: string) => void;
   dispatch: (actions: Array<AnyAction> | AnyAction) => void;
@@ -61,6 +76,10 @@ export function createReplicationStore(
   ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
   const observers = new Set<Partial<ListenerRecord>>();
   const schemaGCService = new SchemaGCService();
+  // What a change is measured against: the value the last one handed out, or
+  // after a load the value the first change action finds, once the load's own
+  // rewrites (text widths, the GC) are in. A file is no measure of either.
+  let baseline: string | null = null;
 
   const on = (listeners: Partial<ListenerRecord>): Unsubscribe => {
     observers.has(listeners) || observers.add(listeners);
@@ -81,6 +100,7 @@ export function createReplicationStore(
   };
 
   const setInitialValue = (value: string) => {
+    baseline = null;
     const safeValue = toSafeString(value);
     store.dispatchSync(
       initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
@@ -117,16 +137,27 @@ export function createReplicationStore(
     hooks.destroy();
   };
 
-  subscriptionSet
-    .add(change$.subscribe(() => emit(InternalActionType.change, undefined)))
-    .add(
-      dispatch$
-        .pipe(
-          actionsFilter(ChangeActionTypes),
-          map(actions => actions.map(action => omit(action, ['tags'])))
-        )
-        .subscribe(store.dispatchSync)
-    );
+  const handleChange = () => {
+    const value = toJson(store.state);
+    // Null after a load that came while a change was pending, whose value is
+    // what loaded.
+    const changed = baseline !== null && value !== baseline;
+    if (baseline !== null) baseline = value;
+    emit(InternalActionType.change, { value, changed });
+  };
+
+  subscriptionSet.add(change$.subscribe(handleChange)).add(
+    dispatch$
+      .pipe(
+        actionsFilter(ChangeActionTypes),
+        notEmptyActions,
+        map(actions => actions.map(action => omit(action, ['tags'])))
+      )
+      .subscribe(actions => {
+        baseline ??= toJson(store.state);
+        store.dispatchSync(actions);
+      })
+  );
 
   return Object.freeze({
     get value() {

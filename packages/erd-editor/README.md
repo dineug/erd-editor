@@ -159,7 +159,7 @@ erd-editor {
 
 | Event | Description |
 | --- | --- |
-| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. |
+| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too; with Save Scroll Information or Save Zoom Information off, `value` comes back as it was, so compare it with what you saved before writing a file. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options. |
 
 ## Key bindings
@@ -249,9 +249,14 @@ import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 const store = createReplicationStore({ toWidth });
 
 store.setInitialValue(savedJson);
-store.on({ change: () => persist(store.value) });
+store.on({ change: ({ value, changed }) => changed && persist(value) });
 store.dispatch(actions); // actions relayed from a live editor's shared store
 ```
+
+`change` comes 200 ms after the last action that can change the document. `changed` is false
+when those actions left `value` as it was, such as a scroll or a zoom with Save Scroll Information
+or Save Zoom Information off. It compares with the value the store last reported, or loaded, never
+with your file: a file another release or machine wrote serializes differently from the start.
 
 ## Development
 
