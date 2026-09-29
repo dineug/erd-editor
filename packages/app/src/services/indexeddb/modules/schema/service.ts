@@ -38,7 +38,7 @@ export class SchemaService {
     this.cache.set(entity.id, { ...entity, store });
     this.load(entity.id, store, entity.value);
     store.on({
-      change: () => this.persist(entity.id, store),
+      change: ({ value }) => this.persist(entity.id, value),
     });
   }
 
@@ -55,11 +55,10 @@ export class SchemaService {
     });
   }
 
-  private persist(id: string, store: ReplicationStore) {
+  private persist(id: string, value: string) {
     const prev = this.cache.get(id);
     if (!prev) return;
 
-    const value = store.value;
     const fingerprint = toFingerprint(value);
     const edited = fingerprint !== this.fingerprints.get(id);
     const entityValue: SchemaEntityPatch = edited
