@@ -306,11 +306,10 @@ test.describe('zoom, scroll and overlays', () => {
       );
     }
 
-    // 'memo' matches exactly one action: fuse.js searches name + keywords,
-    // and no other entry carries either token.
+    // 'memo' ranks New Memo first: fuse.js searches name + keywords of every
+    // command on each keystroke, and fuzzes a few more below it.
     await erd.page.keyboard.type('memo');
-    await expect(rows).toHaveCount(1);
-    await expect(rows).toHaveText(/New Memo/);
+    await expect(rows.first()).toHaveText(/New Memo/);
     await expect(
       quickSearch.getByText('New Table', { exact: true })
     ).toHaveCount(0);

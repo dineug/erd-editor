@@ -334,16 +334,14 @@ describe('QuickSearch keyword filtering', () => {
     ]);
   });
 
-  it('searches inside the already narrowed list rather than the full scope', async () => {
+  it('searches the whole level on every keystroke, never inside the last hits', async () => {
     await open();
     await type('Memo');
-    const narrowed = rowNames();
+    expect(rowNames()).not.toContain('Auto Layout');
 
     await type('Auto Layout');
 
-    expect(narrowed).not.toContain('Auto Layout');
-    expect(rowNames()).not.toContain('Auto Layout');
-    // The level still holds it, so the list never says no command matches.
+    expect(rowNames()[0]).toBe('Auto Layout');
     expect(mounted?.container.querySelector('.quick-search-empty')).toBeNull();
   });
 
@@ -451,6 +449,18 @@ describe('QuickSearch keyboard navigation', () => {
     ]);
     expect(selectedIndex()).toBe(-1);
     expect(input().value).toBe('');
+  });
+
+  it('searches the whole submenu on every keystroke, never inside the last hits', async () => {
+    await open();
+    await keydown('ArrowDown');
+    await keydown('Enter');
+
+    await type('Settings');
+    expect(rowNames()).not.toContain('Schema SQL');
+    await type('Schema');
+
+    expect(rowNames()[0]).toBe('Schema SQL');
   });
 
   it('keeps the submenu as the restore point for a cleared keyword', async () => {
@@ -795,33 +805,43 @@ describe('QuickSearch with no command matching', () => {
     expect(empty()).toBeNull();
   });
 
-  it('says no command matches once none is listed and none of the level holds the word', async () => {
+  it('lists for a word typed one key at a time, or deleted back, what it lists pasted in', async () => {
+    const steps = ['u', 'us', 'use', 'user', 'users'];
+    await open();
+    const pasted = new Map<string, string[]>();
+    for (const value of steps) {
+      await type('');
+      await type(value);
+      pasted.set(value, rowNames());
+    }
+    await type('');
+
+    for (const value of [...steps, ...steps.slice(0, -1).reverse()]) {
+      await type(value);
+      expect(rowNames()).toEqual(pasted.get(value));
+    }
+
+    expect(rowNames()).toContain('Auto Layout');
+    expect(rowNames().some(name => name.startsWith('Search'))).toBe(false);
+    expect(pasted.get('users')).toEqual([
+      'Zero One',
+      'Zero N',
+      ...offered('users'),
+    ]);
+    expect(empty()).toBeNull();
+  });
+
+  it('brings the commands back once a word that found none is replaced', async () => {
     await open();
 
-    for (const value of ['u', 'us', 'use', 'user', 'users']) {
-      await type(value);
-    }
-    // The narrowing left no command, and afresh users only fuzzes to two, which
-    // never hold it, so the list reads as it does for orders.
-    expect(rowNames()).toEqual(offered('users'));
-    expect(empty()?.textContent?.trim()).toBe('No commands match');
-
-    for (const value of ['user', 'use', 'us']) {
-      await type(value);
-      expect(rowNames()).toEqual(offered(value));
-      expect(empty()?.textContent?.trim()).toBe('No commands match');
-    }
-
-    // Auto Layout holds u, which the narrowing left behind.
-    await type('u');
-    expect(rowNames()).toEqual(offered('u'));
-    expect(empty()).toBeNull();
-
     await type('qqqq');
+    expect(rowNames()).toEqual(offered('qqqq'));
     expect(empty()?.textContent?.trim()).toBe('No commands match');
 
     await type('auto');
-    expect(rowNames()).toEqual(offered('auto'));
+
+    expect(rowNames()[0]).toBe('Auto Layout');
+    expect(rowNames().some(name => name.startsWith('Search'))).toBe(false);
     expect(empty()).toBeNull();
   });
 
@@ -841,13 +861,16 @@ describe('QuickSearch with no command matching', () => {
     expect(rowNames()[0]).toBe('users');
   });
 
-  it('offers the prefixes once the narrowing leaves no command, and the commands again once cleared', async () => {
+  it('says no command matches exactly while the list holds the prefixes alone, and lists the commands once cleared', async () => {
     await open();
 
-    for (const value of ['u', 'us', 'use', 'user', 'users']) {
+    for (const value of ['o', 'or', 'ord', 'orde', 'order', 'orders']) {
       await type(value);
+      const prefixesAlone = rowNames().every(name => name.startsWith('Search'));
+      expect(empty() !== null).toBe(prefixesAlone);
     }
-    expect(rowNames()).toEqual(offered('users'));
+    expect(rowNames()).toEqual(offered('orders'));
+    expect(empty()).not.toBeNull();
 
     await type('');
 
@@ -994,7 +1017,7 @@ describe('QuickSearch prefixes', () => {
     expect(scopeLabel()).toBeNull();
   });
 
-  it('searches the whole scope on each keystroke, while the list with no prefix still narrows', async () => {
+  it('searches the whole scope on each keystroke, as the list with no prefix does', async () => {
     await open();
     await type('#ord');
     expect(rowNames()).not.toContain('users');
@@ -1005,7 +1028,7 @@ describe('QuickSearch prefixes', () => {
     await type('Auto Layout');
 
     expect(scopeLabel()).toBeNull();
-    expect(rowNames()).not.toContain('Auto Layout');
+    expect(rowNames()[0]).toBe('Auto Layout');
   });
 
   it('finds a Hangul table name an IME composes one jamo at a time', async () => {

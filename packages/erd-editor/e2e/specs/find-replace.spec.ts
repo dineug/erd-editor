@@ -314,14 +314,14 @@ test.describe('quick search over columns, comments and memos', () => {
     const input = palette.locator('input');
 
     await erd.press(Shortcut.search);
-    await erd.page.keyboard.type('users');
+    await erd.page.keyboard.type('orders');
 
     await expect(rows).toHaveText([
-      /^#\s*Search tables for "users"$/,
-      /^@\s*Search columns for "users"$/,
-      /^"\s*Search comments & memos for "users"$/,
+      /^#\s*Search tables for "orders"$/,
+      /^@\s*Search columns for "orders"$/,
+      /^"\s*Search comments & memos for "orders"$/,
     ]);
-    // The narrowing left no command, and no command holds users.
+    // No command holds orders or even fuzzes to it.
     await expect(palette.locator('.quick-search-empty')).toHaveText(
       'No commands match'
     );
@@ -329,20 +329,56 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.page.keyboard.press('ArrowDown');
     await erd.page.keyboard.press('Enter');
 
-    await expect(input).toHaveValue('#users');
+    await expect(input).toHaveValue('#orders');
     await expect(input).toBeFocused();
     await expect(palette.locator('.quick-search-scope')).toHaveText('Tables');
     await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
 
     await erd.page.keyboard.press('ArrowDown');
-    await expect(palette.locator('.selected')).toHaveText(/^users/);
+    await expect(palette.locator('.selected')).toHaveText(/^orders/);
     await erd.page.keyboard.press('Enter');
 
     await expect(palette).toHaveCount(0);
-    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+    await expect(erd.tableEl('orders')).toHaveAttribute('data-selected', '');
   });
 
-  test('offers a table name pasted in, or left once its # is deleted, below the commands it fuzzes to', async ({
+  test('searches every command afresh on each keystroke, whatever the last one found', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    await erd.focusHost();
+    const palette = erd.host.locator('.quick-search');
+    const rows = palette.locator('.scrollbar > div');
+    const offered = palette.getByText(/Search tables for/);
+
+    await erd.press(Shortcut.search);
+    await erd.page.keyboard.type('qqqq');
+    await expect(palette.locator('.quick-search-empty')).toHaveText(
+      'No commands match'
+    );
+
+    await erd.page.keyboard.press('ControlOrMeta+KeyA');
+    await erd.page.keyboard.type('auto');
+
+    await expect(rows.first()).toHaveText(/^Auto Layout/);
+    await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
+    await expect(offered).toHaveCount(0);
+
+    await erd.page.keyboard.press('ControlOrMeta+KeyA');
+    await erd.page.keyboard.type('users');
+    await expect(rows.first()).toHaveText(/^Zero One/);
+    for (let press = 0; press < 4; press++) {
+      await erd.page.keyboard.press('Backspace');
+    }
+
+    await expect(palette.locator('input')).toHaveValue('u');
+    await expect(palette.getByText('Auto Layout', { exact: true })).toHaveCount(
+      1
+    );
+    await expect(offered).toHaveCount(0);
+  });
+
+  test('offers a table name typed, pasted in or left once its # is deleted, below the commands it fuzzes to', async ({
     erd,
   }) => {
     await erd.seed(schema());
@@ -359,10 +395,14 @@ test.describe('quick search over columns, comments and memos', () => {
     ];
 
     await erd.press(Shortcut.search);
-    await erd.page.keyboard.insertText('users');
+    await erd.page.keyboard.type('users');
 
     await expect(rows).toHaveText(listed);
     await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
+
+    await erd.page.keyboard.press('ControlOrMeta+KeyA');
+    await erd.page.keyboard.insertText('users');
+    await expect(rows).toHaveText(listed);
 
     for (const key of ['ArrowUp', 'ArrowUp', 'ArrowUp', 'Enter']) {
       await erd.page.keyboard.press(key);

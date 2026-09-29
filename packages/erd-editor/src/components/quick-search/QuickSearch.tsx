@@ -22,17 +22,11 @@ import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import {
-  Action,
-  createScopeActions,
-  keywordHolder,
-  searchActions,
-} from './actions';
+import { Action, createScopeActions, searchActions } from './actions';
 import { clearHangulForms, findPaletteChunks } from './hangul';
 import {
   PALETTE_PREFIXES,
   PaletteQuery,
-  PaletteScope,
   parsePaletteQuery,
   scopeLabel,
 } from './paletteQuery';
@@ -56,12 +50,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
   const state = observable({
     keyword: '',
-    prevActions: [] as Action[],
-    actions: [] as Action[],
+    /** Every row of the level shown, the top level or a submenu, which each keystroke searches afresh. */
+    level: [] as Action[],
     rows: [] as Action[],
     submenu: false,
-    scope: null as PaletteScope | null,
-    /** Whether the list shows no command for what is typed with no prefix, and none of the level holds it. */
+    /** Whether the search with no prefix finds no command of the level. */
     missed: false,
     index: -1,
   });
@@ -73,10 +66,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const getActions = () => byFilter(state.rows);
 
   const setLevel = (actions: Action[]) => {
-    state.prevActions = actions;
-    state.actions = scopeBase(actions, null);
-    state.rows = state.actions;
-    state.scope = null;
+    state.level = actions;
+    state.rows = scopeBase(actions, null);
     state.missed = false;
   };
 
@@ -93,32 +84,19 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
   const setActions = (value: string) => {
     const query = readQuery(value);
-    const base = scopeBase(state.prevActions, query.scope);
-    const search = (from: Action[]) =>
-      isEmpty(query.keyword)
-        ? base
-        : searchActions(byFilter(from), query.keyword);
-    // Only the unscoped list, the commands, narrows inside its last hits, as
-    // the owner pinned. A scope searches its whole base, and a prefix change
-    // restarts from the level.
-    const narrow = query.scope === null && state.scope === null;
+    const base = scopeBase(state.level, query.scope);
+    const noKeyword = isEmpty(query.keyword);
+    // Every keystroke searches the level's whole list, as VS Code's palette
+    // does, never the last hits: a word deleted or typed anew finds afresh.
+    const found = noKeyword
+      ? base
+      : searchActions(byFilter(base), query.keyword);
 
     state.index = -1;
-    state.scope = query.scope;
-    state.actions = search(narrow ? state.actions : base);
-    // Rows read from the document are looked up afresh on every keystroke,
-    // never narrowed from the last list, and only at the top level.
-    state.rows = state.submenu
-      ? state.actions
-      : paletteRows(app.value, state.actions, query);
-    // The narrowing can hide a command the level holds, so the line asks the
-    // whole level, by the rule the prefix rows read, never by a loose Fuse hit.
+    // Rows read from the document are looked up only at the top level.
+    state.rows = state.submenu ? found : paletteRows(app.value, found, query);
     state.missed =
-      !state.submenu &&
-      query.scope === null &&
-      !isEmpty(query.keyword) &&
-      !state.actions.length &&
-      !byFilter(base).some(keywordHolder(query.keyword));
+      !state.submenu && query.scope === null && !noKeyword && !found.length;
   };
 
   /** Types a prefix for the reader, as a help row or a hint does, and leaves the caret after it. */
@@ -133,8 +111,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   };
 
   /** The words a row lights up: the keyword as typed, or without its prefix, and a column search's table part. */
-  const getSearchWords = (): string[] => {
-    const { scope, keyword, table } = readQuery(state.keyword);
+  const getSearchWords = ({
+    scope,
+    keyword,
+    table,
+  }: PaletteQuery): string[] => {
     if (!scope) return [state.keyword];
     return table ? [keyword, table] : [keyword];
   };
@@ -294,7 +275,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     } = store.state;
     if (!openMap[Open.search]) return null;
 
-    const searchWords = getSearchWords();
+    const query = readQuery(state.keyword);
+    const searchWords = getSearchWords(query);
     const topLevel = !state.submenu;
 
     return (
@@ -309,9 +291,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
               onInput={handleInputKeyword}
               onKeydown={handleKeydown}
             />
-            {topLevel && state.scope ? (
+            {query.scope ? (
               <span class={['quick-search-scope', styles.scope]}>
-                {scopeLabel(state.scope)}
+                {scopeLabel(query.scope)}
               </span>
             ) : null}
           </div>
