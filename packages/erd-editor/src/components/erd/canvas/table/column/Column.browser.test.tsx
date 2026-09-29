@@ -26,6 +26,7 @@ import {
   TABLE_INSET,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
+import { getColumnCellSlots } from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
 import {
   COLUMN_DELETE_WIDTH,
@@ -34,14 +35,22 @@ import {
   COLUMN_NOT_NULL_WIDTH,
   INPUT_MARGIN_RIGHT,
 } from '@/constants/layout';
-import { ColumnOption, ColumnUIKey, Show } from '@/constants/schema';
+import {
+  ColumnOption,
+  ColumnType,
+  ColumnUIKey,
+  Show,
+} from '@/constants/schema';
 import {
   dragstartColumnAction,
   focusColumnAction,
   hoverColumnMapAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeColumnOrderAction,
+  changeShowAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction$,
@@ -557,29 +566,63 @@ describe('the alternate key mark', () => {
   const markOf = (stage: Stage) =>
     rowOf(stage).findOne<Text>('.column-alternate-key');
 
+  /** The right edge of every cell the row draws, in the order it lays them out. */
+  const cellEnds = ({ app, widths }: Fixture) =>
+    getColumnCellSlots(app.store.state, widths).map(
+      slot => slot.x + slot.width
+    );
+
   it('draws none while the table keeps no room for one', async () => {
     const { stage } = await setup({ props: { alternateKey: 'AK1.1' } });
 
     expect(markOf(stage)).toBeUndefined();
   });
 
-  it('stands after the key badge in the code face and moves the cells past it', async () => {
-    const { stage, theme } = await setup({
+  it('stands one margin past the last cell in the code face, the cells where they were', async () => {
+    const fixture = await setup({
       props: { widthAlternateKey: 34, alternateKey: 'AK1.2' },
     });
+    const { stage, theme } = fixture;
     const mark = markOf(stage) as Text;
-    const start = TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT;
+    const row = rowOf(stage);
 
     expect(mark.text()).toBe('AK1.2');
-    expect(mark.x()).toBe(start);
+    expect(mark.x()).toBe(Math.max(...cellEnds(fixture)) + INPUT_MARGIN_RIGHT);
     expect(mark.width()).toBe(34);
     expect(mark.fontFamily()).toBe(SCENE_CODE_FONT_FAMILY);
     expect(mark.fontSize()).toBe(SCENE_FONT_SIZE);
     expect(mark.fill()).toBe(theme.foreground);
     expect(mark.listening()).toBe(false);
-    expect(named<Group>(rowOf(stage), 'columnName').x()).toBe(
-      start + 34 + INPUT_MARGIN_RIGHT
+    expect(row.getChildren().indexOf(mark)).toBeGreaterThan(
+      row.getChildren().indexOf(named<Group>(row, 'columnComment'))
     );
+    expect(named<Group>(row, 'columnName').x()).toBe(
+      TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
+    );
+  });
+
+  it('stays last when the settings order the comment first', async () => {
+    const fixture = await setup({
+      props: { widthAlternateKey: 34, alternateKey: 'AK1.1' },
+      prepare: ({ store }) => {
+        store.dispatchSync(
+          changeColumnOrderAction({
+            value: ColumnType.columnComment,
+            target: ColumnType.columnName,
+          })
+        );
+      },
+    });
+    const row = rowOf(fixture.stage);
+    const mark = markOf(fixture.stage) as Text;
+
+    expect(fixture.app.store.state.settings.columnOrder[0]).toBe(
+      ColumnType.columnComment
+    );
+    expect(named<Group>(row, 'columnComment').x()).toBe(
+      TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
+    );
+    expect(mark.x()).toBe(Math.max(...cellEnds(fixture)) + INPUT_MARGIN_RIGHT);
   });
 
   it('keeps the room empty in a row that is in no key', async () => {

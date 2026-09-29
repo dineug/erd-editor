@@ -15,8 +15,11 @@ import {
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_UNIQUE_WIDTH,
 } from '@/constants/layout';
-import { Show } from '@/constants/schema';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import { ColumnType, Show } from '@/constants/schema';
+import {
+  changeColumnOrderAction,
+  changeShowAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -97,27 +100,40 @@ describe('visualization Column', () => {
       expect(markOf(mounted)).toBeNull();
     });
 
-    it('draws the mark after the key icon in the room the table keeps', async () => {
-      mounted = await mountAndFlush(
-        html`
-          <${Column}
-            column=${column}
-            widthName=${WIDTH_NAME}
-            widthDataType=${WIDTH_DATA_TYPE}
-            widthDefault=${WIDTH_DEFAULT}
-            widthComment=${WIDTH_COMMENT}
-            widthAlternateKey=${37}
-            alternateKey=${'AK1.2'}
-          />
-        `,
-        app
-      );
+    const marked = () => html`
+      <${Column}
+        column=${column}
+        widthName=${WIDTH_NAME}
+        widthDataType=${WIDTH_DATA_TYPE}
+        widthDefault=${WIDTH_DEFAULT}
+        widthComment=${WIDTH_COMMENT}
+        widthAlternateKey=${37}
+        alternateKey=${'AK1.2'}
+      />
+    `;
+
+    it('draws the mark last, after every cell, in the room the table keeps', async () => {
+      mounted = await mountAndFlush(marked(), app);
       const mark = markOf(mounted) as HTMLElement;
 
-      expect(rootOf(mounted).children[1]).toBe(mark);
+      expect(rootOf(mounted).lastElementChild).toBe(mark);
+      expect(cellTexts(mounted).at(-2)).toBe('comment');
       expect(mark.textContent).toBe('AK1.2');
       expect(mark.style.width).toBe('37px');
       expect(mark.style.fontFamily).toBe('var(--code-font-family)');
+    });
+
+    it('stays last when the settings order the comment first', async () => {
+      app.store.dispatchSync(
+        changeColumnOrderAction({
+          value: ColumnType.columnComment,
+          target: ColumnType.columnName,
+        })
+      );
+      mounted = await mountAndFlush(marked(), app);
+
+      expect(cellTexts(mounted)[0]).toBe('comment');
+      expect(rootOf(mounted).lastElementChild).toBe(markOf(mounted));
     });
 
     it('leaves the room empty in a row that is in no key', async () => {

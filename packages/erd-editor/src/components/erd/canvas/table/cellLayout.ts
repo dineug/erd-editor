@@ -34,10 +34,10 @@ import {
 } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
-/** The widths a column row measures from its table; the rest are fixed. */
+/** The four widths a column row measures from its table; the rest are fixed. */
 export type ColumnCellWidths = Pick<
   ColumnWidth,
-  'alternateKey' | 'comment' | 'dataType' | 'default' | 'name'
+  'comment' | 'dataType' | 'default' | 'name'
 >;
 
 /** One editable box on a table, positioned inside the table's own group. */
@@ -168,27 +168,22 @@ export function getCellTextHeight(fontFamily?: string): number {
   return (getCellTextBaseline(fontFamily) - (ascent - descent) / 2) * 2;
 }
 
-/** Where a document row's alternate key mark starts, past the key badge. */
-export const ALTERNATE_KEY_MARK_X =
-  TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT;
+/** Where a column row's cells start, past the key badge its own source sizes. */
+export function getColumnCellsX(source: GeometrySource = 'document'): number {
+  return source === 'document'
+    ? TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
+    : TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP;
+}
 
 /**
- * Where a column row's cells start, past the key badge its own source sizes
- * and, in the document, the room its table keeps for alternate key marks. A
- * view draws no mark.
+ * Where a document row's alternate key mark starts: one margin past the last
+ * of the cells given, whatever order the settings put them in. The mark is
+ * derived, so it is no cell of that order and nothing focuses, edits or moves it.
  */
-export function getColumnCellsX(
-  source: GeometrySource = 'document',
-  alternateKey = 0
-): number {
-  if (source !== 'document') {
-    return TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP;
-  }
+export function getAlternateKeyMarkX(slots: ColumnCellSlot[]): number {
+  const last = slots[slots.length - 1];
 
-  return (
-    ALTERNATE_KEY_MARK_X +
-    (alternateKey ? alternateKey + INPUT_MARGIN_RIGHT : 0)
-  );
+  return last ? last.x + last.width + INPUT_MARGIN_RIGHT : getColumnCellsX();
 }
 
 /** The comment width a table draws at, clamped by the setting when it is set. */
@@ -301,7 +296,7 @@ export function getColumnCellSlots(
 ): ColumnCellSlot[] {
   const { settings } = state;
   const slots: ColumnCellSlot[] = [];
-  let cursor = getColumnCellsX(source, widths.alternateKey);
+  let cursor = getColumnCellsX(source);
   const order =
     source === 'document' ? settings.columnOrder : VIEW_COLUMN_ORDER;
 

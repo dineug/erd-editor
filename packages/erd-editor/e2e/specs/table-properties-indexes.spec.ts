@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../support/fixtures';
-import { ErdEditorPage } from '../support/ErdEditorPage';
+import { type Box, ErdEditorPage } from '../support/ErdEditorPage';
 import { dragListInPage, framesOutOfOrder } from '../support/listDrag';
 import {
   ColumnOption,
@@ -349,5 +349,92 @@ test.describe('table properties — indexes tab', () => {
     await unique.click();
     await expect.poll(() => mark('student_email')).toBe('AK1.1');
     await expect.poll(() => mark('student_age')).toBe('AK1.2');
+  });
+
+  test('draws each alternate key mark last in its row, whatever the column order', async ({
+    erd,
+  }) => {
+    const document = createSchema({
+      show: DEFAULT_SHOW | Show.columnAlternateKey,
+      tables: [
+        {
+          id: 'student',
+          name: 'student',
+          x: 160,
+          y: 160,
+          columns: [
+            { id: 'student_id', name: 'id', dataType: 'int', comment: 'key' },
+            {
+              id: 'student_email',
+              name: 'email',
+              dataType: 'varchar(255)',
+              comment: 'address',
+            },
+          ],
+        },
+      ],
+      indexes: [
+        {
+          id: 'uq_student',
+          tableId: 'student',
+          unique: true,
+          columns: [
+            { id: 'uq_student_id', columnId: 'student_id' },
+            { id: 'uq_student_email', columnId: 'student_email' },
+          ],
+        },
+      ],
+    });
+    const columnIds = ['student_id', 'student_email'];
+    const right = (box: Box) => box.x + box.width;
+    const boxOf = (columnId: string, name: string) =>
+      erd.sceneBox([`#column-${columnId}`, `.${name}`]);
+    /** The gap a row keeps between two cells, which the mark keeps too. */
+    const gapOf = async (columnId: string) =>
+      (await boxOf(columnId, 'columnDataType')).x -
+      right(await boxOf(columnId, 'columnName'));
+
+    await erd.seed(document);
+    await expect
+      .poll(() =>
+        erd.sceneAttr(['#column-student_id', '.column-alternate-key'], 'text')
+      )
+      .toBe('AK1.1');
+
+    const header = await erd.sceneBox(['#table-student', '.tableName']);
+    for (const columnId of columnIds) {
+      const mark = await boxOf(columnId, 'column-alternate-key');
+      const comment = await boxOf(columnId, 'columnComment');
+
+      expect((await boxOf(columnId, 'columnName')).x).toBeCloseTo(header.x, 1);
+      expect(mark.x).toBeCloseTo(right(comment) + (await gapOf(columnId)), 1);
+    }
+
+    // The comment first: the mark does not move with it and stays last.
+    document.settings.columnOrder = [64, 1, 2, 4, 8, 16, 32];
+    await erd.seed(document);
+    await expect
+      .poll(
+        async () =>
+          (await boxOf('student_id', 'columnComment')).x <
+          (await boxOf('student_id', 'columnName')).x
+      )
+      .toBe(true);
+
+    for (const columnId of columnIds) {
+      const mark = await boxOf(columnId, 'column-alternate-key');
+      const last = await boxOf(columnId, 'columnDefault');
+
+      expect(mark.x).toBeCloseTo(right(last) + (await gapOf(columnId)), 1);
+      expect(mark.x).toBeGreaterThan(
+        right(await boxOf(columnId, 'columnComment'))
+      );
+    }
+    expect(
+      await erd.sceneAttr(
+        ['#column-student_email', '.column-alternate-key'],
+        'text'
+      )
+    ).toBe('AK1.2');
   });
 });

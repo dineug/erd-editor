@@ -7,9 +7,9 @@ import {
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
-  ALTERNATE_KEY_MARK_X,
   CELL_UNDERLINE_Y,
   type ColumnCellWidths,
+  getAlternateKeyMarkX,
   getCellTextBaseline,
   getCellTextHeight,
   getColumnCellSlots,
@@ -49,7 +49,6 @@ import { viewHeaderNameWidth } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 
 const WIDTHS: ColumnCellWidths = {
-  alternateKey: 0,
   name: 60,
   comment: 70,
   dataType: 80,
@@ -162,15 +161,6 @@ describe('the boxes a column row lays out', () => {
     ]);
   });
 
-  it('starts past the room its table keeps for alternate key marks', () => {
-    const state = createState();
-    state.settings.columnOrder = [ColumnType.columnName];
-
-    expect(
-      getColumnCellSlots(state, { ...WIDTHS, alternateKey: 34 })[0].x
-    ).toBe(getColumnCellsX() + 34 + INPUT_MARGIN_RIGHT);
-  });
-
   it('leaves out a cell its show bit is off for, and closes the gap', () => {
     const state = createState(Show.columnUnique);
     state.settings.columnOrder = [
@@ -223,6 +213,49 @@ describe('the boxes a column row lays out', () => {
         width: 60,
       },
     ]);
+  });
+});
+
+describe('where a row puts its alternate key mark', () => {
+  const ends = (state: RootState) =>
+    getColumnCellSlots(state, WIDTHS).map(slot => slot.x + slot.width);
+
+  it('stands one margin past the last cell, the cells where they were', () => {
+    const state = createState(Show.columnDataType);
+    state.settings.columnOrder = [
+      ColumnType.columnName,
+      ColumnType.columnDataType,
+    ];
+    const slots = getColumnCellSlots(state, WIDTHS);
+
+    expect(slots[0].x).toBe(getColumnCellsX());
+    expect(getAlternateKeyMarkX(slots)).toBe(
+      getColumnCellsX() + 60 + INPUT_MARGIN_RIGHT + 80 + INPUT_MARGIN_RIGHT
+    );
+  });
+
+  it('stays last whatever order the settings put the cells in', () => {
+    const state = createState(
+      Show.columnComment | Show.columnDataType | Show.columnNotNull
+    );
+    state.settings.columnOrder = [
+      ColumnType.columnComment,
+      ColumnType.columnNotNull,
+      ColumnType.columnName,
+      ColumnType.columnDataType,
+    ];
+    const slots = getColumnCellSlots(state, WIDTHS);
+    const x = getAlternateKeyMarkX(slots);
+
+    expect(slots.map(slot => slot.columnType)).toEqual(
+      state.settings.columnOrder
+    );
+    expect(x).toBe(Math.max(...ends(state)) + INPUT_MARGIN_RIGHT);
+    expect(slots.every(slot => slot.x < x)).toBe(true);
+  });
+
+  it('takes the place of the first cell while the row lays out none', () => {
+    expect(getAlternateKeyMarkX([])).toBe(getColumnCellsX());
   });
 });
 
@@ -335,21 +368,13 @@ describe('the offsets a source lays its cells out at', () => {
 
   it('starts the cells past the badge its own source sizes', () => {
     expect(getColumnCellsX()).toBe(getColumnCellsX('document'));
-    expect(getColumnCellsX()).toBe(ALTERNATE_KEY_MARK_X);
-    expect(ALTERNATE_KEY_MARK_X).toBe(
+    expect(getColumnCellsX()).toBe(
       TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
     );
     expect(getColumnCellsX('flow')).toBe(
       TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP
     );
     expect(getColumnCellsX('flow')).toBeGreaterThan(getColumnCellsX());
-  });
-
-  it('puts a document row cell past the alternate key room, and no view cell', () => {
-    expect(getColumnCellsX('document', 40)).toBe(
-      ALTERNATE_KEY_MARK_X + 40 + INPUT_MARGIN_RIGHT
-    );
-    expect(getColumnCellsX('flow', 40)).toBe(getColumnCellsX('flow'));
   });
 
   /**

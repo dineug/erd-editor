@@ -36,7 +36,7 @@ import {
   TABLE_HEADER_ICON_SIZE,
   TABLE_PADDING,
 } from '@/constants/layout';
-import { Show } from '@/constants/schema';
+import { ColumnType, Show } from '@/constants/schema';
 import {
   dragendColumnAction,
   editTableAction,
@@ -58,6 +58,7 @@ import {
 } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import {
+  changeColumnOrderAction,
   changeMaxWidthCommentAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -874,6 +875,110 @@ describe('the alternate key marks a table shows', () => {
     await settle();
 
     expect(marksOf(stage)).toEqual([]);
+  });
+
+  /** Every row's mark, and the cells it is drawn after, in scene x. */
+  const rowsOf = (stage: Stage) =>
+    rootOf(stage)
+      .find<Group>('.column-row')
+      .map(row => ({
+        mark: named<Text>(row, 'column-alternate-key'),
+        cells: row
+          .find<Group>('.column-col')
+          .filter(cell => !cell.hasName('column-key')),
+        remove: named<Group>(row, 'column-remove'),
+      }));
+
+  it('leaves the column names in line with the header name', async () => {
+    const { app, stage } = await keyed();
+    const nameX = () =>
+      named<Group>(
+        rootOf(stage).findOne<Group>('.column-row') as Group,
+        FocusType.columnName
+      ).getAbsolutePosition().x;
+    const before = nameX();
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+
+    expect(marksOf(stage)).toEqual(['AK1.2', '', 'AK1.1']);
+    expect(nameX()).toBe(before);
+    expect(nameX()).toBe(
+      named<Group>(rootOf(stage), FocusType.tableName).getAbsolutePosition().x
+    );
+  });
+
+  const reorders: Array<
+    [string, () => Array<ReturnType<typeof changeColumnOrderAction>>]
+  > = [
+    ['the order the settings start with', () => []],
+    [
+      'the comment ordered first',
+      () => [
+        changeColumnOrderAction({
+          value: ColumnType.columnComment,
+          target: ColumnType.columnName,
+        }),
+      ],
+    ],
+  ];
+
+  it.each(reorders)(
+    'stands every mark past the last cell of its row, with %s',
+    async (_, reorder) => {
+      const { app, stage } = await keyed();
+
+      app.store.dispatchSync(
+        ...reorder(),
+        changeShowAction({ show: Show.columnAlternateKey, value: true })
+      );
+      await settle();
+
+      for (const { mark, cells, remove } of rowsOf(stage)) {
+        const ends = cells.map(
+          cell => cell.x() + named<Text>(cell, 'cell-text').width()
+        );
+
+        expect(cells.length).toBeGreaterThan(1);
+        expect(mark.x()).toBe(Math.max(...ends) + INPUT_MARGIN_RIGHT);
+        expect(mark.x() + mark.width()).toBeLessThanOrEqual(remove.x());
+      }
+    }
+  );
+
+  /**
+   * A mark answers no hit, so a pointer on it lands on the row behind, as one
+   * between two cells does: the table is selected, and no cell takes the focus
+   * or opens an editor.
+   */
+  it('hands a press on a mark to its row, which focuses and edits no cell', async () => {
+    const { app, stage } = await keyed();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+    await whenPainted();
+
+    const [{ mark }] = rowsOf(stage);
+    const box = mark.getClientRect({ relativeTo: stage });
+    const hit = stage.getIntersection({
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+    }) as KonvaNode;
+
+    expect(hit.name()).toBe('column-row-background');
+
+    fireScenePointer(hit, 'mousedown', { button: 0 });
+    releasePointer();
+    fireScenePointer(hit, 'dblclick', { detail: 2 });
+    await settle();
+
+    const { focusTable } = app.store.state.editor;
+    expect(focusTable?.focusType).toBe(FocusType.tableName);
+    expect(focusTable?.columnId ?? null).toBeNull();
+    expect(focusTable?.edit).toBe(false);
   });
 });
 

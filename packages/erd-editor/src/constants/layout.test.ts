@@ -186,7 +186,7 @@ describe('layout constants', () => {
 
   it('sizes an alternate key mark by the code face advance at the cell size', () => {
     expect(COLUMN_ALTERNATE_KEY_CHAR_WIDTH).toBeCloseTo(CELL_FONT_SIZE * 0.61);
-    // Room enough for AK1.1 before the name, and never the width of a name.
+    // Room enough for AK1.1 after the last cell, and never the width of a name.
     expect(Math.ceil('AK1.1'.length * COLUMN_ALTERNATE_KEY_CHAR_WIDTH)).toBe(
       37
     );

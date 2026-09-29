@@ -55,9 +55,9 @@ export function invalidateTableWidths() {
 }
 
 /**
- * The room the key area keeps for the table's alternate key marks after its
- * key badge: the longest mark, or none while the marks are hidden or the table
- * has none, so only a table that shows one widens.
+ * The room a row keeps for the table's alternate key marks after its last
+ * cell: the longest mark, or none while the marks are hidden or the table has
+ * none, so only a table that shows one widens.
  */
 export function calcAlternateKeyWidth(table: Table, state: RootState): number {
   if (!bHas(state.settings.show, Show.columnAlternateKey)) return 0;
@@ -160,7 +160,7 @@ function calcDefaultWidthColumns(show: number) {
 
 export type ColumnWidth = {
   width: number;
-  /** The alternate key marks' room in the key area, 0 while none is drawn. */
+  /** The alternate key marks' room after a row's last cell, 0 while none is drawn. */
   alternateKey: number;
   name: number;
   comment: number;

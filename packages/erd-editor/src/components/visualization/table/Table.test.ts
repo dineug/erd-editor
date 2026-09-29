@@ -118,6 +118,11 @@ describe('visualization Table', () => {
       mounted = await mountAndFlush(tableTemplate(table), app);
 
       expect(marksOf(mounted)).toEqual(['AK1.2', 'AK1.1']);
+      expect(
+        Array.from(mounted.container.querySelectorAll('.column-row')).map(row =>
+          row.lastElementChild?.hasAttribute('data-alternate-key')
+        )
+      ).toEqual([true, true]);
     });
   });
 
