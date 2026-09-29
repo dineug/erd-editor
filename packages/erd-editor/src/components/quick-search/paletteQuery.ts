@@ -66,19 +66,26 @@ const scopeOf = (value: string) =>
 export const scopeLabel = (scope: PaletteScope): string =>
   PALETTE_PREFIXES.find(prefix => prefix.scope === scope)?.label ?? '';
 
+/** What follows a prefix, trimmed; a free text search may close on the quote it opened with. */
+const readRest = (rest: string, scope: PaletteScope): string =>
+  scope === PaletteScope.text
+    ? rest.trim().replace(/"$/, '').trim()
+    : rest.trim();
+
 /**
  * Reads what is typed into the palette: a prefix counts only as the first
  * character, a space may follow it, and a column search splits on its first dot.
  *
  * @example
  * parsePaletteQuery('@users.em'); // { scope: 'columns', keyword: 'em', table: 'users' }
+ * parsePaletteQuery('"login email"'); // { scope: 'text', keyword: 'login email', table: null }
  */
 export function parsePaletteQuery(value: string): PaletteQuery {
   const found = scopeOf(value);
   if (!found) return { scope: null, keyword: value.trim(), table: null };
 
   const { prefix, scope } = found;
-  const rest = value.slice(prefix.length).trim();
+  const rest = readRest(value.slice(prefix.length), scope);
   const dot = scope === PaletteScope.columns ? rest.indexOf('.') : -1;
 
   return dot === -1

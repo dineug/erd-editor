@@ -96,6 +96,24 @@ describe('parsePaletteQuery', () => {
     });
   });
 
+  it('drops the one quote a free text search closes on, and no other', () => {
+    expect(parsePaletteQuery('"login email"')).toEqual({
+      scope: PaletteScope.text,
+      keyword: 'login email',
+      table: null,
+    });
+    expect(parsePaletteQuery('" user " ')).toMatchObject({ keyword: 'user' });
+    expect(parsePaletteQuery('"say "hi""')).toMatchObject({
+      keyword: 'say "hi"',
+    });
+    expect(parsePaletteQuery('""')).toMatchObject({
+      scope: PaletteScope.text,
+      keyword: '',
+    });
+    expect(parsePaletteQuery('#users"')).toMatchObject({ keyword: 'users"' });
+    expect(parsePaletteQuery('@users.em"')).toMatchObject({ keyword: 'em"' });
+  });
+
   it('keeps a dot in the keyword of every other scope', () => {
     expect(parsePaletteQuery('"users.id')).toMatchObject({
       keyword: 'users.id',

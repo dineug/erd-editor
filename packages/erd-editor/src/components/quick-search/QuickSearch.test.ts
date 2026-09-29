@@ -856,6 +856,11 @@ describe('QuickSearch prefixes', () => {
 
     expect(rowNames()).toEqual(['user id', 'Every user_id points at users.id']);
     expect(scopeLabel()).toBe('Comments & memos');
+
+    await type('"user id"');
+
+    expect(rowNames()).toEqual(['user id']);
+    expect(highlighted(rows()[0])).toEqual(['user id']);
   });
 
   it('hands a scoped search to Find and Replace with its scopes set', async () => {
