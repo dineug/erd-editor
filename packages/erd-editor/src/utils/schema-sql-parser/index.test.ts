@@ -58,6 +58,12 @@ const relationshipsOf = (schema: Schema): Relationship[] =>
 const indexesOf = (schema: Schema): Index[] =>
   schema.doc.indexIds.map(id => schema.collections.indexEntities[id]);
 
+const commentsOf = (schema: Schema) =>
+  tablesOf(schema).flatMap(table => [
+    table.comment,
+    ...columnsOf(schema, table).map(column => column.comment),
+  ]);
+
 describe('schemaSQLParserToSchemaJson', () => {
   it('produces a v3 schema envelope for an empty source', () => {
     const schema = parse('');
@@ -753,12 +759,6 @@ describe('schemaSQLParserToSchemaJson', () => {
     // A dump doubles the quote inside a comment, and the import keeps one;
     // the export has to double it again or the comment ends early. Databricks
     // escapes it with a backslash instead, which the importer does not read.
-    const commentsOf = (schema: Schema) =>
-      tablesOf(schema).flatMap(table => [
-        table.comment,
-        ...columnsOf(schema, table).map(column => column.comment),
-      ]);
-
     it.each<[string, number, string]>([
       [
         'MySQL',
@@ -953,6 +953,145 @@ describe('schemaSQLParserToSchemaJson', () => {
         expect(typesOf(imported)).toEqual(expected);
         expected.forEach(dataType => expect(exported).toContain(dataType));
         expect(typesOf(parse(exported))).toEqual(expected);
+      }
+    );
+
+    // Trimmed from what pg_dump, mysqldump and Oracle's DBMS_METADATA wrote
+    // for one table of such types: the statements around it add no table, and
+    // its types and comments come back from its export.
+    const pgDump = String.raw`\restrict rHceboc659NUboYi98abcJftPQutfMfMXtYVs6L50FjUjGd4smdAC3en7CNg1ih
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
+CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS ltree WITH SCHEMA public;
+CREATE DOMAIN public."Money Amount" AS numeric(12,2);
+ALTER DOMAIN public."Money Amount" OWNER TO postgres;
+CREATE TYPE public."MyType" AS (
+    a integer,
+    b text
+);
+ALTER TYPE public."MyType" OWNER TO postgres;
+CREATE TYPE public.mood AS ENUM (
+    'sad',
+    'ok',
+    'happy'
+);
+CREATE DOMAIN public.us_postal AS text
+    CONSTRAINT us_postal_check CHECK ((VALUE ~ '^\d{5}$'::text));
+CREATE TABLE public.person (
+    id integer NOT NULL,
+    current_mood public.mood NOT NULL,
+    mood_q public.mood,
+    zip public.us_postal,
+    email public.citext,
+    attrs public.hstore,
+    path public.ltree,
+    kind public."MyType",
+    amount public."Money Amount",
+    tags public.mood[],
+    grid text[],
+    scores integer[],
+    fixed integer[],
+    label character varying(20) DEFAULT 'it''s'::character varying,
+    created timestamp with time zone
+);
+ALTER TABLE public.person OWNER TO postgres;
+COMMENT ON TABLE public.person IS 'o''k';
+COMMENT ON COLUMN public.person.id IS 'it''s the id';
+CREATE SEQUENCE public.person_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER SEQUENCE public.person_id_seq OWNED BY public.person.id;
+ALTER TABLE ONLY public.person
+    ADD CONSTRAINT person_pkey PRIMARY KEY (id);
+\unrestrict rHceboc659NUboYi98abcJftPQutfMfMXtYVs6L50FjUjGd4smdAC3en7CNg1ih`;
+    const mysqlDump = `/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+DROP TABLE IF EXISTS \`film\`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE \`film\` (
+  \`id\` int NOT NULL AUTO_INCREMENT,
+  \`rating\` enum('G','PG-13','it''s') NOT NULL DEFAULT 'G' COMMENT 'it''s rated',
+  \`features\` set('Trailers','Deleted Scenes') DEFAULT NULL,
+  \`blank\` enum('G','') DEFAULT 'G',
+  \`price\` decimal(5,2) DEFAULT NULL,
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='o''k';
+/*!40101 SET character_set_client = @saved_cs_client */;`;
+    const oracleDdl = `  CREATE TABLE "HR"."SHAPE"
+   (    "ID" NUMBER(10,0) NOT NULL ENABLE,
+        "DOC" "SYS"."XMLTYPE" ,
+        "ADDR" "HR"."ADDRESS_T" ,
+        "LABEL" VARCHAR2(20) DEFAULT 'it''s',
+         CONSTRAINT "PK_SHAPE" PRIMARY KEY ("ID")
+  USING INDEX  ENABLE
+   ) ;
+
+   COMMENT ON COLUMN "HR"."SHAPE"."ID" IS 'it''s the id';
+   COMMENT ON TABLE "HR"."SHAPE"  IS 'o''k';`;
+
+    it.each<[string, number, string, string[], string[]]>([
+      [
+        'pg_dump',
+        Database.PostgreSQL,
+        pgDump,
+        [
+          'integer',
+          'public.mood',
+          'public.mood',
+          'public.us_postal',
+          'public.citext',
+          'public.hstore',
+          'public.ltree',
+          'public."MyType"',
+          'public."Money Amount"',
+          'public.mood[]',
+          'text[]',
+          'integer[]',
+          'integer[]',
+          'character varying(20)',
+          'timestamp with time zone',
+        ],
+        ["o'k", "it's the id", ...Array(14).fill('')],
+      ],
+      [
+        'mysqldump',
+        Database.MySQL,
+        mysqlDump,
+        [
+          'int',
+          "enum('G','PG-13','it''s')",
+          "set('Trailers','Deleted Scenes')",
+          "enum('G','')",
+          'decimal(5,2)',
+        ],
+        ["o'k", '', "it's rated", '', '', ''],
+      ],
+      [
+        'DBMS_METADATA',
+        Database.Oracle,
+        oracleDdl,
+        ['NUMBER(10,0)', '"SYS"."XMLTYPE"', '"HR"."ADDRESS_T"', 'VARCHAR2(20)'],
+        ["o'k", "it's the id", '', '', ''],
+      ],
+    ])(
+      'keeps the types and comments of what %s wrote through its export',
+      (_, database, sql, types, comments) => {
+        const imported = parse(sql);
+        const exported = parse(createSchemaSQL(stateOf(imported), database));
+
+        expect(tablesOf(imported)).toHaveLength(1);
+        expect(typesOf(imported)).toEqual(types);
+        expect(commentsOf(imported)).toEqual(comments);
+        expect(tablesOf(exported)).toHaveLength(1);
+        expect(typesOf(exported)).toEqual(types);
+        expect(commentsOf(exported)).toEqual(comments);
       }
     );
   });
