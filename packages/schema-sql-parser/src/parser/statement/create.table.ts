@@ -344,7 +344,21 @@ function createTableColumnsParser(
     }
 
     // a_id INT REFERENCES a (id) ON DELETE CASCADE keys the column it ends.
-    if (column.name && !constraintItem && isReferences($pos.value)) {
+    // SQL Server and Snowflake may write FOREIGN KEY before the REFERENCES.
+    const inlineForeignKey =
+      isForeign($pos.value) &&
+      isKey($pos.value + 1) &&
+      isReferences($pos.value + 2);
+
+    if (
+      column.name &&
+      !constraintItem &&
+      (isReferences($pos.value) || inlineForeignKey)
+    ) {
+      if (inlineForeignKey) {
+        $pos.value += 2;
+      }
+
       const foreignKey: ForeignKey = {
         columnNames: [column.name],
         refTableName: '',
@@ -745,9 +759,12 @@ export function parserForeignKeyParser(
 
     referencesParser(tokens, $pos, foreignKey);
 
+    // No referenced column list names the referenced table's primary key.
     if (
       foreignKey.columnNames.length &&
-      foreignKey.columnNames.length === foreignKey.refColumnNames.length
+      foreignKey.refTableName &&
+      (!foreignKey.refColumnNames.length ||
+        foreignKey.columnNames.length === foreignKey.refColumnNames.length)
     ) {
       return foreignKey;
     }

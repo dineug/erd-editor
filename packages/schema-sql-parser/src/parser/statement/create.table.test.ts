@@ -950,6 +950,36 @@ describe('createTableParser - constraint and index items', () => {
     ]);
   });
 
+  it('keys the column an inline FOREIGN KEY REFERENCES ends, named or not', () => {
+    for (const constraint of ['', 'CONSTRAINT fk_a ']) {
+      const { ast } = parse(
+        `CREATE TABLE b (a_id INT ${constraint}FOREIGN KEY REFERENCES a (id) ON DELETE CASCADE, c INT NOT NULL FOREIGN KEY REFERENCES a, d INT);`
+      );
+
+      expect(ast.columns).toEqual([
+        column({ name: 'a_id', dataType: 'INT' }),
+        column({ name: 'c', dataType: 'INT', nullable: false }),
+        column({ name: 'd', dataType: 'INT' }),
+      ]);
+      expect(ast.foreignKeys).toEqual([
+        {
+          columnNames: ['a_id'],
+          refTableName: 'a',
+          refColumnNames: ['id'],
+          onDelete: ReferentialAction.cascade,
+          onUpdate: '',
+        },
+        {
+          columnNames: ['c'],
+          refTableName: 'a',
+          refColumnNames: [],
+          onDelete: '',
+          onUpdate: '',
+        },
+      ]);
+    }
+  });
+
   it('reads the column attributes that follow an inline REFERENCES', () => {
     const { ast } = parse(
       "CREATE TABLE b (a_id INT REFERENCES a (id) NOT NULL DEFAULT 1 COMMENT 'x');"
@@ -1325,10 +1355,19 @@ describe('parserForeignKeyParser', () => {
     expect(foreignKey).toBeNull();
   });
 
-  it('returns null when the referenced column list is missing', () => {
-    const { foreignKey } = parseForeignKey('FOREIGN KEY (a) REFERENCES o');
+  it('keeps a key with no referenced column list, the referenced primary key', () => {
+    const { foreignKey, $pos, tokens } = parseForeignKey(
+      'FOREIGN KEY (a, b) REFERENCES o ON DELETE CASCADE, c INT'
+    );
 
-    expect(foreignKey).toBeNull();
+    expect(foreignKey).toEqual({
+      columnNames: ['a', 'b'],
+      refTableName: 'o',
+      refColumnNames: [],
+      onDelete: ReferentialAction.cascade,
+      onUpdate: '',
+    });
+    expect(tokens[$pos.value].value).toBe(',');
   });
 
   it('returns null when the column counts differ', () => {

@@ -64,9 +64,8 @@ export type Index = {
 };
 
 /**
- * An inline column REFERENCES without a column list leaves refColumnNames
- * empty: it names the referenced table's primary key. An absent ON DELETE or
- * ON UPDATE clause is ''.
+ * A REFERENCES without a column list leaves refColumnNames empty: it names the
+ * referenced table's primary key. An absent ON DELETE or ON UPDATE clause is ''.
  */
 export type ForeignKey = {
   columnNames: string[];

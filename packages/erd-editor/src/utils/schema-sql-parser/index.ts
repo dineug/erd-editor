@@ -101,8 +101,8 @@ function getStatementMap(statements: Statement[]): StatementMap {
           statement.name &&
           statement.columnNames.length &&
           statement.refTableName &&
-          statement.refColumnNames.length &&
-          statement.columnNames.length === statement.refColumnNames.length
+          (!statement.refColumnNames.length ||
+            statement.columnNames.length === statement.refColumnNames.length)
         ) {
           map.foreignKeys.push(statement);
         }
@@ -276,7 +276,7 @@ function convertRelationship(
       const startColumns: Column[] = [];
       const endColumns: Column[] = [];
 
-      // An inline REFERENCES t without a column list names t's primary key.
+      // A REFERENCES t without a column list names t's primary key.
       if (foreignKey.refColumnNames.length) {
         foreignKey.refColumnNames.forEach(refColumnName => {
           const column = findByName(sColumns, refColumnName);
@@ -290,7 +290,6 @@ function convertRelationship(
             bHas(column.ui.keys, ColumnUIKey.primaryKey)
           )
         );
-        if (startColumns.length !== foreignKey.columnNames.length) return;
       }
 
       foreignKey.columnNames.forEach(columnName => {
@@ -298,6 +297,15 @@ function convertRelationship(
         if (!column) return;
 
         endColumns.push(column);
+      });
+
+      // A column either table lacks would leave a side short or empty, and the
+      // DDL written from it would reference nothing.
+      if (!startColumns.length || startColumns.length !== endColumns.length) {
+        return;
+      }
+
+      endColumns.forEach(column => {
         if (bHas(column.ui.keys, ColumnUIKey.primaryKey)) {
           column.ui.keys |= ColumnUIKey.foreignKey;
         } else {

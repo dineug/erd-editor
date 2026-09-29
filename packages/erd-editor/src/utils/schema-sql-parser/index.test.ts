@@ -445,39 +445,36 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(columnByName(schema, posts, 'user_id').ui.keys).toBe(0);
     });
 
-    it('drops unresolvable columns from the relationship endpoints', () => {
-      const schema = parse(`
+    it.each([
+      [
+        'an end column',
+        'ALTER TABLE posts ADD FOREIGN KEY (nope) REFERENCES users (id);',
+      ],
+      [
+        'a referenced column',
+        'ALTER TABLE posts ADD FOREIGN KEY (user_id) REFERENCES users (nope);',
+      ],
+      [
+        'a referenced column inline',
+        'CREATE TABLE notes (user_id INT REFERENCES users (uid) ON DELETE CASCADE);',
+      ],
+    ])(
+      'skips a foreign key naming %s the table lacks, keying nothing',
+      (_what, sql) => {
+        const schema = parse(`
         CREATE TABLE users (id INT, PRIMARY KEY (id));
         CREATE TABLE posts (id INT, user_id INT);
-        ALTER TABLE posts ADD FOREIGN KEY (nope) REFERENCES users (id);
+        ${sql}
       `);
-      const users = tableByName(schema, 'users');
-      const [relationship] = relationshipsOf(schema);
 
-      expect(relationshipsOf(schema)).toHaveLength(1);
-      expect(relationship.start.columnIds).toEqual([
-        columnByName(schema, users, 'id').id,
-      ]);
-      // no end column resolved, yet [].some(...) makes it identifying
-      expect(relationship.end.columnIds).toEqual([]);
-      expect(relationship.identification).toBe(true);
-    });
-
-    it('drops an unresolvable referenced column from the start endpoint', () => {
-      const schema = parse(`
-        CREATE TABLE users (id INT);
-        CREATE TABLE posts (user_id INT);
-        ALTER TABLE posts ADD FOREIGN KEY (user_id) REFERENCES users (nope);
-      `);
-      const posts = tableByName(schema, 'posts');
-      const [relationship] = relationshipsOf(schema);
-
-      expect(relationship.start.columnIds).toEqual([]);
-      expect(relationship.end.columnIds).toEqual([
-        columnByName(schema, posts, 'user_id').id,
-      ]);
-      expect(relationship.identification).toBe(false);
-    });
+        expect(relationshipsOf(schema)).toEqual([]);
+        for (const table of tablesOf(schema)) {
+          for (const column of columnsOf(schema, table)) {
+            expect(bHas(column.ui.keys, ColumnUIKey.foreignKey)).toBe(false);
+          }
+        }
+      }
+    );
 
     it('keeps the ON DELETE and ON UPDATE actions of every foreign key form', () => {
       const schema = parse(`
@@ -529,6 +526,82 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(relationship.onDelete).toBe(ReferentialAction.cascade);
       expect(
         columnByName(schema, tableByName(schema, 'links'), 'pair_a').ui.keys
+      ).toBe(0);
+    });
+
+    it('relates a FOREIGN KEY REFERENCES column and a table key without a column list', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY);
+        CREATE TABLE posts (
+          user_id INT FOREIGN KEY REFERENCES users (id) ON DELETE CASCADE,
+          editor_id INT CONSTRAINT fk FOREIGN KEY REFERENCES users,
+          owner_id INT,
+          title TEXT,
+          FOREIGN KEY (owner_id) REFERENCES users ON UPDATE SET NULL
+        );
+        CREATE TABLE notes (user_id INT);
+        ALTER TABLE notes ADD FOREIGN KEY (user_id) REFERENCES users ON DELETE RESTRICT;
+      `);
+      const posts = tableByName(schema, 'posts');
+      const notes = tableByName(schema, 'notes');
+      const userId = columnByName(
+        schema,
+        tableByName(schema, 'users'),
+        'id'
+      ).id;
+
+      expect(
+        relationshipsOf(schema).map(({ start, end, onDelete, onUpdate }) => ({
+          start: start.columnIds,
+          end: end.columnIds,
+          onDelete,
+          onUpdate,
+        }))
+      ).toEqual([
+        {
+          start: [userId],
+          end: [columnByName(schema, posts, 'user_id').id],
+          onDelete: ReferentialAction.cascade,
+          onUpdate: ReferentialAction.none,
+        },
+        {
+          start: [userId],
+          end: [columnByName(schema, posts, 'editor_id').id],
+          onDelete: ReferentialAction.none,
+          onUpdate: ReferentialAction.none,
+        },
+        {
+          start: [userId],
+          end: [columnByName(schema, posts, 'owner_id').id],
+          onDelete: ReferentialAction.none,
+          onUpdate: ReferentialAction.setNull,
+        },
+        {
+          start: [userId],
+          end: [columnByName(schema, notes, 'user_id').id],
+          onDelete: ReferentialAction.restrict,
+          onUpdate: ReferentialAction.none,
+        },
+      ]);
+    });
+
+    it('skips a composite key with a side short, and a key with no primary key to name', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY, code INT);
+        CREATE TABLE posts (
+          a INT,
+          FOREIGN KEY (a, missing) REFERENCES users (id, code)
+        );
+        CREATE TABLE tags (id INT);
+        CREATE TABLE tagged (tag_id INT REFERENCES tags);
+      `);
+
+      expect(relationshipsOf(schema)).toEqual([]);
+      expect(
+        columnByName(schema, tableByName(schema, 'posts'), 'a').ui.keys
+      ).toBe(0);
+      expect(
+        columnByName(schema, tableByName(schema, 'tagged'), 'tag_id').ui.keys
       ).toBe(0);
     });
 

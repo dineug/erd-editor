@@ -72,6 +72,22 @@ describe('alterTableAddForeignKeyParser', () => {
     expect(tokens[$pos.value].value).toBe('COMMENT');
   });
 
+  it('keeps a reference with no column list, the referenced primary key', () => {
+    const { ast } = parse(
+      'ALTER TABLE post ADD FOREIGN KEY (user_id) REFERENCES user ON DELETE SET NULL;'
+    );
+
+    expect(ast).toEqual({
+      type: StatementType.alterTableAddForeignKey,
+      name: 'post',
+      columnNames: ['user_id'],
+      refTableName: 'user',
+      refColumnNames: [],
+      onDelete: ReferentialAction.setNull,
+      onUpdate: '',
+    });
+  });
+
   it('parses a composite foreign key preserving column order', () => {
     const { ast } = parse(
       'ALTER TABLE post ADD FOREIGN KEY (a, b) REFERENCES user (x, y);'
