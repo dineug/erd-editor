@@ -80,7 +80,6 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
         KeyBindingMap,
         | typeof KeyBindingName.edit
         | typeof KeyBindingName.stop
-        | typeof KeyBindingName.search
         | typeof KeyBindingName.undo
         | typeof KeyBindingName.redo
         | typeof KeyBindingName.zoomIn
