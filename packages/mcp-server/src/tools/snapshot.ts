@@ -8,12 +8,13 @@ import {
   Language,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   type RootState,
   SaveSettingType,
   Show,
 } from '@dineug/erd-editor/peer.js';
-import { query, SchemaV3Constants } from '@dineug/erd-editor-schema';
+import { query } from '@dineug/erd-editor-schema';
 
 type Names = Readonly<Record<string, string | number>>;
 
@@ -112,7 +113,7 @@ export const relationshipTypeName = (value: number): string =>
 
 /** The name the tools take for an ON DELETE or ON UPDATE action. */
 export const referentialActionName = (value: number): string =>
-  nameOf(SchemaV3Constants.ReferentialAction, value);
+  nameOf(ReferentialAction, value);
 
 type Select = ReturnType<typeof query>;
 type TableEntity = RootState['collections']['tableEntities'][string];

@@ -55,6 +55,8 @@ const outputSchemas = (surface: readonly ToolSurface[]) =>
 /** The optional arguments a recorded tool gained after the recording was made. */
 const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_read: ['tableIds', 'tableNames'],
+  erd_add_relationship: ['onDelete', 'onUpdate'],
+  erd_link_columns: ['onDelete', 'onUpdate'],
 };
 
 /** The recorded tools as the server lists them, the arguments added since left out. */

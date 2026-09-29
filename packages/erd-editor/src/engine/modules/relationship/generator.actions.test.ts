@@ -8,7 +8,11 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { ColumnOption, RelationshipType } from '@/constants/schema';
+import {
+  ColumnOption,
+  ReferentialAction,
+  RelationshipType,
+} from '@/constants/schema';
 import { actions as rootActions } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -180,6 +184,36 @@ describe('addRelationshipAction$', () => {
         }),
       ],
     ]);
+  });
+
+  it('hands the referential actions it is given to the relationship, and none otherwise', () => {
+    seedTable(store, 't1', [idColumn]);
+    seedTable(store, 't2');
+    const relationshipOf = (yields: unknown[]) =>
+      (yields[0] as AnyAction[]).at(-1)?.payload;
+
+    expect(
+      relationshipOf(
+        yieldsOf(
+          store,
+          addRelationshipAction$('t1', 't2', RelationshipType.OneN, {
+            onDelete: ReferentialAction.cascade,
+            onUpdate: ReferentialAction.setNull,
+          })
+        )
+      )
+    ).toMatchObject({
+      onDelete: ReferentialAction.cascade,
+      onUpdate: ReferentialAction.setNull,
+    });
+    expect(
+      relationshipOf(
+        yieldsOf(
+          store,
+          addRelationshipAction$('t1', 't2', RelationshipType.OneN)
+        )
+      )
+    ).not.toHaveProperty('onDelete');
   });
 
   it('creates a primary key first and starts the relationship from it', () => {

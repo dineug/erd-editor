@@ -4,6 +4,7 @@ import {
   createEngineContext,
   defaultToWidth,
   type PeerStore,
+  ReferentialAction,
   RelationshipType,
 } from '@dineug/erd-editor/peer.js';
 import { compositionActionsFlat } from '@dineug/r-html';
@@ -237,6 +238,81 @@ describe('erd_link_columns relates columns that already exist', () => {
     );
     expect(elsewhere.code).toBe(ToolErrorCode.notFound);
     expect(elsewhere.message).toContain('in startTableId users');
+    expect(peer.state.doc.relationshipIds).toEqual([SEED.relationship]);
+  });
+});
+
+describe('the create tools take the referential actions of the new relationship', () => {
+  const link = {
+    startTableId: SEED.users,
+    startColumnIds: [SEED.userId],
+    endTableId: SEED.orders,
+    endColumnIds: [SEED.orderNote],
+    relationshipType: 'OneN',
+  };
+  const add = {
+    startTableId: SEED.users,
+    endTableId: SEED.orders,
+    relationshipType: 'OneN',
+  };
+
+  it.each([
+    ['erd_add_relationship', add],
+    ['erd_link_columns', link],
+  ] as const)(
+    '%s sets both in its one entry, the snapshot reading them back',
+    (tool, args) => {
+      const peer = seededPeer();
+
+      const run = runTool(peer, tool, {
+        ...args,
+        onDelete: 'cascade',
+        onUpdate: 'restrict',
+      });
+      const relationshipId = run.createdIds.at(-1)!;
+      const { relationships } = JSON.parse(
+        readDocument(peer.state, 'snapshot')
+      );
+
+      expect(run).toMatchObject({ batches: 1, historyEntries: 1 });
+      expect(
+        relationships.find(({ id }: { id: string }) => id === relationshipId)
+      ).toMatchObject({ onDelete: 'cascade', onUpdate: 'restrict' });
+    }
+  );
+
+  it.each([
+    ['erd_add_relationship', add],
+    ['erd_link_columns', link],
+  ] as const)(
+    '%s leaves an action it is not given unset, off the action',
+    (tool, args) => {
+      const peer = seededPeer();
+
+      const run = runTool(peer, tool, { ...args, onUpdate: 'setNull' });
+      const added = run.actions.find(({ type }) => type === 'relationship.add');
+
+      expect(added?.payload).not.toHaveProperty('onDelete');
+      expect(
+        peer.state.collections.relationshipEntities[run.createdIds.at(-1)!]
+      ).toMatchObject({
+        onDelete: ReferentialAction.none,
+        onUpdate: ReferentialAction.setNull,
+      });
+    }
+  );
+
+  it('refuses an action it does not name', () => {
+    const peer = seededPeer();
+
+    const bad = refusal(() =>
+      runTool(peer, 'erd_link_columns', { ...link, onDelete: 'CASCADE' })
+    );
+
+    expect(bad.code).toBe(ToolErrorCode.invalidArgs);
+    expect(bad.message).toBe(
+      'onDelete must be one of none, noAction, cascade, setNull, setDefault, restrict'
+    );
     expect(peer.state.doc.relationshipIds).toEqual([SEED.relationship]);
   });
 });

@@ -1,10 +1,10 @@
 import {
   type GeneratorAction,
+  ReferentialAction,
   relationshipActions,
   relationshipActions$,
   RelationshipType,
 } from '@dineug/erd-editor/peer.js';
-import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
 import type { ActionTool, ToolArg } from '@/tools/registry';
@@ -21,10 +21,25 @@ const RELATIONSHIP_TYPE: ToolArg = {
   required: true,
 };
 
-const referentialActionArg = (name: 'onDelete' | 'onUpdate'): ToolArg => ({
+const referentialActionArg = (
+  name: 'onDelete' | 'onUpdate',
+  required = true
+): ToolArg => ({
   name,
-  kind: { type: 'enum', values: SchemaV3Constants.ReferentialAction },
-  required: true,
+  kind: { type: 'enum', values: ReferentialAction },
+  required,
+});
+
+/** A new relationship's actions, optional: left out, each is none. */
+const NEW_REFERENTIAL_ACTIONS: readonly ToolArg[] = [
+  referentialActionArg('onDelete', false),
+  referentialActionArg('onUpdate', false),
+];
+
+/** The actions a call passed; one left out stays off the relationship.add payload. */
+const referentialActionsOf = ({ onDelete, onUpdate }: Record<string, any>) => ({
+  ...(onDelete === undefined ? {} : { onDelete }),
+  ...(onUpdate === undefined ? {} : { onUpdate }),
 });
 
 const tableArg = (name: string): ToolArg => ({
@@ -40,17 +55,20 @@ const columnsArg = (name: string, parentArg: string): ToolArg => ({
 });
 
 /** The id is drawn as the call runs, so each call relates under a new one. */
-const linkColumnsAction$ = ({
-  startTableId,
-  startColumnIds,
-  endTableId,
-  endColumnIds,
-  relationshipType,
-}: Record<string, any>): GeneratorAction =>
+const linkColumnsAction$ = (values: Record<string, any>): GeneratorAction =>
   function* () {
+    const {
+      startTableId,
+      startColumnIds,
+      endTableId,
+      endColumnIds,
+      relationshipType,
+    } = values;
+
     yield relationshipActions.addRelationshipAction({
       id: nanoid(),
       relationshipType,
+      ...referentialActionsOf(values),
       start: { tableId: startTableId, columnIds: startColumnIds },
       end: { tableId: endTableId, columnIds: endColumnIds },
     });
@@ -79,12 +97,18 @@ export const relationshipTools: readonly ActionTool[] = [
       'tables[startTableId].columns',
       'tables[endTableId].columns',
     ],
-    args: [tableArg('startTableId'), tableArg('endTableId'), RELATIONSHIP_TYPE],
-    toActions: ({ startTableId, endTableId, relationshipType }) => [
+    args: [
+      tableArg('startTableId'),
+      tableArg('endTableId'),
+      RELATIONSHIP_TYPE,
+      ...NEW_REFERENTIAL_ACTIONS,
+    ],
+    toActions: values => [
       relationshipActions$.addRelationshipAction$(
-        startTableId,
-        endTableId,
-        relationshipType
+        values.startTableId,
+        values.endTableId,
+        values.relationshipType,
+        referentialActionsOf(values)
       ),
     ],
   },
@@ -105,6 +129,7 @@ export const relationshipTools: readonly ActionTool[] = [
       tableArg('endTableId'),
       columnsArg('endColumnIds', 'endTableId'),
       RELATIONSHIP_TYPE,
+      ...NEW_REFERENTIAL_ACTIONS,
     ],
     refine: ({ startColumnIds, endColumnIds }) =>
       startColumnIds.length === endColumnIds.length

@@ -10,8 +10,14 @@ import {
 import { bHas } from '@/utils/bit';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
+import { ActionMap, ActionType } from './actions';
 import { addRelationshipAction } from './atom.actions';
 import { toForeignKeyActions } from './fkColumns';
+
+type ReferentialActions = Pick<
+  ActionMap[typeof ActionType.addRelationship],
+  'onDelete' | 'onUpdate'
+>;
 
 /**
  * Draws a relationship between two live tables in one batch, giving the start
@@ -21,7 +27,8 @@ import { toForeignKeyActions } from './fkColumns';
 export const addRelationshipAction$ = (
   startTableId: string,
   endTableId: string,
-  relationshipType: number
+  relationshipType: number,
+  referentialActions: ReferentialActions = {}
 ): GeneratorAction =>
   function* ({ doc: { tableIds }, collections }) {
     const tables = query(collections)
@@ -59,6 +66,7 @@ export const addRelationshipAction$ = (
       addRelationshipAction({
         id: nanoid(),
         relationshipType,
+        ...referentialActions,
         start: {
           tableId: startTable.id,
           columnIds: startColumns.map(({ id }) => id),
