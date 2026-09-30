@@ -877,6 +877,32 @@ describe('createScopeActions / Find and Replace', () => {
 
     expect(opened).toEqual([openFindReplaceAction()]);
   });
+
+  it('names no chord on the tabs that leave it to the host find, and still opens the panel', () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action);
+      },
+    });
+
+    for (const canvasType of [
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      const action = find(scope(), 'Find and Replace');
+
+      expect(action.shortcut).toBeUndefined();
+      action.perform?.(app);
+    }
+
+    expect(opened).toHaveLength(4);
+    setCanvasType(CanvasType.ERD);
+    expect(find(scope(), 'Find and Replace').shortcut).toBe('$mod+KeyF');
+  });
 });
 
 describe('searchActions / Hangul', () => {

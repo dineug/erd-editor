@@ -26,6 +26,10 @@ const YIELDS_TO_A_CARET = new Set<KeyBindingName>([
  */
 const ERD_TAB_ONLY = new Set<KeyBindingName>([KeyBindingName.findReplace]);
 
+/** Whether the editor takes a binding's chord on the tab shown; a row naming the chord names it only then. */
+export const bindsOnTab = (type: KeyBindingName, canvasType: string) =>
+  !ERD_TAB_ONLY.has(type) || canvasType === CanvasType.ERD;
+
 export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
@@ -33,8 +37,7 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
   /** Whether a binding leaves the press to the caret or the host, unprevented. */
   const yields = (type: KeyBindingName, event: KeyboardEvent) =>
     (YIELDS_TO_A_CARET.has(type) && isEditableTarget(event.target)) ||
-    (ERD_TAB_ONLY.has(type) &&
-      app.value.store.state.settings.canvasType !== CanvasType.ERD);
+    !bindsOnTab(type, app.value.store.state.settings.canvasType);
 
   let unbinding = () => {};
 

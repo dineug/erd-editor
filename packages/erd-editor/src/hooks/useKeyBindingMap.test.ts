@@ -17,7 +17,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { CanvasType } from '@/constants/schema';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
-import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import { bindsOnTab, useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const Probe: FC<{}> = (props, ctx) => {
@@ -214,6 +214,14 @@ describe('useKeyBindingMap', () => {
       ).toBe(true);
     }
   );
+
+  it('tells a row naming a chord whether the tab shown takes it', () => {
+    expect(bindsOnTab(KeyBindingName.findReplace, CanvasType.ERD)).toBe(true);
+    expect(bindsOnTab(KeyBindingName.findReplace, CanvasType.settings)).toBe(
+      false
+    );
+    expect(bindsOnTab(KeyBindingName.search, CanvasType.settings)).toBe(true);
+  });
 
   it('reads Alt+KeyF as the Flow focus, never as find and replace', () => {
     press({ key: 'ƒ', code: 'KeyF', altKey: true });

@@ -33,6 +33,7 @@ import {
   selectTableAction$,
 } from '@/engine/modules/table/generator.actions';
 import { RootState } from '@/engine/state';
+import { bindsOnTab } from '@/hooks/useKeyBindingMap';
 import { getOriginToPlace } from '@/konva/scene/viewport';
 import {
   FindReplaceQuery,
@@ -54,6 +55,7 @@ import {
   locationOf,
   snippetOf,
 } from '@/utils/find-replace';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
@@ -412,7 +414,10 @@ export function createScopeActions(app: AppContext): Action[] {
       icon: <Icon name="replace" size={16} />,
       name: 'Find and Replace',
       keywords: 'find replace rename',
-      shortcut: keyBindingMap.findReplace[0]?.shortcut,
+      // Off the ERD tab the chord is the host's find, so the row names none.
+      shortcut: bindsOnTab(KeyBindingName.findReplace, settings.canvasType)
+        ? keyBindingMap.findReplace[0]?.shortcut
+        : undefined,
       perform: ({ emitter }) => {
         emitter.emit(openFindReplaceAction());
       },
