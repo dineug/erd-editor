@@ -181,6 +181,11 @@ The editor listens on its own element, so a host that takes keys before the page
 global hotkeys or a capture-phase `keydown` listener, has to let these through while the editor
 is focused. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types come with it.
 
+The page's own find is among them: while the editor is focused on its ERD tab, `$mod+KeyF` opens
+its Find and Replace and is prevented, so the browser opens no find bar; on the editor's other
+tabs the press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the page
+on every tab, and the quick search and the context menu still open Find and Replace.
+
 ## Syntax highlighting
 
 The SQL and code-generation panels are highlighted by [Shiki](https://shiki.style), in a shared

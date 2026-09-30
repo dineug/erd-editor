@@ -322,6 +322,16 @@ describe('useErdEditorAttachElement', () => {
     }
   });
 
+  it('takes an empty list for find and replace, which leaves its chord to the page', async () => {
+    const { app, ctx } = await setup();
+    const search = app.keyBindingMap.search;
+
+    ctx.setKeyBindingMap({ findReplace: [] } as any);
+
+    expect(app.keyBindingMap.findReplace).toEqual([]);
+    expect(app.keyBindingMap.search).toBe(search);
+  });
+
   it('loads an initial value and emits a schema GC request', async () => {
     const { app, ctx } = await setup();
     const schemaGC = vi.fn();

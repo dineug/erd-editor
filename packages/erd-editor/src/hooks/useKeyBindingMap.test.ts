@@ -251,6 +251,20 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it('leaves $mod+KeyF to the page on the ERD tab too once a host empties findReplace', async () => {
+    app.keyBindingMap.findReplace = [];
+    await flush();
+    const outside = vi.fn();
+    mounted!.container.addEventListener('keydown', outside);
+
+    const event = press({ key: 'f', code: 'KeyF', mod: true });
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
+    expect(outside).toHaveBeenCalledTimes(1);
+  });
+
   it('stops propagation for options that ask for it', async () => {
     app.keyBindingMap.edit = [
       { shortcut: 'KeyQ', preventDefault: true, stopPropagation: true },
