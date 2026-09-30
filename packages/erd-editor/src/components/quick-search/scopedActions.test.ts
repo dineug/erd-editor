@@ -121,6 +121,9 @@ const ERD_COMMANDS = [
   'Find and Replace',
 ];
 
+/** A name holding history from index 42, past the 40 at which Fuse still lets a hit start. */
+const LONG_TABLE_NAME = 'application_user_notification_preferences_history';
+
 beforeEach(() => {
   app = createTestAppContext();
   seedFindDocument(app);
@@ -345,6 +348,32 @@ describe('paletteRows / # tables', () => {
     expect(rankTableActions(app, loose, 'lsoe')).toHaveLength(
       SCOPED_ACTION_LIMIT
     );
+  });
+
+  it('goes to a table holding the keyword past index 40 of its name', () => {
+    addTables(1, () => LONG_TABLE_NAME);
+
+    for (const typed of ['#history', '#_history', '#preferences']) {
+      expect(names(rowsFor(typed))).toEqual([LONG_TABLE_NAME]);
+    }
+    expect(names(rowsFor('#us'))).not.toContain('orders');
+  });
+
+  it('hands those tables over to Find and Replace past its cap', () => {
+    const count = SCOPED_ACTION_LIMIT + 5;
+    addTables(count, index => `${LONG_TABLE_NAME}_${index}`);
+
+    const rows = rowsFor('#history');
+    const last = rows.at(-1);
+
+    expect(rows.filter(row => row.tableId)).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(last?.name).toBe(`Show all ${count} matches in Find and Replace`);
+    expect(handedOver(last)).toEqual([
+      openFindReplaceAction({
+        query: 'history',
+        fields: [FindField.tableName],
+      }),
+    ]);
   });
 
   it('stays quick over a schema of hundreds of tables', () => {

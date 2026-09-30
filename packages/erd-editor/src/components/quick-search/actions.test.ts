@@ -258,6 +258,31 @@ describe('searchActions / threshold', () => {
     expect(found('talbe')).not.toContain('New Table');
     expect(found('mmeo')).toEqual([]);
   });
+
+  it('keeps a row holding the keyword past index 40, where Fuse lets it go, after its hits', () => {
+    const long = 'application_user_notification_preferences_history';
+    const tables: Action[] = [
+      { name: long, tableId: 'long' },
+      { name: 'orders', tableId: 'orders' },
+      { name: 'history_log', tableId: 'log' },
+    ];
+    const fuse = new Fuse(tables, { keys: ['name'], threshold: 0.4 });
+
+    expect(fuse.search('history').map(({ item }) => item.name)).toEqual([
+      'history_log',
+    ]);
+    expect(names(searchActions(tables, 'history'))).toEqual([
+      'history_log',
+      long,
+    ]);
+    expect(names(searchActions(tables, '_HISTORY'))).toContain(long);
+    // A command's keywords are held the same way.
+    const command: Action = {
+      name: 'zzzz',
+      keywords: `${'x'.repeat(48)} dagre`,
+    };
+    expect(searchActions([command], 'dagre')).toEqual([command]);
+  });
 });
 
 describe('allScopeActions', () => {
@@ -857,7 +882,7 @@ describe('createScopeActions / Find and Replace', () => {
 describe('searchActions / Hangul', () => {
   const rows = (...list: string[]): Action[] => list.map(name => ({ name }));
 
-  it('leaves a keyword without Hangul to Fuse alone, its rows and their order', () => {
+  it('leaves a keyword without Hangul to Fuse, its rows and their order, where it drops no holder', () => {
     const catalog: Action[] = [
       ...rows('사용자', 'user사용자', 'users', 'New Memo'),
       { name: 'orders', keywords: 'Table', tableId: 'orders' },

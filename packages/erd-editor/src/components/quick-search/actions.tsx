@@ -105,7 +105,7 @@ export function keywordHolder(keyword: string): (action: Action) => boolean {
 /**
  * How loose a fuzzy hit may be: stricter than fuse.js's 0.6, which fuzzed most
  * words to some command (memo to the relationships, #us to orders), while a
- * typo such as tabel still finds New Table.
+ * typo such as tabel still finds New Table. A row holding the keyword stays.
  */
 export const SEARCH_THRESHOLD = 0.4;
 
@@ -124,7 +124,25 @@ export function searchActions(actions: Action[], keyword: string): Action[] {
   const found = fuse.search(keyword).map(result => result.item);
   const query = hangulQueryOf(keyword);
 
-  return query ? rankHangulActions(actions, found, query) : found;
+  return query
+    ? rankHangulActions(actions, found, query)
+    : [...found, ...heldPastFuse(actions, found, keyword)];
+}
+
+/**
+ * The rows holding the keyword as typed that Fuse drops: it scores a hit by how
+ * far in it starts, so at SEARCH_THRESHOLD a word starting past index 40 of a
+ * long table name is let go. They follow Fuse's hits in the level's order.
+ */
+function heldPastFuse(
+  actions: Action[],
+  found: Action[],
+  keyword: string
+): Action[] {
+  const fuzzy = new Set(found);
+  return actions.filter(
+    action => !fuzzy.has(action) && holdsAsTyped(action, keyword)
+  );
 }
 
 /**
