@@ -102,6 +102,13 @@ export function keywordHolder(keyword: string): (action: Action) => boolean {
     (query !== null && tierOfAction(action, query) !== null);
 }
 
+/**
+ * How loose a fuzzy hit may be: stricter than fuse.js's 0.6, which fuzzed most
+ * words to some command (memo to the relationships, #us to orders), while a
+ * typo such as tabel still finds New Table.
+ */
+export const SEARCH_THRESHOLD = 0.4;
+
 export function searchActions(actions: Action[], keyword: string): Action[] {
   const fuse = new Fues(actions, {
     keys: [
@@ -112,6 +119,7 @@ export function searchActions(actions: Action[], keyword: string): Action[] {
         getFn: action => (action.tableId ? [] : (action.keywords ?? [])),
       },
     ],
+    threshold: SEARCH_THRESHOLD,
   });
   const found = fuse.search(keyword).map(result => result.item);
   const query = hangulQueryOf(keyword);

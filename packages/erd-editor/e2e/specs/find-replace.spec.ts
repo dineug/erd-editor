@@ -276,7 +276,7 @@ test.describe('quick search over columns, comments and memos', () => {
       .toEqual(['users_email:columnName']);
   });
 
-  test('lists the commands and no table or field once the prefix is deleted', async ({
+  test('lists under #us the table holding it, and no table or field once the # is deleted', async ({
     erd,
   }) => {
     await erd.seed(schema());
@@ -286,6 +286,8 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.press(Shortcut.search);
     await erd.page.keyboard.type('#us');
     await expect(palette.getByText(/^users\s*Table$/)).toHaveCount(1);
+    // Fuzzed at 0.4, us no longer reaches orders, which fuse.js's 0.6 did.
+    await expect(palette.getByText(/^orders\s*Table$/)).toHaveCount(0);
 
     await erd.page.keyboard.press('ArrowLeft');
     await erd.page.keyboard.press('ArrowLeft');
@@ -293,15 +295,17 @@ test.describe('quick search over columns, comments and memos', () => {
 
     await expect(palette.locator('input')).toHaveValue('us');
     await expect(palette.locator('.quick-search-scope')).toHaveCount(0);
-    await expect(palette.getByText('Auto Layout', { exact: true })).toHaveCount(
-      1
-    );
     await expect(palette.getByText(/^users\s*Table$/)).toHaveCount(0);
     await expect(palette.getByText('users.id · Column comment')).toHaveCount(0);
-    // No command holds us, so the prefixes follow the commands it fuzzes to.
-    await expect(palette.locator('.scrollbar > div').last()).toHaveText(
-      /^"\s*Search comments & memos for "us"$/
+    // No command holds us or fuzzes to it, so the prefixes are all it lists.
+    await expect(palette.locator('.quick-search-empty')).toHaveText(
+      'No commands match'
     );
+    await expect(palette.locator('.scrollbar > div')).toHaveText([
+      /^#\s*Search tables for "us"$/,
+      /^@\s*Search columns for "us"$/,
+      /^"\s*Search comments & memos for "us"$/,
+    ]);
   });
 
   test('offers the prefixes once no command holds what is typed, and the keys type one in', async ({
@@ -366,7 +370,10 @@ test.describe('quick search over columns, comments and memos', () => {
 
     await erd.page.keyboard.press('ControlOrMeta+KeyA');
     await erd.page.keyboard.type('users');
-    await expect(palette.getByText('Zero One', { exact: true })).toHaveCount(1);
+    await expect(palette.locator('.quick-search-empty')).toHaveText(
+      'No commands match'
+    );
+    await expect(offered).toHaveCount(1);
     await expect(autoLayout).toHaveCount(0);
     for (let press = 0; press < 4; press++) {
       await erd.page.keyboard.press('Backspace');
@@ -375,9 +382,10 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(palette.locator('input')).toHaveValue('u');
     await expect(autoLayout).toHaveCount(1);
     await expect(offered).toHaveCount(0);
+    await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
   });
 
-  test('offers a table name typed, pasted in or left once its # is deleted, below the commands it fuzzes to', async ({
+  test('offers a table name typed, pasted in or left once its # is deleted, to the prefixes alone', async ({
     erd,
   }) => {
     await erd.seed(schema());
@@ -385,27 +393,22 @@ test.describe('quick search over columns, comments and memos', () => {
     const palette = erd.host.locator('.quick-search');
     const rows = palette.locator('.scrollbar > div');
     const input = palette.locator('input');
-    const offers = [
-      /^#\s*Search tables for "users"$/,
-      /^@\s*Search columns for "users"$/,
-      /^"\s*Search comments & memos for "users"$/,
-    ];
-    /** The two commands users fuzzes to, in an order fuse.js breaks a tie over, then the prefixes. */
+    /** The three prefixes under the line, users fuzzing to no command at 0.4. */
     const expectListed = async () => {
-      await expect(rows).toHaveCount(2 + offers.length);
-      for (const command of [/^Zero One/, /^Zero N/]) {
-        await expect(rows.filter({ hasText: command })).toHaveCount(1);
-      }
-      for (const [index, offer] of offers.entries()) {
-        await expect(rows.nth(2 + index)).toHaveText(offer);
-      }
+      await expect(palette.locator('.quick-search-empty')).toHaveText(
+        'No commands match'
+      );
+      await expect(rows).toHaveText([
+        /^#\s*Search tables for "users"$/,
+        /^@\s*Search columns for "users"$/,
+        /^"\s*Search comments & memos for "users"$/,
+      ]);
     };
 
     await erd.press(Shortcut.search);
     await erd.page.keyboard.type('users');
 
     await expectListed();
-    await expect(palette.locator('.quick-search-empty')).toHaveCount(0);
 
     await erd.page.keyboard.press('ControlOrMeta+KeyA');
     await erd.page.keyboard.insertText('users');

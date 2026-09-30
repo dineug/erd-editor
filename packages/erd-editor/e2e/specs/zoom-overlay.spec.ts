@@ -306,15 +306,19 @@ test.describe('zoom, scroll and overlays', () => {
       );
     }
 
-    // 'memo' lists New Memo: fuse.js searches name + keywords of every command
-    // on each keystroke and fuzzes a few more beside it, in an order not held.
+    // 'memo' lists New Memo alone: fuse.js searches name + keywords of every
+    // command on each keystroke, at a threshold of 0.4 that no longer fuzzes
+    // it to Import or the relationship commands.
     await erd.page.keyboard.type('memo');
+    await expect(rows).toHaveCount(1);
     await expect(
       quickSearch.getByText('New Memo', { exact: true })
     ).toHaveCount(1);
-    await expect(
-      quickSearch.getByText('New Table', { exact: true })
-    ).toHaveCount(0);
+    for (const label of ['New Table', 'Import', 'Zero One', 'One Only']) {
+      await expect(quickSearch.getByText(label, { exact: true })).toHaveCount(
+        0
+      );
+    }
 
     await erd.page.keyboard.press('ControlOrMeta+KeyA');
     await erd.page.keyboard.type('#');

@@ -778,20 +778,20 @@ describe('QuickSearch with no command matching', () => {
   it('lists the commands a word only fuzzes to, and offers the word below them', async () => {
     await open();
 
-    await type('posts');
+    await type('tables');
 
     expect(empty()).toBeNull();
-    expect(rowNames()).toEqual(['Import', 'Export', ...offered('posts')]);
+    expect(rowNames()).toEqual(['New Table', 'Database', ...offered('tables')]);
 
     for (const key of ['ArrowUp', 'ArrowUp', 'ArrowUp', 'Enter']) {
       await keydown(key);
     }
 
-    expect(input().value).toBe('#posts');
+    expect(input().value).toBe('#tables');
     expect(scopeLabel()).toBe('Tables');
   });
 
-  it('offers a table name pasted in, or left once its # is deleted, below the commands it fuzzes to', async () => {
+  it('offers a table name pasted in, or left once its # is deleted, to the prefixes alone', async () => {
     await open();
 
     await type('users');
@@ -801,9 +801,8 @@ describe('QuickSearch with no command matching', () => {
     await type('users');
 
     expect(rowNames()).toEqual(pasted);
-    expect(pasted.slice(0, -3)).toEqual(['Zero One', 'Zero N']);
-    expect(pasted.slice(-3)).toEqual(offered('users'));
-    expect(empty()).toBeNull();
+    expect(pasted).toEqual(offered('users'));
+    expect(empty()?.textContent?.trim()).toBe('No commands match');
   });
 
   it('lists for a word typed one key at a time, or deleted back, what it lists pasted in', async () => {
@@ -824,11 +823,7 @@ describe('QuickSearch with no command matching', () => {
 
     expect(rowNames()).toContain('Auto Layout');
     expect(rowNames().some(name => name.startsWith('Search'))).toBe(false);
-    expect(pasted.get('users')).toEqual([
-      'Zero One',
-      'Zero N',
-      ...offered('users'),
-    ]);
+    expect(pasted.get('users')).toEqual(offered('users'));
     expect(empty()).toBeNull();
   });
 
@@ -1012,10 +1007,10 @@ describe('QuickSearch prefixes', () => {
 
   it('lists the commands alone again once the prefix is taken away', async () => {
     await open();
-    await type('#us');
+    await type('#u');
     expect(rows().every(isTableRow)).toBe(true);
 
-    await type('us');
+    await type('u');
 
     expect(rows().some(isTableRow)).toBe(false);
     expect(rowNames()).not.toContain('user_id');

@@ -348,21 +348,22 @@ describe('quick search prefixes on a real keyboard', () => {
     const fixture = await setup();
 
     await press(OPEN_SEARCH);
-    await press('#us');
+    await press('#use');
+    expect(rowNames(fixture)).toEqual(['users']);
     expect(rowKinds(fixture).every(kind => kind === 'Table')).toBe(true);
 
-    await press('{ArrowLeft}{ArrowLeft}{Backspace}');
+    await press('{ArrowLeft}{ArrowLeft}{ArrowLeft}{Backspace}');
 
-    expect(searchInput(fixture)?.value).toBe('us');
+    expect(searchInput(fixture)?.value).toBe('use');
     expect(scopeOf(fixture)).toBeNull();
     expect(rowKinds(fixture)).not.toContain('Table');
     expect(rowKinds(fixture).some(kind => kind.includes('·'))).toBe(false);
-    // No command holds us, so the prefixes follow those it fuzzes to.
-    expect(rowNames(fixture)).toContain('Auto Layout');
+    // No command holds use, so the prefixes follow the one it fuzzes to.
+    expect(rowNames(fixture)).toContain('Database');
     expect(rowNames(fixture).slice(-3)).toEqual([
-      'Search tables for "us"',
-      'Search columns for "us"',
-      'Search comments & memos for "us"',
+      'Search tables for "use"',
+      'Search columns for "use"',
+      'Search comments & memos for "use"',
     ]);
   });
 

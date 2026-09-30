@@ -26,6 +26,7 @@ import {
   Action,
   allScopeActions,
   createScopeActions,
+  SEARCH_THRESHOLD,
   searchActions,
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
@@ -190,6 +191,72 @@ describe('searchActions', () => {
     expect(searchActions(catalog, 'Table').length).toBeLessThanOrEqual(
       catalog.length
     );
+  });
+});
+
+describe('searchActions / threshold', () => {
+  /** The commands the ERD tab hands Fuse for a keyword with no prefix. */
+  const commands = () => {
+    setCanvasType(CanvasType.ERD);
+    return scope().filter(
+      action => !action.tableId && (action.filter?.(app) ?? true)
+    );
+  };
+  const found = (keyword: string) => names(searchActions(commands(), keyword));
+
+  it('fuzzes at 0.4, stricter than the 0.6 fuse.js takes by default', () => {
+    expect(SEARCH_THRESHOLD).toBe(0.4);
+  });
+
+  it('lists under # the tables holding the keyword, no longer orders for us', () => {
+    for (const name of ['orders', 'users', 'customers', 'posts', 'roles']) {
+      addTable(name);
+    }
+    const tables = scope().filter(action => action.tableId);
+
+    const hits = names(searchActions(tables, 'us'));
+
+    expect(hits).toContain('users');
+    expect(hits).toContain('customers');
+    for (const loose of ['orders', 'posts', 'roles']) {
+      expect(hits).not.toContain(loose);
+    }
+  });
+
+  it('lists New Memo alone for memo, none of the commands it only loosely matched', () => {
+    expect(found('memo')).toEqual(['New Memo']);
+    expect(found('auto')).toEqual(['Auto Layout']);
+    expect(found('replace')).toEqual(['Find and Replace']);
+  });
+
+  it('keeps what a word or a near typo is meant for', () => {
+    expect(found('new')).toEqual(
+      expect.arrayContaining(['New Table', 'New Memo'])
+    );
+    for (const [typed, command] of [
+      ['tabel', 'New Table'],
+      ['new tabel', 'New Table'],
+      ['memp', 'New Memo'],
+      ['imprt', 'Import'],
+      ['exprt', 'Export'],
+      ['databse', 'Database'],
+      ['layot', 'Auto Layout'],
+      ['replce', 'Find and Replace'],
+      ['relashionship', 'Zero One'],
+    ]) {
+      expect(found(typed)).toContain(command);
+    }
+  });
+
+  it('finds no command for the table names 0.6 fuzzed to unrelated ones', () => {
+    for (const keyword of ['users', 'posts', 'roles', 'accounts', 'notes']) {
+      expect(found(keyword)).toEqual([]);
+    }
+  });
+
+  it('lets go of a typo no closer than an unrelated command', () => {
+    expect(found('talbe')).not.toContain('New Table');
+    expect(found('mmeo')).toEqual([]);
   });
 });
 
@@ -803,6 +870,7 @@ describe('searchActions / Hangul', () => {
           getFn: action => (action.tableId ? [] : (action.keywords ?? [])),
         },
       ],
+      threshold: SEARCH_THRESHOLD,
     });
 
     for (const keyword of ['user', 'memo', 'ord', 'qqqq']) {

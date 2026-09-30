@@ -79,8 +79,9 @@ export function paletteRows(
 ): Action[] {
   switch (scope) {
     case null:
-      // Fuse fuzzes most words to some command, so a hit alone never means
-      // the keyword names one: only a command holding it keeps them away.
+      // Fuse still fuzzes many words to some command, tables to New Table,
+      // so a hit alone never means the keyword names one: only a command
+      // holding it keeps them away.
       return keyword && !found.some(keywordHolder(keyword))
         ? [...found, ...createPrefixActions(keyword)]
         : found;

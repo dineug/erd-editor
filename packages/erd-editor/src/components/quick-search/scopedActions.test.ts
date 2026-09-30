@@ -221,22 +221,32 @@ describe('paletteRows without a prefix', () => {
   });
 
   it('lists the commands a word only fuzzes to, then offers the word to the prefixes', () => {
-    expect(names(rowsFor('posts'))).toEqual([
-      'Import',
-      'Export',
-      'Search tables for "posts"',
-      'Search columns for "posts"',
-      'Search comments & memos for "posts"',
+    expect(names(rowsFor('tables'))).toEqual([
+      'New Table',
+      'Database',
+      'Search tables for "tables"',
+      'Search columns for "tables"',
+      'Search comments & memos for "tables"',
     ]);
 
-    // Names a schema gives its tables, each of which Fuse fuzzes to commands.
-    for (const keyword of ['roles', 'users', 'tables', 'accounts', 'notes']) {
+    // Names a schema may give its tables, which Fuse still fuzzes to commands.
+    for (const keyword of ['memos', 'layouts', 'imports', 'exports', 'zones']) {
       const rows = rowsFor(keyword);
       const commands = rows.slice(0, -3);
 
       expect(commands.length).toBeGreaterThan(0);
       expect(commands.every(row => row.insert === undefined)).toBe(true);
       expect(rows.slice(-3).map(row => row.insert)).toEqual([
+        `#${keyword}`,
+        `@${keyword}`,
+        `"${keyword}`,
+      ]);
+    }
+  });
+
+  it('offers a table name that fuzzes to no command to the prefixes alone', () => {
+    for (const keyword of ['users', 'posts', 'roles', 'accounts', 'notes']) {
+      expect(rowsFor(keyword).map(row => row.insert)).toEqual([
         `#${keyword}`,
         `@${keyword}`,
         `"${keyword}`,

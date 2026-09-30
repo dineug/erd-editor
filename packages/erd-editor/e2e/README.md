@@ -107,15 +107,15 @@ one batch to a wired peer, and a jump to a table taller than the canvas lands on
 its name. It holds down the palette prefixes too, the only way to its tables,
 columns, comments and memos: a `"` search lands on a column comment from another
 tab, a `?` help row types its prefix in with the input still focused, a
-`@table.col` search goes to that column, and deleting the `#` of `#us` leaves
-commands and no table or field. A word no command holds lists the three prefixes
-that search the document last, whose row the arrows and Enter pick types its
-prefix before the word (`#orders`): below the `No commands match` line when the
-word fuzzes to no command (`orders`), and below the two commands it fuzzes to,
-with no such line, when it is typed one key at a time, pasted or left once its
-`#` is deleted (`users`). Each keystroke searches every command afresh: `auto`
-typed over `qqqq` lists Auto Layout, and Backspace from `users` to `u` lists
-what `u` finds. Under Chromium's own IME composition (`Input.imeSetComposition`
+`@table.col` search goes to that column, and `#us` lists users and not orders,
+which the 0.4 threshold no longer fuzzes it to, and deleting its `#` leaves no
+table or field. A word no command holds lists the three prefixes that search
+the document last, whose row the arrows and Enter pick types its prefix before
+the word (`#orders`), below the `No commands match` line when the word fuzzes to
+no command: `orders`, and `users` typed one key at a time, pasted or left once
+its `#` is deleted. Each keystroke searches every command afresh: `auto` typed
+over `qqqq` lists Auto Layout, and Backspace from `users` to `u` lists what `u`
+finds. Under Chromium's own IME composition (`Input.imeSetComposition`
 over a CDP session) it holds down the Hangul search: every step a Korean IME
 hands over while typing `#사용` keeps the table 사용자 listed, a word composed with
 no prefix lists `No commands match` and no table or comment until a prefix row
@@ -123,7 +123,7 @@ types `"` before it, `#ㅈㅁ` finds 주문 내역 by its initials, an arrow or 
 pressed mid-syllable is left to the IME and picks nothing, and `@사` goes to a
 column by an unfinished syllable.
 `zoom-overlay.spec.ts` holds the quick search's list without a prefix to the
-commands, the seeded tables showing only after `#`.
+commands, `memo` to New Memo alone, the seeded tables showing only after `#`.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
