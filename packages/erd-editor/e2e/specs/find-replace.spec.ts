@@ -110,6 +110,68 @@ test.describe('Find and Replace', () => {
     await erd.expectKeyboardFocusInside();
   });
 
+  test('takes its chord from the canvas, its own field, the palette and a cell editor, no page find opening', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(schema());
+    await page.evaluate(() => {
+      Reflect.set(window, '__finds', []);
+      window.addEventListener(
+        'keydown',
+        event => {
+          if (event.code === 'KeyF') Reflect.get(window, '__finds').push(event);
+        },
+        true
+      );
+    });
+    const prevented = () =>
+      page.evaluate(() =>
+        (Reflect.get(window, '__finds') as KeyboardEvent[]).map(
+          event => event.defaultPrevented
+        )
+      );
+    const palette = erd.host.locator('.quick-search');
+    const findInput = panelOf(erd).locator('.find-input');
+
+    await openFind(erd, 'user');
+    await erd.press('Enter');
+    await expect(countOf(erd)).toHaveText('1 of 6');
+
+    // Pressed again in its own field it stays open, the query selected.
+    await erd.press(Shortcut.findReplace);
+    await expect(panelOf(erd)).toHaveCount(1);
+    await expect(findInput).toBeFocused();
+    expect(
+      await findInput.evaluate((input: HTMLInputElement) => [
+        input.selectionStart,
+        input.selectionEnd,
+      ])
+    ).toEqual([0, 4]);
+    await expect(countOf(erd)).toHaveText('1 of 6');
+
+    // The palette gives way to it, as its own Find and Replace row does.
+    await erd.press(Shortcut.search);
+    await erd.page.keyboard.type('auto');
+    await expect(palette).toHaveCount(1);
+    await erd.press(Shortcut.findReplace);
+    await expect(palette).toHaveCount(0);
+    await expect(findInput).toBeFocused();
+    await expect(findInput).toHaveValue('user');
+
+    // A cell editor keeps it, as it keeps the palette's chord.
+    await erd.press('Escape');
+    await expect(panelOf(erd)).toHaveCount(0);
+    const cell = erd.cell(erd.columnEl('users_email'), 'columnName');
+    await cell.dblclick();
+    await expect(erd.editInput(cell)).toBeFocused();
+    await erd.press(Shortcut.findReplace);
+    await expect(erd.editInput(cell)).toBeFocused();
+    await expect(panelOf(erd)).toHaveCount(0);
+
+    expect(await prevented()).toEqual([true, true, true, true]);
+  });
+
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({
     erd,
     page,

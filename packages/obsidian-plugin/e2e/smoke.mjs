@@ -1295,7 +1295,7 @@ try {
   await focusDiagram(page, 'keys.erd');
   const findIn = await activeViewType(page);
   const findBefore = await findReplaceOpen();
-  await page.keyboard.press('ControlOrMeta+Shift+KeyH');
+  await page.keyboard.press('ControlOrMeta+KeyF');
   const findOpened = await waitFor(findReplaceOpen, 2_000, 100);
   await page.keyboard.press('Escape');
   const findClosed = await waitFor(
@@ -1304,7 +1304,7 @@ try {
     100
   );
   step(
-    "Mod+Shift+H opens the editor's Find and Replace in the ERD tab, and Escape closes it",
+    "Mod+F, Obsidian's search current file, opens the editor's Find and Replace in the ERD tab, and Escape closes it",
     findIn === 'erd-editor' &&
       findBefore === false &&
       Boolean(findOpened) &&

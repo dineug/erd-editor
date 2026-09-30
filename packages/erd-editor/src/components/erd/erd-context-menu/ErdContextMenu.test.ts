@@ -174,7 +174,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'New TableAlt + N',
       'New MemoAlt + M',
-      'Find and ReplaceCtrl + Shift + H',
+      'Find and ReplaceCtrl + F',
       'Relationship',
       'View Option',
       'Database',

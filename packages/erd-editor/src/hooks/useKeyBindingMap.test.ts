@@ -162,6 +162,34 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('takes $mod+KeyF from a caret too, so no browser find opens over the editor', () => {
+    const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+    const input = document.createElement('input');
+    $root.append(input);
+    const outside = vi.fn();
+    mounted!.container.addEventListener('keydown', outside);
+
+    const onCanvas = press({ key: 'f', code: 'KeyF', mod: true });
+    const inField = keydown({ key: 'f', code: 'KeyF', mod: true });
+    input.dispatchEvent(inField);
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.findReplace,
+      KeyBindingName.findReplace,
+    ]);
+    expect(onCanvas.defaultPrevented).toBe(true);
+    expect(inField.defaultPrevented).toBe(true);
+    expect(outside).not.toHaveBeenCalled();
+  });
+
+  it('reads Alt+KeyF as the Flow focus, never as find and replace', () => {
+    press({ key: 'ƒ', code: 'KeyF', altKey: true });
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.focusView,
+    ]);
+  });
+
   it('ignores keys that are not part of the map', () => {
     press({ key: 'a', code: 'KeyA' });
 

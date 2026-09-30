@@ -23,7 +23,7 @@ import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { hasMoveKeys, isEditingText } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { FindReplaceQuery } from '@/utils/emitter';
+import { FindReplaceQuery, toggleSearchAction } from '@/utils/emitter';
 import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
@@ -227,11 +227,22 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     });
   };
 
-  const handleToggle = () => {
-    const { store } = app.value;
-    if (isEditingText(store.state.editor)) return;
+  /**
+   * Opens the panel, or brings the keyboard back to its find field, as every
+   * host's find does on its chord; the palette gives way, as its own row does.
+   * A cell or memo editor keeps the press, as it keeps the palette's chord.
+   */
+  const handleShortcut = () => {
+    const { store, emitter } = app.value;
+    const { editor } = store.state;
+    if (isEditingText(editor) || TAKEOVERS.some(key => editor.openMap[key])) {
+      return;
+    }
 
-    isShown(store.state) ? close() : open();
+    if (editor.openMap[Open.search]) {
+      emitter.emit(toggleSearchAction());
+    }
+    isShown(store.state) ? nextTick(focusQuery) : open();
   };
 
   /** How far in from the left edge of the canvas the panel hides it. */
@@ -416,7 +427,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     addUnsubscribe(
       shortcut$
         .pipe(filter(({ type }) => type === KeyBindingName.findReplace))
-        .subscribe(handleToggle),
+        .subscribe(handleShortcut),
       shortcut$
         .pipe(filter(({ type }) => type === KeyBindingName.stop))
         .subscribe(handleStop),

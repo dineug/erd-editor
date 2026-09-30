@@ -7,7 +7,7 @@ export const Shortcut = {
   edit: 'Enter',
   stop: 'Escape',
   search: 'ControlOrMeta+KeyK',
-  findReplace: 'ControlOrMeta+Shift+KeyH',
+  findReplace: 'ControlOrMeta+KeyF',
   undo: 'ControlOrMeta+KeyZ',
   redo: 'ControlOrMeta+Shift+KeyZ',
   addTable: 'Alt+KeyN',

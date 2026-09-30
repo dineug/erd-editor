@@ -305,7 +305,7 @@ describe('useErdEditorAttachElement', () => {
 
     ctx.setKeyBindingMap({
       search: [{ shortcut: '$mod+KeyP', preventDefault: true }],
-      findReplace: [{ shortcut: '$mod+KeyF', preventDefault: true }],
+      findReplace: [{ shortcut: '$mod+Shift+KeyH', preventDefault: true }],
       ...Object.fromEntries(
         Object.keys(reserved).map(name => [name, [{ shortcut: 'KeyQ' }]])
       ),
@@ -315,7 +315,7 @@ describe('useErdEditorAttachElement', () => {
       { shortcut: '$mod+KeyP', preventDefault: true },
     ]);
     expect(app.keyBindingMap.findReplace).toEqual([
-      { shortcut: '$mod+KeyF', preventDefault: true },
+      { shortcut: '$mod+Shift+KeyH', preventDefault: true },
     ]);
     for (const [name, before] of Object.entries(reserved)) {
       expect(Reflect.get(app.keyBindingMap, name)).toBe(before);

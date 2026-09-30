@@ -314,15 +314,45 @@ describe('FindReplace opening and closing', () => {
     expect(panel()).not.toBeNull();
   });
 
-  it('closes on its shortcut again and hands the keyboard back', async () => {
+  it('stays open on its shortcut again, the find field focused with its query selected', async () => {
     await shortcut(KeyBindingName.findReplace);
+    await type(findInput(), 'user');
+    await keydown(findInput(), { key: 'Enter', code: 'Enter' });
+    button('find-next').focus();
     focusEvents = 0;
 
     await shortcut(KeyBindingName.findReplace);
 
-    expect(isOpen()).toBe(false);
-    expect(panel()).toBeNull();
-    expect(focusEvents).toBe(1);
+    expect(isOpen()).toBe(true);
+    expect(document.activeElement).toBe(findInput());
+    expect(findInput().selectionStart).toBe(0);
+    expect(findInput().selectionEnd).toBe('user'.length);
+    expect(countText()).toBe('1 of 5');
+    expect(focusEvents).toBe(0);
+  });
+
+  it('opens in place of the palette, which gives way as its own row does', async () => {
+    let toggled = 0;
+    app.emitter.on({
+      toggleSearch: () => {
+        toggled++;
+      },
+    });
+
+    await shortcut(KeyBindingName.findReplace);
+    expect(toggled).toBe(0);
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.search]: true }));
+    await shortcut(KeyBindingName.findReplace);
+    expect(toggled).toBe(1);
+    expect(document.activeElement).toBe(findInput());
+
+    await click(button('find-replace-close'));
+    await shortcut(KeyBindingName.findReplace);
+
+    expect(toggled).toBe(2);
+    expect(isOpen()).toBe(true);
+    expect(document.activeElement).toBe(findInput());
   });
 
   it('comes back over the ERD when its shortcut is pressed on another tab it was left open on', async () => {
@@ -359,9 +389,20 @@ describe('FindReplace opening and closing', () => {
   });
 
   it('stays shut under an overlay that takes the canvas over, and hides under the theme builder', async () => {
-    app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
+    let toggled = 0;
+    app.emitter.on({
+      toggleSearch: () => {
+        toggled++;
+      },
+    });
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.timeTravel]: true, [Open.search]: true })
+    );
     await openWith();
+    await shortcut(KeyBindingName.findReplace);
     expect(isOpen()).toBe(false);
+    // The palette stays too, since nothing would open in its place.
+    expect(toggled).toBe(0);
 
     app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: false }));
     await openWith();
@@ -764,6 +805,7 @@ describe('FindReplace keyboard isolation', () => {
       { key: ' ', code: 'Space' },
       { key: 'a', code: 'KeyA', ctrlKey: true },
       { key: 'n', code: 'KeyN', altKey: true },
+      { key: 'ƒ', code: 'KeyF', altKey: true },
       { key: 'Backspace', code: 'Backspace', altKey: true },
       { key: 'Backspace', code: 'Backspace', ctrlKey: true },
     ]) {
@@ -778,7 +820,7 @@ describe('FindReplace keyboard isolation', () => {
       { key: 'z', code: 'KeyZ', ctrlKey: true },
       { key: 'Z', code: 'KeyZ', ctrlKey: true, shiftKey: true },
       { key: 'k', code: 'KeyK', ctrlKey: true },
-      { key: 'H', code: 'KeyH', ctrlKey: true, shiftKey: true },
+      { key: 'f', code: 'KeyF', ctrlKey: true },
       { key: '=', code: 'Equal', ctrlKey: true },
       { key: '-', code: 'Minus', ctrlKey: true },
       { key: '0', code: 'Digit0', ctrlKey: true },
@@ -791,7 +833,7 @@ describe('FindReplace keyboard isolation', () => {
       'KeyZ',
       'KeyZ',
       'KeyK',
-      'KeyH',
+      'KeyF',
       'Equal',
       'Minus',
       'Digit0',

@@ -101,10 +101,12 @@ a DOM panel the port left on native drag and drop:
 | `settings-column-order.spec.ts` | The column order list painted in the order it holds, every frame  |
 
 `find-replace.spec.ts` holds down Find and Replace and the quick search rows for
-columns, comments and memos in the real element: what is typed into the panel
-never reaches a canvas shortcut, a replace all is one change event, one undo and
-one batch to a wired peer, and a jump to a table taller than the canvas lands on
-its name. It holds down the palette prefixes too, the only way to its tables,
+columns, comments and memos in the real element: its chord, `$mod+F`, is
+prevented from the canvas, from its own field, which it selects, from the
+palette, which gives way, and from a cell editor, which keeps it, so no page
+find opens; what is typed into the panel never reaches a canvas shortcut, a
+replace all is one change event, one undo and one batch to a wired peer, and a
+jump to a table taller than the canvas lands on its name. It holds down the palette prefixes too, the only way to its tables,
 columns, comments and memos: a `"` search lands on a column comment from another
 tab, a `?` help row types its prefix in with the input still focused, a
 `@table.col` search goes to that column, and `#us` lists users and not orders,

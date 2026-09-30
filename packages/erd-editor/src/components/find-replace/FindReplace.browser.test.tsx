@@ -113,7 +113,7 @@ const press = async (keys: string) => {
   await flush();
 };
 
-const OPEN_FIND = `{${MOD}>}{Shift>}H{/Shift}{/${MOD}}`;
+const OPEN_FIND = `{${MOD}>}f{/${MOD}}`;
 
 const panelOf = ({ mounted }: Fixture) =>
   mounted.container.querySelector<HTMLDivElement>('.find-replace');
@@ -123,19 +123,65 @@ const countOf = (fixture: Fixture) =>
   (panelOf(fixture)?.querySelector('.find-count')?.textContent ?? '').trim();
 const stateOf = ({ mounted }: Fixture) => mounted.app.store.state;
 
+/** Every keydown the page sees, caught before the editor, whose defaultPrevented is read once the press is over. */
+function recordPresses(): KeyboardEvent[] {
+  const presses: KeyboardEvent[] = [];
+  const listen = (event: KeyboardEvent) => {
+    event.code === 'KeyF' && presses.push(event);
+  };
+  window.addEventListener('keydown', listen, true);
+  teardowns.push(() => window.removeEventListener('keydown', listen, true));
+  return presses;
+}
+
 describe('Find and Replace on a real keyboard', () => {
-  it('opens on its chord with the caret in the find field', async () => {
+  it('opens on its chord with the caret in the find field, the browser find kept shut', async () => {
     const fixture = await setup();
+    const presses = recordPresses();
 
     await press(OPEN_FIND);
 
     expect(panelOf(fixture)).not.toBeNull();
     expect(document.activeElement).toBe(inputOf(fixture, 'find-input'));
+    expect(presses).toHaveLength(1);
+    expect(presses[0].defaultPrevented).toBe(true);
+  });
+
+  it('brings the caret back to the find field on its chord, as every host find does', async () => {
+    const fixture = await setup();
+    await press(OPEN_FIND);
+    await press('user{Enter}');
+    fixture.root.focus();
 
     await press(OPEN_FIND);
 
-    expect(panelOf(fixture)).toBeNull();
-    expect(stateOf(fixture).editor.openMap[Open.findReplace]).toBe(false);
+    const input = inputOf(fixture, 'find-input');
+    expect(panelOf(fixture)).not.toBeNull();
+    expect(document.activeElement).toBe(input);
+    expect([input?.selectionStart, input?.selectionEnd]).toEqual([0, 4]);
+    expect(countOf(fixture)).toBe('1 of 5');
+
+    inputOf(fixture, 'replace-input')?.focus();
+    await press(OPEN_FIND);
+
+    expect(document.activeElement).toBe(input);
+    expect(stateOf(fixture).editor.openMap[Open.findReplace]).toBe(true);
+  });
+
+  it('opens in place of the palette its chord is pressed in', async () => {
+    const fixture = await setup();
+    const presses = recordPresses();
+    await press(`{${MOD}>}k{/${MOD}}`);
+    await press('users');
+
+    await press(OPEN_FIND);
+
+    const { openMap } = stateOf(fixture).editor;
+    expect(openMap[Open.search]).toBe(false);
+    expect(fixture.mounted.container.querySelector('.quick-search')).toBeNull();
+    expect(panelOf(fixture)).not.toBeNull();
+    expect(document.activeElement).toBe(inputOf(fixture, 'find-input'));
+    expect(presses[0].defaultPrevented).toBe(true);
   });
 
   it('keeps what is typed off the canvas while Enter walks the matches', async () => {
