@@ -355,20 +355,6 @@ describe('FindReplace opening and closing', () => {
     expect(document.activeElement).toBe(findInput());
   });
 
-  it('comes back over the ERD when its shortcut is pressed on another tab it was left open on', async () => {
-    await shortcut(KeyBindingName.findReplace);
-    app.store.dispatchSync(
-      changeCanvasTypeAction({ value: CanvasType.settings })
-    );
-    await flush();
-    expect(panel()).toBeNull();
-
-    await shortcut(KeyBindingName.findReplace);
-
-    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
-    expect(panel()).not.toBeNull();
-  });
-
   it('closes from its close button', async () => {
     await openWith();
 

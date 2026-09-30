@@ -60,7 +60,7 @@ The published VSCode extension (`vuerd-vscode`, publisher `dineug`) — the Node
 - The four `vuerd.*` handlers are arrows, never bare references: `editor/title` passes more than the uri, and the second argument would land as `viewColumn`.
 - `IMPORT_FILE_TYPES` is keyed by the bridge's import `type` union and feeds both the dialog filter and the extension check; the check is an alternation because `graphql` has three extensions.
 - `capabilities.untrustedWorkspaces.supported` is `true` — never eval or execute document content.
-- VS Code's find widget stays off in the webview (no `enableFindWidget`, pinned by `src/erd-editor-provider.test.ts`) and the manifest contributes no keybinding: the element binds `Ctrl`/`Cmd`+`F` to its own Find and Replace and stops the keydown, so the webview never hands it to the workbench. No spec drives a real key through VS Code.
+- VS Code's find widget stays off in the webview (no `enableFindWidget`, pinned by `src/erd-editor-provider.test.ts`) and the manifest contributes no keybinding: on the ERD tab the element binds `Ctrl`/`Cmd`+`F` to its own Find and Replace and stops the keydown, so the webview never hands it to the workbench; on the editor's other tabs it lets the keydown go on, and the workbench gets it as it did before the element bound the key. No spec drives a real key through VS Code.
 - `build:vsce` / `publish:vsce` run a `vsce` no package.json declares; it must be on `PATH`.
 
 ### Testing Requirements

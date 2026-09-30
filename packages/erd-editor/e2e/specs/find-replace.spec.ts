@@ -172,6 +172,49 @@ test.describe('Find and Replace', () => {
     expect(await prevented()).toEqual([true, true, true, true]);
   });
 
+  test('leaves its chord to the page find on every other tab, where the palette row still opens it', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(schema());
+    await page.evaluate(() => {
+      Reflect.set(window, '__finds', []);
+      window.addEventListener('keydown', event => {
+        if (event.code === 'KeyF') Reflect.get(window, '__finds').push(event);
+      });
+    });
+    const heard = () =>
+      page.evaluate(() =>
+        (Reflect.get(window, '__finds') as KeyboardEvent[]).map(
+          event => event.defaultPrevented
+        )
+      );
+
+    for (const [tab, canvasType] of [
+      ['Schema SQL', 'builtin-schema-sql'],
+      ['Code Generator', 'builtin-generator-code'],
+      ['Settings', 'settings'],
+    ]) {
+      await erd.toolbarButton(tab).click();
+      await erd.focusHost();
+      await erd.press(Shortcut.findReplace);
+
+      expect((await erd.settings()).canvasType).toContain(canvasType);
+      await expect(panelOf(erd)).toHaveCount(0);
+    }
+    // Heard by the page unprevented, so a browser opens its own find there.
+    expect(await heard()).toEqual([false, false, false]);
+
+    await erd.press(Shortcut.search);
+    await erd.host
+      .locator('.quick-search')
+      .getByText('Find and Replace', { exact: true })
+      .click();
+
+    expect((await erd.settings()).canvasType).toBe('ERD');
+    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+  });
+
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({
     erd,
     page,

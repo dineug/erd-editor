@@ -15,6 +15,8 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import { CanvasType } from '@/constants/schema';
+import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -162,7 +164,8 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it('takes $mod+KeyF from a caret too, so no browser find opens over the editor', () => {
+  it('takes $mod+KeyF on the ERD tab from a caret too, so no browser find opens over the editor', () => {
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
     const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
     const input = document.createElement('input');
     $root.append(input);
@@ -181,6 +184,36 @@ describe('useKeyBindingMap', () => {
     expect(inField.defaultPrevented).toBe(true);
     expect(outside).not.toHaveBeenCalled();
   });
+
+  it.each([
+    CanvasType.visualization,
+    CanvasType.schemaSQL,
+    CanvasType.generatorCode,
+    CanvasType.settings,
+  ])(
+    'leaves $mod+KeyF to the host find on the %s tab, from the canvas or a caret',
+    canvasType => {
+      app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
+      const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+      const input = document.createElement('input');
+      $root.append(input);
+      const outside = vi.fn();
+      mounted!.container.addEventListener('keydown', outside);
+
+      const onCanvas = press({ key: 'f', code: 'KeyF', mod: true });
+      const inField = keydown({ key: 'f', code: 'KeyF', mod: true });
+      input.dispatchEvent(inField);
+
+      expect(shortcuts).toHaveLength(0);
+      expect(onCanvas.defaultPrevented).toBe(false);
+      expect(inField.defaultPrevented).toBe(false);
+      expect(outside).toHaveBeenCalledTimes(2);
+      // The other chords stay the editor's there.
+      expect(
+        press({ key: 'k', code: 'KeyK', mod: true }).defaultPrevented
+      ).toBe(true);
+    }
+  );
 
   it('reads Alt+KeyF as the Flow focus, never as find and replace', () => {
     press({ key: 'ƒ', code: 'KeyF', altKey: true });
