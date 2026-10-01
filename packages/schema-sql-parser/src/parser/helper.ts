@@ -130,6 +130,21 @@ export const matchReferentialClause = (tokens: Token[]) => {
       : '';
   };
 
+  // PostgreSQL lets SET NULL and SET DEFAULT name the columns they set; left
+  // unread, the list would end the clauses and drop an ON UPDATE after it.
+  const columnList = (pos: number) => {
+    if (tokens[pos]?.type !== TokenType.leftParent) return 0;
+
+    for (let cursor = pos + 1; cursor < tokens.length; cursor++) {
+      const { type } = tokens[cursor];
+
+      if (type === TokenType.rightParent) return cursor - pos + 1;
+      if (type !== TokenType.string && type !== TokenType.comma) return 0;
+    }
+
+    return 0;
+  };
+
   return (pos: number): ReferentialClause => {
     const event = word(pos + 1);
 
@@ -138,9 +153,12 @@ export const matchReferentialClause = (tokens: Token[]) => {
         value.split(' ').every((part, index) => word(pos + 2 + index) === part)
       );
 
-      return action
-        ? { span: 2 + action.split(' ').length, event, action }
-        : { span: 2, event, action: '' };
+      if (!action) return { span: 2, event, action: '' };
+
+      const span = 2 + action.split(' ').length;
+      const list = action.startsWith('SET ') ? columnList(pos + span) : 0;
+
+      return { span: span + list, event, action };
     }
 
     const span =

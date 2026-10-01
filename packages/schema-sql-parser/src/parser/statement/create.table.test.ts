@@ -883,6 +883,16 @@ describe('createTableParser - constraint and index items', () => {
       ['ON DELETE SET NULL', ReferentialAction.setNull, ''],
       ['MATCH FULL ON DELETE CASCADE', ReferentialAction.cascade, ''],
       ['on update no action', '', ReferentialAction.noAction],
+      [
+        'ON DELETE SET NULL (a_id) ON UPDATE CASCADE',
+        ReferentialAction.setNull,
+        ReferentialAction.cascade,
+      ],
+      [
+        'ON DELETE SET DEFAULT (a_id, b) ON UPDATE RESTRICT',
+        ReferentialAction.setDefault,
+        ReferentialAction.restrict,
+      ],
     ]) {
       const { ast } = parse(
         `CREATE TABLE b (id INT, a_id INT, FOREIGN KEY (a_id) REFERENCES a (id) ${actions});`

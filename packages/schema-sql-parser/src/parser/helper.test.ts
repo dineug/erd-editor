@@ -299,6 +299,17 @@ describe('matchReferentialClause', () => {
     expect(clause('MATCH FULL')).toEqual({ span: 2, event: '', action: '' });
   });
 
+  it('spans the column list PostgreSQL lets SET NULL and SET DEFAULT name', () => {
+    expect(clause('ON DELETE SET NULL (a_id) ON UPDATE CASCADE')).toEqual({
+      span: 7,
+      event: 'DELETE',
+      action: ReferentialAction.setNull,
+    });
+    expect(span('ON DELETE SET DEFAULT (a, b), c INT')).toBe(9);
+    expect(span('ON DELETE CASCADE (a)')).toBe(3);
+    expect(span('ON DELETE SET NULL (a')).toBe(4);
+  });
+
   it('leaves a value that is no referential action to the caller', () => {
     expect(clause('ON UPDATE CURRENT_TIMESTAMP')).toEqual({
       span: 2,
