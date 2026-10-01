@@ -756,14 +756,19 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
-    // A dump doubles the quote inside a comment, and the import keeps one;
-    // the export has to double it again or the comment ends early. Databricks
-    // escapes it with a backslash instead, which the importer does not read.
+    // A dump doubles the quote inside a comment, or MySQL's escapes it with a
+    // backslash, and the import keeps one; the export has to double it again
+    // or the comment ends early. Databricks' exporter spec pins its own form.
     it.each<[string, number, string]>([
       [
         'MySQL',
         Database.MySQL,
         "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT 'o''k';",
+      ],
+      [
+        'backslashed MySQL',
+        Database.MySQL,
+        "CREATE TABLE t (a INT COMMENT 'it\\'s', b INT) COMMENT 'o\\'k';",
       ],
       [
         'MariaDB',
@@ -903,8 +908,12 @@ describe('schemaSQLParserToSchemaJson', () => {
       [
         'MySQL',
         Database.MySQL,
-        "CREATE TABLE film (rating ENUM('G','PG-13','it''s') NOT NULL, features SET('Trailers','Deleted Scenes'));",
-        ["ENUM('G','PG-13','it''s')", "SET('Trailers','Deleted Scenes')"],
+        "CREATE TABLE film (rating ENUM('G','PG-13','it''s') NOT NULL, features SET('Trailers','Deleted Scenes'), mark ENUM('it\\'s','b'));",
+        [
+          "ENUM('G','PG-13','it''s')",
+          "SET('Trailers','Deleted Scenes')",
+          "ENUM('it''s','b')",
+        ],
       ],
       [
         'MariaDB',

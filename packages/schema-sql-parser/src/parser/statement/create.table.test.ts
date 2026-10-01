@@ -794,6 +794,20 @@ describe('createTableParser - quoted type arguments', () => {
     ]);
   });
 
+  // MySQL also escapes a quote with a backslash; read as the end of the value,
+  // it's became the label it' s.
+  it('doubles a quote an ENUM value or a COMMENT escapes with a backslash', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a ENUM('it\\'s','b') COMMENT 'it\\'s', b VARCHAR(9) DEFAULT 'C:\\', c INT);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: "ENUM('it''s','b')", comment: "it's" }),
+      column({ name: 'b', dataType: 'VARCHAR(9)', default: "'C:\\'" }),
+      column({ name: 'c', dataType: 'INT' }),
+    ]);
+  });
+
   it('writes an argument back in the quotes it came in', () => {
     expect(
       parse(

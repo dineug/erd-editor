@@ -215,6 +215,35 @@ describe('tokenizer', () => {
       ]);
     });
 
+    // MySQL's it\'s: read as the end of the literal, it left a stray s behind.
+    it('reads a backslashed quote that cannot end the literal as an escape', () => {
+      expect(tokenizer(String.raw`'it\'s' 'a\\\'b' '\'x\''`)).toEqual([
+        { type: TokenType.string, value: "it's", quoted: "'" },
+        { type: TokenType.string, value: String.raw`a\\'b`, quoted: "'" },
+        { type: TokenType.string, value: "'x'", quoted: "'" },
+      ]);
+    });
+
+    // Standard SQL keeps a backslash as it is: 'C:\' is a whole literal.
+    it.each([' ', ',', ';', ')', ']', ':', '|', ''])(
+      'ends the literal at a backslashed quote followed by "%s"',
+      end => {
+        expect(tokenizer(String.raw`'C:\'` + end)[0]).toEqual({
+          type: TokenType.string,
+          value: 'C:\\',
+          quoted: "'",
+        });
+      }
+    );
+
+    it('ends the literal at a quote behind an even run of backslashes', () => {
+      expect(tokenizer(String.raw`'a\\'b`)[0]).toEqual({
+        type: TokenType.string,
+        value: String.raw`a\\`,
+        quoted: "'",
+      });
+    });
+
     it('consumes the rest of the source when the single quote is unterminated', () => {
       expect(tokenizer("'abc")).toEqual([
         { type: TokenType.string, value: 'abc', quoted: "'" },

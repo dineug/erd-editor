@@ -35,6 +35,7 @@ const pattern = {
   whiteSpace: /\s/,
   string: /\S/,
   breakString: /;|,|\(|\)|\[|\]|\.|=/,
+  literalEnd: /[\s,;)\]:|]/,
   equal: '=',
   period: '.',
   comma: ',',
@@ -59,6 +60,7 @@ const match = {
   whiteSpace: createTest(pattern.whiteSpace),
   string: createTest(pattern.string),
   breakString: createTest(pattern.breakString),
+  literalEnd: createTest(pattern.literalEnd),
   equal: createEqual(pattern.equal),
   period: createEqual(pattern.period),
   comma: createEqual(pattern.comma),
@@ -75,6 +77,23 @@ export function tokenizer(source: string): Token[] {
 
   const isChar = () => pos < source.length;
 
+  // MySQL's it\'s: a quote behind an odd run of backslashes, unless what
+  // follows may end a literal. 'C:\', is how standard SQL writes a trailing
+  // backslash, and so is 'C:\'::text.
+  const isEscapedQuote = (value: string) => {
+    if (pos + 1 >= source.length || match.literalEnd(source[pos + 1])) {
+      return false;
+    }
+
+    let run = 0;
+
+    while (value[value.length - 1 - run] === '\\') {
+      run++;
+    }
+
+    return run % 2 === 1;
+  };
+
   // A doubled quote inside a quoted token is one quote of its value, the way
   // SQL escapes it: 'it''s'. Not inside brackets, where ]] also ends a nested
   // array literal, ARRAY[[1, 2]].
@@ -86,7 +105,9 @@ export function tokenizer(source: string): Token[] {
     while (isChar()) {
       const char = source[pos];
 
-      if (char === close) {
+      if (char === close && quote === "'" && isEscapedQuote(value)) {
+        value = value.slice(0, -1);
+      } else if (char === close) {
         if (quote === '[' || source[pos + 1] !== close) break;
         pos++;
       }
