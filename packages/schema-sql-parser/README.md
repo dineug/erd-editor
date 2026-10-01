@@ -37,10 +37,19 @@ for (const statement of statements) {
 ```
 
 `statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes` and
-`foreignKeys`; `CreateIndex` carries `tableName`, `unique` and `columns`; the three `alter.table.add.*`
-nodes carry the altered table's `name` and `columnNames`, plus `refTableName` / `refColumnNames` on
-foreign keys — a `CONSTRAINT <id>` prefix is consumed and dropped, so the constraint's own name is not
-reported. Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
+`foreignKeys`; `CreateIndex` carries its `name`, `tableName`, `unique` and `columns`. A qualified table
+or index name keeps its last segment.
+
+`alter.table.add.primaryKey` and `alter.table.add.foreignKey` carry the altered table's `name` and
+`columnNames`, plus `refTableName` / `refColumnNames` on foreign keys; their `CONSTRAINT <id>` is
+consumed and not reported. `alter.table.add.unique` carries the table's `name`, its `constraintName`
+(the `UNIQUE KEY` / `UNIQUE INDEX` name, else the `CONSTRAINT` symbol, else `''`), its `usingIndexName`
+(the existing index Oracle's `USING INDEX` names, else `''`) and its `columns`; an `ALTER TABLE` that adds
+several keys yields one per UNIQUE clause.
+
+A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
+named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's
+`unique` instead. Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
 table's `name` and its `comment`, `CommentOnColumn` carries `tableName`, `columnName` and `comment` —
 PostgreSQL and Oracle attach comments with a statement of their own instead of a table option, so those
 two arrive separately from the `create.table` they belong to.
@@ -668,6 +677,19 @@ CREATE TABLE b (
  c int,
  CONSTRAINT UC_B UNIQUE(b, c)
 )
+CREATE TABLE c (
+ b varchar(255),
+ c int,
+ d int,
+ UNIQUE KEY uq_bc (b, c DESC),
+ UNIQUE INDEX uq_cd (c, d),
+ CONSTRAINT UC_BD UNIQUE NONCLUSTERED (b, d)
+)
+CREATE TABLE [dbo].[d] (
+ [b] int,
+ [c] int,
+ INDEX [ix_bc] UNIQUE NONCLUSTERED ([b] ASC, [c] DESC)
+)
 ```
 
 ### Column INDEX
@@ -759,6 +781,17 @@ CREATE TABLE b (
 ```sql
 CREATE INDEX IDX_A on A (a, b DESC)
 CREATE UNIQUE INDEX IDX_B on B (a, b DESC)
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS IDX_C ON C (a, b)
+```
+
+### CREATE UNIQUE INDEX from dump tools
+
+```sql
+CREATE UNIQUE INDEX i_1 ON ONLY public.t USING btree (a, b DESC NULLS LAST);
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_ab] ON [dbo].[t] ([a] ASC, [b] DESC)
+  WHERE ([a] IS NOT NULL AND [b] IS NOT NULL) WITH (PAD_INDEX = OFF) ON [PRIMARY]
+GO
+CREATE UNIQUE INDEX "HR"."UQ_AB" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
 ```
 
 ### Alter Table Add PRIMARY KEY
@@ -809,6 +842,29 @@ ALTER TABLE Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ```sql
 ALTER TABLE "public".Persons ADD UNIQUE (ID)
 ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
+```
+
+### Alter Table Add UNIQUE KEY
+
+```sql
+ALTER TABLE users ADD UNIQUE KEY uq_ab (a, b DESC)
+ALTER TABLE users ADD CONSTRAINT sym UNIQUE INDEX uq_c (c)
+```
+
+### Alter Table Add several keys
+
+```sql
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_tenant_login` (`tenant`,`login`),
+  ADD UNIQUE KEY `uq_email` (`email`);
+```
+
+### Alter Table Add UNIQUE USING INDEX
+
+```sql
+CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B");
+ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AB" UNIQUE ("A", "B") USING INDEX "HR"."UQ_T_AB_IX" ENABLE;
 ```
 
 ### Alter Table Only
