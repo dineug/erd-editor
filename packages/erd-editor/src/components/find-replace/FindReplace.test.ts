@@ -771,7 +771,7 @@ describe('FindReplace replacing', () => {
     });
   });
 
-  it('stops where a run of Replace began, and starts a new one from a match gone to', async () => {
+  it('stops where a run of Replace began, holding there until a jump starts a new one', async () => {
     const comment = () =>
       app.store.state.collections.tableEntities.orders.comment;
     await type(findInput(), 'Customer');
@@ -783,14 +783,54 @@ describe('FindReplace replacing', () => {
     expect(comment()).toBe('Big Customer orders');
     expect(countText()).toBe('No more matches');
 
-    // The next press shows the match again, replacing nothing.
+    // A press past the stop neither replaces nor goes round to what it wrote.
     await click(button('find-replace-one'));
+    await keydown(replaceInput() as HTMLInputElement, { key: 'Enter' });
     expect(comment()).toBe('Big Customer orders');
+    expect(countText()).toBe('No more matches');
+    expect(selectedRow()).toBe(-1);
+
+    await click(button('find-next'));
     expect(countText()).toBe('1 of 1');
 
     await click(button('find-replace-one'));
     expect(comment()).toBe('Big Big Customer orders');
     expect(countText()).toBe('No more matches');
+
+    // An undo gives the run's field back, and the press after it shows a new run's first match.
+    app.store.undo();
+    await settle();
+    expect(countText()).toBe('1 match');
+
+    await click(button('find-replace-one'));
+    expect(comment()).toBe('Big Customer orders');
+    expect(countText()).toBe('1 of 1');
+  });
+
+  it('keeps a run going when only its replacement changes, stopping where it began', async () => {
+    await keydown(findInput(), { key: 'Enter' });
+    await click(button('find-replace-one'));
+    await type(replaceInput() as HTMLInputElement, 'super_user');
+    const counts: string[] = [];
+
+    for (let pressed = 0; pressed < 5; pressed++) {
+      await click(button('find-replace-one'));
+      counts.push(countText());
+    }
+
+    expect(counts).toEqual([
+      '2 of 4',
+      '3 of 4',
+      '4 of 4',
+      'No more matches',
+      'No more matches',
+    ]);
+    expect(texts()).toEqual({
+      users: 'super_users',
+      userId: 'member_id',
+      comment: 'super_user id',
+      memo: 'Every super_user_id points at super_users.id',
+    });
   });
 
   it('stops where a run began though a table walked before it went away mid-run', async () => {

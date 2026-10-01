@@ -186,6 +186,14 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   let stale = false;
   /** Where the presses of Replace since the last jump or change of search began. */
   let run: ReplaceRun | null = null;
+  /** Set once that run has come back to where it began, which holds until a new run. */
+  let stopped = false;
+
+  /** Starts a new run of Replace presses: a jump, a change of search, an opening or a Replace All. */
+  const newRun = () => {
+    run = null;
+    stopped = false;
+  };
 
   const searchKey = () =>
     JSON.stringify([
@@ -233,7 +241,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   /** A search the reader asked for by changing it, which runs even where the last one was judged slow. */
   const search = () => {
     slowKey = null;
-    run = null;
+    newRun();
     refresh();
   };
 
@@ -304,7 +312,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       );
     }
     state.status = '';
-    run = null;
+    newRun();
     handed ? search() : refresh();
     nextTick(focusQuery);
   };
@@ -352,7 +360,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { store } = app.value;
     state.current = index;
     state.status = '';
-    run = null;
+    newRun();
     goToErdTarget(store, toErdTarget(match), coveredWidth());
     nextTick(scrollToCurrent);
   };
@@ -375,8 +383,16 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     // The texts as they stand now: a peer or the canvas may have changed one
     // since the last search, and a value built on the old text would undo it.
     searchPending() || refresh(true);
+    // A run goes on from its field as it left it; one an undo or a peer has
+    // written over since gives way to a run beginning here.
+    const began = resumeRun(app.value.store.state, state.fields, run);
     const match = result.matches[state.current];
     if (!match || !matcher) {
+      // A run back where it began holds there, rather than go round to what it wrote.
+      if (stopped && began) {
+        state.status = 'No more matches';
+        return;
+      }
       // Nothing is current yet, so the first press shows what it would replace.
       goToNext();
       return;
@@ -397,9 +413,6 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     // jump to it rides in the replacement's dispatch and one undo takes back
     // both, the scroll included, wherever on the canvas that match is.
     const after = rematchField(result.matches, matcher, match, value);
-    // A run goes on from its field as it left it; one an undo or a peer has
-    // written over since gives way to a run beginning here.
-    const began = resumeRun(app.value.store.state, state.fields, run);
     const step = nextReplace(after, match, value, began);
     const next = after[step.index];
     const batch = next
@@ -412,7 +425,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     result.matches = after;
     run = step.run;
     // Past the place the presses began, every match there was is replaced.
-    state.status = next || !after.length ? '' : 'No more matches';
+    stopped = !next && after.length > 0;
+    state.status = stopped ? 'No more matches' : '';
     state.current = step.index;
     nextTick(scrollToCurrent);
   };
@@ -421,7 +435,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (props.readonly) return;
 
     searchPending() || refresh(true);
-    run = null;
+    newRun();
     if (!matcher || !result.matches.length) return;
 
     const { actions, replaced } = toReplaceActions(
@@ -442,7 +456,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const input = event.target as HTMLInputElement;
     state.query = input.value;
     state.status = '';
-    run = null;
+    newRun();
     if (!state.regex) return search();
 
     cancelPendingSearch();
