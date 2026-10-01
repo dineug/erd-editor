@@ -84,6 +84,9 @@ export function alterTableAddUniqueParser(
   // The key the clause being read has added, which a USING INDEX after its key
   // list names.
   let clauseKey: AlterTableAddUnique | null = null;
+  // Set once the clause reads a word no branch claims: ADD [COLUMN] c INT
+  // defines a column, and its UNIQUE is the column's own.
+  let columnClause = false;
 
   $pos.value++;
 
@@ -124,6 +127,7 @@ export function alterTableAddUniqueParser(
     if (isComma($pos.value) || isAdd($pos.value)) {
       constraintName = '';
       clauseKey = null;
+      columnClause = false;
       $pos.value++;
       continue;
     }
@@ -156,6 +160,13 @@ export function alterTableAddUniqueParser(
     // index takes when a CONSTRAINT symbol stands before it too.
     if (isUnique($pos.value)) {
       $pos.value++;
+
+      // A column's own UNIQUE has no name and no key list, and what follows it
+      // is another attribute: CHECK (price > discount) keys no price.
+      if (columnClause) {
+        constraintName = '';
+        continue;
+      }
 
       if (isKey($pos.value) || isIndex($pos.value)) {
         $pos.value++;
@@ -203,6 +214,7 @@ export function alterTableAddUniqueParser(
       continue;
     }
 
+    columnClause = true;
     $pos.value++;
   }
 

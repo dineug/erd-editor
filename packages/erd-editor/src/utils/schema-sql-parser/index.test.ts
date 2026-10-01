@@ -304,6 +304,17 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(columnByName(schema, t, 'c').options).toBe(0);
     });
 
+    it('flags no column by the CHECK after the UNIQUE of a column an ALTER adds', () => {
+      const schema = parse(`
+        CREATE TABLE orders (id INT, price INT);
+        ALTER TABLE orders ADD COLUMN discount INT UNIQUE CHECK (price > discount);
+      `);
+
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'orders'))
+      ).toEqual([]);
+    });
+
     it('records an ADD UNIQUE over several columns as one unique index', () => {
       const schema = parse(`
         CREATE TABLE t (a INT, b INT, c INT);

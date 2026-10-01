@@ -342,6 +342,17 @@ describe('an ALTER TABLE that adds several keys', () => {
     ).toEqual([{ name: '', columns: ['a', 'c'] }]);
   });
 
+  it('reads no key out of the UNIQUE of a column the statement adds', () => {
+    expect(
+      keysOf(
+        'ALTER TABLE orders ADD COLUMN discount INT UNIQUE CHECK (price > discount);\n' +
+          'ALTER TABLE orders ADD discount INT UNIQUE DEFAULT (0);\n' +
+          'ALTER TABLE orders ADD discount INT, total INT UNIQUE CHECK (price > 0), ' +
+          'CONSTRAINT uq UNIQUE (a, b);'
+      )
+    ).toEqual([{ name: 'uq', columns: ['a', 'b'] }]);
+  });
+
   it('leaves the next statement to the dispatch loop', () => {
     const statements = schemaSQLParser(
       'ALTER TABLE t ADD PRIMARY KEY (id), ADD UNIQUE (a, b)\nCREATE TABLE z (i INT);'
