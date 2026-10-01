@@ -1090,6 +1090,38 @@ describe('FindReplace searching only when it has to', () => {
     expect(searches()).toBe(1);
   });
 
+  it('searches what is typed on a press of Replace, Next or Replace All made before the pause', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await type(findInput(), 'user');
+    await pause();
+    await type(replaceInput() as HTMLInputElement, 'X');
+    await keydown(findInput(), { key: 'Enter' });
+    expect(countText()).toBe('1 of 5');
+
+    await type(findInput(), 'user_');
+    await click(button('find-replace-one'));
+
+    // The first press on a search shows what it would replace, as in plain text.
+    expect(texts().userId).toBe('user_id');
+    expect(countText()).toBe('1 of 2');
+    await pause();
+    expect(countText()).toBe('1 of 2');
+
+    await type(findInput(), 'users?');
+    await click(button('find-next'));
+    expect(countText()).toBe('1 of 5');
+    await pause();
+    expect(countText()).toBe('1 of 5');
+
+    await type(findInput(), 'user_');
+    await click(button('find-replace-all'));
+    expect(texts().userId).toBe('Xid');
+    expect(countText()).toBe('Replaced 2 matches');
+    await pause();
+    expect(countText()).toBe('Replaced 2 matches');
+  });
+
   it('drops a search still waiting for the pause when it unmounts', async () => {
     await openWith();
     await click(button('find-regex'));

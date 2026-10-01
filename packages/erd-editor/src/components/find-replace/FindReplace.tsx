@@ -236,6 +236,17 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     refresh();
   };
 
+  /**
+   * Searches what is typed when a regular expression still waits for the
+   * pause, as a change of search; true when it did. A press goes through the
+   * matches of the query on screen, never of the one before it.
+   */
+  const searchPending = () => {
+    if (pendingSearch === null) return false;
+    search();
+    return true;
+  };
+
   /** Dispatches the panel's own edit, which the store hands back to the subscription below. */
   const dispatchOwn = (actions: CompositionActions) => {
     replacing = true;
@@ -340,11 +351,13 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   };
 
   const goToNext = () => {
+    searchPending();
     const total = result.matches.length;
     total && goTo(state.current + 1 >= total ? 0 : state.current + 1);
   };
 
   const goToPrevious = () => {
+    searchPending();
     const total = result.matches.length;
     total && goTo(state.current <= 0 ? total - 1 : state.current - 1);
   };
@@ -354,7 +367,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
     // The texts as they stand now: a peer or the canvas may have changed one
     // since the last search, and a value built on the old text would undo it.
-    refresh(true);
+    searchPending() || refresh(true);
     const match = result.matches[state.current];
     if (!match || !matcher) {
       // Nothing is current yet, so the first press shows what it would replace.
@@ -397,7 +410,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   const handleReplaceAll = () => {
     if (props.readonly) return;
 
-    refresh(true);
+    searchPending() || refresh(true);
     run = null;
     if (!matcher || !result.matches.length) return;
 
@@ -435,8 +448,6 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (event.key !== 'Enter' || isComposing(event)) return;
 
     event.preventDefault();
-    // Enter typed before the pause goes through the matches of what is typed.
-    pendingSearch !== null && search();
     event.shiftKey ? goToPrevious() : goToNext();
   };
 
