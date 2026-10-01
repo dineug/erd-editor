@@ -38,6 +38,11 @@ export function locationOf(
   return `${tableName}.${nameOf(column?.name)}`;
 }
 
+/** Whether a cut at the offset falls between a high and a low surrogate. */
+const splitsPair = (text: string, at: number) =>
+  /[\uD800-\uDBFF]/.test(text.charAt(at - 1)) &&
+  /[\uDC00-\uDFFF]/.test(text.charAt(at));
+
 export type Snippet = {
   text: string;
   start: number;
@@ -59,7 +64,11 @@ export function snippetOf(
   const space = from > 0 ? text.slice(from, start).search(/\s/) : -1;
   if (space !== -1) from += space + 1;
 
-  const to = Math.min(text.length, Math.max(end, from + length));
+  let to = Math.min(text.length, Math.max(end, from + length));
+  // A cut between the halves of a surrogate pair widens to the whole
+  // character, unless the match itself starts or ends there.
+  if (from < start && splitsPair(text, from)) from -= 1;
+  if (to > end && splitsPair(text, to)) to += 1;
   const lead = from > 0 ? '…' : '';
   const trail = to < text.length ? '…' : '';
   const excerpt = text.slice(from, to).replace(/\s/g, ' ');

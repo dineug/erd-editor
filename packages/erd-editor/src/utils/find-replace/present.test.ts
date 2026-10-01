@@ -143,6 +143,36 @@ describe('snippetOf', () => {
     expect(snippet.text.slice(snippet.start, snippet.end)).toBe('user');
   });
 
+  /** Whether a text holds half of a surrogate pair on its own. */
+  const splitsAPair = (text: string) => /\p{Cs}/u.test(text);
+
+  it('starts on a whole character where the cut before the match falls inside a pair', () => {
+    const text = `${'😀'.repeat(20)}user${'y'.repeat(200)}`;
+    const snippet = snippetOf({ text, start: 40, end: 44 }, 5, 30);
+
+    expect(splitsAPair(snippet.text)).toBe(false);
+    expect(snippet.text.startsWith('…😀😀😀')).toBe(true);
+    expect(snippet.text.slice(snippet.start, snippet.end)).toBe('user');
+  });
+
+  it('ends on a whole character where the cut after the match falls inside a pair', () => {
+    const text = `user${'😀'.repeat(60)}`;
+    const snippet = snippetOf({ text, start: 0, end: 4 }, 0, 9);
+
+    expect(snippet.text).toBe('user😀😀😀…');
+    expect(snippet.text.slice(snippet.start, snippet.end)).toBe('user');
+  });
+
+  it('keeps the mark on a range that itself starts or ends inside a pair', () => {
+    const text = '😀'.repeat(50);
+    const snippet = snippetOf({ text, start: 41, end: 45 }, 0, 2);
+
+    expect(snippet.text).toBe(`…${text.slice(41, 45)}…`);
+    expect(snippet.text.slice(snippet.start, snippet.end)).toBe(
+      text.slice(41, 45)
+    );
+  });
+
   it('reaches past the length asked for to keep a long match whole', () => {
     const text = `x${'u'.repeat(50)}`;
     const snippet = snippetOf({ text, start: 1, end: 51 }, 0, 10);
