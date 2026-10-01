@@ -365,6 +365,14 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     nextTick(scrollToCurrent);
   };
 
+  /** A row clicked before a regular expression's pause goes to its match among those of what is typed, if any. */
+  const goToRow = (index: number) => {
+    const clicked = result.matches[index];
+    if (!searchPending()) return goTo(index);
+
+    goTo(result.matches.findIndex(match => isSameMatch(match, clicked)));
+  };
+
   const goToNext = () => {
     searchPending();
     const total = result.matches.length;
@@ -759,7 +767,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                   ]}
                   title={match.text}
                   data-index={index}
-                  on:click={() => goTo(index)}
+                  on:click={() => goToRow(index)}
                 >
                   <div class={styles.icon}>{fieldIcon(match.field)}</div>
                   <div class={styles.body}>

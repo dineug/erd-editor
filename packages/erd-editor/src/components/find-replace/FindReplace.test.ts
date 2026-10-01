@@ -1229,6 +1229,35 @@ describe('FindReplace searching only when it has to', () => {
     expect(countText()).toBe('Replaced 2 matches');
   });
 
+  it('looks a row clicked before the pause up among the matches of what is typed', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await type(findInput(), 'user');
+    await pause();
+
+    await type(findInput(), 'users?');
+    await click(rows()[2]);
+
+    expect(countText()).toBe('3 of 5');
+    expect(selectedRow()).toBe(2);
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      tableId: 'users',
+      columnId: 'users_id',
+    });
+    await pause();
+    expect(countText()).toBe('3 of 5');
+    expect(selectedRow()).toBe(2);
+
+    // The users table, which user_ does not find, is gone to by no one.
+    const { selectedMap } = app.store.state.editor;
+    await type(findInput(), 'user_');
+    await click(rows()[1]);
+
+    expect(countText()).toBe('2 matches');
+    expect(selectedRow()).toBe(-1);
+    expect(app.store.state.editor.selectedMap).toEqual(selectedMap);
+  });
+
   it('drops a search still waiting for the pause when it unmounts', async () => {
     await openWith();
     await click(button('find-regex'));
