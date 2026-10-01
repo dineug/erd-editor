@@ -68,7 +68,7 @@ export function formatTable(
   state: RootState,
   { buffer, table }: FormatTableOptions
 ) {
-  formatAMLTable(state, { buffer, table }, createAMLContext(state));
+  formatAMLTable(state, { buffer, table }, createAMLContext(state, false));
 }
 
 function formatAMLTable(
@@ -203,7 +203,11 @@ function formatIndexes(
   return result;
 }
 
-function createAMLContext(state: RootState): AMLContext {
+/**
+ * Without actions every single-column relation stays inline, as a lone entity
+ * shows it: that view writes no rel statement to hand the actions to.
+ */
+function createAMLContext(state: RootState, actions = true): AMLContext {
   const {
     doc: { tableIds, relationshipIds },
     collections,
@@ -289,7 +293,7 @@ function createAMLContext(state: RootState): AMLContext {
 
       // An inline relation's properties are its attribute's, so a relation
       // with actions is written standalone.
-      const properties = formatRelationProperties(relationship);
+      const properties = actions ? formatRelationProperties(relationship) : '';
 
       if (child.columns.length === 1 && properties === '') {
         const [columnId] = relationship.end.columnIds;
