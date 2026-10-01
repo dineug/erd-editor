@@ -50,7 +50,11 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
+import { removeTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeColumnCommentAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { openFindReplaceAction } from '@/utils/emitter';
 import {
   FindField,
@@ -935,6 +939,93 @@ describe('FindReplace searching only when it has to', () => {
 
     expect(searches()).toBe(1);
     expect(countText()).toBe('5 matches');
+  });
+
+  it('searches again as it comes back for an edit made while it stood aside, and only then', async () => {
+    await openWith('user');
+    vi.mocked(findMatchesBefore).mockClear();
+
+    // Table Properties renames a column the list holds.
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: true })
+    );
+    app.store.dispatchSync(
+      changeColumnNameAction({
+        id: 'orders_user_id',
+        tableId: 'orders',
+        value: 'buyer_id',
+      })
+    );
+    await settle();
+    expect(searches()).toBe(0);
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: false })
+    );
+    await flush();
+
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('4 matches');
+    expect(rowTexts().join()).not.toContain('buyer_id');
+
+    // A peer edits a comment while another tab is up.
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    app.store.dispatchSync(
+      changeColumnCommentAction({
+        id: 'email',
+        tableId: 'users',
+        value: 'the user email',
+      })
+    );
+    app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+    await flush();
+
+    expect(searches()).toBe(2);
+    expect(countText()).toBe('5 matches');
+
+    // A table goes away under the theme builder.
+    app.store.dispatchSync(changeOpenMapAction({ [Open.themeBuilder]: true }));
+    app.store.dispatchSync(removeTableAction({ id: 'users' }));
+    app.store.dispatchSync(changeOpenMapAction({ [Open.themeBuilder]: false }));
+    await settle();
+
+    expect(searches()).toBe(3);
+    expect(countText()).toBe('2 matches');
+
+    // Back with nothing edited, it shows what it found.
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: true })
+    );
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: false })
+    );
+    await settle();
+
+    expect(searches()).toBe(3);
+  });
+
+  it('searches once as its chord brings it back from another tab, edited meanwhile', async () => {
+    await openWith('user');
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    app.store.dispatchSync(
+      changeColumnCommentAction({
+        id: 'email',
+        tableId: 'users',
+        value: 'the user email',
+      })
+    );
+    await settle();
+    vi.mocked(findMatchesBefore).mockClear();
+
+    await shortcut(KeyBindingName.findReplace);
+    await settle();
+
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('6 matches');
   });
 
   it('searches the document once for a Replace, and lists what a search would find', async () => {

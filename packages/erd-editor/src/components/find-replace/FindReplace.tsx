@@ -1,4 +1,5 @@
 import {
+  AnyAction,
   CompositionActions,
   createRef,
   FC,
@@ -178,6 +179,10 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   let pendingSearch: ReturnType<typeof setTimeout> | null = null;
   /** Set while the panel dispatches its own edit, whose matches it has worked out already. */
   let replacing = false;
+  /** Whether the panel was drawn once the last batch the store saw was in. */
+  let shown = false;
+  /** Set by an edit of a searched text the list does not show yet, one made while the panel stood aside say. */
+  let stale = false;
   /** Where the presses of Replace since the last jump or change of search began. */
   let run: ReplaceRun | null = null;
 
@@ -202,6 +207,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
    */
   const refresh = (keepCurrent = false) => {
     cancelPendingSearch();
+    stale = false;
     const key = searchKey();
     if (key === slowKey) return;
 
@@ -257,6 +263,9 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { editor } = store.state;
     if (TAKEOVERS.some(key => editor.openMap[key])) return;
 
+    // The search below reads every edit made while the panel was away, so the
+    // batches that bring it back have none left to search for.
+    stale = false;
     // The matches are shown and edited on the ERD canvas.
     showErdTab(store);
     store.dispatchSync(
@@ -497,8 +506,24 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     search();
   };
 
+  /**
+   * An edit of a searched text leaves the list stale: searched again once the
+   * edits pause while the panel is shown, or at once by the batch that shows
+   * it again. A hover, a selection or a scroll edits none and searches nothing.
+   */
+  const handleBatch = (actions: AnyAction[], edited: () => void) => {
+    const before = shown;
+    shown = isShown(app.value.store.state);
+    if (replacing) return;
+
+    stale ||= actions.some(({ type }) => isTextAction(type));
+    if (!stale || !shown) return;
+    before ? edited() : refresh(true);
+  };
+
   onMounted(() => {
     const { store, shortcut$, emitter } = app.value;
+    shown = isShown(store.state);
 
     addUnsubscribe(
       shortcut$
@@ -513,15 +538,13 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       // A peer, an undo or an edit on the canvas changes what matches, and
       // nothing else does: a hover, a selection or a scroll leaves it be.
       new Observable<void>(subscriber =>
-        store.subscribe(actions => {
-          !replacing &&
-            actions.some(({ type }) => isTextAction(type)) &&
-            subscriber.next();
-        })
+        store.subscribe(actions =>
+          handleBatch(actions, () => subscriber.next())
+        )
       )
         .pipe(debounceTime(100))
         .subscribe(() => {
-          isShown(store.state) && refresh(true);
+          stale && isShown(store.state) && refresh(true);
         }),
       cancelPendingSearch
     );
