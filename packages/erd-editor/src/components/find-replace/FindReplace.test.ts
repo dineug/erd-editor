@@ -730,6 +730,41 @@ describe('FindReplace replacing', () => {
     expect(countText()).toBe('5 matches');
   });
 
+  it('says there was no change when the replacement writes every match back as it was', async () => {
+    const before = texts();
+    await type(replaceInput() as HTMLInputElement, 'user');
+
+    await click(button('find-replace-all'));
+
+    expect(countText()).toBe('No changes');
+    expect(texts()).toEqual(before);
+    expect(app.store.history.size).toBe(0);
+
+    await click(button('find-regex'));
+    await type(findInput(), '(user)');
+    await type(replaceInput() as HTMLInputElement, '$1');
+    await click(button('find-replace-all'));
+
+    expect(countText()).toBe('No changes');
+    expect(app.store.history.size).toBe(0);
+  });
+
+  it('counts only the matches a regular expression replacement changes', async () => {
+    await click(button('find-regex'));
+    await type(findInput(), 'users?');
+    await type(replaceInput() as HTMLInputElement, 'users');
+
+    await click(button('find-replace-all'));
+
+    expect(countText()).toBe('Replaced 3 matches');
+    expect(texts()).toEqual({
+      users: 'users',
+      userId: 'users_id',
+      comment: 'users id',
+      memo: 'Every users_id points at users.id',
+    });
+  });
+
   it('replaces every match on $mod+Enter in the replace field', async () => {
     await keydown(replaceInput() as HTMLInputElement, {
       key: 'Enter',

@@ -32,35 +32,42 @@ export function toFieldAction(
   }
 }
 
+export type ReplaceActions = {
+  actions: AnyAction[];
+  /** The matches the replacement changed, leaving out one it wrote back as it was. */
+  replaced: number;
+};
+
 /**
  * One atom action per field whose text the replacement changes, for a single
  * dispatch: one undo entry, and the same LWW writes a peer receives from an
  * edit by hand. Given one match, only that occurrence is replaced.
  *
  * @example
- * store.dispatchSync(toReplaceActions(matches, matcher, 'account_id'));
+ * store.dispatchSync(toReplaceActions(matches, matcher, 'account_id').actions);
  */
 export function toReplaceActions(
   matches: ReadonlyArray<FindMatch>,
   matcher: Matcher,
   replacement: string,
   only?: FindMatch
-): AnyAction[] {
-  if (only) {
-    const value = matcher.replace(only.text, replacement, only.start);
-    return value === only.text ? [] : [toFieldAction(only, value)];
-  }
-
+): ReplaceActions {
   const actions: AnyAction[] = [];
   const seen = new Set<number>();
+  let replaced = 0;
 
-  for (const match of matches) {
+  for (const match of only ? [only] : matches) {
     if (seen.has(match.slot)) continue;
     seen.add(match.slot);
 
-    const value = matcher.replace(match.text, replacement);
+    const { value, changed } = matcher.replace(
+      match.text,
+      replacement,
+      only?.start
+    );
+    replaced += changed;
     value !== match.text && actions.push(toFieldAction(match, value));
   }
 
-  return actions;
+  return { actions, replaced };
 }

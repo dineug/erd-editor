@@ -49,7 +49,7 @@ describe('createMatcher', () => {
     expect(texts(text, matcherOf('x\\#y', { regex: true }))).toEqual(['x#y']);
     expect(texts(text, matcherOf('y\\:v', { regex: true }))).toEqual(['y:v']);
     expect(
-      matcherOf('user\\_(id)', { regex: true }).replace(text, 'u_$1')
+      matcherOf('user\\_(id)', { regex: true }).replace(text, 'u_$1').value
     ).toBe('u_id a-b x#y key:value');
   });
 
@@ -109,14 +109,17 @@ describe('createMatcher', () => {
   });
 
   it('never splits a surrogate pair, so a replacement never writes half of one', () => {
-    const value = matcherOf('.\\_id', { regex: true }).replace('😀_id', 'X');
+    const value = matcherOf('.\\_id', { regex: true }).replace(
+      '😀_id',
+      'X'
+    ).value;
 
     expect(value).toBe('X');
     for (const query of ['.', '.\\_', '[^a]', '\\W', '(?<=.).']) {
       const replaced = matcherOf(query, { regex: true }).replace(
         '😀a𠀀_😀',
         '-'
-      );
+      ).value;
       expect(/\p{Cs}/u.test(replaced)).toBe(false);
     }
   });
@@ -191,9 +194,9 @@ describe('createMatcher', () => {
   it('leaves a decomposed accent on the word it belongs to', () => {
     const text = 'café cafe';
 
-    expect(matcherOf('cafe', { wholeWord: true }).replace(text, 'shop')).toBe(
-      'café shop'
-    );
+    expect(
+      matcherOf('cafe', { wholeWord: true }).replace(text, 'shop').value
+    ).toBe('café shop');
   });
 
   it('weighs whole word while it matches, so another alternative or length still gets its turn', () => {
@@ -208,9 +211,9 @@ describe('createMatcher', () => {
       'id',
     ]);
     expect(texts('user id', matcherOf('\\S+?', whole))).toEqual(['user', 'id']);
-    expect(matcherOf('user|users', whole).replace('users user', 'X')).toBe(
-      'X X'
-    );
+    expect(
+      matcherOf('user|users', whole).replace('users user', 'X').value
+    ).toBe('X X');
   });
 
   it('refuses an unbalanced pattern under whole word, which the wrapper around it would balance', () => {
@@ -226,7 +229,7 @@ describe('createMatcher', () => {
       matcherOf('(\\w+?)_(?<suffix>id)', whole).replace(
         'user_id x_idx',
         '$<suffix>_$1'
-      )
+      ).value
     ).toBe('id_user x_idx');
     expect(texts('aa aab', matcherOf('(a)\\1', whole))).toEqual(['aa']);
   });
@@ -248,7 +251,7 @@ describe('createMatcher', () => {
       'line',
       'line',
     ]);
-    expect(matcherOf('^- ', regex).replace('- a\r\n- b', '* ')).toBe(
+    expect(matcherOf('^- ', regex).replace('- a\r\n- b', '* ').value).toBe(
       '* a\r\n* b'
     );
   });
@@ -265,7 +268,7 @@ describe('createMatcher', () => {
     const matcher = matcherOf('x*', { regex: true });
 
     expect(texts('axxb', matcher)).toEqual(['xx']);
-    expect(matcher.replace('axxb', '-')).toBe('a-b');
+    expect(matcher.replace('axxb', '-').value).toBe('a-b');
   });
 
   it('runs a regular expression with the case option applied', () => {
@@ -303,29 +306,50 @@ describe('Matcher.replace', () => {
   it('replaces every occurrence with the text as typed, dollar signs included', () => {
     const matcher = matcherOf('id');
 
-    expect(matcher.replace('id, user_ID', '$1&$$')).toBe('$1&$$, user_$1&$$');
+    expect(matcher.replace('id, user_ID', '$1&$$').value).toBe(
+      '$1&$$, user_$1&$$'
+    );
+  });
+
+  it('counts only the occurrences whose replacement changes the text', () => {
+    expect(matcherOf('user').replace('User user', 'user')).toEqual({
+      value: 'user user',
+      changed: 1,
+    });
+    expect(
+      matcherOf('(user)', { regex: true }).replace('user users', '$1')
+    ).toEqual({ value: 'user users', changed: 0 });
+    expect(
+      matcherOf('users?', { regex: true }).replace('user users', 'users')
+    ).toEqual({ value: 'users users', changed: 1 });
+    expect(matcherOf('user').replace('user user', 'member', 5)).toEqual({
+      value: 'user member',
+      changed: 1,
+    });
   });
 
   it('replaces only the occurrence at the offset given', () => {
     const matcher = matcherOf('id');
 
-    expect(matcher.replace('id, user_id', 'key', 9)).toBe('id, user_key');
-    expect(matcher.replace('id, user_id', 'key', 3)).toBe('id, user_id');
+    expect(matcher.replace('id, user_id', 'key', 9).value).toBe('id, user_key');
+    expect(matcher.replace('id, user_id', 'key', 3).value).toBe('id, user_id');
   });
 
   it('leaves what whole word refuses as it was', () => {
     const matcher = matcherOf('id', { wholeWord: true });
 
-    expect(matcher.replace('id user_id', 'key')).toBe('key user_id');
+    expect(matcher.replace('id user_id', 'key').value).toBe('key user_id');
   });
 
   it('expands groups in a regular expression replacement', () => {
     const matcher = matcherOf('(\\w+)_(?<suffix>id)', { regex: true });
 
-    expect(matcher.replace('user_id, team_id', '$<suffix>_$1')).toBe(
+    expect(matcher.replace('user_id, team_id', '$<suffix>_$1').value).toBe(
       'id_user, id_team'
     );
-    expect(matcher.replace('user_id', '[$&] $$ $2')).toBe('[user_id] $ id');
+    expect(matcher.replace('user_id', '[$&] $$ $2').value).toBe(
+      '[user_id] $ id'
+    );
   });
 });
 
@@ -381,7 +405,7 @@ describe('expandReplacement', () => {
 
   it('reads on past a $< when the pattern has no named group, as the native replace does', () => {
     expect(expand('a', /(a)/g, '$<$1>')).toBe('$<a>');
-    expect(matcherOf('(a)', { regex: true }).replace('a', '$<$1>')).toBe(
+    expect(matcherOf('(a)', { regex: true }).replace('a', '$<$1>').value).toBe(
       '$<a>'
     );
   });

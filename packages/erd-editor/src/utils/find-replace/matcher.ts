@@ -11,6 +11,12 @@ export type TextRange = {
   end: number;
 };
 
+export type Replaced = {
+  value: string;
+  /** The occurrences whose replacement differs from the text they matched. */
+  changed: number;
+};
+
 export type Matcher = {
   /** Every occurrence in the text, in order. An empty match is never one. */
   find: (text: string) => TextRange[];
@@ -19,7 +25,7 @@ export type Matcher = {
    * offset given. A regular expression expands $1, $<name>, $& and $$ in the
    * replacement; plain text is inserted as it is.
    */
-  replace: (text: string, replacement: string, onlyAt?: number) => string;
+  replace: (text: string, replacement: string, onlyAt?: number) => Replaced;
 };
 
 export type MatcherResult =
@@ -193,8 +199,9 @@ export function createMatcher(
     return ranges;
   };
 
-  const replace = (text: string, replacement: string, onlyAt?: number) =>
-    text.replace(pattern, (...args: any[]) => {
+  const replace = (text: string, replacement: string, onlyAt?: number) => {
+    let changed = 0;
+    const value = text.replace(pattern, (...args: any[]) => {
       const hasGroups = typeof args[args.length - 1] === 'object';
       const groups = hasGroups ? args[args.length - 1] : undefined;
       const tail = hasGroups ? 3 : 2;
@@ -209,7 +216,7 @@ export function createMatcher(
         return match;
       }
 
-      return options.regex
+      const expanded = options.regex
         ? expandReplacement(
             replacement,
             match,
@@ -219,7 +226,12 @@ export function createMatcher(
             groups
           )
         : replacement;
+      if (expanded !== match) changed++;
+      return expanded;
     });
+
+    return { value, changed };
+  };
 
   return { matcher: { find, replace }, error: null };
 }

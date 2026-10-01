@@ -290,9 +290,13 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     }
 
     const { store } = app.value;
-    const value = matcher.replace(match.text, state.replacement, match.start);
+    const { value } = matcher.replace(
+      match.text,
+      state.replacement,
+      match.start
+    );
     const inserted = value.length - match.text.length + match.end - match.start;
-    const actions = toReplaceActions(
+    const { actions } = toReplaceActions(
       result.matches,
       matcher,
       state.replacement,
@@ -320,11 +324,10 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (props.readonly) return;
 
     refresh(true);
-    const count = result.matches.length;
-    if (!matcher || !count) return;
+    if (!matcher || !result.matches.length) return;
 
     const { store } = app.value;
-    const actions = toReplaceActions(
+    const { actions, replaced } = toReplaceActions(
       result.matches,
       matcher,
       state.replacement
@@ -333,7 +336,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     actions.length && store.dispatchSync(actions);
 
     refresh();
-    state.status = `Replaced ${matchCount(count)}`;
+    // A match the replacement writes back as it was is no change to count.
+    state.status = replaced ? `Replaced ${matchCount(replaced)}` : 'No changes';
   };
 
   const handleQueryInput = (event: InputEvent) => {

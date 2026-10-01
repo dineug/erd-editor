@@ -97,7 +97,7 @@ describe('toReplaceActions', () => {
     const matcher = matcherOf('user');
     const matches = findMatches(app.store.state, matcher);
 
-    expect(toReplaceActions(matches, matcher, 'member')).toEqual([
+    expect(toReplaceActions(matches, matcher, 'member').actions).toEqual([
       {
         type: 'column.changeName',
         payload: {
@@ -125,12 +125,15 @@ describe('toReplaceActions', () => {
       ({ field, start }) => field === FindField.memo && start === 24
     );
 
-    expect(toReplaceActions(matches, matcher, 'member', second)).toEqual([
-      {
-        type: 'memo.changeValue',
-        payload: { id: 'note', value: 'Every user_id points at members.id' },
-      },
-    ]);
+    expect(toReplaceActions(matches, matcher, 'member', second)).toEqual({
+      actions: [
+        {
+          type: 'memo.changeValue',
+          payload: { id: 'note', value: 'Every user_id points at members.id' },
+        },
+      ],
+      replaced: 1,
+    });
   });
 
   it('replaces every whole word a regular expression finds, whichever alternative comes first', () => {
@@ -138,6 +141,7 @@ describe('toReplaceActions', () => {
 
     app.store.dispatchSync(
       toReplaceActions(findMatches(app.store.state, matcher), matcher, 'member')
+        .actions
     );
 
     expect(texts().columns.orders_user_id[0]).toBe('member');
@@ -149,8 +153,32 @@ describe('toReplaceActions', () => {
     const matcher = matcherOf('user', { matchCase: true });
     const matches = findMatches(app.store.state, matcher);
 
-    expect(toReplaceActions(matches, matcher, 'user')).toEqual([]);
-    expect(toReplaceActions(matches, matcher, 'user', matches[0])).toEqual([]);
+    expect(toReplaceActions(matches, matcher, 'user')).toEqual({
+      actions: [],
+      replaced: 0,
+    });
+    expect(toReplaceActions(matches, matcher, 'user', matches[0])).toEqual({
+      actions: [],
+      replaced: 0,
+    });
+  });
+
+  it('counts the matches a replacement changes, not the fields it writes', () => {
+    const counted = (query: string, replacement: string) => {
+      const matcher = matcherOf(query, { regex: true });
+      return toReplaceActions(
+        findMatches(app.store.state, matcher),
+        matcher,
+        replacement
+      );
+    };
+
+    expect(counted('user', 'member').replaced).toBe(5);
+    expect(counted('(user)', '$1')).toEqual({ actions: [], replaced: 0 });
+    // Two of the five already read users; the memo holds one of each.
+    const plural = counted('users?', 'users');
+    expect(plural.replaced).toBe(3);
+    expect(plural.actions).toHaveLength(3);
   });
 
   it('lands as one history entry, which one undo takes back whole', () => {
@@ -159,6 +187,7 @@ describe('toReplaceActions', () => {
 
     app.store.dispatchSync(
       toReplaceActions(findMatches(app.store.state, matcher), matcher, 'member')
+        .actions
     );
 
     expect(texts()).toEqual({

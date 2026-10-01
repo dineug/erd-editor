@@ -49,6 +49,7 @@ describe('a replace all reaches a collaborator', () => {
       .matcher as Matcher;
     rxStore.dispatchSync(
       toReplaceActions(findMatches(rxStore.state, matcher), matcher, 'member')
+        .actions
     );
     await settle();
 
