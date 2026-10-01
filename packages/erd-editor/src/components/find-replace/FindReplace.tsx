@@ -35,10 +35,11 @@ import {
   FindMatch,
   findMatchesBefore,
   FindTextActionTypes,
-  indexAfter,
   locationOf,
   Matcher,
+  nextReplace,
   rematchField,
+  ReplaceRun,
   snippetOf,
   toReplaceActions,
 } from '@/utils/find-replace';
@@ -177,6 +178,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   let pendingSearch: ReturnType<typeof setTimeout> | null = null;
   /** Set while the panel dispatches its own edit, whose matches it has worked out already. */
   let replacing = false;
+  /** Where the presses of Replace since the last jump or change of search began. */
+  let run: ReplaceRun | null = null;
 
   const searchKey = () =>
     JSON.stringify([
@@ -223,6 +226,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   /** A search the reader asked for by changing it, which runs even where the last one was judged slow. */
   const search = () => {
     slowKey = null;
+    run = null;
     refresh();
   };
 
@@ -273,6 +277,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       );
     }
     state.status = '';
+    run = null;
     handed ? search() : refresh();
     nextTick(focusQuery);
   };
@@ -320,6 +325,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { store } = app.value;
     state.current = index;
     state.status = '';
+    run = null;
     goToErdTarget(store, toErdTarget(match), coveredWidth());
     nextTick(scrollToCurrent);
   };
@@ -352,7 +358,6 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       state.replacement,
       match.start
     );
-    const inserted = value.length - match.text.length + match.end - match.start;
     const { actions } = toReplaceActions(
       result.matches,
       matcher,
@@ -363,8 +368,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     // jump to it rides in the replacement's dispatch and one undo takes back
     // both, the scroll included, wherever on the canvas that match is.
     const after = rematchField(result.matches, matcher, match, value);
-    const index = indexAfter(after, match.slot, match.start + inserted);
-    const next = after[index];
+    const step = nextReplace(after, match, value, run);
+    const next = after[step.index];
     const batch = next
       ? [...actions, showErdTargetAction$(toErdTarget(next), coveredWidth())]
       : actions;
@@ -373,8 +378,10 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     // What the text left holds, found in the one field it changed rather than
     // in a second search of the whole document.
     result.matches = after;
-    state.status = '';
-    state.current = index;
+    run = step.run;
+    // Past the place the presses began, every match there was is replaced.
+    state.status = next || !after.length ? '' : 'No more matches';
+    state.current = step.index;
     nextTick(scrollToCurrent);
   };
 
@@ -382,6 +389,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (props.readonly) return;
 
     refresh(true);
+    run = null;
     if (!matcher || !result.matches.length) return;
 
     const { actions, replaced } = toReplaceActions(
@@ -402,6 +410,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const input = event.target as HTMLInputElement;
     state.query = input.value;
     state.status = '';
+    run = null;
     if (!state.regex) return search();
 
     cancelPendingSearch();

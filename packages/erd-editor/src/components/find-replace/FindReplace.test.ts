@@ -741,6 +741,54 @@ describe('FindReplace replacing', () => {
     expect(countText()).toBe('5 of 5');
   });
 
+  it('replaces each match once on its way round, a replacement holding the query included', async () => {
+    await type(replaceInput() as HTMLInputElement, 'super_user');
+    await keydown(findInput(), { key: 'Enter' });
+    const counts: string[] = [];
+
+    for (let pressed = 0; pressed < 5; pressed++) {
+      await click(button('find-replace-one'));
+      counts.push(countText());
+    }
+
+    expect(counts).toEqual([
+      '2 of 5',
+      '3 of 5',
+      '4 of 5',
+      '5 of 5',
+      'No more matches',
+    ]);
+    expect(selectedRow()).toBe(-1);
+    expect(texts()).toEqual({
+      users: 'super_users',
+      userId: 'super_user_id',
+      comment: 'super_user id',
+      memo: 'Every super_user_id points at super_users.id',
+    });
+  });
+
+  it('stops where a run of Replace began, and starts a new one from a match gone to', async () => {
+    const comment = () =>
+      app.store.state.collections.tableEntities.orders.comment;
+    await type(findInput(), 'Customer');
+    await type(replaceInput() as HTMLInputElement, 'Big Customer');
+    await keydown(findInput(), { key: 'Enter' });
+
+    await click(button('find-replace-one'));
+
+    expect(comment()).toBe('Big Customer orders');
+    expect(countText()).toBe('No more matches');
+
+    // The next press shows the match again, replacing nothing.
+    await click(button('find-replace-one'));
+    expect(comment()).toBe('Big Customer orders');
+    expect(countText()).toBe('1 of 1');
+
+    await click(button('find-replace-one'));
+    expect(comment()).toBe('Big Big Customer orders');
+    expect(countText()).toBe('No more matches');
+  });
+
   it('wraps to the first match after replacing the last', async () => {
     await keydown(findInput(), { key: 'Enter', shiftKey: true });
 

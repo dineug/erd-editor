@@ -13,7 +13,10 @@ import type { AppContext } from '@/components/appContext';
 import { ChangeActionTypes } from '@/engine/actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
 import { ActionType as MemoActionType } from '@/engine/modules/memo/actions';
-import { removeMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  changeMemoValueAction,
+  removeMemoAction,
+} from '@/engine/modules/memo/atom.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import {
   changeTableNameAction,
@@ -32,6 +35,7 @@ import {
   FindTextActionTypes,
   indexAfter,
   Matcher,
+  nextReplace,
   rematchField,
   walkFields,
 } from '@/utils/find-replace';
@@ -308,5 +312,83 @@ describe('indexAfter', () => {
 
   it('has nowhere to go without a match', () => {
     expect(indexAfter([], 0, 0)).toBe(-1);
+  });
+});
+
+describe('nextReplace', () => {
+  /** One press of Replace on the match given: the text it leaves, what that holds, and where it goes on to. */
+  const press = (
+    matches: FindMatch[],
+    matcher: Matcher,
+    match: FindMatch,
+    replacement: string,
+    run: Parameters<typeof nextReplace>[3]
+  ) => {
+    const { value } = matcher.replace(match.text, replacement, match.start);
+    const after = rematchField(matches, matcher, match, value);
+    return { after, ...nextReplace(after, match, value, run) };
+  };
+
+  it('goes on past what the replacement wrote, and marks where the run began', () => {
+    const matcher = matcherOf('user');
+    const matches = findMatches(app.store.state, matcher);
+
+    const step = press(matches, matcher, matches[0], 'super_user', null);
+
+    expect(places([step.after[step.index]])).toEqual(['tableName:users@0']);
+    expect(step.run).toEqual({ slot: 4, start: 0, wrapped: false });
+  });
+
+  it('wraps to the first match while the run has not come back to where it began', () => {
+    const matcher = matcherOf('user');
+    const matches = findMatches(app.store.state, matcher);
+    const last = matches[4];
+
+    const step = press(matches, matcher, last, 'member', {
+      slot: last.slot,
+      start: last.start,
+      wrapped: false,
+    });
+
+    expect(step.index).toBe(0);
+    expect(step.run.wrapped).toBe(true);
+  });
+
+  it('stops once a run that wrapped comes back to where it began', () => {
+    const matcher = matcherOf('Customer');
+    const matches = findMatches(app.store.state, matcher);
+
+    const step = press(matches, matcher, matches[0], 'Big Customer', null);
+
+    expect(step.after).toHaveLength(1);
+    expect(step.index).toBe(-1);
+    expect(step.run).toEqual({ slot: 1, start: 0, wrapped: true });
+  });
+
+  it('moves where the run began with a replacement written before it in the same field', () => {
+    app.store.dispatchSync(
+      changeMemoValueAction({ id: 'note', value: 'users users' })
+    );
+    const matcher = createMatcher('users?', {
+      ...DEFAULT_FIND_OPTIONS,
+      regex: true,
+    }).matcher as Matcher;
+    const matches = findMatches(app.store.state, matcher, [FindField.memo]);
+
+    const first = press(matches, matcher, matches[1], 'user', null);
+    expect(first.index).toBe(0);
+    expect(first.run).toEqual({ slot: 0, start: 6, wrapped: true });
+
+    const second = press(
+      first.after,
+      matcher,
+      first.after[0],
+      'user',
+      first.run
+    );
+
+    // The run began at the second word, which now starts at 5.
+    expect(second.index).toBe(-1);
+    expect(second.run.start).toBe(5);
   });
 });

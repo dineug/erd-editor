@@ -216,3 +216,46 @@ export function indexAfter(
   );
   return index === -1 ? 0 : index;
 }
+
+/** Where a run of Replace presses began, and whether it has since gone past the last match to the first. */
+export type ReplaceRun = {
+  slot: number;
+  start: number;
+  wrapped: boolean;
+};
+
+const precedes = (match: FindMatch, slot: number, offset: number) =>
+  match.slot < slot || (match.slot === slot && match.start < offset);
+
+/**
+ * Where a Replace goes on to once it has written value in place of a match:
+ * the first match past what it wrote, wrapping to the first, or minus one once
+ * the run has wrapped and come back to where it began, which it would replace again.
+ */
+export function nextReplace(
+  after: ReadonlyArray<FindMatch>,
+  match: FindMatch,
+  value: string,
+  run: ReplaceRun | null
+): { index: number; run: ReplaceRun } {
+  const grown = value.length - match.text.length;
+  const offset = match.end + grown;
+  const began = run ?? { slot: match.slot, start: match.start, wrapped: false };
+  // A replacement before where the run began moves that place with its text.
+  const start =
+    began.slot === match.slot && match.start < began.start
+      ? began.start + grown
+      : began.start;
+
+  const index = indexAfter(after, match.slot, offset);
+  const next = after[index];
+  const wrapped =
+    began.wrapped || (next !== undefined && precedes(next, match.slot, offset));
+  const back =
+    wrapped && next !== undefined && !precedes(next, began.slot, start);
+
+  return {
+    index: back ? -1 : index,
+    run: { slot: began.slot, start, wrapped },
+  };
+}
