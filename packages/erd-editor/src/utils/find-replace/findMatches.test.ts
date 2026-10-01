@@ -37,6 +37,8 @@ import {
   Matcher,
   nextReplace,
   rematchField,
+  ReplaceRun,
+  resumeRun,
   walkFields,
 } from '@/utils/find-replace';
 
@@ -336,7 +338,19 @@ describe('nextReplace', () => {
     const step = press(matches, matcher, matches[0], 'super_user', null);
 
     expect(places([step.after[step.index]])).toEqual(['tableName:users@0']);
-    expect(step.run).toEqual({ slot: 4, start: 0, wrapped: false });
+    expect(step.run).toEqual({
+      field: FindField.columnName,
+      id: 'orders_user_id',
+      slot: 4,
+      start: 0,
+      text: 'super_user_id',
+      wrapped: false,
+    });
+
+    // A press in another field leaves the text the run knows its own by.
+    const next = step.after[step.index];
+    const second = press(step.after, matcher, next, 'super_user', step.run);
+    expect(second.run).toEqual(step.run);
   });
 
   it('wraps to the first match while the run has not come back to where it began', () => {
@@ -345,8 +359,7 @@ describe('nextReplace', () => {
     const last = matches[4];
 
     const step = press(matches, matcher, last, 'member', {
-      slot: last.slot,
-      start: last.start,
+      ...last,
       wrapped: false,
     });
 
@@ -362,7 +375,14 @@ describe('nextReplace', () => {
 
     expect(step.after).toHaveLength(1);
     expect(step.index).toBe(-1);
-    expect(step.run).toEqual({ slot: 1, start: 0, wrapped: true });
+    expect(step.run).toEqual({
+      field: FindField.tableComment,
+      id: 'orders',
+      slot: 1,
+      start: 0,
+      text: 'Big Customer orders',
+      wrapped: true,
+    });
   });
 
   it('moves where the run began with a replacement written before it in the same field', () => {
@@ -377,7 +397,7 @@ describe('nextReplace', () => {
 
     const first = press(matches, matcher, matches[1], 'user', null);
     expect(first.index).toBe(0);
-    expect(first.run).toEqual({ slot: 0, start: 6, wrapped: true });
+    expect(first.run).toMatchObject({ slot: 0, start: 6, wrapped: true });
 
     const second = press(
       first.after,
@@ -389,6 +409,45 @@ describe('nextReplace', () => {
 
     // The run began at the second word, which now starts at 5.
     expect(second.index).toBe(-1);
-    expect(second.run.start).toBe(5);
+    expect(second.run).toMatchObject({ start: 5, text: 'user user' });
+  });
+});
+
+describe('resumeRun', () => {
+  /** A run that began at the memo's first word and has wrapped since. */
+  const memoRun = (): ReplaceRun => ({
+    field: FindField.memo,
+    id: 'note',
+    slot: 14,
+    start: 0,
+    text: 'Every user_id points at users.id',
+    wrapped: true,
+  });
+
+  it('finds the field of a run again where a table removed before it moved it', () => {
+    app.store.dispatchSync(removeTableAction({ id: 'users' }));
+
+    expect(resumeRun(app.store.state, FindFieldList, memoRun())).toEqual({
+      ...memoRun(),
+      slot: 8,
+    });
+  });
+
+  it('lets a run go once its field is gone', () => {
+    app.store.dispatchSync(removeMemoAction({ id: 'note' }));
+
+    expect(resumeRun(app.store.state, FindFieldList, memoRun())).toBeNull();
+  });
+
+  it('lets a run go once its field holds a text the run did not leave', () => {
+    app.store.dispatchSync(
+      changeMemoValueAction({ id: 'note', value: 'Every user_id' })
+    );
+
+    expect(resumeRun(app.store.state, FindFieldList, memoRun())).toBeNull();
+  });
+
+  it('has nothing to resume without a run', () => {
+    expect(resumeRun(app.store.state, FindFieldList, null)).toBeNull();
   });
 });

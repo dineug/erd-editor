@@ -41,6 +41,7 @@ import {
   nextReplace,
   rematchField,
   ReplaceRun,
+  resumeRun,
   snippetOf,
   toReplaceActions,
 } from '@/utils/find-replace';
@@ -390,7 +391,10 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     // jump to it rides in the replacement's dispatch and one undo takes back
     // both, the scroll included, wherever on the canvas that match is.
     const after = rematchField(result.matches, matcher, match, value);
-    const step = nextReplace(after, match, value, run);
+    // A run goes on from its field as it left it; one an undo or a peer has
+    // written over since gives way to a run beginning here.
+    const began = resumeRun(app.value.store.state, state.fields, run);
+    const step = nextReplace(after, match, value, began);
     const next = after[step.index];
     const batch = next
       ? [...actions, showErdTargetAction$(toErdTarget(next), coveredWidth())]

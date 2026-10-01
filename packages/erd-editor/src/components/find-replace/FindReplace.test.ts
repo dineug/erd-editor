@@ -793,6 +793,63 @@ describe('FindReplace replacing', () => {
     expect(countText()).toBe('No more matches');
   });
 
+  it('stops where a run began though a table walked before it went away mid-run', async () => {
+    const comment = () =>
+      app.store.state.collections.tableEntities.orders.comment;
+    app.store.dispatchSync(
+      changeMemoValueAction({ id: 'note', value: 'Customer notes' })
+    );
+    await type(findInput(), 'Customer');
+    await type(replaceInput() as HTMLInputElement, 'Big Customer');
+    await keydown(findInput(), { key: 'Enter', shiftKey: true });
+    expect(countText()).toBe('2 of 2');
+
+    await click(button('find-replace-one'));
+    expect(texts().memo).toBe('Big Customer notes');
+    expect(countText()).toBe('1 of 2');
+
+    // A peer removes a table the walk reads before the memo the run began in.
+    app.store.dispatchSync(removeTableAction({ id: 'users' }));
+    await settle();
+    await click(button('find-replace-one'));
+
+    expect(comment()).toBe('Big Customer orders');
+    expect(texts().memo).toBe('Big Customer notes');
+    expect(countText()).toBe('No more matches');
+  });
+
+  it('starts a new run once an undo gives back the text the run began in', async () => {
+    await keydown(findInput(), { key: 'Enter' });
+    await click(button('find-replace-one'));
+    await click(button('find-replace-one'));
+    expect(countText()).toBe('1 of 3');
+
+    app.store.undo();
+    app.store.undo();
+    await settle();
+    expect(countText()).toBe('3 of 5');
+
+    const counts: string[] = [];
+    for (let pressed = 0; pressed < 5; pressed++) {
+      await click(button('find-replace-one'));
+      counts.push(countText());
+    }
+
+    expect(counts).toEqual([
+      '3 of 4',
+      '3 of 3',
+      '1 of 2',
+      '1 of 1',
+      'No results',
+    ]);
+    expect(texts()).toEqual({
+      users: 'members',
+      userId: 'member_id',
+      comment: 'member id',
+      memo: 'Every member_id points at members.id',
+    });
+  });
+
   it('wraps to the first match after replacing the last', async () => {
     await keydown(findInput(), { key: 'Enter', shiftKey: true });
 

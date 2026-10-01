@@ -217,12 +217,33 @@ export function indexAfter(
   return index === -1 ? 0 : index;
 }
 
-/** Where a run of Replace presses began, and whether it has since gone past the last match to the first. */
-export type ReplaceRun = {
-  slot: number;
-  start: number;
+/**
+ * Where a run of Replace presses began, and whether it has since gone past the
+ * last match to the first. Its field is known by entity, with the text the run
+ * left there, since a slot shifts and an undo or a peer may write over that text.
+ */
+export type ReplaceRun = Pick<FindMatch, 'field' | 'id' | 'slot' | 'start'> & {
+  text: string;
   wrapped: boolean;
 };
+
+/**
+ * A run as the document stands now, its field's slot found again, since a
+ * table added or removed before it moves that, or null once the field is gone
+ * or holds a text the run did not leave, after an undo or a peer's edit say.
+ */
+export function resumeRun(
+  state: RootState,
+  fields: ReadonlyArray<FindField>,
+  run: ReplaceRun | null
+): ReplaceRun | null {
+  if (!run) return null;
+
+  const found = walkFields(state, fields).find(
+    ({ field, id }) => field === run.field && id === run.id
+  );
+  return found?.text === run.text ? { ...run, slot: found.slot } : null;
+}
 
 const precedes = (match: FindMatch, slot: number, offset: number) =>
   match.slot < slot || (match.slot === slot && match.start < offset);
@@ -240,12 +261,11 @@ export function nextReplace(
 ): { index: number; run: ReplaceRun } {
   const grown = value.length - match.text.length;
   const offset = match.end + grown;
-  const began = run ?? { slot: match.slot, start: match.start, wrapped: false };
+  const began: ReplaceRun = run ?? { ...match, wrapped: false };
+  const inField = began.slot === match.slot;
   // A replacement before where the run began moves that place with its text.
   const start =
-    began.slot === match.slot && match.start < began.start
-      ? began.start + grown
-      : began.start;
+    inField && match.start < began.start ? began.start + grown : began.start;
 
   const index = indexAfter(after, match.slot, offset);
   const next = after[index];
@@ -256,6 +276,13 @@ export function nextReplace(
 
   return {
     index: back ? -1 : index,
-    run: { slot: began.slot, start, wrapped },
+    run: {
+      field: began.field,
+      id: began.id,
+      slot: began.slot,
+      start,
+      text: inField ? value : began.text,
+      wrapped,
+    },
   };
 }
