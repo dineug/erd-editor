@@ -628,15 +628,18 @@ describe('createTableParser - user defined types', () => {
   });
 
   // SQLite takes any words as a type; UNSIGNED INTEGER is no listed name.
-  it('keeps a word the lists lack in front of a type they carry', () => {
+  it('keeps the words the lists lack in front of a type they carry', () => {
     expect(
       types(
-        'CREATE TABLE t (a UNSIGNED INTEGER NOT NULL, b UNSIGNED SMALLINT(5), c VARYING CHARACTER(255));'
+        'CREATE TABLE t (a UNSIGNED INTEGER NOT NULL, b UNSIGNED SMALLINT(5), c VARYING CHARACTER(255), d UNSIGNED BIG INTEGER, e UNSIGNED TINY INT NOT NULL, f SIGNED BIG INT DEFAULT 0);'
       )
     ).toEqual([
       ['a', 'UNSIGNED INTEGER'],
       ['b', 'UNSIGNED SMALLINT(5)'],
       ['c', 'VARYING CHARACTER(255)'],
+      ['d', 'UNSIGNED BIG INTEGER'],
+      ['e', 'UNSIGNED TINY INT'],
+      ['f', 'SIGNED BIG INT'],
     ]);
   });
 
@@ -673,12 +676,13 @@ describe('createTableParser - user defined types', () => {
   it('reads a word the lists lack after the type as an attribute', () => {
     expect(
       types(
-        'CREATE TABLE t (a INT UNSIGNED ZEROFILL, b mood SPARSE, c VARCHAR(10) BINARY);'
+        'CREATE TABLE t (a INT UNSIGNED ZEROFILL, b mood SPARSE, c VARCHAR(10) BINARY, d hstore COMPRESSION pglz);'
       )
     ).toEqual([
       ['a', 'INT'],
       ['b', 'mood'],
       ['c', 'VARCHAR(10)'],
+      ['d', 'hstore'],
     ]);
   });
 

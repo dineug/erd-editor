@@ -1158,11 +1158,20 @@ describe('matchUserDataType', () => {
     expect(spanOf('halfvec(3')).toBe(3);
   });
 
-  it('joins a word the lists lack with the type that follows it', () => {
+  it('joins the words the lists lack with the type that follows them', () => {
     expect(spanOf('UNSIGNED INTEGER NOT NULL')).toBe(2);
     expect(spanOf('FOO VARCHAR(10)')).toBe(5);
+    expect(spanOf('UNSIGNED BIG INTEGER,')).toBe(3);
+    expect(spanOf('SIGNED BIG INT(5)')).toBe(6);
     expect(spanOf('"x" INT')).toBe(1);
     expect(spanOf('money.amount')).toBe(3);
+  });
+
+  it('joins no words when no listed type follows them', () => {
+    expect(spanOf('hstore COMPRESSION pglz')).toBe(1);
+    expect(spanOf('x NULL INT')).toBe(1);
+    expect(spanOf('x y.INT')).toBe(1);
+    expect(spanOf('x "y" INT')).toBe(1);
   });
 
   it('refuses a column keyword, unless it is quoted', () => {

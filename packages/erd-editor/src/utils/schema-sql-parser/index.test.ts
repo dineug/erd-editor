@@ -925,8 +925,13 @@ describe('schemaSQLParserToSchemaJson', () => {
       [
         'SQLite',
         Database.SQLite,
-        'CREATE TABLE t (a UNSIGNED INTEGER, b VARYING CHARACTER(255));',
-        ['UNSIGNED INTEGER', 'VARYING CHARACTER(255)'],
+        'CREATE TABLE t (a UNSIGNED INTEGER, b VARYING CHARACTER(255), c UNSIGNED BIG INTEGER, d SIGNED BIG INT NOT NULL);',
+        [
+          'UNSIGNED INTEGER',
+          'VARYING CHARACTER(255)',
+          'UNSIGNED BIG INTEGER',
+          'SIGNED BIG INT',
+        ],
       ],
       [
         'Snowflake',

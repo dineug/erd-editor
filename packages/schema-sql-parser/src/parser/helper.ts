@@ -652,6 +652,8 @@ export const matchUserDataType = (tokens: Token[]) => {
   const dataType = matchDataType(tokens);
 
   const isName = (pos: number) => isString(pos) && tokens[pos].quoted !== "'";
+  const isBareWord = (pos: number) =>
+    isString(pos) && !tokens[pos].quoted && !isColumnKeyword(tokens[pos]);
   const endsColumn = (pos: number) =>
     pos >= tokens.length ||
     isComma(pos) ||
@@ -677,12 +679,14 @@ export const matchUserDataType = (tokens: Token[]) => {
     if (!token || !isName(pos)) return 0;
     if (isColumnKeyword(token) || isColumnOption(pos)) return 0;
 
-    let cursor = pos + 1;
+    // Words the lists lack in front of one they carry are part of its name:
+    // SQLite takes any words as a type, UNSIGNED BIG INTEGER among them.
+    for (let cursor = pos; isBareWord(cursor); cursor++) {
+      const known = dataType(cursor + 1);
+      if (known) return cursor + 1 + known - pos;
+    }
 
-    // A word the lists lack in front of one they carry is part of its name:
-    // SQLite takes any words as a type, UNSIGNED INTEGER among them.
-    const known = token.quoted || isPeriod(cursor) ? 0 : dataType(cursor);
-    if (known) return 1 + known;
+    let cursor = pos + 1;
 
     while (isPeriod(cursor) && isName(cursor + 1)) {
       cursor += 2;
