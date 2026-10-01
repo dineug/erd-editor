@@ -1,11 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
@@ -18,10 +11,7 @@ import {
   removeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
-import {
-  changeTableNameAction,
-  removeTableAction,
-} from '@/engine/modules/table/atom.actions';
+import { removeTableAction } from '@/engine/modules/table/atom.actions';
 import { ActionType as ColumnActionType } from '@/engine/modules/table-column/actions';
 import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
 import {
@@ -31,7 +21,6 @@ import {
   FindFieldList,
   FindMatch,
   findMatches,
-  findMatchesBefore,
   FindTextActionTypes,
   indexAfter,
   Matcher,
@@ -155,54 +144,6 @@ describe('findMatches', () => {
         .map(({ id }) => id)
         .every(id => id === 'orders')
     ).toBe(true);
-  });
-});
-
-describe('findMatchesBefore', () => {
-  const slowMatcher = () =>
-    createMatcher('(a+)+$', { ...DEFAULT_FIND_OPTIONS, regex: true })
-      .matcher as Matcher;
-
-  it('finds what findMatches finds while the deadline is ahead', () => {
-    const matcher = matcherOf('user');
-
-    expect(
-      findMatchesBefore(
-        app.store.state,
-        matcher,
-        FindFieldList,
-        performance.now() + 60_000
-      )
-    ).toEqual(findMatches(app.store.state, matcher));
-  });
-
-  it('stops at the end of the long field a slow pattern ran past the deadline in', () => {
-    app.store.dispatchSync(
-      changeTableNameAction({ id: 'orders', value: `${'a'.repeat(22)}b` })
-    );
-    const matcher = slowMatcher();
-    const find = vi.spyOn(matcher, 'find');
-
-    expect(
-      findMatchesBefore(
-        app.store.state,
-        matcher,
-        FindFieldList,
-        performance.now() + 1
-      )
-    ).toBeNull();
-    expect(find).toHaveBeenCalledTimes(1);
-  });
-
-  it('judges a search that ends past the deadline slow, though it searched every field', () => {
-    expect(
-      findMatchesBefore(
-        app.store.state,
-        slowMatcher(),
-        [FindField.memo],
-        performance.now() - 1
-      )
-    ).toBeNull();
   });
 });
 

@@ -146,32 +146,15 @@ export function findMatches(
   matcher: Matcher,
   fields: ReadonlyArray<FindField> = FindFieldList
 ): FindMatch[] {
-  return findMatchesBefore(state, matcher, fields, Infinity) as FindMatch[];
-}
-
-/**
- * The same search under a time budget, or null once the clock has passed the
- * deadline at the end of a field: a pattern too slow for the document stops
- * at a field boundary, though one field it is in the middle of runs to its end.
- */
-export function findMatchesBefore(
-  state: RootState,
-  matcher: Matcher,
-  fields: ReadonlyArray<FindField>,
-  deadline: number
-): FindMatch[] | null {
-  const matches: FindMatch[] = [];
-
-  for (const field of walkFields(state, fields)) {
-    if (!field.text) continue;
-
-    for (const { start, end } of matcher.find(field.text)) {
-      matches.push({ ...field, start, end });
-    }
-    if (performance.now() > deadline) return null;
-  }
-
-  return matches;
+  return walkFields(state, fields).flatMap(field =>
+    field.text
+      ? matcher.find(field.text).map(({ start, end }) => ({
+          ...field,
+          start,
+          end,
+        }))
+      : []
+  );
 }
 
 /**

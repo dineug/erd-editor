@@ -34,7 +34,7 @@ import {
   FindFieldLabel,
   FindFieldList,
   FindMatch,
-  findMatchesBefore,
+  findMatches,
   FindTextActionTypes,
   locationOf,
   Matcher,
@@ -80,9 +80,6 @@ export function rowWindow(
   );
   return [start, start + limit];
 }
-
-/** How long a regular expression may search the document before the panel stops it as too slow. */
-export const SEARCH_BUDGET = 500;
 
 /** How long the panel waits for typing to pause before it searches a regular expression. */
 export const REGEX_INPUT_DELAY = 150;
@@ -137,7 +134,6 @@ type CountInput = {
 /** What the line under the fields says: the place in the matches, how many there are, or why none. */
 function countText({ query, error, matches, current }: CountInput): string {
   if (error === 'invalid') return 'Invalid regular expression';
-  if (error === 'slow') return 'Search stopped: pattern too slow';
   if (!query) return '';
   if (!matches.length) return 'No results';
   if (current === -1) return matchCount(matches.length);
@@ -175,8 +171,6 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     { shallow: true }
   );
   let matcher: Matcher | null = null;
-  /** The query, options and scopes of the last search that ran past its budget. */
-  let slowKey: string | null = null;
   let pendingSearch: ReturnType<typeof setTimeout> | null = null;
   /** Set while the panel dispatches its own edit, whose matches it has worked out already. */
   let replacing = false;
@@ -195,52 +189,33 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     stopped = false;
   };
 
-  const searchKey = () =>
-    JSON.stringify([
-      state.query,
-      state.matchCase,
-      state.wholeWord,
-      state.regex,
-      state.fields,
-    ]);
-
   const cancelPendingSearch = () => {
     pendingSearch !== null && clearTimeout(pendingSearch);
     pendingSearch = null;
   };
 
-  /**
-   * Runs the search again over the document as it stands, keeping the current
-   * match when it is still there. A regular expression searches under a time
-   * budget, and one judged slow runs again only once the reader changes it.
-   */
+  /** Runs the search again over the document as it stands, keeping the current match when it is still there. */
   const refresh = (keepCurrent = false) => {
     cancelPendingSearch();
     stale = false;
-    const key = searchKey();
-    if (key === slowKey) return;
 
     const { store } = app.value;
     const previous = result.matches[state.current];
     const created = createMatcher(state.query, state);
-    const deadline = state.regex ? performance.now() + SEARCH_BUDGET : Infinity;
-    const matches = created.matcher
-      ? findMatchesBefore(store.state, created.matcher, state.fields, deadline)
-      : [];
 
-    slowKey = matches ? null : key;
-    matcher = matches ? created.matcher : null;
-    result.error = matches ? created.error : 'slow';
-    result.matches = matches ?? [];
+    matcher = created.matcher;
+    result.error = created.error;
+    result.matches = matcher
+      ? findMatches(store.state, matcher, state.fields)
+      : [];
     state.current =
       keepCurrent && previous
         ? result.matches.findIndex(match => isSameMatch(match, previous))
         : -1;
   };
 
-  /** A search the reader asked for by changing it, which runs even where the last one was judged slow. */
+  /** A search the reader asked for by changing its query, options or scopes, which starts a new run of Replace. */
   const search = () => {
-    slowKey = null;
     newRun();
     refresh();
   };
@@ -260,7 +235,6 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (isShown(app.value.store.state)) return search();
 
     pendingSearch = null;
-    slowKey = null;
     stale = true;
   };
 
@@ -326,7 +300,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     }
     state.status = '';
     newRun();
-    handed ? search() : refresh();
+    refresh();
     nextTick(focusQuery);
   };
 
@@ -613,10 +587,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { matches, error } = result;
     const { current } = state;
     const [from, to] = rowWindow(current, matches.length);
-    const failed = error === 'invalid' || error === 'slow';
-    // Why nothing can be gone to outweighs what the last press did.
-    const count =
-      (!failed && state.status) || countText({ ...state, error, matches });
+    const count = state.status || countText({ ...state, error, matches });
     const top = store.state.editor.zenMode ? 16 : TOOLBAR_HEIGHT + 16;
     const replaceable = !props.readonly && matches.length > 0;
 
@@ -742,7 +713,13 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
           ))}
         </div>
         <div class={styles.status}>
-          <span class={['find-count', styles.count, { invalid: failed }]}>
+          <span
+            class={[
+              'find-count',
+              styles.count,
+              { invalid: error === 'invalid' },
+            ]}
+          >
             {count}
           </span>
           <button
