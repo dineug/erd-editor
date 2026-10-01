@@ -1187,14 +1187,32 @@ describe('matchUserDataType', () => {
 
   it('refuses a column keyword, unless it is quoted', () => {
     for (const keyword of [
+      'AS',
+      'AUTO_INCREMENT',
+      'AUTOINCREMENT',
+      'CHECK',
+      'COLLATE',
+      'COMMENT',
+      'CONSTRAINT',
+      'DEFAULT',
+      'ENCRYPT',
+      'FOR',
+      'FOREIGN',
+      'GENERATED',
+      'IDENTITY',
+      'INVISIBLE',
+      'KEY',
+      'MASKING',
       'NOT',
       'NULL',
-      'CHECK',
+      'ON',
+      'PRIMARY',
+      'PROJECTION',
       'references',
-      'AS',
-      'GENERATED',
-      'WITH',
+      'UNIQUE',
+      'USING',
       'VISIBLE',
+      'WITH',
     ]) {
       expect(spanOf(`${keyword} x`)).toBe(0);
     }

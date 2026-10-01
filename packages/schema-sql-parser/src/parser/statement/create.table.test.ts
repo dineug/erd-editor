@@ -466,7 +466,7 @@ describe('createTableParser - column options', () => {
   // Bare, the comment read as words and the name as two fields.
   it('keeps the quotes of a nested field comment and name', () => {
     const { ast } = parse(
-      "CREATE TABLE t (a STRUCT<name: STRING COMMENT 'it''s > 0', `first name`: STRING>, b INT);"
+      "CREATE TABLE t (a STRUCT<name: STRING COMMENT 'it''s > 0', `first name`: STRING>, b INT, c STRUCT<x: STRING COMMENT 'q'>);"
     );
 
     expect(ast.columns).toEqual([
@@ -476,6 +476,7 @@ describe('createTableParser - column options', () => {
           "STRUCT<name: STRING COMMENT 'it''s > 0', `first name`: STRING>",
       }),
       column({ name: 'b', dataType: 'INT' }),
+      column({ name: 'c', dataType: "STRUCT<x: STRING COMMENT 'q'>" }),
     ]);
   });
 
@@ -680,15 +681,19 @@ describe('createTableParser - user defined types', () => {
         " m COMMENT 'x',\n" +
         ' n WITH MASKING POLICY p,\n' +
         ' o VISIBLE,\n' +
-        " p 'x'\n" +
-        ');'
+        " p 'x',\n" +
+        ' q MASKING POLICY mp,\n' +
+        ' r PROJECTION POLICY pp,\n' +
+        ' s ENCRYPT,\n' +
+        ' t INVISIBLE\n' +
+        ') AS SELECT * FROM o;'
     );
 
     expect(ast.columns.map(column => column.dataType)).toEqual(
-      Array.from({ length: 16 }, () => '')
+      Array.from({ length: 20 }, () => '')
     );
     expect(ast.columns.map(column => column.name).join('')).toBe(
-      'abcdefghijklmnop'
+      'abcdefghijklmnopqrst'
     );
   });
 
@@ -721,11 +726,12 @@ describe('createTableParser - user defined types', () => {
   it('still reads a column named by one of those words', () => {
     expect(
       types(
-        'CREATE TABLE t (exclude BOOLEAN, fulltext tsvector, spatial geometry(Point,4326), period INT, supplemental TEXT, "like" s);'
+        'CREATE TABLE t (exclude BOOLEAN, fulltext tsvector, fulltext mood, spatial geometry(Point,4326), period INT, supplemental TEXT, "like" s);'
       )
     ).toEqual([
       ['exclude', 'BOOLEAN'],
       ['fulltext', 'tsvector'],
+      ['fulltext', 'mood'],
       ['spatial', 'geometry(Point,4326)'],
       ['period', 'INT'],
       ['supplemental', 'TEXT'],
