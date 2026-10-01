@@ -98,6 +98,24 @@ describe('isSingleWord', () => {
     expect(isSingleWord('회원_아이디')).toBe(false);
   });
 
+  it('lets a combining mark join the word it sits in, spacing or not', () => {
+    for (const name of [
+      'आईडी',
+      'ไอดี',
+      'cafe\u0301',
+      'E\u0301cole',
+      'E\u0301TAT',
+    ]) {
+      expect(isSingleWord(name), name).toBe(true);
+    }
+  });
+
+  it('reads case across a combining mark, as across a digit', () => {
+    for (const name of ['cafe\u0301Id', 'ide\u0301Card', 'CAFE\u0301Name']) {
+      expect(isSingleWord(name), name).toBe(false);
+    }
+  });
+
   it('takes no empty name as a word', () => {
     expect(isSingleWord('')).toBe(false);
   });
@@ -201,6 +219,14 @@ describe('toForeignKeyNames', () => {
     expect(toForeignKeyNames('회원', ['회원_아이디'], [])).toEqual([
       '회원_아이디',
     ]);
+  });
+
+  it('prefixes a single word key written with combining marks, and keeps one they split', () => {
+    expect(
+      ['आईडी', 'ไอดี', 'cafe\u0301', 'cafe\u0301Id'].map(
+        key => toForeignKeyNames('users', [key], [])[0]
+      )
+    ).toEqual(['users_आईडी', 'users_ไอดี', 'users_cafe\u0301', 'cafe\u0301Id']);
   });
 
   it('keeps a single word key equal to the table name, without case', () => {
