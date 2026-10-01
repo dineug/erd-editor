@@ -392,7 +392,11 @@ function convertIndex(
         indexColumns.push(newIndexColumn);
       });
 
-      if (indexColumns.length !== 0) {
+      // A unique key short of a column is a stricter key than the source's, so
+      // it goes whole; a plain index keeps the columns that resolve.
+      const complete = indexColumns.length === index.columns.length;
+
+      if (indexColumns.length !== 0 && (complete || !index.unique)) {
         indexColumns.forEach(indexColumn => {
           newIndex.indexColumnIds.push(indexColumn.id);
           newIndex.seqIndexColumnIds.push(indexColumn.id);

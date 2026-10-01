@@ -777,6 +777,25 @@ describe('schemaSQLParserToSchemaJson', () => {
       ).toBe(columnByName(schema, posts, 'id').id);
     });
 
+    it('drops a unique index with a key column that does not resolve, in every spelling', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), name VARCHAR(20));
+        ALTER TABLE users ADD COLUMN tenant_id INT;
+        ALTER TABLE users ADD CONSTRAINT uq_tenant_email UNIQUE (tenant_id, email);
+        CREATE UNIQUE INDEX uq_tenant_name ON users (tenant_id, name);
+        CREATE TABLE t (a INT, b INT, UNIQUE (a, zz), UNIQUE KEY uq_b (b, zz));
+        CREATE INDEX idx_kept ON users (email, tenant_id);
+      `);
+
+      expect(uniqueColumnNamesOf(schema, tableByName(schema, 'users'))).toEqual(
+        []
+      );
+      expect(uniqueColumnNamesOf(schema, tableByName(schema, 't'))).toEqual([]);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'idx_kept', unique: false, columns: ['email ASC'] },
+      ]);
+    });
+
     it('does not create an index when no column resolves', () => {
       const schema = parse(`
         CREATE TABLE posts (id INT);
