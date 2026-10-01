@@ -166,7 +166,8 @@ export function createMatcher(
 
   // Unicode mode always, for \p{L} and whole code points: a match never
   // starts or ends inside a surrogate pair, so a replacement never splits one.
-  const flags = options.matchCase ? 'gu' : 'giu';
+  // A regular expression reads ^ and $ at each line of a memo, as editors do.
+  const flags = `g${options.matchCase ? '' : 'i'}u${options.regex ? 'm' : ''}`;
   const source = options.regex ? toUnicodeSource(query) : escapeRegExp(query);
   let pattern: RegExp;
   try {

@@ -231,6 +231,36 @@ describe('createMatcher', () => {
     expect(texts('aa aab', matcherOf('(a)\\1', whole))).toEqual(['aa']);
   });
 
+  it('reads ^ and $ at each line of a text of several, CRLF ones too', () => {
+    const regex = { regex: true };
+
+    expect(texts('first line\nuser here', matcherOf('^user', regex))).toEqual([
+      'user',
+    ]);
+    expect(texts('a line\nb line', matcherOf('line$', regex))).toEqual([
+      'line',
+      'line',
+    ]);
+    expect(texts('first line\r\nuser here', matcherOf('^user', regex))).toEqual(
+      ['user']
+    );
+    expect(texts('a line\r\nb line', matcherOf('line$', regex))).toEqual([
+      'line',
+      'line',
+    ]);
+    expect(matcherOf('^- ', regex).replace('- a\r\n- b', '* ')).toBe(
+      '* a\r\n* b'
+    );
+  });
+
+  it('keeps a dot to one line, a class reaching across', () => {
+    expect(texts('a\nb', matcherOf('a.b', { regex: true }))).toEqual([]);
+    expect(texts('a\nb', matcherOf('a[\\s\\S]b', { regex: true }))).toEqual([
+      'a\nb',
+    ]);
+    expect(texts('^user\nuser', matcherOf('^user'))).toEqual(['^user']);
+  });
+
   it('never counts an empty match of a regular expression', () => {
     const matcher = matcherOf('x*', { regex: true });
 
