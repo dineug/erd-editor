@@ -407,6 +407,13 @@ function createTableColumnsParser(
         const name = token.value;
         token = tokens[++$pos.value];
 
+        // SQL Server's INDEX n UNIQUE (a, b) is a unique key the UNIQUE branch
+        // reads, under the index's name.
+        if (isUnique($pos.value)) {
+          constraintName = name;
+          continue;
+        }
+
         if (isLeftParent($pos.value)) {
           const indexColumns = indexColumnsParser(tokens, $pos);
 

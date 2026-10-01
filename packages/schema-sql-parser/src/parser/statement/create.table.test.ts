@@ -707,6 +707,34 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
+  it('names a SQL Server inline INDEX n UNIQUE by its index name', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT, b INT,\n' +
+        ' INDEX ix_ab UNIQUE NONCLUSTERED (a, b DESC),\n' +
+        ' INDEX [ix_ba] UNIQUE (b, a),\n' +
+        ' INDEX ix_a UNIQUE CLUSTERED (a),\n' +
+        ' UNIQUE (b, a)\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', unique: true }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+    expect(
+      ast.indexes.map(({ name, unique, columns }) => [
+        name,
+        unique,
+        columns.map(({ name, sort }) => `${name} ${sort}`).join(', '),
+      ])
+    ).toEqual([
+      ['ix_ab', true, 'a ASC, b DESC'],
+      ['ix_ba', true, 'b ASC, a ASC'],
+      ['', true, 'b ASC, a ASC'],
+    ]);
+  });
+
   it('reads no key list after a column level UNIQUE', () => {
     const { ast } = parse(
       'CREATE TABLE t (\n' +

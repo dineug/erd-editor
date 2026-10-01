@@ -1004,6 +1004,63 @@ CREATE TABLE a (
 }
 ```
 
+### Column INDEX UNIQUE, SQL Server
+
+```sql
+CREATE TABLE [dbo].[t] (
+ [a] int NOT NULL,
+ [b] int NOT NULL,
+ INDEX [ix_ab] UNIQUE NONCLUSTERED ([a] ASC, [b] DESC),
+ INDEX [ix_b] UNIQUE ([b])
+)
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "t",
+      "comment": "",
+      "columns": [
+        {
+          "name": "a",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "b",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": true,
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_ab",
+          "unique": true,
+          "columns": [
+            { "name": "a", "sort": "ASC" },
+            { "name": "b", "sort": "DESC" }
+          ]
+        }
+      ],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
 ### Column PRIMARY KEY, UNIQUE KEY, KEY
 
 ```sql
