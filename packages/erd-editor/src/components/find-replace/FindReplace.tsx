@@ -237,6 +237,12 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     refresh();
   };
 
+  /** Searches again for an edit, whose list the count then speaks for rather than what the last press said. */
+  const searchEdited = () => {
+    state.status = '';
+    refresh(true);
+  };
+
   /**
    * Searches what is typed when a regular expression still waits for the
    * pause, as a change of search; true when it did. A press goes through the
@@ -533,7 +539,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
     stale ||= actions.some(({ type }) => isTextAction(type));
     if (!stale || !shown) return;
-    before ? edited() : refresh(true);
+    before ? edited() : searchEdited();
   };
 
   onMounted(() => {
@@ -559,7 +565,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       )
         .pipe(debounceTime(100))
         .subscribe(() => {
-          stale && isShown(store.state) && refresh(true);
+          stale && isShown(store.state) && searchEdited();
         }),
       cancelPendingSearch
     );

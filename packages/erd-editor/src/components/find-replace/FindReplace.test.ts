@@ -884,12 +884,11 @@ describe('FindReplace replacing', () => {
     expect(countText()).toBe('Replaced 5 matches');
     expect(app.store.history.size).toBe(1);
 
+    // The search the undo runs counts what it gave back, over what the press said.
     app.store.undo();
     await settle();
 
     expect(texts()).toEqual(before);
-    expect(countText()).toBe('Replaced 5 matches');
-    await type(findInput(), 'user');
     expect(countText()).toBe('5 matches');
   });
 
@@ -910,6 +909,17 @@ describe('FindReplace replacing', () => {
 
     expect(countText()).toBe('No changes');
     expect(app.store.history.size).toBe(0);
+
+    // A peer's edit searches again, and the count speaks for what it found.
+    app.store.dispatchSync(
+      changeColumnCommentAction({
+        id: 'email',
+        tableId: 'users',
+        value: 'the user email',
+      })
+    );
+    await settle();
+    expect(countText()).toBe('6 matches');
   });
 
   it('counts only the matches a regular expression replacement changes', async () => {
