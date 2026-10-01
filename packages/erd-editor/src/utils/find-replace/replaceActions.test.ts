@@ -133,6 +133,18 @@ describe('toReplaceActions', () => {
     ]);
   });
 
+  it('replaces every whole word a regular expression finds, whichever alternative comes first', () => {
+    const matcher = matcherOf('user|user_id', { regex: true, wholeWord: true });
+
+    app.store.dispatchSync(
+      toReplaceActions(findMatches(app.store.state, matcher), matcher, 'member')
+    );
+
+    expect(texts().columns.orders_user_id[0]).toBe('member');
+    expect(texts().columns.users_id[1]).toBe('member id');
+    expect(texts().memo).toBe('Every member points at users.id');
+  });
+
   it('writes nothing where the replacement leaves the text as it was', () => {
     const matcher = matcherOf('user', { matchCase: true });
     const matches = findMatches(app.store.state, matcher);

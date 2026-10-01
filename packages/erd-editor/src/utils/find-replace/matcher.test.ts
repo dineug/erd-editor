@@ -167,6 +167,41 @@ describe('createMatcher', () => {
     ).toEqual(['사용자']);
   });
 
+  it('weighs whole word while it matches, so another alternative or length still gets its turn', () => {
+    const whole = { regex: true, wholeWord: true };
+
+    expect(texts('users user', matcherOf('user|users', whole))).toEqual([
+      'users',
+      'user',
+    ]);
+    expect(texts('identity id', matcherOf('id|identity', whole))).toEqual([
+      'identity',
+      'id',
+    ]);
+    expect(texts('user id', matcherOf('\\S+?', whole))).toEqual(['user', 'id']);
+    expect(matcherOf('user|users', whole).replace('users user', 'X')).toBe(
+      'X X'
+    );
+  });
+
+  it('refuses an unbalanced pattern under whole word, which the wrapper around it would balance', () => {
+    expect(
+      createMatcher('user)|(id', options({ regex: true, wholeWord: true }))
+    ).toEqual({ matcher: null, error: 'invalid' });
+  });
+
+  it('keeps the groups a pattern numbers and names under whole word', () => {
+    const whole = { regex: true, wholeWord: true };
+
+    expect(
+      matcherOf('(\\w+?)_(?<suffix>id)', whole).replace(
+        'user_id x_idx',
+        '$<suffix>_$1'
+      )
+    ).toBe('id_user x_idx');
+    expect(texts('aa aab', matcherOf('(a)\\1', whole))).toEqual(['aa']);
+  });
+
   it('never counts an empty match of a regular expression', () => {
     const matcher = matcherOf('x*', { regex: true });
 

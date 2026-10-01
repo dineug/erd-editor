@@ -114,6 +114,18 @@ describe('findMatches', () => {
     ).toEqual(['memo:note@6', 'memo:note@24']);
   });
 
+  it('finds the same whole words whichever order the alternatives of a regular expression come in', () => {
+    const whole = { ...DEFAULT_FIND_OPTIONS, regex: true, wholeWord: true };
+    const found = (query: string) =>
+      findMatches(
+        app.store.state,
+        createMatcher(query, whole).matcher as Matcher
+      ).map(({ text, start, end }) => text.slice(start, end));
+
+    expect(found('user|user_id')).toEqual(['user_id', 'user', 'user_id']);
+    expect(found('user_id|user')).toEqual(found('user|user_id'));
+  });
+
   it('finds nothing in an empty field', () => {
     expect(
       findMatches(app.store.state, matcherOf('e'), [FindField.tableComment])

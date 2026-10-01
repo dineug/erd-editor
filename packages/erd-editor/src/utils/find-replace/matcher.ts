@@ -33,13 +33,15 @@ export const DEFAULT_FIND_OPTIONS: FindOptions = Object.freeze({
 });
 
 /** A letter or digit of any script, or an underscore, which an identifier keeps inside one word. */
-const WORD_CHAR = /[\p{L}\p{N}_]/u;
+const WORD_CHAR = '[\\p{L}\\p{N}_]';
 
-const isWordChar = (text: string, index: number): boolean =>
-  index >= 0 && index < text.length && WORD_CHAR.test(text[index]);
-
-const isWholeWord = (text: string, start: number, end: number): boolean =>
-  !isWordChar(text, start - 1) && !isWordChar(text, end);
+/**
+ * A pattern that matches only where no word character stands on either side,
+ * which the engine weighs while it matches, so a shorter alternative or a
+ * longer repeat is still tried where the first one it finds is part of a word.
+ */
+const wholeWordSource = (source: string) =>
+  `(?<!${WORD_CHAR})(?:${source})(?!${WORD_CHAR})`;
 
 /**
  * What a replacement template becomes for one match, by the rules of
@@ -161,25 +163,22 @@ export function createMatcher(
   // Unicode mode always, for \p{L} and whole code points: a match never
   // starts or ends inside a surrogate pair, so a replacement never splits one.
   const flags = options.matchCase ? 'gu' : 'giu';
+  const source = options.regex ? toUnicodeSource(query) : escapeRegExp(query);
   let pattern: RegExp;
   try {
-    pattern = new RegExp(
-      options.regex ? toUnicodeSource(query) : escapeRegExp(query),
-      flags
-    );
+    // The source alone first: wrapped, an unbalanced user)|(id would parse.
+    pattern = new RegExp(source, flags);
+    if (options.wholeWord) pattern = new RegExp(wholeWordSource(source), flags);
   } catch {
     return { matcher: null, error: 'invalid' };
   }
-
-  const accepts = (text: string, start: number, end: number) =>
-    end > start && (!options.wholeWord || isWholeWord(text, start, end));
 
   const find = (text: string): TextRange[] => {
     const ranges: TextRange[] = [];
     for (const match of text.matchAll(pattern)) {
       const start = match.index;
       const end = start + match[0].length;
-      if (accepts(text, start, end)) ranges.push({ start, end });
+      if (end > start) ranges.push({ start, end });
     }
     return ranges;
   };
@@ -196,8 +195,9 @@ export function createMatcher(
         args.length - tail
       );
 
-      if (!accepts(text, position, position + match.length)) return match;
-      if (onlyAt !== undefined && position !== onlyAt) return match;
+      if (!match || (onlyAt !== undefined && position !== onlyAt)) {
+        return match;
+      }
 
       return options.regex
         ? expandReplacement(
