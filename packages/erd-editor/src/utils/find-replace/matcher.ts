@@ -81,17 +81,68 @@ export function expandReplacement(
   );
 }
 
-/**
- * A typed pattern, in unicode mode where it parses there, for \p{L} and whole
- * code points, and without it where it does not: unicode mode refuses the
- * identity escapes people type in names, such as \_ and \-.
- */
-function compilePattern(source: string, flags: string): RegExp {
-  try {
-    return new RegExp(source, `${flags}u`);
-  } catch {
-    return new RegExp(source, flags);
+/** What unicode mode takes escaped as itself besides a letter or a digit: a syntax character or the solidus. */
+const SYNTAX_CHARACTERS = new Set('^$\\.*+?()[]{}|/');
+
+/** A quantifier in braces, read from where an opening brace stands. */
+const BRACED_QUANTIFIER = /\{\d+(?:,\d*)?\}/y;
+
+/** An escaped character as unicode mode reads it, which refuses \_ and \- though people type them in names. */
+function escapeFor(char: string): string {
+  if (/^[\dA-Za-z]$/.test(char) || SYNTAX_CHARACTERS.has(char)) {
+    return `\\${char}`;
   }
+  // A hyphen by its code unit, which reads as one inside a class and out.
+  if (char === '-') return '\\x2d';
+  return `\\u{${(char.codePointAt(0) as number).toString(16)}}`;
+}
+
+/**
+ * A typed pattern spelled for unicode mode, read the way people type it: an
+ * escaped character other than a letter, a digit or a syntax character by its
+ * code point, and a stray ] or a brace no quantifier owns as itself.
+ */
+export function toUnicodeSource(source: string): string {
+  let result = '';
+  let inClass = false;
+  let index = 0;
+  const readAt = (at: number) =>
+    String.fromCodePoint(source.codePointAt(at) as number);
+
+  while (index < source.length) {
+    const char = readAt(index);
+    index += char.length;
+
+    if (char === '\\') {
+      if (index >= source.length) return `${result}${char}`;
+
+      const escaped = readAt(index);
+      index += escaped.length;
+      result += escapeFor(escaped);
+      // A property or a code point in braces keeps them as written.
+      if ('pPu'.includes(escaped) && source[index] === '{') {
+        const close = source.indexOf('}', index);
+        const end = close === -1 ? source.length : close + 1;
+        result += source.slice(index, end);
+        index = end;
+      }
+    } else if (inClass) {
+      inClass = char !== ']';
+      result += char;
+    } else if (char === '[') {
+      inClass = true;
+      result += char;
+    } else if (char === '{') {
+      BRACED_QUANTIFIER.lastIndex = index - 1;
+      const quantifier = BRACED_QUANTIFIER.exec(source)?.[0];
+      result += quantifier ?? '\\{';
+      index += quantifier ? quantifier.length - 1 : 0;
+    } else {
+      result += char === ']' || char === '}' ? `\\${char}` : char;
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -107,12 +158,15 @@ export function createMatcher(
 ): MatcherResult {
   if (!query) return { matcher: null, error: 'empty' };
 
-  const flags = options.matchCase ? 'g' : 'gi';
+  // Unicode mode always, for \p{L} and whole code points: a match never
+  // starts or ends inside a surrogate pair, so a replacement never splits one.
+  const flags = options.matchCase ? 'gu' : 'giu';
   let pattern: RegExp;
   try {
-    pattern = options.regex
-      ? compilePattern(query, flags)
-      : new RegExp(escapeRegExp(query), `${flags}u`);
+    pattern = new RegExp(
+      options.regex ? toUnicodeSource(query) : escapeRegExp(query),
+      flags
+    );
   } catch {
     return { matcher: null, error: 'invalid' };
   }

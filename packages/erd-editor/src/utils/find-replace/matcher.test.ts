@@ -6,6 +6,7 @@ import {
   expandReplacement,
   FindOptions,
   Matcher,
+  toUnicodeSource,
 } from '@/utils/find-replace';
 
 const options = (overrides: Partial<FindOptions> = {}): FindOptions => ({
@@ -52,7 +53,7 @@ describe('createMatcher', () => {
     ).toBe('u_id a-b x#y key:value');
   });
 
-  it('keeps unicode mode for a pattern that parses there, property classes and all', () => {
+  it('reads every pattern in unicode mode, property classes and all', () => {
     const matcher = matcherOf('\\p{Lu}\\p{Ll}+', {
       regex: true,
       matchCase: true,
@@ -60,6 +61,64 @@ describe('createMatcher', () => {
 
     expect(texts('Éclair and Bob', matcher)).toEqual(['Éclair', 'Bob']);
     expect(texts('😀x', matcherOf('^.x$', { regex: true }))).toEqual(['😀x']);
+  });
+
+  it('stays in unicode mode with an escape typed in a name beside a property class', () => {
+    expect(
+      texts(
+        'A_ p{Lu}_',
+        matcherOf('\\p{Lu}\\_', { regex: true, matchCase: true })
+      )
+    ).toEqual(['A_']);
+    // Case folding in unicode mode takes the long s for an s.
+    expect(texts('ſ_ s_', matcherOf('s\\_', { regex: true }))).toEqual([
+      'ſ_',
+      's_',
+    ]);
+    expect(texts('a😀b', matcherOf('\\😀', { regex: true }))).toEqual(['😀']);
+  });
+
+  it('refuses what unicode mode refuses besides the escapes and stray brackets it rewrites', () => {
+    for (const query of [
+      '\\p{Foo}',
+      '[\\w-.]+',
+      '\\z',
+      'user\\',
+      '(?=a)*',
+      '\\p{L',
+    ]) {
+      expect(createMatcher(query, options({ regex: true })).error).toBe(
+        'invalid'
+      );
+    }
+  });
+
+  it('takes a stray ] and a brace no quantifier owns as themselves', () => {
+    const regex = { regex: true };
+
+    expect(texts('a]', matcherOf(']', regex))).toEqual([']']);
+    expect(texts('a{', matcherOf('a{', regex))).toEqual(['a{']);
+    expect(texts('a{1', matcherOf('a{1', regex))).toEqual(['a{1']);
+    expect(texts('x}', matcherOf('x}', regex))).toEqual(['x}']);
+    expect(texts('{x,1}', matcherOf('{x,1}', regex))).toEqual(['{x,1}']);
+    expect(texts('[]]', matcherOf('[\\]]]', regex))).toEqual([']]']);
+    expect(texts('aaa', matcherOf('a{2}', regex))).toEqual(['aa']);
+    expect(texts('aaa', matcherOf('a{1,}?', regex))).toEqual(['a', 'a', 'a']);
+    expect(texts('éé ab', matcherOf('\\p{L}{2}', regex))).toEqual(['éé', 'ab']);
+    expect(texts('a{2}', matcherOf('\\u{61}\\{2\\}', regex))).toEqual(['a{2}']);
+  });
+
+  it('never splits a surrogate pair, so a replacement never writes half of one', () => {
+    const value = matcherOf('.\\_id', { regex: true }).replace('😀_id', 'X');
+
+    expect(value).toBe('X');
+    for (const query of ['.', '.\\_', '[^a]', '\\W', '(?<=.).']) {
+      const replaced = matcherOf(query, { regex: true }).replace(
+        '😀a𠀀_😀',
+        '-'
+      );
+      expect(/\p{Cs}/u.test(replaced)).toBe(false);
+    }
   });
 
   it('finds plain text in any case by default, special characters and all', () => {
@@ -122,6 +181,27 @@ describe('createMatcher', () => {
     expect(
       texts('Id ID id', matcherOf('i[a-z]', { regex: true, matchCase: true }))
     ).toEqual(['id']);
+  });
+});
+
+describe('toUnicodeSource', () => {
+  it.each([
+    ['user\\_id', 'user\\u{5f}id'],
+    ['a\\-b', 'a\\x2db'],
+    ['[a\\-z]', '[a\\x2dz]'],
+    ['\\#\\:\\ ', '\\u{23}\\u{3a}\\u{20}'],
+    ['\\😀', '\\u{1f600}'],
+    ['\\.\\d\\/\\$', '\\.\\d\\/\\$'],
+    ['\\p{Lu}\\P{L}\\u{61}', '\\p{Lu}\\P{L}\\u{61}'],
+    ['a]', 'a\\]'],
+    ['[]]', '[]\\]'],
+    ['[{}]', '[{}]'],
+    ['a{', 'a\\{'],
+    ['x}', 'x\\}'],
+    ['a{2}b{1,}c{1,3}', 'a{2}b{1,}c{1,3}'],
+    ['user\\', 'user\\'],
+  ])('spells %s as %s', (source, rewritten) => {
+    expect(toUnicodeSource(source)).toBe(rewritten);
   });
 });
 
