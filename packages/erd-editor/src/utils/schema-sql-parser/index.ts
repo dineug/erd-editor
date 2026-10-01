@@ -276,7 +276,9 @@ function convertRelationship(
       const startColumns: Column[] = [];
       const endColumns: Column[] = [];
 
-      // A REFERENCES t without a column list names t's primary key.
+      // A REFERENCES t without a column list names t's primary key, in the
+      // order the key declares, which the columns lose: only a one-column key
+      // pairs for sure.
       if (foreignKey.refColumnNames.length) {
         foreignKey.refColumnNames.forEach(refColumnName => {
           const column = findByName(sColumns, refColumnName);
@@ -285,11 +287,13 @@ function convertRelationship(
           startColumns.push(column);
         });
       } else {
-        startColumns.push(
-          ...sColumns.filter(column =>
-            bHas(column.ui.keys, ColumnUIKey.primaryKey)
-          )
+        const primaryKeys = sColumns.filter(column =>
+          bHas(column.ui.keys, ColumnUIKey.primaryKey)
         );
+
+        if (primaryKeys.length === 1) {
+          startColumns.push(...primaryKeys);
+        }
       }
 
       foreignKey.columnNames.forEach(columnName => {

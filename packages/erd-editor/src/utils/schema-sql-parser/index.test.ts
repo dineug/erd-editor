@@ -631,6 +631,25 @@ describe('schemaSQLParserToSchemaJson', () => {
       ).toBe(0);
     });
 
+    it('skips a composite key without a column list, whose pairing follows the declared key order', () => {
+      const schema = parse(`
+        CREATE TABLE p (a INT NOT NULL, b INT NOT NULL, PRIMARY KEY (b, a));
+        CREATE TABLE c (x INT, y INT, FOREIGN KEY (x, y) REFERENCES p ON DELETE CASCADE);
+        CREATE TABLE q (a INT NOT NULL, b INT NOT NULL);
+        ALTER TABLE q ADD CONSTRAINT q_pk PRIMARY KEY (b, a);
+        CREATE TABLE d (x INT, y INT);
+        ALTER TABLE d ADD CONSTRAINT d_fk FOREIGN KEY (x, y) REFERENCES q;
+      `);
+
+      expect(relationshipsOf(schema)).toEqual([]);
+      expect(columnByName(schema, tableByName(schema, 'c'), 'x').ui.keys).toBe(
+        0
+      );
+      expect(columnByName(schema, tableByName(schema, 'd'), 'y').ui.keys).toBe(
+        0
+      );
+    });
+
     it('creates one relationship per foreign key on the same table', () => {
       const schema = parse(`
         CREATE TABLE a (id INT);
