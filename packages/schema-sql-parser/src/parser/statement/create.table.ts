@@ -35,6 +35,7 @@ import {
   matchUserDataType,
   requote,
   requoteTypeName,
+  unquoteTypeName,
 } from '@/parser/helper';
 import {
   Column,
@@ -652,9 +653,11 @@ function createTableColumnsParser(
         } else if (isArrayDimension($pos.value)) {
           value += requote(token);
         } else {
-          // A listed type drops its quotes, [int] being how T-SQL writes INT;
-          // a user type keeps those it needs, "MyType" being case sensitive.
-          const text = userDefined ? requoteTypeName(token) : token.value;
+          // A user type keeps the quotes it needs, "MyType" being case
+          // sensitive; a listed type drops them but for "char" and "bit".
+          const text = userDefined
+            ? requoteTypeName(token)
+            : unquoteTypeName(token);
           value +=
             value && !isPeriod($pos.value) && !isPeriod($pos.value - 1)
               ? ` ${text}`

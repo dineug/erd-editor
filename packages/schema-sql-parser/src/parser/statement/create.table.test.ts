@@ -597,6 +597,25 @@ describe('createTableParser - user defined types', () => {
     ]);
   });
 
+  // PostgreSQL reads char as character(1) and bit as bit(1), while "char" and
+  // "bit" name other types, which pg_dump writes quoted.
+  it('keeps the double quotes of "char" and "bit"', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a "char", b char, c "char"[] NOT NULL, d "bit", e "bit"(3), f [char](2), g `bit`, h "CHAR"(2));'
+      )
+    ).toEqual([
+      ['a', '"char"'],
+      ['b', 'char'],
+      ['c', '"char"[]'],
+      ['d', '"bit"'],
+      ['e', '"bit"(3)'],
+      ['f', 'char(2)'],
+      ['g', 'bit'],
+      ['h', 'CHAR(2)'],
+    ]);
+  });
+
   it('keeps the arguments of a user type', () => {
     expect(
       types(

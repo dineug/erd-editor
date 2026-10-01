@@ -638,6 +638,14 @@ export const requoteTypeName = (token: Token) =>
     ? token.value
     : requote(token);
 
+// A listed type sheds its quotes, [int] being how T-SQL writes INT, but not
+// PostgreSQL's "char" and "bit": its grammar reads char as character(1) and
+// bit as bit(1), while the quoted names are other types, as pg_dump writes.
+export const unquoteTypeName = (token: Token) =>
+  token.quoted === '"' && (token.value === 'char' || token.value === 'bit')
+    ? requote(token)
+    : token.value;
+
 // How many tokens a type no vendor list carries spans at pos, 0 for a keyword
 // or a string literal: mood, "MyType", public.mood[], hstore. Any identifier
 // matches, so the caller decides where a type may stand.

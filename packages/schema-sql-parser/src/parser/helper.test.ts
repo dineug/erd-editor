@@ -70,6 +70,7 @@ import {
   matchUserDataType,
   requote,
   requoteTypeName,
+  unquoteTypeName,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
@@ -1131,6 +1132,16 @@ describe('requoteTypeName', () => {
       '`m`',
       'x',
     ]);
+  });
+});
+
+describe('unquoteTypeName', () => {
+  it('drops the quotes of a listed name but those of "char" and "bit"', () => {
+    expect(
+      tokenizer('"char" "bit" "int4" "CHAR" [char] `bit` char').map(
+        unquoteTypeName
+      )
+    ).toEqual(['"char"', '"bit"', 'int4', 'CHAR', 'char', 'bit', 'char']);
   });
 });
 

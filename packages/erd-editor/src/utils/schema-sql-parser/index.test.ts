@@ -886,7 +886,7 @@ describe('schemaSQLParserToSchemaJson', () => {
       [
         'PostgreSQL',
         Database.PostgreSQL,
-        'CREATE TABLE person (id serial, current_mood public.mood NOT NULL, zip us_postal, email citext, kind "MyType", tags mood[], grid text[][], scores integer ARRAY);',
+        'CREATE TABLE person (id serial, current_mood public.mood NOT NULL, zip us_postal, email citext, kind "MyType", tags mood[], grid text[][], scores integer ARRAY, flag "char", bits "bit");',
         [
           'serial',
           'public.mood',
@@ -896,6 +896,8 @@ describe('schemaSQLParserToSchemaJson', () => {
           'mood[]',
           'text[][]',
           'integer ARRAY',
+          '"char"',
+          '"bit"',
         ],
       ],
       [
@@ -1000,7 +1002,9 @@ CREATE TABLE public.person (
     scores integer[],
     fixed integer[],
     label character varying(20) DEFAULT 'it''s'::character varying,
-    created timestamp with time zone
+    created timestamp with time zone,
+    flag "char",
+    bits "bit"
 );
 ALTER TABLE public.person OWNER TO postgres;
 COMMENT ON TABLE public.person IS 'o''k';
@@ -1062,8 +1066,10 @@ CREATE TABLE \`film\` (
           'integer[]',
           'character varying(20)',
           'timestamp with time zone',
+          '"char"',
+          '"bit"',
         ],
-        ["o'k", "it's the id", ...Array(14).fill('')],
+        ["o'k", "it's the id", ...Array(16).fill('')],
       ],
       [
         'mysqldump',
