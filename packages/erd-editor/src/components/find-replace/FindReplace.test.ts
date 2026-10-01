@@ -1175,6 +1175,29 @@ describe('FindReplace with a pattern too slow for the document', () => {
   });
 });
 
+describe('FindReplace stopping a search after a press', () => {
+  it('says the search stopped over what the last Replace All said', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await type(findInput(), 'user');
+    await pause();
+    await type(replaceInput() as HTMLInputElement, 'member');
+    await click(button('find-replace-all'));
+    expect(countText()).toBe('Replaced 5 matches');
+
+    await stalled(async () => {
+      app.store.dispatchSync(
+        changeMemoValueAction({ id: 'note', value: 'a user wrote this' })
+      );
+      await settle();
+    });
+
+    expect(countText()).toBe('Search stopped: pattern too slow');
+    expect(panel()?.querySelector('.find-count.invalid')).not.toBeNull();
+    expect(button('find-next').disabled).toBe(true);
+  });
+});
+
 describe('FindReplace in a read-only editor', () => {
   beforeEach(async () => {
     await setup(true);

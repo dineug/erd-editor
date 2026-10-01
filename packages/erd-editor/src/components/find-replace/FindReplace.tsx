@@ -557,7 +557,10 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { matches, error } = result;
     const { current } = state;
     const [from, to] = rowWindow(current, matches.length);
-    const count = state.status || countText({ ...state, error, matches });
+    const failed = error === 'invalid' || error === 'slow';
+    // Why nothing can be gone to outweighs what the last press did.
+    const count =
+      (!failed && state.status) || countText({ ...state, error, matches });
     const top = store.state.editor.zenMode ? 16 : TOOLBAR_HEIGHT + 16;
     const replaceable = !props.readonly && matches.length > 0;
 
@@ -683,13 +686,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
           ))}
         </div>
         <div class={styles.status}>
-          <span
-            class={[
-              'find-count',
-              styles.count,
-              { invalid: error === 'invalid' || error === 'slow' },
-            ]}
-          >
+          <span class={['find-count', styles.count, { invalid: failed }]}>
             {count}
           </span>
           <button
