@@ -366,6 +366,41 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('reads an Oracle unique constraint that names an index of its columns as that index', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" ("A" NUMBER, "B" NUMBER, "C" NUMBER, "D" NUMBER);
+        CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
+        CREATE INDEX "HR"."IX_T_CD" ON "HR"."T" ("C", "D");
+        CREATE UNIQUE INDEX "HR"."IX_T_C" ON "HR"."T" ("C");
+        CREATE INDEX "HR"."IX_T_ABD" ON "HR"."T" ("A", "B", "D");
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AB" UNIQUE ("A", "B")
+          USING INDEX hr.uq_t_ab_ix ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_DC" UNIQUE ("D", "C")
+          USING INDEX "HR"."IX_T_CD" ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_C" UNIQUE ("C")
+          USING INDEX "HR"."IX_T_C" ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_BA" UNIQUE ("B", "A")
+          USING INDEX "HR"."IX_T_ABD" ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AD" UNIQUE ("A", "D")
+          USING INDEX "HR"."MISSING" ENABLE;
+      `);
+      const t = tableByName(schema, 'T');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual([]);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'UQ_T_AB_IX', unique: true, columns: ['A ASC', 'B ASC'] },
+        { name: 'IX_T_CD', unique: true, columns: ['C ASC', 'D ASC'] },
+        { name: 'IX_T_C', unique: true, columns: ['C ASC'] },
+        {
+          name: 'IX_T_ABD',
+          unique: false,
+          columns: ['A ASC', 'B ASC', 'D ASC'],
+        },
+        { name: 'UQ_T_BA', unique: true, columns: ['B ASC', 'A ASC'] },
+        { name: 'UQ_T_AD', unique: true, columns: ['A ASC', 'D ASC'] },
+      ]);
+    });
+
     it('keeps every column of a pg_dump key whose parts carry a null order, an operator class or a collation', () => {
       const schema = parse(`
         CREATE TABLE public.t (a integer NOT NULL, b integer NOT NULL, deleted_at timestamp);

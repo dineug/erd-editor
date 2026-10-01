@@ -401,6 +401,60 @@ export const matchQualifiedName = (tokens: Token[]) => {
   };
 };
 
+// The words Oracle's USING INDEX takes in place of an index name: the index
+// properties, and the constraint states that may follow it with none.
+const IndexProperties: ReadonlyArray<string> = [
+  'COMPRESS',
+  'COMPUTE',
+  'DEFERRABLE',
+  'DISABLE',
+  'ENABLE',
+  'EXCEPTIONS',
+  'FILESYSTEM_LIKE_LOGGING',
+  'GLOBAL',
+  'INDEXING',
+  'INDEXTYPE',
+  'INITIALLY',
+  'INITRANS',
+  'INVISIBLE',
+  'LOCAL',
+  'LOGGING',
+  'MAXTRANS',
+  'NOCOMPRESS',
+  'NOLOGGING',
+  'NOPARALLEL',
+  'NORELY',
+  'NOSORT',
+  'NOT',
+  'NOVALIDATE',
+  'ONLINE',
+  'PARALLEL',
+  'PCTFREE',
+  'PCTUSED',
+  'RELY',
+  'REVERSE',
+  'SORT',
+  'STORAGE',
+  'TABLESPACE',
+  'USING',
+  'VALIDATE',
+  'VISIBLE',
+];
+
+// How many tokens Oracle's USING INDEX [schema.]index spans, 0 where USING
+// INDEX is followed by index properties, a (CREATE INDEX ...) group or nothing.
+export const matchUsingIndexName = (tokens: Token[]) => {
+  const word = matchKeyword(tokens);
+  const qualifiedName = matchQualifiedName(tokens);
+
+  return (pos: number) => {
+    if (word(pos) !== 'USING' || word(pos + 1) !== 'INDEX') return 0;
+
+    const name = qualifiedName(pos + 2);
+    return name && !IndexProperties.includes(word(pos + 2)) ? 2 + name : 0;
+  };
+};
+
 // What the optional symbol after CONSTRAINT can never be: the words that open
 // the constraint itself.
 const ConstraintBodies: ReadonlyArray<string> = [

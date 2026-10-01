@@ -149,6 +149,7 @@ describe('schemaSQLParser', () => {
         type: 'alter.table.add.unique',
         name: 'users',
         constraintName: '',
+        usingIndexName: '',
         columns: [{ name: 'email', sort: 'ASC' }],
       },
     ]);

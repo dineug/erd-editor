@@ -84,6 +84,8 @@ export type AlterTableAddUnique = {
   name: string;
   /** The key's own name: an index name after UNIQUE KEY, else the CONSTRAINT symbol. */
   constraintName: string;
+  /** The existing index Oracle's USING INDEX names to enforce the key, '' for none. */
+  usingIndexName: string;
   columns: IndexColumn[];
 };
 

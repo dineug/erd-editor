@@ -163,6 +163,18 @@ function mergeTables({
     const table = findByName(tables, unique.name);
     if (!table) return;
 
+    // Oracle's USING INDEX names the index CREATE INDEX made to enforce the
+    // key. Over the same columns that index is the key, made unique; a second
+    // one beside it repeats a column list Oracle refuses to index twice.
+    const usingIndex = unique.usingIndexName
+      ? findByName(table.indexes, unique.usingIndexName)
+      : null;
+
+    if (usingIndex && hasSameColumns(usingIndex.columns, unique.columns)) {
+      usingIndex.unique = true;
+      return;
+    }
+
     // Several columns are one composite key, which a unique flag on each of
     // them would make stricter. One column keeps the flag it always set, and
     // with it the UQ_<table>_<column> the export writes comes back unchanged.
@@ -214,6 +226,19 @@ function mergeTables({
   });
 
   return tables;
+}
+
+// Whether two key lists name the same columns, in any order: a unique key over
+// them is the same constraint either way.
+function hasSameColumns(
+  a: ReadonlyArray<{ name: string }>,
+  b: ReadonlyArray<{ name: string }>
+) {
+  const names = new Set(a.map(({ name }) => name.toUpperCase()));
+  return (
+    a.length === b.length &&
+    b.every(({ name }) => names.has(name.toUpperCase()))
+  );
 }
 
 function convertTable(

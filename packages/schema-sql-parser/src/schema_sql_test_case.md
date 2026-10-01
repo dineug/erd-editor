@@ -1498,12 +1498,14 @@ ALTER TABLE Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "",
+      "usingIndexName": "",
       "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "UC_Person",
+      "usingIndexName": "",
       "columns": [
         { "name": "ID", "sort": "ASC" },
         { "name": "LastName", "sort": "ASC" }
@@ -1527,12 +1529,14 @@ ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "",
+      "usingIndexName": "",
       "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "UC_Person",
+      "usingIndexName": "",
       "columns": [
         { "name": "ID", "sort": "ASC" },
         { "name": "LastName", "sort": "ASC" }
@@ -1556,12 +1560,14 @@ ALTER TABLE users ADD CONSTRAINT sym UNIQUE INDEX uq_ab (a, b DESC);
       "type": "alter.table.add.unique",
       "name": "users",
       "constraintName": "uq_email",
+      "usingIndexName": "",
       "columns": [{ "name": "email", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "users",
       "constraintName": "uq_ab",
+      "usingIndexName": "",
       "columns": [
         { "name": "a", "sort": "ASC" },
         { "name": "b", "sort": "DESC" }
@@ -1594,6 +1600,7 @@ ALTER TABLE users ADD CONSTRAINT UNIQUE (a, b), ADD CONSTRAINT fk_x FOREIGN KEY 
       "type": "alter.table.add.unique",
       "name": "users",
       "constraintName": "uq_tenant_login",
+      "usingIndexName": "",
       "columns": [
         { "name": "tenant", "sort": "ASC" },
         { "name": "login", "sort": "ASC" }
@@ -1603,15 +1610,63 @@ ALTER TABLE users ADD CONSTRAINT UNIQUE (a, b), ADD CONSTRAINT fk_x FOREIGN KEY 
       "type": "alter.table.add.unique",
       "name": "users",
       "constraintName": "uq_email",
+      "usingIndexName": "",
       "columns": [{ "name": "email", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "users",
       "constraintName": "",
+      "usingIndexName": "",
       "columns": [
         { "name": "a", "sort": "ASC" },
         { "name": "b", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
+### Alter Table Add UNIQUE USING INDEX, Oracle
+
+```sql
+CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
+ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AB" UNIQUE ("A", "B") USING INDEX "HR"."UQ_T_AB_IX" ENABLE;
+ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_CD" UNIQUE ("C", "D")
+  USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 TABLESPACE "USERS" ENABLE;
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.index",
+      "name": "UQ_T_AB_IX",
+      "unique": true,
+      "tableName": "T",
+      "columns": [
+        { "name": "A", "sort": "ASC" },
+        { "name": "B", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "T",
+      "constraintName": "UQ_T_AB",
+      "usingIndexName": "UQ_T_AB_IX",
+      "columns": [
+        { "name": "A", "sort": "ASC" },
+        { "name": "B", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "T",
+      "constraintName": "UQ_T_CD",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "C", "sort": "ASC" },
+        { "name": "D", "sort": "ASC" }
       ]
     }
   ]
@@ -1690,12 +1745,14 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "",
+      "usingIndexName": "",
       "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "UC_Person",
+      "usingIndexName": "",
       "columns": [
         { "name": "ID", "sort": "ASC" },
         { "name": "LastName", "sort": "ASC" }
@@ -1705,12 +1762,14 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "",
+      "usingIndexName": "",
       "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
       "constraintName": "UC_Person",
+      "usingIndexName": "",
       "columns": [
         { "name": "ID", "sort": "ASC" },
         { "name": "LastName", "sort": "ASC" }

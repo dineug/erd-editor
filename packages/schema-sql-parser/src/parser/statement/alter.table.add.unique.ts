@@ -16,6 +16,7 @@ import {
   isTableValue,
   isUniqueValue,
   matchKeyModifier,
+  matchUsingIndexName,
 } from '@/parser/helper';
 import { AlterTableAddUnique, RefPos, StatementType } from '@/parser/statement';
 import { indexColumnsParser } from '@/parser/statement/index.columns';
@@ -46,6 +47,7 @@ export function alterTableAddUniqueParser(
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
   const keyModifier = matchKeyModifier(tokens);
+  const usingIndexName = matchUsingIndexName(tokens);
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
@@ -79,6 +81,9 @@ export function alterTableAddUniqueParser(
   // The CONSTRAINT symbol of the clause being read. A clause ends at its comma,
   // so the symbol of a foreign key after a unique key never names that key.
   let constraintName = '';
+  // The key the clause being read has added, which a USING INDEX after its key
+  // list names.
+  let clauseKey: AlterTableAddUnique | null = null;
 
   $pos.value++;
 
@@ -118,6 +123,7 @@ export function alterTableAddUniqueParser(
 
     if (isComma($pos.value) || isAdd($pos.value)) {
       constraintName = '';
+      clauseKey = null;
       $pos.value++;
       continue;
     }
@@ -170,15 +176,30 @@ export function alterTableAddUniqueParser(
         const columns = indexColumnsParser(tokens, $pos);
 
         if (columns.length) {
-          keys.push({
+          clauseKey = {
             type: StatementType.alterTableAddUnique,
             name,
             constraintName: keyName,
+            usingIndexName: '',
             columns,
-          });
+          };
+          keys.push(clauseKey);
         }
       }
 
+      continue;
+    }
+
+    // Oracle's USING INDEX "HR"."IX" names the index that already enforces the
+    // key, anywhere among the constraint states that follow its key list.
+    const usingIndex = usingIndexName($pos.value);
+
+    if (usingIndex) {
+      if (clauseKey) {
+        clauseKey.usingIndexName = tokens[$pos.value + usingIndex - 1].value;
+      }
+
+      $pos.value += usingIndex;
       continue;
     }
 

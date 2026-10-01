@@ -68,6 +68,7 @@ import {
   matchKeyModifier,
   matchQualifiedName,
   matchReferentialClause,
+  matchUsingIndexName,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
@@ -572,6 +573,26 @@ describe('matchQualifiedName', () => {
 
   it('reports no name where there is no string token', () => {
     expect(matchQualifiedName(tokenizer('(id)'))(0)).toBe(0);
+  });
+});
+
+describe('matchUsingIndexName', () => {
+  const span = (sql: string) => matchUsingIndexName(tokenizer(sql))(0);
+
+  it('spans USING INDEX and the possibly qualified name after it', () => {
+    expect(span('USING INDEX ix ENABLE')).toBe(3);
+    expect(span('using index "HR"."UQ_T_AB_IX" ENABLE')).toBe(5);
+    expect(span('USING INDEX "TABLESPACE"')).toBe(3);
+  });
+
+  it('spans nothing where index properties or a group stand for the name', () => {
+    expect(span('USING INDEX TABLESPACE "USERS"')).toBe(0);
+    expect(span('USING INDEX pctfree 10 INITRANS 2')).toBe(0);
+    expect(span('USING INDEX ENABLE')).toBe(0);
+    expect(span('USING INDEX (CREATE INDEX ix ON t (a))')).toBe(0);
+    expect(span('USING INDEX')).toBe(0);
+    expect(span('USING BTREE')).toBe(0);
+    expect(span('INDEX ix')).toBe(0);
   });
 });
 

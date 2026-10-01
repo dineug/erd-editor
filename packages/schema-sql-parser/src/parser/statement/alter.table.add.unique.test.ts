@@ -9,6 +9,7 @@ const EMPTY_KEY = {
   type: StatementType.alterTableAddUnique,
   name: '',
   constraintName: '',
+  usingIndexName: '',
   columns: [],
 };
 
@@ -55,6 +56,7 @@ describe('alterTableAddUniqueParser', () => {
       type: StatementType.alterTableAddUnique,
       name: 'users',
       constraintName: '',
+      usingIndexName: '',
       columns: [{ name: 'email', sort: SortType.asc }],
     });
   });
@@ -144,6 +146,7 @@ describe('alterTableAddUniqueParser', () => {
       type: StatementType.alterTableAddUnique,
       name: 'users',
       constraintName: 'uq_users_email',
+      usingIndexName: '',
       columns: [{ name: 'email', sort: SortType.asc }],
     });
   });
@@ -348,6 +351,76 @@ describe('an ALTER TABLE that adds several keys', () => {
       StatementType.alterTableAddPrimaryKey,
       StatementType.alterTableAddUnique,
       StatementType.createTable,
+    ]);
+  });
+});
+
+describe('the index a unique key names with USING INDEX', () => {
+  const usingIndexNamesOf = (source: string) =>
+    schemaSQLParser(source)
+      .filter(statement => statement.type === StatementType.alterTableAddUnique)
+      .map(statement => [statement.constraintName, statement.usingIndexName]);
+
+  it('reads the last segment of the index Oracle names', () => {
+    const { ast } = parse(
+      'ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AB" UNIQUE ("A", "B") ' +
+        'USING INDEX "HR"."UQ_T_AB_IX" ENABLE;'
+    );
+
+    expect(ast).toEqual({
+      type: StatementType.alterTableAddUnique,
+      name: 'T',
+      constraintName: 'UQ_T_AB',
+      usingIndexName: 'UQ_T_AB_IX',
+      columns: [
+        { name: 'A', sort: SortType.asc },
+        { name: 'B', sort: SortType.asc },
+      ],
+    });
+  });
+
+  it('reads the name wherever the constraint state puts it', () => {
+    expect(
+      usingIndexNamesOf(
+        'ALTER TABLE t ADD CONSTRAINT uq_a UNIQUE (a, b) USING INDEX ix_a;\n' +
+          'ALTER TABLE t ADD CONSTRAINT uq_b UNIQUE (a, b) DEFERRABLE USING INDEX hr.ix_b ENABLE;'
+      )
+    ).toEqual([
+      ['uq_a', 'ix_a'],
+      ['uq_b', 'ix_b'],
+    ]);
+  });
+
+  it('reads no name from index properties or a CREATE INDEX group', () => {
+    expect(
+      usingIndexNamesOf(
+        'ALTER TABLE t ADD CONSTRAINT uq_a UNIQUE (a, b) ' +
+          'USING INDEX PCTFREE 10 INITRANS 2 TABLESPACE "USERS" ENABLE;\n' +
+          'ALTER TABLE t ADD CONSTRAINT uq_b UNIQUE (a, b) ' +
+          'USING INDEX (CREATE UNIQUE INDEX ix ON t (a, b)) ENABLE;\n' +
+          'ALTER TABLE t ADD CONSTRAINT uq_c UNIQUE (a, b) USING INDEX TABLESPACE fast;\n' +
+          'ALTER TABLE t ADD CONSTRAINT uq_d UNIQUE (a, b) USING INDEX ENABLE;\n' +
+          'ALTER TABLE t ADD CONSTRAINT uq_e UNIQUE (a, b) USING INDEX;'
+      )
+    ).toEqual([
+      ['uq_a', ''],
+      ['uq_b', ''],
+      ['uq_c', ''],
+      ['uq_d', ''],
+      ['uq_e', ''],
+    ]);
+  });
+
+  it('names only the key of its own clause', () => {
+    expect(
+      usingIndexNamesOf(
+        'ALTER TABLE t ADD UNIQUE (a, b) USING INDEX ix_ab, ADD UNIQUE (c, d);\n' +
+          'ALTER TABLE t ADD PRIMARY KEY (id) USING INDEX ix_pk, ADD UNIQUE (a, c);'
+      )
+    ).toEqual([
+      ['', 'ix_ab'],
+      ['', ''],
+      ['', ''],
     ]);
   });
 });
