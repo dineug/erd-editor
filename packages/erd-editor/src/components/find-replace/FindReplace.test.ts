@@ -1258,6 +1258,35 @@ describe('FindReplace searching only when it has to', () => {
     expect(app.store.state.editor.selectedMap).toEqual(selectedMap);
   });
 
+  it('searches nothing for a pause it is closed or stood aside at, and what is typed as it shows', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    vi.mocked(findMatchesBefore).mockClear();
+
+    await type(findInput(), 'user');
+    await click(button('find-replace-close'));
+    await pause();
+    expect(searches()).toBe(0);
+
+    await openWith();
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('5 matches');
+
+    await type(findInput(), 'user_');
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: true })
+    );
+    await pause();
+    expect(searches()).toBe(1);
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: false })
+    );
+    await flush();
+    expect(searches()).toBe(2);
+    expect(countText()).toBe('2 matches');
+  });
+
   it('drops a search still waiting for the pause when it unmounts', async () => {
     await openWith();
     await click(button('find-regex'));

@@ -252,6 +252,19 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   };
 
   /**
+   * What typing in regex mode searches once it pauses. A panel closed or
+   * standing aside by then searches nothing, leaving what is typed to the
+   * opening or the batch that shows it again, as a change of search.
+   */
+  const searchTyped = () => {
+    if (isShown(app.value.store.state)) return search();
+
+    pendingSearch = null;
+    slowKey = null;
+    stale = true;
+  };
+
+  /**
    * Searches what is typed when a regular expression still waits for the
    * pause, as a change of search; true when it did. A press goes through the
    * matches of the query on screen, never of the one before it.
@@ -468,7 +481,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (!state.regex) return search();
 
     cancelPendingSearch();
-    pendingSearch = setTimeout(search, REGEX_INPUT_DELAY);
+    pendingSearch = setTimeout(searchTyped, REGEX_INPUT_DELAY);
   };
 
   const handleReplacementInput = (event: InputEvent) => {
