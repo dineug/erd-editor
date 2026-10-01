@@ -32,8 +32,12 @@ export const DEFAULT_FIND_OPTIONS: FindOptions = Object.freeze({
   regex: false,
 });
 
-/** A letter or digit of any script, or an underscore, which an identifier keeps inside one word. */
-const WORD_CHAR = '[\\p{L}\\p{N}_]';
+/**
+ * What a word holds inside it, after the word characters of Unicode's regular
+ * expression guidelines (UTS 18): a letter, digit or mark of any script, a
+ * connector such as the underscore, and the joiners ZWNJ and ZWJ.
+ */
+const WORD_CHAR = '[\\p{L}\\p{N}\\p{M}\\p{Pc}\\p{Join_Control}]';
 
 /**
  * A pattern that matches only where no word character stands on either side,

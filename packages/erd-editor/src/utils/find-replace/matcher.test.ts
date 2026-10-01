@@ -165,6 +165,35 @@ describe('createMatcher', () => {
     expect(
       texts('사용자 아이디', matcherOf('사용자', { wholeWord: true }))
     ).toEqual(['사용자']);
+    const decomposed = '사용자 아이디'.normalize('NFD');
+    expect(
+      texts(
+        decomposed,
+        matcherOf('사용자'.normalize('NFD'), { wholeWord: true })
+      )
+    ).toEqual(['사용자'.normalize('NFD')]);
+  });
+
+  it('takes a letter past the first plane as one, and a mark or a joiner as part of a word', () => {
+    const whole = (query: string, text: string) =>
+      texts(text, matcherOf(query, { wholeWord: true }));
+
+    expect(whole('id', '𠀀id 𠀀 id')).toEqual(['id']);
+    // A virama and Thai vowel and tone marks join the letters around them.
+    expect(whole('नमस', 'नमस्ते')).toEqual([]);
+    expect(whole('नमस्ते', 'नमस्ते')).toEqual(['नमस्ते']);
+    expect(whole('ผ', 'ผู้ใช้ ผ')).toEqual(['ผ']);
+    // A Persian word keeps its parts apart with a zero width non-joiner.
+    expect(whole('خواهم', 'می‌خواهم می خواهم')).toEqual(['خواهم']);
+    expect(whole('id', 'user＿id')).toEqual([]);
+  });
+
+  it('leaves a decomposed accent on the word it belongs to', () => {
+    const text = 'café cafe';
+
+    expect(matcherOf('cafe', { wholeWord: true }).replace(text, 'shop')).toBe(
+      'café shop'
+    );
   });
 
   it('weighs whole word while it matches, so another alternative or length still gets its turn', () => {
