@@ -218,6 +218,22 @@ describe('Find and Replace on a real keyboard', () => {
     expect(stateOf(fixture).editor.selectedMap).toEqual({ note: 'memo' });
   });
 
+  it('searches a regular expression typed at once when Enter comes before the pause', async () => {
+    const fixture = await setup();
+    await press(OPEN_FIND);
+    panelOf(fixture)?.querySelector<HTMLButtonElement>('.find-regex')?.click();
+    await flush();
+    inputOf(fixture, 'find-input')?.focus();
+
+    await press('^(order|user)_id${Enter}');
+
+    expect(countOf(fixture)).toBe('1 of 2');
+    expect(stateOf(fixture).editor.focusTable).toMatchObject({
+      tableId: 'orders',
+      columnId: 'order_id',
+    });
+  });
+
   it('replaces every match in one step that one undo takes back', async () => {
     const fixture = await setup();
     await press(OPEN_FIND);

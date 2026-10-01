@@ -1,5 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 
+import type { ActionType } from '@/engine/actions';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
 
@@ -29,6 +30,32 @@ export type FindMatch = {
 };
 
 type Field = Omit<FindMatch, 'start' | 'end'>;
+
+/**
+ * What changes a text the search reads, or which fields it walks: the actions
+ * a search on screen runs again on. A hover, a selection or a scroll changes
+ * none, and a slow pattern would stall the tab on every one of them.
+ */
+export const FindTextActionTypes: ReadonlyArray<ActionType> = [
+  'table.add',
+  'table.remove',
+  'table.changeName',
+  'table.changeComment',
+  'table.sort',
+  'column.add',
+  'column.remove',
+  'column.changeName',
+  'column.changeComment',
+  'column.move',
+  'memo.add',
+  'memo.remove',
+  'memo.changeValue',
+  'editor.loadJson',
+  'editor.clear',
+  'editor.initialLoadJson',
+  'editor.initialClear',
+  'editor.validationIds',
+];
 
 /**
  * Every text field the fields given cover, in document order: each table's
@@ -119,15 +146,32 @@ export function findMatches(
   matcher: Matcher,
   fields: ReadonlyArray<FindField> = FindFieldList
 ): FindMatch[] {
-  return walkFields(state, fields).flatMap(field =>
-    field.text
-      ? matcher.find(field.text).map(({ start, end }) => ({
-          ...field,
-          start,
-          end,
-        }))
-      : []
-  );
+  return findMatchesBefore(state, matcher, fields, Infinity) as FindMatch[];
+}
+
+/**
+ * The same search under a time budget, or null once the clock has passed the
+ * deadline at the end of a field: a pattern too slow for the document stops
+ * at a field boundary, though one field it is in the middle of runs to its end.
+ */
+export function findMatchesBefore(
+  state: RootState,
+  matcher: Matcher,
+  fields: ReadonlyArray<FindField>,
+  deadline: number
+): FindMatch[] | null {
+  const matches: FindMatch[] = [];
+
+  for (const field of walkFields(state, fields)) {
+    if (!field.text) continue;
+
+    for (const { start, end } of matcher.find(field.text)) {
+      matches.push({ ...field, start, end });
+    }
+    if (performance.now() > deadline) return null;
+  }
+
+  return matches;
 }
 
 /**

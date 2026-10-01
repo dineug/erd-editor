@@ -1,5 +1,12 @@
 import { html } from '@dineug/r-html';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
@@ -11,7 +18,9 @@ import {
 import { AppContext } from '@/components/appContext';
 import FindReplace, {
   MATCH_ROW_LIMIT,
+  REGEX_INPUT_DELAY,
   rowWindow,
+  SEARCH_BUDGET,
 } from '@/components/find-replace/FindReplace';
 import {
   createFieldActions,
@@ -28,17 +37,34 @@ import {
   drawStartRelationshipAction,
   editTableAction,
   focusTableAction,
+  hoverColumnMapAction,
+  selectAction,
 } from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import {
   addMemoAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
 import { openFindReplaceAction } from '@/utils/emitter';
-import { FindField, FindFieldList } from '@/utils/find-replace';
+import {
+  FindField,
+  FindFieldList,
+  findMatchesBefore,
+} from '@/utils/find-replace';
 import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+
+// The panel's searches of the whole document, counted as they pass through.
+vi.mock('@/utils/find-replace', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/utils/find-replace')>();
+  return { ...actual, findMatchesBefore: vi.fn(actual.findMatchesBefore) };
+});
 
 if (typeof Element.prototype.scrollIntoView !== 'function') {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
@@ -137,6 +163,31 @@ const settle = async () => {
   await flush();
 };
 
+/** Past the pause the panel waits for before it searches a regular expression typed. */
+const pause = async () => {
+  await new Promise(resolve => setTimeout(resolve, REGEX_INPUT_DELAY + 50));
+  await flush();
+};
+
+/** How many times the panel has searched the whole document since the last count was cleared. */
+const searches = () => vi.mocked(findMatchesBefore).mock.calls.length;
+
+/** A field that (a+)+$ backtracks over for a while, two to the power of its length. */
+const SLOW_TEXT = `${'a'.repeat(22)}b`;
+
+/** Runs a search with a clock that leaps past the budget at each reading, as a slow pattern would. */
+async function stalled(run: () => Promise<unknown>) {
+  let clock = performance.now();
+  const now = vi
+    .spyOn(performance, 'now')
+    .mockImplementation(() => (clock += SEARCH_BUDGET + 1));
+  try {
+    await run();
+  } finally {
+    now.mockRestore();
+  }
+}
+
 const listen = (event: KeyboardEvent) => {
   escaped.push(event);
 };
@@ -152,6 +203,7 @@ async function setup(readonly = false) {
 }
 
 beforeEach(async () => {
+  vi.mocked(findMatchesBefore).mockClear();
   focusEvents = 0;
   escaped = [];
   document.body.addEventListener(InternalEventType.focus, countFocusEvent);
@@ -487,9 +539,11 @@ describe('FindReplace searching', () => {
   it('runs a regular expression, and says when it does not parse', async () => {
     await click(button('find-regex'));
     await type(findInput(), '^(order|user)_id$');
+    await pause();
     expect(countText()).toBe('2 matches');
 
     await type(findInput(), 'user(');
+    await pause();
 
     expect(countText()).toBe('Invalid regular expression');
     expect(findInput().classList.contains('invalid')).toBe(true);
@@ -790,6 +844,195 @@ describe('FindReplace replacing', () => {
 
     expect(button('find-replace-one').disabled).toBe(true);
     expect(button('find-replace-all').disabled).toBe(true);
+  });
+});
+
+describe('FindReplace searching only when it has to', () => {
+  it('searches again on an edit of a text it reads, and never on a hover, a selection, a scroll or a jump', async () => {
+    await openWith('user');
+    vi.mocked(findMatchesBefore).mockClear();
+
+    app.store.dispatchSync(hoverColumnMapAction({ columnIds: ['email'] }));
+    app.store.dispatchSync(selectAction({ users: SelectType.table }));
+    app.store.dispatchSync(scrollToAction({ originX: 40, originY: 40 }));
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.8 }));
+    await keydown(findInput(), { key: 'Enter' });
+    await click(button('find-next'));
+    await click(rows()[3]);
+    await settle();
+
+    expect(searches()).toBe(0);
+    expect(countText()).toBe('4 of 5');
+
+    app.store.dispatchSync(
+      changeColumnCommentAction({
+        id: 'email',
+        tableId: 'users',
+        value: 'the user email',
+      })
+    );
+    await settle();
+
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('5 of 6');
+  });
+
+  it('searches once when it opens again, not once more for its own opening', async () => {
+    await openWith('user');
+    await click(button('find-replace-close'));
+    vi.mocked(findMatchesBefore).mockClear();
+
+    await openWith();
+    await settle();
+
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('5 matches');
+  });
+
+  it('searches the document once for a Replace, and lists what a search would find', async () => {
+    await openWith('user');
+    await type(replaceInput() as HTMLInputElement, 'super_user');
+    await keydown(findInput(), { key: 'Enter' });
+    vi.mocked(findMatchesBefore).mockClear();
+
+    await click(button('find-replace-one'));
+    await settle();
+
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('2 of 5');
+    const listed = rowTexts();
+    await click(button('find-match-case'));
+    await click(button('find-match-case'));
+    expect(rowTexts()).toEqual(listed);
+  });
+
+  it('searches the document twice for a Replace All, before it and after', async () => {
+    await openWith('user');
+    await type(replaceInput() as HTMLInputElement, 'member');
+    vi.mocked(findMatchesBefore).mockClear();
+
+    await click(button('find-replace-all'));
+    await settle();
+
+    expect(searches()).toBe(2);
+    expect(countText()).toBe('Replaced 5 matches');
+  });
+
+  it('searches plain text as it is typed, and a regular expression once typing pauses', async () => {
+    await openWith();
+    await type(findInput(), 'user');
+    expect(countText()).toBe('5 matches');
+    expect(searches()).toBe(1);
+
+    await click(button('find-regex'));
+    vi.mocked(findMatchesBefore).mockClear();
+    for (const typed of ['user', 'user_', 'user_i', 'user_id']) {
+      await type(findInput(), typed);
+    }
+
+    expect(searches()).toBe(0);
+    expect(countText()).toBe('5 matches');
+
+    await pause();
+
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('2 matches');
+  });
+
+  it('goes through the matches of what is typed on an Enter pressed before the pause', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await type(findInput(), 'users?');
+
+    await keydown(findInput(), { key: 'Enter' });
+
+    expect(countText()).toBe('1 of 5');
+    await pause();
+    expect(searches()).toBe(1);
+  });
+
+  it('drops a search still waiting for the pause when it unmounts', async () => {
+    await openWith();
+    await click(button('find-regex'));
+    await type(findInput(), 'user');
+    vi.mocked(findMatchesBefore).mockClear();
+
+    mounted?.unmount();
+    mounted = null;
+    await pause();
+
+    expect(searches()).toBe(0);
+  });
+});
+
+describe('FindReplace with a pattern too slow for the document', () => {
+  beforeEach(async () => {
+    app.store.dispatchSync(
+      changeMemoValueAction({ id: 'note', value: SLOW_TEXT })
+    );
+    await openWith();
+    await click(button('find-regex'));
+    await type(findInput(), '(a+)+$');
+    await stalled(() => keydown(findInput(), { key: 'Enter' }));
+  });
+
+  it('stops it past the budget and says so, with nothing to go to or replace', async () => {
+    const before = texts();
+    const { cursor } = app.store.history;
+
+    expect(countText()).toBe('Search stopped: pattern too slow');
+    expect(panel()?.querySelector('.find-count.invalid')).not.toBeNull();
+    expect(findInput().classList.contains('invalid')).toBe(false);
+    expect(rows()).toHaveLength(0);
+    for (const name of [
+      'find-next',
+      'find-previous',
+      'find-replace-one',
+      'find-replace-all',
+    ]) {
+      expect(button(name).disabled).toBe(true);
+    }
+
+    await type(replaceInput() as HTMLInputElement, 'x');
+    await keydown(replaceInput() as HTMLInputElement, { key: 'Enter' });
+    await keydown(replaceInput() as HTMLInputElement, {
+      key: 'Enter',
+      ctrlKey: true,
+    });
+
+    expect(texts()).toEqual(before);
+    expect(app.store.history.cursor).toBe(cursor);
+  });
+
+  it('runs it again only once the reader changes the search, not on an edit, an opening or a press', async () => {
+    vi.mocked(findMatchesBefore).mockClear();
+
+    app.store.dispatchSync(
+      changeColumnCommentAction({ id: 'email', tableId: 'users', value: 'a' })
+    );
+    await settle();
+    await click(button('find-replace-close'));
+    await openWith();
+    await keydown(replaceInput() as HTMLInputElement, { key: 'Enter' });
+
+    expect(searches()).toBe(0);
+    expect(countText()).toBe('Search stopped: pattern too slow');
+
+    // On the real clock the same pattern runs within the budget.
+    await click(button('find-match-case'));
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('1 match');
+
+    await stalled(() => click(button('find-match-case')));
+    expect(countText()).toBe('Search stopped: pattern too slow');
+
+    await stalled(() => type(findInput(), '(a+)+b'));
+    await stalled(pause);
+    expect(searches()).toBe(3);
+    expect(countText()).toBe('Search stopped: pattern too slow');
+    await type(findInput(), 'a+b');
+    await pause();
+    expect(countText()).toBe('1 match');
   });
 });
 

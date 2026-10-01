@@ -1,10 +1,25 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
+import { ChangeActionTypes } from '@/engine/actions';
+import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
+import { ActionType as MemoActionType } from '@/engine/modules/memo/actions';
 import { removeMemoAction } from '@/engine/modules/memo/atom.actions';
-import { removeTableAction } from '@/engine/modules/table/atom.actions';
+import { ActionType as TableActionType } from '@/engine/modules/table/actions';
+import {
+  changeTableNameAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
+import { ActionType as ColumnActionType } from '@/engine/modules/table-column/actions';
 import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
 import {
   createMatcher,
@@ -13,6 +28,8 @@ import {
   FindFieldList,
   FindMatch,
   findMatches,
+  findMatchesBefore,
+  FindTextActionTypes,
   indexAfter,
   Matcher,
   rematchField,
@@ -132,6 +149,99 @@ describe('findMatches', () => {
         .map(({ id }) => id)
         .every(id => id === 'orders')
     ).toBe(true);
+  });
+});
+
+describe('findMatchesBefore', () => {
+  const slowMatcher = () =>
+    createMatcher('(a+)+$', { ...DEFAULT_FIND_OPTIONS, regex: true })
+      .matcher as Matcher;
+
+  it('finds what findMatches finds while the deadline is ahead', () => {
+    const matcher = matcherOf('user');
+
+    expect(
+      findMatchesBefore(
+        app.store.state,
+        matcher,
+        FindFieldList,
+        performance.now() + 60_000
+      )
+    ).toEqual(findMatches(app.store.state, matcher));
+  });
+
+  it('stops at the end of the long field a slow pattern ran past the deadline in', () => {
+    app.store.dispatchSync(
+      changeTableNameAction({ id: 'orders', value: `${'a'.repeat(22)}b` })
+    );
+    const matcher = slowMatcher();
+    const find = vi.spyOn(matcher, 'find');
+
+    expect(
+      findMatchesBefore(
+        app.store.state,
+        matcher,
+        FindFieldList,
+        performance.now() + 1
+      )
+    ).toBeNull();
+    expect(find).toHaveBeenCalledTimes(1);
+  });
+
+  it('judges a search that ends past the deadline slow, though it searched every field', () => {
+    expect(
+      findMatchesBefore(
+        app.store.state,
+        slowMatcher(),
+        [FindField.memo],
+        performance.now() - 1
+      )
+    ).toBeNull();
+  });
+});
+
+describe('FindTextActionTypes', () => {
+  it('names actions the engine has, every one an edit a host saves or a load', () => {
+    const known = new Set<string>([
+      ...Object.values(TableActionType),
+      ...Object.values(ColumnActionType),
+      ...Object.values(MemoActionType),
+      ...Object.values(EditorActionType),
+    ]);
+    const loads = [
+      'editor.initialLoadJson',
+      'editor.initialClear',
+      'editor.validationIds',
+    ];
+
+    for (const type of FindTextActionTypes) {
+      expect(known.has(type)).toBe(true);
+      expect(ChangeActionTypes.includes(type) || loads.includes(type)).toBe(
+        true
+      );
+    }
+  });
+
+  it('leaves out what moves, colours, sizes, scrolls, zooms, hovers or selects', () => {
+    for (const type of [
+      'table.move',
+      'table.moveTo',
+      'table.changeColor',
+      'table.changeZIndex',
+      'column.changeDataType',
+      'memo.move',
+      'memo.resize',
+      'memo.changeColor',
+      'settings.scrollTo',
+      'settings.streamScrollTo',
+      'settings.changeZoomLevel',
+      'editor.hoverColumnMap',
+      'editor.select',
+      'editor.focusTable',
+      'editor.changeOpenMap',
+    ]) {
+      expect(FindTextActionTypes).not.toContain(type);
+    }
   });
 });
 

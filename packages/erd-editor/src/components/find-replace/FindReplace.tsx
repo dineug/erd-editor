@@ -1,4 +1,5 @@
 import {
+  CompositionActions,
   createRef,
   FC,
   nextTick,
@@ -23,6 +24,7 @@ import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { hasMoveKeys, isEditingText } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { arrayHas } from '@/utils/arrayHas';
 import { FindReplaceQuery, toggleSearchAction } from '@/utils/emitter';
 import {
   createMatcher,
@@ -31,7 +33,8 @@ import {
   FindFieldLabel,
   FindFieldList,
   FindMatch,
-  findMatches,
+  findMatchesBefore,
+  FindTextActionTypes,
   indexAfter,
   locationOf,
   Matcher,
@@ -75,6 +78,12 @@ export function rowWindow(
   return [start, start + limit];
 }
 
+/** How long a regular expression may search the document before the panel stops it as too slow. */
+export const SEARCH_BUDGET = 500;
+
+/** How long the panel waits for typing to pause before it searches a regular expression. */
+export const REGEX_INPUT_DELAY = 150;
+
 /** The space a jump keeps between the panel and what it lands on. */
 const PANEL_GAP = 16;
 
@@ -110,6 +119,8 @@ const SCOPE_LABEL: Record<FindField, string> = {
 const matchCount = (count: number) =>
   `${count} ${count === 1 ? 'match' : 'matches'}`;
 
+const isTextAction = arrayHas<string>(FindTextActionTypes);
+
 const isSameMatch = (a: FindMatch, b: FindMatch) =>
   a.field === b.field && a.id === b.id && a.start === b.start;
 
@@ -123,6 +134,7 @@ type CountInput = {
 /** What the line under the fields says: the place in the matches, how many there are, or why none. */
 function countText({ query, error, matches, current }: CountInput): string {
   if (error === 'invalid') return 'Invalid regular expression';
+  if (error === 'slow') return 'Search stopped: pattern too slow';
   if (!query) return '';
   if (!matches.length) return 'No results';
   if (current === -1) return matchCount(matches.length);
@@ -160,22 +172,68 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     { shallow: true }
   );
   let matcher: Matcher | null = null;
+  /** The query, options and scopes of the last search that ran past its budget. */
+  let slowKey: string | null = null;
+  let pendingSearch: ReturnType<typeof setTimeout> | null = null;
+  /** Set while the panel dispatches its own edit, whose matches it has worked out already. */
+  let replacing = false;
 
-  /** Runs the search again over the document as it stands, keeping the current match when it is still there. */
+  const searchKey = () =>
+    JSON.stringify([
+      state.query,
+      state.matchCase,
+      state.wholeWord,
+      state.regex,
+      state.fields,
+    ]);
+
+  const cancelPendingSearch = () => {
+    pendingSearch !== null && clearTimeout(pendingSearch);
+    pendingSearch = null;
+  };
+
+  /**
+   * Runs the search again over the document as it stands, keeping the current
+   * match when it is still there. A regular expression searches under a time
+   * budget, and one judged slow runs again only once the reader changes it.
+   */
   const refresh = (keepCurrent = false) => {
+    cancelPendingSearch();
+    const key = searchKey();
+    if (key === slowKey) return;
+
     const { store } = app.value;
     const previous = result.matches[state.current];
     const created = createMatcher(state.query, state);
-
-    matcher = created.matcher;
-    result.error = created.error;
-    result.matches = matcher
-      ? findMatches(store.state, matcher, state.fields)
+    const deadline = state.regex ? performance.now() + SEARCH_BUDGET : Infinity;
+    const matches = created.matcher
+      ? findMatchesBefore(store.state, created.matcher, state.fields, deadline)
       : [];
+
+    slowKey = matches ? null : key;
+    matcher = matches ? created.matcher : null;
+    result.error = matches ? created.error : 'slow';
+    result.matches = matches ?? [];
     state.current =
       keepCurrent && previous
         ? result.matches.findIndex(match => isSameMatch(match, previous))
         : -1;
+  };
+
+  /** A search the reader asked for by changing it, which runs even where the last one was judged slow. */
+  const search = () => {
+    slowKey = null;
+    refresh();
+  };
+
+  /** Dispatches the panel's own edit, which the store hands back to the subscription below. */
+  const dispatchOwn = (actions: CompositionActions) => {
+    replacing = true;
+    try {
+      app.value.store.dispatchSync(actions);
+    } finally {
+      replacing = false;
+    }
   };
 
   const scrollToCurrent = () => {
@@ -215,7 +273,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       );
     }
     state.status = '';
-    refresh();
+    handed ? search() : refresh();
     nextTick(focusQuery);
   };
 
@@ -289,7 +347,6 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       return;
     }
 
-    const { store } = app.value;
     const { value } = matcher.replace(
       match.text,
       state.replacement,
@@ -306,17 +363,18 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     // jump to it rides in the replacement's dispatch and one undo takes back
     // both, the scroll included, wherever on the canvas that match is.
     const after = rematchField(result.matches, matcher, match, value);
-    const next = after[indexAfter(after, match.slot, match.start + inserted)];
+    const index = indexAfter(after, match.slot, match.start + inserted);
+    const next = after[index];
     const batch = next
       ? [...actions, showErdTargetAction$(toErdTarget(next), coveredWidth())]
       : actions;
-    batch.length && store.dispatchSync(batch);
+    batch.length && dispatchOwn(batch);
 
-    refresh();
+    // What the text left holds, found in the one field it changed rather than
+    // in a second search of the whole document.
+    result.matches = after;
     state.status = '';
-    state.current = next
-      ? result.matches.findIndex(found => isSameMatch(found, next))
-      : -1;
+    state.current = index;
     nextTick(scrollToCurrent);
   };
 
@@ -326,25 +384,28 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     refresh(true);
     if (!matcher || !result.matches.length) return;
 
-    const { store } = app.value;
     const { actions, replaced } = toReplaceActions(
       result.matches,
       matcher,
       state.replacement
     );
     // One dispatch is one entry in the history and one batch to every peer.
-    actions.length && store.dispatchSync(actions);
+    actions.length && dispatchOwn(actions);
 
     refresh();
     // A match the replacement writes back as it was is no change to count.
     state.status = replaced ? `Replaced ${matchCount(replaced)}` : 'No changes';
   };
 
+  /** Searches plain text at once, as it is quick, and a regular expression once typing pauses, as one can be slow. */
   const handleQueryInput = (event: InputEvent) => {
     const input = event.target as HTMLInputElement;
     state.query = input.value;
     state.status = '';
-    refresh();
+    if (!state.regex) return search();
+
+    cancelPendingSearch();
+    pendingSearch = setTimeout(search, REGEX_INPUT_DELAY);
   };
 
   const handleReplacementInput = (event: InputEvent) => {
@@ -356,6 +417,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (event.key !== 'Enter' || isComposing(event)) return;
 
     event.preventDefault();
+    // Enter typed before the pause goes through the matches of what is typed.
+    pendingSearch !== null && search();
     event.shiftKey ? goToPrevious() : goToNext();
   };
 
@@ -412,7 +475,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   const toggleOption = (key: 'matchCase' | 'wholeWord' | 'regex') => {
     state[key] = !state[key];
     state.status = '';
-    refresh();
+    search();
   };
 
   const toggleField = (field: FindField) => {
@@ -422,7 +485,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
           value => value === field || state.fields.includes(value)
         );
     state.status = '';
-    refresh();
+    search();
   };
 
   onMounted(() => {
@@ -438,14 +501,20 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       emitter.on({
         openFindReplace: ({ payload }) => open(payload ?? undefined),
       }),
-      // A peer, an undo or an edit on the canvas changes what matches.
+      // A peer, an undo or an edit on the canvas changes what matches, and
+      // nothing else does: a hover, a selection or a scroll leaves it be.
       new Observable<void>(subscriber =>
-        store.subscribe(() => subscriber.next())
+        store.subscribe(actions => {
+          !replacing &&
+            actions.some(({ type }) => isTextAction(type)) &&
+            subscriber.next();
+        })
       )
         .pipe(debounceTime(100))
         .subscribe(() => {
           isShown(store.state) && refresh(true);
-        })
+        }),
+      cancelPendingSearch
     );
   });
 
@@ -586,7 +655,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
             class={[
               'find-count',
               styles.count,
-              { invalid: error === 'invalid' },
+              { invalid: error === 'invalid' || error === 'slow' },
             ]}
           >
             {count}
