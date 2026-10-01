@@ -47,6 +47,12 @@ const WORD_CHAR = '[\\p{L}\\p{N}\\p{M}\\p{Pc}\\p{Join_Control}]';
 const wholeWordSource = (source: string) =>
   `(?<!${WORD_CHAR})(?:${source})(?!${WORD_CHAR})`;
 
+/** The tokens of a template for a pattern with named groups, where $<name> is one. */
+const NAMED_TOKENS = /\$(?:([$&`'])|(\d\d?)|<([^>]*)>)/g;
+
+/** The tokens for a pattern without, where $< is two characters and what follows is read on. */
+const TOKENS = /\$(?:([$&`'])|(\d\d?))/g;
+
 /**
  * What a replacement template becomes for one match, by the rules of
  * String.prototype.replace, which offers no way to expand a template for a
@@ -60,17 +66,16 @@ export function expandReplacement(
   subject: string,
   groups?: Record<string, string | undefined>
 ): string {
+  // With no named group the tokens capture two groups, so the fourth argument
+  // the callback gets is the offset, a number, never a name.
   return template.replace(
-    /\$(?:([$&`'])|(\d\d?)|<([^>]*)>)/g,
-    (token, symbol?: string, digits?: string, name?: string) => {
+    groups ? NAMED_TOKENS : TOKENS,
+    (token: string, symbol?: string, digits?: string, name?: unknown) => {
       if (symbol === '$') return '$';
       if (symbol === '&') return match;
       if (symbol === '`') return subject.slice(0, position);
       if (symbol === "'") return subject.slice(position + match.length);
-
-      if (name !== undefined) {
-        return groups ? (groups[name] ?? '') : token;
-      }
+      if (typeof name === 'string') return groups![name] ?? '';
 
       const number = digits as string;
       const count = captures.length;

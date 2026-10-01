@@ -379,6 +379,57 @@ describe('expandReplacement', () => {
     expect(expandReplacement('$<name>', 'ab', ['a'], 0, 'ab')).toBe('$<name>');
   });
 
+  it('reads on past a $< when the pattern has no named group, as the native replace does', () => {
+    expect(expand('a', /(a)/g, '$<$1>')).toBe('$<a>');
+    expect(matcherOf('(a)', { regex: true }).replace('a', '$<$1>')).toBe(
+      '$<a>'
+    );
+  });
+
+  it.each([
+    '$<$1>',
+    '$<',
+    '$<>',
+    '$<a>',
+    '$<1>',
+    '$<$2>x',
+    '$$<a>',
+    '$<$&>',
+    "$<$'>",
+    '$<$`>',
+    '$<<a>>',
+    '$<a$1>',
+    '$1$<',
+    '$<$12>',
+    '$<x>$1',
+    '<$1>',
+    '$<$$>',
+    '$<$0>',
+    '$<$10>',
+    '$<a>b>',
+    '$<$1$2>',
+    '$<\\>',
+    'x$<',
+    '$<$1',
+    '$<$<a>>',
+    '$<$1>$<$2>',
+  ])(
+    'agrees with String.prototype.replace on %s over every kind of group',
+    template => {
+      for (const pattern of [
+        /(a)/g,
+        /(a)(b)?/g,
+        /a/g,
+        /(?<a>a)/g,
+        /(?<a>a)(b)/g,
+      ]) {
+        expect(expand('xaby', pattern, template)).toBe(
+          native('xaby', pattern, template)
+        );
+      }
+    }
+  );
+
   it('gives an unmatched group as nothing', () => {
     expect(expand('b', /(a)?b/g, '[$1]')).toBe(native('b', /(a)?b/g, '[$1]'));
     expect(
