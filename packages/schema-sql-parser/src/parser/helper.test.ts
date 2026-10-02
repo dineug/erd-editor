@@ -1253,6 +1253,7 @@ describe('isTableItemWord', () => {
       'SUPPLEMENTAL LOG DATA (ALL) COLUMNS',
       'CHECK (price > 0)',
       'check(price>0)',
+      'CHECK NOT FOR REPLICATION (a > 0)',
     ]) {
       expect(opens(item)).toBe(true);
     }
@@ -1269,6 +1270,9 @@ describe('isTableItemWord', () => {
       'period INT',
       'supplemental TEXT',
       'check INT',
+      'check NOT NULL',
+      'check NOT FOR',
+      '"check" NOT FOR REPLICATION (a)',
       '"check" (a)',
       'mood',
       '(a)',

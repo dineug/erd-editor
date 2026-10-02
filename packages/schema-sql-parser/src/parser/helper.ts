@@ -710,8 +710,8 @@ export const matchUserDataType = (tokens: Token[]) => {
 };
 
 // Table items that open with a word a column may be named too: an unnamed
-// CHECK (...), PostgreSQL's LIKE s and EXCLUDE USING, MySQL's FULLTEXT ft (c),
-// T-SQL's PERIOD FOR, Oracle's SUPPLEMENTAL LOG. What follows tells them apart.
+// CHECK (...) or CHECK NOT FOR REPLICATION, PostgreSQL's LIKE s and EXCLUDE,
+// MySQL's FULLTEXT ft (c), T-SQL's PERIOD FOR, Oracle's SUPPLEMENTAL LOG.
 export const isTableItemWord = (tokens: Token[]) => {
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
@@ -730,7 +730,12 @@ export const isTableItemWord = (tokens: Token[]) => {
   return (pos: number) => {
     switch (word(pos)) {
       case 'CHECK':
-        return isLeftParent(pos + 1);
+        return (
+          isLeftParent(pos + 1) ||
+          (word(pos + 1) === 'NOT' &&
+            word(pos + 2) === 'FOR' &&
+            word(pos + 3) === 'REPLICATION')
+        );
       case 'LIKE':
         return isItemName(pos + 1);
       case 'EXCLUDE':

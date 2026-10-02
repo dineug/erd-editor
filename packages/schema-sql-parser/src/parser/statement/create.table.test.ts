@@ -1213,6 +1213,10 @@ describe('createTableParser - table level constraints', () => {
       'SQLite',
       'CREATE TABLE u (id INTEGER, price INTEGER, CHECK(price>0), label TEXT);',
     ],
+    [
+      'T-SQL',
+      'CREATE TABLE [dbo].[u] ([id] [int] NOT NULL, [price] [int] NULL, CHECK NOT FOR REPLICATION ([price]>(0)), [label] [nvarchar](10) NULL);',
+    ],
   ])('reads no column out of an unnamed %s table CHECK', (_, sql) => {
     const { ast } = parse(sql);
 
