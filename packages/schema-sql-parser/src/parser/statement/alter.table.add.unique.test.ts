@@ -124,6 +124,20 @@ describe('alterTableAddUniqueParser', () => {
     }
   });
 
+  it("reads MariaDB's IF NOT EXISTS before the index name", () => {
+    expect(
+      keysOf(
+        'ALTER TABLE t ADD UNIQUE INDEX IF NOT EXISTS uq_ab (a, b);\n' +
+          'ALTER TABLE t ADD CONSTRAINT sym UNIQUE KEY IF NOT EXISTS (b, c);\n' +
+          'ALTER TABLE t ADD UNIQUE IF NOT EXISTS uq_c USING BTREE (c);'
+      )
+    ).toEqual([
+      { name: 'uq_ab', columns: ['a', 'b'] },
+      { name: 'sym', columns: ['b', 'c'] },
+      { name: 'uq_c', columns: ['c'] },
+    ]);
+  });
+
   it('records no column for a key with an expression part', () => {
     expect(names('ALTER TABLE t ADD UNIQUE KEY uq ((lower(a)), b);')).toEqual(
       []

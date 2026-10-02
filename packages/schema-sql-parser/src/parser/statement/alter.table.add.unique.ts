@@ -3,11 +3,14 @@ import {
   isAlterTableAddOnly,
   isCommaToken,
   isConstraintValue,
+  isExistsValue,
   isForeignValue,
+  isIfValue,
   isIndexValue,
   isKeyValue,
   isLeftParentToken,
   isNewStatement,
+  isNotValue,
   isPeriodToken,
   isPrimaryValue,
   isRightParentToken,
@@ -44,6 +47,9 @@ export function alterTableAddUniqueParser(
   const isForeign = isForeignValue(tokens);
   const isKey = isKeyValue(tokens);
   const isIndex = isIndexValue(tokens);
+  const isIf = isIfValue(tokens);
+  const isNot = isNotValue(tokens);
+  const isExists = isExistsValue(tokens);
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
   const keyModifier = matchKeyModifier(tokens);
@@ -173,6 +179,15 @@ export function alterTableAddUniqueParser(
 
       if (isKey($pos.value) || isIndex($pos.value)) {
         $pos.value++;
+      }
+
+      // MariaDB guards the index name: ADD UNIQUE INDEX IF NOT EXISTS uq (a, b).
+      if (
+        isIf($pos.value) &&
+        isNot($pos.value + 1) &&
+        isExists($pos.value + 2)
+      ) {
+        $pos.value += 3;
       }
 
       skipKeyModifiers();
