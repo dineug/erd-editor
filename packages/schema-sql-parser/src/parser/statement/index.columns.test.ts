@@ -54,6 +54,18 @@ describe('indexColumnsParser', () => {
     expect(tokens[$pos.value].value).toBe(',');
   });
 
+  it('reads no column from a list still open at the terminator, and stops there', () => {
+    for (const source of [
+      '(a, b(10); CREATE TABLE u (id INT);',
+      '(a, lower(b; CREATE TABLE u (id INT);',
+    ]) {
+      const { columns, $pos, tokens } = parse(source);
+
+      expect(columns).toEqual([]);
+      expect(tokens[$pos.value].value).toBe(';');
+    }
+  });
+
   it('keeps what it read of an unterminated list', () => {
     const { columns, $pos, tokens } = parse('(a, b');
 

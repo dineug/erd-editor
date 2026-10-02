@@ -4,6 +4,7 @@ import {
   isDescValue,
   isLeftParentToken,
   isRightParentToken,
+  isSemicolonToken,
   isStringToken,
 } from '@/parser/helper';
 import { IndexColumn, RefPos, SortType } from '@/parser/statement';
@@ -11,8 +12,8 @@ import { Token } from '@/parser/tokenizer';
 
 /**
  * Reads a key list from its ( through its ), each column with its sort, and
- * leaves $pos past the ). A key with an expression part records no column,
- * since the columns left over would describe another key.
+ * leaves $pos past the ). A key with an expression part, or still open at a
+ * terminator, where $pos stays, records no column.
  */
 export function indexColumnsParser(
   tokens: Token[],
@@ -22,10 +23,13 @@ export function indexColumnsParser(
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
   const isComma = isCommaToken(tokens);
+  const isSemicolon = isSemicolonToken(tokens);
   const isDesc = isDescValue(tokens);
   const isAsc = isAscValue(tokens);
 
-  const isToken = () => $pos.value < tokens.length;
+  // No key list holds a terminator: one still open there is a typo, and the
+  // balanced groups of the statements after it are no key parts of its own.
+  const isToken = () => $pos.value < tokens.length && !isSemicolon($pos.value);
 
   // A prefix length is a number alone in its group: email(191).
   const isPrefixLength = (pos: number) =>
@@ -58,6 +62,8 @@ export function indexColumnsParser(
 
         $pos.value++;
       }
+
+      if (!isToken()) break;
     }
     // The first word names the column. What follows it is a sort or words
     // that name none: COLLATE "C", an operator class, NULLS LAST.
@@ -81,6 +87,8 @@ export function indexColumnsParser(
     }
     $pos.value++;
   }
+
+  if (isSemicolon($pos.value)) return [];
 
   if (indexColumn.name !== '') {
     indexColumns.push(indexColumn);

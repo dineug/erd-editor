@@ -184,6 +184,16 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect($pos.value).toBeGreaterThanOrEqual(tokens.length);
   });
 
+  it('reads no key from a list its source leaves open at the terminator', () => {
+    const { ast, $pos, tokens } = parse(
+      'ALTER TABLE t ADD PRIMARY KEY (a, b;\nCREATE TABLE u (id INT);'
+    );
+
+    expect(ast).toMatchObject({ name: 't', columnNames: [] });
+    expect(tokens[$pos.value].value).toBe('CREATE');
+    expect(tokens[$pos.value + 2].value).toBe('u');
+  });
+
   it('stops at the next statement and leaves the position on its first token', () => {
     const { ast, $pos, tokens } = parse(
       'ALTER TABLE users ADD PRIMARY KEY (id); ALTER TABLE t ADD PRIMARY KEY (x);'

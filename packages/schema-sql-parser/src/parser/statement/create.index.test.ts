@@ -316,6 +316,17 @@ describe('createIndexParser', () => {
     expect(tokens[$pos.value].value).toBe('CREATE');
   });
 
+  it('ends a column list its source leaves open at the terminator', () => {
+    const { ast, tokens, $pos } = parse(
+      'CREATE UNIQUE INDEX uq ON t (lower(a);\n' +
+        'CREATE TABLE u (id INT); CREATE TABLE v (id INT);'
+    );
+
+    expect(ast).toMatchObject({ name: 'uq', tableName: 't', columns: [] });
+    expect(tokens[$pos.value].value).toBe('CREATE');
+    expect(tokens[$pos.value + 2].value).toBe('u');
+  });
+
   it('closes an unterminated column list', () => {
     const { ast, tokens, $pos } = parse('CREATE INDEX idx ON t (a');
 

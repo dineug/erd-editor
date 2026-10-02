@@ -387,6 +387,28 @@ describe('an ALTER TABLE that adds several keys', () => {
     ).toEqual(['u', 'v']);
   });
 
+  it('ends a key list its source leaves open at the terminator', () => {
+    const statementsOf = (source: string) =>
+      schemaSQLParser(source).map(statement =>
+        statement.type === StatementType.createTable
+          ? statement.name
+          : statement.type
+      );
+
+    expect(
+      statementsOf(
+        'ALTER TABLE t ADD UNIQUE KEY uq (a, b(10);\n' +
+          'CREATE TABLE u (id INT); CREATE TABLE v (id INT);'
+      )
+    ).toEqual(['u', 'v']);
+    expect(
+      statementsOf(
+        'ALTER TABLE t ADD PRIMARY KEY (a, b;\n' +
+          'CREATE TABLE u (id INT); CREATE TABLE v (id INT);'
+      )
+    ).toEqual([StatementType.alterTableAddPrimaryKey, 'u', 'v']);
+  });
+
   it('leaves the next statement to the dispatch loop', () => {
     const statements = schemaSQLParser(
       'ALTER TABLE t ADD PRIMARY KEY (id), ADD UNIQUE (a, b)\nCREATE TABLE z (i INT);'
