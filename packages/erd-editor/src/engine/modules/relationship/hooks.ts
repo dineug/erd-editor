@@ -60,12 +60,30 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
+import type { Collections, Column, Relationship } from '@/internal-types';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { invalidateTableWidths } from '@/utils/calcTable';
 import type { ViewSource } from '@/utils/draw-relationship/geometrySource';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
+
+/** The columns a relationship ends on that its end table still holds. */
+function selectEndColumns(
+  collections: Collections,
+  { end }: Relationship
+): Column[] {
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(end.tableId);
+  if (!table) return [];
+
+  const has = arrayHas(table.columnIds);
+  return query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(end.columnIds)
+    .filter(column => has(column.id));
+}
 
 /**
  * Marks each relationship identifying when every column it ends on is a primary
@@ -76,28 +94,16 @@ export function recalculateIdentification({ doc, collections }: RootState) {
   const relationships = collection.selectByIds(doc.relationshipIds);
 
   for (const relationship of relationships) {
-    const { end, identification } = relationship;
-    const table = query(collections)
-      .collection('tableEntities')
-      .selectById(end.tableId);
-    if (!table) continue;
-
-    const has = arrayHas(table.columnIds);
-    const columns = query(collections)
-      .collection('tableColumnEntities')
-      .selectByIds(end.columnIds)
-      .filter(column => has(column.id));
+    const columns = selectEndColumns(collections, relationship);
     if (!columns.length) continue;
 
     const value = columns.every(column =>
       bHas(column.options, ColumnOption.primaryKey)
     );
 
-    if (value === identification) {
-      continue;
+    if (value !== relationship.identification) {
+      relationship.identification = value;
     }
-
-    relationship.identification = value;
   }
 }
 
@@ -113,17 +119,7 @@ export function recalculateStartRelationshipType({
   const relationships = collection.selectByIds(doc.relationshipIds);
 
   for (const relationship of relationships) {
-    const { end, startRelationshipType } = relationship;
-    const table = query(collections)
-      .collection('tableEntities')
-      .selectById(end.tableId);
-    if (!table) continue;
-
-    const has = arrayHas(table.columnIds);
-    const columns = query(collections)
-      .collection('tableColumnEntities')
-      .selectByIds(end.columnIds)
-      .filter(column => has(column.id));
+    const columns = selectEndColumns(collections, relationship);
     if (!columns.length) continue;
 
     const value = columns.every(column =>
@@ -132,11 +128,9 @@ export function recalculateStartRelationshipType({
       ? StartRelationshipType.dash
       : StartRelationshipType.ring;
 
-    if (value === startRelationshipType) {
-      continue;
+    if (value !== relationship.startRelationshipType) {
+      relationship.startRelationshipType = value;
     }
-
-    relationship.startRelationshipType = value;
   }
 }
 
