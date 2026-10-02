@@ -52,11 +52,16 @@ describe('coveredWidth', () => {
     expect(covered()).toBe(PANEL_LEFT + PANEL_WIDTH + 16);
   });
 
-  it('covers nothing on a canvas that would keep less than 320 px clear of it', () => {
-    openPanel(PANEL_LEFT + PANEL_WIDTH + 16 + 320);
+  it('covers the panel on a narrow canvas while the strip beside it holds two jump margins and a name start', () => {
+    openPanel(600);
     expect(covered()).toBe(PANEL_LEFT + PANEL_WIDTH + 16);
 
-    openPanel(PANEL_LEFT + PANEL_WIDTH + 16 + 319);
+    openPanel(PANEL_LEFT + PANEL_WIDTH + 16 + 160);
+    expect(covered()).toBe(PANEL_LEFT + PANEL_WIDTH + 16);
+  });
+
+  it('covers nothing on a canvas that would keep less than 160 px clear of it', () => {
+    openPanel(PANEL_LEFT + PANEL_WIDTH + 16 + 159);
     expect(covered()).toBe(0);
 
     // Narrower than the panel, it shrinks to the canvas and leaves none clear.

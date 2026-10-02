@@ -28,8 +28,12 @@ export const PANEL_WIDTH = 380;
 /** The space a jump keeps between the panel and what it lands on. */
 const PANEL_GAP = 16;
 
-/** The least of the canvas a jump keeps clear of the panel for; on less it lands as if there were none. */
-const MIN_CLEAR_WIDTH = 320;
+/**
+ * The least of the canvas a jump keeps clear of the panel for: a jump's edge
+ * margin on each side of the strip and the start of a name between them. On
+ * less it lands as if there were no panel.
+ */
+const MIN_CLEAR_WIDTH = 160;
 
 /**
  * How far in from the left edge of the canvas the panel hides it, read from

@@ -870,11 +870,28 @@ describe('createScopeActions / table actions', () => {
     }
   );
 
-  it('keeps its landing point beside a panel that leaves too little of a narrow canvas to keep clear', async () => {
+  it('parks the table in the strip a narrow canvas leaves beside the panel', async () => {
     setCanvasType(CanvasType.ERD);
     const id = addTable('users', 100, 200);
     app.store.dispatchSync(
       changeViewportAction({ width: 600, height: 400 }),
+      changeOpenMapAction({ [Open.findReplace]: true })
+    );
+
+    find(scope(), 'users').perform?.(app);
+    await flush();
+
+    const table = app.store.state.collections.tableEntities[id];
+    const screen = toScreenPoint(app.store.state.settings, table.ui);
+    expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
+    expect(screen.y).toBeCloseTo(START_Y, 4);
+  });
+
+  it('keeps its landing point beside a panel that leaves less than 160 px of the canvas clear', async () => {
+    setCanvasType(CanvasType.ERD);
+    const id = addTable('users', 100, 200);
+    app.store.dispatchSync(
+      changeViewportAction({ width: 16 + 380 + 16 + 159, height: 400 }),
       changeOpenMapAction({ [Open.findReplace]: true })
     );
 

@@ -17,8 +17,10 @@ import {
   showErdTab,
   showErdTargetAction$,
 } from '@/components/erd/goToErdTarget';
+import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType, Show } from '@/constants/schema';
 import {
+  changeOpenMapAction,
   changeViewportAction,
   drawStartRelationshipAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -521,6 +523,61 @@ describe('goToErdTarget', () => {
     expect(batches[1]).toContain('settings.scrollTo');
     expect(batches[1]).not.toContain('settings.changeCanvasType');
     expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+  });
+
+  /** Where the ringed name of the row c30 and the row itself stand on screen, across. */
+  function rowOnScreen(app: AppContext) {
+    const { settings, collections } = app.store.state;
+    const table = collections.tableEntities.tall;
+    const row = getColumnRect(app.store.state, table, 30);
+    const name = getColumnCellSlots(
+      app.store.state,
+      getTableWidths(app.store.state, table)
+    ).find(slot => slot.focusType === FocusType.columnName);
+    const tableLeft = toScreenPoint(
+      settings,
+      getTableRect(app.store.state, table)
+    ).x;
+    return {
+      row: { left: toScreenPoint(settings, row).x, width: row.width },
+      name: {
+        left: tableLeft + (name?.x ?? 0),
+        right: tableLeft + (name?.x ?? 0) + (name?.width ?? 0),
+      },
+    };
+  }
+
+  /** The panel's left inset and width and the gap a jump keeps from it. */
+  const COVERED = 16 + 380 + 16;
+
+  it('lands in the strip a narrow canvas leaves beside an open panel, by the cell it rings', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      changeViewportAction({ width: 600, height: 600 }),
+      changeOpenMapAction({ [Open.findReplace]: true })
+    );
+
+    goToErdTarget(app.store, column('c30', FocusType.columnName));
+
+    const { row, name } = rowOnScreen(app);
+    expect(row.width).toBeGreaterThan(600 - COVERED);
+    // Wider than the strip, the row goes by its name, a margin in from the panel.
+    expect(name.left).toBeCloseTo(COVERED + 40, 6);
+    expect(name.right).toBeLessThanOrEqual(600);
+  });
+
+  it('lands as if there were no panel once the strip beside it is narrower than 160 px', () => {
+    const app = seed();
+    const width = COVERED + 159;
+    app.store.dispatchSync(
+      changeViewportAction({ width, height: 600 }),
+      changeOpenMapAction({ [Open.findReplace]: true })
+    );
+
+    goToErdTarget(app.store, column('c30', FocusType.columnName));
+
+    const { row } = rowOnScreen(app);
+    expect(row.left + row.width / 2).toBeCloseTo(width / 2, 6);
   });
 
   it('changes no tab when the ERD is up already', () => {
