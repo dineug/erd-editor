@@ -149,6 +149,26 @@ describe('toReplaceActions', () => {
     expect(texts().memo).toBe('Every member points at users.id');
   });
 
+  it('replaces a whole word with a separator at its edge where it stands in the document', () => {
+    const replaceAll = (query: string, replacement: string) => {
+      const matcher = matcherOf(query, { wholeWord: true });
+      app.store.dispatchSync(
+        toReplaceActions(
+          findMatches(app.store.state, matcher),
+          matcher,
+          replacement
+        ).actions
+      );
+    };
+
+    replaceAll('.id', '_id');
+    replaceAll('user ', 'member ');
+
+    expect(texts().memo).toBe('Every user_id points at users_id');
+    expect(texts().columns.users_id[1]).toBe('member id');
+    expect(texts().columns.orders_user_id[0]).toBe('user_id');
+  });
+
   it('writes nothing where the replacement leaves the text as it was', () => {
     const matcher = matcherOf('user', { matchCase: true });
     const matches = findMatches(app.store.state, matcher);

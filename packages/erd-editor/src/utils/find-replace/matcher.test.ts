@@ -199,6 +199,29 @@ describe('createMatcher', () => {
     ).toBe('café shop');
   });
 
+  it('counts a separator at the edge of a match as its boundary there, as VS Code and JetBrains do', () => {
+    const whole = (query: string, text: string, regex = false) =>
+      texts(text, matcherOf(query, { wholeWord: true, regex }));
+
+    expect(whole('user ', 'user name')).toEqual(['user ']);
+    expect(whole('.id', 'user.id')).toEqual(['.id']);
+    expect(whole('-', 'a-b')).toEqual(['-']);
+    expect(whole('(id)', 'fn(id)x')).toEqual(['(id)']);
+    expect(whole('\\.\\w+', 'user.id', true)).toEqual(['.id']);
+    // A word character at an edge still wants none beside it.
+    expect(whole('.i', 'user.id')).toEqual([]);
+    expect(whole('r.', 'user.id')).toEqual([]);
+  });
+
+  it('still never finds a word inside a longer one', () => {
+    const whole = (query: string, text: string) =>
+      texts(text, matcherOf(query, { wholeWord: true }));
+
+    expect(whole('user', 'username superuser user')).toEqual(['user']);
+    expect(whole('user', 'superusername')).toEqual([]);
+    expect(whole('user', 'user_name user-name')).toEqual(['user']);
+  });
+
   it('weighs whole word while it matches, so another alternative or length still gets its turn', () => {
     const whole = { regex: true, wholeWord: true };
 
@@ -339,6 +362,28 @@ describe('Matcher.replace', () => {
     const matcher = matcherOf('id', { wholeWord: true });
 
     expect(matcher.replace('id user_id', 'key').value).toBe('key user_id');
+  });
+
+  it('replaces a whole word whose edge is a separator, and no word inside a longer one', () => {
+    const whole = (query: string) => matcherOf(query, { wholeWord: true });
+
+    expect(whole('user ').replace('user name, username', 'member ').value).toBe(
+      'member name, username'
+    );
+    expect(whole('.id').replace('user.id user.idx', '_id').value).toBe(
+      'user_id user.idx'
+    );
+    expect(whole('-').replace('a-b', '_').value).toBe('a_b');
+    expect(whole('.id').replace('a.id b.id', '_id', 6).value).toBe('a.id b_id');
+    expect(
+      whole('user').replace('username superuser user', 'member').value
+    ).toBe('username superuser member');
+    expect(
+      matcherOf('\\.(\\w+)', { regex: true, wholeWord: true }).replace(
+        'user.id',
+        '[$1]'
+      ).value
+    ).toBe('user[id]');
   });
 
   it('expands groups in a regular expression replacement', () => {

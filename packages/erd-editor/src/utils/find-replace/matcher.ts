@@ -46,12 +46,12 @@ export const DEFAULT_FIND_OPTIONS: FindOptions = Object.freeze({
 const WORD_CHAR = '[\\p{L}\\p{N}\\p{M}\\p{Pc}\\p{Join_Control}]';
 
 /**
- * A pattern that matches only where no word character stands on either side,
- * which the engine weighs while it matches, so a shorter alternative or a
- * longer repeat is still tried where the first one it finds is part of a word.
+ * A pattern bounded at each edge by a non-word character beside it or at that
+ * edge of the match itself, as VS Code and JetBrains read whole word. The
+ * engine weighs it while it matches, so another alternative still gets a turn.
  */
 const wholeWordSource = (source: string) =>
-  `(?<!${WORD_CHAR})(?:${source})(?!${WORD_CHAR})`;
+  `(?:(?<!${WORD_CHAR})|(?!${WORD_CHAR}))(?:${source})(?:(?!${WORD_CHAR})|(?<!${WORD_CHAR}))`;
 
 /** The tokens of a template for a pattern with named groups, where $<name> is one. */
 const NAMED_TOKENS = /\$(?:([$&`'])|(\d\d?)|<([^>]*)>)/g;
