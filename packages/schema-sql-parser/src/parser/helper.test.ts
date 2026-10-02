@@ -10,6 +10,8 @@ import {
   isAlterTableOnly,
   isAlterValue,
   isAndValue,
+  isArrayDimensionToken,
+  isArrayValue,
   isAscValue,
   isAuto_incrementValue,
   isAutoIncrementValue,
@@ -59,6 +61,7 @@ import {
   isSemicolonToken,
   isSetValue,
   isStringToken,
+  isTableItemWord,
   isTablespaceValue,
   isTableValue,
   isUniqueValue,
@@ -71,7 +74,11 @@ import {
   matchKeyModifiers,
   matchQualifiedName,
   matchReferentialClause,
+  matchUserDataType,
   matchUsingIndexName,
+  requote,
+  toStringLiteral,
+  unquoteTypeName,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
@@ -79,7 +86,7 @@ const str = (value: string): Token => ({ type: TokenType.string, value });
 const quoted = (value: string): Token => ({
   type: TokenType.string,
   value,
-  quoted: true,
+  quoted: '"',
 });
 const words = (...values: string[]): Token[] => values.map(str);
 const period: Token = { type: TokenType.period, value: '.' };
@@ -166,6 +173,7 @@ describe('token value predicates', () => {
     ['isWhereValue', isWhereValue, 'WHERE'],
     ['isAndValue', isAndValue, 'AND'],
     ['isOrValue', isOrValue, 'OR'],
+    ['isArrayValue', isArrayValue, 'ARRAY'],
   ];
 
   it.each(cases)(
@@ -474,7 +482,7 @@ describe('matchCreateTable', () => {
   it('refuses a quoted modifier, which is an identifier', () => {
     const tokens: Token[] = [
       { type: TokenType.string, value: 'CREATE' },
-      { type: TokenType.string, value: 'OR', quoted: true },
+      { type: TokenType.string, value: 'OR', quoted: '"' },
       { type: TokenType.string, value: 'TABLE' },
     ];
 
@@ -1117,5 +1125,219 @@ describe('matchDataType', () => {
     expect(spanOf('notatype')).toBe(0);
     expect(matchDataType([])(0)).toBe(0);
     expect(matchDataType(tokenizer('INT'))(1)).toBe(0);
+  });
+  it('takes an array suffix as part of the span', () => {
+    expect(spanOf('integer[]')).toBe(2);
+    expect(spanOf('text[3][3] NOT NULL')).toBe(3);
+    expect(spanOf('VARCHAR(10) []')).toBe(5);
+    expect(spanOf('integer ARRAY')).toBe(2);
+    expect(spanOf('integer ARRAY[4][2]')).toBe(3);
+    expect(spanOf('TIMESTAMP WITH TIME ZONE[]')).toBe(5);
+    expect(matchDataType([quoted('DOUBLE PRECISION'), period])(0)).toBe(1);
+  });
+
+  it('leaves a bracket quoted name after the type out of the span', () => {
+    expect(spanOf('[int] [name]')).toBe(1);
+  });
+});
+
+describe('isArrayDimensionToken', () => {
+  it('accepts an empty or numeric bracket quoted token', () => {
+    const test = isArrayDimensionToken(tokenizer('[] [12] [a] "1" 1'));
+
+    expect([0, 1, 2, 3, 4, 5].map(test)).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+});
+
+describe('requote', () => {
+  it('writes each quoted token back inside its own delimiters', () => {
+    expect(
+      tokenizer('`a` "b" \'c\' [d] e').map(token => requote(token))
+    ).toEqual(['`a`', '"b"', "'c'", '[d]', 'e']);
+  });
+
+  it('doubles the quote a value holds', () => {
+    expect(
+      tokenizer('\'it\'\'s\' "a""b" `c``d`').map(token => requote(token))
+    ).toEqual(["'it''s'", '"a""b"', '`c``d`']);
+  });
+
+  it('escapes the quote and backslash of a Databricks literal instead', () => {
+    const tokens = tokenizer(
+      "'it\\'s' 'a\\\\b' \"a\"\"b\" `c``d`",
+      'Databricks'
+    );
+
+    expect(tokens.map(token => requote(token, 'Databricks'))).toEqual([
+      "'it\\'s'",
+      "'a\\\\b'",
+      '"a""b"',
+      '`c``d`',
+    ]);
+  });
+});
+
+describe('toStringLiteral', () => {
+  it('doubles a quote, or escapes it and a backslash for Databricks', () => {
+    expect(toStringLiteral("it's C:\\")).toBe("'it''s C:\\'");
+    expect(toStringLiteral("it's C:\\", 'PostgreSQL')).toBe("'it''s C:\\'");
+    expect(toStringLiteral("it's C:\\", 'Databricks')).toBe("'it\\'s C:\\\\'");
+    expect(toStringLiteral('')).toBe("''");
+  });
+});
+
+describe('unquoteTypeName', () => {
+  it('drops the quotes of a listed name but those of "char" and "bit"', () => {
+    expect(
+      tokenizer('"char" "bit" "int4" "CHAR" [char] `bit` char').map(
+        unquoteTypeName
+      )
+    ).toEqual(['"char"', '"bit"', 'int4', 'CHAR', 'char', 'bit', 'char']);
+  });
+});
+
+describe('matchUserDataType', () => {
+  const spanOf = (source: string) => matchUserDataType(tokenizer(source))(0);
+
+  it('spans a single name the lists lack, quoted or not', () => {
+    expect(spanOf('mood NOT NULL')).toBe(1);
+    expect(spanOf('"My Type"')).toBe(1);
+    expect(spanOf('[Phone]')).toBe(1);
+  });
+
+  it('spans every segment of a qualified name', () => {
+    expect(spanOf('public.mood')).toBe(3);
+    expect(spanOf('"public"."mood",')).toBe(3);
+    expect(spanOf('db.dbo.Phone')).toBe(5);
+    expect(spanOf('public.')).toBe(1);
+  });
+
+  it('spans the argument list and the array suffix', () => {
+    expect(spanOf('halfvec(3) NOT NULL')).toBe(4);
+    expect(spanOf("my_enum('a','b')")).toBe(6);
+    expect(spanOf('public.mood[][]')).toBe(5);
+    expect(spanOf('mood ARRAY[2]')).toBe(3);
+    expect(spanOf('halfvec(3')).toBe(3);
+  });
+
+  it('joins the words the lists lack with the type that follows them', () => {
+    expect(spanOf('UNSIGNED INTEGER NOT NULL')).toBe(2);
+    expect(spanOf('FOO VARCHAR(10)')).toBe(5);
+    expect(spanOf('UNSIGNED BIG INTEGER,')).toBe(3);
+    expect(spanOf('SIGNED BIG INT(5)')).toBe(6);
+    expect(spanOf('"x" INT')).toBe(1);
+    expect(spanOf('money.amount')).toBe(3);
+  });
+
+  it('joins no words when no listed type follows them', () => {
+    expect(spanOf('hstore COMPRESSION pglz')).toBe(1);
+    expect(spanOf('x NULL INT')).toBe(1);
+    expect(spanOf('x y.INT')).toBe(1);
+    expect(spanOf('x "y" INT')).toBe(1);
+  });
+
+  it('refuses a column keyword, unless it is quoted', () => {
+    for (const keyword of [
+      'AS',
+      'AUTO_INCREMENT',
+      'AUTOINCREMENT',
+      'CHECK',
+      'COLLATE',
+      'COMMENT',
+      'CONSTRAINT',
+      'DEFAULT',
+      'ENCRYPT',
+      'FOR',
+      'FOREIGN',
+      'GENERATED',
+      'IDENTITY',
+      'INVISIBLE',
+      'KEY',
+      'MASKING',
+      'NOT',
+      'NULL',
+      'ON',
+      'PRIMARY',
+      'PROJECTION',
+      'references',
+      'UNIQUE',
+      'USING',
+      'VISIBLE',
+      'WITH',
+    ]) {
+      expect(spanOf(`${keyword} x`)).toBe(0);
+    }
+
+    expect(spanOf('"CHECK"')).toBe(1);
+  });
+
+  it('refuses TAG before its list and SORT where the column ends', () => {
+    expect(spanOf("TAG (k = 'v')")).toBe(0);
+    for (const next of ['', ',', ')', 'VISIBLE', 'NOT NULL']) {
+      expect(spanOf(`SORT ${next}`)).toBe(0);
+    }
+
+    expect(spanOf('tag NOT NULL')).toBe(1);
+    expect(spanOf('sort[]')).toBe(2);
+    expect(spanOf('"SORT",')).toBe(1);
+    expect(spanOf('"TAG"(1)')).toBe(4);
+  });
+
+  it('refuses a string literal and anything but a word', () => {
+    expect(spanOf("'mood'")).toBe(0);
+    expect(spanOf('(a)')).toBe(0);
+    expect(matchUserDataType([])(0)).toBe(0);
+    expect(spanOf("public.'x'")).toBe(1);
+  });
+});
+
+describe('isTableItemWord', () => {
+  const opens = (source: string) => isTableItemWord(tokenizer(source))(0);
+
+  it('reads the table items a column name could open', () => {
+    for (const item of [
+      'LIKE s INCLUDING ALL',
+      'like public.s',
+      'EXCLUDE USING gist (a WITH &&)',
+      'EXCLUDE (a WITH =)',
+      'FULLTEXT ft (title)',
+      'SPATIAL (g)',
+      'PERIOD FOR SYSTEM_TIME (a, b)',
+      'SUPPLEMENTAL LOG DATA (ALL) COLUMNS',
+      'CHECK (price > 0)',
+      'check(price>0)',
+      'CHECK NOT FOR REPLICATION (a > 0)',
+    ]) {
+      expect(opens(item)).toBe(true);
+    }
+  });
+
+  it('leaves a column of the same name alone', () => {
+    for (const column of [
+      'like INT',
+      "LIKE 'x'",
+      '`like` s',
+      'exclude BOOLEAN',
+      'fulltext tsvector',
+      'spatial GEOMETRY(Point, 4326)',
+      'period INT',
+      'supplemental TEXT',
+      'check INT',
+      'check NOT NULL',
+      'check NOT FOR',
+      '"check" NOT FOR REPLICATION (a)',
+      '"check" (a)',
+      'mood',
+      '(a)',
+    ]) {
+      expect(opens(column)).toBe(false);
+    }
   });
 });

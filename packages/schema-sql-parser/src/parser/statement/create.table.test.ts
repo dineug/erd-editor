@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Column, RefPos, SortType, StatementType } from '@/parser/statement';
+import {
+  Column,
+  DatabaseVendor,
+  RefPos,
+  SortType,
+  StatementType,
+} from '@/parser/statement';
 import {
   createTableParser,
   parserForeignKeyParser,
 } from '@/parser/statement/create.table';
 import { tokenizer } from '@/parser/tokenizer';
 
-function parse(sql: string) {
-  const tokens = tokenizer(sql);
+function parse(sql: string, database?: DatabaseVendor) {
+  const tokens = tokenizer(sql, database);
   const $pos: RefPos = { value: 0 };
-  const ast = createTableParser(tokens, $pos);
+  const ast = createTableParser(tokens, $pos, database);
   return { ast, tokens, $pos };
 }
 
@@ -463,6 +469,23 @@ describe('createTableParser - column options', () => {
     ]);
   });
 
+  // Bare, the comment read as words and the name as two fields.
+  it('keeps the quotes of a nested field comment and name', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a STRUCT<name: STRING COMMENT 'it''s > 0', `first name`: STRING>, b INT, c STRUCT<x: STRING COMMENT 'q'>);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType:
+          "STRUCT<name: STRING COMMENT 'it''s > 0', `first name`: STRING>",
+      }),
+      column({ name: 'b', dataType: 'INT' }),
+      column({ name: 'c', dataType: "STRUCT<x: STRING COMMENT 'q'>" }),
+    ]);
+  });
+
   it('produces no column for an empty body', () => {
     const { ast } = parse('CREATE TABLE t ();');
 
@@ -500,14 +523,355 @@ describe('createTableParser - column options', () => {
     ]);
   });
 
-  it('leaves a type no vendor list carries empty', () => {
-    // Extension types such as citext and hstore are outside every list.
-    const { ast } = parse('CREATE TABLE t (a numrange, b hstore, c citext);');
+  // Extension types such as citext and hstore are outside every list, and
+  // used to come in empty.
+  it('keeps a type no vendor list carries', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a numrange, b hstore, c citext, d ltree);'
+    );
 
     expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'numrange' }),
-      column({ name: 'b', dataType: '' }),
-      column({ name: 'c', dataType: '' }),
+      column({ name: 'b', dataType: 'hstore' }),
+      column({ name: 'c', dataType: 'citext' }),
+      column({ name: 'd', dataType: 'ltree' }),
+    ]);
+  });
+});
+
+describe('createTableParser - user defined types', () => {
+  const types = (sql: string) =>
+    parse(sql).ast.columns.map(({ name, dataType }) => [name, dataType]);
+
+  it('keeps the attributes that follow a CREATE TYPE or CREATE DOMAIN type', () => {
+    const { ast } = parse(
+      "CREATE TABLE person (current_mood mood NOT NULL DEFAULT 'ok', zip us_postal UNIQUE COMMENT 'post code', id sysname);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'current_mood',
+        dataType: 'mood',
+        default: "'ok'",
+        nullable: false,
+      }),
+      column({
+        name: 'zip',
+        dataType: 'us_postal',
+        unique: true,
+        comment: 'post code',
+      }),
+      column({ name: 'id', dataType: 'sysname' }),
+    ]);
+  });
+
+  it('keeps a qualified type and the quotes of a quoted one', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a "MyType", b public.mood, c "public"."mood", d [dbo].[Phone] NOT NULL, e money.amount, f pg_catalog."varchar"(10));'
+      )
+    ).toEqual([
+      ['a', '"MyType"'],
+      ['b', 'public.mood'],
+      ['c', '"public"."mood"'],
+      ['d', '[dbo].[Phone]'],
+      ['e', 'money.amount'],
+      ['f', 'pg_catalog."varchar"(10)'],
+    ]);
+  });
+
+  // Shed, the brackets left dbo.Order, which T-SQL refuses: ORDER is reserved.
+  it('keeps the T-SQL brackets of a user type, needed or not', () => {
+    expect(
+      types(
+        'CREATE TABLE [c] ([Name] [sysname] NOT NULL, [Loc] [geography] NULL, [Zip] [my type], [D] [default], [O] [dbo].[Order], [P] dbo.[Order]);'
+      )
+    ).toEqual([
+      ['Name', '[sysname]'],
+      ['Loc', 'geography'],
+      ['Zip', '[my type]'],
+      ['D', '[default]'],
+      ['O', '[dbo].[Order]'],
+      ['P', 'dbo.[Order]'],
+    ]);
+  });
+
+  it('still unwraps the quotes of a type the lists carry', () => {
+    expect(
+      types('CREATE TABLE t ([a] [int], [b] [nvarchar](50), "c" "int4");')
+    ).toEqual([
+      ['a', 'int'],
+      ['b', 'nvarchar(50)'],
+      ['c', 'int4'],
+    ]);
+  });
+
+  // PostgreSQL reads char as character(1) and bit as bit(1), while "char" and
+  // "bit" name other types, which pg_dump writes quoted.
+  it('keeps the double quotes of "char" and "bit"', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a "char", b char, c "char"[] NOT NULL, d "bit", e "bit"(3), f [char](2), g `bit`, h "CHAR"(2));'
+      )
+    ).toEqual([
+      ['a', '"char"'],
+      ['b', 'char'],
+      ['c', '"char"[]'],
+      ['d', '"bit"'],
+      ['e', '"bit"(3)'],
+      ['f', 'char(2)'],
+      ['g', 'bit'],
+      ['h', 'CHAR(2)'],
+    ]);
+  });
+
+  it('keeps the arguments of a user type', () => {
+    expect(
+      types(
+        "CREATE TABLE t (a halfvec(3), b public.geometry(Point,4326), c my_enum('x','y'));"
+      )
+    ).toEqual([
+      ['a', 'halfvec(3)'],
+      ['b', 'public.geometry(Point,4326)'],
+      ['c', "my_enum('x','y')"],
+    ]);
+  });
+
+  it('keeps the array suffix of any type', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a mood[], b text[][], c integer ARRAY, d integer[3], e int ARRAY[4], f "MyType"[], g character varying(20)[], h public.mood [] NOT NULL, i mood ARRAY);'
+      )
+    ).toEqual([
+      ['a', 'mood[]'],
+      ['b', 'text[][]'],
+      ['c', 'integer ARRAY'],
+      ['d', 'integer[3]'],
+      ['e', 'int ARRAY[4]'],
+      ['f', '"MyType"[]'],
+      ['g', 'character varying(20)[]'],
+      ['h', 'public.mood[]'],
+      ['i', 'mood ARRAY'],
+    ]);
+  });
+
+  // SQLite takes any words as a type; UNSIGNED INTEGER is no listed name.
+  it('keeps the words the lists lack in front of a type they carry', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a UNSIGNED INTEGER NOT NULL, b UNSIGNED SMALLINT(5), c VARYING CHARACTER(255), d UNSIGNED BIG INTEGER, e UNSIGNED TINY INT NOT NULL, f SIGNED BIG INT DEFAULT 0);'
+      )
+    ).toEqual([
+      ['a', 'UNSIGNED INTEGER'],
+      ['b', 'UNSIGNED SMALLINT(5)'],
+      ['c', 'VARYING CHARACTER(255)'],
+      ['d', 'UNSIGNED BIG INTEGER'],
+      ['e', 'UNSIGNED TINY INT'],
+      ['f', 'SIGNED BIG INT'],
+    ]);
+  });
+
+  it('reads no type out of the constraint that follows a typeless column', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a,\n' +
+        ' b PRIMARY KEY,\n' +
+        ' c NOT NULL,\n' +
+        ' d NULL,\n' +
+        ' e UNIQUE,\n' +
+        ' f CHECK (f > 0),\n' +
+        ' g REFERENCES o (id) ON DELETE CASCADE,\n' +
+        ' h DEFAULT 0,\n' +
+        ' i COLLATE NOCASE,\n' +
+        ' j CONSTRAINT nn NOT NULL,\n' +
+        ' k AS (a + 1),\n' +
+        ' l GENERATED ALWAYS AS (a * 2) STORED,\n' +
+        " m COMMENT 'x',\n" +
+        ' n WITH MASKING POLICY p,\n' +
+        ' o VISIBLE,\n' +
+        " p 'x',\n" +
+        ' q MASKING POLICY mp,\n' +
+        ' r PROJECTION POLICY pp,\n' +
+        ' s ENCRYPT,\n' +
+        ' t INVISIBLE\n' +
+        ') AS SELECT * FROM o;'
+    );
+
+    expect(ast.columns.map(column => column.dataType)).toEqual(
+      Array.from({ length: 20 }, () => '')
+    );
+    expect(ast.columns.map(column => column.name).join('')).toBe(
+      'abcdefghijklmnopqrst'
+    );
+  });
+
+  it('reads a word the lists lack after the type as an attribute', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a INT UNSIGNED ZEROFILL, b mood SPARSE, c VARCHAR(10) BINARY, d hstore COMPRESSION pglz);'
+      )
+    ).toEqual([
+      ['a', 'INT'],
+      ['b', 'mood'],
+      ['c', 'VARCHAR(10)'],
+      ['d', 'hstore'],
+    ]);
+  });
+
+  // Each used to read as a column named by its first word, typed by the next.
+  it('reads no column out of a table item a column name could open', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a int, LIKE s INCLUDING ALL, EXCLUDE USING gist (a WITH &&), EXCLUDE (a WITH =), FULLTEXT ft (a), SPATIAL (a), PERIOD FOR SYSTEM_TIME (a, a), SUPPLEMENTAL LOG DATA (ALL) COLUMNS, b mood);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'int' }),
+      column({ name: 'b', dataType: 'mood' }),
+    ]);
+    expect(ast.indexes).toEqual([]);
+  });
+
+  it('still reads a column named by one of those words', () => {
+    expect(
+      types(
+        'CREATE TABLE t (exclude BOOLEAN, fulltext tsvector, fulltext mood, spatial geometry(Point,4326), period INT, supplemental TEXT, "like" s);'
+      )
+    ).toEqual([
+      ['exclude', 'BOOLEAN'],
+      ['fulltext', 'tsvector'],
+      ['fulltext', 'mood'],
+      ['spatial', 'geometry(Point,4326)'],
+      ['period', 'INT'],
+      ['supplemental', 'TEXT'],
+      ['like', 's'],
+    ]);
+  });
+
+  it('gives no type to the TAG or SORT of a CREATE TABLE AS column', () => {
+    expect(
+      types(
+        "CREATE TABLE t (a TAG (k = 'v'), b SORT, c SORT VISIBLE, d tag, e sort[]) AS SELECT 1, 2, 3, 4, 5;"
+      )
+    ).toEqual([
+      ['a', ''],
+      ['b', ''],
+      ['c', ''],
+      ['d', 'tag'],
+      ['e', 'sort[]'],
+    ]);
+  });
+
+  it('still reads no column out of a table constraint on a user type', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a mood, CONSTRAINT pk PRIMARY KEY (a) USING INDEX TABLESPACE ts, INDEX idx_a (a) USING BTREE);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'mood', primaryKey: true }),
+    ]);
+    expect(ast.indexes).toEqual([
+      { name: 'idx_a', unique: false, columns: [{ name: 'a', sort: 'ASC' }] },
+    ]);
+  });
+});
+
+describe('createTableParser - quoted type arguments', () => {
+  it('keeps the quotes of an ENUM or SET value', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a ENUM('G','PG-13', 'NC-17') NOT NULL DEFAULT 'G', b SET('Deleted Scenes','Trailers'), c enum(''));"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: "ENUM('G','PG-13','NC-17')",
+        default: "'G'",
+        nullable: false,
+      }),
+      column({ name: 'b', dataType: "SET('Deleted Scenes','Trailers')" }),
+      column({ name: 'c', dataType: "enum('')" }),
+    ]);
+  });
+
+  it('keeps a quote an ENUM value escapes by doubling it', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a ENUM('it''s','''x''') DEFAULT 'it''s', b INT);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: "ENUM('it''s','''x''')",
+        default: "'it''s'",
+      }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+  });
+
+  // MySQL also escapes a quote with a backslash; read as the end of the value,
+  // it's became the label it' s.
+  it('doubles a quote an ENUM value or a COMMENT escapes with a backslash', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a ENUM('it\\'s','b') COMMENT 'it\\'s', b VARCHAR(9) DEFAULT 'C:\\', c INT);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: "ENUM('it''s','b')", comment: "it's" }),
+      column({ name: 'b', dataType: 'VARCHAR(9)', default: "'C:\\'" }),
+      column({ name: 'c', dataType: 'INT' }),
+    ]);
+  });
+
+  it('writes an argument back in the quotes it came in', () => {
+    expect(
+      parse(
+        'CREATE TABLE t (a SET("x", \'y\'), b OBJECT("city" VARCHAR, zip NUMBER));'
+      ).ast.columns.map(column => column.dataType)
+    ).toEqual(['SET("x",\'y\')', 'OBJECT("city" VARCHAR,zip NUMBER)']);
+  });
+});
+
+// Spark escapes a quote with a backslash, and all but its newest releases end
+// the literal at a doubled one: what a Databricks import writes back as SQL
+// has to escape the way it was read.
+describe('createTableParser - Databricks literals', () => {
+  const sql = String.raw`CREATE TABLE t (
+    a STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'> COMMENT 'o\'k',
+    b STRING DEFAULT 'it\'s' COMMENT 'a\\b',
+    c STRING DEFAULT 'C:\\'
+  )`;
+
+  it('writes a field comment and a default back in Spark escapes', () => {
+    expect(parse(sql, 'Databricks').ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: String.raw`STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'>`,
+        comment: "o'k",
+      }),
+      column({
+        name: 'b',
+        dataType: 'STRING',
+        default: String.raw`'it\'s'`,
+        comment: String.raw`a\b`,
+      }),
+      column({ name: 'c', dataType: 'STRING', default: String.raw`'C:\\'` }),
+    ]);
+  });
+
+  it('doubles the quote of a literal from any other vendor', () => {
+    expect(parse(sql).ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: String.raw`STRUCT<y: STRING COMMENT 'it''s', z: STRING COMMENT 'C:\\x'>`,
+        comment: "o'k",
+      }),
+      column({
+        name: 'b',
+        dataType: 'STRING',
+        default: "'it''s'",
+        comment: String.raw`a\\b`,
+      }),
+      column({ name: 'c', dataType: 'STRING', default: String.raw`'C:\\'` }),
     ]);
   });
 });
@@ -1123,6 +1487,46 @@ describe('createTableParser - table level constraints', () => {
 
     expect(ast.foreignKeys).toEqual([]);
     expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
+  });
+
+  // An unnamed CHECK used to read as a column named CHECK with no type.
+  it.each([
+    [
+      'PostgreSQL',
+      'CREATE TABLE u (id int, price numeric, CHECK (price > 0) NO INHERIT, label text);',
+    ],
+    [
+      'MySQL 8',
+      'CREATE TABLE `u` (`id` int, `price` int, CHECK (`price` > 0) NOT ENFORCED, check (`id` > 0) ENFORCED, `label` text);',
+    ],
+    [
+      'SQLite',
+      'CREATE TABLE u (id INTEGER, price INTEGER, CHECK(price>0), label TEXT);',
+    ],
+    [
+      'T-SQL',
+      'CREATE TABLE [dbo].[u] ([id] [int] NOT NULL, [price] [int] NULL, CHECK NOT FOR REPLICATION ([price]>(0)), [label] [nvarchar](10) NULL);',
+    ],
+  ])('reads no column out of an unnamed %s table CHECK', (_, sql) => {
+    const { ast } = parse(sql);
+
+    expect(ast.columns.map(({ name }) => name)).toEqual([
+      'id',
+      'price',
+      'label',
+    ]);
+  });
+
+  it('still reads a quoted column named check', () => {
+    const { ast } = parse(
+      'CREATE TABLE u (id int, "check" int CHECK ("check" > 0), `check` (a));'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'int' }),
+      column({ name: 'check', dataType: 'int' }),
+      column({ name: 'check' }),
+    ]);
   });
 });
 

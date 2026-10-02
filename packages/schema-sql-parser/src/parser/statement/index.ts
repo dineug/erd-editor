@@ -28,6 +28,26 @@ export type SortType = ValuesType<typeof SortType>;
 
 export type RefPos = { value: number };
 
+/** The vendors a source may be named for, spelled as the editor's database. */
+export type DatabaseVendor =
+  | 'Databricks'
+  | 'MariaDB'
+  | 'MSSQL'
+  | 'MySQL'
+  | 'Oracle'
+  | 'PostgreSQL'
+  | 'Snowflake'
+  | 'SQLite';
+
+/**
+ * What the caller knows of the source. A Databricks one reads its string
+ * literals by Spark's escapes and writes them back in them; any other, or none,
+ * is read by the guess that serves every dialect.
+ */
+export type SchemaSQLParserOptions = {
+  database?: DatabaseVendor;
+};
+
 export type CreateTable = {
   type: typeof StatementType.createTable;
   name: string;

@@ -208,6 +208,21 @@ describe('schema-sql/Databricks', () => {
       expect(buffer[3]).toBe(buffer[3].trimEnd());
     });
 
+    it('escapes a quote and a backslash of a comment with a backslash', () => {
+      const { state, posts } = createFixture();
+      const column = state.collections.tableColumnEntities['col-user-id'];
+      column.comment = "it's C:\\x";
+      posts.comment = "o'k";
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table: posts });
+
+      expect(buffer[3]).toBe(
+        "  `user_id` INT                  COMMENT 'it\\'s C:\\\\x'"
+      );
+      expect(buffer.at(-1)).toBe("COMMENT 'o\\'k';");
+    });
+
     it('ignores a whitespace-only default and comment', () => {
       const { state, posts } = createFixture();
       const column = state.collections.tableColumnEntities['col-user-id'];

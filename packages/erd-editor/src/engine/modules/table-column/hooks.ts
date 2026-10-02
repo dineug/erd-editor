@@ -13,6 +13,7 @@ import {
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
+import type { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 /**
@@ -84,42 +85,45 @@ const removeColumnForeignKeyHook: HookEffect = (action$, getState) =>
     }
   );
 
+/**
+ * Marks as a foreign key every column a relationship ends on, and only those,
+ * as a load leaves the marks to be read off the relationships again.
+ */
+export function validateForeignKeys({ doc, collections }: RootState) {
+  const relationships = query(collections)
+    .collection('relationshipEntities')
+    .selectByIds(doc.relationshipIds);
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds);
+  const foreignKeyColumnIdsSet = new Set<string>();
+  const columnCollection = query(collections).collection('tableColumnEntities');
+
+  for (const { end } of relationships) {
+    const columns = columnCollection.selectByIds(end.columnIds);
+
+    for (const column of columns) {
+      column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
+      foreignKeyColumnIdsSet.add(column.id);
+    }
+  }
+
+  for (const table of tables) {
+    const columns = columnCollection.selectByIds(table.columnIds);
+
+    for (const column of columns) {
+      if (
+        bHas(column.ui.keys, ColumnUIKey.foreignKey) &&
+        !foreignKeyColumnIdsSet.has(column.id)
+      ) {
+        column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
+      }
+    }
+  }
+}
+
 const validationForeignKeyHook: HookEffect = (action$, getState) =>
-  deferred(action$).subscribe(() => {
-    const { doc, collections } = getState();
-    const relationships = query(collections)
-      .collection('relationshipEntities')
-      .selectByIds(doc.relationshipIds);
-    const tables = query(collections)
-      .collection('tableEntities')
-      .selectByIds(doc.tableIds);
-    const foreignKeyColumnIdsSet = new Set<string>();
-    const columnCollection = query(collections).collection(
-      'tableColumnEntities'
-    );
-
-    for (const { end } of relationships) {
-      const columns = columnCollection.selectByIds(end.columnIds);
-
-      for (const column of columns) {
-        column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
-        foreignKeyColumnIdsSet.add(column.id);
-      }
-    }
-
-    for (const table of tables) {
-      const columns = columnCollection.selectByIds(table.columnIds);
-
-      for (const column of columns) {
-        if (
-          bHas(column.ui.keys, ColumnUIKey.foreignKey) &&
-          !foreignKeyColumnIdsSet.has(column.id)
-        ) {
-          column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
-        }
-      }
-    }
-  });
+  deferred(action$).subscribe(() => validateForeignKeys(getState()));
 
 export const hooks: Hook[] = [
   [[changeColumnPrimaryKeyAction], changeColumnNotNullHook],

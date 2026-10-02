@@ -13,6 +13,7 @@ export const KeyBindingName = {
   edit: 'edit',
   stop: 'stop',
   search: 'search',
+  findReplace: 'findReplace',
   undo: 'undo',
   redo: 'redo',
   addTable: 'addTable',
@@ -45,6 +46,12 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.stop]: [{ shortcut: 'Escape' }],
   [KeyBindingName.search]: [
     { shortcut: '$mod+KeyK', preventDefault: true, stopPropagation: true },
+  ],
+  // Every host's find, taken while the editor holds the keyboard: prevented, it
+  // opens no browser find bar, and stopped, it never reaches the window of a
+  // VS Code webview, which would hand it to the workbench.
+  [KeyBindingName.findReplace]: [
+    { shortcut: '$mod+KeyF', preventDefault: true, stopPropagation: true },
   ],
   [KeyBindingName.undo]: [
     { shortcut: '$mod+KeyZ', preventDefault: true, stopPropagation: true },
@@ -115,6 +122,32 @@ const ModifierKey = {
   Control: 'Control',
 } as const;
 type ModifierKey = ValuesType<typeof ModifierKey>;
+
+const MODIFIER_KEYS: ReadonlyArray<ModifierKey> = Object.values(ModifierKey);
+
+/**
+ * Whether the press is one of the chords given, read the way tinykeys reads a
+ * binding: the key by its code or its value, every modifier named held down and
+ * no other. A sequence of presses never matches a single one.
+ */
+export function matchesShortcut(
+  event: KeyboardEvent,
+  options: ReadonlyArray<ShortcutOption>
+): boolean {
+  return options.some(({ shortcut }) => {
+    const presses = parseKeybinding(shortcut);
+    if (presses.length !== 1) return false;
+
+    const [mods, key] = presses[0];
+    return (
+      (key === event.code || key.toUpperCase() === event.key.toUpperCase()) &&
+      mods.every(mod => event.getModifierState(mod)) &&
+      !MODIFIER_KEYS.some(
+        mod => !mods.includes(mod) && event.getModifierState(mod)
+      )
+    );
+  });
+}
 
 const MacModifierKeyMap: Record<ModifierKey, string> = {
   [ModifierKey.Shift]: '⇧', // Shift

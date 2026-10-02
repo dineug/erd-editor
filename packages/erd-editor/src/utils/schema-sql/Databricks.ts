@@ -27,6 +27,13 @@ import {
 // string literals there -- so settings.bracketType cannot be honoured.
 const BRACKET = '`';
 
+// Spark SQL escapes a quote inside a string literal with a backslash, and so
+// the backslash itself; all but its newest releases end the literal at the
+// doubled quote other vendors read.
+function toSparkStringLiteral(value: string): string {
+  return `'${value.replace(/[\\']/g, '\\$&')}'`;
+}
+
 // Keys are never enforced. RELY is what lets the optimizer act on the
 // declaration, which is the only reason to export one at all.
 const CONSTRAINT_OPTIONS = 'NOT ENFORCED RELY';
@@ -117,7 +124,7 @@ export function formatTable(
     buffer.push(`USING DELTA;`);
   } else {
     buffer.push(`USING DELTA`);
-    buffer.push(`COMMENT '${table.comment}';`);
+    buffer.push(`COMMENT ${toSparkStringLiteral(table.comment)};`);
   }
 }
 
@@ -170,7 +177,7 @@ function formatColumn(
     stringBuffer.push(`DEFAULT ${column.default}`);
   }
   if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT '${column.comment}'`);
+    stringBuffer.push(`COMMENT ${toSparkStringLiteral(column.comment)}`);
   }
 
   buffer.push(stringBuffer.join(' ').trimEnd() + `${isComma ? ',' : ''}`);

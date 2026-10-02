@@ -179,6 +179,15 @@ for (const name of [
   writeFileSync(at(name), '');
 }
 cpSync(LEGACY_FIXTURE, at('legacy.vuerd.json'));
+// Both save switches off and no origin, as releases before the origin wrote it:
+// the bytes are not the replica's, and a zoom or a scroll must not rewrite them.
+const VIEW_ONLY = JSON.stringify({
+  version: '3.0.0',
+  settings: { ignoreSaveSettings: 3, zoomLevel: 1 },
+  doc: { tableIds: [], relationshipIds: [], indexIds: [], memoIds: [] },
+  collections: {},
+});
+writeFileSync(at('view-only.erd'), VIEW_ONLY);
 writeFileSync(at('broken.erd'), '{"doc": <<<<<<< HEAD');
 writeFileSync(at('notes.md'), '# notes');
 writeFileSync(join(work, 'outside', 'planted.erd'), '');
@@ -200,6 +209,7 @@ const LISTED = [
   'Upper.ERD',
   join('sub', 'moved.erd'),
   'legacy.vuerd.json',
+  'view-only.erd',
   'broken.erd',
 ]
   .map(at)
@@ -559,6 +569,39 @@ async function userEdit(session) {
   return after?.find(id => !before.includes(id)) ?? null;
 }
 
+function findNode(node, match) {
+  if (match(node)) return node;
+  for (const child of [...(node.children ?? []), ...(node.shadowRoots ?? [])]) {
+    const found = findNode(child, match);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** The zoom the page's editor shows, read through its closed shadow root, which only DevTools reaches. */
+async function zoomReadout(session) {
+  const reply = await session.send('DOM.getDocument', { depth: -1, pierce: true });
+  const root = reply.result?.root;
+  const readout =
+    root &&
+    findNode(root, node => {
+      const at = node.attributes?.indexOf('class') ?? -1;
+      return at !== -1 && node.attributes[at + 1].split(' ').includes('zoom-level');
+    });
+  return readout?.children?.find(child => child.nodeType === 3)?.nodeValue ?? null;
+}
+
+/** Wheels over the middle of the page's editor; modifiers 2 holds Ctrl, which zooms. */
+async function wheel(session, deltaY, modifiers = 0) {
+  const { x, y } = await session.evaluate(`(() => {
+    const { x, y, width, height } = document.querySelector('erd-editor').getBoundingClientRect();
+    return { x: x + width / 2, y: y + height / 2 };
+  })()`);
+  for (const type of ['mouseMoved', 'mouseWheel']) {
+    await session.send('Input.dispatchMouseEvent', { type, x, y, deltaX: 0, deltaY, modifiers });
+  }
+}
+
 /** The table ids of a v3 document on disk. */
 function fileIds(path) {
   try {
@@ -641,6 +684,7 @@ async function robotStep(id, title, todo, body) {
 
 const real = {
   agent: at('agent.erd'),
+  viewOnly: at('view-only.erd'),
   closed: at('closed.erd'),
   readonly: at('readonly.erd'),
   moved: at(join('sub', 'moved.erd')),
@@ -877,6 +921,31 @@ async function phaseA() {
     step(name, opened.json?.opened === true && fresh.length === 1, opened.text.slice(0, 200));
   });
 
+  await run('A15', 'a zoom and a scroll with both save switches off leave a file an older release wrote as it was', async name => {
+    const { page } = await openThroughAgent('view-only.erd');
+    await sleep(REPLICA_SETTLE_MS);
+    const before = page ? await zoomReadout(page) : null;
+    if (page) {
+      await wheel(page, 240);
+      await wheel(page, 240);
+      await wheel(page, -240, 2);
+    }
+    const after = page
+      ? await waitFor(async () => {
+          const shown = await zoomReadout(page);
+          return shown && shown !== before ? shown : null;
+        }, 3_000)
+      : null;
+    // The replica's 200 ms, the autosave's 100 ms debounce and room for the write.
+    await sleep(REPLICA_SETTLE_MS + 1_000);
+    const onDisk = readFileSync(real.viewOnly, 'utf8');
+    step(
+      name,
+      Boolean(page) && Boolean(after) && onDisk === VIEW_ONLY,
+      JSON.stringify({ zoom: [before, after], onDisk: onDisk.slice(0, 120) })
+    );
+  });
+
   await run('A13', 'no page errors, no request failed in idea.log', async name => {
     const log = logSince(0);
     const pageLines = log.split('\n').filter(line => /\[LOGSEVERITY_(ERROR|FATAL)\]/.test(line));
@@ -905,6 +974,11 @@ async function phaseA() {
         Boolean(quit.released) && (SIGTERM || quit.sawHubOff) && quit.removed,
         JSON.stringify(quit)
       );
+    }
+    // An editor flushes its pending save as it closes, and a save that changed nothing is none.
+    if (selected('A15') && quit.exited) {
+      const onDisk = readFileSync(real.viewOnly, 'utf8');
+      step('A15 the quit leaves view-only.erd as it was too', onDisk === VIEW_ONLY, onDisk.slice(0, 120));
     }
   }
 }

@@ -127,7 +127,7 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     },
     erd_set_show: { show: 'columnUnique', value: true },
     erd_set_max_width_comment: { value: 120 },
-    erd_set_ignore_save_settings: { saveSettingType: 'scroll', value: true },
+    erd_set_ignore_save_settings: { saveSettingType: 'scroll', value: false },
     erd_import_sql: {
       value:
         'CREATE TABLE accounts (id INT NOT NULL PRIMARY KEY, email VARCHAR(255));',

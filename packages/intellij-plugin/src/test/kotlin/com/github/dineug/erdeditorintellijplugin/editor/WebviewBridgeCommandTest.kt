@@ -100,6 +100,14 @@ class WebviewBridgeCommandTest {
         )
         assertTrue(save is HostBridgeCommand.SaveValue)
         assertEquals("{}", (save as HostBridgeCommand.SaveValue).payload.value)
+        // A page from before the flag sent none, and every save it sent was a change.
+        assertTrue(save.payload.changed)
+
+        val unchanged = mapper.readValue(
+            """{"type":"hostSaveValueCommand","payload":{"value":"{}","changed":false}}""",
+            HostBridgeCommand::class.java
+        ) as HostBridgeCommand.SaveValue
+        assertFalse(unchanged.payload.changed)
 
         val export = mapper.readValue(
             """{"type":"hostExportFileCommand","payload":{"value":"AA==","fileName":"a.png"}}""",

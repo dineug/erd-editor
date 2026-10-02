@@ -122,7 +122,8 @@ describe('the agent snapshot', () => {
         columnAlternateKey: false,
       },
       maxWidthComment: -1,
-      ignoreSaveSettings: { scroll: false, zoomLevel: false },
+      // The seed starts as a new document, which saves neither half of the view.
+      ignoreSaveSettings: { scroll: true, zoomLevel: true },
     });
   });
 

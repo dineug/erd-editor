@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import { parser, parserV2, toJson } from '@/parser';
-import { SchemaV3Constants } from '@/v3';
+import { createSchema, SchemaV3Constants } from '@/v3';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 
 const V3_SCHEMA_URL =
@@ -291,5 +291,61 @@ describe('toJson', () => {
     toJson(schema);
 
     expect(schema.settings).toEqual(before);
+  });
+});
+
+/**
+ * A new document saves neither half of the view, while a file keeps what it
+ * says: one without the field was written with the view saved, so it parses so.
+ */
+describe('the save switches of a new document and of a file', () => {
+  const { scroll, zoomLevel } = SchemaV3Constants.SaveSettingType;
+
+  it('writes a new document with both switches off and the view at its reset', () => {
+    const schema = createSchema();
+    schema.settings.originX = -320;
+    schema.settings.originY = 180;
+    schema.settings.zoomLevel = 0.5;
+
+    const { settings } = JSON.parse(toJson(schema));
+
+    expect(settings.ignoreSaveSettings).toBe(scroll | zoomLevel);
+    expect(settings).toMatchObject({ originX: 0, originY: 0, zoomLevel: 1 });
+    expect(settings).toMatchObject({ scrollLeft: 0, scrollTop: 0 });
+  });
+
+  it('reads a new document back with both switches still off', () => {
+    const schema = createSchema();
+
+    expect(parser(toJson(schema))).toEqual(schema);
+  });
+
+  it.each([
+    ['a v3 file without the field', '{"version":"3.0.0","settings":{}}'],
+    [
+      'a v3 file with the field 0',
+      '{"version":"3.0.0","settings":{"ignoreSaveSettings":0}}',
+    ],
+    ['a v2 file', '{"canvas":{"width":3000}}'],
+  ])('keeps saving both halves of the view of %s', (_, source) => {
+    const schema = parser(source);
+    schema.settings.originX = -40;
+    schema.settings.zoomLevel = 0.5;
+
+    expect(schema.settings.ignoreSaveSettings).toBe(0);
+    expect(JSON.parse(toJson(schema)).settings).toMatchObject({
+      ignoreSaveSettings: 0,
+      originX: -40,
+      zoomLevel: 0.5,
+    });
+  });
+
+  it('keeps the switches a file names', () => {
+    const source = JSON.stringify({
+      version: '3.0.0',
+      settings: { ignoreSaveSettings: zoomLevel },
+    });
+
+    expect(parser(source).settings.ignoreSaveSettings).toBe(zoomLevel);
   });
 });

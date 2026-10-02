@@ -1133,6 +1133,23 @@ class DocumentRegistryTest {
     }
 
     @Test
+    fun `keeps the mirror for a save that changed nothing, which settles the change and dirties nothing`() {
+        val h = harness(timings = PATIENT_TIMINGS)
+        val editor = h.openReady(A, "{ \"older\": \"bytes\" }")
+        val entry = h.entry(A)
+        h.relay(editor, add(1, "settings.scrollTo"))
+        assertTrue(h.onRegistry { isDirty(entry) })
+
+        h.save(editor, null)
+
+        assertFalse(h.onRegistry { isDirty(entry) })
+        assertEquals(
+            "{ \"older\": \"bytes\" }",
+            h.join(A, RecordingConnection()).get("initialValue").textValue()
+        )
+    }
+
+    @Test
     fun `closes a file open under two names for a peer of both, which still tracks its other file`() {
         val h = harness()
         h.addFile(A)

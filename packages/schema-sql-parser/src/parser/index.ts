@@ -7,7 +7,12 @@ import {
   isCreateIndex,
   isCreateTable,
 } from '@/parser/helper';
-import { RefPos, Statement } from '@/parser/statement';
+import {
+  DatabaseVendor,
+  RefPos,
+  SchemaSQLParserOptions,
+  Statement,
+} from '@/parser/statement';
 import { alterTableAddForeignKeyParser } from '@/parser/statement/alter.table.add.foreignKey';
 import { alterTableAddPrimaryKeyParser } from '@/parser/statement/alter.table.add.primaryKey';
 import { alterTableAddUniqueParser } from '@/parser/statement/alter.table.add.unique';
@@ -17,7 +22,7 @@ import { createIndexParser } from '@/parser/statement/create.index';
 import { createTableParser } from '@/parser/statement/create.table';
 import { Token, tokenizer } from '@/parser/tokenizer';
 
-function parser(tokens: Token[]) {
+function parser(tokens: Token[], database?: DatabaseVendor) {
   const ast: Statement[] = [];
   const $pos: RefPos = { value: 0 };
 
@@ -32,7 +37,7 @@ function parser(tokens: Token[]) {
 
   while (isToken()) {
     if (createTable($pos.value)) {
-      ast.push(createTableParser(tokens, $pos));
+      ast.push(createTableParser(tokens, $pos, database));
       continue;
     }
 
@@ -75,4 +80,7 @@ function parser(tokens: Token[]) {
   return ast;
 }
 
-export const schemaSQLParser = (source: string) => parser(tokenizer(source));
+export const schemaSQLParser = (
+  source: string,
+  { database }: SchemaSQLParserOptions = {}
+) => parser(tokenizer(source, database), database);

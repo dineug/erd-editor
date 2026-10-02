@@ -148,3 +148,32 @@ test.describe('the origin pair and the legacy scroll pair', () => {
     expect(placement.y).toBeCloseTo(TABLE.y * ZOOM + origin.originY, 1);
   });
 });
+
+/**
+ * An element given no value is a new document, which saves neither half of the
+ * view: the reader's scroll and zoom move the scene and leave the value alone.
+ */
+test.describe('a new document', () => {
+  test('keeps the scroll and the zoom a reader makes out of the value', async ({
+    erd,
+  }) => {
+    const before = await erd.value();
+    const zero = await erd.pointAt(0, 0);
+    const readout = (await erd.zoomReadout.textContent()) ?? '';
+
+    await erd.wheel(200);
+    await expect
+      .poll(async () => (await erd.pointAt(0, 0)).y)
+      .toBeLessThan(zero.y);
+    await erd.floatingToolbar.locator('[title^="Zoom in"]').click();
+    await expect(erd.zoomReadout).not.toHaveText(readout);
+
+    expect(before.settings).toMatchObject({
+      ignoreSaveSettings: 3,
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+    });
+    expect(await erd.value()).toEqual(before);
+  });
+});

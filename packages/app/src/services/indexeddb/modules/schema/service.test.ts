@@ -45,13 +45,20 @@ function createFakeDatabase() {
 
   return {
     rows,
+    table,
     db: { table: () => table } as unknown as AppDatabase,
   };
 }
 
+/**
+ * A stored schema, as every one saved before new documents stopped saving the
+ * view is: a file that names no save switch, so it keeps its scroll and zoom.
+ */
+const SAVED_WITH_THE_VIEW = '{"version":"3.0.0"}';
+
 function valueOf(actions: any[] = []) {
   const store = createReplicationStore({ toWidth });
-  store.setInitialValue('');
+  store.setInitialValue(SAVED_WITH_THE_VIEW);
   store.dispatchSync(actions);
   const value = store.value;
   store.destroy();
@@ -122,7 +129,7 @@ const usersAndOrders = [
 /** A document as the engine leaves it once its hooks have run, derived fields included. */
 async function settledValueOf(actions: any[]) {
   const store = createReplicationStore({ toWidth });
-  store.setInitialValue('');
+  store.setInitialValue(SAVED_WITH_THE_VIEW);
   store.dispatchSync(actions);
   await settle();
   const value = store.value;
@@ -220,6 +227,7 @@ describe('SchemaService', () => {
   let rows: Map<string, SchemaEntity>;
   let service: SchemaService;
   let postMessage: MockInstance;
+  let writes: MockInstance;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -228,6 +236,7 @@ describe('SchemaService', () => {
 
     const database = createFakeDatabase();
     rows = database.rows;
+    writes = vi.spyOn(database.table, 'update');
     service = new SchemaService(database.db);
   });
 
@@ -319,7 +328,46 @@ describe('SchemaService', () => {
       await settle();
 
       expect(rows.get(row.id)!.updateAt).toBe(CREATED);
-      expect(JSON.parse(rows.get(row.id)!.value).settings.zoomLevel).toBe(0.6);
+      expect(JSON.parse(rows.get(row.id)!.value).settings.canvasType).toBe(
+        'SQL'
+      );
+    });
+
+    it('keeps the view out of a new schema, which saves neither the scroll nor the zoom', async () => {
+      const row = seed(rows, { value: '' });
+
+      await service.replication(row.id, zoomAndScroll);
+      await settle();
+
+      expect(JSON.parse(rows.get(row.id)!.value).settings).toMatchObject({
+        ignoreSaveSettings: 3,
+        originX: 0,
+        originY: 0,
+        zoomLevel: 1,
+      });
+    });
+
+    it('writes nothing for a view change that leaves the stored value as it was', async () => {
+      const row = seed(rows, { value: '' });
+      await service.replication(row.id, zoomAndScroll);
+      await settle();
+      const stored = rows.get(row.id)!.value;
+      expect(stored).not.toBe('');
+      writes.mockClear();
+
+      await service.replication(row.id, zoomAndScroll.slice(0, 4));
+      await settle();
+
+      expect(writes).not.toHaveBeenCalled();
+      expect(rows.get(row.id)!.value).toBe(stored);
+
+      await service.replication(row.id, [renameDatabase('shop')]);
+      await settle();
+
+      expect(writes).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(rows.get(row.id)!.value).settings.databaseName).toBe(
+        'shop'
+      );
     });
 
     it('does not count the tombstones the engine collects on load as an edit', async () => {

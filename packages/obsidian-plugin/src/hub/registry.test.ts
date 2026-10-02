@@ -384,6 +384,22 @@ describe('content', () => {
     harness.relay(editor, [add(1)]);
     expect(harness.registry.isDirty(document)).toBe(true);
   });
+
+  it('keeps the loaded text for a save that changed nothing, which settles the change and dirties nothing', async () => {
+    const harness = createHubHarness();
+    const editor = await harness.openReady(NAME, '{ "older": "bytes" }');
+    const document = harness.registry.find(PATH)!;
+
+    harness.relay(editor, [add(1, 'settings.scrollTo')]);
+    expect(harness.registry.isDirty(document)).toBe(true);
+    harness.save(editor);
+    expect(harness.registry.isDirty(document)).toBe(false);
+
+    const result = await harness.run(
+      harness.handler.join({ path: PATH }, createConnection())
+    );
+    expect(result.initialValue).toBe('{ "older": "bytes" }');
+  });
 });
 
 describe('the active document', () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import * as v3 from '@/v3';
-import { SchemaV3Constants, schemaV3Parser } from '@/v3';
-import { parser } from '@/v3/parser';
+import { createSchema, SchemaV3Constants, schemaV3Parser } from '@/v3';
+import { createSchema as sourceCreateSchema, parser } from '@/v3/parser';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import { SchemaV3Constants as sourceConstants } from '@/v3/schema';
 
@@ -10,6 +10,7 @@ describe('v3/index', () => {
   it('exposes exactly the public runtime entry points', () => {
     expect(Object.keys(v3).sort()).toEqual([
       'SchemaV3Constants',
+      'createSchema',
       'migrateScrollToOrigin',
       'schemaV3Parser',
     ]);
@@ -22,6 +23,10 @@ describe('v3/index', () => {
   it('aliases the v3 parser as schemaV3Parser', () => {
     expect(schemaV3Parser).toBe(parser);
     expect(typeof schemaV3Parser).toBe('function');
+  });
+
+  it('re-exports the new document factory without copying it', () => {
+    expect(createSchema).toBe(sourceCreateSchema);
   });
 
   it('re-exports SchemaV3Constants without copying it', () => {

@@ -15,6 +15,7 @@ import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import FindReplace from '@/components/find-replace/FindReplace';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import QuickSearch from '@/components/quick-search/QuickSearch';
@@ -79,7 +80,6 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
         KeyBindingMap,
         | typeof KeyBindingName.edit
         | typeof KeyBindingName.stop
-        | typeof KeyBindingName.search
         | typeof KeyBindingName.undo
         | typeof KeyBindingName.redo
         | typeof KeyBindingName.zoomIn
@@ -374,6 +374,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           {props.enableThemeBuilder ? (
             <ThemeBuilder theme={themeState.options} />
           ) : null}
+          <FindReplace readonly={props.readonly} />
           <QuickSearch />
           {text.span}
         </div>

@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-38 spec files. Ten of the groups exist because the DOM scene got their subject
+39 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -71,7 +71,7 @@ puts over it:
 | `pinch-zoom.spec.ts`            | A trackpad and a two finger pinch, and the point each one holds   |
 | `infinite-canvas.spec.ts`       | The travel, thumbs, map, compass and image the content now decide |
 | `floating-toolbar.spec.ts`      | The two canvas tools, the notations and what zen mode takes away  |
-| `scroll-origin.spec.ts`         | The origin the scene draws with, and the legacy pair migrated once |
+| `scroll-origin.spec.ts`         | The origin the scene draws with, the legacy pair migrated once, and a new document's view left out of `value` |
 | `export-png.spec.ts`            | The file the browser really receives, and the messages around it  |
 | `memo-editor-drag.spec.ts`      | A press in the overlay textarea, which used to pan the canvas     |
 | `memo-editor-alignment.spec.ts` | The drawn memo and its textarea, one device grid at a time        |
@@ -99,6 +99,37 @@ a DOM panel the port left on native drag and drop:
 | ------------------------------- | ---------------------------------------------------------------- |
 | `connector-frames.spec.ts`      | No draw with a connector end off its table after an undo or redo  |
 | `settings-column-order.spec.ts` | The column order list painted in the order it holds, every frame  |
+
+`find-replace.spec.ts` holds down Find and Replace and the quick search rows for
+columns, comments and memos in the real element: its chord, `$mod+F`, is
+prevented on the ERD tab from the canvas, from its own field, which it selects,
+from the palette, which gives way, and from a cell editor, which keeps it, so no
+page find opens, and left unprevented to the page on the Schema SQL, Code
+Generator and Settings tabs, where the palette's Find and Replace row still
+opens the panel, and on the ERD tab under time travel, until that closes; what is typed into the panel never reaches a canvas shortcut, a
+first opening searches table and column names alone, so a replace all there
+leaves the comments and the memo as they were, and a scope set stays on while
+the element lives, a replace all is one change event, one undo and one batch to
+a wired peer, and a jump to a table taller than the canvas lands on its name. It holds down the palette prefixes too, the only way to its tables,
+columns, comments and memos: a `"` search lands on a column comment from another
+tab, a `?` help row types its prefix in with the input still focused, a
+`@table.col` search goes to that column, and `#us` lists users and not orders,
+which the 0.4 threshold no longer fuzzes it to, and deleting its `#` leaves no
+table or field. A word no command holds lists the three prefixes that search
+the document last, whose row the arrows and Enter pick types its prefix before
+the word (`#orders`), below the `No commands match` line when the word fuzzes to
+no command: `orders`, and `users` typed one key at a time, pasted or left once
+its `#` is deleted. Each keystroke searches every command afresh: `auto` typed
+over `qqqq` lists Auto Layout, and Backspace from `users` to `u` lists what `u`
+finds. Under Chromium's own IME composition (`Input.imeSetComposition`
+over a CDP session) it holds down the Hangul search: every step a Korean IME
+hands over while typing `#사용` keeps the table 사용자 listed, a word composed with
+no prefix lists `No commands match` and no table or comment until a prefix row
+types `"` before it, `#ㅈㅁ` finds 주문 내역 by its initials, an arrow or Enter
+pressed mid-syllable is left to the IME and picks nothing, and `@사` goes to a
+column by an unfinished syllable.
+`zoom-overlay.spec.ts` holds the quick search's list without a prefix to the
+commands, `memo` to New Memo alone, the seeded tables showing only after `#`.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
@@ -426,7 +457,9 @@ cost when you hit them blind.
   agent is the only place this can be fixed.
 - `toJson()` — which backs the `value` getter — serialises a copy, so reading
   `value` never moves the live view. With the `ignoreSaveSettings` scroll bit
-  set it writes the origin pair out as zero. Every seed keeps the field at `0`.
+  set it writes the origin pair out as zero, and with the zoom bit the zoom as
+  1. Every seed keeps the field at `0`; the unseeded element is a new document,
+  which sets both bits, so a spec that reads the view from `value` seeds first.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root
   `.root` div, with bubble-phase listeners. Dispatching at `document` or at the
   host element will not reach them.

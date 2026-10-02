@@ -13,6 +13,8 @@ import {
 } from 'vite-plus/test';
 import type { Uri as VscodeUri } from 'vscode';
 
+import { textDecoder } from '@/utils';
+
 import {
   createConnection,
   createDocumentHarness,
@@ -80,6 +82,33 @@ describe('save', () => {
     expect(tab.isDirty).toBe(true);
     expect(workspace.fs.writeFile).not.toHaveBeenCalled();
     expect(harness.io.files.get(PATH)?.data).toBe('{}');
+  });
+
+  it('keeps the tab clean after a scroll the file does not save, and saves it at once', async () => {
+    vi.useFakeTimers();
+    const harness = createDocumentHarness();
+    // Written by an older release: the replica's value never has these bytes.
+    const editor = await harness.openReady(PATH, '{ }');
+    const tab = harness.trackTab(editor);
+    harness.relay(editor, [
+      {
+        type: 'settings.scrollTo',
+        payload: { originX: -120, originY: 80 },
+        version: 2,
+      },
+    ]);
+    await vi.advanceTimersByTimeAsync(REPLICA_DEBOUNCE_MS);
+    await harness.saveValue(editor, '{}', false);
+
+    expect(tab.isDirty).toBe(false);
+    expect(textDecoder.decode(editor.document.content)).toBe('{ }');
+    const result = await harness.run(
+      harness.handler.save({ path: PATH }, createConnection())
+    );
+
+    expect(result).toEqual({ saved: true });
+    expect(workspace.fs.writeFile).not.toHaveBeenCalled();
+    expect(harness.io.files.get(PATH)?.data).toBe('{ }');
   });
 
   it('saves through workspace.save first, which writes the bytes and clears dirty', async () => {

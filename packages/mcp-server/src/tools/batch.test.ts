@@ -80,8 +80,10 @@ describe('a batch of edit tools', () => {
       name: 'id',
       primaryKey: true,
     });
-    // The relationship brings users' key into reviews as a column of its own.
+    // The relationship brings users' key into reviews as a column of its own,
+    // named after users, so it no longer repeats the id reviews already has.
     expect(reviews.columns).toHaveLength(2);
+    expect(reviews.columns[1].name).toBe('users_id');
     expect(run.steps.map(({ tool, as }) => [tool, as])).toEqual(
       REVIEWS.map(({ tool, as }) => [tool, as])
     );

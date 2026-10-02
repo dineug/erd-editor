@@ -1,6 +1,7 @@
 import { html } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   flush,
@@ -188,7 +189,7 @@ describe('TreeViewer', () => {
     expect(rows).toHaveLength(1);
     expect(diffClassOf(rows[0])).toBe('none');
     // the plain row still renders the fallback table icon
-    expect(rows[0].querySelector('svg')).toBeTruthy();
+    expect(iconNameOf(rows[0])).toBe('table-2');
 
     const columns = columnRows();
     expect(columns.map(labelOf)).toEqual(['legacy']);
