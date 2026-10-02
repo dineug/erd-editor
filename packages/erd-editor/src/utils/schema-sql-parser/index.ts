@@ -140,6 +140,25 @@ function mergeTables({
     const table = findByName(tables, index.tableName);
     if (!table) return;
 
+    // DBMS_METADATA writes the index of each key on its own, under the key's
+    // name, after the CREATE TABLE that declares the key: it is that key again.
+    if (index.name) {
+      const columnNames = namesOf(index.columns);
+      const keyIndex = findKeyIndex(table, index.name, columnNames);
+
+      if (keyIndex) {
+        keyIndex.unique ||= index.unique;
+        return;
+      }
+
+      const isKey = table.keys.some(
+        key =>
+          isSameName(key.name, index.name) &&
+          hasSameColumns(key.columnNames, columnNames)
+      );
+      if (isKey) return;
+    }
+
     table.indexes.push({
       name: index.name,
       unique: index.unique,
@@ -155,7 +174,7 @@ function mergeTables({
     const keyIndex = findKeyIndex(
       table,
       primaryKey.usingIndexName || primaryKey.constraintName,
-      primaryKey.columnNames.map(name => ({ name }))
+      primaryKey.columnNames
     );
 
     if (keyIndex) {
@@ -179,7 +198,7 @@ function mergeTables({
     const keyIndex = findKeyIndex(
       table,
       unique.usingIndexName || unique.constraintName,
-      unique.columns
+      namesOf(unique.columns)
     );
 
     if (keyIndex && unique.columns.length > 1) {
@@ -244,29 +263,44 @@ function mergeTables({
   return tables;
 }
 
-// The index Oracle exports on its own for a key, CREATE UNIQUE INDEX "HR"."UQ"
-// before ADD CONSTRAINT "UQ" UNIQUE, or the one USING INDEX names: kept beside
-// the key, it keys one column list twice, which Oracle refuses.
-function findKeyIndex(
-  table: CreateTable,
-  name: string,
-  columns: ReadonlyArray<{ name: string }>
-) {
-  const index = name ? findByName(table.indexes, name) : null;
-  return index && hasSameColumns(index.columns, columns) ? index : null;
+/**
+ * The index Oracle exports on its own for a key, which kept beside the key
+ * indexes one column list twice: the one the key or USING INDEX names, else,
+ * for a system-named key, the one over the key's columns in their order.
+ */
+function findKeyIndex(table: CreateTable, name: string, columnNames: string[]) {
+  const index = name
+    ? table.indexes.find(
+        index =>
+          isSameName(index.name, name) &&
+          hasSameColumns(namesOf(index.columns), columnNames)
+      )
+    : table.indexes.find(index =>
+        hasColumnsInOrder(namesOf(index.columns), columnNames)
+      );
+
+  return index ?? null;
 }
+
+const namesOf = (columns: ReadonlyArray<{ name: string }>) =>
+  columns.map(({ name }) => name);
+
+const isSameName = (a: string, b: string) =>
+  a.toUpperCase() === b.toUpperCase();
 
 // Whether two key lists name the same columns, in any order: a unique key over
 // them is the same constraint either way.
-function hasSameColumns(
-  a: ReadonlyArray<{ name: string }>,
-  b: ReadonlyArray<{ name: string }>
-) {
-  const names = new Set(a.map(({ name }) => name.toUpperCase()));
+function hasSameColumns(a: string[], b: string[]) {
+  const names = new Set(a.map(name => name.toUpperCase()));
   return (
-    a.length === b.length &&
-    b.every(({ name }) => names.has(name.toUpperCase()))
+    a.length === b.length && b.every(name => names.has(name.toUpperCase()))
   );
+}
+
+// Whether two key lists name the same columns in the same order. Without a key
+// name to go by, an index over them in another order is one built for itself.
+function hasColumnsInOrder(a: string[], b: string[]) {
+  return a.length === b.length && a.every((name, i) => isSameName(name, b[i]));
 }
 
 function convertTable(

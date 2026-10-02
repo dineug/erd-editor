@@ -448,6 +448,112 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('reads the index DBMS_METADATA exports for each key a table declares inline as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" (
+          "ID" NUMBER, "A" NUMBER, "B" NUMBER, "E" VARCHAR2(10),
+          CONSTRAINT "T_PK" PRIMARY KEY ("ID") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE,
+          CONSTRAINT "T_AB_UK" UNIQUE ("A", "B") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE,
+          CONSTRAINT "T_E_UK" UNIQUE ("E") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE
+        ) TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."T_PK" ON "HR"."T" ("ID") PCTFREE 10 TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."T_AB_UK" ON "HR"."T" ("A", "B") PCTFREE 10 TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."T_E_UK" ON "HR"."T" ("E") PCTFREE 10 TABLESPACE "USERS" ;
+        CREATE TABLE "HR"."JOB_HISTORY" (
+          "EMPLOYEE_ID" NUMBER(6,0) CONSTRAINT "JHIST_EMPLOYEE_NN" NOT NULL ENABLE,
+          "START_DATE" DATE, "CODE" NUMBER CONSTRAINT "JHIST_CODE_UK" UNIQUE,
+          CONSTRAINT "JHIST_PK" PRIMARY KEY ("EMPLOYEE_ID", "START_DATE") USING INDEX ENABLE
+        ) ;
+        CREATE UNIQUE INDEX "HR"."JHIST_PK" ON "HR"."JOB_HISTORY" ("START_DATE", "EMPLOYEE_ID") ;
+        CREATE UNIQUE INDEX "HR"."JHIST_CODE_UK" ON "HR"."JOB_HISTORY" ("CODE") ;
+      `);
+      const t = tableByName(schema, 'T');
+      const history = tableByName(schema, 'JOB_HISTORY');
+      const primaryKeyNamesOf = (table: Table) =>
+        columnsOf(schema, table)
+          .filter(column => bHas(column.options, ColumnOption.primaryKey))
+          .map(column => column.name);
+
+      expect(primaryKeyNamesOf(t)).toEqual(['ID']);
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['E']);
+      expect(primaryKeyNamesOf(history)).toEqual(['EMPLOYEE_ID', 'START_DATE']);
+      expect(uniqueColumnNamesOf(schema, history)).toEqual(['CODE']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'T_AB_UK', unique: true, columns: ['A ASC', 'B ASC'] },
+      ]);
+    });
+
+    it('reads an index a dump repeats under the name of an index over its columns as that index', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT, INDEX ix_bc (b, c), UNIQUE KEY uq_ac (a, c));
+        CREATE UNIQUE INDEX ix_bc ON t (c, b);
+        CREATE INDEX uq_ac ON t (a, c);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'ix_bc', unique: true, columns: ['b ASC', 'c ASC'] },
+        { name: 'uq_ac', unique: true, columns: ['a ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('keeps an index named after an inline key that keys other columns, or after another constraint', () => {
+      const schema = parse(`
+        CREATE TABLE t (
+          a INT CONSTRAINT nn_a NOT NULL PRIMARY KEY, b INT, c INT,
+          CONSTRAINT uq_b UNIQUE (b)
+        );
+        CREATE UNIQUE INDEX nn_a ON t (a);
+        CREATE INDEX uq_b ON t (b, c);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(columnByName(schema, t, 'a').options).toBe(
+        ColumnOption.primaryKey | ColumnOption.notNull
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['b']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'nn_a', unique: true, columns: ['a ASC'] },
+        { name: 'uq_b', unique: false, columns: ['b ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('reads the index SQL Developer exports for each system-named key as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" ("ID" NUMBER, "A" NUMBER, "B" NUMBER, "E" VARCHAR2(10)) ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012345" ON "HR"."T" ("ID") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012346" ON "HR"."T" ("A", "B") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012347" ON "HR"."T" ("E") PCTFREE 10 ;
+        ALTER TABLE "HR"."T" ADD PRIMARY KEY ("ID") USING INDEX PCTFREE 10  ENABLE;
+        ALTER TABLE "HR"."T" ADD UNIQUE ("A", "B") USING INDEX PCTFREE 10  ENABLE;
+        ALTER TABLE "HR"."T" ADD UNIQUE ("E") USING INDEX PCTFREE 10  ENABLE;
+      `);
+      const t = tableByName(schema, 'T');
+
+      expect(columnByName(schema, t, 'ID').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['E']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'SYS_C0012346', unique: true, columns: ['A ASC', 'B ASC'] },
+      ]);
+    });
+
+    it('keeps an index over the columns of a key with no name in another order', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT);
+        CREATE UNIQUE INDEX ix_ba ON t (b, a);
+        CREATE INDEX ix_ca ON t (c, a);
+        ALTER TABLE t ADD UNIQUE (a, b);
+        ALTER TABLE t ADD PRIMARY KEY (a, c);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'ix_ba', unique: true, columns: ['b ASC', 'a ASC'] },
+        { name: 'ix_ca', unique: false, columns: ['c ASC', 'a ASC'] },
+        { name: '', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
     it('keeps an index named after a key that keys other columns', () => {
       const schema = parse(`
         CREATE TABLE t (a INT, b INT, c INT);
