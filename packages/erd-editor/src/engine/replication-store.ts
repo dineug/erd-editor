@@ -13,7 +13,7 @@ import {
   validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-import { actionsFilter, notEmptyActions } from '@/engine/rx-operators';
+import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
 import { createHooks, settleLoad } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
@@ -141,7 +141,6 @@ export function createReplicationStore(
     dispatch$
       .pipe(
         actionsFilter(ChangeActionTypes),
-        notEmptyActions,
         map(actions => actions.map(action => omit(action, ['tags'])))
       )
       .subscribe(actions => {
