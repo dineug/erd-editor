@@ -624,6 +624,36 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it("keeps an index over the columns of a key with no name that PostgreSQL's USING INDEX TABLESPACE follows", () => {
+      const schema = parse(`
+        CREATE TABLE t (a int, b int, UNIQUE (a, b) USING INDEX TABLESPACE fast);
+        CREATE INDEX ix_ab ON t (a, b);
+        CREATE TABLE p (a int, b int, PRIMARY KEY (a, b) USING INDEX TABLESPACE fast);
+        CREATE INDEX ON p (a, b);
+        CREATE UNIQUE INDEX uq ON p (a, b);
+        CREATE TABLE e (
+          id int PRIMARY KEY USING INDEX TABLESPACE fast,
+          e text UNIQUE USING INDEX TABLESPACE fast
+        );
+        CREATE INDEX ix_id ON e (id);
+        CREATE INDEX ix_e ON e (e);
+      `);
+      const e = tableByName(schema, 'e');
+
+      expect(columnByName(schema, e, 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, e)).toEqual(['e']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_ab', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: '', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_id', unique: false, columns: ['id ASC'] },
+        { name: 'ix_e', unique: false, columns: ['e ASC'] },
+      ]);
+    });
+
     it('keeps an index over the columns of an earlier CREATE INDEX with no name', () => {
       const schema = parse(`
         CREATE TABLE t (a INT, b INT);

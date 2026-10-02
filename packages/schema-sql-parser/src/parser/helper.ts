@@ -38,6 +38,7 @@ export const isRenameValue = createValueEqual('RENAME');
 export const isDeleteValue = createValueEqual('DELETE');
 export const isSelectValue = createValueEqual('SELECT');
 export const isTableValue = createValueEqual('TABLE');
+export const isTablespaceValue = createValueEqual('TABLESPACE');
 export const isIndexValue = createValueEqual('INDEX');
 export const isUniqueValue = createValueEqual('UNIQUE');
 export const isAddValue = createValueEqual('ADD');

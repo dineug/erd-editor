@@ -837,6 +837,33 @@ describe('createTableParser - table level constraints', () => {
     expect(ast.indexes.map(({ columns }) => columns.length)).toEqual([2, 2]);
   });
 
+  it("reports no key with no name that PostgreSQL's USING INDEX TABLESPACE follows", () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' id int PRIMARY KEY USING INDEX TABLESPACE fast,\n' +
+        ' a int, b int, e text UNIQUE USING INDEX TABLESPACE fast,\n' +
+        ' UNIQUE (a, b) INCLUDE (e) WITH (fillfactor = 70) USING INDEX TABLESPACE fast\n' +
+        ');\n'
+    );
+
+    expect(ast.keys).toEqual([]);
+    expect(ast.indexes).toEqual([
+      {
+        name: '',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'b', sort: SortType.asc },
+        ],
+      },
+    ]);
+    expect(
+      parse(
+        'CREATE TABLE t (a int, b int, PRIMARY KEY (a, b) USING INDEX TABLESPACE fast);\n'
+      ).ast.keys
+    ).toEqual([]);
+  });
+
   it('reads a primary key part by its first word', () => {
     const { ast } = parse(
       'CREATE TABLE t (\n' +

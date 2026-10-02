@@ -24,6 +24,7 @@ import {
   isRightParentToken,
   isSemicolonToken,
   isStringToken,
+  isTablespaceValue,
   isUniqueValue,
   isUsingValue,
   isWhereValue,
@@ -228,6 +229,7 @@ function createTableColumnsParser(
   const characterSet = isCharacterSet(tokens);
   const isCollate = isCollateValue(tokens);
   const isUsing = isUsingValue(tokens);
+  const isTablespace = isTablespaceValue(tokens);
   const isWhere = isWhereValue(tokens);
   const nullFilter = isNullFilter(tokens);
   const constraintState = isConstraintState(tokens);
@@ -279,6 +281,12 @@ function createTableColumnsParser(
   // reports it too: DBMS_METADATA may export its index on its own, as SYS_C...
   let unnamedKey: Key | null = null;
 
+  // Oracle's USING INDEX, but not PostgreSQL's USING INDEX TABLESPACE, after
+  // which a CREATE INDEX over the key is an index of its own: DBMS_METADATA
+  // never writes TABLESPACE first, and Oracle refuses a second such index.
+  const oracleUsingIndex = (pos: number) =>
+    isUsing(pos) && isIndex(pos + 1) && !isTablespace(pos + 2);
+
   const symbolAt = (pos: number) =>
     pos === constraintEnd ? constraintName : '';
 
@@ -315,7 +323,7 @@ function createTableColumnsParser(
   while (isToken()) {
     let token = tokens[$pos.value];
 
-    if (unnamedKey && isUsing($pos.value) && isIndex($pos.value + 1)) {
+    if (unnamedKey && oracleUsingIndex($pos.value)) {
       keys.push(unnamedKey);
       unnamedKey = null;
     }
