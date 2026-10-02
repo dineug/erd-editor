@@ -79,6 +79,24 @@ const checkedStates = (panel: ReturnType<Page['locator']>) =>
     .locator('input[type="checkbox"]')
     .evaluateAll(inputs => inputs.map(input => input.matches(':checked')));
 
+test.describe('table properties — frame', () => {
+  test('closes on its close button and hands the keyboard back to the editor', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(schema());
+    const { panel } = await openProperties(erd, page, 'student');
+
+    await panel.locator('.table-properties-close').click();
+    await expect(panel).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
+
+    // The button took the focus as it was pressed; the shortcuts still answer.
+    await erd.press(Shortcut.tableProperties);
+    await expect(panel).toBeVisible();
+  });
+});
+
 test.describe('table properties — indexes tab', () => {
   test('rebinds the checkbox column when the selection moves to another index', async ({
     erd,

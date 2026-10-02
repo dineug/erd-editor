@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-02 -->
 
 # erd-editor
 
@@ -86,6 +86,11 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 - **A mark always stands last in its row, in no column order.** It is derived and never edited, so it is no `ColumnType`, no `FocusType` and no entry of `settings.columnOrder`: `getAlternateKeyMarkX` puts it one margin past the last cell `getColumnCellSlots` lays out, whatever the order, and the cells keep `getColumnCellsX`, so the column names stay in line with the header name and the edit overlay and the drag ghost never move for it. Its `k-text` does not listen, so a press on it is a press on the row, as between two cells; keyboard focus, the cell editor, copy and paste walk the order and never reach it. Graph mode's DOM card (`visualization/table/`) draws it last too.
 - **The marks widen only the tables that carry one.** `calcAlternateKeyWidth` sizes the room after the last cell from the longest mark at `COLUMN_ALTERNATE_KEY_CHAR_WIDTH` per character (the code face at the cell size, no text measure, so the peer sizes it too), kept in `ColumnWidth.alternateKey` and added to the row sum like any other cell. The seven actions that add, drop, reshape or renumber a key (the five index ones, `moveIndexColumnAction`, and `moveColumnAction`, which renumbers) are in the sort hook's `layoutActions`, which bumps the width generation the size cache keys on, but the hook lets them through only while the bit is set, and they are in `isDocumentOnly`, since a view's geometry sees none of them.
 - **A table reads only its own indexes.** `getTableIndexIds` groups `doc.indexIds` by table once per add or drop and caches the grouping on the list, so a sort measures every table in one pass over the indexes, not one per table. The two index reducers that push and splice the list call `invalidateTableIndexes`; any other in-place write to it must too, while a replaced list or entity map is caught by identity. An observer keeps `doc.indexIds.length` and its own indexes' fields, so with the bit set an index add or drop redraws every table and any other index change only its own (`tableKeys.test.ts` pins both).
+
+**Table Properties**
+
+- **One fixed box for all three tabs** (`erd/table-properties/TableProperties.styles.ts`): 1040 by 600 at most, hung from the palette's line 60px under the editor's top and shortened by `max-height: 100%` on a low host, so switching tabs never moves the frame. The header holds the title, a chip per table opened lately and the close button, the one control the keyboard reaches; it hands focus back with `focusEvent` on `nextTick`, as Find and Replace's close does, or the keyboard falls to the page and the shortcuts stop. Escape and a press on the backdrop close it as before.
+- **Its titles are an e2e contract**: `e2e/specs/table-properties-indexes.spec.ts` finds rows by `[title="Add Index"]`, `[title="Unique"]`, `[title="Alternate Key n"]`, `[title="Remove"]` and `div:has(> [title="Read Only"])`, the lock a direct child of a key row. A new element takes none of those titles, or a strict locator matches two.
 
 **Coordinates and scrolling**
 

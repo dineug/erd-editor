@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, observable, onMounted } from '@dineug/r-html';
+import { FC, nextTick, observable, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import TablePropertiesIndexes from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes';
@@ -7,12 +7,14 @@ import TablePropertiesTabs, {
   Tab,
 } from '@/components/erd/table-properties/table-properties-tabs/TablePropertiesTabs';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
+import Icon from '@/components/primitives/icon/Icon';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { onStop } from '@/utils/domEvent';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { focusEvent } from '@/utils/internalEvents';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 import * as styles from './TableProperties.styles';
 
@@ -34,6 +36,18 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
   const handleClose = () => {
     const { store } = app.value;
     store.dispatch(changeOpenMapAction({ [Open.tableProperties]: false }));
+  };
+
+  /**
+   * The close button held the keyboard, and it leaves with the dialog: the
+   * editor takes the focus back, as Find and Replace's close hands it back,
+   * or the keyboard falls to the page and every shortcut stops.
+   */
+  const handleCloseButton = () => {
+    handleClose();
+    nextTick(() => {
+      ctx.host.dispatchEvent(focusEvent());
+    });
   };
 
   const handleOutsideClick = (event: MouseEvent) => {
@@ -59,7 +73,7 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
   });
 
   return () => {
-    const { store } = app.value;
+    const { store, keyBindingMap } = app.value;
     const { collections } = store.state;
     const { tableIds } = props;
 
@@ -76,17 +90,39 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
         on:wheel={onStop}
         on:click={handleOutsideClick}
       >
-        <div class={['table-properties', styles.container]}>
-          <div class={['scrollbar', styles.header]}>
-            {tables.map(table => (
-              <div
-                class={[styles.tab, { selected: table.id === props.tableId }]}
-                title={table.name}
-                on:click={() => props.onChange(table.id)}
-              >
-                <span>{table.name.trim() ? table.name : 'unnamed'}</span>
-              </div>
-            ))}
+        <div
+          class={['table-properties', styles.container]}
+          role="dialog"
+          aria-label="Table Properties"
+        >
+          <div class={styles.header}>
+            <span class={styles.title}>Table Properties</span>
+            <div class={['scrollbar', styles.tables]}>
+              {tables.map(table => (
+                <div
+                  class={[
+                    styles.tableChip,
+                    { selected: table.id === props.tableId },
+                  ]}
+                  title={table.name}
+                  on:click={() => props.onChange(table.id)}
+                >
+                  <span>{table.name.trim() ? table.name : 'unnamed'}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              class={['table-properties-close', styles.close]}
+              type="button"
+              title={toShortcutTitle(
+                keyBindingMap,
+                'Close',
+                KeyBindingName.stop
+              )}
+              on:click={handleCloseButton}
+            >
+              <Icon name="x" size={14} />
+            </button>
           </div>
           <TablePropertiesTabs value={state.tab} onChange={handleChangeTab} />
           <div class={['scrollbar', styles.scrollbarArea]}>
@@ -95,14 +131,14 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
                 <TablePropertiesIndexes tableId={props.tableId} />
               </div>
             ) : state.tab === Tab.SchemaSQL ? (
-              <div class={styles.scope}>
+              <div class={['code', styles.scope]}>
                 <SchemaSQL
                   isDarkMode={props.isDarkMode}
                   tableId={props.tableId}
                 />
               </div>
             ) : state.tab === Tab.GeneratorCode ? (
-              <div class={styles.scope}>
+              <div class={['code', styles.scope]}>
                 <GeneratorCode
                   isDarkMode={props.isDarkMode}
                   tableId={props.tableId}

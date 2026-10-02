@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes.styles';
 import { COLUMN_HEIGHT, TABLE_PADDING } from '@/constants/layout';
+import { typography } from '@/styles/typography.styles';
 
 const staticText = (literals: { strings: TemplateStringsArray }) =>
   [...literals.strings].join(' ');
@@ -18,17 +19,27 @@ describe('TablePropertiesIndexes.styles', () => {
     expect(new Set(identifiers).size).toBe(3);
   });
 
-  it('splits the pane widths 30/70 with their own minimums', () => {
+  it('keeps the keys at 260px and gives the columns the rest', () => {
     const left = staticText(styles.leftArea);
     const right = staticText(styles.rightArea);
 
-    expect(left).toContain('width: 30%');
-    expect(left).toContain('min-width: 240px');
-    expect(left).toContain('padding-right: 12px');
-    expect(right).toContain('width: 70%');
-    expect(right).toContain('min-width: 560px');
-    expect(left).toContain('height: 100%');
-    expect(right).toContain('height: 100%');
+    expect(left).toContain('flex: 0 1 260px');
+    expect(left).toContain('min-width: 220px');
+    expect(right).toContain('flex: 1 1 520px');
+    expect(right).toContain('min-width: 0');
+
+    for (const text of [left, right]) {
+      expect(text).toContain('display: flex');
+      expect(text).toContain('flex-direction: column');
+      expect(text).not.toMatch(/width: \d+%/);
+      expect(text).not.toContain('height: 100%');
+      expect(text).not.toContain('padding-right');
+    }
+  });
+
+  it('sets both panes in the row size of the canvas table', () => {
+    expect(styles.leftArea.values).toEqual([typography.paragraph]);
+    expect(styles.rightArea.values).toEqual([typography.paragraph]);
   });
 
   it('makes the add index row a clickable full width line', () => {

@@ -903,7 +903,7 @@ describe('Erd - color picker', () => {
 describe('Erd - table properties', () => {
   const tabTitles = (root: HTMLElement) =>
     Array.from(
-      root.querySelectorAll(`.${String(tablePropertiesStyles.tab)}`)
+      root.querySelectorAll(`.${String(tablePropertiesStyles.tableChip)}`)
     ).map(el => el.getAttribute('title'));
 
   const openTableProperties = async (app: AppContext, tableId: string) => {
