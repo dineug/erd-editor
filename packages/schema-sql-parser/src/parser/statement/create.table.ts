@@ -34,7 +34,6 @@ import {
   matchReferentialClause,
   matchUserDataType,
   requote,
-  requoteTypeName,
   unquoteTypeName,
 } from '@/parser/helper';
 import {
@@ -653,11 +652,10 @@ function createTableColumnsParser(
         } else if (isArrayDimension($pos.value)) {
           value += requote(token);
         } else {
-          // A user type keeps the quotes it needs, "MyType" being case
-          // sensitive; a listed type drops them but for "char" and "bit".
-          const text = userDefined
-            ? requoteTypeName(token)
-            : unquoteTypeName(token);
+          // A user type keeps its quotes, "MyType" being case sensitive and
+          // [dbo].[Order] naming a reserved word; a listed type drops them
+          // but for "char" and "bit".
+          const text = userDefined ? requote(token) : unquoteTypeName(token);
           value +=
             value && !isPeriod($pos.value) && !isPeriod($pos.value - 1)
               ? ` ${text}`

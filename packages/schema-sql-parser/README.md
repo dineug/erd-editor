@@ -584,8 +584,8 @@ two arrive separately from the `create.table` they belong to.
 
 A type none of these lists carries is kept as written where it follows the column name: an enum or
 composite made with `CREATE TYPE`, a `CREATE DOMAIN`, an extension type such as `hstore`, `citext` or
-`ltree`, a schema-qualified or quoted name (`public.mood`, `"MyType"`, `[dbo].[Phone]`, which comes in
-as `dbo.Phone`), with its arguments. An array suffix (`[]`, `[3]`, `ARRAY`) stays on any type, and the
+`ltree`, a schema-qualified or quoted name (`public.mood`, `"MyType"`, `[dbo].[Order]`, its quotes and
+brackets kept), with its arguments. An array suffix (`[]`, `[3]`, `ARRAY`) stays on any type, and the
 values of `ENUM(...)` and `SET(...)` keep their quotes. The `CREATE TYPE`, `CREATE DOMAIN` and
 `CREATE EXTENSION` statements themselves are skipped.
 

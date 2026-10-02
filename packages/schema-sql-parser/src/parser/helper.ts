@@ -627,16 +627,6 @@ const isKeyword = (value: string) =>
 const isColumnKeyword = (token: Token | undefined) =>
   !!token && !token.quoted && isKeyword(token.value);
 
-// T-SQL brackets change nothing around a regular name, so a user type sheds
-// them as a listed one does: [sysname] is sysname, [dbo].[Phone] dbo.Phone.
-// A name that needs them keeps them, [my type], and so does "MyType".
-export const requoteTypeName = (token: Token) =>
-  token.quoted === '[' &&
-  /^[A-Za-z_][\w$#@]*$/.test(token.value) &&
-  !isKeyword(token.value)
-    ? token.value
-    : requote(token);
-
 // A listed type sheds its quotes, [int] being how T-SQL writes INT, but not
 // PostgreSQL's "char" and "bit": its grammar reads char as character(1) and
 // bit as bit(1), while the quoted names are other types, as pg_dump writes.

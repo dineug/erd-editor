@@ -69,7 +69,6 @@ import {
   matchReferentialClause,
   matchUserDataType,
   requote,
-  requoteTypeName,
   unquoteTypeName,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
@@ -1112,25 +1111,6 @@ describe('requote', () => {
       "'it''s'",
       '"a""b"',
       '`c``d`',
-    ]);
-  });
-});
-
-describe('requoteTypeName', () => {
-  it('drops the brackets around a regular name only', () => {
-    expect(
-      tokenizer(
-        '[sysname] [_a$1#@] [my type] [1st] [default] "Mood" `m` x'
-      ).map(requoteTypeName)
-    ).toEqual([
-      'sysname',
-      '_a$1#@',
-      '[my type]',
-      '[1st]',
-      '[default]',
-      '"Mood"',
-      '`m`',
-      'x',
     ]);
   });
 });

@@ -2036,7 +2036,8 @@ CREATE TYPE dbo.LineItems AS TABLE (id INT, qty INT);
 CREATE TABLE [dbo].[Customer] (
   [Id] [int] IDENTITY(1,1) NOT NULL,
   [Phone] [dbo].[Phone] NULL,
-  [Owner] [sysname] NOT NULL
+  [Owner] [sysname] NOT NULL,
+  [Status] [dbo].[Order] NULL
 );
 ```
 
@@ -2060,7 +2061,7 @@ CREATE TABLE [dbo].[Customer] (
         },
         {
           "name": "Phone",
-          "dataType": "dbo.Phone",
+          "dataType": "[dbo].[Phone]",
           "default": "",
           "comment": "",
           "primaryKey": false,
@@ -2070,13 +2071,23 @@ CREATE TABLE [dbo].[Customer] (
         },
         {
           "name": "Owner",
-          "dataType": "sysname",
+          "dataType": "[sysname]",
           "default": "",
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
           "unique": false,
           "nullable": false
+        },
+        {
+          "name": "Status",
+          "dataType": "[dbo].[Order]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
         }
       ],
       "indexes": [],

@@ -568,23 +568,25 @@ describe('createTableParser - user defined types', () => {
       ['a', '"MyType"'],
       ['b', 'public.mood'],
       ['c', '"public"."mood"'],
-      ['d', 'dbo.Phone'],
+      ['d', '[dbo].[Phone]'],
       ['e', 'money.amount'],
       ['f', 'pg_catalog."varchar"(10)'],
     ]);
   });
 
-  // T-SQL brackets change no case, so SSMS's [sysname] reads as its [int] does.
-  it('drops the brackets of a user type unless its name needs them', () => {
+  // Shed, the brackets left dbo.Order, which T-SQL refuses: ORDER is reserved.
+  it('keeps the T-SQL brackets of a user type, needed or not', () => {
     expect(
       types(
-        'CREATE TABLE [c] ([Name] [sysname] NOT NULL, [Loc] [geography] NULL, [Zip] [my type], [D] [default]);'
+        'CREATE TABLE [c] ([Name] [sysname] NOT NULL, [Loc] [geography] NULL, [Zip] [my type], [D] [default], [O] [dbo].[Order], [P] dbo.[Order]);'
       )
     ).toEqual([
-      ['Name', 'sysname'],
+      ['Name', '[sysname]'],
       ['Loc', 'geography'],
       ['Zip', '[my type]'],
       ['D', '[default]'],
+      ['O', '[dbo].[Order]'],
+      ['P', 'dbo.[Order]'],
     ]);
   });
 

@@ -922,8 +922,8 @@ describe('schemaSQLParserToSchemaJson', () => {
       [
         'MSSQL',
         Database.MSSQL,
-        'CREATE TABLE customer ([phone] [dbo].[Phone] NULL, [owner] [sysname] NOT NULL, [zip] [zip code]);',
-        ['dbo.Phone', 'sysname', '[zip code]'],
+        'CREATE TABLE customer ([phone] [dbo].[Phone] NULL, [owner] [sysname] NOT NULL, [zip] [zip code], [status] [dbo].[Order]);',
+        ['[dbo].[Phone]', '[sysname]', '[zip code]', '[dbo].[Order]'],
       ],
       [
         'Oracle',
