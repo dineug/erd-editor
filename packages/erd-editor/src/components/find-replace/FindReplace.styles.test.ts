@@ -7,6 +7,7 @@ const staticText = (literals: { strings: TemplateStringsArray }) =>
 
 const tokens = [
   styles.root,
+  styles.controls,
   styles.header,
   styles.row,
   styles.actions,

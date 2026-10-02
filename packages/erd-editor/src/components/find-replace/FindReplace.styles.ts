@@ -3,6 +3,12 @@ import { css } from '@dineug/r-html';
 import { floatingShadow } from '@/styles/elevation.styles';
 import { typography } from '@/styles/typography.styles';
 
+const PANEL_PADDING = 12;
+const PANEL_BORDER = 1;
+
+/** What the panel's box adds to the height of its controls: its padding and border, above and below. */
+export const PANEL_CHROME_HEIGHT = (PANEL_PADDING + PANEL_BORDER) * 2;
+
 /**
  * A panel over the top left of the canvas, clear of the minimap in the other
  * corner. Its top and height are set inline, since zen mode takes the toolbar
@@ -18,13 +24,21 @@ export const root = css`
   width: 380px;
   max-width: calc(100% - 32px);
   overflow: hidden;
-  padding: 12px;
+  padding: ${PANEL_PADDING}px;
   background-color: var(--context-menu-background);
-  border: 1px solid var(--context-menu-border);
+  border: ${PANEL_BORDER}px solid var(--context-menu-border);
   border-radius: 6px;
   ${floatingShadow};
   color: var(--foreground);
   ${typography.paragraph};
+`;
+
+/* The fields, options, scopes and count above the list, which never shrink: the list gives way. */
+export const controls = css`
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 8px;
 `;
 
 export const header = css`
@@ -145,7 +159,7 @@ export const list = css`
   max-height: 320px;
   min-height: 0;
   overflow: auto;
-  margin: 0 -12px -12px;
+  margin: 0 -${PANEL_PADDING}px -${PANEL_PADDING}px;
   border-top: 1px solid var(--context-menu-border);
 `;
 

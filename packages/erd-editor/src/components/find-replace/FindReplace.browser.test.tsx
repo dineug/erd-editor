@@ -387,6 +387,31 @@ describe('Find and Replace over the canvas', () => {
     expect(panel?.bottom).toBeLessThanOrEqual(toolbar?.top ?? 0);
   });
 
+  it.each([
+    ['wide, the toolbar far from it', 1400, 300],
+    ['narrow, the toolbar under it', 820, 300],
+  ])(
+    'keeps its count and its navigation whole on a canvas this short and %s',
+    async (_, width, height) => {
+      const fixture = await setup({ width, height, styled: true });
+
+      await press(OPEN_FIND);
+      await press('user');
+
+      const panel = panelOf(fixture)?.getBoundingClientRect();
+      const next = panelOf(fixture)
+        ?.querySelector('.find-next')
+        ?.getBoundingClientRect();
+      const count = panelOf(fixture)
+        ?.querySelector('.find-count')
+        ?.getBoundingClientRect();
+      expect(countOf(fixture)).toBe('5 matches');
+      expect(next?.height).toBeGreaterThan(0);
+      expect(next?.bottom).toBeLessThanOrEqual(panel?.bottom ?? 0);
+      expect(count?.bottom).toBeLessThanOrEqual(panel?.bottom ?? 0);
+    }
+  );
+
   it('lands a table picked in the palette clear of the open panel', async () => {
     const fixture = await setup({ width: 1200, height: 640, styled: true });
     await press(OPEN_FIND);

@@ -6,6 +6,7 @@ import {
   nextTick,
   observable,
   onMounted,
+  onUpdated,
   ref,
 } from '@dineug/r-html';
 import { debounceTime, filter, Observable } from 'rxjs';
@@ -132,6 +133,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
   const root = createRef<HTMLDivElement>();
+  const controls = createRef<HTMLDivElement>();
 
   const state = observable({
     query: '',
@@ -162,6 +164,23 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   let run: ReplaceRun | null = null;
   /** Set once that run has come back to where it began, which holds until a new run. */
   let stopped = false;
+  /** The height the panel needs to show its controls whole, measured once they are drawn. */
+  const layout = observable({ floor: 0 });
+  /** The controls measured, a new element each time the panel is drawn again. */
+  let measured: HTMLDivElement | null = null;
+  const resizeObserver = new ResizeObserver(() => {
+    const height = measured?.offsetHeight ?? 0;
+    layout.floor = height && height + styles.PANEL_CHROME_HEIGHT;
+  });
+
+  const measureControls = () => {
+    const element = controls.value ?? null;
+    if (element === measured) return;
+
+    resizeObserver.disconnect();
+    element && resizeObserver.observe(element);
+    measured = element;
+  };
 
   /** Starts a new run of Replace presses: a jump, a change of search, an opening or a Replace All. */
   const newRun = () => {
@@ -547,9 +566,13 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         .subscribe(() => {
           stale && isPanelShown(store.state) && searchEdited();
         }),
-      cancelPendingSearch
+      cancelPendingSearch,
+      () => resizeObserver.disconnect()
     );
+    measureControls();
   });
+
+  onUpdated(measureControls);
 
   return () => {
     const { store, keyBindingMap } = app.value;
@@ -562,8 +585,12 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const top =
       (store.state.editor.zenMode ? 0 : TOOLBAR_HEIGHT) + PANEL_MARGIN;
     // On a short canvas the list gives up its height before the panel reaches
-    // the floating toolbar, whose tools it would cover.
-    const bottom = FLOATING_TOOLBAR_REACH + PANEL_MARGIN;
+    // the floating toolbar, whose tools it would cover, but the controls stay
+    // whole down to the margin, since the panel is no use without its count.
+    const clear = `calc(100% - ${top + FLOATING_TOOLBAR_REACH + PANEL_MARGIN}px)`;
+    const maxHeight = layout.floor
+      ? `max(${clear}, min(${layout.floor}px, calc(100% - ${top + PANEL_MARGIN}px)))`
+      : clear;
     const replaceable = !props.readonly && matches.length > 0;
 
     return (
@@ -571,150 +598,156 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         class={['find-replace', styles.root]}
         style={{
           top: `${top}px`,
-          'max-height': `calc(100% - ${top + bottom}px)`,
+          'max-height': maxHeight,
         }}
         use:ref={ref(root)}
         on:keydown={handleKeydown}
       >
-        <div class={styles.header}>
-          <span>{props.readonly ? 'Find' : 'Find and Replace'}</span>
-          <button
-            class={['find-replace-close', styles.toggle]}
-            type="button"
-            title={toShortcutTitle(keyBindingMap, 'Close', KeyBindingName.stop)}
-            on:click={close}
-          >
-            <Icon name="x" size={14} />
-          </button>
-        </div>
-        <div class={styles.row}>
-          <TextInput
-            class={[
-              'find-input',
-              styles.input,
-              { invalid: error === 'invalid' },
-            ]}
-            title="Find"
-            placeholder="Find"
-            value={state.query}
-            onInput={handleQueryInput}
-            onKeydown={handleQueryKeydown}
-          />
-          <div class={styles.actions}>
+        <div class={styles.controls} use:ref={ref(controls)}>
+          <div class={styles.header}>
+            <span>{props.readonly ? 'Find' : 'Find and Replace'}</span>
             <button
-              class={[
-                'find-match-case',
-                styles.toggle,
-                { active: state.matchCase },
-              ]}
+              class={['find-replace-close', styles.toggle]}
               type="button"
-              title="Match Case"
-              aria-pressed={String(state.matchCase)}
-              on:click={() => toggleOption('matchCase')}
+              title={toShortcutTitle(
+                keyBindingMap,
+                'Close',
+                KeyBindingName.stop
+              )}
+              on:click={close}
             >
-              <Icon name="case-sensitive" size={16} />
-            </button>
-            <button
-              class={[
-                'find-whole-word',
-                styles.toggle,
-                { active: state.wholeWord },
-              ]}
-              type="button"
-              title="Match Whole Word"
-              aria-pressed={String(state.wholeWord)}
-              on:click={() => toggleOption('wholeWord')}
-            >
-              <Icon name="whole-word" size={16} />
-            </button>
-            <button
-              class={['find-regex', styles.toggle, { active: state.regex }]}
-              type="button"
-              title="Use Regular Expression"
-              aria-pressed={String(state.regex)}
-              on:click={() => toggleOption('regex')}
-            >
-              <Icon name="regex" size={16} />
+              <Icon name="x" size={14} />
             </button>
           </div>
-        </div>
-        {props.readonly ? null : (
           <div class={styles.row}>
             <TextInput
-              class={['replace-input', styles.input]}
-              title="Replace"
-              placeholder="Replace"
-              value={state.replacement}
-              onInput={handleReplacementInput}
-              onKeydown={handleReplacementKeydown}
+              class={[
+                'find-input',
+                styles.input,
+                { invalid: error === 'invalid' },
+              ]}
+              title="Find"
+              placeholder="Find"
+              value={state.query}
+              onInput={handleQueryInput}
+              onKeydown={handleQueryKeydown}
             />
             <div class={styles.actions}>
               <button
-                class={['find-replace-one', styles.toggle]}
+                class={[
+                  'find-match-case',
+                  styles.toggle,
+                  { active: state.matchCase },
+                ]}
                 type="button"
-                title="Replace (Enter)"
-                bool:disabled={!replaceable}
-                on:click={handleReplace}
+                title="Match Case"
+                aria-pressed={String(state.matchCase)}
+                on:click={() => toggleOption('matchCase')}
               >
-                <Icon name="replace" size={16} />
+                <Icon name="case-sensitive" size={16} />
               </button>
               <button
-                class={['find-replace-all', styles.toggle]}
+                class={[
+                  'find-whole-word',
+                  styles.toggle,
+                  { active: state.wholeWord },
+                ]}
                 type="button"
-                title="Replace All"
-                bool:disabled={!replaceable}
-                on:click={handleReplaceAll}
+                title="Match Whole Word"
+                aria-pressed={String(state.wholeWord)}
+                on:click={() => toggleOption('wholeWord')}
               >
-                <Icon name="replace-all" size={16} />
+                <Icon name="whole-word" size={16} />
+              </button>
+              <button
+                class={['find-regex', styles.toggle, { active: state.regex }]}
+                type="button"
+                title="Use Regular Expression"
+                aria-pressed={String(state.regex)}
+                on:click={() => toggleOption('regex')}
+              >
+                <Icon name="regex" size={16} />
               </button>
             </div>
           </div>
-        )}
-        <div class={styles.scopes}>
-          {FindFieldList.map(field => (
-            <button
+          {props.readonly ? null : (
+            <div class={styles.row}>
+              <TextInput
+                class={['replace-input', styles.input]}
+                title="Replace"
+                placeholder="Replace"
+                value={state.replacement}
+                onInput={handleReplacementInput}
+                onKeydown={handleReplacementKeydown}
+              />
+              <div class={styles.actions}>
+                <button
+                  class={['find-replace-one', styles.toggle]}
+                  type="button"
+                  title="Replace (Enter)"
+                  bool:disabled={!replaceable}
+                  on:click={handleReplace}
+                >
+                  <Icon name="replace" size={16} />
+                </button>
+                <button
+                  class={['find-replace-all', styles.toggle]}
+                  type="button"
+                  title="Replace All"
+                  bool:disabled={!replaceable}
+                  on:click={handleReplaceAll}
+                >
+                  <Icon name="replace-all" size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+          <div class={styles.scopes}>
+            {FindFieldList.map(field => (
+              <button
+                class={[
+                  'find-scope',
+                  styles.scope,
+                  { active: state.fields.includes(field) },
+                ]}
+                type="button"
+                data-field={field}
+                aria-pressed={String(state.fields.includes(field))}
+                on:click={() => toggleField(field)}
+              >
+                {SCOPE_LABEL[field]}
+              </button>
+            ))}
+          </div>
+          <div class={styles.status}>
+            <span
               class={[
-                'find-scope',
-                styles.scope,
-                { active: state.fields.includes(field) },
+                'find-count',
+                styles.count,
+                { invalid: error === 'invalid' },
               ]}
-              type="button"
-              data-field={field}
-              aria-pressed={String(state.fields.includes(field))}
-              on:click={() => toggleField(field)}
             >
-              {SCOPE_LABEL[field]}
+              {count}
+            </span>
+            <button
+              class={['find-previous', styles.toggle]}
+              type="button"
+              title="Previous Match (Shift+Enter)"
+              bool:disabled={!matches.length}
+              on:click={goToPrevious}
+            >
+              <Icon name="arrow-up" size={16} />
             </button>
-          ))}
-        </div>
-        <div class={styles.status}>
-          <span
-            class={[
-              'find-count',
-              styles.count,
-              { invalid: error === 'invalid' },
-            ]}
-          >
-            {count}
-          </span>
-          <button
-            class={['find-previous', styles.toggle]}
-            type="button"
-            title="Previous Match (Shift+Enter)"
-            bool:disabled={!matches.length}
-            on:click={goToPrevious}
-          >
-            <Icon name="arrow-up" size={16} />
-          </button>
-          <button
-            class={['find-next', styles.toggle]}
-            type="button"
-            title="Next Match (Enter)"
-            bool:disabled={!matches.length}
-            on:click={goToNext}
-          >
-            <Icon name="arrow-down" size={16} />
-          </button>
+            <button
+              class={['find-next', styles.toggle]}
+              type="button"
+              title="Next Match (Enter)"
+              bool:disabled={!matches.length}
+              on:click={goToNext}
+            >
+              <Icon name="arrow-down" size={16} />
+            </button>
+          </div>
         </div>
         {matches.length ? (
           <div class={['scrollbar', styles.list]}>
