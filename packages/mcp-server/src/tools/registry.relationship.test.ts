@@ -36,6 +36,9 @@ const relate = (peer: PeerStore, startTableId: string, endTableId: string) =>
     relationshipType: 'OneN',
   });
 
+const columnNames = (peer: PeerStore, columnIds: string[]) =>
+  columnIds.map(id => peer.state.collections.tableColumnEntities[id].name);
+
 function refusal(call: () => unknown): ToolError {
   try {
     call();
@@ -154,8 +157,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
     const [first] = relate(peer, SEED.users, SEED.orders).createdIds;
     const [second] = relate(peer, SEED.users, SEED.orders).createdIds;
 
-    const columns = peer.state.collections.tableColumnEntities;
-    expect([columns[first].name, columns[second].name]).toEqual([
+    expect(columnNames(peer, [first, second])).toEqual([
       'users_id',
       'users_id_2',
     ]);
@@ -172,8 +174,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
     const [intoEmpty] = relate(peer, SEED.users, SEED.empty).createdIds;
     const [intoOrders] = relate(peer, SEED.users, SEED.orders).createdIds;
 
-    const columns = peer.state.collections.tableColumnEntities;
-    expect([columns[intoEmpty].name, columns[intoOrders].name]).toEqual([
+    expect(columnNames(peer, [intoEmpty, intoOrders])).toEqual([
       'user_id',
       'user_id_2',
     ]);
@@ -190,11 +191,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
       value: 'members',
     });
 
-    const columns = peer.state.collections.tableColumnEntities;
-    expect([columns[intoEmpty].name, columns[intoItself].name]).toEqual([
-      'id',
-      'id_2',
-    ]);
+    expect(columnNames(peer, [intoEmpty, intoItself])).toEqual(['id', 'id_2']);
   });
 
   it('leaves the foreign key of a key it had to create unnamed, like that key', () => {
@@ -206,11 +203,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
       SEED.users
     ).createdIds;
 
-    const columns = peer.state.collections.tableColumnEntities;
-    expect([columns[primaryKeyId].name, columns[foreignKeyId].name]).toEqual([
-      '',
-      '',
-    ]);
+    expect(columnNames(peer, [primaryKeyId, foreignKeyId])).toEqual(['', '']);
   });
 
   it('takes the whole call back with one undo', () => {
