@@ -123,8 +123,15 @@ describe('TablePropertiesIndexes.styles', () => {
 
     expect(text).toContain('min-width: 0');
     expect(text).toContain('gap: 4px');
-    expect(text).toContain('text-overflow: ellipsis');
+    expect(text).toContain('overflow: hidden');
     expect(text).toContain('white-space: nowrap');
+    // A flex container is no block container, so only the span can draw it.
+    expect(text.slice(0, text.indexOf('& > span'))).not.toContain(
+      'text-overflow'
+    );
+    expect(text.slice(text.indexOf('& > span'))).toMatch(
+      /& > span \{\s*min-width: 0;\s*overflow: hidden;\s*text-overflow: ellipsis;\s*\}/
+    );
     expect(text).toContain('font-weight: var(--font-weight-regular)');
     expect(text).toContain('font-variant-numeric: tabular-nums');
     expect(text).toContain('color: var(--foreground)');

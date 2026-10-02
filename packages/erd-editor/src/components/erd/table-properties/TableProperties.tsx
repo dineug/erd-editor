@@ -42,8 +42,8 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
 
   /**
    * The close button held the keyboard, and it leaves with the dialog: the
-   * editor takes the focus back, as Find and Replace's close hands it back,
-   * or the keyboard falls to the page and every shortcut stops.
+   * editor takes the focus back, or the keyboard falls to the page and every
+   * shortcut stops.
    */
   const handleCloseButton = () => {
     handleClose();

@@ -52,7 +52,7 @@ export const container = css`
   overflow: hidden;
 `;
 
-/* The title, the tables opened lately and the close button, as Find and Replace draws its header. */
+/* The title, the tables opened lately and the close button, on one 48px line ruled off below. */
 export const header = css`
   display: flex;
   align-items: center;
@@ -123,7 +123,7 @@ export const tables = css`
   ${edgeShade};
 `;
 
-/* A chip, as Find and Replace draws a scope, lighter than the section tabs under it. */
+/* A pill, in the accent's steps 3, 8 and 11 once picked, lighter than the section tabs under it. */
 export const tableChip = css`
   display: inline-flex;
   align-items: center;
@@ -154,7 +154,7 @@ export const tableChip = css`
   }
 `;
 
-/* The square tool Find and Replace closes with, which also takes the keyboard. */
+/* A 26px square tool tinted under the pointer, the one control here the keyboard reaches. */
 export const close = css`
   display: flex;
   align-items: center;

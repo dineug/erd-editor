@@ -86,7 +86,7 @@ export const alternateKey = css`
   font-variant-numeric: tabular-nums;
 `;
 
-/* The square Find and Replace's tools take, at the end of the row. */
+/* A 20px square tool at the end of the row, tinted under the pointer as the close button is. */
 export const iconButton = css`
   flex-shrink: 0;
   margin-left: auto;

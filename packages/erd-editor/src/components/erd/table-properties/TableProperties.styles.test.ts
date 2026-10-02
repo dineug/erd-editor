@@ -154,7 +154,7 @@ describe('TableProperties.styles', () => {
     expect(styles.readonlyBadge.values).toEqual([typography.paragraph]);
   });
 
-  it('draws a table as the chip Find and Replace draws a scope', () => {
+  it('draws a table as a pill in the accent steps 3, 8 and 11 once picked', () => {
     const text = staticText(styles.tableChip);
 
     expect(text).toContain('display: inline-flex');
@@ -175,7 +175,7 @@ describe('TableProperties.styles', () => {
     expect(text).toContain('white-space: nowrap');
   });
 
-  it('draws the close button as the 26px tool Find and Replace closes with', () => {
+  it('draws the close button as a 26px square tool tinted under the pointer', () => {
     const text = staticText(styles.close);
 
     expect(text).toContain('width: 26px');

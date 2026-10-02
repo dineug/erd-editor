@@ -90,14 +90,16 @@ export const sectionLabel = css`
   flex-shrink: 0;
 `;
 
-/* Read, not hinted at: the placeholder colour is too faint for a sentence. */
+/**
+ * Read, not hinted at: the placeholder colour is too faint for a sentence. A
+ * flex box draws no ellipsis, so its text span cuts itself short.
+ */
 export const sectionStatus = css`
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 4px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: var(--font-weight-regular);
   font-variant-numeric: tabular-nums;
