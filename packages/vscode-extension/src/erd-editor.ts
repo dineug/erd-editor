@@ -89,8 +89,10 @@ export class ErdEditor extends Editor {
         async ({ value, changed }) => {
           // A save that changed nothing, such as a scroll the file does
           // not keep, leaves content and the tab as they are, even where
-          // the bytes of content differ from the value.
-          if (changed) await this.document.update(textEncoder.encode(value));
+          // the bytes differ; so does any save in a view nothing writes back.
+          if (changed && !this.readonly) {
+            await this.document.update(textEncoder.encode(value));
+          }
           this.registry.onValueSaved(this.document, this.webview);
         }
       ),

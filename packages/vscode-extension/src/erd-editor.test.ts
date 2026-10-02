@@ -311,6 +311,35 @@ describe('ErdEditor', () => {
       expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
       expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
     });
+
+    it.each(['git', 'conflictResolution'])(
+      'never dirties a read-only %s view, even for a save that changed the value, and still reports it',
+      async scheme => {
+        const { webview, document, registry } = await bootstrap({
+          uri: Uri.parse(`${scheme}:/workspace/sample.erd`),
+          content: '{"scrollTop":0}',
+        });
+        const update = vi.spyOn(document, 'update');
+        const dirtied = vi.fn();
+        document.onDidChangeContent(dirtied);
+
+        // A scroll in a view of a file whose Save Scroll Information is on:
+        // the value changed, but nothing can write such a view back.
+        webview.__receive(
+          Bridge.executeCommand(hostSaveValueCommand, {
+            value: '{"scrollTop":120}',
+            changed: true,
+          })
+        );
+        await flush();
+
+        expect(update).not.toHaveBeenCalled();
+        expect(dirtied).not.toHaveBeenCalled();
+        expect(document.content).toEqual(encoder.encode('{"scrollTop":0}'));
+        expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
+        expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
+      }
+    );
   });
 
   describe('hostSaveReplicationCommand', () => {
