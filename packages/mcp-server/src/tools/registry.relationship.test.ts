@@ -180,6 +180,26 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
     ]);
   });
 
+  it('keeps a key name where Hangul meets Latin and prefixes one of Hangul alone', () => {
+    const peer = seededPeer();
+    const renameKey = (value: string) =>
+      runTool(peer, 'erd_change_column_name', {
+        tableId: SEED.users,
+        columnId: SEED.userId,
+        value,
+      });
+
+    renameKey('회원ID');
+    const [mixed] = relate(peer, SEED.users, SEED.empty).createdIds;
+    renameKey('번호');
+    const [hangul] = relate(peer, SEED.users, SEED.empty).createdIds;
+
+    expect(columnNames(peer, [mixed, hangul])).toEqual([
+      '회원ID',
+      'users_번호',
+    ]);
+  });
+
   it('names after an unnamed parent the key alone and keeps the names through a later rename', () => {
     const peer = seededPeer();
     runTool(peer, 'erd_change_table_name', { tableId: SEED.users, value: '' });

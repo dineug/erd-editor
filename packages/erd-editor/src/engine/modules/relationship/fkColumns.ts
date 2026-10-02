@@ -24,21 +24,24 @@ const toNameKey = (name: string) => name.trim().toLowerCase();
 const WORD_CHARACTERS = /^[\p{L}\p{M}\p{N}]+$/u;
 
 /**
- * A lower case letter before an upper case one, or an upper case letter before
- * a capitalized word, as camelCase splits: IDCard, and so IDs and UUIDv4 too.
+ * Lower case before upper, or an acronym before a capitalized word, as camelCase
+ * splits IDCard, IDs and UUIDv4; or a letter without case, Hangul, kana or Han,
+ * beside one with case, either way, as in 회원ID and IDカード.
  */
-const CASE_BOUNDARY = /\p{Ll}\p{Lu}|\p{Lu}\p{Lu}\p{Ll}/u;
+const CASE_BOUNDARY =
+  /\p{Ll}\p{Lu}|\p{Lu}\p{Lu}\p{Ll}|[\p{Lo}\p{Lm}][\p{Lu}\p{Ll}]|[\p{Lu}\p{Ll}][\p{Lo}\p{Lm}]/u;
 
 /** Marks and digits, which join the word they sit in. */
-const CASELESS = /[\p{M}\p{N}]/gu;
+const MARKS_AND_DIGITS = /[\p{M}\p{N}]/gu;
 
 /**
- * Tells a name of one word, id, ID, Id, UUID or id2, from one of several,
- * user_id, userId, UserID or IDCard: one word is letters and digits with no
- * case change from lower to upper and no acronym run into a capitalized word.
+ * Tells a name of one word, id, ID, Id, UUID, id2 or 회원번호, from one of
+ * several, user_id, userId, UserID, IDCard or 회원ID: one word is letters and
+ * digits with none of the breaks CASE_BOUNDARY finds, read past marks and digits.
  */
 export const isSingleWord = (name: string) =>
-  WORD_CHARACTERS.test(name) && !CASE_BOUNDARY.test(name.replace(CASELESS, ''));
+  WORD_CHARACTERS.test(name) &&
+  !CASE_BOUNDARY.test(name.replace(MARKS_AND_DIGITS, ''));
 
 /**
  * Joins the table name and the key name with an underscore when the key name

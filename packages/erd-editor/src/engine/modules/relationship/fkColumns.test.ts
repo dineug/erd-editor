@@ -91,11 +91,33 @@ describe('isSingleWord', () => {
     expect(isSingleWord('Ids')).toBe(true);
   });
 
-  it('finds no case step in a script without case, so only a separator splits it', () => {
-    for (const name of ['회원아이디', '아이디ID']) {
+  it('finds no case step inside a script without case, so only a separator splits it', () => {
+    for (const name of ['회원아이디', 'ユーザー', '人々', '用户']) {
       expect(isSingleWord(name), name).toBe(true);
     }
     expect(isSingleWord('회원_아이디')).toBe(false);
+  });
+
+  it('splits where a letter without case meets a letter with case, either way', () => {
+    for (const name of [
+      '아이디ID',
+      '회원ID',
+      '회원Id',
+      'ユーザーID',
+      '人々ID',
+      '用户ID',
+      'IDカード',
+      '회원id',
+      'id회원',
+    ]) {
+      expect(isSingleWord(name), name).toBe(false);
+    }
+  });
+
+  it('reads that meeting across digits and marks, as it reads case', () => {
+    for (const name of ['회원2ID', 'ID2カード', 'आईडीID']) {
+      expect(isSingleWord(name), name).toBe(false);
+    }
   });
 
   it('lets a combining mark join the word it sits in, spacing or not', () => {
@@ -218,6 +240,18 @@ describe('toForeignKeyNames', () => {
     expect(toForeignKeyNames('회원', ['아이디'], [])).toEqual(['회원_아이디']);
     expect(toForeignKeyNames('회원', ['회원_아이디'], [])).toEqual([
       '회원_아이디',
+    ]);
+  });
+
+  it('keeps a key where a script without case meets one with case', () => {
+    expect(toForeignKeyNames('members', ['회원ID'], [])).toEqual(['회원ID']);
+    expect(
+      ['ユーザーID', '用户ID', 'IDカード'].map(
+        key => toForeignKeyNames('users', [key], [])[0]
+      )
+    ).toEqual(['ユーザーID', '用户ID', 'IDカード']);
+    expect(toForeignKeyNames('members', ['회원ID'], ['회원ID'])).toEqual([
+      '회원ID_2',
     ]);
   });
 
