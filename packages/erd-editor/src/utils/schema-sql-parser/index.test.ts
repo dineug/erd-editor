@@ -64,6 +64,9 @@ const commentsOf = (schema: Schema) =>
     ...columnsOf(schema, table).map(column => column.comment),
   ]);
 
+const stateOf = (schema: Schema) =>
+  ({ ...schema, editor: {}, lww: {} }) as unknown as RootState;
+
 describe('schemaSQLParserToSchemaJson', () => {
   it('produces a v3 schema envelope for an empty source', () => {
     const schema = parse('');
@@ -794,10 +797,7 @@ describe('schemaSQLParserToSchemaJson', () => {
       'keeps a quote in a %s comment through its export',
       (_, database, sql) => {
         const imported = parse(sql);
-        const exported = createSchemaSQL(
-          { ...imported, editor: {}, lww: {} } as unknown as RootState,
-          database
-        );
+        const exported = createSchemaSQL(stateOf(imported), database);
 
         expect(commentsOf(imported)).toEqual(["o'k", "it's", '']);
         expect(exported).toContain("'it''s'");
@@ -884,8 +884,6 @@ describe('schemaSQLParserToSchemaJson', () => {
       tablesOf(schema).flatMap(table =>
         columnsOf(schema, table).map(column => column.dataType)
       );
-    const stateOf = (schema: Schema) =>
-      ({ ...schema, editor: {}, lww: {} }) as unknown as RootState;
 
     it.each<[string, number, string, string[]]>([
       [

@@ -171,10 +171,12 @@ function formatComment(
   { collections }: RootState,
   { table, buffer }: FormatCommentOptions
 ) {
+  const tableName = toStringLiteral(table.name);
+
   if (table.comment.trim() !== '') {
     buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
     buffer.push(
-      `  ${toStringLiteral(table.comment)}, 'user', dbo, 'table', ${toStringLiteral(table.name)}\nGO`
+      `  ${toStringLiteral(table.comment)}, 'user', dbo, 'table', ${tableName}\nGO`
     );
     buffer.push('');
   }
@@ -185,7 +187,7 @@ function formatComment(
       if (column.comment.trim() !== '') {
         buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
         buffer.push(
-          `  ${toStringLiteral(column.comment)}, 'user', dbo, 'table', ${toStringLiteral(table.name)}, 'column', ${toStringLiteral(column.name)}\nGO`
+          `  ${toStringLiteral(column.comment)}, 'user', dbo, 'table', ${tableName}, 'column', ${toStringLiteral(column.name)}\nGO`
         );
         buffer.push('');
       }
