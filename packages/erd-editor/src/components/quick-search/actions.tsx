@@ -457,7 +457,10 @@ export function createShowAllAction(
 ): Action {
   return {
     icon: <Icon name="search" size={16} />,
-    name: `Show all ${count} matches in Find and Replace`,
+    name:
+      count === 1
+        ? 'Show 1 match in Find and Replace'
+        : `Show all ${count} matches in Find and Replace`,
     perform: ({ emitter }) => {
       emitter.emit(openFindReplaceAction(payload));
     },

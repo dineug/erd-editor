@@ -391,6 +391,22 @@ describe('paletteRows / # tables', () => {
     expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
   });
 
+  it('names the one match it hands over in the singular', () => {
+    // Every table with no name is listed as unnamed, which holds the keyword.
+    addTables(SCOPED_ACTION_LIMIT + 5, () => '');
+    app.store.dispatchSync(
+      addTableAction({ id: 'named', ui: { x: 0, y: 0, zIndex: 1 } }),
+      changeTableNameAction({ id: 'named', value: 'x_name' })
+    );
+
+    const last = rowsFor('#name').at(-1);
+
+    expect(last?.name).toBe('Show 1 match in Find and Replace');
+    expect(handedOver(last)).toEqual([
+      openFindReplaceAction({ query: 'name', fields: [FindField.tableName] }),
+    ]);
+  });
+
   it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
     'leaves the hand-off out under %s, which keeps Find and Replace shut',
     key => {
