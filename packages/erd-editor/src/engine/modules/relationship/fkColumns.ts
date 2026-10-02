@@ -57,11 +57,9 @@ function prefixKeyName(tableName: string, keyName: string): string {
 
 /**
  * Takes the first of base, base_2, base_3 that no taken name holds, compared
- * without case, and adds it to taken; an empty base takes nothing.
+ * without case, and adds it to taken.
  */
 function claimName(base: string, taken: Set<string>): string {
-  if (!base) return base;
-
   let name = base;
   for (let suffix = 2; taken.has(toNameKey(name)); suffix++) {
     name = `${base}${SEPARATOR}${suffix}`;
@@ -73,7 +71,7 @@ function claimName(base: string, taken: Set<string>): string {
 /**
  * Names the foreign key column of each single word key after the start table,
  * user_id for the key id of user, keeps other key names, and numbers a name
- * already taken, user_id_2, without case; kept names claim theirs first.
+ * already taken, user_id_2, without case; free names, kept first, claim first.
  */
 export function toForeignKeyNames(
   startTableName: string,
@@ -88,9 +86,15 @@ export function toForeignKeyNames(
     ...indexes.filter(isKept),
     ...indexes.filter(index => !isKept(index)),
   ];
+  const clashing = claimOrder.filter(index => {
+    const key = toNameKey(bases[index]);
+    const clashes = taken.has(key);
+    if (key) taken.add(key);
+    return clashes;
+  });
   const names = [...bases];
 
-  for (const index of claimOrder) {
+  for (const index of clashing) {
     names[index] = claimName(bases[index], taken);
   }
 

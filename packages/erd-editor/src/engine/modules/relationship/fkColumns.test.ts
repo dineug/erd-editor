@@ -322,6 +322,15 @@ describe('toForeignKeyNames', () => {
     ]);
   });
 
+  it('lets a member whose name is free keep it before another is numbered onto it', () => {
+    expect(
+      toForeignKeyNames('friends', ['member_id', 'member_id_2'], ['member_id'])
+    ).toEqual(['member_id_3', 'member_id_2']);
+    expect(
+      toForeignKeyNames('', ['id', 'id_2', 'id_3'], ['id', 'id_2'])
+    ).toEqual(['id_4', 'id_2_2', 'id_3']);
+  });
+
   it('numbers a kept member only for the end table, never for a prefixed one', () => {
     expect(toForeignKeyNames('user', ['id', 'user_id'], ['user_id'])).toEqual([
       'user_id_3',
