@@ -22,28 +22,48 @@ const match = (field: FindField, id: string, tableId: string): FindMatch => ({
 });
 
 describe('toErdTarget', () => {
-  it('rings the cell each kind of text is edited in', () => {
+  /** The match the four fields below are found as, which a jump scrolls a cell too wide to. */
+  const range = { text: 'user', start: 0, end: 4 };
+
+  it('rings the cell each kind of text is edited in, carrying the match', () => {
     expect(toErdTarget(match(FindField.tableName, 't', 't'))).toEqual({
       kind: 'table',
       tableId: 't',
       focusType: FocusType.tableName,
+      range,
     });
     expect(toErdTarget(match(FindField.tableComment, 't', 't'))).toEqual({
       kind: 'table',
       tableId: 't',
       focusType: FocusType.tableComment,
+      range,
     });
     expect(toErdTarget(match(FindField.columnName, 'c', 't'))).toEqual({
       kind: 'column',
       tableId: 't',
       columnId: 'c',
       focusType: FocusType.columnName,
+      range,
     });
     expect(toErdTarget(match(FindField.columnComment, 'c', 't'))).toEqual({
       kind: 'column',
       tableId: 't',
       columnId: 'c',
       focusType: FocusType.columnComment,
+      range,
+    });
+  });
+
+  it('carries where in its text the match stands', () => {
+    const found = {
+      ...match(FindField.columnComment, 'c', 't'),
+      text: 'the user id',
+      start: 4,
+      end: 8,
+    };
+
+    expect(toErdTarget(found)).toMatchObject({
+      range: { text: 'the user id', start: 4, end: 8 },
     });
   });
 

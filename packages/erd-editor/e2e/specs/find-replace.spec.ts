@@ -88,6 +88,37 @@ async function openFind(erd: ErdEditorPage, query: string) {
   await erd.page.keyboard.type(query);
 }
 
+/**
+ * Where a range of the text a scene node draws stands on screen across, its
+ * start and end measured in the node's own font, the way the canvas lays out
+ * the glyphs, rather than by the measure the editor sizes its cells with.
+ */
+async function drawnRange(
+  erd: ErdEditorPage,
+  path: string[],
+  start: number,
+  end: number
+) {
+  return erd.page.evaluate(
+    ([target, from, to]) => {
+      const stage = Reflect.get(window, '__erdStages')?.canvas;
+      let node: any = stage;
+      for (const step of target) node = node?.findOne?.(step);
+      const text: string = node.text();
+      const rect = node.getClientRect({ relativeTo: stage });
+      const origin = stage.container().getBoundingClientRect();
+      const scale = rect.width / node.width();
+      const at = (index: number) =>
+        origin.x +
+        rect.x +
+        node.measureSize(text.slice(0, index)).width * scale;
+
+      return { left: at(from), right: at(to) };
+    },
+    [path, start, end] as const
+  );
+}
+
 test.describe('Find and Replace', () => {
   test('walks the matches on the canvas, typing nothing into it', async ({
     erd,
@@ -358,6 +389,52 @@ test.describe('Find and Replace', () => {
     expect(table!.height).toBeGreaterThan(canvas!.height);
     expect(header.y).toBeGreaterThan(canvas!.y);
     expect(header.y).toBeLessThan(canvas!.y + canvas!.height / 2);
+  });
+
+  test('lands a match at the end of a comment wider than the canvas where it shows, clear of the panel', async ({
+    erd,
+  }) => {
+    const comment = `${'the address the courier prints on the label, '.repeat(5)}see zebra`;
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'shipments',
+            name: 'shipments',
+            x: 2600,
+            y: 1800,
+            columns: [{ id: 'shipments_address', name: 'address', comment }],
+          },
+        ],
+      })
+    );
+    await openFind(erd, 'zebra');
+    await expect(countOf(erd)).toHaveText('1 match');
+
+    await panelOf(erd).locator('.find-replace-match').first().click();
+
+    await expect
+      .poll(() => erd.focusRingCells())
+      .toEqual(['shipments_address:columnComment']);
+    await erd.whenDrawn();
+    const canvas = await erd.canvas.boundingBox();
+    const panel = await panelOf(erd).boundingBox();
+    const cell = await erd.sceneBox([
+      '#column-shipments_address',
+      '.columnComment',
+    ]);
+    const found = await drawnRange(
+      erd,
+      ['#column-shipments_address', '.columnComment', '.cell-text'],
+      comment.length - 'zebra'.length,
+      comment.length
+    );
+    // Wider than the canvas beside the panel, the cell starts under the panel.
+    expect(cell.width).toBeGreaterThan(
+      canvas!.x + canvas!.width - (panel!.x + panel!.width)
+    );
+    expect(found.left).toBeGreaterThanOrEqual(panel!.x + panel!.width);
+    expect(found.right).toBeLessThanOrEqual(canvas!.x + canvas!.width);
   });
 
   test('offers no replace in a read-only editor', async ({ erd, page }) => {

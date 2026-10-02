@@ -52,6 +52,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableCommentAction,
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -1027,6 +1028,76 @@ function commentOnScreen(tableId: string, columnId: string) {
     }).x,
   };
 }
+
+describe('FindReplace going to a match at the end of a comment wider than the canvas', () => {
+  const COMMENT = `${'the address the courier prints on the label, '.repeat(3)}see zebra`;
+
+  beforeEach(() => {
+    app.store.dispatchSync(
+      addTableAction({ id: 'shipments', ui: { x: 2600, y: 1800, zIndex: 9 } }),
+      changeTableNameAction({ id: 'shipments', value: 'shipments' }),
+      addColumnAction({ id: 'address', tableId: 'shipments' }),
+      changeColumnNameAction({
+        id: 'address',
+        tableId: 'shipments',
+        value: 'address',
+      }),
+      changeColumnCommentAction({
+        id: 'address',
+        tableId: 'shipments',
+        value: COMMENT,
+      })
+    );
+  });
+
+  it.each([
+    ['wide', 800],
+    ['narrow', 600],
+  ])(
+    'lands it clear of the panel when its row is clicked on a %s canvas',
+    async (_, width) => {
+      app.store.dispatchSync(changeViewportAction({ width, height: 600 }));
+      await openWith('zebra');
+      expect(countText()).toBe('1 match');
+
+      await click(rows()[0]);
+
+      // The test context measures ten a letter, drawn from the cell's left edge.
+      const { left } = commentOnScreen('shipments', 'address');
+      const match = left + (COMMENT.length - 'zebra'.length) * 10;
+      expect(match).toBeGreaterThanOrEqual(412);
+      expect(match + 'zebra'.length * 10).toBeLessThanOrEqual(width);
+      expect(app.store.state.editor.focusTable).toMatchObject({
+        columnId: 'address',
+        focusType: FocusType.columnComment,
+      });
+    }
+  );
+
+  it('lands the match a Replace goes on to clear of the panel', async () => {
+    app.store.dispatchSync(
+      changeViewportAction({ width: 800, height: 600 }),
+      changeTableCommentAction({ id: 'shipments', value: COMMENT })
+    );
+    await openWith('zebra');
+    await type(replaceInput() as HTMLInputElement, 'okapi');
+    await keydown(findInput(), { key: 'Enter' });
+    expect(app.store.state.editor.focusTable?.focusType).toBe(
+      FocusType.tableComment
+    );
+
+    await keydown(replaceInput() as HTMLInputElement, { key: 'Enter' });
+
+    const { left } = commentOnScreen('shipments', 'address');
+    const match = left + (COMMENT.length - 'zebra'.length) * 10;
+    expect(app.store.state.collections.tableEntities.shipments.comment).toBe(
+      COMMENT.replace('zebra', 'okapi')
+    );
+    expect(app.store.state.editor.focusTable?.columnId).toBe('address');
+    expect(match).toBeGreaterThanOrEqual(412);
+    expect(match + 'zebra'.length * 10).toBeLessThanOrEqual(800);
+  });
+});
 
 describe('FindReplace replacing a text that widens its table', () => {
   const VIEWPORT = { width: 1000, height: 600 };

@@ -28,6 +28,7 @@ import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeCanvasTypeAction,
+  changeMaxWidthCommentAction,
   changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -375,12 +376,13 @@ function addWideTable(app: AppContext) {
   );
 }
 
-/** Where a cell of the wide table stands on screen, from its left edge to its right. */
-function cellOnScreen(app: AppContext, focusType: FocusType) {
+/** Where a cell of a table, the wide one unless named, stands on screen, from its left edge to its right. */
+function cellOnScreen(app: AppContext, focusType: FocusType, tableId = 'wide') {
   const { state } = app.store;
-  const table = state.collections.tableEntities.wide;
+  const table = state.collections.tableEntities[tableId];
   const tableRect = getTableRect(state, table);
-  const header = focusType === FocusType.tableComment;
+  const header =
+    focusType === FocusType.tableName || focusType === FocusType.tableComment;
   const cell = (
     header
       ? getHeaderCellSlots(state, table)
@@ -440,6 +442,198 @@ describe('showErdTargetAction$ to a cell of a table wider than the screen', () =
       expect(batches.flat()).not.toContain('settings.scrollTo');
     }
   );
+});
+
+/** The width createTestAppContext measures a text at, ten a letter. */
+const textWidth = (text: string) => text.length * 10;
+
+/** A name and a comment wider than any canvas left clear here, each ending in the word found. */
+const LONG_NAME = 'customer_account_identifier_for_billing_and_shipping_zebra';
+const LONG_COMMENT = `${'the address the courier prints on the label, '.repeat(3)}see zebra`;
+
+/** Adds a table far off screen whose name, comment, column name and column comment are long. */
+function addLongTable(app: AppContext) {
+  app.store.dispatchSync(
+    addTableAction({ id: 'long', ui: { x: 2600, y: 1800, zIndex: 3 } }),
+    changeTableNameAction({ id: 'long', value: LONG_NAME }),
+    changeTableCommentAction({ id: 'long', value: LONG_COMMENT }),
+    addColumnAction({ id: 'l0', tableId: 'long' }),
+    changeColumnNameAction({ id: 'l0', tableId: 'long', value: LONG_NAME }),
+    changeColumnCommentAction({
+      id: 'l0',
+      tableId: 'long',
+      value: LONG_COMMENT,
+    })
+  );
+}
+
+const TEXT_OF: Partial<Record<FocusType, string>> = {
+  [FocusType.tableName]: LONG_NAME,
+  [FocusType.tableComment]: LONG_COMMENT,
+  [FocusType.columnName]: LONG_NAME,
+  [FocusType.columnComment]: LONG_COMMENT,
+};
+
+/** The last word of the long text a cell of the long table holds, as a search finds it. */
+function lastWord(focusType: FocusType) {
+  const text = TEXT_OF[focusType] ?? '';
+  return { text, start: text.length - 'zebra'.length, end: text.length };
+}
+
+const longTarget = (focusType: FocusType, range = lastWord(focusType)) =>
+  focusType === FocusType.tableName || focusType === FocusType.tableComment
+    ? { kind: 'table' as const, tableId: 'long', focusType, range }
+    : {
+        kind: 'column' as const,
+        tableId: 'long',
+        columnId: 'l0',
+        focusType,
+        range,
+      };
+
+/** Where the text a range covers stands on screen across, the cell's text drawn from its left edge. */
+function rangeOnScreen(
+  app: AppContext,
+  focusType: FocusType,
+  { text, start, end }: { text: string; start: number; end: number }
+) {
+  const { left } = cellOnScreen(app, focusType, 'long');
+  const { zoomLevel } = app.store.state.settings;
+
+  return {
+    left: left + textWidth(text.slice(0, start)) * zoomLevel,
+    right: left + textWidth(text.slice(0, end)) * zoomLevel,
+  };
+}
+
+describe('showErdTargetAction$ to a match in a cell wider than the canvas left clear', () => {
+  it.each([
+    ['a column comment', 800, 0, FocusType.columnComment],
+    ['a column comment beside a panel', 800, 412, FocusType.columnComment],
+    ['a column comment in a narrow strip', 600, 412, FocusType.columnComment],
+    ['a table comment', 800, 0, FocusType.tableComment],
+    ['a table comment beside a panel', 800, 412, FocusType.tableComment],
+    ['a table comment in a narrow strip', 600, 412, FocusType.tableComment],
+    ['a column name beside a panel', 800, 412, FocusType.columnName],
+    ['a column name in a narrow strip', 600, 412, FocusType.columnName],
+    ['a table name beside a panel', 800, 412, FocusType.tableName],
+    ['a table name in a narrow strip', 600, 412, FocusType.tableName],
+  ])(
+    'brings the match at the end of %s a margin inside the canvas left clear',
+    (_, width, covered, focus) => {
+      const app = seed();
+      app.store.dispatchSync(changeViewportAction({ width, height: 600 }));
+      addLongTable(app);
+
+      app.store.dispatchSync(showErdTargetAction$(longTarget(focus), covered));
+
+      const cell = cellOnScreen(app, focus, 'long');
+      const match = rangeOnScreen(app, focus, lastWord(focus));
+      expect(cell.right - cell.left).toBeGreaterThan(width - covered - 80);
+      expect(match.left).toBeGreaterThanOrEqual(covered + 40);
+      expect(match.right).toBeLessThanOrEqual(width - 40);
+      expect(app.store.state.editor.focusTable?.focusType).toBe(focus);
+    }
+  );
+
+  it('starts a match at the start of a long comment a margin in from the panel', () => {
+    const app = seed();
+    addLongTable(app);
+    const range = { text: LONG_COMMENT, start: 0, end: 3 };
+
+    app.store.dispatchSync(
+      showErdTargetAction$(longTarget(FocusType.columnComment, range), 412)
+    );
+
+    const match = rangeOnScreen(app, FocusType.columnComment, range);
+    expect(match.left).toBe(412 + 40);
+  });
+
+  it('leaves the scroll out while the match is on screen, though its cell is not whole', () => {
+    const app = seed();
+    addLongTable(app);
+    const target = longTarget(FocusType.columnComment);
+    app.store.dispatchSync(showErdTargetAction$(target, 412));
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(showErdTargetAction$(target, 412));
+
+    const cell = cellOnScreen(app, FocusType.columnComment, 'long');
+    expect(cell.left).toBeLessThan(412);
+    expect(batches.flat()).not.toContain('settings.scrollTo');
+  });
+
+  it('measures the match at the zoom the document is at', () => {
+    const app = seed();
+    app.store.dispatchSync(changeZoomLevelAction({ value: 1.5 }));
+    addLongTable(app);
+
+    app.store.dispatchSync(
+      showErdTargetAction$(longTarget(FocusType.columnComment), 412)
+    );
+
+    const match = rangeOnScreen(
+      app,
+      FocusType.columnComment,
+      lastWord(FocusType.columnComment)
+    );
+    expect(match.left).toBeGreaterThanOrEqual(412 + 40);
+    expect(match.right).toBeCloseTo(VIEWPORT.width - 40, 6);
+  });
+
+  it('goes by the whole cell while it fits, whatever part of it the match is', () => {
+    const app = seed();
+    addWideTable(app);
+    const comment = app.store.state.collections.tableEntities.wide.comment;
+    const target = {
+      ...wideTarget(FocusType.tableComment),
+      range: { text: comment, start: comment.length - 8, end: comment.length },
+    };
+
+    app.store.dispatchSync(showErdTargetAction$(target, 412));
+    const withRange = { ...app.store.state.settings };
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
+    app.store.dispatchSync(
+      showErdTargetAction$(wideTarget(FocusType.tableComment), 412)
+    );
+
+    expect(withRange.originX).toBe(app.store.state.settings.originX);
+    expect(withRange.originY).toBe(app.store.state.settings.originY);
+  });
+
+  it('brings a match cut off past the width a comment is held to to the end the cell shows', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      changeViewportAction({ width: 600, height: 600 }),
+      changeMaxWidthCommentAction({ value: 200 })
+    );
+    addLongTable(app);
+
+    app.store.dispatchSync(
+      showErdTargetAction$(longTarget(FocusType.tableComment), 412)
+    );
+
+    // The strip beside the panel is 188 px, too narrow for the 200 px the comment keeps.
+    const cell = cellOnScreen(app, FocusType.tableComment, 'long');
+    expect(cell.right - cell.left).toBe(200);
+    expect(cell.right).toBe(600 - 40);
+  });
+
+  it('keeps a match found in a hidden comment off the long name ringed in its place', () => {
+    const app = seed();
+    hide(app, Show.columnComment);
+    addLongTable(app);
+
+    app.store.dispatchSync(
+      showErdTargetAction$(longTarget(FocusType.columnComment), 412)
+    );
+
+    expect(app.store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnName
+    );
+    // Too long for the strip, the name goes by its start, as without a match.
+    expect(cellOnScreen(app, FocusType.columnName, 'long').left).toBe(412 + 40);
+  });
 });
 
 describe('showErdTargetAction$ with a relationship being drawn', () => {

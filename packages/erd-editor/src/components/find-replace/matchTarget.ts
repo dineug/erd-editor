@@ -10,19 +10,32 @@ import type { Column, Table } from '@/internal-types';
 import { FindField, type FindMatch } from '@/utils/find-replace';
 import { textInRange } from '@/utils/validation';
 
-/** Where on the ERD canvas the text of a match is edited: its table, its column cell or its memo. */
-export function toErdTarget({ field, id, tableId }: FindMatch): ErdTarget {
+/**
+ * Where on the ERD canvas the text of a match is edited: its table, its column
+ * cell or its memo, with the match itself, which a cell too wide for the
+ * canvas is scrolled to by.
+ */
+export function toErdTarget(match: FindMatch): ErdTarget {
+  const { field, id, tableId, text, start, end } = match;
+  const range = { text, start, end };
+
   switch (field) {
     case FindField.tableName:
-      return { kind: 'table', tableId, focusType: FocusType.tableName };
+      return { kind: 'table', tableId, focusType: FocusType.tableName, range };
     case FindField.tableComment:
-      return { kind: 'table', tableId, focusType: FocusType.tableComment };
+      return {
+        kind: 'table',
+        tableId,
+        focusType: FocusType.tableComment,
+        range,
+      };
     case FindField.columnName:
       return {
         kind: 'column',
         tableId,
         columnId: id,
         focusType: FocusType.columnName,
+        range,
       };
     case FindField.columnComment:
       return {
@@ -30,6 +43,7 @@ export function toErdTarget({ field, id, tableId }: FindMatch): ErdTarget {
         tableId,
         columnId: id,
         focusType: FocusType.columnComment,
+        range,
       };
     case FindField.memo:
       return { kind: 'memo', memoId: id };

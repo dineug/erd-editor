@@ -7,6 +7,7 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { CanvasType, Show } from '@/constants/schema';
+import type { EngineContext } from '@/engine/context';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import {
   focusColumnAction,
@@ -37,14 +38,23 @@ import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { isHighLevelTable } from '@/utils/validation';
 
+/** The part of a cell's text a jump is for, a search's match say: text from start to end. */
+export type TextRange = { text: string; start: number; end: number };
+
 /** What a jump to the ERD lands on: a table, one cell of a column, or a memo. */
 export type ErdTarget =
-  | { kind: 'table'; tableId: string; focusType?: FocusType }
+  | {
+      kind: 'table';
+      tableId: string;
+      focusType?: FocusType;
+      range?: TextRange;
+    }
   | {
       kind: 'column';
       tableId: string;
       columnId: string;
       focusType: FocusType;
+      range?: TextRange;
     }
   | { kind: 'memo'; memoId: string };
 
@@ -129,58 +139,104 @@ function getTableNameRect(state: RootState, table: Table): Rect {
 }
 
 /**
+ * Where a range of a cell's text starts and ends, in from the cell's left
+ * edge, measured as the cell's own width was. The measure pads a text, which
+ * the cell draws none of, so the empty text's width comes off.
+ */
+function measureRange({ toWidth }: EngineContext, range: TextRange): Span {
+  const at = (index: number) =>
+    toWidth(range.text.slice(0, index)) - toWidth('');
+
+  return { start: at(range.start), end: at(range.end) };
+}
+
+/**
+ * The part of a cell its range covers, cut at the cell's right edge, where the
+ * text is cut off, while the cell is too wide to show whole a margin inside the
+ * canvas left clear; null for a cell that fits, which shows the range itself.
+ */
+function getRangeRect(
+  state: RootState,
+  cell: Rect,
+  covered: number,
+  range?: Span
+): Rect | null {
+  const [cellX] = toScreenSpans(state, cell);
+  const clear = state.editor.viewport.width - covered - EDGE_MARGIN * 2;
+  if (!range || cellX.end - cellX.start <= clear) return null;
+
+  const start = Math.min(range.start, cell.width);
+  return {
+    ...cell,
+    x: cell.x + start,
+    width: Math.min(range.end, cell.width) - start,
+  };
+}
+
+/**
  * Where a table shows the cell a jump rings in its header: its comment, or
- * else its name, the band a selection rings.
+ * else its name, the band a selection rings, or in either the range found,
+ * for a cell too wide to show whole.
  */
 function getTableFocusRect(
   state: RootState,
   table: Table,
-  focusType: FocusType
+  focusType: FocusType,
+  covered: number,
+  range?: Span
 ): Rect {
   const name = getTableNameRect(state, table);
-  if (
-    focusType !== FocusType.tableComment ||
-    isHighLevelTable(state.settings.zoomLevel)
-  ) {
-    return name;
-  }
+  if (isHighLevelTable(state.settings.zoomLevel)) return name;
 
   const slot = getHeaderCellSlots(state, table).find(
     candidate => candidate.focusType === focusType
   );
-  return slot
-    ? { ...name, x: name.x + HEADER_CELLS_X + slot.x, width: slot.width }
-    : name;
+  if (!slot) return name;
+
+  const cell = {
+    ...name,
+    x: name.x + HEADER_CELLS_X + slot.x,
+    width: slot.width,
+  };
+  const found = getRangeRect(state, cell, covered, range);
+  if (found) return found;
+  return focusType === FocusType.tableComment ? cell : name;
 }
 
 /**
  * Brings a table on screen whole, or one too big for the screen by the header
  * cell a jump rings, its name unless it asks for the comment, rather than by
  * a middle.
+ *
+ * @param range Where the text a jump is for stands in that cell, in from its left edge.
  */
 export function* scrollTableIntoView(
   state: RootState,
   table: Table,
   covered = 0,
-  focusType: FocusType = FocusType.tableName
+  focusType: FocusType = FocusType.tableName,
+  range?: Span
 ) {
   yield* scrollIntoView(
     state,
     getTableRect(state, table),
     covered,
-    getTableFocusRect(state, table, focusType)
+    getTableFocusRect(state, table, focusType, covered, range)
   );
 }
 
 /**
  * The one cell of a column row a jump rings, as the cell editor lays it out,
- * so a row too wide for the screen is scrolled to by that cell.
+ * so a row too wide for the screen is scrolled to by that cell, or by the
+ * range found in it when the cell is too wide as well.
  */
-function getColumnCellRect(
+function getColumnFocusRect(
   state: RootState,
   table: Table,
   index: number,
-  focusType: FocusType
+  focusType: FocusType,
+  covered: number,
+  range?: Span
 ): Rect {
   const row = getColumnRect(state, table, index);
   const slot = getColumnCellSlots(state, getTableWidths(state, table)).find(
@@ -188,11 +244,12 @@ function getColumnCellRect(
   );
   if (!slot) return row;
 
-  return {
+  const cell = {
     ...row,
     x: getTableRect(state, table).x + slot.x,
     width: slot.width,
   };
+  return getRangeRect(state, cell, covered, range) ?? cell;
 }
 
 /**
@@ -235,9 +292,21 @@ export const selectTableAloneAction$ = (tableId: string): GeneratorAction =>
   };
 
 /**
+ * The range of a target measured, for the cell it was found in alone: one
+ * found in a hidden comment says nothing of the name ringed in its place.
+ */
+function rangeIn(
+  ctx: EngineContext,
+  { range, focusType }: { range?: TextRange; focusType?: FocusType },
+  ringed: FocusType
+): Span | undefined {
+  return range && focusType === ringed ? measureRange(ctx, range) : undefined;
+}
+
+/**
  * Stands the reader on a table, a column cell or a memo the way the Go to ERD
  * button stands them on a table, with the focus ring on the cell asked for. A
- * column is scrolled to by its own row, or a row too wide by the ringed cell.
+ * row too wide goes by the ringed cell, a cell too wide by the range found.
  *
  * @param covered How far in from the left edge a panel over the canvas hides it.
  */
@@ -245,7 +314,7 @@ export const showErdTargetAction$ = (
   target: ErdTarget,
   covered = 0
 ): GeneratorAction =>
-  function* (state) {
+  function* (state, ctx) {
     if (target.kind === 'memo') {
       const memo = query(state.collections)
         .collection('memoEntities')
@@ -266,7 +335,13 @@ export const showErdTargetAction$ = (
       const focusType = target.focusType
         ? visibleFocusType(state, target.focusType)
         : FocusType.tableName;
-      yield* scrollTableIntoView(state, table, covered, focusType);
+      yield* scrollTableIntoView(
+        state,
+        table,
+        covered,
+        focusType,
+        rangeIn(ctx, target, focusType)
+      );
       yield selectTableAloneAction$(table.id);
       if (target.focusType) {
         yield focusTableAction({ tableId: table.id, focusType });
@@ -286,7 +361,14 @@ export const showErdTargetAction$ = (
         state,
         getColumnRect(state, table, index),
         covered,
-        getColumnCellRect(state, table, index, focusType)
+        getColumnFocusRect(
+          state,
+          table,
+          index,
+          focusType,
+          covered,
+          rangeIn(ctx, target, focusType)
+        )
       );
     }
     yield selectTableAloneAction$(table.id);
