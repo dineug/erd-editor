@@ -67,6 +67,21 @@ export const title = css`
   flex-shrink: 0;
 `;
 
+/* Says the editor is read only, as quietly as a table chip, which it stands before. */
+export const readonlyBadge = css`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--context-menu-border);
+  border-radius: 3px;
+  color: var(--foreground);
+  white-space: nowrap;
+  ${typography.paragraph};
+`;
+
 export const tables = css`
   flex: 1 1 0;
   min-width: 0;

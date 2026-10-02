@@ -69,17 +69,27 @@ function template(
   tableId = TABLE_A,
   tableIds = [TABLE_A, TABLE_B],
   onChange = vi.fn(),
-  isDarkMode = false
+  isDarkMode = false,
+  readonly = false
 ) {
   return html`
     <${TableProperties}
       isDarkMode=${isDarkMode}
+      readonly=${readonly}
       tableId=${tableId}
       tableIds=${tableIds}
       .onChange=${onChange}
     />
   `;
 }
+
+const readonlyTemplate = () =>
+  template(TABLE_A, [TABLE_A, TABLE_B], vi.fn(), false, true);
+
+const badgeOf = (mounted: Mounted) =>
+  mounted.container.querySelector(
+    `.${String(styles.readonlyBadge)}`
+  ) as HTMLElement | null;
 
 function seed(app: AppContext) {
   const { store } = app;
@@ -185,6 +195,45 @@ describe('TableProperties', () => {
       expect(titles).not.toContain('Read Only');
       expect(titles).not.toContain('Unique');
       expect(titles.filter(title => title === 'Add Index')).toHaveLength(1);
+    });
+  });
+
+  describe('read only', () => {
+    it('shows no badge while the editor edits', async () => {
+      mounted = await mountAndFlush(template(), app);
+
+      expect(badgeOf(mounted)).toBeNull();
+      expect(
+        mounted.container.querySelector('[title="Add Index"]')
+      ).toBeTruthy();
+    });
+
+    it('says Read only right after the title, under a lock with no title', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+      const badge = badgeOf(mounted) as HTMLElement;
+      const [title, next] = Array.from(
+        headerOf(mounted).children
+      ) as HTMLElement[];
+
+      expect(title.textContent).toBe('Table Properties');
+      expect(next).toBe(badge);
+      expect(badge.textContent).toBe('Read only');
+      expect(badge.querySelector('.icon svg')).toBeTruthy();
+      expect(badge.querySelector('[title]')).toBeNull();
+      expect(badge.hasAttribute('title')).toBe(false);
+    });
+
+    it('hands the mode to the Indexes tab, which offers no edit', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      expect(mounted.container.querySelector('[title="Add Index"]')).toBeNull();
+      expect(
+        Array.from(
+          mounted.container.querySelectorAll<HTMLInputElement>(
+            'input[type="checkbox"]'
+          )
+        ).every(input => input.disabled)
+      ).toBe(true);
     });
   });
 

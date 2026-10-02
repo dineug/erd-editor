@@ -43,6 +43,10 @@ export const row = css`
   &.dragging {
     opacity: 0.5;
   }
+
+  &[data-readonly] {
+    cursor: default;
+  }
 `;
 
 /* The handle, as wide as a checkbox cell above it and quieter than the names. */

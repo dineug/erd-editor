@@ -95,6 +95,74 @@ test.describe('table properties — frame', () => {
     await erd.press(Shortcut.tableProperties);
     await expect(panel).toBeVisible();
   });
+
+  test('shows read only mode and offers no edit in it', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'student',
+            name: 'student',
+            x: 160,
+            y: 160,
+            columns: [
+              {
+                id: 'student_id',
+                name: 'id',
+                dataType: 'int',
+                options: ColumnOption.primaryKey | ColumnOption.notNull,
+                keys: ColumnUIKey.primaryKey,
+              },
+              { id: 'student_email', name: 'email', dataType: 'int' },
+            ],
+          },
+        ],
+        indexes: [
+          {
+            id: 'idx_student',
+            tableId: 'student',
+            name: 'idx_student',
+            unique: false,
+            columns: [{ id: 'idx_student_email', columnId: 'student_email' }],
+          },
+        ],
+      })
+    );
+    await page.evaluate(() => {
+      const editor = window.document.querySelector('erd-editor');
+      if (!editor) throw new Error('erd-editor is not mounted');
+      editor.readonly = true;
+    });
+    await erd.clickTableHeader('student');
+    await erd.focusHost();
+    await erd.press(Shortcut.tableProperties);
+
+    const panel = page.locator('erd-editor .table-properties');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByText('Read only', { exact: true })).toBeVisible();
+    // The badge's lock carries no title, so the key rows are still all it finds.
+    await expect(panel.locator('div:has(> [title="Read Only"])')).toHaveCount(
+      1
+    );
+    await expect(panel.locator('[title="Add Index"]')).toHaveCount(0);
+    await expect(panel.locator('[title="Remove"]')).toHaveCount(0);
+
+    const name = panel.locator('input[placeholder="name"]');
+    await expect(name).toHaveAttribute('readonly', '');
+    await name.click();
+    await expect(panel.locator('input[type="checkbox"]:enabled')).toHaveCount(
+      0
+    );
+    await expect.poll(() => checkedStates(panel)).toEqual([false, true]);
+    await expect(panel.locator('[draggable="true"][data-id]')).toHaveCount(0);
+
+    await panel.locator('[title="Unique"]').click();
+    const { collections } = await erd.value();
+    expect(collections.indexEntities['idx_student'].unique).toBe(false);
+  });
 });
 
 test.describe('table properties — indexes tab', () => {

@@ -87,6 +87,12 @@ describe('IndexesColumn.styles', () => {
     expect(styles.row.values).toContain(INPUT_MARGIN_RIGHT);
   });
 
+  it('gives a read only row a plain cursor', () => {
+    expect(staticText(styles.row)).toMatch(
+      /&\[data-readonly\] \{\s*cursor: default;\s*\}/
+    );
+  });
+
   it('makes the order type cell clickable', () => {
     expect(staticText(styles.orderType)).toContain('cursor: pointer');
   });

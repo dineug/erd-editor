@@ -18,12 +18,14 @@ import * as styles from './TablePropertiesIndexes.styles';
 
 export type TablePropertiesIndexesProps = {
   tableId: string;
+  /** The editor's readonly mode: nothing here offers an edit, and picking a row only shows it. */
+  readonly?: boolean;
 };
 
 type ColumnsStatus = {
   text: string;
   /** A key is picked, which the columns set and this tab only shows. */
-  readonly: boolean;
+  locked: boolean;
 };
 
 const KEY_FLAG_TEXT: Record<ColumnKey['kind'], string> = {
@@ -33,7 +35,8 @@ const KEY_FLAG_TEXT: Record<ColumnKey['kind'], string> = {
 
 /**
  * What the Columns heading says about the list under it: how many columns
- * the picked index has, who sets a picked key, or what to pick first.
+ * the picked index has, who sets a picked key, or what to pick first. A read
+ * only editor is never asked to add or edit.
  */
 function toColumnsStatus(
   selectedIndex: Index | null,
@@ -41,28 +44,33 @@ function toColumnsStatus(
   checkedCount: number,
   columnCount: number,
   hasKeys: boolean,
-  hasIndexes: boolean
+  hasIndexes: boolean,
+  readonly: boolean
 ): ColumnsStatus {
   if (selectedIndex) {
     return {
       text: `${checkedCount} of ${columnCount} selected`,
-      readonly: false,
+      locked: false,
     };
   }
   if (selectedKey) {
     return {
       text: `Read only: set by ${KEY_FLAG_TEXT[selectedKey.kind]}`,
-      readonly: true,
+      locked: true,
     };
   }
 
   const text = hasKeys
     ? 'Select a key or an index'
     : hasIndexes
-      ? 'Select an index to edit its columns'
-      : 'Add an index to choose its columns';
+      ? readonly
+        ? 'Select an index to see its columns'
+        : 'Select an index to edit its columns'
+      : readonly
+        ? 'This table has no keys or indexes'
+        : 'Add an index to choose its columns';
 
-  return { text, readonly: false };
+  return { text, locked: false };
 }
 
 const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
@@ -92,6 +100,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
 
   return () => {
     const { tableId } = props;
+    const readonly = Boolean(props.readonly);
     const { store } = app.value;
     const {
       doc: { indexIds },
@@ -129,7 +138,8 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
       columnIds.filter(id => checkedColumnIds.has(id)).length,
       columnCount,
       columnKeys.length > 0,
-      indexes.length > 0
+      indexes.length > 0,
+      readonly
     );
     const orderCount = selectedIndex?.indexColumnIds.length ?? 0;
 
@@ -166,27 +176,32 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
                 index={index}
                 alternateKey={alternateKeyIds.indexOf(index.id) + 1}
                 selected={index.id === selectedIndex?.id}
+                readonly={readonly}
                 onSelect={handleSelectIndex}
               />
             )
           )}
           {indexes.length ? null : (
-            <div class={styles.hint}>No indexes yet</div>
+            <div class={styles.hint}>
+              {readonly ? 'No indexes' : 'No indexes yet'}
+            </div>
           )}
-          <div
-            class={styles.addIndexButtonArea}
-            title="Add Index"
-            on:click={handleAddIndex}
-          >
-            <Icon class={styles.addIcon} size={12} name="plus" />
-            <span>Add Index</span>
-          </div>
+          {readonly ? null : (
+            <div
+              class={styles.addIndexButtonArea}
+              title="Add Index"
+              on:click={handleAddIndex}
+            >
+              <Icon class={styles.addIcon} size={12} name="plus" />
+              <span>Add Index</span>
+            </div>
+          )}
         </div>
         <div class={styles.rightArea}>
           <div class={styles.sectionLabel}>
             <span>Columns</span>
             <span class={styles.sectionStatus}>
-              {status.readonly ? <Icon size={12} name="lock" /> : null}
+              {status.locked ? <Icon size={12} name="lock" /> : null}
               <span>{status.text}</span>
             </span>
           </div>
@@ -196,6 +211,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
                 tableId={tableId}
                 index={selectedIndex}
                 keyColumnIds={selectedKey?.columnIds ?? null}
+                readonly={readonly}
               />
             </div>
           ) : (
@@ -205,7 +221,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
             <div class={styles.order}>
               <div class={styles.sectionLabel}>
                 <span>Index order</span>
-                {orderCount > 1 ? (
+                {orderCount > 1 && !readonly ? (
                   <span class={styles.sectionStatus}>
                     <span>Drag to reorder</span>
                   </span>
@@ -215,9 +231,14 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
                 <IndexesColumn
                   index={selectedIndex}
                   alternateKey={alternateKeyIds.indexOf(selectedIndex.id) + 1}
+                  readonly={readonly}
                 />
               ) : (
-                <div class={styles.hint}>Check columns above to add them</div>
+                <div class={styles.hint}>
+                  {readonly
+                    ? 'This index has no columns'
+                    : 'Check columns above to add them'}
+                </div>
               )}
             </div>
           ) : null}

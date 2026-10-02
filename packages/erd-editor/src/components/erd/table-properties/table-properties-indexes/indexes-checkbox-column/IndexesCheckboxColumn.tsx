@@ -39,6 +39,8 @@ export type IndexesCheckboxColumnProps = {
    * show checked, and every box stays disabled, since no index owns them.
    */
   keyColumnIds?: string[] | null;
+  /** The editor's readonly mode, which disables every box as a picked key does. */
+  readonly?: boolean;
 };
 
 type ColumnOrderTpl = {
@@ -156,12 +158,13 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
       ? addIndexColumnAction$
       : removeIndexColumnAction$;
 
-    if (!props.index) return;
+    if (!props.index || props.readonly) return;
     store.dispatch(attachChangeOnlyTag$(action$(props.index.id, column.id)));
   };
 
   return () => {
     const { tableId, index } = props;
+    const idle = !index || Boolean(props.readonly);
     const { store } = app.value;
     const { collections } = store.state;
 
@@ -185,7 +188,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
     const hasChecked = arrayHas(checkedColumnIds);
 
     return (
-      <div class={styles.root} bool:data-idle={!index}>
+      <div class={styles.root} bool:data-idle={idle}>
         {repeat(
           columns,
           column => column.id,
@@ -197,7 +200,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
               <div class="column-col">
                 <input
                   type="checkbox"
-                  bool:disabled={!index}
+                  bool:disabled={idle}
                   prop:checked={hasChecked(column.id)}
                   on:change={event => handleChangeIndexColumn(event, column)}
                 />

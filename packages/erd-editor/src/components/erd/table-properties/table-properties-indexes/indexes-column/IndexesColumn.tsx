@@ -25,6 +25,8 @@ export type IndexesColumnProps = {
    * carries as the diagram draws them; 0 or left out while it is none.
    */
   alternateKey?: number;
+  /** The editor's readonly mode: the rows neither drag nor flip their sort order. */
+  readonly?: boolean;
 };
 
 const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
@@ -86,6 +88,8 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
   };
 
   const handleChangeOrderType = (indexColumn: IndexColumn) => {
+    if (props.readonly) return;
+
     const { store } = app.value;
     store.dispatch(
       attachChangeOnlyTag$(changeIndexColumnOrderTypeAction$(indexColumn.id))
@@ -97,7 +101,7 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const { collections } = store.state;
-    const { alternateKey = 0 } = props;
+    const { alternateKey = 0, readonly } = props;
 
     const table = query(collections)
       .collection('tableEntities')
@@ -136,9 +140,10 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
           indexColumn => (
             <div
               class={styles.row}
-              draggable="true"
+              bool:data-readonly={readonly}
+              draggable={readonly ? 'false' : 'true'}
               data-id={indexColumn.id}
-              on:dragstart={handleDragstart}
+              on:dragstart={readonly ? null : handleDragstart}
             >
               <Icon
                 class={['column-col', styles.grip]}
@@ -150,7 +155,7 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
                 on:click={() => handleChangeOrderType(indexColumn)}
               >
                 <ColumnOption
-                  class={styles.orderType}
+                  class={readonly ? null : styles.orderType}
                   checked={true}
                   width={40}
                   text={toOrderName(indexColumn.orderType)}

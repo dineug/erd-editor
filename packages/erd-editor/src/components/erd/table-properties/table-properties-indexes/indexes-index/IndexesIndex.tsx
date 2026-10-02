@@ -23,6 +23,8 @@ export type IndexesIndexProps = {
    */
   alternateKey?: number;
   selected: boolean;
+  /** The editor's readonly mode: the row only selects, with no remove button and a name it cannot type in. */
+  readonly?: boolean;
   onSelect: (index: Index | null) => void;
 };
 
@@ -44,6 +46,8 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
   };
 
   const handleChangeUniqueIndex = () => {
+    if (props.readonly) return;
+
     const { store } = app.value;
     store.dispatch(
       attachChangeOnlyTag$(changeIndexUniqueAction$(props.index.id))
@@ -67,7 +71,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
   };
 
   return () => {
-    const { index } = props;
+    const { index, readonly } = props;
 
     return (
       <div
@@ -76,7 +80,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
       >
         <div class="column-col" on:click={handleChangeUniqueIndex}>
           <ColumnOption
-            class={styles.unique}
+            class={readonly ? null : styles.unique}
             checked={index.unique}
             width={COLUMN_UNIQUE_WIDTH}
             text="UQ"
@@ -87,6 +91,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
           <TextInput
             class={styles.input}
             placeholder="name"
+            readonly={readonly}
             value={index.name}
             onInput={handleChangeIndexName}
           />
@@ -99,13 +104,15 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
             {`AK${props.alternateKey}`}
           </div>
         ) : null}
-        <Icon
-          class={styles.iconButton}
-          size={12}
-          name="x"
-          title="Remove"
-          onClick={handleRemoveIndex}
-        />
+        {readonly ? null : (
+          <Icon
+            class={styles.iconButton}
+            size={12}
+            name="x"
+            title="Remove"
+            onClick={handleRemoveIndex}
+          />
+        )}
       </div>
     );
   };

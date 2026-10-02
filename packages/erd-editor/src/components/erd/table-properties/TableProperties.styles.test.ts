@@ -14,6 +14,7 @@ describe('TableProperties.styles', () => {
       'container',
       'header',
       'title',
+      'readonlyBadge',
       'tables',
       'tableChip',
       'close',
@@ -101,6 +102,22 @@ describe('TableProperties.styles', () => {
     expect(tables).toContain('min-width: 0');
     expect(tables).toContain('gap: 4px');
     expect(tables).toContain('overflow-x: auto');
+  });
+
+  it('draws the read only badge as a quiet bordered label that never shrinks', () => {
+    const text = staticText(styles.readonlyBadge);
+
+    expect(text).toContain('display: inline-flex');
+    expect(text).toContain('align-items: center');
+    expect(text).toContain('gap: 4px');
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).toContain('height: 20px');
+    expect(text).toContain('padding: 0 6px');
+    expect(text).toContain('border: 1px solid var(--context-menu-border)');
+    expect(text).toContain('border-radius: 3px');
+    expect(text).toContain('color: var(--foreground)');
+    expect(text).toContain('white-space: nowrap');
+    expect(styles.readonlyBadge.values).toEqual([typography.paragraph]);
   });
 
   it('draws a table as the chip Find and Replace draws a scope', () => {

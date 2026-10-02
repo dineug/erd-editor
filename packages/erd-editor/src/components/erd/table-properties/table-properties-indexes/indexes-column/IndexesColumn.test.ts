@@ -269,6 +269,52 @@ describe('IndexesColumn', () => {
     });
   });
 
+  describe('read only', () => {
+    const readonlyTemplate = () =>
+      html`<${IndexesColumn} index=${index} readonly=${true} />`;
+
+    it('draws rows that do not drag, with a plain cursor', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+      const rows = rowsOf(mounted);
+
+      expect(rows.map(row => row.getAttribute('draggable'))).toEqual([
+        'false',
+        'false',
+      ]);
+      expect(rows.every(row => row.hasAttribute('data-readonly'))).toBe(true);
+      expect(rows[0].querySelector(`.${String(styles.orderType)}`)).toBeNull();
+    });
+
+    it('ignores a dragstart', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+      const rows = rowsOf(mounted);
+
+      fire(rows[1], 'dragstart');
+      fire(rows[0], 'dragover');
+      await wait(120);
+      await flush();
+
+      expect(rows[1].classList.contains('dragging')).toBe(false);
+      expect(
+        app.store.state.collections.indexEntities[INDEX_ID].indexColumnIds
+      ).toEqual([INDEX_COLUMN_A, INDEX_COLUMN_B]);
+    });
+
+    it('keeps the sort order on a click of its cell', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+      const cell = rowsOf(mounted)[0].children[1] as HTMLElement;
+
+      click(cell);
+      await flush();
+
+      expect(
+        app.store.state.collections.indexColumnEntities[INDEX_COLUMN_A]
+          .orderType
+      ).toBe(OrderType.ASC);
+      expect(cell.textContent?.trim()).toBe('ASC');
+    });
+  });
+
   describe('order type', () => {
     it('cycles ASC to DESC and back on click', async () => {
       mounted = await mountAndFlush(
@@ -310,6 +356,30 @@ describe('IndexesColumn', () => {
   });
 
   describe('drag and drop', () => {
+    it('keeps the drag classes through a render the move causes', async () => {
+      mounted = await mountAndFlush(
+        html`<${IndexesColumn} index=${index} />`,
+        app
+      );
+      const rows = rowsOf(mounted);
+
+      fire(rows[1], 'dragstart');
+      fire(rows[0], 'dragover');
+      await wait(120);
+      await flush();
+
+      expect(
+        app.store.state.collections.indexEntities[INDEX_ID].indexColumnIds
+      ).toEqual([INDEX_COLUMN_B, INDEX_COLUMN_A]);
+      expect(rows[1].classList.contains('dragging')).toBe(true);
+      expect(rows.every(row => row.classList.contains('none-hover'))).toBe(
+        true
+      );
+      expect(rows.some(row => row.hasAttribute('data-readonly'))).toBe(false);
+
+      fire(rows[1], 'dragend');
+    });
+
     it('prevents the default of dragenter and dragover on the root', async () => {
       mounted = await mountAndFlush(
         html`<${IndexesColumn} index=${index} />`,

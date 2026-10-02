@@ -26,7 +26,7 @@ export const row = css`
     background-color: var(--column-hover);
   }
 
-  &:hover input:not(:focus) {
+  &:hover input:not(:focus):not([readonly]) {
     box-shadow: inset 0 -1px 0 var(--context-menu-border);
   }
 
@@ -58,7 +58,7 @@ export const input = css`
   ${typography.paragraph};
   text-overflow: ellipsis;
 
-  &:focus {
+  &:focus:not([readonly]) {
     box-shadow: inset 0 -1.5px 0 var(--input-active);
   }
 `;

@@ -20,6 +20,8 @@ import * as styles from './TableProperties.styles';
 
 export type TablePropertiesProps = {
   isDarkMode: boolean;
+  /** The editor's readonly mode, which the dialog shows and its controls follow; the store refuses the edits anyway. */
+  readonly?: boolean;
   tableId: string;
   tableIds: string[];
   onChange: (tableId: string) => void;
@@ -97,6 +99,12 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
         >
           <div class={styles.header}>
             <span class={styles.title}>Table Properties</span>
+            {props.readonly ? (
+              <span class={styles.readonlyBadge}>
+                <Icon name="lock" size={12} />
+                <span>Read only</span>
+              </span>
+            ) : null}
             <div class={['scrollbar', styles.tables]}>
               {tables.map(table => (
                 <div
@@ -128,7 +136,10 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
           <div class={['scrollbar', styles.scrollbarArea]}>
             {state.tab === Tab.Indexes ? (
               <div class={styles.scope}>
-                <TablePropertiesIndexes tableId={props.tableId} />
+                <TablePropertiesIndexes
+                  tableId={props.tableId}
+                  readonly={props.readonly}
+                />
               </div>
             ) : state.tab === Tab.SchemaSQL ? (
               <div class={['code', styles.scope]}>

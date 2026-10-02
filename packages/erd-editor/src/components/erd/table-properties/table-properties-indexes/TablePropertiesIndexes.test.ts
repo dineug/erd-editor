@@ -807,4 +807,87 @@ describe('TablePropertiesIndexes', () => {
       expect(indexColumnRowsOf(mounted)).toHaveLength(1);
     });
   });
+
+  describe('read only', () => {
+    const readonlyTemplate = (tableId = TABLE_ID) =>
+      html`<${TablePropertiesIndexes} tableId=${tableId} readonly=${true} />`;
+
+    const keyed = (indexId: string, ...columnIds: string[]) => [
+      addIndexAction({ id: indexId, tableId: TABLE_ID }),
+      ...columnIds.map(columnId =>
+        addIndexColumnAction({
+          id: `${indexId}-${columnId}`,
+          indexId,
+          tableId: TABLE_ID,
+          columnId,
+        })
+      ),
+    ];
+
+    beforeEach(() => {
+      app.store.dispatchSync(addColumnAction({ id: 'c3', tableId: TABLE_ID }));
+    });
+
+    it('offers no add row and asks for nothing it cannot do', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      expect(addButtonOf(mounted)).toBeNull();
+      expect(rowKindsOf(leftOf(mounted))).toEqual(['label', 'hint']);
+      expect(hintsOf(leftOf(mounted))).toEqual(['No indexes']);
+      expect(statusOf(mounted).text).toBe('This table has no keys or indexes');
+    });
+
+    it('asks only to see the columns of an index', async () => {
+      app.store.dispatchSync(...keyed('i1', 'c1', 'c3'));
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      expect(statusOf(mounted).text).toBe('Select an index to see its columns');
+    });
+
+    it('still picks an index and shows its columns and order, every box disabled', async () => {
+      app.store.dispatchSync(...keyed('i1', 'c1', 'c3'));
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      click(indexRowsOf(mounted)[0]);
+      await flush();
+
+      expect(indexRowsOf(mounted)[0].classList.contains('selected')).toBe(true);
+      expect(statusOf(mounted).text).toBe('2 of 2 selected');
+      expect(checkboxesOf(mounted).map(box => box.checked)).toEqual([
+        true,
+        true,
+      ]);
+      expect(checkboxesOf(mounted).every(box => box.disabled)).toBe(true);
+      expect(indexColumnRowsOf(mounted)).toHaveLength(2);
+      expect(
+        indexColumnRowsOf(mounted).every(
+          row => row.getAttribute('draggable') === 'false'
+        )
+      ).toBe(true);
+      expect(
+        orderOf(mounted)?.querySelector(`.${String(styles.sectionStatus)}`)
+      ).toBeNull();
+    });
+
+    it('draws no remove button and leaves the name untypeable', async () => {
+      app.store.dispatchSync(...keyed('i1', 'c1'));
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+      const [row] = indexRowsOf(mounted);
+
+      expect(row.querySelector('[title="Remove"]')).toBeNull();
+      expect(row.querySelector('input')?.readOnly).toBe(true);
+    });
+
+    it('says an index with no columns has none rather than asking to check one', async () => {
+      app.store.dispatchSync(...keyed('i1'));
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      click(indexRowsOf(mounted)[0]);
+      await flush();
+
+      expect(hintsOf(orderOf(mounted) as HTMLElement)).toEqual([
+        'This index has no columns',
+      ]);
+    });
+  });
 });

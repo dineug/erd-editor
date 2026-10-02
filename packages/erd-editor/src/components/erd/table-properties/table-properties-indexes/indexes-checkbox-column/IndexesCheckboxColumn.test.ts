@@ -343,6 +343,60 @@ describe('IndexesCheckboxColumn', () => {
     });
   });
 
+  describe('read only', () => {
+    it('disables every box and idles the list while an index is picked', async () => {
+      app.store.dispatchSync(
+        addIndexColumnAction({
+          id: 'ic1',
+          indexId: INDEX_ID,
+          tableId: TABLE_ID,
+          columnId: COLUMN_B,
+        })
+      );
+      mounted = await mountAndFlush(
+        html`
+          <${IndexesCheckboxColumn}
+            tableId=${TABLE_ID}
+            index=${indexOf(app)}
+            readonly=${true}
+          />
+        `,
+        app
+      );
+
+      const root = mounted.container.querySelector(
+        `.${String(styles.root)}`
+      ) as HTMLElement;
+      expect(root.hasAttribute('data-idle')).toBe(true);
+      expect(checkboxesOf(mounted).every(input => input.disabled)).toBe(true);
+      expect(checkboxesOf(mounted).map(input => input.checked)).toEqual([
+        false,
+        true,
+      ]);
+      expect(
+        rowsOf(mounted).map(row => row.hasAttribute('data-selected'))
+      ).toEqual([false, true]);
+    });
+
+    it('writes nothing when a box changes anyway', async () => {
+      mounted = await mountAndFlush(
+        html`
+          <${IndexesCheckboxColumn}
+            tableId=${TABLE_ID}
+            index=${indexOf(app)}
+            readonly=${true}
+          />
+        `,
+        app
+      );
+
+      changeCheckbox(checkboxesOf(mounted)[0], true);
+      await flush();
+
+      expect(indexOf(app).indexColumnIds).toEqual([]);
+    });
+  });
+
   describe('toggling an index column', () => {
     it('adds the column to the index when checked', async () => {
       mounted = await mountAndFlush(

@@ -287,4 +287,47 @@ describe('IndexesIndex', () => {
       expect(onSelect).toHaveBeenCalledWith(null);
     });
   });
+
+  describe('read only', () => {
+    const readonlyTemplate = (onSelect = vi.fn()) => html`
+      <${IndexesIndex}
+        index=${index}
+        alternateKey=${1}
+        selected=${false}
+        readonly=${true}
+        .onSelect=${onSelect}
+      />
+    `;
+    const toggleOf = (mounted: Mounted) =>
+      mounted.container.querySelector('[title="Unique"]') as HTMLElement;
+
+    it('draws no remove button, the chip last in the row', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      expect(mounted.container.querySelector('[title="Remove"]')).toBeNull();
+      expect(rowOf(mounted).lastElementChild).toBe(alternateKeyOf(mounted));
+    });
+
+    it('leaves the name untypeable', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      expect(inputOf(mounted).readOnly).toBe(true);
+    });
+
+    it('keeps the UQ toggle for show, neither pointing nor flipping', async () => {
+      const onSelect = vi.fn();
+      mounted = await mountAndFlush(readonlyTemplate(onSelect), app);
+      const toggle = toggleOf(mounted);
+
+      expect(toggle.classList.contains(String(styles.unique))).toBe(false);
+
+      click(toggle);
+      await flush();
+
+      expect(app.store.state.collections.indexEntities[INDEX_ID].unique).toBe(
+        false
+      );
+      expect(onSelect).toHaveBeenCalledExactlyOnceWith(index);
+    });
+  });
 });

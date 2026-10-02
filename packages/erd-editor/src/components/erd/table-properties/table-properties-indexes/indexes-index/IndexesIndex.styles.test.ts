@@ -59,9 +59,9 @@ describe('IndexesIndex.styles', () => {
     );
   });
 
-  it('lines the name field of a hovered row while it has no caret', () => {
+  it('lines the name field of a hovered row while it has no caret and can be typed in', () => {
     expect(staticText(styles.row)).toMatch(
-      /&:hover input:not\(:focus\) \{\s*box-shadow: inset 0 -1px 0 var\(--context-menu-border\);\s*\}/
+      /&:hover input:not\(:focus\):not\(\[readonly\]\) \{\s*box-shadow: inset 0 -1px 0 var\(--context-menu-border\);\s*\}/
     );
   });
 
@@ -99,7 +99,7 @@ describe('IndexesIndex.styles', () => {
     expect(text).toContain('padding: 0 4px');
     expect(text).toContain('text-overflow: ellipsis');
     expect(text).toMatch(
-      /&:focus \{\s*box-shadow: inset 0 -1\.5px 0 var\(--input-active\);\s*\}/
+      /&:focus:not\(\[readonly\]\) \{\s*box-shadow: inset 0 -1\.5px 0 var\(--input-active\);\s*\}/
     );
     expect(text).not.toContain('var(--focus)');
     expect(styles.input.values).toEqual([typography.paragraph]);
