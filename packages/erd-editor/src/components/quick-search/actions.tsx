@@ -85,7 +85,7 @@ const textsOf = ({ name, keywords, tableId }: Action): string[] =>
   tableId || !keywords ? [name] : [name, keywords];
 
 /** Whether a row holds the keyword as typed, in any case, in a text a search reads: what Find and Replace would find. */
-export const holdsAsTyped = (action: Action, keyword: string): boolean => {
+const holdsAsTyped = (action: Action, keyword: string): boolean => {
   const needle = keyword.toLowerCase();
   return textsOf(action).some(text => text.toLowerCase().includes(needle));
 };
