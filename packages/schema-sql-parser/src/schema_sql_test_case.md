@@ -1385,11 +1385,15 @@ ALTER TABLE Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     }
   ]
@@ -1409,11 +1413,15 @@ ALTER TABLE "public".Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     }
   ]
@@ -1594,6 +1602,8 @@ ALTER TABLE users ADD CONSTRAINT UNIQUE (a, b), ADD CONSTRAINT fk_x FOREIGN KEY 
     {
       "type": "alter.table.add.primaryKey",
       "name": "users",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["id"]
     },
     {
@@ -1696,21 +1706,29 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     },
     {
@@ -2236,6 +2254,8 @@ ALTER TABLE analytics.dbt_dev.orders ADD FOREIGN KEY (user_id) REFERENCES analyt
     {
       "type": "alter.table.add.primaryKey",
       "name": "users",
+      "constraintName": "PK_USERS",
+      "usingIndexName": "",
       "columnNames": [
         "user_id"
       ]

@@ -92,6 +92,10 @@ export type AlterTableAddUnique = {
 export type AlterTableAddPrimaryKey = {
   type: typeof StatementType.alterTableAddPrimaryKey;
   name: string;
+  /** The CONSTRAINT symbol, '' for none. */
+  constraintName: string;
+  /** The existing index Oracle's USING INDEX names to enforce the key, '' for none. */
+  usingIndexName: string;
   columnNames: string[];
 };
 

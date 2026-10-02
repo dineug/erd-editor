@@ -377,7 +377,7 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
-    it('reads an Oracle unique constraint that names an index of its columns as that index', () => {
+    it('reads an Oracle unique constraint that names an index of its columns as that index, or one column as its flag', () => {
       const schema = parse(`
         CREATE TABLE "HR"."T" ("A" NUMBER, "B" NUMBER, "C" NUMBER, "D" NUMBER);
         CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
@@ -397,11 +397,10 @@ describe('schemaSQLParserToSchemaJson', () => {
       `);
       const t = tableByName(schema, 'T');
 
-      expect(uniqueColumnNamesOf(schema, t)).toEqual([]);
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['C']);
       expect(indexShapesOf(schema)).toEqual([
         { name: 'UQ_T_AB_IX', unique: true, columns: ['A ASC', 'B ASC'] },
         { name: 'IX_T_CD', unique: true, columns: ['C ASC', 'D ASC'] },
-        { name: 'IX_T_C', unique: true, columns: ['C ASC'] },
         {
           name: 'IX_T_ABD',
           unique: false,
@@ -409,6 +408,59 @@ describe('schemaSQLParserToSchemaJson', () => {
         },
         { name: 'UQ_T_BA', unique: true, columns: ['B ASC', 'A ASC'] },
         { name: 'UQ_T_AD', unique: true, columns: ['A ASC', 'D ASC'] },
+      ]);
+    });
+
+    it('reads the index SQL Developer exports for each key of a table as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."JOB_HISTORY" (
+          "EMPLOYEE_ID" NUMBER(6,0) CONSTRAINT "JHIST_EMPLOYEE_NN" NOT NULL ENABLE,
+          "START_DATE" DATE, "EMAIL" VARCHAR2(25), "CODE" NUMBER
+        ) TABLESPACE "EXAMPLE" ;
+        CREATE UNIQUE INDEX "HR"."JHIST_PK" ON "HR"."JOB_HISTORY" ("EMPLOYEE_ID", "START_DATE")
+          PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS TABLESPACE "EXAMPLE" ;
+        CREATE UNIQUE INDEX "HR"."JHIST_EMAIL_UK" ON "HR"."JOB_HISTORY" ("EMAIL") TABLESPACE "EXAMPLE" ;
+        CREATE UNIQUE INDEX "HR"."JHIST_ED_UK" ON "HR"."JOB_HISTORY" ("EMAIL", "START_DATE") ;
+        CREATE UNIQUE INDEX "HR"."JHIST_CODE_IX" ON "HR"."JOB_HISTORY" ("CODE") ;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_PK" PRIMARY KEY ("EMPLOYEE_ID", "START_DATE")
+          USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS TABLESPACE "EXAMPLE"  ENABLE;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_EMAIL_UK" UNIQUE ("EMAIL")
+          USING INDEX TABLESPACE "EXAMPLE" ENABLE;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_ED_UK" UNIQUE ("EMAIL", "START_DATE")
+          USING INDEX TABLESPACE "EXAMPLE" ENABLE;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_CODE_UK" UNIQUE ("CODE")
+          USING INDEX "HR"."JHIST_CODE_IX" ENABLE;
+      `);
+      const history = tableByName(schema, 'JOB_HISTORY');
+
+      expect(
+        columnsOf(schema, history)
+          .filter(column => bHas(column.options, ColumnOption.primaryKey))
+          .map(column => column.name)
+      ).toEqual(['EMPLOYEE_ID', 'START_DATE']);
+      expect(uniqueColumnNamesOf(schema, history)).toEqual(['EMAIL', 'CODE']);
+      expect(indexShapesOf(schema)).toEqual([
+        {
+          name: 'JHIST_ED_UK',
+          unique: true,
+          columns: ['EMAIL ASC', 'START_DATE ASC'],
+        },
+      ]);
+    });
+
+    it('keeps an index named after a key that keys other columns', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT);
+        CREATE INDEX pk_t ON t (a, b);
+        CREATE UNIQUE INDEX uq_t ON t (b, c);
+        ALTER TABLE t ADD CONSTRAINT pk_t PRIMARY KEY (a);
+        ALTER TABLE t ADD CONSTRAINT uq_t UNIQUE (a, c);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'pk_t', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_t', unique: true, columns: ['b ASC', 'c ASC'] },
+        { name: 'uq_t', unique: true, columns: ['a ASC', 'c ASC'] },
       ]);
     });
 

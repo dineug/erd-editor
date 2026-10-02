@@ -151,6 +151,17 @@ function mergeTables({
     const table = findByName(tables, primaryKey.name);
     if (!table) return;
 
+    // The flags are the key, and the index Oracle exported for it is theirs.
+    const keyIndex = findKeyIndex(
+      table,
+      primaryKey.usingIndexName || primaryKey.constraintName,
+      primaryKey.columnNames.map(name => ({ name }))
+    );
+
+    if (keyIndex) {
+      table.indexes.splice(table.indexes.indexOf(keyIndex), 1);
+    }
+
     primaryKey.columnNames.forEach(columnName => {
       const column = findByName(table.columns, columnName);
       if (!column) return;
@@ -163,16 +174,21 @@ function mergeTables({
     const table = findByName(tables, unique.name);
     if (!table) return;
 
-    // Oracle's USING INDEX names the index CREATE INDEX made to enforce the
-    // key. Over the same columns that index is the key, made unique; a second
-    // one beside it repeats a column list Oracle refuses to index twice.
-    const usingIndex = unique.usingIndexName
-      ? findByName(table.indexes, unique.usingIndexName)
-      : null;
+    // A composite key is the index Oracle exported for it, made unique. One
+    // column gives that index up to the flag the rule below sets.
+    const keyIndex = findKeyIndex(
+      table,
+      unique.usingIndexName || unique.constraintName,
+      unique.columns
+    );
 
-    if (usingIndex && hasSameColumns(usingIndex.columns, unique.columns)) {
-      usingIndex.unique = true;
+    if (keyIndex && unique.columns.length > 1) {
+      keyIndex.unique = true;
       return;
+    }
+
+    if (keyIndex) {
+      table.indexes.splice(table.indexes.indexOf(keyIndex), 1);
     }
 
     // Several columns are one composite key, which a unique flag on each of
@@ -226,6 +242,18 @@ function mergeTables({
   });
 
   return tables;
+}
+
+// The index Oracle exports on its own for a key, CREATE UNIQUE INDEX "HR"."UQ"
+// before ADD CONSTRAINT "UQ" UNIQUE, or the one USING INDEX names: kept beside
+// the key, it keys one column list twice, which Oracle refuses.
+function findKeyIndex(
+  table: CreateTable,
+  name: string,
+  columns: ReadonlyArray<{ name: string }>
+) {
+  const index = name ? findByName(table.indexes, name) : null;
+  return index && hasSameColumns(index.columns, columns) ? index : null;
 }
 
 // Whether two key lists name the same columns, in any order: a unique key over

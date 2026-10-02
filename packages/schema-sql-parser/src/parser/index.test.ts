@@ -106,6 +106,8 @@ describe('schemaSQLParser', () => {
       {
         type: 'alter.table.add.primaryKey',
         name: 'users',
+        constraintName: '',
+        usingIndexName: '',
         columnNames: ['id', 'email'],
       },
     ]);
@@ -120,6 +122,8 @@ describe('schemaSQLParser', () => {
       {
         type: 'alter.table.add.primaryKey',
         name: 'users',
+        constraintName: 'users_pkey',
+        usingIndexName: '',
         columnNames: ['id'],
       },
     ]);

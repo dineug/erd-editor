@@ -41,11 +41,12 @@ for (const statement of statements) {
 or index name keeps its last segment.
 
 `alter.table.add.primaryKey` and `alter.table.add.foreignKey` carry the altered table's `name` and
-`columnNames`, plus `refTableName` / `refColumnNames` on foreign keys; their `CONSTRAINT <id>` is
+`columnNames`, plus `refTableName` / `refColumnNames` on foreign keys, whose `CONSTRAINT <id>` is
 consumed and not reported. `alter.table.add.unique` carries the table's `name`, its `constraintName`
-(the `UNIQUE KEY` / `UNIQUE INDEX` name, else the `CONSTRAINT` symbol, else `''`), its `usingIndexName`
-(the existing index Oracle's `USING INDEX` names, else `''`) and its `columns`; an `ALTER TABLE` that adds
-several keys yields one per UNIQUE clause.
+(the `UNIQUE KEY` / `UNIQUE INDEX` name, else the `CONSTRAINT` symbol, else `''`) and its `columns`; an
+`ALTER TABLE` that adds several keys yields one per UNIQUE clause. The primary key carries its
+`constraintName` too, and both carry a `usingIndexName`: the existing index Oracle's `USING INDEX` names,
+else `''`.
 
 A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
 named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's
