@@ -382,6 +382,15 @@ describe('paletteRows / # tables', () => {
     ]);
   });
 
+  it('hands nothing over for the word a table with no name is listed by, which the panel never finds', () => {
+    addTables(SCOPED_ACTION_LIMIT + 5, () => '');
+
+    const rows = rowsFor('#unn');
+
+    expect(rows).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
+  });
+
   it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
     'leaves the hand-off out under %s, which keeps Find and Replace shut',
     key => {

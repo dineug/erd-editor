@@ -16,7 +16,6 @@ import {
   Action,
   createMatchAction,
   createShowAllAction,
-  holdsAsTyped,
   keywordHolder,
   searchActions,
 } from './actions';
@@ -98,8 +97,8 @@ export function paletteRows(
 
 /**
  * The table rows the keyword fuzzes to, those holding it as typed or by its
- * Hangul letters first, up to the scoped limit, past which a table holding it
- * as typed hands the search to Find and Replace over the table names alone.
+ * Hangul letters first, up to the scoped limit, past which a table whose name
+ * the panel finds it in hands the search to Find and Replace over the names.
  */
 export function rankTableActions(
   app: AppContext,
@@ -110,11 +109,17 @@ export function rankTableActions(
   const ranked = [...found.filter(holds), ...found.filter(row => !holds(row))];
   const rows = ranked.slice(0, SCOPED_ACTION_LIMIT);
   const matcher = matcherOf(keyword);
+  if (!matcher) return rows;
+
+  // Read in the name, not the row, which says unnamed for a table without one.
+  const { tableEntities } = app.store.state.collections;
   const hidden = ranked
     .slice(SCOPED_ACTION_LIMIT)
-    .some(row => holdsAsTyped(row, keyword));
-
-  if (!matcher || !hidden) return rows;
+    .some(
+      ({ tableId = '' }) =>
+        matcher.find(tableEntities[tableId]?.name ?? '').length > 0
+    );
+  if (!hidden) return rows;
 
   const count = findMatches(app.store.state, matcher, TABLE_FIELDS).length;
   return [
