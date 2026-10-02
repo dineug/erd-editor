@@ -66,7 +66,7 @@ const Editor: FC = (_, ctx) => {
       style={{ width: '100%', height: '100%', position: 'relative' }}
       on:keydown={handleKeydown}
     >
-      <Erd isDarkMode={false} mouseTracking={false} />
+      <Erd isDarkMode={false} mouseTracking={false} readonly={false} />
       <FindReplace readonly={false} />
       <QuickSearch />
     </div>
