@@ -57,6 +57,14 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect(ast.columnNames).toEqual(['id']);
   });
 
+  it('reads a key part by its first word, never its sort', () => {
+    const { ast } = parse(
+      'ALTER TABLE t ADD CONSTRAINT pk_t PRIMARY KEY (id DESC, b ASC);'
+    );
+
+    expect(ast.columnNames).toEqual(['id', 'b']);
+  });
+
   it('reads the key after a CONSTRAINT that has no symbol', () => {
     const { ast } = parse('ALTER TABLE users ADD CONSTRAINT PRIMARY KEY (id);');
 

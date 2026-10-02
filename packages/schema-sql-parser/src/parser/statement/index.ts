@@ -34,6 +34,7 @@ export type CreateTable = {
   comment: string;
   columns: Column[];
   indexes: Index[];
+  keys: Key[];
   foreignKeys: ForeignKey[];
 };
 
@@ -54,6 +55,15 @@ export type Index = {
   columns: IndexColumn[];
 };
 
+/**
+ * A primary key or one-column unique key the source names, whose name the
+ * column flags cannot carry: a dump may export its index under that name.
+ */
+export type Key = {
+  name: string;
+  columnNames: string[];
+};
+
 export type ForeignKey = {
   columnNames: string[];
   refTableName: string;
@@ -63,6 +73,7 @@ export type ForeignKey = {
 export type CreateTableColumns = {
   columns: Column[];
   indexes: Index[];
+  keys: Key[];
   foreignKeys: ForeignKey[];
 };
 

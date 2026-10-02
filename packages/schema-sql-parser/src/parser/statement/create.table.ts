@@ -36,6 +36,7 @@ import {
   CreateTableColumns,
   ForeignKey,
   Index,
+  Key,
   RefPos,
   StatementType,
 } from '@/parser/statement';
@@ -62,6 +63,7 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
     comment: '',
     columns: [],
     indexes: [],
+    keys: [],
     foreignKeys: [],
   };
 
@@ -141,12 +143,13 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
         continue;
       }
 
-      const { columns, indexes, foreignKeys } = createTableColumnsParser(
+      const { columns, indexes, keys, foreignKeys } = createTableColumnsParser(
         tokens,
         $pos
       );
       ast.columns = columns;
       ast.indexes = indexes;
+      ast.keys = keys;
       ast.foreignKeys = foreignKeys;
       hasColumns = true;
       continue;
@@ -249,6 +252,7 @@ function createTableColumnsParser(
 
   const columns: Column[] = [];
   const indexes: Index[] = [];
+  const keys: Key[] = [];
   const foreignKeys: ForeignKey[] = [];
   const primaryKeyColumnNames: string[] = [];
   const uniqueColumnNames: string[] = [];
@@ -269,6 +273,18 @@ function createTableColumnsParser(
   // The name a CONSTRAINT gives the item it opens, which a UNIQUE over several
   // columns keeps unless it names its index itself.
   let constraintName = '';
+  // Where that name ends: it names only the constraint right after it, never
+  // the PRIMARY KEY of id INT CONSTRAINT nn NOT NULL PRIMARY KEY.
+  let constraintEnd = -1;
+
+  const symbolAt = (pos: number) =>
+    pos === constraintEnd ? constraintName : '';
+
+  const addKey = (name: string, columnNames: string[]) => {
+    if (name && columnNames.length) {
+      keys.push({ name, columnNames });
+    }
+  };
 
   while (isToken()) {
     let token = tokens[$pos.value];
@@ -357,10 +373,12 @@ function createTableColumnsParser(
         $pos.value++;
       }
 
+      constraintEnd = $pos.value;
       continue;
     }
 
     if (isPrimary($pos.value)) {
+      const name = symbolAt($pos.value);
       token = tokens[++$pos.value];
 
       if (isKey($pos.value)) {
@@ -372,18 +390,17 @@ function createTableColumnsParser(
         }
 
         if (isLeftParent($pos.value)) {
-          token = tokens[++$pos.value];
+          const columnNames = indexColumnsParser(tokens, $pos).map(
+            indexColumn => indexColumn.name
+          );
 
-          while (isToken() && !isRightParent($pos.value)) {
-            if (isString($pos.value)) {
-              primaryKeyColumnNames.push(token.value.toUpperCase());
-            }
-            token = tokens[++$pos.value];
-          }
-
-          $pos.value++;
-        } else {
+          primaryKeyColumnNames.push(
+            ...columnNames.map(columnName => columnName.toUpperCase())
+          );
+          addKey(name, columnNames);
+        } else if (column.name) {
           column.primaryKey = true;
+          addKey(name, [column.name]);
         }
       }
 
@@ -431,6 +448,7 @@ function createTableColumnsParser(
     }
 
     if (isUnique($pos.value)) {
+      const symbol = symbolAt($pos.value);
       token = tokens[++$pos.value];
 
       if (isKey($pos.value) || isIndex($pos.value)) {
@@ -441,6 +459,7 @@ function createTableColumnsParser(
       // another attribute, or Oracle's USING INDEX (...) the loop skips.
       if (column.name) {
         column.unique = true;
+        addKey(symbol, [column.name]);
         continue;
       }
 
@@ -465,6 +484,10 @@ function createTableColumnsParser(
         } else {
           uniqueColumnNames.push(
             ...indexColumns.map(indexColumn => indexColumn.name.toUpperCase())
+          );
+          addKey(
+            name,
+            indexColumns.map(indexColumn => indexColumn.name)
           );
         }
       }
@@ -645,6 +668,7 @@ function createTableColumnsParser(
   return {
     columns,
     indexes,
+    keys,
     foreignKeys,
   };
 }

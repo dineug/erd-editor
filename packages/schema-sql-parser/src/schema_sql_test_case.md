@@ -543,6 +543,7 @@ CREATE TABLE a (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -577,6 +578,7 @@ CREATE TABLE "a" (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -611,6 +613,7 @@ CREATE TABLE 'a' (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -645,6 +648,7 @@ CREATE TABLE `a` (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -679,6 +683,7 @@ CREATE TABLE test.a (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -713,6 +718,7 @@ CREATE TABLE [test].[a] (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -747,6 +753,7 @@ CREATE TABLE a (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -798,6 +805,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -827,6 +835,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [{ "name": "PK_B", "columnNames": ["b", "c"] }],
       "foreignKeys": []
     }
   ]
@@ -893,6 +902,7 @@ CREATE TABLE b (
           ]
         }
       ],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -937,6 +947,7 @@ CREATE TABLE b (
           ]
         }
       ],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -998,6 +1009,7 @@ CREATE TABLE a (
           ]
         }
       ],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -1055,6 +1067,7 @@ GO
           ]
         }
       ],
+      "keys": [{ "name": "ix_b", "columnNames": ["b"] }],
       "foreignKeys": []
     }
   ]
@@ -1111,6 +1124,7 @@ CREATE TABLE 'users' (
         }
       ],
       "comment": "",
+      "keys": [{ "name": "users_email_unique", "columnNames": ["email"] }],
       "foreignKeys": [],
       "indexes": [
         {
@@ -1176,6 +1190,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": [
         {
           "columnNames": ["b", "c"],
@@ -1211,6 +1226,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": [
         {
           "columnNames": ["b", "c"],
@@ -1847,6 +1863,7 @@ CREATE TABLE `role` (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -1892,6 +1909,7 @@ CREATE TABLE `test` (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -1943,6 +1961,7 @@ COMMENT ON COLUMN public.users.email IS 'email address';
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -2007,6 +2026,7 @@ CREATE TABLE users /* pk: id; see docs (v2) */ (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -2087,6 +2107,7 @@ USING DELTA
         }
       ],
       "indexes": [],
+      "keys": [{ "name": "pk_events", "columnNames": ["event_id"] }],
       "foreignKeys": []
     }
   ]
@@ -2190,6 +2211,7 @@ COMMENT = 'sales orders'
         }
       ],
       "indexes": [],
+      "keys": [{ "name": "PK_ORDER_ID", "columnNames": ["ORDER_ID"] }],
       "foreignKeys": [
         {
           "columnNames": [
@@ -2249,6 +2271,7 @@ ALTER TABLE analytics.dbt_dev.orders ADD FOREIGN KEY (user_id) REFERENCES analyt
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {

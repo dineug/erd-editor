@@ -735,6 +735,56 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
+  it('reports the name of each primary key and one-column unique key it names', () => {
+    const { ast } = parse(
+      'CREATE TABLE "HR"."T" (\n' +
+        ' "ID" NUMBER CONSTRAINT "T_NN" NOT NULL ENABLE,\n' +
+        ' "A" NUMBER, "B" NUMBER,\n' +
+        ' "C" NUMBER CONSTRAINT "T_C_UK" UNIQUE USING INDEX TABLESPACE "USERS",\n' +
+        ' "D" NUMBER CONSTRAINT "T_D_NN" NOT NULL UNIQUE,\n' +
+        ' "E" NUMBER UNIQUE,\n' +
+        ' CONSTRAINT "T_PK" PRIMARY KEY ("ID", "A") USING INDEX ENABLE,\n' +
+        ' CONSTRAINT "T_B_UK" UNIQUE ("B"),\n' +
+        ' CONSTRAINT "T_AB_UK" UNIQUE ("A", "B"),\n' +
+        ' UNIQUE KEY "T_E_IX" ("E"), INDEX "T_D_IX" UNIQUE ("D")\n' +
+        ');\n'
+    );
+
+    expect(ast.keys).toEqual([
+      { name: 'T_C_UK', columnNames: ['C'] },
+      { name: 'T_PK', columnNames: ['ID', 'A'] },
+      { name: 'T_B_UK', columnNames: ['B'] },
+      { name: 'T_E_IX', columnNames: ['E'] },
+      { name: 'T_D_IX', columnNames: ['D'] },
+    ]);
+    expect(
+      parse(
+        'CREATE TABLE t (id INT CONSTRAINT nn NOT NULL PRIMARY KEY, a INT);\n'
+      ).ast.keys
+    ).toEqual([]);
+    expect(
+      parse('CREATE TABLE t (id INT CONSTRAINT pk_t PRIMARY KEY, a INT);\n').ast
+        .keys
+    ).toEqual([{ name: 'pk_t', columnNames: ['id'] }]);
+  });
+
+  it('reads a primary key part by its first word', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a TEXT, b INT,\n' +
+        ' CONSTRAINT pk_t PRIMARY KEY CLUSTERED (a(10) ASC, b DESC),\n' +
+        ' c INT\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'TEXT', primaryKey: true }),
+      column({ name: 'b', dataType: 'INT', primaryKey: true }),
+      column({ name: 'c', dataType: 'INT' }),
+    ]);
+    expect(ast.keys).toEqual([{ name: 'pk_t', columnNames: ['a', 'b'] }]);
+  });
+
   it('reads no key list after a column level UNIQUE', () => {
     const { ast } = parse(
       'CREATE TABLE t (\n' +

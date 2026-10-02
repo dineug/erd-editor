@@ -50,6 +50,7 @@ describe('schemaSQLParser', () => {
           },
         ],
         indexes: [],
+        keys: [],
         foreignKeys: [],
       },
     ]);
@@ -293,6 +294,7 @@ describe('schemaSQLParser', () => {
           },
         ],
         indexes: [],
+        keys: [],
         foreignKeys: [],
       },
     ]);

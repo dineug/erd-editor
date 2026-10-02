@@ -8,7 +8,6 @@ import {
   isNewStatement,
   isPeriodToken,
   isPrimaryValue,
-  isRightParentToken,
   isSemicolonToken,
   isStringToken,
   isTableValue,
@@ -19,6 +18,7 @@ import {
   RefPos,
   StatementType,
 } from '@/parser/statement';
+import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
 export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
@@ -26,7 +26,6 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
   const isSemicolon = isSemicolonToken(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
-  const isRightParent = isRightParentToken(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isPrimary = isPrimaryValue(tokens);
   const isPeriod = isPeriodToken(tokens);
@@ -129,17 +128,12 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
       if (isKey($pos.value)) {
         token = tokens[++$pos.value];
 
+        // A key part's first word names its column: the sort after it is not
+        // one, and a key named by it would never match the index of the key.
         if (isLeftParent($pos.value)) {
-          token = tokens[++$pos.value];
-
-          while (isToken() && !isRightParent($pos.value)) {
-            if (isString($pos.value)) {
-              ast.columnNames.push(token.value);
-            }
-            token = tokens[++$pos.value];
-          }
-
-          token = tokens[++$pos.value];
+          ast.columnNames = indexColumnsParser(tokens, $pos).map(
+            indexColumn => indexColumn.name
+          );
           keyRead = true;
         }
       }
