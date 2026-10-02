@@ -123,6 +123,11 @@ a copy of the document first, so a refused one is named and nothing is applied, 
 reverts the whole batch. An operation named with `as` lets a later one pass `$name` (or `$name.1`
 for its second created id) where it takes an entity id, so a table and its columns take one call.
 
+`erd_change_relationship_on_delete` and `erd_change_relationship_on_update`, and the `onDelete` /
+`onUpdate` of `erd_add_relationship` and `erd_link_columns`, set a foreign key's ON DELETE and ON
+UPDATE actions. An ERD Editor extension or plugin released before referential actions ignores them
+when it serves the document, so update it.
+
 Every edit tool takes the document `path`. Settings other than `erd_set_show`, and
 `erd_resize_memo`, make no undo entry in the editor, so `erd_undo` passes over them and the result
 says so.

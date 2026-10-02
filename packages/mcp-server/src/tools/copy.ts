@@ -23,8 +23,9 @@ const X = 'Left edge on the canvas, in pixels.';
 const Y = 'Top edge on the canvas, in pixels.';
 const RELATIONSHIP_TYPE =
   'Cardinality at the child end: ZeroOne (0..1), ZeroN (0..N), OneOnly (exactly 1) or OneN (1..N).';
-const REFERENTIAL_ACTION =
-  'What the database does to the child rows: none (no clause, the database default), noAction, cascade, setNull, setDefault or restrict. A vendor that lacks the action drops it from its DDL.';
+const OLDER_EDITOR =
+  'An ERD Editor extension or plugin released before referential actions ignores this setting, so the user should update it.';
+const REFERENTIAL_ACTION = `What the database does to the child rows: none (no clause, the database default), noAction, cascade, setNull, setDefault or restrict. A vendor that lacks the action drops it from its DDL. ${OLDER_EDITOR}`;
 const COLOR = 'CSS hex color such as #3b82f6.';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
@@ -241,12 +242,10 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     description: 'Changes the cardinality of a relationship.',
   },
   erd_change_relationship_on_delete: {
-    description:
-      'Sets the ON DELETE action of a relationship: what deleting a parent row does to its child rows.',
+    description: `Sets the ON DELETE action of a relationship: what deleting a parent row does to its child rows. ${OLDER_EDITOR}`,
   },
   erd_change_relationship_on_update: {
-    description:
-      'Sets the ON UPDATE action of a relationship: what changing a parent key does to its child rows.',
+    description: `Sets the ON UPDATE action of a relationship: what changing a parent key does to its child rows. ${OLDER_EDITOR}`,
   },
 
   erd_add_index: {
