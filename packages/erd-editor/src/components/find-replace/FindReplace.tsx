@@ -168,15 +168,17 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   const layout = observable({ floor: 0 });
   /** The controls measured, a new element each time the panel is drawn again. */
   let measured: HTMLDivElement | null = null;
-  const resizeObserver = new ResizeObserver(() => {
-    const height = measured?.offsetHeight ?? 0;
-    layout.floor = height && height + styles.PANEL_CHROME_HEIGHT;
-  });
+  /** Made once the panel is first drawn, so an editor never opening it measures nothing. */
+  let resizeObserver: ResizeObserver | null = null;
 
   const measureControls = () => {
     const element = controls.value ?? null;
     if (element === measured) return;
 
+    resizeObserver ??= new ResizeObserver(() => {
+      const height = measured?.offsetHeight ?? 0;
+      layout.floor = height && height + styles.PANEL_CHROME_HEIGHT;
+    });
     resizeObserver.disconnect();
     element && resizeObserver.observe(element);
     measured = element;
@@ -567,7 +569,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
           stale && isPanelShown(store.state) && searchEdited();
         }),
       cancelPendingSearch,
-      () => resizeObserver.disconnect()
+      () => resizeObserver?.disconnect()
     );
     measureControls();
   });
