@@ -456,6 +456,8 @@ test.describe('Find and Replace', () => {
       })
     );
     await openFind(erd, 'zebra');
+    // A first opening searches the names alone, so the column comments are let in.
+    await scopeOf(erd, 'columnComment').click();
     await expect(countOf(erd)).toHaveText('1 match');
 
     await panelOf(erd).locator('.find-replace-match').first().click();
