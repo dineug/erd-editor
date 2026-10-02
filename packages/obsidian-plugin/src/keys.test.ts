@@ -9,6 +9,7 @@ const bindings = (...shortcuts: string[]) => ({
 describe('toScopeKey', () => {
   it.each([
     ['$mod+KeyK', ['Mod'], 'K'],
+    ['$mod+KeyF', ['Mod'], 'F'],
     ['Alt+Enter', ['Alt'], 'Enter'],
     ['$mod+Shift+KeyZ', ['Mod', 'Shift'], 'Z'],
     ['$mod+Alt+Digit1', ['Mod', 'Alt'], '1'],

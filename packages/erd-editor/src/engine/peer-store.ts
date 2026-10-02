@@ -4,7 +4,6 @@ import {
   type CompositionActions,
   compositionActionsFlat,
 } from '@dineug/r-html';
-import { isEmpty } from 'es-toolkit/compat';
 
 import { ChangeActionTypes, StreamActionTypes } from '@/engine/actions';
 import { createEngineContext } from '@/engine/context';
@@ -30,8 +29,8 @@ import { createStreamFlusher } from '@/engine/stream-flush';
 import { defaultToWidth } from '@/engine/to-width';
 import type { Unsubscribe, ValuesType } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
+import { toLoadValue } from '@/utils/loadValue';
 import { safeCallback } from '@/utils/safeCallback';
-import { toSafeString } from '@/utils/validation';
 
 export type PeerStoreOptions = {
   nickname: string;
@@ -441,11 +440,9 @@ export function createPeerStore({
   const setInitialValue = (value: string) => {
     assertUsable('setInitialValue');
     assertOutsideGroup('setInitialValue');
-    const safeValue = toSafeString(value);
-
     rxStore.dispatchSync(
       focusTableEndAction(),
-      initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
+      initialLoadJsonAction$(toLoadValue(value))
     );
     rxStore.resetHistory();
     revertLog = [];

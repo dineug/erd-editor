@@ -11,7 +11,7 @@ Defines the persisted `.erd` / `.vuerd` document: v2 and v3 schemas, defensive p
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Public surface: `parser`, `parserV2`, `toJson`, `schemaV2Parser`, `schemaV3Parser`, `query`, the three LWW operators, `migrateScrollToOrigin`, the constant sets and types |
+| `src/index.ts` | Public surface: `parser`, `parserV2`, `toJson`, `schemaV2Parser`, `schemaV3Parser`, `createSchema`, `query`, the three LWW operators, `migrateScrollToOrigin`, the constant sets and types |
 | `src/parser.ts` | Version sniffing (`version === '3.0.0'`, else v2) and `toJson` |
 | `src/v3/parser/migrateScroll.ts` | `migrateScrollToOrigin` — legacy scroll pair → `originX` / `originY`, one way only |
 | `src/v3/schema/settings.ts` | Settings type, constant sets and the `CANVAS_*` bounds |
@@ -30,7 +30,7 @@ Defines the persisted `.erd` / `.vuerd` document: v2 and v3 schemas, defensive p
 
 ### Working In This Directory
 
-- **Parsers never throw on field values**: they validate per field and fall back to factory defaults (only the string entry points let `JSON.parse` throw). The editor seeds its store from `schemaV3Parser({})`.
+- **Parsers never throw on field values**: they validate per field and fall back to factory defaults (only the string entry points let `JSON.parse` throw). The editor seeds its store from `createSchema()` (`src/v3/parser/index.ts`): `schemaV3Parser({})` with `ignoreSaveSettings` set to scroll | zoomLevel, since a document created from nothing saves neither. The settings parser's own default for a missing field stays 0, saving both, because every file written without the field was written with the view saved.
 - **`settings` holds two view pairs that are never cross-derived.** `originX` / `originY` are the live view; `scrollLeft` / `scrollTop` are the legacy pair a released editor reads. Nothing writes, derives or zeroes the legacy pair — it round-trips as loaded (`v3ToV2` copies it). `migrateScrollToOrigin` reads it only when a document has no numeric origin pair (`createAndMergeSettings`) and always in `v2ToV3`.
 - **`toJson` normalizes a copy, never the live state**: the `ignoreSaveSettings` scroll bit zeroes `originX` / `originY` only, the zoom bit sets `zoomLevel` to 1, and the legacy pair is written untouched.
 - **`width` / `height` are compatibility fields too**: clamped, required and round-tripped, but no entity position is bounded by them. Readers: the migration, the editor's SQL / GraphQL / DBML / AML importers (which write them) and `sortTableAction` (wraps rows at `width`); a released editor draws them as its document box.

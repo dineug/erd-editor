@@ -1,4 +1,4 @@
-export { parser as schemaV3Parser } from '@/v3/parser';
+export { createSchema, parser as schemaV3Parser } from '@/v3/parser';
 export {
   type LegacyScrollBox,
   migrateScrollToOrigin,

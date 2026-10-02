@@ -60,7 +60,10 @@ editor's own history.
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — JSON, SQL and PNG, written into the vault where your attachments go
-- **Quick search** — `Ctrl`/`Cmd`+`K` to jump to any table, or run any editor command
+- **Quick search** — `Ctrl`/`Cmd`+`K` to run any editor command, or to jump to a table after `#`,
+  a column after `@`, and a comment or memo after `"`
+- **Find and replace** — `Ctrl`/`Cmd`+`F` across table and column names, comments and memos,
+  with match case, whole word and regular expressions; one undo takes back a Replace All
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it
 - **Undo / redo**
 - **Light and dark** — by default the editor follows Obsidian's theme and switches with it; you can
@@ -73,9 +76,12 @@ of them.
 
 ### Keeping diffs clean
 
-By default the document also stores the canvas scroll position and zoom level, so panning around
-changes the file. Turn off **Save Scroll Information** and **Save Zoom Information** in the
-editor's settings to keep changes, and a git history of the vault, limited to the schema.
+A new diagram leaves the canvas scroll position and zoom level out of the file, so panning around
+never changes it. An existing file keeps storing whatever it was saved with, and older files store
+both: turn off **Save Scroll Information** and **Save Zoom Information** in the editor's settings
+to keep changes, and a git history of the vault, limited to the schema, or turn them on for a
+diagram that should open where you left it. Zooming moves the scroll position too, so with only
+**Save Scroll Information** on, zooming still changes the file.
 
 ## Coding agents
 

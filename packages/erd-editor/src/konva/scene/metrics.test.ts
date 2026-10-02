@@ -20,6 +20,7 @@ import { Table } from '@/internal-types';
 import {
   getColumnRect,
   getMemoRect,
+  getTableHeaderRect,
   getTableRect,
   getTableWidths,
 } from '@/konva/scene/metrics';
@@ -206,6 +207,34 @@ describe('a column row sits inside the table it belongs to', () => {
     const last = getColumnRect(state, table, table.columnIds.length - 1);
 
     expect(last.y + last.height).toBe(y + height - TABLE_BORDER);
+  });
+});
+
+describe('a table header band', () => {
+  it('spans the table across and ends where its first row starts', () => {
+    const state = createState();
+    const table = addTable(state, 'A', 40, 60);
+    addColumn(state, table, 'c1');
+    const { x, y, width } = getTableRect(state, table);
+
+    expect(getTableHeaderRect(state, table)).toEqual({
+      x,
+      y,
+      width,
+      height: TABLE_BORDER + TABLE_PADDING + TABLE_HEADER_HEIGHT,
+    });
+    expect(y + getTableHeaderRect(state, table).height).toBe(
+      getColumnRect(state, table, 0).y
+    );
+  });
+
+  it('is as tall as a view draws its header', () => {
+    const state = createState();
+    const table = addTable(state, 'A', 40, 60);
+
+    expect(getTableHeaderRect(state, table, 'flow').height).toBe(
+      TABLE_BORDER + TABLE_PADDING + VIEW_TABLE_HEADER_HEIGHT
+    );
   });
 });
 

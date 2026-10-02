@@ -6,6 +6,7 @@ import {
   isMod,
   KeyBindingName,
   KeyBindingNameList,
+  matchesShortcut,
   shortcutToTuple,
   simpleShortcutToString,
 } from '@/utils/keyboard-shortcut';
@@ -28,8 +29,8 @@ describe('keyboard-shortcut', () => {
       }
     });
 
-    it('lists all 24 binding names', () => {
-      expect(KeyBindingNameList).toHaveLength(24);
+    it('lists all 25 binding names', () => {
+      expect(KeyBindingNameList).toHaveLength(25);
       expect(KeyBindingNameList).toEqual(Object.values(KeyBindingName));
       expect(KeyBindingNameList).toContain('zenMode');
       expect(KeyBindingNameList).toContain('focusView');
@@ -45,6 +46,125 @@ describe('keyboard-shortcut', () => {
         { shortcut: 'Alt+KeyF', preventDefault: true, stopPropagation: true },
       ]);
       expect(shortcuts).not.toContain('Alt+KeyF');
+    });
+
+    it("binds find and replace to every host's find, $mod+KeyF, which no other binding claims", () => {
+      const map = createKeyBindingMap();
+      const shortcuts = KeyBindingNameList.filter(
+        name => name !== KeyBindingName.findReplace
+      ).flatMap(name => map[name].map(option => option.shortcut));
+
+      // Prevented and stopped: no browser find bar, no VS Code workbench find.
+      expect(map[KeyBindingName.findReplace]).toEqual([
+        { shortcut: '$mod+KeyF', preventDefault: true, stopPropagation: true },
+      ]);
+      expect(shortcuts).not.toContain('$mod+KeyF');
+      expect(shortcuts).not.toContain('$mod+Shift+KeyH');
+    });
+  });
+
+  describe('matchesShortcut', () => {
+    const press = (init: KeyboardEventInit) =>
+      new KeyboardEvent('keydown', init);
+
+    it('matches a chord by its code with exactly the modifiers named', () => {
+      const options = [{ shortcut: '$mod+Shift+KeyH' }];
+
+      expect(
+        matchesShortcut(
+          press({ key: 'H', code: 'KeyH', ctrlKey: true, shiftKey: true }),
+          options
+        )
+      ).toBe(true);
+      expect(
+        matchesShortcut(
+          press({ key: 'h', code: 'KeyH', ctrlKey: true }),
+          options
+        )
+      ).toBe(false);
+      expect(
+        matchesShortcut(
+          press({
+            key: 'H',
+            code: 'KeyH',
+            ctrlKey: true,
+            shiftKey: true,
+            altKey: true,
+          }),
+          options
+        )
+      ).toBe(false);
+    });
+
+    it('reads $mod as Meta on an apple device', () => {
+      device.apple = true;
+      const options = [{ shortcut: '$mod+KeyK' }];
+
+      expect(
+        matchesShortcut(
+          press({ key: 'k', code: 'KeyK', metaKey: true }),
+          options
+        )
+      ).toBe(true);
+      expect(
+        matchesShortcut(
+          press({ key: 'k', code: 'KeyK', ctrlKey: true }),
+          options
+        )
+      ).toBe(false);
+    });
+
+    it('tells the find and replace chord from the Alt+F of the Flow focus', () => {
+      const map = createKeyBindingMap();
+      const modF = press({ key: 'f', code: 'KeyF', ctrlKey: true });
+      const altF = press({ key: 'ƒ', code: 'KeyF', altKey: true });
+      const shiftModF = press({
+        key: 'F',
+        code: 'KeyF',
+        ctrlKey: true,
+        shiftKey: true,
+      });
+
+      expect(matchesShortcut(modF, map.findReplace)).toBe(true);
+      expect(matchesShortcut(modF, map.focusView)).toBe(false);
+      expect(matchesShortcut(altF, map.focusView)).toBe(true);
+      expect(matchesShortcut(altF, map.findReplace)).toBe(false);
+      expect(matchesShortcut(shiftModF, map.findReplace)).toBe(false);
+
+      device.apple = true;
+      expect(
+        matchesShortcut(
+          press({ key: 'f', code: 'KeyF', metaKey: true }),
+          map.findReplace
+        )
+      ).toBe(true);
+      expect(matchesShortcut(modF, map.findReplace)).toBe(false);
+    });
+
+    it('matches a bare key by its value as well as its code', () => {
+      expect(
+        matchesShortcut(press({ key: 'Escape' }), [{ shortcut: 'Escape' }])
+      ).toBe(true);
+      expect(
+        matchesShortcut(press({ key: 'Enter', code: 'Enter' }), [
+          { shortcut: 'Escape' },
+        ])
+      ).toBe(false);
+    });
+
+    it('tries every option and never matches a sequence of presses', () => {
+      const event = press({ key: 'Delete', code: 'Delete', altKey: true });
+
+      expect(
+        matchesShortcut(event, [
+          { shortcut: 'Alt+Backspace' },
+          { shortcut: 'Alt+Delete' },
+        ])
+      ).toBe(true);
+      expect(
+        matchesShortcut(event, [{ shortcut: 'Alt+KeyG Alt+Delete' }])
+      ).toBe(false);
+      expect(matchesShortcut(event, [])).toBe(false);
     });
   });
 
@@ -82,6 +202,9 @@ describe('keyboard-shortcut', () => {
 
       expect(map.search).toEqual([
         { shortcut: '$mod+KeyK', preventDefault: true, stopPropagation: true },
+      ]);
+      expect(map.findReplace).toEqual([
+        { shortcut: '$mod+KeyF', preventDefault: true, stopPropagation: true },
       ]);
       expect(map.undo).toEqual([
         { shortcut: '$mod+KeyZ', preventDefault: true, stopPropagation: true },

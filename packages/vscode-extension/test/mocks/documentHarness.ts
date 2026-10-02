@@ -165,10 +165,14 @@ export function createDocumentHarness(options: MemoryHubOptions = {}) {
     );
   }
 
-  /** The webview's replica saved value. */
-  async function saveValue(editor: OpenedEditor, value: string): Promise<void> {
+  /** The webview's replica saved value; changed false is a save of a change that left it as it was. */
+  async function saveValue(
+    editor: OpenedEditor,
+    value: string,
+    changed = true
+  ): Promise<void> {
     editor.webview.__receive(
-      Bridge.executeCommand(hostSaveValueCommand, { value })
+      Bridge.executeCommand(hostSaveValueCommand, { value, changed })
     );
     await microtasks();
   }

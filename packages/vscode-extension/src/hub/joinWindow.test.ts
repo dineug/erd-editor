@@ -83,6 +83,27 @@ describe('join', () => {
     });
   });
 
+  it('wakes on a save that changed nothing and captures the text the document already held', async () => {
+    vi.useFakeTimers();
+    const harness = createDocumentHarness();
+    const editor = await harness.openReady(PATH, '{ "scrolled": false }');
+    harness.relay(editor, [
+      { type: 'settings.scrollTo', payload: { originX: 9 }, version: 4 },
+    ]);
+
+    let result: unknown;
+    harness
+      .run(harness.handler.join({ path: PATH }, createConnection()))
+      .then(value => (result = value));
+    await harness.saveValue(editor, '{"scrolled":false}', false);
+
+    expect(result).toEqual({
+      initialValue: '{ "scrolled": false }',
+      snapshotVersion: 4,
+      readonly: false,
+    });
+  });
+
   it('with two webviews, wakes on the second save, not the first', async () => {
     vi.useFakeTimers();
     const harness = createDocumentHarness();

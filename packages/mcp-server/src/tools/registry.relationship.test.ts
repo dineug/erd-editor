@@ -36,6 +36,9 @@ const relate = (peer: PeerStore, startTableId: string, endTableId: string) =>
     relationshipType: 'OneN',
   });
 
+const columnNames = (peer: PeerStore, columnIds: string[]) =>
+  columnIds.map(id => peer.state.collections.tableColumnEntities[id].name);
+
 function refusal(call: () => unknown): ToolError {
   try {
     call();
@@ -73,7 +76,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
       start: { tableId: SEED.users, columnIds: [SEED.userId] },
       end: { tableId: SEED.orders, columnIds: [foreignKeyId] },
     });
-    expect(foreignKey).toMatchObject({ name: 'id', dataType: 'INT' });
+    expect(foreignKey).toMatchObject({ name: 'users_id', dataType: 'INT' });
     expect(bHas(foreignKey.options, ColumnOption.notNull)).toBe(true);
   });
 
@@ -131,7 +134,7 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
     }
   });
 
-  it('relates a table to itself', () => {
+  it('relates a table to itself, the foreign key named apart from its key', () => {
     const peer = seededPeer();
 
     const run = relate(peer, SEED.users, SEED.users);
@@ -143,6 +146,84 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
       start: { tableId: SEED.users, columnIds: [SEED.userId] },
       end: { tableId: SEED.users, columnIds: [foreignKeyId] },
     });
+    expect(peer.state.collections.tableColumnEntities[foreignKeyId].name).toBe(
+      'users_id'
+    );
+  });
+
+  it('numbers the foreign key of a second relationship into one child', () => {
+    const peer = seededPeer();
+
+    const [first] = relate(peer, SEED.users, SEED.orders).createdIds;
+    const [second] = relate(peer, SEED.users, SEED.orders).createdIds;
+
+    expect(columnNames(peer, [first, second])).toEqual([
+      'users_id',
+      'users_id_2',
+    ]);
+  });
+
+  it('keeps a key name of several words, numbered only for a name the child has', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_change_column_name', {
+      tableId: SEED.users,
+      columnId: SEED.userId,
+      value: 'user_id',
+    });
+
+    const [intoEmpty] = relate(peer, SEED.users, SEED.empty).createdIds;
+    const [intoOrders] = relate(peer, SEED.users, SEED.orders).createdIds;
+
+    expect(columnNames(peer, [intoEmpty, intoOrders])).toEqual([
+      'user_id',
+      'user_id_2',
+    ]);
+  });
+
+  it('keeps a key name where Hangul meets Latin and prefixes one of Hangul alone', () => {
+    const peer = seededPeer();
+    const renameKey = (value: string) =>
+      runTool(peer, 'erd_change_column_name', {
+        tableId: SEED.users,
+        columnId: SEED.userId,
+        value,
+      });
+
+    renameKey('회원ID');
+    const [mixed] = relate(peer, SEED.users, SEED.empty).createdIds;
+    renameKey('번호');
+    const [hangul] = relate(peer, SEED.users, SEED.empty).createdIds;
+
+    expect(columnNames(peer, [mixed, hangul])).toEqual([
+      '회원ID',
+      'users_번호',
+    ]);
+  });
+
+  it('names after an unnamed parent the key alone and keeps the names through a later rename', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_change_table_name', { tableId: SEED.users, value: '' });
+
+    const [intoEmpty] = relate(peer, SEED.users, SEED.empty).createdIds;
+    const [intoItself] = relate(peer, SEED.users, SEED.users).createdIds;
+    runTool(peer, 'erd_change_table_name', {
+      tableId: SEED.users,
+      value: 'members',
+    });
+
+    expect(columnNames(peer, [intoEmpty, intoItself])).toEqual(['id', 'id_2']);
+  });
+
+  it('leaves the foreign key of a key it had to create unnamed, like that key', () => {
+    const peer = seededPeer();
+
+    const [primaryKeyId, foreignKeyId] = relate(
+      peer,
+      SEED.empty,
+      SEED.users
+    ).createdIds;
+
+    expect(columnNames(peer, [primaryKeyId, foreignKeyId])).toEqual(['', '']);
   });
 
   it('takes the whole call back with one undo', () => {

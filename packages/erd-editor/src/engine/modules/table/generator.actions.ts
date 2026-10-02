@@ -151,15 +151,22 @@ export const selectTableAction$ = (
       const endTable = tableCollection.selectById(id);
       if (!startTable || !endTable) return;
 
-      const startColumns = query(collections)
-        .collection('tableColumnEntities')
+      const columnCollection = query(collections).collection(
+        'tableColumnEntities'
+      );
+      const startColumns = columnCollection
         .selectByIds(startTable.columnIds)
         .filter(({ options }) => bHas(options, ColumnOption.primaryKey));
       if (!startColumns.length) return;
 
       const endColumnIds = startColumns.map(() => nanoid());
 
-      yield toForeignKeyActions(startColumns, endTable.id, endColumnIds);
+      yield toForeignKeyActions(startColumns, endTable.id, endColumnIds, {
+        startTableName: startTable.name,
+        endColumnNames: columnCollection
+          .selectByIds(endTable.columnIds)
+          .map(({ name }) => name),
+      });
       yield addRelationshipAction({
         id: nanoid(),
         relationshipType: drawRelationship.relationshipType,

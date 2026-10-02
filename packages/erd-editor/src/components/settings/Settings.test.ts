@@ -9,6 +9,7 @@ import * as lnbStyles from '@/components/settings/settings-lnb/SettingsLnb.style
 import * as shortcutsStyles from '@/components/settings/shortcuts/Shortcuts.styles';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { ColumnType, SaveSettingType } from '@/constants/schema';
+import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeIgnoreSaveSettingsAction,
   changeMaxWidthCommentAction,
@@ -160,8 +161,41 @@ describe('Settings', () => {
   });
 
   describe('save settings switches', () => {
-    it('shows scroll and zoom as saved while the ignore bits are clear', async () => {
+    const OFF = SaveSettingType.scroll | SaveSettingType.zoomLevel;
+
+    /** A file that names no switch, as every one saved before new documents turned both off. */
+    async function setupFile() {
+      const opened = await setup();
+      opened.app.store.dispatchSync(
+        initialLoadJsonAction$('{"version":"3.0.0"}')
+      );
+      await flush();
+      return opened;
+    }
+
+    it('shows both switches off for a new document', async () => {
       const { app } = await setup();
+
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+      expect(switchIn(1).getAttribute('data-checked')).toBe('false');
+      expect(switchIn(2).getAttribute('data-checked')).toBe('false');
+    });
+
+    it('turns on saving the scroll of a new document alone', async () => {
+      const { app } = await setup();
+
+      click(switchIn(1));
+      await flush();
+
+      const { ignoreSaveSettings } = app.store.state.settings;
+      expect(bHas(ignoreSaveSettings, SaveSettingType.scroll)).toBe(false);
+      expect(bHas(ignoreSaveSettings, SaveSettingType.zoomLevel)).toBe(true);
+      expect(switchIn(1).getAttribute('data-checked')).toBe('true');
+      expect(switchIn(2).getAttribute('data-checked')).toBe('false');
+    });
+
+    it('shows scroll and zoom as saved for a file without the field', async () => {
+      const { app } = await setupFile();
 
       expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
       expect(switchIn(1).getAttribute('data-checked')).toBe('true');
@@ -169,7 +203,7 @@ describe('Settings', () => {
     });
 
     it('sets the scroll ignore bit when the scroll switch is turned off', async () => {
-      const { app } = await setup();
+      const { app } = await setupFile();
 
       click(switchIn(1));
       await flush();
@@ -181,7 +215,7 @@ describe('Settings', () => {
     });
 
     it('clears the scroll ignore bit again when turned back on', async () => {
-      const { app } = await setup();
+      const { app } = await setupFile();
       app.store.dispatchSync(
         changeIgnoreSaveSettingsAction({
           saveSettingType: SaveSettingType.scroll,
@@ -203,7 +237,7 @@ describe('Settings', () => {
     });
 
     it('sets only the zoom ignore bit when the zoom switch is turned off', async () => {
-      const { app } = await setup();
+      const { app } = await setupFile();
 
       click(switchIn(2));
       await flush();

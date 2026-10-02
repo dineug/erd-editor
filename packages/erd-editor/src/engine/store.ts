@@ -1,4 +1,4 @@
-import { schemaV3Parser } from '@dineug/erd-editor-schema';
+import { createSchema } from '@dineug/erd-editor-schema';
 import { createStore as runStore, Store as StoreType } from '@dineug/r-html';
 
 import { RootActionMap } from '@/engine/actions';
@@ -23,7 +23,7 @@ export function createStore(
   return runStore<RootState, RootActionMap, EngineContext>({
     context,
     state: {
-      ...schemaV3Parser({}),
+      ...createSchema(),
       editor: createEditor(),
       lww: {},
     },

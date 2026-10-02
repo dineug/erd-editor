@@ -46,7 +46,10 @@ export function stripBom(text: string): string {
   return text.startsWith('﻿') ? text.slice(1) : text;
 }
 
-/** The bytes of a new document: an empty peer's value, $schema stamp included. */
+/**
+ * The bytes of a new document: an empty peer's value, $schema stamp included,
+ * which saves neither the scroll nor the zoom, as a new diagram in an editor.
+ */
 export function createEmptyDocument(): string {
   const peer = createPeerStore({ nickname: '', presence: false });
   try {

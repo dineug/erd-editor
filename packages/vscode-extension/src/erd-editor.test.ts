@@ -253,7 +253,10 @@ describe('ErdEditor', () => {
       const update = vi.spyOn(document, 'update');
 
       webview.__receive(
-        Bridge.executeCommand(hostSaveValueCommand, { value: 'héllo' })
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: 'héllo',
+          changed: true,
+        })
       );
       await flush();
 
@@ -272,7 +275,10 @@ describe('ErdEditor', () => {
       });
 
       webview.__receive(
-        Bridge.executeCommand(hostSaveValueCommand, { value: 'saved' })
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: 'saved',
+          changed: true,
+        })
       );
       await flush();
 
@@ -280,6 +286,60 @@ describe('ErdEditor', () => {
       expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
       expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
     });
+
+    it('leaves content and the tab as they are for a save that changed nothing, and still reports it', async () => {
+      const { webview, document, registry } = await bootstrap({
+        content: '{"written":"by an older release"}',
+      });
+      const update = vi.spyOn(document, 'update');
+      const dirtied = vi.fn();
+      document.onDidChangeContent(dirtied);
+
+      webview.__receive(
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: '{"written":"by this replica"}',
+          changed: false,
+        })
+      );
+      await flush();
+
+      expect(update).not.toHaveBeenCalled();
+      expect(dirtied).not.toHaveBeenCalled();
+      expect(document.content).toEqual(
+        encoder.encode('{"written":"by an older release"}')
+      );
+      expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
+      expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
+    });
+
+    it.each(['git', 'conflictResolution'])(
+      'never dirties a read-only %s view, even for a save that changed the value, and still reports it',
+      async scheme => {
+        const { webview, document, registry } = await bootstrap({
+          uri: Uri.parse(`${scheme}:/workspace/sample.erd`),
+          content: '{"scrollTop":0}',
+        });
+        const update = vi.spyOn(document, 'update');
+        const dirtied = vi.fn();
+        document.onDidChangeContent(dirtied);
+
+        // A scroll in a view of a file whose Save Scroll Information is on:
+        // the value changed, but nothing can write such a view back.
+        webview.__receive(
+          Bridge.executeCommand(hostSaveValueCommand, {
+            value: '{"scrollTop":120}',
+            changed: true,
+          })
+        );
+        await flush();
+
+        expect(update).not.toHaveBeenCalled();
+        expect(dirtied).not.toHaveBeenCalled();
+        expect(document.content).toEqual(encoder.encode('{"scrollTop":0}'));
+        expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
+        expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
+      }
+    );
   });
 
   describe('hostSaveReplicationCommand', () => {
@@ -862,6 +922,7 @@ describe('ErdEditor', () => {
       const bridge = bridgeOf(editor);
       const save = Bridge.executeCommand(hostSaveValueCommand, {
         value: 'ignored',
+        changed: true,
       });
 
       bridge.executeAction(save);

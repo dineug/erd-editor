@@ -31,8 +31,10 @@ export const addRelationshipAction$ = (
     const endTable = tables.find(({ id }) => id === endTableId);
     if (!startTable || !endTable) return;
 
-    const primaryKeys = query(collections)
-      .collection('tableColumnEntities')
+    const columnCollection = query(collections).collection(
+      'tableColumnEntities'
+    );
+    const primaryKeys = columnCollection
       .selectByIds(startTable.columnIds)
       .filter(({ options }) => bHas(options, ColumnOption.primaryKey));
     const newPrimaryKey = primaryKeys.length
@@ -55,7 +57,12 @@ export const addRelationshipAction$ = (
             }),
           ]
         : []),
-      ...toForeignKeyActions(startColumns, endTable.id, endColumnIds),
+      ...toForeignKeyActions(startColumns, endTable.id, endColumnIds, {
+        startTableName: startTable.name,
+        endColumnNames: columnCollection
+          .selectByIds(endTable.columnIds)
+          .map(({ name }) => name),
+      }),
       addRelationshipAction({
         id: nanoid(),
         relationshipType,

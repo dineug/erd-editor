@@ -62,10 +62,10 @@ test.describe('relationship drawing', () => {
     expect(relationship.end.columnIds).toEqual([fkColumnId]);
 
     const fkColumn = await erd.column(fkColumnId);
-    // The FK copies the source primary key's name and data type, and is marked
-    // notNull — but deliberately *not* primaryKey, which is why the
-    // relationship below stays non-identifying.
-    expect(fkColumn.name).toBe('id');
+    // The FK is named after the source table and its primary key, copies the
+    // key's data type, and is marked notNull, but deliberately not primaryKey,
+    // which is why the relationship below stays non-identifying.
+    expect(fkColumn.name).toBe('users_id');
     expect(fkColumn.dataType).toBe('int');
     expect(fkColumn.options).toBe(ColumnOption.notNull);
     expect(relationship.identification).toBe(false);
@@ -187,6 +187,8 @@ test.describe('relationship drawing', () => {
     const fkColumnId = columnIds[columnIds.length - 1];
     expect(columnIds).toEqual(['users_id', 'users_name', fkColumnId]);
     expect(relationship.end.columnIds).toEqual([fkColumnId]);
+    // Named after the table, so it no longer repeats the key's own name.
+    expect((await erd.column(fkColumnId)).name).toBe('users_id');
 
     await expect(erd.relationshipEl(relationshipId)).toBeVisible();
     await expect(erd.columnKey(fkColumnId, 'fk')).toBeVisible();

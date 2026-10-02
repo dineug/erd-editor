@@ -1,4 +1,5 @@
-import type { RootState } from '@dineug/erd-editor/peer.js';
+import { type RootState, SaveSettingType } from '@dineug/erd-editor/peer.js';
+import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { comparable, settle } from '@/__test-utils__/mcp';
@@ -216,19 +217,23 @@ describe('what an import refuses or mirrors from the element', () => {
     }
   );
 
-  it('loads an empty text as an empty document, as the element’s value setter does', async () => {
+  it('loads an empty text as a new document, as the element’s value setter does', async () => {
     const session = open();
     await quiet();
 
     const run = runTool(session.agent, 'erd_import_json', { value: '' });
     await quiet();
 
-    // The reducer cannot parse an empty text; an empty object is a document.
+    // The reducer cannot parse an empty text, so the new document goes spelled out.
     expect(
       run.actions.find(({ type }) => type === 'editor.loadJson')?.payload
-    ).toEqual({ value: '{}' });
+    ).toEqual({ value: toJson(createSchema()) });
     expect(run.batches).toBe(1);
-    expect(session.agent.state.doc.tableIds).toEqual([]);
-    expect(session.other.state.doc.tableIds).toEqual([]);
+    for (const peer of [session.agent, session.other]) {
+      expect(peer.state.doc.tableIds).toEqual([]);
+      expect(peer.state.settings.ignoreSaveSettings).toBe(
+        SaveSettingType.scroll | SaveSettingType.zoomLevel
+      );
+    }
   });
 });

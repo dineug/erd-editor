@@ -13,8 +13,14 @@ export const hostImportFileCommand = createCommand<{
   accept: string;
 }>('hostImportFileCommand');
 export const hostInitialCommand = createCommand('hostInitialCommand');
+/**
+ * The replica's value after each change. With changed false the change left it
+ * as it was, as a scroll the file does not save does: the host writes nothing
+ * and marks nothing modified, and a hub still counts it as the save it waits for.
+ */
 export const hostSaveValueCommand = createCommand<{
   value: string;
+  changed: boolean;
 }>('hostSaveValueCommand');
 export const hostSaveReplicationCommand = createCommand<{
   actions: any;

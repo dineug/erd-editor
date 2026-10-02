@@ -7,6 +7,7 @@ export {
   schemaV2Parser,
 } from '@/v2';
 export {
+  createSchema,
   type ERDEditorSchemaV3,
   type LegacyScrollBox,
   migrateScrollToOrigin,
