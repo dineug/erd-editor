@@ -182,9 +182,9 @@ const alternateKeyActions = [
   moveColumnAction,
 ];
 
-const isAlternateKeyAction = arrayHas<string>(
-  alternateKeyActions.map(action => action.type)
-);
+const alternateKeyActionTypes = alternateKeyActions.map(action => action.type);
+
+const isAlternateKeyAction = arrayHas<string>(alternateKeyActionTypes);
 
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
@@ -217,7 +217,7 @@ const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,
   changeMaxWidthCommentAction.type,
   moveMemoAction.type,
-  ...alternateKeyActions.map(action => action.type),
+  ...alternateKeyActionTypes,
 ]);
 
 /** View actions that move the placement a view is looked at through, and nothing in it. */
