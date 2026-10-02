@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../support/fixtures';
 import { type Box, ErdEditorPage } from '../support/ErdEditorPage';
@@ -78,6 +78,17 @@ const checkedStates = (panel: ReturnType<Page['locator']>) =>
   panel
     .locator('input[type="checkbox"]')
     .evaluateAll(inputs => inputs.map(input => input.matches(':checked')));
+
+/** Whether a press at the element's centre lands on it, with nothing stuck over it. */
+const hitTestable = (target: Locator) =>
+  target.evaluate(el => {
+    const box = el.getBoundingClientRect();
+    const root = el.getRootNode() as Document | ShadowRoot;
+    return (
+      root.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) ===
+      el
+    );
+  });
 
 test.describe('table properties — frame', () => {
   test('closes on its close button and hands the keyboard back to the editor', async ({
@@ -364,6 +375,56 @@ test.describe('table properties — indexes tab', () => {
 
     const { doc } = await erd.value();
     expect(doc.indexIds).toEqual(['uq_student']);
+  });
+
+  test('keeps the keys, the Columns heading and a box the keyboard reaches in sight past the fold', async ({
+    erd,
+    page,
+  }) => {
+    const columns = Array.from({ length: 30 }, (_, i) => ({
+      id: `wide_c${i}`,
+      name: `c${i}`,
+      dataType: 'int',
+    }));
+    await erd.seed(
+      createSchema({
+        tables: [{ id: 'wide', name: 'wide', x: 160, y: 160, columns }],
+        indexes: [
+          {
+            id: 'uq_wide',
+            tableId: 'wide',
+            name: 'uq_wide',
+            unique: true,
+            columns: columns
+              .slice(0, 5)
+              .map(column => ({ id: `uq_${column.id}`, columnId: column.id })),
+          },
+        ],
+      })
+    );
+    const { panel, indexNames, checkboxes, selectedColumns } =
+      await openProperties(erd, page, 'wide');
+
+    await indexNames.first().click();
+    await expect(selectedColumns).toHaveCount(5);
+    await checkboxes.first().focus();
+
+    // Tab walks the boxes down past the fold the stuck order covers; each one
+    // has to come out from under it, or Space would flip a box nobody sees.
+    for (let step = 1; step < columns.length; step++) {
+      await page.keyboard.press('Tab');
+      const box = checkboxes.nth(step);
+      await expect(box).toBeFocused();
+      expect(await hitTestable(box)).toBe(true);
+    }
+
+    // The body has scrolled to the last column, and the keys and the
+    // heading beside it are still there to read.
+    await expect(indexNames.first()).toBeVisible();
+    expect(await hitTestable(indexNames.first())).toBe(true);
+    expect(await hitTestable(panel.getByText('Columns', { exact: true }))).toBe(
+      true
+    );
   });
 
   test('redraws the alternate key marks as the Indexes tab changes a key', async ({

@@ -145,65 +145,69 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
 
     return (
       <>
-        <div class={styles.leftArea}>
-          {columnKeys.length ? (
+        <div class={styles.leftTrack}>
+          <div class={styles.leftArea}>
+            {columnKeys.length ? (
+              <div class={styles.sectionLabel}>
+                <span>Keys</span>
+              </div>
+            ) : null}
+            {repeat(
+              columnKeys,
+              columnKey => columnKey.id,
+              columnKey => (
+                <IndexesKey
+                  columnKey={columnKey}
+                  selected={columnKey.id === selectedKey?.id}
+                  onSelect={handleSelectKey}
+                />
+              )
+            )}
+            {columnKeys.length ? (
+              <Separator space={4} padding={TABLE_PADDING} />
+            ) : null}
             <div class={styles.sectionLabel}>
-              <span>Keys</span>
+              <span>Indexes</span>
             </div>
-          ) : null}
-          {repeat(
-            columnKeys,
-            columnKey => columnKey.id,
-            columnKey => (
-              <IndexesKey
-                columnKey={columnKey}
-                selected={columnKey.id === selectedKey?.id}
-                onSelect={handleSelectKey}
-              />
-            )
-          )}
-          {columnKeys.length ? (
-            <Separator space={4} padding={TABLE_PADDING} />
-          ) : null}
-          <div class={styles.sectionLabel}>
-            <span>Indexes</span>
+            {repeat(
+              indexes,
+              index => index.id,
+              index => (
+                <IndexesIndex
+                  index={index}
+                  alternateKey={alternateKeyIds.indexOf(index.id) + 1}
+                  selected={index.id === selectedIndex?.id}
+                  readonly={readonly}
+                  onSelect={handleSelectIndex}
+                />
+              )
+            )}
+            {indexes.length ? null : (
+              <div class={styles.hint}>
+                {readonly ? 'No indexes' : 'No indexes yet'}
+              </div>
+            )}
+            {readonly ? null : (
+              <div
+                class={styles.addIndexButtonArea}
+                title="Add Index"
+                on:click={handleAddIndex}
+              >
+                <Icon class={styles.addIcon} size={12} name="plus" />
+                <span>Add Index</span>
+              </div>
+            )}
           </div>
-          {repeat(
-            indexes,
-            index => index.id,
-            index => (
-              <IndexesIndex
-                index={index}
-                alternateKey={alternateKeyIds.indexOf(index.id) + 1}
-                selected={index.id === selectedIndex?.id}
-                readonly={readonly}
-                onSelect={handleSelectIndex}
-              />
-            )
-          )}
-          {indexes.length ? null : (
-            <div class={styles.hint}>
-              {readonly ? 'No indexes' : 'No indexes yet'}
-            </div>
-          )}
-          {readonly ? null : (
-            <div
-              class={styles.addIndexButtonArea}
-              title="Add Index"
-              on:click={handleAddIndex}
-            >
-              <Icon class={styles.addIcon} size={12} name="plus" />
-              <span>Add Index</span>
-            </div>
-          )}
         </div>
         <div class={styles.rightArea}>
-          <div class={styles.sectionLabel}>
-            <span>Columns</span>
-            <span class={styles.sectionStatus}>
-              {status.locked ? <Icon size={12} name="lock" /> : null}
-              <span>{status.text}</span>
-            </span>
+          <div class={styles.columnsHead}>
+            <div class={styles.sectionLabel}>
+              <span>Columns</span>
+              <span class={styles.sectionStatus}>
+                {status.locked ? <Icon size={12} name="lock" /> : null}
+                <span>{status.text}</span>
+              </span>
+            </div>
           </div>
           {columnCount ? (
             <div class={['scrollbar', styles.columns]}>

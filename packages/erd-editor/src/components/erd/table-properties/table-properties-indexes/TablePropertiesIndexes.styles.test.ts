@@ -4,6 +4,7 @@ import * as styles from '@/components/erd/table-properties/table-properties-inde
 import {
   COLUMN_HEIGHT,
   COLUMN_UNIQUE_WIDTH,
+  INDEX_ORDER_MAX_ROWS,
   TABLE_PADDING,
   TABLE_PROPERTIES_BODY_PADDING,
 } from '@/constants/layout';
@@ -15,8 +16,10 @@ const staticText = (literals: { strings: TemplateStringsArray }) =>
 describe('TablePropertiesIndexes.styles', () => {
   it('exports the two panes, their labels and hints, the add row and the order', () => {
     expect(Object.keys(styles)).toEqual([
+      'leftTrack',
       'leftArea',
       'rightArea',
+      'columnsHead',
       'sectionLabel',
       'sectionStatus',
       'columns',
@@ -31,7 +34,7 @@ describe('TablePropertiesIndexes.styles', () => {
   });
 
   it('keeps the keys at 260px and gives the columns the rest', () => {
-    const left = staticText(styles.leftArea);
+    const left = staticText(styles.leftTrack);
     const right = staticText(styles.rightArea);
 
     expect(left).toContain('flex: 0 1 260px');
@@ -39,7 +42,7 @@ describe('TablePropertiesIndexes.styles', () => {
     expect(right).toContain('flex: 1 1 520px');
     expect(right).toContain('min-width: 0');
 
-    for (const text of [left, right]) {
+    for (const text of [left, staticText(styles.leftArea), right]) {
       expect(text).toContain('display: flex');
       expect(text).toContain('flex-direction: column');
       expect(text).not.toMatch(/width: \d+%/);
@@ -48,9 +51,57 @@ describe('TablePropertiesIndexes.styles', () => {
     }
   });
 
+  it('stretches the keys track as tall as its flex line, for the keys to stick in', () => {
+    const track = staticText(styles.leftTrack);
+
+    expect(track).toContain('align-self: stretch');
+    expect(track).not.toContain('position: sticky');
+    expect(styles.leftTrack.values).toEqual([]);
+  });
+
+  it('sticks the keys and indexes to the top of the body', () => {
+    const text = staticText(styles.leftArea);
+
+    expect(text).toContain('position: sticky');
+    expect(text).toMatch(/top: 0;/);
+  });
+
   it('sets both panes in the row size of the canvas table', () => {
     expect(styles.leftArea.values).toEqual([typography.paragraph]);
-    expect(styles.rightArea.values).toEqual([typography.paragraph]);
+    expect(styles.rightArea.values[0]).toBe(typography.paragraph);
+  });
+
+  it('sticks the Columns heading over the body padding, as the order sticks at the bottom', () => {
+    const text = staticText(styles.columnsHead);
+
+    expect(text).toContain('position: sticky');
+    expect(text).toMatch(/top: -\s+px;/);
+    expect(text).toContain('z-index: 1');
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).toMatch(/margin-top: -\s+px;\s+padding-top:\s+px;/);
+    expect(text).toContain('background-color: var(--context-menu-background)');
+    expect(styles.columnsHead.values).toEqual([
+      TABLE_PROPERTIES_BODY_PADDING,
+      TABLE_PROPERTIES_BODY_PADDING,
+      TABLE_PROPERTIES_BODY_PADDING,
+    ]);
+  });
+
+  it('scrolls a box the keyboard reaches clear of the stuck heading and the tallest order', () => {
+    const text = staticText(styles.rightArea);
+    const slack = (COLUMN_HEIGHT - 14) / 2;
+
+    expect(text).toMatch(
+      /& input\[type='checkbox'\] \{\s+scroll-margin:\s+px 0\s+px;\s+\}/
+    );
+    expect(styles.rightArea.values.slice(1)).toEqual([
+      TABLE_PROPERTIES_BODY_PADDING + COLUMN_HEIGHT + slack,
+      1 +
+        COLUMN_HEIGHT +
+        COLUMN_HEIGHT * INDEX_ORDER_MAX_ROWS +
+        TABLE_PROPERTIES_BODY_PADDING +
+        slack,
+    ]);
   });
 
   it('heads a group with a row tall label, its status at the right end', () => {

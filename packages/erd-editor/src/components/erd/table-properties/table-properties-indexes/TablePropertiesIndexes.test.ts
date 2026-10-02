@@ -86,21 +86,23 @@ const rowKindsOf = (pane: Element) =>
   Array.from(pane.children).map(row =>
     row.classList.contains(String(styles.sectionLabel))
       ? 'label'
-      : row.classList.contains(String(keyStyles.row))
-        ? 'key'
-        : row.classList.contains(String(indexStyles.row))
-          ? 'index'
-          : row.classList.contains(String(styles.addIndexButtonArea))
-            ? 'add'
-            : row.classList.contains(String(styles.hint))
-              ? 'hint'
-              : row.classList.contains(String(styles.order))
-                ? 'order'
-                : row.querySelector(`.${String(separatorStyles.separator)}`)
-                  ? 'separator'
-                  : row.classList.contains(String(styles.columns))
-                    ? 'columns'
-                    : 'other'
+      : row.classList.contains(String(styles.columnsHead))
+        ? 'head'
+        : row.classList.contains(String(keyStyles.row))
+          ? 'key'
+          : row.classList.contains(String(indexStyles.row))
+            ? 'index'
+            : row.classList.contains(String(styles.addIndexButtonArea))
+              ? 'add'
+              : row.classList.contains(String(styles.hint))
+                ? 'hint'
+                : row.classList.contains(String(styles.order))
+                  ? 'order'
+                  : row.querySelector(`.${String(separatorStyles.separator)}`)
+                    ? 'separator'
+                    : row.classList.contains(String(styles.columns))
+                      ? 'columns'
+                      : 'other'
   );
 
 const leftOf = (mounted: Mounted) =>
@@ -111,9 +113,12 @@ const rightOf = (mounted: Mounted) =>
     `.${String(styles.rightArea)}`
   ) as HTMLElement;
 
+/** A pane's group labels, the Columns one inside the heading that sticks it. */
 const labelsOf = (pane: Element) =>
   Array.from(
-    pane.querySelectorAll(`:scope > .${String(styles.sectionLabel)}`)
+    pane.querySelectorAll(
+      `:scope > .${String(styles.sectionLabel)}, :scope > .${String(styles.columnsHead)} > .${String(styles.sectionLabel)}`
+    )
   ).map(label => label.firstElementChild?.textContent ?? '');
 
 const hintsOf = (pane: Element) =>
@@ -124,7 +129,7 @@ const hintsOf = (pane: Element) =>
 /** What the Columns heading says, and whether it shows the lock. */
 const statusOf = (mounted: Mounted) => {
   const status = rightOf(mounted).querySelector(
-    `:scope > .${String(styles.sectionLabel)} .${String(styles.sectionStatus)}`
+    `:scope > .${String(styles.columnsHead)} > .${String(styles.sectionLabel)} .${String(styles.sectionStatus)}`
   ) as HTMLElement;
 
   return {
@@ -208,8 +213,30 @@ describe('TablePropertiesIndexes', () => {
       expect(rowKindsOf(leftOf(mounted))).toEqual(['label', 'hint', 'add']);
       expect(labelsOf(leftOf(mounted))).toEqual(['Indexes']);
       expect(hintsOf(leftOf(mounted))).toEqual(['No indexes yet']);
-      expect(rowKindsOf(rightOf(mounted))).toEqual(['label', 'columns']);
+      expect(rowKindsOf(rightOf(mounted))).toEqual(['head', 'columns']);
       expect(labelsOf(rightOf(mounted))).toEqual(['Columns']);
+    });
+
+    it('sets the keys and indexes in a track of their own, to stick in beside the columns', async () => {
+      mounted = await mountAndFlush(template(), app);
+      const track = mounted.container.querySelector(
+        `.${String(styles.leftTrack)}`
+      ) as HTMLElement;
+
+      expect(track.children).toHaveLength(1);
+      expect(track.firstElementChild).toBe(leftOf(mounted));
+      expect(track.nextElementSibling).toBe(rightOf(mounted));
+    });
+
+    it('heads the columns with the one label the heading sticks', async () => {
+      mounted = await mountAndFlush(template(), app);
+      const head = rightOf(mounted).firstElementChild as HTMLElement;
+
+      expect(head.classList.contains(String(styles.columnsHead))).toBe(true);
+      expect(head.children).toHaveLength(1);
+      expect(
+        head.firstElementChild?.classList.contains(String(styles.sectionLabel))
+      ).toBe(true);
     });
 
     it('scrolls the column list sideways in a wrapper of its own', async () => {
@@ -232,7 +259,7 @@ describe('TablePropertiesIndexes', () => {
       );
       mounted = await mountAndFlush(template('t3'), app);
 
-      expect(rowKindsOf(rightOf(mounted))).toEqual(['label', 'hint']);
+      expect(rowKindsOf(rightOf(mounted))).toEqual(['head', 'hint']);
       expect(hintsOf(rightOf(mounted))).toEqual(['This table has no columns']);
       expect(checkboxesOf(mounted)).toHaveLength(0);
     });
@@ -737,7 +764,7 @@ describe('TablePropertiesIndexes', () => {
 
       const order = orderOf(mounted) as HTMLElement;
       expect(rowKindsOf(rightOf(mounted))).toEqual([
-        'label',
+        'head',
         'columns',
         'order',
       ]);

@@ -4,6 +4,7 @@ import * as styles from '@/components/erd/table-properties/table-properties-inde
 import {
   COLUMN_HEIGHT,
   COLUMN_PADDING,
+  INDEX_ORDER_MAX_ROWS,
   INPUT_MARGIN_RIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
@@ -33,11 +34,13 @@ describe('IndexesColumn.styles', () => {
     expect(text).toContain('transition: transform 0.3s');
   });
 
-  it('shows five rows under its label and scrolls the rest', () => {
+  it('shows three rows under its label and scrolls the rest', () => {
     const text = staticText(styles.root);
 
     expect(text).not.toContain('padding-top');
-    expect(text).toContain('max-height: 120px');
+    expect(text).toMatch(/max-height:\s+px;/);
+    expect(styles.root.values).toEqual([COLUMN_HEIGHT * INDEX_ORDER_MAX_ROWS]);
+    expect(INDEX_ORDER_MAX_ROWS).toBe(3);
     expect(text).toContain('overflow-y: auto');
   });
 

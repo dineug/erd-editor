@@ -3,30 +3,77 @@ import { css } from '@dineug/r-html';
 import {
   COLUMN_HEIGHT,
   COLUMN_UNIQUE_WIDTH,
+  INDEX_ORDER_MAX_ROWS,
   TABLE_PADDING,
   TABLE_PROPERTIES_BODY_PADDING,
 } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
+/** What a column row keeps above and below its 14px checkbox. */
+const CHECKBOX_ROW_SLACK = (COLUMN_HEIGHT - 14) / 2;
+
+/** The stuck Columns heading, the body padding it reaches over included. */
+const COLUMNS_HEAD_HEIGHT = TABLE_PROPERTIES_BODY_PADDING + COLUMN_HEIGHT;
+
+/** The tallest stuck order: its rule, its label, its rows and the padding it reaches over. */
+const ORDER_MAX_HEIGHT =
+  1 +
+  COLUMN_HEIGHT * (1 + INDEX_ORDER_MAX_ROWS) +
+  TABLE_PROPERTIES_BODY_PADDING;
+
 /**
- * The keys and indexes, which keep their width and stand above the columns
- * once the dialog is too narrow for the two panes side by side.
+ * The room the keys and indexes stick in, which keeps their width. Side by
+ * side it stretches as tall as the columns, so they stay in sight while a
+ * long list scrolls; stacked above the columns it is only as tall as its rows.
  */
-export const leftArea = css`
+export const leftTrack = css`
   flex: 0 1 260px;
   min-width: 220px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+`;
+
+/* The keys and indexes, stuck to the top of the body for as long as their track lets them. */
+export const leftArea = css`
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   ${typography.paragraph};
 `;
 
-/* The columns, which take what the keys leave and scroll sideways past that. */
+/**
+ * The columns, which take what the keys leave and scroll sideways past that.
+ * A box the keyboard reaches scrolls clear of the stuck heading and order,
+ * which the browser would otherwise count as showing it.
+ */
 export const rightArea = css`
   flex: 1 1 520px;
   min-width: 0;
   display: flex;
   flex-direction: column;
   ${typography.paragraph};
+
+  & input[type='checkbox'] {
+    scroll-margin: ${COLUMNS_HEAD_HEIGHT + CHECKBOX_ROW_SLACK}px 0
+      ${ORDER_MAX_HEIGHT + CHECKBOX_ROW_SLACK}px;
+  }
+`;
+
+/**
+ * The Columns heading, stuck to the top of the body while the rows scroll
+ * under it. It reaches back over the body padding, as the order does at the
+ * bottom, so no row shows above it.
+ */
+export const columnsHead = css`
+  position: sticky;
+  top: -${TABLE_PROPERTIES_BODY_PADDING}px;
+  z-index: 1;
+  flex-shrink: 0;
+  margin-top: -${TABLE_PROPERTIES_BODY_PADDING}px;
+  padding-top: ${TABLE_PROPERTIES_BODY_PADDING}px;
+  background-color: var(--context-menu-background);
 `;
 
 /* A group's name over its rows, a row tall, and what the group shows at its right end. */

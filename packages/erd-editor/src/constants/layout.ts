@@ -160,6 +160,9 @@ export const TOOLBAR_HEIGHT = 30;
  */
 export const TABLE_PROPERTIES_BODY_PADDING = 12;
 
+/** How many rows the Table Properties index order shows before it scrolls the rest. */
+export const INDEX_ORDER_MAX_ROWS = 3;
+
 export const DIFF_TREE_WIDTH = 200;
 
 /**

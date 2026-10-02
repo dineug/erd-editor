@@ -3,14 +3,15 @@ import { css } from '@dineug/r-html';
 import {
   COLUMN_HEIGHT,
   COLUMN_PADDING,
+  INDEX_ORDER_MAX_ROWS,
   INPUT_MARGIN_RIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
-/* Five rows, then the rest scrolls, so the order never pushes the columns out of sight. */
+/* Three rows, then the rest scrolls, so a stuck order leaves a low body most of its columns. */
 export const root = css`
-  max-height: 120px;
+  max-height: ${COLUMN_HEIGHT * INDEX_ORDER_MAX_ROWS}px;
   overflow-y: auto;
 
   .index-column-order-move {
