@@ -1,7 +1,7 @@
 import {
+  isAlterTableAdd,
   isAlterTableAddForeignKey,
   isAlterTableAddPrimaryKey,
-  isAlterTableAddUnique,
   isCommentOnColumn,
   isCommentOnTable,
   isCreateIndex,
@@ -31,7 +31,7 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
   const createIndex = isCreateIndex(tokens);
   const alterTableAddPrimaryKey = isAlterTableAddPrimaryKey(tokens);
   const alterTableAddForeignKey = isAlterTableAddForeignKey(tokens);
-  const alterTableAddUnique = isAlterTableAddUnique(tokens);
+  const alterTableAdd = isAlterTableAdd(tokens);
   const commentOnTable = isCommentOnTable(tokens);
   const commentOnColumn = isCommentOnColumn(tokens);
 
@@ -46,18 +46,21 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
       continue;
     }
 
-    if (alterTableAddPrimaryKey($pos.value)) {
-      ast.push(alterTableAddPrimaryKeyParser(tokens, $pos));
-      continue;
-    }
+    // One ALTER TABLE can add several keys: phpMyAdmin adds a table's primary
+    // key and all its unique keys in one. The unique keys are read out of the
+    // same tokens again, whatever the first clause.
+    if (alterTableAdd($pos.value)) {
+      const start = $pos.value;
 
-    if (alterTableAddForeignKey($pos.value)) {
-      ast.push(alterTableAddForeignKeyParser(tokens, $pos));
-      continue;
-    }
+      if (alterTableAddPrimaryKey(start)) {
+        ast.push(alterTableAddPrimaryKeyParser(tokens, $pos));
+      } else if (alterTableAddForeignKey(start)) {
+        ast.push(alterTableAddForeignKeyParser(tokens, $pos));
+      }
 
-    if (alterTableAddUnique($pos.value)) {
-      ast.push(alterTableAddUniqueParser(tokens, $pos));
+      const $unique: RefPos = { value: start };
+      ast.push(...alterTableAddUniqueParser(tokens, $unique));
+      $pos.value = Math.max($pos.value, $unique.value);
       continue;
     }
 

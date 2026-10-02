@@ -979,12 +979,299 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
-  it('applies an anonymous UNIQUE constraint over several columns', () => {
+  it('records an anonymous UNIQUE over several columns as one unique index', () => {
     const { ast } = parse('CREATE TABLE t (a INT, b INT, UNIQUE (a, b));');
 
     expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes).toEqual([
+      {
+        name: '',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'b', sort: SortType.asc },
+        ],
+      },
+    ]);
+  });
+
+  it('records every spelling of a composite UNIQUE as one unique index', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT, b INT, c INT, d INT,\n' +
+        ' UNIQUE KEY uq_ab (a, b DESC),\n' +
+        ' UNIQUE INDEX uq_bc (b, c),\n' +
+        ' CONSTRAINT uq_cd UNIQUE (c, d),\n' +
+        ' CONSTRAINT sym UNIQUE KEY uq_ad (a, d),\n' +
+        ' CONSTRAINT uq_bd UNIQUE KEY (b, d),\n' +
+        ' UNIQUE KEY (a, c)\n' +
+        ');'
+    );
+
+    expect(ast.columns.every(column => !column.unique)).toBe(true);
+    expect(
+      ast.indexes.map(({ name, unique, columns }) => [
+        name,
+        unique,
+        columns.map(({ name, sort }) => `${name} ${sort}`).join(', '),
+      ])
+    ).toEqual([
+      ['uq_ab', true, 'a ASC, b DESC'],
+      ['uq_bc', true, 'b ASC, c ASC'],
+      ['uq_cd', true, 'c ASC, d ASC'],
+      ['uq_ad', true, 'a ASC, d ASC'],
+      ['uq_bd', true, 'b ASC, d ASC'],
+      ['', true, 'a ASC, c ASC'],
+    ]);
+  });
+
+  it('keeps a CONSTRAINT name to the item it opens', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a INT, b INT, CONSTRAINT pk PRIMARY KEY (a), UNIQUE (a, b));'
+    );
+
+    expect(ast.indexes).toEqual([
+      {
+        name: '',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'b', sort: SortType.asc },
+        ],
+      },
+    ]);
+  });
+
+  it('reads no key modifier as the name of a composite UNIQUE', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT, b INT,\n' +
+        ' CONSTRAINT uq_mssql UNIQUE NONCLUSTERED (a, b),\n' +
+        ' CONSTRAINT uq_pg UNIQUE NULLS NOT DISTINCT (a, b),\n' +
+        ' UNIQUE NULLS DISTINCT (b, a),\n' +
+        ' UNIQUE KEY uq_hash USING HASH (a, b),\n' +
+        ' UNIQUE KEY USING BTREE (b, a),\n' +
+        ' UNIQUE CLUSTERED (a)\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
       column({ name: 'a', dataType: 'INT', unique: true }),
-      column({ name: 'b', dataType: 'INT', unique: true }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+    expect(ast.indexes.map(index => index.name)).toEqual([
+      'uq_mssql',
+      'uq_pg',
+      '',
+      'uq_hash',
+      '',
+    ]);
+  });
+
+  it('names a SQL Server inline INDEX n UNIQUE by its index name', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT, b INT,\n' +
+        ' INDEX ix_ab UNIQUE NONCLUSTERED (a, b DESC),\n' +
+        ' INDEX [ix_ba] UNIQUE (b, a),\n' +
+        ' INDEX ix_a UNIQUE CLUSTERED (a),\n' +
+        ' UNIQUE (b, a)\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', unique: true }),
+      column({ name: 'b', dataType: 'INT' }),
+    ]);
+    expect(
+      ast.indexes.map(({ name, unique, columns }) => [
+        name,
+        unique,
+        columns.map(({ name, sort }) => `${name} ${sort}`).join(', '),
+      ])
+    ).toEqual([
+      ['ix_ab', true, 'a ASC, b DESC'],
+      ['ix_ba', true, 'b ASC, a ASC'],
+      ['', true, 'b ASC, a ASC'],
+    ]);
+  });
+
+  it('reads a filtered SQL Server INDEX n UNIQUE as a plain index unless its WHERE drops only NULL keys', () => {
+    const { ast, tokens, $pos } = parse(
+      'CREATE TABLE [dbo].[t] (\n' +
+        ' [a] INT, [b] INT, [c] INT, [d] INT,\n' +
+        ' INDEX [uq_ab] UNIQUE NONCLUSTERED ([a], [b]) WHERE ([a] IS NOT NULL AND ([b] IS NOT NULL)),\n' +
+        ' INDEX [ix_bc] UNIQUE ([b], [c] DESC) INCLUDE ([d]) WHERE ([d] > 0) WITH (PAD_INDEX = OFF),\n' +
+        ' INDEX [uq_c] UNIQUE ([c]) WHERE [c] IS NOT NULL,\n' +
+        ' INDEX [ix_d] UNIQUE ([d]) WHERE [d] IS NOT NULL OR [a] = 1 ON [PRIMARY],\n' +
+        ' INDEX [ix_x] UNIQUE ((LOWER([a]))) WHERE [a] > 0,\n' +
+        ' [e] INT,\n' +
+        ' INDEX [ix_e] UNIQUE CLUSTERED ([e]) WHERE ([e] IS NOT NULL AND [a] > 0)\n' +
+        ');\nCREATE TABLE z (i INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'b', dataType: 'INT' }),
+      column({ name: 'c', dataType: 'INT', unique: true }),
+      column({ name: 'd', dataType: 'INT' }),
+      column({ name: 'e', dataType: 'INT' }),
+    ]);
+    expect(
+      ast.indexes.map(({ name, unique, columns }) => [
+        name,
+        unique,
+        columns.map(({ name, sort }) => `${name} ${sort}`).join(', '),
+      ])
+    ).toEqual([
+      ['uq_ab', true, 'a ASC, b ASC'],
+      ['ix_bc', false, 'b ASC, c DESC'],
+      ['ix_d', false, 'd ASC'],
+      ['ix_e', false, 'e ASC'],
+    ]);
+    expect(ast.keys).toEqual([{ name: 'uq_c', columnNames: ['c'] }]);
+    expect(tokens[$pos.value].value).toBe('CREATE');
+  });
+
+  it('looks for the filter of a unique key no further than its statement', () => {
+    const open = parse(
+      'CREATE TABLE t (a INT, b INT, UNIQUE (a, b);\n' +
+        'CREATE UNIQUE INDEX uq ON t (a) WHERE a > 0;'
+    ).ast;
+    const cut = parse('CREATE TABLE t (a INT, b INT, UNIQUE (a, b)').ast;
+
+    expect(open.indexes[0]).toMatchObject({ name: '', unique: true });
+    expect(cut.indexes[0]).toMatchObject({ name: '', unique: true });
+  });
+
+  it('reports the name of each primary key and one-column unique key it names', () => {
+    const { ast } = parse(
+      'CREATE TABLE "HR"."T" (\n' +
+        ' "ID" NUMBER CONSTRAINT "T_NN" NOT NULL ENABLE,\n' +
+        ' "A" NUMBER, "B" NUMBER,\n' +
+        ' "C" NUMBER CONSTRAINT "T_C_UK" UNIQUE USING INDEX TABLESPACE "USERS",\n' +
+        ' "D" NUMBER CONSTRAINT "T_D_NN" NOT NULL UNIQUE,\n' +
+        ' "E" NUMBER UNIQUE,\n' +
+        ' CONSTRAINT "T_PK" PRIMARY KEY ("ID", "A") USING INDEX ENABLE,\n' +
+        ' CONSTRAINT "T_B_UK" UNIQUE ("B"),\n' +
+        ' CONSTRAINT "T_AB_UK" UNIQUE ("A", "B"),\n' +
+        ' UNIQUE KEY "T_E_IX" ("E"), INDEX "T_D_IX" UNIQUE ("D")\n' +
+        ');\n'
+    );
+
+    expect(ast.keys).toEqual([
+      { name: 'T_C_UK', columnNames: ['C'] },
+      { name: 'T_PK', columnNames: ['ID', 'A'] },
+      { name: 'T_B_UK', columnNames: ['B'] },
+      { name: 'T_E_IX', columnNames: ['E'] },
+      { name: 'T_D_IX', columnNames: ['D'] },
+    ]);
+    expect(
+      parse(
+        'CREATE TABLE t (id INT CONSTRAINT nn NOT NULL PRIMARY KEY, a INT);\n'
+      ).ast.keys
+    ).toEqual([]);
+    expect(
+      parse('CREATE TABLE t (id INT CONSTRAINT pk_t PRIMARY KEY, a INT);\n').ast
+        .keys
+    ).toEqual([{ name: 'pk_t', columnNames: ['id'] }]);
+  });
+
+  it("reports a key with no name, composite or not, only where Oracle's USING INDEX follows it", () => {
+    const { ast } = parse(
+      'CREATE TABLE "HR"."T" (\n' +
+        ' "ID" NUMBER, "A" NUMBER, "B" NUMBER,\n' +
+        ' "E" NUMBER UNIQUE USING INDEX ENABLE,\n' +
+        ' "F" NUMBER UNIQUE, "G" NUMBER,\n' +
+        ' PRIMARY KEY ("ID") USING INDEX PCTFREE 10 ENABLE,\n' +
+        ' UNIQUE ("A", "B") USING INDEX ENABLE,\n' +
+        ' UNIQUE ("B", "G") ENABLE,\n' +
+        ' UNIQUE ("G") ENABLE, CHECK ("A" > 0) USING INDEX\n' +
+        ');\n'
+    );
+
+    expect(ast.keys).toEqual([
+      { name: '', columnNames: ['E'] },
+      { name: '', columnNames: ['ID'] },
+      { name: '', columnNames: ['A', 'B'] },
+    ]);
+    expect(ast.indexes.map(({ columns }) => columns.length)).toEqual([2, 2]);
+  });
+
+  it("reports no key with no name that PostgreSQL's USING INDEX TABLESPACE follows", () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' id int PRIMARY KEY USING INDEX TABLESPACE fast,\n' +
+        ' a int, b int, e text UNIQUE USING INDEX TABLESPACE fast,\n' +
+        ' UNIQUE (a, b) INCLUDE (e) WITH (fillfactor = 70) USING INDEX TABLESPACE fast\n' +
+        ');\n'
+    );
+
+    expect(ast.keys).toEqual([]);
+    expect(ast.indexes).toEqual([
+      {
+        name: '',
+        unique: true,
+        columns: [
+          { name: 'a', sort: SortType.asc },
+          { name: 'b', sort: SortType.asc },
+        ],
+      },
+    ]);
+    expect(
+      parse(
+        'CREATE TABLE t (a int, b int, PRIMARY KEY (a, b) USING INDEX TABLESPACE fast);\n'
+      ).ast.keys
+    ).toEqual([]);
+  });
+
+  it('reads a primary key part by its first word', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a TEXT, b INT,\n' +
+        ' CONSTRAINT pk_t PRIMARY KEY CLUSTERED (a(10) ASC, b DESC),\n' +
+        ' c INT\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'TEXT', primaryKey: true }),
+      column({ name: 'b', dataType: 'INT', primaryKey: true }),
+      column({ name: 'c', dataType: 'INT' }),
+    ]);
+    expect(ast.keys).toEqual([{ name: 'pk_t', columnNames: ['a', 'b'] }]);
+  });
+
+  it('reads no key list after a column level UNIQUE', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a NUMBER UNIQUE USING INDEX (CREATE UNIQUE INDEX ix ON t (a)),\n' +
+        ' b NUMBER CONSTRAINT uq_b UNIQUE USING INDEX TABLESPACE users,\n' +
+        ' c NUMBER UNIQUE KEY,\n' +
+        ' t NUMBER\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'NUMBER', unique: true }),
+      column({ name: 'b', dataType: 'NUMBER', unique: true }),
+      column({ name: 'c', dataType: 'NUMBER', unique: true }),
+      column({ name: 't', dataType: 'NUMBER' }),
+    ]);
+    expect(ast.indexes).toEqual([]);
+  });
+
+  it('keeps a column level UNIQUE NULLS NOT DISTINCT on its column', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (a INT UNIQUE NULLS NOT DISTINCT NOT NULL, b INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', unique: true, nullable: false }),
+      column({ name: 'b', dataType: 'INT' }),
     ]);
   });
 
@@ -1010,12 +1297,15 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
-  it('swallows the following keyword when CONSTRAINT has no name', () => {
+  it('reads the key after a CONSTRAINT that has no name', () => {
     const { ast } = parse(
-      'CREATE TABLE t (a INT, CONSTRAINT PRIMARY KEY (a));'
+      'CREATE TABLE t (a INT, b INT, CONSTRAINT PRIMARY KEY (a), CONSTRAINT UNIQUE (b));'
     );
 
-    expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT', primaryKey: true }),
+      column({ name: 'b', dataType: 'INT', unique: true }),
+    ]);
   });
 
   it('parses INDEX and KEY definitions with sort directions', () => {

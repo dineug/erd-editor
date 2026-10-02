@@ -253,6 +253,63 @@ describe('schema-sql/index', () => {
       );
     });
 
+    it('writes the constraint of a unique column after the table', () => {
+      const { state, posts } = createFixture();
+      state.collections.tableColumnEntities['col-title'].options |=
+        ColumnOption.unique;
+
+      expect(createSchemaSQLTable(state, posts).split('\n')).toEqual([
+        '',
+        'CREATE TABLE posts',
+        '(',
+        '  title   VARCHAR(20) NOT NULL,',
+        '  user_id INT         NULL    ',
+        ');',
+        '',
+        'ALTER TABLE posts',
+        '  ADD CONSTRAINT UQ_posts_title UNIQUE (title);',
+        '',
+        'CREATE INDEX IDX_posts',
+        '  ON posts (title ASC);',
+        '',
+      ]);
+    });
+
+    it.each([
+      Database.MySQL,
+      Database.MariaDB,
+      Database.MSSQL,
+      Database.Oracle,
+      Database.Databricks,
+      Database.PostgreSQL,
+      Database.SQLite,
+      Database.Snowflake,
+    ])(
+      'carries the uniqueness the whole %s export writes for the table',
+      database => {
+        const { state, posts } = createFixture();
+        state.collections.tableColumnEntities['col-title'].options |=
+          ColumnOption.unique;
+        state.settings.database = database;
+        // The lines that declare title unique, whether a statement of their
+        // own, a comment or an inline UNIQUE on the column.
+        const uniqueLines = (sql: string) => {
+          const lines = sql.split('\n');
+          return lines
+            .map((line, index) =>
+              /UQ_posts_title|UNIQUE constraints|^ {2}title .*UNIQUE/.test(line)
+                ? [lines[index - 1], line]
+                : null
+            )
+            .filter(pair => pair !== null);
+        };
+        const table = uniqueLines(createSchemaSQLTable(state, posts));
+
+        expect(table).toHaveLength(1);
+        expect(table).toEqual(uniqueLines(createSchemaSQL(state, database)));
+      }
+    );
+
     it('returns only the leading empty buffer entry for an unsupported database', () => {
       const { state, posts } = createFixture();
       state.settings.database = 0;

@@ -2,6 +2,7 @@ import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  COLUMN_ALTERNATE_KEY_CHAR_WIDTH,
   COLUMN_HEIGHT,
   COLUMN_KEY_WIDTH,
   INPUT_MARGIN_RIGHT,
@@ -29,6 +30,7 @@ import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { getVisibleColumnIds } from '@/konva/scene/viewLayout';
 import {
+  calcAlternateKeyWidth,
   calcTableHeight,
   calcTableWidths,
   calcViewTableWidths,
@@ -36,6 +38,8 @@ import {
   recalculateTableWidth,
   viewHeaderNameWidth,
 } from '@/utils/calcTable';
+import { createIndex } from '@/utils/collection/index.entity';
+import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
@@ -80,6 +84,7 @@ describe('calcTableWidths', () => {
     // 12 + 8 + 60 + 8 + 28 = 116 -> 1 + 8 + 116 + 8 + 1
     expect(calcTableWidths(table, state)).toEqual({
       width: 134,
+      alternateKey: 0,
       name: 0,
       comment: 0,
       dataType: 0,
@@ -175,6 +180,7 @@ describe('calcTableWidths', () => {
 
     expect(calcTableWidths(table, state)).toEqual({
       width: 568,
+      alternateKey: 0,
       name: 80,
       comment: 120,
       dataType: 90,
@@ -205,6 +211,7 @@ describe('calcTableWidths', () => {
 
     expect(calcTableWidths(table, state)).toEqual({
       width: 236,
+      alternateKey: 0,
       name: 80,
       comment: 0,
       dataType: 90,
@@ -250,6 +257,7 @@ describe('calcTableWidths', () => {
 
     expect(calcTableWidths(table, state)).toEqual({
       width: 214,
+      alternateKey: 0,
       name: 0,
       comment: 0,
       dataType: 0,
@@ -279,6 +287,7 @@ describe('calcTableWidths', () => {
     // 12 + 8 + 12 + (200 + 8) = 240 -> 1 + 8 + 240 + 8 + 1
     expect(calcTableWidths(table, state)).toEqual({
       width: 258,
+      alternateKey: 0,
       name: 200,
       comment: 0,
       dataType: 0,
@@ -446,6 +455,7 @@ describe('calcViewTableWidths', () => {
 
     expect(viewWidths(table, state)).toEqual({
       width: CHROME + rowWidth(80, 90),
+      alternateKey: 0,
       name: 80,
       comment: 0,
       dataType: 90,
@@ -530,6 +540,7 @@ describe('calcViewTableWidths', () => {
     expect(headerWidth(40)).toBe(105);
     expect(viewWidths(table, state)).toEqual({
       width: VIEW_TABLE_MIN_WIDTH,
+      alternateKey: 0,
       name: 0,
       comment: 0,
       dataType: 0,
@@ -647,6 +658,109 @@ describe('recalculateTableWidth', () => {
 
     expect(() => recalculateTableWidth(state, context)).not.toThrow();
     expect(table.ui.widthName).toBe(150);
+  });
+});
+
+describe('calcAlternateKeyWidth', () => {
+  /** A table of three columns and a unique index over each list of columns named. */
+  function keyed(show: number, ...keyColumnIds: string[][]) {
+    const columns = ['a', 'b', 'c'].map(id =>
+      createColumn({
+        id,
+        tableId: 'table-1',
+        name: id,
+        ui: { widthName: 200 },
+      })
+    );
+    const table = createTable({
+      id: 'table-1',
+      columnIds: columns.map(column => column.id),
+    });
+    const state = createState({ show, tables: [table], columns });
+
+    keyColumnIds.forEach((columnIds, keyIndex) => {
+      const index = createIndex({
+        id: `index-${keyIndex}`,
+        tableId: table.id,
+        unique: true,
+      });
+
+      for (const columnId of columnIds) {
+        const indexColumn = createIndexColumn({
+          id: `${index.id}-${columnId}`,
+          indexId: index.id,
+          columnId,
+        });
+        index.indexColumnIds.push(indexColumn.id);
+        state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
+      }
+
+      state.collections.indexEntities[index.id] = index;
+      state.doc.indexIds.push(index.id);
+    });
+
+    return { table, state };
+  }
+
+  const markWidth = (mark: string) =>
+    Math.ceil(mark.length * COLUMN_ALTERNATE_KEY_CHAR_WIDTH);
+
+  it('is the longest mark of the table while the marks are shown', () => {
+    const { table, state } = keyed(
+      Show.columnAlternateKey,
+      ['a', 'b'],
+      ['b', 'c']
+    );
+
+    expect(calcAlternateKeyWidth(table, state)).toBe(markWidth('AK1.2,AK2.1'));
+  });
+
+  it('is nothing while the marks are hidden or the table has none', () => {
+    expect(
+      calcAlternateKeyWidth(
+        ...(Object.values(keyed(0, ['a', 'b'])) as [Table, RootState])
+      )
+    ).toBe(0);
+
+    const { table, state } = keyed(Show.columnAlternateKey);
+    expect(calcAlternateKeyWidth(table, state)).toBe(0);
+  });
+
+  it('is nothing for a unique index over one column, which keys no alternate key', () => {
+    const { table, state } = keyed(Show.columnAlternateKey, ['a'], ['c']);
+
+    expect(calcAlternateKeyWidth(table, state)).toBe(0);
+  });
+
+  it('widens only a table that shows a mark, by the mark and its margin', () => {
+    const shown = keyed(Show.columnAlternateKey, ['a', 'b']);
+    const hidden = keyed(0, ['a', 'b']);
+    const widths = calcTableWidths(shown.table, shown.state);
+
+    expect(widths.alternateKey).toBe(markWidth('AK1.1'));
+    expect(widths.width).toBe(
+      calcTableWidths(hidden.table, hidden.state).width +
+        markWidth('AK1.1') +
+        INPUT_MARGIN_RIGHT
+    );
+  });
+
+  it('keeps the room when the default columns set the width', () => {
+    const { table, state } = keyed(Show.columnAlternateKey, ['a', 'b']);
+    for (const id of table.columnIds) {
+      state.collections.tableColumnEntities[id].ui.widthName = 0;
+    }
+    state.settings.show |= Show.columnNotNull | Show.columnUnique;
+    const hidden = keyed(Show.columnNotNull | Show.columnUnique, ['a', 'b']);
+    for (const id of hidden.table.columnIds) {
+      hidden.state.collections.tableColumnEntities[id].ui.widthName = 0;
+    }
+
+    expect(calcTableWidths(table, state).width).toBe(
+      calcTableWidths(hidden.table, hidden.state).width +
+        markWidth('AK1.1') +
+        INPUT_MARGIN_RIGHT
+    );
   });
 });
 

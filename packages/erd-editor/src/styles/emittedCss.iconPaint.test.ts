@@ -124,9 +124,10 @@ describe('icon paint', () => {
 /** A sentinel per token, so the assertions read the cascade rather than the active theme. */
 const FOREGROUND = 'rgb(1, 2, 3)';
 const ACTIVE = 'rgb(4, 5, 6)';
+const PLACEHOLDER = 'rgb(7, 8, 9)';
 
 type IconPlacement = {
-  /** The row that goes color: transparent at rest and --foreground on hover. */
+  /** The row that goes --placeholder at rest and --foreground on hover. */
   row: string;
   /** The class carrying the --active hover rule, on the .icon itself. */
   button: string;
@@ -162,6 +163,7 @@ function iconColors({ row, button }: IconPlacement) {
     const themed = document.createElement('div');
     themed.style.setProperty('--foreground', FOREGROUND);
     themed.style.setProperty('--active', ACTIVE);
+    themed.style.setProperty('--placeholder', PLACEHOLDER);
     const rowElement = document.createElement('div');
     rowElement.className = row;
     const icon = document.createElement('div');
@@ -183,7 +185,7 @@ function iconColors({ row, button }: IconPlacement) {
   };
 }
 
-describe('hide-until-hover', () => {
+describe('dim-until-hover', () => {
   const placements: Array<[string, () => Promise<IconPlacement>]> = [
     [
       'index row',
@@ -199,12 +201,12 @@ describe('hide-until-hover', () => {
   ];
 
   for (const [name, placement] of placements) {
-    it(`hides the ${name} icon until the pointer arrives`, async () => {
-      // Behaviour, not rule text. color: transparent on the row is what hides the glyph, because
-      // its stroke="currentColor" resolves from whatever colour reaches it — and nothing in
-      // either rule names the element being painted.
+    it(`dims the ${name} icon until the pointer arrives, never hiding it`, async () => {
+      // Behaviour, not rule text. The row's colour is what paints the glyph, because its
+      // stroke="currentColor" resolves from whatever colour reaches it, and nothing in either
+      // rule names the element being painted. It stays in sight, where a key row has its lock.
       expect(iconColors(await placement())).toEqual({
-        rest: 'transparent',
+        rest: PLACEHOLDER,
         rowHover: FOREGROUND,
         iconHover: ACTIVE,
       });

@@ -83,6 +83,7 @@ describe('public entry surface', () => {
           },
         ],
         indexes: [],
+        keys: [],
         foreignKeys: [],
       },
     ]);

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/table-properties/TableProperties.styles';
+import {
+  TABLE_PROPERTIES_BODY_PADDING,
+  TOOLBAR_HEIGHT,
+} from '@/constants/layout';
+import { typography } from '@/styles/typography.styles';
 
 const staticText = (literals: { strings: TemplateStringsArray }) =>
   [...literals.strings].join(' ');
@@ -10,9 +15,14 @@ describe('TableProperties.styles', () => {
     expect(Object.keys(styles)).toEqual([
       'root',
       'container',
-      'scrollbarArea',
       'header',
-      'tab',
+      'title',
+      'readonlyBadge',
+      'edgeShade',
+      'tables',
+      'tableChip',
+      'close',
+      'scrollbarArea',
       'scope',
     ]);
 
@@ -36,18 +46,28 @@ describe('TableProperties.styles', () => {
     expect(text).toContain('width: 100%');
     expect(text).toContain('height: 100%');
     expect(text).toContain('display: flex');
-    expect(text).toContain('align-items: center');
     expect(text).toContain('justify-content: center');
     expect(text).toContain('&::after');
     expect(text).toContain('background-color: rgba(0, 0, 0, 0.4)');
   });
 
-  it('builds the dialog container as a bounded scrollable card', () => {
+  it('hangs the dialog from the palette line, 60px under the editor top', () => {
+    const text = staticText(styles.root);
+
+    expect(text).toContain('align-items: flex-start');
+    expect(text).not.toContain('align-items: center');
+    expect(text).toMatch(/padding:\s+px 16px 16px/);
+    expect(styles.root.values).toEqual([60 - TOOLBAR_HEIGHT]);
+  });
+
+  it('gives all three tabs one fixed box the host can only shorten', () => {
     const text = staticText(styles.container);
 
     expect(text).toContain('flex-direction: column');
-    expect(text).toContain('max-width: 900px');
-    expect(text).toContain('max-height: calc(100% - 32px)');
+    expect(text).toContain('max-width: 1040px');
+    expect(text).toContain('height: 600px');
+    expect(text).toContain('max-height: 100%');
+    expect(text).not.toContain('calc(100% - 32px)');
     expect(text).toContain('position: relative');
     expect(text).toContain('z-index: 1');
     expect(text).toContain('overflow: hidden');
@@ -55,42 +75,164 @@ describe('TableProperties.styles', () => {
     expect(text).toContain('var(--context-menu-border)');
   });
 
-  it('lets the body area scroll vertically and the header horizontally', () => {
-    expect(staticText(styles.scrollbarArea)).toContain('overflow: auto');
-    expect(staticText(styles.scrollbarArea)).toContain(
-      'padding: 0 12px 12px 12px'
-    );
-    expect(staticText(styles.header)).toContain('overflow-x: auto');
-    expect(staticText(styles.header)).toContain('min-height: 32px');
+  it('sets no font size on the container or the body, which the code tabs keep their own', () => {
+    for (const token of [styles.container, styles.scrollbarArea]) {
+      expect(staticText(token)).not.toContain('font-size');
+      expect(token.values).not.toContain(typography.normal);
+      expect(token.values).not.toContain(typography.paragraph);
+    }
   });
 
-  it('carries the selected/hover states the table tab toggles', () => {
-    const text = staticText(styles.tab);
+  it('rules the header off at 48px with the title, the chips and the close button in a row', () => {
+    const header = staticText(styles.header);
 
-    expect(text).toContain('&:hover');
-    expect(text).toContain('&.selected');
+    expect(header).toContain('display: flex');
+    expect(header).toContain('align-items: center');
+    expect(header).toContain('gap: 12px');
+    expect(header).toContain('height: 48px');
+    expect(header).toContain('flex-shrink: 0');
+    expect(header).toContain('padding: 0 12px');
+    expect(header).toContain(
+      'border-bottom: 1px solid var(--context-menu-border)'
+    );
+
+    const title = staticText(styles.title);
+    expect(title).toContain('color: var(--active)');
+    expect(title).toContain('white-space: nowrap');
+    expect(title).toContain('flex-shrink: 0');
+
+    const tables = staticText(styles.tables);
+    expect(tables).toContain('flex: 1 1 0');
+    expect(tables).toContain('min-width: 0');
+    expect(tables).toContain('gap: 4px');
+    expect(tables).toContain('overflow-x: auto');
+  });
+
+  it('shades an edge of the chip row only where more chips lie past it', () => {
+    expect(styles.tables.values).toEqual([styles.edgeShade]);
+  });
+
+  it('draws the edge shade as two covers riding the content over two shades in the panel tokens', () => {
+    const text = staticText(styles.edgeShade);
+
+    expect(text).toMatch(
+      /background-image:\s+linear-gradient\(to right, var\(--context-menu-background\) 50%, transparent\),\s+linear-gradient\(to left, var\(--context-menu-background\) 50%, transparent\),\s+linear-gradient\(to right, var\(--context-menu-border\), transparent\),\s+linear-gradient\(to left, var\(--context-menu-border\), transparent\);/
+    );
+    expect(text).toMatch(
+      /background-size:\s+24px 100%,\s+24px 100%,\s+12px 100%,\s+12px 100%;/
+    );
+    expect(text).toContain('background-repeat: no-repeat');
+    expect(text).toContain(
+      'background-attachment: local, local, scroll, scroll'
+    );
+    expect(styles.edgeShade.values).toEqual([]);
+  });
+
+  it('leaves no trace of the shade at an edge with nothing past it', () => {
+    const text = staticText(styles.edgeShade);
+
+    // Solid for 12 of its 24px, a cover hides the whole 12px shade under it.
+    expect(text).not.toContain(') 30%,');
+    // On a fractional offset the covers, painted with the scrolled content,
+    // snap apart from the shades by a pixel row; the content box clips both.
+    expect(text).toContain('background-clip: content-box');
+  });
+
+  it('draws the read only badge as a quiet bordered label that never shrinks', () => {
+    const text = staticText(styles.readonlyBadge);
+
+    expect(text).toContain('display: inline-flex');
+    expect(text).toContain('align-items: center');
+    expect(text).toContain('gap: 4px');
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).toContain('height: 20px');
+    expect(text).toContain('padding: 0 6px');
+    expect(text).toContain('border: 1px solid var(--context-menu-border)');
+    expect(text).toContain('border-radius: 3px');
+    expect(text).toContain('color: var(--foreground)');
+    expect(text).toContain('white-space: nowrap');
+    expect(styles.readonlyBadge.values).toEqual([typography.paragraph]);
+  });
+
+  it('draws a table as a pill in the accent steps 3, 8 and 11 once picked', () => {
+    const text = staticText(styles.tableChip);
+
+    expect(text).toContain('display: inline-flex');
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).toContain('max-width: 160px');
+    expect(text).toContain('height: 22px');
+    expect(text).toContain('padding: 0 8px');
+    expect(text).toContain('border: 1px solid var(--context-menu-border)');
+    expect(text).toContain('border-radius: 9999px');
+    expect(text).toContain('color: var(--foreground)');
+    expect(text).toContain('cursor: pointer');
+    expect(text).toMatch(/&:hover \{\s*color: var\(--active\);\s*\}/);
+    expect(text).toMatch(
+      /&\.selected \{\s*color: var\(--accent-color-11\);\s*border-color: var\(--accent-color-8\);\s*background-color: var\(--accent-color-3\);\s*\}/
+    );
     expect(text).toContain('& > span');
     expect(text).toContain('text-overflow: ellipsis');
     expect(text).toContain('white-space: nowrap');
-    expect(text).toContain('var(--context-menu-select)');
-    expect(text).toContain('var(--active)');
   });
 
-  it('hovers a table tab on gray-3, under the selected tab rather than over it', () => {
-    const text = staticText(styles.tab);
+  it('draws the close button as a 26px square tool tinted under the pointer', () => {
+    const text = staticText(styles.close);
+
+    expect(text).toContain('width: 26px');
+    expect(text).toContain('height: 26px');
+    expect(text).toContain('border-radius: 4px');
+    expect(text).toContain('color: var(--foreground)');
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).toContain('cursor: pointer');
+    expect(text).toMatch(
+      /&:hover \{\s*color: var\(--active\);\s*background-color: var\(--context-menu-hover\);\s*\}/
+    );
+  });
+
+  it('rings the close button in the input colour only when the keyboard reached it', () => {
+    const text = staticText(styles.close);
 
     expect(text).toMatch(
-      /&:hover \{\s*background-color: var\(--gray-color-3\);/
+      /&:focus-visible \{\s*outline: 2px solid var\(--input-active\);\s*outline-offset: 1px;\s*\}/
     );
-    expect(text).not.toContain('var(--context-menu-hover)');
+    expect(text).not.toContain('var(--focus)');
   });
 
-  it('gives the tab panel scope a minimum height', () => {
+  it('lets the body take what the header and tabs leave and scroll on its own', () => {
+    const text = staticText(styles.scrollbarArea);
+
+    expect(text).toContain('flex-direction: column');
+    expect(text).toContain('flex: 1 1 auto');
+    expect(text).toContain('min-height: 0');
+    expect(text).toMatch(/padding:\s+px;/);
+    expect(text).toContain('overflow: auto');
+  });
+
+  it('pads the body by the one constant the stuck order of the Indexes tab reaches over', () => {
+    expect(styles.scrollbarArea.values).toEqual([
+      TABLE_PROPERTIES_BODY_PADDING,
+    ]);
+    expect(TABLE_PROPERTIES_BODY_PADDING).toBe(12);
+  });
+
+  it('wraps the Indexes panes and leaves the height to the body', () => {
     const text = staticText(styles.scope);
 
     expect(text).toContain('display: flex');
+    expect(text).toContain('flex-wrap: wrap');
+    expect(text).toContain('align-items: flex-start');
+    expect(text).toContain('gap: 12px');
     expect(text).toContain('width: 100%');
-    expect(text).toContain('height: 100%');
-    expect(text).toContain('min-height: 450px');
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).not.toContain('min-height: 450px');
+    expect(text).not.toContain('height: 100%');
+  });
+
+  it('fills the body with a bordered well on a code tab', () => {
+    const text = staticText(styles.scope);
+
+    expect(text).toMatch(
+      /&\.code \{\s*flex: 1 1 auto;\s*min-height: 0;\s*flex-wrap: nowrap;\s*border: 1px solid var\(--context-menu-border\);\s*border-radius: 4px;\s*overflow: hidden;\s*\}/
+    );
   });
 });

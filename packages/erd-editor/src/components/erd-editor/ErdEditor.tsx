@@ -348,6 +348,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
                 <Erd
                   isDarkMode={isDarkMode}
                   mouseTracking={state.mouseTracking}
+                  readonly={props.readonly}
                 />
               </div>
             ) : null

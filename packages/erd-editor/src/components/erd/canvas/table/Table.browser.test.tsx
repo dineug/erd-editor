@@ -36,7 +36,7 @@ import {
   TABLE_HEADER_ICON_SIZE,
   TABLE_PADDING,
 } from '@/constants/layout';
-import { Show } from '@/constants/schema';
+import { ColumnType, Show } from '@/constants/schema';
 import {
   dragendColumnAction,
   editTableAction,
@@ -53,6 +53,12 @@ import {
   type SharedFocus,
 } from '@/engine/modules/editor/state';
 import {
+  addIndexAction,
+  changeIndexUniqueAction,
+} from '@/engine/modules/index/atom.actions';
+import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
+import {
+  changeColumnOrderAction,
   changeMaxWidthCommentAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -794,6 +800,185 @@ describe('the column rows a table holds', () => {
       TABLE_CORNER_RADIUS,
       TABLE_CORNER_RADIUS,
     ]);
+  });
+});
+
+describe('the alternate key marks a table shows', () => {
+  /** Three rows, and one unique index keying the third then the first. */
+  async function keyed() {
+    const fixture = await setup({ columns: 3 });
+    const { store } = fixture.app;
+    const [first, , third] = fixture.table.columnIds;
+
+    store.dispatchSync(
+      addIndexAction({ id: 'i1', tableId: fixture.table.id }),
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: fixture.table.id,
+        columnId: third,
+      }),
+      addIndexColumnAction({
+        id: 'ic2',
+        indexId: 'i1',
+        tableId: fixture.table.id,
+        columnId: first,
+      }),
+      changeIndexUniqueAction({
+        id: 'i1',
+        tableId: fixture.table.id,
+        value: true,
+      })
+    );
+    await settle();
+
+    return fixture;
+  }
+
+  const marksOf = (stage: Stage) =>
+    rootOf(stage)
+      .find<Text>('.column-alternate-key')
+      .map(mark => mark.text());
+
+  it('draws none until the setting shows them', async () => {
+    const { stage } = await keyed();
+
+    expect(marksOf(stage)).toEqual([]);
+  });
+
+  it('marks each member with its place in the key once shown, and widens the table', async () => {
+    const { app, stage, table } = await keyed();
+    const before = getTableRect(app.store.state, table).width;
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+
+    expect(marksOf(stage)).toEqual(['AK1.2', '', 'AK1.1']);
+    expect(getTableRect(app.store.state, table).width).toBeGreaterThan(before);
+    expect(named<Rect>(rootOf(stage), 'table-body').width()).toBe(
+      getTableRect(app.store.state, table).width - TABLE_BORDER
+    );
+  });
+
+  it('follows the key when it loses its unique flag', async () => {
+    const { app, stage, table } = await keyed();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+
+    app.store.dispatchSync(
+      changeIndexUniqueAction({ id: 'i1', tableId: table.id, value: false })
+    );
+    await settle();
+
+    expect(marksOf(stage)).toEqual([]);
+  });
+
+  /** Every row's mark, and the cells it is drawn after, in scene x. */
+  const rowsOf = (stage: Stage) =>
+    rootOf(stage)
+      .find<Group>('.column-row')
+      .map(row => ({
+        mark: named<Text>(row, 'column-alternate-key'),
+        cells: row
+          .find<Group>('.column-col')
+          .filter(cell => !cell.hasName('column-key')),
+        remove: named<Group>(row, 'column-remove'),
+      }));
+
+  it('leaves the column names in line with the header name', async () => {
+    const { app, stage } = await keyed();
+    const nameX = () =>
+      named<Group>(
+        rootOf(stage).findOne<Group>('.column-row') as Group,
+        FocusType.columnName
+      ).getAbsolutePosition().x;
+    const before = nameX();
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+
+    expect(marksOf(stage)).toEqual(['AK1.2', '', 'AK1.1']);
+    expect(nameX()).toBe(before);
+    expect(nameX()).toBe(
+      named<Group>(rootOf(stage), FocusType.tableName).getAbsolutePosition().x
+    );
+  });
+
+  const reorders: Array<
+    [string, () => Array<ReturnType<typeof changeColumnOrderAction>>]
+  > = [
+    ['the order the settings start with', () => []],
+    [
+      'the comment ordered first',
+      () => [
+        changeColumnOrderAction({
+          value: ColumnType.columnComment,
+          target: ColumnType.columnName,
+        }),
+      ],
+    ],
+  ];
+
+  it.each(reorders)(
+    'stands every mark past the last cell of its row, with %s',
+    async (_, reorder) => {
+      const { app, stage } = await keyed();
+
+      app.store.dispatchSync(
+        ...reorder(),
+        changeShowAction({ show: Show.columnAlternateKey, value: true })
+      );
+      await settle();
+
+      for (const { mark, cells, remove } of rowsOf(stage)) {
+        const ends = cells.map(
+          cell => cell.x() + named<Text>(cell, 'cell-text').width()
+        );
+
+        expect(cells.length).toBeGreaterThan(1);
+        expect(mark.x()).toBe(Math.max(...ends) + INPUT_MARGIN_RIGHT);
+        expect(mark.x() + mark.width()).toBeLessThanOrEqual(remove.x());
+      }
+    }
+  );
+
+  /**
+   * A mark answers no hit, so a pointer on it lands on the row behind, as one
+   * between two cells does: the table is selected, and no cell takes the focus
+   * or opens an editor.
+   */
+  it('hands a press on a mark to its row, which focuses and edits no cell', async () => {
+    const { app, stage } = await keyed();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+    await whenPainted();
+
+    const [{ mark }] = rowsOf(stage);
+    const box = mark.getClientRect({ relativeTo: stage });
+    const hit = stage.getIntersection({
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+    }) as KonvaNode;
+
+    expect(hit.name()).toBe('column-row-background');
+
+    fireScenePointer(hit, 'mousedown', { button: 0 });
+    releasePointer();
+    fireScenePointer(hit, 'dblclick', { detail: 2 });
+    await settle();
+
+    const { focusTable } = app.store.state.editor;
+    expect(focusTable?.focusType).toBe(FocusType.tableName);
+    expect(focusTable?.columnId ?? null).toBeNull();
+    expect(focusTable?.edit).toBe(false);
   });
 });
 

@@ -76,6 +76,7 @@ import { useErdShortcut } from './useErdShortcut';
 export type ErdProps = {
   isDarkMode: boolean;
   mouseTracking: boolean;
+  readonly: boolean;
 };
 
 /**
@@ -514,6 +515,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             tableId={state.tablePropertiesId}
             tableIds={state.tablePropertiesIds}
             isDarkMode={props.isDarkMode}
+            readonly={props.readonly}
             onChange={handleChangeTableProperties}
           />
         ) : null}

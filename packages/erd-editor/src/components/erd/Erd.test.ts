@@ -87,7 +87,7 @@ type Harness = {
   app: AppContext;
   container: HTMLDivElement;
   root: HTMLDivElement;
-  props: { isDarkMode: boolean; mouseTracking: boolean };
+  props: { isDarkMode: boolean; mouseTracking: boolean; readonly: boolean };
   actions: AnyAction[];
 };
 
@@ -98,6 +98,7 @@ async function setup(
   const props = observable({
     isDarkMode: false,
     mouseTracking: false,
+    readonly: false,
     ...initial,
   });
 
@@ -105,6 +106,7 @@ async function setup(
     html`<${Erd}
       isDarkMode=${props.isDarkMode}
       mouseTracking=${props.mouseTracking}
+      readonly=${props.readonly}
     />`;
 
   const actions: AnyAction[] = [];
@@ -903,7 +905,7 @@ describe('Erd - color picker', () => {
 describe('Erd - table properties', () => {
   const tabTitles = (root: HTMLElement) =>
     Array.from(
-      root.querySelectorAll(`.${String(tablePropertiesStyles.tab)}`)
+      root.querySelectorAll(`.${String(tablePropertiesStyles.tableChip)}`)
     ).map(el => el.getAttribute('title'));
 
   const openTableProperties = async (app: AppContext, tableId: string) => {
@@ -953,6 +955,25 @@ describe('Erd - table properties', () => {
     expect(
       (root.querySelector('[title="alpha"]') as HTMLElement).className
     ).toContain('selected');
+  });
+
+  it('hands the editor readonly mode to the panel', async () => {
+    const { app, root, props } = await setup({ readonly: true });
+    const tableId = seedTable(app, 'alpha');
+    await openTableProperties(app, tableId);
+
+    expect(
+      root.querySelector(`.${String(tablePropertiesStyles.readonlyBadge)}`)
+    ).toBeTruthy();
+    expect(root.querySelector('[title="Add Index"]')).toBeNull();
+
+    props.readonly = false;
+    await flush(6);
+
+    expect(
+      root.querySelector(`.${String(tablePropertiesStyles.readonlyBadge)}`)
+    ).toBeNull();
+    expect(root.querySelector('[title="Add Index"]')).toBeTruthy();
   });
 
   it('drops table ids that no longer exist in the document', async () => {

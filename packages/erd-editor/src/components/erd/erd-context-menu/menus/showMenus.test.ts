@@ -20,6 +20,7 @@ const NAME_TO_SHOW: Array<[string, number]> = [
   ['Default', Show.columnDefault],
   ['Not Null', Show.columnNotNull],
   ['Unique', Show.columnUnique],
+  ['Alternate Key', Show.columnAlternateKey],
   ['Auto Increment', Show.columnAutoIncrement],
   ['Relationship', Show.relationship],
 ];

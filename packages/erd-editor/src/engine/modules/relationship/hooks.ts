@@ -10,7 +10,7 @@ import {
   timer,
 } from 'rxjs';
 
-import { ColumnOption, StartRelationshipType } from '@/constants/schema';
+import { ColumnOption, Show, StartRelationshipType } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
 import {
   initialLoadJsonAction,
@@ -30,6 +30,16 @@ import {
   viewStreamScrollToAction,
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
+import {
+  addIndexAction,
+  changeIndexUniqueAction,
+  removeIndexAction,
+} from '@/engine/modules/index/atom.actions';
+import {
+  addIndexColumnAction,
+  moveIndexColumnAction,
+  removeIndexColumnAction,
+} from '@/engine/modules/index-column/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   addRelationshipAction,
@@ -56,6 +66,7 @@ import {
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
+  moveColumnAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { RootState } from '@/engine/state';
@@ -163,9 +174,35 @@ const isMoveOnly = arrayHas<string>([
 const sortWindow = ({ tags }: AnyAction) =>
   !isNil(tags) && bHas(tags, Tag.drag) ? timer(5) : timer(0, asapScheduler);
 
+/**
+ * The actions that add, drop, reshape or renumber an alternate key, whose mark
+ * widens its table in the document while the setting shows the marks. A column
+ * move renumbers the keys, an index column move their members.
+ */
+const alternateKeyActions = [
+  addIndexAction,
+  removeIndexAction,
+  changeIndexUniqueAction,
+  addIndexColumnAction,
+  removeIndexColumnAction,
+  moveIndexColumnAction,
+  moveColumnAction,
+];
+
+const alternateKeyActionTypes = alternateKeyActions.map(action => action.type);
+
+const isAlternateKeyAction = arrayHas<string>(alternateKeyActionTypes);
+
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
     .pipe(
+      // An index changes no width while the marks are hidden, and a checkbox
+      // in the Indexes tab would otherwise sort the whole document.
+      filter(
+        action =>
+          !isAlternateKeyAction(action.type) ||
+          bHas(getState().settings.show, Show.columnAlternateKey)
+      ),
       // Invalidation reads every action, the sort reads one per window. Putting
       // this after the throttle would drop the width-changing action whenever
       // it shared a window with a move.
@@ -179,14 +216,15 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
     });
 
 /**
- * Document actions a view never sees the effect of: a view draws no memo and
- * reads none of the show bits or the comment width, so its geometry is the
- * same on either side of them.
+ * Document actions a view's geometry never sees: a view draws no memo and no
+ * alternate key mark, reads none of the show bits or the comment width, and a
+ * column move reorders its rows without resizing a box.
  */
 const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,
   changeMaxWidthCommentAction.type,
   moveMemoAction.type,
+  ...alternateKeyActionTypes,
 ]);
 
 /** View actions that move the placement a view is looked at through, and nothing in it. */
@@ -344,6 +382,7 @@ const layoutActions = [
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
   sortTableAction,
+  ...alternateKeyActions,
 ];
 
 /**

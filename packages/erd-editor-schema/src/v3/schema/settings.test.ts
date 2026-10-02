@@ -72,6 +72,7 @@ describe('v3/schema/settings', () => {
         columnUnique: 64,
         columnNotNull: 128,
         relationship: 256,
+        columnAlternateKey: 512,
       });
       expect(Object.values(Show).every(isPowerOfTwo)).toBe(true);
     });
@@ -85,10 +86,10 @@ describe('v3/schema/settings', () => {
       expect(mask & ~Show.relationship).toBe(65);
     });
 
-    it('sums all flags to a contiguous 9-bit mask', () => {
+    it('sums all flags to a contiguous 10-bit mask', () => {
       const all = Object.values(Show).reduce((acc, flag) => acc | flag, 0);
 
-      expect(all).toBe(0b111111111);
+      expect(all).toBe(0b1111111111);
       expect(all).toBe(2 ** Object.keys(Show).length - 1);
     });
   });

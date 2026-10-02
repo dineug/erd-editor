@@ -34,6 +34,13 @@ export type IndexesCheckboxColumnProps = {
   // The panel renders this column before an index is picked; the body already
   // reads it as !index and index?.indexColumnIds ?? [].
   index: Index | null;
+  /**
+   * The columns of a key the columns declare, picked instead of an index: they
+   * show checked, and every box stays disabled, since no index owns them.
+   */
+  keyColumnIds?: string[] | null;
+  /** The editor's readonly mode, which disables every box as a picked key does. */
+  readonly?: boolean;
 };
 
 type ColumnOrderTpl = {
@@ -151,12 +158,13 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
       ? addIndexColumnAction$
       : removeIndexColumnAction$;
 
-    if (!props.index) return;
+    if (!props.index || props.readonly) return;
     store.dispatch(attachChangeOnlyTag$(action$(props.index.id, column.id)));
   };
 
   return () => {
     const { tableId, index } = props;
+    const idle = !index || Boolean(props.readonly);
     const { store } = app.value;
     const { collections } = store.state;
 
@@ -171,23 +179,28 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
 
     const tableWidths = calcTableWidths(table, store.state);
 
-    const checkedColumnIds = query(collections)
-      .collection('indexColumnEntities')
-      .selectByIds(index?.indexColumnIds ?? [])
-      .map(indexColumn => indexColumn.columnId);
+    const checkedColumnIds =
+      props.keyColumnIds ??
+      query(collections)
+        .collection('indexColumnEntities')
+        .selectByIds(index?.indexColumnIds ?? [])
+        .map(indexColumn => indexColumn.columnId);
     const hasChecked = arrayHas(checkedColumnIds);
 
     return (
-      <div class={['scrollbar', styles.root]}>
+      <div class={styles.root} bool:data-idle={idle}>
         {repeat(
           columns,
           column => column.id,
           column => (
-            <div class={['column-row', columnStyles.root]}>
+            <div
+              class={['column-row', columnStyles.root]}
+              bool:data-selected={hasChecked(column.id)}
+            >
               <div class="column-col">
                 <input
                   type="checkbox"
-                  bool:disabled={!index}
+                  bool:disabled={idle}
                   prop:checked={hasChecked(column.id)}
                   on:change={event => handleChangeIndexColumn(event, column)}
                 />

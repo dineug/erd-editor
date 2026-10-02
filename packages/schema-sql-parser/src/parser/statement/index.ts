@@ -54,6 +54,7 @@ export type CreateTable = {
   comment: string;
   columns: Column[];
   indexes: Index[];
+  keys: Key[];
   foreignKeys: ForeignKey[];
 };
 
@@ -74,6 +75,16 @@ export type Index = {
   columns: IndexColumn[];
 };
 
+/**
+ * A primary key or one-column unique key the source names, or any key with no
+ * name, composite too, that Oracle's USING INDEX follows, never PostgreSQL's
+ * USING INDEX TABLESPACE: a dump may export the key's index on its own.
+ */
+export type Key = {
+  name: string;
+  columnNames: string[];
+};
+
 export type ForeignKey = {
   columnNames: string[];
   refTableName: string;
@@ -83,6 +94,7 @@ export type ForeignKey = {
 export type CreateTableColumns = {
   columns: Column[];
   indexes: Index[];
+  keys: Key[];
   foreignKeys: ForeignKey[];
 };
 
@@ -102,12 +114,20 @@ export type IndexColumn = {
 export type AlterTableAddUnique = {
   type: typeof StatementType.alterTableAddUnique;
   name: string;
-  columnNames: string[];
+  /** The key's own name: an index name after UNIQUE KEY, else the CONSTRAINT symbol. */
+  constraintName: string;
+  /** The existing index Oracle's USING INDEX names to enforce the key, '' for none. */
+  usingIndexName: string;
+  columns: IndexColumn[];
 };
 
 export type AlterTableAddPrimaryKey = {
   type: typeof StatementType.alterTableAddPrimaryKey;
   name: string;
+  /** The CONSTRAINT symbol, '' for none. */
+  constraintName: string;
+  /** The existing index Oracle's USING INDEX names to enforce the key, '' for none. */
+  usingIndexName: string;
   columnNames: string[];
 };
 

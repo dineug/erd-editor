@@ -34,6 +34,10 @@ const menus: Menu[] = [
     show: Show.columnUnique,
   },
   {
+    name: 'Alternate Key',
+    show: Show.columnAlternateKey,
+  },
+  {
     name: 'Auto Increment',
     show: Show.columnAutoIncrement,
   },

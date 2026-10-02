@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   isAddValue,
   isAlterTable,
+  isAlterTableAdd,
   isAlterTableAddForeignKey,
   isAlterTableAddOnly,
   isAlterTableAddPrimaryKey,
-  isAlterTableAddUnique,
   isAlterTableOnly,
   isAlterValue,
+  isAndValue,
   isArrayDimensionToken,
   isArrayValue,
   isAscValue,
@@ -27,7 +28,6 @@ import {
   isConstraintValue,
   isCreateIndex,
   isCreateTable,
-  isCreateUniqueIndex,
   isCreateValue,
   isDataType,
   isDefaultValue,
@@ -46,9 +46,11 @@ import {
   isLeftParentToken,
   isNewStatement,
   isNotValue,
+  isNullFilter,
   isNullValue,
   isOnlyValue,
   isOnValue,
+  isOrValue,
   isPeriodToken,
   isPrimaryValue,
   isReferencesValue,
@@ -60,14 +62,20 @@ import {
   isSetValue,
   isStringToken,
   isTableItemWord,
+  isTablespaceValue,
   isTableValue,
   isUniqueValue,
   isUseValue,
+  isWhereValue,
+  matchCreateIndex,
   matchCreateTable,
   matchDataType,
+  matchKeyModifier,
+  matchKeyModifiers,
   matchQualifiedName,
   matchReferentialClause,
   matchUserDataType,
+  matchUsingIndexName,
   requote,
   toStringLiteral,
   unquoteTypeName,
@@ -136,6 +144,7 @@ describe('token value predicates', () => {
     ['isDeleteValue', isDeleteValue, 'DELETE'],
     ['isSelectValue', isSelectValue, 'SELECT'],
     ['isTableValue', isTableValue, 'TABLE'],
+    ['isTablespaceValue', isTablespaceValue, 'TABLESPACE'],
     ['isIndexValue', isIndexValue, 'INDEX'],
     ['isUniqueValue', isUniqueValue, 'UNIQUE'],
     ['isAddValue', isAddValue, 'ADD'],
@@ -161,6 +170,9 @@ describe('token value predicates', () => {
     ['isCharacterValue', isCharacterValue, 'CHARACTER'],
     ['isSetValue', isSetValue, 'SET'],
     ['isCollateValue', isCollateValue, 'COLLATE'],
+    ['isWhereValue', isWhereValue, 'WHERE'],
+    ['isAndValue', isAndValue, 'AND'],
+    ['isOrValue', isOrValue, 'OR'],
     ['isArrayValue', isArrayValue, 'ARRAY'],
   ];
 
@@ -294,6 +306,40 @@ describe('matchReferentialClause', () => {
     expect(
       matchReferentialClause([quoted('on'), ...words('DELETE', 'CASCADE')])(0)
     ).toBe(0);
+  });
+});
+
+describe('matchKeyModifier', () => {
+  const span = (sql: string) => matchKeyModifier(tokenizer(sql))(0);
+
+  it('spans what may stand between UNIQUE and its key list', () => {
+    expect(span('NONCLUSTERED (a)')).toBe(1);
+    expect(span('clustered (a)')).toBe(1);
+    expect(span('USING BTREE (a)')).toBe(2);
+    expect(span('NULLS DISTINCT (a)')).toBe(2);
+    expect(span('nulls not distinct (a)')).toBe(3);
+  });
+
+  it('spans a USING whose method is missing by the keyword alone', () => {
+    expect(span('USING (a)')).toBe(1);
+  });
+
+  it('leaves a name, a list and an incomplete NULLS to the caller', () => {
+    expect(span('uq_a (a)')).toBe(0);
+    expect(span('(a)')).toBe(0);
+    expect(span('NULLS FIRST')).toBe(0);
+    expect(span('NULLS NOT NULL')).toBe(0);
+    expect(matchKeyModifier([quoted('clustered')])(0)).toBe(0);
+  });
+});
+
+describe('matchKeyModifiers', () => {
+  const span = (sql: string) => matchKeyModifiers(tokenizer(sql))(0);
+
+  it('spans every modifier in a row, up to the first word none claims', () => {
+    expect(span('CLUSTERED USING BTREE (a)')).toBe(3);
+    expect(span('NULLS NOT DISTINCT uq_a (a)')).toBe(3);
+    expect(span('uq_a NONCLUSTERED (a)')).toBe(0);
   });
 });
 
@@ -455,19 +501,34 @@ describe('matchCreateTable', () => {
   );
 });
 
-describe('isCreateUniqueIndex', () => {
-  it('matches CREATE UNIQUE INDEX', () => {
-    const tokens = words('CREATE', 'UNIQUE', 'INDEX', 'idx');
-
-    expect(isCreateUniqueIndex(tokens)(0)).toBe(true);
+describe('matchCreateIndex', () => {
+  it.each([
+    [['CREATE', 'INDEX', 'idx'], 2],
+    [['CREATE', 'UNIQUE', 'INDEX', 'idx'], 3],
+    [['CREATE', 'NONCLUSTERED', 'INDEX', 'idx'], 3],
+    [['CREATE', 'UNIQUE', 'CLUSTERED', 'INDEX', 'idx'], 4],
+    [['CREATE', 'UNIQUE', 'NONCLUSTERED', 'INDEX', 'idx'], 4],
+  ])('spans %j through INDEX', (values, span) => {
+    expect(matchCreateIndex(words(...values))(0)).toBe(span);
   });
 
   it.each([
-    ['CREATE', 'INDEX', 'idx'],
     ['CREATE', 'UNIQUE', 'idx'],
+    ['CREATE', 'NONCLUSTERED', 'idx'],
+    ['CREATE', 'CLUSTERED', 'UNIQUE', 'INDEX'],
     ['ALTER', 'UNIQUE', 'INDEX'],
   ])('rejects %s %s %s', (...values) => {
-    expect(isCreateUniqueIndex(words(...values))(0)).toBe(false);
+    expect(matchCreateIndex(words(...values))(0)).toBe(0);
+  });
+
+  it('reads a quoted clustering word as no keyword', () => {
+    const tokens = [
+      ...words('CREATE'),
+      quoted('NONCLUSTERED'),
+      ...words('INDEX'),
+    ];
+
+    expect(matchCreateIndex(tokens)(0)).toBe(0);
   });
 });
 
@@ -537,6 +598,54 @@ describe('matchQualifiedName', () => {
   });
 });
 
+describe('matchUsingIndexName', () => {
+  const span = (sql: string) => matchUsingIndexName(tokenizer(sql))(0);
+
+  it('spans USING INDEX and the possibly qualified name after it', () => {
+    expect(span('USING INDEX ix ENABLE')).toBe(3);
+    expect(span('using index "HR"."UQ_T_AB_IX" ENABLE')).toBe(5);
+    expect(span('USING INDEX "TABLESPACE"')).toBe(3);
+  });
+
+  it('spans nothing where index properties or a group stand for the name', () => {
+    expect(span('USING INDEX TABLESPACE "USERS"')).toBe(0);
+    expect(span('USING INDEX pctfree 10 INITRANS 2')).toBe(0);
+    expect(span('USING INDEX ENABLE')).toBe(0);
+    expect(span('USING INDEX (CREATE INDEX ix ON t (a))')).toBe(0);
+    expect(span('USING INDEX')).toBe(0);
+    expect(span('USING BTREE')).toBe(0);
+    expect(span('INDEX ix')).toBe(0);
+  });
+});
+
+describe('isNullFilter', () => {
+  const filters = (sql: string) => isNullFilter(tokenizer(sql))(0, ['a', 'B']);
+
+  it('accepts key IS NOT NULL over key columns, AND-joined, in any parentheses', () => {
+    expect(filters('WHERE a IS NOT NULL')).toBe(true);
+    expect(filters('where "A" is not null and b IS NOT NULL;')).toBe(true);
+    expect(
+      filters(
+        'WHERE ([a] IS NOT NULL AND ([b] IS NOT NULL)) WITH (FILLFACTOR = 80)'
+      )
+    ).toBe(true);
+    expect(filters('WHERE (a IS NOT NULL) AND b IS NOT NULL)')).toBe(true);
+  });
+
+  it('refuses any other filter, and a position with no WHERE', () => {
+    expect(filters('WHERE c IS NOT NULL')).toBe(false);
+    expect(filters('WHERE a IS NULL')).toBe(false);
+    expect(filters('WHERE (active)')).toBe(false);
+    expect(filters('WHERE a IS NOT NULL AND b > 0')).toBe(false);
+    expect(filters('WHERE a IS NOT NULL OR b IS NOT NULL')).toBe(false);
+    expect(filters('WHERE (a IS NOT NULL) OR (b IS NOT NULL)')).toBe(false);
+    expect(filters('WHERE (a IS NOT NULL OR b > 0)')).toBe(false);
+    expect(filters('WHERE a IS NOT "NULL"')).toBe(false);
+    expect(filters('a IS NOT NULL')).toBe(false);
+    expect(filters('WHERE')).toBe(false);
+  });
+});
+
 describe('a table literally named only', () => {
   it('is read as the name when ONLY leads nowhere', () => {
     const tokens = tokenizer('ALTER TABLE only ADD PRIMARY KEY (id);');
@@ -560,7 +669,7 @@ describe('a fully qualified ALTER TABLE target', () => {
       'ALTER TABLE db.sch.t ADD FOREIGN KEY (a) REFERENCES db.sch.o (b);',
       isAlterTableAddForeignKey,
     ],
-    ['ALTER TABLE db.sch.t ADD UNIQUE (a);', isAlterTableAddUnique],
+    ['ALTER TABLE db.sch.t ADD UNIQUE (a);', isAlterTableAdd],
     [
       'ALTER TABLE db.sch.t ADD CONSTRAINT pk PRIMARY KEY (id);',
       isAlterTableAddPrimaryKey,
@@ -836,114 +945,65 @@ describe('isAlterTableAddForeignKey', () => {
   });
 });
 
-describe('isAlterTableAddUnique with ONLY', () => {
+describe('isAlterTableAdd with ONLY', () => {
   it('matches ALTER TABLE ONLY name ADD UNIQUE', () => {
     const tokens = words('ALTER', 'TABLE', 'ONLY', 'user', 'ADD', 'UNIQUE');
 
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
+    expect(isAlterTableAdd(tokens)(0)).toBe(true);
   });
 
-  it('matches ALTER TABLE ONLY name ADD CONSTRAINT uq UNIQUE', () => {
-    const tokens = words(
-      'ALTER',
-      'TABLE',
-      'ONLY',
-      'user',
-      'ADD',
-      'CONSTRAINT',
-      'uq_user',
-      'UNIQUE'
-    );
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('matches a schema qualified ALTER TABLE ONLY public.user ADD UNIQUE', () => {
-    const tokens = [
-      ...words('ALTER', 'TABLE', 'ONLY', 'public'),
-      period,
-      ...words('user', 'ADD', 'UNIQUE'),
-    ];
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('matches a schema qualified variant with a named constraint', () => {
+  it('matches a schema qualified ALTER TABLE ONLY public.user ADD', () => {
     const tokens = [
       ...words('ALTER', 'TABLE', 'ONLY', 'public'),
       period,
       ...words('user', 'ADD', 'CONSTRAINT', 'uq_user', 'UNIQUE'),
     ];
 
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('rejects the primary key variant', () => {
-    const tokens = words(
-      'ALTER',
-      'TABLE',
-      'ONLY',
-      'user',
-      'ADD',
-      'PRIMARY',
-      'KEY'
-    );
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(false);
+    expect(isAlterTableAdd(tokens)(0)).toBe(true);
   });
 });
 
-describe('isAlterTableAddUnique', () => {
-  it('matches ALTER TABLE name ADD UNIQUE', () => {
-    const tokens = words('ALTER', 'TABLE', 'user', 'ADD', 'UNIQUE');
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
+describe('isAlterTableAdd', () => {
+  it.each([
+    ['ALTER TABLE user ADD UNIQUE (a);'],
+    ['ALTER TABLE user ADD CONSTRAINT uq_user UNIQUE (a);'],
+    ['ALTER TABLE public.user ADD UNIQUE (a);'],
+    ['ALTER TABLE user ADD PRIMARY KEY (id), ADD UNIQUE KEY uq (a, b);'],
+    ['ALTER TABLE user ADD KEY idx (a), ADD UNIQUE KEY uq (a, b);'],
+    ['ALTER TABLE user ADD COLUMN a INT;'],
+  ])('matches %s', sql => {
+    expect(isAlterTableAdd(tokenizer(sql))(0)).toBe(true);
   });
 
-  it('matches ALTER TABLE name ADD CONSTRAINT uq UNIQUE', () => {
-    const tokens = words(
-      'ALTER',
-      'TABLE',
-      'user',
-      'ADD',
-      'CONSTRAINT',
-      'uq_user',
-      'UNIQUE'
-    );
+  it.each([
+    ['ALTER TABLE user DROP COLUMN a;'],
+    ['ALTER INDEX idx RENAME TO idx_2;'],
+    ['CREATE TABLE user (a INT);'],
+  ])('rejects %s', sql => {
+    expect(isAlterTableAdd(tokenizer(sql))(0)).toBe(false);
+  });
+});
 
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
+describe('a CONSTRAINT keyword with no symbol', () => {
+  it.each([
+    [
+      'ALTER TABLE t ADD CONSTRAINT PRIMARY KEY (id);',
+      isAlterTableAddPrimaryKey,
+    ],
+    [
+      'ALTER TABLE t ADD CONSTRAINT FOREIGN KEY (a) REFERENCES o (b);',
+      isAlterTableAddForeignKey,
+    ],
+  ])('leaves the key it opens to be matched: %s', (sql, matcher) => {
+    expect(matcher(tokenizer(sql))(0)).toBe(true);
   });
 
-  it('matches a schema qualified ALTER TABLE public.user ADD UNIQUE', () => {
-    const tokens = [
-      ...words('ALTER', 'TABLE', 'public'),
-      period,
-      ...words('user', 'ADD', 'UNIQUE'),
-    ];
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('matches a schema qualified variant with a named constraint', () => {
-    const tokens = [
-      ...words('ALTER', 'TABLE', 'public'),
-      period,
-      ...words('user', 'ADD', 'CONSTRAINT', 'uq_user', 'UNIQUE'),
-    ];
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('falls back to the ONLY variant', () => {
-    const tokens = words('ALTER', 'TABLE', 'ONLY', 'user', 'ADD', 'UNIQUE');
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(true);
-  });
-
-  it('rejects an ADD PRIMARY KEY statement', () => {
-    const tokens = words('ALTER', 'TABLE', 'user', 'ADD', 'PRIMARY', 'KEY');
-
-    expect(isAlterTableAddUnique(tokens)(0)).toBe(false);
+  it('still reads a quoted symbol spelled like a keyword as the symbol', () => {
+    expect(
+      isAlterTableAddPrimaryKey(
+        tokenizer('ALTER TABLE t ADD CONSTRAINT "UNIQUE" PRIMARY KEY (id);')
+      )(0)
+    ).toBe(true);
   });
 });
 

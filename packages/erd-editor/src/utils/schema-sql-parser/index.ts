@@ -12,6 +12,8 @@ import {
   CommentOnTable,
   CreateIndex,
   CreateTable,
+  Index,
+  Key,
   schemaSQLParser,
   SortType,
   Statement,
@@ -119,7 +121,7 @@ function getStatementMap(statements: Statement[]): StatementMap {
         }
         break;
       case StatementType.alterTableAddUnique:
-        if (statement.name && statement.columnNames.length) {
+        if (statement.name && statement.columns.length) {
           map.uniques.push(statement);
         }
         break;
@@ -152,6 +154,22 @@ function mergeTables({
     const table = findByName(tables, index.tableName);
     if (!table) return;
 
+    // DBMS_METADATA writes the index of each key a table declares inline on its
+    // own, under the key's name or, for a key with none, Oracle's SYS_C...: it
+    // is that key again, a second index of it or one beside its flags.
+    const created = keyOf(index);
+    const sameIndex = table.indexes.find(
+      other => mayRepeat(table, other) && isKeyIndex(keyOf(other), created)
+    );
+
+    if (sameIndex) {
+      sameIndex.name ||= index.name;
+      sameIndex.unique ||= index.unique;
+      return;
+    }
+
+    if (table.keys.some(key => isKeyIndex(key, created))) return;
+
     table.indexes.push({
       name: index.name,
       unique: index.unique,
@@ -159,9 +177,22 @@ function mergeTables({
     });
   });
 
+  // Every CREATE INDEX merges before any ALTER key, wherever the script puts
+  // it: DBMS_METADATA's CONSTRAINTS_AS_ALTER output, then the table's
+  // dependent index DDL, writes each ALTER before the SYS_C index of its key.
   primaryKeys.forEach(primaryKey => {
     const table = findByName(tables, primaryKey.name);
     if (!table) return;
+
+    // The flags are the key, and the index Oracle exported for it is theirs.
+    const keyIndex = findKeyIndex(table, {
+      name: primaryKey.usingIndexName || primaryKey.constraintName,
+      columnNames: primaryKey.columnNames,
+    });
+
+    if (keyIndex) {
+      table.indexes.splice(table.indexes.indexOf(keyIndex), 1);
+    }
 
     primaryKey.columnNames.forEach(columnName => {
       const column = findByName(table.columns, columnName);
@@ -175,8 +206,36 @@ function mergeTables({
     const table = findByName(tables, unique.name);
     if (!table) return;
 
-    unique.columnNames.forEach(columnName => {
-      const column = findByName(table.columns, columnName);
+    // A composite key is the index Oracle exported for it, made unique. One
+    // column gives that index up to the flag the rule below sets.
+    const keyIndex = findKeyIndex(table, {
+      name: unique.usingIndexName || unique.constraintName,
+      columnNames: namesOf(unique.columns),
+    });
+
+    if (keyIndex && unique.columns.length > 1) {
+      keyIndex.unique = true;
+      return;
+    }
+
+    if (keyIndex) {
+      table.indexes.splice(table.indexes.indexOf(keyIndex), 1);
+    }
+
+    // Several columns are one composite key, which a unique flag on each of
+    // them would make stricter. One column keeps the flag it always set, and
+    // with it the UQ_<table>_<column> the export writes comes back unchanged.
+    if (unique.columns.length > 1) {
+      table.indexes.push({
+        name: unique.constraintName,
+        unique: true,
+        columns: unique.columns,
+      });
+      return;
+    }
+
+    unique.columns.forEach(({ name }) => {
+      const column = findByName(table.columns, name);
       if (!column) return;
 
       column.unique = true;
@@ -214,6 +273,64 @@ function mergeTables({
   });
 
   return tables;
+}
+
+/**
+ * Whether a later CREATE INDEX may repeat an index of the table: a named one,
+ * or one with no name only as a key Oracle's USING INDEX follows, as keys say;
+ * an unnamed CREATE INDEX or a bare inline UNIQUE stays an index of its own.
+ */
+function mayRepeat(table: CreateTable, index: Index) {
+  return (
+    index.name !== '' || table.keys.some(key => isKeyIndex(key, keyOf(index)))
+  );
+}
+
+// The index Oracle exports on its own for a key, named by the key or by its
+// USING INDEX: kept beside the key, it indexes one column list twice.
+function findKeyIndex(table: CreateTable, key: Key) {
+  return table.indexes.find(index => isKeyIndex(key, keyOf(index))) ?? null;
+}
+
+/**
+ * Whether an index is the one a key owns: under the key's name over the same
+ * columns, or, for a key with no name, as Oracle's system-named keys have,
+ * over its columns in their order.
+ */
+function isKeyIndex(key: Key, index: Key) {
+  return key.name
+    ? isSameName(key.name, index.name) &&
+        hasSameColumns(key.columnNames, index.columnNames)
+    : hasColumnsInOrder(key.columnNames, index.columnNames);
+}
+
+const keyOf = ({
+  name,
+  columns,
+}: {
+  name: string;
+  columns: ReadonlyArray<{ name: string }>;
+}): Key => ({ name, columnNames: namesOf(columns) });
+
+const namesOf = (columns: ReadonlyArray<{ name: string }>) =>
+  columns.map(({ name }) => name);
+
+const isSameName = (a: string, b: string) =>
+  a.toUpperCase() === b.toUpperCase();
+
+// Whether two key lists name the same columns, in any order: a unique key over
+// them is the same constraint either way.
+function hasSameColumns(a: string[], b: string[]) {
+  const names = new Set(a.map(name => name.toUpperCase()));
+  return (
+    a.length === b.length && b.every(name => names.has(name.toUpperCase()))
+  );
+}
+
+// Whether two key lists name the same columns in the same order. Without a key
+// name to go by, an index over them in another order is one built for itself.
+function hasColumnsInOrder(a: string[], b: string[]) {
+  return a.length === b.length && a.every((name, i) => isSameName(name, b[i]));
 }
 
 function convertTable(
@@ -367,7 +484,11 @@ function convertIndex(
         indexColumns.push(newIndexColumn);
       });
 
-      if (indexColumns.length !== 0) {
+      // A unique key short of a column is a stricter key than the source's, so
+      // it goes whole; a plain index keeps the columns that resolve.
+      const complete = indexColumns.length === index.columns.length;
+
+      if (indexColumns.length !== 0 && (complete || !index.unique)) {
         indexColumns.forEach(indexColumn => {
           newIndex.indexColumnIds.push(indexColumn.id);
           newIndex.seqIndexColumnIds.push(indexColumn.id);

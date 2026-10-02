@@ -700,6 +700,21 @@ describe('arrowRight', () => {
     });
   });
 
+  it('takes no stop at the alternate key mark drawn after the last cell', () => {
+    const store = createTestStore(['c1', 'c2']);
+    reveal(store, Show.columnAlternateKey);
+    focusColumn(store, 'c1', FocusType.columnComment);
+
+    expect(isLastColumn(store.state)).toBe(true);
+
+    arrowRight(store.state, move(MoveKey.Tab));
+
+    expect(getFocus(store)).toMatchObject({
+      focusType: FocusType.columnName,
+      columnId: 'c2',
+    });
+  });
+
   it('wraps from the last column onto the first column of the next row', () => {
     const store = createTestStore(['c1', 'c2', 'c3']);
     focusColumn(store, 'c1', FocusType.columnComment);

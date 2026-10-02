@@ -1,21 +1,24 @@
 import {
+  isAddValue,
   isAlterTableAddOnly,
+  isCommaToken,
   isConstraintValue,
   isKeyValue,
   isLeftParentToken,
   isNewStatement,
   isPeriodToken,
   isPrimaryValue,
-  isRightParentToken,
   isSemicolonToken,
   isStringToken,
   isTableValue,
+  matchUsingIndexName,
 } from '@/parser/helper';
 import {
   AlterTableAddPrimaryKey,
   RefPos,
   StatementType,
 } from '@/parser/statement';
+import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
 export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
@@ -23,12 +26,14 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
   const isSemicolon = isSemicolonToken(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
-  const isRightParent = isRightParentToken(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isPrimary = isPrimaryValue(tokens);
   const isPeriod = isPeriodToken(tokens);
   const isKey = isKeyValue(tokens);
   const isTable = isTableValue(tokens);
+  const isComma = isCommaToken(tokens);
+  const isAdd = isAddValue(tokens);
+  const usingIndexName = matchUsingIndexName(tokens);
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
@@ -36,8 +41,14 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
   const ast: AlterTableAddPrimaryKey = {
     type: StatementType.alterTableAddPrimaryKey,
     name: '',
+    constraintName: '',
+    usingIndexName: '',
     columnNames: [],
   };
+  // The primary key is the statement's first clause, which ends at the first
+  // comma or ADD after its key list: what follows belongs to another key.
+  let keyRead = false;
+  let keyClause = true;
 
   $pos.value++;
 
@@ -79,13 +90,35 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
       continue;
     }
 
+    if (keyRead && (isComma($pos.value) || isAdd($pos.value))) {
+      keyClause = false;
+    }
+
     if (isConstraint($pos.value)) {
       token = tokens[++$pos.value];
 
-      if (isString($pos.value)) {
+      // The symbol is optional: CONSTRAINT PRIMARY KEY (a) names nothing.
+      if (isString($pos.value) && !isPrimary($pos.value)) {
+        if (!keyRead) {
+          ast.constraintName = token.value;
+        }
+
         $pos.value++;
       }
 
+      continue;
+    }
+
+    // Oracle's USING INDEX "HR"."IX" names the index that already enforces the
+    // key, anywhere among the constraint states that follow its key list.
+    const usingIndex = usingIndexName($pos.value);
+
+    if (usingIndex) {
+      if (keyRead && keyClause) {
+        ast.usingIndexName = tokens[$pos.value + usingIndex - 1].value;
+      }
+
+      $pos.value += usingIndex;
       continue;
     }
 
@@ -95,17 +128,13 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
       if (isKey($pos.value)) {
         token = tokens[++$pos.value];
 
+        // A key part's first word names its column: the sort after it is not
+        // one, and a key named by it would never match the index of the key.
         if (isLeftParent($pos.value)) {
-          token = tokens[++$pos.value];
-
-          while (isToken() && !isRightParent($pos.value)) {
-            if (isString($pos.value)) {
-              ast.columnNames.push(token.value);
-            }
-            token = tokens[++$pos.value];
-          }
-
-          token = tokens[++$pos.value];
+          ast.columnNames = indexColumnsParser(tokens, $pos).map(
+            indexColumn => indexColumn.name
+          );
+          keyRead = true;
         }
       }
 

@@ -1207,6 +1207,7 @@
         "type": "string",
         "required": true,
         "enum": [
+          "columnAlternateKey",
           "columnAutoIncrement",
           "columnComment",
           "columnDataType",

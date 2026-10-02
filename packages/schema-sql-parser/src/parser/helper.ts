@@ -39,6 +39,7 @@ export const isRenameValue = createValueEqual('RENAME');
 export const isDeleteValue = createValueEqual('DELETE');
 export const isSelectValue = createValueEqual('SELECT');
 export const isTableValue = createValueEqual('TABLE');
+export const isTablespaceValue = createValueEqual('TABLESPACE');
 export const isIndexValue = createValueEqual('INDEX');
 export const isUniqueValue = createValueEqual('UNIQUE');
 export const isAddValue = createValueEqual('ADD');
@@ -77,6 +78,11 @@ export const isClusterValue = createValueEqual('CLUSTER');
 export const isByValue = createValueEqual('BY');
 export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
+export const isConcurrentlyValue = createValueEqual('CONCURRENTLY');
+export const isWhereValue = createValueEqual('WHERE');
+export const isUsingValue = createValueEqual('USING');
+export const isAndValue = createValueEqual('AND');
+export const isOrValue = createValueEqual('OR');
 export const isArrayValue = createValueEqual('ARRAY');
 
 // A string literal the vendor reads back as the value, its quotes doubled.
@@ -163,6 +169,53 @@ export const isIndexKind = (tokens: Token[]) => {
   const isKey = isKeyValue(tokens);
   return (pos: number) =>
     (isFulltext(pos) || isSpatial(pos)) && (isIndex(pos + 1) || isKey(pos + 1));
+};
+
+// The unquoted word at pos in upper case, '' for anything else: a quoted
+// token names something, so it never spells a keyword.
+const matchKeyword = (tokens: Token[]) => (pos: number) => {
+  const token = tokens[pos];
+  return token && token.type === TokenType.string && !token.quoted
+    ? token.value.toUpperCase()
+    : '';
+};
+
+// SQL Server's clustering of a key or an index, as matchKeyword spells it.
+const isClustering = (word: string) =>
+  word === 'CLUSTERED' || word === 'NONCLUSTERED';
+
+// How many tokens a key modifier spans where a unique key's name may stand:
+// PostgreSQL's NULLS [NOT] DISTINCT, SQL Server's CLUSTERED and MySQL's USING
+// BTREE. Left unclaimed, its first word would be read as the key's name.
+export const matchKeyModifier = (tokens: Token[]) => {
+  const word = matchKeyword(tokens);
+
+  return (pos: number) => {
+    const first = word(pos);
+
+    if (isClustering(first)) return 1;
+    if (first === 'USING') return word(pos + 1) ? 2 : 1;
+    if (first !== 'NULLS') return 0;
+    if (word(pos + 1) === 'DISTINCT') return 2;
+    return word(pos + 1) === 'NOT' && word(pos + 2) === 'DISTINCT' ? 3 : 0;
+  };
+};
+
+// How many tokens the key modifiers in a row at pos span, 0 for none.
+export const matchKeyModifiers = (tokens: Token[]) => {
+  const keyModifier = matchKeyModifier(tokens);
+
+  return (pos: number) => {
+    let cursor = pos;
+    let span = keyModifier(cursor);
+
+    while (span) {
+      cursor += span;
+      span = keyModifier(cursor);
+    }
+
+    return cursor - pos;
+  };
 };
 
 // Angle brackets are not break characters, so a nested type arrives glued to
@@ -336,20 +389,30 @@ export const isCreateTable = (tokens: Token[]) => {
   return (pos: number) => createTable(pos) > 0;
 };
 
-export const isCreateUniqueIndex = (tokens: Token[]) => {
+// How many tokens the header spans through INDEX, 0 when there is no CREATE
+// INDEX at pos. SQL Server writes its clustering in between, CREATE UNIQUE
+// NONCLUSTERED INDEX, and SSMS scripts every index that way.
+export const matchCreateIndex = (tokens: Token[]) => {
   const isCreate = isCreateValue(tokens);
-  const isIndex = isIndexValue(tokens);
   const isUnique = isUniqueValue(tokens);
-  return (pos: number) =>
-    isCreate(pos) && isUnique(pos + 1) && isIndex(pos + 2);
+  const isIndex = isIndexValue(tokens);
+  const word = matchKeyword(tokens);
+
+  return (pos: number) => {
+    if (!isCreate(pos)) return 0;
+
+    let cursor = pos + 1;
+
+    if (isUnique(cursor)) cursor++;
+    if (isClustering(word(cursor))) cursor++;
+
+    return isIndex(cursor) ? cursor + 1 - pos : 0;
+  };
 };
 
 export const isCreateIndex = (tokens: Token[]) => {
-  const isCreate = isCreateValue(tokens);
-  const isIndex = isIndexValue(tokens);
-  const createUniqueIndex = isCreateUniqueIndex(tokens);
-  return (pos: number) =>
-    (isCreate(pos) && isIndex(pos + 1)) || createUniqueIndex(pos);
+  const createIndex = matchCreateIndex(tokens);
+  return (pos: number) => createIndex(pos) > 0;
 };
 
 export const isAlterTable = (tokens: Token[]) => {
@@ -383,6 +446,117 @@ export const matchQualifiedName = (tokens: Token[]) => {
   };
 };
 
+// The words Oracle's USING INDEX takes in place of an index name: the index
+// properties, and the constraint states that may follow it with none.
+const IndexProperties: ReadonlyArray<string> = [
+  'COMPRESS',
+  'COMPUTE',
+  'DEFERRABLE',
+  'DISABLE',
+  'ENABLE',
+  'EXCEPTIONS',
+  'FILESYSTEM_LIKE_LOGGING',
+  'GLOBAL',
+  'INDEXING',
+  'INDEXTYPE',
+  'INITIALLY',
+  'INITRANS',
+  'INVISIBLE',
+  'LOCAL',
+  'LOGGING',
+  'MAXTRANS',
+  'NOCOMPRESS',
+  'NOLOGGING',
+  'NOPARALLEL',
+  'NORELY',
+  'NOSORT',
+  'NOT',
+  'NOVALIDATE',
+  'ONLINE',
+  'PARALLEL',
+  'PCTFREE',
+  'PCTUSED',
+  'RELY',
+  'REVERSE',
+  'SORT',
+  'STORAGE',
+  'TABLESPACE',
+  'USING',
+  'VALIDATE',
+  'VISIBLE',
+];
+
+// How many tokens Oracle's USING INDEX [schema.]index spans, 0 where USING
+// INDEX is followed by index properties, a (CREATE INDEX ...) group or nothing.
+export const matchUsingIndexName = (tokens: Token[]) => {
+  const word = matchKeyword(tokens);
+  const qualifiedName = matchQualifiedName(tokens);
+
+  return (pos: number) => {
+    if (word(pos) !== 'USING' || word(pos + 1) !== 'INDEX') return 0;
+
+    const name = qualifiedName(pos + 2);
+    return name && !IndexProperties.includes(word(pos + 2)) ? 2 + name : 0;
+  };
+};
+
+// Whether the WHERE at pos keeps out only rows with a NULL in the key: key IS
+// NOT NULL over the given key columns, AND-joined, in parentheses that pair up,
+// since a close no open pairs may end the CREATE TABLE around the key.
+export const isNullFilter = (tokens: Token[]) => {
+  const isWhere = isWhereValue(tokens);
+  const isString = isStringToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
+  const isIs = isIsValue(tokens);
+  const isNot = isNotValue(tokens);
+  const isNull = isNullValue(tokens);
+  const isAnd = isAndValue(tokens);
+  const isOr = isOrValue(tokens);
+
+  return (pos: number, columnNames: string[]) => {
+    if (!isWhere(pos)) return false;
+
+    const names = new Set(columnNames.map(name => name.toUpperCase()));
+    let depth = 0;
+
+    do {
+      pos++;
+
+      for (; isLeftParent(pos); pos++) {
+        depth++;
+      }
+
+      if (
+        !isString(pos) ||
+        !names.has(tokens[pos].value.toUpperCase()) ||
+        !isIs(pos + 1) ||
+        !isNot(pos + 2) ||
+        !isNull(pos + 3)
+      ) {
+        return false;
+      }
+
+      pos += 4;
+
+      for (; depth > 0 && isRightParent(pos); pos++) {
+        depth--;
+      }
+    } while (isAnd(pos));
+
+    return !isOr(pos);
+  };
+};
+
+// What the optional symbol after CONSTRAINT can never be: the words that open
+// the constraint itself.
+const ConstraintBodies: ReadonlyArray<string> = [
+  'UNIQUE',
+  'PRIMARY',
+  'FOREIGN',
+  'CHECK',
+];
+
 // How many tokens the ALTER TABLE ADD head spans, 0 when there is none at pos,
 // and whether ONLY was read as the keyword rather than the table name. The name
 // is measured rather than counted, which lets a three-part name through.
@@ -393,6 +567,7 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
   const isConstraint = isConstraintValue(tokens);
   const isString = isStringToken(tokens);
   const qualifiedName = matchQualifiedName(tokens);
+  const word = matchKeyword(tokens);
 
   // ONLY is optional, and it is also a legal table name: both readings are
   // tried, the one that reaches ADD wins.
@@ -406,8 +581,14 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
     if (!isAdd(cursor)) return 0;
     cursor++;
 
-    if (isConstraint(cursor) && isString(cursor + 1)) {
-      cursor += 2;
+    // The symbol is optional, and MySQL's CONSTRAINT UNIQUE (a) names nothing:
+    // read as the symbol, UNIQUE would leave the key nothing to open it.
+    if (isConstraint(cursor)) {
+      cursor++;
+
+      if (isString(cursor) && !ConstraintBodies.includes(word(cursor))) {
+        cursor++;
+      }
     }
 
     return cursor - pos;
@@ -462,14 +643,11 @@ export const isAlterTableAddForeignKey = (tokens: Token[]) => {
   };
 };
 
-export const isAlterTableAddUnique = (tokens: Token[]) => {
+// Any ALTER TABLE name ADD, whatever it adds: one statement may add several
+// keys, and a unique key can follow a clause of another kind.
+export const isAlterTableAdd = (tokens: Token[]) => {
   const alterTableAdd = matchAlterTableAdd(tokens);
-  const isUnique = isUniqueValue(tokens);
-
-  return (pos: number) => {
-    const length = alterTableAdd(pos);
-    return length > 0 && isUnique(pos + length);
-  };
+  return (pos: number) => alterTableAdd(pos) > 0;
 };
 
 const DataTypes: ReadonlyArray<string> = Array.from(

@@ -44,7 +44,10 @@ afterEach(async () => {
 /** An Erd with one memo, selected, with its editor open over the scene. */
 async function mountEditingMemo(): Promise<Mounted> {
   const app = createTestAppContext();
-  const mounted = mount(<Erd isDarkMode={false} mouseTracking={false} />, app);
+  const mounted = mount(
+    <Erd isDarkMode={false} mouseTracking={false} readonly={false} />,
+    app
+  );
   mounted.container.setAttribute(
     'style',
     'width: 800px; height: 600px; position: relative;'
