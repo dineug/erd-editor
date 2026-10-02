@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes.styles';
+import * as frameStyles from '@/components/erd/table-properties/TableProperties.styles';
 import {
   COLUMN_HEIGHT,
   COLUMN_UNIQUE_WIDTH,
@@ -130,23 +131,14 @@ describe('TablePropertiesIndexes.styles', () => {
     expect(text).not.toContain('var(--placeholder)');
   });
 
-  it('scrolls the column rows sideways under an edge shade where more is hidden', () => {
+  it('scrolls the column rows sideways under the edge shade the header chips wear', () => {
     const text = staticText(styles.columns);
 
     expect(text).toContain('flex-shrink: 0');
     expect(text).toContain('overflow-x: auto');
     expect(text).toContain('overflow-y: hidden');
-    expect(text).toMatch(
-      /background-image:\s+linear-gradient\(to right, var\(--context-menu-background\) 30%, transparent\),\s+linear-gradient\(to left, var\(--context-menu-background\) 30%, transparent\),\s+linear-gradient\(to right, var\(--context-menu-border\), transparent\),\s+linear-gradient\(to left, var\(--context-menu-border\), transparent\);/
-    );
-    expect(text).toMatch(
-      /background-size:\s+24px 100%,\s+24px 100%,\s+12px 100%,\s+12px 100%;/
-    );
-    expect(text).toContain('background-repeat: no-repeat');
-    expect(text).toContain(
-      'background-attachment: local, local, scroll, scroll'
-    );
-    expect(styles.columns.values).toEqual([]);
+    expect(text).not.toContain('background-image');
+    expect(styles.columns.values).toEqual([frameStyles.edgeShade]);
   });
 
   it('says what an empty list is missing on a row of its own', () => {

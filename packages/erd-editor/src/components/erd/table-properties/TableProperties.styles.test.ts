@@ -18,6 +18,7 @@ describe('TableProperties.styles', () => {
       'header',
       'title',
       'readonlyBadge',
+      'edgeShade',
       'tables',
       'tableChip',
       'close',
@@ -105,6 +106,36 @@ describe('TableProperties.styles', () => {
     expect(tables).toContain('min-width: 0');
     expect(tables).toContain('gap: 4px');
     expect(tables).toContain('overflow-x: auto');
+  });
+
+  it('shades an edge of the chip row only where more chips lie past it', () => {
+    expect(styles.tables.values).toEqual([styles.edgeShade]);
+  });
+
+  it('draws the edge shade as two covers riding the content over two shades in the panel tokens', () => {
+    const text = staticText(styles.edgeShade);
+
+    expect(text).toMatch(
+      /background-image:\s+linear-gradient\(to right, var\(--context-menu-background\) 50%, transparent\),\s+linear-gradient\(to left, var\(--context-menu-background\) 50%, transparent\),\s+linear-gradient\(to right, var\(--context-menu-border\), transparent\),\s+linear-gradient\(to left, var\(--context-menu-border\), transparent\);/
+    );
+    expect(text).toMatch(
+      /background-size:\s+24px 100%,\s+24px 100%,\s+12px 100%,\s+12px 100%;/
+    );
+    expect(text).toContain('background-repeat: no-repeat');
+    expect(text).toContain(
+      'background-attachment: local, local, scroll, scroll'
+    );
+    expect(styles.edgeShade.values).toEqual([]);
+  });
+
+  it('leaves no trace of the shade at an edge with nothing past it', () => {
+    const text = staticText(styles.edgeShade);
+
+    // Solid for 12 of its 24px, a cover hides the whole 12px shade under it.
+    expect(text).not.toContain(') 30%,');
+    // On a fractional offset the covers, painted with the scrolled content,
+    // snap apart from the shades by a pixel row; the content box clips both.
+    expect(text).toContain('background-clip: content-box');
   });
 
   it('draws the read only badge as a quiet bordered label that never shrinks', () => {

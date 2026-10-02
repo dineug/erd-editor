@@ -85,6 +85,33 @@ export const readonlyBadge = css`
   ${typography.paragraph};
 `;
 
+/**
+ * Shades a sideways scroller's edge only where more lies past it: two covers
+ * in the panel colour, solid as wide as a shade, ride with the content over
+ * two edge shades, the cue an overlay scrollbar leaves out.
+ */
+export const edgeShade = css`
+  background-image:
+    linear-gradient(to right, var(--context-menu-background) 50%, transparent),
+    linear-gradient(to left, var(--context-menu-background) 50%, transparent),
+    linear-gradient(to right, var(--context-menu-border), transparent),
+    linear-gradient(to left, var(--context-menu-border), transparent);
+  background-position:
+    left center,
+    right center,
+    left center,
+    right center;
+  background-size:
+    24px 100%,
+    24px 100%,
+    12px 100%,
+    12px 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+  background-clip: content-box;
+`;
+
+/* The tables opened lately, which scroll sideways under the edge shade once they outgrow the row. */
 export const tables = css`
   flex: 1 1 0;
   min-width: 0;
@@ -93,6 +120,7 @@ export const tables = css`
   gap: 4px;
   overflow-x: auto;
   padding: 2px 0;
+  ${edgeShade};
 `;
 
 /* A chip, as Find and Replace draws a scope, lighter than the section tabs under it. */
