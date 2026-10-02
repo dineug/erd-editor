@@ -15,7 +15,10 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import { TAKEOVERS } from '@/components/find-replace/panelLayout';
+import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { bindsOnTab, useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -214,6 +217,57 @@ describe('useKeyBindingMap', () => {
       ).toBe(true);
     }
   );
+
+  it.each(TAKEOVERS)(
+    'leaves $mod+KeyF to the host find on the ERD tab while %s takes the canvas over',
+    key => {
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+      const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+      const input = document.createElement('input');
+      $root.append(input);
+      const outside = vi.fn();
+      mounted!.container.addEventListener('keydown', outside);
+
+      const onCanvas = press({ key: 'f', code: 'KeyF', mod: true });
+      const inField = keydown({ key: 'f', code: 'KeyF', mod: true });
+      input.dispatchEvent(inField);
+
+      expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+      expect(shortcuts).toHaveLength(0);
+      expect(onCanvas.defaultPrevented).toBe(false);
+      expect(inField.defaultPrevented).toBe(false);
+      expect(outside).toHaveBeenCalledTimes(2);
+      // The other chords stay the editor's under it.
+      expect(
+        press({ key: 'k', code: 'KeyK', mod: true }).defaultPrevented
+      ).toBe(true);
+
+      // Taken again once the overlay has gone.
+      shortcuts = [];
+      app.store.dispatchSync(changeOpenMapAction({ [key]: false }));
+      expect(
+        press({ key: 'f', code: 'KeyF', mod: true }).defaultPrevented
+      ).toBe(true);
+      expect(shortcuts.map(({ type }) => type)).toEqual([
+        KeyBindingName.findReplace,
+      ]);
+    }
+  );
+
+  it('takes $mod+KeyF under a dialog that only stands the panel aside', () => {
+    for (const key of [Open.tableProperties, Open.themeBuilder]) {
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+      expect(
+        press({ key: 'f', code: 'KeyF', mod: true }).defaultPrevented
+      ).toBe(true);
+      app.store.dispatchSync(changeOpenMapAction({ [key]: false }));
+    }
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.findReplace,
+      KeyBindingName.findReplace,
+    ]);
+  });
 
   it('tells a row naming a chord whether the tab shown takes it', () => {
     expect(bindsOnTab(KeyBindingName.findReplace, CanvasType.ERD)).toBe(true);

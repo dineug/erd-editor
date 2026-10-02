@@ -183,8 +183,9 @@ is focused. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types com
 
 The page's own find is among them: while the editor is focused on its ERD tab, `$mod+KeyF` opens
 its Find and Replace and is prevented, so the browser opens no find bar; on the editor's other
-tabs the press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the page
-on every tab, and the quick search and the context menu still open Find and Replace.
+tabs, and on the ERD tab while the diff viewer, time travel or the automatic placement preview
+covers it, the press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the
+page on every tab, and the quick search and the context menu still open Find and Replace.
 
 ## Syntax highlighting
 

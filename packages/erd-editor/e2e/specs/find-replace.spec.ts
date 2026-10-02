@@ -215,6 +215,45 @@ test.describe('Find and Replace', () => {
     await expect(panelOf(erd).locator('.find-input')).toBeFocused();
   });
 
+  test('leaves its chord to the page find under time travel, and takes it once that closes', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(schema());
+    await page.evaluate(() => {
+      Reflect.set(window, '__finds', []);
+      window.addEventListener('keydown', event => {
+        if (event.code === 'KeyF') Reflect.get(window, '__finds').push(event);
+      });
+    });
+    const heard = () =>
+      page.evaluate(() =>
+        (Reflect.get(window, '__finds') as KeyboardEvent[]).map(
+          event => event.defaultPrevented
+        )
+      );
+
+    // An edit, so time travel has a history to open on.
+    await erd.focusHost();
+    await erd.press(Shortcut.addTable);
+    await erd.toolbarButton('Time Travel').click();
+    await expect(erd.toolbarButton('Undo')).toHaveCount(0);
+
+    await erd.focusHost();
+    await erd.press(Shortcut.findReplace);
+    await expect(panelOf(erd)).toHaveCount(0);
+    // Heard by the page unprevented, as on the editor's other tabs.
+    expect(await heard()).toEqual([false]);
+
+    await erd.press('Escape');
+    await expect(erd.toolbarButton('Undo')).toHaveCount(1);
+    await erd.focusHost();
+    await erd.press(Shortcut.findReplace);
+
+    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    expect(await heard()).toEqual([false]);
+  });
+
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({
     erd,
     page,
