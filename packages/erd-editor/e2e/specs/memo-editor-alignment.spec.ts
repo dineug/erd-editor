@@ -25,6 +25,15 @@ test.use({
 });
 
 /**
+ * Just large enough to show the memo where the suite's own page does, at every
+ * zoom and placement below. The scene keeps four canvases the size of the page,
+ * and a cpu compositor copies them every frame, slowly at four device pixels.
+ */
+const VIEWPORT = { width: 840, height: 800 };
+
+test.use({ viewport: VIEWPORT });
+
+/**
  * The device grids a crop is read on. Two is what this display captures at, and
  * four splits the half pixel blink snaps a painted baseline to into two rows of
  * the image rather than one shade of it.
