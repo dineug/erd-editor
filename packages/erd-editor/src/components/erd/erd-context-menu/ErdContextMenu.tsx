@@ -263,11 +263,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               {referentialActionItems.map(({ field, name }) => (
                 <ContextMenu.Item
                   children={
-                    <ContextMenu.Menu
-                      icon={<Icon name="key-round" size={14} />}
-                      name={name}
-                      right={chevronRightIcon}
-                    />
+                    <ContextMenu.Menu name={name} right={chevronRightIcon} />
                   }
                   subChildren={
                     <>
