@@ -813,8 +813,6 @@ function referencesParser(
     $pos.value += 2;
   }
 
-  token = tokens[$pos.value];
-
   if (isLeftParent($pos.value)) {
     token = tokens[++$pos.value];
 
