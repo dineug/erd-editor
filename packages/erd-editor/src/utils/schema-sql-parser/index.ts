@@ -12,6 +12,7 @@ import {
   CommentOnTable,
   CreateIndex,
   CreateTable,
+  Index,
   Key,
   schemaSQLParser,
   SortType,
@@ -145,8 +146,8 @@ function mergeTables({
     // own, under the key's name or, for a key with none, Oracle's SYS_C...: it
     // is that key again, a second index of it or one beside its flags.
     const created = keyOf(index);
-    const sameIndex = table.indexes.find(other =>
-      isKeyIndex(keyOf(other), created)
+    const sameIndex = table.indexes.find(
+      other => mayRepeat(table, other) && isKeyIndex(keyOf(other), created)
     );
 
     if (sameIndex) {
@@ -257,6 +258,17 @@ function mergeTables({
   });
 
   return tables;
+}
+
+/**
+ * Whether a later CREATE INDEX may repeat an index of the table: a named one,
+ * or one with no name only as a key Oracle's USING INDEX follows, as keys say;
+ * an unnamed CREATE INDEX or a bare inline UNIQUE stays an index of its own.
+ */
+function mayRepeat(table: CreateTable, index: Index) {
+  return (
+    index.name !== '' || table.keys.some(key => isKeyIndex(key, keyOf(index)))
+  );
 }
 
 // The index Oracle exports on its own for a key, named by the key or by its

@@ -520,6 +520,12 @@ function createTableColumnsParser(
           // Several columns under one UNIQUE are one composite key, in whatever
           // spelling; marking each column unique would export a stricter one.
           indexes.push({ name, unique: true, columns: indexColumns });
+
+          // A name finds the index a dump exports for the key on its own; with
+          // none, only the USING INDEX that reports it in keys does.
+          if (!name) {
+            addKey(name, columnNames);
+          }
         } else {
           uniqueColumnNames.push(
             ...columnNames.map(columnName => columnName.toUpperCase())

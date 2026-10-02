@@ -596,6 +596,31 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('keeps an index over the columns of an inline unique key with no name and no USING INDEX', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, UNIQUE (a, b));
+        CREATE INDEX ix_ab ON t (a, b);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_ab', unique: false, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
+    it('keeps an index over the columns of an earlier CREATE INDEX with no name', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT);
+        CREATE INDEX ON t (a, b);
+        CREATE UNIQUE INDEX uq ON t (a, b);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
     it('keeps an index named after a key that keys other columns', () => {
       const schema = parse(`
         CREATE TABLE t (a INT, b INT, c INT);
