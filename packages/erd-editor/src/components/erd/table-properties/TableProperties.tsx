@@ -52,6 +52,17 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
     });
   };
 
+  /**
+   * Space is the hand tool's key wherever no caret is, and the editor cancels
+   * its keydown, which takes the click from a native button. Kept here, Space
+   * presses the button as Enter does; Escape still bubbles up to close.
+   */
+  const handleCloseKeydown = (event: KeyboardEvent) => {
+    if (event.code === 'Space') {
+      event.stopPropagation();
+    }
+  };
+
   const handleOutsideClick = (event: MouseEvent) => {
     const el = event.target as HTMLElement | null;
     if (!el) return;
@@ -128,6 +139,7 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
                 KeyBindingName.stop
               )}
               on:click={handleCloseButton}
+              on:keydown={handleCloseKeydown}
             >
               <Icon name="x" size={14} />
             </button>

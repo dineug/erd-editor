@@ -107,6 +107,21 @@ test.describe('table properties — frame', () => {
     await expect(panel).toBeVisible();
   });
 
+  test('closes on Space as a button does, and leaves the hand tool be', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(schema());
+    const { panel } = await openProperties(erd, page, 'student');
+    const cursor = await erd.canvasCursor();
+
+    await panel.locator('.table-properties-close').focus();
+    await page.keyboard.press('Space');
+    await expect(panel).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
+    expect(await erd.canvasCursor()).toBe(cursor);
+  });
+
   test('shows read only mode and offers no edit in it', async ({
     erd,
     page,

@@ -356,6 +356,24 @@ describe('TableProperties', () => {
       expect(focusEvents).toBe(1);
     });
 
+    it('keeps a Space on the close button from the editor, which would cancel the press', async () => {
+      mounted = await mountAndFlush(template(), app);
+      const reached: string[] = [];
+      mounted.container.addEventListener('keydown', event =>
+        reached.push(event.code)
+      );
+      const press = (code: string, key: string) =>
+        closeButtonOf(mounted as Mounted).dispatchEvent(
+          new KeyboardEvent('keydown', { code, key, bubbles: true })
+        );
+
+      press('Space', ' ');
+      press('Escape', 'Escape');
+      press('Enter', 'Enter');
+
+      expect(reached).toEqual(['Escape', 'Enter']);
+    });
+
     it('hands the keyboard back on no other way out', async () => {
       mounted = await mountAndFlush(template(), app);
 
