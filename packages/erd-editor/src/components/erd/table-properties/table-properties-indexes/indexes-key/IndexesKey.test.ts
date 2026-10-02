@@ -17,7 +17,6 @@ import {
 import { AppContext } from '@/components/appContext';
 import IndexesKey from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey';
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey.styles';
-import { COLUMN_UNIQUE_WIDTH } from '@/constants/layout';
 import type { ColumnKey } from '@/utils/tableKeys';
 
 const PRIMARY_KEY: ColumnKey = {
@@ -63,36 +62,53 @@ afterEach(() => {
 });
 
 describe('IndexesKey', () => {
-  it('shows a primary key as a checked PK chip and its name, read only', async () => {
+  it('shows a primary key as a filled PK tag and its name, read only', async () => {
     mounted = await mountAndFlush(template(PRIMARY_KEY), app);
     const row = rowOf(mounted);
-    const [chipCell, nameCell] = Array.from(row.children) as HTMLElement[];
-    const chip = chipCell.firstElementChild as HTMLElement;
+    const [tagCell, nameCell] = Array.from(row.children) as HTMLElement[];
+    const tag = tagCell.firstElementChild as HTMLElement;
 
     expect(row.getAttribute('title')).toBe('Primary Key');
-    expect(chip.textContent?.trim()).toBe('PK');
-    expect(chip.classList.contains('checked')).toBe(true);
-    expect(chip.style.width).toBe(`${COLUMN_UNIQUE_WIDTH}px`);
+    expect(tagCell.classList.contains('column-col')).toBe(true);
+    expect(tag.tagName).toBe('SPAN');
+    expect(tag.classList.contains(String(styles.tag))).toBe(true);
+    expect(tag.textContent?.trim()).toBe('PK');
+    expect(tag.getAttribute('title')).toBe('Primary Key');
+    expect(row.querySelector('.checked')).toBeNull();
     expect(nameCell.textContent).toBe('PK_users');
     expect(nameCell.classList.contains(String(styles.name))).toBe(true);
     expect(row.querySelector('input')).toBeNull();
-    expect(
-      Array.from(row.querySelectorAll('.icon')).map(icon =>
-        icon.getAttribute('title')
-      )
-    ).toEqual(['Read Only']);
-    expect(
-      row.querySelector('.icon')?.classList.contains(String(styles.lock))
-    ).toBe(true);
   });
 
-  it('shows a unique column as a checked UQ chip', async () => {
+  it('keeps its lock a direct child of the row, the one element titled Read Only', async () => {
+    mounted = await mountAndFlush(template(PRIMARY_KEY), app);
+    const row = rowOf(mounted);
+    const locks = Array.from(
+      mounted.container.querySelectorAll('[title="Read Only"]')
+    );
+
+    expect(locks).toHaveLength(1);
+    expect(locks[0].parentElement).toBe(row);
+    expect(locks[0].classList.contains('icon')).toBe(true);
+    expect(locks[0].classList.contains(String(styles.lock))).toBe(true);
+    expect(row.lastElementChild).toBe(locks[0]);
+  });
+
+  it('shows a unique column as a filled UQ tag', async () => {
     mounted = await mountAndFlush(template(UNIQUE), app);
     const row = rowOf(mounted);
+    const tag = row.querySelector(`.${String(styles.tag)}`) as HTMLElement;
 
     expect(row.getAttribute('title')).toBe('Unique Column');
-    expect(row.textContent).toContain('UQ');
+    expect(tag.textContent?.trim()).toBe('UQ');
+    expect(tag.getAttribute('title')).toBe('Unique Column');
     expect(row.textContent).toContain('UQ_users_email');
+  });
+
+  it('titles nothing Unique, which the UQ toggle of an index row answers to', async () => {
+    mounted = await mountAndFlush(template(UNIQUE), app);
+
+    expect(mounted.container.querySelector('[title="Unique"]')).toBeNull();
   });
 
   it('takes the selected class from its prop', async () => {

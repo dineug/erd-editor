@@ -1,8 +1,6 @@
 import { FC } from '@dineug/r-html';
 
 import Icon from '@/components/primitives/icon/Icon';
-import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
-import { COLUMN_UNIQUE_WIDTH } from '@/constants/layout';
 import type { ColumnKey } from '@/utils/tableKeys';
 
 import * as styles from './IndexesKey.styles';
@@ -39,14 +37,11 @@ const IndexesKey: FC<IndexesKeyProps> = props => {
         on:click={handleSelect}
       >
         <div class="column-col">
-          <ColumnOption
-            checked={true}
-            width={COLUMN_UNIQUE_WIDTH}
-            text={label.text}
-            title={label.title}
-          />
+          <span class={styles.tag} title={label.title}>
+            {label.text}
+          </span>
         </div>
-        <div class={['column-col', styles.name]}>{columnKey.name}</div>
+        <div class={styles.name}>{columnKey.name}</div>
         <Icon class={styles.lock} size={12} name="lock" title="Read Only" />
       </div>
     );

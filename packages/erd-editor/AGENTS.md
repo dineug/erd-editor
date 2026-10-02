@@ -90,6 +90,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 **Table Properties**
 
 - **One fixed box for all three tabs** (`erd/table-properties/TableProperties.styles.ts`): 1040 by 600 at most, hung from the palette's line 60px under the editor's top and shortened by `max-height: 100%` on a low host, so switching tabs never moves the frame. The header holds the title, a chip per table opened lately and the close button, the one control the keyboard reaches; it hands focus back with `focusEvent` on `nextTick`, as Find and Replace's close does, or the keyboard falls to the page and the shortcuts stop. Escape and a press on the backdrop close it as before.
+- **The Index order sticks to the body's bottom edge** (`order` in `TablePropertiesIndexes.styles.ts`): it sticks 12px past the body's padding edge, pads its rows back by as much and takes that padding out of the flow with a negative margin, so a stuck order hides the rows under it and one in place adds no scroll height. The 12 is the body padding of `scrollbarArea` in `TableProperties.styles.ts`; change both together. Its rows carry the canvas's `AK<n>.<m>` marks, numbered as `getAlternateKeyMarks` numbers them.
 - **Its titles are an e2e contract**: `e2e/specs/table-properties-indexes.spec.ts` finds rows by `[title="Add Index"]`, `[title="Unique"]`, `[title="Alternate Key n"]`, `[title="Remove"]` and `div:has(> [title="Read Only"])`, the lock a direct child of a key row. A new element takes none of those titles, or a strict locator matches two.
 
 **Coordinates and scrolling**

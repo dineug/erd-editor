@@ -134,6 +134,12 @@ describe('IndexesIndex', () => {
       expect(input.getAttribute('type')).toBe('text');
       expect(input.value).toBe('');
       expect(input.classList.contains(String(styles.input))).toBe(true);
+      expect(
+        input.parentElement?.classList.contains(String(styles.nameCell))
+      ).toBe(true);
+      expect(
+        input.parentElement?.classList.contains(String(styles.input))
+      ).toBe(false);
     });
 
     it('shows the alternate key number a unique index is known by', async () => {
@@ -142,6 +148,8 @@ describe('IndexesIndex', () => {
 
       expect(label.textContent).toBe('AK2');
       expect(label.getAttribute('title')).toBe('Alternate Key 2');
+      expect(label.classList.contains('column-col')).toBe(false);
+      expect(label.nextElementSibling).toBe(removeIconOf(mounted));
     });
 
     it('shows no alternate key number for an index that is none', async () => {
@@ -157,6 +165,16 @@ describe('IndexesIndex', () => {
       expect(icon).toBeTruthy();
       expect(icon.getAttribute('title')).toBe('Remove');
       expect(icon.querySelector('svg')).toBeTruthy();
+    });
+
+    it('ends every row in its remove icon, picked or not', async () => {
+      for (const selected of [false, true]) {
+        mounted = await mountAndFlush(template(index, selected), app);
+
+        expect(rowOf(mounted).lastElementChild).toBe(removeIconOf(mounted));
+        mounted.unmount();
+        mounted = null;
+      }
     });
   });
 

@@ -83,7 +83,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
             title="Unique"
           />
         </div>
-        <div class={['column-col', styles.input]}>
+        <div class={['column-col', styles.nameCell]}>
           <TextInput
             class={styles.input}
             placeholder="name"
@@ -93,7 +93,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
         </div>
         {props.alternateKey ? (
           <div
-            class={['column-col', styles.alternateKey]}
+            class={styles.alternateKey}
             title={`Alternate Key ${props.alternateKey}`}
           >
             {`AK${props.alternateKey}`}

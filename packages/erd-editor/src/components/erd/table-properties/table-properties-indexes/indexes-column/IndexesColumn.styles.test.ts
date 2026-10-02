@@ -7,24 +7,55 @@ import {
   INPUT_MARGIN_RIGHT,
   TABLE_PADDING,
 } from '@/constants/layout';
+import { typography } from '@/styles/typography.styles';
 
 const staticText = (literals: { strings: TemplateStringsArray }) =>
   [...literals.strings].join(' ');
 
 describe('IndexesColumn.styles', () => {
-  it('exports the root, row and orderType tokens', () => {
-    expect(Object.keys(styles)).toEqual(['root', 'row', 'orderType']);
+  it('exports the root, row, grip, orderType and mark tokens', () => {
+    expect(Object.keys(styles)).toEqual([
+      'root',
+      'row',
+      'grip',
+      'orderType',
+      'mark',
+    ]);
 
     const identifiers = Object.values(styles).map(String);
-    expect(new Set(identifiers).size).toBe(3);
+    expect(new Set(identifiers).size).toBe(5);
   });
 
   it('declares the flip animation class the component adds while moving', () => {
     const text = staticText(styles.root);
 
-    expect(text).toContain('padding-top: 12px');
     expect(text).toContain('.index-column-order-move');
     expect(text).toContain('transition: transform 0.3s');
+  });
+
+  it('shows five rows under its label and scrolls the rest', () => {
+    const text = staticText(styles.root);
+
+    expect(text).not.toContain('padding-top');
+    expect(text).toContain('max-height: 120px');
+    expect(text).toContain('overflow-y: auto');
+  });
+
+  it('sets a row in the size of the canvas table rows', () => {
+    expect(styles.row.values).toContain(typography.paragraph);
+  });
+
+  it('quiets the drag handle', () => {
+    expect(staticText(styles.grip)).toContain('color: var(--placeholder)');
+  });
+
+  it('puts the alternate key mark at the end of the row in the accent text colour', () => {
+    const text = staticText(styles.mark);
+
+    expect(text).toContain('margin-left: auto');
+    expect(text).toContain('color: var(--accent-color-11)');
+    expect(text).toContain('font-variant-numeric: tabular-nums');
+    expect(text).toContain('white-space: nowrap');
   });
 
   it('renders each index column as a draggable full width line', () => {

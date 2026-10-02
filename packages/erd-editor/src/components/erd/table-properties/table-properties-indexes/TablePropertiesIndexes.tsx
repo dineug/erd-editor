@@ -2,9 +2,9 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, observable, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import IndexesIndex from '@/components/erd/table-properties//table-properties-indexes/indexes-index/IndexesIndex';
 import IndexesCheckboxColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-checkbox-column/IndexesCheckboxColumn';
 import IndexesColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn';
+import IndexesIndex from '@/components/erd/table-properties/table-properties-indexes/indexes-index/IndexesIndex';
 import IndexesKey from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey';
 import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
@@ -19,6 +19,51 @@ import * as styles from './TablePropertiesIndexes.styles';
 export type TablePropertiesIndexesProps = {
   tableId: string;
 };
+
+type ColumnsStatus = {
+  text: string;
+  /** A key is picked, which the columns set and this tab only shows. */
+  readonly: boolean;
+};
+
+const KEY_FLAG_TEXT: Record<ColumnKey['kind'], string> = {
+  primaryKey: 'the PK flag on its columns',
+  unique: 'the UQ flag on its column',
+};
+
+/**
+ * What the Columns heading says about the list under it: how many columns
+ * the picked index has, who sets a picked key, or what to pick first.
+ */
+function toColumnsStatus(
+  selectedIndex: Index | null,
+  selectedKey: ColumnKey | null,
+  checkedCount: number,
+  columnCount: number,
+  hasKeys: boolean,
+  hasIndexes: boolean
+): ColumnsStatus {
+  if (selectedIndex) {
+    return {
+      text: `${checkedCount} of ${columnCount} selected`,
+      readonly: false,
+    };
+  }
+  if (selectedKey) {
+    return {
+      text: `Read only: set by ${KEY_FLAG_TEXT[selectedKey.kind]}`,
+      readonly: true,
+    };
+  }
+
+  const text = hasKeys
+    ? 'Select a key or an index'
+    : hasIndexes
+      ? 'Select an index to edit its columns'
+      : 'Add an index to choose its columns';
+
+  return { text, readonly: false };
+}
 
 const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
   props,
@@ -56,6 +101,10 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
     const table = query(collections)
       .collection('tableEntities')
       .selectById(tableId);
+    const columnIds = table?.columnIds ?? [];
+    const columnCount = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(columnIds).length;
     const indexes = query(collections)
       .collection('indexEntities')
       .selectByIds(indexIds)
@@ -68,10 +117,30 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
     const { indexId } = state;
     const selectedIndex = indexes.find(index => index.id === indexId) ?? null;
     const selectedKey = columnKeys.find(key => key.id === indexId) ?? null;
+    const checkedColumnIds = new Set(
+      query(collections)
+        .collection('indexColumnEntities')
+        .selectByIds(selectedIndex?.indexColumnIds ?? [])
+        .map(indexColumn => indexColumn.columnId)
+    );
+    const status = toColumnsStatus(
+      selectedIndex,
+      selectedKey,
+      columnIds.filter(id => checkedColumnIds.has(id)).length,
+      columnCount,
+      columnKeys.length > 0,
+      indexes.length > 0
+    );
+    const orderCount = selectedIndex?.indexColumnIds.length ?? 0;
 
     return (
       <>
         <div class={styles.leftArea}>
+          {columnKeys.length ? (
+            <div class={styles.sectionLabel}>
+              <span>Keys</span>
+            </div>
+          ) : null}
           {repeat(
             columnKeys,
             columnKey => columnKey.id,
@@ -86,6 +155,9 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
           {columnKeys.length ? (
             <Separator space={4} padding={TABLE_PADDING} />
           ) : null}
+          <div class={styles.sectionLabel}>
+            <span>Indexes</span>
+          </div>
           {repeat(
             indexes,
             index => index.id,
@@ -98,21 +170,55 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
               />
             )
           )}
+          {indexes.length ? null : (
+            <div class={styles.hint}>No indexes yet</div>
+          )}
           <div
             class={styles.addIndexButtonArea}
             title="Add Index"
             on:click={handleAddIndex}
           >
-            <Icon size={12} name="plus" />
+            <Icon class={styles.addIcon} size={12} name="plus" />
+            <span>Add Index</span>
           </div>
         </div>
         <div class={styles.rightArea}>
-          <IndexesCheckboxColumn
-            tableId={tableId}
-            index={selectedIndex}
-            keyColumnIds={selectedKey?.columnIds ?? null}
-          />
-          {selectedIndex ? <IndexesColumn index={selectedIndex} /> : null}
+          <div class={styles.sectionLabel}>
+            <span>Columns</span>
+            <span class={styles.sectionStatus}>
+              {status.readonly ? <Icon size={12} name="lock" /> : null}
+              <span>{status.text}</span>
+            </span>
+          </div>
+          {columnCount ? (
+            <IndexesCheckboxColumn
+              tableId={tableId}
+              index={selectedIndex}
+              keyColumnIds={selectedKey?.columnIds ?? null}
+            />
+          ) : (
+            <div class={styles.hint}>This table has no columns</div>
+          )}
+          {selectedIndex ? (
+            <div class={styles.order}>
+              <div class={styles.sectionLabel}>
+                <span>Index order</span>
+                {orderCount > 1 ? (
+                  <span class={styles.sectionStatus}>
+                    <span>Drag to reorder</span>
+                  </span>
+                ) : null}
+              </div>
+              {orderCount ? (
+                <IndexesColumn
+                  index={selectedIndex}
+                  alternateKey={alternateKeyIds.indexOf(selectedIndex.id) + 1}
+                />
+              ) : (
+                <div class={styles.hint}>Check columns above to add them</div>
+              )}
+            </div>
+          ) : null}
         </div>
       </>
     );

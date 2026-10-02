@@ -22,6 +22,7 @@ import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import {
   addIndexColumnAction,
   changeIndexColumnOrderTypeAction,
+  moveIndexColumnAction,
 } from '@/engine/modules/index-column/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
@@ -178,6 +179,93 @@ describe('IndexesColumn', () => {
       ) as HTMLElement;
       expect(root).toBeTruthy();
       expect(rowsOf(mounted)).toHaveLength(0);
+    });
+  });
+
+  describe('alternate key marks', () => {
+    const marksOf = (mounted: Mounted) =>
+      rowsOf(mounted).map(
+        row => row.querySelector(`.${String(styles.mark)}`)?.textContent ?? null
+      );
+
+    it('marks each row as the canvas marks its column, by key order', async () => {
+      mounted = await mountAndFlush(
+        html`<${IndexesColumn} index=${index} alternateKey=${2} />`,
+        app
+      );
+
+      expect(marksOf(mounted)).toEqual(['AK2.1', 'AK2.2']);
+      const mark = rowsOf(mounted)[0].lastElementChild as HTMLElement;
+      expect(mark.classList.contains(String(styles.mark))).toBe(true);
+      expect(mark.hasAttribute('title')).toBe(false);
+    });
+
+    it('marks nothing for an index that is no alternate key', async () => {
+      for (const alternateKey of [0, undefined]) {
+        mounted = await mountAndFlush(
+          html`<${IndexesColumn}
+            index=${index}
+            alternateKey=${alternateKey}
+          />`,
+          app
+        );
+
+        expect(marksOf(mounted)).toEqual([null, null]);
+        mounted.unmount();
+        mounted = null;
+      }
+    });
+
+    it('renumbers the marks when the order changes', async () => {
+      mounted = await mountAndFlush(
+        html`<${IndexesColumn} index=${index} alternateKey=${1} />`,
+        app
+      );
+      const rows = rowsOf(mounted);
+
+      fire(rows[1], 'dragstart');
+      fire(rows[0], 'dragover');
+      await wait(120);
+      await flush();
+
+      expect(rowsOf(mounted).map(row => row.dataset.id)).toEqual([
+        INDEX_COLUMN_B,
+        INDEX_COLUMN_A,
+      ]);
+      expect(marksOf(mounted)).toEqual(['AK1.1', 'AK1.2']);
+
+      fire(rows[1], 'dragend');
+    });
+
+    it('counts past a column the table no longer has, as the canvas does', async () => {
+      app.store.dispatchSync(
+        addIndexColumnAction({
+          id: 'ic-gone',
+          indexId: INDEX_ID,
+          tableId: TABLE_ID,
+          columnId: 'gone',
+        })
+      );
+      app.store.dispatchSync(
+        moveIndexColumnAction({
+          id: 'ic-gone',
+          indexId: INDEX_ID,
+          tableId: TABLE_ID,
+          targetId: INDEX_COLUMN_A,
+        })
+      );
+      const moved = app.store.state.collections.indexEntities[INDEX_ID];
+      mounted = await mountAndFlush(
+        html`<${IndexesColumn} index=${moved} alternateKey=${1} />`,
+        app
+      );
+
+      expect(rowsOf(mounted).map(row => row.dataset.id)).toEqual([
+        'ic-gone',
+        INDEX_COLUMN_A,
+        INDEX_COLUMN_B,
+      ]);
+      expect(marksOf(mounted)).toEqual([null, 'AK1.1', 'AK1.2']);
     });
   });
 
