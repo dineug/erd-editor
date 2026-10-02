@@ -80,12 +80,11 @@ export const isArrayValue = createValueEqual('ARRAY');
 
 // Writes a quoted token back inside the delimiters it came in, doubling the
 // quotes its value holds: ENUM('it''s') is valid DDL only with them.
-export const requote = (token: Token) => {
-  if (!token.quoted) return token.value;
-  if (token.quoted === '[') return `[${token.value}]`;
+export const requote = ({ value, quoted }: Token) => {
+  if (!quoted) return value;
+  if (quoted === '[') return `[${value}]`;
 
-  const quote = token.quoted;
-  return `${quote}${token.value.replaceAll(quote, quote + quote)}${quote}`;
+  return `${quoted}${value.replaceAll(quoted, quoted + quoted)}${quoted}`;
 };
 
 // What a constraint may carry after its key list, from Databricks' NOT
@@ -661,7 +660,7 @@ export const matchUserDataType = (tokens: Token[]) => {
 
   const isName = (pos: number) => isString(pos) && tokens[pos].quoted !== "'";
   const isBareWord = (pos: number) =>
-    isString(pos) && !tokens[pos].quoted && !isColumnKeyword(tokens[pos]);
+    isString(pos) && !tokens[pos].quoted && !isKeyword(tokens[pos].value);
   const endsColumn = (pos: number) =>
     pos >= tokens.length ||
     isComma(pos) ||
@@ -683,9 +682,8 @@ export const matchUserDataType = (tokens: Token[]) => {
   };
 
   return (pos: number) => {
-    const token = tokens[pos];
-    if (!token || !isName(pos)) return 0;
-    if (isColumnKeyword(token) || isColumnOption(pos)) return 0;
+    if (!isName(pos)) return 0;
+    if (isColumnKeyword(tokens[pos]) || isColumnOption(pos)) return 0;
 
     // Words the lists lack in front of one they carry are part of its name:
     // SQLite takes any words as a type, UNSIGNED BIG INTEGER among them.
