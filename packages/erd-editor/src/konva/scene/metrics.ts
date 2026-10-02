@@ -80,6 +80,20 @@ export function getColumnRect(
   };
 }
 
+/**
+ * The band across the top of a table, from its top edge down to where the
+ * first row starts, which holds the name and the comment beside it.
+ */
+export function getTableHeaderRect(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): Rect {
+  const { x, y, width } = getTableRect(state, table, source);
+
+  return { x, y, width, height: TABLE_INSET + tableHeaderHeight(source) };
+}
+
 /** The box a memo occupies, sash and header included. */
 export function getMemoRect(memo: Memo): Rect {
   const { x, y } = memo.ui;

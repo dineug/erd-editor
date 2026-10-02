@@ -8,6 +8,7 @@ import { createAndMergeSettings } from '@/v3/parser/settings';
 import { createAndMergeTableEntities } from '@/v3/parser/table.entity';
 import { createAndMergeTableColumnEntities } from '@/v3/parser/tableColumn.entity';
 import { ERDEditorSchemaV3 } from '@/v3/schema';
+import { SaveSettingType } from '@/v3/schema/settings';
 
 export function parser(source: any): ERDEditorSchemaV3 {
   const json: DeepPartial<ERDEditorSchemaV3> = source;
@@ -49,4 +50,16 @@ export function parser(source: any): ERDEditorSchemaV3 {
       memoEntities,
     },
   };
+}
+
+/**
+ * A document created from nothing, which saves neither the scroll nor the zoom,
+ * so looking around a new diagram never changes its file. A file without the
+ * field parses as saving both, as the release that wrote it did.
+ */
+export function createSchema(): ERDEditorSchemaV3 {
+  const schema = parser({});
+  schema.settings.ignoreSaveSettings =
+    SaveSettingType.scroll | SaveSettingType.zoomLevel;
+  return schema;
 }

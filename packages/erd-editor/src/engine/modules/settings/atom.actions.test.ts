@@ -946,36 +946,24 @@ describe('settings/atom.actions', () => {
   });
 
   describe('changeIgnoreSaveSettings', () => {
+    const { scroll, zoomLevel } = SaveSettingType;
+    const change = (saveSettingType: number, value: boolean) => {
+      store.dispatchSync(
+        changeIgnoreSaveSettingsAction({ saveSettingType, value })
+      );
+      return store.state.settings.ignoreSaveSettings;
+    };
+
+    it('starts a new document with both bits set', () => {
+      expect(store.state.settings.ignoreSaveSettings).toBe(scroll | zoomLevel);
+    });
+
     it('sets and clears the requested bit', () => {
-      store.dispatchSync(
-        changeIgnoreSaveSettingsAction({
-          saveSettingType: SaveSettingType.scroll,
-          value: true,
-        })
-      );
-      expect(store.state.settings.ignoreSaveSettings).toBe(
-        SaveSettingType.scroll
-      );
-
-      store.dispatchSync(
-        changeIgnoreSaveSettingsAction({
-          saveSettingType: SaveSettingType.zoomLevel,
-          value: true,
-        })
-      );
-      expect(store.state.settings.ignoreSaveSettings).toBe(
-        SaveSettingType.scroll | SaveSettingType.zoomLevel
-      );
-
-      store.dispatchSync(
-        changeIgnoreSaveSettingsAction({
-          saveSettingType: SaveSettingType.scroll,
-          value: false,
-        })
-      );
-      expect(store.state.settings.ignoreSaveSettings).toBe(
-        SaveSettingType.zoomLevel
-      );
+      expect(change(scroll, false)).toBe(zoomLevel);
+      expect(change(zoomLevel, false)).toBe(0);
+      expect(change(scroll, true)).toBe(scroll);
+      expect(change(zoomLevel, true)).toBe(scroll | zoomLevel);
+      expect(change(scroll, false)).toBe(zoomLevel);
     });
   });
 

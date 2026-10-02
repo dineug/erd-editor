@@ -188,7 +188,7 @@ describe('ErdEditorProvider', () => {
   });
 
   describe('register', () => {
-    it('registers the provider under the erd view type, keeping the webview alive when hidden', () => {
+    it("registers the provider under the erd view type, keeping the webview alive when hidden and VS Code's find widget off", () => {
       const context = createExtensionContext();
 
       ErdEditorProvider.register(
@@ -202,6 +202,7 @@ describe('ErdEditorProvider', () => {
         'editor.erd',
         expect.any(ErdEditorProvider),
         {
+          // No enableFindWidget: Ctrl or Cmd+F is the editor's Find and Replace.
           webviewOptions: { retainContextWhenHidden: true },
           supportsMultipleEditorsPerDocument: true,
         }

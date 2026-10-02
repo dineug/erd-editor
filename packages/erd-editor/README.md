@@ -25,7 +25,8 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - Export — `.erd.json`, `.sql`, `.png`
 - Force-directed visualization of table relationships
-- Quick search, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
+- Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `"`,
+  find and replace, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
 - Collaboration hooks — the editor emits and applies actions; you supply the transport
 
 ## Install
@@ -59,7 +60,10 @@ editor.addEventListener('change', () => {
 });
 ```
 
-`setInitialValue('')` starts an empty document.
+`setInitialValue('')` starts a new document, as an element given no value shows: it saves neither
+the scroll nor the zoom (Save Scroll Information and Save Zoom Information off), so looking around
+leaves `value` as it was. A document loaded from text keeps the switches it names, and one that
+names none saves both.
 
 ### Server-side rendering
 
@@ -134,7 +138,7 @@ erd-editor {
 
 | Property | Description |
 | --- | --- |
-| `value: string` | The document as JSON — an `.erd.json` document ([schema](https://github.com/dineug/erd-editor/blob/main/json-schema/schema.json)). Assigning it loads the document as an edit, so it lands in the undo history; use `setInitialValue` to load without one. |
+| `value: string` | The document as JSON — an `.erd.json` document ([schema](https://github.com/dineug/erd-editor/blob/main/json-schema/schema.json)). Assigning it loads the document as an edit, so it lands in the undo history; use `setInitialValue` to load without one. Assigning an empty string loads a new document, as `setInitialValue('')` does. |
 
 ### Methods
 
@@ -149,17 +153,17 @@ erd-editor {
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance`, `grayColor` and `accentColor`. |
 | `setTheme(theme)` | Override individual theme tokens. |
-| `setKeyBindingMap(map)` | Remap shortcuts. `edit`, `stop`, `search`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
+| `setKeyBindingMap(map)` | Remap shortcuts, `search` and `findReplace` among them. `edit`, `stop`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
 | `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport. `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
 | `focus()` / `blur()` | Move focus in and out of the editor. |
-| `clear()` | Empty the document. |
+| `clear()` | Empty the document. Its settings stay, the save switches included, so a cleared file keeps saving what it saved. |
 | `destroy()` | Tear the editor down and release its listeners, subscriptions and shared stores. |
 
 ### Events
 
 | Event | Description |
 | --- | --- |
-| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. |
+| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too. A scroll leaves `value` as it was with Save Scroll Information off; a zoom moves the scroll position too, so it leaves `value` as it was only with Save Zoom Information and Save Scroll Information both off. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options. |
 
 ## Key bindings
@@ -179,6 +183,12 @@ const shortcuts = Object.values(createKeyBindingMap())
 The editor listens on its own element, so a host that takes keys before the page does, with
 global hotkeys or a capture-phase `keydown` listener, has to let these through while the editor
 is focused. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types come with it.
+
+The page's own find is among them: while the editor is focused on its ERD tab, `$mod+KeyF` opens
+its Find and Replace and is prevented, so the browser opens no find bar; on the editor's other
+tabs, and on the ERD tab while the diff viewer, time travel or the automatic placement preview
+covers it, the press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the
+page on every tab, and the quick search and the context menu still open Find and Replace.
 
 ## Syntax highlighting
 
@@ -249,9 +259,16 @@ import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 const store = createReplicationStore({ toWidth });
 
 store.setInitialValue(savedJson);
-store.on({ change: () => persist(store.value) });
+store.on({ change: ({ value, changed }) => changed && persist(value) });
 store.dispatch(actions); // actions relayed from a live editor's shared store
 ```
+
+`change` comes 200 ms after the last action that can change the document. `changed` is false
+when those actions left `value` as it was, such as a scroll with Save Scroll Information off, or a
+zoom with Save Zoom Information and Save Scroll Information both off: a zoom moves the scroll
+position too, so with only the scroll saved it changes `value`. It compares with the value the
+store last reported, or loaded, never with your file: a file another release or machine wrote
+serializes differently from the start.
 
 ## Development
 

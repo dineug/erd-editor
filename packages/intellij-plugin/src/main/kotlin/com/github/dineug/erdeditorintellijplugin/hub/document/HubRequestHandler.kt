@@ -154,7 +154,8 @@ class HubRequestHandler(
 
     /**
      * Waits for the replicas to hold every edit, then writes the mirror through the first editor now,
-     * rather than after its autosave debounce; saved is whether the file then holds it.
+     * rather than after its autosave debounce; saved is whether the file then holds it. A mirror the
+     * file already took is not written again, as after a scroll the file does not keep.
      */
     override suspend fun save(params: PathParams, connection: HubConnection): HandlerResult {
         val path = params.path
@@ -173,6 +174,8 @@ class HubRequestHandler(
         val captured = entry.content ?: return saved(true)
         val file = entry.file
         if (!file.isValid || !file.isWritable) return saved(false)
+        // The file holds the mirror already; a rewrite would only drop a byte order mark the VFS read left out.
+        if (!registry.isDirty(entry)) return saved(true)
         val writer = registry.writer(entry) ?: return saved(false)
         // The mirror as it stands inside the write action, so no older bytes land over an autosave made meanwhile.
         return saved(writeThrough(path, writer) { entry.content ?: captured })

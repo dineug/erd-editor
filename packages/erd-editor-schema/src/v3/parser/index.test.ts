@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { parser } from '@/v3/parser';
+import { createSchema, parser } from '@/v3/parser';
 import { OrderType } from '@/v3/schema/indexColumn.entity';
-import { Database } from '@/v3/schema/settings';
+import { Database, SaveSettingType } from '@/v3/schema/settings';
 
 const SCHEMA_URL =
   'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
@@ -109,5 +109,39 @@ describe('parser', () => {
     const second = parser(first);
 
     expect(second).toEqual(first);
+  });
+});
+
+describe('createSchema', () => {
+  it('saves neither the scroll nor the zoom of a document created from nothing', () => {
+    expect(createSchema().settings.ignoreSaveSettings).toBe(
+      SaveSettingType.scroll | SaveSettingType.zoomLevel
+    );
+  });
+
+  it('is otherwise the empty source the parser defaults', () => {
+    const created = createSchema();
+    const parsed = parser({});
+
+    expect({
+      ...created,
+      settings: { ...created.settings, ignoreSaveSettings: 0 },
+    }).toEqual(parsed);
+  });
+
+  it('leaves the parser defaulting a missing field to saving both', () => {
+    createSchema();
+
+    expect(parser({}).settings.ignoreSaveSettings).toBe(0);
+    expect(parser({ settings: {} }).settings.ignoreSaveSettings).toBe(0);
+  });
+
+  it('hands out a new document each time', () => {
+    const first = createSchema();
+    first.settings.ignoreSaveSettings = 0;
+    first.doc.tableIds.push('t1');
+
+    expect(createSchema().settings.ignoreSaveSettings).toBe(3);
+    expect(createSchema().doc.tableIds).toEqual([]);
   });
 });

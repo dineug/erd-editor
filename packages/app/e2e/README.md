@@ -116,7 +116,7 @@ banner. `google-workspace:check` then reads the size of each PNG against
 | `participants.spec.ts`  | Who is in, and nicknames, on both sides, across tabs and a handover; cursor labels     |
 | `schema-list.spec.ts`   | An edit moves a schema up while zoom and rename do not; date groups; the 30-day trash  |
 | `schema-url.spec.ts`    | `?schema=` follows the selection, survives a reload, back and forward; bad ids cleared |
-| `import-export.spec.ts` | Sources stored parsed, kept on reload, opened without a bump; a backup round trip      |
+| `import-export.spec.ts` | Sources stored parsed as new documents, kept on reload, opened without a bump; a backup round trip |
 | `theme.spec.ts`         | Dark by default on a light system, the System option, no dark flash on reload          |
 | `gdrive-not-configured.spec.ts` | `/gdrive` without a client id; `/` loads no Drive module or GIS script         |
 | `policy.spec.ts`        | `/privacy`, `/terms` and `/support` with JavaScript off: 200, no script, the points each must make, no email address but `support@erd-editor.io` and no governing law, GitHub Issues, no link to the site but each other, no request to another origin, both themes; `/`'s `<noscript>` links; the sidebar's links in a new tab, none to `/gdrive`; the empty viewer's Editing Guide and GitHub, with `rel="noopener"`, checked on `/gdrive` too by the same `support/resourceLinks.ts` |

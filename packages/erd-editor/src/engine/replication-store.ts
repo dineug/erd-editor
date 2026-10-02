@@ -1,7 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
-import { isEmpty } from 'es-toolkit/compat';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
 import { ChangeActionTypes } from '@/engine/actions';
@@ -16,12 +15,12 @@ import {
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
-import { createHooks } from '@/engine/store-hooks';
+import { createHooks, settleLoad } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
 import { procGC } from '@/services/schema-gc/procGC';
-import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
+import { collectGCIds } from '@/services/schema-gc/schemaGCService';
+import { toLoadValue } from '@/utils/loadValue';
 import { safeCallback } from '@/utils/safeCallback';
-import { toSafeString } from '@/utils/validation';
 
 type ListenerRecord = {
   [P in keyof InternalActionMap]: (payload: InternalActionMap[P]) => void;
@@ -32,11 +31,26 @@ const InternalActionType = {
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
 type InternalActionMap = {
-  [InternalActionType.change]: void;
+  [InternalActionType.change]: ReplicationChange;
+};
+
+/**
+ * What a change hands its listeners: the document serialized, and whether the
+ * change actions since the last change, or since the load, left it byte for
+ * byte as it was, as a scroll or a zoom the file does not save does.
+ */
+export type ReplicationChange = {
+  value: string;
+  changed: boolean;
 };
 
 export type ReplicationStore = {
   readonly value: string;
+  /**
+   * A change comes 200 ms after the last change action, even one that left the
+   * value as it was (changed false): a hub waits for each as a save, and a host
+   * writes nothing for such a one, whatever bytes its file holds.
+   */
   on: (listeners: Partial<ListenerRecord>) => Unsubscribe;
   setInitialValue: (value: string) => void;
   dispatch: (actions: Array<AnyAction> | AnyAction) => void;
@@ -60,7 +74,10 @@ export function createReplicationStore(
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
   const observers = new Set<Partial<ListenerRecord>>();
-  const schemaGCService = new SchemaGCService();
+  // What a change is measured against: the value the last one handed out, or
+  // after a load the value the first change action finds, which holds the
+  // load's own rewrites (the GC, text widths, flags). A file is no measure.
+  let baseline: string | null = null;
 
   const on = (listeners: Partial<ListenerRecord>): Unsubscribe => {
     observers.has(listeners) || observers.add(listeners);
@@ -80,25 +97,19 @@ export function createReplicationStore(
     });
   };
 
+  // The load's own rewrites, made before it returns rather than on the GC's
+  // promise and the hooks' timers, so a change action that comes at once, as a
+  // pan replayed behind the load does, finds them in.
   const setInitialValue = (value: string) => {
-    const safeValue = toSafeString(value);
-    store.dispatchSync(
-      initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
-    );
-    schemaGCService.run(toJson(store.state)).then(gcIds => {
-      const isChange =
-        gcIds.tableIds.length ||
-        gcIds.tableColumnIds.length ||
-        gcIds.relationshipIds.length ||
-        gcIds.indexIds.length ||
-        gcIds.indexColumnIds.length ||
-        gcIds.memoIds.length;
+    baseline = null;
+    store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
 
-      if (isChange) {
-        procGC(store.state, gcIds);
-        store.dispatchSync(validationIdsAction());
-      }
-    });
+    const gcIds = collectGCIds(toJson(store.state));
+    if (Object.values(gcIds).some(ids => ids.length)) {
+      procGC(store.state, gcIds);
+      store.dispatchSync(validationIdsAction());
+    }
+    settleLoad(store.state, engineContext);
   };
 
   const dispatchSync = (actions: Array<AnyAction> | AnyAction) => {
@@ -117,16 +128,26 @@ export function createReplicationStore(
     hooks.destroy();
   };
 
-  subscriptionSet
-    .add(change$.subscribe(() => emit(InternalActionType.change, undefined)))
-    .add(
-      dispatch$
-        .pipe(
-          actionsFilter(ChangeActionTypes),
-          map(actions => actions.map(action => omit(action, ['tags'])))
-        )
-        .subscribe(store.dispatchSync)
-    );
+  const handleChange = () => {
+    const value = toJson(store.state);
+    // Null after a load that came while a change was pending, whose value is
+    // what loaded.
+    const changed = baseline !== null && value !== baseline;
+    if (baseline !== null) baseline = value;
+    emit(InternalActionType.change, { value, changed });
+  };
+
+  subscriptionSet.add(change$.subscribe(handleChange)).add(
+    dispatch$
+      .pipe(
+        actionsFilter(ChangeActionTypes),
+        map(actions => actions.map(action => omit(action, ['tags'])))
+      )
+      .subscribe(actions => {
+        baseline ??= toJson(store.state);
+        store.dispatchSync(actions);
+      })
+  );
 
   return Object.freeze({
     get value() {

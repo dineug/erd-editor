@@ -17,12 +17,8 @@ const dispatch = (action: AnyAction) => {
 };
 
 store.on({
-  change: () => {
-    dispatch(
-      Bridge.executeCommand(hostSaveValueCommand, {
-        value: store.value,
-      })
-    );
+  change: ({ value, changed }) => {
+    dispatch(Bridge.executeCommand(hostSaveValueCommand, { value, changed }));
   },
 });
 

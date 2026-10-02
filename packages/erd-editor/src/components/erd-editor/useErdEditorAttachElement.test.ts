@@ -1,3 +1,4 @@
+import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import {
   AnyAction,
   createRef,
@@ -28,6 +29,7 @@ import {
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
 import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
+import { SaveSettingType } from '@/constants/schema';
 import {
   dragSelectRectAction,
   editTableAction,
@@ -292,6 +294,46 @@ describe('useErdEditorAttachElement', () => {
     expect(app.keyBindingMap.undo).toBe(before);
   });
 
+  it('lets a host remap the search and find and replace chords, and none of the reserved ones', async () => {
+    const { app, ctx } = await setup();
+    const reserved = {
+      edit: app.keyBindingMap.edit,
+      stop: app.keyBindingMap.stop,
+      redo: app.keyBindingMap.redo,
+      zoomIn: app.keyBindingMap.zoomIn,
+      zoomOut: app.keyBindingMap.zoomOut,
+      zoomReset: app.keyBindingMap.zoomReset,
+    };
+
+    ctx.setKeyBindingMap({
+      search: [{ shortcut: '$mod+KeyP', preventDefault: true }],
+      findReplace: [{ shortcut: '$mod+Shift+KeyH', preventDefault: true }],
+      ...Object.fromEntries(
+        Object.keys(reserved).map(name => [name, [{ shortcut: 'KeyQ' }]])
+      ),
+    } as any);
+
+    expect(app.keyBindingMap.search).toEqual([
+      { shortcut: '$mod+KeyP', preventDefault: true },
+    ]);
+    expect(app.keyBindingMap.findReplace).toEqual([
+      { shortcut: '$mod+Shift+KeyH', preventDefault: true },
+    ]);
+    for (const [name, before] of Object.entries(reserved)) {
+      expect(Reflect.get(app.keyBindingMap, name)).toBe(before);
+    }
+  });
+
+  it('takes an empty list for find and replace, which leaves its chord to the page', async () => {
+    const { app, ctx } = await setup();
+    const search = app.keyBindingMap.search;
+
+    ctx.setKeyBindingMap({ findReplace: [] } as any);
+
+    expect(app.keyBindingMap.findReplace).toEqual([]);
+    expect(app.keyBindingMap.search).toBe(search);
+  });
+
   it('loads an initial value and emits a schema GC request', async () => {
     const { app, ctx } = await setup();
     const schemaGC = vi.fn();
@@ -383,6 +425,87 @@ describe('useErdEditorAttachElement', () => {
 
     expect(app.store.state.doc.tableIds).toEqual([]);
     expect(typeof app.store.state.settings.databaseName).toBe('string');
+  });
+
+  describe('the save switches of what a host loads', () => {
+    const OFF = SaveSettingType.scroll | SaveSettingType.zoomLevel;
+    const file = '{"version":"3.0.0"}';
+
+    it('shows an element given no value a new document, both switches off', async () => {
+      const { app, ctx } = await setup();
+
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+      expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(OFF);
+    });
+
+    it('loads an empty initial value, a new file, as a new document', async () => {
+      const { app, ctx } = await setup();
+      ctx.setInitialValue(file);
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+
+      ctx.setInitialValue('');
+
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+    });
+
+    it('keeps a file without the field saving its view', async () => {
+      const { app, ctx } = await setup();
+
+      ctx.setInitialValue(file);
+
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+    });
+
+    it('sends the new document an empty value loads, which any peer parses', async () => {
+      const { app, ctx } = await setup();
+      ctx.value = file;
+      const sent: AnyAction[] = [];
+      app.store.subscribe(actions => sent.push(...actions));
+
+      ctx.value = '';
+
+      const load = sent.find(({ type }) => type === 'editor.loadJson');
+      expect(load?.payload).toEqual({ value: toJson(createSchema()) });
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+    });
+
+    it.each([
+      ['setSchemaSQL', 'CREATE TABLE a (id INT);'],
+      ['setSchemaDBML', 'Table a {\n  id int\n}'],
+      ['setSchemaAML', 'a\n  id int pk'],
+      ['setSchemaGraphQL', 'type A { id: ID! }'],
+    ] as const)(
+      'makes %s on an element given no value a new document',
+      async (method, source) => {
+        const { app, ctx } = await setup();
+
+        ctx[method](source);
+
+        expect(app.store.state.doc.tableIds).toHaveLength(1);
+        expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(OFF);
+      }
+    );
+
+    it('keeps the switches of the file a source is imported into', async () => {
+      const { app, ctx } = await setup();
+      ctx.setInitialValue(file);
+
+      ctx.setSchemaSQL('CREATE TABLE a (id INT);');
+
+      expect(app.store.state.doc.tableIds).toHaveLength(1);
+      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+    });
+
+    it('keeps the switches of the file clear() empties, which stays that file', async () => {
+      const { app, ctx } = await setup();
+      ctx.setInitialValue(file);
+      ctx.setSchemaSQL('CREATE TABLE a (id INT);');
+
+      ctx.clear();
+
+      expect(app.store.state.doc.tableIds).toEqual([]);
+      expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(0);
+    });
   });
 
   it('round-trips the document through the value accessor', async () => {
@@ -518,7 +641,7 @@ describe('useErdEditorAttachElement', () => {
 
     ctx.setDiffValue(null as any);
     expect(openDiffViewer).toHaveBeenLastCalledWith(
-      openDiffViewerAction({ value: '{}' })
+      openDiffViewerAction({ value: toJson(createSchema()) })
     );
   });
 
