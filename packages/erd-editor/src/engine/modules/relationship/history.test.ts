@@ -1,11 +1,17 @@
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { Direction, RelationshipType } from '@/constants/schema';
+import {
+  Direction,
+  ReferentialAction,
+  RelationshipType,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { ActionType } from '@/engine/modules/relationship/actions';
 import {
   addRelationshipAction,
+  changeRelationshipOnDeleteAction,
+  changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
@@ -86,7 +92,7 @@ describe('relationship/history', () => {
   });
 
   describe('removeRelationship', () => {
-    it('undoes with an add carrying only the tableId/columnIds of each point', () => {
+    it('undoes with an add carrying the actions and only the tableId/columnIds of each point', () => {
       const store = createTestStore();
       seed(store);
       const undoActions: AnyAction[] = [];
@@ -102,9 +108,36 @@ describe('relationship/history', () => {
       expect(undoActions[0].payload).toEqual({
         id: 'r1',
         relationshipType: RelationshipType.ZeroN,
+        onDelete: ReferentialAction.none,
+        onUpdate: ReferentialAction.none,
         start: { tableId: 't1', columnIds: ['c1', 'c2'] },
         end: { tableId: 't2', columnIds: ['c3'] },
       });
+    });
+
+    it('carries the referential actions the relationship holds', () => {
+      const store = createTestStore();
+      seed(store);
+      store.dispatchSync([
+        changeRelationshipOnDeleteAction({
+          id: 'r1',
+          value: ReferentialAction.cascade,
+        }),
+        changeRelationshipOnUpdateAction({
+          id: 'r1',
+          value: ReferentialAction.setNull,
+        }),
+      ]);
+      const undoActions: AnyAction[] = [];
+
+      relationshipPushUndoHistoryMap[ActionType.removeRelationship](
+        undoActions,
+        removeRelationshipAction({ id: 'r1' }),
+        store.state
+      );
+
+      expect(undoActions[0].payload.onDelete).toBe(ReferentialAction.cascade);
+      expect(undoActions[0].payload.onUpdate).toBe(ReferentialAction.setNull);
     });
 
     it('drops the geometry of the points from the undo payload', () => {
@@ -201,6 +234,54 @@ describe('relationship/history', () => {
           id: 'ghost',
           value: RelationshipType.OneN,
         }),
+        store.state
+      );
+
+      expect(undoActions).toHaveLength(0);
+    });
+  });
+
+  describe.each([
+    [
+      'changeRelationshipOnDelete',
+      ActionType.changeRelationshipOnDelete,
+      changeRelationshipOnDeleteAction,
+    ],
+    [
+      'changeRelationshipOnUpdate',
+      ActionType.changeRelationshipOnUpdate,
+      changeRelationshipOnUpdateAction,
+    ],
+  ] as const)('%s', (_name, type, changeAction) => {
+    it('undoes with the value the relationship currently holds', () => {
+      const store = createTestStore();
+      seed(store);
+      store.dispatchSync(
+        changeAction({ id: 'r1', value: ReferentialAction.restrict })
+      );
+      const undoActions: AnyAction[] = [];
+
+      relationshipPushUndoHistoryMap[type](
+        undoActions,
+        changeAction({ id: 'r1', value: ReferentialAction.cascade }),
+        store.state
+      );
+
+      expect(undoActions).toHaveLength(1);
+      expect(undoActions[0].type).toBe(type);
+      expect(undoActions[0].payload).toEqual({
+        id: 'r1',
+        value: ReferentialAction.restrict,
+      });
+    });
+
+    it('pushes nothing when the relationship is unknown', () => {
+      const store = createTestStore();
+      const undoActions: AnyAction[] = [];
+
+      relationshipPushUndoHistoryMap[type](
+        undoActions,
+        changeAction({ id: 'ghost', value: ReferentialAction.cascade }),
         store.state
       );
 

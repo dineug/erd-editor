@@ -7,6 +7,7 @@ import {
   Database,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -760,6 +761,41 @@ describe('generator-code/dbml', () => {
       expect(refLines(createRelationshipState())).toEqual([
         'Ref: "user"."id" < "post"."user_id"',
       ]);
+    });
+
+    it('writes the referential actions as the delete and update settings', () => {
+      expect(
+        refLines(
+          createRelationshipState({
+            onDelete: ReferentialAction.setNull,
+            onUpdate: ReferentialAction.noAction,
+          })
+        )
+      ).toEqual([
+        'Ref: "user"."id" < "post"."user_id" [delete: set null, update: no action]',
+      ]);
+      expect(
+        refLines(
+          createRelationshipState({ onUpdate: ReferentialAction.cascade })
+        )
+      ).toEqual(['Ref: "user"."id" < "post"."user_id" [update: cascade]']);
+    });
+
+    it('writes settings @dbml/parse reads back as the same actions', () => {
+      const { errors, db } = parseDBML(
+        createCode(
+          createRelationshipState({
+            onDelete: ReferentialAction.setDefault,
+            onUpdate: ReferentialAction.restrict,
+          })
+        )
+      );
+
+      expect(errors).toEqual([]);
+      expect(db?.refs[0]).toMatchObject({
+        onDelete: 'set default',
+        onUpdate: 'restrict',
+      });
     });
 
     it('renders a mandatory one-to-many the same way', () => {

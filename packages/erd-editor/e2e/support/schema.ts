@@ -20,6 +20,16 @@ export const RelationshipType = {
   OneN: 16,
 } as const;
 
+/** ReferentialAction bits — a relationship's ON DELETE and ON UPDATE; none writes no clause. */
+export const ReferentialAction = {
+  none: 1,
+  noAction: 2,
+  cascade: 4,
+  setNull: 8,
+  setDefault: 16,
+  restrict: 32,
+} as const;
+
 /** OrderType values — the direction one index column is sorted in. */
 export const OrderType = {
   ASC: 1,
@@ -230,6 +240,9 @@ export type RelationshipEntity = {
   identification: boolean;
   relationshipType: number;
   startRelationshipType: number;
+  /** Left out of a seed, as a document saved before the actions leaves it. */
+  onDelete?: number;
+  onUpdate?: number;
   start: {
     tableId: string;
     columnIds: string[];

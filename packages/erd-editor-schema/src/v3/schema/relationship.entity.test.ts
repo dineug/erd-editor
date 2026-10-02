@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   Direction,
   DirectionList,
+  ReferentialAction,
+  ReferentialActionList,
   Relationship,
   RelationshipPoint,
   RelationshipType,
@@ -55,6 +57,26 @@ describe('v3/schema/relationship.entity', () => {
     });
   });
 
+  describe('ReferentialAction', () => {
+    it('keeps the stored numbers of every action, none first', () => {
+      expect(ReferentialAction).toEqual({
+        none: 1,
+        noAction: 2,
+        cascade: 4,
+        setNull: 8,
+        setDefault: 16,
+        restrict: 32,
+      });
+      expect(ReferentialActionList).toEqual([1, 2, 4, 8, 16, 32]);
+    });
+
+    it('gives each action a bit of its own', () => {
+      expect(
+        ReferentialActionList.reduce((mask, value) => mask | value, 0)
+      ).toBe(63);
+    });
+  });
+
   describe('Direction', () => {
     it('exposes the four edge directions as single bits', () => {
       expect(Direction).toEqual({ left: 1, right: 2, top: 4, bottom: 8 });
@@ -92,6 +114,8 @@ describe('v3/schema/relationship.entity', () => {
       identification: true,
       relationshipType: RelationshipType.OneN,
       startRelationshipType: StartRelationshipType.dash,
+      onDelete: ReferentialAction.cascade,
+      onUpdate: ReferentialAction.none,
       start,
       end,
       meta: { updateAt: 2, createAt: 1 },
@@ -101,6 +125,8 @@ describe('v3/schema/relationship.entity', () => {
     expect(StartRelationshipTypeList).toContain(
       relationship.startRelationshipType
     );
+    expect(ReferentialActionList).toContain(relationship.onDelete);
+    expect(ReferentialActionList).toContain(relationship.onUpdate);
     expect(DirectionList).toContain(relationship.start.direction);
     expect(relationship.end.columnIds).toHaveLength(2);
     expect(relationship.meta.updateAt).toBeGreaterThan(

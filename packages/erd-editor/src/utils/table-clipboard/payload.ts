@@ -76,6 +76,9 @@ export type ClipboardRelationshipPoint = {
 
 export type ClipboardRelationship = {
   relationshipType: number;
+  /** Absent from a copy an editor made before the referential actions. */
+  onDelete?: number;
+  onUpdate?: number;
   start: ClipboardRelationshipPoint;
   end: ClipboardRelationshipPoint;
 };

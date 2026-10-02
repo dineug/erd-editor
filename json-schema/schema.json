@@ -362,6 +362,14 @@
             "description": "bit value (ring: 1) | (dash: 2)",
             "type": "integer"
           },
+          "onDelete": {
+            "description": "bit value (none: 1) | (noAction: 2) | (cascade: 4) | (setNull: 8) | (setDefault: 16) | (restrict: 32); none, the default, writes no ON DELETE clause",
+            "type": "integer"
+          },
+          "onUpdate": {
+            "description": "bit value (none: 1) | (noAction: 2) | (cascade: 4) | (setNull: 8) | (setDefault: 16) | (restrict: 32); none, the default, writes no ON UPDATE clause",
+            "type": "integer"
+          },
           "start": {
             "$ref": "#/$defs/RelationshipPoint"
           },

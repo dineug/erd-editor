@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -11,6 +11,7 @@ import {
   FormatCommentOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   FormatRelationOptions,
   formatSize,
   formatSpace,
@@ -21,11 +22,14 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  referentialActionSupport,
   toOrderName,
   toStringLiteral,
   unique,
   uniqueColumns,
 } from './utils';
+
+const ACTION_SUPPORT = referentialActionSupport(Database.MSSQL);
 
 export function createSchema(state: RootState): string {
   const {
@@ -248,8 +252,12 @@ function formatRelation(
       `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
         columns.start,
         bracket
-      )})\nGO`
+      )})`,
+      ...formatReferentialActions(relationship, ACTION_SUPPORT).map(
+        clause => `    ${clause}`
+      )
     );
+    buffer[buffer.length - 1] += '\nGO';
   }
 }
 

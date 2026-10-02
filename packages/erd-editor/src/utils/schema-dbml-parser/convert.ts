@@ -8,6 +8,7 @@ import {
   ColumnOption,
   ColumnUIKey,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
@@ -18,6 +19,7 @@ import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { toReferentialAction } from '@/utils/referentialAction';
 import { autoName, primaryKeyColumns } from '@/utils/schema-sql/utils';
 import { findByName } from '@/utils/schema-sql-parser/utils';
 import { textInRange, toSafeString } from '@/utils/validation';
@@ -39,6 +41,9 @@ type RelationshipInput = {
   child: TableContext;
   childColumns: Column[];
   toMany: boolean;
+  /** Only a standalone Ref carries settings; an inline one leaves these unset. */
+  onDelete?: number;
+  onUpdate?: number;
 };
 
 export function convertToSchema(
@@ -297,6 +302,8 @@ function convertRelationships(
       child: parentIsLeft ? right : left,
       childColumns: parentIsLeft ? rightColumns : leftColumns,
       toMany: ref.operator !== '-',
+      onDelete: toReferentialAction(ref.onDelete),
+      onUpdate: toReferentialAction(ref.onUpdate),
     });
   });
 }
@@ -320,7 +327,15 @@ function resolveColumns(
 function appendRelationship(
   { doc, collections }: ERDEditorSchemaV3,
   relationshipKeys: Set<string>,
-  { parent, parentColumns, child, childColumns, toMany }: RelationshipInput
+  {
+    parent,
+    parentColumns,
+    child,
+    childColumns,
+    toMany,
+    onDelete = ReferentialAction.none,
+    onUpdate = ReferentialAction.none,
+  }: RelationshipInput
 ) {
   if (parentColumns.length === 0 || childColumns.length === 0) return;
 
@@ -355,6 +370,8 @@ function appendRelationship(
       : mandatory
         ? RelationshipType.OneOnly
         : RelationshipType.ZeroOne,
+    onDelete,
+    onUpdate,
     start: {
       tableId: parent.table.id,
       columnIds: parentColumns.map(column => column.id),

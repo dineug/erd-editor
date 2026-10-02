@@ -32,10 +32,10 @@ const bin = join(packageDir, manifest.bin['erd-editor-mcp']);
 
 /**
  * The gzip size, level 9, the built file may reach, since npx downloads it on
- * every cold start: 15% over the 208,191 bytes projected for the server on
- * effect's McpServer before the move. Sizes by this spec's zlib: AGENTS.md.
+ * every cold start: 600,000 bytes, set by the owner as a regression watch with
+ * room for features to come. Sizes by this spec's zlib: AGENTS.md.
  */
-const BUNDLE_GZIP_BUDGET = 239_420;
+const BUNDLE_GZIP_BUDGET = 600_000;
 
 /**
  * The specifiers of the import statements that open an ESM file, where the
@@ -163,7 +163,7 @@ describe('the built single file (AC-M9, AC-P7)', () => {
       name: 'erd-editor',
       version: manifest.version,
     });
-    expect(byId.get(2).result.tools).toHaveLength(63);
+    expect(byId.get(2).result.tools).toHaveLength(65);
     expect(lines.every(line => line.jsonrpc === '2.0')).toBe(true);
     expect(code).toBe(0);
     await rm(dir, { recursive: true, force: true });

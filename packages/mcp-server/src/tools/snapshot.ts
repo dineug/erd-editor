@@ -8,6 +8,7 @@ import {
   Language,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   type RootState,
   SaveSettingType,
@@ -43,6 +44,8 @@ export type AgentSnapshotTable = {
 export type AgentSnapshotRelationship = {
   id: string;
   relationshipType: string;
+  onDelete: string;
+  onUpdate: string;
   start: { tableId: string; columnIds: string[] };
   end: { tableId: string; columnIds: string[] };
 };
@@ -108,6 +111,10 @@ const flagsOf = (names: Names, mask: number): Record<string, boolean> =>
 export const relationshipTypeName = (value: number): string =>
   nameOf(RelationshipType, value);
 
+/** The name the tools take for an ON DELETE or ON UPDATE action. */
+export const referentialActionName = (value: number): string =>
+  nameOf(ReferentialAction, value);
+
 type Select = ReturnType<typeof query>;
 type TableEntity = RootState['collections']['tableEntities'][string];
 type RelationshipEntity =
@@ -167,12 +174,16 @@ export function toSnapshotTable(
 export function toSnapshotRelationship({
   id,
   relationshipType,
+  onDelete,
+  onUpdate,
   start,
   end,
 }: RelationshipEntity): AgentSnapshotRelationship {
   return {
     id,
     relationshipType: relationshipTypeName(relationshipType),
+    onDelete: referentialActionName(onDelete),
+    onUpdate: referentialActionName(onUpdate),
     start: { tableId: start.tableId, columnIds: [...start.columnIds] },
     end: { tableId: end.tableId, columnIds: [...end.columnIds] },
   };

@@ -7,6 +7,7 @@ import {
   Database,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -370,6 +371,62 @@ describe('generator-code/drizzle', () => {
         createCode(state)
       );
     });
+
+    it('passes the referential actions to an inline reference', () => {
+      const { state, user } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.cascade,
+      });
+
+      expect(render(state, user)).toContain(
+        '  teamId: int("team_id").references(() => Team.id, { onDelete: "cascade" }),'
+      );
+
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onUpdate: ReferentialAction.setNull,
+      });
+      const lines = render(state, user);
+      const head = lines.indexOf('  teamId: int("team_id")');
+
+      expect(lines[head + 1]).toBe(
+        '    .references(() => Team.id, { onDelete: "cascade", onUpdate: "set null" }),'
+      );
+    });
+
+    it('leaves out an action the database would refuse, as its DDL does', () => {
+      const { state, user } = createTeamFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.setDefault,
+        onUpdate: ReferentialAction.setNull,
+      });
+
+      expect(render(state, user)).toContain(
+        '  teamId: int("team_id").references(() => Team.id, { onUpdate: "set null" }),'
+      );
+    });
+
+    it.each([
+      Database.Oracle,
+      Database.MSSQL,
+      Database.Databricks,
+      Database.Snowflake,
+    ])(
+      'keeps what PostgreSQL takes in the pg-core code database %i borrows',
+      database => {
+        const { state, user } = createTeamFixture();
+        state.settings.database = database;
+        Object.assign(state.collections.relationshipEntities.r1, {
+          onDelete: ReferentialAction.restrict,
+          onUpdate: ReferentialAction.setDefault,
+        });
+        const lines = render(state, user);
+        const head = lines.indexOf('  teamId: integer("team_id")');
+
+        expect(lines[head + 1]).toBe(
+          '    .references(() => Team.id, { onDelete: "restrict", onUpdate: "set default" }),'
+        );
+      }
+    );
 
     it('carries its own import header for one table of a larger document', () => {
       const { state, user } = createTeamFixture();
@@ -1145,6 +1202,23 @@ describe('generator-code/drizzle', () => {
         '  table => [primaryKey({ columns: [table.regionCode, table.orgNumber] })]',
         ');',
         '',
+      ]);
+    });
+
+    it('chains the referential actions onto a composite foreignKey', () => {
+      const state = createForeignKeyFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.restrict,
+        onUpdate: ReferentialAction.noAction,
+      });
+      const lines = createCode(state).split('\n');
+      const head = lines.indexOf('    foreignKey({');
+
+      expect(lines.slice(head, head + 4)).toEqual([
+        '    foreignKey({',
+        '      columns: [table.regionCode, table.orgNumber],',
+        '      foreignColumns: [Organization.regionCode, Organization.orgNumber],',
+        '    }).onDelete("restrict").onUpdate("no action"),',
       ]);
     });
 

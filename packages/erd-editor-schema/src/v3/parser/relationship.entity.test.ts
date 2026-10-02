@@ -6,6 +6,7 @@ import {
 } from '@/v3/parser/relationship.entity';
 import {
   Direction,
+  ReferentialAction,
   RelationshipType,
   StartRelationshipType,
 } from '@/v3/schema/relationship.entity';
@@ -19,6 +20,8 @@ describe('createRelationship', () => {
       identification: false,
       relationshipType: RelationshipType.ZeroN,
       startRelationshipType: StartRelationshipType.dash,
+      onDelete: ReferentialAction.none,
+      onUpdate: ReferentialAction.none,
       start: {
         tableId: '',
         columnIds: [],
@@ -72,6 +75,8 @@ describe('createAndMergeRelationshipEntities', () => {
         identification: true,
         relationshipType: RelationshipType.OneN,
         startRelationshipType: StartRelationshipType.ring,
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.setNull,
         start: {
           tableId: 't1',
           columnIds: ['c1'],
@@ -95,6 +100,8 @@ describe('createAndMergeRelationshipEntities', () => {
       identification: true,
       relationshipType: RelationshipType.OneN,
       startRelationshipType: StartRelationshipType.ring,
+      onDelete: ReferentialAction.cascade,
+      onUpdate: ReferentialAction.setNull,
       start: {
         tableId: 't1',
         columnIds: ['c1'],
@@ -124,6 +131,28 @@ describe('createAndMergeRelationshipEntities', () => {
 
     expect(entities.r1.relationshipType).toBe(RelationshipType.ZeroN);
     expect(entities.r1.startRelationshipType).toBe(StartRelationshipType.dash);
+  });
+
+  it('ignores referential actions outside their enum list', () => {
+    const entities = createAndMergeRelationshipEntities({
+      key: {
+        id: 'r1',
+        onDelete: 3,
+        onUpdate: 'CASCADE' as any,
+      },
+    });
+
+    expect(entities.r1.onDelete).toBe(ReferentialAction.none);
+    expect(entities.r1.onUpdate).toBe(ReferentialAction.none);
+  });
+
+  it('leaves a relationship saved before the actions existed unset', () => {
+    const entities = createAndMergeRelationshipEntities({
+      key: { id: 'r1', relationshipType: RelationshipType.OneN },
+    });
+
+    expect(entities.r1.onDelete).toBe(ReferentialAction.none);
+    expect(entities.r1.onUpdate).toBe(ReferentialAction.none);
   });
 
   it('ignores a direction outside the direction list', () => {

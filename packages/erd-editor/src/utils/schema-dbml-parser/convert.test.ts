@@ -7,6 +7,7 @@ import {
   ColumnUIKey,
   Database,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
@@ -309,6 +310,38 @@ Table orders {
       const schema = convert(`${TWO_TABLES}Ref: posts.user_id > users.id`);
 
       expect(edgesOf(schema)).toEqual(['users(id) -> posts(user_id)']);
+    });
+
+    it('keeps the delete and update settings of a ref', () => {
+      const schema = convert(
+        `${TWO_TABLES}Ref: users.id < posts.user_id [delete: set null, update: Cascade]`
+      );
+
+      expect(relationshipsOf(schema)[0].onDelete).toBe(
+        ReferentialAction.setNull
+      );
+      expect(relationshipsOf(schema)[0].onUpdate).toBe(
+        ReferentialAction.cascade
+      );
+    });
+
+    it('leaves the actions unset for a ref without settings or an inline ref', () => {
+      const standalone = convert(`${TWO_TABLES}Ref: users.id < posts.user_id`);
+      const inline = convert(`Table users {
+  id int [pk]
+}
+Table posts {
+  user_id int [ref: > users.id]
+}`);
+
+      for (const schema of [standalone, inline]) {
+        expect(relationshipsOf(schema)[0].onDelete).toBe(
+          ReferentialAction.none
+        );
+        expect(relationshipsOf(schema)[0].onUpdate).toBe(
+          ReferentialAction.none
+        );
+      }
     });
 
     it('reads a one-to-one with the left endpoint as the parent', () => {

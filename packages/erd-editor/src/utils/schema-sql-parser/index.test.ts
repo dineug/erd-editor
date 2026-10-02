@@ -6,6 +6,7 @@ import {
   ColumnUIKey,
   Database,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
@@ -15,6 +16,7 @@ import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
+import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createSchemaSQL } from '@/utils/schema-sql';
@@ -932,38 +934,209 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(columnByName(schema, posts, 'user_id').ui.keys).toBe(0);
     });
 
-    it('drops unresolvable columns from the relationship endpoints', () => {
-      const schema = parse(`
+    it.each([
+      [
+        'an end column',
+        'ALTER TABLE posts ADD FOREIGN KEY (nope) REFERENCES users (id);',
+      ],
+      [
+        'a referenced column',
+        'ALTER TABLE posts ADD FOREIGN KEY (user_id) REFERENCES users (nope);',
+      ],
+      [
+        'a referenced column inline',
+        'CREATE TABLE notes (user_id INT REFERENCES users (uid) ON DELETE CASCADE);',
+      ],
+    ])(
+      'skips a foreign key naming %s the table lacks, keying nothing',
+      (_what, sql) => {
+        const schema = parse(`
         CREATE TABLE users (id INT, PRIMARY KEY (id));
         CREATE TABLE posts (id INT, user_id INT);
-        ALTER TABLE posts ADD FOREIGN KEY (nope) REFERENCES users (id);
+        ${sql}
+      `);
+
+        expect(relationshipsOf(schema)).toEqual([]);
+        for (const table of tablesOf(schema)) {
+          for (const column of columnsOf(schema, table)) {
+            expect(bHas(column.ui.keys, ColumnUIKey.foreignKey)).toBe(false);
+          }
+        }
+      }
+    );
+
+    it('keeps the ON DELETE and ON UPDATE actions of every foreign key form', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT, PRIMARY KEY (id));
+        CREATE TABLE shops (id INT PRIMARY KEY);
+        CREATE TABLE orders (
+          id INT PRIMARY KEY,
+          user_id INT REFERENCES users (id) ON DELETE CASCADE,
+          shop_id INT,
+          FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE SET NULL ON UPDATE NO ACTION
+        );
+        CREATE TABLE items (order_id INT);
+        ALTER TABLE items ADD CONSTRAINT fk FOREIGN KEY (order_id) REFERENCES orders (id) ON UPDATE RESTRICT ON DELETE SET DEFAULT;
+        CREATE TABLE notes (order_id INT);
+        ALTER TABLE notes ADD FOREIGN KEY (order_id) REFERENCES orders (id);
+      `);
+
+      expect(
+        relationshipsOf(schema).map(({ onDelete, onUpdate }) => [
+          onDelete,
+          onUpdate,
+        ])
+      ).toEqual([
+        [ReferentialAction.cascade, ReferentialAction.none],
+        [ReferentialAction.setNull, ReferentialAction.noAction],
+        [ReferentialAction.setDefault, ReferentialAction.restrict],
+        [ReferentialAction.none, ReferentialAction.none],
+      ]);
+    });
+
+    it('keeps the actions of a foreign key SSMS scripts WITH CHECK', () => {
+      const schema = parse(`
+        CREATE TABLE [dbo].[a](
+          [id] [int] IDENTITY(1,1) NOT NULL,
+          CONSTRAINT [PK_a] PRIMARY KEY CLUSTERED ([id] ASC)
+        ) ON [PRIMARY]
+        GO
+        CREATE TABLE [dbo].[b]([a_id] [int] NULL) ON [PRIMARY]
+        GO
+        ALTER TABLE [dbo].[b]  WITH CHECK ADD  CONSTRAINT [FK_b_a] FOREIGN KEY([a_id])
+        REFERENCES [dbo].[a] ([id])
+        ON DELETE CASCADE
+        GO
+        ALTER TABLE [dbo].[b] CHECK CONSTRAINT [FK_b_a]
+        GO
+      `);
+      const [relationship] = relationshipsOf(schema);
+
+      expect(relationshipsOf(schema)).toHaveLength(1);
+      expect(relationship.end.columnIds).toEqual([
+        columnByName(schema, tableByName(schema, 'b'), 'a_id').id,
+      ]);
+      expect(relationship.onDelete).toBe(ReferentialAction.cascade);
+      expect(relationship.onUpdate).toBe(ReferentialAction.none);
+    });
+
+    it('relates an inline REFERENCES without a column list to the primary key', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY, name TEXT);
+        CREATE TABLE posts (user_id INT REFERENCES users ON DELETE CASCADE);
+        CREATE TABLE pairs (a INT PRIMARY KEY, b INT PRIMARY KEY);
+        CREATE TABLE links (pair_a INT REFERENCES pairs);
       `);
       const users = tableByName(schema, 'users');
+      const posts = tableByName(schema, 'posts');
       const [relationship] = relationshipsOf(schema);
 
       expect(relationshipsOf(schema)).toHaveLength(1);
       expect(relationship.start.columnIds).toEqual([
         columnByName(schema, users, 'id').id,
       ]);
-      // no end column resolved, yet [].some(...) makes it identifying
-      expect(relationship.end.columnIds).toEqual([]);
-      expect(relationship.identification).toBe(true);
-    });
-
-    it('drops an unresolvable referenced column from the start endpoint', () => {
-      const schema = parse(`
-        CREATE TABLE users (id INT);
-        CREATE TABLE posts (user_id INT);
-        ALTER TABLE posts ADD FOREIGN KEY (user_id) REFERENCES users (nope);
-      `);
-      const posts = tableByName(schema, 'posts');
-      const [relationship] = relationshipsOf(schema);
-
-      expect(relationship.start.columnIds).toEqual([]);
       expect(relationship.end.columnIds).toEqual([
         columnByName(schema, posts, 'user_id').id,
       ]);
-      expect(relationship.identification).toBe(false);
+      expect(relationship.onDelete).toBe(ReferentialAction.cascade);
+      expect(
+        columnByName(schema, tableByName(schema, 'links'), 'pair_a').ui.keys
+      ).toBe(0);
+    });
+
+    it('relates a FOREIGN KEY REFERENCES column and a table key without a column list', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY);
+        CREATE TABLE posts (
+          user_id INT FOREIGN KEY REFERENCES users (id) ON DELETE CASCADE,
+          editor_id INT CONSTRAINT fk FOREIGN KEY REFERENCES users,
+          owner_id INT,
+          title TEXT,
+          FOREIGN KEY (owner_id) REFERENCES users ON UPDATE SET NULL
+        );
+        CREATE TABLE notes (user_id INT);
+        ALTER TABLE notes ADD FOREIGN KEY (user_id) REFERENCES users ON DELETE RESTRICT;
+      `);
+      const posts = tableByName(schema, 'posts');
+      const notes = tableByName(schema, 'notes');
+      const userId = columnByName(
+        schema,
+        tableByName(schema, 'users'),
+        'id'
+      ).id;
+
+      expect(
+        relationshipsOf(schema).map(({ start, end, onDelete, onUpdate }) => ({
+          start: start.columnIds,
+          end: end.columnIds,
+          onDelete,
+          onUpdate,
+        }))
+      ).toEqual([
+        {
+          start: [userId],
+          end: [columnByName(schema, posts, 'user_id').id],
+          onDelete: ReferentialAction.cascade,
+          onUpdate: ReferentialAction.none,
+        },
+        {
+          start: [userId],
+          end: [columnByName(schema, posts, 'editor_id').id],
+          onDelete: ReferentialAction.none,
+          onUpdate: ReferentialAction.none,
+        },
+        {
+          start: [userId],
+          end: [columnByName(schema, posts, 'owner_id').id],
+          onDelete: ReferentialAction.none,
+          onUpdate: ReferentialAction.setNull,
+        },
+        {
+          start: [userId],
+          end: [columnByName(schema, notes, 'user_id').id],
+          onDelete: ReferentialAction.restrict,
+          onUpdate: ReferentialAction.none,
+        },
+      ]);
+    });
+
+    it('skips a composite key with a side short, and a key with no primary key to name', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY, code INT);
+        CREATE TABLE posts (
+          a INT,
+          FOREIGN KEY (a, missing) REFERENCES users (id, code)
+        );
+        CREATE TABLE tags (id INT);
+        CREATE TABLE tagged (tag_id INT REFERENCES tags);
+      `);
+
+      expect(relationshipsOf(schema)).toEqual([]);
+      expect(
+        columnByName(schema, tableByName(schema, 'posts'), 'a').ui.keys
+      ).toBe(0);
+      expect(
+        columnByName(schema, tableByName(schema, 'tagged'), 'tag_id').ui.keys
+      ).toBe(0);
+    });
+
+    it('skips a composite key without a column list, whose pairing follows the declared key order', () => {
+      const schema = parse(`
+        CREATE TABLE p (a INT NOT NULL, b INT NOT NULL, PRIMARY KEY (b, a));
+        CREATE TABLE c (x INT, y INT, FOREIGN KEY (x, y) REFERENCES p ON DELETE CASCADE);
+        CREATE TABLE q (a INT NOT NULL, b INT NOT NULL);
+        ALTER TABLE q ADD CONSTRAINT q_pk PRIMARY KEY (b, a);
+        CREATE TABLE d (x INT, y INT);
+        ALTER TABLE d ADD CONSTRAINT d_fk FOREIGN KEY (x, y) REFERENCES q;
+      `);
+
+      expect(relationshipsOf(schema)).toEqual([]);
+      expect(columnByName(schema, tableByName(schema, 'c'), 'x').ui.keys).toBe(
+        0
+      );
+      expect(columnByName(schema, tableByName(schema, 'd'), 'y').ui.keys).toBe(
+        0
+      );
     });
 
     it('creates one relationship per foreign key on the same table', () => {
@@ -1334,6 +1507,76 @@ describe('schemaSQLParserToSchemaJson', () => {
         expect(exported).toContain("'it''s'");
         expect(exported).toContain("'o''k'");
         expect(commentsOf(parse(exported))).toEqual(["o'k", "it's", '']);
+      }
+    );
+  });
+
+  describe('referential action round trip', () => {
+    function relatedState(): RootState {
+      const state = {
+        ...schemaV3Parser({}),
+        editor: {},
+        lww: {},
+      } as unknown as RootState;
+
+      state.collections.tableColumnEntities = {
+        'col-id': createColumn({
+          id: 'col-id',
+          tableId: 'tbl-users',
+          name: 'id',
+          dataType: 'INT',
+          options: ColumnOption.primaryKey | ColumnOption.notNull,
+        }),
+        'col-user-id': createColumn({
+          id: 'col-user-id',
+          tableId: 'tbl-posts',
+          name: 'user_id',
+          dataType: 'INT',
+        }),
+      };
+      state.collections.tableEntities = {
+        'tbl-users': createTable({
+          id: 'tbl-users',
+          name: 'users',
+          columnIds: ['col-id'],
+        }),
+        'tbl-posts': createTable({
+          id: 'tbl-posts',
+          name: 'posts',
+          columnIds: ['col-user-id'],
+        }),
+      };
+      state.collections.relationshipEntities = {
+        'rel-1': createRelationship({
+          id: 'rel-1',
+          onDelete: ReferentialAction.cascade,
+          onUpdate: ReferentialAction.setNull,
+          start: { tableId: 'tbl-users', columnIds: ['col-id'] },
+          end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
+        }),
+      };
+      state.doc.tableIds = ['tbl-users', 'tbl-posts'];
+      state.doc.relationshipIds = ['rel-1'];
+
+      return state;
+    }
+
+    it.each([
+      Database.PostgreSQL,
+      Database.MySQL,
+      Database.MariaDB,
+      Database.MSSQL,
+      Database.SQLite,
+      Database.Snowflake,
+    ])(
+      'keeps the actions of a %s export when the SQL is imported back',
+      database => {
+        const [relationship] = relationshipsOf(
+          parse(createSchemaSQL(relatedState(), database))
+        );
+
+        expect(relationship.onDelete).toBe(ReferentialAction.cascade);
+        expect(relationship.onUpdate).toBe(ReferentialAction.setNull);
       }
     );
   });

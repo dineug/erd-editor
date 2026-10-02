@@ -16,6 +16,8 @@ import { DeepPartial } from '@/internal-types';
 import {
   Direction,
   DirectionList,
+  ReferentialAction,
+  ReferentialActionList,
   Relationship,
   RelationshipType,
   RelationshipTypeList,
@@ -28,6 +30,8 @@ export const createRelationship = (): Relationship => ({
   identification: false,
   relationshipType: RelationshipType.ZeroN,
   startRelationshipType: StartRelationshipType.dash,
+  onDelete: ReferentialAction.none,
+  onUpdate: ReferentialAction.none,
   start: {
     tableId: '',
     columnIds: [],
@@ -73,6 +77,8 @@ export function createAndMergeRelationshipEntities(
       target,
       value
     )('startRelationshipType');
+    assign(validNumber(ReferentialActionList), target, value)('onDelete');
+    assign(validNumber(ReferentialActionList), target, value)('onUpdate');
 
     startAssignString('tableId');
     startAssignNumber('x');

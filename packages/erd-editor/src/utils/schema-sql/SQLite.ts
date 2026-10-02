@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -10,6 +10,7 @@ import {
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
+  formatReferentialActions,
   formatSize,
   formatSpace,
   FormatTableOptions,
@@ -19,8 +20,11 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  referentialActionSupport,
   toOrderName,
 } from './utils';
+
+const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
 
 export function createSchema(state: RootState): string {
   const {
@@ -154,6 +158,10 @@ export function formatTable(
         }
       });
 
+      const actions = formatReferentialActions(relationship, ACTION_SUPPORT)
+        .map(clause => ` ${clause}`)
+        .join('');
+
       if (relationships.length - 1 > i) {
         buffer.push(
           `  FOREIGN KEY (${formatNames(
@@ -162,7 +170,7 @@ export function formatTable(
           )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
             columns.start,
             bracket
-          )}),`
+          )})${actions},`
         );
       } else {
         buffer.push(
@@ -172,7 +180,7 @@ export function formatTable(
           )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
             columns.start,
             bracket
-          )})`
+          )})${actions}`
         );
       }
     }

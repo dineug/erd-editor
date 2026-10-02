@@ -5,7 +5,12 @@ import { PrimitiveType } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { autoName, Name, orderByNameASC } from '@/utils/schema-sql/utils';
+import {
+  autoName,
+  Name,
+  orderByNameASC,
+  referentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 import {
   FormatColumnOptions,
@@ -15,6 +20,7 @@ import {
   getPrimitiveType,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 const SEQUELIZE_NAMES = [
@@ -439,6 +445,12 @@ function formatAssociations(
       const method = hasNRelationship(relationship.relationshipType)
         ? 'hasMany'
         : 'hasOne';
+      // Both sides write the one foreign key attribute, whichever runs last
+      // winning, so each carries the actions.
+      const actions = referentialActionEntries(
+        relationship,
+        referentialActionSupport(state.settings.database)
+      ).map(({ key, sql }) => `${key}: "${sql}"`);
 
       formatGroup(
         lines,
@@ -450,6 +462,7 @@ function formatAssociations(
             `foreignKey: "${escapeString(foreignKey)}"`,
             `sourceKey: "${escapeString(referenced)}"`,
             `as: "${escapeString(inverse)}"`,
+            ...actions,
           ],
         },
         ');'
@@ -464,6 +477,7 @@ function formatAssociations(
             `foreignKey: "${escapeString(foreignKey)}"`,
             `targetKey: "${escapeString(referenced)}"`,
             `as: "${escapeString(owning)}"`,
+            ...actions,
           ],
         },
         ');'

@@ -10,6 +10,7 @@ import {
   FormatTableOptions,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 const BARE_DATA_TYPE = /^[A-Za-z_][0-9A-Za-z_]*(\([0-9]+(,[0-9]+)*\))?$/;
@@ -260,7 +261,9 @@ function formatRelationships(
       }
       used.add(key);
 
-      buffer.push(`Ref: ${startText} ${operator} ${endText}`);
+      buffer.push(
+        `Ref: ${startText} ${operator} ${endText}${formatRefSettings(relationship)}`
+      );
     });
 
   return buffer;
@@ -312,6 +315,15 @@ function formatEndpoint({ table, columns }: Endpoint): string {
   return `${quoteName(table)}.${
     names.length === 1 ? names[0] : `(${names.join(', ')})`
   }`;
+}
+
+function formatRefSettings(relationship: Relationship): string {
+  const settings = referentialActionEntries(relationship).map(
+    ({ key, sql }) =>
+      `${key === 'onDelete' ? 'delete' : 'update'}: ${sql.toLowerCase()}`
+  );
+
+  return settings.length ? ` [${settings.join(', ')}]` : '';
 }
 
 function relationshipOperator(relationship: Relationship): string {

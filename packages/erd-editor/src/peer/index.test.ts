@@ -24,7 +24,7 @@ import { measureTableSize } from '@/utils/calcTable';
 import { createSchemaSQL } from '@/utils/schema-sql';
 
 describe('peer barrel (AC-B2)', () => {
-  it('exposes exactly the 44 values the headless peer needs', () => {
+  it('exposes exactly the 45 values the headless peer needs', () => {
     expect(Object.keys(peer).sort()).toEqual(
       [
         'createPeerStore',
@@ -55,6 +55,7 @@ describe('peer barrel (AC-B2)', () => {
         'ColumnOption',
         'OrderType',
         'RelationshipType',
+        'ReferentialAction',
         'BracketType',
         'CanvasType',
         'ColumnType',
@@ -73,7 +74,7 @@ describe('peer barrel (AC-B2)', () => {
         'measureTableSize',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(44);
+    expect(Object.keys(peer)).toHaveLength(45);
   });
 
   it('re-exports each name from the module that owns it', () => {

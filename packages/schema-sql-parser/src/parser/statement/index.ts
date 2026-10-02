@@ -28,6 +28,15 @@ export type SortType = ValuesType<typeof SortType>;
 
 export type RefPos = { value: number };
 
+export const ReferentialAction = {
+  noAction: 'NO ACTION',
+  restrict: 'RESTRICT',
+  cascade: 'CASCADE',
+  setNull: 'SET NULL',
+  setDefault: 'SET DEFAULT',
+} as const;
+export type ReferentialAction = ValuesType<typeof ReferentialAction>;
+
 /** The vendors a source may be named for, spelled as the editor's database. */
 export type DatabaseVendor =
   | 'Databricks'
@@ -85,10 +94,16 @@ export type Key = {
   columnNames: string[];
 };
 
+/**
+ * A REFERENCES without a column list leaves refColumnNames empty: it names the
+ * referenced table's primary key. An absent ON DELETE or ON UPDATE clause is ''.
+ */
 export type ForeignKey = {
   columnNames: string[];
   refTableName: string;
   refColumnNames: string[];
+  onDelete: ReferentialAction | '';
+  onUpdate: ReferentialAction | '';
 };
 
 export type CreateTableColumns = {
@@ -137,6 +152,8 @@ export type AlterTableAddForeignKey = {
   columnNames: string[];
   refTableName: string;
   refColumnNames: string[];
+  onDelete: ReferentialAction | '';
+  onUpdate: ReferentialAction | '';
 };
 
 export type CommentOnTable = {

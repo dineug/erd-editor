@@ -5,6 +5,8 @@ import { OrderType, OrderTypeList } from '@/v3/schema/indexColumn.entity';
 import {
   Direction,
   DirectionList,
+  ReferentialAction,
+  ReferentialActionList,
   RelationshipType,
   RelationshipTypeList,
   StartRelationshipType,
@@ -59,6 +61,8 @@ describe('v3/schema/index', () => {
           'NameCaseList',
           'OrderType',
           'OrderTypeList',
+          'ReferentialAction',
+          'ReferentialActionList',
           'RelationshipType',
           'RelationshipTypeList',
           'SaveSettingType',
@@ -91,6 +95,10 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants.StartRelationshipTypeList).toBe(
         StartRelationshipTypeList
       );
+      expect(SchemaV3Constants.ReferentialAction).toBe(ReferentialAction);
+      expect(SchemaV3Constants.ReferentialActionList).toBe(
+        ReferentialActionList
+      );
       expect(SchemaV3Constants.Direction).toBe(Direction);
       expect(SchemaV3Constants.DirectionList).toBe(DirectionList);
       expect(SchemaV3Constants.ColumnOption).toBe(ColumnOption);
@@ -113,7 +121,7 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants).not.toHaveProperty('Doc');
       expect(SchemaV3Constants).not.toHaveProperty('Table');
       expect(SchemaV3Constants).not.toHaveProperty('Memo');
-      expect(Object.keys(SchemaV3Constants)).toHaveLength(28);
+      expect(Object.keys(SchemaV3Constants)).toHaveLength(30);
     });
   });
 

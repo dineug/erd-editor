@@ -631,6 +631,8 @@ describe('schema-aml-parser/parser', () => {
         srcCardinality: 'n',
         refCardinality: '1',
         polymorphic: false,
+        onDelete: '',
+        onUpdate: '',
       });
     });
 
@@ -748,6 +750,8 @@ describe('schema-aml-parser/parser', () => {
         srcCardinality: 'n',
         refCardinality: 'n',
         polymorphic: false,
+        onDelete: '',
+        onUpdate: '',
       });
     });
 
@@ -796,10 +800,23 @@ describe('schema-aml-parser/parser', () => {
       expect(relationsOf('rel')).toEqual([]);
     });
 
-    it('drops the properties and records their keys', () => {
-      expect(parse('rel t(a) -> u(b) {onDelete: cascade}').skipped).toEqual([
-        'onDelete',
-      ]);
+    it('reads the referential actions and records the other keys', () => {
+      const model = parse(
+        'rel t(a) -> u(b) {onDelete: cascade, color: red, onUpdate: "set null"}'
+      );
+
+      expect(model.relations[0]).toMatchObject({
+        onDelete: 'cascade',
+        onUpdate: 'set null',
+      });
+      expect(model.skipped).toEqual(['color']);
+    });
+
+    it('leaves the actions of an inline relation to its attribute', () => {
+      const model = parse('t\n  a int -> u(b) {onDelete: cascade}');
+
+      expect(model.relations[0]).toMatchObject({ onDelete: '', onUpdate: '' });
+      expect(model.skipped).toEqual(['onDelete']);
     });
   });
 
@@ -893,6 +910,8 @@ describe('schema-aml-parser/parser', () => {
         srcCardinality: 'n',
         refCardinality: '1',
         polymorphic: false,
+        onDelete: '',
+        onUpdate: '',
       });
     });
 
@@ -1115,6 +1134,14 @@ describe('schema-aml-parser/parser', () => {
       ).toHaveLength(2);
     });
 
+    it('keeps the one onDelete the document writes', () => {
+      expect(
+        model.relations
+          .filter(relation => relation.onDelete !== '')
+          .map(relation => [relation.ref.entityName, relation.onDelete])
+      ).toEqual([['posts', 'cascade']]);
+    });
+
     it('registers every type', () => {
       expect(model.types).toEqual({
         slug: { values: [], alias: '' },
@@ -1137,7 +1164,6 @@ describe('schema-aml-parser/parser', () => {
         'check',
         'tags',
         'color',
-        'onDelete',
         'view',
         'struct type',
         'custom type',

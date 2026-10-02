@@ -3,9 +3,17 @@ import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { createRelationshipMenus } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
-import { RelationshipType } from '@/constants/schema';
+import {
+  createReferentialActionMenus,
+  createRelationshipMenus,
+} from '@/components/erd/erd-context-menu/menus/relationshipMenus';
+import {
+  Database,
+  ReferentialAction,
+  RelationshipType,
+} from '@/constants/schema';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 
 let app: AppContext;
 
@@ -88,5 +96,102 @@ describe('relationshipMenus', () => {
     const result = createRelationshipMenus(app, RELATIONSHIP_ID);
     expect(result[0].checked).toBe(false);
     expect(result[1].checked).toBe(true);
+  });
+});
+
+describe('referentialActionMenus', () => {
+  const relationship = () =>
+    query(app.store.state.collections)
+      .collection('relationshipEntities')
+      .selectById(RELATIONSHIP_ID);
+
+  it('returns nothing without a relationship to read', () => {
+    expect(createReferentialActionMenus(app, 'onDelete')).toEqual([]);
+    expect(createReferentialActionMenus(app, 'onUpdate', 'missing')).toEqual(
+      []
+    );
+  });
+
+  it('offers every action after Not set, checking the unset one first', () => {
+    addRelationship(RelationshipType.ZeroN);
+
+    const result = createReferentialActionMenus(
+      app,
+      'onDelete',
+      RELATIONSHIP_ID
+    );
+
+    expect(result.map(menu => menu.name)).toEqual([
+      'Not set',
+      'NO ACTION',
+      'CASCADE',
+      'SET NULL',
+      'SET DEFAULT',
+      'RESTRICT',
+    ]);
+    expect(result.filter(menu => menu.checked).map(menu => menu.name)).toEqual([
+      'Not set',
+    ]);
+  });
+
+  it('notes the actions the current database would drop, and no others', () => {
+    addRelationship(RelationshipType.ZeroN);
+    const notes = (database: number) => {
+      app.store.dispatchSync(changeDatabaseAction({ value: database }));
+      return createReferentialActionMenus(app, 'onDelete', RELATIONSHIP_ID)
+        .filter(menu => menu.note)
+        .map(menu => `${menu.name} ${menu.note}`);
+    };
+
+    expect(notes(Database.MSSQL)).toEqual(['RESTRICT not in MSSQL']);
+    expect(notes(Database.Databricks)).toEqual([
+      'CASCADE not in Databricks',
+      'SET NULL not in Databricks',
+      'SET DEFAULT not in Databricks',
+      'RESTRICT not in Databricks',
+    ]);
+    expect(notes(Database.PostgreSQL)).toEqual([]);
+
+    // No menu names a database the settings cannot hold, so none is noted.
+    app.store.state.settings.database = 0;
+    expect(
+      createReferentialActionMenus(app, 'onDelete', RELATIONSHIP_ID).map(
+        menu => menu.note
+      )
+    ).toEqual(Array(6).fill(null));
+  });
+
+  it.each([
+    ['onDelete', 'onUpdate'],
+    ['onUpdate', 'onDelete'],
+  ] as const)(
+    'changes %s alone and checks its new value',
+    async (field, other) => {
+      addRelationship(RelationshipType.ZeroN);
+
+      createReferentialActionMenus(app, field, RELATIONSHIP_ID)
+        .find(menu => menu.name === 'SET NULL')
+        ?.onClick();
+      await flush();
+
+      expect(relationship()?.[field]).toBe(ReferentialAction.setNull);
+      expect(relationship()?.[other]).toBe(ReferentialAction.none);
+      expect(
+        createReferentialActionMenus(app, field, RELATIONSHIP_ID)
+          .filter(menu => menu.checked)
+          .map(menu => menu.name)
+      ).toEqual(['SET NULL']);
+    }
+  );
+
+  it('goes back to Not set', async () => {
+    addRelationship(RelationshipType.ZeroN);
+
+    createReferentialActionMenus(app, 'onUpdate', RELATIONSHIP_ID)[2].onClick();
+    await flush();
+    createReferentialActionMenus(app, 'onUpdate', RELATIONSHIP_ID)[0].onClick();
+    await flush();
+
+    expect(relationship()?.onUpdate).toBe(ReferentialAction.none);
   });
 });

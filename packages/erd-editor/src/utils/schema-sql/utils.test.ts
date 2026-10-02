@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { BracketType, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketType,
+  ColumnOption,
+  OrderType,
+  ReferentialAction,
+} from '@/constants/schema';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
+  ALL_REFERENTIAL_ACTIONS,
   autoName,
   formatNames,
+  formatReferentialActions,
   formatSize,
   formatSpace,
   getBracket,
@@ -15,6 +22,7 @@ import {
   toStringLiteral,
   unique,
   uniqueColumns,
+  withoutReferentialAction,
 } from '@/utils/schema-sql/utils';
 
 describe('schema-sql/utils', () => {
@@ -201,6 +209,48 @@ describe('schema-sql/utils', () => {
 
     it('returns an empty string for an unknown order type', () => {
       expect(toOrderName(0)).toBe('');
+    });
+  });
+
+  describe('formatReferentialActions', () => {
+    it('writes ON DELETE before ON UPDATE', () => {
+      expect(
+        formatReferentialActions(
+          {
+            onDelete: ReferentialAction.setDefault,
+            onUpdate: ReferentialAction.noAction,
+          },
+          ALL_REFERENTIAL_ACTIONS
+        )
+      ).toEqual(['ON DELETE SET DEFAULT', 'ON UPDATE NO ACTION']);
+    });
+
+    it('writes nothing for none or for an action outside the support', () => {
+      expect(
+        formatReferentialActions(
+          {
+            onDelete: ReferentialAction.none,
+            onUpdate: ReferentialAction.restrict,
+          },
+          { onDelete: ALL_REFERENTIAL_ACTIONS.onDelete, onUpdate: [] }
+        )
+      ).toEqual([]);
+    });
+  });
+
+  describe('withoutReferentialAction', () => {
+    it('drops the refused actions from both events', () => {
+      const support = withoutReferentialAction(
+        ReferentialAction.restrict,
+        ReferentialAction.setDefault
+      );
+
+      expect(support.onDelete).toEqual([
+        ReferentialAction.noAction,
+        ReferentialAction.cascade,
+        ReferentialAction.setNull,
+      ]);
+      expect(support.onUpdate).toEqual(support.onDelete);
     });
   });
 

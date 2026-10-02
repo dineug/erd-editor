@@ -10,6 +10,7 @@ import {
   FormatTableOptions,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from './utils';
 
 const BARE_IDENTIFIER = /^[A-Za-z_][0-9A-Za-z_]*$/;
@@ -67,7 +68,7 @@ export function formatTable(
   state: RootState,
   { buffer, table }: FormatTableOptions
 ) {
-  formatAMLTable(state, { buffer, table }, createAMLContext(state));
+  formatAMLTable(state, { buffer, table }, createAMLContext(state, false));
 }
 
 function formatAMLTable(
@@ -202,7 +203,11 @@ function formatIndexes(
   return result;
 }
 
-function createAMLContext(state: RootState): AMLContext {
+/**
+ * Without actions every single-column relation stays inline, as a lone entity
+ * shows it: that view writes no rel statement to hand the actions to.
+ */
+function createAMLContext(state: RootState, actions = true): AMLContext {
   const {
     doc: { tableIds, relationshipIds },
     collections,
@@ -286,7 +291,11 @@ function createAMLContext(state: RootState): AMLContext {
       }
       used.add(key);
 
-      if (child.columns.length === 1) {
+      // An inline relation's properties are its attribute's, so a relation
+      // with actions is written standalone.
+      const properties = actions ? formatRelationProperties(relationship) : '';
+
+      if (child.columns.length === 1 && properties === '') {
         const [columnId] = relationship.end.columnIds;
 
         context.inlineRelations.set(
@@ -298,7 +307,9 @@ function createAMLContext(state: RootState): AMLContext {
         return;
       }
 
-      context.relationLines.push(`rel ${childText} ${arrow} ${parentText}`);
+      context.relationLines.push(
+        `rel ${childText} ${arrow} ${parentText}${properties}`
+      );
     });
 
   return context;
@@ -308,6 +319,14 @@ function formatEndpoint({ table, columns }: Endpoint): string {
   return `${quoteIdentifier(table)}(${columns
     .map(quoteIdentifier)
     .join(', ')})`;
+}
+
+function formatRelationProperties(relationship: Relationship): string {
+  const properties = referentialActionEntries(relationship).map(
+    ({ key, sql }) => `${key}: ${quoteIdentifier(sql.toLowerCase())}`
+  );
+
+  return properties.length ? ` {${properties.join(', ')}}` : '';
 }
 
 function relationshipArrow(relationship: Relationship): string {

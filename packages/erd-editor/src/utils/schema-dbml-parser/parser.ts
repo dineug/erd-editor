@@ -410,11 +410,34 @@ function readRefBody(reader: Reader): DBMLRef | null {
   }
 
   const right = readEndpoint(reader);
-  readSettings(reader);
+  const actions = refActionsOf(readSettings(reader));
 
   return left.tableName === '' || right.tableName === ''
     ? null
-    : { operator, left, right };
+    : { operator, left, right, ...actions };
+}
+
+function refActionsOf(
+  settings: Setting[]
+): Pick<DBMLRef, 'onDelete' | 'onUpdate'> {
+  const actions = { onDelete: '', onUpdate: '' };
+
+  settings.forEach(({ key, tokens }) => {
+    if (key === 'delete') {
+      actions.onDelete = wordsOf(tokens);
+    } else if (key === 'update') {
+      actions.onUpdate = wordsOf(tokens);
+    }
+  });
+
+  return actions;
+}
+
+function wordsOf(tokens: Token[]): string {
+  return tokens
+    .filter(token => token.kind !== TokenKind.newline)
+    .map(token => token.value)
+    .join(' ');
 }
 
 function readOperator(reader: Reader): string {

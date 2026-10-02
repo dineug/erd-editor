@@ -1,4 +1,11 @@
-import { BracketTypeMap, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketTypeMap,
+  ColumnOption,
+  Database,
+  OrderType,
+  ReferentialAction,
+  ReferentialActionToSQL,
+} from '@/constants/schema';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
@@ -155,6 +162,90 @@ export function toOrderName(orderType: number) {
     default:
       return '';
   }
+}
+
+/** The actions a vendor accepts after ON DELETE and after ON UPDATE. */
+export type ReferentialActionSupport = {
+  onDelete: ReadonlyArray<number>;
+  onUpdate: ReadonlyArray<number>;
+};
+
+const REFERENTIAL_ACTIONS: ReadonlyArray<number> = [
+  ReferentialAction.noAction,
+  ReferentialAction.cascade,
+  ReferentialAction.setNull,
+  ReferentialAction.setDefault,
+  ReferentialAction.restrict,
+];
+
+export const ALL_REFERENTIAL_ACTIONS: ReferentialActionSupport = {
+  onDelete: REFERENTIAL_ACTIONS,
+  onUpdate: REFERENTIAL_ACTIONS,
+};
+
+/** Every action but the ones a vendor refuses, on both events. */
+export function withoutReferentialAction(
+  ...refused: number[]
+): ReferentialActionSupport {
+  const actions = REFERENTIAL_ACTIONS.filter(value => !refused.includes(value));
+  return { onDelete: actions, onUpdate: actions };
+}
+
+const REFERENTIAL_ACTION_SUPPORT: Record<number, ReferentialActionSupport> = {
+  // A foreign key option may only be NO ACTION, on either event.
+  [Database.Databricks]: {
+    onDelete: [ReferentialAction.noAction],
+    onUpdate: [ReferentialAction.noAction],
+  },
+  // MariaDB does not support SET DEFAULT on either event.
+  [Database.MariaDB]: withoutReferentialAction(ReferentialAction.setDefault),
+  // SQL Server has no RESTRICT; NO ACTION, its default, refuses the change
+  // the same way.
+  [Database.MSSQL]: withoutReferentialAction(ReferentialAction.restrict),
+  // InnoDB, and so MySQL, rejects a table whose foreign key says SET DEFAULT,
+  // though the parser accepts it; NO ACTION reads as RESTRICT.
+  [Database.MySQL]: withoutReferentialAction(ReferentialAction.setDefault),
+  // Oracle has no ON UPDATE and writes only CASCADE or SET NULL after ON
+  // DELETE; its default already refuses the change NO ACTION would.
+  [Database.Oracle]: {
+    onDelete: [ReferentialAction.cascade, ReferentialAction.setNull],
+    onUpdate: [],
+  },
+  [Database.PostgreSQL]: ALL_REFERENTIAL_ACTIONS,
+  // SQLite takes every action, enforced once PRAGMA foreign_keys is on.
+  [Database.SQLite]: ALL_REFERENTIAL_ACTIONS,
+  // Snowflake accepts every action for compatibility and enforces none.
+  [Database.Snowflake]: ALL_REFERENTIAL_ACTIONS,
+};
+
+/**
+ * The actions the DDL of a database writes, which the code generators and the
+ * relationship menu follow too; an unknown database takes every one.
+ */
+export function referentialActionSupport(
+  database: number
+): ReferentialActionSupport {
+  return REFERENTIAL_ACTION_SUPPORT[database] ?? ALL_REFERENTIAL_ACTIONS;
+}
+
+/**
+ * ON DELETE, then ON UPDATE, each where the relationship sets one the vendor
+ * accepts; an action it would refuse is left out, so the default applies.
+ */
+export function formatReferentialActions(
+  { onDelete, onUpdate }: Pick<Relationship, 'onDelete' | 'onUpdate'>,
+  support: ReferentialActionSupport
+): string[] {
+  const clauses: string[] = [];
+
+  if (support.onDelete.includes(onDelete)) {
+    clauses.push(`ON DELETE ${ReferentialActionToSQL[onDelete]}`);
+  }
+  if (support.onUpdate.includes(onUpdate)) {
+    clauses.push(`ON UPDATE ${ReferentialActionToSQL[onUpdate]}`);
+  }
+
+  return clauses;
 }
 
 // A string literal every vendor reads back as the text: a quote inside it is

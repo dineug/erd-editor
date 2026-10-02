@@ -38,6 +38,7 @@ import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { toReferentialAction } from '@/utils/referentialAction';
 import { canvasSizeInRange, textInRange } from '@/utils/validation';
 
 import { findByName } from './utils';
@@ -114,8 +115,8 @@ function getStatementMap(statements: Statement[]): StatementMap {
           statement.name &&
           statement.columnNames.length &&
           statement.refTableName &&
-          statement.refColumnNames.length &&
-          statement.columnNames.length === statement.refColumnNames.length
+          (!statement.refColumnNames.length ||
+            statement.columnNames.length === statement.refColumnNames.length)
         ) {
           map.foreignKeys.push(statement);
         }
@@ -250,6 +251,8 @@ function mergeTables({
       columnNames: foreignKey.columnNames,
       refTableName: foreignKey.refTableName,
       refColumnNames: foreignKey.refColumnNames,
+      onDelete: foreignKey.onDelete,
+      onUpdate: foreignKey.onUpdate,
     });
   });
 
@@ -402,18 +405,40 @@ function convertRelationship(
       const startColumns: Column[] = [];
       const endColumns: Column[] = [];
 
-      foreignKey.refColumnNames.forEach(refColumnName => {
-        const column = findByName(sColumns, refColumnName);
-        if (!column) return;
+      // A REFERENCES t without a column list names t's primary key, in the
+      // order the key declares, which the columns lose: only a one-column key
+      // pairs for sure.
+      if (foreignKey.refColumnNames.length) {
+        foreignKey.refColumnNames.forEach(refColumnName => {
+          const column = findByName(sColumns, refColumnName);
+          if (!column) return;
 
-        startColumns.push(column);
-      });
+          startColumns.push(column);
+        });
+      } else {
+        const primaryKeys = sColumns.filter(column =>
+          bHas(column.ui.keys, ColumnUIKey.primaryKey)
+        );
+
+        if (primaryKeys.length === 1) {
+          startColumns.push(...primaryKeys);
+        }
+      }
 
       foreignKey.columnNames.forEach(columnName => {
         const column = findByName(eColumns, columnName);
         if (!column) return;
 
         endColumns.push(column);
+      });
+
+      // A column either table lacks would leave a side short or empty, and the
+      // DDL written from it would reference nothing.
+      if (!startColumns.length || startColumns.length !== endColumns.length) {
+        return;
+      }
+
+      endColumns.forEach(column => {
         if (bHas(column.ui.keys, ColumnUIKey.primaryKey)) {
           column.ui.keys |= ColumnUIKey.foreignKey;
         } else {
@@ -430,6 +455,8 @@ function convertRelationship(
             )
         ),
         relationshipType: RelationshipType.ZeroN,
+        onDelete: toReferentialAction(foreignKey.onDelete),
+        onUpdate: toReferentialAction(foreignKey.onUpdate),
         start: {
           tableId: startTable.id,
           columnIds: startColumns.map(column => column.id),

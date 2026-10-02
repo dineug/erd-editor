@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { RefPos, StatementType } from '@/parser/statement';
+import { ReferentialAction, RefPos, StatementType } from '@/parser/statement';
 import { alterTableAddForeignKeyParser } from '@/parser/statement/alter.table.add.foreignKey';
 import { Token, tokenizer } from '@/parser/tokenizer';
 
@@ -23,6 +23,8 @@ const emptyAst = {
   columnNames: [],
   refTableName: '',
   refColumnNames: [],
+  onDelete: '',
+  onUpdate: '',
 };
 
 describe('alterTableAddForeignKeyParser', () => {
@@ -47,6 +49,42 @@ describe('alterTableAddForeignKeyParser', () => {
       columnNames: ['user_id'],
       refTableName: 'user',
       refColumnNames: ['id'],
+      onDelete: '',
+      onUpdate: '',
+    });
+  });
+
+  it('reads the ON DELETE and ON UPDATE actions after the reference', () => {
+    const { ast, $pos, tokens } = parse(
+      'ALTER TABLE post ADD CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES user (id) ON UPDATE SET NULL ON DELETE CASCADE;' +
+        " COMMENT ON TABLE post IS 'a';"
+    );
+
+    expect(ast).toEqual({
+      type: StatementType.alterTableAddForeignKey,
+      name: 'post',
+      columnNames: ['user_id'],
+      refTableName: 'user',
+      refColumnNames: ['id'],
+      onDelete: ReferentialAction.cascade,
+      onUpdate: ReferentialAction.setNull,
+    });
+    expect(tokens[$pos.value].value).toBe('COMMENT');
+  });
+
+  it('keeps a reference with no column list, the referenced primary key', () => {
+    const { ast } = parse(
+      'ALTER TABLE post ADD FOREIGN KEY (user_id) REFERENCES user ON DELETE SET NULL;'
+    );
+
+    expect(ast).toEqual({
+      type: StatementType.alterTableAddForeignKey,
+      name: 'post',
+      columnNames: ['user_id'],
+      refTableName: 'user',
+      refColumnNames: [],
+      onDelete: ReferentialAction.setNull,
+      onUpdate: '',
     });
   });
 
@@ -80,6 +118,8 @@ describe('alterTableAddForeignKeyParser', () => {
       columnNames: ['user_id'],
       refTableName: 'user',
       refColumnNames: ['id'],
+      onDelete: '',
+      onUpdate: '',
     });
   });
 

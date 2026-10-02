@@ -12,6 +12,7 @@ export {
   Language,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   SaveSettingType,
   Show,

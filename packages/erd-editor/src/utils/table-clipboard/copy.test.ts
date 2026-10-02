@@ -5,6 +5,7 @@ import {
   ColumnOption,
   ColumnType,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   Show,
 } from '@/constants/schema';
@@ -991,6 +992,7 @@ const usersToPosts = () =>
   createRelationship({
     id: 'relationship-1',
     relationshipType: RelationshipType.OneN,
+    onDelete: ReferentialAction.cascade,
     start: { tableId: 'table-1', columnIds: ['column-id'] },
     end: { tableId: 'table-2', columnIds: ['column-title'] },
   });
@@ -1008,6 +1010,8 @@ describe('entitiesCopyToPayload — relationships', () => {
     expect(entitiesCopyToPayload(state)?.relationships).toEqual([
       {
         relationshipType: RelationshipType.OneN,
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.none,
         start: { tableId: 'table-1', columnIds: ['column-id'] },
         end: { tableId: 'table-2', columnIds: ['column-title'] },
       },

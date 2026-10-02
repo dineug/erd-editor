@@ -1,6 +1,10 @@
 import { camelCase, snakeCase } from 'es-toolkit';
 
-import { NameCase, RelationshipType } from '@/constants/schema';
+import {
+  NameCase,
+  ReferentialActionToSQL,
+  RelationshipType,
+} from '@/constants/schema';
 import {
   DatabaseHintMap,
   DataTypeHint,
@@ -9,6 +13,10 @@ import {
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { pascalCase } from '@/utils';
 import { arrayHas } from '@/utils/arrayHas';
+import {
+  ALL_REFERENTIAL_ACTIONS,
+  ReferentialActionSupport,
+} from '@/utils/schema-sql/utils';
 
 export interface FormatTableOptions {
   buffer: string[];
@@ -82,4 +90,38 @@ export function getNameCase(name: string, nameCase: number): string {
       break;
   }
   return changeName;
+}
+
+export type ReferentialActionEntry = {
+  key: 'onDelete' | 'onUpdate';
+  action: number;
+  sql: string;
+};
+
+/**
+ * The actions a relationship sets, ON DELETE first, each with its SQL spelling;
+ * with a support, only those the database's DDL would write too.
+ */
+export function referentialActionEntries(
+  { onDelete, onUpdate }: Pick<Relationship, 'onDelete' | 'onUpdate'>,
+  support: ReferentialActionSupport = ALL_REFERENTIAL_ACTIONS
+): ReferentialActionEntry[] {
+  const entries: ReferentialActionEntry[] = [];
+
+  if (support.onDelete.includes(onDelete)) {
+    entries.push({
+      key: 'onDelete',
+      action: onDelete,
+      sql: ReferentialActionToSQL[onDelete],
+    });
+  }
+  if (support.onUpdate.includes(onUpdate)) {
+    entries.push({
+      key: 'onUpdate',
+      action: onUpdate,
+      sql: ReferentialActionToSQL[onUpdate],
+    });
+  }
+
+  return entries;
 }

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   Direction,
+  ReferentialAction,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
@@ -11,6 +12,8 @@ import { Clock } from '@/engine/clock';
 import { ActionType } from '@/engine/modules/relationship/actions';
 import {
   addRelationshipAction,
+  changeRelationshipOnDeleteAction,
+  changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
@@ -78,6 +81,32 @@ describe('relationship/atom.actions addRelationship', () => {
     expect(entity.start.y).toBe(0);
     expect(entity.start.direction).toBe(Direction.bottom);
     expect(entity.end.direction).toBe(Direction.bottom);
+  });
+
+  it('leaves the referential actions unset when the payload carries none', () => {
+    const store = createTestStore();
+
+    store.dispatchSync(addRelationshipAction(addPayload));
+
+    expect(relationship(store, 'r1')!.onDelete).toBe(ReferentialAction.none);
+    expect(relationship(store, 'r1')!.onUpdate).toBe(ReferentialAction.none);
+  });
+
+  it('keeps the referential actions the payload carries', () => {
+    const store = createTestStore();
+
+    store.dispatchSync(
+      addRelationshipAction({
+        ...addPayload,
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.restrict,
+      })
+    );
+
+    expect(relationship(store, 'r1')!.onDelete).toBe(ReferentialAction.cascade);
+    expect(relationship(store, 'r1')!.onUpdate).toBe(
+      ReferentialAction.restrict
+    );
   });
 
   it('uses the action version when one is supplied', () => {
@@ -354,6 +383,79 @@ describe('relationship/atom.actions changeRelationshipType', () => {
     expect(relationship(store, 'r1')!.relationshipType).toBe(
       RelationshipType.ZeroOne
     );
+  });
+});
+
+describe.each([
+  ['onDelete', changeRelationshipOnDeleteAction] as const,
+  ['onUpdate', changeRelationshipOnUpdateAction] as const,
+])('relationship/atom.actions change %s', (path, changeAction) => {
+  it('replaces the action and records the field version', () => {
+    const store = createTestStore();
+    store.dispatchSync(addRelationshipAction(addPayload));
+
+    store.dispatchSync(
+      versioned(changeAction({ id: 'r1', value: ReferentialAction.setNull }), 3)
+    );
+
+    expect(relationship(store, 'r1')![path]).toBe(ReferentialAction.setNull);
+    expect(store.state.lww['r1'][3]).toEqual({ [path]: 3 });
+  });
+
+  it('ignores a change that is older than the recorded field version', () => {
+    const store = createTestStore();
+    store.dispatchSync(addRelationshipAction(addPayload));
+
+    store.dispatchSync(
+      versioned(changeAction({ id: 'r1', value: ReferentialAction.cascade }), 9)
+    );
+    store.dispatchSync(
+      versioned(
+        changeAction({ id: 'r1', value: ReferentialAction.restrict }),
+        4
+      )
+    );
+
+    expect(relationship(store, 'r1')![path]).toBe(ReferentialAction.cascade);
+  });
+
+  it('keeps each field a register of its own', () => {
+    const store = createTestStore();
+    store.dispatchSync(addRelationshipAction(addPayload));
+
+    store.dispatchSync(
+      versioned(
+        changeAction({ id: 'r1', value: ReferentialAction.noAction }),
+        6
+      )
+    );
+    store.dispatchSync(
+      versioned(
+        changeRelationshipTypeAction({
+          id: 'r1',
+          value: RelationshipType.OneN,
+        }),
+        2
+      )
+    );
+
+    expect(relationship(store, 'r1')![path]).toBe(ReferentialAction.noAction);
+    expect(relationship(store, 'r1')!.relationshipType).toBe(
+      RelationshipType.OneN
+    );
+  });
+
+  it('falls back to the clock version', () => {
+    const store = createTestStore();
+    store.dispatchSync(addRelationshipAction(addPayload));
+    store.context.clock.merge(11);
+
+    store.dispatchSync(
+      changeAction({ id: 'r1', value: ReferentialAction.setDefault })
+    );
+
+    expect(store.state.lww['r1'][3]).toEqual({ [path]: 11 });
+    expect(relationship(store, 'r1')![path]).toBe(ReferentialAction.setDefault);
   });
 });
 

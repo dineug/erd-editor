@@ -30,7 +30,11 @@ import { createDatabaseMenus } from './menus/databaseMenus';
 import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
 import { createExportMenus } from './menus/exportMenus';
 import { createImportMenus } from './menus/importMenus';
-import { createRelationshipMenus } from './menus/relationshipMenus';
+import {
+  createReferentialActionMenus,
+  createRelationshipMenus,
+  ReferentialActionField,
+} from './menus/relationshipMenus';
 import { createShowMenus } from './menus/showMenus';
 import { createTablePlacementMenus } from './menus/tablePlacementMenus';
 
@@ -40,6 +44,14 @@ export const ErdContextMenuType = {
   relationship: 'relationship',
 } as const;
 export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
+
+const referentialActionItems: Array<{
+  field: ReferentialActionField;
+  name: string;
+}> = [
+  { field: 'onDelete', name: 'On Delete' },
+  { field: 'onUpdate', name: 'On Update' },
+];
 
 export type ErdContextMenuProps = {
   type: ErdContextMenuType;
@@ -255,6 +267,43 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
+              {referentialActionItems.map(({ field, name }) => (
+                <ContextMenu.Item
+                  children={
+                    <ContextMenu.Menu name={name} right={chevronRightIcon} />
+                  }
+                  subChildren={
+                    <>
+                      {createReferentialActionMenus(
+                        app.value,
+                        field,
+                        props.relationshipId
+                      ).map(menu => (
+                        <ContextMenu.Item
+                          onClick={menu.onClick}
+                          children={
+                            <ContextMenu.Menu
+                              icon={
+                                menu.checked ? (
+                                  <Icon name="check" size={14} />
+                                ) : null
+                              }
+                              name={menu.name}
+                              right={
+                                menu.note ? (
+                                  <span style={{ color: 'var(--placeholder)' }}>
+                                    {menu.note}
+                                  </span>
+                                ) : null
+                              }
+                            />
+                          }
+                        />
+                      ))}
+                    </>
+                  }
+                />
+              ))}
               <ContextMenu.Item
                 onClick={handleRemoveRelationship}
                 children={<ContextMenu.Menu name="Delete" />}

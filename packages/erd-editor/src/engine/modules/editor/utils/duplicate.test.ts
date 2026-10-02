@@ -5,6 +5,7 @@ import {
   ColumnOption,
   ColumnUIKey,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { ChangeActionTypes, SharedActionTypes } from '@/engine/actions';
@@ -656,6 +657,28 @@ describe('toCreateEntityActions — relationships', () => {
     expect(
       findAction(actions, 'relationship.add')?.payload.relationshipType
     ).toBe(RelationshipType.OneN);
+  });
+
+  it('copies the referential actions, and none from an older copy', () => {
+    const { actions } = toCreateEntityActions(
+      {
+        ...twoTables(),
+        relationships: [
+          createClipboardRelationship({
+            onDelete: ReferentialAction.cascade,
+            onUpdate: ReferentialAction.setNull,
+          }),
+          createClipboardRelationship(),
+        ],
+      },
+      bothPlaced()
+    );
+    const [withActions, older] = filterActions(actions, 'relationship.add');
+
+    expect(withActions.payload.onDelete).toBe(ReferentialAction.cascade);
+    expect(withActions.payload.onUpdate).toBe(ReferentialAction.setNull);
+    expect(older.payload.onDelete).toBeUndefined();
+    expect(older.payload.onUpdate).toBeUndefined();
   });
 
   it('keeps a composite relationship paired and in order', () => {

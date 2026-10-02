@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Database, NameCase, RelationshipType } from '@/constants/schema';
+import {
+  Database,
+  NameCase,
+  ReferentialAction,
+  RelationshipType,
+} from '@/constants/schema';
 import { MySQLTypes } from '@/constants/sql/dataType/MySQL';
 import { PostgreSQLTypes } from '@/constants/sql/dataType/PostgreSQL';
 import {
@@ -9,7 +14,9 @@ import {
   getPrimitiveType,
   hasNRelationship,
   hasOneRelationship,
+  referentialActionEntries,
 } from '@/utils/generator-code/utils';
+import { referentialActionSupport } from '@/utils/schema-sql/utils';
 
 describe('generator-code/utils', () => {
   describe('hasOneRelationship', () => {
@@ -166,6 +173,69 @@ describe('generator-code/utils', () => {
     it('leaves the name untouched for none and unknown cases', () => {
       expect(getNameCase('user_Name', NameCase.none)).toBe('user_Name');
       expect(getNameCase('user_Name', 0)).toBe('user_Name');
+    });
+  });
+
+  describe('referentialActionEntries', () => {
+    it('lists ON DELETE before ON UPDATE with their SQL spelling', () => {
+      expect(
+        referentialActionEntries({
+          onDelete: ReferentialAction.setNull,
+          onUpdate: ReferentialAction.cascade,
+        })
+      ).toEqual([
+        {
+          key: 'onDelete',
+          action: ReferentialAction.setNull,
+          sql: 'SET NULL',
+        },
+        {
+          key: 'onUpdate',
+          action: ReferentialAction.cascade,
+          sql: 'CASCADE',
+        },
+      ]);
+    });
+
+    it('leaves out an unset action', () => {
+      expect(
+        referentialActionEntries({
+          onDelete: ReferentialAction.none,
+          onUpdate: ReferentialAction.restrict,
+        }).map(entry => entry.key)
+      ).toEqual(['onUpdate']);
+      expect(
+        referentialActionEntries({
+          onDelete: ReferentialAction.none,
+          onUpdate: ReferentialAction.none,
+        })
+      ).toEqual([]);
+    });
+
+    it('keeps only what the DDL of a given database would write', () => {
+      const relationship = {
+        onDelete: ReferentialAction.setDefault,
+        onUpdate: ReferentialAction.cascade,
+      };
+
+      expect(
+        referentialActionEntries(
+          relationship,
+          referentialActionSupport(Database.MySQL)
+        ).map(entry => entry.key)
+      ).toEqual(['onUpdate']);
+      expect(
+        referentialActionEntries(
+          relationship,
+          referentialActionSupport(Database.Oracle)
+        )
+      ).toEqual([]);
+      expect(
+        referentialActionEntries(
+          relationship,
+          referentialActionSupport(Database.PostgreSQL)
+        )
+      ).toHaveLength(2);
     });
   });
 });

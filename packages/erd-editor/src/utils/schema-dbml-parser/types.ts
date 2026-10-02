@@ -51,6 +51,9 @@ export type DBMLRef = {
   operator: string;
   left: DBMLEndpoint;
   right: DBMLEndpoint;
+  /** The delete and update settings as written, set null say; '' if absent. */
+  onDelete: string;
+  onUpdate: string;
 };
 
 export type DBMLModel = {

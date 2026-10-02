@@ -15,6 +15,7 @@ const {
   Language,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
   Show,
   StartRelationshipType,
@@ -611,6 +612,19 @@ describe('v2ToV3', () => {
       expect(rel2.startRelationshipType).toBe(StartRelationshipType.dash);
       expect(rel2.start.direction).toBe(Direction.right);
       expect(rel2.end.direction).toBe(Direction.bottom);
+    });
+
+    it('leaves the referential actions unset, since v2 has no slot for them', () => {
+      const { collections } = v2ToV3(createSchemaV2());
+
+      for (const id of ['rel1', 'rel2']) {
+        expect(collections.relationshipEntities[id].onDelete).toBe(
+          ReferentialAction.none
+        );
+        expect(collections.relationshipEntities[id].onUpdate).toBe(
+          ReferentialAction.none
+        );
+      }
     });
 
     it('treats any non-Ring start relationship type as dash', () => {

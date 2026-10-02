@@ -148,6 +148,8 @@ export function toCreateEntityActions(
       addRelationshipAction({
         id: nanoid(),
         relationshipType: relationship.relationshipType,
+        onDelete: relationship.onDelete,
+        onUpdate: relationship.onUpdate,
         start: { tableId: startTableId, columnIds: startColumnIds },
         end: { tableId: endTableId, columnIds: endColumnIds },
       })

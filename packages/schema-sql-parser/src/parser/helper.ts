@@ -6,7 +6,7 @@ import { OracleTypes } from '@/parser/dataType/Oracle';
 import { PostgreSQLTypes } from '@/parser/dataType/PostgreSQL';
 import { SnowflakeTypes } from '@/parser/dataType/Snowflake';
 import { SQLiteTypes } from '@/parser/dataType/SQLite';
-import { DatabaseVendor } from '@/parser/statement';
+import { DatabaseVendor, ReferentialAction } from '@/parser/statement';
 import { Token, TokenType } from '@/parser/tokenizer';
 
 const createTypeEqual = (type: string) => (tokens: Token[]) => (pos: number) =>
@@ -78,6 +78,9 @@ export const isClusterValue = createValueEqual('CLUSTER');
 export const isByValue = createValueEqual('BY');
 export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
+export const isWithValue = createValueEqual('WITH');
+export const isCheckValue = createValueEqual('CHECK');
+export const isNocheckValue = createValueEqual('NOCHECK');
 export const isConcurrentlyValue = createValueEqual('CONCURRENTLY');
 export const isWhereValue = createValueEqual('WHERE');
 export const isUsingValue = createValueEqual('USING');
@@ -128,18 +131,25 @@ export const isConstraintState = (tokens: Token[]) => {
     isImmediate(pos);
 };
 
-const ReferentialActions: ReadonlyArray<ReadonlyArray<string>> = [
-  ['SET', 'NULL'],
-  ['SET', 'DEFAULT'],
-  ['NO', 'ACTION'],
-  ['CASCADE'],
-  ['RESTRICT'],
+const ReferentialActions: ReadonlyArray<ReferentialAction> = [
+  ReferentialAction.setNull,
+  ReferentialAction.setDefault,
+  ReferentialAction.noAction,
+  ReferentialAction.cascade,
+  ReferentialAction.restrict,
 ];
 const MatchKinds: ReadonlyArray<string> = ['FULL', 'PARTIAL', 'SIMPLE'];
 
-// How many tokens a reference's trailing clause spans: ON DELETE SET NULL,
-// MATCH FULL. The action is optional, so MySQL's ON UPDATE CURRENT_TIMESTAMP
-// spans two and leaves its value to be skipped.
+/** A clause a reference may trail; event is '' for MATCH, and span 0 for none. */
+export type ReferentialClause = {
+  span: number;
+  event: 'DELETE' | 'UPDATE' | '';
+  action: ReferentialAction | '';
+};
+
+// How many tokens a reference's trailing clause spans, and which action it
+// names: ON DELETE SET NULL, MATCH FULL. The action is optional, so MySQL's ON
+// UPDATE CURRENT_TIMESTAMP spans two and leaves its value to be skipped.
 export const matchReferentialClause = (tokens: Token[]) => {
   const word = (pos: number) => {
     const token = tokens[pos];
@@ -148,15 +158,41 @@ export const matchReferentialClause = (tokens: Token[]) => {
       : '';
   };
 
-  return (pos: number) => {
-    if (word(pos) === 'ON' && ['DELETE', 'UPDATE'].includes(word(pos + 1))) {
-      const action = ReferentialActions.find(words =>
-        words.every((value, index) => word(pos + 2 + index) === value)
-      );
-      return 2 + (action?.length ?? 0);
+  // PostgreSQL lets SET NULL and SET DEFAULT name the columns they set; left
+  // unread, the list would end the clauses and drop an ON UPDATE after it.
+  const columnList = (pos: number) => {
+    if (tokens[pos]?.type !== TokenType.leftParent) return 0;
+
+    for (let cursor = pos + 1; cursor < tokens.length; cursor++) {
+      const { type } = tokens[cursor];
+
+      if (type === TokenType.rightParent) return cursor - pos + 1;
+      if (type !== TokenType.string && type !== TokenType.comma) return 0;
     }
 
-    return word(pos) === 'MATCH' && MatchKinds.includes(word(pos + 1)) ? 2 : 0;
+    return 0;
+  };
+
+  return (pos: number): ReferentialClause => {
+    const event = word(pos + 1);
+
+    if (word(pos) === 'ON' && (event === 'DELETE' || event === 'UPDATE')) {
+      const action = ReferentialActions.find(value =>
+        value.split(' ').every((part, index) => word(pos + 2 + index) === part)
+      );
+
+      if (!action) return { span: 2, event, action: '' };
+
+      const span = 2 + action.split(' ').length;
+      const list = action.startsWith('SET ') ? columnList(pos + span) : 0;
+
+      return { span: span + list, event, action };
+    }
+
+    const span =
+      word(pos) === 'MATCH' && MatchKinds.includes(word(pos + 1)) ? 2 : 0;
+
+    return { span, event: '', action: '' };
   };
 };
 
@@ -566,6 +602,9 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
   const isAdd = isAddValue(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isString = isStringToken(tokens);
+  const isWith = isWithValue(tokens);
+  const isCheck = isCheckValue(tokens);
+  const isNocheck = isNocheckValue(tokens);
   const qualifiedName = matchQualifiedName(tokens);
   const word = matchKeyword(tokens);
 
@@ -577,6 +616,12 @@ const matchAlterTableAddHead = (tokens: Token[]) => {
     const name = qualifiedName(cursor);
     if (!name) return 0;
     cursor += name;
+
+    // SQL Server says whether the rows already there are checked, and the
+    // scripts SSMS writes always do: ALTER TABLE t WITH CHECK ADD CONSTRAINT.
+    if (isWith(cursor) && (isCheck(cursor + 1) || isNocheck(cursor + 1))) {
+      cursor += 2;
+    }
 
     if (!isAdd(cursor)) return 0;
     cursor++;

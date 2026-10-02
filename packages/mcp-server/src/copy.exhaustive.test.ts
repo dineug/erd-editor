@@ -126,3 +126,34 @@ describe('the words sent before any editor is found', () => {
     expect(SERVER_INSTRUCTIONS).not.toMatch(/[`*#]|\n/);
   });
 });
+
+describe('the words on a referential action', () => {
+  const ACTION_ARGS = ['onDelete', 'onUpdate'];
+  const texts = [
+    describeTool('erd_change_relationship_on_delete'),
+    describeTool('erd_change_relationship_on_update'),
+    ...actionTools.flatMap(({ name, args }) =>
+      args
+        .filter(arg => ACTION_ARGS.includes(arg.name))
+        .map(arg => describeArg(name, arg.name))
+    ),
+  ];
+
+  it('reach both change tools and the six arguments that take an action', () => {
+    expect(texts).toHaveLength(8);
+  });
+
+  it('say an editor released before referential actions drops them, so the user updates it', () => {
+    for (const text of texts) {
+      expect(text).toContain(
+        'An ERD Editor extension or plugin released before referential actions ignores this setting, so the user should update it.'
+      );
+    }
+  });
+
+  it('name no release, which the next one would make wrong', () => {
+    for (const text of texts) {
+      expect(text).not.toMatch(/\d+\.\d+/);
+    }
+  });
+});

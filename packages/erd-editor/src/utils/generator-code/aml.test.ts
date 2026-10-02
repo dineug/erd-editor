@@ -6,6 +6,7 @@ import {
   Database,
   NameCase,
   OrderType,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -23,6 +24,7 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createCode, formatTable } from '@/utils/generator-code/aml';
+import { parseAMLModel } from '@/utils/schema-aml-parser/parser';
 
 type StateInput = {
   tables?: Table[];
@@ -929,6 +931,30 @@ describe('generator-code/aml', () => {
       ]);
     });
 
+    it('writes a relationship with actions as a rel statement with properties', () => {
+      const state = createRelationshipState({
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.setNull,
+      });
+
+      expect(childLine(state)).toBe('  user_id int');
+      expect(relLines(state)).toEqual([
+        'rel post(user_id) -> user(id) {onDelete: cascade, onUpdate: "set null"}',
+      ]);
+    });
+
+    it('writes properties the AML importer reads back as the same actions', () => {
+      const result = parseAMLModel(
+        createCode(
+          createRelationshipState({ onUpdate: ReferentialAction.noAction })
+        )
+      );
+
+      expect(result.ok && result.model.relations).toMatchObject([
+        { onDelete: '', onUpdate: 'no action' },
+      ]);
+    });
+
     it('renders a mandatory one-to-many with the same arrow', () => {
       expect(
         childLine(
@@ -1269,6 +1295,45 @@ describe('generator-code/aml', () => {
       expect(renderTable(state, state.collections.tableEntities.t2)).toEqual([
         'post',
         '  user_id int -> user(id)',
+      ]);
+    });
+
+    it('keeps a relation with actions inline, leaving its actions to the rel statement', () => {
+      const state = createState({
+        tables: [
+          createTable({ id: 't1', name: 'user', columnIds: ['c1'] }),
+          createTable({ id: 't2', name: 'post', columnIds: ['c2'] }),
+        ],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't2',
+            name: 'user_id',
+            dataType: 'int',
+          }),
+        ],
+        relationships: [
+          createRelationship({
+            id: 'r1',
+            onDelete: ReferentialAction.cascade,
+            start: { tableId: 't1', columnIds: ['c1'] },
+            end: { tableId: 't2', columnIds: ['c2'] },
+          }),
+        ],
+      });
+
+      expect(renderTable(state, state.collections.tableEntities.t2)).toEqual([
+        'post',
+        '  user_id int nullable -> user(id)',
+      ]);
+      expect(relLines(state)).toEqual([
+        'rel post(user_id) -> user(id) {onDelete: cascade}',
       ]);
     });
 

@@ -6,6 +6,7 @@ import {
   ColumnUIKey,
   Database,
   NameCase,
+  ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -1880,6 +1881,38 @@ describe('generator-code/sqlalchemy', () => {
         '',
         '    user: Mapped["User"] = relationship(back_populates="postList")',
       ]);
+    });
+
+    it('passes the referential actions to a single-column ForeignKey', () => {
+      const state = createOneToManyState(RelationshipType.ZeroN);
+      const [relationshipId] = state.doc.relationshipIds;
+      Object.assign(state.collections.relationshipEntities[relationshipId], {
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.restrict,
+      });
+
+      expect(
+        render(state, state.collections.tableEntities['t_post']).join('\n')
+      ).toContain(
+        'ForeignKey("user.id", ondelete="CASCADE", onupdate="RESTRICT")'
+      );
+    });
+
+    it('passes the referential actions to a ForeignKeyConstraint', () => {
+      const { state } = createCompositeFixture();
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.setNull,
+      });
+
+      expect(createCode(state)).toContain(
+        [
+          '        ForeignKeyConstraint(',
+          '            ["team_id", "team_code"],',
+          '            ["team.id", "team.code"],',
+          '            ondelete="SET NULL",',
+          '        ),',
+        ].join('\n')
+      );
     });
 
     // Pins the guarantee formatRelation leans on for its Optional import:

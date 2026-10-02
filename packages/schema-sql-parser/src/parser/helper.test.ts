@@ -80,6 +80,7 @@ import {
   toStringLiteral,
   unquoteTypeName,
 } from '@/parser/helper';
+import { ReferentialAction } from '@/parser/statement';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
 
 const str = (value: string): Token => ({ type: TokenType.string, value });
@@ -283,9 +284,10 @@ describe('isCharacterSet', () => {
 });
 
 describe('matchReferentialClause', () => {
-  it('spans ON DELETE or ON UPDATE together with its action', () => {
-    const span = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+  const clause = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+  const span = (sql: string) => clause(sql).span;
 
+  it('spans ON DELETE or ON UPDATE together with its action', () => {
     expect(span('ON DELETE SET NULL, b INT')).toBe(4);
     expect(span('on update set default')).toBe(4);
     expect(span('ON DELETE NO ACTION')).toBe(4);
@@ -294,17 +296,55 @@ describe('matchReferentialClause', () => {
     expect(span('MATCH SIMPLE ON DELETE CASCADE')).toBe(2);
   });
 
-  it('leaves a value that is no referential action to the caller', () => {
-    const span = (sql: string) => matchReferentialClause(tokenizer(sql))(0);
+  it('names the event and the action a clause carries', () => {
+    expect(clause('ON DELETE SET NULL')).toEqual({
+      span: 4,
+      event: 'DELETE',
+      action: ReferentialAction.setNull,
+    });
+    expect(clause('on update cascade')).toEqual({
+      span: 3,
+      event: 'UPDATE',
+      action: ReferentialAction.cascade,
+    });
+    expect(clause('ON DELETE NO ACTION').action).toBe(
+      ReferentialAction.noAction
+    );
+    expect(clause('ON UPDATE SET DEFAULT').action).toBe(
+      ReferentialAction.setDefault
+    );
+    expect(clause('ON DELETE RESTRICT').action).toBe(
+      ReferentialAction.restrict
+    );
+    expect(clause('MATCH FULL')).toEqual({ span: 2, event: '', action: '' });
+  });
 
-    expect(span('ON UPDATE CURRENT_TIMESTAMP')).toBe(2);
+  it('spans the column list PostgreSQL lets SET NULL and SET DEFAULT name', () => {
+    expect(clause('ON DELETE SET NULL (a_id) ON UPDATE CASCADE')).toEqual({
+      span: 7,
+      event: 'DELETE',
+      action: ReferentialAction.setNull,
+    });
+    expect(span('ON DELETE SET DEFAULT (a, b), c INT')).toBe(9);
+    expect(span('ON DELETE CASCADE (a)')).toBe(3);
+    expect(span('ON DELETE SET NULL (a')).toBe(4);
+  });
+
+  it('leaves a value that is no referential action to the caller', () => {
+    expect(clause('ON UPDATE CURRENT_TIMESTAMP')).toEqual({
+      span: 2,
+      event: 'UPDATE',
+      action: '',
+    });
     expect(span('ON CONFLICT REPLACE')).toBe(0);
     expect(span('MATCH INT')).toBe(0);
+    expect(clause('')).toEqual({ span: 0, event: '', action: '' });
   });
 
   it('rejects a quoted ON, which names a column', () => {
     expect(
       matchReferentialClause([quoted('on'), ...words('DELETE', 'CASCADE')])(0)
+        .span
     ).toBe(0);
   });
 });
@@ -680,6 +720,37 @@ describe('a fully qualified ALTER TABLE target', () => {
     ],
   ])('matches %s', (sql, matcher) => {
     expect(matcher(tokenizer(sql))(0)).toBe(true);
+  });
+});
+
+describe('SQL Server WITH CHECK before ADD', () => {
+  it.each([
+    [
+      'ALTER TABLE [dbo].[b] WITH CHECK ADD CONSTRAINT [fk] FOREIGN KEY([a_id]) REFERENCES [dbo].[a] ([id]);',
+      isAlterTableAddForeignKey,
+    ],
+    [
+      'ALTER TABLE b WITH NOCHECK ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+      isAlterTableAddForeignKey,
+    ],
+    [
+      'ALTER TABLE b with check ADD CONSTRAINT pk PRIMARY KEY (id);',
+      isAlterTableAddPrimaryKey,
+    ],
+    [
+      'ALTER TABLE b WITH CHECK ADD CONSTRAINT uq UNIQUE (a_id);',
+      isAlterTableAdd,
+    ],
+  ])('matches %s', (sql, matcher) => {
+    expect(matcher(tokenizer(sql))(0)).toBe(true);
+  });
+
+  it.each([
+    'ALTER TABLE b WITH ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+    'ALTER TABLE b WITH [CHECK] ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+    'ALTER TABLE b CHECK ADD FOREIGN KEY (a_id) REFERENCES a (id);',
+  ])('refuses %s', sql => {
+    expect(isAlterTableAddForeignKey(tokenizer(sql))(0)).toBe(false);
   });
 });
 
