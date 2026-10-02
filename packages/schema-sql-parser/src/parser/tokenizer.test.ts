@@ -224,8 +224,9 @@ describe('tokenizer', () => {
       ]);
     });
 
-    // Standard SQL keeps a backslash as it is: 'C:\' is a whole literal.
-    it.each([' ', ',', ';', ')', ']', ':', '|', ''])(
+    // Standard SQL keeps a backslash as it is: 'C:\' is a whole literal, and
+    // T-SQL joins one to the next with a +.
+    it.each([' ', ',', ';', ')', ']', ':', '|', '+', ''])(
       'ends the literal at a backslashed quote followed by "%s"',
       end => {
         expect(tokenizer(String.raw`'C:\'` + end)[0]).toEqual({

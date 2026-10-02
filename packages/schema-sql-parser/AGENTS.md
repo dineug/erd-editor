@@ -12,7 +12,7 @@
 | File | Description |
 | --- | --- |
 | `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, the statement types; everything else is internal |
-| `src/parser/tokenizer.ts` | Lexer — `"x"`, `'x'`, `` `x` `` and `[x]` each become one `string` token, delimiters stripped, `quoted` set to the opening delimiter; a doubled `''`, `""` or ``` `` ``` inside is one character of the value, a doubled `]]` is not (a nested array literal closes on it); a `'` behind an odd run of backslashes is one too, its backslash dropped, unless whitespace or `,;):]\|` follows it (MySQL's `'it\'s'` against standard SQL's `'C:\'`); an unpaired `]` emits `rightBracket` |
+| `src/parser/tokenizer.ts` | Lexer — `"x"`, `'x'`, `` `x` `` and `[x]` each become one `string` token, delimiters stripped, `quoted` set to the opening delimiter; a doubled `''`, `""` or ``` `` ``` inside is one character of the value, a doubled `]]` is not (a nested array literal closes on it); a `'` behind an odd run of backslashes is one too, its backslash dropped, unless whitespace or `,;):]\|+` follows it (MySQL's `'it\'s'` against standard SQL's `'C:\'` and T-SQL's `'C:\'+name`); an unpaired `]` emits `rightBracket` |
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, runs a statement parser, else advances one token |
 | `src/parser/helper.ts` | Token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchUserDataType`, `matchNestedDataType`, `matchReferentialClause`, `isTableItemWord`, `requote`, `requoteTypeName`, `unquoteTypeName` |
 | `src/parser/statement/` | One parser per statement kind; `index.ts` holds `Statement`, `StatementType`, `SortType`, `RefPos` |

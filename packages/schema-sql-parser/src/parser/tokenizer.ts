@@ -35,7 +35,7 @@ const pattern = {
   whiteSpace: /\s/,
   string: /\S/,
   breakString: /;|,|\(|\)|\[|\]|\.|=/,
-  literalEnd: /[\s,;)\]:|]/,
+  literalEnd: /[\s,;)\]:|+]/,
   equal: '=',
   period: '.',
   comma: ',',
@@ -79,7 +79,7 @@ export function tokenizer(source: string): Token[] {
 
   // MySQL's it\'s: a quote behind an odd run of backslashes, unless what
   // follows may end a literal. 'C:\', is how standard SQL writes a trailing
-  // backslash, and so is 'C:\'::text.
+  // backslash, and so are 'C:\'::text and T-SQL's 'C:\'+name.
   const isEscapedQuote = (value: string) => {
     if (pos + 1 >= source.length || match.literalEnd(source[pos + 1])) {
       return false;
