@@ -20,19 +20,23 @@ describe('searchDataTypeHints', () => {
   });
 
   // Typing a name a letter at a time, in its own case or in lower case, is what
-  // the list is for, so no step of it may leave the list empty.
+  // the list is for, so no step of it may leave the list empty. Names share
+  // prefixes and a lower-case name is its own lower case, so each text runs once.
   it.each(VENDORS)(
     'keeps a list open on every %s type name and every prefix of one',
     vendor => {
       const hints = DatabaseHintMap[Database[vendor]];
-      const typed = hints.flatMap(({ name }) =>
-        Array.from({ length: name.length }, (_, end) =>
-          name.slice(0, end + 1)
-        ).flatMap(prefix => [prefix, prefix.toLowerCase()])
+      const typed = new Set(
+        hints.flatMap(({ name }) =>
+          Array.from({ length: name.length }, (_, end) =>
+            name.slice(0, end + 1)
+          ).flatMap(prefix => [prefix, prefix.toLowerCase()])
+        )
       );
+      const closing = [...typed].filter(text => !namesFor(vendor, text).length);
 
       expect(hints.length).toBeGreaterThan(0);
-      expect(typed.filter(text => !namesFor(vendor, text).length)).toEqual([]);
+      expect(closing).toEqual([]);
     }
   );
 
