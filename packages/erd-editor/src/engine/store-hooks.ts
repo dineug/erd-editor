@@ -1,11 +1,22 @@
 import { type AnyAction } from '@dineug/r-html';
 import { Subject, Subscription } from 'rxjs';
 
-import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
+import type { EngineContext } from '@/engine/context';
+import {
+  hooks as relationshipHooks,
+  recalculateIdentification,
+  recalculateStartRelationshipType,
+} from '@/engine/modules/relationship/hooks';
 import { hooks as tableHooks } from '@/engine/modules/table/hooks';
-import { hooks as tableColumnHooks } from '@/engine/modules/table-column/hooks';
+import {
+  hooks as tableColumnHooks,
+  validateForeignKeys,
+} from '@/engine/modules/table-column/hooks';
+import type { RootState } from '@/engine/state';
 import type { Store } from '@/engine/store';
 import { arrayHas } from '@/utils/arrayHas';
+import { recalculateTableWidth } from '@/utils/calcTable';
+import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 type Task = {
   pattern: ReturnType<typeof arrayHas<string>>;
@@ -48,4 +59,17 @@ export function createHooks(store: Store) {
   };
 
   return { destroy };
+}
+
+/**
+ * Writes at once what the hooks a load wakes write over the next 10 ms, which
+ * then find nothing left to write, so a replica measuring changes from its load
+ * does not take them for an edit.
+ */
+export function settleLoad(state: RootState, ctx: EngineContext) {
+  validateForeignKeys(state);
+  recalculateTableWidth(state, ctx);
+  relationshipSort(state);
+  recalculateIdentification(state);
+  recalculateStartRelationshipType(state);
 }

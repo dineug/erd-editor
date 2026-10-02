@@ -26,6 +26,8 @@ CREATE TABLE posts (
 const storedTableCount = ({ value }: StoredSchema) =>
   value ? JSON.parse(value).doc.tableIds.length : 0;
 
+const storedSettings = ({ value }: StoredSchema) => JSON.parse(value).settings;
+
 /** Where each stored connector starts and ends. */
 const storedAnchors = ({ value }: StoredSchema): number[][] => {
   const { doc, collections } = JSON.parse(value);
@@ -81,22 +83,24 @@ test.describe('import and export', () => {
     expect(storedTableCount(await app.storedSchema('shop'))).toBe(2);
     // Read straight after parsing, before the engine placed any connector.
     expect(storedAnchors(blog)).toEqual([[0, 0, 0, 0]]);
+    // A source converts to a new document, which saves neither half of the view.
+    expect(storedSettings(blog).ignoreSaveSettings).toBe(3);
 
     await app.page.reload();
     await app.selectSchema('blog');
     await expect.poll(async () => (await app.tableIds()).length).toBe(2);
     await app.zoomIn();
+    // Opening derived the connectors, and the zoom stored them, as no edit.
     await expect
-      .poll(
-        async () =>
-          JSON.parse((await app.storedSchema('blog')).value).settings.zoomLevel
-      )
-      .toBeGreaterThan(1);
+      .poll(async () => storedAnchors(await app.storedSchema('blog')))
+      .not.toEqual([[0, 0, 0, 0]]);
 
-    // Opening derived the connectors, and the zoom saved them, as no edit.
     const opened = await app.storedSchema('blog');
-    expect(storedAnchors(opened)).not.toEqual([[0, 0, 0, 0]]);
     expect(opened.updateAt).toBe(blog.updateAt);
+    expect(storedSettings(opened)).toMatchObject({
+      ignoreSaveSettings: 3,
+      zoomLevel: 1,
+    });
   });
 
   test('exports a backup that imports back as copies', async ({ context }) => {

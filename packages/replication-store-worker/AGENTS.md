@@ -5,14 +5,14 @@
 
 ## Purpose
 
-A headless replica of the open document in a dedicated module `Worker`, so the IDE host receives the serialized value without stringifying on the UI thread. `mountWebview` in `webview-client` spawns it, feeds it `webviewInitialValueCommand` and every editor action as `webviewReplicationCommand`, and relays the `hostSaveValueCommand` it posts after each store `change` — the value both IDE hosts write to disk. `obsidian-plugin`'s `ErdView` drives it the same way, one replica per tab, inlined into its `main.js`. `private: true`.
+A headless replica of the open document in a dedicated module `Worker`, so the IDE host receives the serialized value without stringifying on the UI thread. `mountWebview` in `webview-client` spawns it, feeds it `webviewInitialValueCommand` and every editor action as `webviewReplicationCommand`, and relays the `hostSaveValueCommand` it posts after each store `change` — the value both IDE hosts write to disk, with the store's `changed` flag, false for a change that left the value as it was, which the hosts do not write. `obsidian-plugin`'s `ErdView` drives it the same way, one replica per tab, inlined into its `main.js`. `private: true`.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
 | `src/index.ts` | `createReplicationStoreWorker({ name })` — `new Worker(new URL('./services/replicationStore.worker.ts', import.meta.url), { type: 'module', name })` |
-| `src/services/replicationStore.worker.ts` | Worker body: a store from `createReplicationStore`, the two inbound commands, `hostSaveValueCommand` on `change` |
+| `src/services/replicationStore.worker.ts` | Worker body: a store from `createReplicationStore`, the two inbound commands, `hostSaveValueCommand` with the `change`'s `value` and `changed` |
 | `src/utils/text.ts` | `toWidth`, the text measurement handed to the store |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, workers: true })` → `dist/index.js` plus `dist/workers/replicationStore.worker.js`, referenced by the relative url `tools/vite/worker-url.ts` writes |
 

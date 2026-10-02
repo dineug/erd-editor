@@ -84,10 +84,18 @@ export class ErdEditor extends Editor {
         // lands after the initial value instead of being wiped by it.
         this.registry.onWebviewReady(this.document, this.webview);
       }),
-      this.bridge.registerCommand(hostSaveValueCommand, async ({ value }) => {
-        await this.document.update(textEncoder.encode(value));
-        this.registry.onValueSaved(this.document, this.webview);
-      }),
+      this.bridge.registerCommand(
+        hostSaveValueCommand,
+        async ({ value, changed }) => {
+          // A save that changed nothing, such as a scroll the file does
+          // not keep, leaves content and the tab as they are, even where
+          // the bytes differ; so does any save in a view nothing writes back.
+          if (changed && !this.readonly) {
+            await this.document.update(textEncoder.encode(value));
+          }
+          this.registry.onValueSaved(this.document, this.webview);
+        }
+      ),
       this.bridge.registerCommand(hostSaveReplicationCommand, ({ actions }) => {
         dispatchBroadcast(
           Bridge.executeCommand(webviewReplicationCommand, { actions })

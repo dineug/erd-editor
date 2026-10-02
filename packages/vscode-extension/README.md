@@ -58,9 +58,12 @@ only; they do not appear in the Command Palette.
 
 ### Keeping diffs clean
 
-By default the document also stores the canvas scroll position and zoom level, so panning
-around shows up in `git diff`. Turn off **Save Scroll Information** and **Save Zoom
-Information** in the editor's settings to keep diffs limited to schema changes.
+A new document leaves the canvas scroll position and zoom level out of the file, so panning
+around never shows up in `git diff`. An existing file keeps storing whatever it was saved with,
+and older files store both: turn off **Save Scroll Information** and **Save Zoom Information**
+in the editor's settings to keep their diffs limited to schema changes, or turn them on for a
+document that should open where you left it. Zooming moves the scroll position too, so with only
+**Save Scroll Information** on, zooming still changes the file.
 
 ### Multiple editors per document
 

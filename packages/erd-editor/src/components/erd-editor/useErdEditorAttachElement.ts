@@ -47,6 +47,7 @@ import {
 } from '@/utils/emitter';
 import { toSharedFocus, toSharedFocusKey } from '@/utils/focus';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
+import { toLoadValue } from '@/utils/loadValue';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
 
@@ -267,10 +268,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   ctx.setInitialValue = value => {
-    const safeValue = toSafeString(value);
-    store.dispatchSync(
-      initialLoadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
-    );
+    store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
     store.resetHistory();
     emitter.emit(schemaGCAction());
   };
@@ -378,19 +376,13 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   ctx.setDiffValue = value => {
-    const safeValue = toSafeString(value);
-    emitter.emit(
-      openDiffViewerAction({ value: isEmpty(safeValue) ? '{}' : safeValue })
-    );
+    emitter.emit(openDiffViewerAction({ value: toLoadValue(value) }));
   };
 
   Object.defineProperty(ctx, 'value', {
     get: () => toJson(store.state),
     set: (value: string) => {
-      const safeValue = toSafeString(value);
-      store.dispatchSync(
-        loadJsonAction$(isEmpty(safeValue) ? '{}' : safeValue)
-      );
+      store.dispatchSync(loadJsonAction$(toLoadValue(value)));
     },
   });
 

@@ -10,127 +10,134 @@ const GC_DAYS = 3;
 
 export class SchemaGCService {
   async run(source: string): Promise<GCIds> {
-    const json = JSON.parse(source);
-    const state = schemaV3Parser(json);
-    const {
-      doc: { tableIds, memoIds, indexIds, relationshipIds },
-      collections,
-    } = state;
+    return collectGCIds(source);
+  }
+}
 
-    const hasTableIds = arrayHas(tableIds);
-    const hasMemoIds = arrayHas(memoIds);
-    const hasIndexIds = arrayHas(indexIds);
-    const hasRelationshipIds = arrayHas(relationshipIds);
-    const isGC = createIsGC(DateTime.now());
+/**
+ * The ids of what the collector removes from a document. The service answers
+ * them behind a promise, for a worker; a replica collects them as it loads.
+ */
+export function collectGCIds(source: string): GCIds {
+  const json = JSON.parse(source);
+  const state = schemaV3Parser(json);
+  const {
+    doc: { tableIds, memoIds, indexIds, relationshipIds },
+    collections,
+  } = state;
 
-    const tableCollection = query(collections).collection('tableEntities');
-    const tableColumnCollection = query(collections).collection(
-      'tableColumnEntities'
-    );
-    const indexCollection = query(collections).collection('indexEntities');
-    const indexColumnCollection = query(collections).collection(
-      'indexColumnEntities'
-    );
-    const relationshipCollection = query(collections).collection(
-      'relationshipEntities'
-    );
-    const memoCollection = query(collections).collection('memoEntities');
+  const hasTableIds = arrayHas(tableIds);
+  const hasMemoIds = arrayHas(memoIds);
+  const hasIndexIds = arrayHas(indexIds);
+  const hasRelationshipIds = arrayHas(relationshipIds);
+  const isGC = createIsGC(DateTime.now());
 
-    const gcTableIdsSet = new Set<string>(
-      tableCollection
-        .selectAll()
-        .filter(isGC(hasTableIds))
-        .map(({ id }) => id)
-    );
-    const gcTableColumnIdsSet = new Set<string>();
-    const gcRelationshipIdsSet = new Set<string>(
-      relationshipCollection
-        .selectAll()
-        .filter(isGC(hasRelationshipIds))
-        .map(({ id }) => id)
-    );
-    const gcIndexIdsSet = new Set<string>(
-      indexCollection
-        .selectAll()
-        .filter(isGC(hasIndexIds))
-        .map(({ id }) => id)
-    );
-    const gcIndexColumnIdsSet = new Set<string>();
-    const gcMemoIdsSet = new Set<string>(
-      memoCollection
-        .selectAll()
-        .filter(isGC(hasMemoIds))
-        .map(({ id }) => id)
-    );
+  const tableCollection = query(collections).collection('tableEntities');
+  const tableColumnCollection = query(collections).collection(
+    'tableColumnEntities'
+  );
+  const indexCollection = query(collections).collection('indexEntities');
+  const indexColumnCollection = query(collections).collection(
+    'indexColumnEntities'
+  );
+  const relationshipCollection = query(collections).collection(
+    'relationshipEntities'
+  );
+  const memoCollection = query(collections).collection('memoEntities');
 
-    tableColumnCollection
+  const gcTableIdsSet = new Set<string>(
+    tableCollection
       .selectAll()
-      .filter(({ tableId }) => gcTableIdsSet.has(tableId))
-      .forEach(({ id }) => gcTableColumnIdsSet.add(id));
-
+      .filter(isGC(hasTableIds))
+      .map(({ id }) => id)
+  );
+  const gcTableColumnIdsSet = new Set<string>();
+  const gcRelationshipIdsSet = new Set<string>(
     relationshipCollection
       .selectAll()
-      .filter(
-        ({ id, start, end }) =>
-          !gcRelationshipIdsSet.has(id) &&
-          (gcTableIdsSet.has(start.tableId) || gcTableIdsSet.has(end.tableId))
-      )
-      .forEach(({ id }) => gcRelationshipIdsSet.add(id));
-
+      .filter(isGC(hasRelationshipIds))
+      .map(({ id }) => id)
+  );
+  const gcIndexIdsSet = new Set<string>(
     indexCollection
       .selectAll()
-      .filter(
-        ({ id, tableId }) =>
-          !gcIndexIdsSet.has(id) && gcTableIdsSet.has(tableId)
-      )
-      .forEach(({ id }) => gcIndexIdsSet.add(id));
-
-    indexColumnCollection
+      .filter(isGC(hasIndexIds))
+      .map(({ id }) => id)
+  );
+  const gcIndexColumnIdsSet = new Set<string>();
+  const gcMemoIdsSet = new Set<string>(
+    memoCollection
       .selectAll()
-      .filter(({ indexId }) => gcIndexIdsSet.has(indexId))
-      .forEach(({ id }) => gcIndexColumnIdsSet.add(id));
+      .filter(isGC(hasMemoIds))
+      .map(({ id }) => id)
+  );
 
-    procGC(state, {
-      tableIds: [...gcTableIdsSet],
-      tableColumnIds: [...gcTableColumnIdsSet],
-      relationshipIds: [...gcRelationshipIdsSet],
-      indexIds: [...gcIndexIdsSet],
-      indexColumnIds: [...gcIndexColumnIdsSet],
-      memoIds: [...gcMemoIdsSet],
-    });
+  tableColumnCollection
+    .selectAll()
+    .filter(({ tableId }) => gcTableIdsSet.has(tableId))
+    .forEach(({ id }) => gcTableColumnIdsSet.add(id));
 
-    const hasTableIdsAll = arrayHas(
-      tableCollection.selectAll().map(({ id }) => id)
-    );
-    const hasIndexIdsAll = arrayHas(
-      indexCollection.selectAll().map(({ id }) => id)
-    );
+  relationshipCollection
+    .selectAll()
+    .filter(
+      ({ id, start, end }) =>
+        !gcRelationshipIdsSet.has(id) &&
+        (gcTableIdsSet.has(start.tableId) || gcTableIdsSet.has(end.tableId))
+    )
+    .forEach(({ id }) => gcRelationshipIdsSet.add(id));
 
-    tableColumnCollection
-      .selectAll()
-      .filter(
-        ({ tableId, id, meta }) =>
-          !hasTableIdsAll(tableId) && isGC(() => false)({ id, meta })
-      )
-      .forEach(({ id }) => gcTableColumnIdsSet.add(id));
+  indexCollection
+    .selectAll()
+    .filter(
+      ({ id, tableId }) => !gcIndexIdsSet.has(id) && gcTableIdsSet.has(tableId)
+    )
+    .forEach(({ id }) => gcIndexIdsSet.add(id));
 
-    indexColumnCollection
-      .selectAll()
-      .filter(
-        ({ indexId, id, meta }) =>
-          !hasIndexIdsAll(indexId) && isGC(() => false)({ id, meta })
-      )
-      .forEach(({ id }) => gcIndexColumnIdsSet.add(id));
+  indexColumnCollection
+    .selectAll()
+    .filter(({ indexId }) => gcIndexIdsSet.has(indexId))
+    .forEach(({ id }) => gcIndexColumnIdsSet.add(id));
 
-    return {
-      tableIds: [...gcTableIdsSet],
-      tableColumnIds: [...gcTableColumnIdsSet],
-      relationshipIds: [...gcRelationshipIdsSet],
-      indexIds: [...gcIndexIdsSet],
-      indexColumnIds: [...gcIndexColumnIdsSet],
-      memoIds: [...gcMemoIdsSet],
-    };
-  }
+  procGC(state, {
+    tableIds: [...gcTableIdsSet],
+    tableColumnIds: [...gcTableColumnIdsSet],
+    relationshipIds: [...gcRelationshipIdsSet],
+    indexIds: [...gcIndexIdsSet],
+    indexColumnIds: [...gcIndexColumnIdsSet],
+    memoIds: [...gcMemoIdsSet],
+  });
+
+  const hasTableIdsAll = arrayHas(
+    tableCollection.selectAll().map(({ id }) => id)
+  );
+  const hasIndexIdsAll = arrayHas(
+    indexCollection.selectAll().map(({ id }) => id)
+  );
+
+  tableColumnCollection
+    .selectAll()
+    .filter(
+      ({ tableId, id, meta }) =>
+        !hasTableIdsAll(tableId) && isGC(() => false)({ id, meta })
+    )
+    .forEach(({ id }) => gcTableColumnIdsSet.add(id));
+
+  indexColumnCollection
+    .selectAll()
+    .filter(
+      ({ indexId, id, meta }) =>
+        !hasIndexIdsAll(indexId) && isGC(() => false)({ id, meta })
+    )
+    .forEach(({ id }) => gcIndexColumnIdsSet.add(id));
+
+  return {
+    tableIds: [...gcTableIdsSet],
+    tableColumnIds: [...gcTableColumnIdsSet],
+    relationshipIds: [...gcRelationshipIdsSet],
+    indexIds: [...gcIndexIdsSet],
+    indexColumnIds: [...gcIndexColumnIdsSet],
+    memoIds: [...gcMemoIdsSet],
+  };
 }
 
 type EntityType = {

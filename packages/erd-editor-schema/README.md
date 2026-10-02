@@ -13,8 +13,11 @@ conversion in both directions, a query layer over the v3 collections, and the LW
 (last-write-wins) operators.
 
 No field can fail a parse: every field is validated and falls back to its default, so
-`schemaV3Parser({})` yields a complete empty document — that is how the editor seeds its
-store. (`parser` still throws on a string that is not JSON at all.) Every v3 document a
+`schemaV3Parser({})` yields a complete empty document. (`parser` still throws on a string that
+is not JSON at all.) `createSchema()` is that document with `ignoreSaveSettings` set to both
+bits, a diagram created from nothing, which saves neither the scroll nor the zoom — that is
+how the editor seeds its store and what it loads for an empty value. A file without the field
+still parses as 0, saving both, as the release that wrote it did. Every v3 document a
 parser returns is stamped with a `$schema` pointing at
 [`json-schema/schema.json`](../../json-schema/schema.json), the JSON Schema for the format.
 
@@ -51,6 +54,7 @@ pair it arrived with, so an editor from before this release still opens where it
 
 - `parser`, `parserV2`, `toJson` — read and write a document from/to a JSON string.
 - `schemaV3Parser`, `schemaV2Parser` — the same fold, but over an already-parsed object.
+- `createSchema` — a new v3 document, both save switches off.
 - `ERDEditorSchemaV3`, `ERDEditorSchemaV2` — the document types.
 - `SchemaV3Constants`, `SchemaV2Constants` — the constant sets (`Database`, `NameCase`,
   `RelationshipType`, canvas bounds, …) each version allows.

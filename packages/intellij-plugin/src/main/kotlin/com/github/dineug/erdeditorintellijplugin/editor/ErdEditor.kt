@@ -121,9 +121,10 @@ class ErdEditor(
                     }
 
                     is HostBridgeCommand.SaveValue -> {
-                        val value = action.payload.value
-                        savePayload.value = value
-                        postForFile { onValueSaved(it, this@ErdEditor, value) }
+                        val (value, changed) = action.payload
+                        // A save that changed nothing, as after a scroll the file does not keep, is not written.
+                        if (changed) savePayload.value = value
+                        postForFile { onValueSaved(it, this@ErdEditor, value.takeIf { changed }) }
                     }
 
                     is HostBridgeCommand.SaveReplication -> {

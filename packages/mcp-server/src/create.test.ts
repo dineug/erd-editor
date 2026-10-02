@@ -1,3 +1,4 @@
+import { SaveSettingType } from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
   beforeEach,
@@ -12,6 +13,9 @@ import { createFakeHub } from '@/__test-utils__/fakeHub';
 import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { createEmptyDocument } from '@/session/disk';
+
+/** A new document saves neither the scroll nor the zoom. */
+const NEW_SWITCHES = SaveSettingType.scroll | SaveSettingType.zoomLevel;
 
 let io: MemoryHost;
 let mcp: McpHarness;
@@ -53,6 +57,7 @@ describe('erd_open_document with create (AC-M7)', () => {
     });
     expect(bytes).toBe(createEmptyDocument());
     expect(JSON.parse(bytes).$schema).toMatch(/json-schema\/schema\.json$/);
+    expect(JSON.parse(bytes).settings.ignoreSaveSettings).toBe(NEW_SWITCHES);
   });
 
   it('opens an existing document as it is, creating nothing', async () => {
@@ -133,6 +138,9 @@ describe('erd_open_document with create (AC-M7)', () => {
     });
     expect(io.read('/work/live.erd.json')).toBe(createEmptyDocument());
     expect(hub.webview('/work/live.erd.json').value).toContain('"$schema"');
+    expect(
+      JSON.parse(io.read('/work/live.erd.json')).settings.ignoreSaveSettings
+    ).toBe(NEW_SWITCHES);
     hub.destroy();
   });
 
