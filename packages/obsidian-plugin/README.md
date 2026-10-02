@@ -60,7 +60,10 @@ editor's own history.
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — JSON, SQL and PNG, written into the vault where your attachments go
-- **Quick search** — `Ctrl`/`Cmd`+`K` to jump to any table, or run any editor command
+- **Quick search** — `Ctrl`/`Cmd`+`K` to run any editor command, or to jump to a table after `#`,
+  a column after `@`, and a comment or memo after `"`
+- **Find and replace** — `Ctrl`/`Cmd`+`F` across table and column names, comments and memos,
+  with match case, whole word and regular expressions; one undo takes back a Replace All
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it
 - **Undo / redo**
 - **Light and dark** — by default the editor follows Obsidian's theme and switches with it; you can

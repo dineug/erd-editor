@@ -1,4 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
+import Fuse from 'fuse.js';
 import {
   afterEach,
   beforeEach,
@@ -8,7 +9,13 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { createTestAppContext, flush } from '@/__test-utils__/index';
+import { IME_CHOSEONG, IME_SAYONG } from '@/__test-utils__/hangulSeed';
+import { iconNameOf } from '@/__test-utils__/icon';
+import {
+  createTestAppContext,
+  flush,
+  mountAndFlush,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
@@ -19,15 +26,25 @@ import {
   Action,
   allScopeActions,
   createScopeActions,
+  SEARCH_THRESHOLD,
   searchActions,
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { START_X, START_Y } from '@/constants/layout';
-import { CanvasType } from '@/constants/schema';
+import { Open } from '@/constants/open';
+import { CanvasType, RelationshipType } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ChangeActionTypes } from '@/engine/actions';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
+import {
+  changeOpenMapAction,
+  changeViewportAction,
+  drawStartRelationshipAction,
+} from '@/engine/modules/editor/atom.actions';
+import {
+  SelectType,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
 import {
   changeVisualizationModeAction,
   viewChangeZoomLevelAction,
@@ -42,7 +59,12 @@ import {
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { toScreenPoint } from '@/konva/scene/viewport';
+import { openFindReplaceAction } from '@/utils/emitter';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import { setImportFileCallback } from '@/utils/file/importFile';
 
@@ -64,6 +86,15 @@ const find = (actions: Action[], name: string): Action => {
 
 const names = (actions: Action[]) => actions.map(action => action.name);
 
+/** The registered icon a row draws, mounted on its own. */
+const iconOf = async ({ icon }: Action) => {
+  if (!icon) return null;
+  const mounted = await mountAndFlush(icon, app);
+  const name = iconNameOf(mounted.container);
+  mounted.unmount();
+  return name;
+};
+
 const visibleNames = () =>
   names(scope().filter(action => action.filter?.(app) ?? true));
 
@@ -80,6 +111,7 @@ const ERD_TOOLBOX = [
   'One Only',
   'One N',
   'Auto Layout',
+  'Find and Replace',
 ];
 
 const recordActions = () => {
@@ -153,10 +185,116 @@ describe('searchActions', () => {
     expect(result[0]).toBe(catalog[3]);
   });
 
+  it('leaves the Table keyword of a table row out, which would fuzz to most words', () => {
+    const tables: Action[] = [
+      { name: 'users', keywords: 'Table', tableId: 'users' },
+      { name: 'orders', keywords: 'Table', tableId: 'orders' },
+    ];
+
+    expect(searchActions(tables, 'email')).toEqual([]);
+    expect(searchActions(tables, 'Table')).toEqual([]);
+    expect(names(searchActions(tables, 'users'))[0]).toBe('users');
+    // The same keyword on a row that is no table is still searched.
+    expect(
+      searchActions([{ name: 'zzzz', keywords: 'Table' }], 'Table')
+    ).toHaveLength(1);
+  });
+
   it('never returns more items than it was given', () => {
     expect(searchActions(catalog, 'Table').length).toBeLessThanOrEqual(
       catalog.length
     );
+  });
+});
+
+describe('searchActions / threshold', () => {
+  /** The commands the ERD tab hands Fuse for a keyword with no prefix. */
+  const commands = () => {
+    setCanvasType(CanvasType.ERD);
+    return scope().filter(
+      action => !action.tableId && (action.filter?.(app) ?? true)
+    );
+  };
+  const found = (keyword: string) => names(searchActions(commands(), keyword));
+
+  it('fuzzes at 0.4, stricter than the 0.6 fuse.js takes by default', () => {
+    expect(SEARCH_THRESHOLD).toBe(0.4);
+  });
+
+  it('lists under # the tables holding the keyword, no longer orders for us', () => {
+    for (const name of ['orders', 'users', 'customers', 'posts', 'roles']) {
+      addTable(name);
+    }
+    const tables = scope().filter(action => action.tableId);
+
+    const hits = names(searchActions(tables, 'us'));
+
+    expect(hits).toContain('users');
+    expect(hits).toContain('customers');
+    for (const loose of ['orders', 'posts', 'roles']) {
+      expect(hits).not.toContain(loose);
+    }
+  });
+
+  it('lists New Memo alone for memo, none of the commands it only loosely matched', () => {
+    expect(found('memo')).toEqual(['New Memo']);
+    expect(found('auto')).toEqual(['Auto Layout']);
+    expect(found('replace')).toEqual(['Find and Replace']);
+  });
+
+  it('keeps what a word or a near typo is meant for', () => {
+    expect(found('new')).toEqual(
+      expect.arrayContaining(['New Table', 'New Memo'])
+    );
+    for (const [typed, command] of [
+      ['tabel', 'New Table'],
+      ['new tabel', 'New Table'],
+      ['memp', 'New Memo'],
+      ['imprt', 'Import'],
+      ['exprt', 'Export'],
+      ['databse', 'Database'],
+      ['layot', 'Auto Layout'],
+      ['replce', 'Find and Replace'],
+      ['relashionship', 'Zero One'],
+    ]) {
+      expect(found(typed)).toContain(command);
+    }
+  });
+
+  it('finds no command for the table names 0.6 fuzzed to unrelated ones', () => {
+    for (const keyword of ['users', 'posts', 'roles', 'accounts', 'notes']) {
+      expect(found(keyword)).toEqual([]);
+    }
+  });
+
+  it('lets go of a typo no closer than an unrelated command', () => {
+    expect(found('talbe')).not.toContain('New Table');
+    expect(found('mmeo')).toEqual([]);
+  });
+
+  it('keeps a row holding the keyword past index 40, where Fuse lets it go, after its hits', () => {
+    const long = 'application_user_notification_preferences_history';
+    const tables: Action[] = [
+      { name: long, tableId: 'long' },
+      { name: 'orders', tableId: 'orders' },
+      { name: 'history_log', tableId: 'log' },
+    ];
+    const fuse = new Fuse(tables, { keys: ['name'], threshold: 0.4 });
+
+    expect(fuse.search('history').map(({ item }) => item.name)).toEqual([
+      'history_log',
+    ]);
+    expect(names(searchActions(tables, 'history'))).toEqual([
+      'history_log',
+      long,
+    ]);
+    expect(names(searchActions(tables, '_HISTORY'))).toContain(long);
+    // A command's keywords are held the same way.
+    const command: Action = {
+      name: 'zzzz',
+      keywords: `${'x'.repeat(48)} dagre`,
+    };
+    expect(searchActions([command], 'dagre')).toEqual([command]);
   });
 });
 
@@ -235,7 +373,7 @@ describe('createScopeActions', () => {
       scope().filter(action => action.filter?.(app) ?? true)
     );
 
-    expect(visible).toEqual(['Tab', 'Database', 'Bracket']);
+    expect(visible).toEqual(['Tab', 'Database', 'Bracket', 'Find and Replace']);
   });
 
   it('keeps only the code generator options in the generator code canvas', () => {
@@ -249,10 +387,11 @@ describe('createScopeActions', () => {
       'Language',
       'Table Name Case',
       'Column Name Case',
+      'Find and Replace',
     ]);
   });
 
-  it('keeps only the Tab action in the visualization and settings canvases', () => {
+  it('keeps the tabs, Find and Replace and the table jumps # lists in the visualization and settings canvases', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
@@ -260,8 +399,14 @@ describe('createScopeActions', () => {
       setCanvasType(canvasType);
       expect(
         names(scope().filter(action => action.filter?.(app) ?? true))
-      ).toEqual(['Tab']);
+      ).toEqual(['Tab', 'Find and Replace', 'users']);
     }
+  });
+
+  it('draws New Table with the table icon every other table row carries', async () => {
+    setCanvasType(CanvasType.ERD);
+
+    expect(await iconOf(find(scope(), 'New Table'))).toBe('table-2');
   });
 
   it('takes the New Table and New Memo shortcuts from the key binding map', () => {
@@ -612,12 +757,25 @@ describe('createScopeActions / table actions', () => {
     expect(names(tableActions)).toEqual(['unnamed']);
   });
 
-  it('emits no table actions outside the ERD canvas', () => {
+  it('keeps the table jumps outside the ERD canvas, taking that tab alone first', async () => {
     setCanvasType(CanvasType.ERD);
-    addTable('users');
+    const id = addTable('users', 600, 400);
     setCanvasType(CanvasType.schemaSQL);
+    const batches: string[][] = [];
+    const unsubscribe = app.store.subscribe(list => {
+      batches.push(list.map(action => action.type));
+    });
 
-    expect(scope().filter(action => action.keywords === 'Table')).toEqual([]);
+    find(scope(), 'users').perform?.(app);
+    await flush();
+    unsubscribe();
+
+    const jump = batches.find(batch => batch.includes('settings.scrollTo'));
+    expect(batches[0]).toEqual(['settings.changeCanvasType']);
+    expect(jump).toBeDefined();
+    expect(jump).not.toContain('settings.changeCanvasType');
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(app.store.state.editor.selectedMap[id]).toBeTruthy();
   });
 
   it('scrolls to and selects the table when performed', async () => {
@@ -659,11 +817,97 @@ describe('createScopeActions / table actions', () => {
     }
   );
 
-  it('carries no icon on table actions', () => {
+  it('neither starts nor finishes a relationship being drawn, however many tables it jumps to', async () => {
+    setCanvasType(CanvasType.ERD);
+    const users = addTable('users', 100, 200);
+    const orders = addTable('orders', 600, 200);
+    app.store.dispatchSync(
+      addColumnAction({ id: 'users_id', tableId: users }),
+      changeColumnPrimaryKeyAction({
+        id: 'users_id',
+        tableId: users,
+        value: true,
+      }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+    const columnIds =
+      app.store.state.collections.tableEntities[orders].columnIds;
+
+    find(scope(), 'users').perform?.(app);
+    await flush();
+    find(scope(), 'orders').perform?.(app);
+    await flush();
+
+    const { doc, collections, editor } = app.store.state;
+    expect(doc.relationshipIds).toEqual([]);
+    expect(collections.tableEntities[orders].columnIds).toEqual(columnIds);
+    expect(editor.drawRelationship).toMatchObject({ start: null });
+    expect(editor.selectedMap).toEqual({ [orders]: SelectType.table });
+  });
+
+  /** The panel is 380 px wide, 16 px in from the left, and a jump keeps 16 px from it. */
+  it.each([
+    ['ERD', CanvasType.ERD],
+    ['Schema SQL', CanvasType.schemaSQL],
+  ])(
+    'parks the table clear of an open Find and Replace panel, jumping from the %s tab',
+    async (_, canvasType) => {
+      setCanvasType(CanvasType.ERD);
+      const id = addTable('users', 100, 200);
+      app.store.dispatchSync(
+        changeViewportAction({ width: 1440, height: 900 }),
+        changeOpenMapAction({ [Open.findReplace]: true })
+      );
+      setCanvasType(canvasType);
+
+      find(scope(), 'users').perform?.(app);
+      await flush();
+
+      const table = app.store.state.collections.tableEntities[id];
+      const screen = toScreenPoint(app.store.state.settings, table.ui);
+      expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
+      expect(screen.y).toBeCloseTo(START_Y, 4);
+    }
+  );
+
+  it('parks the table in the strip a narrow canvas leaves beside the panel', async () => {
+    setCanvasType(CanvasType.ERD);
+    const id = addTable('users', 100, 200);
+    app.store.dispatchSync(
+      changeViewportAction({ width: 600, height: 400 }),
+      changeOpenMapAction({ [Open.findReplace]: true })
+    );
+
+    find(scope(), 'users').perform?.(app);
+    await flush();
+
+    const table = app.store.state.collections.tableEntities[id];
+    const screen = toScreenPoint(app.store.state.settings, table.ui);
+    expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
+    expect(screen.y).toBeCloseTo(START_Y, 4);
+  });
+
+  it('keeps its landing point beside a panel that leaves less than 160 px of the canvas clear', async () => {
+    setCanvasType(CanvasType.ERD);
+    const id = addTable('users', 100, 200);
+    app.store.dispatchSync(
+      changeViewportAction({ width: 16 + 380 + 16 + 159, height: 400 }),
+      changeOpenMapAction({ [Open.findReplace]: true })
+    );
+
+    find(scope(), 'users').perform?.(app);
+    await flush();
+
+    const table = app.store.state.collections.tableEntities[id];
+    const screen = toScreenPoint(app.store.state.settings, table.ui);
+    expect(screen.x).toBeCloseTo(START_X, 4);
+  });
+
+  it('carries the table icon on table actions, drawn as the rows of a field found are', async () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
-    expect(find(scope(), 'users').icon).toBeUndefined();
+    expect(await iconOf(find(scope(), 'users'))).toBe('table-2');
   });
 });
 
@@ -704,13 +948,140 @@ describe('createScopeActions / no focus actions', () => {
     }
   });
 
-  it('offers the tab switch alone from a Flow, with no table row of any kind', () => {
+  it('offers from a Flow the jump to the ERD for each table, and no Focus row', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
     enterFlow();
 
+    const visible = scope().filter(action => action.filter?.(app) ?? true);
+    expect(names(visible)).toEqual(['Tab', 'Find and Replace', 'users']);
+    expect(find(visible, 'users').keywords).toBe('Table');
+  });
+});
+
+describe('createScopeActions / Find and Replace', () => {
+  it('shows the find and replace chord and asks the panel to open', () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action);
+      },
+    });
+    const action = find(scope(), 'Find and Replace');
+
+    expect(action.shortcut).toBe(app.keyBindingMap.findReplace[0].shortcut);
+    expect(searchActions([action], 'replace')).toEqual([action]);
+
+    action.perform?.(app);
+
+    expect(opened).toEqual([openFindReplaceAction()]);
+  });
+
+  it('names no chord on the tabs that leave it to the host find, and still opens the panel', () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action);
+      },
+    });
+
+    for (const canvasType of [
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      const action = find(scope(), 'Find and Replace');
+
+      expect(action.shortcut).toBeUndefined();
+      action.perform?.(app);
+    }
+
+    expect(opened).toHaveLength(4);
+    setCanvasType(CanvasType.ERD);
+    expect(find(scope(), 'Find and Replace').shortcut).toBe('$mod+KeyF');
+  });
+
+  it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
+    'leaves the row out under %s, which takes the canvas over and keeps the panel shut',
+    key => {
+      expect(visibleNames()).toContain('Find and Replace');
+
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+
+      expect(visibleNames()).not.toContain('Find and Replace');
+    }
+  );
+});
+
+describe('searchActions / Hangul', () => {
+  const rows = (...list: string[]): Action[] => list.map(name => ({ name }));
+
+  it('leaves a keyword without Hangul to Fuse, its rows and their order, where it drops no holder', () => {
+    const catalog: Action[] = [
+      ...rows('사용자', 'user사용자', 'users', 'New Memo'),
+      { name: 'orders', keywords: 'Table', tableId: 'orders' },
+    ];
+    const fuse = new Fuse(catalog, {
+      keys: [
+        'name',
+        {
+          name: 'keywords',
+          getFn: action => (action.tableId ? [] : (action.keywords ?? [])),
+        },
+      ],
+      threshold: SEARCH_THRESHOLD,
+    });
+
+    for (const keyword of ['user', 'memo', 'ord', 'qqqq']) {
+      expect(searchActions(catalog, keyword)).toEqual(
+        fuse.search(keyword).map(result => result.item)
+      );
+    }
+  });
+
+  it('keeps 사용자 at every step a Korean IME hands over, where Fuse drops it', () => {
+    const catalog = rows('사용자', '상품', '주문 내역', 'Auto Layout');
+
+    expect(names(searchActions(catalog, 'ㅅ'))).toEqual(['사용자', '상품']);
+    for (const step of [...IME_SAYONG, ...IME_CHOSEONG]) {
+      expect(names(searchActions(catalog, step))).toContain('사용자');
+    }
+    expect(names(searchActions(catalog, '사요'))).toEqual(['사용자']);
+    expect(names(searchActions(catalog, 'ㅈㅁ'))).toEqual(['주문 내역']);
+  });
+
+  it('ranks the rows holding it whole, then from their start, then inside, then what Fuse alone finds', () => {
+    const catalog = rows('주문 사용자 목록', '사용쟈', '사용자 설정', '사용자');
+
+    // 사용쟈 fuzzes to the keyword but does not spell it.
+    expect(names(searchActions(catalog, '사용자'))).toEqual([
+      '사용자',
+      '사용자 설정',
+      '주문 사용자 목록',
+      '사용쟈',
+    ]);
+  });
+
+  it('breaks a tie by the level order where Fuse finds none of the rows, the same each time', () => {
+    const catalog = rows('사용자', '상인', '소원', '주문');
+
+    const first = names(searchActions(catalog, 'ㅅㅇ'));
+
+    expect(first).toEqual(['상인', '소원', '사용자']);
+    expect(names(searchActions(catalog, 'ㅅㅇ'))).toEqual(first);
+  });
+
+  it('reads the keywords of a command, never the Table of a table row', () => {
     expect(
-      names(scope().filter(action => action.filter?.(app) ?? true))
-    ).toEqual(['Tab']);
+      names(searchActions([{ name: 'zzzz', keywords: '관계 그리기' }], 'ㄱㄱ'))
+    ).toEqual(['zzzz']);
+    expect(
+      searchActions(
+        [{ name: 'orders', keywords: '테이블', tableId: 'orders' }],
+        'ㅌㅇㅂ'
+      )
+    ).toEqual([]);
   });
 });

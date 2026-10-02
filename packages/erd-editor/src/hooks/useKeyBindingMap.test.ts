@@ -15,7 +15,12 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import { TAKEOVERS } from '@/components/find-replace/panelLayout';
+import { Open } from '@/constants/open';
+import { CanvasType } from '@/constants/schema';
+import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import { bindsOnTab, useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const Probe: FC<{}> = (props, ctx) => {
@@ -162,6 +167,124 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('takes $mod+KeyF on the ERD tab from a caret too, so no browser find opens over the editor', () => {
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+    const input = document.createElement('input');
+    $root.append(input);
+    const outside = vi.fn();
+    mounted!.container.addEventListener('keydown', outside);
+
+    const onCanvas = press({ key: 'f', code: 'KeyF', mod: true });
+    const inField = keydown({ key: 'f', code: 'KeyF', mod: true });
+    input.dispatchEvent(inField);
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.findReplace,
+      KeyBindingName.findReplace,
+    ]);
+    expect(onCanvas.defaultPrevented).toBe(true);
+    expect(inField.defaultPrevented).toBe(true);
+    expect(outside).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    CanvasType.visualization,
+    CanvasType.schemaSQL,
+    CanvasType.generatorCode,
+    CanvasType.settings,
+  ])(
+    'leaves $mod+KeyF to the host find on the %s tab, from the canvas or a caret',
+    canvasType => {
+      app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
+      const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+      const input = document.createElement('input');
+      $root.append(input);
+      const outside = vi.fn();
+      mounted!.container.addEventListener('keydown', outside);
+
+      const onCanvas = press({ key: 'f', code: 'KeyF', mod: true });
+      const inField = keydown({ key: 'f', code: 'KeyF', mod: true });
+      input.dispatchEvent(inField);
+
+      expect(shortcuts).toHaveLength(0);
+      expect(onCanvas.defaultPrevented).toBe(false);
+      expect(inField.defaultPrevented).toBe(false);
+      expect(outside).toHaveBeenCalledTimes(2);
+      // The other chords stay the editor's there.
+      expect(
+        press({ key: 'k', code: 'KeyK', mod: true }).defaultPrevented
+      ).toBe(true);
+    }
+  );
+
+  it.each(TAKEOVERS)(
+    'leaves $mod+KeyF to the host find on the ERD tab while %s takes the canvas over',
+    key => {
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+      const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+      const input = document.createElement('input');
+      $root.append(input);
+      const outside = vi.fn();
+      mounted!.container.addEventListener('keydown', outside);
+
+      const onCanvas = press({ key: 'f', code: 'KeyF', mod: true });
+      const inField = keydown({ key: 'f', code: 'KeyF', mod: true });
+      input.dispatchEvent(inField);
+
+      expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+      expect(shortcuts).toHaveLength(0);
+      expect(onCanvas.defaultPrevented).toBe(false);
+      expect(inField.defaultPrevented).toBe(false);
+      expect(outside).toHaveBeenCalledTimes(2);
+      // The other chords stay the editor's under it.
+      expect(
+        press({ key: 'k', code: 'KeyK', mod: true }).defaultPrevented
+      ).toBe(true);
+
+      // Taken again once the overlay has gone.
+      shortcuts = [];
+      app.store.dispatchSync(changeOpenMapAction({ [key]: false }));
+      expect(
+        press({ key: 'f', code: 'KeyF', mod: true }).defaultPrevented
+      ).toBe(true);
+      expect(shortcuts.map(({ type }) => type)).toEqual([
+        KeyBindingName.findReplace,
+      ]);
+    }
+  );
+
+  it('takes $mod+KeyF under a dialog that only stands the panel aside', () => {
+    for (const key of [Open.tableProperties, Open.themeBuilder]) {
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+      expect(
+        press({ key: 'f', code: 'KeyF', mod: true }).defaultPrevented
+      ).toBe(true);
+      app.store.dispatchSync(changeOpenMapAction({ [key]: false }));
+    }
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.findReplace,
+      KeyBindingName.findReplace,
+    ]);
+  });
+
+  it('tells a row naming a chord whether the tab shown takes it', () => {
+    expect(bindsOnTab(KeyBindingName.findReplace, CanvasType.ERD)).toBe(true);
+    expect(bindsOnTab(KeyBindingName.findReplace, CanvasType.settings)).toBe(
+      false
+    );
+    expect(bindsOnTab(KeyBindingName.search, CanvasType.settings)).toBe(true);
+  });
+
+  it('reads Alt+KeyF as the Flow focus, never as find and replace', () => {
+    press({ key: 'ƒ', code: 'KeyF', altKey: true });
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.focusView,
+    ]);
+  });
+
   it('ignores keys that are not part of the map', () => {
     press({ key: 'a', code: 'KeyA' });
 
@@ -180,6 +303,20 @@ describe('useKeyBindingMap', () => {
     const event = press({ key: 'q', code: 'KeyQ' });
     expect(shortcuts.map(({ type }) => type)).toEqual([KeyBindingName.edit]);
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('leaves $mod+KeyF to the page on the ERD tab too once a host empties findReplace', async () => {
+    app.keyBindingMap.findReplace = [];
+    await flush();
+    const outside = vi.fn();
+    mounted!.container.addEventListener('keydown', outside);
+
+    const event = press({ key: 'f', code: 'KeyF', mod: true });
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
+    expect(outside).toHaveBeenCalledTimes(1);
   });
 
   it('stops propagation for options that ask for it', async () => {

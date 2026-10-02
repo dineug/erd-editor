@@ -294,6 +294,46 @@ describe('useErdEditorAttachElement', () => {
     expect(app.keyBindingMap.undo).toBe(before);
   });
 
+  it('lets a host remap the search and find and replace chords, and none of the reserved ones', async () => {
+    const { app, ctx } = await setup();
+    const reserved = {
+      edit: app.keyBindingMap.edit,
+      stop: app.keyBindingMap.stop,
+      redo: app.keyBindingMap.redo,
+      zoomIn: app.keyBindingMap.zoomIn,
+      zoomOut: app.keyBindingMap.zoomOut,
+      zoomReset: app.keyBindingMap.zoomReset,
+    };
+
+    ctx.setKeyBindingMap({
+      search: [{ shortcut: '$mod+KeyP', preventDefault: true }],
+      findReplace: [{ shortcut: '$mod+Shift+KeyH', preventDefault: true }],
+      ...Object.fromEntries(
+        Object.keys(reserved).map(name => [name, [{ shortcut: 'KeyQ' }]])
+      ),
+    } as any);
+
+    expect(app.keyBindingMap.search).toEqual([
+      { shortcut: '$mod+KeyP', preventDefault: true },
+    ]);
+    expect(app.keyBindingMap.findReplace).toEqual([
+      { shortcut: '$mod+Shift+KeyH', preventDefault: true },
+    ]);
+    for (const [name, before] of Object.entries(reserved)) {
+      expect(Reflect.get(app.keyBindingMap, name)).toBe(before);
+    }
+  });
+
+  it('takes an empty list for find and replace, which leaves its chord to the page', async () => {
+    const { app, ctx } = await setup();
+    const search = app.keyBindingMap.search;
+
+    ctx.setKeyBindingMap({ findReplace: [] } as any);
+
+    expect(app.keyBindingMap.findReplace).toEqual([]);
+    expect(app.keyBindingMap.search).toBe(search);
+  });
+
   it('loads an initial value and emits a schema GC request', async () => {
     const { app, ctx } = await setup();
     const schemaGC = vi.fn();

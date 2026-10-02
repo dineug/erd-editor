@@ -53,10 +53,13 @@ import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
 
 import { ErdEditorElement, ErdEditorProps } from './ErdEditor';
 
+/**
+ * The editor's own chords, which a host cannot remap. Search is not among them:
+ * it only opens a panel, and a host is the one that knows which chord is free.
+ */
 const hasOmitKeyBindingName = arrayHas<string>([
   KeyBindingName.edit,
   KeyBindingName.stop,
-  KeyBindingName.search,
   KeyBindingName.undo,
   KeyBindingName.redo,
   KeyBindingName.zoomIn,

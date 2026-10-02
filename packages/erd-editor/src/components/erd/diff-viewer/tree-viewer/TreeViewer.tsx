@@ -230,7 +230,7 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
                 ) : isDelete ? (
                   <Icon name="minus" size={14} />
                 ) : (
-                  <Icon name="table" size={14} />
+                  <Icon name="table-2" size={14} />
                 )}
               </div>
               <span class={styles.ellipsis}>{tableName}</span>

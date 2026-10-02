@@ -11,6 +11,7 @@ import {
   mouseTrackerStartAction,
   openColorPickerAction,
   openDiffViewerAction,
+  openFindReplaceAction,
   openTablePropertiesAction,
   openThemeBuilderAction,
   openToastAction,
@@ -19,6 +20,7 @@ import {
   setThemeOptionsAction,
   toggleSearchAction,
 } from '@/utils/emitter';
+import { FindField } from '@/utils/find-replace';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -184,6 +186,16 @@ describe('action creators', () => {
     expect(schemaGCAction()).toEqual({ type: 'schemaGC', payload: undefined });
     expect(toggleSearchAction()).toEqual({
       type: 'toggleSearch',
+      payload: undefined,
+    });
+    expect(
+      openFindReplaceAction({ query: 'user', fields: [FindField.memo] })
+    ).toEqual({
+      type: 'openFindReplace',
+      payload: { query: 'user', fields: [FindField.memo] },
+    });
+    expect(openFindReplaceAction()).toEqual({
+      type: 'openFindReplace',
       payload: undefined,
     });
     expect(openThemeBuilderAction()).toEqual({

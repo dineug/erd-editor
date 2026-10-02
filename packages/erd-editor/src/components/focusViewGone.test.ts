@@ -71,7 +71,7 @@ describe('the Focus overlay is gone from the source', () => {
 });
 
 describe('the state the overlay stood on is gone', () => {
-  it('lists six overlays, the Focus one among them no longer', () => {
+  it('lists seven overlays, the Focus one among them no longer', () => {
     expect(Object.keys(Open)).toEqual([
       'automaticTablePlacement',
       'tableProperties',
@@ -79,6 +79,7 @@ describe('the state the overlay stood on is gone', () => {
       'themeBuilder',
       'diffViewer',
       'timeTravel',
+      'findReplace',
     ]);
   });
 

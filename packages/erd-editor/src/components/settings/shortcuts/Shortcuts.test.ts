@@ -17,6 +17,7 @@ const EXPECTED_COMMANDS = [
   'Editing',
   'Stop',
   'Search',
+  'Find and Replace',
   'Undo',
   'Redo',
   'Add Table',
@@ -108,6 +109,14 @@ describe('Shortcuts', () => {
 
     const stopRow = rowByCommand('Stop');
     expect(stopRow.querySelector('.kbd')?.textContent?.trim()).toBe('ESC');
+  });
+
+  it('shows Find and Replace on $mod+F', async () => {
+    await setup();
+
+    const kbd = rowByCommand('Find and Replace').querySelector('.kbd');
+
+    expect(kbd?.textContent?.trim()).toBe('Ctrl + F');
   });
 
   it('renders modifier combinations joined with +', async () => {

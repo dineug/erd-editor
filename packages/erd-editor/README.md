@@ -25,7 +25,8 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - Export — `.erd.json`, `.sql`, `.png`
 - Force-directed visualization of table relationships
-- Quick search, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
+- Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `"`,
+  find and replace, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
 - Collaboration hooks — the editor emits and applies actions; you supply the transport
 
 ## Install
@@ -152,7 +153,7 @@ erd-editor {
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance`, `grayColor` and `accentColor`. |
 | `setTheme(theme)` | Override individual theme tokens. |
-| `setKeyBindingMap(map)` | Remap shortcuts. `edit`, `stop`, `search`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
+| `setKeyBindingMap(map)` | Remap shortcuts, `search` and `findReplace` among them. `edit`, `stop`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
 | `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport. `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
 | `focus()` / `blur()` | Move focus in and out of the editor. |
 | `clear()` | Empty the document. Its settings stay, the save switches included, so a cleared file keeps saving what it saved. |
@@ -182,6 +183,12 @@ const shortcuts = Object.values(createKeyBindingMap())
 The editor listens on its own element, so a host that takes keys before the page does, with
 global hotkeys or a capture-phase `keydown` listener, has to let these through while the editor
 is focused. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types come with it.
+
+The page's own find is among them: while the editor is focused on its ERD tab, `$mod+KeyF` opens
+its Find and Replace and is prevented, so the browser opens no find bar; on the editor's other
+tabs, and on the ERD tab while the diff viewer, time travel or the automatic placement preview
+covers it, the press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the
+page on every tab, and the quick search and the context menu still open Find and Replace.
 
 ## Syntax highlighting
 

@@ -1297,6 +1297,30 @@ try {
     JSON.stringify({ searchIn, searchBefore, searchOpened, searchClosed })
   );
 
+  const findReplaceOpen = () =>
+    inEditor(page, 'keys.erd', root =>
+      Boolean(root.querySelector('.find-replace'))
+    );
+  await focusDiagram(page, 'keys.erd');
+  const findIn = await activeViewType(page);
+  const findBefore = await findReplaceOpen();
+  await page.keyboard.press('ControlOrMeta+KeyF');
+  const findOpened = await waitFor(findReplaceOpen, 2_000, 100);
+  await page.keyboard.press('Escape');
+  const findClosed = await waitFor(
+    async () => (await findReplaceOpen()) === false,
+    2_000,
+    100
+  );
+  step(
+    "Mod+F, Obsidian's search current file, opens the editor's Find and Replace in the ERD tab, and Escape closes it",
+    findIn === 'erd-editor' &&
+      findBefore === false &&
+      Boolean(findOpened) &&
+      Boolean(findClosed),
+    JSON.stringify({ findIn, findBefore, findOpened, findClosed })
+  );
+
   // Nothing waits to be saved, so only Mod+S can write the edit this early.
   await sleep(AUTOSAVE_MS + 500);
   const tablesBeforeSave = tableCount('keys.erd');

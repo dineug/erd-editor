@@ -613,6 +613,7 @@ const PRESSES: Press[] = [
   binding('relationshipOneN', Shortcut.relationshipOneN),
   binding('tableProperties', Shortcut.tableProperties),
   binding('search', Shortcut.search),
+  binding('findReplace', Shortcut.findReplace),
   binding('zoomIn', Shortcut.zoomIn),
   binding('zoomOut', Shortcut.zoomOut),
   binding('zoomReset', Shortcut.zoomReset),
@@ -715,6 +716,7 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
       // moves, and the icon the root takes as its cursor is where that shows.
       drawArmed: (await erd.canvasCursor()).includes('url('),
       search: await erd.host.locator('.quick-search').count(),
+      findReplace: await erd.host.locator('.find-replace').count(),
       tableProperties: await erd.host.locator('.table-properties').count(),
       contextMenu: await erd.contextMenu.count(),
     };
@@ -1058,6 +1060,7 @@ test.describe('an IME composition owns the keyboard', () => {
       focusRing: await erd.focusRingCells(),
       selectedTables: await erd.selectedTables().count(),
       search: await erd.host.locator('.quick-search').count(),
+      findReplace: await erd.host.locator('.find-replace').count(),
     };
   };
 
@@ -1081,6 +1084,7 @@ test.describe('an IME composition owns the keyboard', () => {
       Shortcut.zoomOut,
       Shortcut.zoomReset,
       Shortcut.search,
+      Shortcut.findReplace,
     ]) {
       await erd.press(chord);
       await erd.page.waitForTimeout(120);

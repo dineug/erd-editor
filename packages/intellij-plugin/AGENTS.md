@@ -131,7 +131,7 @@ The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd`, `.vuerd`
 - Under out-of-process JCEF at 2025.2 the `CefMessageRouter` registered first hears the queries of every browser, whatever client each router was added to, and the first handler to claim a query wins: with two ERD tabs, the second page's `Initial` reached the first tab's bridge and the second editor stayed blank. So every panel joins the static `livePanels` in `initPanel` (and leaves it in `beforeTreeDispose` and `dispose`), and each `onQuery` hands the query to the live panel whose browser sent it, matched by `CefBrowser.identifier`, since another handle on the same browser can arrive (`isSameBrowser`, `WebviewPanelBrowserTest`); a query of no live panel's browser is left to the other routers. 2026.1, where each router hears only its own client, takes the same path.
 - `Webview`'s `onLoadStart` fires for the main frame on every load, the timeout page included (after `html.editor.timeout`, 10 s), so the registry takes the page to hold nothing until its next `Initial`.
 - JCEF's DevTools port (`ide.browser.jcef.debug.port`, which the smoke sets) opens only once the first browser exists.
-- macOS `⌥`+letter reaches the webview as a wrong `KeyboardEvent.code` (`KeyA`) and fires another shortcut; bind nothing to `Alt`+letter. The IDE keymap takes `⌘Z` / `⌘⇧Z` first.
+- macOS `⌥`+letter reaches the webview as a wrong `KeyboardEvent.code` (`KeyA`) and fires another shortcut; bind nothing to `Alt`+letter. The IDE keymap takes `⌘Z` / `⌘⇧Z` first. Whether it also takes `⌘F` / `Ctrl+F`, the editor's Find and Replace, is unchecked: the smoke presses keys over CDP, past the keymap, and the plugin handles no key of its own.
 
 ### Platform And JDK Gotchas
 
