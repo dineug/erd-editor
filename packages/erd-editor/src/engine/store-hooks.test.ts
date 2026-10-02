@@ -1,8 +1,9 @@
 import { query } from '@dineug/erd-editor-schema';
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { ColumnOption, ColumnUIKey, Direction } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
+import { validationIdsAction } from '@/engine/modules/editor/atom.actions';
 import {
   initialLoadJsonAction$,
   loadJsonAction$,
@@ -16,9 +17,30 @@ import {
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { hooks as tableColumnHooks } from '@/engine/modules/table-column/hooks';
+import { createReplicationStore } from '@/engine/replication-store';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
 import { bHas } from '@/utils/bit';
+
+/** What every store this file creates reduces, a replica's included. */
+const dispatched = vi.hoisted(() => [] as string[]);
+
+vi.mock('@/engine/store', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/engine/store')>();
+
+  return {
+    ...actual,
+    createStore: (...args: Parameters<typeof actual.createStore>) => {
+      const store = actual.createStore(...args);
+      store.subscribe(actions =>
+        dispatched.push(...actions.map(({ type }) => type))
+      );
+      return store;
+    },
+  };
+});
+
+const DAY = 24 * 60 * 60 * 1000;
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 40));
 
@@ -166,20 +188,46 @@ describe('createHooks', () => {
     );
   });
 
+  /** A file whose one memo was removed long enough ago for the schema GC. */
+  const fileWithTombstone = () =>
+    JSON.stringify({
+      version: '3.0.0',
+      collections: {
+        memoEntities: {
+          removed: {
+            id: 'removed',
+            meta: { updateAt: Date.now() - 10 * DAY, createAt: 0 },
+          },
+        },
+      },
+    });
+
+  const loadIn = (load: typeof loadJsonAction$) => (value: string) =>
+    createStore({ toWidth: () => 0, clock: new Clock() }).dispatchSync(
+      load(value)
+    );
+
+  const loadReplica = (value: string) => {
+    const replica = createReplicationStore({ toWidth: () => 0 });
+    replica.setInitialValue(value);
+    replica.destroy();
+  };
+
   it.each([
-    ['initialLoadJsonAction$', initialLoadJsonAction$],
-    ['loadJsonAction$', loadJsonAction$],
+    ['initialLoadJsonAction$', loadIn(initialLoadJsonAction$)],
+    ['loadJsonAction$', loadIn(loadJsonAction$)],
+    ['a replica load', loadReplica],
   ])('wakes on %s only the hooks settleLoad writes for at once', (_, load) => {
     // A replica measures its changes from the load settleLoad leaves, so a new
-    // hook on any action a load dispatches, its clear included, joins it, or a
-    // pan on a stale file reads as an edit.
-    const store = createStore({ toWidth: () => 0, clock: new Clock() });
-    const types: string[] = [];
-    store.subscribe(actions => types.push(...actions.map(({ type }) => type)));
-    store.dispatchSync(load('{}'));
+    // hook on any action a load dispatches, its clear and the GC's validation
+    // included, joins it, or a pan on a stale file reads as an edit.
+    dispatched.length = 0;
+    load(fileWithTombstone());
 
     const woken = [...tableHooks, ...tableColumnHooks, ...relationshipHooks]
-      .filter(([pattern]) => pattern.some(type => types.includes(String(type))))
+      .filter(([pattern]) =>
+        pattern.some(type => dispatched.includes(String(type)))
+      )
       .map(([, hook]) => hook.name);
 
     expect(woken).toEqual([
@@ -188,6 +236,13 @@ describe('createHooks', () => {
       'identificationHook',
       'startRelationshipHook',
     ]);
+  });
+
+  it('collects the tombstone a replica load finds, after the load', () => {
+    dispatched.length = 0;
+    loadReplica(fileWithTombstone());
+
+    expect(dispatched.at(-1)).toBe(validationIdsAction.type);
   });
 
   it('destroy is safe to call twice', () => {
