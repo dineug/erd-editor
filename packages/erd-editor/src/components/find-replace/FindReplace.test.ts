@@ -462,8 +462,20 @@ describe('FindReplace opening and closing', () => {
     await flush();
 
     expect(panel()?.style.top).toBe('16px');
+  });
+
+  /** The floating toolbar stands 24 px off the bottom, 36 px tall, and the panel keeps 16 px above it. */
+  it('ends above the floating toolbar along the bottom of the canvas, in zen mode too', async () => {
+    await openWith();
     expect(panel()?.style.getPropertyValue('max-height')).toBe(
-      'calc(100% - 32px)'
+      `calc(100% - ${46 + 24 + 36 + 16}px)`
+    );
+
+    app.store.dispatchSync(changeZenModeAction({ value: true }));
+    await flush();
+
+    expect(panel()?.style.getPropertyValue('max-height')).toBe(
+      `calc(100% - ${16 + 24 + 36 + 16}px)`
     );
   });
 });

@@ -361,6 +361,32 @@ describe('Find and Replace on a real keyboard', () => {
 });
 
 describe('Find and Replace over the canvas', () => {
+  it('ends above the floating toolbar on a short canvas, however long its list', async () => {
+    const fixture = await setup({ width: 820, height: 560, styled: true });
+    fixture.mounted.app.store.dispatchSync(
+      Array.from({ length: 60 }, (_, index) => [
+        addColumnAction({ id: `long${index}`, tableId: 'orders' }),
+        changeColumnNameAction({
+          id: `long${index}`,
+          tableId: 'orders',
+          value: `user_${index}`,
+        }),
+      ]).flat()
+    );
+    await flush();
+
+    await press(OPEN_FIND);
+    await press('user');
+
+    const toolbar = fixture.mounted.container
+      .querySelector('.floating-toolbar')
+      ?.getBoundingClientRect();
+    const panel = panelOf(fixture)?.getBoundingClientRect();
+    expect(countOf(fixture)).toBe('65 matches');
+    expect(toolbar?.height).toBeGreaterThan(0);
+    expect(panel?.bottom).toBeLessThanOrEqual(toolbar?.top ?? 0);
+  });
+
   it('lands a table picked in the palette clear of the open panel', async () => {
     const fixture = await setup({ width: 1200, height: 640, styled: true });
     await press(OPEN_FIND);

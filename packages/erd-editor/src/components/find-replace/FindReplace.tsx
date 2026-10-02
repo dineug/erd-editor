@@ -83,6 +83,12 @@ export function rowWindow(
 /** How long the panel waits for typing to pause before it searches a regular expression. */
 export const REGEX_INPUT_DELAY = 150;
 
+/** The space the panel keeps from the edges of the canvas and from the floating toolbar. */
+const PANEL_MARGIN = 16;
+
+/** How far up from the bottom of the canvas the floating toolbar reaches: 24 px off it, 36 px tall. */
+const FLOATING_TOOLBAR_REACH = 60;
+
 /** The chords a press in the panel still carries to the editor: its own, search, the document's undo and redo, and the zoom. */
 const PASSING = [
   KeyBindingName.findReplace,
@@ -557,7 +563,11 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { current } = state;
     const [from, to] = rowWindow(current, matches.length);
     const count = state.status || countText({ ...state, error, matches });
-    const top = store.state.editor.zenMode ? 16 : TOOLBAR_HEIGHT + 16;
+    const top =
+      (store.state.editor.zenMode ? 0 : TOOLBAR_HEIGHT) + PANEL_MARGIN;
+    // On a short canvas the list gives up its height before the panel reaches
+    // the floating toolbar, whose tools it would cover.
+    const bottom = FLOATING_TOOLBAR_REACH + PANEL_MARGIN;
     const replaceable = !props.readonly && matches.length > 0;
 
     return (
@@ -565,7 +575,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         class={['find-replace', styles.root]}
         style={{
           top: `${top}px`,
-          'max-height': `calc(100% - ${top + 16}px)`,
+          'max-height': `calc(100% - ${top + bottom}px)`,
         }}
         use:ref={ref(root)}
         on:keydown={handleKeydown}
