@@ -706,9 +706,9 @@ export const matchUserDataType = (tokens: Token[]) => {
   };
 };
 
-// Table items that open with a word a column may be named too: PostgreSQL's
-// LIKE s and EXCLUDE USING, MySQL's FULLTEXT ft (c) with no INDEX, T-SQL's
-// PERIOD FOR and Oracle's SUPPLEMENTAL LOG. The words after it tell them apart.
+// Table items that open with a word a column may be named too: an unnamed
+// CHECK (...), PostgreSQL's LIKE s and EXCLUDE USING, MySQL's FULLTEXT ft (c),
+// T-SQL's PERIOD FOR, Oracle's SUPPLEMENTAL LOG. What follows tells them apart.
 export const isTableItemWord = (tokens: Token[]) => {
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
@@ -726,6 +726,8 @@ export const isTableItemWord = (tokens: Token[]) => {
 
   return (pos: number) => {
     switch (word(pos)) {
+      case 'CHECK':
+        return isLeftParent(pos + 1);
       case 'LIKE':
         return isItemName(pos + 1);
       case 'EXCLUDE':

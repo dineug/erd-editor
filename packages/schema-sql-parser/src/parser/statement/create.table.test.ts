@@ -1145,6 +1145,42 @@ describe('createTableParser - table level constraints', () => {
     expect(ast.foreignKeys).toEqual([]);
     expect(ast.columns).toEqual([column({ name: 'a', dataType: 'INT' })]);
   });
+
+  // An unnamed CHECK used to read as a column named CHECK with no type.
+  it.each([
+    [
+      'PostgreSQL',
+      'CREATE TABLE u (id int, price numeric, CHECK (price > 0) NO INHERIT, label text);',
+    ],
+    [
+      'MySQL 8',
+      'CREATE TABLE `u` (`id` int, `price` int, CHECK (`price` > 0) NOT ENFORCED, check (`id` > 0) ENFORCED, `label` text);',
+    ],
+    [
+      'SQLite',
+      'CREATE TABLE u (id INTEGER, price INTEGER, CHECK(price>0), label TEXT);',
+    ],
+  ])('reads no column out of an unnamed %s table CHECK', (_, sql) => {
+    const { ast } = parse(sql);
+
+    expect(ast.columns.map(({ name }) => name)).toEqual([
+      'id',
+      'price',
+      'label',
+    ]);
+  });
+
+  it('still reads a quoted column named check', () => {
+    const { ast } = parse(
+      'CREATE TABLE u (id int, "check" int CHECK ("check" > 0), `check` (a));'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'id', dataType: 'int' }),
+      column({ name: 'check', dataType: 'int' }),
+      column({ name: 'check' }),
+    ]);
+  });
 });
 
 describe('createTableParser - constraint and index items', () => {

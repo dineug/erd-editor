@@ -1253,6 +1253,8 @@ describe('isTableItemWord', () => {
       'SPATIAL (g)',
       'PERIOD FOR SYSTEM_TIME (a, b)',
       'SUPPLEMENTAL LOG DATA (ALL) COLUMNS',
+      'CHECK (price > 0)',
+      'check(price>0)',
     ]) {
       expect(opens(item)).toBe(true);
     }
@@ -1268,6 +1270,8 @@ describe('isTableItemWord', () => {
       'spatial GEOMETRY(Point, 4326)',
       'period INT',
       'supplemental TEXT',
+      'check INT',
+      '"check" (a)',
       'mood',
       '(a)',
     ]) {
