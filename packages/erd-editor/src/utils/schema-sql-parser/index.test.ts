@@ -554,6 +554,24 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('lets an ALTER unique key with no name take over the index over its columns in their order, unique or not', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT, d INT);
+        CREATE INDEX ix_ab ON t (a, b);
+        CREATE INDEX ix_c ON t (c);
+        CREATE UNIQUE INDEX uq_d ON t (d);
+        ALTER TABLE t ADD UNIQUE (a, b);
+        ALTER TABLE t ADD UNIQUE (c);
+        ALTER TABLE t ADD UNIQUE (d);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c', 'd']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'ix_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
     it('reads the index DBMS_METADATA exports for each system-named key a table declares inline as part of that key', () => {
       const schema = parse(`
         CREATE TABLE "HR"."T" (
