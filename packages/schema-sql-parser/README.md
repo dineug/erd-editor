@@ -36,9 +36,9 @@ for (const statement of statements) {
 }
 ```
 
-`statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes` and
-`foreignKeys`; `CreateIndex` carries its `name`, `tableName`, `unique` and `columns`. A qualified table
-or index name keeps its last segment.
+`statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes`,
+`keys` and `foreignKeys`; `CreateIndex` carries its `name`, `tableName`, `unique` and `columns`. A
+qualified table or index name keeps its last segment.
 
 `alter.table.add.primaryKey` and `alter.table.add.foreignKey` carry the altered table's `name` and
 `columnNames`, plus `refTableName` / `refColumnNames` on foreign keys, whose `CONSTRAINT <id>` is
@@ -53,6 +53,14 @@ named by its index name, else its `CONSTRAINT` symbol, else `''`; over one colum
 `unique` instead. A partial unique key, `CREATE UNIQUE INDEX ... WHERE` or SQL Server's inline
 `INDEX n UNIQUE (...) WHERE`, comes back as an index with `unique: false` under its name and columns,
 over one column too, unless its filter is only `key IS NOT NULL` over key columns, joined by `AND`.
+
+`keys` lists, as `{ name, columnNames }`, the primary keys and one-column unique keys a `CREATE TABLE`
+names (by `CONSTRAINT`, or a one-column `UNIQUE KEY n` / `INDEX n UNIQUE`), and each key with no name
+that Oracle's `USING INDEX` follows, composite too, which stays in `indexes` as well; a key with no
+name that PostgreSQL's `USING INDEX TABLESPACE` follows is not listed. A dump may export a key's index
+on its own, as Oracle's DBMS_METADATA does for each key a table declares inline, and the editor's
+importer reads such a `CREATE INDEX` over the key's columns as that key.
+
 Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
 table's `name` and its `comment`, `CommentOnColumn` carries `tableName`, `columnName` and `comment` —
 PostgreSQL and Oracle attach comments with a statement of their own instead of a table option, so those
