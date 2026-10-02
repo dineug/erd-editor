@@ -2465,6 +2465,7 @@ COMMENT ON COLUMN public.person.current_mood IS 'it''s how they feel';
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -2542,6 +2543,7 @@ CREATE TABLE [dbo].[Customer] (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -2598,6 +2600,7 @@ CREATE TABLE `film` (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
