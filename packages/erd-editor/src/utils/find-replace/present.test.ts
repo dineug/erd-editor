@@ -6,6 +6,7 @@ import type { AppContext } from '@/components/appContext';
 import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
 import { changeColumnNameAction } from '@/engine/modules/table-column/atom.actions';
 import {
+  describeMatch,
   FindField,
   FindFieldLabel,
   FindFieldList,
@@ -91,6 +92,25 @@ describe('locationOf', () => {
         match({ field: FindField.columnName, id: 'gone', tableId: 'gone' })
       )
     ).toBe('unnamed.unnamed');
+  });
+});
+
+describe('describeMatch', () => {
+  it('follows the location with the kind of text, and gives a memo its kind alone', () => {
+    const { state } = app.store;
+
+    expect(
+      describeMatch(
+        state,
+        match({ field: FindField.columnComment, id: 'orders_user_id' })
+      )
+    ).toBe('orders.user_id · Column comment');
+    expect(
+      describeMatch(
+        state,
+        match({ field: FindField.memo, id: 'note', tableId: '' })
+      )
+    ).toBe('Memo');
   });
 });
 

@@ -54,10 +54,9 @@ import {
   importSchemaSQL,
 } from '@/utils/file/importFile';
 import {
+  describeMatch,
   FindField,
-  FindFieldLabel,
   FindMatch,
-  locationOf,
   snippetOf,
 } from '@/utils/find-replace';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -434,13 +433,10 @@ export function createScopeActions(app: AppContext): Action[] {
 
 /** The row for one field a search found, saying where it is, which stands the reader on it when chosen. */
 export function createMatchAction(state: RootState, match: FindMatch): Action {
-  const location = locationOf(state, match);
-  const kind = FindFieldLabel[match.field];
-
   return {
     icon: fieldIcon(match.field, 16),
     name: snippetOf(match, 16, 64).text || 'unnamed',
-    keywords: location ? `${location} · ${kind}` : kind,
+    keywords: describeMatch(state, match),
     perform: ({ store }) => {
       goToErdTarget(store, toErdTarget(match));
     },

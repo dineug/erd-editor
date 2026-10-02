@@ -38,6 +38,13 @@ export function locationOf(
   return `${tableName}.${nameOf(column?.name)}`;
 }
 
+/** A result row's second line: where the match sits, then the kind of text it was found in. */
+export function describeMatch(state: RootState, match: FindMatch): string {
+  const location = locationOf(state, match);
+  const kind = FindFieldLabel[match.field];
+  return location ? `${location} · ${kind}` : kind;
+}
+
 /** Whether a cut at the offset falls between a high and a low surrogate. */
 const splitsPair = (text: string, at: number) =>
   /[\uD800-\uDBFF]/.test(text.charAt(at - 1)) &&

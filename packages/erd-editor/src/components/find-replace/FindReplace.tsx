@@ -25,13 +25,12 @@ import { FindReplaceQuery, toggleSearchAction } from '@/utils/emitter';
 import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
+  describeMatch,
   FindField,
-  FindFieldLabel,
   FindFieldList,
   FindMatch,
   findMatches,
   FindTextActionTypes,
-  locationOf,
   Matcher,
   nextReplace,
   rematchField,
@@ -756,7 +755,6 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
             {matches.slice(from, to).map((match, offset) => {
               const index = from + offset;
               const snippet = snippetOf(match);
-              const location = locationOf(store.state, match);
 
               return (
                 <div
@@ -779,9 +777,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                       {snippet.text.slice(snippet.end)}
                     </span>
                     <span class={styles.location}>
-                      {location
-                        ? `${location} · ${FindFieldLabel[match.field]}`
-                        : FindFieldLabel[match.field]}
+                      {describeMatch(store.state, match)}
                     </span>
                   </div>
                 </div>
