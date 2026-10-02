@@ -269,10 +269,9 @@ function formatClass(
         addSqlalchemy(imports, 'ForeignKey');
         const target = `${startTable.name}.${columnKey(parentNaming, startColumns[0])}`;
         const carrier = columnRef(naming, endColumns[0]);
+        const args = [`"${escapeString(target)}"`, ...actions];
         const values = foreignKeys.get(carrier) ?? [];
-        values.push(
-          `ForeignKey(${[`"${escapeString(target)}"`, ...actions].join(', ')})`
-        );
+        values.push(`ForeignKey(${args.join(', ')})`);
         foreignKeys.set(carrier, values);
         return;
       }

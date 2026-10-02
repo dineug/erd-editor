@@ -25,7 +25,7 @@ import {
   toOrderName,
 } from './utils';
 
-const REFERENTIAL_ACTIONS = referentialActionSupport(Database.Snowflake);
+const ACTION_SUPPORT = referentialActionSupport(Database.Snowflake);
 
 // The double quote is Snowflake's only identifier delimiter, and a quoted name
 // is case sensitive where a bare one folds to upper case. So settings
@@ -210,7 +210,7 @@ function formatRelation(
         columns.start,
         bracket
       )})`,
-      ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS).map(
+      ...formatReferentialActions(relationship, ACTION_SUPPORT).map(
         clause => `    ${clause}`
       )
     );

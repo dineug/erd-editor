@@ -34,7 +34,7 @@ const BRACKET = '`';
 // declaration, which is the only reason to export one at all.
 const CONSTRAINT_OPTIONS = 'NOT ENFORCED RELY';
 
-const REFERENTIAL_ACTIONS = referentialActionSupport(Database.Databricks);
+const ACTION_SUPPORT = referentialActionSupport(Database.Databricks);
 
 export function createSchema(state: RootState): string {
   const {
@@ -219,7 +219,7 @@ function formatRelation(
           columns.start,
           BRACKET
         )})`,
-        ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS),
+        ...formatReferentialActions(relationship, ACTION_SUPPORT),
         `${CONSTRAINT_OPTIONS};`,
       ].join(' ')
     );

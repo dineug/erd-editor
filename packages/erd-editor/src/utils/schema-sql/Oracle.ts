@@ -28,7 +28,7 @@ import {
   uniqueColumns,
 } from './utils';
 
-const REFERENTIAL_ACTIONS = referentialActionSupport(Database.Oracle);
+const ACTION_SUPPORT = referentialActionSupport(Database.Oracle);
 
 export function createSchema(state: RootState): string {
   const {
@@ -273,7 +273,7 @@ function formatRelation(
         columns.start,
         bracket
       )})`,
-      ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS).map(
+      ...formatReferentialActions(relationship, ACTION_SUPPORT).map(
         clause => `    ${clause}`
       )
     );

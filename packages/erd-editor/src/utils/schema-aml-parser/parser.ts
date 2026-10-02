@@ -746,14 +746,15 @@ function readProperties(
     }
 
     const separator = reader.peek();
-    const hasValue =
-      separator !== null &&
-      (isPunctuation(separator, ':') || isPunctuation(separator, '='));
-    if (hasValue) {
+    let value = '';
+    if (
+      separator &&
+      (isPunctuation(separator, ':') || isPunctuation(separator, '='))
+    ) {
       reader.next();
+      value = readPropertyValue(reader);
     }
 
-    const value = hasValue ? readPropertyValue(reader) : '';
     const key = token.value.toLowerCase();
 
     if (relation && key === 'ondelete') {

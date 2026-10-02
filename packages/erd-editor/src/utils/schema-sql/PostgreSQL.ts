@@ -26,7 +26,7 @@ import {
   toOrderName,
 } from './utils';
 
-const REFERENTIAL_ACTIONS = referentialActionSupport(Database.PostgreSQL);
+const ACTION_SUPPORT = referentialActionSupport(Database.PostgreSQL);
 
 export function createSchema(state: RootState): string {
   const {
@@ -219,7 +219,7 @@ function formatRelation(
         columns.start,
         bracket
       )})`,
-      ...formatReferentialActions(relationship, REFERENTIAL_ACTIONS).map(
+      ...formatReferentialActions(relationship, ACTION_SUPPORT).map(
         clause => `    ${clause}`
       )
     );

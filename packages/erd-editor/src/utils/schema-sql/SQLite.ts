@@ -24,6 +24,8 @@ import {
   toOrderName,
 } from './utils';
 
+const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
+
 export function createSchema(state: RootState): string {
   const {
     doc: { tableIds, indexIds },
@@ -156,10 +158,7 @@ export function formatTable(
         }
       });
 
-      const actions = formatReferentialActions(
-        relationship,
-        referentialActionSupport(Database.SQLite)
-      )
+      const actions = formatReferentialActions(relationship, ACTION_SUPPORT)
         .map(clause => ` ${clause}`)
         .join('');
 

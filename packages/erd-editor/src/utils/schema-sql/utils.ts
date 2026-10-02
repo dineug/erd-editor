@@ -170,7 +170,7 @@ export type ReferentialActionSupport = {
   onUpdate: ReadonlyArray<number>;
 };
 
-export const REFERENTIAL_ACTIONS: ReadonlyArray<number> = [
+const REFERENTIAL_ACTIONS: ReadonlyArray<number> = [
   ReferentialAction.noAction,
   ReferentialAction.cascade,
   ReferentialAction.setNull,
