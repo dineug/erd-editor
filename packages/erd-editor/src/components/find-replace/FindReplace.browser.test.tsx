@@ -209,7 +209,7 @@ describe('Find and Replace on a real keyboard', () => {
     expect(panelOf(fixture)).not.toBeNull();
     expect(document.activeElement).toBe(input);
     expect([input?.selectionStart, input?.selectionEnd]).toEqual([0, 4]);
-    expect(countOf(fixture)).toBe('1 of 5');
+    expect(countOf(fixture)).toBe('1 of 2');
 
     inputOf(fixture, 'replace-input')?.focus();
     await press(OPEN_FIND);
@@ -239,7 +239,7 @@ describe('Find and Replace on a real keyboard', () => {
     await press(OPEN_FIND);
 
     await press('user');
-    expect(countOf(fixture)).toBe('5 matches');
+    expect(countOf(fixture)).toBe('2 matches');
 
     // On the canvas Alt+N adds a table and the arrows move the focus ring.
     await press('{Alt>}n{/Alt}');
@@ -247,7 +247,7 @@ describe('Find and Replace on a real keyboard', () => {
     await press('{Enter}');
 
     expect(stateOf(fixture).doc.tableIds).toEqual(['orders', 'users']);
-    expect(countOf(fixture)).toBe('1 of 5');
+    expect(countOf(fixture)).toBe('1 of 2');
     expect(stateOf(fixture).editor.focusTable).toMatchObject({
       tableId: 'orders',
       columnId: 'orders_user_id',
@@ -264,8 +264,8 @@ describe('Find and Replace on a real keyboard', () => {
     await press(`{${MOD}>}a{/${MOD}}user`);
     await press('{Shift>}{Enter}{/Shift}');
 
-    expect(countOf(fixture)).toBe('5 of 5');
-    expect(stateOf(fixture).editor.selectedMap).toEqual({ note: 'memo' });
+    expect(countOf(fixture)).toBe('2 of 2');
+    expect(stateOf(fixture).editor.selectedMap).toEqual({ users: 'table' });
   });
 
   it('searches a regular expression typed at once when Enter comes before the pause', async () => {
@@ -287,6 +287,12 @@ describe('Find and Replace on a real keyboard', () => {
   it('replaces every match in one step that one undo takes back', async () => {
     const fixture = await setup();
     await press(OPEN_FIND);
+    // A first opening searches the names alone, so the memo is let in.
+    panelOf(fixture)
+      ?.querySelector<HTMLButtonElement>('.find-scope[data-field="memo"]')
+      ?.click();
+    await flush();
+    inputOf(fixture, 'find-input')?.focus();
     await press('user');
     // Focused rather than clicked: the runner's frame can scroll a click away.
     inputOf(fixture, 'replace-input')?.focus();
@@ -315,7 +321,7 @@ describe('Find and Replace on a real keyboard', () => {
   it('closes on Escape and leaves the selection the canvas would have dropped', async () => {
     const fixture = await setup();
     await press(OPEN_FIND);
-    await press('login');
+    await press('email');
     await press('{Enter}');
     expect(stateOf(fixture).editor.focusTable?.columnId).toBe('email');
 
@@ -382,7 +388,7 @@ describe('Find and Replace over the canvas', () => {
       .querySelector('.floating-toolbar')
       ?.getBoundingClientRect();
     const panel = panelOf(fixture)?.getBoundingClientRect();
-    expect(countOf(fixture)).toBe('65 matches');
+    expect(countOf(fixture)).toBe('62 matches');
     expect(toolbar?.height).toBeGreaterThan(0);
     expect(panel?.bottom).toBeLessThanOrEqual(toolbar?.top ?? 0);
   });
@@ -405,7 +411,7 @@ describe('Find and Replace over the canvas', () => {
       const count = panelOf(fixture)
         ?.querySelector('.find-count')
         ?.getBoundingClientRect();
-      expect(countOf(fixture)).toBe('5 matches');
+      expect(countOf(fixture)).toBe('2 matches');
       expect(next?.height).toBeGreaterThan(0);
       expect(next?.bottom).toBeLessThanOrEqual(panel?.bottom ?? 0);
       expect(count?.bottom).toBeLessThanOrEqual(panel?.bottom ?? 0);

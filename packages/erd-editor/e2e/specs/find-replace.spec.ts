@@ -40,6 +40,10 @@ const schema = () =>
 
 const panelOf = (erd: ErdEditorPage) => erd.host.locator('.find-replace');
 const countOf = (erd: ErdEditorPage) => panelOf(erd).locator('.find-count');
+const scopeOf = (erd: ErdEditorPage, field: string) =>
+  panelOf(erd).locator(`.find-scope[data-field="${field}"]`);
+const pressedScopesOf = (erd: ErdEditorPage) =>
+  panelOf(erd).locator('.find-scope[aria-pressed="true"]');
 
 /** Every change event the host hears from here on, counted on the page. */
 async function countChanges(page: Page) {
@@ -125,12 +129,12 @@ test.describe('Find and Replace', () => {
   }) => {
     await erd.seed(schema());
     await openFind(erd, 'user');
-    await expect(countOf(erd)).toHaveText('6 matches');
+    await expect(countOf(erd)).toHaveText('2 matches');
 
     await erd.press(Shortcut.addTable);
     await erd.press('Enter');
 
-    await expect(countOf(erd)).toHaveText('1 of 6');
+    await expect(countOf(erd)).toHaveText('1 of 2');
     await expect(panelOf(erd).locator('.find-input')).toBeFocused();
     expect(await erd.tableIds()).toEqual(['users', 'orders']);
     await expect(erd.editInput()).toHaveCount(0);
@@ -139,6 +143,45 @@ test.describe('Find and Replace', () => {
 
     await expect(panelOf(erd)).toHaveCount(0);
     await erd.expectKeyboardFocusInside();
+  });
+
+  test('opens first on the names alone, so a Replace All leaves the comments and the memo as they were', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    await openFind(erd, 'user');
+
+    await expect(pressedScopesOf(erd)).toHaveText([
+      'Table names',
+      'Column names',
+    ]);
+    await expect(countOf(erd)).toHaveText('2 matches');
+    await panelOf(erd).locator('.replace-input').fill('member');
+    await panelOf(erd).locator('.find-replace-all').click();
+
+    await expect(countOf(erd)).toHaveText('Replaced 2 matches');
+    const { collections } = await erd.value();
+    expect(collections.tableEntities.users).toMatchObject({
+      name: 'members',
+      comment: 'Registered user accounts',
+    });
+    expect(collections.tableColumnEntities.orders_user_id.name).toBe(
+      'member_id'
+    );
+    expect(collections.tableColumnEntities.users_id.comment).toBe('user id');
+    expect(collections.memoEntities.note.value).toBe('Rename user to member');
+
+    // A scope set stays for as long as the element lives.
+    await scopeOf(erd, 'memo').click();
+    await erd.press('Escape');
+    await erd.focusHost();
+    await erd.press(Shortcut.findReplace);
+
+    await expect(pressedScopesOf(erd)).toHaveText([
+      'Table names',
+      'Column names',
+      'Memos',
+    ]);
   });
 
   test('takes its chord from the canvas, its own field, the palette and a cell editor, no page find opening', async ({
@@ -167,7 +210,7 @@ test.describe('Find and Replace', () => {
 
     await openFind(erd, 'user');
     await erd.press('Enter');
-    await expect(countOf(erd)).toHaveText('1 of 6');
+    await expect(countOf(erd)).toHaveText('1 of 2');
 
     // Pressed again in its own field it stays open, the query selected.
     await erd.press(Shortcut.findReplace);
@@ -179,7 +222,7 @@ test.describe('Find and Replace', () => {
         input.selectionEnd,
       ])
     ).toEqual([0, 4]);
-    await expect(countOf(erd)).toHaveText('1 of 6');
+    await expect(countOf(erd)).toHaveText('1 of 2');
 
     // The palette gives way to it, as its own Find and Replace row does.
     await erd.press(Shortcut.search);
@@ -326,6 +369,10 @@ test.describe('Find and Replace', () => {
     const changes = await countChanges(page);
     const peerValue = await attachPeer(page);
     await openFind(erd, 'user');
+    // A first opening searches the names alone, so the comments and memo are let in.
+    for (const field of ['tableComment', 'columnComment', 'memo']) {
+      await scopeOf(erd, field).click();
+    }
     await panelOf(erd).locator('.replace-input').fill('member');
 
     await panelOf(erd).locator('.find-replace-all').click();
@@ -447,7 +494,7 @@ test.describe('Find and Replace', () => {
 
     await expect(panelOf(erd)).toContainText('Find');
     await expect(panelOf(erd).locator('.replace-input')).toHaveCount(0);
-    await expect(countOf(erd)).toHaveText('6 matches');
+    await expect(countOf(erd)).toHaveText('2 matches');
   });
 });
 

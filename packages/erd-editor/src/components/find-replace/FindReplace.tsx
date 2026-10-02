@@ -24,6 +24,7 @@ import { arrayHas } from '@/utils/arrayHas';
 import { FindReplaceQuery, toggleSearchAction } from '@/utils/emitter';
 import {
   createMatcher,
+  DEFAULT_FIND_FIELDS,
   DEFAULT_FIND_OPTIONS,
   describeMatch,
   FindField,
@@ -140,7 +141,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     matchCase: false,
     wholeWord: false,
     regex: false,
-    fields: [...FindFieldList] as FindField[],
+    fields: [...DEFAULT_FIND_FIELDS] as FindField[],
     current: -1,
     status: '',
   });

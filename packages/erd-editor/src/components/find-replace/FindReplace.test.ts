@@ -116,6 +116,23 @@ const rowTexts = () =>
 const selectedRow = () =>
   rows().findIndex(row => row.classList.contains('selected'));
 const isOpen = () => Boolean(app.store.state.editor.openMap[Open.findReplace]);
+const scope = (field: FindField) =>
+  panel()?.querySelector<HTMLButtonElement>(
+    `.find-scope[data-field="${field}"]`
+  ) as HTMLButtonElement;
+/** The kinds of text the panel searches, as its scope toggles show them pressed. */
+const pressedScopes = () =>
+  Array.from(panel()?.querySelectorAll('.find-scope') ?? [])
+    .filter(toggle => toggle.getAttribute('aria-pressed') === 'true')
+    .map(toggle => toggle.getAttribute('data-field'));
+/** Presses the scopes a first opening leaves off, the comments and memos, so every kind of text is searched. */
+const searchEveryField = async () => {
+  for (const field of FindFieldList) {
+    if (scope(field).getAttribute('aria-pressed') === 'false') {
+      await click(scope(field));
+    }
+  }
+};
 
 const texts = () => {
   const { collections } = app.store.state;
@@ -257,14 +274,52 @@ describe('FindReplace opening and closing', () => {
     expect(rows()).toHaveLength(5);
   });
 
+  /** An owner decision: a comment or memo is prose, which a rename across the names would rewrite too. */
+  it('opens first on the names of tables and columns alone, the comments and memos left out', async () => {
+    await shortcut(KeyBindingName.findReplace);
+    await type(findInput(), 'user');
+
+    expect(pressedScopes()).toEqual([
+      FindField.tableName,
+      FindField.columnName,
+    ]);
+    expect(countText()).toBe('2 matches');
+    expect(rowTexts()).toEqual([
+      'user_id | orders.user_id · Column',
+      'users | users · Table',
+    ]);
+  });
+
+  it('keeps the scopes set for as long as the element lives, and a new one starts on the names alone', async () => {
+    await openWith();
+    await click(scope(FindField.memo));
+    await click(scope(FindField.tableComment));
+    await click(scope(FindField.tableName));
+    await click(button('find-replace-close'));
+
+    await shortcut(KeyBindingName.findReplace);
+
+    expect(pressedScopes()).toEqual([
+      FindField.tableComment,
+      FindField.columnName,
+      FindField.memo,
+    ]);
+
+    await setup();
+    await openWith();
+
+    expect(pressedScopes()).toEqual([
+      FindField.tableName,
+      FindField.columnName,
+    ]);
+  });
+
   it('searches a query handed over with the default options and every scope, whatever was left on', async () => {
     await openWith();
     await click(button('find-regex'));
     await click(button('find-match-case'));
     await click(button('find-whole-word'));
-    await click(
-      panel()?.querySelector('.find-scope[data-field="memo"]') as Element
-    );
+    await click(scope(FindField.memo));
     await click(button('find-replace-close'));
 
     await openWith('user(');
@@ -273,10 +328,7 @@ describe('FindReplace opening and closing', () => {
     for (const name of ['find-regex', 'find-match-case', 'find-whole-word']) {
       expect(button(name).getAttribute('aria-pressed')).toBe('false');
     }
-    const scopes = panel()?.querySelectorAll('.find-scope') ?? [];
-    for (const scope of Array.from(scopes)) {
-      expect(scope.getAttribute('aria-pressed')).toBe('true');
-    }
+    expect(pressedScopes()).toEqual(FindFieldList);
 
     await openWith('user');
     expect(countText()).toBe('5 matches');
@@ -304,17 +356,12 @@ describe('FindReplace opening and closing', () => {
   });
 
   it('searches a query handed over in the scopes it names, and only those', async () => {
-    const pressed = () =>
-      Array.from(panel()?.querySelectorAll('.find-scope') ?? [])
-        .filter(scope => scope.getAttribute('aria-pressed') === 'true')
-        .map(scope => scope.getAttribute('data-field'));
-
     app.emitter.emit(
       openFindReplaceAction({ query: 'user', fields: [FindField.columnName] })
     );
     await flush();
 
-    expect(pressed()).toEqual([FindField.columnName]);
+    expect(pressedScopes()).toEqual([FindField.columnName]);
     expect(countText()).toBe('1 match');
 
     app.emitter.emit(
@@ -330,7 +377,7 @@ describe('FindReplace opening and closing', () => {
     await flush();
 
     // In the panel's own order, whatever order they were handed in.
-    expect(pressed()).toEqual([
+    expect(pressedScopes()).toEqual([
       FindField.tableComment,
       FindField.columnComment,
       FindField.memo,
@@ -338,7 +385,7 @@ describe('FindReplace opening and closing', () => {
     expect(countText()).toBe('3 matches');
 
     await openWith('user');
-    expect(pressed()).toHaveLength(5);
+    expect(pressedScopes()).toEqual(FindFieldList);
   });
 
   it('keeps the options left on when opened with no query', async () => {
@@ -375,7 +422,7 @@ describe('FindReplace opening and closing', () => {
     expect(document.activeElement).toBe(findInput());
     expect(findInput().selectionStart).toBe(0);
     expect(findInput().selectionEnd).toBe('user'.length);
-    expect(countText()).toBe('1 of 5');
+    expect(countText()).toBe('1 of 2');
     expect(focusEvents).toBe(0);
   });
 
@@ -496,6 +543,7 @@ describe('FindReplace opening and closing', () => {
 describe('FindReplace searching', () => {
   beforeEach(async () => {
     await openWith();
+    await searchEveryField();
   });
 
   it('lists every occurrence as it is typed, with the match marked and where it is', async () => {
@@ -1320,7 +1368,7 @@ describe('FindReplace searching only when it has to', () => {
   it('searches plain text as it is typed, and a regular expression once typing pauses', async () => {
     await openWith();
     await type(findInput(), 'user');
-    expect(countText()).toBe('5 matches');
+    expect(countText()).toBe('2 matches');
     expect(searches()).toBe(1);
 
     await click(button('find-regex'));
@@ -1330,12 +1378,12 @@ describe('FindReplace searching only when it has to', () => {
     }
 
     expect(searches()).toBe(0);
-    expect(countText()).toBe('5 matches');
+    expect(countText()).toBe('2 matches');
 
     await pause();
 
     expect(searches()).toBe(1);
-    expect(countText()).toBe('2 matches');
+    expect(countText()).toBe('1 match');
   });
 
   it('goes through the matches of what is typed on an Enter pressed before the pause', async () => {
@@ -1345,7 +1393,7 @@ describe('FindReplace searching only when it has to', () => {
 
     await keydown(findInput(), { key: 'Enter' });
 
-    expect(countText()).toBe('1 of 5');
+    expect(countText()).toBe('1 of 2');
     await pause();
     expect(searches()).toBe(1);
   });
@@ -1357,29 +1405,29 @@ describe('FindReplace searching only when it has to', () => {
     await pause();
     await type(replaceInput() as HTMLInputElement, 'X');
     await keydown(findInput(), { key: 'Enter' });
-    expect(countText()).toBe('1 of 5');
+    expect(countText()).toBe('1 of 2');
 
     await type(findInput(), 'user_');
     await click(button('find-replace-one'));
 
     // The first press on a search shows what it would replace, as in plain text.
     expect(texts().userId).toBe('user_id');
-    expect(countText()).toBe('1 of 2');
+    expect(countText()).toBe('1 of 1');
     await pause();
-    expect(countText()).toBe('1 of 2');
+    expect(countText()).toBe('1 of 1');
 
     await type(findInput(), 'users?');
     await click(button('find-next'));
-    expect(countText()).toBe('1 of 5');
+    expect(countText()).toBe('1 of 2');
     await pause();
-    expect(countText()).toBe('1 of 5');
+    expect(countText()).toBe('1 of 2');
 
     await type(findInput(), 'user_');
     await click(button('find-replace-all'));
     expect(texts().userId).toBe('Xid');
-    expect(countText()).toBe('Replaced 2 matches');
+    expect(countText()).toBe('Replaced 1 match');
     await pause();
-    expect(countText()).toBe('Replaced 2 matches');
+    expect(countText()).toBe('Replaced 1 match');
   });
 
   it('looks a row clicked before the pause up among the matches of what is typed', async () => {
@@ -1389,24 +1437,24 @@ describe('FindReplace searching only when it has to', () => {
     await pause();
 
     await type(findInput(), 'users?');
-    await click(rows()[2]);
+    await click(rows()[0]);
 
-    expect(countText()).toBe('3 of 5');
-    expect(selectedRow()).toBe(2);
+    expect(countText()).toBe('1 of 2');
+    expect(selectedRow()).toBe(0);
     expect(app.store.state.editor.focusTable).toMatchObject({
-      tableId: 'users',
-      columnId: 'users_id',
+      tableId: 'orders',
+      columnId: 'orders_user_id',
     });
     await pause();
-    expect(countText()).toBe('3 of 5');
-    expect(selectedRow()).toBe(2);
+    expect(countText()).toBe('1 of 2');
+    expect(selectedRow()).toBe(0);
 
     // The users table, which user_ does not find, is gone to by no one.
     const { selectedMap } = app.store.state.editor;
     await type(findInput(), 'user_');
     await click(rows()[1]);
 
-    expect(countText()).toBe('2 matches');
+    expect(countText()).toBe('1 match');
     expect(selectedRow()).toBe(-1);
     expect(app.store.state.editor.selectedMap).toEqual(selectedMap);
   });
@@ -1423,7 +1471,7 @@ describe('FindReplace searching only when it has to', () => {
 
     await openWith();
     expect(searches()).toBe(1);
-    expect(countText()).toBe('5 matches');
+    expect(countText()).toBe('2 matches');
 
     await type(findInput(), 'user_');
     app.store.dispatchSync(
@@ -1437,7 +1485,7 @@ describe('FindReplace searching only when it has to', () => {
     );
     await flush();
     expect(searches()).toBe(2);
-    expect(countText()).toBe('2 matches');
+    expect(countText()).toBe('1 match');
   });
 
   it('drops a search still waiting for the pause when it unmounts', async () => {

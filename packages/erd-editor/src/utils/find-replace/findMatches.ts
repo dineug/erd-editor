@@ -16,6 +16,16 @@ export const FindField = {
 export type FindField = ValuesType<typeof FindField>;
 export const FindFieldList: ReadonlyArray<FindField> = Object.values(FindField);
 
+/**
+ * The kinds of text Find and Replace first opens on, the names of tables and
+ * columns alone (an owner decision): a comment or memo is prose a rename
+ * should not reach unasked. A search given no fields still reads every kind.
+ */
+export const DEFAULT_FIND_FIELDS: ReadonlyArray<FindField> = Object.freeze([
+  FindField.tableName,
+  FindField.columnName,
+]);
+
 export type FindMatch = {
   field: FindField;
   /** The entity holding the text: a table, a column or a memo. */
