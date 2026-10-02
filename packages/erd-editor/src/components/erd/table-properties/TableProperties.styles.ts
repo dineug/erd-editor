@@ -1,6 +1,9 @@
 import { css } from '@dineug/r-html';
 
-import { TOOLBAR_HEIGHT } from '@/constants/layout';
+import {
+  TABLE_PROPERTIES_BODY_PADDING,
+  TOOLBAR_HEIGHT,
+} from '@/constants/layout';
 import { floatingShadow } from '@/styles/elevation.styles';
 import { typography } from '@/styles/typography.styles';
 
@@ -153,7 +156,7 @@ export const scrollbarArea = css`
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  padding: 12px;
+  padding: ${TABLE_PROPERTIES_BODY_PADDING}px;
   overflow: auto;
 `;
 

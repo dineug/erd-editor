@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/table-properties/TableProperties.styles';
-import { TOOLBAR_HEIGHT } from '@/constants/layout';
+import {
+  TABLE_PROPERTIES_BODY_PADDING,
+  TOOLBAR_HEIGHT,
+} from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
 const staticText = (literals: { strings: TemplateStringsArray }) =>
@@ -170,8 +173,15 @@ describe('TableProperties.styles', () => {
     expect(text).toContain('flex-direction: column');
     expect(text).toContain('flex: 1 1 auto');
     expect(text).toContain('min-height: 0');
-    expect(text).toContain('padding: 12px;');
+    expect(text).toMatch(/padding:\s+px;/);
     expect(text).toContain('overflow: auto');
+  });
+
+  it('pads the body by the one constant the stuck order of the Indexes tab reaches over', () => {
+    expect(styles.scrollbarArea.values).toEqual([
+      TABLE_PROPERTIES_BODY_PADDING,
+    ]);
+    expect(TABLE_PROPERTIES_BODY_PADDING).toBe(12);
   });
 
   it('wraps the Indexes panes and leaves the height to the body', () => {

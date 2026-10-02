@@ -154,6 +154,12 @@ export const MINIMAP_MARGIN = 20;
 
 export const TOOLBAR_HEIGHT = 30;
 
+/**
+ * The padding around the Table Properties body. A band stuck to an edge of the
+ * body reaches back over it, so no row scrolls into sight behind the band.
+ */
+export const TABLE_PROPERTIES_BODY_PADDING = 12;
+
 export const DIFF_TREE_WIDTH = 200;
 
 /**

@@ -5,6 +5,7 @@ import {
   COLUMN_HEIGHT,
   COLUMN_UNIQUE_WIDTH,
   TABLE_PADDING,
+  TABLE_PROPERTIES_BODY_PADDING,
 } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
@@ -151,6 +152,10 @@ describe('TablePropertiesIndexes.styles', () => {
     // back out of the flow, so an order in place leaves the scroll height be.
     expect(text).toMatch(/margin-bottom: -\s+px;\s+padding-bottom:\s+px;/);
     expect(text).toMatch(/bottom: -\s+px;/);
-    expect(styles.order.values).toEqual([12, 12, 12]);
+    expect(styles.order.values).toEqual([
+      TABLE_PROPERTIES_BODY_PADDING,
+      TABLE_PROPERTIES_BODY_PADDING,
+      TABLE_PROPERTIES_BODY_PADDING,
+    ]);
   });
 });

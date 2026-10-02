@@ -4,6 +4,7 @@ import {
   COLUMN_HEIGHT,
   COLUMN_UNIQUE_WIDTH,
   TABLE_PADDING,
+  TABLE_PROPERTIES_BODY_PADDING,
 } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
@@ -121,9 +122,6 @@ export const addIcon = css`
   justify-content: center;
 `;
 
-/** The body's padding, which a stuck order covers so no row shows under it. */
-const BODY_PADDING = 12;
-
 /**
  * The selected index's column order, ruled off under the columns. It sticks
  * to the bottom of the body while a long list scrolls, and sits in place
@@ -131,10 +129,10 @@ const BODY_PADDING = 12;
  */
 export const order = css`
   margin-top: 12px;
-  margin-bottom: -${BODY_PADDING}px;
-  padding-bottom: ${BODY_PADDING}px;
+  margin-bottom: -${TABLE_PROPERTIES_BODY_PADDING}px;
+  padding-bottom: ${TABLE_PROPERTIES_BODY_PADDING}px;
   position: sticky;
-  bottom: -${BODY_PADDING}px;
+  bottom: -${TABLE_PROPERTIES_BODY_PADDING}px;
   z-index: 1;
   background-color: var(--context-menu-background);
   border-top: 1px solid var(--context-menu-border);
