@@ -178,6 +178,9 @@ class McpConformanceTest {
         // 10. Coding agents off: a hub false lock, no documentClosed, writes blocked; then on again.
         host.turn(false)
         awaitUntil(message = "the lock turns hub false") { lock(env)?.hub == false }
+        // The hub false lock lands before the pipe goes, as DocumentHubTest pins, so the socket is
+        // checked once that state change ran to its end, not once the lock reads hub false.
+        checkNotNull(runtime.hub).flushed().get(STATE_CHANGE_SECONDS, TimeUnit.SECONDS)
         val off = checkNotNull(lock(env))
         assertEquals("" to "", off.pipe to off.token)
         assertEquals(served.workspaceFolders, off.workspaceFolders)
@@ -413,6 +416,7 @@ class McpConformanceTest {
         const val SAVE_AFTER_MS = 250L
         const val SETTLE_MS = 500L
         const val RETRY_MS = 10_000L
+        const val STATE_CHANGE_SECONDS = 5L
         const val PROBE_TIMEOUT_SECONDS = 90L
 
         /** registryCallBoundMs + drainCapMs + closeBoundMs + threadJoinBoundMs is 3 s; the rest is a loaded runner's. */

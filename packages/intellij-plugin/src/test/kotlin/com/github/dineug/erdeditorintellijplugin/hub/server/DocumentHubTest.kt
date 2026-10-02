@@ -1102,6 +1102,9 @@ class DocumentHubTest {
             fixture.env.failNext(FakeOp.MOVE_REPLACING, IOException("busy"))
             fixture.setDocuments("/elsewhere/a.erd.json")
             val writes = fixture.env.fs.callsOf(FakeOp.WRITE_NEW_FILE).size
+            // The write also posted the scope hook, which settling it does not wait for: once every task
+            // due so far ran on the registry, the repair timer is all its queue holds.
+            assertEquals("the registry ran the scope hook", Unit, threads.callBlocking(5_000) {})
 
             end(fixture.hub)
             assertEquals("the timer went", 0, (threads.registryExecutor as ScheduledThreadPoolExecutor).queue.size)
