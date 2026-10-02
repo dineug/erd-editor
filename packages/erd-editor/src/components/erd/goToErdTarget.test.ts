@@ -412,7 +412,7 @@ describe('goToErdTarget', () => {
     );
     const batches = recordBatches(app);
 
-    goToErdTarget(app.store, { kind: 'memo', memoId: 'note' }, 100);
+    goToErdTarget(app.store, { kind: 'memo', memoId: 'note' });
 
     expect(batches[0]).toEqual(['settings.changeCanvasType']);
     expect(batches[1]).toContain('settings.scrollTo');

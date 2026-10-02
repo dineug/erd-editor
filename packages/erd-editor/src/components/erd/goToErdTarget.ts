@@ -1,5 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 
+import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { CanvasType, Show } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import {
@@ -159,19 +160,23 @@ function visibleFocusType(state: RootState, focusType: FocusType): FocusType {
  * bar the press's part in a relationship being drawn: a jump only shows, so it
  * never starts or finishes one, which would add a relationship and a column.
  */
-function* selectTable({ doc, collections }: RootState, tableId: string) {
-  const tables = query(collections)
-    .collection('tableEntities')
-    .selectByIds(doc.tableIds);
-  const memos = query(collections)
-    .collection('memoEntities')
-    .selectByIds(doc.memoIds);
+export const selectTableAloneAction$ = (tableId: string): GeneratorAction =>
+  function* ({ doc, collections }) {
+    const tables = query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds);
+    const memos = query(collections)
+      .collection('memoEntities')
+      .selectByIds(doc.memoIds);
 
-  yield unselectAllAction();
-  yield selectAction({ [tableId]: SelectType.table });
-  yield changeZIndexAction({ id: tableId, zIndex: nextZIndex(tables, memos) });
-  yield focusTableAction({ tableId });
-}
+    yield unselectAllAction();
+    yield selectAction({ [tableId]: SelectType.table });
+    yield changeZIndexAction({
+      id: tableId,
+      zIndex: nextZIndex(tables, memos),
+    });
+    yield focusTableAction({ tableId });
+  };
 
 /**
  * Stands the reader on a table, a column cell or a memo the way the Go to ERD
@@ -203,7 +208,7 @@ export const showErdTargetAction$ = (
 
     if (target.kind === 'table') {
       yield* scrollTableIntoView(state, table, covered);
-      yield* selectTable(state, table.id);
+      yield selectTableAloneAction$(table.id);
       if (target.focusType) {
         yield focusTableAction({
           tableId: table.id,
@@ -222,7 +227,7 @@ export const showErdTargetAction$ = (
     } else {
       yield* scrollIntoView(state, getColumnRect(state, table, index), covered);
     }
-    yield* selectTable(state, table.id);
+    yield selectTableAloneAction$(table.id);
     yield focusColumnAction({
       tableId: table.id,
       columnId: target.columnId,
@@ -245,16 +250,13 @@ export function showErdTab(store: RxStore): void {
 
 /**
  * A jump from outside the canvas, a search result say, to anything it holds,
- * from whichever tab is up.
+ * from whichever tab is up. It lands clear of the Find and Replace panel, read
+ * once the ERD tab is up, so a panel that tab draws again counts too.
  *
  * @example
  * goToErdTarget(store, { kind: 'memo', memoId: 'note' });
  */
-export function goToErdTarget(
-  store: RxStore,
-  target: ErdTarget,
-  covered = 0
-): void {
+export function goToErdTarget(store: RxStore, target: ErdTarget): void {
   showErdTab(store);
-  store.dispatchSync(showErdTargetAction$(target, covered));
+  store.dispatchSync(showErdTargetAction$(target, coveredWidth(store.state)));
 }

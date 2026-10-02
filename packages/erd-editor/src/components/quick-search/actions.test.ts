@@ -31,11 +31,20 @@ import {
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { START_X, START_Y } from '@/constants/layout';
-import { CanvasType } from '@/constants/schema';
+import { Open } from '@/constants/open';
+import { CanvasType, RelationshipType } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ChangeActionTypes } from '@/engine/actions';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
+import {
+  changeOpenMapAction,
+  changeViewportAction,
+  drawStartRelationshipAction,
+} from '@/engine/modules/editor/atom.actions';
+import {
+  SelectType,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
 import {
   changeVisualizationModeAction,
   viewChangeZoomLevelAction,
@@ -50,6 +59,10 @@ import {
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { setExportFileCallback } from '@/utils/file/exportFile';
@@ -803,6 +816,75 @@ describe('createScopeActions / table actions', () => {
       expect(screen.y).toBeCloseTo(START_Y * zoomLevel, 4);
     }
   );
+
+  it('neither starts nor finishes a relationship being drawn, however many tables it jumps to', async () => {
+    setCanvasType(CanvasType.ERD);
+    const users = addTable('users', 100, 200);
+    const orders = addTable('orders', 600, 200);
+    app.store.dispatchSync(
+      addColumnAction({ id: 'users_id', tableId: users }),
+      changeColumnPrimaryKeyAction({
+        id: 'users_id',
+        tableId: users,
+        value: true,
+      }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+    const columnIds =
+      app.store.state.collections.tableEntities[orders].columnIds;
+
+    find(scope(), 'users').perform?.(app);
+    await flush();
+    find(scope(), 'orders').perform?.(app);
+    await flush();
+
+    const { doc, collections, editor } = app.store.state;
+    expect(doc.relationshipIds).toEqual([]);
+    expect(collections.tableEntities[orders].columnIds).toEqual(columnIds);
+    expect(editor.drawRelationship).toMatchObject({ start: null });
+    expect(editor.selectedMap).toEqual({ [orders]: SelectType.table });
+  });
+
+  /** The panel is 380 px wide, 16 px in from the left, and a jump keeps 16 px from it. */
+  it.each([
+    ['ERD', CanvasType.ERD],
+    ['Schema SQL', CanvasType.schemaSQL],
+  ])(
+    'parks the table clear of an open Find and Replace panel, jumping from the %s tab',
+    async (_, canvasType) => {
+      setCanvasType(CanvasType.ERD);
+      const id = addTable('users', 100, 200);
+      app.store.dispatchSync(
+        changeViewportAction({ width: 1440, height: 900 }),
+        changeOpenMapAction({ [Open.findReplace]: true })
+      );
+      setCanvasType(canvasType);
+
+      find(scope(), 'users').perform?.(app);
+      await flush();
+
+      const table = app.store.state.collections.tableEntities[id];
+      const screen = toScreenPoint(app.store.state.settings, table.ui);
+      expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
+      expect(screen.y).toBeCloseTo(START_Y, 4);
+    }
+  );
+
+  it('keeps its landing point beside a panel that leaves too little of a narrow canvas to keep clear', async () => {
+    setCanvasType(CanvasType.ERD);
+    const id = addTable('users', 100, 200);
+    app.store.dispatchSync(
+      changeViewportAction({ width: 600, height: 400 }),
+      changeOpenMapAction({ [Open.findReplace]: true })
+    );
+
+    find(scope(), 'users').perform?.(app);
+    await flush();
+
+    const table = app.store.state.collections.tableEntities[id];
+    const screen = toScreenPoint(app.store.state.settings, table.ui);
+    expect(screen.x).toBeCloseTo(START_X, 4);
+  });
 
   it('carries the table icon on table actions, drawn as the rows of a field found are', async () => {
     setCanvasType(CanvasType.ERD);

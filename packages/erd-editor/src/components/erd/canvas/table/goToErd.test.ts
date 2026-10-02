@@ -1,21 +1,27 @@
 // The store half of Go to ERD: the tab in one dispatch and the scroll with the
 // selection in the next, since a batch is classified against the state before
-// it; and a table the document no longer holds asks for neither.
+// it; and a table the document no longer holds asks for no scroll.
 
 import type { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
+import { Open } from '@/constants/open';
+import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
-  goToErdTable,
-  showErdTableAction$,
-} from '@/components/erd/canvas/table/goToErd';
-import { CanvasType } from '@/constants/schema';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+  changeOpenMapAction,
+  changeViewportAction,
+  drawStartRelationshipAction,
+} from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { toScreenPoint } from '@/konva/scene/viewport';
 
 const VIEWPORT = { width: 800, height: 600 };
@@ -50,20 +56,18 @@ function recordBatches(app: AppContext): string[][] {
   return batches;
 }
 
-describe('showErdTableAction$', () => {
-  it('asks for nothing at all for a table the document no longer holds', () => {
+describe('goToErdTable', () => {
+  it('asks for nothing past the tab for a table the document no longer holds', () => {
     const app = seed();
     const batches = recordBatches(app);
 
-    app.store.dispatchSync(showErdTableAction$('gone'));
+    goToErdTable(app.store, 'gone');
 
-    expect(batches.flat()).toEqual([]);
+    expect(batches.flat()).toEqual(['settings.changeCanvasType']);
     expect(app.store.state.settings.originX).toBe(0);
     expect(app.store.state.settings.originY).toBe(0);
   });
-});
 
-describe('goToErdTable', () => {
   it('changes the tab alone first, then scrolls and selects in a second batch', () => {
     const app = seed();
     const batches = recordBatches(app);
@@ -91,6 +95,44 @@ describe('goToErdTable', () => {
     expect(toScreenPoint(settings, collections.tableEntities.far.ui).y).toBe(
       40
     );
+  });
+
+  it('neither starts nor finishes a relationship being drawn, however many tables it goes to', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      addColumnAction({ id: 'near_id', tableId: 'near' }),
+      changeColumnPrimaryKeyAction({
+        id: 'near_id',
+        tableId: 'near',
+        value: true,
+      }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+
+    goToErdTable(app.store, 'near');
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.visualization })
+    );
+    goToErdTable(app.store, 'far');
+
+    const { doc, collections, editor } = app.store.state;
+    expect(doc.relationshipIds).toEqual([]);
+    expect(collections.tableEntities.far.columnIds).toEqual([]);
+    expect(editor.drawRelationship).toMatchObject({ start: null });
+    expect(editor.selectedMap).toEqual({ far: SelectType.table });
+  });
+
+  /** The panel stands aside on the Visualization tab and is drawn again with the ERD. */
+  it('lands clear of the Find and Replace panel the ERD tab draws again', () => {
+    const app = seed();
+    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+
+    goToErdTable(app.store, 'near');
+
+    const { settings, collections } = app.store.state;
+    expect(
+      toScreenPoint(settings, collections.tableEntities.near.ui).x
+    ).toBeGreaterThanOrEqual(16 + 380 + 16);
   });
 
   it('leaves the scroll out of the second batch for a table already on screen', () => {

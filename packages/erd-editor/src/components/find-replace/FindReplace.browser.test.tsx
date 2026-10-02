@@ -2,7 +2,14 @@
 // the scene they drive: the chords reach the panel through the element's own
 // bindings, and what is typed into the panel has to stop there.
 
-import { createRef, FC, ref, useProvider } from '@dineug/r-html';
+import {
+  addCSSHost,
+  createRef,
+  FC,
+  ref,
+  render,
+  useProvider,
+} from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
@@ -14,9 +21,14 @@ import {
   type Mounted,
 } from '@/__test-utils__';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
-import { useAppContext } from '@/components/appContext';
+import {
+  type AppContext,
+  appContext,
+  useAppContext,
+} from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import FindReplace from '@/components/find-replace/FindReplace';
+import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as quickSearchStyles from '@/components/quick-search/QuickSearch.styles';
 import { SCOPED_ACTION_LIMIT } from '@/components/quick-search/scopedActions';
@@ -29,6 +41,7 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { whenDrawn } from '@/konva/batchDraw';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import { hasAppleDevice } from '@/utils/device-detect';
 import { forceFocusEvent } from '@/utils/internalEvents';
 
@@ -72,12 +85,49 @@ afterEach(async () => {
   await whenDrawn();
 });
 
-async function setup(): Promise<Fixture> {
+/**
+ * Mounts the editor where its stylesheets are live, in a shadow root as the
+ * element has one: a bare div adopts no css template, so nothing in it is laid
+ * out by the rules a measurement is about.
+ */
+function mountStyled(app: AppContext): Mounted {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const shadow = host.attachShadow({ mode: 'open' });
+  addCSSHost(shadow);
+  const globals = document.createElement('div');
+  const container = document.createElement('div');
+  shadow.append(globals, container);
+
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const provider = useProvider(container as any, appContext, app);
+  render(globals, <GlobalStyles />);
+  render(container, <Editor />);
+
+  return {
+    container,
+    app,
+    unmount: () => {
+      render(container, null);
+      render(globals, null);
+      provider.destroy();
+      host.remove();
+    },
+  };
+}
+
+type SetupOptions = { width?: number; height?: number; styled?: boolean };
+
+async function setup({
+  width = 900,
+  height = 640,
+  styled = false,
+}: SetupOptions = {}): Promise<Fixture> {
   const app = createTestAppContext();
-  const mounted = mount(<Editor />, app);
+  const mounted = styled ? mountStyled(app) : mount(<Editor />, app);
   mounted.container.setAttribute(
     'style',
-    'width: 900px; height: 640px; position: relative;'
+    `width: ${width}px; height: ${height}px; position: relative;`
   );
 
   // useProvider takes a bare element at runtime and types only a component
@@ -93,7 +143,7 @@ async function setup(): Promise<Fixture> {
   const focusRoot = () => root.focus();
   document.body.addEventListener(forceFocusEvent.type, focusRoot);
 
-  app.store.dispatchSync(changeViewportAction({ width: 900, height: 640 }));
+  app.store.dispatchSync(changeViewportAction({ width, height }));
   seedFindDocument(app);
   await flush();
   await whenDrawn();
@@ -307,6 +357,25 @@ describe('Find and Replace on a real keyboard', () => {
     expect(heard).toEqual(['KeyS', 'KeyP']);
     expect(stateOf(fixture).settings.zoomLevel).toBeGreaterThan(1);
     expect(document.activeElement).toBe(inputOf(fixture, 'find-input'));
+  });
+});
+
+describe('Find and Replace over the canvas', () => {
+  it('lands a table picked in the palette clear of the open panel', async () => {
+    const fixture = await setup({ width: 1200, height: 640, styled: true });
+    await press(OPEN_FIND);
+    await press('user');
+
+    await press(`{${MOD}>}k{/${MOD}}`);
+    await press('#orders');
+    await press('{ArrowDown}{Enter}');
+
+    const { settings, collections } = stateOf(fixture);
+    const table = toScreenPoint(settings, collections.tableEntities.orders.ui);
+    const container = fixture.mounted.container.getBoundingClientRect();
+    const panel = panelOf(fixture)?.getBoundingClientRect();
+    expect(stateOf(fixture).editor.selectedMap).toEqual({ orders: 'table' });
+    expect(table.x).toBeGreaterThan((panel?.right ?? 0) - container.left);
   });
 });
 

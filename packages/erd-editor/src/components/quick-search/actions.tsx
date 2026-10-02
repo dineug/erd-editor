@@ -7,9 +7,14 @@ import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
-import { goToErdTarget, showErdTab } from '@/components/erd/goToErdTarget';
+import {
+  goToErdTarget,
+  selectTableAloneAction$,
+  showErdTab,
+} from '@/components/erd/goToErdTarget';
 import { fieldIcon } from '@/components/find-replace/fieldIcon';
 import { toErdTarget } from '@/components/find-replace/matchTarget';
+import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -28,10 +33,7 @@ import {
   changeTableNameCaseAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import {
-  addTableAction$,
-  selectTableAction$,
-} from '@/engine/modules/table/generator.actions';
+import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { RootState } from '@/engine/state';
 import { bindsOnTab } from '@/hooks/useKeyBindingMap';
 import { getOriginToPlace } from '@/konva/scene/viewport';
@@ -475,15 +477,16 @@ function createTableActions({ store }: AppContext): Action[] {
         const {
           settings: { zoomLevel },
         } = store.state;
-        // The table parks a zoomed START_X, START_Y in from the corner: the
-        // landing point the DOM scene had, kept so a jump looks the same.
+        // The table parks a zoomed START_X, START_Y in from the corner, the
+        // landing point the DOM scene had, kept so a jump looks the same, or
+        // just clear of an open Find and Replace panel.
         const { x, y } = getOriginToPlace(zoomLevel, table.ui, {
-          x: START_X * zoomLevel,
+          x: Math.max(START_X * zoomLevel, coveredWidth(store.state)),
           y: START_Y * zoomLevel,
         });
         store.dispatch(
           scrollToAction({ originX: x, originY: y }),
-          selectTableAction$(table.id, false)
+          selectTableAloneAction$(table.id)
         );
       },
     }));

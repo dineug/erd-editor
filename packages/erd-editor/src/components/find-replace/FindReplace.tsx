@@ -20,10 +20,8 @@ import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { hasMoveKeys, isEditingText } from '@/engine/modules/editor/state';
-import { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { arrayHas } from '@/utils/arrayHas';
 import { FindReplaceQuery, toggleSearchAction } from '@/utils/emitter';
@@ -58,6 +56,7 @@ import {
 import { fieldIcon } from './fieldIcon';
 import * as styles from './FindReplace.styles';
 import { toErdTarget } from './matchTarget';
+import { coveredWidth, isPanelShown, isTakenOver } from './panelLayout';
 
 export type FindReplaceProps = {
   readonly: boolean;
@@ -83,19 +82,6 @@ export function rowWindow(
 
 /** How long the panel waits for typing to pause before it searches a regular expression. */
 export const REGEX_INPUT_DELAY = 150;
-
-/** The space a jump keeps between the panel and what it lands on. */
-const PANEL_GAP = 16;
-
-/** The least of the canvas a jump keeps clear of the panel for; on less it lands as if there were none. */
-const MIN_CLEAR_WIDTH = 320;
-
-/** The overlays that take the whole canvas over, under which the panel stands down. */
-const TAKEOVERS = [
-  Open.automaticTablePlacement,
-  Open.diffViewer,
-  Open.timeTravel,
-];
 
 /** The chords a press in the panel still carries to the editor: its own, search, the document's undo and redo, and the zoom. */
 const PASSING = [
@@ -139,14 +125,6 @@ function countText({ query, error, matches, current }: CountInput): string {
   if (current === -1) return matchCount(matches.length);
   return `${current + 1} of ${matches.length}`;
 }
-
-/** Whether the panel is drawn: it stands aside, still open, while a dialog it would paint over is up. */
-const isShown = ({ editor, settings }: RootState) =>
-  Boolean(editor.openMap[Open.findReplace]) &&
-  settings.canvasType === CanvasType.ERD &&
-  !editor.openMap[Open.themeBuilder] &&
-  !editor.openMap[Open.tableProperties] &&
-  !TAKEOVERS.some(key => editor.openMap[key]);
 
 const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -232,7 +210,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
    * opening or the batch that shows it again, as a change of search.
    */
   const searchTyped = () => {
-    if (isShown(app.value.store.state)) return search();
+    if (isPanelShown(app.value.store.state)) return search();
 
     pendingSearch = null;
     stale = true;
@@ -273,8 +251,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
   const open = (handed?: FindReplaceQuery) => {
     const { store } = app.value;
-    const { editor } = store.state;
-    if (TAKEOVERS.some(key => editor.openMap[key])) return;
+    if (isTakenOver(store.state)) return;
 
     // The search below reads every edit made while the panel was away, so the
     // batches that bring it back have none left to search for.
@@ -320,24 +297,12 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   const handleShortcut = () => {
     const { store, emitter } = app.value;
     const { editor } = store.state;
-    if (isEditingText(editor) || TAKEOVERS.some(key => editor.openMap[key])) {
-      return;
-    }
+    if (isEditingText(editor) || isTakenOver(store.state)) return;
 
     if (editor.openMap[Open.search]) {
       emitter.emit(toggleSearchAction());
     }
-    isShown(store.state) ? nextTick(focusQuery) : open();
-  };
-
-  /** How far in from the left edge of the canvas the panel hides it. */
-  const coveredWidth = () => {
-    const panel = root.value;
-    if (!panel?.offsetWidth) return 0;
-
-    const { viewport } = app.value.store.state.editor;
-    const covered = panel.offsetLeft + panel.offsetWidth + PANEL_GAP;
-    return viewport.width - covered >= MIN_CLEAR_WIDTH ? covered : 0;
+    isPanelShown(store.state) ? nextTick(focusQuery) : open();
   };
 
   const goTo = (index: number) => {
@@ -348,7 +313,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     state.current = index;
     state.status = '';
     newRun();
-    goToErdTarget(store, toErdTarget(match), coveredWidth());
+    goToErdTarget(store, toErdTarget(match));
     nextTick(scrollToCurrent);
   };
 
@@ -410,8 +375,12 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const after = rematchField(result.matches, matcher, match, value);
     const step = nextReplace(after, match, value, began);
     const next = after[step.index];
+    const { store } = app.value;
     const batch = next
-      ? [...actions, showErdTargetAction$(toErdTarget(next), coveredWidth())]
+      ? [
+          ...actions,
+          showErdTargetAction$(toErdTarget(next), coveredWidth(store.state)),
+        ]
       : actions;
     batch.length && dispatchOwn(batch);
 
@@ -511,7 +480,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { editor } = store.state;
 
     if (
-      isShown(store.state) &&
+      isPanelShown(store.state) &&
       !editor.openMap[Open.search] &&
       !isEditingText(editor) &&
       !editor.drawRelationship
@@ -543,7 +512,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
    */
   const handleBatch = (actions: AnyAction[], edited: () => void) => {
     const before = shown;
-    shown = isShown(app.value.store.state);
+    shown = isPanelShown(app.value.store.state);
     if (replacing) return;
 
     stale ||= actions.some(({ type }) => isTextAction(type));
@@ -553,7 +522,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
   onMounted(() => {
     const { store, shortcut$, emitter } = app.value;
-    shown = isShown(store.state);
+    shown = isPanelShown(store.state);
 
     addUnsubscribe(
       shortcut$
@@ -574,7 +543,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       )
         .pipe(debounceTime(100))
         .subscribe(() => {
-          stale && isShown(store.state) && searchEdited();
+          stale && isPanelShown(store.state) && searchEdited();
         }),
       cancelPendingSearch
     );
@@ -582,7 +551,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    if (!isShown(store.state)) return null;
+    if (!isPanelShown(store.state)) return null;
 
     const { matches, error } = result;
     const { current } = state;
