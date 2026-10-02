@@ -353,6 +353,26 @@ describe('an ALTER TABLE that adds several keys', () => {
     ).toEqual([{ name: 'uq', columns: ['a', 'b'] }]);
   });
 
+  it('ends a group its source leaves open at the terminator', () => {
+    const tablesOf = (source: string) =>
+      schemaSQLParser(source).flatMap(statement =>
+        statement.type === StatementType.createTable ? [statement.name] : []
+      );
+
+    expect(
+      tablesOf(
+        "CREATE TABLE t (a INT); ALTER TABLE t ADD COLUMN b INT COMMENT 'user\\'s id (legacy';\n" +
+          'CREATE TABLE u (id INT PRIMARY KEY); CREATE TABLE v (id INT);'
+      )
+    ).toEqual(['t', 'u', 'v']);
+    expect(
+      tablesOf(
+        'ALTER TABLE t ADD CONSTRAINT ck CHECK (a IN (1, 2);\n' +
+          'CREATE TABLE u (id INT); CREATE TABLE v (id INT);'
+      )
+    ).toEqual(['u', 'v']);
+  });
+
   it('leaves the next statement to the dispatch loop', () => {
     const statements = schemaSQLParser(
       'ALTER TABLE t ADD PRIMARY KEY (id), ADD UNIQUE (a, b)\nCREATE TABLE z (i INT);'

@@ -61,10 +61,13 @@ export function alterTableAddUniqueParser(
     }
   };
 
+  // No group holds a terminator, so one still open there is a quote the lexer
+  // misread or a typo, and the statements after it are left to the loop. A new
+  // statement does not end it: Oracle's USING INDEX (CREATE INDEX ...) is one.
   const skipGroup = () => {
     let depth = 0;
 
-    while (isToken()) {
+    while (isToken() && !isSemicolon($pos.value)) {
       if (isLeftParent($pos.value)) {
         depth++;
       } else if (isRightParent($pos.value) && --depth === 0) {
