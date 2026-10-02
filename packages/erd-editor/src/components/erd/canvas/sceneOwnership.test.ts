@@ -110,10 +110,13 @@ const OUTSIDE_REFERENCES = [
   'components/erd/Erd.tsx @/components/erd/canvas/Canvas',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
   'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
+  'components/erd/goToErdTarget.test.ts @/components/erd/canvas/table/cellLayout',
+  'components/erd/goToErdTarget.ts @/components/erd/canvas/table/cellLayout',
   'components/erd/hitTest.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/erd/minimap/Minimap.browser.test.tsx @/components/erd/canvas/Canvas.styles',
   'components/erd/minimap/Minimap.tsx @/components/erd/canvas/Canvas.styles',
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
+  'components/find-replace/FindReplace.test.ts @/components/erd/canvas/table/cellLayout',
   'components/sceneSourceContext.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/themeContext.browser.test.tsx @/components/erd/canvas/memo/Memo',
   'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/Canvas',
@@ -155,7 +158,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the fifteen references that own a reason to', () => {
+  it('is reached from outside by the eighteen references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

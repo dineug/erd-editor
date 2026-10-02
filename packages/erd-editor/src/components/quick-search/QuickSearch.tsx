@@ -20,10 +20,18 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import { arrayHas } from '@/utils/arrayHas';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { Action, createScopeActions, searchActions } from './actions';
+import { clearHangulForms, findPaletteChunks } from './hangul';
+import {
+  PALETTE_PREFIXES,
+  PaletteQuery,
+  parsePaletteQuery,
+  scopeLabel,
+} from './paletteQuery';
 import * as styles from './QuickSearch.styles';
+import { paletteRows, scopeBase } from './scopedActions';
 
 export type QuickSearchProps = {};
 
@@ -42,16 +50,32 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
   const state = observable({
     keyword: '',
-    prevActions: [] as Action[],
-    actions: [] as Action[],
+    /** Every row of the level shown, the top level or a submenu, which each keystroke searches afresh. */
+    level: [] as Action[],
+    rows: [] as Action[],
+    submenu: false,
+    /** Whether the search with no prefix finds no command of the level. */
+    missed: false,
     index: -1,
   });
 
-  const getActions = () => {
-    return state.actions.filter(action =>
-      action.filter ? action.filter(app.value) : true
-    );
+  const byFilter = (actions: Action[]) =>
+    actions.filter(action => (action.filter ? action.filter(app.value) : true));
+
+  /** What the list shows: the level's commands or their fuzzy hits, at the top level the prefixes offered below them, or a scope's rows. */
+  const getActions = () => byFilter(state.rows);
+
+  const setLevel = (actions: Action[]) => {
+    state.level = actions;
+    state.rows = scopeBase(actions, null);
+    state.missed = false;
   };
+
+  /** What is typed, read for a prefix at the top level only; a submenu filters its own rows. */
+  const readQuery = (value: string): PaletteQuery =>
+    state.submenu
+      ? { scope: null, keyword: value.trim(), table: null }
+      : parsePaletteQuery(value);
 
   const clearKeyword = () => {
     state.keyword = '';
@@ -59,12 +83,41 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   };
 
   const setActions = (value: string) => {
-    const newValue = value.trim();
+    const query = readQuery(value);
+    const base = scopeBase(state.level, query.scope);
+    const noKeyword = isEmpty(query.keyword);
+    // Every keystroke searches the level's whole list, as VS Code's palette
+    // does, never the last hits: a word deleted or typed anew finds afresh.
+    const found = noKeyword
+      ? base
+      : searchActions(byFilter(base), query.keyword);
 
     state.index = -1;
-    state.actions = isEmpty(newValue)
-      ? state.prevActions
-      : searchActions(getActions(), newValue);
+    // Rows read from the document are looked up only at the top level.
+    state.rows = state.submenu ? found : paletteRows(app.value, found, query);
+    state.missed =
+      !state.submenu && query.scope === null && !noKeyword && !found.length;
+  };
+
+  /** Types a prefix for the reader, as a help row or a hint does, and leaves the caret after it. */
+  const insertText = (text: string) => {
+    state.keyword = text;
+    setActions(text);
+
+    nextTick(() => {
+      const input = root.value?.querySelector('input');
+      input && lastCursorFocus(input);
+    });
+  };
+
+  /** The words a row lights up: the keyword as typed, or without its prefix, and a column search's table part. */
+  const getSearchWords = ({
+    scope,
+    keyword,
+    table,
+  }: PaletteQuery): string[] => {
+    if (!scope) return [state.keyword];
+    return table ? [keyword, table] : [keyword];
   };
 
   const scrollIntoView = () => {
@@ -84,6 +137,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const handleClose = () => {
     const { store } = app.value;
     store.dispatch(changeOpenMapAction({ [Open.search]: false }));
+    clearHangulForms();
     emitFocus();
   };
 
@@ -95,12 +149,14 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       action.perform(app.value);
       handleClose();
     } else if (action.next) {
-      state.prevActions = action.next;
-      state.actions = action.next;
+      setLevel(action.next);
+      state.submenu = true;
 
       const input = root.value?.querySelector('input');
       input && lastCursorFocus(input);
       clearKeyword();
+    } else if (action.insert !== undefined) {
+      insertText(action.insert);
     } else {
       handleClose();
     }
@@ -149,7 +205,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    if (!hasAutocompleteKey(event.key)) return;
+    // A key pressed mid-syllable belongs to the IME, which finishes it first,
+    // and Chrome on a Mac sends that Enter again once it has: only that one acts.
+    if (isComposing(event) || !hasAutocompleteKey(event.key)) return;
 
     keyMap[event.key]?.(event);
   };
@@ -169,11 +227,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     if (!isEditingText(editor)) {
       const opened = !editor.openMap[Open.search];
       store.dispatch(changeOpenMapAction({ [Open.search]: opened }));
+      clearHangulForms();
 
       if (opened) {
-        const actions = createScopeActions(app.value);
-        state.prevActions = actions;
-        state.actions = actions;
+        setLevel(createScopeActions(app.value));
+        state.submenu = false;
         clearKeyword();
         store.dispatch(
           changeOpenMapAction({
@@ -205,7 +263,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       shortcut$
         .pipe(filter(({ type }) => type === KeyBindingName.search))
         .subscribe(handleToggleSearch),
-      emitter.on({ toggleSearch: handleToggleSearch })
+      emitter.on({ toggleSearch: handleToggleSearch }),
+      clearHangulForms
     );
   });
 
@@ -216,17 +275,51 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     } = store.state;
     if (!openMap[Open.search]) return null;
 
+    const query = readQuery(state.keyword);
+    const searchWords = getSearchWords(query);
+    const topLevel = !state.submenu;
+
     return (
       <div class={styles.root} on:click={handleOutsideClick}>
         <div class={['quick-search', styles.container]} use:ref={ref(root)}>
-          <TextInput
-            class={styles.search}
-            placeholder="Search"
-            autofocus={true}
-            value={state.keyword}
-            onInput={handleInputKeyword}
-            onKeydown={handleKeydown}
-          />
+          <div class={styles.field}>
+            <TextInput
+              class={styles.search}
+              placeholder="Search"
+              autofocus={true}
+              value={state.keyword}
+              onInput={handleInputKeyword}
+              onKeydown={handleKeydown}
+            />
+            {query.scope ? (
+              <span class={['quick-search-scope', styles.scope]}>
+                {scopeLabel(query.scope)}
+              </span>
+            ) : null}
+          </div>
+          {topLevel && !state.keyword ? (
+            <div class={['quick-search-hint', styles.hint]}>
+              {PALETTE_PREFIXES.map(({ prefix, label, description }) => (
+                <button
+                  class={styles.hintItem}
+                  type="button"
+                  title={description}
+                  on:click={(event: MouseEvent) => {
+                    event.stopPropagation();
+                    insertText(prefix);
+                  }}
+                >
+                  <span class={styles.prefix}>{prefix}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {state.missed ? (
+            <div class={['quick-search-empty', styles.empty]}>
+              No commands match
+            </div>
+          ) : null}
           <div class={['scrollbar', styles.list]}>
             {getActions().map((action, index) => (
               <div
@@ -241,8 +334,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                 ) : null}
                 <span class={styles.name}>
                   <HighlightedText
-                    searchWords={[state.keyword]}
+                    searchWords={searchWords}
                     textToHighlight={action.name}
+                    findChunks={findPaletteChunks}
                   />
                 </span>
                 {action.keywords ? (
@@ -250,8 +344,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                     <div class={styles.vertical}></div>
                     <span class={styles.keyword}>
                       <HighlightedText
-                        searchWords={[state.keyword]}
+                        searchWords={searchWords}
                         textToHighlight={action.keywords}
+                        findChunks={findPaletteChunks}
                       />
                     </span>
                   </>

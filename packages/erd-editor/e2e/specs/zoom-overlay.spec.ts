@@ -281,7 +281,7 @@ test.describe('zoom, scroll and overlays', () => {
     await expect(erd.contextMenu).toHaveCount(1);
   });
 
-  test('$mod+KeyK opens quick search, which lists commands and the seeded tables', async ({
+  test('$mod+KeyK opens quick search, which lists commands alone and the seeded tables after #', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
@@ -295,20 +295,37 @@ test.describe('zoom, scroll and overlays', () => {
     await expect(quickSearch.locator('input')).toBeFocused();
 
     // Membership only — the list is fuse.js ranked and its order is not part of
-    // the contract. createScopeActions mixes fixed commands with one row per
-    // table in the document, so the seed shows up here too.
-    for (const label of ['New Table', 'New Memo', 'users', 'posts']) {
+    // the contract. Without a prefix it holds the commands alone; the tables in
+    // the document wait for the # prefix.
+    for (const label of ['New Table', 'New Memo']) {
       await expect(quickSearch.getByText(label, { exact: true })).toBeVisible();
     }
+    for (const label of ['users', 'posts']) {
+      await expect(quickSearch.getByText(label, { exact: true })).toHaveCount(
+        0
+      );
+    }
 
-    // 'memo' matches exactly one action: fuse.js searches name + keywords,
-    // and no other entry carries either token.
+    // 'memo' lists New Memo alone: fuse.js searches name + keywords of every
+    // command on each keystroke, at a threshold of 0.4 that no longer fuzzes
+    // it to Import or the relationship commands.
     await erd.page.keyboard.type('memo');
     await expect(rows).toHaveCount(1);
-    await expect(rows).toHaveText(/New Memo/);
     await expect(
-      quickSearch.getByText('New Table', { exact: true })
-    ).toHaveCount(0);
+      quickSearch.getByText('New Memo', { exact: true })
+    ).toHaveCount(1);
+    for (const label of ['New Table', 'Import', 'Zero One', 'One Only']) {
+      await expect(quickSearch.getByText(label, { exact: true })).toHaveCount(
+        0
+      );
+    }
+
+    await erd.page.keyboard.press('ControlOrMeta+KeyA');
+    await erd.page.keyboard.type('#');
+    await expect(rows).toHaveCount(2);
+    for (const label of ['users', 'posts']) {
+      await expect(quickSearch.getByText(label, { exact: true })).toBeVisible();
+    }
 
     await erd.press(Shortcut.stop);
     await expect(quickSearch).toHaveCount(0);
