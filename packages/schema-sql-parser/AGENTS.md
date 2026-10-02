@@ -1,20 +1,20 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-02 -->
 
 # schema-sql-parser
 
 ## Purpose
 
-`@dineug/schema-sql-parser` (private) is a hand-written, permissive DDL parser: `schemaSQLParser(source)` tokenizes SQL of any dialect into a flat `Statement[]` of seven kinds — `create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped, so a real dump imports partially instead of failing. Its only consumer is `packages/erd-editor/src/utils/schema-sql-parser/`, which folds the statements into an `ERDEditorSchemaV3` document.
+`@dineug/schema-sql-parser` (private) is a hand-written, permissive DDL parser: `schemaSQLParser(source, { database })` tokenizes SQL of any dialect into a flat `Statement[]` of seven kinds — `create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey}` and `comment.on.{table,column}`. Unrecognised input is skipped, so a real dump imports partially instead of failing; `CREATE TYPE`, `CREATE DOMAIN` and `CREATE EXTENSION` are among it. Its only consumer is `packages/erd-editor/src/utils/schema-sql-parser/`, which folds the statements into an `ERDEditorSchemaV3` document and names the document's database, the one option; only Databricks reads differently.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, the statement types; everything else is internal |
-| `src/parser/tokenizer.ts` | Lexer — `"x"`, `'x'`, `` `x` `` and `[x]` each become one `string` token, delimiters stripped, marked `quoted`; an unpaired `]` emits `rightBracket` |
+| `src/index.ts` | Public surface — `schemaSQLParser`, `StatementType`, `SortType`, the statement types, `SchemaSQLParserOptions` and `DatabaseVendor`; everything else is internal |
+| `src/parser/tokenizer.ts` | Lexer — `"x"`, `'x'`, `` `x` `` and `[x]` each become one `string` token, delimiters stripped, `quoted` set to the opening delimiter; a doubled `''`, `""` or ``` `` ``` inside is one character of the value, a doubled `]]` is not (a nested array literal closes on it); a `'` behind an odd run of backslashes is one too, its backslash dropped, unless whitespace or `,;):]\|+` follows it (MySQL's `'it\'s'` against standard SQL's `'C:\'` and T-SQL's `'C:\'+name`); for a Databricks source a single-quoted literal follows Spark's rules instead, every backslash escaping what follows it (`\'`, `\\`, `\n`, `\u0041`, `\101`); an unpaired `]` emits `rightBracket` |
 | `src/parser/index.ts` | Dispatch loop — probes each matcher at `$pos`, runs a statement parser, else advances one token |
-| `src/parser/helper.ts` | Token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchNestedDataType`, `matchReferentialClause` |
+| `src/parser/helper.ts` | Token/value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchQualifiedName`, `matchDataType`, `matchUserDataType`, `matchNestedDataType`, `matchReferentialClause`, `isTableItemWord`, `toStringLiteral`, `requote`, `unquoteTypeName` |
 | `src/parser/statement/` | One parser per statement kind; `index.ts` holds `Statement`, `StatementType`, `SortType`, `RefPos` |
 | `src/parser/dataType/` | Per-vendor type lists: MySQL, MariaDB, PostgreSQL, MSSQL, Oracle, SQLite, Databricks, Snowflake |
 | `src/schema_sql_test_case.md` | End-to-end fixtures read by `index.test.ts` |
@@ -27,10 +27,12 @@
 - **`$pos` (`RefPos = { value: number }`) is a shared mutable cursor.** Each parser leaves it just past what it consumed; off by one either loops forever or swallows a statement.
 - Adding a statement kind is four edits: the parser file, the `Statement` union and `StatementType`, a matcher in `parser/helper.ts`, a branch in `parser/index.ts`.
 - **Keywords are unquoted `string` tokens compared case-insensitively**; every `is*Value` matcher refuses a `quoted` token, so `` `key` `` is a column and `KEY` an index. `--` and `/* */` comments never become tokens.
-- **A quoted `DEFAULT` goes back into quotes** (`'...'`, inner quotes doubled): `column.default` is raw SQL that every exporter writes after `DEFAULT`, and the lexer has stripped the quotes.
-- **A table constraint or index item yields no column**: `opensConstraintItem` in `statement/create.table.ts` names the tokens that open one; a new opener goes there.
+- **A quoted `DEFAULT` goes back into quotes** (`toStringLiteral`: `'...'`, inner quotes doubled, or for Databricks a quote and a backslash escaped with a backslash, which Spark 4.0 and earlier read): `column.default` is raw SQL that every exporter writes after `DEFAULT`, and the lexer has stripped the quotes.
+- **So does a quoted data type argument, in the delimiter it came in** (`requote`, a single quote by the same rule): `ENUM('a','b')`, `OBJECT("city" VARCHAR)`; `column.dataType` is raw SQL too. A user type's quoted name keeps its quotes, T-SQL brackets too whether the name needs them or not (`"MyType"`, `[sysname]`, `[dbo].[Order]`, where ORDER is reserved), a listed type's does not (`[int]` → `int`) but for PostgreSQL's `"char"` and `"bit"`, other types than `char` and `bit` (`unquoteTypeName`). A nested type's quoted tokens keep theirs too: `STRUCT<name: STRING COMMENT 'x'>`, `'it\'s'` for Databricks.
+- **A type no list carries is read only where the type stands**, the token right after the column name (`typePos` in `statement/create.table.ts`): `mood`, `public.mood`, `hstore`. A single-quoted literal and the words in `ColumnKeywords` (`helper.ts`) are refused there, since a typeless column (SQLite, a computed `AS`, a `CREATE TABLE AS` column list) puts its first constraint in that place; a column keyword the parser meets there goes into that list, or it becomes the type. `TAG` before `(` and `SORT` where the column ends are refused by position, since a PostgreSQL type may carry either name. Anywhere else an unknown word is an attribute (`INT UNSIGNED`).
+- **A table constraint or index item yields no column**: `opensConstraintItem` in `statement/create.table.ts` names the tokens that open one; a new opener goes there. An item opened by a word a column may be named too (an unnamed `CHECK (...)` or `CHECK NOT FOR REPLICATION (...)`, `LIKE s`, `EXCLUDE USING`, `FULLTEXT ft (c)`, `PERIOD FOR`, `SUPPLEMENTAL LOG`) goes into `isTableItemWord` (`helper.ts`), told apart by what follows it; a column named `check` is quoted anyway.
 - `helper.ts` merges all eight `dataType/` lists into one deduplicated uppercase set, so a type added to one vendor widens every dialect.
-- **Type names match word by word, longest first**: write multi-word names in full (`TIMESTAMP WITHOUT TIME ZONE`); `matchDataType` returns the token span, argument lists included. Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`; no test pins the parity, so change both lists together.
+- **Type names match word by word, longest first**: write multi-word names in full (`TIMESTAMP WITHOUT TIME ZONE`); `matchDataType` returns the token span, argument lists and an array suffix (`[]`, `[3]`, `ARRAY`) included. Unlisted words in front of a listed type join it in the type's place, since SQLite takes any words as a type (`UNSIGNED BIG INTEGER`); with no listed type after them, only the first is the type (`hstore COMPRESSION pglz`). Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`; no test pins the parity, so change both lists together.
 - **The `CREATE ... TABLE` header is measured, not counted**: `matchCreateTable` returns its span over a whitelist of modifiers (`OR REPLACE`, `TRANSIENT`, …), since scanning to the next `TABLE` would claim `CREATE VIEW ... FROM TABLE(...)`. `matchQualifiedName` does the same for an `ALTER TABLE db.schema.t` target.
 - **Angle-bracket generics are rebalanced in the parser**: `<` / `>` are not break characters, so `matchNestedDataType` rejoins `ARRAY` / `MAP` / `STRUCT` spans and keeps their inner commas from ending the column.
 

@@ -1909,3 +1909,246 @@ ALTER TABLE analytics.dbt_dev.orders ADD FOREIGN KEY (user_id) REFERENCES analyt
   ]
 }
 ```
+
+### PostgreSQL user-defined types, domains and arrays
+
+```sql
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TYPE public.mood AS ENUM ('sad', 'ok', 'it''s');
+
+CREATE TYPE address AS (street text, city text);
+
+CREATE DOMAIN us_postal AS TEXT CHECK (VALUE ~ '^\d{5}$');
+
+CREATE TABLE public.person (
+    id integer NOT NULL,
+    current_mood public.mood DEFAULT 'ok'::public.mood NOT NULL,
+    zip us_postal,
+    home address,
+    email citext,
+    tags "public"."mood"[],
+    scores integer[]
+);
+
+COMMENT ON COLUMN public.person.current_mood IS 'it''s how they feel';
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "person",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "integer",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "current_mood",
+          "dataType": "public.mood",
+          "default": "'ok'",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "zip",
+          "dataType": "us_postal",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "home",
+          "dataType": "address",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "email",
+          "dataType": "citext",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "dataType": "\"public\".\"mood\"[]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "scores",
+          "dataType": "integer[]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "person",
+      "columnName": "current_mood",
+      "comment": "it's how they feel"
+    }
+  ]
+}
+```
+
+### SQL Server alias types
+
+```sql
+CREATE TYPE [dbo].[Phone] FROM [nvarchar](20) NULL;
+
+CREATE TYPE dbo.LineItems AS TABLE (id INT, qty INT);
+
+CREATE TABLE [dbo].[Customer] (
+  [Id] [int] IDENTITY(1,1) NOT NULL,
+  [Phone] [dbo].[Phone] NULL,
+  [Owner] [sysname] NOT NULL,
+  [Status] [dbo].[Order] NULL
+);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "Customer",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Phone",
+          "dataType": "[dbo].[Phone]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "Owner",
+          "dataType": "[sysname]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "dataType": "[dbo].[Order]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### MySQL ENUM and SET values
+
+```sql
+CREATE TABLE `film` (
+  `rating` ENUM('G','PG','PG-13','R','NC-17') DEFAULT 'G',
+  `special_features` SET('Trailers','Deleted Scenes') NULL,
+  `note` ENUM('it''s','') NOT NULL COMMENT 'it''s a note'
+);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "film",
+      "comment": "",
+      "columns": [
+        {
+          "name": "rating",
+          "dataType": "ENUM('G','PG','PG-13','R','NC-17')",
+          "default": "'G'",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "special_features",
+          "dataType": "SET('Trailers','Deleted Scenes')",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "dataType": "ENUM('it''s','')",
+          "default": "",
+          "comment": "it's a note",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```

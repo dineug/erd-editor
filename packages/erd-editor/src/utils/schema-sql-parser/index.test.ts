@@ -27,9 +27,10 @@ const ctx = createEngineContext({ toWidth: text => text.length * 10 });
 
 function parse(
   sql: string,
-  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3
+  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3,
+  database?: number
 ): Schema {
-  return JSON.parse(schemaSQLParserToSchemaJson(sql, ctx, prepare));
+  return JSON.parse(schemaSQLParserToSchemaJson(sql, ctx, prepare, database));
 }
 
 const tablesOf = (schema: Schema): Table[] =>
@@ -57,6 +58,15 @@ const relationshipsOf = (schema: Schema): Relationship[] =>
 
 const indexesOf = (schema: Schema): Index[] =>
   schema.doc.indexIds.map(id => schema.collections.indexEntities[id]);
+
+const commentsOf = (schema: Schema) =>
+  tablesOf(schema).flatMap(table => [
+    table.comment,
+    ...columnsOf(schema, table).map(column => column.comment),
+  ]);
+
+const stateOf = (schema: Schema) =>
+  ({ ...schema, editor: {}, lww: {} }) as unknown as RootState;
 
 describe('schemaSQLParserToSchemaJson', () => {
   it('produces a v3 schema envelope for an empty source', () => {
@@ -749,6 +759,53 @@ describe('schemaSQLParserToSchemaJson', () => {
         'id',
       ]);
     });
+
+    // A dump doubles the quote inside a comment, or MySQL's escapes it with a
+    // backslash, and the import keeps one; the export has to double it again
+    // or the comment ends early. Databricks' exporter spec pins its own form.
+    it.each<[string, number, string]>([
+      [
+        'MySQL',
+        Database.MySQL,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT 'o''k';",
+      ],
+      [
+        'backslashed MySQL',
+        Database.MySQL,
+        "CREATE TABLE t (a INT COMMENT 'it\\'s', b INT) COMMENT 'o\\'k';",
+      ],
+      [
+        'MariaDB',
+        Database.MariaDB,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT 'o''k';",
+      ],
+      [
+        'PostgreSQL',
+        Database.PostgreSQL,
+        "CREATE TABLE t (a INT, b INT); COMMENT ON TABLE t IS 'o''k'; COMMENT ON COLUMN t.a IS 'it''s';",
+      ],
+      [
+        'Oracle',
+        Database.Oracle,
+        "CREATE TABLE t (a INT, b INT); COMMENT ON TABLE t IS 'o''k'; COMMENT ON COLUMN t.a IS 'it''s';",
+      ],
+      [
+        'Snowflake',
+        Database.Snowflake,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT = 'o''k';",
+      ],
+    ])(
+      'keeps a quote in a %s comment through its export',
+      (_, database, sql) => {
+        const imported = parse(sql);
+        const exported = createSchemaSQL(stateOf(imported), database);
+
+        expect(commentsOf(imported)).toEqual(["o'k", "it's", '']);
+        expect(exported).toContain("'it''s'");
+        expect(exported).toContain("'o''k'");
+        expect(commentsOf(parse(exported))).toEqual(["o'k", "it's", '']);
+      }
+    );
   });
 
   describe('default round trip', () => {
@@ -819,5 +876,296 @@ describe('schemaSQLParserToSchemaJson', () => {
         ).toEqual(defaults);
       }
     );
+  });
+
+  // Import, export for the same vendor, import again: a type no vendor list
+  // carries used to come in empty, and an ENUM without the quotes of its values.
+  describe('data type round trip', () => {
+    const typesOf = (schema: Schema) =>
+      tablesOf(schema).flatMap(table =>
+        columnsOf(schema, table).map(column => column.dataType)
+      );
+
+    it.each<[string, number, string, string[]]>([
+      [
+        'PostgreSQL',
+        Database.PostgreSQL,
+        'CREATE TABLE person (id serial, current_mood public.mood NOT NULL, zip us_postal, email citext, kind "MyType", tags mood[], grid text[][], scores integer ARRAY, flag "char", bits "bit");',
+        [
+          'serial',
+          'public.mood',
+          'us_postal',
+          'citext',
+          '"MyType"',
+          'mood[]',
+          'text[][]',
+          'integer ARRAY',
+          '"char"',
+          '"bit"',
+        ],
+      ],
+      [
+        'MySQL',
+        Database.MySQL,
+        "CREATE TABLE film (rating ENUM('G','PG-13','it''s') NOT NULL, features SET('Trailers','Deleted Scenes'), mark ENUM('it\\'s','b'));",
+        [
+          "ENUM('G','PG-13','it''s')",
+          "SET('Trailers','Deleted Scenes')",
+          "ENUM('it''s','b')",
+        ],
+      ],
+      [
+        'MariaDB',
+        Database.MariaDB,
+        "CREATE TABLE film (rating ENUM('G','') DEFAULT 'G');",
+        ["ENUM('G','')"],
+      ],
+      [
+        'MSSQL',
+        Database.MSSQL,
+        'CREATE TABLE customer ([phone] [dbo].[Phone] NULL, [owner] [sysname] NOT NULL, [zip] [zip code], [status] [dbo].[Order]);',
+        ['[dbo].[Phone]', '[sysname]', '[zip code]', '[dbo].[Order]'],
+      ],
+      [
+        'Oracle',
+        Database.Oracle,
+        'CREATE TABLE shape (geom MDSYS.SDO_GEOMETRY, doc SYS.XMLTYPE);',
+        ['MDSYS.SDO_GEOMETRY', 'SYS.XMLTYPE'],
+      ],
+      [
+        'SQLite',
+        Database.SQLite,
+        'CREATE TABLE t (a UNSIGNED INTEGER, b VARYING CHARACTER(255), c UNSIGNED BIG INTEGER, d SIGNED BIG INT NOT NULL);',
+        [
+          'UNSIGNED INTEGER',
+          'VARYING CHARACTER(255)',
+          'UNSIGNED BIG INTEGER',
+          'SIGNED BIG INT',
+        ],
+      ],
+      [
+        'Snowflake',
+        Database.Snowflake,
+        'CREATE TABLE t (profile OBJECT("city" VARCHAR, zip NUMBER));',
+        ['OBJECT("city" VARCHAR,zip NUMBER)'],
+      ],
+      [
+        'Databricks',
+        Database.Databricks,
+        "CREATE TABLE t (a my_catalog.my_type, b ARRAY<STRING>, c STRUCT<name: STRING COMMENT 'the name', `first name`: STRING>);",
+        [
+          'my_catalog.my_type',
+          'ARRAY<STRING>',
+          "STRUCT<name: STRING COMMENT 'the name', `first name`: STRING>",
+        ],
+      ],
+    ])(
+      'keeps the data types of a %s import through its export',
+      (_, database, sql, expected) => {
+        const imported = parse(sql);
+        const exported = createSchemaSQL(stateOf(imported), database);
+
+        expect(typesOf(imported)).toEqual(expected);
+        expected.forEach(dataType => expect(exported).toContain(dataType));
+        expect(typesOf(parse(exported))).toEqual(expected);
+      }
+    );
+
+    // Trimmed from what pg_dump, mysqldump and Oracle's DBMS_METADATA wrote
+    // for one table of such types: the statements around it add no table, and
+    // its types and comments come back from its export.
+    const pgDump = String.raw`\restrict rHceboc659NUboYi98abcJftPQutfMfMXtYVs6L50FjUjGd4smdAC3en7CNg1ih
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
+CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS ltree WITH SCHEMA public;
+CREATE DOMAIN public."Money Amount" AS numeric(12,2);
+ALTER DOMAIN public."Money Amount" OWNER TO postgres;
+CREATE TYPE public."MyType" AS (
+    a integer,
+    b text
+);
+ALTER TYPE public."MyType" OWNER TO postgres;
+CREATE TYPE public.mood AS ENUM (
+    'sad',
+    'ok',
+    'happy'
+);
+CREATE DOMAIN public.us_postal AS text
+    CONSTRAINT us_postal_check CHECK ((VALUE ~ '^\d{5}$'::text));
+CREATE TABLE public.person (
+    id integer NOT NULL,
+    current_mood public.mood NOT NULL,
+    mood_q public.mood,
+    zip public.us_postal,
+    email public.citext,
+    attrs public.hstore,
+    path public.ltree,
+    kind public."MyType",
+    amount public."Money Amount",
+    tags public.mood[],
+    grid text[],
+    scores integer[],
+    fixed integer[],
+    label character varying(20) DEFAULT 'it''s'::character varying,
+    created timestamp with time zone,
+    flag "char",
+    bits "bit"
+);
+ALTER TABLE public.person OWNER TO postgres;
+COMMENT ON TABLE public.person IS 'o''k';
+COMMENT ON COLUMN public.person.id IS 'it''s the id';
+CREATE SEQUENCE public.person_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER SEQUENCE public.person_id_seq OWNED BY public.person.id;
+ALTER TABLE ONLY public.person
+    ADD CONSTRAINT person_pkey PRIMARY KEY (id);
+\unrestrict rHceboc659NUboYi98abcJftPQutfMfMXtYVs6L50FjUjGd4smdAC3en7CNg1ih`;
+    const mysqlDump = `/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+DROP TABLE IF EXISTS \`film\`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE \`film\` (
+  \`id\` int NOT NULL AUTO_INCREMENT,
+  \`rating\` enum('G','PG-13','it''s') NOT NULL DEFAULT 'G' COMMENT 'it''s rated',
+  \`features\` set('Trailers','Deleted Scenes') DEFAULT NULL,
+  \`blank\` enum('G','') DEFAULT 'G',
+  \`price\` decimal(5,2) DEFAULT NULL,
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='o''k';
+/*!40101 SET character_set_client = @saved_cs_client */;`;
+    const oracleDdl = `  CREATE TABLE "HR"."SHAPE"
+   (    "ID" NUMBER(10,0) NOT NULL ENABLE,
+        "DOC" "SYS"."XMLTYPE" ,
+        "ADDR" "HR"."ADDRESS_T" ,
+        "LABEL" VARCHAR2(20) DEFAULT 'it''s',
+         CONSTRAINT "PK_SHAPE" PRIMARY KEY ("ID")
+  USING INDEX  ENABLE
+   ) ;
+
+   COMMENT ON COLUMN "HR"."SHAPE"."ID" IS 'it''s the id';
+   COMMENT ON TABLE "HR"."SHAPE"  IS 'o''k';`;
+
+    it.each<[string, number, string, string[], string[]]>([
+      [
+        'pg_dump',
+        Database.PostgreSQL,
+        pgDump,
+        [
+          'integer',
+          'public.mood',
+          'public.mood',
+          'public.us_postal',
+          'public.citext',
+          'public.hstore',
+          'public.ltree',
+          'public."MyType"',
+          'public."Money Amount"',
+          'public.mood[]',
+          'text[]',
+          'integer[]',
+          'integer[]',
+          'character varying(20)',
+          'timestamp with time zone',
+          '"char"',
+          '"bit"',
+        ],
+        ["o'k", "it's the id", ...Array(16).fill('')],
+      ],
+      [
+        'mysqldump',
+        Database.MySQL,
+        mysqlDump,
+        [
+          'int',
+          "enum('G','PG-13','it''s')",
+          "set('Trailers','Deleted Scenes')",
+          "enum('G','')",
+          'decimal(5,2)',
+        ],
+        ["o'k", '', "it's rated", '', '', ''],
+      ],
+      [
+        'DBMS_METADATA',
+        Database.Oracle,
+        oracleDdl,
+        ['NUMBER(10,0)', '"SYS"."XMLTYPE"', '"HR"."ADDRESS_T"', 'VARCHAR2(20)'],
+        ["o'k", "it's the id", '', '', ''],
+      ],
+    ])(
+      'keeps the types and comments of what %s wrote through its export',
+      (_, database, sql, types, comments) => {
+        const imported = parse(sql);
+        const exported = parse(createSchemaSQL(stateOf(imported), database));
+
+        expect(tablesOf(imported)).toHaveLength(1);
+        expect(typesOf(imported)).toEqual(types);
+        expect(commentsOf(imported)).toEqual(comments);
+        expect(tablesOf(exported)).toHaveLength(1);
+        expect(typesOf(exported)).toEqual(types);
+        expect(commentsOf(exported)).toEqual(comments);
+      }
+    );
+  });
+
+  // A Databricks document reads its literals by Spark's escapes and writes a
+  // default and a field comment back in them, so its export imports back the
+  // same; under the guess a backslash doubled on every pass.
+  describe('Databricks literal round trip', () => {
+    const sql = String.raw`CREATE TABLE t (
+      a STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'> COMMENT 'C:\\dir it\'s',
+      b STRING DEFAULT 'it\'s' COMMENT 'a\\\'b',
+      c STRING DEFAULT 'C:\\'
+    ) COMMENT 'o\'k \\';`;
+    const struct = String.raw`STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'>`;
+
+    const fieldsOf = (schema: Schema) =>
+      columnsOf(schema, tablesOf(schema)[0]).map(column => [
+        column.name,
+        column.dataType,
+        column.default,
+        column.comment,
+      ]);
+
+    it('keeps the quotes and backslashes through each export', () => {
+      const first = parse(sql, undefined, Database.Databricks);
+      const exported = createSchemaSQL(stateOf(first), Database.Databricks);
+      const second = parse(exported, undefined, Database.Databricks);
+
+      expect(tablesOf(first)[0].comment).toBe("o'k \\");
+      expect(fieldsOf(first)).toEqual([
+        ['a', struct, '', "C:\\dir it's"],
+        ['b', 'STRING', String.raw`'it\'s'`, "a\\'b"],
+        ['c', 'STRING', String.raw`'C:\\'`, ''],
+      ]);
+      expect(exported).toContain(struct);
+      expect(exported).toContain(String.raw`DEFAULT 'it\'s'`);
+      expect(exported).toContain(String.raw`COMMENT 'C:\\dir it\'s'`);
+      expect(exported).toContain(String.raw`COMMENT 'o\'k \\';`);
+      expect(tablesOf(second)[0].comment).toBe("o'k \\");
+      expect(fieldsOf(second)).toEqual(fieldsOf(first));
+      expect(createSchemaSQL(stateOf(second), Database.Databricks)).toBe(
+        exported
+      );
+    });
+
+    it('reads the same SQL by the guess in a document of another vendor', () => {
+      expect(commentsOf(parse(sql, undefined, Database.MySQL))).toEqual([
+        "o'k \\\\",
+        "C:\\\\dir it's",
+        "a\\\\'b",
+        '',
+      ]);
+      expect(commentsOf(parse(sql))).toEqual(
+        commentsOf(parse(sql, undefined, Database.MySQL))
+      );
+    });
   });
 });

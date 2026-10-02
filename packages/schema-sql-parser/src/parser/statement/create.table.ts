@@ -1,4 +1,5 @@
 import {
+  isArrayDimensionToken,
   isAscValue,
   isAutoIncrementValue,
   isCharacterSet,
@@ -25,16 +26,22 @@ import {
   isRightParentToken,
   isSemicolonToken,
   isStringToken,
+  isTableItemWord,
   isUniqueValue,
   matchCreateTable,
   matchDataType,
   matchNestedDataType,
   matchReferentialClause,
+  matchUserDataType,
+  requote,
+  toStringLiteral,
+  unquoteTypeName,
 } from '@/parser/helper';
 import {
   Column,
   CreateTable,
   CreateTableColumns,
+  DatabaseVendor,
   ForeignKey,
   Index,
   IndexColumn,
@@ -44,7 +51,11 @@ import {
 } from '@/parser/statement';
 import { Token } from '@/parser/tokenizer';
 
-export function createTableParser(tokens: Token[], $pos: RefPos) {
+export function createTableParser(
+  tokens: Token[],
+  $pos: RefPos,
+  database?: DatabaseVendor
+) {
   const newStatement = isNewStatement(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
@@ -145,7 +156,8 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
 
       const { columns, indexes, foreignKeys } = createTableColumnsParser(
         tokens,
-        $pos
+        $pos,
+        database
       );
       ast.columns = columns;
       ast.indexes = indexes;
@@ -202,12 +214,15 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
 
 function createTableColumnsParser(
   tokens: Token[],
-  $pos: RefPos
+  $pos: RefPos,
+  database?: DatabaseVendor
 ): CreateTableColumns {
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
   const isComma = isCommaToken(tokens);
+  const isPeriod = isPeriodToken(tokens);
+  const isArrayDimension = isArrayDimensionToken(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isIndex = isIndexValue(tokens);
   const isPrimary = isPrimaryValue(tokens);
@@ -226,9 +241,11 @@ function createTableColumnsParser(
   const isCollate = isCollateValue(tokens);
   const constraintState = isConstraintState(tokens);
   const dataType = matchDataType(tokens);
+  const userDataType = matchUserDataType(tokens);
   const nestedDataType = matchNestedDataType(tokens);
   const referentialClause = matchReferentialClause(tokens);
   const indexKind = isIndexKind(tokens);
+  const tableItemWord = isTableItemWord(tokens);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -239,7 +256,8 @@ function createTableColumnsParser(
     isUnique(pos) ||
     isIndex(pos) ||
     isKey(pos) ||
-    indexKind(pos);
+    indexKind(pos) ||
+    tableItemWord(pos);
 
   // Reads a key list from its ( through its ), each column with its sort.
   const indexColumnsParser = () => {
@@ -313,6 +331,9 @@ function createTableColumnsParser(
   // Set while the item is a table constraint or index: until its comma no word
   // may become a column name or a data type -- USING BTREE, ON [PRIMARY].
   let constraintItem = false;
+  // Where the column's type stands, right after its name: the one place a
+  // word the vendor lists lack is read as a type rather than an attribute.
+  let typePos = -1;
 
   while (isToken()) {
     let token = tokens[$pos.value];
@@ -324,12 +345,19 @@ function createTableColumnsParser(
       const parts: string[] = [];
 
       while ($pos.value < end) {
-        parts.push(isComma($pos.value) ? ',' : tokens[$pos.value].value);
+        // A field's COMMENT and a backtick name keep their quotes, as a type
+        // argument does: STRUCT<name: STRING COMMENT 'x'>.
+        parts.push(
+          isComma($pos.value) ? ',' : requote(tokens[$pos.value], database)
+        );
         $pos.value++;
       }
 
+      // A quoted token ends before the colon or bracket written right after
+      // it, so a field name and its colon join back without a space.
       column.dataType = parts.reduce(
-        (acc, part) => (!acc || part === ',' ? acc + part : `${acc} ${part}`),
+        (acc, part) =>
+          !acc || /^[,:>]/.test(part) ? acc + part : `${acc} ${part}`,
         ''
       );
       continue;
@@ -359,7 +387,7 @@ function createTableColumnsParser(
       !constraintState($pos.value)
     ) {
       column.name = token.value;
-      $pos.value++;
+      typePos = ++$pos.value;
       continue;
     }
 
@@ -536,7 +564,7 @@ function createTableColumnsParser(
       // string literal, so they go back on -- PENDING would read as a name.
       if (isString($pos.value)) {
         column.default = token.quoted
-          ? `'${token.value.replaceAll("'", "''")}'`
+          ? toStringLiteral(token.value, database)
           : token.value;
         $pos.value++;
       }
@@ -592,7 +620,13 @@ function createTableColumnsParser(
       continue;
     }
 
-    const dataTypeLength = dataType($pos.value);
+    const knownLength = dataType($pos.value);
+    const userLength = $pos.value === typePos ? userDataType($pos.value) : 0;
+    // A name the lists lack is still the type in the type's place, mood or
+    // hstore, and so is a qualified one even when its schema is a type name.
+    const userDefined =
+      userLength > 0 && (!knownLength || isPeriod($pos.value + 1));
+    const dataTypeLength = userDefined ? userLength : knownLength;
 
     // A column keeps its first type: the BINARY of VARCHAR(40) BINARY is an
     // attribute, and a constraint item has no type at all.
@@ -616,15 +650,26 @@ function createTableColumnsParser(
           value += ')';
           depth--;
         } else if (depth) {
-          // A structured type spells its fields as words -- Snowflake's
-          // OBJECT(city VARCHAR). Gluing them together loses the field.
+          // A quoted argument goes back into its quotes: ENUM(a,b) is no
+          // valid DDL. A structured type spells its fields as words --
+          // Snowflake's OBJECT(city VARCHAR). Gluing them loses the field.
+          const text = requote(token, database);
           value +=
             isString($pos.value) &&
             (isString($pos.value - 1) || isRightParent($pos.value - 1))
-              ? ` ${token.value}`
-              : token.value;
+              ? ` ${text}`
+              : text;
+        } else if (isArrayDimension($pos.value)) {
+          value += requote(token);
         } else {
-          value += value ? ` ${token.value}` : token.value;
+          // A user type keeps its quotes, "MyType" being case sensitive and
+          // [dbo].[Order] naming a reserved word; a listed type drops them
+          // but for "char" and "bit".
+          const text = userDefined ? requote(token) : unquoteTypeName(token);
+          value +=
+            value && !isPeriod($pos.value) && !isPeriod($pos.value - 1)
+              ? ` ${text}`
+              : text;
         }
 
         $pos.value++;

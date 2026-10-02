@@ -295,6 +295,25 @@ describe('MSSQL createSchema', () => {
     expect(sql).toContain('  ADD CONSTRAINT UQ_users_email UNIQUE (email)');
     expect(sql).toContain('  ADD CONSTRAINT UQ_posts_email UNIQUE (email)');
   });
+
+  it('doubles the quotes of a description and of the names it points at', () => {
+    const { state, users, userId } = createFixture();
+    users.name = "o'users";
+    users.comment = "user's table";
+    userId.name = "user's id";
+    userId.comment = "it's the id";
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain(
+      "  'user''s table', 'user', dbo, 'table', 'o''users'\nGO"
+    );
+    expect(sql).toContain(
+      "  'it''s the id', 'user', dbo, 'table', 'o''users', 'column', 'user''s id'\nGO"
+    );
+  });
 });
 
 describe('MSSQL formatTable', () => {

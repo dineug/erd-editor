@@ -22,6 +22,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   toOrderName,
+  toStringLiteral,
 } from './utils';
 
 export function createSchema(state: RootState): string {
@@ -152,7 +153,7 @@ function formatComment(
 
   if (table.comment.trim() !== '') {
     buffer.push(
-      `COMMENT ON TABLE ${bracket}${table.name}${bracket} IS '${table.comment}';`
+      `COMMENT ON TABLE ${bracket}${table.name}${bracket} IS ${toStringLiteral(table.comment)};`
     );
     buffer.push('');
   }
@@ -162,7 +163,7 @@ function formatComment(
     .forEach(column => {
       if (column.comment.trim() !== '') {
         buffer.push(
-          `COMMENT ON COLUMN ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} IS '${column.comment}';`
+          `COMMENT ON COLUMN ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} IS ${toStringLiteral(column.comment)};`
         );
         buffer.push('');
       }

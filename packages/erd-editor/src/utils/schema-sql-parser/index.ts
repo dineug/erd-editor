@@ -24,6 +24,10 @@ import {
   OrderType,
   RelationshipType,
 } from '@/constants/schema';
+import {
+  DatabaseVendor,
+  DatabaseVendorToDatabase,
+} from '@/constants/sql/database';
 import { EngineContext } from '@/engine/context';
 import { Column, IndexColumn } from '@/internal-types';
 import { bHas } from '@/utils/bit';
@@ -46,13 +50,21 @@ type StatementMap = {
   columnComments: CommentOnColumn[];
 };
 
+/**
+ * The SQL as a document. The document's database, when given, names the vendor
+ * to the parser: a Databricks one reads string literals by Spark's escapes.
+ */
 export function schemaSQLParserToSchemaJson(
   sql: string,
   ctx: EngineContext,
-  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3
+  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3,
+  database?: number
 ) {
   const schema = schemaV3Parser({});
-  const statements = schemaSQLParser(sql);
+  const vendor = Object.values(DatabaseVendor).find(
+    value => DatabaseVendorToDatabase[value] === database
+  );
+  const statements = schemaSQLParser(sql, { database: vendor });
   const statementMap = getStatementMap(statements);
   const tables = mergeTables(statementMap);
 

@@ -12,6 +12,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   toOrderName,
+  toStringLiteral,
   unique,
   uniqueColumns,
 } from '@/utils/schema-sql/utils';
@@ -200,6 +201,14 @@ describe('schema-sql/utils', () => {
 
     it('returns an empty string for an unknown order type', () => {
       expect(toOrderName(0)).toBe('');
+    });
+  });
+
+  describe('toStringLiteral', () => {
+    it('quotes the text and doubles every quote inside it', () => {
+      expect(toStringLiteral('user id')).toBe("'user id'");
+      expect(toStringLiteral("it's the 'id'")).toBe("'it''s the ''id'''");
+      expect(toStringLiteral('')).toBe("''");
     });
   });
 });
