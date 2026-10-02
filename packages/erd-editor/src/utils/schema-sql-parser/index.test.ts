@@ -572,8 +572,8 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
-    // Oracle enforces a primary key through an index over its columns that is
-    // already there, a non-unique one too.
+    // Oracle enforces a primary key through an index over its columns, a
+    // non-unique one too, rather than build another.
     it('lets an ALTER primary key with no name take over a plain index over its columns', () => {
       const schema = parse(`
         CREATE TABLE t (id INT);
@@ -586,6 +586,31 @@ describe('schemaSQLParserToSchemaJson', () => {
         ColumnOption.primaryKey
       );
       expect(indexesOf(schema)).toEqual([]);
+    });
+
+    // DBMS_METADATA's CONSTRAINTS_AS_ALTER output, then the table's dependent
+    // index DDL, writes each ALTER before the SYS_C index of its key.
+    it('lets an ALTER key with no name take over an index over its columns that the script creates after it', () => {
+      const schema = parse(`
+        CREATE TABLE s (id INT);
+        ALTER TABLE s ADD PRIMARY KEY (id);
+        CREATE INDEX ix_id ON s (id);
+        CREATE TABLE "HR"."T" ("ID" NUMBER, "A" NUMBER, "B" NUMBER) ;
+        ALTER TABLE "HR"."T" ADD PRIMARY KEY ("ID") USING INDEX PCTFREE 10  ENABLE;
+        ALTER TABLE "HR"."T" ADD UNIQUE ("A", "B") USING INDEX PCTFREE 10  ENABLE;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012345" ON "HR"."T" ("ID") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012346" ON "HR"."T" ("A", "B") PCTFREE 10 ;
+      `);
+
+      expect(columnByName(schema, tableByName(schema, 's'), 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(columnByName(schema, tableByName(schema, 'T'), 'ID').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'SYS_C0012346', unique: true, columns: ['A ASC', 'B ASC'] },
+      ]);
     });
 
     it('reads the index DBMS_METADATA exports for each system-named key a table declares inline as part of that key', () => {

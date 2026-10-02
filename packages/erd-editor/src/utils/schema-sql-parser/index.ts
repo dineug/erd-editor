@@ -165,6 +165,9 @@ function mergeTables({
     });
   });
 
+  // Every CREATE INDEX merges before any ALTER key, wherever the script puts
+  // it: DBMS_METADATA's CONSTRAINTS_AS_ALTER output, then the table's
+  // dependent index DDL, writes each ALTER before the SYS_C index of its key.
   primaryKeys.forEach(primaryKey => {
     const table = findByName(tables, primaryKey.name);
     if (!table) return;
