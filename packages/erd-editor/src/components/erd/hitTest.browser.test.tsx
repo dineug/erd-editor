@@ -602,6 +602,20 @@ describe('Erd - drawing a relationship with a press on each table', () => {
     await settle();
   }
 
+  /** Names t1, the parent, and makes its first column a key named keyName. */
+  function nameParentKey(
+    { app: { store } }: Editor,
+    tableName: string,
+    keyName: string
+  ) {
+    const [keyId] = store.state.collections.tableEntities.t1.columnIds;
+    store.dispatchSync(
+      changeTableNameAction({ id: 't1', value: tableName }),
+      changeColumnNameAction({ id: keyId, tableId: 't1', value: keyName }),
+      changeColumnPrimaryKeyAction({ id: keyId, tableId: 't1', value: true })
+    );
+  }
+
   const columnNamesOf = ({ app }: Editor, tableId: string) =>
     app.store.state.collections.tableEntities[tableId].columnIds.map(
       id => app.store.state.collections.tableColumnEntities[id].name
@@ -617,19 +631,13 @@ describe('Erd - drawing a relationship with a press on each table', () => {
 
   it('names the foreign keys after the parent, numbered apart, and draws the rows', async () => {
     const editor = await mountEditor();
-    const { store } = editor.app;
-    const [keyId] = store.state.collections.tableEntities.t1.columnIds;
-    store.dispatchSync(
-      changeTableNameAction({ id: 't1', value: 'user' }),
-      changeColumnNameAction({ id: keyId, tableId: 't1', value: 'id' }),
-      changeColumnPrimaryKeyAction({ id: keyId, tableId: 't1', value: true })
-    );
+    nameParentKey(editor, 'user', 'id');
 
     await drawBetween(editor, 't1', 't2');
     await drawBetween(editor, 't1', 't2');
     await drawBetween(editor, 't1', 't1');
 
-    expect(store.state.doc.relationshipIds).toHaveLength(4);
+    expect(editor.app.store.state.doc.relationshipIds).toHaveLength(4);
     expect(columnNamesOf(editor, 't2')).toEqual(['', 'user_id', 'user_id_2']);
     expect(columnNamesOf(editor, 't1')).toEqual(['id', 'user_id']);
     expect(
@@ -642,13 +650,7 @@ describe('Erd - drawing a relationship with a press on each table', () => {
 
   it('keeps a key name of several words, numbered apart, and draws the rows', async () => {
     const editor = await mountEditor();
-    const { store } = editor.app;
-    const [keyId] = store.state.collections.tableEntities.t1.columnIds;
-    store.dispatchSync(
-      changeTableNameAction({ id: 't1', value: 'members' }),
-      changeColumnNameAction({ id: keyId, tableId: 't1', value: 'member_id' }),
-      changeColumnPrimaryKeyAction({ id: keyId, tableId: 't1', value: true })
-    );
+    nameParentKey(editor, 'members', 'member_id');
 
     await drawBetween(editor, 't1', 't2');
     await drawBetween(editor, 't1', 't1');

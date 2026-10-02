@@ -365,6 +365,12 @@ describe('addRelationshipAction$ through a real store', () => {
     return rxStore.state.collections.tableColumnEntities[id];
   }
 
+  function columnNamesOf(rxStore: RxStore, tableId: string) {
+    return rxStore.state.collections.tableEntities[tableId].columnIds.map(
+      id => columnOf(rxStore, id).name
+    );
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -492,10 +498,6 @@ describe('addRelationshipAction$ through a real store', () => {
     const rxStore = createRxTestStore();
     seedTable(rxStore, 't1', [idColumn], 'user');
     seedTable(rxStore, 't2', [], 'post');
-    const namesOf = (tableId: string) =>
-      rxStore.state.collections.tableEntities[tableId].columnIds.map(
-        id => columnOf(rxStore, id).name
-      );
     const relate = (endTableId: string) => {
       rxStore.dispatchSync(
         addRelationshipAction$('t1', endTableId, RelationshipType.ZeroN)
@@ -508,8 +510,12 @@ describe('addRelationshipAction$ through a real store', () => {
     relate('t1');
     relate('t1');
 
-    expect(namesOf('t2')).toEqual(['user_id', 'user_id_2']);
-    expect(namesOf('t1')).toEqual(['id', 'user_id', 'user_id_2']);
+    expect(columnNamesOf(rxStore, 't2')).toEqual(['user_id', 'user_id_2']);
+    expect(columnNamesOf(rxStore, 't1')).toEqual([
+      'id',
+      'user_id',
+      'user_id_2',
+    ]);
     expect(relationshipsOf(rxStore).map(({ end }) => end.tableId)).toEqual([
       't2',
       't2',
@@ -518,10 +524,14 @@ describe('addRelationshipAction$ through a real store', () => {
     ]);
 
     rxStore.undo();
-    expect(namesOf('t1')).toEqual(['id', 'user_id']);
+    expect(columnNamesOf(rxStore, 't1')).toEqual(['id', 'user_id']);
 
     rxStore.redo();
-    expect(namesOf('t1')).toEqual(['id', 'user_id', 'user_id_2']);
+    expect(columnNamesOf(rxStore, 't1')).toEqual([
+      'id',
+      'user_id',
+      'user_id_2',
+    ]);
   });
 
   it('keeps the data type sync on a foreign key named after its table', () => {
@@ -548,10 +558,6 @@ describe('addRelationshipAction$ through a real store', () => {
     const rxStore = createRxTestStore();
     seedTable(rxStore, 't1', [{ ...idColumn, name: 'userId' }], 'user');
     seedTable(rxStore, 't2', [], 'post');
-    const namesOf = (tableId: string) =>
-      rxStore.state.collections.tableEntities[tableId].columnIds.map(
-        id => columnOf(rxStore, id).name
-      );
 
     for (const endTableId of ['t2', 't2', 't1']) {
       rxStore.dispatchSync(
@@ -559,8 +565,8 @@ describe('addRelationshipAction$ through a real store', () => {
       );
     }
 
-    expect(namesOf('t2')).toEqual(['userId', 'userId_2']);
-    expect(namesOf('t1')).toEqual(['userId', 'userId_2']);
+    expect(columnNamesOf(rxStore, 't2')).toEqual(['userId', 'userId_2']);
+    expect(columnNamesOf(rxStore, 't1')).toEqual(['userId', 'userId_2']);
   });
 
   it('dispatches nothing and records no history for an unknown table', () => {
