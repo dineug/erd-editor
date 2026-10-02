@@ -2,12 +2,7 @@ import type { AnyAction } from '@dineug/r-html';
 
 import type { AppContext } from '@/components/appContext';
 import {
-  addMemoAction,
-  changeMemoValueAction,
-} from '@/engine/modules/memo/atom.actions';
-import {
   addTableAction,
-  changeTableCommentAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -15,6 +10,8 @@ import {
   changeColumnCommentAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+
+import { seedDocument } from './seedDocument';
 
 /**
  * A Korean document for the palette's Hangul search: 사용자 names a table, a
@@ -67,49 +64,9 @@ export const HANGUL_SEED = {
   },
 } as const;
 
-/** The actions that build HANGUL_SEED, one batch. */
-export function hangulSeedActions(): AnyAction[] {
-  const actions: AnyAction[] = [];
-
-  HANGUL_SEED.tables.forEach((table, index) => {
-    actions.push(
-      addTableAction({
-        id: table.id,
-        ui: { x: table.x, y: table.y, zIndex: index + 1 },
-      }),
-      changeTableNameAction({ id: table.id, value: table.name }),
-      changeTableCommentAction({ id: table.id, value: table.comment })
-    );
-    for (const column of table.columns) {
-      actions.push(
-        addColumnAction({ id: column.id, tableId: table.id }),
-        changeColumnNameAction({
-          id: column.id,
-          tableId: table.id,
-          value: column.name,
-        }),
-        changeColumnCommentAction({
-          id: column.id,
-          tableId: table.id,
-          value: column.comment,
-        })
-      );
-    }
-  });
-
-  const { memo } = HANGUL_SEED;
-  actions.push(
-    addMemoAction({ id: memo.id, ui: { x: memo.x, y: memo.y, zIndex: 4 } }),
-    changeMemoValueAction({ id: memo.id, value: memo.value })
-  );
-
-  return actions;
-}
-
 /** Loads HANGUL_SEED into the store and starts its history empty. */
 export function seedHangulDocument(app: AppContext): void {
-  app.store.dispatchSync(hangulSeedActions());
-  app.store.resetHistory();
+  seedDocument(app, HANGUL_SEED);
 }
 
 /** What a Korean IME hands the input, step by step, while it composes 사용. */
