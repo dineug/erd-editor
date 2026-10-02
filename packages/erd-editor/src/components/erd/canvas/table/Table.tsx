@@ -106,6 +106,7 @@ import { tableHeaderHeight } from '@/utils/calcTable';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
+import { getAlternateKeyMarks } from '@/utils/tableKeys';
 
 import { useFocusTable } from './useFocusTable';
 import { useMoveTable } from './useMoveTable';
@@ -610,6 +611,11 @@ const Table: FC<TableProps> = (props, ctx) => {
     const columns = query(collections)
       .collection('tableColumnEntities')
       .selectByIds(ghostColumnId ? [...columnIds, ghostColumnId] : columnIds);
+    // Read only where the width sum kept room for a mark, which only the
+    // document does and only while the setting shows them.
+    const alternateKeyMarks = tableWidths.alternateKey
+      ? getAlternateKeyMarks(store.state, table)
+      : {};
 
     return (
       <k-group
@@ -816,6 +822,8 @@ const Table: FC<TableProps> = (props, ctx) => {
                 widthDataType={tableWidths.dataType}
                 widthDefault={tableWidths.default}
                 widthComment={tableWidths.comment}
+                widthAlternateKey={tableWidths.alternateKey}
+                alternateKey={alternateKeyMarks[column.id]}
                 focusName={hasFocus(FocusType.columnName, column.id)}
                 focusDataType={hasFocus(FocusType.columnDataType, column.id)}
                 focusNotNull={hasFocus(FocusType.columnNotNull, column.id)}

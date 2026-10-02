@@ -20,6 +20,7 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import { ValuesType } from '@/internal-types';
 import {
   openColorPickerAction,
+  openFindReplaceAction,
   openTablePropertiesAction,
 } from '@/utils/emitter';
 import { importDiffJSON } from '@/utils/file/importFile';
@@ -74,6 +75,12 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const handleAddMemo = () => {
     const { store } = app.value;
     store.dispatch(addMemoAction$());
+    props.onClose();
+  };
+
+  const handleOpenFindReplace = () => {
+    const { emitter } = app.value;
+    emitter.emit(openFindReplaceAction());
     props.onClose();
   };
 
@@ -308,7 +315,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleAddTable}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="table" size={14} />}
+                    icon={<Icon name="table-2" size={14} />}
                     name="New Table"
                     right={
                       <Kbd shortcut={keyBindingMap.addTable[0]?.shortcut} />
@@ -324,6 +331,18 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     name="New Memo"
                     right={
                       <Kbd shortcut={keyBindingMap.addMemo[0]?.shortcut} />
+                    }
+                  />
+                }
+              />
+              <ContextMenu.Item
+                onClick={handleOpenFindReplace}
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="replace" size={14} />}
+                    name="Find and Replace"
+                    right={
+                      <Kbd shortcut={keyBindingMap.findReplace[0]?.shortcut} />
                     }
                   />
                 }

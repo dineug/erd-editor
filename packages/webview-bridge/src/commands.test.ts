@@ -253,10 +253,13 @@ describe('commands over a Bridge', () => {
     bridge.registerCommand(webviewInitialValueCommand, initial);
 
     bridge.executeAction(
-      Bridge.executeCommand(hostSaveValueCommand, { value: '{}' })
+      Bridge.executeCommand(hostSaveValueCommand, {
+        value: '{}',
+        changed: false,
+      })
     );
 
-    expect(save).toHaveBeenCalledWith({ value: '{}' });
+    expect(save).toHaveBeenCalledWith({ value: '{}', changed: false });
     expect(initial).not.toHaveBeenCalled();
   });
 

@@ -10,7 +10,7 @@ import {
   timer,
 } from 'rxjs';
 
-import { ColumnOption, StartRelationshipType } from '@/constants/schema';
+import { ColumnOption, Show, StartRelationshipType } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
 import {
   initialLoadJsonAction,
@@ -30,6 +30,16 @@ import {
   viewStreamScrollToAction,
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
+import {
+  addIndexAction,
+  changeIndexUniqueAction,
+  removeIndexAction,
+} from '@/engine/modules/index/atom.actions';
+import {
+  addIndexColumnAction,
+  moveIndexColumnAction,
+  removeIndexColumnAction,
+} from '@/engine/modules/index-column/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   addRelationshipAction,
@@ -56,10 +66,12 @@ import {
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
+  moveColumnAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
+import type { Collections, Column, Relationship } from '@/internal-types';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
@@ -67,75 +79,81 @@ import { invalidateTableWidths } from '@/utils/calcTable';
 import type { ViewSource } from '@/utils/draw-relationship/geometrySource';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
+/** The columns a relationship ends on that its end table still holds. */
+function selectEndColumns(
+  collections: Collections,
+  { end }: Relationship
+): Column[] {
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(end.tableId);
+  if (!table) return [];
+
+  const has = arrayHas(table.columnIds);
+  return query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(end.columnIds)
+    .filter(column => has(column.id));
+}
+
+/**
+ * Marks each relationship identifying when every column it ends on is a primary
+ * key. A load reads it off the columns again, as a key edit or a removal does.
+ */
+export function recalculateIdentification({ doc, collections }: RootState) {
+  const collection = query(collections).collection('relationshipEntities');
+  const relationships = collection.selectByIds(doc.relationshipIds);
+
+  for (const relationship of relationships) {
+    const columns = selectEndColumns(collections, relationship);
+    if (!columns.length) continue;
+
+    const value = columns.every(column =>
+      bHas(column.options, ColumnOption.primaryKey)
+    );
+
+    if (value !== relationship.identification) {
+      relationship.identification = value;
+    }
+  }
+}
+
+/**
+ * Starts each relationship dashed when every column it ends on is not null and
+ * ringed otherwise, read off the columns as the identification is.
+ */
+export function recalculateStartRelationshipType({
+  doc,
+  collections,
+}: RootState) {
+  const collection = query(collections).collection('relationshipEntities');
+  const relationships = collection.selectByIds(doc.relationshipIds);
+
+  for (const relationship of relationships) {
+    const columns = selectEndColumns(collections, relationship);
+    if (!columns.length) continue;
+
+    const value = columns.every(column =>
+      bHas(column.options, ColumnOption.notNull)
+    )
+      ? StartRelationshipType.dash
+      : StartRelationshipType.ring;
+
+    if (value !== relationship.startRelationshipType) {
+      relationship.startRelationshipType = value;
+    }
+  }
+}
+
 const identificationHook: HookEffect = (action$, getState) =>
   action$
     .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
-    .subscribe(() => {
-      const { doc, collections } = getState();
-      const collection = query(collections).collection('relationshipEntities');
-      const relationships = collection.selectByIds(doc.relationshipIds);
-
-      for (const relationship of relationships) {
-        const { end, identification } = relationship;
-        const table = query(collections)
-          .collection('tableEntities')
-          .selectById(end.tableId);
-        if (!table) continue;
-
-        const has = arrayHas(table.columnIds);
-        const columns = query(collections)
-          .collection('tableColumnEntities')
-          .selectByIds(end.columnIds)
-          .filter(column => has(column.id));
-        if (!columns.length) continue;
-
-        const value = columns.every(column =>
-          bHas(column.options, ColumnOption.primaryKey)
-        );
-
-        if (value === identification) {
-          continue;
-        }
-
-        relationship.identification = value;
-      }
-    });
+    .subscribe(() => recalculateIdentification(getState()));
 
 const startRelationshipHook: HookEffect = (action$, getState) =>
   action$
     .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
-    .subscribe(() => {
-      const { doc, collections } = getState();
-      const collection = query(collections).collection('relationshipEntities');
-      const relationships = collection.selectByIds(doc.relationshipIds);
-
-      for (const relationship of relationships) {
-        const { end, startRelationshipType } = relationship;
-        const table = query(collections)
-          .collection('tableEntities')
-          .selectById(end.tableId);
-        if (!table) continue;
-
-        const has = arrayHas(table.columnIds);
-        const columns = query(collections)
-          .collection('tableColumnEntities')
-          .selectByIds(end.columnIds)
-          .filter(column => has(column.id));
-        if (!columns.length) continue;
-
-        const value = columns.every(column =>
-          bHas(column.options, ColumnOption.notNull)
-        )
-          ? StartRelationshipType.dash
-          : StartRelationshipType.ring;
-
-        if (value === startRelationshipType) {
-          continue;
-        }
-
-        relationship.startRelationshipType = value;
-      }
-    });
+    .subscribe(() => recalculateStartRelationshipType(getState()));
 
 /**
  * Actions that move something without changing what it contains. Every other
@@ -156,9 +174,35 @@ const isMoveOnly = arrayHas<string>([
 const sortWindow = ({ tags }: AnyAction) =>
   !isNil(tags) && bHas(tags, Tag.drag) ? timer(5) : timer(0, asapScheduler);
 
+/**
+ * The actions that add, drop, reshape or renumber an alternate key, whose mark
+ * widens its table in the document while the setting shows the marks. A column
+ * move renumbers the keys, an index column move their members.
+ */
+const alternateKeyActions = [
+  addIndexAction,
+  removeIndexAction,
+  changeIndexUniqueAction,
+  addIndexColumnAction,
+  removeIndexColumnAction,
+  moveIndexColumnAction,
+  moveColumnAction,
+];
+
+const alternateKeyActionTypes = alternateKeyActions.map(action => action.type);
+
+const isAlternateKeyAction = arrayHas<string>(alternateKeyActionTypes);
+
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
     .pipe(
+      // An index changes no width while the marks are hidden, and a checkbox
+      // in the Indexes tab would otherwise sort the whole document.
+      filter(
+        action =>
+          !isAlternateKeyAction(action.type) ||
+          bHas(getState().settings.show, Show.columnAlternateKey)
+      ),
       // Invalidation reads every action, the sort reads one per window. Putting
       // this after the throttle would drop the width-changing action whenever
       // it shared a window with a move.
@@ -172,14 +216,15 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
     });
 
 /**
- * Document actions a view never sees the effect of: a view draws no memo and
- * reads none of the show bits or the comment width, so its geometry is the
- * same on either side of them.
+ * Document actions a view's geometry never sees: a view draws no memo and no
+ * alternate key mark, reads none of the show bits or the comment width, and a
+ * column move reorders its rows without resizing a box.
  */
 const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,
   changeMaxWidthCommentAction.type,
   moveMemoAction.type,
+  ...alternateKeyActionTypes,
 ]);
 
 /** View actions that move the placement a view is looked at through, and nothing in it. */
@@ -337,6 +382,7 @@ const layoutActions = [
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
   sortTableAction,
+  ...alternateKeyActions,
 ];
 
 /**

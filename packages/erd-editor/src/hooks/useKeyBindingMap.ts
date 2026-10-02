@@ -3,6 +3,8 @@ import { onMounted, Ref, watch } from '@dineug/r-html';
 import { tinykeys } from 'tinykeys';
 
 import { useAppContext } from '@/components/appContext';
+import { isTakenOver } from '@/components/find-replace/panelLayout';
+import { CanvasType } from '@/constants/schema';
 import { Ctx } from '@/internal-types';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 import { isEditableTarget } from '@/utils/validation';
@@ -19,9 +21,30 @@ const YIELDS_TO_A_CARET = new Set<KeyBindingName>([
   KeyBindingName.handTool,
 ]);
 
+/**
+ * The bindings of the ERD tab alone, while no overlay takes its canvas over.
+ * On any other tab $mod+F stays the host's find, which searches the SQL, the
+ * code or the settings that tab shows, and under a takeover it does as well.
+ */
+const ERD_TAB_ONLY = new Set<KeyBindingName>([KeyBindingName.findReplace]);
+
+/** Whether the editor takes a binding's chord on the tab shown; a row naming the chord names it only then. */
+export const bindsOnTab = (type: KeyBindingName, canvasType: string) =>
+  !ERD_TAB_ONLY.has(type) || canvasType === CanvasType.ERD;
+
 export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
+
+  /** Whether a binding leaves the press to the caret or the host, unprevented. */
+  const yields = (type: KeyBindingName, event: KeyboardEvent) => {
+    const { state } = app.value.store;
+    return (
+      (YIELDS_TO_A_CARET.has(type) && isEditableTarget(event.target)) ||
+      !bindsOnTab(type, state.settings.canvasType) ||
+      (ERD_TAB_ONLY.has(type) && isTakenOver(state))
+    );
+  };
 
   let unbinding = () => {};
 
@@ -44,7 +67,7 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
               return;
             }
 
-            if (YIELDS_TO_A_CARET.has(type) && isEditableTarget(event.target)) {
+            if (yields(type, event)) {
               return;
             }
 

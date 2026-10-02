@@ -8,26 +8,31 @@ import {
   createSchema as createSchemaDatabricks,
   formatIndex as formatIndexDatabricks,
   formatTable as formatTableDatabricks,
+  formatUnique as formatUniqueDatabricks,
 } from './Databricks';
 import {
   createSchema as createSchemaMariaDB,
   formatIndex as formatIndexMariaDB,
   formatTable as formatTableMariaDB,
+  formatUnique as formatUniqueMariaDB,
 } from './MariaDB';
 import {
   createSchema as createSchemaMSSQL,
   formatIndex as formatIndexMSSQL,
   formatTable as formatTableMSSQL,
+  formatUnique as formatUniqueMSSQL,
 } from './MSSQL';
 import {
   createSchema as createSchemaMySQL,
   formatIndex as formatIndexMySQL,
   formatTable as formatTableMySQL,
+  formatUnique as formatUniqueMySQL,
 } from './MySQL';
 import {
   createSchema as createSchemaOracle,
   formatIndex as formatIndexOracle,
   formatTable as formatTableOracle,
+  formatUnique as formatUniqueOracle,
 } from './Oracle';
 import {
   createSchema as createSchemaPostgreSQL,
@@ -70,6 +75,11 @@ export function createSchemaSQL(state: RootState, database?: number): string {
   return '';
 }
 
+/**
+ * One table's DDL for the table properties Schema SQL tab: the table, the
+ * uniqueness its columns carry where the whole export writes it as its own
+ * statement, and the table's indexes.
+ */
 export function createSchemaSQLTable(state: RootState, table: Table) {
   const {
     settings,
@@ -88,6 +98,7 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
     case Database.Databricks:
       formatTableDatabricks(state, { buffer, table });
       buffer.push('');
+      formatUniqueDatabricks(state, { buffer, table });
       indexes.forEach(index => {
         formatIndexDatabricks(state, {
           index,
@@ -100,6 +111,7 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
     case Database.MariaDB:
       formatTableMariaDB(state, { buffer, table });
       buffer.push('');
+      formatUniqueMariaDB(state, { buffer, table });
       indexes.forEach(index => {
         formatIndexMariaDB(state, {
           index,
@@ -112,6 +124,7 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
     case Database.MSSQL:
       formatTableMSSQL(state, { buffer, table });
       buffer.push('');
+      formatUniqueMSSQL(state, { buffer, table });
       indexes.forEach(index => {
         formatIndexMSSQL(state, {
           index,
@@ -124,6 +137,7 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
     case Database.MySQL:
       formatTableMySQL(state, { buffer, table });
       buffer.push('');
+      formatUniqueMySQL(state, { buffer, table });
       indexes.forEach(index => {
         formatIndexMySQL(state, {
           index,
@@ -136,6 +150,7 @@ export function createSchemaSQLTable(state: RootState, table: Table) {
     case Database.Oracle:
       formatTableOracle(state, { buffer, table });
       buffer.push('');
+      formatUniqueOracle(state, { buffer, table });
       indexes.forEach(index => {
         formatIndexOracle(state, {
           index,

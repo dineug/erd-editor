@@ -72,6 +72,13 @@ export const COLUMN_MIN_WIDTH = 60;
 export const COLUMN_NOT_NULL_WIDTH = 35;
 export const COLUMN_UNIQUE_WIDTH = 22;
 export const COLUMN_AUTO_INCREMENT_WIDTH = 15;
+
+/**
+ * The advance one alternate key mark character takes. The mark is drawn at the
+ * cell size in the code face, whose glyphs all advance about 0.6 of the size,
+ * so a table is sized by the mark's length alone, in a headless peer too.
+ */
+export const COLUMN_ALTERNATE_KEY_CHAR_WIDTH = CELL_FONT_SIZE * 0.61;
 export const COLUMN_PADDING = 2;
 export const COLUMN_HEIGHT = INPUT_HEIGHT + COLUMN_PADDING * 2;
 
@@ -146,6 +153,15 @@ export const MINIMAP_SIZE = 150;
 export const MINIMAP_MARGIN = 20;
 
 export const TOOLBAR_HEIGHT = 30;
+
+/**
+ * The padding around the Table Properties body. A band stuck to an edge of the
+ * body reaches back over it, so no row scrolls into sight behind the band.
+ */
+export const TABLE_PROPERTIES_BODY_PADDING = 12;
+
+/** How many rows the Table Properties index order shows before it scrolls the rest. */
+export const INDEX_ORDER_MAX_ROWS = 3;
 
 export const DIFF_TREE_WIDTH = 200;
 

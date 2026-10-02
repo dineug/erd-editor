@@ -14,6 +14,8 @@ import { createEngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { createIndex } from '@/utils/collection/index.entity';
+import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
@@ -29,9 +31,10 @@ const ctx = createEngineContext({ toWidth: text => text.length * 10 });
 
 function parse(
   sql: string,
-  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3
+  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3,
+  database?: number
 ): Schema {
-  return JSON.parse(schemaSQLParserToSchemaJson(sql, ctx, prepare));
+  return JSON.parse(schemaSQLParserToSchemaJson(sql, ctx, prepare, database));
 }
 
 const tablesOf = (schema: Schema): Table[] =>
@@ -59,6 +62,33 @@ const relationshipsOf = (schema: Schema): Relationship[] =>
 
 const indexesOf = (schema: Schema): Index[] =>
   schema.doc.indexIds.map(id => schema.collections.indexEntities[id]);
+
+const uniqueColumnNamesOf = (schema: Schema, table: Table): string[] =>
+  columnsOf(schema, table)
+    .filter(column => bHas(column.options, ColumnOption.unique))
+    .map(column => column.name);
+
+/** Each index as its name, its unique flag and its columns with their sort. */
+const indexShapesOf = (schema: Schema) =>
+  indexesOf(schema).map(index => ({
+    name: index.name,
+    unique: index.unique,
+    columns: index.indexColumnIds.map(id => {
+      const { columnId, orderType } =
+        schema.collections.indexColumnEntities[id];
+      const { name } = schema.collections.tableColumnEntities[columnId];
+      return `${name} ${orderType === OrderType.DESC ? 'DESC' : 'ASC'}`;
+    }),
+  }));
+
+const commentsOf = (schema: Schema) =>
+  tablesOf(schema).flatMap(table => [
+    table.comment,
+    ...columnsOf(schema, table).map(column => column.comment),
+  ]);
+
+const stateOf = (schema: Schema) =>
+  ({ ...schema, editor: {}, lww: {} }) as unknown as RootState;
 
 describe('schemaSQLParserToSchemaJson', () => {
   it('produces a v3 schema envelope for an empty source', () => {
@@ -284,6 +314,465 @@ describe('schemaSQLParserToSchemaJson', () => {
         bHas(columnByName(schema, t, 'b').options, ColumnOption.unique)
       ).toBe(true);
       expect(columnByName(schema, t, 'c').options).toBe(0);
+    });
+
+    it('flags no column by the CHECK after the UNIQUE of a column an ALTER adds', () => {
+      const schema = parse(`
+        CREATE TABLE orders (id INT, price INT);
+        ALTER TABLE orders ADD COLUMN discount INT UNIQUE CHECK (price > discount);
+      `);
+
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'orders'))
+      ).toEqual([]);
+    });
+
+    it('records an ADD UNIQUE over several columns as one unique index', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT);
+        ALTER TABLE t ADD CONSTRAINT uq_ab UNIQUE (a, b);
+        ALTER TABLE t ADD UNIQUE KEY uq_bc (b, c DESC);
+        ALTER TABLE t ADD UNIQUE (a, c);
+        ALTER TABLE t ADD UNIQUE INDEX uq_c (c);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_bc', unique: true, columns: ['b ASC', 'c DESC'] },
+        { name: '', unique: true, columns: ['a ASC', 'c ASC'] },
+      ]);
+      expect(indexesOf(schema).every(index => index.tableId === t.id)).toBe(
+        true
+      );
+    });
+
+    it('reads every key one ALTER TABLE adds, phpMyAdmin style', () => {
+      const schema = parse(`
+        CREATE TABLE \`t\` (\`id\` int, \`a\` int, \`b\` int, \`c\` int, \`x\` int);
+        CREATE TABLE \`y\` (\`id\` int);
+        ALTER TABLE \`t\`
+          ADD PRIMARY KEY (\`id\`),
+          ADD UNIQUE KEY \`uq_ab\` (\`a\`,\`b\`),
+          ADD UNIQUE KEY \`uq_c\` (\`c\`),
+          ADD KEY \`idx_x\` (\`x\`);
+        ALTER TABLE t ADD CONSTRAINT uq_bc UNIQUE (b, c),
+          ADD CONSTRAINT fk_x FOREIGN KEY (x) REFERENCES y (id);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(columnByName(schema, t, 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_bc', unique: true, columns: ['b ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('reads the composite unique index a dump tool writes on a qualified table', () => {
+      const schema = parse(`
+        CREATE TABLE public.sp_region (id INT, code INT, name VARCHAR(20));
+        CREATE UNIQUE INDEX i_1 ON public.sp_region USING btree (code, name);
+        CREATE UNIQUE NONCLUSTERED INDEX [i_2] ON [dbo].[sp_region] ([name] ASC, [code] DESC)
+          WITH (PAD_INDEX = OFF) ON [PRIMARY]
+        GO
+        CREATE UNIQUE INDEX "HR"."I_3" ON "HR"."SP_REGION" ("ID", "CODE");
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'i_1', unique: true, columns: ['code ASC', 'name ASC'] },
+        { name: 'i_2', unique: true, columns: ['name ASC', 'code DESC'] },
+        { name: 'I_3', unique: true, columns: ['id ASC', 'code ASC'] },
+      ]);
+    });
+
+    it('reads an Oracle unique constraint that names an index of its columns as that index, or one column as its flag', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" ("A" NUMBER, "B" NUMBER, "C" NUMBER, "D" NUMBER);
+        CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
+        CREATE INDEX "HR"."IX_T_CD" ON "HR"."T" ("C", "D");
+        CREATE UNIQUE INDEX "HR"."IX_T_C" ON "HR"."T" ("C");
+        CREATE INDEX "HR"."IX_T_ABD" ON "HR"."T" ("A", "B", "D");
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AB" UNIQUE ("A", "B")
+          USING INDEX hr.uq_t_ab_ix ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_DC" UNIQUE ("D", "C")
+          USING INDEX "HR"."IX_T_CD" ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_C" UNIQUE ("C")
+          USING INDEX "HR"."IX_T_C" ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_BA" UNIQUE ("B", "A")
+          USING INDEX "HR"."IX_T_ABD" ENABLE;
+        ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AD" UNIQUE ("A", "D")
+          USING INDEX "HR"."MISSING" ENABLE;
+      `);
+      const t = tableByName(schema, 'T');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['C']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'UQ_T_AB_IX', unique: true, columns: ['A ASC', 'B ASC'] },
+        { name: 'IX_T_CD', unique: true, columns: ['C ASC', 'D ASC'] },
+        {
+          name: 'IX_T_ABD',
+          unique: false,
+          columns: ['A ASC', 'B ASC', 'D ASC'],
+        },
+        { name: 'UQ_T_BA', unique: true, columns: ['B ASC', 'A ASC'] },
+        { name: 'UQ_T_AD', unique: true, columns: ['A ASC', 'D ASC'] },
+      ]);
+    });
+
+    it('reads the index SQL Developer exports for each key of a table as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."JOB_HISTORY" (
+          "EMPLOYEE_ID" NUMBER(6,0) CONSTRAINT "JHIST_EMPLOYEE_NN" NOT NULL ENABLE,
+          "START_DATE" DATE, "EMAIL" VARCHAR2(25), "CODE" NUMBER
+        ) TABLESPACE "EXAMPLE" ;
+        CREATE UNIQUE INDEX "HR"."JHIST_PK" ON "HR"."JOB_HISTORY" ("EMPLOYEE_ID", "START_DATE")
+          PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS TABLESPACE "EXAMPLE" ;
+        CREATE UNIQUE INDEX "HR"."JHIST_EMAIL_UK" ON "HR"."JOB_HISTORY" ("EMAIL") TABLESPACE "EXAMPLE" ;
+        CREATE UNIQUE INDEX "HR"."JHIST_ED_UK" ON "HR"."JOB_HISTORY" ("EMAIL", "START_DATE") ;
+        CREATE UNIQUE INDEX "HR"."JHIST_CODE_IX" ON "HR"."JOB_HISTORY" ("CODE") ;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_PK" PRIMARY KEY ("EMPLOYEE_ID", "START_DATE")
+          USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS TABLESPACE "EXAMPLE"  ENABLE;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_EMAIL_UK" UNIQUE ("EMAIL")
+          USING INDEX TABLESPACE "EXAMPLE" ENABLE;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_ED_UK" UNIQUE ("EMAIL", "START_DATE")
+          USING INDEX TABLESPACE "EXAMPLE" ENABLE;
+        ALTER TABLE "HR"."JOB_HISTORY" ADD CONSTRAINT "JHIST_CODE_UK" UNIQUE ("CODE")
+          USING INDEX "HR"."JHIST_CODE_IX" ENABLE;
+      `);
+      const history = tableByName(schema, 'JOB_HISTORY');
+
+      expect(
+        columnsOf(schema, history)
+          .filter(column => bHas(column.options, ColumnOption.primaryKey))
+          .map(column => column.name)
+      ).toEqual(['EMPLOYEE_ID', 'START_DATE']);
+      expect(uniqueColumnNamesOf(schema, history)).toEqual(['EMAIL', 'CODE']);
+      expect(indexShapesOf(schema)).toEqual([
+        {
+          name: 'JHIST_ED_UK',
+          unique: true,
+          columns: ['EMAIL ASC', 'START_DATE ASC'],
+        },
+      ]);
+    });
+
+    it('reads the index DBMS_METADATA exports for each key a table declares inline as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" (
+          "ID" NUMBER, "A" NUMBER, "B" NUMBER, "E" VARCHAR2(10),
+          CONSTRAINT "T_PK" PRIMARY KEY ("ID") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE,
+          CONSTRAINT "T_AB_UK" UNIQUE ("A", "B") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE,
+          CONSTRAINT "T_E_UK" UNIQUE ("E") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE
+        ) TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."T_PK" ON "HR"."T" ("ID") PCTFREE 10 TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."T_AB_UK" ON "HR"."T" ("A", "B") PCTFREE 10 TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."T_E_UK" ON "HR"."T" ("E") PCTFREE 10 TABLESPACE "USERS" ;
+        CREATE TABLE "HR"."JOB_HISTORY" (
+          "EMPLOYEE_ID" NUMBER(6,0) CONSTRAINT "JHIST_EMPLOYEE_NN" NOT NULL ENABLE,
+          "START_DATE" DATE, "CODE" NUMBER CONSTRAINT "JHIST_CODE_UK" UNIQUE,
+          CONSTRAINT "JHIST_PK" PRIMARY KEY ("EMPLOYEE_ID", "START_DATE") USING INDEX ENABLE
+        ) ;
+        CREATE UNIQUE INDEX "HR"."JHIST_PK" ON "HR"."JOB_HISTORY" ("START_DATE", "EMPLOYEE_ID") ;
+        CREATE UNIQUE INDEX "HR"."JHIST_CODE_UK" ON "HR"."JOB_HISTORY" ("CODE") ;
+      `);
+      const t = tableByName(schema, 'T');
+      const history = tableByName(schema, 'JOB_HISTORY');
+      const primaryKeyNamesOf = (table: Table) =>
+        columnsOf(schema, table)
+          .filter(column => bHas(column.options, ColumnOption.primaryKey))
+          .map(column => column.name);
+
+      expect(primaryKeyNamesOf(t)).toEqual(['ID']);
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['E']);
+      expect(primaryKeyNamesOf(history)).toEqual(['EMPLOYEE_ID', 'START_DATE']);
+      expect(uniqueColumnNamesOf(schema, history)).toEqual(['CODE']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'T_AB_UK', unique: true, columns: ['A ASC', 'B ASC'] },
+      ]);
+    });
+
+    it('reads an index a dump repeats under the name of an index over its columns as that index', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT, INDEX ix_bc (b, c), UNIQUE KEY uq_ac (a, c));
+        CREATE UNIQUE INDEX ix_bc ON t (c, b);
+        CREATE INDEX uq_ac ON t (a, c);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'ix_bc', unique: true, columns: ['b ASC', 'c ASC'] },
+        { name: 'uq_ac', unique: true, columns: ['a ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('keeps an index named after an inline key that keys other columns, or after another constraint', () => {
+      const schema = parse(`
+        CREATE TABLE t (
+          a INT CONSTRAINT nn_a NOT NULL PRIMARY KEY, b INT, c INT,
+          CONSTRAINT uq_b UNIQUE (b)
+        );
+        CREATE UNIQUE INDEX nn_a ON t (a);
+        CREATE INDEX uq_b ON t (b, c);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(columnByName(schema, t, 'a').options).toBe(
+        ColumnOption.primaryKey | ColumnOption.notNull
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['b']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'nn_a', unique: true, columns: ['a ASC'] },
+        { name: 'uq_b', unique: false, columns: ['b ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('reads the index SQL Developer exports for each system-named key as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" ("ID" NUMBER, "A" NUMBER, "B" NUMBER, "E" VARCHAR2(10)) ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012345" ON "HR"."T" ("ID") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012346" ON "HR"."T" ("A", "B") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012347" ON "HR"."T" ("E") PCTFREE 10 ;
+        ALTER TABLE "HR"."T" ADD PRIMARY KEY ("ID") USING INDEX PCTFREE 10  ENABLE;
+        ALTER TABLE "HR"."T" ADD UNIQUE ("A", "B") USING INDEX PCTFREE 10  ENABLE;
+        ALTER TABLE "HR"."T" ADD UNIQUE ("E") USING INDEX PCTFREE 10  ENABLE;
+      `);
+      const t = tableByName(schema, 'T');
+
+      expect(columnByName(schema, t, 'ID').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['E']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'SYS_C0012346', unique: true, columns: ['A ASC', 'B ASC'] },
+      ]);
+    });
+
+    it('keeps an index over the columns of a key with no name in another order', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT);
+        CREATE UNIQUE INDEX ix_ba ON t (b, a);
+        CREATE INDEX ix_ca ON t (c, a);
+        ALTER TABLE t ADD UNIQUE (a, b);
+        ALTER TABLE t ADD PRIMARY KEY (a, c);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'ix_ba', unique: true, columns: ['b ASC', 'a ASC'] },
+        { name: 'ix_ca', unique: false, columns: ['c ASC', 'a ASC'] },
+        { name: '', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
+    it('lets an ALTER unique key with no name take over the index over its columns in their order, unique or not', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT, d INT);
+        CREATE INDEX ix_ab ON t (a, b);
+        CREATE INDEX ix_c ON t (c);
+        CREATE UNIQUE INDEX uq_d ON t (d);
+        ALTER TABLE t ADD UNIQUE (a, b);
+        ALTER TABLE t ADD UNIQUE (c);
+        ALTER TABLE t ADD UNIQUE (d);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c', 'd']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'ix_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
+    // Oracle enforces a primary key through an index over its columns, a
+    // non-unique one too, rather than build another.
+    it('lets an ALTER primary key with no name take over a plain index over its columns', () => {
+      const schema = parse(`
+        CREATE TABLE t (id INT);
+        CREATE INDEX ix_id ON t (id);
+        ALTER TABLE t ADD PRIMARY KEY (id);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(columnByName(schema, t, 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(indexesOf(schema)).toEqual([]);
+    });
+
+    // DBMS_METADATA's CONSTRAINTS_AS_ALTER output, then the table's dependent
+    // index DDL, writes each ALTER before the SYS_C index of its key.
+    it('lets an ALTER key with no name take over an index over its columns that the script creates after it', () => {
+      const schema = parse(`
+        CREATE TABLE s (id INT);
+        ALTER TABLE s ADD PRIMARY KEY (id);
+        CREATE INDEX ix_id ON s (id);
+        CREATE TABLE "HR"."T" ("ID" NUMBER, "A" NUMBER, "B" NUMBER) ;
+        ALTER TABLE "HR"."T" ADD PRIMARY KEY ("ID") USING INDEX PCTFREE 10  ENABLE;
+        ALTER TABLE "HR"."T" ADD UNIQUE ("A", "B") USING INDEX PCTFREE 10  ENABLE;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012345" ON "HR"."T" ("ID") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012346" ON "HR"."T" ("A", "B") PCTFREE 10 ;
+      `);
+
+      expect(columnByName(schema, tableByName(schema, 's'), 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(columnByName(schema, tableByName(schema, 'T'), 'ID').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'SYS_C0012346', unique: true, columns: ['A ASC', 'B ASC'] },
+      ]);
+    });
+
+    it('reads the index DBMS_METADATA exports for each system-named key a table declares inline as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" (
+          "ID" NUMBER, "A" NUMBER, "B" NUMBER, "E" VARCHAR2(10) UNIQUE USING INDEX ENABLE,
+          PRIMARY KEY ("ID") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE,
+          UNIQUE ("A", "B") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE
+        ) TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012345" ON "HR"."T" ("ID") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012346" ON "HR"."T" ("A", "B") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012347" ON "HR"."T" ("E") PCTFREE 10 ;
+        CREATE INDEX "HR"."T_BA_IX" ON "HR"."T" ("B", "A") ;
+      `);
+      const t = tableByName(schema, 'T');
+
+      expect(columnByName(schema, t, 'ID').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['E']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'SYS_C0012346', unique: true, columns: ['A ASC', 'B ASC'] },
+        { name: 'T_BA_IX', unique: false, columns: ['B ASC', 'A ASC'] },
+      ]);
+    });
+
+    it('keeps an index over the columns of an inline unique key with no name and no USING INDEX', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, UNIQUE (a, b));
+        CREATE INDEX ix_ab ON t (a, b);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_ab', unique: false, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
+    it("keeps an index over the columns of a key with no name that PostgreSQL's USING INDEX TABLESPACE follows", () => {
+      const schema = parse(`
+        CREATE TABLE t (a int, b int, UNIQUE (a, b) USING INDEX TABLESPACE fast);
+        CREATE INDEX ix_ab ON t (a, b);
+        CREATE TABLE p (a int, b int, PRIMARY KEY (a, b) USING INDEX TABLESPACE fast);
+        CREATE INDEX ON p (a, b);
+        CREATE UNIQUE INDEX uq ON p (a, b);
+        CREATE TABLE e (
+          id int PRIMARY KEY USING INDEX TABLESPACE fast,
+          e text UNIQUE USING INDEX TABLESPACE fast
+        );
+        CREATE INDEX ix_id ON e (id);
+        CREATE INDEX ix_e ON e (e);
+      `);
+      const e = tableByName(schema, 'e');
+
+      expect(columnByName(schema, e, 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, e)).toEqual(['e']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_ab', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: '', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_id', unique: false, columns: ['id ASC'] },
+        { name: 'ix_e', unique: false, columns: ['e ASC'] },
+      ]);
+    });
+
+    it('keeps an index over the columns of an earlier CREATE INDEX with no name', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT);
+        CREATE INDEX ON t (a, b);
+        CREATE UNIQUE INDEX uq ON t (a, b);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
+    it('keeps an index named after a key that keys other columns', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT);
+        CREATE INDEX pk_t ON t (a, b);
+        CREATE UNIQUE INDEX uq_t ON t (b, c);
+        ALTER TABLE t ADD CONSTRAINT pk_t PRIMARY KEY (a);
+        ALTER TABLE t ADD CONSTRAINT uq_t UNIQUE (a, c);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'pk_t', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_t', unique: true, columns: ['b ASC', 'c ASC'] },
+        { name: 'uq_t', unique: true, columns: ['a ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('keeps every column of a pg_dump key whose parts carry a null order, an operator class or a collation', () => {
+      const schema = parse(`
+        CREATE TABLE public.t (a integer NOT NULL, b integer NOT NULL, deleted_at timestamp);
+        CREATE UNIQUE INDEX uq_ab ON public.t USING btree (a, b DESC NULLS LAST);
+        CREATE UNIQUE INDEX uq_ba ON public.t USING btree (b text_pattern_ops, a COLLATE "C");
+        CREATE UNIQUE INDEX uq_live ON public.t USING btree (a, b) WHERE (deleted_at IS NULL);
+        CREATE UNIQUE INDEX uq_set ON public.t USING btree (a, b) WHERE (a IS NOT NULL);
+      `);
+
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b DESC'] },
+        { name: 'uq_ba', unique: true, columns: ['b ASC', 'a ASC'] },
+        { name: 'uq_live', unique: false, columns: ['a ASC', 'b ASC'] },
+        { name: 'uq_set', unique: true, columns: ['a ASC', 'b ASC'] },
+      ]);
+    });
+
+    it('imports a partial unique index as a plain one unless its WHERE drops only NULL keys', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT, deleted_at TIMESTAMP);
+        CREATE UNIQUE INDEX uq_a ON t (a) WHERE a IS NOT NULL;
+        CREATE UNIQUE INDEX ix_b ON t (b) WHERE deleted_at IS NULL;
+        CREATE UNIQUE INDEX ix_bc ON t (b, c) WHERE b IS NOT NULL OR c > 0;
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual([]);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_a', unique: true, columns: ['a ASC'] },
+        { name: 'ix_b', unique: false, columns: ['b ASC'] },
+        { name: 'ix_bc', unique: false, columns: ['b ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('imports a filtered SQL Server inline INDEX n UNIQUE as a plain index unless its WHERE drops only NULL keys', () => {
+      const schema = parse(`
+        CREATE TABLE [dbo].[t] (
+          [a] INT, [b] INT, [c] INT, [d] INT,
+          INDEX [uq_ab] UNIQUE NONCLUSTERED ([a], [b]) WHERE ([a] IS NOT NULL AND [b] IS NOT NULL),
+          INDEX [ix_bc] UNIQUE ([b], [c] DESC) INCLUDE ([d]) WHERE ([d] > 0),
+          INDEX [uq_c] UNIQUE ([c]) WHERE [c] IS NOT NULL,
+          INDEX [ix_d] UNIQUE ([d]) WHERE [d] > 0
+        )
+        GO
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_bc', unique: false, columns: ['b ASC', 'c DESC'] },
+        { name: 'ix_d', unique: false, columns: ['d ASC'] },
+      ]);
     });
 
     it('matches table and column names case-insensitively', () => {
@@ -770,6 +1259,38 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('converts every composite UNIQUE spelling in CREATE TABLE into one unique index', () => {
+      const schema = parse(`
+        CREATE TABLE sp_region (
+          id INT,
+          code INT,
+          name VARCHAR(20),
+          email VARCHAR(40),
+          PRIMARY KEY (id),
+          UNIQUE (code, name),
+          UNIQUE KEY uq_name_code (name, code),
+          CONSTRAINT uq_code_email UNIQUE (code, email),
+          UNIQUE KEY uq_email (email)
+        );
+      `);
+      const region = tableByName(schema, 'sp_region');
+
+      expect(uniqueColumnNamesOf(schema, region)).toEqual(['email']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: '', unique: true, columns: ['code ASC', 'name ASC'] },
+        {
+          name: 'uq_name_code',
+          unique: true,
+          columns: ['name ASC', 'code ASC'],
+        },
+        {
+          name: 'uq_code_email',
+          unique: true,
+          columns: ['code ASC', 'email ASC'],
+        },
+      ]);
+    });
+
     it('skips index columns that do not resolve, keeping the rest', () => {
       const schema = parse(`
         CREATE TABLE posts (id INT);
@@ -782,6 +1303,25 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(
         schema.collections.indexColumnEntities[index.indexColumnIds[0]].columnId
       ).toBe(columnByName(schema, posts, 'id').id);
+    });
+
+    it('drops a unique index with a key column that does not resolve, in every spelling', () => {
+      const schema = parse(`
+        CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), name VARCHAR(20));
+        ALTER TABLE users ADD COLUMN tenant_id INT;
+        ALTER TABLE users ADD CONSTRAINT uq_tenant_email UNIQUE (tenant_id, email);
+        CREATE UNIQUE INDEX uq_tenant_name ON users (tenant_id, name);
+        CREATE TABLE t (a INT, b INT, UNIQUE (a, zz), UNIQUE KEY uq_b (b, zz));
+        CREATE INDEX idx_kept ON users (email, tenant_id);
+      `);
+
+      expect(uniqueColumnNamesOf(schema, tableByName(schema, 'users'))).toEqual(
+        []
+      );
+      expect(uniqueColumnNamesOf(schema, tableByName(schema, 't'))).toEqual([]);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'idx_kept', unique: false, columns: ['email ASC'] },
+      ]);
     });
 
     it('does not create an index when no column resolves', () => {
@@ -922,6 +1462,53 @@ describe('schemaSQLParserToSchemaJson', () => {
         'id',
       ]);
     });
+
+    // A dump doubles the quote inside a comment, or MySQL's escapes it with a
+    // backslash, and the import keeps one; the export has to double it again
+    // or the comment ends early. Databricks' exporter spec pins its own form.
+    it.each<[string, number, string]>([
+      [
+        'MySQL',
+        Database.MySQL,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT 'o''k';",
+      ],
+      [
+        'backslashed MySQL',
+        Database.MySQL,
+        "CREATE TABLE t (a INT COMMENT 'it\\'s', b INT) COMMENT 'o\\'k';",
+      ],
+      [
+        'MariaDB',
+        Database.MariaDB,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT 'o''k';",
+      ],
+      [
+        'PostgreSQL',
+        Database.PostgreSQL,
+        "CREATE TABLE t (a INT, b INT); COMMENT ON TABLE t IS 'o''k'; COMMENT ON COLUMN t.a IS 'it''s';",
+      ],
+      [
+        'Oracle',
+        Database.Oracle,
+        "CREATE TABLE t (a INT, b INT); COMMENT ON TABLE t IS 'o''k'; COMMENT ON COLUMN t.a IS 'it''s';",
+      ],
+      [
+        'Snowflake',
+        Database.Snowflake,
+        "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT = 'o''k';",
+      ],
+    ])(
+      'keeps a quote in a %s comment through its export',
+      (_, database, sql) => {
+        const imported = parse(sql);
+        const exported = createSchemaSQL(stateOf(imported), database);
+
+        expect(commentsOf(imported)).toEqual(["o'k", "it's", '']);
+        expect(exported).toContain("'it''s'");
+        expect(exported).toContain("'o''k'");
+        expect(commentsOf(parse(exported))).toEqual(["o'k", "it's", '']);
+      }
+    );
   });
 
   describe('referential action round trip', () => {
@@ -1062,5 +1649,486 @@ describe('schemaSQLParserToSchemaJson', () => {
         ).toEqual(defaults);
       }
     );
+  });
+
+  describe('unique round trip', () => {
+    type IndexSpec = [string, boolean, Array<[string, number]>];
+
+    /**
+     * One table with every shape of uniqueness the editor exports: a column
+     * flag, a composite unique index, a single-column unique index and a
+     * plain index beside them.
+     */
+    function uniqueState(
+      indexes: IndexSpec[] = [
+        [
+          'uq_code_name',
+          true,
+          [
+            ['code', OrderType.ASC],
+            ['name', OrderType.DESC],
+          ],
+        ],
+        ['idx_tenant', false, [['tenant', OrderType.ASC]]],
+        ['uq_tenant', true, [['tenant', OrderType.ASC]]],
+      ]
+    ): RootState {
+      const state = {
+        ...schemaV3Parser({}),
+        editor: {},
+        lww: {},
+      } as unknown as RootState;
+      const columns = [
+        ['id', ColumnOption.primaryKey | ColumnOption.notNull],
+        ['email', ColumnOption.unique | ColumnOption.notNull],
+        ['code', ColumnOption.notNull],
+        ['name', ColumnOption.notNull],
+        ['tenant', 0],
+      ].map(([name, options]) =>
+        createColumn({
+          id: `col-${name}`,
+          tableId: 'tbl-region',
+          name: name as string,
+          dataType: 'INT',
+          options: options as number,
+        })
+      );
+      state.collections.tableColumnEntities = Object.fromEntries(
+        columns.map(column => [column.id, column])
+      );
+      state.collections.tableEntities = {
+        'tbl-region': createTable({
+          id: 'tbl-region',
+          name: 'region',
+          columnIds: columns.map(column => column.id),
+        }),
+      };
+      state.doc.tableIds = ['tbl-region'];
+
+      for (const [name, unique, parts] of indexes) {
+        const index = createIndex({
+          id: `idx-${name}`,
+          name,
+          tableId: 'tbl-region',
+          unique,
+        });
+
+        for (const [columnName, orderType] of parts) {
+          const indexColumn = createIndexColumn({
+            id: `${index.id}-${columnName}`,
+            indexId: index.id,
+            columnId: `col-${columnName}`,
+            orderType,
+          });
+          index.indexColumnIds.push(indexColumn.id);
+          index.seqIndexColumnIds.push(indexColumn.id);
+          state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
+        }
+
+        state.collections.indexEntities[index.id] = index;
+        state.doc.indexIds.push(index.id);
+      }
+
+      return state;
+    }
+
+    const toState = (schema: Schema) =>
+      ({ ...schema, editor: {}, lww: {} }) as unknown as RootState;
+
+    it.each([
+      Database.MySQL,
+      Database.MariaDB,
+      Database.MSSQL,
+      Database.Oracle,
+      Database.PostgreSQL,
+      Database.SQLite,
+    ])('re-imports a %s export to the model it was written from', database => {
+      const sql = createSchemaSQL(uniqueState(), database);
+      const schema = parse(sql);
+
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'region'))
+      ).toEqual(['email']);
+      expect(indexShapesOf(schema)).toEqual([
+        {
+          name: 'uq_code_name',
+          unique: true,
+          columns: ['code ASC', 'name DESC'],
+        },
+        { name: 'idx_tenant', unique: false, columns: ['tenant ASC'] },
+        { name: 'uq_tenant', unique: true, columns: ['tenant ASC'] },
+      ]);
+      expect(createSchemaSQL(toState(schema), database)).toBe(sql);
+    });
+
+    // The keys the export writes inline carry no name and no USING INDEX, so
+    // an index over their columns is no index Oracle exported for them.
+    it.each([
+      Database.MySQL,
+      Database.MariaDB,
+      Database.MSSQL,
+      Database.Oracle,
+      Database.PostgreSQL,
+      Database.SQLite,
+    ])(
+      "keeps a %s export's index over the primary key or a unique column",
+      database => {
+        const sql = createSchemaSQL(
+          uniqueState([
+            ['idx_id', false, [['id', OrderType.ASC]]],
+            ['uq_email', true, [['email', OrderType.DESC]]],
+          ]),
+          database
+        );
+        const schema = parse(sql);
+
+        expect(indexShapesOf(schema)).toEqual([
+          { name: 'idx_id', unique: false, columns: ['id ASC'] },
+          { name: 'uq_email', unique: true, columns: ['email DESC'] },
+        ]);
+        expect(createSchemaSQL(toState(schema), database)).toBe(sql);
+      }
+    );
+
+    it('re-imports the composite UNIQUE a Snowflake export writes as one unique index', () => {
+      const sql = createSchemaSQL(uniqueState(), Database.Snowflake);
+      const schema = parse(sql);
+
+      expect(sql).toContain('ADD CONSTRAINT uq_code_name UNIQUE (code, name);');
+      // Snowflake has no secondary index, so the plain one is a comment, and
+      // a unique one over one column is the same constraint as its UQ flag.
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'region'))
+      ).toEqual(['email', 'tenant']);
+      expect(indexShapesOf(schema)).toEqual([
+        {
+          name: 'uq_code_name',
+          unique: true,
+          columns: ['code ASC', 'name ASC'],
+        },
+      ]);
+
+      const again = parse(createSchemaSQL(toState(schema), Database.Snowflake));
+
+      expect(indexShapesOf(again)).toEqual(indexShapesOf(schema));
+      expect(uniqueColumnNamesOf(again, tableByName(again, 'region'))).toEqual([
+        'email',
+        'tenant',
+      ]);
+    });
+
+    it('re-imports a Databricks export, which declares no uniqueness, with no index', () => {
+      const schema = parse(createSchemaSQL(uniqueState(), Database.Databricks));
+
+      expect(
+        uniqueColumnNamesOf(schema, tableByName(schema, 'region'))
+      ).toEqual([]);
+      expect(indexesOf(schema)).toEqual([]);
+    });
+
+    it.each([Database.MySQL, Database.PostgreSQL, Database.Snowflake])(
+      'never adds an index over repeated %s round trips',
+      database => {
+        let schema = parse(createSchemaSQL(uniqueState(), database));
+        const count = indexesOf(schema).length;
+
+        for (let cycle = 0; cycle < 3; cycle++) {
+          schema = parse(createSchemaSQL(toState(schema), database));
+        }
+
+        expect(indexesOf(schema)).toHaveLength(count);
+      }
+    );
+  });
+
+  // Import, export for the same vendor, import again: a type no vendor list
+  // carries used to come in empty, and an ENUM without the quotes of its values.
+  describe('data type round trip', () => {
+    const typesOf = (schema: Schema) =>
+      tablesOf(schema).flatMap(table =>
+        columnsOf(schema, table).map(column => column.dataType)
+      );
+
+    it.each<[string, number, string, string[]]>([
+      [
+        'PostgreSQL',
+        Database.PostgreSQL,
+        'CREATE TABLE person (id serial, current_mood public.mood NOT NULL, zip us_postal, email citext, kind "MyType", tags mood[], grid text[][], scores integer ARRAY, flag "char", bits "bit");',
+        [
+          'serial',
+          'public.mood',
+          'us_postal',
+          'citext',
+          '"MyType"',
+          'mood[]',
+          'text[][]',
+          'integer ARRAY',
+          '"char"',
+          '"bit"',
+        ],
+      ],
+      [
+        'MySQL',
+        Database.MySQL,
+        "CREATE TABLE film (rating ENUM('G','PG-13','it''s') NOT NULL, features SET('Trailers','Deleted Scenes'), mark ENUM('it\\'s','b'));",
+        [
+          "ENUM('G','PG-13','it''s')",
+          "SET('Trailers','Deleted Scenes')",
+          "ENUM('it''s','b')",
+        ],
+      ],
+      [
+        'MariaDB',
+        Database.MariaDB,
+        "CREATE TABLE film (rating ENUM('G','') DEFAULT 'G');",
+        ["ENUM('G','')"],
+      ],
+      [
+        'MSSQL',
+        Database.MSSQL,
+        'CREATE TABLE customer ([phone] [dbo].[Phone] NULL, [owner] [sysname] NOT NULL, [zip] [zip code], [status] [dbo].[Order]);',
+        ['[dbo].[Phone]', '[sysname]', '[zip code]', '[dbo].[Order]'],
+      ],
+      [
+        'Oracle',
+        Database.Oracle,
+        'CREATE TABLE shape (geom MDSYS.SDO_GEOMETRY, doc SYS.XMLTYPE);',
+        ['MDSYS.SDO_GEOMETRY', 'SYS.XMLTYPE'],
+      ],
+      [
+        'SQLite',
+        Database.SQLite,
+        'CREATE TABLE t (a UNSIGNED INTEGER, b VARYING CHARACTER(255), c UNSIGNED BIG INTEGER, d SIGNED BIG INT NOT NULL);',
+        [
+          'UNSIGNED INTEGER',
+          'VARYING CHARACTER(255)',
+          'UNSIGNED BIG INTEGER',
+          'SIGNED BIG INT',
+        ],
+      ],
+      [
+        'Snowflake',
+        Database.Snowflake,
+        'CREATE TABLE t (profile OBJECT("city" VARCHAR, zip NUMBER));',
+        ['OBJECT("city" VARCHAR,zip NUMBER)'],
+      ],
+      [
+        'Databricks',
+        Database.Databricks,
+        "CREATE TABLE t (a my_catalog.my_type, b ARRAY<STRING>, c STRUCT<name: STRING COMMENT 'the name', `first name`: STRING>);",
+        [
+          'my_catalog.my_type',
+          'ARRAY<STRING>',
+          "STRUCT<name: STRING COMMENT 'the name', `first name`: STRING>",
+        ],
+      ],
+    ])(
+      'keeps the data types of a %s import through its export',
+      (_, database, sql, expected) => {
+        const imported = parse(sql);
+        const exported = createSchemaSQL(stateOf(imported), database);
+
+        expect(typesOf(imported)).toEqual(expected);
+        expected.forEach(dataType => expect(exported).toContain(dataType));
+        expect(typesOf(parse(exported))).toEqual(expected);
+      }
+    );
+
+    // Trimmed from what pg_dump, mysqldump and Oracle's DBMS_METADATA wrote
+    // for one table of such types: the statements around it add no table, and
+    // its types and comments come back from its export.
+    const pgDump = String.raw`\restrict rHceboc659NUboYi98abcJftPQutfMfMXtYVs6L50FjUjGd4smdAC3en7CNg1ih
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
+CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS ltree WITH SCHEMA public;
+CREATE DOMAIN public."Money Amount" AS numeric(12,2);
+ALTER DOMAIN public."Money Amount" OWNER TO postgres;
+CREATE TYPE public."MyType" AS (
+    a integer,
+    b text
+);
+ALTER TYPE public."MyType" OWNER TO postgres;
+CREATE TYPE public.mood AS ENUM (
+    'sad',
+    'ok',
+    'happy'
+);
+CREATE DOMAIN public.us_postal AS text
+    CONSTRAINT us_postal_check CHECK ((VALUE ~ '^\d{5}$'::text));
+CREATE TABLE public.person (
+    id integer NOT NULL,
+    current_mood public.mood NOT NULL,
+    mood_q public.mood,
+    zip public.us_postal,
+    email public.citext,
+    attrs public.hstore,
+    path public.ltree,
+    kind public."MyType",
+    amount public."Money Amount",
+    tags public.mood[],
+    grid text[],
+    scores integer[],
+    fixed integer[],
+    label character varying(20) DEFAULT 'it''s'::character varying,
+    created timestamp with time zone,
+    flag "char",
+    bits "bit"
+);
+ALTER TABLE public.person OWNER TO postgres;
+COMMENT ON TABLE public.person IS 'o''k';
+COMMENT ON COLUMN public.person.id IS 'it''s the id';
+CREATE SEQUENCE public.person_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER SEQUENCE public.person_id_seq OWNED BY public.person.id;
+ALTER TABLE ONLY public.person
+    ADD CONSTRAINT person_pkey PRIMARY KEY (id);
+\unrestrict rHceboc659NUboYi98abcJftPQutfMfMXtYVs6L50FjUjGd4smdAC3en7CNg1ih`;
+    const mysqlDump = `/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+DROP TABLE IF EXISTS \`film\`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE \`film\` (
+  \`id\` int NOT NULL AUTO_INCREMENT,
+  \`rating\` enum('G','PG-13','it''s') NOT NULL DEFAULT 'G' COMMENT 'it''s rated',
+  \`features\` set('Trailers','Deleted Scenes') DEFAULT NULL,
+  \`blank\` enum('G','') DEFAULT 'G',
+  \`price\` decimal(5,2) DEFAULT NULL,
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='o''k';
+/*!40101 SET character_set_client = @saved_cs_client */;`;
+    const oracleDdl = `  CREATE TABLE "HR"."SHAPE"
+   (    "ID" NUMBER(10,0) NOT NULL ENABLE,
+        "DOC" "SYS"."XMLTYPE" ,
+        "ADDR" "HR"."ADDRESS_T" ,
+        "LABEL" VARCHAR2(20) DEFAULT 'it''s',
+         CONSTRAINT "PK_SHAPE" PRIMARY KEY ("ID")
+  USING INDEX  ENABLE
+   ) ;
+
+   COMMENT ON COLUMN "HR"."SHAPE"."ID" IS 'it''s the id';
+   COMMENT ON TABLE "HR"."SHAPE"  IS 'o''k';`;
+
+    it.each<[string, number, string, string[], string[]]>([
+      [
+        'pg_dump',
+        Database.PostgreSQL,
+        pgDump,
+        [
+          'integer',
+          'public.mood',
+          'public.mood',
+          'public.us_postal',
+          'public.citext',
+          'public.hstore',
+          'public.ltree',
+          'public."MyType"',
+          'public."Money Amount"',
+          'public.mood[]',
+          'text[]',
+          'integer[]',
+          'integer[]',
+          'character varying(20)',
+          'timestamp with time zone',
+          '"char"',
+          '"bit"',
+        ],
+        ["o'k", "it's the id", ...Array(16).fill('')],
+      ],
+      [
+        'mysqldump',
+        Database.MySQL,
+        mysqlDump,
+        [
+          'int',
+          "enum('G','PG-13','it''s')",
+          "set('Trailers','Deleted Scenes')",
+          "enum('G','')",
+          'decimal(5,2)',
+        ],
+        ["o'k", '', "it's rated", '', '', ''],
+      ],
+      [
+        'DBMS_METADATA',
+        Database.Oracle,
+        oracleDdl,
+        ['NUMBER(10,0)', '"SYS"."XMLTYPE"', '"HR"."ADDRESS_T"', 'VARCHAR2(20)'],
+        ["o'k", "it's the id", '', '', ''],
+      ],
+    ])(
+      'keeps the types and comments of what %s wrote through its export',
+      (_, database, sql, types, comments) => {
+        const imported = parse(sql);
+        const exported = parse(createSchemaSQL(stateOf(imported), database));
+
+        expect(tablesOf(imported)).toHaveLength(1);
+        expect(typesOf(imported)).toEqual(types);
+        expect(commentsOf(imported)).toEqual(comments);
+        expect(tablesOf(exported)).toHaveLength(1);
+        expect(typesOf(exported)).toEqual(types);
+        expect(commentsOf(exported)).toEqual(comments);
+      }
+    );
+  });
+
+  // A Databricks document reads its literals by Spark's escapes and writes a
+  // default and a field comment back in them, so its export imports back the
+  // same; under the guess a backslash doubled on every pass.
+  describe('Databricks literal round trip', () => {
+    const sql = String.raw`CREATE TABLE t (
+      a STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'> COMMENT 'C:\\dir it\'s',
+      b STRING DEFAULT 'it\'s' COMMENT 'a\\\'b',
+      c STRING DEFAULT 'C:\\'
+    ) COMMENT 'o\'k \\';`;
+    const struct = String.raw`STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'>`;
+
+    const fieldsOf = (schema: Schema) =>
+      columnsOf(schema, tablesOf(schema)[0]).map(column => [
+        column.name,
+        column.dataType,
+        column.default,
+        column.comment,
+      ]);
+
+    it('keeps the quotes and backslashes through each export', () => {
+      const first = parse(sql, undefined, Database.Databricks);
+      const exported = createSchemaSQL(stateOf(first), Database.Databricks);
+      const second = parse(exported, undefined, Database.Databricks);
+
+      expect(tablesOf(first)[0].comment).toBe("o'k \\");
+      expect(fieldsOf(first)).toEqual([
+        ['a', struct, '', "C:\\dir it's"],
+        ['b', 'STRING', String.raw`'it\'s'`, "a\\'b"],
+        ['c', 'STRING', String.raw`'C:\\'`, ''],
+      ]);
+      expect(exported).toContain(struct);
+      expect(exported).toContain(String.raw`DEFAULT 'it\'s'`);
+      expect(exported).toContain(String.raw`COMMENT 'C:\\dir it\'s'`);
+      expect(exported).toContain(String.raw`COMMENT 'o\'k \\';`);
+      expect(tablesOf(second)[0].comment).toBe("o'k \\");
+      expect(fieldsOf(second)).toEqual(fieldsOf(first));
+      expect(createSchemaSQL(stateOf(second), Database.Databricks)).toBe(
+        exported
+      );
+    });
+
+    it('reads the same SQL by the guess in a document of another vendor', () => {
+      expect(commentsOf(parse(sql, undefined, Database.MySQL))).toEqual([
+        "o'k \\\\",
+        "C:\\\\dir it's",
+        "a\\\\'b",
+        '',
+      ]);
+      expect(commentsOf(parse(sql))).toEqual(
+        commentsOf(parse(sql, undefined, Database.MySQL))
+      );
+    });
   });
 });

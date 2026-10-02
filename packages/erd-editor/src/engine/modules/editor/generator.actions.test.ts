@@ -9,7 +9,12 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { ColumnOption, OrderType, RelationshipType } from '@/constants/schema';
+import {
+  ColumnOption,
+  Database,
+  OrderType,
+  RelationshipType,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   dragstartColumnAction,
@@ -71,6 +76,7 @@ import {
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import {
+  changeDatabaseAction,
   changeDatabaseNameAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -774,6 +780,22 @@ describe('loadSchemaSQLAction$', () => {
     expect(store.state.settings.databaseName).toBe('keep-me');
     expect(tables[0].ui.x).toBe(50);
     expect(tables[0].ui.y).toBe(50);
+  });
+
+  // A Databricks document reads the literals by Spark's escapes, any other by
+  // the guess that keeps a doubled backslash as it is.
+  it('reads the literals by the rules of the document database', () => {
+    const ddl = String.raw`CREATE TABLE t (a STRING COMMENT 'a\\b');`;
+    const commentOfA = () =>
+      Object.values(store.state.collections.tableColumnEntities)[0].comment;
+
+    store.dispatchSync(loadSchemaSQLAction$(ddl));
+    expect(commentOfA()).toBe(String.raw`a\\b`);
+
+    store.dispatchSync(changeDatabaseAction({ value: Database.Databricks }));
+    store.dispatchSync(loadSchemaSQLAction$(ddl));
+    expect(commentOfA()).toBe(String.raw`a\b`);
+    expect(store.state.settings.database).toBe(Database.Databricks);
   });
 
   it('emits clear, loadJson and sortTable', () => {

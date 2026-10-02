@@ -7,6 +7,7 @@ import {
   CreateTable,
   ReferentialAction,
   schemaSQLParser,
+  SchemaSQLParserOptions,
   SortType,
   StatementType,
 } from '@/index';
@@ -83,9 +84,32 @@ describe('public entry surface', () => {
           },
         ],
         indexes: [],
+        keys: [],
         foreignKeys: [],
       },
     ]);
+  });
+
+  // The document's database, when the caller knows it: Databricks alone reads
+  // its literals by Spark's escapes, wherever a statement takes a string.
+  it('reads the literals of a Databricks source by Spark escapes', () => {
+    const sql = String.raw`CREATE TABLE t (a STRING COMMENT 'a\\b') COMMENT 'o\'k \\';
+      COMMENT ON TABLE t IS 'C:\\';
+      COMMENT ON COLUMN t.a IS 'it\'s \\';`;
+    const comments = (database?: SchemaSQLParserOptions['database']) =>
+      schemaSQLParser(sql, { database }).map(statement =>
+        statement.type === StatementType.createTable
+          ? [statement.comment, statement.columns[0].comment]
+          : (statement as { comment: string }).comment
+      );
+
+    expect(comments('Databricks')).toEqual([
+      ["o'k \\", 'a\\b'],
+      'C:\\',
+      "it's \\",
+    ]);
+    expect(comments()).toEqual([["o'k \\\\", 'a\\\\b'], 'C:\\\\', "it's \\\\"]);
+    expect(schemaSQLParser(sql)).toEqual(schemaSQLParser(sql, {}));
   });
 
   it('re-exports the StatementType enum values', () => {
@@ -204,5 +228,20 @@ describe('data/sakila.sql', () => {
         { name: 'customer_id', sort: SortType.asc },
       ],
     });
+  });
+
+  // Without their quotes the values went back out as ENUM(G,PG,PG-13,...),
+  // which no MySQL accepts.
+  it('keeps the quotes of the ENUM and SET values', () => {
+    const film = table('film')?.columns ?? [];
+
+    expect(film.find(column => column.name === 'rating')?.dataType).toBe(
+      "ENUM('G','PG','PG-13','R','NC-17')"
+    );
+    expect(
+      film.find(column => column.name === 'special_features')?.dataType
+    ).toBe(
+      "SET('Trailers','Commentaries','Deleted Scenes','Behind the Scenes')"
+    );
   });
 });

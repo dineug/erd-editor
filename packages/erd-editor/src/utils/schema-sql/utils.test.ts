@@ -19,6 +19,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   toOrderName,
+  toStringLiteral,
   unique,
   uniqueColumns,
   withoutReferentialAction,
@@ -250,6 +251,14 @@ describe('schema-sql/utils', () => {
         ReferentialAction.setNull,
       ]);
       expect(support.onUpdate).toEqual(support.onDelete);
+    });
+  });
+
+  describe('toStringLiteral', () => {
+    it('quotes the text and doubles every quote inside it', () => {
+      expect(toStringLiteral('user id')).toBe("'user id'");
+      expect(toStringLiteral("it's the 'id'")).toBe("'it''s the ''id'''");
+      expect(toStringLiteral('')).toBe("''");
     });
   });
 });

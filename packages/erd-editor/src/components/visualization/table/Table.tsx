@@ -11,6 +11,7 @@ import { Show } from '@/constants/schema';
 import type { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
+import { getAlternateKeyMarks } from '@/utils/tableKeys';
 
 export type TableProps = {
   table: Table;
@@ -31,6 +32,9 @@ const Table: FC<TableProps> = (props, ctx) => {
     const columns = query(collections)
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds);
+    const alternateKeyMarks = tableWidths.alternateKey
+      ? getAlternateKeyMarks(store.state, table)
+      : {};
 
     return (
       <div
@@ -83,6 +87,8 @@ const Table: FC<TableProps> = (props, ctx) => {
                   widthDataType={tableWidths.dataType}
                   widthDefault={tableWidths.default}
                   widthComment={tableWidths.comment}
+                  widthAlternateKey={tableWidths.alternateKey}
+                  alternateKey={alternateKeyMarks[column.id]}
                 />
               )
             )}

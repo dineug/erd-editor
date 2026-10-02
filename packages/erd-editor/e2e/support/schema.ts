@@ -47,6 +47,7 @@ export const Show = {
   columnUnique: 64,
   columnNotNull: 128,
   relationship: 256,
+  columnAlternateKey: 512,
 } as const;
 
 /** The editor's own default for settings.show. */

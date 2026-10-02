@@ -33,6 +33,8 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect(ast).toEqual({
       type: StatementType.alterTableAddPrimaryKey,
       name: 'users',
+      constraintName: '',
+      usingIndexName: '',
       columnNames: ['id'],
     });
   });
@@ -45,12 +47,59 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect(ast.columnNames).toEqual(['user_id', 'role_id']);
   });
 
-  it('keeps the table name and drops the constraint name', () => {
+  it('keeps the table name and the constraint name', () => {
     const { ast } = parse(
       'ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id);'
     );
 
     expect(ast.name).toBe('users');
+    expect(ast.constraintName).toBe('pk_users');
+    expect(ast.columnNames).toEqual(['id']);
+  });
+
+  it('reads a key part by its first word, never its sort', () => {
+    const { ast } = parse(
+      'ALTER TABLE t ADD CONSTRAINT pk_t PRIMARY KEY (id DESC, b ASC);'
+    );
+
+    expect(ast.columnNames).toEqual(['id', 'b']);
+  });
+
+  it('reads the key after a CONSTRAINT that has no symbol', () => {
+    const { ast } = parse('ALTER TABLE users ADD CONSTRAINT PRIMARY KEY (id);');
+
+    expect(ast.constraintName).toBe('');
+    expect(ast.columnNames).toEqual(['id']);
+  });
+
+  it('reads the index Oracle names with USING INDEX, and no index property', () => {
+    const named = parse(
+      'ALTER TABLE "HR"."T" ADD CONSTRAINT "PK_T" PRIMARY KEY ("ID") ' +
+        'USING INDEX "HR"."PK_T_IX" ENABLE;'
+    );
+    const properties = parse(
+      'ALTER TABLE "HR"."T" ADD CONSTRAINT "PK_T" PRIMARY KEY ("ID") ' +
+        'USING INDEX PCTFREE 10 TABLESPACE "USERS" ENABLE;'
+    );
+
+    expect(named.ast).toEqual({
+      type: StatementType.alterTableAddPrimaryKey,
+      name: 'T',
+      constraintName: 'PK_T',
+      usingIndexName: 'PK_T_IX',
+      columnNames: ['ID'],
+    });
+    expect(properties.ast.usingIndexName).toBe('');
+    expect(properties.ast.columnNames).toEqual(['ID']);
+  });
+
+  it('reads the symbol and the index of its own clause only', () => {
+    const { ast } = parse(
+      'ALTER TABLE t ADD PRIMARY KEY (id), ADD CONSTRAINT uq UNIQUE (a, b) USING INDEX ix_ab;'
+    );
+
+    expect(ast.constraintName).toBe('');
+    expect(ast.usingIndexName).toBe('');
     expect(ast.columnNames).toEqual(['id']);
   });
 
@@ -60,6 +109,8 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect(ast).toEqual({
       type: StatementType.alterTableAddPrimaryKey,
       name: 'users',
+      constraintName: '',
+      usingIndexName: '',
       columnNames: ['id'],
     });
   });
@@ -133,6 +184,16 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect($pos.value).toBeGreaterThanOrEqual(tokens.length);
   });
 
+  it('reads no key from a list its source leaves open at the terminator', () => {
+    const { ast, $pos, tokens } = parse(
+      'ALTER TABLE t ADD PRIMARY KEY (a, b;\nCREATE TABLE u (id INT);'
+    );
+
+    expect(ast).toMatchObject({ name: 't', columnNames: [] });
+    expect(tokens[$pos.value].value).toBe('CREATE');
+    expect(tokens[$pos.value + 2].value).toBe('u');
+  });
+
   it('stops at the next statement and leaves the position on its first token', () => {
     const { ast, $pos, tokens } = parse(
       'ALTER TABLE users ADD PRIMARY KEY (id); ALTER TABLE t ADD PRIMARY KEY (x);'
@@ -148,6 +209,8 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect(ast).toEqual({
       type: StatementType.alterTableAddPrimaryKey,
       name: '',
+      constraintName: '',
+      usingIndexName: '',
       columnNames: [],
     });
     expect($pos.value).toBe(1);

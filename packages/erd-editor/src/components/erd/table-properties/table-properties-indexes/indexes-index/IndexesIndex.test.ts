@@ -52,15 +52,26 @@ function seedIndex(app: AppContext): Index {
   return app.store.state.collections.indexEntities[INDEX_ID];
 }
 
-function template(index: Index, selected = false, onSelect = vi.fn()) {
+function template(
+  index: Index,
+  selected = false,
+  onSelect = vi.fn(),
+  alternateKey = 0
+) {
   return html`
     <${IndexesIndex}
       index=${index}
+      alternateKey=${alternateKey}
       selected=${selected}
       .onSelect=${onSelect}
     />
   `;
 }
+
+const alternateKeyOf = (mounted: Mounted) =>
+  mounted.container.querySelector(
+    `.${String(styles.alternateKey)}`
+  ) as HTMLElement | null;
 
 let app: AppContext;
 let index: Index;
@@ -123,6 +134,28 @@ describe('IndexesIndex', () => {
       expect(input.getAttribute('type')).toBe('text');
       expect(input.value).toBe('');
       expect(input.classList.contains(String(styles.input))).toBe(true);
+      expect(
+        input.parentElement?.classList.contains(String(styles.nameCell))
+      ).toBe(true);
+      expect(
+        input.parentElement?.classList.contains(String(styles.input))
+      ).toBe(false);
+    });
+
+    it('shows the alternate key number a unique index is known by', async () => {
+      mounted = await mountAndFlush(template(index, false, vi.fn(), 2), app);
+      const label = alternateKeyOf(mounted) as HTMLElement;
+
+      expect(label.textContent).toBe('AK2');
+      expect(label.getAttribute('title')).toBe('Alternate Key 2');
+      expect(label.classList.contains('column-col')).toBe(false);
+      expect(label.nextElementSibling).toBe(removeIconOf(mounted));
+    });
+
+    it('shows no alternate key number for an index that is none', async () => {
+      mounted = await mountAndFlush(template(index), app);
+
+      expect(alternateKeyOf(mounted)).toBeNull();
     });
 
     it('renders the remove icon as a titled svg button', async () => {
@@ -132,6 +165,16 @@ describe('IndexesIndex', () => {
       expect(icon).toBeTruthy();
       expect(icon.getAttribute('title')).toBe('Remove');
       expect(icon.querySelector('svg')).toBeTruthy();
+    });
+
+    it('ends every row in its remove icon, picked or not', async () => {
+      for (const selected of [false, true]) {
+        mounted = await mountAndFlush(template(index, selected), app);
+
+        expect(rowOf(mounted).lastElementChild).toBe(removeIconOf(mounted));
+        mounted.unmount();
+        mounted = null;
+      }
     });
   });
 
@@ -242,6 +285,49 @@ describe('IndexesIndex', () => {
 
       expect(onSelect).toHaveBeenCalledTimes(1);
       expect(onSelect).toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe('read only', () => {
+    const readonlyTemplate = (onSelect = vi.fn()) => html`
+      <${IndexesIndex}
+        index=${index}
+        alternateKey=${1}
+        selected=${false}
+        readonly=${true}
+        .onSelect=${onSelect}
+      />
+    `;
+    const toggleOf = (mounted: Mounted) =>
+      mounted.container.querySelector('[title="Unique"]') as HTMLElement;
+
+    it('draws no remove button, the chip last in the row', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      expect(mounted.container.querySelector('[title="Remove"]')).toBeNull();
+      expect(rowOf(mounted).lastElementChild).toBe(alternateKeyOf(mounted));
+    });
+
+    it('leaves the name untypeable', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+
+      expect(inputOf(mounted).readOnly).toBe(true);
+    });
+
+    it('keeps the UQ toggle for show, neither pointing nor flipping', async () => {
+      const onSelect = vi.fn();
+      mounted = await mountAndFlush(readonlyTemplate(onSelect), app);
+      const toggle = toggleOf(mounted);
+
+      expect(toggle.classList.contains(String(styles.unique))).toBe(false);
+
+      click(toggle);
+      await flush();
+
+      expect(app.store.state.collections.indexEntities[INDEX_ID].unique).toBe(
+        false
+      );
+      expect(onSelect).toHaveBeenCalledExactlyOnceWith(index);
     });
   });
 });

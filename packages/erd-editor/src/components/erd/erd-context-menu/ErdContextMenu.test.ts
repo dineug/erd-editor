@@ -16,6 +16,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   flush,
@@ -177,6 +178,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'New TableAlt + N',
       'New MemoAlt + M',
+      'Find and ReplaceCtrl + F',
       'Relationship',
       'View Option',
       'Database',
@@ -187,12 +189,34 @@ describe('ErdContextMenu / ERD type', () => {
     ]);
   });
 
+  it('draws New Table with the table icon the rest of the editor shows a table by', async () => {
+    await mountMenu();
+
+    expect(iconNameOf(findItem(rootItems(), 'New Table'))).toBe('table-2');
+    expect(iconNameOf(findItem(rootItems(), 'New Memo'))).toBe('sticky-note');
+  });
+
   it('adds a table and closes the menu', async () => {
     await mountMenu();
 
     await click(findItem(rootItems(), 'New Table'));
 
     expect(app.store.state.doc.tableIds).toHaveLength(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for Find and Replace and closes the menu', async () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action.payload);
+      },
+    });
+    await mountMenu();
+
+    await click(findItem(rootItems(), 'Find and Replace'));
+
+    expect(opened).toEqual([undefined]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -279,6 +303,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Default',
       'Not Null',
       'Unique',
+      'Alternate Key',
       'Auto Increment',
       'Relationship',
     ]);

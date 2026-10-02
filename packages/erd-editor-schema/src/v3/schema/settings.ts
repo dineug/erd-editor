@@ -41,6 +41,8 @@ export const CanvasType = {
 export type CanvasType = ValuesType<typeof CanvasType>;
 export const CanvasTypeList: ReadonlyArray<string> = Object.values(CanvasType);
 
+// Append only, like the lists below. columnAlternateKey is off in every
+// document that predates it, so a diagram keeps its layout until it is shown.
 export const Show = {
   tableComment: 1,
   columnComment: 2,
@@ -51,6 +53,7 @@ export const Show = {
   columnUnique: 64,
   columnNotNull: 128,
   relationship: 256,
+  columnAlternateKey: 512,
 } as const;
 
 export const ColumnType = {

@@ -1,13 +1,18 @@
 import {
+  isAlterTableAdd,
   isAlterTableAddForeignKey,
   isAlterTableAddPrimaryKey,
-  isAlterTableAddUnique,
   isCommentOnColumn,
   isCommentOnTable,
   isCreateIndex,
   isCreateTable,
 } from '@/parser/helper';
-import { RefPos, Statement } from '@/parser/statement';
+import {
+  DatabaseVendor,
+  RefPos,
+  SchemaSQLParserOptions,
+  Statement,
+} from '@/parser/statement';
 import { alterTableAddForeignKeyParser } from '@/parser/statement/alter.table.add.foreignKey';
 import { alterTableAddPrimaryKeyParser } from '@/parser/statement/alter.table.add.primaryKey';
 import { alterTableAddUniqueParser } from '@/parser/statement/alter.table.add.unique';
@@ -17,7 +22,7 @@ import { createIndexParser } from '@/parser/statement/create.index';
 import { createTableParser } from '@/parser/statement/create.table';
 import { Token, tokenizer } from '@/parser/tokenizer';
 
-function parser(tokens: Token[]) {
+function parser(tokens: Token[], database?: DatabaseVendor) {
   const ast: Statement[] = [];
   const $pos: RefPos = { value: 0 };
 
@@ -26,13 +31,13 @@ function parser(tokens: Token[]) {
   const createIndex = isCreateIndex(tokens);
   const alterTableAddPrimaryKey = isAlterTableAddPrimaryKey(tokens);
   const alterTableAddForeignKey = isAlterTableAddForeignKey(tokens);
-  const alterTableAddUnique = isAlterTableAddUnique(tokens);
+  const alterTableAdd = isAlterTableAdd(tokens);
   const commentOnTable = isCommentOnTable(tokens);
   const commentOnColumn = isCommentOnColumn(tokens);
 
   while (isToken()) {
     if (createTable($pos.value)) {
-      ast.push(createTableParser(tokens, $pos));
+      ast.push(createTableParser(tokens, $pos, database));
       continue;
     }
 
@@ -41,18 +46,21 @@ function parser(tokens: Token[]) {
       continue;
     }
 
-    if (alterTableAddPrimaryKey($pos.value)) {
-      ast.push(alterTableAddPrimaryKeyParser(tokens, $pos));
-      continue;
-    }
+    // One ALTER TABLE can add several keys: phpMyAdmin adds a table's primary
+    // key and all its unique keys in one. The unique keys are read out of the
+    // same tokens again, whatever the first clause.
+    if (alterTableAdd($pos.value)) {
+      const start = $pos.value;
 
-    if (alterTableAddForeignKey($pos.value)) {
-      ast.push(alterTableAddForeignKeyParser(tokens, $pos));
-      continue;
-    }
+      if (alterTableAddPrimaryKey(start)) {
+        ast.push(alterTableAddPrimaryKeyParser(tokens, $pos));
+      } else if (alterTableAddForeignKey(start)) {
+        ast.push(alterTableAddForeignKeyParser(tokens, $pos));
+      }
 
-    if (alterTableAddUnique($pos.value)) {
-      ast.push(alterTableAddUniqueParser(tokens, $pos));
+      const $unique: RefPos = { value: start };
+      ast.push(...alterTableAddUniqueParser(tokens, $unique));
+      $pos.value = Math.max($pos.value, $unique.value);
       continue;
     }
 
@@ -72,4 +80,7 @@ function parser(tokens: Token[]) {
   return ast;
 }
 
-export const schemaSQLParser = (source: string) => parser(tokenizer(source));
+export const schemaSQLParser = (
+  source: string,
+  { database }: SchemaSQLParserOptions = {}
+) => parser(tokenizer(source, database), database);

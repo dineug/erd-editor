@@ -543,6 +543,7 @@ CREATE TABLE a (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -577,6 +578,7 @@ CREATE TABLE "a" (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -611,6 +613,7 @@ CREATE TABLE 'a' (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -645,6 +648,7 @@ CREATE TABLE `a` (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -679,6 +683,7 @@ CREATE TABLE test.a (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -713,6 +718,7 @@ CREATE TABLE [test].[a] (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -747,6 +753,7 @@ CREATE TABLE a (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -798,6 +805,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -827,6 +835,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [{ "name": "PK_B", "columnNames": ["b", "c"] }],
       "foreignKeys": []
     }
   ]
@@ -863,7 +872,7 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         },
         {
@@ -873,11 +882,27 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         }
       ],
-      "indexes": [],
+      "indexes": [
+        {
+          "name": "",
+          "unique": true,
+          "columns": [
+            {
+              "name": "b",
+              "sort": "ASC"
+            },
+            {
+              "name": "c",
+              "sort": "ASC"
+            }
+          ]
+        }
+      ],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -892,7 +917,7 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         },
         {
@@ -902,11 +927,27 @@ CREATE TABLE b (
           "comment": "",
           "primaryKey": false,
           "autoIncrement": false,
-          "unique": true,
+          "unique": false,
           "nullable": true
         }
       ],
-      "indexes": [],
+      "indexes": [
+        {
+          "name": "UC_B",
+          "unique": true,
+          "columns": [
+            {
+              "name": "b",
+              "sort": "ASC"
+            },
+            {
+              "name": "c",
+              "sort": "ASC"
+            }
+          ]
+        }
+      ],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -968,6 +1009,128 @@ CREATE TABLE a (
           ]
         }
       ],
+      "keys": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### Column INDEX UNIQUE, SQL Server
+
+```sql
+CREATE TABLE [dbo].[t] (
+ [a] int NOT NULL,
+ [b] int NOT NULL,
+ INDEX [ix_ab] UNIQUE NONCLUSTERED ([a] ASC, [b] DESC),
+ INDEX [ix_b] UNIQUE ([b])
+)
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "t",
+      "comment": "",
+      "columns": [
+        {
+          "name": "a",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "b",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": true,
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_ab",
+          "unique": true,
+          "columns": [
+            { "name": "a", "sort": "ASC" },
+            { "name": "b", "sort": "DESC" }
+          ]
+        }
+      ],
+      "keys": [{ "name": "ix_b", "columnNames": ["b"] }],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### Column INDEX UNIQUE with a filter, SQL Server
+
+```sql
+CREATE TABLE [dbo].[t] (
+ [a] int,
+ [b] int,
+ INDEX [uq_ab] UNIQUE NONCLUSTERED ([a] ASC, [b] ASC) WHERE ([a] IS NOT NULL AND [b] IS NOT NULL),
+ INDEX [ix_b] UNIQUE ([b]) WHERE ([b] > 0)
+)
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "t",
+      "comment": "",
+      "columns": [
+        {
+          "name": "a",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "b",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "uq_ab",
+          "unique": true,
+          "columns": [
+            { "name": "a", "sort": "ASC" },
+            { "name": "b", "sort": "ASC" }
+          ]
+        },
+        {
+          "name": "ix_b",
+          "unique": false,
+          "columns": [{ "name": "b", "sort": "ASC" }]
+        }
+      ],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -1024,6 +1187,7 @@ CREATE TABLE 'users' (
         }
       ],
       "comment": "",
+      "keys": [{ "name": "users_email_unique", "columnNames": ["email"] }],
       "foreignKeys": [],
       "indexes": [
         {
@@ -1089,6 +1253,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": [
         {
           "columnNames": ["b", "c"],
@@ -1126,6 +1291,7 @@ CREATE TABLE b (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": [
         {
           "columnNames": ["b", "c"],
@@ -1186,6 +1352,109 @@ CREATE UNIQUE INDEX IDX_B on B (a, b DESC)
 }
 ```
 
+### CREATE UNIQUE INDEX from dump tools
+
+```sql
+CREATE UNIQUE INDEX i_1 ON public.sp_region USING btree (code, name);
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_ab] ON [dbo].[t] ([a] ASC, [b] DESC) WITH (PAD_INDEX = OFF) ON [PRIMARY]
+GO
+CREATE UNIQUE INDEX "HR"."UQ_AB" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.index",
+      "name": "i_1",
+      "unique": true,
+      "tableName": "sp_region",
+      "columns": [
+        { "name": "code", "sort": "ASC" },
+        { "name": "name", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "UQ_ab",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "DESC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "UQ_AB",
+      "unique": true,
+      "tableName": "T",
+      "columns": [
+        { "name": "A", "sort": "ASC" },
+        { "name": "B", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
+### CREATE UNIQUE INDEX key parts and partial indexes
+
+```sql
+CREATE UNIQUE INDEX uq_ab ON public.t USING btree (a, b DESC NULLS LAST);
+CREATE UNIQUE INDEX uq_ba ON public.t USING btree (b text_pattern_ops, a COLLATE "C");
+CREATE UNIQUE INDEX uq_live ON public.t USING btree (a, b) WHERE (deleted_at IS NULL);
+CREATE UNIQUE NONCLUSTERED INDEX [uq_set] ON [dbo].[t] ([a] ASC, [b] ASC) WHERE ([a] IS NOT NULL AND [b] IS NOT NULL) WITH (PAD_INDEX = OFF) ON [PRIMARY]
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.index",
+      "name": "uq_ab",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "DESC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "uq_ba",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "b", "sort": "ASC" },
+        { "name": "a", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "uq_live",
+      "unique": false,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "uq_set",
+      "unique": true,
+      "tableName": "t",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
 ### Alter Table Add PRIMARY KEY
 
 ```sql
@@ -1199,11 +1468,15 @@ ALTER TABLE Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     }
   ]
@@ -1223,11 +1496,15 @@ ALTER TABLE "public".Persons ADD CONSTRAINT PK_Person PRIMARY KEY (ID,LastName)
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     }
   ]
@@ -1319,12 +1596,19 @@ ALTER TABLE Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "usingIndexName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
     }
   ]
 }
@@ -1343,12 +1627,148 @@ ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "usingIndexName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
+### Alter Table Add UNIQUE KEY
+
+```sql
+ALTER TABLE users ADD UNIQUE KEY uq_email (email);
+ALTER TABLE users ADD CONSTRAINT sym UNIQUE INDEX uq_ab (a, b DESC);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_email",
+      "usingIndexName": "",
+      "columns": [{ "name": "email", "sort": "ASC" }]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_ab",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "DESC" }
+      ]
+    }
+  ]
+}
+```
+
+### Alter Table Add several keys
+
+```sql
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_tenant_login` (`tenant`,`login`),
+  ADD UNIQUE KEY `uq_email` (`email`),
+  ADD KEY `idx_tenant` (`tenant`);
+ALTER TABLE users ADD CONSTRAINT UNIQUE (a, b), ADD CONSTRAINT fk_x FOREIGN KEY (x) REFERENCES y (id);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "users",
+      "constraintName": "",
+      "usingIndexName": "",
+      "columnNames": ["id"]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_tenant_login",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "tenant", "sort": "ASC" },
+        { "name": "login", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "uq_email",
+      "usingIndexName": "",
+      "columns": [{ "name": "email", "sort": "ASC" }]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "users",
+      "constraintName": "",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "a", "sort": "ASC" },
+        { "name": "b", "sort": "ASC" }
+      ]
+    }
+  ]
+}
+```
+
+### Alter Table Add UNIQUE USING INDEX, Oracle
+
+```sql
+CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
+ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AB" UNIQUE ("A", "B") USING INDEX "HR"."UQ_T_AB_IX" ENABLE;
+ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_CD" UNIQUE ("C", "D")
+  USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 TABLESPACE "USERS" ENABLE;
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.index",
+      "name": "UQ_T_AB_IX",
+      "unique": true,
+      "tableName": "T",
+      "columns": [
+        { "name": "A", "sort": "ASC" },
+        { "name": "B", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "T",
+      "constraintName": "UQ_T_AB",
+      "usingIndexName": "UQ_T_AB_IX",
+      "columns": [
+        { "name": "A", "sort": "ASC" },
+        { "name": "B", "sort": "ASC" }
+      ]
+    },
+    {
+      "type": "alter.table.add.unique",
+      "name": "T",
+      "constraintName": "UQ_T_CD",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "C", "sort": "ASC" },
+        { "name": "D", "sort": "ASC" }
+      ]
     }
   ]
 }
@@ -1377,21 +1797,29 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "",
+      "usingIndexName": "",
       "columnNames": ["ID"]
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "Persons",
+      "constraintName": "PK_Person",
+      "usingIndexName": "",
       "columnNames": ["ID", "LastName"]
     },
     {
@@ -1433,22 +1861,36 @@ ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "usingIndexName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID"]
+      "constraintName": "",
+      "usingIndexName": "",
+      "columns": [{ "name": "ID", "sort": "ASC" }]
     },
     {
       "type": "alter.table.add.unique",
       "name": "Persons",
-      "columnNames": ["ID", "LastName"]
+      "constraintName": "UC_Person",
+      "usingIndexName": "",
+      "columns": [
+        { "name": "ID", "sort": "ASC" },
+        { "name": "LastName", "sort": "ASC" }
+      ]
     }
   ]
 }
@@ -1504,6 +1946,7 @@ CREATE TABLE `role` (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -1549,6 +1992,7 @@ CREATE TABLE `test` (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -1600,6 +2044,7 @@ COMMENT ON COLUMN public.users.email IS 'email address';
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -1664,6 +2109,7 @@ CREATE TABLE users /* pk: id; see docs (v2) */ (
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     }
   ]
@@ -1744,6 +2190,7 @@ USING DELTA
         }
       ],
       "indexes": [],
+      "keys": [{ "name": "pk_events", "columnNames": ["event_id"] }],
       "foreignKeys": []
     }
   ]
@@ -1847,6 +2294,7 @@ COMMENT = 'sales orders'
         }
       ],
       "indexes": [],
+      "keys": [{ "name": "PK_ORDER_ID", "columnNames": ["ORDER_ID"] }],
       "foreignKeys": [
         {
           "columnNames": [
@@ -1908,11 +2356,14 @@ ALTER TABLE analytics.dbt_dev.orders ADD FOREIGN KEY (user_id) REFERENCES analyt
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {
       "type": "alter.table.add.primaryKey",
       "name": "users",
+      "constraintName": "PK_USERS",
+      "usingIndexName": "",
       "columnNames": [
         "user_id"
       ]
@@ -2081,6 +2532,252 @@ GO
       "type": "alter.table.add.unique",
       "name": "b",
       "columnNames": ["a_id"]
+    }
+  ]
+}
+```
+
+### PostgreSQL user-defined types, domains and arrays
+
+```sql
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TYPE public.mood AS ENUM ('sad', 'ok', 'it''s');
+
+CREATE TYPE address AS (street text, city text);
+
+CREATE DOMAIN us_postal AS TEXT CHECK (VALUE ~ '^\d{5}$');
+
+CREATE TABLE public.person (
+    id integer NOT NULL,
+    current_mood public.mood DEFAULT 'ok'::public.mood NOT NULL,
+    zip us_postal,
+    home address,
+    email citext,
+    tags "public"."mood"[],
+    scores integer[]
+);
+
+COMMENT ON COLUMN public.person.current_mood IS 'it''s how they feel';
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "person",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "integer",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "current_mood",
+          "dataType": "public.mood",
+          "default": "'ok'",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "zip",
+          "dataType": "us_postal",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "home",
+          "dataType": "address",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "email",
+          "dataType": "citext",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "dataType": "\"public\".\"mood\"[]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "scores",
+          "dataType": "integer[]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "keys": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "person",
+      "columnName": "current_mood",
+      "comment": "it's how they feel"
+    }
+  ]
+}
+```
+
+### SQL Server alias types
+
+```sql
+CREATE TYPE [dbo].[Phone] FROM [nvarchar](20) NULL;
+
+CREATE TYPE dbo.LineItems AS TABLE (id INT, qty INT);
+
+CREATE TABLE [dbo].[Customer] (
+  [Id] [int] IDENTITY(1,1) NOT NULL,
+  [Phone] [dbo].[Phone] NULL,
+  [Owner] [sysname] NOT NULL,
+  [Status] [dbo].[Order] NULL
+);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "Customer",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Phone",
+          "dataType": "[dbo].[Phone]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "Owner",
+          "dataType": "[sysname]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "dataType": "[dbo].[Order]",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "keys": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### MySQL ENUM and SET values
+
+```sql
+CREATE TABLE `film` (
+  `rating` ENUM('G','PG','PG-13','R','NC-17') DEFAULT 'G',
+  `special_features` SET('Trailers','Deleted Scenes') NULL,
+  `note` ENUM('it''s','') NOT NULL COMMENT 'it''s a note'
+);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "film",
+      "comment": "",
+      "columns": [
+        {
+          "name": "rating",
+          "dataType": "ENUM('G','PG','PG-13','R','NC-17')",
+          "default": "'G'",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "special_features",
+          "dataType": "SET('Trailers','Deleted Scenes')",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "dataType": "ENUM('it''s','')",
+          "default": "",
+          "comment": "it's a note",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "keys": [],
+      "foreignKeys": []
     }
   ]
 }

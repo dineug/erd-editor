@@ -2,22 +2,36 @@ import { AnyAction } from '@dineug/r-html';
 import { Subject, Subscription } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { createTestAppContext } from '@/__test-utils__';
 import {
   ColumnOption,
   Direction,
+  Show,
   StartRelationshipType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import type { HookEffect } from '@/engine/hooks';
+import {
+  addIndexAction,
+  changeIndexUniqueAction,
+} from '@/engine/modules/index/atom.actions';
+import {
+  addIndexColumnAction,
+  moveIndexColumnAction,
+} from '@/engine/modules/index-column/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { moveTableAction } from '@/engine/modules/table/atom.actions';
+import { moveColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
+import { calcTableWidths, getWidthGeneration } from '@/utils/calcTable';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { getRoute } from '@/utils/draw-relationship';
+import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
 import {
   collectObstacles,
   countBlocked,
@@ -144,6 +158,13 @@ describe('relationship/hooks registration', () => {
       'column.changeDataType',
       'column.changeDefault',
       'table.sort',
+      'index.add',
+      'index.remove',
+      'index.changeUnique',
+      'indexColumn.add',
+      'indexColumn.remove',
+      'indexColumn.move',
+      'column.move',
     ]);
   });
 });
@@ -527,6 +548,90 @@ describe('relationship/hooks relationshipSortHook', () => {
 
       expect(rel(store, 'r1').start.direction).toBe(Direction.right);
       expect(relationshipSort).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('re-measures a table once an index action gives it an alternate key mark', async () => {
+    const { store } = createTestAppContext();
+    const table = createTable({
+      id: 't1',
+      name: 't1',
+      columnIds: ['c1', 'c2'],
+    });
+    store.state.collections.tableEntities.t1 = table;
+    for (const id of table.columnIds) {
+      store.state.collections.tableColumnEntities[id] = createColumn({
+        id,
+        tableId: 't1',
+        name: id,
+      });
+    }
+    store.state.doc.tableIds.push('t1');
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnAlternateKey, value: true })
+    );
+    await settle();
+    const before = tableToObjectPoint(store.state, table).width;
+
+    store.dispatchSync(
+      addIndexAction({ id: 'i1', tableId: 't1' }),
+      addIndexColumnAction({
+        id: 'ic1',
+        indexId: 'i1',
+        tableId: 't1',
+        columnId: 'c1',
+      }),
+      addIndexColumnAction({
+        id: 'ic2',
+        indexId: 'i1',
+        tableId: 't1',
+        columnId: 'c2',
+      }),
+      changeIndexUniqueAction({ id: 'i1', tableId: 't1', value: true })
+    );
+    await settle();
+
+    expect(tableToObjectPoint(store.state, table).width).toBe(
+      calcTableWidths(table, store.state).width
+    );
+    expect(tableToObjectPoint(store.state, table).width).toBeGreaterThan(
+      before
+    );
+    store.destroy();
+  });
+
+  it('sorts on an index action only while the marks are shown', async () => {
+    const store = createTestStore();
+    const { fire } = await run(relationshipSortHook, store);
+
+    fire(addIndexAction.type);
+    fire(changeIndexUniqueAction.type);
+    await settle();
+    expect(relationshipSort).not.toHaveBeenCalled();
+
+    store.state.settings.show |= Show.columnAlternateKey;
+    fire(addIndexColumnAction.type);
+    await settle();
+    expect(relationshipSort).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([moveColumnAction.type, moveIndexColumnAction.type])(
+    'measures again after %s while the marks are shown, since it renumbers them',
+    async type => {
+      const store = createTestStore();
+      const { fire } = await run(relationshipSortHook, store);
+      const generation = getWidthGeneration();
+
+      fire(type);
+      await settle();
+      expect(relationshipSort).not.toHaveBeenCalled();
+      expect(getWidthGeneration()).toBe(generation);
+
+      store.state.settings.show |= Show.columnAlternateKey;
+      fire(type);
+      await settle();
+      expect(relationshipSort).toHaveBeenCalledTimes(1);
+      expect(getWidthGeneration()).toBe(generation + 1);
     }
   );
 

@@ -22,13 +22,19 @@ import {
   primaryKeyColumns,
   referentialActionSupport,
   toOrderName,
-  unique,
   uniqueColumns,
 } from './utils';
 
 // Databricks SQL quotes identifiers with backticks only -- "x" and 'x' are
 // string literals there -- so settings.bracketType cannot be honoured.
 const BRACKET = '`';
+
+// Spark SQL escapes a quote inside a string literal with a backslash, and so
+// the backslash itself; all but its newest releases end the literal at the
+// doubled quote other vendors read.
+function toSparkStringLiteral(value: string): string {
+  return `'${value.replace(/[\\']/g, '\\$&')}'`;
+}
 
 // Keys are never enforced. RELY is what lets the optimizer act on the
 // declaration, which is the only reason to export one at all.
@@ -59,20 +65,7 @@ export function createSchema(state: RootState): string {
     formatTable(state, { table, buffer: stringBuffer });
     stringBuffer.push('');
 
-    const columns = query(collections)
-      .collection('tableColumnEntities')
-      .selectByIds(table.columnIds);
-
-    // UNIQUE is not one of the constraints Databricks accepts, so the column
-    // is reported rather than silently dropped.
-    if (unique(columns)) {
-      uniqueColumns(columns).forEach(column => {
-        stringBuffer.push(
-          `-- Databricks does not support UNIQUE constraints: ${BRACKET}${table.name}${BRACKET}.${BRACKET}${column.name}${BRACKET}`
-        );
-        stringBuffer.push('');
-      });
-    }
+    formatUnique(state, { table, buffer: stringBuffer });
   });
 
   relationships.forEach(relationship => {
@@ -135,8 +128,28 @@ export function formatTable(
     buffer.push(`USING DELTA;`);
   } else {
     buffer.push(`USING DELTA`);
-    buffer.push(`COMMENT '${table.comment}';`);
+    buffer.push(`COMMENT ${toSparkStringLiteral(table.comment)};`);
   }
+}
+
+/**
+ * A comment per column the diagram marks unique, after the table: UNIQUE is not
+ * one of the constraints Databricks accepts, so it is reported, never dropped.
+ */
+export function formatUnique(
+  { collections }: RootState,
+  { buffer, table }: FormatTableOptions
+) {
+  const columns = query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(table.columnIds);
+
+  uniqueColumns(columns).forEach(column => {
+    buffer.push(
+      `-- Databricks does not support UNIQUE constraints: ${BRACKET}${table.name}${BRACKET}.${BRACKET}${column.name}${BRACKET}`
+    );
+    buffer.push('');
+  });
 }
 
 function formatColumn(
@@ -168,7 +181,7 @@ function formatColumn(
     stringBuffer.push(`DEFAULT ${column.default}`);
   }
   if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT '${column.comment}'`);
+    stringBuffer.push(`COMMENT ${toSparkStringLiteral(column.comment)}`);
   }
 
   buffer.push(stringBuffer.join(' ').trimEnd() + `${isComma ? ',' : ''}`);

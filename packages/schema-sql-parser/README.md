@@ -36,11 +36,40 @@ for (const statement of statements) {
 }
 ```
 
-`statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes` and
-`foreignKeys`; `CreateIndex` carries `tableName`, `unique` and `columns`; the three `alter.table.add.*`
-nodes carry the altered table's `name` and `columnNames`, plus `refTableName` / `refColumnNames` on
-foreign keys — a `CONSTRAINT <id>` prefix is consumed and dropped, so the constraint's own name is not
-reported. Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
+A second argument names the vendor the source is written for, when the caller knows it:
+`schemaSQLParser(source, { database: 'Databricks' })`. Only Databricks reads differently: a
+single-quoted literal follows Spark's rules, every backslash escaping the character after it
+(`'it\'s'`, `'C:\\dir'`, `'\n'`), and a `DEFAULT` literal or a quoted string inside a type comes
+back escaped the same way (`'it\'s'`), the form Spark 4.0 and earlier read. Without it, or for any
+other vendor, a doubled quote is one quote and a backslash before a quote is a guess: MySQL's
+`'it\'s'` is an escape, standard SQL's `'C:\'` a whole literal.
+
+`statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes`,
+`keys` and `foreignKeys`; `CreateIndex` carries its `name`, `tableName`, `unique` and `columns`. A
+qualified table or index name keeps its last segment.
+
+`alter.table.add.primaryKey` and `alter.table.add.foreignKey` carry the altered table's `name` and
+`columnNames`, plus `refTableName` / `refColumnNames` on foreign keys, whose `CONSTRAINT <id>` is
+consumed and not reported. `alter.table.add.unique` carries the table's `name`, its `constraintName`
+(the `UNIQUE KEY` / `UNIQUE INDEX` name, else the `CONSTRAINT` symbol, else `''`) and its `columns`; an
+`ALTER TABLE` that adds several keys yields one per UNIQUE clause. The primary key carries its
+`constraintName` too, and both carry a `usingIndexName`: the existing index Oracle's `USING INDEX` names,
+else `''`.
+
+A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
+named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's
+`unique` instead. A partial unique key, `CREATE UNIQUE INDEX ... WHERE` or SQL Server's inline
+`INDEX n UNIQUE (...) WHERE`, comes back as an index with `unique: false` under its name and columns,
+over one column too, unless its filter is only `key IS NOT NULL` over key columns, joined by `AND`.
+
+`keys` lists, as `{ name, columnNames }`, the primary keys and one-column unique keys a `CREATE TABLE`
+names (by `CONSTRAINT`, or a one-column `UNIQUE KEY n` / `INDEX n UNIQUE`), and each key with no name
+that Oracle's `USING INDEX` follows, composite too, which stays in `indexes` as well; a key with no
+name that PostgreSQL's `USING INDEX TABLESPACE` follows is not listed. A dump may export a key's index
+on its own, as Oracle's DBMS_METADATA does for each key a table declares inline, and the editor's
+importer reads such a `CREATE INDEX` over the key's columns as that key.
+
+Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
 table's `name` and its `comment`, `CommentOnColumn` carries `tableName`, `columnName` and `comment` —
 PostgreSQL and Oracle attach comments with a statement of their own instead of a table option, so those
 two arrive separately from the `create.table` they belong to.
@@ -582,6 +611,13 @@ two arrive separately from the `create.table` they belong to.
 
 </details>
 
+A type none of these lists carries is kept as written where it follows the column name: an enum or
+composite made with `CREATE TYPE`, a `CREATE DOMAIN`, an extension type such as `hstore`, `citext` or
+`ltree`, a schema-qualified or quoted name (`public.mood`, `"MyType"`, `[dbo].[Order]`, its quotes and
+brackets kept), with its arguments. An array suffix (`[]`, `[3]`, `ARRAY`) stays on any type, and the
+values of `ENUM(...)` and `SET(...)` keep their quotes. The `CREATE TYPE`, `CREATE DOMAIN` and
+`CREATE EXTENSION` statements themselves are skipped.
+
 ## Support Syntax
 
 ### Basics
@@ -667,6 +703,20 @@ CREATE TABLE b (
  b varchar(255),
  c int,
  CONSTRAINT UC_B UNIQUE(b, c)
+)
+CREATE TABLE c (
+ b varchar(255),
+ c int,
+ d int,
+ UNIQUE KEY uq_bc (b, c DESC),
+ UNIQUE INDEX uq_cd (c, d),
+ CONSTRAINT UC_BD UNIQUE NONCLUSTERED (b, d)
+)
+CREATE TABLE [dbo].[d] (
+ [b] int,
+ [c] int,
+ INDEX [ix_bc] UNIQUE NONCLUSTERED ([b] ASC, [c] DESC),
+ INDEX [ix_cb] UNIQUE ([c], [b]) WHERE ([c] IS NOT NULL AND [b] IS NOT NULL)
 )
 ```
 
@@ -759,6 +809,17 @@ CREATE TABLE b (
 ```sql
 CREATE INDEX IDX_A on A (a, b DESC)
 CREATE UNIQUE INDEX IDX_B on B (a, b DESC)
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS IDX_C ON C (a, b)
+```
+
+### CREATE UNIQUE INDEX from dump tools
+
+```sql
+CREATE UNIQUE INDEX i_1 ON ONLY public.t USING btree (a, b DESC NULLS LAST);
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_ab] ON [dbo].[t] ([a] ASC, [b] DESC)
+  WHERE ([a] IS NOT NULL AND [b] IS NOT NULL) WITH (PAD_INDEX = OFF) ON [PRIMARY]
+GO
+CREATE UNIQUE INDEX "HR"."UQ_AB" ON "HR"."T" ("A", "B") TABLESPACE "USERS";
 ```
 
 ### Alter Table Add PRIMARY KEY
@@ -811,6 +872,29 @@ ALTER TABLE "public".Persons ADD UNIQUE (ID)
 ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ```
 
+### Alter Table Add UNIQUE KEY
+
+```sql
+ALTER TABLE users ADD UNIQUE KEY uq_ab (a, b DESC)
+ALTER TABLE users ADD CONSTRAINT sym UNIQUE INDEX uq_c (c)
+```
+
+### Alter Table Add several keys
+
+```sql
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_tenant_login` (`tenant`,`login`),
+  ADD UNIQUE KEY `uq_email` (`email`);
+```
+
+### Alter Table Add UNIQUE USING INDEX
+
+```sql
+CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B");
+ALTER TABLE "HR"."T" ADD CONSTRAINT "UQ_T_AB" UNIQUE ("A", "B") USING INDEX "HR"."UQ_T_AB_IX" ENABLE;
+```
+
 ### Alter Table Only
 
 ```sql
@@ -859,6 +943,22 @@ CREATE TABLE `main`.`events` (
   CONSTRAINT `pk_events` PRIMARY KEY (`event_id`) NOT ENFORCED RELY
 )
 USING DELTA
+```
+
+### User-defined types and arrays
+
+```sql
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE DOMAIN us_postal AS TEXT CHECK (VALUE ~ '^\d{5}$');
+
+CREATE TABLE person (
+  current_mood public.mood NOT NULL,
+  zip us_postal,
+  email citext,
+  tags mood[],
+  scores integer ARRAY,
+  rating ENUM('G','PG-13','it''s')
+)
 ```
 
 ## Development

@@ -4,11 +4,14 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   FOCUS_BORDER_HEIGHT,
   getSceneFontMetrics,
+  SCENE_CODE_FONT_FAMILY,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   CELL_UNDERLINE_Y,
   type ColumnCellWidths,
+  getAlternateKeyMarkHeight,
+  getAlternateKeyMarkX,
   getCellTextBaseline,
   getCellTextHeight,
   getColumnCellSlots,
@@ -24,6 +27,7 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import {
   COLUMN_HEIGHT,
+  COLUMN_KEY_WIDTH,
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_PADDING,
   COLUMN_UNIQUE_WIDTH,
@@ -214,6 +218,57 @@ describe('the boxes a column row lays out', () => {
   });
 });
 
+describe('where a row puts its alternate key mark', () => {
+  const ends = (state: RootState) =>
+    getColumnCellSlots(state, WIDTHS).map(slot => slot.x + slot.width);
+
+  it('stands one margin past the last cell, the cells where they were', () => {
+    const state = createState(Show.columnDataType);
+    state.settings.columnOrder = [
+      ColumnType.columnName,
+      ColumnType.columnDataType,
+    ];
+    const slots = getColumnCellSlots(state, WIDTHS);
+
+    expect(slots[0].x).toBe(getColumnCellsX());
+    expect(getAlternateKeyMarkX(slots)).toBe(
+      getColumnCellsX() + 60 + INPUT_MARGIN_RIGHT + 80 + INPUT_MARGIN_RIGHT
+    );
+  });
+
+  it('stays last whatever order the settings put the cells in', () => {
+    const state = createState(
+      Show.columnComment | Show.columnDataType | Show.columnNotNull
+    );
+    state.settings.columnOrder = [
+      ColumnType.columnComment,
+      ColumnType.columnNotNull,
+      ColumnType.columnName,
+      ColumnType.columnDataType,
+    ];
+    const slots = getColumnCellSlots(state, WIDTHS);
+    const x = getAlternateKeyMarkX(slots);
+
+    expect(slots.map(slot => slot.columnType)).toEqual(
+      state.settings.columnOrder
+    );
+    expect(x).toBe(Math.max(...ends(state)) + INPUT_MARGIN_RIGHT);
+    expect(slots.every(slot => slot.x < x)).toBe(true);
+  });
+
+  it('takes the place of the first cell while the row lays out none', () => {
+    expect(getAlternateKeyMarkX([])).toBe(getColumnCellsX());
+  });
+
+  it('centres its code face line on the baseline the text face cells stand on', () => {
+    const { ascent, descent } = getSceneFontMetrics(SCENE_CODE_FONT_FAMILY);
+
+    expect(getAlternateKeyMarkHeight() / 2 + (ascent - descent) / 2).toBe(
+      getCellTextBaseline()
+    );
+  });
+});
+
 /** AC-4. A view row is the name and the type, and the document's settings cannot change that. */
 describe('the boxes a view lays out', () => {
   const VIEW_ROW = [
@@ -323,6 +378,9 @@ describe('the offsets a source lays its cells out at', () => {
 
   it('starts the cells past the badge its own source sizes', () => {
     expect(getColumnCellsX()).toBe(getColumnCellsX('document'));
+    expect(getColumnCellsX()).toBe(
+      TABLE_INSET + COLUMN_KEY_WIDTH + INPUT_MARGIN_RIGHT
+    );
     expect(getColumnCellsX('flow')).toBe(
       TABLE_INSET + VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP
     );

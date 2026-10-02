@@ -37,12 +37,33 @@ export const ReferentialAction = {
 } as const;
 export type ReferentialAction = ValuesType<typeof ReferentialAction>;
 
+/** The vendors a source may be named for, spelled as the editor's database. */
+export type DatabaseVendor =
+  | 'Databricks'
+  | 'MariaDB'
+  | 'MSSQL'
+  | 'MySQL'
+  | 'Oracle'
+  | 'PostgreSQL'
+  | 'Snowflake'
+  | 'SQLite';
+
+/**
+ * What the caller knows of the source. A Databricks one reads its string
+ * literals by Spark's escapes and writes them back in them; any other, or none,
+ * is read by the guess that serves every dialect.
+ */
+export type SchemaSQLParserOptions = {
+  database?: DatabaseVendor;
+};
+
 export type CreateTable = {
   type: typeof StatementType.createTable;
   name: string;
   comment: string;
   columns: Column[];
   indexes: Index[];
+  keys: Key[];
   foreignKeys: ForeignKey[];
 };
 
@@ -64,6 +85,16 @@ export type Index = {
 };
 
 /**
+ * A primary key or one-column unique key the source names, or any key with no
+ * name, composite too, that Oracle's USING INDEX follows, never PostgreSQL's
+ * USING INDEX TABLESPACE: a dump may export the key's index on its own.
+ */
+export type Key = {
+  name: string;
+  columnNames: string[];
+};
+
+/**
  * A REFERENCES without a column list leaves refColumnNames empty: it names the
  * referenced table's primary key. An absent ON DELETE or ON UPDATE clause is ''.
  */
@@ -78,6 +109,7 @@ export type ForeignKey = {
 export type CreateTableColumns = {
   columns: Column[];
   indexes: Index[];
+  keys: Key[];
   foreignKeys: ForeignKey[];
 };
 
@@ -97,12 +129,20 @@ export type IndexColumn = {
 export type AlterTableAddUnique = {
   type: typeof StatementType.alterTableAddUnique;
   name: string;
-  columnNames: string[];
+  /** The key's own name: an index name after UNIQUE KEY, else the CONSTRAINT symbol. */
+  constraintName: string;
+  /** The existing index Oracle's USING INDEX names to enforce the key, '' for none. */
+  usingIndexName: string;
+  columns: IndexColumn[];
 };
 
 export type AlterTableAddPrimaryKey = {
   type: typeof StatementType.alterTableAddPrimaryKey;
   name: string;
+  /** The CONSTRAINT symbol, '' for none. */
+  constraintName: string;
+  /** The existing index Oracle's USING INDEX names to enforce the key, '' for none. */
+  usingIndexName: string;
   columnNames: string[];
 };
 

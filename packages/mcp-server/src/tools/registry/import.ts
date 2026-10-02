@@ -2,7 +2,7 @@ import {
   editorActions$,
   type GeneratorAction,
 } from '@dineug/erd-editor/peer.js';
-import { parser } from '@dineug/erd-editor-schema';
+import { createSchema, parser, toJson } from '@dineug/erd-editor-schema';
 import { isPlainObject, isString } from 'es-toolkit';
 import { isEmpty } from 'es-toolkit/compat';
 
@@ -77,9 +77,11 @@ export const importTools: readonly ActionTool[] = [
     snapshotPaths: ['settings', ...DOCUMENT_PATHS],
     args: VALUE,
     refine: ({ value }) => refuseDocument(value),
-    // The element's value setter loads an empty text as an empty document.
+    // The element's value setter loads an empty text as a new document.
     toActions: ({ value }) => [
-      editorActions$.loadJsonAction$(isEmpty(value) ? '{}' : value),
+      editorActions$.loadJsonAction$(
+        isEmpty(value) ? toJson(createSchema()) : value
+      ),
     ],
   },
 ];

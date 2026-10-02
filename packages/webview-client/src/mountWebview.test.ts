@@ -281,13 +281,18 @@ describe('mountWebview', () => {
     expect(editor.element.readonly).toBe(true);
   });
 
-  it('relays the value the replica saved to the host', () => {
+  it('relays the value the replica saved to the host, whether it changed or not', () => {
     mount();
-    const saved = Bridge.executeCommand(hostSaveValueCommand, { value: '{}' });
 
-    worker.listeners[0](new MessageEvent('message', { data: saved }));
+    for (const changed of [true, false]) {
+      const saved = Bridge.executeCommand(hostSaveValueCommand, {
+        value: '{}',
+        changed,
+      });
+      worker.listeners[0](new MessageEvent('message', { data: saved }));
 
-    expect(dispatch).toHaveBeenCalledWith(saved);
+      expect(dispatch).toHaveBeenLastCalledWith(saved);
+    }
   });
 
   it('hands file dialogs to the host only when asked', () => {

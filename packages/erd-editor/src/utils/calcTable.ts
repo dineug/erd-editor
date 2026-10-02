@@ -1,6 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import {
+  COLUMN_ALTERNATE_KEY_CHAR_WIDTH,
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_DELETE_WIDTH,
   COLUMN_HEIGHT,
@@ -30,6 +31,7 @@ import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { getAlternateKeyMarks } from '@/utils/tableKeys';
 import { textInRange } from '@/utils/validation';
 
 /**
@@ -52,10 +54,26 @@ export function invalidateTableWidths() {
   widthGeneration++;
 }
 
-export function calcTableWidths(
-  table: Table,
-  { settings: { show, maxWidthComment }, collections }: RootState
-): ColumnWidth {
+/**
+ * The room a row keeps for the table's alternate key marks after its last
+ * cell: the longest mark, or none while the marks are hidden or the table has
+ * none, so only a table that shows one widens.
+ */
+export function calcAlternateKeyWidth(table: Table, state: RootState): number {
+  if (!bHas(state.settings.show, Show.columnAlternateKey)) return 0;
+
+  return Object.values(getAlternateKeyMarks(state, table)).reduce(
+    (width, mark) =>
+      Math.max(width, Math.ceil(mark.length * COLUMN_ALTERNATE_KEY_CHAR_WIDTH)),
+    0
+  );
+}
+
+export function calcTableWidths(table: Table, state: RootState): ColumnWidth {
+  const {
+    settings: { show, maxWidthComment },
+    collections,
+  } = state;
   let width = TABLE_HEADER_NAME_X + table.ui.widthName + INPUT_MARGIN_RIGHT;
   if (bHas(show, Show.tableComment)) {
     const widthComment =
@@ -70,7 +88,10 @@ export function calcTableWidths(
   // the last cell and a long name ends before them rather than under them.
   width += TABLE_HEADER_BUTTONS_WIDTH;
 
-  const defaultWidthColumns = calcDefaultWidthColumns(show);
+  const alternateKey = calcAlternateKeyWidth(table, state);
+  const defaultWidthColumns =
+    calcDefaultWidthColumns(show) +
+    (alternateKey ? alternateKey + INPUT_MARGIN_RIGHT : 0);
   if (width < defaultWidthColumns) {
     width = defaultWidthColumns;
   }
@@ -79,7 +100,12 @@ export function calcTableWidths(
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  const maxWidthColumn = calcMaxWidthColumn(columns, show, maxWidthComment);
+  const maxWidthColumn = calcMaxWidthColumn(
+    columns,
+    show,
+    maxWidthComment,
+    alternateKey
+  );
   if (width < maxWidthColumn.width) {
     width = maxWidthColumn.width;
   }
@@ -134,6 +160,8 @@ function calcDefaultWidthColumns(show: number) {
 
 export type ColumnWidth = {
   width: number;
+  /** The alternate key marks' room after a row's last cell, 0 while none is drawn. */
+  alternateKey: number;
   name: number;
   comment: number;
   dataType: number;
@@ -147,6 +175,7 @@ export type ColumnWidth = {
 function createColumnWidth(): ColumnWidth {
   return {
     width: 0,
+    alternateKey: 0,
     name: 0,
     comment: 0,
     dataType: 0,
@@ -160,9 +189,11 @@ function createColumnWidth(): ColumnWidth {
 function calcMaxWidthColumn(
   columns: Column[],
   show: number,
-  maxWidthComment: number
+  maxWidthComment: number,
+  alternateKey: number
 ): ColumnWidth {
   const columnWidth = createColumnWidth();
+  columnWidth.alternateKey = alternateKey;
 
   for (const column of columns) {
     if (columnWidth.name < column.ui.widthName) {

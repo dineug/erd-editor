@@ -47,6 +47,7 @@ import {
   tableCopyToText,
 } from '@/utils/table-clipboard/copy';
 import { tablePasteFromHtmlToColumns } from '@/utils/table-clipboard/paste';
+import { getAlternateKeyMarks } from '@/utils/tableKeys';
 
 const ALL_SHOW =
   Show.tableComment |
@@ -202,6 +203,50 @@ describe('tableCopyToText', () => {
         ].join('\t'),
       ].join('\n')
     );
+  });
+
+  it('copies no alternate key mark, which is derived and no cell of the order', () => {
+    const { table, idColumn, nameColumn } = createFixture();
+    const keyed = (show: number) =>
+      createState({
+        tables: [table],
+        columns: [idColumn, nameColumn],
+        indexes: [
+          createIndex({
+            id: 'ak',
+            tableId: 'table-1',
+            unique: true,
+            indexColumnIds: ['ak-id', 'ak-name'],
+          }),
+        ],
+        indexColumns: [
+          createIndexColumn({
+            id: 'ak-id',
+            indexId: 'ak',
+            columnId: 'column-id',
+          }),
+          createIndexColumn({
+            id: 'ak-name',
+            indexId: 'ak',
+            columnId: 'column-name',
+          }),
+        ],
+        show,
+        focusTable: {
+          tableId: 'table-1',
+          selectColumnIds: ['column-id', 'column-name'],
+        },
+      });
+    const shown = keyed(ALL_SHOW | Show.columnAlternateKey);
+    const hidden = keyed(ALL_SHOW);
+
+    expect(getAlternateKeyMarks(shown, table)).toEqual({
+      'column-id': 'AK1.1',
+      'column-name': 'AK1.2',
+    });
+    expect(tableCopyToText(shown)).toBe(tableCopyToText(hidden));
+    expect(tableCopyToHtml(shown)).toBe(tableCopyToHtml(hidden));
+    expect(tableCopyToText(shown)).not.toContain('AK1');
   });
 
   it('follows the table column order, not the selection order', () => {

@@ -247,3 +247,9 @@ export function formatReferentialActions(
 
   return clauses;
 }
+
+// A string literal every vendor reads back as the text: a quote inside it is
+// doubled, or a comment such as it's ends early and breaks the DDL.
+export function toStringLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}

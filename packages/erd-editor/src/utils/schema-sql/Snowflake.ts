@@ -23,6 +23,7 @@ import {
   primaryKeyColumns,
   referentialActionSupport,
   toOrderName,
+  toStringLiteral,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.Snowflake);
@@ -119,7 +120,7 @@ export function formatTable(
     buffer.push(`);`);
   } else {
     buffer.push(`)`);
-    buffer.push(`COMMENT = '${table.comment}';`);
+    buffer.push(`COMMENT = ${toStringLiteral(table.comment)};`);
   }
 }
 
@@ -159,7 +160,7 @@ function formatColumn(
     stringBuffer.push(`DEFAULT ${column.default}`);
   }
   if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT '${column.comment}'`);
+    stringBuffer.push(`COMMENT ${toStringLiteral(column.comment)}`);
   }
 
   buffer.push(stringBuffer.join(' ').trimEnd() + `${isComma ? ',' : ''}`);

@@ -23,6 +23,7 @@ import {
   primaryKeyColumns,
   referentialActionSupport,
   toOrderName,
+  toStringLiteral,
   unique,
   uniqueColumns,
 } from './utils';
@@ -31,14 +32,12 @@ const ACTION_SUPPORT = referentialActionSupport(Database.MySQL);
 
 export function createSchema(state: RootState): string {
   const {
-    settings: { bracketType },
     doc: { tableIds, relationshipIds, indexIds },
     collections,
   } = state;
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
-  const bracket = getBracket(bracketType);
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds)
@@ -54,21 +53,7 @@ export function createSchema(state: RootState): string {
     formatTable(state, { table, buffer: stringBuffer });
     stringBuffer.push('');
 
-    const columns = query(collections)
-      .collection('tableColumnEntities')
-      .selectByIds(table.columnIds);
-
-    // unique
-    if (unique(columns)) {
-      const uqColumns = uniqueColumns(columns);
-      uqColumns.forEach(column => {
-        stringBuffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
-        stringBuffer.push(
-          `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
-        );
-        stringBuffer.push('');
-      });
-    }
+    formatUnique(state, { table, buffer: stringBuffer });
   });
 
   relationships.forEach(relationship => {
@@ -135,8 +120,32 @@ export function formatTable(
   if (table.comment.trim() === '') {
     buffer.push(`);`);
   } else {
-    buffer.push(`) COMMENT '${table.comment}';`);
+    buffer.push(`) COMMENT ${toStringLiteral(table.comment)};`);
   }
+}
+
+/**
+ * One named constraint per column the diagram marks unique, after the table.
+ * The whole export and the per-table Schema SQL tab both write it.
+ */
+export function formatUnique(
+  { settings: { bracketType }, collections }: RootState,
+  { buffer, table }: FormatTableOptions
+) {
+  const bracket = getBracket(bracketType);
+  const columns = query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(table.columnIds);
+
+  if (!unique(columns)) return;
+
+  uniqueColumns(columns).forEach(column => {
+    buffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
+    buffer.push(
+      `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
+    );
+    buffer.push('');
+  });
 }
 
 function formatColumn(
@@ -167,7 +176,7 @@ function formatColumn(
     }
   }
   if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT '${column.comment}'`);
+    stringBuffer.push(`COMMENT ${toStringLiteral(column.comment)}`);
   }
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }

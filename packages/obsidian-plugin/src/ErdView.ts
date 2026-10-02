@@ -517,7 +517,13 @@ export class ErdView extends TextFileView implements HubTab {
     replica.addEventListener('messageerror', handleError);
     const disposeCommand = bridge.registerCommand(
       hostSaveValueCommand,
-      ({ value }) => {
+      ({ value, changed }) => {
+        // A save that changed nothing, such as a scroll the file does not keep,
+        // leaves the tab's value as it was, so no save of Obsidian's writes it.
+        if (!changed) {
+          this.registry.valueSaved(this);
+          return;
+        }
         this.replicaValue = value;
         this.registry.valueSaved(this, value);
         if (this.isWriter()) this.requestSave();

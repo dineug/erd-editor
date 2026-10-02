@@ -192,6 +192,13 @@ describe('createAndMergeSettings', () => {
       expect(settings.relationshipOptimization).toBe(true);
     });
 
+    it('keeps the alternate key bit a document carries, off by default', () => {
+      const shown = Show.relationship | Show.columnAlternateKey;
+
+      expect(createAndMergeSettings({ show: shown }).show).toBe(shown);
+      expect(createAndMergeSettings().show & Show.columnAlternateKey).toBe(0);
+    });
+
     it('ignores wrongly typed values', () => {
       const settings = createAndMergeSettings({
         scrollTop: '12' as any,

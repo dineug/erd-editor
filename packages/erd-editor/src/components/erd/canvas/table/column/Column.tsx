@@ -28,6 +28,8 @@ import {
 import {
   type ColumnCellSlot,
   focusBorderFill,
+  getAlternateKeyMarkHeight,
+  getAlternateKeyMarkX,
   getColumnCellSlots,
   getColumnTextHeight,
   getColumnTextY,
@@ -114,6 +116,13 @@ export type ColumnProps = {
   widthDataType: number;
   widthDefault: number;
   widthComment: number;
+  /**
+   * The room the table keeps for alternate key marks after the last cell, 0
+   * while it draws none; the same for every row, so the marks stay in line.
+   */
+  widthAlternateKey?: number;
+  /** The mark this row carries in that room, AK1.2 or several comma joined. */
+  alternateKey?: string;
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
@@ -538,22 +547,34 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     return null;
   };
 
-  const getColumnOrder = (): ColumnOrderTpl[] => {
-    const { store } = app.value;
-
-    return getColumnCellSlots(
-      store.state,
-      {
-        name: props.widthName,
-        comment: props.widthComment,
-        dataType: props.widthDataType,
-        default: props.widthDefault,
-      },
-      props.source
-    )
+  const getColumnOrder = (slots: ColumnCellSlot[]): ColumnOrderTpl[] =>
+    slots
       .map(slot => ({ columnType: slot.columnType, template: cellOf(slot) }))
       .filter(({ template }) => Boolean(template));
-  };
+
+  /**
+   * The alternate key mark, one margin past the last cell whatever the order,
+   * in the room every row of the table keeps. Derived and never edited, so it
+   * answers no press and a press on it falls to the row, as between two cells.
+   */
+  const alternateKeyMark = (slots: ColumnCellSlot[], theme: Theme) =>
+    props.widthAlternateKey && props.source === 'document' ? (
+      <k-text
+        name="column-alternate-key"
+        x={getAlternateKeyMarkX(slots)}
+        y={getColumnTextY(props.source)}
+        width={props.widthAlternateKey}
+        height={getAlternateKeyMarkHeight()}
+        text={props.alternateKey ?? ''}
+        fill={theme.foreground}
+        fontFamily={SCENE_CODE_FONT_FAMILY}
+        fontSize={SCENE_FONT_SIZE}
+        verticalAlign="middle"
+        wrap="none"
+        listening={false}
+      />
+    ) : null;
+
   return () => {
     const { store } = app.value;
     const { editor } = store.state;
@@ -574,6 +595,16 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     );
     const rowHeight = tableRowHeight(props.source);
     const keySize = view ? VIEW_COLUMN_ICON_SIZE : COLUMN_KEY_WIDTH;
+    const slots = getColumnCellSlots(
+      store.state,
+      {
+        name: props.widthName,
+        comment: props.widthComment,
+        dataType: props.widthDataType,
+        default: props.widthDefault,
+      },
+      props.source
+    );
 
     return (
       <k-group
@@ -611,10 +642,11 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           mouseleave: handleKeyMouseleave,
         })}
         {repeat(
-          getColumnOrder(),
+          getColumnOrder(slots),
           ({ columnType }) => columnType,
           ({ template }) => template
         )}
+        {alternateKeyMark(slots, theme)}
         {props.divider ? (
           <k-line
             name="column-row-divider"

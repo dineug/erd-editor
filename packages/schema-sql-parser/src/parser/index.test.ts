@@ -50,6 +50,7 @@ describe('schemaSQLParser', () => {
           },
         ],
         indexes: [],
+        keys: [],
         foreignKeys: [],
       },
     ]);
@@ -106,6 +107,8 @@ describe('schemaSQLParser', () => {
       {
         type: 'alter.table.add.primaryKey',
         name: 'users',
+        constraintName: '',
+        usingIndexName: '',
         columnNames: ['id', 'email'],
       },
     ]);
@@ -120,6 +123,8 @@ describe('schemaSQLParser', () => {
       {
         type: 'alter.table.add.primaryKey',
         name: 'users',
+        constraintName: 'users_pkey',
+        usingIndexName: '',
         columnNames: ['id'],
       },
     ]);
@@ -150,7 +155,9 @@ describe('schemaSQLParser', () => {
       {
         type: 'alter.table.add.unique',
         name: 'users',
-        columnNames: ['email'],
+        constraintName: '',
+        usingIndexName: '',
+        columns: [{ name: 'email', sort: 'ASC' }],
       },
     ]);
   });
@@ -255,6 +262,26 @@ describe('schemaSQLParser', () => {
     expect(ast.map(statement => statement.type)).toEqual(['create.table']);
   });
 
+  // Read as an escape, the quote in front of the + left the literal open
+  // until the next quote and swallowed the CREATE TABLE between them.
+  it('keeps the table behind a T-SQL literal that ends in a backslash', () => {
+    const ast = schemaSQLParser(
+      [
+        "CREATE VIEW dbo.v AS SELECT 'C:\\'+name AS p FROM t;",
+        'GO',
+        "CREATE TABLE [dbo].[orders] ([id] [int] NOT NULL, [note] [varchar](10) DEFAULT 'n');",
+        'GO',
+        'CREATE TABLE [dbo].[items] ([id] [int] NOT NULL);',
+        'GO',
+      ].join('\n')
+    );
+
+    expect(ast.map(statement => (statement as { name: string }).name)).toEqual([
+      'orders',
+      'items',
+    ]);
+  });
+
   it('keeps parsing after a statement that consumes no closing semicolon', () => {
     const ast = schemaSQLParser(
       'CREATE TABLE a (id INT) CREATE TABLE b (id INT)'
@@ -289,6 +316,7 @@ describe('schemaSQLParser', () => {
           },
         ],
         indexes: [],
+        keys: [],
         foreignKeys: [],
       },
     ]);
