@@ -67,75 +67,88 @@ import { invalidateTableWidths } from '@/utils/calcTable';
 import type { ViewSource } from '@/utils/draw-relationship/geometrySource';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
+/**
+ * Marks each relationship identifying when every column it ends on is a primary
+ * key. A load reads it off the columns again, as a key edit or a removal does.
+ */
+export function recalculateIdentification({ doc, collections }: RootState) {
+  const collection = query(collections).collection('relationshipEntities');
+  const relationships = collection.selectByIds(doc.relationshipIds);
+
+  for (const relationship of relationships) {
+    const { end, identification } = relationship;
+    const table = query(collections)
+      .collection('tableEntities')
+      .selectById(end.tableId);
+    if (!table) continue;
+
+    const has = arrayHas(table.columnIds);
+    const columns = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(end.columnIds)
+      .filter(column => has(column.id));
+    if (!columns.length) continue;
+
+    const value = columns.every(column =>
+      bHas(column.options, ColumnOption.primaryKey)
+    );
+
+    if (value === identification) {
+      continue;
+    }
+
+    relationship.identification = value;
+  }
+}
+
+/**
+ * Starts each relationship dashed when every column it ends on is not null and
+ * ringed otherwise, read off the columns as the identification is.
+ */
+export function recalculateStartRelationshipType({
+  doc,
+  collections,
+}: RootState) {
+  const collection = query(collections).collection('relationshipEntities');
+  const relationships = collection.selectByIds(doc.relationshipIds);
+
+  for (const relationship of relationships) {
+    const { end, startRelationshipType } = relationship;
+    const table = query(collections)
+      .collection('tableEntities')
+      .selectById(end.tableId);
+    if (!table) continue;
+
+    const has = arrayHas(table.columnIds);
+    const columns = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(end.columnIds)
+      .filter(column => has(column.id));
+    if (!columns.length) continue;
+
+    const value = columns.every(column =>
+      bHas(column.options, ColumnOption.notNull)
+    )
+      ? StartRelationshipType.dash
+      : StartRelationshipType.ring;
+
+    if (value === startRelationshipType) {
+      continue;
+    }
+
+    relationship.startRelationshipType = value;
+  }
+}
+
 const identificationHook: HookEffect = (action$, getState) =>
   action$
     .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
-    .subscribe(() => {
-      const { doc, collections } = getState();
-      const collection = query(collections).collection('relationshipEntities');
-      const relationships = collection.selectByIds(doc.relationshipIds);
-
-      for (const relationship of relationships) {
-        const { end, identification } = relationship;
-        const table = query(collections)
-          .collection('tableEntities')
-          .selectById(end.tableId);
-        if (!table) continue;
-
-        const has = arrayHas(table.columnIds);
-        const columns = query(collections)
-          .collection('tableColumnEntities')
-          .selectByIds(end.columnIds)
-          .filter(column => has(column.id));
-        if (!columns.length) continue;
-
-        const value = columns.every(column =>
-          bHas(column.options, ColumnOption.primaryKey)
-        );
-
-        if (value === identification) {
-          continue;
-        }
-
-        relationship.identification = value;
-      }
-    });
+    .subscribe(() => recalculateIdentification(getState()));
 
 const startRelationshipHook: HookEffect = (action$, getState) =>
   action$
     .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
-    .subscribe(() => {
-      const { doc, collections } = getState();
-      const collection = query(collections).collection('relationshipEntities');
-      const relationships = collection.selectByIds(doc.relationshipIds);
-
-      for (const relationship of relationships) {
-        const { end, startRelationshipType } = relationship;
-        const table = query(collections)
-          .collection('tableEntities')
-          .selectById(end.tableId);
-        if (!table) continue;
-
-        const has = arrayHas(table.columnIds);
-        const columns = query(collections)
-          .collection('tableColumnEntities')
-          .selectByIds(end.columnIds)
-          .filter(column => has(column.id));
-        if (!columns.length) continue;
-
-        const value = columns.every(column =>
-          bHas(column.options, ColumnOption.notNull)
-        )
-          ? StartRelationshipType.dash
-          : StartRelationshipType.ring;
-
-        if (value === startRelationshipType) {
-          continue;
-        }
-
-        relationship.startRelationshipType = value;
-      }
-    });
+    .subscribe(() => recalculateStartRelationshipType(getState()));
 
 /**
  * Actions that move something without changing what it contains. Every other

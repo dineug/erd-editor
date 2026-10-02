@@ -3,12 +3,19 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { ColumnOption, ColumnUIKey, Direction } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
+import {
+  initialLoadJsonAction,
+  loadJsonAction,
+} from '@/engine/modules/editor/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { hooks as tableHooks } from '@/engine/modules/table/hooks';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { hooks as tableColumnHooks } from '@/engine/modules/table-column/hooks';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
 import { bHas } from '@/utils/bit';
@@ -157,6 +164,24 @@ describe('createHooks', () => {
     expect(bHas(column(store, 'c1')!.options, ColumnOption.notNull)).toBe(
       false
     );
+  });
+
+  it('wakes on a load only the hooks settleLoad writes for at once', () => {
+    // A replica measures its changes from the load settleLoad leaves, so a new
+    // hook on a load joins it, or a pan on a stale file reads as an edit.
+    const onLoad = (type: string) =>
+      [...tableHooks, ...tableColumnHooks, ...relationshipHooks]
+        .filter(([pattern]) => pattern.map(String).includes(type))
+        .map(([, hook]) => hook.name);
+    const settled = [
+      'recalculateTableWidthHook',
+      'validationForeignKeyHook',
+      'identificationHook',
+      'startRelationshipHook',
+    ];
+
+    expect(onLoad(initialLoadJsonAction.type)).toEqual(settled);
+    expect(onLoad(loadJsonAction.type)).toEqual(settled);
   });
 
   it('destroy is safe to call twice', () => {

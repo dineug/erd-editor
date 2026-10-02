@@ -15,10 +15,10 @@ import {
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter, notEmptyActions } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
-import { createHooks } from '@/engine/store-hooks';
+import { createHooks, settleLoad } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
 import { procGC } from '@/services/schema-gc/procGC';
-import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
+import { collectGCIds } from '@/services/schema-gc/schemaGCService';
 import { toLoadValue } from '@/utils/loadValue';
 import { safeCallback } from '@/utils/safeCallback';
 
@@ -74,10 +74,9 @@ export function createReplicationStore(
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
   const observers = new Set<Partial<ListenerRecord>>();
-  const schemaGCService = new SchemaGCService();
   // What a change is measured against: the value the last one handed out, or
-  // after a load the value the first change action finds, once the load's own
-  // rewrites (text widths, the GC) are in. A file is no measure of either.
+  // after a load the value the first change action finds, which holds the
+  // load's own rewrites (the GC, text widths, flags). A file is no measure.
   let baseline: string | null = null;
 
   const on = (listeners: Partial<ListenerRecord>): Unsubscribe => {
@@ -98,23 +97,19 @@ export function createReplicationStore(
     });
   };
 
+  // The load's own rewrites, made before it returns rather than on the GC's
+  // promise and the hooks' timers, so a change action that comes at once, as a
+  // pan replayed behind the load does, finds them in.
   const setInitialValue = (value: string) => {
     baseline = null;
     store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
-    schemaGCService.run(toJson(store.state)).then(gcIds => {
-      const isChange =
-        gcIds.tableIds.length ||
-        gcIds.tableColumnIds.length ||
-        gcIds.relationshipIds.length ||
-        gcIds.indexIds.length ||
-        gcIds.indexColumnIds.length ||
-        gcIds.memoIds.length;
 
-      if (isChange) {
-        procGC(store.state, gcIds);
-        store.dispatchSync(validationIdsAction());
-      }
-    });
+    const gcIds = collectGCIds(toJson(store.state));
+    if (Object.values(gcIds).some(ids => ids.length)) {
+      procGC(store.state, gcIds);
+      store.dispatchSync(validationIdsAction());
+    }
+    settleLoad(store.state, engineContext);
   };
 
   const dispatchSync = (actions: Array<AnyAction> | AnyAction) => {

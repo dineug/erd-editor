@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { CanvasType, SaveSettingType } from '@/constants/schema';
+import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
+import {
+  CanvasType,
+  ColumnUIKey,
+  SaveSettingType,
+  StartRelationshipType,
+} from '@/constants/schema';
 import { unselectAllAction } from '@/engine/modules/editor/atom.actions';
 import {
   changeCanvasTypeAction,
@@ -632,6 +638,80 @@ describe('createReplicationStore', () => {
         originX: -100,
         originY: 50,
       });
+    });
+
+    /**
+     * The seed saved with both switches off, by a machine with other fonts and
+     * a release whose relationship and key flags fell behind its columns, with
+     * a table removed long enough ago for the schema GC.
+     */
+    function staleFile() {
+      const json = JSON.parse(createSeedValue());
+      const relationship =
+        json.collections.relationshipEntities[SEED.relationship];
+      const userColumn = json.collections.tableColumnEntities[SEED.orderUser];
+
+      json.settings.ignoreSaveSettings = OFF;
+      // The relationship ends on orders.user_id, a nullable column outside the
+      // primary key, which makes it non-identifying and ringed.
+      relationship.identification = true;
+      relationship.startRelationshipType = StartRelationshipType.dash;
+      userColumn.ui.keys &= ~ColumnUIKey.foreignKey;
+      json.collections.tableEntities.removed = createTableJson(
+        'removed',
+        Date.now() - 10 * DAY
+      );
+      return JSON.stringify(json);
+    }
+
+    it.each([0, 3, 7])(
+      'changes nothing for a view change %i ms into a load, before its hooks would have run',
+      async delay => {
+        vi.useFakeTimers();
+        const store = make(winWidth);
+        const change = vi.fn();
+        store.on({ change });
+
+        store.setInitialValue(staleFile());
+        if (delay) await vi.advanceTimersByTimeAsync(delay);
+        store.dispatchSync(scroll);
+        await vi.advanceTimersByTimeAsync(250);
+
+        expect(change).toHaveBeenCalledTimes(1);
+        expect(change).toHaveBeenCalledWith({
+          value: store.value,
+          changed: false,
+        });
+      }
+    );
+
+    it('rewrites a stale file in full before the load returns', async () => {
+      vi.useFakeTimers();
+      const file = staleFile();
+      const stale = JSON.parse(file).collections;
+      const store = make(winWidth);
+
+      store.setInitialValue(file);
+      const opened = store.value;
+      await vi.advanceTimersByTimeAsync(50);
+
+      const { collections } = JSON.parse(opened);
+      const relationship = collections.relationshipEntities[SEED.relationship];
+      const userName = collections.tableColumnEntities[SEED.userName];
+      expect(store.value).toBe(opened);
+      expect(collections.tableEntities.removed).toBeUndefined();
+      expect(userName.ui.widthDataType).toBe(winWidth('VARCHAR(255)'));
+      expect(userName.ui.widthDataType).not.toBe(
+        stale.tableColumnEntities[SEED.userName].ui.widthDataType
+      );
+      expect(relationship).toMatchObject({
+        identification: false,
+        startRelationshipType: StartRelationshipType.ring,
+      });
+      expect(
+        collections.tableColumnEntities[SEED.orderUser].ui.keys &
+          ColumnUIKey.foreignKey
+      ).toBe(ColumnUIKey.foreignKey);
     });
 
     it('takes a load that came while a change was pending as the value, changing nothing', async () => {
