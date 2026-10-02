@@ -50,7 +50,10 @@ else `''`.
 
 A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
 named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's
-`unique` instead. Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
+`unique` instead. A partial unique key, `CREATE UNIQUE INDEX ... WHERE` or SQL Server's inline
+`INDEX n UNIQUE (...) WHERE`, comes back as an index with `unique: false` under its name and columns,
+over one column too, unless its filter is only `key IS NOT NULL` over key columns, joined by `AND`.
+Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
 table's `name` and its `comment`, `CommentOnColumn` carries `tableName`, `columnName` and `comment` —
 PostgreSQL and Oracle attach comments with a statement of their own instead of a table option, so those
 two arrive separately from the `create.table` they belong to.
@@ -689,7 +692,8 @@ CREATE TABLE c (
 CREATE TABLE [dbo].[d] (
  [b] int,
  [c] int,
- INDEX [ix_bc] UNIQUE NONCLUSTERED ([b] ASC, [c] DESC)
+ INDEX [ix_bc] UNIQUE NONCLUSTERED ([b] ASC, [c] DESC),
+ INDEX [ix_cb] UNIQUE ([c], [b]) WHERE ([c] IS NOT NULL AND [b] IS NOT NULL)
 )
 ```
 

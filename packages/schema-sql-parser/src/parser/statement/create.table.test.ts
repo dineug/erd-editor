@@ -735,6 +735,54 @@ describe('createTableParser - table level constraints', () => {
     ]);
   });
 
+  it('reads a filtered SQL Server INDEX n UNIQUE as a plain index unless its WHERE drops only NULL keys', () => {
+    const { ast, tokens, $pos } = parse(
+      'CREATE TABLE [dbo].[t] (\n' +
+        ' [a] INT, [b] INT, [c] INT, [d] INT,\n' +
+        ' INDEX [uq_ab] UNIQUE NONCLUSTERED ([a], [b]) WHERE ([a] IS NOT NULL AND ([b] IS NOT NULL)),\n' +
+        ' INDEX [ix_bc] UNIQUE ([b], [c] DESC) INCLUDE ([d]) WHERE ([d] > 0) WITH (PAD_INDEX = OFF),\n' +
+        ' INDEX [uq_c] UNIQUE ([c]) WHERE [c] IS NOT NULL,\n' +
+        ' INDEX [ix_d] UNIQUE ([d]) WHERE [d] IS NOT NULL OR [a] = 1 ON [PRIMARY],\n' +
+        ' INDEX [ix_x] UNIQUE ((LOWER([a]))) WHERE [a] > 0,\n' +
+        ' [e] INT,\n' +
+        ' INDEX [ix_e] UNIQUE CLUSTERED ([e]) WHERE ([e] IS NOT NULL AND [a] > 0)\n' +
+        ');\nCREATE TABLE z (i INT);'
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'b', dataType: 'INT' }),
+      column({ name: 'c', dataType: 'INT', unique: true }),
+      column({ name: 'd', dataType: 'INT' }),
+      column({ name: 'e', dataType: 'INT' }),
+    ]);
+    expect(
+      ast.indexes.map(({ name, unique, columns }) => [
+        name,
+        unique,
+        columns.map(({ name, sort }) => `${name} ${sort}`).join(', '),
+      ])
+    ).toEqual([
+      ['uq_ab', true, 'a ASC, b ASC'],
+      ['ix_bc', false, 'b ASC, c DESC'],
+      ['ix_d', false, 'd ASC'],
+      ['ix_e', false, 'e ASC'],
+    ]);
+    expect(ast.keys).toEqual([{ name: 'uq_c', columnNames: ['c'] }]);
+    expect(tokens[$pos.value].value).toBe('CREATE');
+  });
+
+  it('looks for the filter of a unique key no further than its statement', () => {
+    const open = parse(
+      'CREATE TABLE t (a INT, b INT, UNIQUE (a, b);\n' +
+        'CREATE UNIQUE INDEX uq ON t (a) WHERE a > 0;'
+    ).ast;
+    const cut = parse('CREATE TABLE t (a INT, b INT, UNIQUE (a, b)').ast;
+
+    expect(open.indexes[0]).toMatchObject({ name: '', unique: true });
+    expect(cut.indexes[0]).toMatchObject({ name: '', unique: true });
+  });
+
   it('reports the name of each primary key and one-column unique key it names', () => {
     const { ast } = parse(
       'CREATE TABLE "HR"."T" (\n' +

@@ -176,8 +176,23 @@ describe('createIndexParser', () => {
     );
 
     expect(ast.unique).toBe(false);
+    expect(ast.name).toBe('uq');
+    expect(ast.tableName).toBe('t');
     expect(ast.columns.map(column => column.name)).toEqual(['a', 'b']);
     expect(tokens[$pos.value].value).toBe('CREATE');
+  });
+
+  it('reads a partial unique index over one column by the same rule', () => {
+    const filtered = parse(
+      'CREATE UNIQUE INDEX uq_a ON t (a) WHERE a > 0;'
+    ).ast;
+    const nullFiltered = parse(
+      'CREATE UNIQUE INDEX uq_a ON t (a) WHERE (a IS NOT NULL);'
+    ).ast;
+
+    expect(filtered).toMatchObject({ name: 'uq_a', unique: false });
+    expect(filtered.columns.map(column => column.name)).toEqual(['a']);
+    expect(nullFiltered.unique).toBe(true);
   });
 
   it.each([

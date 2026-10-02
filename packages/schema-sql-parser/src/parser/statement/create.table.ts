@@ -16,6 +16,7 @@ import {
   isLeftParentToken,
   isNewStatement,
   isNotValue,
+  isNullFilter,
   isNullValue,
   isPeriodToken,
   isPrimaryValue,
@@ -25,6 +26,7 @@ import {
   isStringToken,
   isUniqueValue,
   isUsingValue,
+  isWhereValue,
   matchCreateTable,
   matchDataType,
   matchKeyModifiers,
@@ -210,6 +212,7 @@ function createTableColumnsParser(
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
   const isComma = isCommaToken(tokens);
+  const isSemicolon = isSemicolonToken(tokens);
   const isConstraint = isConstraintValue(tokens);
   const isIndex = isIndexValue(tokens);
   const isPrimary = isPrimaryValue(tokens);
@@ -225,6 +228,8 @@ function createTableColumnsParser(
   const characterSet = isCharacterSet(tokens);
   const isCollate = isCollateValue(tokens);
   const isUsing = isUsingValue(tokens);
+  const isWhere = isWhereValue(tokens);
+  const nullFilter = isNullFilter(tokens);
   const constraintState = isConstraintState(tokens);
   const dataType = matchDataType(tokens);
   const nestedDataType = matchNestedDataType(tokens);
@@ -276,6 +281,26 @@ function createTableColumnsParser(
 
   const symbolAt = (pos: number) =>
     pos === constraintEnd ? constraintName : '';
+
+  // The WHERE of the item at pos, -1 where none comes before its end: SQL
+  // Server filters INDEX n UNIQUE (...) [INCLUDE (...)] WHERE ... inline too.
+  const filterAt = (pos: number) => {
+    let depth = 0;
+
+    for (; pos < tokens.length && !isSemicolon(pos); pos++) {
+      if (isLeftParent(pos)) {
+        depth++;
+      } else if (isRightParent(pos)) {
+        if (depth-- === 0) return -1;
+      } else if (depth === 0 && isComma(pos)) {
+        return -1;
+      } else if (depth === 0 && isWhere(pos)) {
+        return pos;
+      }
+    }
+
+    return -1;
+  };
 
   const addKey = (name: string, columnNames: string[]) => {
     if (!columnNames.length) return;
@@ -482,14 +507,20 @@ function createTableColumnsParser(
 
       if (isLeftParent($pos.value)) {
         const indexColumns = indexColumnsParser(tokens, $pos);
+        const columnNames = indexColumns.map(indexColumn => indexColumn.name);
+        const filter = filterAt($pos.value);
 
-        // Several columns under one UNIQUE are one composite key, in whatever
-        // spelling; marking each column unique would export a stricter one.
-        if (indexColumns.length > 1) {
+        // A filter keys only the rows it picks, the rule CREATE UNIQUE INDEX
+        // reads its WHERE by: unconditioned that key would be a stricter one.
+        if (filter !== -1 && !nullFilter(filter, columnNames)) {
+          if (indexColumns.length) {
+            indexes.push({ name, unique: false, columns: indexColumns });
+          }
+        } else if (indexColumns.length > 1) {
+          // Several columns under one UNIQUE are one composite key, in whatever
+          // spelling; marking each column unique would export a stricter one.
           indexes.push({ name, unique: true, columns: indexColumns });
         } else {
-          const columnNames = indexColumns.map(indexColumn => indexColumn.name);
-
           uniqueColumnNames.push(
             ...columnNames.map(columnName => columnName.toUpperCase())
           );

@@ -1,17 +1,13 @@
 import {
-  isAndValue,
   isConcurrentlyValue,
   isExistsValue,
   isIfValue,
-  isIsValue,
   isLeftParentToken,
   isNewStatement,
   isNotValue,
-  isNullValue,
+  isNullFilter,
   isOnlyValue,
   isOnValue,
-  isOrValue,
-  isRightParentToken,
   isSemicolonToken,
   isStringToken,
   isUniqueValue,
@@ -20,12 +16,7 @@ import {
   matchKeyModifiers,
   matchQualifiedName,
 } from '@/parser/helper';
-import {
-  CreateIndex,
-  IndexColumn,
-  RefPos,
-  StatementType,
-} from '@/parser/statement';
+import { CreateIndex, RefPos, StatementType } from '@/parser/statement';
 import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
@@ -35,7 +26,6 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
   const isUnique = isUniqueValue(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
-  const isRightParent = isRightParentToken(tokens);
   const isOn = isOnValue(tokens);
   const isOnly = isOnlyValue(tokens);
   const isConcurrently = isConcurrentlyValue(tokens);
@@ -43,10 +33,7 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
   const isNot = isNotValue(tokens);
   const isExists = isExistsValue(tokens);
   const isWhere = isWhereValue(tokens);
-  const isAnd = isAndValue(tokens);
-  const isOr = isOrValue(tokens);
-  const isIs = isIsValue(tokens);
-  const isNull = isNullValue(tokens);
+  const nullFilter = isNullFilter(tokens);
   const createIndex = matchCreateIndex(tokens);
   const qualifiedName = matchQualifiedName(tokens);
   const keyModifiers = matchKeyModifiers(tokens);
@@ -61,39 +48,6 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
 
     $pos.value += span;
     return tokens[$pos.value - 1].value;
-  };
-
-  const skipParents = () => {
-    while (isLeftParent($pos.value) || isRightParent($pos.value)) {
-      $pos.value++;
-    }
-  };
-
-  // Whether the WHERE at $pos only drops rows with a NULL in the key, one key
-  // column IS NOT NULL or several joined by AND, SQL Server's parentheses
-  // included. Leaves $pos past what it read.
-  const isNullFilter = (columns: IndexColumn[]) => {
-    const names = new Set(columns.map(({ name }) => name.toUpperCase()));
-
-    do {
-      $pos.value++;
-      skipParents();
-
-      if (
-        !isString($pos.value) ||
-        !names.has(tokens[$pos.value].value.toUpperCase()) ||
-        !isIs($pos.value + 1) ||
-        !isNot($pos.value + 2) ||
-        !isNull($pos.value + 3)
-      ) {
-        return false;
-      }
-
-      $pos.value += 4;
-      skipParents();
-    } while (isAnd($pos.value));
-
-    return !isOr($pos.value);
   };
 
   const ast: CreateIndex = {
@@ -157,8 +111,10 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
     // a stricter key, so it reads as not unique. A NULL filter stays unique, as
     // it drops only rows the SQL standard's UNIQUE already lets repeat.
     if (isWhere($pos.value) && ast.unique) {
-      ast.unique = isNullFilter(ast.columns);
-      continue;
+      ast.unique = nullFilter(
+        $pos.value,
+        ast.columns.map(({ name }) => name)
+      );
     }
 
     $pos.value++;

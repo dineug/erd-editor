@@ -1074,6 +1074,69 @@ GO
 }
 ```
 
+### Column INDEX UNIQUE with a filter, SQL Server
+
+```sql
+CREATE TABLE [dbo].[t] (
+ [a] int,
+ [b] int,
+ INDEX [uq_ab] UNIQUE NONCLUSTERED ([a] ASC, [b] ASC) WHERE ([a] IS NOT NULL AND [b] IS NOT NULL),
+ INDEX [ix_b] UNIQUE ([b]) WHERE ([b] > 0)
+)
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "t",
+      "comment": "",
+      "columns": [
+        {
+          "name": "a",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "b",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "uq_ab",
+          "unique": true,
+          "columns": [
+            { "name": "a", "sort": "ASC" },
+            { "name": "b", "sort": "ASC" }
+          ]
+        },
+        {
+          "name": "ix_b",
+          "unique": false,
+          "columns": [{ "name": "b", "sort": "ASC" }]
+        }
+      ],
+      "keys": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
 ### Column PRIMARY KEY, UNIQUE KEY, KEY
 
 ```sql

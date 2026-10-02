@@ -44,6 +44,7 @@ import {
   isLeftParentToken,
   isNewStatement,
   isNotValue,
+  isNullFilter,
   isNullValue,
   isOnlyValue,
   isOnValue,
@@ -604,6 +605,34 @@ describe('matchUsingIndexName', () => {
     expect(span('USING INDEX')).toBe(0);
     expect(span('USING BTREE')).toBe(0);
     expect(span('INDEX ix')).toBe(0);
+  });
+});
+
+describe('isNullFilter', () => {
+  const filters = (sql: string) => isNullFilter(tokenizer(sql))(0, ['a', 'B']);
+
+  it('accepts key IS NOT NULL over key columns, AND-joined, in any parentheses', () => {
+    expect(filters('WHERE a IS NOT NULL')).toBe(true);
+    expect(filters('where "A" is not null and b IS NOT NULL;')).toBe(true);
+    expect(
+      filters(
+        'WHERE ([a] IS NOT NULL AND ([b] IS NOT NULL)) WITH (FILLFACTOR = 80)'
+      )
+    ).toBe(true);
+    expect(filters('WHERE (a IS NOT NULL) AND b IS NOT NULL)')).toBe(true);
+  });
+
+  it('refuses any other filter, and a position with no WHERE', () => {
+    expect(filters('WHERE c IS NOT NULL')).toBe(false);
+    expect(filters('WHERE a IS NULL')).toBe(false);
+    expect(filters('WHERE (active)')).toBe(false);
+    expect(filters('WHERE a IS NOT NULL AND b > 0')).toBe(false);
+    expect(filters('WHERE a IS NOT NULL OR b IS NOT NULL')).toBe(false);
+    expect(filters('WHERE (a IS NOT NULL) OR (b IS NOT NULL)')).toBe(false);
+    expect(filters('WHERE (a IS NOT NULL OR b > 0)')).toBe(false);
+    expect(filters('WHERE a IS NOT "NULL"')).toBe(false);
+    expect(filters('a IS NOT NULL')).toBe(false);
+    expect(filters('WHERE')).toBe(false);
   });
 });
 

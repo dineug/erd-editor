@@ -611,6 +611,44 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('imports a partial unique index as a plain one unless its WHERE drops only NULL keys', () => {
+      const schema = parse(`
+        CREATE TABLE t (a INT, b INT, c INT, deleted_at TIMESTAMP);
+        CREATE UNIQUE INDEX uq_a ON t (a) WHERE a IS NOT NULL;
+        CREATE UNIQUE INDEX ix_b ON t (b) WHERE deleted_at IS NULL;
+        CREATE UNIQUE INDEX ix_bc ON t (b, c) WHERE b IS NOT NULL OR c > 0;
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual([]);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_a', unique: true, columns: ['a ASC'] },
+        { name: 'ix_b', unique: false, columns: ['b ASC'] },
+        { name: 'ix_bc', unique: false, columns: ['b ASC', 'c ASC'] },
+      ]);
+    });
+
+    it('imports a filtered SQL Server inline INDEX n UNIQUE as a plain index unless its WHERE drops only NULL keys', () => {
+      const schema = parse(`
+        CREATE TABLE [dbo].[t] (
+          [a] INT, [b] INT, [c] INT, [d] INT,
+          INDEX [uq_ab] UNIQUE NONCLUSTERED ([a], [b]) WHERE ([a] IS NOT NULL AND [b] IS NOT NULL),
+          INDEX [ix_bc] UNIQUE ([b], [c] DESC) INCLUDE ([d]) WHERE ([d] > 0),
+          INDEX [uq_c] UNIQUE ([c]) WHERE [c] IS NOT NULL,
+          INDEX [ix_d] UNIQUE ([d]) WHERE [d] > 0
+        )
+        GO
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['c']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'uq_ab', unique: true, columns: ['a ASC', 'b ASC'] },
+        { name: 'ix_bc', unique: false, columns: ['b ASC', 'c DESC'] },
+        { name: 'ix_d', unique: false, columns: ['d ASC'] },
+      ]);
+    });
+
     it('matches table and column names case-insensitively', () => {
       const schema = parse(`
         CREATE TABLE t (a INT);

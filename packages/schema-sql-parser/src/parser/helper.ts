@@ -475,6 +475,54 @@ export const matchUsingIndexName = (tokens: Token[]) => {
   };
 };
 
+// Whether the WHERE at pos keeps out only rows with a NULL in the key: key IS
+// NOT NULL over the given key columns, AND-joined, in parentheses that pair up,
+// since a close no open pairs may end the CREATE TABLE around the key.
+export const isNullFilter = (tokens: Token[]) => {
+  const isWhere = isWhereValue(tokens);
+  const isString = isStringToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
+  const isIs = isIsValue(tokens);
+  const isNot = isNotValue(tokens);
+  const isNull = isNullValue(tokens);
+  const isAnd = isAndValue(tokens);
+  const isOr = isOrValue(tokens);
+
+  return (pos: number, columnNames: string[]) => {
+    if (!isWhere(pos)) return false;
+
+    const names = new Set(columnNames.map(name => name.toUpperCase()));
+    let depth = 0;
+
+    do {
+      pos++;
+
+      for (; isLeftParent(pos); pos++) {
+        depth++;
+      }
+
+      if (
+        !isString(pos) ||
+        !names.has(tokens[pos].value.toUpperCase()) ||
+        !isIs(pos + 1) ||
+        !isNot(pos + 2) ||
+        !isNull(pos + 3)
+      ) {
+        return false;
+      }
+
+      pos += 4;
+
+      for (; depth > 0 && isRightParent(pos); pos++) {
+        depth--;
+      }
+    } while (isAnd(pos));
+
+    return !isOr(pos);
+  };
+};
+
 // What the optional symbol after CONSTRAINT can never be: the words that open
 // the constraint itself.
 const ConstraintBodies: ReadonlyArray<string> = [
