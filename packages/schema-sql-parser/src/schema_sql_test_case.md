@@ -2438,6 +2438,7 @@ ALTER TABLE items ADD CONSTRAINT fk_items_orders FOREIGN KEY (order_id) REFERENC
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": [
         {
           "columnNames": ["user_id"],
@@ -2517,6 +2518,7 @@ GO
         }
       ],
       "indexes": [],
+      "keys": [],
       "foreignKeys": []
     },
     {
@@ -2531,7 +2533,9 @@ GO
     {
       "type": "alter.table.add.unique",
       "name": "b",
-      "columnNames": ["a_id"]
+      "constraintName": "UQ_b",
+      "usingIndexName": "",
+      "columns": [{ "name": "a_id", "sort": "ASC" }]
     }
   ]
 }

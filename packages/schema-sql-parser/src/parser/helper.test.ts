@@ -739,7 +739,7 @@ describe('SQL Server WITH CHECK before ADD', () => {
     ],
     [
       'ALTER TABLE b WITH CHECK ADD CONSTRAINT uq UNIQUE (a_id);',
-      isAlterTableAddUnique,
+      isAlterTableAdd,
     ],
   ])('matches %s', (sql, matcher) => {
     expect(matcher(tokenizer(sql))(0)).toBe(true);
