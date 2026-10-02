@@ -6,6 +6,7 @@ import { OracleTypes } from '@/parser/dataType/Oracle';
 import { PostgreSQLTypes } from '@/parser/dataType/PostgreSQL';
 import { SnowflakeTypes } from '@/parser/dataType/Snowflake';
 import { SQLiteTypes } from '@/parser/dataType/SQLite';
+import { DatabaseVendor } from '@/parser/statement';
 import { Token, TokenType } from '@/parser/tokenizer';
 
 const createTypeEqual = (type: string) => (tokens: Token[]) => (pos: number) =>
@@ -78,11 +79,23 @@ export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
 export const isArrayValue = createValueEqual('ARRAY');
 
+// A string literal the vendor reads back as the value, its quotes doubled.
+// Spark escapes a quote and a backslash with a backslash instead: all but its
+// newest releases end the literal at a doubled quote.
+export const toStringLiteral = (value: string, database?: DatabaseVendor) =>
+  database === 'Databricks'
+    ? `'${value.replace(/[\\']/g, '\\$&')}'`
+    : `'${value.replaceAll("'", "''")}'`;
+
 // Writes a quoted token back inside the delimiters it came in, doubling the
 // quotes its value holds: ENUM('it''s') is valid DDL only with them.
-export const requote = ({ value, quoted }: Token) => {
+export const requote = (
+  { value, quoted }: Token,
+  database?: DatabaseVendor
+) => {
   if (!quoted) return value;
   if (quoted === '[') return `[${value}]`;
+  if (quoted === "'") return toStringLiteral(value, database);
 
   return `${quoted}${value.replaceAll(quoted, quoted + quoted)}${quoted}`;
 };

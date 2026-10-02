@@ -537,21 +537,26 @@ export const changeColorAllAction$ = (color: string): GeneratorAction =>
 export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
   function* ({ settings }, ctx) {
     yield loadJsonAction$(
-      schemaSQLParserToSchemaJson(value, ctx, schema => {
-        schema.settings = {
-          ...schema.settings,
-          ...omit(cloneDeep(settings), [
-            'width',
-            'height',
-            'originX',
-            'originY',
-            'scrollTop',
-            'scrollLeft',
-            'zoomLevel',
-          ]),
-        };
-        return schema;
-      })
+      schemaSQLParserToSchemaJson(
+        value,
+        ctx,
+        schema => {
+          schema.settings = {
+            ...schema.settings,
+            ...omit(cloneDeep(settings), [
+              'width',
+              'height',
+              'originX',
+              'originY',
+              'scrollTop',
+              'scrollLeft',
+              'zoomLevel',
+            ]),
+          };
+          return schema;
+        },
+        settings.database
+      )
     );
     yield sortTableAction();
   };

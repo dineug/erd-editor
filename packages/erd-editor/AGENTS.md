@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-27 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-02 -->
 
 # erd-editor
 
@@ -150,7 +150,7 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
   - `dbml.ts` repairs, since DBML rejects what others render oddly: duplicate tables renamed, typeless or repeated columns dropped (and the tables they empty), a `Ref` kept only when both ends resolve, identifiers double-quoted, comments as `Note`. `dbml.test.ts` parses with `@dbml/parse`.
   - `aml.ts` repairs likewise but keeps typeless attributes, writes `nullable`, always quotes types. DBML and AML highlight as `sql` (`LanguageToLangMap`).
   - `schema-sql/Snowflake.ts`: `bracketType` decides whether to quote, since a quoted name is case sensitive.
-  - `schema-sql/`: a comment, and a name SQL Server's `sp_addextendedproperty` takes, is written through `toStringLiteral` (`utils.ts`), quotes doubled as the importer reads them; `Databricks.ts` escapes a quote and a backslash with a backslash instead, the form every Spark release reads (only the newest read a doubled quote), which the importer reads back only in part: an escaped quote inside a word (`it\'s`) comes back as a quote, while an escaped backslash keeps both, so a backslash doubles on each round trip.
+  - `schema-sql/`: a comment, and a name SQL Server's `sp_addextendedproperty` takes, is written through `toStringLiteral` (`utils.ts`), quotes doubled as the importer reads them; `Databricks.ts` escapes a quote and a backslash with a backslash instead, the form every Spark release reads (only the newest read a doubled quote). The importer reads that form back by Spark's rules when the document's database is Databricks: `loadSchemaSQLAction$` hands `settings.database` to `schemaSQLParser`, every backslash then escapes the character after it, and a `DEFAULT` literal or a STRUCT field's `COMMENT` inside the type goes back as `'it\'s'`, so import, Databricks export and import again agree. Under any other database it keeps the guess: an escaped quote inside a word comes back as a quote, an escaped backslash keeps both, and a `DEFAULT` doubles its quotes.
 
 ## Dependencies
 

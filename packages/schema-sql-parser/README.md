@@ -36,6 +36,14 @@ for (const statement of statements) {
 }
 ```
 
+A second argument names the vendor the source is written for, when the caller knows it:
+`schemaSQLParser(source, { database: 'Databricks' })`. Only Databricks reads differently: a
+single-quoted literal follows Spark's rules, every backslash escaping the character after it
+(`'it\'s'`, `'C:\\dir'`, `'\n'`), and a `DEFAULT` literal or a quoted string inside a type comes
+back escaped the same way (`'it\'s'`), the form Spark 4.0 and earlier read. Without it, or for any
+other vendor, a doubled quote is one quote and a backslash before a quote is a guess: MySQL's
+`'it\'s'` is an escape, standard SQL's `'C:\'` a whole literal.
+
 `statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes` and
 `foreignKeys`; `CreateIndex` carries `tableName`, `unique` and `columns`; the three `alter.table.add.*`
 nodes carry the altered table's `name` and `columnNames`, plus `refTableName` / `refColumnNames` on

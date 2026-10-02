@@ -3,7 +3,13 @@ import path from 'node:path';
 
 import { describe, expect, it, test } from 'vite-plus/test';
 
-import { CreateTable, schemaSQLParser, SortType, StatementType } from '@/index';
+import {
+  CreateTable,
+  schemaSQLParser,
+  SchemaSQLParserOptions,
+  SortType,
+  StatementType,
+} from '@/index';
 
 type TestCase = [string, string, string];
 const testCaseList: Array<TestCase> = [];
@@ -80,6 +86,28 @@ describe('public entry surface', () => {
         foreignKeys: [],
       },
     ]);
+  });
+
+  // The document's database, when the caller knows it: Databricks alone reads
+  // its literals by Spark's escapes, wherever a statement takes a string.
+  it('reads the literals of a Databricks source by Spark escapes', () => {
+    const sql = String.raw`CREATE TABLE t (a STRING COMMENT 'a\\b') COMMENT 'o\'k \\';
+      COMMENT ON TABLE t IS 'C:\\';
+      COMMENT ON COLUMN t.a IS 'it\'s \\';`;
+    const comments = (database?: SchemaSQLParserOptions['database']) =>
+      schemaSQLParser(sql, { database }).map(statement =>
+        statement.type === StatementType.createTable
+          ? [statement.comment, statement.columns[0].comment]
+          : (statement as { comment: string }).comment
+      );
+
+    expect(comments('Databricks')).toEqual([
+      ["o'k \\", 'a\\b'],
+      'C:\\',
+      "it's \\",
+    ]);
+    expect(comments()).toEqual([["o'k \\\\", 'a\\\\b'], 'C:\\\\', "it's \\\\"]);
+    expect(schemaSQLParser(sql)).toEqual(schemaSQLParser(sql, {}));
   });
 
   it('re-exports the StatementType enum values', () => {

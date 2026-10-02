@@ -1,4 +1,5 @@
 import { ValuesType } from '@/internal-types';
+import { DatabaseVendor } from '@/parser/statement';
 
 export type Quote = '"' | "'" | '`' | '[';
 
@@ -46,6 +47,47 @@ const pattern = {
   rightBracket: ']',
 };
 
+// What Spark reads a backslash and the character after it as; any other
+// character stands for itself, a quote or a backslash among them.
+const SparkEscapes: Readonly<Record<string, string>> = {
+  '0': '\0',
+  b: '\b',
+  n: '\n',
+  r: '\r',
+  t: '\t',
+  Z: '\x1a',
+  '%': '\\%',
+  _: '\\_',
+};
+
+// UTF-16 units of a code point as Spark builds them, each cut to 16 bits, so
+// one past U+10FFFF reads as two units instead of throwing.
+const fromSparkCodePoint = (codePoint: number) =>
+  codePoint < 0x10000
+    ? String.fromCharCode(codePoint)
+    : String.fromCharCode(
+        Math.floor((codePoint - 0x10000) / 0x400) + 0xd800,
+        ((codePoint - 0x10000) % 0x400) + 0xdc00
+      );
+
+// Spark's escape at the start of rest, the text after a backslash: what it
+// reads as and how many characters of rest it spans. \u0041 and \101 are A.
+const readSparkEscape = (rest: string): [string, number] => {
+  const unicode = /^(?:u([\da-fA-F]{4})|U([\da-fA-F]{8}))/.exec(rest);
+  if (unicode) {
+    const hex = unicode[1] ?? unicode[2];
+    return [fromSparkCodePoint(parseInt(hex, 16)), hex.length + 1];
+  }
+
+  const octal = /^[01][0-7]{2}/.exec(rest);
+  if (octal) return [String.fromCharCode(parseInt(octal[0], 8)), 3];
+
+  // A backslash the source ends on stands for itself.
+  if (!rest) return ['\\', 0];
+
+  return [SparkEscapes[rest[0]] ?? rest[0], 1];
+};
+
 const createEqual = (type: string) => (char: string) => type === char;
 const createTest = (regexp: RegExp) => (char: string) => regexp.test(char);
 
@@ -71,8 +113,11 @@ const match = {
   rightBracket: createEqual(pattern.rightBracket),
 };
 
-export function tokenizer(source: string): Token[] {
+// A Databricks source reads a single-quoted literal by Spark's rules, where
+// every backslash escapes what follows it; any other by the guess below.
+export function tokenizer(source: string, database?: DatabaseVendor): Token[] {
   const tokens: Token[] = [];
+  const spark = database === 'Databricks';
   let pos = 0;
 
   const isChar = () => pos < source.length;
@@ -105,7 +150,14 @@ export function tokenizer(source: string): Token[] {
     while (isChar()) {
       const char = source[pos];
 
-      if (char === close && quote === "'" && isEscapedQuote(value)) {
+      if (spark && quote === "'" && char === '\\') {
+        const [text, length] = readSparkEscape(source.slice(pos + 1, pos + 10));
+        value += text;
+        pos += length + 1;
+        continue;
+      }
+
+      if (char === close && quote === "'" && !spark && isEscapedQuote(value)) {
         value = value.slice(0, -1);
       } else if (char === close) {
         if (quote === '[' || source[pos + 1] !== close) break;

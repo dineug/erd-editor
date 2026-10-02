@@ -34,12 +34,14 @@ import {
   matchReferentialClause,
   matchUserDataType,
   requote,
+  toStringLiteral,
   unquoteTypeName,
 } from '@/parser/helper';
 import {
   Column,
   CreateTable,
   CreateTableColumns,
+  DatabaseVendor,
   ForeignKey,
   Index,
   IndexColumn,
@@ -49,7 +51,11 @@ import {
 } from '@/parser/statement';
 import { Token } from '@/parser/tokenizer';
 
-export function createTableParser(tokens: Token[], $pos: RefPos) {
+export function createTableParser(
+  tokens: Token[],
+  $pos: RefPos,
+  database?: DatabaseVendor
+) {
   const newStatement = isNewStatement(tokens);
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
@@ -150,7 +156,8 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
 
       const { columns, indexes, foreignKeys } = createTableColumnsParser(
         tokens,
-        $pos
+        $pos,
+        database
       );
       ast.columns = columns;
       ast.indexes = indexes;
@@ -207,7 +214,8 @@ export function createTableParser(tokens: Token[], $pos: RefPos) {
 
 function createTableColumnsParser(
   tokens: Token[],
-  $pos: RefPos
+  $pos: RefPos,
+  database?: DatabaseVendor
 ): CreateTableColumns {
   const isString = isStringToken(tokens);
   const isLeftParent = isLeftParentToken(tokens);
@@ -339,7 +347,9 @@ function createTableColumnsParser(
       while ($pos.value < end) {
         // A field's COMMENT and a backtick name keep their quotes, as a type
         // argument does: STRUCT<name: STRING COMMENT 'x'>.
-        parts.push(isComma($pos.value) ? ',' : requote(tokens[$pos.value]));
+        parts.push(
+          isComma($pos.value) ? ',' : requote(tokens[$pos.value], database)
+        );
         $pos.value++;
       }
 
@@ -554,7 +564,7 @@ function createTableColumnsParser(
       // string literal, so they go back on -- PENDING would read as a name.
       if (isString($pos.value)) {
         column.default = token.quoted
-          ? `'${token.value.replaceAll("'", "''")}'`
+          ? toStringLiteral(token.value, database)
           : token.value;
         $pos.value++;
       }
@@ -643,7 +653,7 @@ function createTableColumnsParser(
           // A quoted argument goes back into its quotes: ENUM(a,b) is no
           // valid DDL. A structured type spells its fields as words --
           // Snowflake's OBJECT(city VARCHAR). Gluing them loses the field.
-          const text = requote(token);
+          const text = requote(token, database);
           value +=
             isString($pos.value) &&
             (isString($pos.value - 1) || isRightParent($pos.value - 1))

@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Column, RefPos, SortType, StatementType } from '@/parser/statement';
+import {
+  Column,
+  DatabaseVendor,
+  RefPos,
+  SortType,
+  StatementType,
+} from '@/parser/statement';
 import {
   createTableParser,
   parserForeignKeyParser,
 } from '@/parser/statement/create.table';
 import { tokenizer } from '@/parser/tokenizer';
 
-function parse(sql: string) {
-  const tokens = tokenizer(sql);
+function parse(sql: string, database?: DatabaseVendor) {
+  const tokens = tokenizer(sql, database);
   const $pos: RefPos = { value: 0 };
-  const ast = createTableParser(tokens, $pos);
+  const ast = createTableParser(tokens, $pos, database);
   return { ast, tokens, $pos };
 }
 
@@ -822,6 +828,51 @@ describe('createTableParser - quoted type arguments', () => {
         'CREATE TABLE t (a SET("x", \'y\'), b OBJECT("city" VARCHAR, zip NUMBER));'
       ).ast.columns.map(column => column.dataType)
     ).toEqual(['SET("x",\'y\')', 'OBJECT("city" VARCHAR,zip NUMBER)']);
+  });
+});
+
+// Spark escapes a quote with a backslash, and all but its newest releases end
+// the literal at a doubled one: what a Databricks import writes back as SQL
+// has to escape the way it was read.
+describe('createTableParser - Databricks literals', () => {
+  const sql = String.raw`CREATE TABLE t (
+    a STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'> COMMENT 'o\'k',
+    b STRING DEFAULT 'it\'s' COMMENT 'a\\b',
+    c STRING DEFAULT 'C:\\'
+  )`;
+
+  it('writes a field comment and a default back in Spark escapes', () => {
+    expect(parse(sql, 'Databricks').ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: String.raw`STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'>`,
+        comment: "o'k",
+      }),
+      column({
+        name: 'b',
+        dataType: 'STRING',
+        default: String.raw`'it\'s'`,
+        comment: String.raw`a\b`,
+      }),
+      column({ name: 'c', dataType: 'STRING', default: String.raw`'C:\\'` }),
+    ]);
+  });
+
+  it('doubles the quote of a literal from any other vendor', () => {
+    expect(parse(sql).ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: String.raw`STRUCT<y: STRING COMMENT 'it''s', z: STRING COMMENT 'C:\\x'>`,
+        comment: "o'k",
+      }),
+      column({
+        name: 'b',
+        dataType: 'STRING',
+        default: "'it''s'",
+        comment: String.raw`a\\b`,
+      }),
+      column({ name: 'c', dataType: 'STRING', default: String.raw`'C:\\'` }),
+    ]);
   });
 });
 

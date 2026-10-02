@@ -252,6 +252,75 @@ describe('tokenizer', () => {
     });
   });
 
+  // Spark reads every backslash in a single-quoted literal as an escape, so a
+  // Databricks document is read by its rules rather than by the guess above.
+  describe('a Databricks single quote literal', () => {
+    const databricks = (source: string) => tokenizer(source, 'Databricks');
+    const valueOf = (source: string) => databricks(source)[0].value;
+
+    it('reads a backslash as escaping the quote or backslash after it', () => {
+      expect(databricks(String.raw`'it\'s' 'a\\b' 'C:\\' x`)).toEqual([
+        { type: TokenType.string, value: "it's", quoted: "'" },
+        { type: TokenType.string, value: String.raw`a\b`, quoted: "'" },
+        { type: TokenType.string, value: 'C:\\', quoted: "'" },
+        { type: TokenType.string, value: 'x' },
+      ]);
+    });
+
+    it('reads on past a backslashed quote, whatever follows it', () => {
+      expect(valueOf(String.raw`'C:\', x'`)).toBe("C:', x");
+      expect(valueOf(String.raw`'C:\'+name'`)).toBe("C:'+name");
+    });
+
+    it('ends the literal at a quote behind an escaped backslash', () => {
+      expect(databricks(String.raw`'a\\' b`)).toEqual([
+        { type: TokenType.string, value: 'a\\', quoted: "'" },
+        { type: TokenType.string, value: 'b' },
+      ]);
+    });
+
+    it('reads the named escapes as Spark does', () => {
+      expect(valueOf(String.raw`'\n\t\r\b\0\Z\%\_\"\q'`)).toBe(
+        '\n\t\r\b\0\x1a\\%\\_"q'
+      );
+    });
+
+    it('reads the unicode and octal escapes as Spark does', () => {
+      expect(valueOf(String.raw`'\u0041\u00e9\U0001F600\101\012'`)).toBe(
+        'Aé😀A\n'
+      );
+      expect(valueOf(String.raw`'\U00110000'`)).toBe('\udc00\udc00');
+    });
+
+    it('reads a short unicode or octal escape as an escaped letter', () => {
+      expect(valueOf(String.raw`'\u004' '\10'`)).toBe('u004');
+      expect(databricks(String.raw`'\u004' '\10'`)[1].value).toBe('10');
+    });
+
+    it('still reads a doubled single quote as one quote', () => {
+      expect(valueOf("'it''s'")).toBe("it's");
+    });
+
+    it('keeps a backslash the source ends on', () => {
+      expect(valueOf("'abc\\")).toBe('abc\\');
+    });
+
+    it('leaves the other quoting styles as they are', () => {
+      expect(databricks('"C:\\" `a\\` [b\\]')).toEqual([
+        { type: TokenType.string, value: 'C:\\', quoted: '"' },
+        { type: TokenType.string, value: 'a\\', quoted: '`' },
+        { type: TokenType.string, value: 'b\\', quoted: '[' },
+      ]);
+    });
+
+    it('reads by the guess for any other vendor', () => {
+      expect(tokenizer(String.raw`'a\\b'`, 'MySQL')[0].value).toBe(
+        String.raw`a\\b`
+      );
+      expect(tokenizer(String.raw`'a\\b'`)[0].value).toBe(String.raw`a\\b`);
+    });
+  });
+
   describe('backtick quoting', () => {
     it('reads a backtick quoted identifier as a single string token', () => {
       expect(tokenizer('`my table`')).toEqual([

@@ -27,9 +27,10 @@ const ctx = createEngineContext({ toWidth: text => text.length * 10 });
 
 function parse(
   sql: string,
-  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3
+  prepare?: (schema: ERDEditorSchemaV3) => ERDEditorSchemaV3,
+  database?: number
 ): Schema {
-  return JSON.parse(schemaSQLParserToSchemaJson(sql, ctx, prepare));
+  return JSON.parse(schemaSQLParserToSchemaJson(sql, ctx, prepare, database));
 }
 
 const tablesOf = (schema: Schema): Table[] =>
@@ -1112,5 +1113,59 @@ CREATE TABLE \`film\` (
         expect(commentsOf(exported)).toEqual(comments);
       }
     );
+  });
+
+  // A Databricks document reads its literals by Spark's escapes and writes a
+  // default and a field comment back in them, so its export imports back the
+  // same; under the guess a backslash doubled on every pass.
+  describe('Databricks literal round trip', () => {
+    const sql = String.raw`CREATE TABLE t (
+      a STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'> COMMENT 'C:\\dir it\'s',
+      b STRING DEFAULT 'it\'s' COMMENT 'a\\\'b',
+      c STRING DEFAULT 'C:\\'
+    ) COMMENT 'o\'k \\';`;
+    const struct = String.raw`STRUCT<y: STRING COMMENT 'it\'s', z: STRING COMMENT 'C:\\x'>`;
+
+    const fieldsOf = (schema: Schema) =>
+      columnsOf(schema, tablesOf(schema)[0]).map(column => [
+        column.name,
+        column.dataType,
+        column.default,
+        column.comment,
+      ]);
+
+    it('keeps the quotes and backslashes through each export', () => {
+      const first = parse(sql, undefined, Database.Databricks);
+      const exported = createSchemaSQL(stateOf(first), Database.Databricks);
+      const second = parse(exported, undefined, Database.Databricks);
+
+      expect(tablesOf(first)[0].comment).toBe("o'k \\");
+      expect(fieldsOf(first)).toEqual([
+        ['a', struct, '', "C:\\dir it's"],
+        ['b', 'STRING', String.raw`'it\'s'`, "a\\'b"],
+        ['c', 'STRING', String.raw`'C:\\'`, ''],
+      ]);
+      expect(exported).toContain(struct);
+      expect(exported).toContain(String.raw`DEFAULT 'it\'s'`);
+      expect(exported).toContain(String.raw`COMMENT 'C:\\dir it\'s'`);
+      expect(exported).toContain(String.raw`COMMENT 'o\'k \\';`);
+      expect(tablesOf(second)[0].comment).toBe("o'k \\");
+      expect(fieldsOf(second)).toEqual(fieldsOf(first));
+      expect(createSchemaSQL(stateOf(second), Database.Databricks)).toBe(
+        exported
+      );
+    });
+
+    it('reads the same SQL by the guess in a document of another vendor', () => {
+      expect(commentsOf(parse(sql, undefined, Database.MySQL))).toEqual([
+        "o'k \\\\",
+        "C:\\\\dir it's",
+        "a\\\\'b",
+        '',
+      ]);
+      expect(commentsOf(parse(sql))).toEqual(
+        commentsOf(parse(sql, undefined, Database.MySQL))
+      );
+    });
   });
 });

@@ -69,6 +69,7 @@ import {
   matchReferentialClause,
   matchUserDataType,
   requote,
+  toStringLiteral,
   unquoteTypeName,
 } from '@/parser/helper';
 import { Token, tokenizer, TokenType } from '@/parser/tokenizer';
@@ -1097,21 +1098,38 @@ describe('isArrayDimensionToken', () => {
 
 describe('requote', () => {
   it('writes each quoted token back inside its own delimiters', () => {
-    expect(tokenizer('`a` "b" \'c\' [d] e').map(requote)).toEqual([
-      '`a`',
-      '"b"',
-      "'c'",
-      '[d]',
-      'e',
-    ]);
+    expect(
+      tokenizer('`a` "b" \'c\' [d] e').map(token => requote(token))
+    ).toEqual(['`a`', '"b"', "'c'", '[d]', 'e']);
   });
 
   it('doubles the quote a value holds', () => {
-    expect(tokenizer('\'it\'\'s\' "a""b" `c``d`').map(requote)).toEqual([
-      "'it''s'",
+    expect(
+      tokenizer('\'it\'\'s\' "a""b" `c``d`').map(token => requote(token))
+    ).toEqual(["'it''s'", '"a""b"', '`c``d`']);
+  });
+
+  it('escapes the quote and backslash of a Databricks literal instead', () => {
+    const tokens = tokenizer(
+      "'it\\'s' 'a\\\\b' \"a\"\"b\" `c``d`",
+      'Databricks'
+    );
+
+    expect(tokens.map(token => requote(token, 'Databricks'))).toEqual([
+      "'it\\'s'",
+      "'a\\\\b'",
       '"a""b"',
       '`c``d`',
     ]);
+  });
+});
+
+describe('toStringLiteral', () => {
+  it('doubles a quote, or escapes it and a backslash for Databricks', () => {
+    expect(toStringLiteral("it's C:\\")).toBe("'it''s C:\\'");
+    expect(toStringLiteral("it's C:\\", 'PostgreSQL')).toBe("'it''s C:\\'");
+    expect(toStringLiteral("it's C:\\", 'Databricks')).toBe("'it\\'s C:\\\\'");
+    expect(toStringLiteral('')).toBe("''");
   });
 });
 
