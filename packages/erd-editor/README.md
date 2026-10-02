@@ -162,7 +162,7 @@ erd-editor {
 
 | Event | Description |
 | --- | --- |
-| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too, and with Save Scroll Information or Save Zoom Information off leaves `value` as it was. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
+| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too. A scroll leaves `value` as it was with Save Scroll Information off; a zoom moves the scroll position too, so it leaves `value` as it was only with Save Zoom Information and Save Scroll Information both off. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options. |
 
 ## Key bindings
@@ -257,9 +257,11 @@ store.dispatch(actions); // actions relayed from a live editor's shared store
 ```
 
 `change` comes 200 ms after the last action that can change the document. `changed` is false
-when those actions left `value` as it was, such as a scroll or a zoom with Save Scroll Information
-or Save Zoom Information off. It compares with the value the store last reported, or loaded, never
-with your file: a file another release or machine wrote serializes differently from the start.
+when those actions left `value` as it was, such as a scroll with Save Scroll Information off, or a
+zoom with Save Zoom Information and Save Scroll Information both off: a zoom moves the scroll
+position too, so with only the scroll saved it changes `value`. It compares with the value the
+store last reported, or loaded, never with your file: a file another release or machine wrote
+serializes differently from the start.
 
 ## Development
 

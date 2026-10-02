@@ -59,7 +59,8 @@ A new document leaves the canvas scroll position and zoom level out of the file,
 around never shows up in `git diff`. An existing file keeps storing whatever it was saved with,
 and older files store both: turn off **Save Scroll Information** and **Save Zoom Information**
 in the editor's settings to keep their diffs limited to schema changes, or turn them on for a
-document that should open where you left it.
+document that should open where you left it. Zooming moves the scroll position too, so with only
+**Save Scroll Information** on, zooming still changes the file.
 
 ### Multiple editors per document
 

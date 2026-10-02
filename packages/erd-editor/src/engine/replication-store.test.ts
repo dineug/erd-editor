@@ -1,3 +1,4 @@
+import { compositionActionsFlat } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
@@ -7,6 +8,7 @@ import {
   SaveSettingType,
   StartRelationshipType,
 } from '@/constants/schema';
+import { Clock } from '@/engine/clock';
 import { unselectAllAction } from '@/engine/modules/editor/atom.actions';
 import {
   changeCanvasTypeAction,
@@ -16,6 +18,7 @@ import {
   streamScrollToAction,
   streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -24,6 +27,7 @@ import {
   createReplicationStore,
   ReplicationStore,
 } from '@/engine/replication-store';
+import { createStore } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -485,6 +489,39 @@ describe('createReplicationStore', () => {
       });
       expect(parse(store).settings.zoomLevel).toBe(0.75);
       expect(parse(store).settings.originX).toBe(0);
+    });
+
+    it('saves the origin a zoom moves with only the scroll switch on, though not the zoom', () => {
+      const { store, change } = loaded(SaveSettingType.zoomLevel);
+      const before = store.value;
+      // What an editor relays for a zoom: the zoom, then the scroll that keeps
+      // the scene point under the middle of its 1200 by 675 screen in place.
+      const editor = createStore({
+        toWidth: text => text.length * 10,
+        clock: new Clock(),
+      });
+      const zoom = compositionActionsFlat(editor.state, editor.context, [
+        changeZoomLevelAction$(0.5),
+      ]);
+      editor.destroy();
+
+      store.dispatchSync(zoom);
+      vi.advanceTimersByTime(250);
+
+      expect(zoom.map(({ type }) => type)).toEqual([
+        'settings.changeZoomLevel',
+        'settings.scrollTo',
+      ]);
+      expect(change).toHaveBeenCalledWith({
+        value: store.value,
+        changed: true,
+      });
+      expect(store.value).not.toBe(before);
+      expect(parse(store).settings).toMatchObject({
+        zoomLevel: 1,
+        originX: 300,
+        originY: 168.75,
+      });
     });
 
     it('still saves a tab switch, which neither switch covers', () => {
