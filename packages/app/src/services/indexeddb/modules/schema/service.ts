@@ -43,16 +43,13 @@ export class SchemaService {
   }
 
   /**
-   * Replaces the replica's value and measures later edits against it. The
-   * baseline waits a microtask for the tombstone collection the engine queues
-   * on every load, which is housekeeping rather than an edit.
+   * Replaces the replica's value and measures later edits against it. The load
+   * returns with the tombstones it collects gone, which is housekeeping rather
+   * than an edit.
    */
   private load(id: string, store: ReplicationStore, value: string) {
     store.setInitialValue(value);
-    queueMicrotask(() => {
-      if (this.cache.get(id)?.store !== store) return;
-      this.fingerprints.set(id, toFingerprint(store.value));
-    });
+    this.fingerprints.set(id, toFingerprint(store.value));
   }
 
   private persist(id: string, value: string) {
