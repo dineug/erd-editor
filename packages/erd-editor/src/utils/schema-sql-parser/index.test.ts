@@ -572,6 +572,22 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    // Oracle enforces a primary key through an index over its columns that is
+    // already there, a non-unique one too.
+    it('lets an ALTER primary key with no name take over a plain index over its columns', () => {
+      const schema = parse(`
+        CREATE TABLE t (id INT);
+        CREATE INDEX ix_id ON t (id);
+        ALTER TABLE t ADD PRIMARY KEY (id);
+      `);
+      const t = tableByName(schema, 't');
+
+      expect(columnByName(schema, t, 'id').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(indexesOf(schema)).toEqual([]);
+    });
+
     it('reads the index DBMS_METADATA exports for each system-named key a table declares inline as part of that key', () => {
       const schema = parse(`
         CREATE TABLE "HR"."T" (
