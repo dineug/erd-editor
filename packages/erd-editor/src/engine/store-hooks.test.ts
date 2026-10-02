@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vite-plus/test';
 import { ColumnOption, ColumnUIKey, Direction } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
-  initialLoadJsonAction,
-  loadJsonAction,
-} from '@/engine/modules/editor/atom.actions';
+  initialLoadJsonAction$,
+  loadJsonAction$,
+} from '@/engine/modules/editor/generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { hooks as relationshipHooks } from '@/engine/modules/relationship/hooks';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
@@ -166,22 +166,28 @@ describe('createHooks', () => {
     );
   });
 
-  it('wakes on a load only the hooks settleLoad writes for at once', () => {
+  it.each([
+    ['initialLoadJsonAction$', initialLoadJsonAction$],
+    ['loadJsonAction$', loadJsonAction$],
+  ])('wakes on %s only the hooks settleLoad writes for at once', (_, load) => {
     // A replica measures its changes from the load settleLoad leaves, so a new
-    // hook on a load joins it, or a pan on a stale file reads as an edit.
-    const onLoad = (type: string) =>
-      [...tableHooks, ...tableColumnHooks, ...relationshipHooks]
-        .filter(([pattern]) => pattern.map(String).includes(type))
-        .map(([, hook]) => hook.name);
-    const settled = [
+    // hook on any action a load dispatches, its clear included, joins it, or a
+    // pan on a stale file reads as an edit.
+    const store = createStore({ toWidth: () => 0, clock: new Clock() });
+    const types: string[] = [];
+    store.subscribe(actions => types.push(...actions.map(({ type }) => type)));
+    store.dispatchSync(load('{}'));
+
+    const woken = [...tableHooks, ...tableColumnHooks, ...relationshipHooks]
+      .filter(([pattern]) => pattern.some(type => types.includes(String(type))))
+      .map(([, hook]) => hook.name);
+
+    expect(woken).toEqual([
       'recalculateTableWidthHook',
       'validationForeignKeyHook',
       'identificationHook',
       'startRelationshipHook',
-    ];
-
-    expect(onLoad(initialLoadJsonAction.type)).toEqual(settled);
-    expect(onLoad(loadJsonAction.type)).toEqual(settled);
+    ]);
   });
 
   it('destroy is safe to call twice', () => {
