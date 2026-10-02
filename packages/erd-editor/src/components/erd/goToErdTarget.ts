@@ -1,5 +1,10 @@
 import { query } from '@dineug/erd-editor-schema';
 
+import {
+  getColumnCellSlots,
+  getHeaderCellSlots,
+  HEADER_CELLS_X,
+} from '@/components/erd/canvas/table/cellLayout';
 import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { CanvasType, Show } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
@@ -24,6 +29,7 @@ import {
   getMemoRect,
   getTableHeaderRect,
   getTableRect,
+  getTableWidths,
   type Rect,
 } from '@/konva/scene/metrics';
 import { getOriginToPlace, toScreenPoint } from '@/konva/scene/viewport';
@@ -123,20 +129,70 @@ function getTableNameRect(state: RootState, table: Table): Rect {
 }
 
 /**
- * Brings a table on screen whole, or one too big for the screen by where it
- * shows its name, which a jump or a selection rings, rather than by a middle.
+ * Where a table shows the cell a jump rings in its header: its comment, or
+ * else its name, the band a selection rings.
+ */
+function getTableFocusRect(
+  state: RootState,
+  table: Table,
+  focusType: FocusType
+): Rect {
+  const name = getTableNameRect(state, table);
+  if (
+    focusType !== FocusType.tableComment ||
+    isHighLevelTable(state.settings.zoomLevel)
+  ) {
+    return name;
+  }
+
+  const slot = getHeaderCellSlots(state, table).find(
+    candidate => candidate.focusType === focusType
+  );
+  return slot
+    ? { ...name, x: name.x + HEADER_CELLS_X + slot.x, width: slot.width }
+    : name;
+}
+
+/**
+ * Brings a table on screen whole, or one too big for the screen by the header
+ * cell a jump rings, its name unless it asks for the comment, rather than by
+ * a middle.
  */
 export function* scrollTableIntoView(
   state: RootState,
   table: Table,
-  covered = 0
+  covered = 0,
+  focusType: FocusType = FocusType.tableName
 ) {
   yield* scrollIntoView(
     state,
     getTableRect(state, table),
     covered,
-    getTableNameRect(state, table)
+    getTableFocusRect(state, table, focusType)
   );
+}
+
+/**
+ * The one cell of a column row a jump rings, as the cell editor lays it out,
+ * so a row too wide for the screen is scrolled to by that cell.
+ */
+function getColumnCellRect(
+  state: RootState,
+  table: Table,
+  index: number,
+  focusType: FocusType
+): Rect {
+  const row = getColumnRect(state, table, index);
+  const slot = getColumnCellSlots(state, getTableWidths(state, table)).find(
+    candidate => candidate.focusType === focusType
+  );
+  if (!slot) return row;
+
+  return {
+    ...row,
+    x: getTableRect(state, table).x + slot.x,
+    width: slot.width,
+  };
 }
 
 /**
@@ -181,7 +237,7 @@ export const selectTableAloneAction$ = (tableId: string): GeneratorAction =>
 /**
  * Stands the reader on a table, a column cell or a memo the way the Go to ERD
  * button stands them on a table, with the focus ring on the cell asked for. A
- * column is scrolled to by its own row, which a tall table may hold off screen.
+ * column is scrolled to by its own row, or a row too wide by the ringed cell.
  *
  * @param covered How far in from the left edge a panel over the canvas hides it.
  */
@@ -207,13 +263,13 @@ export const showErdTargetAction$ = (
     if (!table) return;
 
     if (target.kind === 'table') {
-      yield* scrollTableIntoView(state, table, covered);
+      const focusType = target.focusType
+        ? visibleFocusType(state, target.focusType)
+        : FocusType.tableName;
+      yield* scrollTableIntoView(state, table, covered, focusType);
       yield selectTableAloneAction$(table.id);
       if (target.focusType) {
-        yield focusTableAction({
-          tableId: table.id,
-          focusType: visibleFocusType(state, target.focusType),
-        });
+        yield focusTableAction({ tableId: table.id, focusType });
       }
       return;
     }
@@ -221,17 +277,23 @@ export const showErdTargetAction$ = (
     const index = table.columnIds.indexOf(target.columnId);
     if (index === -1) return;
 
+    const focusType = visibleFocusType(state, target.focusType);
     // Zoomed out far enough, a table is drawn as its name alone.
     if (isHighLevelTable(state.settings.zoomLevel)) {
       yield* scrollTableIntoView(state, table, covered);
     } else {
-      yield* scrollIntoView(state, getColumnRect(state, table, index), covered);
+      yield* scrollIntoView(
+        state,
+        getColumnRect(state, table, index),
+        covered,
+        getColumnCellRect(state, table, index, focusType)
+      );
     }
     yield selectTableAloneAction$(table.id);
     yield focusColumnAction({
       tableId: table.id,
       columnId: target.columnId,
-      focusType: visibleFocusType(state, target.focusType),
+      focusType,
       $mod: false,
       shiftKey: false,
     });

@@ -1,12 +1,17 @@
 // The store half of a jump from a search result: the ERD tab alone first, then
 // the scroll, the selection and the ring on the cell, where the scroll comes
-// only for a target not on screen whole, or of one too big for it, its name.
+// only for a target not on screen whole, or of one too big for it, that cell.
 
 import type { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import {
+  getColumnCellSlots,
+  getHeaderCellSlots,
+  HEADER_CELLS_X,
+} from '@/components/erd/canvas/table/cellLayout';
 import {
   goToErdTarget,
   showErdTab,
@@ -25,15 +30,22 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableCommentAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnCommentAction,
+  changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import {
   getColumnRect,
   getTableHeaderRect,
   getTableRect,
+  getTableWidths,
 } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
@@ -315,7 +327,7 @@ describe('showErdTargetAction$ to a table taller than the screen', () => {
     expect(headerOnScreen(app, 'tall').topLeft.y).toBe(40);
   });
 
-  it('starts a row wider than the screen a margin in from its left edge', () => {
+  it('starts the ringed name of a row wider than the screen a margin in from its left edge', () => {
     const app = seed();
     app.store.dispatchSync(changeViewportAction({ width: 200, height: 600 }));
 
@@ -324,17 +336,108 @@ describe('showErdTargetAction$ to a table taller than the screen', () => {
     );
 
     const { settings, collections } = app.store.state;
-    const row = getColumnRect(
+    const table = collections.tableEntities.tall;
+    const row = getColumnRect(app.store.state, table, 30);
+    const name = getColumnCellSlots(
       app.store.state,
-      collections.tableEntities.tall,
-      30
-    );
+      getTableWidths(app.store.state, table)
+    ).find(slot => slot.focusType === FocusType.columnName);
     const topLeft = toScreenPoint(settings, row);
+    const tableLeft = toScreenPoint(
+      settings,
+      getTableRect(app.store.state, table)
+    );
     expect(row.width).toBeGreaterThan(200);
-    expect(topLeft.x).toBe(40);
+    expect(tableLeft.x + (name?.x ?? 0)).toBe(40);
+    // The key badge before the name stays on screen too.
+    expect(topLeft.x).toBeGreaterThan(0);
     // Shorter than the screen, the row still stands in its middle down.
     expect(topLeft.y + row.height / 2).toBeCloseTo(300, 6);
   });
+});
+
+/**
+ * Adds a table far off screen wider than the screen, by a name and a column
+ * name 60 letters long, each with a comment after it that fits beside a panel.
+ */
+function addWideTable(app: AppContext) {
+  const name = 'customer_account_identifier_for_billing_and_shipping_records';
+  const comment = 'login email of the customer';
+  app.store.dispatchSync(
+    addTableAction({ id: 'wide', ui: { x: 3000, y: 2000, zIndex: 3 } }),
+    changeTableNameAction({ id: 'wide', value: name }),
+    changeTableCommentAction({ id: 'wide', value: comment }),
+    addColumnAction({ id: 'w0', tableId: 'wide' }),
+    changeColumnNameAction({ id: 'w0', tableId: 'wide', value: name }),
+    changeColumnCommentAction({ id: 'w0', tableId: 'wide', value: comment })
+  );
+}
+
+/** Where a cell of the wide table stands on screen, from its left edge to its right. */
+function cellOnScreen(app: AppContext, focusType: FocusType) {
+  const { state } = app.store;
+  const table = state.collections.tableEntities.wide;
+  const tableRect = getTableRect(state, table);
+  const header = focusType === FocusType.tableComment;
+  const cell = (
+    header
+      ? getHeaderCellSlots(state, table)
+      : getColumnCellSlots(state, getTableWidths(state, table))
+  ).find(slot => slot.focusType === focusType);
+  expect(cell).toBeDefined();
+  const x = tableRect.x + (header ? HEADER_CELLS_X : 0) + (cell?.x ?? 0);
+  const width = cell?.width ?? 0;
+  const { y } = tableRect;
+
+  return {
+    left: toScreenPoint(state.settings, { x, y }).x,
+    right: toScreenPoint(state.settings, { x: x + width, y }).x,
+    tableWidth: tableRect.width,
+  };
+}
+
+const wideTarget = (focusType: FocusType) =>
+  focusType === FocusType.tableComment
+    ? { kind: 'table' as const, tableId: 'wide', focusType }
+    : {
+        kind: 'column' as const,
+        tableId: 'wide',
+        columnId: 'w0',
+        focusType,
+      };
+
+describe('showErdTargetAction$ to a cell of a table wider than the screen', () => {
+  it.each([
+    ['a column comment', 0, FocusType.columnComment],
+    ['a column comment beside a panel', 412, FocusType.columnComment],
+    ['a table comment', 0, FocusType.tableComment],
+    ['a table comment beside a panel', 412, FocusType.tableComment],
+  ])('brings %s a margin inside the canvas left clear', (_, covered, focus) => {
+    const app = seed();
+    addWideTable(app);
+
+    app.store.dispatchSync(showErdTargetAction$(wideTarget(focus), covered));
+
+    const { left, right, tableWidth } = cellOnScreen(app, focus);
+    expect(tableWidth).toBeGreaterThan(VIEWPORT.width - covered);
+    expect(left).toBeGreaterThanOrEqual(covered + 40);
+    expect(right).toBeLessThanOrEqual(VIEWPORT.width - 40);
+    expect(app.store.state.editor.focusTable?.focusType).toBe(focus);
+  });
+
+  it.each([FocusType.columnComment, FocusType.tableComment])(
+    'leaves the scroll out while the ringed cell is on screen, as %s is after a jump',
+    focus => {
+      const app = seed();
+      addWideTable(app);
+      app.store.dispatchSync(showErdTargetAction$(wideTarget(focus)));
+      const batches = recordBatches(app);
+
+      app.store.dispatchSync(showErdTargetAction$(wideTarget(focus)));
+
+      expect(batches.flat()).not.toContain('settings.scrollTo');
+    }
+  );
 });
 
 describe('showErdTargetAction$ with a relationship being drawn', () => {
