@@ -115,7 +115,15 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   ],
 });
 
-const KEYBINDING_MODIFIERS = ['Shift', 'Meta', 'Alt', 'Control'];
+const ModifierKey = {
+  Shift: 'Shift',
+  Meta: 'Meta',
+  Alt: 'Alt',
+  Control: 'Control',
+} as const;
+type ModifierKey = ValuesType<typeof ModifierKey>;
+
+const MODIFIER_KEYS: ReadonlyArray<ModifierKey> = Object.values(ModifierKey);
 
 /**
  * Whether the press is one of the chords given, read the way tinykeys reads a
@@ -134,20 +142,12 @@ export function matchesShortcut(
     return (
       (key === event.code || key.toUpperCase() === event.key.toUpperCase()) &&
       mods.every(mod => event.getModifierState(mod)) &&
-      !KEYBINDING_MODIFIERS.some(
+      !MODIFIER_KEYS.some(
         mod => !mods.includes(mod) && event.getModifierState(mod)
       )
     );
   });
 }
-
-const ModifierKey = {
-  Shift: 'Shift',
-  Meta: 'Meta',
-  Alt: 'Alt',
-  Control: 'Control',
-} as const;
-type ModifierKey = ValuesType<typeof ModifierKey>;
 
 const MacModifierKeyMap: Record<ModifierKey, string> = {
   [ModifierKey.Shift]: '⇧', // Shift
