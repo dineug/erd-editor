@@ -17,7 +17,7 @@ import {
   isUniqueValue,
   isWhereValue,
   matchCreateIndex,
-  matchKeyModifier,
+  matchKeyModifiers,
   matchQualifiedName,
 } from '@/parser/helper';
 import {
@@ -49,7 +49,7 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
   const isNull = isNullValue(tokens);
   const createIndex = matchCreateIndex(tokens);
   const qualifiedName = matchQualifiedName(tokens);
-  const keyModifier = matchKeyModifier(tokens);
+  const keyModifiers = matchKeyModifiers(tokens);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -61,15 +61,6 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
 
     $pos.value += span;
     return tokens[$pos.value - 1].value;
-  };
-
-  const skipKeyModifiers = () => {
-    let span = keyModifier($pos.value);
-
-    while (span) {
-      $pos.value += span;
-      span = keyModifier($pos.value);
-    }
   };
 
   const skipParents = () => {
@@ -152,7 +143,7 @@ export function createIndexParser(tokens: Token[], $pos: RefPos) {
       ast.tableName = readName();
 
       if (ast.tableName) {
-        skipKeyModifiers();
+        $pos.value += keyModifiers($pos.value);
 
         if (isLeftParent($pos.value)) {
           ast.columns = indexColumnsParser(tokens, $pos);

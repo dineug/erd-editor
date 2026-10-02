@@ -66,6 +66,7 @@ import {
   matchCreateTable,
   matchDataType,
   matchKeyModifier,
+  matchKeyModifiers,
   matchQualifiedName,
   matchReferentialClause,
   matchUsingIndexName,
@@ -318,6 +319,16 @@ describe('matchKeyModifier', () => {
     expect(span('NULLS FIRST')).toBe(0);
     expect(span('NULLS NOT NULL')).toBe(0);
     expect(matchKeyModifier([quoted('clustered')])(0)).toBe(0);
+  });
+});
+
+describe('matchKeyModifiers', () => {
+  const span = (sql: string) => matchKeyModifiers(tokenizer(sql))(0);
+
+  it('spans every modifier in a row, up to the first word none claims', () => {
+    expect(span('CLUSTERED USING BTREE (a)')).toBe(3);
+    expect(span('NULLS NOT DISTINCT uq_a (a)')).toBe(3);
+    expect(span('uq_a NONCLUSTERED (a)')).toBe(0);
   });
 });
 

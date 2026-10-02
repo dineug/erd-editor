@@ -156,6 +156,10 @@ const matchKeyword = (tokens: Token[]) => (pos: number) => {
     : '';
 };
 
+// SQL Server's clustering of a key or an index, as matchKeyword spells it.
+const isClustering = (word: string) =>
+  word === 'CLUSTERED' || word === 'NONCLUSTERED';
+
 // How many tokens a key modifier spans where a unique key's name may stand:
 // PostgreSQL's NULLS [NOT] DISTINCT, SQL Server's CLUSTERED and MySQL's USING
 // BTREE. Left unclaimed, its first word would be read as the key's name.
@@ -165,11 +169,28 @@ export const matchKeyModifier = (tokens: Token[]) => {
   return (pos: number) => {
     const first = word(pos);
 
-    if (first === 'CLUSTERED' || first === 'NONCLUSTERED') return 1;
+    if (isClustering(first)) return 1;
     if (first === 'USING') return word(pos + 1) ? 2 : 1;
     if (first !== 'NULLS') return 0;
     if (word(pos + 1) === 'DISTINCT') return 2;
     return word(pos + 1) === 'NOT' && word(pos + 2) === 'DISTINCT' ? 3 : 0;
+  };
+};
+
+// How many tokens the key modifiers in a row at pos span, 0 for none.
+export const matchKeyModifiers = (tokens: Token[]) => {
+  const keyModifier = matchKeyModifier(tokens);
+
+  return (pos: number) => {
+    let cursor = pos;
+    let span = keyModifier(cursor);
+
+    while (span) {
+      cursor += span;
+      span = keyModifier(cursor);
+    }
+
+    return cursor - pos;
   };
 };
 
@@ -358,9 +379,7 @@ export const matchCreateIndex = (tokens: Token[]) => {
     let cursor = pos + 1;
 
     if (isUnique(cursor)) cursor++;
-    if (word(cursor) === 'CLUSTERED' || word(cursor) === 'NONCLUSTERED') {
-      cursor++;
-    }
+    if (isClustering(word(cursor))) cursor++;
 
     return isIndex(cursor) ? cursor + 1 - pos : 0;
   };

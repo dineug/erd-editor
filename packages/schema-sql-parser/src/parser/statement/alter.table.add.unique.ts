@@ -18,7 +18,7 @@ import {
   isStringToken,
   isTableValue,
   isUniqueValue,
-  matchKeyModifier,
+  matchKeyModifiers,
   matchUsingIndexName,
 } from '@/parser/helper';
 import { AlterTableAddUnique, RefPos, StatementType } from '@/parser/statement';
@@ -52,20 +52,11 @@ export function alterTableAddUniqueParser(
   const isExists = isExistsValue(tokens);
   const isLeftParent = isLeftParentToken(tokens);
   const isRightParent = isRightParentToken(tokens);
-  const keyModifier = matchKeyModifier(tokens);
+  const keyModifiers = matchKeyModifiers(tokens);
   const usingIndexName = matchUsingIndexName(tokens);
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
-
-  const skipKeyModifiers = () => {
-    let span = keyModifier($pos.value);
-
-    while (span) {
-      $pos.value += span;
-      span = keyModifier($pos.value);
-    }
-  };
 
   // No group holds a terminator, so one still open there is a quote the lexer
   // misread or a typo, and the statements after it are left to the loop. A new
@@ -190,7 +181,7 @@ export function alterTableAddUniqueParser(
         $pos.value += 3;
       }
 
-      skipKeyModifiers();
+      $pos.value += keyModifiers($pos.value);
 
       let keyName = constraintName;
       constraintName = '';
@@ -198,7 +189,7 @@ export function alterTableAddUniqueParser(
       if (isString($pos.value)) {
         keyName = tokens[$pos.value].value;
         $pos.value++;
-        skipKeyModifiers();
+        $pos.value += keyModifiers($pos.value);
       }
 
       if (isLeftParent($pos.value)) {

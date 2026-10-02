@@ -27,7 +27,7 @@ import {
   isUsingValue,
   matchCreateTable,
   matchDataType,
-  matchKeyModifier,
+  matchKeyModifiers,
   matchNestedDataType,
   matchReferentialClause,
 } from '@/parser/helper';
@@ -229,7 +229,7 @@ function createTableColumnsParser(
   const dataType = matchDataType(tokens);
   const nestedDataType = matchNestedDataType(tokens);
   const referentialClause = matchReferentialClause(tokens);
-  const keyModifier = matchKeyModifier(tokens);
+  const keyModifiers = matchKeyModifiers(tokens);
   const indexKind = isIndexKind(tokens);
 
   const isToken = () => $pos.value < tokens.length;
@@ -242,15 +242,6 @@ function createTableColumnsParser(
     isIndex(pos) ||
     isKey(pos) ||
     indexKind(pos);
-
-  const skipKeyModifiers = () => {
-    let span = keyModifier($pos.value);
-
-    while (span) {
-      $pos.value += span;
-      span = keyModifier($pos.value);
-    }
-  };
 
   const columns: Column[] = [];
   const indexes: Index[] = [];
@@ -478,7 +469,7 @@ function createTableColumnsParser(
         continue;
       }
 
-      skipKeyModifiers();
+      $pos.value += keyModifiers($pos.value);
 
       // Only a table constraint names its index.
       let name = constraintName;
@@ -486,7 +477,7 @@ function createTableColumnsParser(
       if (isString($pos.value)) {
         name = tokens[$pos.value].value;
         $pos.value++;
-        skipKeyModifiers();
+        $pos.value += keyModifiers($pos.value);
       }
 
       if (isLeftParent($pos.value)) {
@@ -497,13 +488,12 @@ function createTableColumnsParser(
         if (indexColumns.length > 1) {
           indexes.push({ name, unique: true, columns: indexColumns });
         } else {
+          const columnNames = indexColumns.map(indexColumn => indexColumn.name);
+
           uniqueColumnNames.push(
-            ...indexColumns.map(indexColumn => indexColumn.name.toUpperCase())
+            ...columnNames.map(columnName => columnName.toUpperCase())
           );
-          addKey(
-            name,
-            indexColumns.map(indexColumn => indexColumn.name)
-          );
+          addKey(name, columnNames);
         }
       }
 
