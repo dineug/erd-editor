@@ -106,7 +106,7 @@ describe('IndexesCheckboxColumn', () => {
       ).toBeNull();
     });
 
-    it('renders a scrollable root with one row per table column', async () => {
+    it('renders a root with one row per table column', async () => {
       mounted = await mountAndFlush(
         html`
           <${IndexesCheckboxColumn} tableId=${TABLE_ID} index=${indexOf(app)} />
@@ -119,7 +119,7 @@ describe('IndexesCheckboxColumn', () => {
       ) as HTMLElement;
 
       expect(root).toBeTruthy();
-      expect(root.classList.contains('scrollbar')).toBe(true);
+      expect(root.classList.contains('scrollbar')).toBe(false);
       expect(rowsOf(mounted)).toHaveLength(2);
     });
 
@@ -277,6 +277,69 @@ describe('IndexesCheckboxColumn', () => {
       const checkboxes = checkboxesOf(mounted);
       expect(checkboxes.every(input => input.disabled)).toBe(false);
       expect(checkboxes.map(input => input.checked)).toEqual([false, true]);
+    });
+  });
+
+  describe('rows of the picked index or key', () => {
+    const selectedOf = (mounted: Mounted) =>
+      rowsOf(mounted).map(row => row.hasAttribute('data-selected'));
+    const rootOf = (mounted: Mounted) =>
+      mounted.container.querySelector(`.${String(styles.root)}`) as HTMLElement;
+
+    it('tints the rows whose box is checked and follows each change', async () => {
+      mounted = await mountAndFlush(
+        html`
+          <${IndexesCheckboxColumn} tableId=${TABLE_ID} index=${indexOf(app)} />
+        `,
+        app
+      );
+
+      expect(selectedOf(mounted)).toEqual([false, false]);
+
+      changeCheckbox(checkboxesOf(mounted)[1], true);
+      await flush();
+
+      expect(selectedOf(mounted)).toEqual([false, true]);
+      expect(selectedOf(mounted)).toEqual(
+        checkboxesOf(mounted).map(input => input.checked)
+      );
+    });
+
+    it('tints the columns of a picked key, every box disabled', async () => {
+      mounted = await mountAndFlush(
+        html`
+          <${IndexesCheckboxColumn}
+            tableId=${TABLE_ID}
+            index=${null}
+            keyColumnIds=${[COLUMN_A]}
+          />
+        `,
+        app
+      );
+
+      expect(selectedOf(mounted)).toEqual([true, false]);
+      expect(checkboxesOf(mounted).map(input => input.checked)).toEqual([
+        true,
+        false,
+      ]);
+      expect(checkboxesOf(mounted).every(input => input.disabled)).toBe(true);
+    });
+
+    it('marks the list idle while no index is picked, and only then', async () => {
+      mounted = await mountAndFlush(
+        html`<${IndexesCheckboxColumn} tableId=${TABLE_ID} index=${null} />`,
+        app
+      );
+      expect(rootOf(mounted).hasAttribute('data-idle')).toBe(true);
+      mounted.unmount();
+
+      mounted = await mountAndFlush(
+        html`
+          <${IndexesCheckboxColumn} tableId=${TABLE_ID} index=${indexOf(app)} />
+        `,
+        app
+      );
+      expect(rootOf(mounted).hasAttribute('data-idle')).toBe(false);
     });
   });
 

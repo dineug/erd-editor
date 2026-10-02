@@ -18,6 +18,7 @@ describe('TablePropertiesIndexes.styles', () => {
       'rightArea',
       'sectionLabel',
       'sectionStatus',
+      'columns',
       'hint',
       'addIndexButtonArea',
       'addIcon',
@@ -75,6 +76,25 @@ describe('TablePropertiesIndexes.styles', () => {
     expect(text).toContain('font-variant-numeric: tabular-nums');
     expect(text).toContain('color: var(--foreground)');
     expect(text).not.toContain('var(--placeholder)');
+  });
+
+  it('scrolls the column rows sideways under an edge shade where more is hidden', () => {
+    const text = staticText(styles.columns);
+
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).toContain('overflow-x: auto');
+    expect(text).toContain('overflow-y: hidden');
+    expect(text).toMatch(
+      /background-image:\s+linear-gradient\(to right, var\(--context-menu-background\) 30%, transparent\),\s+linear-gradient\(to left, var\(--context-menu-background\) 30%, transparent\),\s+linear-gradient\(to right, var\(--context-menu-border\), transparent\),\s+linear-gradient\(to left, var\(--context-menu-border\), transparent\);/
+    );
+    expect(text).toMatch(
+      /background-size:\s+24px 100%,\s+24px 100%,\s+12px 100%,\s+12px 100%;/
+    );
+    expect(text).toContain('background-repeat: no-repeat');
+    expect(text).toContain(
+      'background-attachment: local, local, scroll, scroll'
+    );
+    expect(styles.columns.values).toEqual([]);
   });
 
   it('says what an empty list is missing on a row of its own', () => {

@@ -185,12 +185,15 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
     const hasChecked = arrayHas(checkedColumnIds);
 
     return (
-      <div class={['scrollbar', styles.root]}>
+      <div class={styles.root} bool:data-idle={!index}>
         {repeat(
           columns,
           column => column.id,
           column => (
-            <div class={['column-row', columnStyles.root]}>
+            <div
+              class={['column-row', columnStyles.root]}
+              bool:data-selected={hasChecked(column.id)}
+            >
               <div class="column-col">
                 <input
                   type="checkbox"

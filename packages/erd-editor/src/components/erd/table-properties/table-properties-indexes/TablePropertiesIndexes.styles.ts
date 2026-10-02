@@ -61,6 +61,34 @@ export const sectionStatus = css`
   }
 `;
 
+/**
+ * The column rows, which scroll sideways on a narrow dialog. Two covers ride
+ * with the rows over two edge shades, so a shade shows only at an edge with
+ * more beyond it, where an overlay scrollbar would show nothing.
+ */
+export const columns = css`
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background-image:
+    linear-gradient(to right, var(--context-menu-background) 30%, transparent),
+    linear-gradient(to left, var(--context-menu-background) 30%, transparent),
+    linear-gradient(to right, var(--context-menu-border), transparent),
+    linear-gradient(to left, var(--context-menu-border), transparent);
+  background-position:
+    left center,
+    right center,
+    left center,
+    right center;
+  background-size:
+    24px 100%,
+    24px 100%,
+    12px 100%,
+    12px 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+`;
+
 /* Where a list has nothing to show yet, a row saying so. */
 export const hint = css`
   display: flex;

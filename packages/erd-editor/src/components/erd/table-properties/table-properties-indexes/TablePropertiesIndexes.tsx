@@ -191,11 +191,13 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
             </span>
           </div>
           {columnCount ? (
-            <IndexesCheckboxColumn
-              tableId={tableId}
-              index={selectedIndex}
-              keyColumnIds={selectedKey?.columnIds ?? null}
-            />
+            <div class={['scrollbar', styles.columns]}>
+              <IndexesCheckboxColumn
+                tableId={tableId}
+                index={selectedIndex}
+                keyColumnIds={selectedKey?.columnIds ?? null}
+              />
+            </div>
           ) : (
             <div class={styles.hint}>This table has no columns</div>
           )}

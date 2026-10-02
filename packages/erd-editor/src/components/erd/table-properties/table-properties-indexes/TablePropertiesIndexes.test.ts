@@ -98,7 +98,7 @@ const rowKindsOf = (pane: Element) =>
                 ? 'order'
                 : row.querySelector(`.${String(separatorStyles.separator)}`)
                   ? 'separator'
-                  : row.classList.contains(String(checkboxStyles.root))
+                  : row.classList.contains(String(styles.columns))
                     ? 'columns'
                     : 'other'
   );
@@ -210,6 +210,20 @@ describe('TablePropertiesIndexes', () => {
       expect(hintsOf(leftOf(mounted))).toEqual(['No indexes yet']);
       expect(rowKindsOf(rightOf(mounted))).toEqual(['label', 'columns']);
       expect(labelsOf(rightOf(mounted))).toEqual(['Columns']);
+    });
+
+    it('scrolls the column list sideways in a wrapper of its own', async () => {
+      mounted = await mountAndFlush(template(), app);
+      const wrapper = rightOf(mounted).children[1] as HTMLElement;
+
+      expect(wrapper.classList.contains(String(styles.columns))).toBe(true);
+      expect(wrapper.classList.contains('scrollbar')).toBe(true);
+      expect(wrapper.children).toHaveLength(1);
+      expect(
+        wrapper.firstElementChild?.classList.contains(
+          String(checkboxStyles.root)
+        )
+      ).toBe(true);
     });
 
     it('says a table with no columns has none, in place of the list', async () => {
