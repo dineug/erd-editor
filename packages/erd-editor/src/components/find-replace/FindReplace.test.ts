@@ -16,6 +16,7 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import { getColumnCellSlots } from '@/components/erd/canvas/table/cellLayout';
 import FindReplace, {
   MATCH_ROW_LIMIT,
   REGEX_INPUT_DELAY,
@@ -39,7 +40,7 @@ import {
   hoverColumnMapAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
+import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
   addMemoAction,
   changeMemoValueAction,
@@ -49,11 +50,22 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { removeTableAction } from '@/engine/modules/table/atom.actions';
 import {
+  addTableAction,
+  changeTableNameAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
+import {
+  addColumnAction,
   changeColumnCommentAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  getColumnRect,
+  getTableRect,
+  getTableWidths,
+} from '@/konva/scene/metrics';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { FindField, FindFieldList, findMatches } from '@/utils/find-replace';
 import { InternalEventType } from '@/utils/internalEvents';
@@ -994,6 +1006,85 @@ describe('FindReplace replacing', () => {
 
     expect(button('find-replace-one').disabled).toBe(true);
     expect(button('find-replace-all').disabled).toBe(true);
+  });
+});
+
+/** Where the comment cell of a column stands on screen, from its left edge to its right. */
+function commentOnScreen(tableId: string, columnId: string) {
+  const { state } = app.store;
+  const table = state.collections.tableEntities[tableId];
+  const slot = getColumnCellSlots(state, getTableWidths(state, table)).find(
+    candidate => candidate.focusType === FocusType.columnComment
+  );
+  const row = getColumnRect(state, table, table.columnIds.indexOf(columnId));
+  const x = getTableRect(state, table).x + (slot?.x ?? 0);
+
+  return {
+    left: toScreenPoint(state.settings, { x, y: row.y }).x,
+    right: toScreenPoint(state.settings, {
+      x: x + (slot?.width ?? 0),
+      y: row.y,
+    }).x,
+  };
+}
+
+describe('FindReplace replacing a text that widens its table', () => {
+  const VIEWPORT = { width: 1000, height: 600 };
+
+  /** A table whose right edge stands 20 px inside the canvas, a name and a comment in it holding qq. */
+  beforeEach(async () => {
+    app.store.dispatchSync(
+      changeViewportAction(VIEWPORT),
+      addTableAction({ id: 'wide', ui: { x: 0, y: 1200, zIndex: 9 } }),
+      changeTableNameAction({ id: 'wide', value: 'accounts' }),
+      addColumnAction({ id: 'w_name', tableId: 'wide' }),
+      changeColumnNameAction({ id: 'w_name', tableId: 'wide', value: 'qq' }),
+      addColumnAction({ id: 'w_note', tableId: 'wide' }),
+      changeColumnNameAction({ id: 'w_note', tableId: 'wide', value: 'note' }),
+      changeColumnCommentAction({ id: 'w_note', tableId: 'wide', value: 'qq' })
+    );
+    const { state } = app.store;
+    const rect = getTableRect(state, state.collections.tableEntities.wide);
+    app.store.dispatchSync(
+      scrollToAction({
+        originX: VIEWPORT.width - 20 - (rect.x + rect.width),
+        originY: 100 - rect.y,
+      })
+    );
+    await openWith('qq');
+    await type(
+      replaceInput() as HTMLInputElement,
+      'customer_account_identifier_for_billing'
+    );
+  });
+
+  it('lands the next match where the table the replacement widens puts it', async () => {
+    await keydown(findInput(), { key: 'Enter' });
+    expect(countText()).toBe('1 of 2');
+    const { originX, originY } = app.store.state.settings;
+    const before = commentOnScreen('wide', 'w_note');
+    expect(before.right).toBeLessThanOrEqual(VIEWPORT.width);
+
+    await keydown(replaceInput() as HTMLInputElement, { key: 'Enter' });
+
+    expect(countText()).toBe('1 of 1');
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId: 'w_note',
+      focusType: FocusType.columnComment,
+    });
+    const { left, right } = commentOnScreen('wide', 'w_note');
+    expect(left).toBeGreaterThanOrEqual(412);
+    expect(right).toBeLessThanOrEqual(VIEWPORT.width);
+    expect(app.store.state.settings.originX).not.toBe(originX);
+
+    // The replacement and the scroll are still one entry, one undo takes back both.
+    app.store.undo();
+    await settle();
+
+    expect(app.store.state.collections.tableColumnEntities.w_name.name).toBe(
+      'qq'
+    );
+    expect(app.store.state.settings).toMatchObject({ originX, originY });
   });
 });
 

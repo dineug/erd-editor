@@ -11,11 +11,7 @@ import {
 import { debounceTime, filter, Observable } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
-import {
-  goToErdTarget,
-  showErdTab,
-  showErdTargetAction$,
-} from '@/components/erd/goToErdTarget';
+import { goToErdTarget, showErdTab } from '@/components/erd/goToErdTarget';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
@@ -55,7 +51,7 @@ import {
 
 import { fieldIcon } from './fieldIcon';
 import * as styles from './FindReplace.styles';
-import { toErdTarget } from './matchTarget';
+import { showNextMatchAction$, toErdTarget } from './matchTarget';
 import { coveredWidth, isPanelShown, isTakenOver } from './panelLayout';
 
 export type FindReplaceProps = {
@@ -377,7 +373,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     );
     // The next match is looked for in the text the replacement leaves, so the
     // jump to it rides in the replacement's dispatch and one undo takes back
-    // both, the scroll included, wherever on the canvas that match is.
+    // both, the scroll included, measured on the table the replacement leaves.
     const after = rematchField(result.matches, matcher, match, value);
     const step = nextReplace(after, match, value, began);
     const next = after[step.index];
@@ -385,7 +381,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const batch = next
       ? [
           ...actions,
-          showErdTargetAction$(toErdTarget(next), coveredWidth(store.state)),
+          showNextMatchAction$(next, match, value, coveredWidth(store.state)),
         ]
       : actions;
     batch.length && dispatchOwn(batch);
