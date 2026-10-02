@@ -985,6 +985,17 @@ describe('createScopeActions / Find and Replace', () => {
     setCanvasType(CanvasType.ERD);
     expect(find(scope(), 'Find and Replace').shortcut).toBe('$mod+KeyF');
   });
+
+  it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
+    'leaves the row out under %s, which takes the canvas over and keeps the panel shut',
+    key => {
+      expect(visibleNames()).toContain('Find and Replace');
+
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+
+      expect(visibleNames()).not.toContain('Find and Replace');
+    }
+  );
 });
 
 describe('searchActions / Hangul', () => {

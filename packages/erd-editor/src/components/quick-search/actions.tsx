@@ -14,7 +14,10 @@ import {
 } from '@/components/erd/goToErdTarget';
 import { fieldIcon } from '@/components/find-replace/fieldIcon';
 import { toErdTarget } from '@/components/find-replace/matchTarget';
-import { coveredWidth } from '@/components/find-replace/panelLayout';
+import {
+  coveredWidth,
+  isTakenOver,
+} from '@/components/find-replace/panelLayout';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -423,6 +426,7 @@ export function createScopeActions(app: AppContext): Action[] {
       perform: ({ emitter }) => {
         emitter.emit(openFindReplaceAction());
       },
+      filter: canOpenFindReplace,
     },
     ...createTableActions(app),
   ];
@@ -443,6 +447,9 @@ export function createMatchAction(state: RootState, match: FindMatch): Action {
   };
 }
 
+/** Whether choosing a row that opens Find and Replace would open it: an overlay taking the canvas over keeps it shut. */
+const canOpenFindReplace = ({ store }: AppContext) => !isTakenOver(store.state);
+
 /** The row handing a search to Find and Replace, named with the count the panel opens on. */
 export function createShowAllAction(
   count: number,
@@ -454,6 +461,7 @@ export function createShowAllAction(
     perform: ({ emitter }) => {
       emitter.emit(openFindReplaceAction(payload));
     },
+    filter: canOpenFindReplace,
   };
 }
 

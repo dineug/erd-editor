@@ -382,6 +382,21 @@ describe('paletteRows / # tables', () => {
     ]);
   });
 
+  it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
+    'leaves the hand-off out under %s, which keeps Find and Replace shut',
+    key => {
+      addTables(SCOPED_ACTION_LIMIT + 20, index => `item_${index}`);
+      const shown = () =>
+        rowsFor('#item').filter(row => row.filter?.(app) ?? true);
+      expect(shown().at(-1)?.tableId).toBeUndefined();
+
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+
+      expect(shown()).toHaveLength(SCOPED_ACTION_LIMIT);
+      expect(shown().every(row => row.tableId)).toBe(true);
+    }
+  );
+
   it('stays quick over a schema of hundreds of tables', () => {
     addTables(600, index => `table_${index}_items`);
 
