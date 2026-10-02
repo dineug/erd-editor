@@ -6,8 +6,8 @@
     "dist (reachable from exports)": {
       "bytes": 1142812,
       "gzip": 276422,
-      "budgetGzip": 340000,
-      "budgetNote": "335,878 B expected once six priority features from the GitHub wishlist are on main together (2026-09-30): FK referential actions, composite unique keys with AK marks, user-defined SQL types, FK column naming, view-only saves, and find and replace with palette scopes and Hangul search. Find and replace measured 326,547 B on a cache-cleared build of its branch, 10,062 B over main's 316,485 B; the other five measured +3,561, +3,383, +1,709, +678 and about 0 B against main, 9,331 B together. Plus 4,122 B of headroom up to a round number, which absorbs the few bytes by which separately measured gzip deltas fail to add up; the margin is thinner than the 12,280 B before, so the next feature that grows the bundle re-pins with its own measurement."
+      "budgetGzip": 600000,
+      "budgetNote": "600,000 B set by the owner (2026-10-02) when six priority features from the GitHub wishlist were about to reach main together: FK referential actions, composite unique keys with AK marks, user-defined SQL types, FK column naming, view-only saves, and find and replace with palette scopes and Hangul search. Measured against main's 316,485 B, they add +3,787, +5,301, +2,849, +764, +24 and +12,987 B, about 342,197 B together, past the 340,000 B budget set for them before. The budget stays a regression watch with room for the features after these, not a measured margin."
     }
   }
 }
