@@ -55,6 +55,13 @@ export const grip = css`
   color: var(--placeholder);
 `;
 
+/* The handle's room on a row that cannot move, so the names stay in line with the columns above. */
+export const gripSlot = css`
+  flex-shrink: 0;
+  width: 14px;
+  box-sizing: content-box;
+`;
+
 export const orderType = css`
   cursor: pointer;
 `;

@@ -14,17 +14,18 @@ const staticText = (literals: { strings: TemplateStringsArray }) =>
   [...literals.strings].join(' ');
 
 describe('IndexesColumn.styles', () => {
-  it('exports the root, row, grip, orderType and mark tokens', () => {
+  it('exports the root, row, grip, gripSlot, orderType and mark tokens', () => {
     expect(Object.keys(styles)).toEqual([
       'root',
       'row',
       'grip',
+      'gripSlot',
       'orderType',
       'mark',
     ]);
 
     const identifiers = Object.values(styles).map(String);
-    expect(new Set(identifiers).size).toBe(5);
+    expect(new Set(identifiers).size).toBe(6);
   });
 
   it('declares the flip animation class the component adds while moving', () => {
@@ -50,6 +51,15 @@ describe('IndexesColumn.styles', () => {
 
   it('quiets the drag handle', () => {
     expect(staticText(styles.grip)).toContain('color: var(--placeholder)');
+  });
+
+  it('keeps the handle room, 14px inside the cell padding, on a row that cannot move', () => {
+    const text = staticText(styles.gripSlot);
+
+    expect(text).toContain('flex-shrink: 0');
+    expect(text).toContain('width: 14px');
+    expect(text).toContain('box-sizing: content-box');
+    expect(styles.gripSlot.values).toEqual([]);
   });
 
   it('puts the alternate key mark at the end of the row in the accent text colour', () => {

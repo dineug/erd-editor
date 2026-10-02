@@ -48,15 +48,18 @@ describe('IndexesCheckboxColumn.styles', () => {
     expect(ruleBody('& .column-row[data-selected]')).toContain(
       'box-shadow: inset 3px 0 0 var(--accent-color-10)'
     );
-    expect(ruleBody('& .column-row[data-selected]:hover')).toContain(
-      'background-color: var(--column-select-hover)'
-    );
+    expect(
+      ruleBody('&:not([data-idle]) .column-row[data-selected]:hover')
+    ).toContain('background-color: var(--column-select-hover)');
   });
 
-  it('keeps an idle list from hovering a row it cannot change', () => {
+  it('keeps an idle list from hovering a row it cannot change, tinted or not', () => {
     expect(
       ruleBody('&[data-idle] .column-row:not([data-selected]):hover')
     ).toContain('background-color: transparent');
+    expect(staticText(styles.root)).not.toContain(
+      '& .column-row[data-selected]:hover'
+    );
   });
 
   it('draws the checkbox itself, ringed in a gray that holds 3:1 in both themes', () => {
@@ -122,6 +125,17 @@ describe('IndexesCheckboxColumn.styles emitted', () => {
 
   beforeAll(() => {
     rules = adoptedRules();
+  });
+
+  it('darkens a tinted row under the pointer only while its box can change', () => {
+    const scope = `.${String(styles.root)}`;
+    const selectHover = rules.filter(rule =>
+      rule.cssText.includes('var(--column-select-hover)')
+    );
+
+    expect(
+      selectHover.map(rule => (rule as CSSStyleRule).selectorText)
+    ).toEqual([`${scope}:not([data-idle]) .column-row[data-selected]:hover`]);
   });
 
   it('emits the forced colours fallback as a media rule over the scoped box', () => {

@@ -139,6 +139,10 @@ describe('IndexesColumn', () => {
       const order = orderCellOf(first);
 
       expect(first.querySelector('.icon svg')).toBeTruthy();
+      expect(
+        first.firstElementChild?.classList.contains(String(styles.grip))
+      ).toBe(true);
+      expect(first.querySelector(`.${String(styles.gripSlot)}`)).toBeNull();
       expect(order.textContent?.trim()).toBe('ASC');
       expect(order.getAttribute('title')).toBe('Ascending');
       expect(order.style.width).toBe('40px');
@@ -283,6 +287,20 @@ describe('IndexesColumn', () => {
       ]);
       expect(rows.every(row => row.hasAttribute('data-readonly'))).toBe(true);
       expect(rows[0].querySelector(`.${String(styles.orderType)}`)).toBeNull();
+    });
+
+    it('draws no drag handle, only its room, so the names stay in line', async () => {
+      mounted = await mountAndFlush(readonlyTemplate(), app);
+      const rows = rowsOf(mounted);
+
+      for (const row of rows) {
+        const slot = row.firstElementChild as HTMLElement;
+
+        expect(row.querySelector(`.${String(styles.grip)}`)).toBeNull();
+        expect(slot.classList.contains(String(styles.gripSlot))).toBe(true);
+        expect(slot.classList.contains('column-col')).toBe(true);
+        expect(slot.children).toHaveLength(0);
+      }
     });
 
     it('ignores a dragstart', async () => {

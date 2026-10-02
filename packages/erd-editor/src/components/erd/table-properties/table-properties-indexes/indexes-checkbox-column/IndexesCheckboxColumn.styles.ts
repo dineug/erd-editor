@@ -3,7 +3,7 @@ import { css } from '@dineug/r-html';
 /**
  * The column rows at their own width, the tint running to the end of each
  * row however far the list scrolls sideways. A column of the picked index
- * or key wears the picked row's tint and bar, so the two panes read as one.
+ * or key wears the picked row's tint and bar; an idle list hovers no row.
  */
 export const root = css`
   display: flex;
@@ -15,7 +15,7 @@ export const root = css`
     box-shadow: inset 3px 0 0 var(--accent-color-10);
   }
 
-  & .column-row[data-selected]:hover {
+  &:not([data-idle]) .column-row[data-selected]:hover {
     background-color: var(--column-select-hover);
   }
 
