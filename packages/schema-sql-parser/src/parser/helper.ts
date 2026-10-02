@@ -78,6 +78,7 @@ export const isFulltextValue = createValueEqual('FULLTEXT');
 export const isSpatialValue = createValueEqual('SPATIAL');
 export const isConcurrentlyValue = createValueEqual('CONCURRENTLY');
 export const isWhereValue = createValueEqual('WHERE');
+export const isUsingValue = createValueEqual('USING');
 export const isAndValue = createValueEqual('AND');
 export const isOrValue = createValueEqual('OR');
 

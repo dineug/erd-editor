@@ -12,6 +12,7 @@ import {
   CommentOnTable,
   CreateIndex,
   CreateTable,
+  Key,
   schemaSQLParser,
   SortType,
   Statement,
@@ -140,24 +141,21 @@ function mergeTables({
     const table = findByName(tables, index.tableName);
     if (!table) return;
 
-    // DBMS_METADATA writes the index of each key on its own, under the key's
-    // name, after the CREATE TABLE that declares the key: it is that key again.
-    if (index.name) {
-      const columnNames = namesOf(index.columns);
-      const keyIndex = findKeyIndex(table, index.name, columnNames);
+    // DBMS_METADATA writes the index of each key a table declares inline on its
+    // own, under the key's name or, for a key with none, Oracle's SYS_C...: it
+    // is that key again, a second index of it or one beside its flags.
+    const created = keyOf(index);
+    const sameIndex = table.indexes.find(other =>
+      isKeyIndex(keyOf(other), created)
+    );
 
-      if (keyIndex) {
-        keyIndex.unique ||= index.unique;
-        return;
-      }
-
-      const isKey = table.keys.some(
-        key =>
-          isSameName(key.name, index.name) &&
-          hasSameColumns(key.columnNames, columnNames)
-      );
-      if (isKey) return;
+    if (sameIndex) {
+      sameIndex.name ||= index.name;
+      sameIndex.unique ||= index.unique;
+      return;
     }
+
+    if (table.keys.some(key => isKeyIndex(key, created))) return;
 
     table.indexes.push({
       name: index.name,
@@ -171,11 +169,10 @@ function mergeTables({
     if (!table) return;
 
     // The flags are the key, and the index Oracle exported for it is theirs.
-    const keyIndex = findKeyIndex(
-      table,
-      primaryKey.usingIndexName || primaryKey.constraintName,
-      primaryKey.columnNames
-    );
+    const keyIndex = findKeyIndex(table, {
+      name: primaryKey.usingIndexName || primaryKey.constraintName,
+      columnNames: primaryKey.columnNames,
+    });
 
     if (keyIndex) {
       table.indexes.splice(table.indexes.indexOf(keyIndex), 1);
@@ -195,11 +192,10 @@ function mergeTables({
 
     // A composite key is the index Oracle exported for it, made unique. One
     // column gives that index up to the flag the rule below sets.
-    const keyIndex = findKeyIndex(
-      table,
-      unique.usingIndexName || unique.constraintName,
-      namesOf(unique.columns)
-    );
+    const keyIndex = findKeyIndex(table, {
+      name: unique.usingIndexName || unique.constraintName,
+      columnNames: namesOf(unique.columns),
+    });
 
     if (keyIndex && unique.columns.length > 1) {
       keyIndex.unique = true;
@@ -263,24 +259,31 @@ function mergeTables({
   return tables;
 }
 
-/**
- * The index Oracle exports on its own for a key, which kept beside the key
- * indexes one column list twice: the one the key or USING INDEX names, else,
- * for a system-named key, the one over the key's columns in their order.
- */
-function findKeyIndex(table: CreateTable, name: string, columnNames: string[]) {
-  const index = name
-    ? table.indexes.find(
-        index =>
-          isSameName(index.name, name) &&
-          hasSameColumns(namesOf(index.columns), columnNames)
-      )
-    : table.indexes.find(index =>
-        hasColumnsInOrder(namesOf(index.columns), columnNames)
-      );
-
-  return index ?? null;
+// The index Oracle exports on its own for a key, named by the key or by its
+// USING INDEX: kept beside the key, it indexes one column list twice.
+function findKeyIndex(table: CreateTable, key: Key) {
+  return table.indexes.find(index => isKeyIndex(key, keyOf(index))) ?? null;
 }
+
+/**
+ * Whether an index is the one a key owns: under the key's name over the same
+ * columns, or, for a key with no name, as Oracle's system-named keys have,
+ * over its columns in their order.
+ */
+function isKeyIndex(key: Key, index: Key) {
+  return key.name
+    ? isSameName(key.name, index.name) &&
+        hasSameColumns(key.columnNames, index.columnNames)
+    : hasColumnsInOrder(key.columnNames, index.columnNames);
+}
+
+const keyOf = ({
+  name,
+  columns,
+}: {
+  name: string;
+  columns: ReadonlyArray<{ name: string }>;
+}): Key => ({ name, columnNames: namesOf(columns) });
 
 const namesOf = (columns: ReadonlyArray<{ name: string }>) =>
   columns.map(({ name }) => name);

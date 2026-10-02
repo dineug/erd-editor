@@ -554,6 +554,30 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
     });
 
+    it('reads the index DBMS_METADATA exports for each system-named key a table declares inline as part of that key', () => {
+      const schema = parse(`
+        CREATE TABLE "HR"."T" (
+          "ID" NUMBER, "A" NUMBER, "B" NUMBER, "E" VARCHAR2(10) UNIQUE USING INDEX ENABLE,
+          PRIMARY KEY ("ID") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE,
+          UNIQUE ("A", "B") USING INDEX PCTFREE 10 TABLESPACE "USERS"  ENABLE
+        ) TABLESPACE "USERS" ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012345" ON "HR"."T" ("ID") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012346" ON "HR"."T" ("A", "B") PCTFREE 10 ;
+        CREATE UNIQUE INDEX "HR"."SYS_C0012347" ON "HR"."T" ("E") PCTFREE 10 ;
+        CREATE INDEX "HR"."T_BA_IX" ON "HR"."T" ("B", "A") ;
+      `);
+      const t = tableByName(schema, 'T');
+
+      expect(columnByName(schema, t, 'ID').options).toBe(
+        ColumnOption.primaryKey
+      );
+      expect(uniqueColumnNamesOf(schema, t)).toEqual(['E']);
+      expect(indexShapesOf(schema)).toEqual([
+        { name: 'SYS_C0012346', unique: true, columns: ['A ASC', 'B ASC'] },
+        { name: 'T_BA_IX', unique: false, columns: ['B ASC', 'A ASC'] },
+      ]);
+    });
+
     it('keeps an index named after a key that keys other columns', () => {
       const schema = parse(`
         CREATE TABLE t (a INT, b INT, c INT);
@@ -1176,12 +1200,27 @@ describe('schemaSQLParserToSchemaJson', () => {
   });
 
   describe('unique round trip', () => {
+    type IndexSpec = [string, boolean, Array<[string, number]>];
+
     /**
      * One table with every shape of uniqueness the editor exports: a column
      * flag, a composite unique index, a single-column unique index and a
      * plain index beside them.
      */
-    function uniqueState(): RootState {
+    function uniqueState(
+      indexes: IndexSpec[] = [
+        [
+          'uq_code_name',
+          true,
+          [
+            ['code', OrderType.ASC],
+            ['name', OrderType.DESC],
+          ],
+        ],
+        ['idx_tenant', false, [['tenant', OrderType.ASC]]],
+        ['uq_tenant', true, [['tenant', OrderType.ASC]]],
+      ]
+    ): RootState {
       const state = {
         ...schemaV3Parser({}),
         editor: {},
@@ -1202,19 +1241,6 @@ describe('schemaSQLParserToSchemaJson', () => {
           options: options as number,
         })
       );
-      const indexes: Array<[string, boolean, Array<[string, number]>]> = [
-        [
-          'uq_code_name',
-          true,
-          [
-            ['code', OrderType.ASC],
-            ['name', OrderType.DESC],
-          ],
-        ],
-        ['idx_tenant', false, [['tenant', OrderType.ASC]]],
-        ['uq_tenant', true, [['tenant', OrderType.ASC]]],
-      ];
-
       state.collections.tableColumnEntities = Object.fromEntries(
         columns.map(column => [column.id, column])
       );
@@ -1282,6 +1308,35 @@ describe('schemaSQLParserToSchemaJson', () => {
       ]);
       expect(createSchemaSQL(toState(schema), database)).toBe(sql);
     });
+
+    // The keys the export writes inline carry no name and no USING INDEX, so
+    // an index over their columns is no index Oracle exported for them.
+    it.each([
+      Database.MySQL,
+      Database.MariaDB,
+      Database.MSSQL,
+      Database.Oracle,
+      Database.PostgreSQL,
+      Database.SQLite,
+    ])(
+      "keeps a %s export's index over the primary key or a unique column",
+      database => {
+        const sql = createSchemaSQL(
+          uniqueState([
+            ['idx_id', false, [['id', OrderType.ASC]]],
+            ['uq_email', true, [['email', OrderType.DESC]]],
+          ]),
+          database
+        );
+        const schema = parse(sql);
+
+        expect(indexShapesOf(schema)).toEqual([
+          { name: 'idx_id', unique: false, columns: ['id ASC'] },
+          { name: 'uq_email', unique: true, columns: ['email DESC'] },
+        ]);
+        expect(createSchemaSQL(toState(schema), database)).toBe(sql);
+      }
+    );
 
     it('re-imports the composite UNIQUE a Snowflake export writes as one unique index', () => {
       const sql = createSchemaSQL(uniqueState(), Database.Snowflake);

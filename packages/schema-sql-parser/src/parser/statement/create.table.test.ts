@@ -768,6 +768,24 @@ describe('createTableParser - table level constraints', () => {
     ).toEqual([{ name: 'pk_t', columnNames: ['id'] }]);
   });
 
+  it("reports a key with no name only where Oracle's USING INDEX follows it", () => {
+    const { ast } = parse(
+      'CREATE TABLE "HR"."T" (\n' +
+        ' "ID" NUMBER, "A" NUMBER, "B" NUMBER,\n' +
+        ' "E" NUMBER UNIQUE USING INDEX ENABLE,\n' +
+        ' "F" NUMBER UNIQUE, "G" NUMBER,\n' +
+        ' PRIMARY KEY ("ID") USING INDEX PCTFREE 10 ENABLE,\n' +
+        ' UNIQUE ("A", "B") USING INDEX ENABLE,\n' +
+        ' UNIQUE ("G") ENABLE, CHECK ("A" > 0) USING INDEX\n' +
+        ');\n'
+    );
+
+    expect(ast.keys).toEqual([
+      { name: '', columnNames: ['E'] },
+      { name: '', columnNames: ['ID'] },
+    ]);
+  });
+
   it('reads a primary key part by its first word', () => {
     const { ast } = parse(
       'CREATE TABLE t (\n' +

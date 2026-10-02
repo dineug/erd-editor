@@ -56,8 +56,8 @@ export type Index = {
 };
 
 /**
- * A primary key or one-column unique key the source names, whose name the
- * column flags cannot carry: a dump may export its index under that name.
+ * A primary key or one-column unique key the source names, or with no name
+ * where Oracle's USING INDEX follows it: a dump may export its index on its own.
  */
 export type Key = {
   name: string;

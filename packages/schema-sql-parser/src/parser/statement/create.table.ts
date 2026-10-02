@@ -24,6 +24,7 @@ import {
   isSemicolonToken,
   isStringToken,
   isUniqueValue,
+  isUsingValue,
   matchCreateTable,
   matchDataType,
   matchKeyModifier,
@@ -223,6 +224,7 @@ function createTableColumnsParser(
   const isEqual = isEqualToken(tokens);
   const characterSet = isCharacterSet(tokens);
   const isCollate = isCollateValue(tokens);
+  const isUsing = isUsingValue(tokens);
   const constraintState = isConstraintState(tokens);
   const dataType = matchDataType(tokens);
   const nestedDataType = matchNestedDataType(tokens);
@@ -277,17 +279,30 @@ function createTableColumnsParser(
   // the PRIMARY KEY of id INT CONSTRAINT nn NOT NULL PRIMARY KEY.
   let constraintEnd = -1;
 
+  // The key with no name the item has read. Oracle's USING INDEX after it
+  // reports it too: DBMS_METADATA may export its index on its own, as SYS_C...
+  let unnamedKey: Key | null = null;
+
   const symbolAt = (pos: number) =>
     pos === constraintEnd ? constraintName : '';
 
   const addKey = (name: string, columnNames: string[]) => {
-    if (name && columnNames.length) {
+    if (!columnNames.length) return;
+
+    if (name) {
       keys.push({ name, columnNames });
+    } else {
+      unnamedKey = { name, columnNames };
     }
   };
 
   while (isToken()) {
     let token = tokens[$pos.value];
+
+    if (unnamedKey && isUsing($pos.value) && isIndex($pos.value + 1)) {
+      keys.push(unnamedKey);
+      unnamedKey = null;
+    }
 
     const nestedLength = nestedDataType($pos.value);
 
@@ -639,6 +654,7 @@ function createTableColumnsParser(
       };
       constraintItem = false;
       constraintName = '';
+      unnamedKey = null;
       $pos.value++;
       continue;
     }
