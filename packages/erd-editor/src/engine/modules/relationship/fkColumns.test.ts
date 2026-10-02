@@ -234,9 +234,13 @@ describe('toForeignKeyNames', () => {
     expect(toForeignKeyNames('user', ['USER'], [])).toEqual(['USER']);
   });
 
-  it('prefixes a single word key that only begins with the table name', () => {
+  it('prefixes a single word key that holds the table name, which only an equal name escapes', () => {
     expect(toForeignKeyNames('user', ['username'], [])).toEqual([
       'user_username',
+    ]);
+    expect(toForeignKeyNames('user', ['userid'], [])).toEqual(['user_userid']);
+    expect(toForeignKeyNames('회원', ['회원번호'], [])).toEqual([
+      '회원_회원번호',
     ]);
   });
 
