@@ -82,8 +82,10 @@ export function createLibraryTasks(
     build: {
       command: ['tsc --noEmit', 'vp build', ...(options.build ?? [])],
       dependsOn,
-      input: [...metadata.typeGateInput, '!dist/**'],
-      output: ['dist/**'],
+      cache: {
+        input: [...metadata.typeGateInput, '!dist/**'],
+        output: ['dist/**'],
+      },
     },
   };
 
@@ -91,7 +93,9 @@ export function createLibraryTasks(
     tasks.test = {
       command: ['tsc --noEmit', 'vp test run'],
       dependsOn,
-      input: [...metadata.typeGateInput],
+      cache: {
+        input: [...metadata.typeGateInput],
+      },
     };
   }
 

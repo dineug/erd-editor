@@ -231,8 +231,10 @@ function expectedLibraryTasks(dir, manifest) {
     build: {
       command: ['tsc --noEmit', 'vp build'],
       dependsOn,
-      input: [...typeGateInput, '!dist/**'],
-      output: ['dist/**'],
+      cache: {
+        input: [...typeGateInput, '!dist/**'],
+        output: ['dist/**'],
+      },
     },
   };
   const packageDir = path.join(packagesDir, dir);
@@ -245,7 +247,9 @@ function expectedLibraryTasks(dir, manifest) {
     tasks.test = {
       command: ['tsc --noEmit', 'vp test run'],
       dependsOn,
-      input: [...typeGateInput],
+      cache: {
+        input: [...typeGateInput],
+      },
     };
   }
 

@@ -18,7 +18,7 @@ import {
   Scope,
   Stream,
 } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 import { type Mock, vi } from 'vite-plus/test';
 
 import * as LockFile from '@/lockFile';
@@ -708,6 +708,8 @@ export type MemoryHubHandle = {
   readonly setDocuments: (documents: string[]) => Promise<void>;
   /** Disposes the runtime, which is what a host does on its way out. */
   readonly close: () => Promise<void>;
+  /** The same dispose as an effect, for a spec that bounds it as a host does. */
+  readonly dispose: Effect.Effect<void>;
 };
 
 /**
@@ -743,5 +745,6 @@ export function startMemoryHub(
     ready,
     setDocuments: paths => settled.then(hub => hub?.setDocuments(paths)),
     close: () => Effect.runPromise(runtime.disposeEffect),
+    dispose: runtime.disposeEffect,
   };
 }

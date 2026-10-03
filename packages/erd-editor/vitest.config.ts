@@ -13,8 +13,8 @@ const pkg = JSON.parse(readFileSync('package.json', { encoding: 'utf8' }));
 const browserSpecs = 'src/**/*.browser.test.{ts,tsx}';
 
 /**
- * What both projects carry and inherit from nowhere: Vitest reads neither
- * vite.config.ts nor the root config a project sits in. A missing define
+ * What both projects carry: each extends this file, which sets only projects
+ * and coverage, and Vitest reads no vite.config.ts beside it. A missing define
  * leaves __APP_VERSION__ undefined and kills every spec reaching schema-gc.
  */
 const createSharedConfig = (): UserWorkspaceConfig => ({

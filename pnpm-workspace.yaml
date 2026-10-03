@@ -1,17 +1,20 @@
 packages:
   - 'packages/*'
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.9
-  vitest: 4.1.10
-  vite-plus: 0.2.9
-  '@vitest/browser-playwright': 4.1.10
-  '@vitest/coverage-v8': 4.1.10
-  effect: 4.0.0-rc.117
-  '@effect/platform-node': 4.0.0-rc.117
+  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
+  vitest: 5.0.1
+  vite-plus: 1.0.0
+  '@vitest/browser-playwright': 5.0.1
+  '@vitest/coverage-v8': 5.0.1
+  effect: 4.0.0
+  '@effect/platform-node': 4.0.0
 overrides:
   # Was `resolutions` in the root package.json, which pnpm reads but does not
   # document; this is the field it actually specifies for the job.
   typescript: 7.0.2
+  # Bare keys, not the vite@* / vitest@* vp migrate writes: a range key skips
+  # non-semver specs, among them vite-plus's own npm: alias for vite, so only a
+  # bare key keeps one vite-plus-core however the catalog moves.
   vite: 'catalog:'
   vitest: 'catalog:'
 peerDependencyRules:
@@ -21,6 +24,9 @@ peerDependencyRules:
   allowedVersions:
     vite: '*'
     vitest: '*'
+    # Storybook's optional peer stops at vite-plus 0.2, but all it reads is
+    # vite-plus/versions, which 1.0 still exports; build:storybook passes on it.
+    storybook>vite-plus: '1'
 packageExtensions:
   # redis backs only platform-node's Redis layers, which nothing here imports.
   # Left required, auto-install-peers would lock redis, five @redis/* packages

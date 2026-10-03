@@ -20,10 +20,9 @@ const SPECIFIER =
 /**
  * The MCP server's rule, held here too: effect through the entries its
  * package.json exports by name, never a module path, and schema and sql not
- * at all, since the rc keeps SchemaAOTCompiler and Migrator there.
+ * at all, since effect keeps SchemaJITCompiler and Migrator there.
  */
-const EFFECT_ENTRY =
-  /^effect(?:\/testing|\/unstable\/(?!schema$|sql$)[a-z]+)?$/;
+const EFFECT_ENTRY = /^effect(?:\/(?!index$|schema$|sql$)[a-z-]+)?$/;
 
 /** Platform-node's barrel re-exports NodeRedis, whose redis this workspace does not install. */
 const PLATFORM_MODULE = /^@effect\/platform-node\/[A-Z]\w*$/;
@@ -62,7 +61,7 @@ describe('effect is imported from its documented entries', () => {
     const seen = new Set(Object.values(sources).flatMap(effectSpecifiers));
 
     expect([...seen]).toEqual(
-      expect.arrayContaining(['effect', 'effect/unstable/socket'])
+      expect.arrayContaining(['effect', 'effect/socket'])
     );
   });
 
@@ -77,15 +76,14 @@ describe('effect is imported from its documented entries', () => {
   it('recognizes every form it guards against', () => {
     // Spelled through variables so a plain grep of src finds no module path here.
     const effect = 'effect';
-    const unstable = `${effect}/unstable`;
     const platformNode = '@effect/platform-node';
     const refused = [
       `${effect}/Layer`,
       `${effect}/Scope`,
       `${effect}/testing/TestClock`,
-      `${unstable}/socket/Socket`,
-      `${unstable}/schema`,
-      `${unstable}/sql/Migrator`,
+      `${effect}/socket/Socket`,
+      `${effect}/schema`,
+      `${effect}/sql/Migrator`,
       platformNode,
       `${platformNode}/NodePath/extra`,
       `${platformNode}-shared/NodeFileSystem`,
@@ -119,7 +117,7 @@ describe('effect is imported from its documented entries', () => {
         [
           `import { Effect, Layer, ManagedRuntime } from 'effect';`,
           `import type { PlatformError } from 'effect';`,
-          `import { Socket } from 'effect/unstable/socket';`,
+          `import { Socket } from 'effect/socket';`,
           `import { TestClock } from 'effect/testing';`,
           `import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';`,
           `const { Effect } = await import('effect');`,

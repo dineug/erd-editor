@@ -90,30 +90,36 @@ export default defineConfig({
             from: ['dependencies', 'devDependencies', 'peerDependencies'],
           },
         ],
-        input: [
-          { auto: true },
-          'src/**',
-          'index.html',
-          'package.json',
-          'vite.config.ts',
-          'tsconfig.json',
-          { pattern: 'tsconfig.app.json', base: 'workspace' },
-          { pattern: 'tools/vite/same-origin-worker.ts', base: 'workspace' },
-          {
-            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/webview-client/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          '!**/*.tsbuildinfo',
-          '!dist/**',
-        ],
-        // 이 패키지는 자기 밖에 쓴다 — vuerd-vscode가 그 산출물을 VSIX에 싣는다.
-        output: [
-          { pattern: 'packages/vscode-extension/public/**', base: 'workspace' },
-        ],
+        cache: {
+          input: [
+            { auto: true },
+            'src/**',
+            'index.html',
+            'package.json',
+            'vite.config.ts',
+            'tsconfig.json',
+            { pattern: 'tsconfig.app.json', base: 'workspace' },
+            { pattern: 'tools/vite/same-origin-worker.ts', base: 'workspace' },
+            {
+              pattern: 'packages/webview-bridge/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            {
+              pattern: 'packages/webview-client/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            '!**/*.tsbuildinfo',
+            '!dist/**',
+          ],
+          // 이 패키지는 자기 밖에 쓴다 — vuerd-vscode가 그 산출물을 VSIX에 싣는다.
+          // 자동 쓰기 추적 대신 이 글롭이 복원 범위라 outDir과 함께 옮긴다.
+          output: [
+            {
+              pattern: 'packages/vscode-extension/public/**',
+              base: 'workspace',
+            },
+          ],
+        },
       },
     },
   },

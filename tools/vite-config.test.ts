@@ -45,8 +45,7 @@ type CacheInput =
 type LibraryTask = {
   command: string[];
   dependsOn?: unknown[];
-  input: CacheInput[];
-  output?: string[];
+  cache: { input: CacheInput[]; output?: string[] };
 };
 type LibraryTasks = { build: LibraryTask; test?: LibraryTask };
 type Mutation = [label: string, mutate: (tasks: LibraryTasks) => void];
@@ -107,9 +106,12 @@ test('standard library factory preserves build policies', () => {
   assert.deepEqual(tasks?.build.command, ['tsc --noEmit', 'vp build']);
   assert.deepEqual(tasks?.test?.command, ['tsc --noEmit', 'vp test run']);
   assert.deepEqual(tasks?.build.dependsOn, tasks?.test?.dependsOn);
-  assert.deepEqual(tasks?.build.output, ['dist/**']);
-  assert.deepEqual(tasks?.build.input, [...metadata.typeGateInput, '!dist/**']);
-  assert.deepEqual(tasks?.test?.input, metadata.typeGateInput);
+  assert.deepEqual(tasks?.build.cache.output, ['dist/**']);
+  assert.deepEqual(tasks?.build.cache.input, [
+    ...metadata.typeGateInput,
+    '!dist/**',
+  ]);
+  assert.deepEqual(tasks?.test?.cache.input, metadata.typeGateInput);
   assert.deepEqual(config.build?.target, BROWSER_TARGET);
   assert.deepEqual(config.build?.lib, {
     entry: ['./src/index.ts'],
@@ -220,7 +222,7 @@ test('required task contracts reject cache-gate mutations', () => {
     [
       'factory input',
       tasks => {
-        tasks.build.input = tasks.build.input.filter(
+        tasks.build.cache.input = tasks.build.cache.input.filter(
           entry =>
             typeof entry === 'string' ||
             !('pattern' in entry) ||
@@ -231,7 +233,7 @@ test('required task contracts reject cache-gate mutations', () => {
     [
       'workspace declaration input',
       tasks => {
-        tasks.build.input = tasks.build.input.filter(
+        tasks.build.cache.input = tasks.build.cache.input.filter(
           entry =>
             typeof entry === 'string' ||
             !('pattern' in entry) ||
@@ -248,7 +250,7 @@ test('required task contracts reject cache-gate mutations', () => {
     [
       'dist exclusion',
       tasks => {
-        tasks.build.input = tasks.build.input.filter(
+        tasks.build.cache.input = tasks.build.cache.input.filter(
           entry => entry !== '!dist/**'
         );
       },
@@ -256,7 +258,7 @@ test('required task contracts reject cache-gate mutations', () => {
     [
       'build output',
       tasks => {
-        tasks.build.output = [];
+        tasks.build.cache.output = [];
       },
     ],
   ];
@@ -273,10 +275,10 @@ test('required task contracts reject cache-gate mutations', () => {
 
 function assertRequiredTaskContracts(tasks: LibraryTasks) {
   const metadataInput = loadLibraryMetadata(editorDir).typeGateInput;
-  assert.deepEqual(tasks.test?.input, metadataInput);
-  assert.deepEqual(tasks.build.input, [...metadataInput, '!dist/**']);
+  assert.deepEqual(tasks.test?.cache.input, metadataInput);
+  assert.deepEqual(tasks.build.cache.input, [...metadataInput, '!dist/**']);
   assert.equal(tasks.build.command[0], 'tsc --noEmit');
-  assert.deepEqual(tasks.build.output, ['dist/**']);
+  assert.deepEqual(tasks.build.cache.output, ['dist/**']);
 }
 
 test('library worker urls become the one spelling every bundler resolves', () => {

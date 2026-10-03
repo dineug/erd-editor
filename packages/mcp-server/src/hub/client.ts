@@ -27,7 +27,7 @@ import {
   Scope,
   Stream,
 } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 
 import { SessionError, SessionErrorCode } from '@/errors';
 import { capitalize, hostWords } from '@/hub/host';
@@ -132,16 +132,18 @@ function refusedAnswer(method: string, frame: Record<string, any>): Answer {
  * JSON lines over one socket, every frame read into one queue that one fiber
  * takes in stream order: a response runs its request's then and settles it, a
  * notification goes to onNotification. A frame out of step hangs up.
+ *
+ * @param scope The scope the client owns: closing the client, or the reader ending, closes it and the socket acquired in it.
  */
 export const makeHubClient = (
   socket: Socket.Socket,
   hubWindow: HubWindow,
-  options: HubClientOptions
-): Effect.Effect<HubClient, never, Scope.Scope> =>
+  options: HubClientOptions,
+  scope: Scope.Closeable
+): Effect.Effect<HubClient> =>
   Effect.gen(function* () {
     const { pid } = hubWindow;
     const { theWindow } = hostWords(hubWindow.ide);
-    const scope = yield* Effect.scope;
     const writer = yield* socket.writer;
     const inbound = yield* Queue.unbounded<Frame, Cause.Done>();
     const pending = new Map<number, Pending>();
@@ -383,7 +385,7 @@ export const makeHubClient = (
       ),
       close: Scope.close(scope, Exit.void),
     } satisfies HubClient;
-  });
+  }).pipe(Scope.provide(scope));
 
 export type HubConnectorShape = {
   /**
@@ -435,7 +437,8 @@ export const make = (dial: ConnectPipe): HubConnectorShape => ({
       const client = yield* makeHubClient(
         socket,
         { pid, ide: record.ide },
-        options
+        options,
+        scope
       );
       const hello = yield* client.request('hello', {
         token: record.token,

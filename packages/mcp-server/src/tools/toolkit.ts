@@ -1,6 +1,6 @@
 import { DocumentInfo } from '@dineug/erd-editor-agent-hub';
 import { Schema } from 'effect';
-import { McpSchema, Tool, Toolkit } from 'effect/unstable/ai';
+import { McpSchema, Tool, Toolkit } from 'effect/ai';
 
 import { BATCH_TOOL, MAX_OPERATIONS, OPERATION_NAME } from '@/tools/batch';
 import { BATCH_FIELD_COPY, describeArg, describeTool } from '@/tools/copy';

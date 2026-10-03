@@ -1,7 +1,7 @@
 import { HUB_PROTOCOL_VERSION, pipePath } from '@dineug/erd-editor-agent-hub';
 import { Effect, Exit, Fiber, Scope } from 'effect';
+import { Socket } from 'effect/socket';
 import { TestClock } from 'effect/testing';
-import { Socket } from 'effect/unstable/socket';
 import {
   afterEach,
   beforeEach,
@@ -61,9 +61,7 @@ async function pair(
   });
   const own = Scope.forkUnsafe(scope);
   const hub = await run(
-    makeHubClient(client, hubWindow, { client: 'c', ...options }).pipe(
-      Scope.provide(own)
-    )
+    makeHubClient(client, hubWindow, { client: 'c', ...options }, own)
   );
   return { server, sent, client: hub, scope: own };
 }
@@ -603,7 +601,9 @@ describe('the hub client', () => {
     const { client, server } = createSocketPair();
     const chunks: string[] = [];
     server.onData(chunk => chunks.push(chunk));
-    const hub = await run(makeHubClient(client, WINDOW, { client: 'c' }));
+    const hub = await run(
+      makeHubClient(client, WINDOW, { client: 'c' }, scope)
+    );
 
     const opened = run(
       hub.request('openDocument', {
@@ -645,7 +645,8 @@ describe('the hub client', () => {
           }),
         }),
         WINDOW,
-        { client: 'c' }
+        { client: 'c' },
+        scope
       )
     );
     await expect(

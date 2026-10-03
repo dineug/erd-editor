@@ -1718,11 +1718,11 @@ describe('edges of a tab’s life', () => {
       .mockReturnValue('blob:changes');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     const clicked: string[] = [];
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
-      function (this: HTMLAnchorElement) {
-        clicked.push(this.download);
-      }
-    );
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement
+    ) {
+      clicked.push(this.download);
+    });
     const controller = createDocumentController({
       fileId: 'file-1',
       sub: SUB,

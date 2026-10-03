@@ -3,7 +3,7 @@ import * as net from 'node:net';
 import type { Platform } from '@dineug/erd-editor-agent-hub';
 import type { Array as Arr } from 'effect';
 import { Effect, Schema, Scope } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 
 /** Nothing accepted a connection at the pipe a lock advertises; denied, Windows kept this process out of it. */
 export class HubUnreachable extends Schema.TaggedError<HubUnreachable>()(

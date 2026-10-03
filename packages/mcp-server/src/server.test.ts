@@ -203,16 +203,22 @@ describe('the protocols it speaks', () => {
     await stdio.exit;
   });
 
-  it('answers every request before initialize with -32603, ping included', async () => {
+  it('answers a ping before initialize with an empty result and every other request with -32603', async () => {
     const stdio = serveStdio(serverLayer({ host: createMemoryHost() }));
     const client = rpcClient(stdio);
 
+    const ping = await client.request('ping');
     const early = [
-      await client.request('ping'),
       await client.request('tools/list'),
+      await client.request('tools/call', {
+        name: 'erd_list_documents',
+        arguments: {},
+      }),
     ];
     const response = await initialize(client);
 
+    // effect answers an early ping outside its session middleware (#8505).
+    expect(ping).toEqual({ jsonrpc: '2.0', id: 1, result: {} });
     expect(early.map(({ error }) => error)).toEqual([
       expect.objectContaining({ code: -32603, message: 'Internal error' }),
       expect.objectContaining({ code: -32603, message: 'Internal error' }),

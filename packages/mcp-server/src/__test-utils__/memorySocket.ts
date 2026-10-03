@@ -1,6 +1,6 @@
 import type { Array as Arr } from 'effect';
 import { Effect } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 
 import { type ConnectPipe, HubUnreachable } from '@/io/netSocket';
 

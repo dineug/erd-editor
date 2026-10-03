@@ -71,35 +71,38 @@ export default defineConfig({
             from: ['dependencies', 'devDependencies', 'peerDependencies'],
           },
         ],
-        input: [
-          { auto: true },
-          'src/**',
-          // tsconfig.unit.json typechecks the stubs too, out of sight of the tracer.
-          'test/mocks/**',
-          'vitest.config.*',
-          'package.json',
-          'vite.config.ts',
-          'public/**',
-          'tsconfig.json',
-          'tsconfig.unit.json',
-          { pattern: 'tsconfig.app.json', base: 'workspace' },
-          {
-            pattern: 'packages/agent-hub/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/agent-hub-host/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          '!**/*.tsbuildinfo',
-          '!dist/**',
-        ],
-        // 빠뜨리면 캐시 히트가 터미널 출력만 재생하고 산출물을 복원하지 않는다.
-        output: ['dist/**'],
+        cache: {
+          input: [
+            { auto: true },
+            'src/**',
+            // tsconfig.unit.json typechecks the stubs too, out of sight of the tracer.
+            'test/mocks/**',
+            'vitest.config.*',
+            'package.json',
+            'vite.config.ts',
+            'public/**',
+            'tsconfig.json',
+            'tsconfig.unit.json',
+            { pattern: 'tsconfig.app.json', base: 'workspace' },
+            {
+              pattern: 'packages/agent-hub/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            {
+              pattern: 'packages/agent-hub-host/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            {
+              pattern: 'packages/webview-bridge/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            '!**/*.tsbuildinfo',
+            '!dist/**',
+          ],
+          // 자동 쓰기 추적 대신 이 글롭이 복원 범위다. 명령이 쓰지 않은 파일도
+          // 글롭에 들면 보관된다(실측) — 루트 AGENTS.md의 캐시 재생 항목.
+          output: ['dist/**'],
+        },
       },
       test: {
         // 타입 게이트 ②. vp test(built-in)는 run.tasks를 무시하므로 이 게이트를
@@ -111,32 +114,34 @@ export default defineConfig({
             from: ['dependencies', 'devDependencies', 'peerDependencies'],
           },
         ],
-        input: [
-          { auto: true },
-          'src/**',
-          // tsconfig.unit.json typechecks the stubs too, out of sight of the tracer.
-          'test/mocks/**',
-          'vitest.config.*',
-          'package.json',
-          'vite.config.ts',
-          'public/**',
-          'tsconfig.json',
-          'tsconfig.unit.json',
-          { pattern: 'tsconfig.app.json', base: 'workspace' },
-          {
-            pattern: 'packages/agent-hub/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/agent-hub-host/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          {
-            pattern: 'packages/webview-bridge/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          '!**/*.tsbuildinfo',
-        ],
+        cache: {
+          input: [
+            { auto: true },
+            'src/**',
+            // tsconfig.unit.json typechecks the stubs too, out of sight of the tracer.
+            'test/mocks/**',
+            'vitest.config.*',
+            'package.json',
+            'vite.config.ts',
+            'public/**',
+            'tsconfig.json',
+            'tsconfig.unit.json',
+            { pattern: 'tsconfig.app.json', base: 'workspace' },
+            {
+              pattern: 'packages/agent-hub/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            {
+              pattern: 'packages/agent-hub-host/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            {
+              pattern: 'packages/webview-bridge/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            '!**/*.tsbuildinfo',
+          ],
+        },
       },
     },
   },

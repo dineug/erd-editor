@@ -199,19 +199,23 @@ export default defineConfig({
       build: {
         command: ['tsc --noEmit', 'vp build'],
         dependsOn,
-        input: [
-          ...typeInputs,
-          'manifest.json',
-          'styles.css',
-          { pattern: 'tools/vite/inline-worker.ts', base: 'workspace' },
-          '!dist/**',
-        ],
-        output: ['dist/**'],
+        cache: {
+          input: [
+            ...typeInputs,
+            'manifest.json',
+            'styles.css',
+            { pattern: 'tools/vite/inline-worker.ts', base: 'workspace' },
+            '!dist/**',
+          ],
+          output: ['dist/**'],
+        },
       },
       test: {
         command: ['tsc --noEmit', 'vp test run'],
         dependsOn,
-        input: [...typeInputs, 'vitest.config.ts'],
+        cache: {
+          input: [...typeInputs, 'vitest.config.ts'],
+        },
       },
     },
   },

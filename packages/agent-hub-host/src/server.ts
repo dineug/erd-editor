@@ -16,7 +16,7 @@ import {
 } from '@dineug/erd-editor-agent-hub';
 import type { Cause } from 'effect';
 import { Effect, Fiber, Queue, Result, Scope, Stream } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 
 export type HubRoutedMethod = Exclude<HubMethod, 'hello'>;
 

@@ -19,11 +19,10 @@ const SPECIFIER =
 
 /**
  * The entries effect's package.json exports by name, which its own docs import
- * from; a module path resolves only through the wildcard. The rc keeps
- * SchemaAOTCompiler and Migrator, each with a dynamic import, in schema and sql.
+ * from; a module path resolves only through the wildcard. Schema holds the JIT
+ * compiler, which builds decoders with Function, and sql a dynamic import.
  */
-const EFFECT_ENTRY =
-  /^effect(?:\/testing|\/unstable\/(?!schema$|sql$)[a-z]+)?$/;
+const EFFECT_ENTRY = /^effect(?:\/(?!index$|schema$|sql$)[a-z-]+)?$/;
 
 /** Platform-node's barrel re-exports NodeRedis, whose redis this workspace does not install. */
 const PLATFORM_MODULE = /^@effect\/platform-node\/[A-Z]\w*$/;
@@ -91,7 +90,7 @@ describe('the host side imports only the hub and node', () => {
     expect([...seen]).toEqual(
       expect.arrayContaining([
         'effect',
-        'effect/unstable/socket',
+        'effect/socket',
         '@effect/platform-node/NodeFileSystem',
         'node:net',
         'node:fs',
@@ -124,8 +123,8 @@ describe('the host side imports only the hub and node', () => {
     const platformNode = '@effect/platform-node';
     const refusedEffect = [
       `${effect}/Effect`,
-      `${effect}/unstable/socket/Socket`,
-      `${effect}/unstable/schema`,
+      `${effect}/socket/Socket`,
+      `${effect}/schema`,
       platformNode,
       `${platformNode}/NodeFileSystem/extra`,
       `${platformNode}-shared/NodeFileSystem`,
@@ -162,7 +161,7 @@ describe('the host side imports only the hub and node', () => {
           `import { randomUUID } from 'node:crypto';`,
           `import { posix } from 'node:path';`,
           `import { Effect } from 'effect';`,
-          `import { Socket } from 'effect/unstable/socket';`,
+          `import { Socket } from 'effect/socket';`,
           `import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';`,
           `import { HubRequestError } from '@dineug/erd-editor-agent-hub';`,
           `import { serveConnection } from '@/server';`,
