@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// 5174 is @dineug/erd-editor, 5175 is @dineug/erd-editor-app. Keeping a
-// third port means all three suites can be running at the same time.
+// 5174 is @dineug/erd-editor, 5175 is @dineug/erd-editor-app. The app's e2e
+// starts its relay on 5176 too, so run this suite apart from that one or move
+// it with E2E_PORT.
 const PORT = Number(process.env.E2E_PORT ?? 5176);
 // Vite's dev server binds to localhost only; 127.0.0.1 is refused.
 const BASE_URL = `http://localhost:${PORT}`;

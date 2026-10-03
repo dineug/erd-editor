@@ -14,8 +14,8 @@ const rHtmlPlugins = lazyPlugins(async () => {
 });
 
 // The script-tag build, run after the es one by the build task: one file with
-// every dependency and both workers inside, exposed as window.ErdEditor. The
-// exports map never points here; a bundler takes the es modules instead.
+// every dependency and the four shared workers inside, as window.ErdEditor.
+// The exports map never points here; a bundler takes the es modules instead.
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(manifest.version),

@@ -13,8 +13,9 @@ pnpm --filter @dineug/r-html e2e:typecheck  # tsc over e2e/ + playwright.config.
 `pnpm test` stays vitest-only. E2E is a `package.json` script, never a
 `run.tasks` task, so a missing browser binary can never turn the unit suite red.
 The dev server runs on **5176** —
-5174 is `@dineug/erd-editor` and 5175 is the app, so all three can run at once.
-`E2E_PORT` overrides it.
+5174 is `@dineug/erd-editor` and 5175 is the app, but the app's e2e starts its
+relay on 5176 too, so run this suite apart from the app's, or move one of them
+with `E2E_PORT` here or `E2E_RELAY_PORT` there.
 
 ## What this proves that the vitest suite cannot
 
