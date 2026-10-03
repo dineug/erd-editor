@@ -46,10 +46,6 @@ export const root = css`
   .column-row-move {
     transition: transform 0.3s;
   }
-
-  .column-row:not(:last-child) {
-    box-shadow: inset 0 -1px 0 var(--table-border);
-  }
 `;
 
 /** The band the name stands in, one input line and its room as in the scene. */

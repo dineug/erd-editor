@@ -89,11 +89,11 @@ describe('Table.styles', () => {
     expect(styles.root.values).toEqual([typography.paragraph]);
   });
 
-  it('rules a line under every row but the last, without growing the row', () => {
+  it('rules no line between rows, as the ERD scene draws its tables', () => {
     const source = sourceOf(styles.root);
 
-    expect(source).toContain('.column-row:not(:last-child)');
-    expect(source).toContain('box-shadow: inset 0 -1px 0 var(--table-border)');
+    expect(source).not.toContain('.column-row:not(:last-child)');
+    expect(source.match(/var\(--table-border\)/g)).toHaveLength(1);
   });
 
   it('bands the header in its own token and sets the icon beside the name', () => {
