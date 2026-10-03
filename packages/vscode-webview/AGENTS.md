@@ -21,7 +21,7 @@ The bundle inside the VSCode webview iframe — the client half of `vuerd-vscode
 
 ### Working In This Directory
 
-- **Output lands in the gitignored `packages/vscode-extension/public`**, which `vsce` ships. `emptyOutDir: true` and the task's `output` are both load-bearing; drop either and stale or missing bundles ship. A cache replay does not empty the directory (root `AGENTS.md`), so `pnpm cache:clear` and rebuild before packaging.
+- **Output lands in the gitignored `packages/vscode-extension/public`**, which `vsce` ships. `emptyOutDir: true` is load-bearing, or stale bundles ship, and the task's `cache.output` moves with `outDir`: an explicit glob turns automatic write tracking off, so a cache hit restores only what it names. A cache replay does not empty the directory (root `AGENTS.md`), so `pnpm cache:clear` and rebuild before packaging.
 - **`base: './'` and the literal `{{extension-base-url}}` token are a contract** with `Editor#buildHtmlForWebview` in `packages/vscode-extension/src/editor.ts`, which replaces it; absolute asset paths render a blank panel.
 - **Workers cross an origin line.** The document is on `vscode-webview://`, `asWebviewUri` serves scripts from `vscode-resource.vscode-cdn.net`, and a worker constructor throws `SecurityError` on a cross-origin script URL before it fetches. Hence:
   - `sameOriginDependencyWorkers` (`tools/vite/same-origin-worker.ts`) rewrites every url worker in the `erd-editor` and `replication-store-worker` dist files into a `?sharedworker&url` / `?worker&url` import registered with `src/workerSources.ts`, which reads the script and builds a same-origin blob. Its `generateBundle` fails the build if a url worker survives.

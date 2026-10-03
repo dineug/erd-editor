@@ -21,7 +21,7 @@ The bundle the IntelliJ plugin (`packages/intellij-plugin`) embeds. `src/main.ts
 
 ### Working In This Directory
 
-- **`build` writes outside this package** (`emptyOutDir: true`) into the plugin's gitignored `src/main/resources/assets`. The task's `output` names that directory — drop it and a cache hit replays the log without restoring the bundle, which ships a blank editor. A replay also does not empty it (root `AGENTS.md`): `pnpm cache:clear` and rebuild before packaging.
+- **`build` writes outside this package** (`emptyOutDir: true`) into the plugin's gitignored `src/main/resources/assets`. The task's `cache.output` names that directory and moves with `outDir`: an explicit glob turns automatic write tracking off, so a cache hit restores only what it names. A replay also does not empty it (root `AGENTS.md`): `pnpm cache:clear` and rebuild before packaging.
 - Gradle does not run this build: `buildPlugin` and `runIde` only check the bundle exists. After a webview change run the build below or `./gradlew buildWebview`; on Windows the build below only, since `buildWebview` cannot start `pnpm.cmd` there.
 - **`base` stays `/`, only `.html` / `.js` / `.css` may be emitted, `sourcemap: false`** — the plugin's scheme handler serves the URL path from `/assets` on the classpath and sets a MIME type for those three extensions only.
 - **Keep `stripCrossorigin`**: the scheme handler sends no CORS headers, so a `crossorigin` module script is refused and the panel stays blank.
