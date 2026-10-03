@@ -8,8 +8,17 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import {
+  createHubHandler,
+  createMemoryDocuments,
+  createMemoryHost,
+  createMemoryHub,
+  flush,
+} from '@/__test-utils__/hubLayers';
 import { nodeHubServices, withDocumentHub } from '@/compose';
-import { DocumentHub } from '@/services/DocumentHub';
+import * as LockFile from '@/lockFile';
+import { DocumentHub, layer as documentHubLayer } from '@/services/DocumentHub';
+import { HubDocuments, HubHandlerService, HubHost } from '@/services/HubHost';
 
 class Documents extends Context.Service<Documents, { readonly name: string }>()(
   'spec/Documents'
@@ -28,6 +37,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -83,5 +93,45 @@ describe('withDocumentHub', () => {
       'could not start the document hub',
       expect.objectContaining({ message: 'uv_os_homedir returned ENOENT' })
     );
+  });
+
+  it('lets a host give up at its dispose timeout on a hub close a listen that never returns holds', async () => {
+    const io = createMemoryHub();
+    io.listen.mockImplementationOnce(() => Effect.never);
+    const runtime = ManagedRuntime.make(
+      withDocumentHub(
+        Layer.mergeAll(
+          Layer.succeed(HubHost, createMemoryHost()),
+          Layer.succeed(HubDocuments, createMemoryDocuments()),
+          Layer.succeed(HubHandlerService, createHubHandler())
+        ),
+        documentHubLayer.pipe(
+          Layer.provide(LockFile.layer),
+          Layer.provide(io.layer)
+        )
+      )
+    );
+    await runtime.runPromise(Effect.void);
+    await flush();
+    expect(io.listen).toHaveBeenCalledTimes(1);
+    vi.useFakeTimers();
+    let settled = false;
+
+    // Both hosts' bound, Effect.timeout at 5 seconds. A parallel scope on the
+    // way to the hub would close it on a fiber this interrupt never reaches.
+    const disposing = Effect.runPromise(
+      runtime.disposeEffect.pipe(
+        Effect.as('closed'),
+        Effect.timeout('5 seconds'),
+        Effect.catchTag('TimeoutError', () => Effect.succeed('gave up'))
+      )
+    ).finally(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    await expect(disposing).resolves.toBe('gave up');
   });
 });

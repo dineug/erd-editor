@@ -408,7 +408,11 @@ const make = Effect.gen(function* () {
   return { setDocuments, close, releaseSync };
 });
 
-/** The lock and the pipe go with the runtime, in that order, when the host disposes it. */
+/**
+ * The lock and the pipe go, in that order, when the host disposes the runtime.
+ * Its dispose timeout gives up on a stalled close, which goes on, but not under
+ * Layer.merge, mergeAll or an array provide, whose forked close it never reaches.
+ */
 export const layer: Layer.Layer<
   DocumentHub,
   never,
@@ -421,5 +425,13 @@ export const layer: Layer.Layer<
   | FileSystem.FileSystem
 > = Layer.effect(
   DocumentHub,
-  Effect.acquireRelease(make, hub => Effect.promise(() => hub.close()))
+  Effect.acquireRelease(make, hub =>
+    Effect.suspend(() => {
+      // A scope runs its finalizers uninterruptibly, so only the wait opts back
+      // in, and close starts before it: an interruption already pending when
+      // this finalizer starts gives up the wait, never the close.
+      const closing = hub.close();
+      return Effect.interruptible(Effect.promise(() => closing));
+    })
+  )
 );

@@ -69,6 +69,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -170,6 +171,38 @@ describe('createHubRuntime', () => {
     await flush();
 
     await expect(runtime.dispose()).resolves.toBeUndefined();
+    expect(console.warn).toHaveBeenCalledWith(
+      '[erd-editor hub]',
+      'could not close the document hub',
+      expect.anything()
+    );
+  });
+
+  it('gives up at its timeout on a close a listen that never returns holds, so the next instance can start', async () => {
+    const harness = createHubHarness();
+    const io = createMachine();
+    io.listen.mockImplementationOnce(() => Effect.never);
+    const runtime = createHubRuntime({
+      registry: harness.registry,
+      vault: harness.vault,
+      host: createObsidianHost(new HubSwitch(true), () => VAULT),
+      fileSystem: io.fileSystem,
+      machine: io.machine,
+    });
+    await runtime.start();
+    await flush();
+    expect(io.listen).toHaveBeenCalledTimes(1);
+
+    vi.useFakeTimers();
+    let closed = false;
+    const closing = runtime.dispose().then(() => {
+      closed = true;
+    });
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(closed).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await closing;
+
     expect(console.warn).toHaveBeenCalledWith(
       '[erd-editor hub]',
       'could not close the document hub',
