@@ -302,10 +302,15 @@ describe('the hub client', () => {
 
   it('lets what waits on drained go when the connection closes', async () => {
     const { server, sent, client } = await pair();
+    let held!: () => void;
+    const holding = new Promise<void>(resolve => (held = resolve));
     // A then that waits on drained holds the fiber that would release it, until the close does.
     const joined = run(
       client.requestThen('join', { path: '/a.erd.json' }, () =>
-        client.drained.pipe(Effect.as('drained'))
+        Effect.sync(held).pipe(
+          Effect.andThen(client.drained),
+          Effect.as('drained')
+        )
       )
     );
     await settle();
@@ -317,7 +322,7 @@ describe('the hub client', () => {
         result: { initialValue: '{}', snapshotVersion: 3, readonly: false },
       })
     );
-    await settle();
+    await holding;
 
     await run(client.close);
 
@@ -334,10 +339,10 @@ describe('the hub client', () => {
     server.write(
       '{"id":99,"ok":true,"result":{}}\n[1,2]\n{"method":"actions"}\n'
     );
-    await settle();
+    // The two frames it skips are logged, the last of the three among them, once all are taken.
+    await vi.waitFor(() => expect(console.error).toHaveBeenCalledTimes(2));
 
     expect(onNotification).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledTimes(2);
     expect(console.error).toHaveBeenCalledWith(
       '[erd-editor-mcp]',
       'skipped a frame from the hub of pid 7 that is neither a response nor a notification',
@@ -357,9 +362,10 @@ describe('the hub client', () => {
     ];
 
     server.write(refused.map(frame).join(''));
-    await settle();
 
-    expect(onNotification.mock.calls).toEqual(refused.map(value => [value]));
+    await vi.waitFor(() =>
+      expect(onNotification.mock.calls).toEqual(refused.map(value => [value]))
+    );
     expect(client.closed).toBe(false);
   });
 
@@ -402,12 +408,13 @@ describe('the hub client', () => {
         sentAt: 1,
       })
     );
-    await settle();
 
-    expect(onNotification).toHaveBeenCalledWith({
-      method: 'actions',
-      params: { path: '/a.erd.json', actions: [{ type: 'x' }] },
-    });
+    await vi.waitFor(() =>
+      expect(onNotification).toHaveBeenCalledWith({
+        method: 'actions',
+        params: { path: '/a.erd.json', actions: [{ type: 'x' }] },
+      })
+    );
   });
 
   it('logs a notification the session could not take, and stays open', async () => {
@@ -418,12 +425,13 @@ describe('the hub client', () => {
     });
 
     server.write(frame({ method: 'documentClosed', params: { path: '/a' } }));
-    await settle();
 
-    expect(console.error).toHaveBeenCalledWith(
-      '[erd-editor-mcp]',
-      'dropped a notification from the hub of pid 7',
-      expect.objectContaining({ message: 'no peer' })
+    await vi.waitFor(() =>
+      expect(console.error).toHaveBeenCalledWith(
+        '[erd-editor-mcp]',
+        'dropped a notification from the hub of pid 7',
+        expect.objectContaining({ message: 'no peer' })
+      )
     );
     expect(client.closed).toBe(false);
   });

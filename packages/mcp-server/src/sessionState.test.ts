@@ -55,11 +55,21 @@ const live = () =>
     })
   );
 
+/** Settles once a session took the documentClosed the hub sends for the document. */
+const documentClosed = () =>
+  io.taken(
+    ({ method, params }) =>
+      method === 'documentClosed' && params.path === DOCUMENT
+  );
+
 describe('LiveSession transitions (AC-P13)', () => {
   it('leave: ready to detached, and the next write joins again', async () => {
     const session = await live();
     await io.run(session.runTool('erd_add_table', {}));
     expect(session.state).toBe('ready');
+    const left = hub.requests.length;
+    const batches: Array<Array<{ type: string }>> = [];
+    hub.beforeApply = actions => void batches.push(actions as any[]);
 
     await io.run(session.leave);
     expect(session.state).toBe('detached');
@@ -68,12 +78,27 @@ describe('LiveSession transitions (AC-P13)', () => {
     const { run } = await io.run(session.runTool('erd_add_memo', {}));
     expect(run.batches).toBe(1);
     expect(session.state).toBe('ready');
-    expect(hub.methods().slice(-4)).toEqual([
+    expect(hub.webview(DOCUMENT).state.doc.memoIds).toEqual(run.createdIds);
+    // Past the join only batches go: the memo, and the focus the reseed moved, alone, once
+    // the 100 ms presence throttle the first write's focus began runs out, here or later.
+    expect(hub.methods().slice(left)).toEqual([
       'leave',
       'openDocument',
       'join',
-      'applyActions',
+      ...batches.map(() => 'applyActions'),
     ]);
+    expect(
+      batches
+        .map(batch => batch.map(({ type }) => type))
+        .filter(types => types.join() !== 'editor.sharedFocusTracker')
+    ).toEqual([['memo.add']]);
+    const presence = batches.filter(
+      batch =>
+        batch.length === 1 && batch[0].type === 'editor.sharedFocusTracker'
+    );
+    expect(presence.map(([action]) => (action as any).payload)).toEqual(
+      presence.length ? [{ focus: null }] : []
+    );
     await io.run(session.close);
   });
 
@@ -81,8 +106,9 @@ describe('LiveSession transitions (AC-P13)', () => {
     const session = await live();
     await io.run(session.runTool('erd_add_table', {}));
 
+    const closed = documentClosed();
     hub.close(DOCUMENT);
-    await settle();
+    await closed;
     expect(session.state).toBe('reconnecting');
 
     const { notes } = await io.run(session.runTool('erd_add_memo', {}));
@@ -333,8 +359,9 @@ describe('an editor that lets go of the document, as the Obsidian plugin does wh
     await io.run(session.runTool('erd_add_table', {}));
     expect(session).toMatchObject({ ide: 'obsidian', released: false });
 
+    const closed = documentClosed();
     hub.close(DOCUMENT);
-    await settle();
+    await closed;
     expect(session.released).toBe(true);
 
     await io.run(session.read(documentReader('snapshot')));
@@ -365,9 +392,10 @@ describe('a project a JetBrains IDE closes, before its hub ends the connection t
    * leaves. The fake hub keeps the connection open, which a JetBrains IDE's hub ends soon after.
    */
   const closeProject = async () => {
+    const closed = documentClosed();
     hub.close(DOCUMENT);
     hub.setFolders([OTHER]);
-    await settle();
+    await closed;
   };
 
   it('edits the file once the editor let go and the folder left the lock, the connection open', async () => {
