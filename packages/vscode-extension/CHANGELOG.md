@@ -1,5 +1,53 @@
 # Changelog
 
+## [3.1.0] - 2026-10-03
+
+### Added
+
+- Find and replace across table and column names, comments and memos, with match case, whole word
+  and regular expressions. Open it with `Ctrl`/`Cmd`+`F` on any tab, or with the new button beside
+  Search on the toolbar. It starts on names alone, and one undo takes back a Replace All.
+- Quick search (`Ctrl`/`Cmd`+`K`) lists the editor's commands, and jumps to a table after `#`, a
+  column after `@`, and a comment or memo after `:`. Korean matches while you are still typing a
+  syllable, and by initial consonants alone: ㅅㅇㅈ finds 사용자.
+- Set ON DELETE and ON UPDATE on a relationship from the On Delete and On Update menus of its
+  line. SQL export writes them, SQL, DBML and AML import keep them, and the TypeORM, Sequelize,
+  Drizzle, SQLAlchemy, DBML and AML code carries them. The menu notes an action the selected
+  database's DDL leaves out, such as SET DEFAULT on MySQL.
+- A relationship line shows those actions at its child end, `D:` for ON DELETE and `U:` for
+  ON UPDATE (C, R, SN, SD or NA), and hovering it spells them out. View Option → Referential
+  Actions hides the labels.
+- View Option → Alternate Key marks the columns of each unique index on the diagram as `AK1.1`,
+  `AK1.2` and so on, as ERwin and IDEF1X write them.
+- The Indexes tab of Table Properties lists the primary key and the unique columns above the
+  indexes. Table Properties has a title and a close button, and says when the document is read
+  only.
+- A coding agent can set ON DELETE and ON UPDATE and the two new view options too.
+
+### Changed
+
+- A new diagram saves neither the scroll position nor the zoom level (Save Scroll Information and
+  Save Zoom Information start off), so looking around never changes the file. An existing file
+  keeps the settings it was saved with.
+- Drawing a relationship names each new foreign key column after the parent table: key `id` of
+  table `user` gives `user_id`, not one more `id`. A key named in several words (`member_id`,
+  `userId`) keeps its name, and a name the table already holds is numbered `_2`, `_3`.
+- SQL import reads a UNIQUE over several columns as one unique index under its name, instead of a
+  unique flag on each column.
+
+### Fixed
+
+- With Save Scroll Information and Save Zoom Information off, scrolling or zooming no longer marks
+  a diagram modified, even one another release or machine wrote. A git revision or merge preview
+  is never marked modified.
+- SQL import keeps user-defined and extension types (an enum made with CREATE TYPE, a domain,
+  `hstore`, `citext`, `"MyType"`, `public.mood`), the brackets of `integer[]` and the quoted values
+  of `ENUM('a','b')`, which came in empty or broken. A doubled quote such as `'it''s'` reads as one
+  quote, a column's inline `REFERENCES` makes a relationship, and every unique key an ALTER TABLE
+  or a dump's CREATE UNIQUE INDEX adds is kept.
+- Exported DDL escapes a quote inside a comment, and the Schema SQL tab of Table Properties writes
+  the table's unique columns.
+
 ## [3.0.1] - 2026-09-28
 
 ### Fixed

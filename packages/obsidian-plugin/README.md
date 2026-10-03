@@ -61,7 +61,7 @@ editor's own history.
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — JSON, SQL and PNG, written into the vault where your attachments go
 - **Quick search** — `Ctrl`/`Cmd`+`K` to run any editor command, or to jump to a table after `#`,
-  a column after `@`, and a comment or memo after `"`
+  a column after `@`, and a comment or memo after `:`
 - **Find and replace** — `Ctrl`/`Cmd`+`F` across table and column names, comments and memos,
   with match case, whole word and regular expressions; one undo takes back a Replace All
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it
