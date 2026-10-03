@@ -52,14 +52,14 @@ export const color = css`
   }
 `;
 
-export const lightDarkButtonGroup = css`
+export const appearanceButtonGroup = css`
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 `;
 
-export const lightDarkButton = css`
+export const appearanceButton = css`
   display: flex;
   align-items: center;
   justify-content: center;

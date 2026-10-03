@@ -30,7 +30,6 @@ const APPEARANCE_PREFERENCES: readonly AppearancePreference[] = [
   'light',
   'system',
 ];
-const RESOLVED_APPEARANCES: readonly ResolvedAppearance[] = ['dark', 'light'];
 
 function isOneOf<T extends string>(
   values: readonly T[],
@@ -84,23 +83,19 @@ export function resolveTheme(
 }
 
 /**
- * Folds the editor's theme builder choice into the preference. Only an
- * appearance other than the one on screen is a choice, so leaving it alone
- * keeps a system preference while the colors still apply.
+ * Folds the editor's theme builder choice into the preference. The builder
+ * names system itself, so a color picked under it keeps the preference.
  */
 export function applyPresetTheme(
   state: ThemeState,
-  preset: unknown,
-  resolved: ResolvedAppearance
+  preset: unknown
 ): ThemeState {
   const record = toRecord(preset);
 
   return {
-    appearance:
-      isOneOf(RESOLVED_APPEARANCES, record.appearance) &&
-      record.appearance !== resolved
-        ? record.appearance
-        : state.appearance,
+    appearance: isOneOf(APPEARANCE_PREFERENCES, record.appearance)
+      ? record.appearance
+      : state.appearance,
     accentColor: isOneOf(accentColors, record.accentColor)
       ? record.accentColor
       : state.accentColor,

@@ -50,8 +50,8 @@ opens its own file chooser for both; the file does not have to be inside the pro
   `:`, **find and replace** across names, comments and memos, **time travel** through this
   session's edit history, and **undo / redo**
 - **Theming** — pick the appearance, gray color and accent color on the canvas or under
-  **Settings | Tools | ERD Editor**, remembered across restarts. Auto, the default appearance,
-  follows the IDE's light or dark theme and switches with it
+  **Settings | Tools | ERD Editor**, remembered across restarts. Auto, the default appearance and
+  the theme builder's System, follows the IDE's light or dark theme and switches with it
 
 Edits are written to the file a fraction of a second after you stop changing it; the tab never shows as modified.
 

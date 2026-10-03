@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 /**
  * The theme every ERD editor shows, set on the settings page or by a page's theme builder. Auto is
- * kept as stored and resolved here, by the IDE's light or dark theme, before any page sees it.
+ * kept as stored; a page shows it as the IDE's light or dark, which it is sent beside the theme.
  */
 @State(
     name = "com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings",
@@ -37,8 +37,8 @@ class ErdEditorAppSettings @NonInjectable internal constructor(
     /** The theme as the settings keep it, auto included. */
     val theme: ErdEditorTheme get() = stored.get()
 
-    /** The theme the pages show now, auto resolved by the IDE's light or dark theme. */
-    val shownTheme: ErdEditorTheme get() = theme.resolve(isIdeDark())
+    /** The light or dark auto shows now, the IDE's own. */
+    val systemAppearance: String get() = ErdEditorTheme.systemAppearance(isIdeDark())
 
     override fun getState(): State = theme.let { State(it.appearance, it.grayColor, it.accentColor) }
 
@@ -49,10 +49,9 @@ class ErdEditorAppSettings @NonInjectable internal constructor(
         )
     }
 
-    /** Keeps what a page's theme builder picked, by [ErdEditorTheme.fromBuilder]. */
+    /** Keeps what a page's theme builder picked, auto included; anything missing or unknown keeps the stored value. */
     fun setThemeFromBuilder(appearance: String?, grayColor: String?, accentColor: String?) {
-        val ideDark = isIdeDark()
-        updateTheme { it.fromBuilder(appearance, grayColor, accentColor, ideDark) }
+        updateTheme { ErdEditorTheme.read(appearance, grayColor, accentColor, it) }
     }
 
     /**

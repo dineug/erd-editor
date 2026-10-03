@@ -43,7 +43,7 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import { observeThemeOverrides, resolveHostTheme } from '@/konva/theme';
 import { getSchemaGCService } from '@/services/schema-gc';
 import { procGC } from '@/services/schema-gc/procGC';
-import { ThemeOptions } from '@/themes/radix-ui-theme';
+import { Appearance, ThemeOptions } from '@/themes/radix-ui-theme';
 import { Theme as ThemeType } from '@/themes/tokens';
 import { copyAction, pasteAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
@@ -73,6 +73,8 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   destroy: () => void;
   setInitialValue: (value: string) => void;
   setPresetTheme: (themeOptions: Partial<ThemeOptions>) => void;
+  /** What the system appearance shows, for a host with its own light and dark; null follows the OS. */
+  setSystemAppearance: (appearance: Appearance | null) => void;
   setTheme: (theme: Partial<ThemeType>) => void;
   setKeyBindingMap: (
     keyBindingMap: Partial<

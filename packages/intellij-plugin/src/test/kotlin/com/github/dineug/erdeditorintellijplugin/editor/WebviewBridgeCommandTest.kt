@@ -1,6 +1,7 @@
 package com.github.dineug.erdeditorintellijplugin.editor
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
 import com.intellij.openapi.diagnostic.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -280,5 +281,38 @@ class WebviewBridgeCommandTest {
         assertTrue(payload.has("accentColor"))
         assertTrue("NON_NULL inclusion must drop absent fields", !payload.has("appearance"))
         assertTrue(!payload.has("grayColor"))
+        assertTrue(!payload.has("systemAppearance"))
+    }
+
+    @Test
+    fun `a page is sent the stored theme with the light or dark the IDE shows now`() {
+        var ideDark = false
+        val settings = ErdEditorAppSettings({ ideDark }) {}
+
+        assertEquals(
+            WebviewUpdateThemeCommandPayload("auto", "slate", "indigo", "light"),
+            WebviewBridgeCommand.UpdateTheme.of(settings).payload
+        )
+
+        settings.updateTheme { it.copy(appearance = "dark") }
+        ideDark = true
+        assertEquals(
+            WebviewUpdateThemeCommandPayload("dark", "slate", "indigo", "dark"),
+            WebviewBridgeCommand.UpdateTheme.of(settings).payload
+        )
+    }
+
+    @Test
+    fun `a theme update carries auto with the light or dark it shows`() {
+        val payload = mapper.readTree(
+            mapper.writeValueAsString(
+                WebviewBridgeCommand.UpdateTheme(
+                    WebviewUpdateThemeCommandPayload("auto", "slate", "indigo", "light")
+                )
+            )
+        ).get("payload")
+
+        assertEquals("auto", payload.get("appearance").asText())
+        assertEquals("light", payload.get("systemAppearance").asText())
     }
 }

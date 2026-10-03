@@ -1,5 +1,5 @@
 import { createCommand } from './bridge';
-import { type ThemeOptions } from './theme';
+import { type Appearance, type ThemeOptions } from './theme';
 
 type Base64 = string;
 
@@ -37,9 +37,12 @@ export const webviewImportFileCommand = createCommand<{
 export const webviewInitialValueCommand = createCommand<{
   value: string;
 }>('webviewInitialValueCommand');
-export const webviewUpdateThemeCommand = createCommand<Partial<ThemeOptions>>(
-  'webviewUpdateThemeCommand'
-);
+export const webviewUpdateThemeCommand = createCommand<
+  Partial<ThemeOptions> & {
+    /** What auto shows, from a host that knows it outside the page; left out, the page reads it. */
+    systemAppearance?: Appearance;
+  }
+>('webviewUpdateThemeCommand');
 export const webviewUpdateReadonlyCommand = createCommand<boolean>(
   'webviewUpdateReadonlyCommand'
 );

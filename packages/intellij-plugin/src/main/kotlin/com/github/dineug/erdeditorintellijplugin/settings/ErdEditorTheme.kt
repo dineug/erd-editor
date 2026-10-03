@@ -7,30 +7,6 @@ package com.github.dineug.erdeditorintellijplugin.settings
  */
 data class ErdEditorTheme(val appearance: String, val grayColor: String, val accentColor: String) {
 
-    /** The theme a page shows, auto taking the IDE's light or dark. */
-    fun resolve(ideDark: Boolean): ErdEditorTheme =
-        if (appearance == AUTO) copy(appearance = if (ideDark) DARK else LIGHT) else this
-
-    /**
-     * What a page's theme builder picked, as the settings keep it. The builder always names light
-     * or dark, so while this theme is auto, the appearance auto shows now keeps it auto: picking a
-     * color does not pin the appearance. Anything missing or unknown keeps this theme's value.
-     */
-    fun fromBuilder(
-        appearance: String?,
-        grayColor: String?,
-        accentColor: String?,
-        ideDark: Boolean
-    ): ErdEditorTheme {
-        val next = read(appearance, grayColor, accentColor, this)
-        val shown = resolve(ideDark).appearance
-        return if (this.appearance == AUTO && next.appearance == shown) {
-            next.copy(appearance = AUTO)
-        } else {
-            next
-        }
-    }
-
     companion object {
         const val AUTO = "auto"
         const val LIGHT = "light"
@@ -46,6 +22,9 @@ data class ErdEditorTheme(val appearance: String, val grayColor: String, val acc
 
         /** Auto follows the IDE, as the Obsidian plugin's default does; the colors are the editor's. */
         val DEFAULT = ErdEditorTheme(AUTO, "slate", "indigo")
+
+        /** The light or dark auto shows. */
+        fun systemAppearance(ideDark: Boolean) = if (ideDark) DARK else LIGHT
 
         /** The three values, each one that is missing or unknown taken from [fallback]. */
         fun read(

@@ -4,6 +4,7 @@ import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import Icon from '@/components/primitives/icon/Icon';
+import { IconName } from '@/components/primitives/icon/icons';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -11,9 +12,11 @@ import {
   AccentColor,
   AccentColorList,
   Appearance,
+  AppearanceOption,
   GrayColor,
   GrayColorList,
   Palette,
+  SYSTEM_APPEARANCE,
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { setThemeOptionsAction } from '@/utils/emitter';
@@ -24,6 +27,16 @@ import * as styles from './ThemeBuilder.styles';
 export type ThemeBuilderProps = {
   theme: ThemeOptions;
 };
+
+const APPEARANCE_BUTTONS: ReadonlyArray<{
+  appearance: AppearanceOption;
+  icon: IconName;
+  label: string;
+}> = [
+  { appearance: SYSTEM_APPEARANCE, icon: 'monitor', label: 'System' },
+  { appearance: Appearance.light, icon: 'sun', label: 'Light' },
+  { appearance: Appearance.dark, icon: 'moon-star', label: 'Dark' },
+];
 
 const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -58,7 +71,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
     emitter.emit(setThemeOptionsAction({ grayColor }));
   };
 
-  const handleChangeAppearance = (appearance: Appearance) => {
+  const handleChangeAppearance = (appearance: AppearanceOption) => {
     const { emitter } = app.value;
     emitter.emit(setThemeOptionsAction({ appearance }));
   };
@@ -113,30 +126,20 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
           ))}
         </div>
         <div class={styles.subTitle}>Appearance</div>
-        <div class={styles.lightDarkButtonGroup}>
-          <div
-            class={[
-              styles.lightDarkButton,
-              { selected: theme.appearance === Appearance.light },
-            ]}
-            on:click={() => handleChangeAppearance(Appearance.light)}
-          >
-            <Icon name="sun" />
-            <span class={styles.vertical} />
-            <span>Light</span>
-          </div>
-          <div
-            class={[
-              styles.lightDarkButton,
-              ,
-              { selected: theme.appearance === Appearance.dark },
-            ]}
-            on:click={() => handleChangeAppearance(Appearance.dark)}
-          >
-            <Icon name="moon-star" />
-            <span class={styles.vertical} />
-            <span>Dark</span>
-          </div>
+        <div class={styles.appearanceButtonGroup}>
+          {APPEARANCE_BUTTONS.map(({ appearance, icon, label }) => (
+            <div
+              class={[
+                styles.appearanceButton,
+                { selected: theme.appearance === appearance },
+              ]}
+              on:click={() => handleChangeAppearance(appearance)}
+            >
+              <Icon name={icon} />
+              <span class={styles.vertical} />
+              <span>{label}</span>
+            </div>
+          ))}
         </div>
       </div>
     );

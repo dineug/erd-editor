@@ -48,10 +48,10 @@ import { type ErdEditorModule, loadErdEditor } from '@/loadErdEditor';
 import {
   ACCENT_COLORS,
   DEFAULT_SETTINGS,
+  editorTheme,
   GRAY_COLORS,
   type PluginSettings,
   readSettings,
-  resolveTheme,
   themeFromBuilder,
   type ThemeHost,
   type ThemeSettings,
@@ -81,11 +81,9 @@ export default class ErdEditorPlugin extends Plugin {
 
   /** What every ERD tab of this vault shows, and where its theme builder saves. */
   private readonly theme: ThemeHost = {
-    current: () => resolveTheme(this.settings, isObsidianDark()),
+    current: () => editorTheme(this.settings, isObsidianDark()),
     picked: picked => {
-      void this.setTheme(
-        themeFromBuilder(this.settings, picked, isObsidianDark())
-      );
+      void this.setTheme(themeFromBuilder(this.settings, picked));
       this.settingTab?.refresh();
     },
   };
@@ -172,9 +170,7 @@ export default class ErdEditorPlugin extends Plugin {
       })
     );
     this.registerEvent(
-      this.app.workspace.on('css-change', () => {
-        if (this.settings.appearance === 'auto') this.applyTheme();
-      })
+      this.app.workspace.on('css-change', () => this.applyTheme())
     );
     // Windows unloads the page within milliseconds of a quit, quit tasks or
     // not, and a 1.13 reload fires no quit, so each tab writes before these
@@ -467,7 +463,7 @@ class ErdEditorSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Appearance')
       .setDesc(
-        "Auto follows Obsidian's light or dark theme and switches with it. The theme builder in the editor's toolbar changes these three settings too."
+        "Auto follows Obsidian's light or dark theme and switches with it. The theme builder in the editor's toolbar changes these three settings too, where Auto is System."
       )
       .addDropdown(dropdown =>
         dropdown

@@ -52,60 +52,9 @@ class ErdEditorThemeTest {
     }
 
     @Test
-    fun `resolve turns auto into what the IDE shows`() {
-        val theme = ErdEditorTheme("auto", "sage", "jade")
-
-        assertEquals(ErdEditorTheme("dark", "sage", "jade"), theme.resolve(ideDark = true))
-        assertEquals("light", theme.resolve(ideDark = false).appearance)
-    }
-
-    @Test
-    fun `resolve keeps light and dark whatever the IDE shows`() {
-        val theme = ErdEditorTheme("light", "sage", "jade")
-
-        assertEquals(theme, theme.resolve(ideDark = true))
-        assertEquals("dark", theme.copy(appearance = "dark").resolve(ideDark = false).appearance)
-    }
-
-    @Test
-    fun `a builder pick keeps auto when it names the appearance auto shows now`() {
-        val auto = ErdEditorTheme.DEFAULT
-
-        assertEquals(
-            ErdEditorTheme("auto", "slate", "crimson"),
-            auto.fromBuilder("dark", "slate", "crimson", ideDark = true)
-        )
-        assertEquals(
-            ErdEditorTheme("auto", "sand", "indigo"),
-            auto.fromBuilder("light", "sand", "indigo", ideDark = false)
-        )
-    }
-
-    @Test
-    fun `a builder pick of the other appearance replaces auto`() {
-        val auto = ErdEditorTheme.DEFAULT
-
-        assertEquals(auto.copy(appearance = "light"), auto.fromBuilder("light", "slate", "indigo", ideDark = true))
-        assertEquals(auto.copy(appearance = "dark"), auto.fromBuilder("dark", "slate", "indigo", ideDark = false))
-    }
-
-    @Test
-    fun `a builder pick is taken whole once the setting names light or dark`() {
-        val light = ErdEditorTheme.DEFAULT.copy(appearance = "light")
-
-        assertEquals(
-            ErdEditorTheme("dark", "mauve", "sky"),
-            light.fromBuilder("dark", "mauve", "sky", ideDark = false)
-        )
-        assertEquals(light.copy(accentColor = "sky"), light.fromBuilder("light", "slate", "sky", ideDark = true))
-    }
-
-    @Test
-    fun `a builder pick keeps the current value for anything it lacks or holds wrong`() {
-        val auto = ErdEditorTheme.DEFAULT
-
-        assertEquals(auto, auto.fromBuilder(null, null, null, ideDark = true))
-        assertEquals(auto, auto.fromBuilder("dim", null, "plaid", ideDark = false))
+    fun `auto shows the IDE's light or dark`() {
+        assertEquals("dark", ErdEditorTheme.systemAppearance(ideDark = true))
+        assertEquals("light", ErdEditorTheme.systemAppearance(ideDark = false))
     }
 
     private companion object {

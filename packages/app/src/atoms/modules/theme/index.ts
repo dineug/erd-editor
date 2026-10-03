@@ -50,7 +50,7 @@ systemDarkAtom.onMount = setSystemDark => {
   return watchSystemDark(setSystemDark);
 };
 
-/** What Radix, the editor and the root element all render. */
+/** What Radix and the root element render; the editor takes the preference and resolves system itself. */
 export const resolvedThemeAtom = atom(get =>
   resolveTheme(get(themeAtom), get(systemDarkAtom))
 );
@@ -63,13 +63,13 @@ const setAppearanceAtom = atom(
 );
 
 const applyPresetThemeAtom = atom(null, (get, set, preset: unknown) => {
-  set(
-    themeAtom,
-    applyPresetTheme(get(themeAtom), preset, get(resolvedThemeAtom).appearance)
-  );
+  set(themeAtom, applyPresetTheme(get(themeAtom), preset));
 });
 
 export const useResolvedTheme = () => useAtomValue(resolvedThemeAtom);
+
+/** The preference, system included, as the editor takes it: it follows the system itself. */
+export const useThemeState = () => useAtomValue(themeAtom);
 
 export const useAppearancePreference = () => useAtomValue(themeAtom).appearance;
 

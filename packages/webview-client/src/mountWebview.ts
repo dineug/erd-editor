@@ -30,7 +30,7 @@ export interface WebviewHost {
   dispatch: (action: AnyAction) => void;
   /** The replica worker's name, one per host, so two IDEs never share a worker. */
   workerName: string;
-  /** What an auto appearance means on this host. Left out, it means dark. */
+  /** What an auto appearance means on this host, unless its theme update names it. Left out, dark. */
   resolveAppearance?: () => Appearance;
   /** True hands file dialogs to the host; false keeps the editor's own file input. */
   importFile?: boolean;
@@ -38,9 +38,24 @@ export interface WebviewHost {
   onMounted?: () => void;
 }
 
+/** The editor and its theme builder spell the host's auto as system. */
+type EditorAppearance = Appearance | 'system';
+type EditorThemeOptions = Omit<ThemeOptions, 'appearance'> & {
+  appearance: EditorAppearance;
+};
+
+const toEditorAppearance = (
+  appearance: ThemeOptions['appearance']
+): EditorAppearance => (appearance === 'auto' ? 'system' : appearance);
+
+const toHostAppearance = (
+  appearance: EditorAppearance
+): ThemeOptions['appearance'] =>
+  appearance === 'system' ? 'auto' : appearance;
+
 export interface WebviewClient {
   editor: ErdEditorElement;
-  /** Re-applies the appearance while the theme is auto, for a host whose system theme moved. */
+  /** Re-reads what auto shows, for a host whose system theme moved. */
   refreshAppearance: () => void;
   /** Drops the listeners and the worker, for a page that mounts more than once. */
   dispose: () => void;
@@ -64,8 +79,11 @@ export function mountWebview(host: WebviewHost): WebviewClient {
   });
   const resolveAppearance =
     host.resolveAppearance ?? ((): Appearance => Appearance.dark);
+  // Once a theme update names what auto shows, it outranks resolveAppearance.
+  let namedSystemAppearance: Appearance | undefined;
+  const systemAppearance = () => namedSystemAppearance ?? resolveAppearance();
 
-  let appearance: ThemeOptions['appearance'] = Appearance.dark;
+  editor.setSystemAppearance(systemAppearance());
 
   const dispatch = (action: AnyAction) => {
     host.dispatch(action);
@@ -91,9 +109,13 @@ export function mountWebview(host: WebviewHost): WebviewClient {
   });
 
   const handleChangePresetTheme = (event: Event) => {
-    const e = event as CustomEvent<ThemeOptions>;
-    dispatch(Bridge.executeCommand(hostSaveThemeCommand, e.detail));
-    appearance = e.detail.appearance;
+    const { detail } = event as CustomEvent<EditorThemeOptions>;
+    dispatch(
+      Bridge.executeCommand(hostSaveThemeCommand, {
+        ...detail,
+        appearance: toHostAppearance(detail.appearance),
+      })
+    );
   };
 
   const disposeCommands = Bridge.mergeRegister(
@@ -148,19 +170,18 @@ export function mountWebview(host: WebviewHost): WebviewClient {
         Bridge.executeCommand(webviewReplicationCommand, { actions })
       );
     }),
-    bridge.registerCommand(webviewUpdateThemeCommand, payload => {
-      if (payload.appearance) {
-        appearance = payload.appearance;
+    bridge.registerCommand(
+      webviewUpdateThemeCommand,
+      ({ systemAppearance: named, ...payload }) => {
+        if (named) namedSystemAppearance = named;
+        editor.setSystemAppearance(systemAppearance());
+        editor.setPresetTheme({
+          ...payload,
+          appearance:
+            payload.appearance && toEditorAppearance(payload.appearance),
+        });
       }
-
-      editor.setPresetTheme({
-        ...payload,
-        appearance:
-          payload.appearance === 'auto'
-            ? resolveAppearance()
-            : payload.appearance,
-      });
-    }),
+    ),
     bridge.registerCommand(webviewUpdateReadonlyCommand, readonly => {
       editor.readonly = readonly;
     }),
@@ -183,8 +204,7 @@ export function mountWebview(host: WebviewHost): WebviewClient {
   return {
     editor,
     refreshAppearance: () => {
-      if (appearance !== 'auto') return;
-      editor.setPresetTheme({ appearance: resolveAppearance() });
+      editor.setSystemAppearance(systemAppearance());
     },
     dispose: () => {
       disposeCommands();

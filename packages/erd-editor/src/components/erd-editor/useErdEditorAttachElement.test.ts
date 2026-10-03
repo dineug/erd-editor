@@ -51,7 +51,13 @@ import {
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
-import { AccentColor, Appearance, GrayColor } from '@/themes/radix-ui-theme';
+import {
+  AccentColor,
+  Appearance,
+  createTheme,
+  GrayColor,
+  SYSTEM_APPEARANCE,
+} from '@/themes/radix-ui-theme';
 import {
   openDiffViewerAction,
   schemaGCAction,
@@ -181,6 +187,7 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof ctx.destroy).toBe('function');
     expect(typeof ctx.setInitialValue).toBe('function');
     expect(typeof ctx.setPresetTheme).toBe('function');
+    expect(typeof ctx.setSystemAppearance).toBe('function');
     expect(typeof ctx.setTheme).toBe('function');
     expect(typeof ctx.setKeyBindingMap).toBe('function');
     expect(typeof ctx.setSchemaSQL).toBe('function');
@@ -211,6 +218,14 @@ describe('useErdEditorAttachElement', () => {
     ctx.blur();
     expect(focusSpy).toHaveBeenCalledTimes(2);
     expect(blurSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts system as a preset appearance', async () => {
+    const { api, ctx } = await setup();
+
+    ctx.setPresetTheme({ appearance: SYSTEM_APPEARANCE });
+
+    expect(api.themeState.options.appearance).toBe('system');
   });
 
   it('applies only valid preset theme options and ignores the rest', async () => {
@@ -1129,21 +1144,115 @@ describe('useErdEditorAttachElement', () => {
   it('follows the system appearance only while systemDarkMode is on', async () => {
     const { api, props } = await setup();
 
-    fireMediaChange(true);
+    fireMediaChange(false);
     await flush();
     expect(api.themeState.options.appearance).toBe('dark');
+    expect(api.hasDarkMode()).toBe(true);
 
     props.systemDarkMode = true;
     await flush();
-    expect(api.themeState.options.appearance).toBe('dark');
-
-    fireMediaChange(false);
-    await flush();
-    expect(api.themeState.options.appearance).toBe('light');
+    expect(api.themeState.options.appearance).toBe('system');
+    expect(api.hasDarkMode()).toBe(false);
 
     fireMediaChange(true);
     await flush();
-    expect(api.themeState.options.appearance).toBe('dark');
+    expect(api.hasDarkMode()).toBe(true);
+
+    fireMediaChange(false);
+    await flush();
+    expect(api.hasDarkMode()).toBe(false);
+  });
+
+  it('repaints the theme when the system it follows turns light or dark', async () => {
+    const { api, ctx } = await setup();
+    const darkBackground = api.theme.canvasBackground;
+
+    ctx.setPresetTheme({ appearance: SYSTEM_APPEARANCE });
+    await flush();
+    expect(api.theme.canvasBackground).not.toBe(darkBackground);
+
+    fireMediaChange(true);
+    await flush();
+    expect(api.theme.canvasBackground).toBe(darkBackground);
+  });
+
+  it('keeps a light or dark the builder picked while systemDarkMode is on', async () => {
+    const { api, app, props } = await setup();
+    props.systemDarkMode = true;
+    await flush();
+
+    app.emitter.emit(setThemeOptionsAction({ appearance: Appearance.light }));
+    fireMediaChange(true);
+    await flush();
+
+    expect(api.themeState.options.appearance).toBe('light');
+    expect(api.hasDarkMode()).toBe(false);
+  });
+
+  it('echoes a system pick from the builder as system, not as what it shows', async () => {
+    const { app, ctx } = await setup();
+    const onChangePresetTheme = vi.fn();
+    ctx.addEventListener('changePresetTheme', onChangePresetTheme);
+
+    app.emitter.emit(setThemeOptionsAction({ appearance: SYSTEM_APPEARANCE }));
+
+    expect(onChangePresetTheme.mock.calls[0][0].detail).toEqual({
+      grayColor: 'slate',
+      accentColor: 'indigo',
+      appearance: 'system',
+    });
+  });
+
+  it('lets a host name what system shows, over the OS color scheme', async () => {
+    const { api, ctx } = await setup();
+    ctx.setPresetTheme({ appearance: SYSTEM_APPEARANCE });
+    ctx.setSystemAppearance(Appearance.dark);
+    await flush();
+    expect(api.hasDarkMode()).toBe(true);
+
+    fireMediaChange(false);
+    await flush();
+    expect(api.hasDarkMode()).toBe(true);
+
+    ctx.setSystemAppearance(Appearance.light);
+    await flush();
+    expect(api.hasDarkMode()).toBe(false);
+    expect(api.theme.canvasBackground).toBe(
+      createTheme({ ...api.themeState.options, appearance: 'light' })
+        .canvasBackground
+    );
+  });
+
+  it('hands system back to the OS color scheme for null or an unknown value', async () => {
+    const { api, ctx } = await setup();
+    ctx.setPresetTheme({ appearance: SYSTEM_APPEARANCE });
+    ctx.setSystemAppearance(Appearance.light);
+    await flush();
+
+    fireMediaChange(true);
+    ctx.setSystemAppearance(null);
+    await flush();
+    expect(api.themeState.systemAppearance).toBeNull();
+    expect(api.hasDarkMode()).toBe(true);
+
+    ctx.setSystemAppearance(Appearance.light);
+    ctx.setSystemAppearance('system' as any);
+    await flush();
+    expect(api.themeState.systemAppearance).toBeNull();
+    expect(api.hasDarkMode()).toBe(true);
+  });
+
+  it('keeps the light or dark picked when the host names what system shows', async () => {
+    const { api, ctx } = await setup();
+    ctx.setPresetTheme({ appearance: Appearance.light });
+    await flush();
+    const lightBackground = api.theme.canvasBackground;
+
+    ctx.setSystemAppearance(Appearance.dark);
+    await flush();
+
+    expect(api.hasDarkMode()).toBe(false);
+    expect(api.theme.canvasBackground).toBe(lightBackground);
   });
 
   it('ignores prop changes other than systemDarkMode', async () => {
@@ -1158,15 +1267,18 @@ describe('useErdEditorAttachElement', () => {
     expect(api.themeState.options.appearance).toBe('light');
   });
 
-  it('turns the system watcher off again when systemDarkMode goes back to false', async () => {
-    const { api, props } = await setup({ systemDarkMode: true });
+  it('keeps the appearance system shows when systemDarkMode goes back to false', async () => {
+    const { api, props } = await setup();
+    props.systemDarkMode = true;
+    await flush();
 
     props.systemDarkMode = false;
     await flush();
+    expect(api.themeState.options.appearance).toBe('light');
+
     fireMediaChange(true);
     await flush();
-
-    expect(api.themeState.options.appearance).toBe('dark');
+    expect(api.hasDarkMode()).toBe(false);
 
     ctxSetLight(api);
     await flush();
@@ -1174,6 +1286,19 @@ describe('useErdEditorAttachElement', () => {
     await flush();
 
     expect(api.themeState.options.appearance).toBe('light');
+  });
+
+  it('leaves a light or dark as it is when systemDarkMode goes back to false', async () => {
+    const { api, ctx, props } = await setup();
+    props.systemDarkMode = true;
+    await flush();
+    ctx.setPresetTheme({ appearance: Appearance.dark });
+    await flush();
+
+    props.systemDarkMode = false;
+    await flush();
+
+    expect(api.themeState.options.appearance).toBe('dark');
   });
 });
 

@@ -53,7 +53,9 @@ handled by the host (initial, save value, save theme, save replication, import/e
 replication). Mint your own with `createCommand<Payload>('someType')` — listeners are keyed
 by that string, not by token identity. `ThemeOptions` is what `hostSaveThemeCommand` carries
 and `webviewUpdateThemeCommand` a `Partial` of; `Appearance` (`appearance` also takes
-`'auto'`), `GrayColor` and `AccentColor` are the maps of its allowed values.
+`'auto'`), `GrayColor` and `AccentColor` are the maps of its allowed values. A host that knows
+outside the page what `'auto'` shows adds it to `webviewUpdateThemeCommand` as
+`systemAppearance`.
 
 ## Development
 

@@ -6,7 +6,6 @@ import com.github.dineug.erdeditorintellijplugin.hub.document.DocumentFile
 import com.github.dineug.erdeditorintellijplugin.hub.document.DocumentRegistry
 import com.github.dineug.erdeditorintellijplugin.hub.document.HubView
 import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
-import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorTheme
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -80,10 +79,9 @@ class ErdEditor(
         val busConnection = ApplicationManager.getApplication().messageBus.connect(this)
         with(busConnection) {
             subscribe(ErdEditorAppSettings.SettingsChangedListener.TOPIC, this@ErdEditor)
-            // Auto shows the IDE's light or dark, so a new look and feel may change what it shows.
+            // Auto shows the IDE's light or dark, which the page keeps for its theme builder to pick.
             subscribe(LafManagerListener.TOPIC, LafManagerListener {
-                val settings = ErdEditorAppSettings.instance
-                if (settings.theme.appearance == ErdEditorTheme.AUTO) onSettingsChange(settings)
+                onSettingsChange(ErdEditorAppSettings.instance)
             })
         }
 
@@ -107,7 +105,7 @@ class ErdEditor(
             bridge.subscribe(coroutineScope) { action ->
                 when (action) {
                     is HostBridgeCommand.Initial -> {
-                        webviewPanel.dispatch(updateThemeCommand(ErdEditorAppSettings.instance))
+                        webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(ErdEditorAppSettings.instance))
                         webviewPanel.dispatch(
                             WebviewBridgeCommand.UpdateReadonly(file.isWritable.not())
                         )
@@ -363,16 +361,8 @@ class ErdEditor(
 
     override fun onSettingsChange(settings: ErdEditorAppSettings) {
         if (this::webviewPanel.isInitialized) {
-            webviewPanel.dispatch(updateThemeCommand(settings))
+            webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(settings))
         }
-    }
-
-    // The page shows auto as dark, so it only ever gets the light or dark auto stands for now.
-    private fun updateThemeCommand(settings: ErdEditorAppSettings): WebviewBridgeCommand {
-        val theme = settings.shownTheme
-        return WebviewBridgeCommand.UpdateTheme(
-            WebviewUpdateThemeCommandPayload(theme.appearance, theme.grayColor, theme.accentColor)
-        )
     }
 
     override fun getComponent(): JComponent = toolbarAndWebView

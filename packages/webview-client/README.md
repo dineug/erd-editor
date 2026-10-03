@@ -15,7 +15,7 @@ import { mountWebview } from '@dineug/erd-editor-webview-client';
 const client = mountWebview({
   dispatch: action => sendToHost(action),
   workerName: 'my-host/replication-store-worker',
-  resolveAppearance: () => readSystemTheme(), // what 'auto' means here; omit for dark
+  resolveAppearance: () => readSystemTheme(), // what 'auto' shows here; omit for dark
   importFile: true, // hand file dialogs to the host; omit to keep the editor's own input
   onMounted: () => placeholder.remove(),
 });
@@ -23,6 +23,10 @@ const client = mountWebview({
 // when the host's system theme changes
 client.refreshAppearance();
 ```
+
+The host's `'auto'` is the theme builder's System: `mountWebview` hands it to the editor as
+`'system'`, shown as `resolveAppearance()` answers (or as the `systemAppearance` a theme update
+names), and saves a System pick back as `'auto'`.
 
 The editor joins the document when the host answers `hostInitialCommand` with
 `webviewInitialValueCommand`; until then nothing is rendered. `dispose()` drops the listeners

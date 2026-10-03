@@ -26,6 +26,7 @@ import {
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
+import { openThemeBuilderAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 
 const { appContexts, gcState } = vi.hoisted(() => ({
@@ -97,6 +98,31 @@ type Editor = {
 };
 
 const editors: ErdEditorElement[] = [];
+
+/** A prefers-color-scheme query the spec flips; a removed element hears no change. */
+function stubColorScheme(matches: boolean) {
+  const listeners = new Set<(event: { matches: boolean }) => void>();
+  const query = {
+    matches,
+    addEventListener: (
+      _: string,
+      listener: (event: { matches: boolean }) => void
+    ) => listeners.add(listener),
+    removeEventListener: (
+      _: string,
+      listener: (event: { matches: boolean }) => void
+    ) => listeners.delete(listener),
+  };
+  vi.stubGlobal('matchMedia', () => query);
+
+  return {
+    listeners,
+    change(next: boolean) {
+      query.matches = next;
+      listeners.forEach(listener => listener({ matches: next }));
+    },
+  };
+}
 
 async function createEditor(
   props: Partial<ErdEditorProps> = {},
@@ -751,5 +777,70 @@ describe('<erd-editor>', () => {
     await flush();
 
     expect(root.classList.contains('dark')).toBe(false);
+  });
+
+  it('follows the OS color scheme on the root while the appearance is system', async () => {
+    const media = stubColorScheme(false);
+    try {
+      const { el, root } = await createEditor();
+      el.setPresetTheme({ appearance: 'system' });
+      await flush();
+      expect(root.classList.contains('dark')).toBe(false);
+
+      media.change(true);
+      await flush();
+      expect(root.classList.contains('dark')).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('reads the OS color scheme again when it is put back in the document', async () => {
+    const media = stubColorScheme(false);
+    try {
+      const { el, root } = await createEditor();
+      el.setPresetTheme({ appearance: 'system' });
+      await flush();
+
+      el.remove();
+      media.change(true);
+      document.body.append(el);
+      await flush();
+
+      expect(media.listeners.size).toBe(1);
+      expect(root.classList.contains('dark')).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('shows the light or dark a host names for system', async () => {
+    const { el, root } = await createEditor();
+
+    el.setPresetTheme({ appearance: 'system' });
+    el.setSystemAppearance('dark');
+    await flush();
+    expect(root.classList.contains('dark')).toBe(true);
+
+    el.setSystemAppearance('light');
+    await flush();
+    expect(root.classList.contains('dark')).toBe(false);
+  });
+
+  it('marks System in its theme builder while the appearance follows the system', async () => {
+    const { app, shadow } = await createEditor({
+      enableThemeBuilder: true,
+      systemDarkMode: true,
+    });
+
+    app.emitter.emit(openThemeBuilderAction());
+    await flush();
+
+    const selected = Array.from(
+      shadow.querySelectorAll('.theme-builder .selected')
+    )
+      .map(el => el.textContent)
+      .filter(Boolean);
+    expect(selected).toEqual(['System']);
   });
 });

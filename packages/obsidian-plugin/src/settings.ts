@@ -21,13 +21,19 @@ export type ThemeSettings = Pick<
   'appearance' | 'grayColor' | 'accentColor'
 >;
 
-/** A theme as the editor takes it, with auto already resolved to light or dark. */
-export type ResolvedTheme = ThemeOptions & { appearance: Appearance };
+/**
+ * A theme as the editor takes it: auto spelled system, as its theme builder
+ * names it, beside the light or dark Obsidian shows for system to follow.
+ */
+export type EditorTheme = Omit<ThemeSettings, 'appearance'> & {
+  appearance: Appearance | 'system';
+  systemAppearance: Appearance;
+};
 
 /** How a tab themes its editor, which main.ts implements over the settings. */
 export interface ThemeHost {
   /** The theme every open diagram shows now. */
-  current(): ResolvedTheme;
+  current(): EditorTheme;
   /** The theme the tab's own theme builder picked, the event detail as it came. */
   picked(theme: unknown): void;
 }
@@ -84,36 +90,30 @@ export function readSettings(data: unknown): PluginSettings {
   };
 }
 
-/** The theme to show, auto taking Obsidian's light or dark. */
-export function resolveTheme(
+/** The theme to show, auto following Obsidian's light or dark. */
+export function editorTheme(
   { appearance, grayColor, accentColor }: ThemeSettings,
   obsidianDark: boolean
-): ResolvedTheme {
+): EditorTheme {
   return {
-    appearance:
-      appearance === 'auto'
-        ? obsidianDark
-          ? Appearance.dark
-          : Appearance.light
-        : appearance,
+    appearance: appearance === 'auto' ? 'system' : appearance,
     grayColor,
     accentColor,
+    systemAppearance: obsidianDark ? Appearance.dark : Appearance.light,
   };
 }
 
 /**
- * What the editor's theme builder picked, as the settings keep it. The builder
- * always names light or dark, so while the setting is auto the one auto shows
- * now keeps it auto: picking a color does not pin the appearance.
+ * What the editor's theme builder picked, as the settings keep it: its system
+ * is auto. Anything missing or unknown keeps the current value.
  */
 export function themeFromBuilder(
   current: ThemeSettings,
-  picked: unknown,
-  obsidianDark: boolean
+  picked: unknown
 ): ThemeSettings {
-  const next = readTheme(picked, current);
-  const shown = resolveTheme(current, obsidianDark).appearance;
-  return current.appearance === 'auto' && next.appearance === shown
-    ? { ...next, appearance: 'auto' }
-    : next;
+  const saved = fields(picked);
+  return readTheme(
+    saved.appearance === 'system' ? { ...saved, appearance: 'auto' } : saved,
+    current
+  );
 }

@@ -21,7 +21,7 @@ import {
 import { type DocumentRegistry, type HubTab } from '@/hub';
 import { ERD_ICON } from '@/icon';
 import { type ScopeKey } from '@/keys';
-import { type ResolvedTheme, type ThemeHost } from '@/settings';
+import { type EditorTheme, type ThemeHost } from '@/settings';
 import {
   currentValue,
   type ExitSave,
@@ -279,7 +279,8 @@ export class ErdView extends TextFileView implements HubTab {
   }
 
   /** The theme every open diagram shows; one the tab's own builder picked is on screen already. */
-  applyTheme(theme: ResolvedTheme): void {
+  applyTheme({ systemAppearance, ...theme }: EditorTheme): void {
+    this.editor?.setSystemAppearance(systemAppearance);
     this.editor?.setPresetTheme(theme);
   }
 

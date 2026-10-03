@@ -5,10 +5,10 @@ import {
   ACCENT_COLORS,
   APPEARANCES,
   DEFAULT_SETTINGS,
+  editorTheme,
   GRAY_COLORS,
   readSettings,
   readTheme,
-  resolveTheme,
   themeFromBuilder,
   type ThemeSettings,
 } from '@/settings';
@@ -86,30 +86,32 @@ describe('readTheme', () => {
   });
 });
 
-describe('resolveTheme', () => {
+describe('editorTheme', () => {
   const theme: ThemeSettings = {
     appearance: 'auto',
     grayColor: 'sage',
     accentColor: 'jade',
   };
 
-  it('resolves auto to what Obsidian shows', () => {
-    expect(resolveTheme(theme, true)).toEqual({
-      appearance: 'dark',
+  it('hands auto over as system, beside the light or dark Obsidian shows', () => {
+    expect(editorTheme(theme, true)).toEqual({
+      appearance: 'system',
       grayColor: 'sage',
       accentColor: 'jade',
+      systemAppearance: 'dark',
     });
-    expect(resolveTheme(theme, false).appearance).toBe('light');
+    expect(editorTheme(theme, false).systemAppearance).toBe('light');
   });
 
   it('keeps light and dark whatever Obsidian shows', () => {
-    expect(resolveTheme({ ...theme, appearance: 'light' }, true)).toEqual({
+    expect(editorTheme({ ...theme, appearance: 'light' }, true)).toEqual({
       appearance: 'light',
       grayColor: 'sage',
       accentColor: 'jade',
+      systemAppearance: 'dark',
     });
     expect(
-      resolveTheme({ ...theme, appearance: 'dark' }, false).appearance
+      editorTheme({ ...theme, appearance: 'dark' }, false).appearance
     ).toBe('dark');
   });
 });
@@ -121,59 +123,50 @@ describe('themeFromBuilder', () => {
     accentColor: 'indigo',
   };
 
-  it('keeps auto when the builder names the appearance auto shows now', () => {
+  it("keeps the builder's system as auto", () => {
     expect(
       themeFromBuilder(
-        auto,
-        { appearance: 'dark', grayColor: 'slate', accentColor: 'crimson' },
-        true
+        { ...auto, appearance: 'light' },
+        { appearance: 'system', grayColor: 'slate', accentColor: 'crimson' }
       )
     ).toEqual({
       appearance: 'auto',
       grayColor: 'slate',
       accentColor: 'crimson',
     });
+  });
+
+  it('keeps auto while the builder picks a color under system', () => {
     expect(
-      themeFromBuilder(
-        auto,
-        { appearance: 'light', grayColor: 'sand', accentColor: 'indigo' },
-        false
-      )
+      themeFromBuilder(auto, {
+        appearance: 'system',
+        grayColor: 'sand',
+        accentColor: 'indigo',
+      })
     ).toEqual({ appearance: 'auto', grayColor: 'sand', accentColor: 'indigo' });
   });
 
-  it('takes the other appearance the builder picked over auto', () => {
+  it('takes the light or dark the builder picked over auto', () => {
     expect(
-      themeFromBuilder(
-        auto,
-        { appearance: 'light', grayColor: 'slate', accentColor: 'indigo' },
-        true
-      )
+      themeFromBuilder(auto, {
+        appearance: 'light',
+        grayColor: 'slate',
+        accentColor: 'indigo',
+      })
     ).toEqual({ ...auto, appearance: 'light' });
-  });
-
-  it('takes the builder whole once the setting names light or dark', () => {
-    const light: ThemeSettings = { ...auto, appearance: 'light' };
     expect(
-      themeFromBuilder(
-        light,
-        { appearance: 'dark', grayColor: 'mauve', accentColor: 'sky' },
-        false
-      )
+      themeFromBuilder(auto, {
+        appearance: 'dark',
+        grayColor: 'mauve',
+        accentColor: 'sky',
+      })
     ).toEqual({ appearance: 'dark', grayColor: 'mauve', accentColor: 'sky' });
-    expect(
-      themeFromBuilder(
-        light,
-        { appearance: 'light', grayColor: 'slate', accentColor: 'sky' },
-        true
-      )
-    ).toEqual({ ...light, accentColor: 'sky' });
   });
 
   it('keeps the current value for anything the detail lacks or holds wrong', () => {
-    expect(themeFromBuilder(auto, null, true)).toEqual(auto);
+    expect(themeFromBuilder(auto, null)).toEqual(auto);
     expect(
-      themeFromBuilder(auto, { appearance: 'dim', accentColor: 'plaid' }, false)
+      themeFromBuilder(auto, { appearance: 'dim', accentColor: 'plaid' })
     ).toEqual(auto);
   });
 });

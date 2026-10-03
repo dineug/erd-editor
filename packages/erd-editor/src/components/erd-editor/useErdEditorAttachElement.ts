@@ -32,9 +32,12 @@ import {
   AccentColorList,
   Appearance,
   AppearanceList,
+  AppearanceOptionList,
   createTheme,
   GrayColor,
   GrayColorList,
+  ResolvedThemeOptions,
+  SYSTEM_APPEARANCE,
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { Theme, ThemeTokens } from '@/themes/tokens';
@@ -71,7 +74,7 @@ const ExternalKeyBindingNameList = KeyBindingNameList.filter(
   key => !hasOmitKeyBindingName(key)
 );
 
-const defaultThemeOptions: ThemeOptions = {
+const defaultThemeOptions: ResolvedThemeOptions = {
   grayColor: GrayColor.slate,
   accentColor: AccentColor.indigo,
   appearance: Appearance.dark,
@@ -80,6 +83,7 @@ const defaultThemeOptions: ThemeOptions = {
 const hasGrayColor = arrayHas<string>(GrayColorList);
 const hasAccentColor = arrayHas<string>(AccentColorList);
 const hasAppearance = arrayHas<string>(AppearanceList);
+const hasAppearanceOption = arrayHas<string>(AppearanceOptionList);
 
 type Props = {
   props: ErdEditorProps;
@@ -93,10 +97,13 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   const getReadonly = () => props.readonly;
   const themeState = observable<{
     options: ThemeOptions;
+    /** What system shows once a host names it; null follows the OS color scheme. */
+    systemAppearance: Appearance | null;
     preset: Theme;
     custom: Partial<Theme>;
   }>({
     options: { ...defaultThemeOptions },
+    systemAppearance: null,
     preset: createTheme(defaultThemeOptions),
     custom: {},
   });
@@ -111,6 +118,23 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
   const darkMode = useDarkMode();
   const { addUnsubscribe } = useUnmounted();
+
+  const resolveAppearance = (): Appearance => {
+    const { options, systemAppearance } = themeState;
+    if (options.appearance !== SYSTEM_APPEARANCE) return options.appearance;
+    if (systemAppearance) return systemAppearance;
+    return darkMode.state.isDark ? Appearance.dark : Appearance.light;
+  };
+
+  const applyPreset = () => {
+    Object.assign(
+      themeState.preset,
+      createTheme({ ...themeState.options, appearance: resolveAppearance() })
+    );
+  };
+
+  const followsSystem = () =>
+    themeState.options.appearance === SYSTEM_APPEARANCE;
   const sharedStoreSet = new Set<SharedStore>();
   let presenceTrackerUnsubscribe: Unsubscribe | null = null;
   let presenceTrackerIntervalId: any = -1;
@@ -185,31 +209,31 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   const destroySet = new Set<Unsubscribe>([
+    // On, it picks system; off, it keeps the appearance system shows now.
     watch(props).subscribe(propName => {
-      if (propName !== 'systemDarkMode' || !props.systemDarkMode) {
-        return;
-      }
+      if (propName !== 'systemDarkMode') return;
 
-      themeState.options.appearance = darkMode.state.isDark
-        ? Appearance.dark
-        : Appearance.light;
+      if (props.systemDarkMode) {
+        themeState.options.appearance = SYSTEM_APPEARANCE;
+      } else if (followsSystem()) {
+        themeState.options.appearance = resolveAppearance();
+      }
     }),
     watch(darkMode.state).subscribe(propName => {
-      if (propName !== 'isDark' || !props.systemDarkMode) {
-        return;
-      }
+      if (propName !== 'isDark' || !followsSystem()) return;
+      if (themeState.systemAppearance) return;
 
-      themeState.options.appearance = darkMode.state.isDark
-        ? Appearance.dark
-        : Appearance.light;
+      applyPreset();
     }),
-    watch(themeState.options).subscribe(() => {
-      Object.assign(themeState.preset, createTheme(themeState.options));
-    }),
+    watch(themeState.options).subscribe(applyPreset),
     watch(themeState.preset).subscribe(() => {
       Object.assign(theme, themeState.preset, themeState.custom);
     }),
     watch(themeState).subscribe(propName => {
+      if (propName === 'systemAppearance') {
+        followsSystem() && applyPreset();
+        return;
+      }
       if (propName !== 'custom') return;
 
       Object.assign(theme, themeState.preset, themeState.custom);
@@ -288,10 +312,15 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     }
     if (
       isString(newThemeOptions.appearance) &&
-      hasAppearance(newThemeOptions.appearance)
+      hasAppearanceOption(newThemeOptions.appearance)
     ) {
       themeState.options.appearance = newThemeOptions.appearance;
     }
+  };
+
+  ctx.setSystemAppearance = appearance => {
+    themeState.systemAppearance =
+      isString(appearance) && hasAppearance(appearance) ? appearance : null;
   };
 
   ctx.setTheme = newTheme => {
@@ -390,6 +419,6 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     theme,
     themeState,
     destroySet,
-    hasDarkMode: () => themeState.options.appearance === Appearance.dark,
+    hasDarkMode: () => resolveAppearance() === Appearance.dark,
   };
 }

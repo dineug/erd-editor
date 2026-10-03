@@ -142,13 +142,13 @@ describe('applyPresetTheme', () => {
     grayColor: 'olive',
   };
 
-  it('keeps system when the builder only changed colors', () => {
+  it('keeps system when the builder picks colors under it', () => {
     expect(
-      applyPresetTheme(
-        system,
-        { appearance: 'light', accentColor: 'tomato', grayColor: 'sand' },
-        'light'
-      )
+      applyPresetTheme(system, {
+        appearance: 'system',
+        accentColor: 'tomato',
+        grayColor: 'sand',
+      })
     ).toEqual({
       appearance: 'system',
       accentColor: 'tomato',
@@ -156,37 +156,40 @@ describe('applyPresetTheme', () => {
     });
   });
 
-  it('leaves system for the appearance the builder switched to', () => {
+  it('takes the light or dark the builder picked over system', () => {
     expect(
-      applyPresetTheme(
-        system,
-        { appearance: 'dark', accentColor: 'jade', grayColor: 'olive' },
-        'light'
-      )
+      applyPresetTheme(system, {
+        appearance: 'dark',
+        accentColor: 'jade',
+        grayColor: 'olive',
+      })
     ).toEqual({ ...system, appearance: 'dark' });
+    expect(applyPresetTheme(system, { appearance: 'light' }).appearance).toBe(
+      'light'
+    );
   });
 
-  it('switches an explicit preference the same way', () => {
+  it('takes system the builder picked over light or dark', () => {
     const light: ThemeState = { ...system, appearance: 'light' };
 
-    expect(
-      applyPresetTheme(light, { appearance: 'dark' }, 'light').appearance
-    ).toBe('dark');
-    expect(
-      applyPresetTheme(light, { appearance: 'light' }, 'light').appearance
-    ).toBe('light');
+    expect(applyPresetTheme(light, { appearance: 'system' }).appearance).toBe(
+      'system'
+    );
+    expect(applyPresetTheme(light, { appearance: 'dark' }).appearance).toBe(
+      'dark'
+    );
   });
 
   it('ignores what the builder never emits and keeps the current values', () => {
     expect(
-      applyPresetTheme(
-        system,
-        { appearance: 'system', accentColor: 'beige', grayColor: 3 },
-        'dark'
-      )
+      applyPresetTheme(system, {
+        appearance: 'inherit',
+        accentColor: 'beige',
+        grayColor: 3,
+      })
     ).toEqual(system);
-    expect(applyPresetTheme(system, null, 'dark')).toEqual(system);
-    expect(applyPresetTheme(system, 'dark', 'light')).toEqual(system);
+    expect(applyPresetTheme(system, null)).toEqual(system);
+    expect(applyPresetTheme(system, 'dark')).toEqual(system);
   });
 });
 

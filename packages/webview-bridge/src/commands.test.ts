@@ -215,6 +215,24 @@ describe('commands over a Bridge', () => {
     expect(listener).toHaveBeenCalledWith({ appearance: 'dark' });
   });
 
+  it('round-trips the system appearance a host names beside auto', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(webviewUpdateThemeCommand, listener);
+
+    bridge.executeAction(
+      Bridge.executeCommand(webviewUpdateThemeCommand, {
+        appearance: 'auto',
+        systemAppearance: 'light',
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith({
+      appearance: 'auto',
+      systemAppearance: 'light',
+    });
+  });
+
   it('round-trips a primitive readonly payload', () => {
     const bridge = new Bridge();
     const listener = vi.fn();

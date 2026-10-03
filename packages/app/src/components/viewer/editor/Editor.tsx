@@ -6,7 +6,7 @@ import { useLayoutEffect, useRef } from 'react';
 
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
 import { useReplicationSchemaEntity } from '@/atoms/modules/sidebar';
-import { useApplyPresetTheme, useResolvedTheme } from '@/atoms/modules/theme';
+import { useApplyPresetTheme, useThemeState } from '@/atoms/modules/theme';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
 import { bridge } from '@/utils/broadcastChannel';
 
@@ -19,7 +19,7 @@ interface EditorProps {
 const Editor: React.FC<EditorProps> = props => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ErdEditorElement | null>(null);
-  const theme = useResolvedTheme();
+  const theme = useThemeState();
   const applyPresetTheme = useApplyPresetTheme();
   const replicationSchemaEntity = useReplicationSchemaEntity();
   const nickname = useAtomValue(nicknameStorageAtom);

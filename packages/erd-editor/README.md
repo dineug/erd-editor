@@ -131,7 +131,7 @@ erd-editor {
 | Attribute | Property | Description |
 | --- | --- | --- |
 | `readonly` | `readonly` | Blocks editing and suppresses the `change` event. Assigning `value`, `setSchemaSQL()`, `setSchemaGraphQL()`, `setSchemaDBML()`, `setSchemaAML()` and `clear()` are ignored while it is set — load with `setInitialValue()` instead. Viewport actions and the SQL/code output settings still apply. |
-| `system-dark-mode` | `systemDarkMode` | Follows the OS color scheme |
+| `system-dark-mode` | `systemDarkMode` | Sets the appearance to `system` when it turns on; turned off, the appearance stays the light or dark `system` shows. |
 | `enable-theme-builder` | `enableThemeBuilder` | Shows the built-in theme builder |
 
 ### Properties
@@ -151,7 +151,8 @@ erd-editor {
 | `setSchemaDBML(value: string)` | Parse a DBML string and **replace** the current document with it. Tables, columns, indexes and every `Ref` spelling are read; a `Project`, `TableGroup` or sticky `Note` is skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. |
 | `setSchemaAML(value: string)` | Parse an [AML](https://azimutt.app) string and **replace** the current document with it. Entities, attributes, indexes and every relation arrow are read, in the v2 and the legacy v1 spelling; a check, a struct type and a view are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. |
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
-| `setPresetTheme(options)` | Set `appearance`, `grayColor` and `accentColor`. |
+| `setPresetTheme(options)` | Set `appearance` (`light`, `dark` or `system`), `grayColor` and `accentColor`. `system` follows the OS color scheme, or what `setSystemAppearance` names. |
+| `setSystemAppearance(appearance)` | Name the light or dark `system` shows, for a host with its own theme (an IDE's light or dark); `null` hands it back to the OS color scheme. It changes nothing on screen unless the appearance is `system`. |
 | `setTheme(theme)` | Override individual theme tokens. |
 | `setKeyBindingMap(map)` | Remap shortcuts, `search` and `findReplace` among them. `edit`, `stop`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
 | `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport. `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
@@ -164,7 +165,7 @@ erd-editor {
 | Event | Description |
 | --- | --- |
 | `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too. A scroll leaves `value` as it was with Save Scroll Information off; a zoom moves the scroll position too, so it leaves `value` as it was only with Save Zoom Information and Save Scroll Information both off. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
-| `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options. |
+| `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options, whose `appearance` is `system` when the theme builder's System is picked. |
 
 ## Key bindings
 
