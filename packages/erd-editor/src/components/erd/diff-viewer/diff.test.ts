@@ -116,7 +116,11 @@ function createState(tables: TableSeed[]): RootState {
     });
   });
 
-  return app.store.state;
+  // The relationship hooks recalculate on a 10 ms throttle, which fires after
+  // the file's environment is gone unless the store lets go of them.
+  const { state } = app.store;
+  app.store.destroy();
+  return state;
 }
 
 const pathsOf = (diffMap: DiffMap, id: string) =>
