@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-03 -->
 
 # replication-store-worker
 
@@ -22,13 +22,13 @@ A headless replica of the open document in a dedicated module `Worker`, so the I
 
 - **Import `@dineug/erd-editor/engine.js` (DOM-free), never the package root**, which registers custom elements and throws in a worker. `tsconfig.json` sets `lib: ["ES2022", "WebWorker"]`, so `document` does not typecheck.
 - **Keep the one constructor spelling** `new Worker(new URL(…, import.meta.url), …)` in `src/index.ts`: Vite bundles a worker only from that literal shape, `tools/vite/worker-url.ts` rewrites Vite's output back into it, and `vscode-webview`'s same-origin rewrite matches it in `dist/`. The worker file imports `engine.js` and the bridge bare (both `dependencies`), and each webview's bundler builds it as its own entry — see those packages for how each host loads it.
-- **`toWidth` must stay in step with `packages/erd-editor/src/utils/text.ts`** (`400 12px` over the same font stack, `TEXT_PADDING` 2). The replica recomputes `ui.width*` with it when it replays an edit, and its value is what the host saves. Without `OffscreenCanvas` it falls back to `text.length * 10`, where the page measures a hidden span instead.
+- **`toWidth` has twins that must measure alike**: `packages/app/src/utils/text.ts` is this package's `src/utils/text.ts` byte for byte (the measure of `app`'s IndexedDB replicas and of a new Drive file's content), and the page's `createText` in `packages/erd-editor/src/utils/text.ts` uses the same `400 12px` over the same font stack and `TEXT_PADDING` 2; a change to one goes into all three, and a change to the no-canvas fallback, `text.length * 10`, also into `erd-editor`'s `src/engine/to-width.ts` (`defaultToWidth`, the peer's). This replica recomputes `ui.width*` with `toWidth` when it replays an edit, and its value is what the host saves. Without `OffscreenCanvas` it falls back to that estimate, where the page measures a hidden span instead.
 - The replica serializes and reports; it does not own the file or talk to other tabs — the host does both.
 
 ### Testing Requirements
 
 - No test task and no scripts; the gate is `pnpm exec vp run --filter @dineug/erd-editor-replication-store-worker --fail-if-no-match build`.
-- Nothing runs the worker in CI, and its failure is silent: edits never persist. Verify in an IDE — open a `.erd`, edit, confirm the file on disk changes.
+- Only CI's `vscode-extension-e2e` runs the worker, in a real VS Code webview: `vuerd-vscode`'s `test/integration/agent-hub.test.ts` has a peer's batch dirty the tab and saves it to disk, and has a view change leave the tab clean through the `changed` flag. Nowhere else does a failure show, since edits just never persist. Verify in an IDE — open a `.erd`, edit, confirm the file on disk changes.
 
 ### Common Patterns
 

@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-03 -->
 
 # erd-editor-schema
 
 ## Purpose
 
-Defines the persisted `.erd` / `.vuerd` document: v2 and v3 schemas, defensive parsers, v2↔v3 conversion, a query layer over v3 collections, and the LWW operators. `@dineug/erd-editor` is its only workspace consumer. The package is private but the format is public: every document `schemaV3Parser` builds, a converted v2 one included, is stamped with a `$schema` URL pointing at the repo-root `json-schema/schema.json`.
+Defines the persisted `.erd` / `.vuerd` document: v2 and v3 schemas, defensive parsers, v2↔v3 conversion, a query layer over v3 collections, and the LWW operators. Its workspace consumers are `@dineug/erd-editor` and `mcp-server`, which lists it as a devDependency and inlines `parser`, `query`, `toJson` and `createSchema` into its published bundle (`SchemaV3Constants` only in its specs). The package is private but the format is public: every document `schemaV3Parser` builds, a converted v2 one included, is stamped with a `$schema` URL pointing at the repo-root `json-schema/schema.json`.
 
 ## Key Files
 

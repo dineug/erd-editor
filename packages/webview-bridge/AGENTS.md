@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-03 -->
 
 # webview-bridge
 
@@ -13,7 +13,7 @@
 | --- | --- |
 | `src/bridge.ts` | `Bridge` (`registerCommand`, `executeAction`, static `executeCommand` / `mergeRegister`) and `createCommand` |
 | `src/commands.ts` | The wire catalogue: six `host*` commands (webview → host) and five `webview*` (host → webview) |
-| `src/theme.ts` | `Appearance` / `GrayColor` / `AccentColor` `as const` maps and `ThemeOptions`; the IntelliJ plugin's `ErdEditorThemeTest` reads this file and fails when its settings page lists other values |
+| `src/theme.ts` | `Appearance` / `GrayColor` / `AccentColor` `as const` maps and `ThemeOptions`; a value added or removed fails a spec in each of three hosts until that host follows: `vscode-extension`'s manifest enums, which its `src/configuration.test.ts` holds to these maps; the Obsidian plugin's `readSettings`, which takes these values and falls back to the default for any other, and whose `settings.test.ts` pins six gray and 26 accent colors; the IntelliJ plugin's settings page, whose `ErdEditorThemeTest` reads this file, holds the page's lists equal to these maps in source order, `auto` added to the appearances, and pins the same counts |
 | `src/safeCallback.ts` | Runs one listener and logs its exception, so one bad listener does not stop the rest |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, minify: false, preserveModules: true })` — the private-library shape |
 
@@ -21,12 +21,14 @@
 
 ### Working In This Directory
 
-- **`src/commands.ts` is a wire protocol.** Adding, renaming or retyping a command ripples to:
+- **`src/commands.ts` is a wire protocol.** Adding, renaming or retyping a command, or changing what a payload field means, ripples to:
   - `packages/webview-client/src/mountWebview.ts` and its spec — the webview side of every command;
   - `packages/replication-store-worker/src/services/replicationStore.worker.ts` — `webviewInitialValueCommand`, `webviewReplicationCommand`, `hostSaveValueCommand`;
-  - `packages/vscode-extension/src/erd-editor.ts` — the VSCode host;
-  - `packages/intellij-plugin/src/main/kotlin/…/editor/WebviewBridge.kt` and `ErdEditor.kt` — a hand-kept Kotlin mirror that no TypeScript build sees;
+  - `packages/vscode-extension/src/erd-editor.ts` and `src/hub/documentRegistry.ts` — the VSCode host, and the hub registry that injects agent batches as `webviewReplicationCommand` and counts each replica save for the hub's quiet wait;
+  - `packages/obsidian-plugin/src/ErdView.ts` and `src/hub/registry.ts` — the Obsidian host, which drives its own replica worker with `webviewInitialValueCommand`, `webviewReplicationCommand` and `hostSaveValueCommand`, and the hub registry whose quiet wait counts each replica save;
+  - `packages/intellij-plugin/src/main/kotlin/…/editor/WebviewBridge.kt` and `ErdEditor.kt`, a hand-kept Kotlin mirror that no TypeScript build sees, pinned by its `WebviewBridgeCommandTest`, and `…/hub/document/DocumentRegistry.kt`, whose quiet wait counts each replica save;
   - `src/commands.test.ts`, which pins the exact set of eleven.
+- **A payload field a consumer ignores fails no build, and neither does a new meaning for an old field**, so the list above is walked by hand: `changed` on `hostSaveValueCommand` reached every host's save and every hub's quiet wait that way.
 - **A command's `type` string is its identity and equals its export name** (`commands.test.ts` asserts it). Listeners are keyed by that string, not by token, so two commands sharing a string receive each other's payloads.
 - **Payloads must survive `JSON.stringify` / `JSON.parse`** — IntelliJ carries every action as a string. Binary is base64-encoded by the caller (`webview-client`), never here.
 - `executeAction` checks only that the value is a plain object with a string `type`; payload shape is never validated.

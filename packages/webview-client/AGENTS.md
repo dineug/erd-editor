@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-09-06 | Updated: 2026-09-19 -->
+<!-- Generated: 2026-09-06 | Updated: 2026-10-03 -->
 
 # webview-client
 
@@ -31,7 +31,7 @@
 ### Testing Requirements
 
 - `pnpm exec vp run --filter @dineug/erd-editor-webview-client --fail-if-no-match test` — happy-dom. The spec mocks `@dineug/erd-editor` and `@dineug/erd-editor-replication-store-worker` and stubs `document.createElement('erd-editor')` with a node carrying spies, so it needs no Konva, shadow root or real worker; the bridge is real.
-- This is the only automated test of the protocol handling; the two webview bundles have none.
+- This is the only spec of every command; the two webview bundles have none of their own. For the VSCode bundle, `vuerd-vscode`'s Extension Host spec `agent-hub.test.ts` (its `e2e` script, outside `pnpm test`) drives the built bundle and asserts this wiring end to end: the `hostInitialCommand` that makes a webview ready, a peer's batch arriving as `webviewReplicationCommand`, and the replica's `hostSaveValueCommand`, whose `changed` flag decides whether the tab turns dirty.
 
 ## Dependencies
 
