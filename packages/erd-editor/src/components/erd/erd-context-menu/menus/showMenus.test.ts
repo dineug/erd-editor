@@ -25,11 +25,41 @@ const NAME_TO_SHOW: Array<[string, number]> = [
   ['Relationship', Show.relationship],
 ];
 
+const ALL_MENUS = [
+  ...NAME_TO_SHOW.map(([name]) => name),
+  'Referential Actions',
+];
+const referentialActions = () =>
+  createShowMenus(app).find(menu => menu.name === 'Referential Actions');
+
 describe('showMenus', () => {
   it('exposes one menu per view option in declaration order', () => {
-    expect(createShowMenus(app).map(menu => menu.name)).toEqual(
-      NAME_TO_SHOW.map(([name]) => name)
-    );
+    expect(createShowMenus(app).map(menu => menu.name)).toEqual(ALL_MENUS);
+  });
+
+  it('checks Referential Actions while its hide bit is off, which a new document leaves it', () => {
+    expect(
+      bHas(app.store.state.settings.show, Show.hideReferentialAction)
+    ).toBe(false);
+    expect(referentialActions()?.checked).toBe(true);
+  });
+
+  it('sets the hide bit as Referential Actions is turned off, and clears it as it is turned on', async () => {
+    referentialActions()?.onClick();
+    await flush();
+
+    expect(
+      bHas(app.store.state.settings.show, Show.hideReferentialAction)
+    ).toBe(true);
+    expect(referentialActions()?.checked).toBe(false);
+
+    referentialActions()?.onClick();
+    await flush();
+
+    expect(
+      bHas(app.store.state.settings.show, Show.hideReferentialAction)
+    ).toBe(false);
+    expect(referentialActions()?.checked).toBe(true);
   });
 
   it('derives checked from the settings show bitmask', () => {

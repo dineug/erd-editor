@@ -41,8 +41,9 @@ export const CanvasType = {
 export type CanvasType = ValuesType<typeof CanvasType>;
 export const CanvasTypeList: ReadonlyArray<string> = Object.values(CanvasType);
 
-// Append only, like the lists below. columnAlternateKey is off in every
-// document that predates it, so a diagram keeps its layout until it is shown.
+// Append only, like the lists below. columnAlternateKey is off in documents that
+// predate it, so a diagram keeps its layout; hideReferentialAction reads the other
+// way round, so every document shows the action labels on connectors at first.
 export const Show = {
   tableComment: 1,
   columnComment: 2,
@@ -54,6 +55,7 @@ export const Show = {
   columnNotNull: 128,
   relationship: 256,
   columnAlternateKey: 512,
+  hideReferentialAction: 1024,
 } as const;
 
 export const ColumnType = {

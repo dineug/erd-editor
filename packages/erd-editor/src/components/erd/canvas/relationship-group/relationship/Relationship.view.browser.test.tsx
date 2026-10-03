@@ -15,7 +15,11 @@ import type { AppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/relationship-group/relationship/Relationship';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
-import { CanvasType, RelationshipType } from '@/constants/schema';
+import {
+  CanvasType,
+  ReferentialAction,
+  RelationshipType,
+} from '@/constants/schema';
 import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
 import {
   changeVisualizationModeAction,
@@ -23,7 +27,10 @@ import {
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
-import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  changeRelationshipOnDeleteAction,
+} from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { Point, Relationship as RelationshipType_ } from '@/internal-types';
@@ -279,6 +286,24 @@ describe('Relationship under a view provider', () => {
       toPathD(getRelationshipPath(relationship, 'flow').path.path.d())
     );
     expect(relationship.end.x).toBeLessThan(1_000);
+  });
+
+  it('draws no referential action label and writes no tooltip, a view drawing no distinction by kind', async () => {
+    const { app } = await createApp();
+    app.store.dispatchSync(
+      changeRelationshipOnDeleteAction({
+        id: 'r1',
+        value: ReferentialAction.cascade,
+      })
+    );
+    const relationship = app.store.state.collections.relationshipEntities.r1;
+    const stage = mountShell(app, relationship, 'flow');
+    await flush();
+    await whenDrawn();
+
+    expect(childNamed(stage, 'relationship-action-label')).toBeUndefined();
+    stage.findOne('.relationship')!.fire('mouseenter');
+    expect(stage.container().getAttribute('title')).toBeNull();
   });
 
   it('draws the same entity at the document anchors in a sibling with no provider', async () => {

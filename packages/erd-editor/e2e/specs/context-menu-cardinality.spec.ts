@@ -14,7 +14,9 @@ import {
 
 const RELATIONSHIP_ID = 'users_posts';
 
-function linkedTables(): ErdDocument {
+function linkedTables(
+  actions: { onDelete?: number; onUpdate?: number } = {}
+): ErdDocument {
   return createSchema({
     tables: [
       {
@@ -55,6 +57,7 @@ function linkedTables(): ErdDocument {
         startColumnIds: ['users_id'],
         endTableId: 'posts',
         endColumnIds: ['posts_user_id'],
+        ...actions,
       },
     ],
   });
@@ -178,5 +181,43 @@ test.describe('connector context menu', () => {
       onUpdate: ReferentialAction.setNull,
     });
     await expect(erd.canvas.locator('.relationship')).toHaveCount(1);
+  });
+
+  test('the connector labels the actions it sets, spells them out on hover, and View Option hides the label', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(
+      linkedTables({
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.restrict,
+      })
+    );
+    const label = erd.canvas.locator('.relationship-action-label');
+    const title = () =>
+      page.evaluate(() =>
+        Reflect.get(window, '__erdStages')
+          .canvas.container()
+          .getAttribute('title')
+      );
+
+    await expect(label).toHaveText('D:C U:R');
+
+    await erd.hoverAt(await erd.sceneHitPoint(RELATIONSHIP_ID));
+    await expect.poll(title).toBe('ON DELETE CASCADE\nON UPDATE RESTRICT');
+    await erd.hoverAway();
+    await expect.poll(title).toBeNull();
+
+    await erd.clickAt(await erd.emptyPoint(), { button: 'right' });
+    await erd.contextMenu.getByText('View Option', { exact: true }).hover();
+    await erd.contextMenu
+      .nth(1)
+      .getByText('Referential Actions', { exact: true })
+      .click();
+
+    await expect(label).toHaveCount(0);
+    // The tooltip stays, as the label is only the glance.
+    await erd.hoverAt(await erd.sceneHitPoint(RELATIONSHIP_ID));
+    await expect.poll(title).toBe('ON DELETE CASCADE\nON UPDATE RESTRICT');
   });
 });

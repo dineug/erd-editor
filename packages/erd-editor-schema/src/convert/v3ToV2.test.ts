@@ -297,6 +297,16 @@ describe('v3ToV2', () => {
       expect(Object.values(canvas.show).some(Boolean)).toBe(false);
     });
 
+    it('drops the referential action label bit, which v2 has no field for', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.show = Show.hideReferentialAction;
+
+      const { canvas } = v3ToV2(schemaV3);
+
+      expect(Object.keys(canvas.show)).not.toContain('hideReferentialAction');
+      expect(Object.values(canvas.show).some(Boolean)).toBe(false);
+    });
+
     it('maps bit enums back onto v2 string enums', () => {
       const { canvas } = v3ToV2(createSchemaV3());
 

@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
-import { FC, observable } from '@dineug/r-html';
+import { FC, observable, onUnmounted } from '@dineug/r-html';
+import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { useAppContext } from '@/components/appContext';
 import {
@@ -30,6 +31,7 @@ import {
   getRelationshipPath,
   toPathD,
 } from '@/utils/draw-relationship/pathFinding';
+import { referentialActionTitle } from '@/utils/referentialAction';
 
 import {
   decorationLine,
@@ -140,6 +142,8 @@ export type RelationshipProps = {
   strokeWidth: number;
   /** Whether the view lights this connector, decided by the scene it is drawn in. */
   lit?: boolean;
+  /** Told as the pointer comes onto the connector and leaves it, for its label to light along. */
+  onHover?: (id: string, hover: boolean) => void;
 };
 
 const Relationship: FC<RelationshipProps> = (props, ctx) => {
@@ -147,11 +151,40 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
   const state = observable({ hover: false });
+  // The canvas container a pointer resting on this connector titles.
+  let titled: HTMLElement | null = null;
 
-  const handleMouseenter = () => {
+  /**
+   * Spells the clauses out in the canvas's native tooltip, as the toolbar's
+   * buttons name themselves, whether the label shows or not. Run on each
+   * render too, as a peer or an agent may change them under a resting pointer.
+   */
+  const writeTitle = () => {
+    const title = referentialActionTitle(props.relationship);
+    title
+      ? titled?.setAttribute('title', title)
+      : titled?.removeAttribute('title');
+  };
+
+  const clearTitle = () => {
+    titled?.removeAttribute('title');
+    titled = null;
+  };
+
+  const showTitle = (event: KonvaEventObject<MouseEvent>) => {
+    if (sourceRef.value !== 'document') return;
+    titled = event.target.getStage()?.container() ?? null;
+    writeTitle();
+  };
+
+  onUnmounted(clearTitle);
+
+  const handleMouseenter = (event: KonvaEventObject<MouseEvent>) => {
     const { relationship } = props;
     const { store } = app.value;
     state.hover = true;
+    props.onHover?.(relationship.id, true);
+    showTitle(event);
     store.dispatch(
       hoverColumnMapAction({
         columnIds: [
@@ -165,6 +198,8 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
   const handleMouseleave = () => {
     const { store } = app.value;
     state.hover = false;
+    props.onHover?.(props.relationship.id, false);
+    clearTitle();
     store.dispatch(hoverColumnMapAction({ columnIds: [] }));
   };
 
@@ -212,6 +247,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       stroke,
       strokeWidth
     );
+    if (titled) writeTitle();
 
     return (
       <k-group

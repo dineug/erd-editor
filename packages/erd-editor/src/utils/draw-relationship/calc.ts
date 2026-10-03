@@ -1,3 +1,4 @@
+import { Show } from '@/constants/schema';
 import { ShowMode } from '@/engine/modules/editor/state';
 import { getSourceView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
@@ -55,7 +56,9 @@ function tableSize(
  */
 function documentTableSize(state: RootState, table: Table): PendingSize {
   const { settings } = state;
-  const key = `${getWidthGeneration()}|${settings.show}|${settings.maxWidthComment}|${table.ui.widthName}|${table.ui.widthComment}|${table.columnIds.length}`;
+  // The referential action labels sit on the connectors and size no table.
+  const show = settings.show & ~Show.hideReferentialAction;
+  const key = `${getWidthGeneration()}|${show}|${settings.maxWidthComment}|${table.ui.widthName}|${table.ui.widthComment}|${table.columnIds.length}`;
 
   return {
     key,

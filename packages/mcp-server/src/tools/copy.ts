@@ -366,8 +366,9 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     description:
       'Shows or hides one part of the diagram, such as column comments or relationship lines. Setting the value it already has changes nothing.',
     args: {
-      show: 'The part of the diagram.',
-      value: 'True to show it, false to hide it.',
+      show: 'The part of the diagram. hideReferentialAction reads the other way round: it hides the ON DELETE and ON UPDATE labels on relationship lines, which show by default.',
+      value:
+        'True to show it, false to hide it; for hideReferentialAction, true hides the labels.',
     },
   },
 

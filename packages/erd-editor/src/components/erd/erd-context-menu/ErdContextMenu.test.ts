@@ -314,6 +314,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Alternate Key',
       'Auto Increment',
       'Relationship',
+      'Referential Actions',
     ]);
 
     const before = app.store.state.settings.show;

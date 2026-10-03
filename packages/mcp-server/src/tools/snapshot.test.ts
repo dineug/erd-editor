@@ -122,6 +122,7 @@ describe('the agent snapshot', () => {
         columnNotNull: true,
         relationship: true,
         columnAlternateKey: false,
+        hideReferentialAction: false,
       },
       maxWidthComment: -1,
       // The seed starts as a new document, which saves neither half of the view.

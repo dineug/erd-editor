@@ -1,6 +1,6 @@
 // P4-A: a scene node owns its own interaction. It calls its own hooks and
 // dispatches its own actions, so a callback prop is only justified where a
-// parent must coordinate siblings, which today is the column drag pair alone.
+// parent must coordinate siblings: the column drag pair and the connector hover.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -17,15 +17,20 @@ const CALLBACK_PROP_PASSED = /\bon[A-Z][A-Za-z0-9_]*\s*=\{/g;
 
 /**
  * Column hands the drag boundary up because Table decides the drop index, and
- * that decision reads the order of every sibling column. Nothing else in the
- * scene needs a parent to answer a question for it.
+ * that decision reads the order of every sibling column. A connector hands its
+ * hover up because the group draws its label in a later pass, as a sibling.
  */
 const DECLARED = [
+  'relationship-group/relationship/Relationship.tsx onHover',
   'table/column/Column.tsx onDragend',
   'table/column/Column.tsx onDragstart',
 ];
 
-const PASSED = ['table/Table.tsx onDragend', 'table/Table.tsx onDragstart'];
+const PASSED = [
+  'relationship-group/RelationshipGroup.tsx onHover',
+  'table/Table.tsx onDragend',
+  'table/Table.tsx onDragstart',
+];
 
 /**
  * The two dom files AC-S1 whitelists under this root. They mount dom shells and
@@ -76,7 +81,7 @@ describe('the canvas scene owns its interaction (P4-A)', () => {
     expect(hits(CALLBACK_PROP_DECLARATION)).toEqual([...DECLARED].sort());
   });
 
-  it('passes a callback prop only from the table that owns the drop order', () => {
+  it('passes a callback prop only from the parents that coordinate siblings', () => {
     expect(hits(CALLBACK_PROP_PASSED, DOM_SHELLS)).toEqual([...PASSED].sort());
   });
 

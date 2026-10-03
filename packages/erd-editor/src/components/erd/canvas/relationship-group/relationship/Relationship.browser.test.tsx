@@ -25,10 +25,18 @@ import {
 } from '@/constants/layout';
 import {
   Direction,
+  ReferentialAction,
   RelationshipType,
+  Show,
   StartRelationshipType,
 } from '@/constants/schema';
 import { hoverRelationshipMapAction } from '@/engine/modules/editor/atom.actions';
+import {
+  addRelationshipAction,
+  changeRelationshipOnDeleteAction,
+} from '@/engine/modules/relationship/atom.actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { Point, Relationship as RelationshipType_ } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
@@ -432,6 +440,114 @@ describe('Relationship as konva nodes', () => {
     await settle();
     expect(app.store.state.editor.hoverColumnMap).toEqual({});
     expect(route.getAttr('stroke')).toBe(THEME.keyFK);
+  });
+});
+
+const withActions = (value: Parameters<typeof createRelationship>[0] = {}) =>
+  makeRelationship({
+    onDelete: ReferentialAction.cascade,
+    onUpdate: ReferentialAction.restrict,
+    ...value,
+  });
+
+const titleOf = (group: Container) =>
+  group.getStage()!.container().getAttribute('title');
+
+describe('the referential action tooltip', () => {
+  it('spells the clauses out on the canvas while hovered, and takes them away on leave', async () => {
+    const { group } = await mountRelationship(withActions());
+
+    group.fire('mouseenter');
+    expect(titleOf(group)).toBe('ON DELETE CASCADE\nON UPDATE RESTRICT');
+
+    group.fire('mouseleave');
+    expect(titleOf(group)).toBeNull();
+  });
+
+  it('spells them out with the label hidden too', async () => {
+    const { app, group } = await mountRelationship(withActions());
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideReferentialAction, value: true })
+    );
+    await settle();
+
+    group.fire('mouseenter');
+
+    expect(titleOf(group)).toBe('ON DELETE CASCADE\nON UPDATE RESTRICT');
+  });
+
+  it('writes none for a connector that sets neither action', async () => {
+    const { group } = await mountRelationship(makeRelationship());
+
+    group.fire('mouseenter');
+
+    expect(titleOf(group)).toBeNull();
+  });
+
+  it('rewrites its tooltip as a peer changes the actions under a resting pointer', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addTableAction({ id: 't2', ui: { x: 600, y: 0, zIndex: 2 } }),
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: RelationshipType.ZeroN,
+        start: { tableId: 't1', columnIds: [] },
+        end: { tableId: 't2', columnIds: [] },
+      })
+    );
+    const container = document.createElement('div');
+    document.body.append(container);
+    const rendered = renderScene({
+      app,
+      container,
+      scene: sceneOf(
+        app.store.state.collections.relationshipEntities.r1,
+        RELATIONSHIP_STROKE_WIDTH
+      ),
+      width: 800,
+      height: 600,
+      theme: THEME,
+    });
+    teardowns.push(() => {
+      rendered.destroy();
+      container.remove();
+    });
+    await settle();
+    const group = rendered.stage.findOne<Container>('.relationship')!;
+
+    group.fire('mouseenter');
+    await settle();
+    expect(titleOf(group)).toBeNull();
+
+    app.store.dispatchSync(
+      changeRelationshipOnDeleteAction({
+        id: 'r1',
+        value: ReferentialAction.cascade,
+      })
+    );
+    await settle();
+    expect(titleOf(group)).toBe('ON DELETE CASCADE');
+
+    app.store.dispatchSync(
+      changeRelationshipOnDeleteAction({
+        id: 'r1',
+        value: ReferentialAction.none,
+      })
+    );
+    await settle();
+    expect(titleOf(group)).toBeNull();
+  });
+
+  it('takes its tooltip away when it unmounts hovered', async () => {
+    const { group } = await mountRelationship(withActions());
+    const container = group.getStage()!.container();
+    group.fire('mouseenter');
+    expect(container.getAttribute('title')).not.toBeNull();
+
+    teardowns.splice(0).forEach(teardown => teardown());
+
+    expect(container.getAttribute('title')).toBeNull();
   });
 });
 
