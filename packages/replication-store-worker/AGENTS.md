@@ -28,7 +28,7 @@ A headless replica of the open document in a dedicated module `Worker`, so the I
 ### Testing Requirements
 
 - No test task and no scripts; the gate is `pnpm exec vp run --filter @dineug/erd-editor-replication-store-worker --fail-if-no-match build`.
-- Only CI's `vscode-extension-e2e` runs the worker, in a real VS Code webview: `vuerd-vscode`'s `test/integration/agent-hub.test.ts` has a peer's batch dirty the tab and saves it to disk, and has a view change leave the tab clean through the `changed` flag. Nowhere else does a failure show, since edits just never persist. Verify in an IDE — open a `.erd`, edit, confirm the file on disk changes.
+- In CI only `vscode-extension-e2e` runs the worker, in a real VS Code webview: `vuerd-vscode`'s `test/integration/agent-hub.test.ts` has a peer's batch dirty the tab and saves it to disk, and has a view change leave the tab clean through the `changed` flag. Outside CI the two editor smokes run it too (`pnpm --filter @dineug/erd-editor-intellij-plugin smoke` and `pnpm --filter @dineug/erd-editor-obsidian-plugin smoke`; the root `AGENTS.md` gives what they need first), in a sandbox JetBrains IDE and in Obsidian, and check what reaches the file (the IntelliJ smoke's step A7 waits for an agent edit on disk). No other spec runs it, and a broken replica fails nothing else, since edits just never persist. Verify in an IDE — open a `.erd`, edit, confirm the file on disk changes.
 
 ### Common Patterns
 
