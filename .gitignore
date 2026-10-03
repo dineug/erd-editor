@@ -58,7 +58,9 @@ packages/*/e2e/.bench
 .vite-hooks/_
 
 # Vitest browser mode
-# A failing spec writes its attachments here, and `toMatchScreenshot` keeps its
-# baselines beside the spec; both are machine-local and neither is committed.
+# A failing spec writes its attachments under .vitest (.vitest-attachments before
+# Vitest 5), and `toMatchScreenshot` keeps its baselines beside the spec; all are
+# machine-local and none is committed.
+.vitest
 .vitest-attachments
 __screenshots__

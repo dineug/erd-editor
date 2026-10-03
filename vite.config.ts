@@ -121,16 +121,16 @@ export default defineConfig({
               ],
               patterns: [
                 {
-                  regex:
-                    '^effect/(?:[A-Z]|index$|internal/|testing/|unstable/[^/]+/)',
+                  regex: '^effect/(?:[A-Z]|index$|[a-z-]+/)',
                   caseSensitive: true,
                   message:
-                    "Import from effect, effect/testing or an effect/unstable/<group> barrel, the entries effect's package.json names; a module path resolves only through its ./* wildcard.",
+                    "Import from effect or a group barrel such as effect/testing or effect/socket, the entries effect's package.json names; a module path resolves only through its ./* wildcard.",
                 },
                 {
-                  regex: '^effect/unstable/(?:schema|sql)(?:/|$)',
+                  regex: '^effect/(?:schema|sql)(?:/|$)',
+                  caseSensitive: true,
                   message:
-                    'SchemaAOTCompiler and Migrator, each with a dynamic import, live here.',
+                    'SchemaJITCompiler, which builds decoders with Function, and Migrator, which loads migrations with a dynamic import, live here.',
                 },
                 {
                   regex:
@@ -286,6 +286,21 @@ export default defineConfig({
       'local/jsdoc-attached': 'error',
       'local/jsdoc-prose-limit': 'error',
       'local/no-comment-markdown': 'error',
+      // The React Compiler rules oxlint 1.85 put in correctness. They misread
+      // erd-editor's hooks, which are r-html's, and app does not run the
+      // compiler; taking them up for app is a change of its own.
+      'react/error-boundaries': 'off',
+      'react/globals': 'off',
+      'react/immutability': 'off',
+      'react/incompatible-library': 'off',
+      'react/preserve-manual-memoization': 'off',
+      'react/purity': 'off',
+      'react/refs': 'off',
+      'react/set-state-in-effect': 'off',
+      'react/set-state-in-render': 'off',
+      'react/static-components': 'off',
+      'react/use-memo': 'off',
+      'react/void-use-memo': 'off',
     },
   },
   fmt: {

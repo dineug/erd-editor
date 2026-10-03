@@ -203,10 +203,9 @@ type IntrinsicHTMLElements = {
 };
 
 type IntrinsicSVGElements = {
-  [Tag in Exclude<
-    keyof SVGElementTagNameMap,
-    keyof HTMLElementTagNameMap
-  >]: SVGAttributes;
+  [
+    Tag in Exclude<keyof SVGElementTagNameMap, keyof HTMLElementTagNameMap>
+  ]: SVGAttributes;
 };
 
 export declare namespace JSX {

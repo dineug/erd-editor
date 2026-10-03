@@ -25,9 +25,9 @@ function isMessage(value: unknown): boolean {
 }
 
 /**
- * Whether a stdin line is a JSON-RPC message, or a batch of them, that effect's
- * decoder takes without throwing. A throw there loses the rest of the chunk,
- * and a line it cannot parse stays in its buffer, blocking every later one.
+ * Whether a stdin line is a JSON-RPC message, or a batch of them, that effect
+ * serves as one. Unreadable headers throw there, losing the rest of the chunk;
+ * an unparsable line it skips unlogged, and MessageStdin logs it unless blank.
  */
 export function isMessageLine(line: string): boolean {
   let value: unknown;

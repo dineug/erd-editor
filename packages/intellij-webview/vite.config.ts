@@ -91,29 +91,31 @@ export default defineConfig({
             from: ['dependencies', 'devDependencies', 'peerDependencies'],
           },
         ],
-        input: [
-          { auto: true },
-          'src/**',
-          'package.json',
-          'vite.config.ts',
-          'index.html',
-          'tsconfig.json',
-          { pattern: 'tsconfig.app.json', base: 'workspace' },
-          {
-            pattern: 'packages/webview-client/dist/**/*.d.ts',
-            base: 'workspace',
-          },
-          '!**/*.tsbuildinfo',
-        ],
-        // 이 패키지는 자기 밖에 쓴다 — Gradle이 그 산출물을 클래스패스 리소스로
-        // 싣는다. 빠뜨리면 캐시 히트가 터미널 출력만 재생하고 산출물을 복원하지
-        // 않는다.
-        output: [
-          {
-            pattern: 'packages/intellij-plugin/src/main/resources/assets/**',
-            base: 'workspace',
-          },
-        ],
+        cache: {
+          input: [
+            { auto: true },
+            'src/**',
+            'package.json',
+            'vite.config.ts',
+            'index.html',
+            'tsconfig.json',
+            { pattern: 'tsconfig.app.json', base: 'workspace' },
+            {
+              pattern: 'packages/webview-client/dist/**/*.d.ts',
+              base: 'workspace',
+            },
+            '!**/*.tsbuildinfo',
+          ],
+          // 이 패키지는 자기 밖에 쓴다 — Gradle이 그 산출물을 클래스패스 리소스로
+          // 싣는다. 자동 쓰기 추적 대신 이 글롭이 복원 범위라서 놓친 파일은 캐시
+          // 히트가 되살리지 않는다. outDir을 옮기면 함께 옮긴다.
+          output: [
+            {
+              pattern: 'packages/intellij-plugin/src/main/resources/assets/**',
+              base: 'workspace',
+            },
+          ],
+        },
       },
     },
   },

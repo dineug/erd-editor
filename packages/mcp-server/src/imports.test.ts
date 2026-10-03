@@ -19,11 +19,10 @@ const SPECIFIER =
 
 /**
  * The entries effect's package.json exports by name, which its own docs import
- * from; a module path resolves only through the wildcard. The rc keeps
- * SchemaAOTCompiler and Migrator, each with a dynamic import, in schema and sql.
+ * from; a module path resolves only through the wildcard. Schema holds the JIT
+ * compiler, which builds decoders with Function, and sql a dynamic import.
  */
-const EFFECT_ENTRY =
-  /^effect(?:\/testing|\/unstable\/(?!schema$|sql$)[a-z]+)?$/;
+const EFFECT_ENTRY = /^effect(?:\/(?!index$|schema$|sql$)[a-z-]+)?$/;
 
 /** Platform-node's barrel re-exports NodeRedis, whose redis this workspace does not install. */
 const PLATFORM_MODULE = /^@effect\/platform-node\/[A-Z]\w*$/;
@@ -64,8 +63,8 @@ describe('effect is imported from its documented entries', () => {
       expect.arrayContaining([
         'effect',
         'effect/testing',
-        'effect/unstable/ai',
-        'effect/unstable/socket',
+        'effect/ai',
+        'effect/socket',
         '@effect/platform-node/NodeRuntime',
         '@effect/platform-node/NodeStdio',
       ])
@@ -83,17 +82,16 @@ describe('effect is imported from its documented entries', () => {
   it('recognizes every form it guards against', () => {
     // Spelled through variables so a plain grep of src finds no module path here.
     const effect = 'effect';
-    const unstable = `${effect}/unstable`;
     const platformNode = '@effect/platform-node';
     const refused = [
       `${effect}/Effect`,
       `${effect}/Schema`,
       `${effect}/testing/TestClock`,
-      `${unstable}/ai/McpServer`,
-      `${unstable}/socket/Socket`,
-      `${unstable}/schema`,
-      `${unstable}/sql`,
-      `${unstable}/schema/SchemaAOTCompiler`,
+      `${effect}/ai/McpServer`,
+      `${effect}/socket/Socket`,
+      `${effect}/schema`,
+      `${effect}/sql`,
+      `${effect}/schema/SchemaAOTCompiler`,
       platformNode,
       `${platformNode}/NodeStdio/extra`,
       `${platformNode}-shared/NodeSocket`,
@@ -130,9 +128,9 @@ describe('effect is imported from its documented entries', () => {
           `import { Effect, Layer } from 'effect';`,
           `import type { Cause } from 'effect';`,
           `import { TestClock } from 'effect/testing';`,
-          `import { McpServer } from 'effect/unstable/ai';`,
-          `import { Socket } from 'effect/unstable/socket';`,
-          `import { Ndjson } from 'effect/unstable/encoding';`,
+          `import { McpServer } from 'effect/ai';`,
+          `import { Socket } from 'effect/socket';`,
+          `import { Ndjson } from 'effect/encoding';`,
           `import * as NodeStdio from '@effect/platform-node/NodeStdio';`,
           `vi.mock('@effect/platform-node/NodeRuntime', () => ({}));`,
           `await vi.importActual<typeof import('effect')>('effect');`,

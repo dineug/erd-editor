@@ -16,7 +16,7 @@ import {
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import type { Cause } from 'effect';
 import { Effect, Exit, FileSystem, Layer, Queue, Scope, Stream } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 import {
   afterEach,
   beforeEach,

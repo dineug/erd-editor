@@ -35,8 +35,11 @@ export type BatchRun = {
   withoutUndo: number[];
 };
 
-/** What an operation's as may be, the name its $name references use. */
-export const OPERATION_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/**
+ * What an operation's as may be, the name its $name references use. The u flag
+ * is what lets effect write the pattern into the schema tools/list shows.
+ */
+export const OPERATION_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 const REFERENCE = /^\$([A-Za-z_][A-Za-z0-9_]*)(?:\.(\d+|last))?$/;
 
 /**

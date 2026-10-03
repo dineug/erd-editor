@@ -414,6 +414,47 @@ describe('the hub on close', () => {
     expect(hub.host.subscriptions()).toBe(0);
     expect(io.lock()).toBeUndefined();
   });
+
+  it('lets a host give up on a close a stalled task holds, and deletes the lock once that task returns', async () => {
+    const { hub, io } = start();
+    await flush();
+    let write!: () => void;
+    io.fs.rename.mockImplementationOnce((from: string, to: string) =>
+      Effect.promise(
+        () => new Promise<void>(resolve => (write = resolve))
+      ).pipe(
+        Effect.andThen(
+          Effect.sync(() => {
+            io.files.set(to, io.files.get(from)!);
+            io.files.delete(from);
+          })
+        )
+      )
+    );
+    const writing = hub.setDocuments(['/ws/a.erd.json']);
+    await flush();
+    vi.useFakeTimers();
+
+    // Both hosts' bound, Effect.timeout at 5 seconds: effect runs a scope's
+    // finalizers uninterruptibly, so only the hub's own release lets it end.
+    const disposing = Effect.runPromise(
+      hub.dispose.pipe(
+        Effect.as('closed'),
+        Effect.timeout('5 seconds'),
+        Effect.catchTag('TimeoutError', () => Effect.succeed('gave up'))
+      )
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    await expect(disposing).resolves.toBe('gave up');
+    expect(io.lock()).toMatchObject({ hub: true });
+    vi.useRealTimers();
+    write();
+    await writing;
+    await flush();
+    expect(io.lock()).toBeUndefined();
+    expect(io.servers.size).toBe(0);
+  });
 });
 
 describe('releaseSync', () => {

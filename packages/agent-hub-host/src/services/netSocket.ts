@@ -2,7 +2,7 @@ import * as net from 'node:net';
 
 import type { Array as Arr } from 'effect';
 import { Effect, Scope } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 
 type Pull = Effect.Effect<
   Arr.NonEmptyReadonlyArray<string>,

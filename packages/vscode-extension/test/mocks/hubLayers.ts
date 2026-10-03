@@ -32,7 +32,7 @@ import {
   Scope,
   Stream,
 } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 import { type Mock, vi } from 'vite-plus/test';
 
 import {

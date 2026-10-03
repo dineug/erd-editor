@@ -1,4 +1,5 @@
 import {
+  type HubNotification,
   lockDirPath,
   lockFilePath,
   type LockRecord,
@@ -58,6 +59,8 @@ export type MemoryHost = MemoryFs & {
   readonly identities: Map<string, string>;
   writeLock: (pid: number, record: LockRecord, mtimeMs?: number) => void;
   removeLock: (pid: number) => void;
+  /** Settles once a session took a hub notification that matches, its handler run. */
+  taken: (match: (notification: HubNotification) => boolean) => Promise<void>;
   /** Files, paths, the process and hub connections, all in memory. */
   readonly layer: Layer.Layer<Platform>;
   /** Runs an effect on this host, logging to stderr as the server does. */
@@ -78,6 +81,10 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
   const fs = createMemoryFs();
   fs.mkdir(lockDirPath(home));
   fs.mkdir(cwd);
+  const takenWaiters = new Set<{
+    match: (notification: HubNotification) => boolean;
+    resolve: () => void;
+  }>();
 
   const access: MemoryHost['access'] = {
     keepsAccess: () => Effect.succeed(true),
@@ -112,6 +119,31 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
     },
   }) as MemoryHost;
 
+  const connector = HubConnector.make(pipe => host.connect(pipe));
+  /**
+   * Connects over the pipes; once a session's handler took a notification,
+   * every waiter of taken that it matches settles.
+   */
+  const connect: HubConnector.HubConnectorShape['connect'] = (
+    candidate,
+    options
+  ) =>
+    connector.connect(candidate, {
+      ...options,
+      onNotification: notification => {
+        try {
+          options.onNotification?.(notification);
+        } finally {
+          for (const waiter of Array.from(takenWaiters)) {
+            if (waiter.match(notification)) {
+              takenWaiters.delete(waiter);
+              waiter.resolve();
+            }
+          }
+        }
+      },
+    });
+
   const platformLayer: Layer.Layer<Platform> = Layer.mergeAll(
     fs.layer,
     Layer.effect(
@@ -138,7 +170,7 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
       platform,
       isAlive: pid => alive.has(pid),
     }),
-    HubConnector.layerWith(pipe => host.connect(pipe))
+    Layer.succeed(HubConnector.HubConnector, { connect })
   );
 
   const services = HubDiscovery.layer.pipe(
@@ -147,6 +179,10 @@ export function createMemoryHost(options: MemoryHostOptions = {}): MemoryHost {
   );
 
   return Object.assign(host, {
+    taken: (match: (notification: HubNotification) => boolean) =>
+      new Promise<void>(resolve => {
+        takenWaiters.add({ match, resolve });
+      }),
     layer: platformLayer,
     run: <A, E>(effect: Effect.Effect<A, E, HostServices>) =>
       Effect.runPromise(Effect.provide(effect, services)),

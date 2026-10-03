@@ -158,10 +158,11 @@ IDE, or straight on disk. Everything else is internal.
 
 ## Development
 
-Requires Node 22 (`.nvmrc` pins `22.23.2`, which CI runs; Vite+ needs 22.18 or later) and pnpm
-`10.34.3`, which `packageManager` pins for you. The published MCP server needs Node 22.12 or later.
-The IntelliJ plugin additionally needs a JDK; Gradle's toolchain resolver fetches JDK 21 if your
-machine has none.
+Requires Node 22.22.1 or later on the 22 line, 24.11 or later on the 24, or 26 and up (`.nvmrc`
+pins `22.23.2`, which CI runs; Vite+ needs 22.18, and the lint-staged its pre-commit hook runs
+needs 22.22.1 and Git 2.32) and pnpm `10.34.3`, which `packageManager` pins for you. The published
+MCP server needs Node 22.12 or later. The IntelliJ plugin additionally needs a JDK; Gradle's
+toolchain resolver fetches JDK 21 if your machine has none.
 
 ```sh
 pnpm install

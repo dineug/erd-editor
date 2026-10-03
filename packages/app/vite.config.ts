@@ -251,36 +251,40 @@ export default defineConfig(({ mode }) => {
           // input은 두 서브태스크가 공유한다(실측) — 그래서 소스만 바뀌어도
           // 자동 추적에 안 잡히는 tsc가 다시 돈다.
           command: ['tsc --noEmit', 'vp build'],
-          // Listed so the Google client id compiled into /gdrive reaches the
-          // build and keys its cache; a task otherwise runs in a clean env.
-          env: ['VITE_GOOGLE_CLIENT_ID'],
           dependsOn: [
             {
               task: 'build',
               from: ['dependencies', 'devDependencies', 'peerDependencies'],
             },
           ],
-          input: [
-            { auto: true },
-            'src/**',
-            'vitest.config.*',
-            'vitest.setup.ts',
-            'package.json',
-            'vite.config.ts',
-            'index.html',
-            'public/**',
-            'tsconfig.json',
-            { pattern: 'tsconfig.app.json', base: 'workspace' },
-            {
-              pattern: 'packages/erd-editor/dist/**/*.d.ts',
-              base: 'workspace',
-            },
-            { pattern: 'functions/**', base: 'workspace' },
-            '!**/*.tsbuildinfo',
-            '!dist/**',
-          ],
-          // 빠뜨리면 캐시 히트가 터미널 출력만 재생하고 산출물을 복원하지 않는다.
-          output: ['dist/**'],
+          cache: {
+            // The Google client id compiled into /gdrive. vp build reports VITE_*
+            // itself, so the build would get it and key on it unlisted (measured);
+            // listed, it keys the tsc gate's cache too.
+            env: ['VITE_GOOGLE_CLIENT_ID'],
+            input: [
+              { auto: true },
+              'src/**',
+              'vitest.config.*',
+              'vitest.setup.ts',
+              'package.json',
+              'vite.config.ts',
+              'index.html',
+              'public/**',
+              'tsconfig.json',
+              { pattern: 'tsconfig.app.json', base: 'workspace' },
+              {
+                pattern: 'packages/erd-editor/dist/**/*.d.ts',
+                base: 'workspace',
+              },
+              { pattern: 'functions/**', base: 'workspace' },
+              '!**/*.tsbuildinfo',
+              '!dist/**',
+            ],
+            // 자동 쓰기 추적 대신 이 글롭이 복원 범위다. 명령이 쓰지 않은 파일도
+            // 글롭에 들면 보관된다(실측) — 루트 AGENTS.md의 캐시 재생 항목.
+            output: ['dist/**'],
+          },
         },
         test: {
           // 타입 게이트 ②. vp test(built-in)는 run.tasks를 무시하므로 이 게이트를
@@ -292,24 +296,26 @@ export default defineConfig(({ mode }) => {
               from: ['dependencies', 'devDependencies', 'peerDependencies'],
             },
           ],
-          input: [
-            { auto: true },
-            'src/**',
-            'vitest.config.*',
-            'vitest.setup.ts',
-            'package.json',
-            'vite.config.ts',
-            'index.html',
-            'public/**',
-            'tsconfig.json',
-            { pattern: 'tsconfig.app.json', base: 'workspace' },
-            {
-              pattern: 'packages/erd-editor/dist/**/*.d.ts',
-              base: 'workspace',
-            },
-            { pattern: 'functions/**', base: 'workspace' },
-            '!**/*.tsbuildinfo',
-          ],
+          cache: {
+            input: [
+              { auto: true },
+              'src/**',
+              'vitest.config.*',
+              'vitest.setup.ts',
+              'package.json',
+              'vite.config.ts',
+              'index.html',
+              'public/**',
+              'tsconfig.json',
+              { pattern: 'tsconfig.app.json', base: 'workspace' },
+              {
+                pattern: 'packages/erd-editor/dist/**/*.d.ts',
+                base: 'workspace',
+              },
+              { pattern: 'functions/**', base: 'workspace' },
+              '!**/*.tsbuildinfo',
+            ],
+          },
         },
       },
     },

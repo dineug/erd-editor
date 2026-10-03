@@ -1,7 +1,7 @@
 import * as NodePath from '@effect/platform-node/NodePath';
 import type { Cause, FileSystem, Path, Stdio } from 'effect';
 import { Effect, Layer } from 'effect';
-import { McpProtocol, McpServer } from 'effect/unstable/ai';
+import { McpProtocol, McpServer } from 'effect/ai';
 
 import * as HubConnector from '@/hub/client';
 import * as HubDiscovery from '@/hub/discovery';

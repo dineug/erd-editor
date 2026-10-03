@@ -35,8 +35,7 @@ function imports(source: string): Array<{ module: string; typeOnly: boolean }> {
 }
 
 /** The entries effect's package.json names; platform-node by module path only. */
-const EFFECT_ENTRY =
-  /^effect(?:\/testing|\/unstable\/(?!schema$|sql$)[a-z]+)?$/;
+const EFFECT_ENTRY = /^effect(?:\/(?!index$|schema$|sql$)[a-z-]+)?$/;
 const PLATFORM_MODULE = /^@effect\/platform-node\/[A-Z]\w*$/;
 
 const production = Object.entries(hubSources).filter(

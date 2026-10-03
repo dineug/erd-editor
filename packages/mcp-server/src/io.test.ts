@@ -25,7 +25,7 @@ import { basename, join } from 'node:path';
 import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem';
 import * as NodePath from '@effect/platform-node/NodePath';
 import { Effect, Fiber, FileSystem, Layer, Stream } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 import {
   afterEach,
   beforeEach,

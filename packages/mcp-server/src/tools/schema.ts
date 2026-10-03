@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import { McpSchema } from 'effect/unstable/ai';
+import { McpSchema } from 'effect/ai';
 
 import type { ToolArg, ToolArgKind } from '@/tools/registry';
 

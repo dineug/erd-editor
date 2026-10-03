@@ -1,5 +1,5 @@
 import { Cause, Context, Effect, Schema } from 'effect';
-import { McpSchema, McpServer } from 'effect/unstable/ai';
+import { McpSchema, McpServer } from 'effect/ai';
 
 import { SessionManager } from '@/session/manager';
 import { describeArg, describeTool } from '@/tools/copy';

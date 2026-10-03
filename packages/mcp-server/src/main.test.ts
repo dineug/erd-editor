@@ -25,10 +25,14 @@ afterEach(() => {
 
 const { serve } = await import('@/main');
 
+// Vitest clears every mock's calls before each test, so the call the import
+// made is copied while it is still there.
+const mainCalls = [...runMain.mock.calls];
+
 describe('the entry point', () => {
   it('runs the server as the main program, with runMain reporting off since it reports on stdout', () => {
-    expect(runMain).toHaveBeenCalledTimes(1);
-    const [program, options] = runMain.mock.calls[0];
+    expect(mainCalls).toHaveLength(1);
+    const [program, options] = mainCalls[0];
     expect(Effect.isEffect(program)).toBe(true);
     expect(options).toEqual({ disableErrorReporting: true });
   });

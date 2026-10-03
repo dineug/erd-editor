@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import { join } from 'node:path';
 
 import { Effect } from 'effect';
-import { Socket } from 'effect/unstable/socket';
+import { Socket } from 'effect/socket';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { specPipePath } from '@/__test-utils__/platform';

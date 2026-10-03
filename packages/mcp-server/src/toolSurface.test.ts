@@ -9,6 +9,7 @@ import {
 } from '@/__test-utils__/mcp';
 import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import { SERVER_VERSION } from '@/server';
+import { OPERATION_NAME } from '@/tools/batch';
 import { SQL_VENDORS } from '@/tools/read';
 import { actionTools } from '@/tools/registry';
 import { isDestructive, SESSION_TOOL_NAMES } from '@/tools/toolkit';
@@ -236,6 +237,14 @@ describe('the tool surface (AC-M8)', () => {
       ...actionTools.map(({ name }) => name),
       'erd_batch',
     ]);
+  });
+
+  it('advertises the pattern an erd_batch operation names its ids with', () => {
+    const { properties } = tool('erd_batch').inputSchema as any;
+
+    expect(properties.operations.items.properties.as.pattern).toBe(
+      OPERATION_NAME.source
+    );
   });
 
   it('keeps every input schema inline, with no $defs', () => {

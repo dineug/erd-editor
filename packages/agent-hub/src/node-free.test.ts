@@ -23,11 +23,10 @@ const SPECIFIER =
 
 /**
  * Effect through the entries its package.json exports by name, as the root lint
- * rule has it: never a module path, and neither schema nor sql, where the rc
- * keeps SchemaAOTCompiler and Migrator. Platform-node is not a dependency here.
+ * rule has it: never a module path, and neither schema nor sql, where effect
+ * keeps SchemaJITCompiler and Migrator. Platform-node is not a dependency here.
  */
-const EFFECT_ENTRY =
-  /^effect(?:\/testing|\/unstable\/(?!schema$|sql$)[a-z]+)?$/;
+const EFFECT_ENTRY = /^effect(?:\/(?!index$|schema$|sql$)[a-z-]+)?$/;
 
 const isTestCode = (path: string) =>
   path.endsWith('.test.ts') || path.startsWith('./__test-utils__/');
@@ -102,11 +101,7 @@ describe('agent-hub stays free of node builtins', () => {
   });
 
   it('allows the documented effect entries only, never a module path', () => {
-    for (const specifier of [
-      'effect',
-      'effect/testing',
-      'effect/unstable/encoding',
-    ]) {
+    for (const specifier of ['effect', 'effect/testing', 'effect/encoding']) {
       expect(EFFECT_ENTRY.test(specifier)).toBe(true);
     }
     // Spelled through a variable so a plain grep of src finds no module path here.
@@ -114,9 +109,10 @@ describe('agent-hub stays free of node builtins', () => {
     for (const specifier of [
       `${effect}/Schema`,
       `${effect}/testing/TestClock`,
-      `${effect}/unstable/encoding/Ndjson`,
-      `${effect}/unstable/schema`,
-      `${effect}/unstable/sql`,
+      `${effect}/index`,
+      `${effect}/encoding/Ndjson`,
+      `${effect}/schema`,
+      `${effect}/sql`,
       'effect-schema',
       '@effect/platform-node',
     ]) {
@@ -169,10 +165,10 @@ describe('agent-hub stays free of node builtins', () => {
         [
           `import { Schema } from 'effect';`,
           `import type { Stream } from "effect";`,
-          `export * from 'effect/unstable/encoding';`,
+          `export * from 'effect/encoding';`,
           `const { Effect } = await import('effect');`,
         ].join('\n')
       )
-    ).toEqual(['effect', 'effect', 'effect/unstable/encoding', 'effect']);
+    ).toEqual(['effect', 'effect', 'effect/encoding', 'effect']);
   });
 });

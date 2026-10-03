@@ -45,10 +45,12 @@ describe('a call that fails unexpectedly', () => {
       .call('erd_read', { path: '/work/a.erd.json', format: 'snapshot' })
       .catch((reason: unknown) => reason);
 
-    // The dated protocols carry every tool error, an internal one too, as -32602.
+    // The dated protocols answer a handler's internal error with -32603 (effect
+    // #8552). PROTOCOLS does not list 2025-11-25, which answers it as an isError
+    // result instead.
     expect(error).toBeInstanceOf(RpcError);
     expect(error).toMatchObject({
-      code: -32602,
+      code: -32603,
       message: 'Tool execution failed due to an internal server error.',
     });
     expect(console.error).toHaveBeenCalledWith(
