@@ -1,6 +1,7 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { isTakenOver } from '@/components/find-replace/panelLayout';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { Open } from '@/constants/open';
@@ -11,7 +12,11 @@ import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
 } from '@/engine/modules/settings/atom.actions';
-import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
+import {
+  openFindReplaceAction,
+  openThemeBuilderAction,
+  toggleSearchAction,
+} from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Toolbar.styles';
@@ -55,6 +60,12 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   const handleSearch = () => {
     const { emitter } = app.value;
     emitter.emit(toggleSearchAction());
+  };
+
+  /** Shown on every tab, as opening brings the ERD tab up, so the bar never shifts. */
+  const handleFindReplace = () => {
+    const { emitter } = app.value;
+    emitter.emit(openFindReplaceAction());
   };
 
   const handleTheme = () => {
@@ -162,6 +173,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           on:click={handleSearch}
         >
           <Icon name="search" size={16} />
+        </div>
+        <div
+          class={[styles.menu, { disabled: isTakenOver(store.state) }]}
+          title={title(
+            props.readonly ? 'Find' : 'Find and Replace',
+            KeyBindingName.findReplace
+          )}
+          on:click={handleFindReplace}
+        >
+          <Icon name="text-search" size={16} />
         </div>
         {props.enableThemeBuilder ? (
           <div class={styles.menu} title="Theme" on:click={handleTheme}>

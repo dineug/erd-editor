@@ -47,6 +47,12 @@ export const menu = css`
     cursor: pointer;
     color: var(--active);
   }
+
+  &.disabled {
+    cursor: not-allowed;
+    color: var(--foreground);
+    opacity: 0.4;
+  }
 `;
 
 export const tableCount = css`

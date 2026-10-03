@@ -246,47 +246,46 @@ test.describe('Find and Replace', () => {
     expect(await prevented()).toEqual([true, true, true, true]);
   });
 
-  test('leaves its chord to the page find on every other tab, where the palette row still opens it', async ({
+  test('takes its chord on every other tab too, bringing the ERD tab up, no page find opening', async ({
     erd,
     page,
   }) => {
     await erd.seed(schema());
     await page.evaluate(() => {
       Reflect.set(window, '__finds', []);
-      window.addEventListener('keydown', event => {
-        if (event.code === 'KeyF') Reflect.get(window, '__finds').push(event);
-      });
+      window.addEventListener(
+        'keydown',
+        event => {
+          if (event.code === 'KeyF') Reflect.get(window, '__finds').push(event);
+        },
+        true
+      );
     });
-    const heard = () =>
+    const prevented = () =>
       page.evaluate(() =>
         (Reflect.get(window, '__finds') as KeyboardEvent[]).map(
           event => event.defaultPrevented
         )
       );
+    const findInput = panelOf(erd).locator('.find-input');
 
-    for (const [tab, canvasType] of [
-      ['Schema SQL', 'builtin-schema-sql'],
-      ['Code Generator', 'builtin-generator-code'],
-      ['Settings', 'settings'],
+    for (const tab of [
+      'Visualization',
+      'Schema SQL',
+      'Code Generator',
+      'Settings',
     ]) {
       await erd.toolbarButton(tab).click();
       await erd.focusHost();
       await erd.press(Shortcut.findReplace);
 
-      expect((await erd.settings()).canvasType).toContain(canvasType);
+      expect((await erd.settings()).canvasType).toBe('ERD');
+      await expect(findInput).toBeFocused();
+      await erd.press('Escape');
       await expect(panelOf(erd)).toHaveCount(0);
     }
-    // Heard by the page unprevented, so a browser opens its own find there.
-    expect(await heard()).toEqual([false, false, false]);
-
-    await erd.press(Shortcut.search);
-    await erd.host
-      .locator('.quick-search')
-      .getByText('Find and Replace', { exact: true })
-      .click();
-
-    expect((await erd.settings()).canvasType).toBe('ERD');
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    // Prevented, so a browser opens no find bar over any of them.
+    expect(await prevented()).toEqual([true, true, true, true]);
   });
 
   test('leaves its chord to the page find under time travel, and takes it once that closes', async ({
@@ -316,7 +315,7 @@ test.describe('Find and Replace', () => {
     await erd.focusHost();
     await erd.press(Shortcut.findReplace);
     await expect(panelOf(erd)).toHaveCount(0);
-    // Heard by the page unprevented, as on the editor's other tabs.
+    // Heard by the page unprevented, so the host's find opens there.
     expect(await heard()).toEqual([false]);
 
     await erd.press('Escape');
@@ -326,6 +325,34 @@ test.describe('Find and Replace', () => {
 
     await expect(panelOf(erd).locator('.find-input')).toBeFocused();
     expect(await heard()).toEqual([false]);
+  });
+
+  test('opens from its toolbar button on any tab, which stays put and greys out under time travel', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    const button = erd.toolbarButton('Find and Replace');
+
+    // An edit, so time travel has a history to open on.
+    await erd.focusHost();
+    await erd.press(Shortcut.addTable);
+    await erd.toolbarButton('Time Travel').click();
+    await expect(erd.toolbarButton('Undo')).toHaveCount(0);
+
+    await expect(button).toHaveClass(/\bdisabled\b/);
+    await button.click();
+    await expect(panelOf(erd)).toHaveCount(0);
+
+    await erd.press('Escape');
+    await expect(erd.toolbarButton('Undo')).toHaveCount(1);
+    await expect(button).not.toHaveClass(/\bdisabled\b/);
+
+    await erd.toolbarButton('Schema SQL').click();
+    await expect(button).toBeVisible();
+    await button.click();
+
+    expect((await erd.settings()).canvasType).toBe('ERD');
+    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
   });
 
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({

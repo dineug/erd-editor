@@ -2,6 +2,7 @@ import { html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import { TAKEOVERS } from '@/components/find-replace/panelLayout';
 import Toolbar from '@/components/toolbar/Toolbar';
 import * as styles from '@/components/toolbar/Toolbar.styles';
 import { Open } from '@/constants/open';
@@ -23,7 +24,12 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { openThemeBuilderAction, toggleSearchAction } from '@/utils/emitter';
+import {
+  openFindReplaceAction,
+  openThemeBuilderAction,
+  toggleSearchAction,
+} from '@/utils/emitter';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 let mounted: Mounted | null = null;
 
@@ -224,6 +230,90 @@ describe('Toolbar', () => {
       expect(openThemeBuilder.mock.calls[0][0].type).toBe(
         openThemeBuilderAction().type
       );
+    });
+  });
+
+  describe('find and replace menu', () => {
+    const findReplace = () => menu('Find and Replace');
+
+    it('opens Find and Replace through the emitter', async () => {
+      const { app } = await setup();
+      const openFindReplace = vi.fn();
+      app.emitter.on({ openFindReplace });
+
+      findReplace().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(openFindReplace).toHaveBeenCalledTimes(1);
+      expect(openFindReplace.mock.calls[0][0]).toEqual(openFindReplaceAction());
+    });
+
+    it('stands right after Search, enabled, and names its chord on the ERD tab', async () => {
+      const { app } = await setup();
+
+      expect(menu('Search').nextElementSibling).toBe(findReplace());
+      expect(findReplace().getAttribute('class')).not.toContain('disabled');
+      expect(findReplace().title).toBe(
+        toShortcutTitle(
+          app.keyBindingMap,
+          'Find and Replace',
+          KeyBindingName.findReplace
+        )
+      );
+      expect(findReplace().title).not.toBe('Find and Replace');
+    });
+
+    for (const canvasType of [
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.settings,
+    ]) {
+      it(`keeps its place and its chord on the ${canvasType} tab`, async () => {
+        const { app } = await setup();
+        app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
+        await flush();
+
+        expect(menu('Search').nextElementSibling).toBe(findReplace());
+        expect(findReplace().getAttribute('class')).not.toContain('disabled');
+        expect(findReplace().title).toBe(
+          toShortcutTitle(
+            app.keyBindingMap,
+            'Find and Replace',
+            KeyBindingName.findReplace
+          )
+        );
+      });
+    }
+
+    it('reads Find in a read-only editor, which offers no replace', async () => {
+      const { app } = await setup({ readonly: true });
+
+      expect(findReplace()).toBeNull();
+      expect(menu('Search').nextElementSibling).toBe(menu('Find'));
+      expect(menu('Find').title).toBe(
+        toShortcutTitle(app.keyBindingMap, 'Find', KeyBindingName.findReplace)
+      );
+    });
+
+    for (const open of TAKEOVERS) {
+      it(`keeps its place but shows disabled while ${open} takes the canvas over`, async () => {
+        const { app } = await setup();
+        app.store.dispatchSync(changeOpenMapAction({ [open]: true }));
+        await flush();
+
+        expect(menu('Search').nextElementSibling).toBe(findReplace());
+        expect(findReplace().getAttribute('class')).toContain('disabled');
+      });
+    }
+
+    it('stays enabled under table properties, which opening the panel closes', async () => {
+      const { app } = await setup();
+      app.store.dispatchSync(
+        changeOpenMapAction({ [Open.tableProperties]: true })
+      );
+      await flush();
+
+      expect(findReplace().getAttribute('class')).not.toContain('disabled');
     });
   });
 

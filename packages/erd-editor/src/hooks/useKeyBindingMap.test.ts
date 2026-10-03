@@ -20,7 +20,7 @@ import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
-import { bindsOnTab, useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const Probe: FC<{}> = (props, ctx) => {
@@ -194,7 +194,7 @@ describe('useKeyBindingMap', () => {
     CanvasType.generatorCode,
     CanvasType.settings,
   ])(
-    'leaves $mod+KeyF to the host find on the %s tab, from the canvas or a caret',
+    'takes $mod+KeyF on the %s tab too, from the canvas or a caret, as the panel brings the ERD tab up',
     canvasType => {
       app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
       const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
@@ -207,14 +207,13 @@ describe('useKeyBindingMap', () => {
       const inField = keydown({ key: 'f', code: 'KeyF', mod: true });
       input.dispatchEvent(inField);
 
-      expect(shortcuts).toHaveLength(0);
-      expect(onCanvas.defaultPrevented).toBe(false);
-      expect(inField.defaultPrevented).toBe(false);
-      expect(outside).toHaveBeenCalledTimes(2);
-      // The other chords stay the editor's there.
-      expect(
-        press({ key: 'k', code: 'KeyK', mod: true }).defaultPrevented
-      ).toBe(true);
+      expect(shortcuts.map(({ type }) => type)).toEqual([
+        KeyBindingName.findReplace,
+        KeyBindingName.findReplace,
+      ]);
+      expect(onCanvas.defaultPrevented).toBe(true);
+      expect(inField.defaultPrevented).toBe(true);
+      expect(outside).not.toHaveBeenCalled();
     }
   );
 
@@ -267,14 +266,6 @@ describe('useKeyBindingMap', () => {
       KeyBindingName.findReplace,
       KeyBindingName.findReplace,
     ]);
-  });
-
-  it('tells a row naming a chord whether the tab shown takes it', () => {
-    expect(bindsOnTab(KeyBindingName.findReplace, CanvasType.ERD)).toBe(true);
-    expect(bindsOnTab(KeyBindingName.findReplace, CanvasType.settings)).toBe(
-      false
-    );
-    expect(bindsOnTab(KeyBindingName.search, CanvasType.settings)).toBe(true);
   });
 
   it('reads Alt+KeyF as the Flow focus, never as find and replace', () => {

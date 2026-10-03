@@ -977,7 +977,7 @@ describe('createScopeActions / Find and Replace', () => {
     expect(opened).toEqual([openFindReplaceAction()]);
   });
 
-  it('names no chord on the tabs that leave it to the host find, and still opens the panel', () => {
+  it('names its chord on every tab, the chord taken there too, and opens the panel from each', () => {
     const opened: unknown[] = [];
     app.emitter.on({
       openFindReplace: action => {
@@ -994,13 +994,11 @@ describe('createScopeActions / Find and Replace', () => {
       setCanvasType(canvasType);
       const action = find(scope(), 'Find and Replace');
 
-      expect(action.shortcut).toBeUndefined();
+      expect(action.shortcut).toBe('$mod+KeyF');
       action.perform?.(app);
     }
 
     expect(opened).toHaveLength(4);
-    setCanvasType(CanvasType.ERD);
-    expect(find(scope(), 'Find and Replace').shortcut).toBe('$mod+KeyF');
   });
 
   it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
