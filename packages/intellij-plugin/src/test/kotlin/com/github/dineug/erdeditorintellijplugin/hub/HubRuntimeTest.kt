@@ -402,8 +402,11 @@ class HubRuntimeTest {
         assertTrue("shut the peers down in $tookMs ms", tookMs < TIMINGS.registryCallBoundMs + MARGIN_MS)
         assertEquals(2, peer.received.size)
         busy.countDown()
-        awaitUntil(message = "the shutdown ran behind the busy step") { peer.received.size == 3 }
-        assertEquals(CLOSED_A, peer.received[2])
+        // The shutdown given up on still runs once the registry is free, and the hub retires right
+        // behind it: the connection retiring destroys may take that late documentClosed with it.
+        awaitUntil(message = "the shutdown ran behind the busy step") { fixture.runtime.registry.isShutDown }
+        awaitUntil(message = "the hub retired") { fixture.lock()?.hub == false }
+        assertTrue("got ${peer.received}", peer.received.drop(2).all { it == CLOSED_A })
     }
 
     private fun measureMs(block: () -> Unit): Long {
