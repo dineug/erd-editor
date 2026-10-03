@@ -104,14 +104,16 @@ a DOM panel the port left on native drag and drop:
 columns, comments and memos in the real element: its chord, `$mod+F`, is
 prevented on the ERD tab from the canvas, from its own field, which it selects,
 from the palette, which gives way, and from a cell editor, which keeps it, so no
-page find opens, and left unprevented to the page on the Schema SQL, Code
-Generator and Settings tabs, where the palette's Find and Replace row still
-opens the panel, and on the ERD tab under time travel, until that closes; what is typed into the panel never reaches a canvas shortcut, a
+page find opens, prevented on the Visualization, Schema SQL, Code Generator and
+Settings tabs too, where it brings the ERD tab up with the panel, and left
+unprevented to the page under time travel, until that closes; its toolbar button
+opens the panel from another tab and stands greyed out in place under time
+travel; what is typed into the panel never reaches a canvas shortcut, a
 first opening searches table and column names alone, so a replace all there
 leaves the comments and the memo as they were, and a scope set stays on while
 the element lives, a replace all is one change event, one undo and one batch to
 a wired peer, and a jump to a table taller than the canvas lands on its name. It holds down the palette prefixes too, the only way to its tables,
-columns, comments and memos: a `"` search lands on a column comment from another
+columns, comments and memos: a `:` search lands on a column comment from another
 tab, a `?` help row types its prefix in with the input still focused, a
 `@table.col` search goes to that column, and `#us` lists users and not orders,
 which the 0.4 threshold no longer fuzzes it to, and deleting its `#` leaves no
@@ -125,7 +127,7 @@ finds. Under Chromium's own IME composition (`Input.imeSetComposition`
 over a CDP session) it holds down the Hangul search: every step a Korean IME
 hands over while typing `#사용` keeps the table 사용자 listed, a word composed with
 no prefix lists `No commands match` and no table or comment until a prefix row
-types `"` before it, `#ㅈㅁ` finds 주문 내역 by its initials, an arrow or Enter
+types `:` before it, `#ㅈㅁ` finds 주문 내역 by its initials, an arrow or Enter
 pressed mid-syllable is left to the IME and picks nothing, and `@사` goes to a
 column by an unfinished syllable.
 `zoom-overlay.spec.ts` holds the quick search's list without a prefix to the

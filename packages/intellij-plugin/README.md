@@ -47,7 +47,7 @@ opens its own file chooser for both; the file does not have to be inside the pro
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** over commands, and over tables, columns, comments and memos after `#`, `@` or
-  `"`, **find and replace** across names, comments and memos, **time travel** through this
+  `:`, **find and replace** across names, comments and memos, **time travel** through this
   session's edit history, and **undo / redo**
 - **Theming** — pick the appearance, gray color and accent color on the canvas or under
   **Settings | Tools | ERD Editor**, remembered across restarts. Auto, the default appearance,

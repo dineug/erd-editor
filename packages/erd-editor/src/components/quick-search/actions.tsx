@@ -58,7 +58,6 @@ import {
   FindMatch,
   snippetOf,
 } from '@/utils/find-replace';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 

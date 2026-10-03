@@ -33,7 +33,7 @@ const DOCUMENT_SCOPES: ReadonlyArray<PaletteScope> = [
   PaletteScope.text,
 ];
 
-/** What the double quote searches: the free text, never a name. */
+/** What the colon searches: the free text, never a name. */
 export const TEXT_FIELDS: FindField[] = [
   FindField.tableComment,
   FindField.columnComment,

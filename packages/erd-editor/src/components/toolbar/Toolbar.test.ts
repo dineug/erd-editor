@@ -1,6 +1,7 @@
 import { html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import { TAKEOVERS } from '@/components/find-replace/panelLayout';
 import Toolbar from '@/components/toolbar/Toolbar';
@@ -251,6 +252,7 @@ describe('Toolbar', () => {
       const { app } = await setup();
 
       expect(menu('Search').nextElementSibling).toBe(findReplace());
+      expect(iconNameOf(findReplace())).toBe('text-search');
       expect(findReplace().getAttribute('class')).not.toContain('disabled');
       expect(findReplace().title).toBe(
         toShortcutTitle(
@@ -305,6 +307,34 @@ describe('Toolbar', () => {
         expect(findReplace().getAttribute('class')).toContain('disabled');
       });
     }
+
+    it('shows disabled on another tab too while a takeover stays open', async () => {
+      const { app } = await setup();
+      app.store.dispatchSync(
+        changeOpenMapAction({ [Open.timeTravel]: true }),
+        changeCanvasTypeAction({ value: CanvasType.settings })
+      );
+      await flush();
+
+      expect(findReplace().getAttribute('class')).toContain('disabled');
+    });
+
+    it('spares the selection a press anywhere else in the bar clears, as the chord does', async () => {
+      const { app } = await setup();
+      app.store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+      findReplace().dispatchEvent(
+        new MouseEvent('mousedown', { bubbles: true })
+      );
+      findReplace().dispatchEvent(
+        new TouchEvent('touchstart', { bubbles: true })
+      );
+      await flush();
+
+      expect(app.store.state.editor.selectedMap).toEqual({
+        t1: SelectType.table,
+      });
+    });
 
     it('stays enabled under table properties, which opening the panel closes', async () => {
       const { app } = await setup();

@@ -192,7 +192,7 @@ describe('paletteRows without a prefix', () => {
     expect(rows.slice(-3).map(row => row.insert)).toEqual([
       '#>auto',
       '@>auto',
-      '">auto',
+      ':>auto',
     ]);
     expect(rowsFor('>users').some(isDocumentRow)).toBe(false);
   });
@@ -214,7 +214,7 @@ describe('paletteRows without a prefix', () => {
     expect(rows.map(({ name, insert }) => [name, insert])).toEqual([
       ['Search tables for "orders"', '#orders'],
       ['Search columns for "orders"', '@orders'],
-      ['Search comments & memos for "orders"', '"orders'],
+      ['Search comments & memos for "orders"', ':orders'],
     ]);
     for (const row of rows) {
       expect(row.icon).toBeTruthy();
@@ -225,7 +225,7 @@ describe('paletteRows without a prefix', () => {
     expect(createPrefixActions('users.em').map(row => row.insert)).toEqual([
       '#users.em',
       '@users.em',
-      '"users.em',
+      ':users.em',
     ]);
   });
 
@@ -248,7 +248,7 @@ describe('paletteRows without a prefix', () => {
       expect(rows.slice(-3).map(row => row.insert)).toEqual([
         `#${keyword}`,
         `@${keyword}`,
-        `"${keyword}`,
+        `:${keyword}`,
       ]);
     }
   });
@@ -258,7 +258,7 @@ describe('paletteRows without a prefix', () => {
       expect(rowsFor(keyword).map(row => row.insert)).toEqual([
         `#${keyword}`,
         `@${keyword}`,
-        `"${keyword}`,
+        `:${keyword}`,
       ]);
     }
   });
@@ -297,7 +297,7 @@ describe('paletteRows without a prefix', () => {
   });
 
   it('offers nothing after a prefix whose scope holds no row', () => {
-    for (const value of ['#email', '@qqqq', '"qqqq']) {
+    for (const value of ['#email', '@qqqq', ':qqqq']) {
       expect(rowsFor(value)).toEqual([]);
     }
   });
@@ -552,20 +552,20 @@ describe('paletteRows / @ columns', () => {
   });
 });
 
-describe('paletteRows / " comments and memos', () => {
+describe('paletteRows / : comments and memos', () => {
   it('lists the table comments, column comments and memos holding the keyword, and no name', () => {
-    expect(pairs(rowsFor('"user'))).toEqual([
+    expect(pairs(rowsFor(':user'))).toEqual([
       ['user id', 'users.id · Column comment'],
       ['Every user_id points at users.id', 'Memo'],
     ]);
-    expect(pairs(rowsFor('" orders'))).toEqual([
+    expect(pairs(rowsFor(': orders'))).toEqual([
       ['Customer orders', 'orders · Table comment'],
     ]);
-    expect(rowsFor('"email')).toHaveLength(1);
+    expect(rowsFor(':email')).toHaveLength(1);
   });
 
   it('lists every text there is for no keyword, and skips the empty ones', () => {
-    expect(names(rowsFor('"'))).toEqual([
+    expect(names(rowsFor(':'))).toEqual([
       'Customer orders',
       'primary id',
       'buyer of the order',
@@ -585,7 +585,7 @@ describe('paletteRows / " comments and memos', () => {
     }
     app.store.dispatchSync(actions);
 
-    const rows = rowsFor('"user');
+    const rows = rowsFor(':user');
     const last = rows.at(-1);
 
     expect(rows).toHaveLength(SCOPED_ACTION_LIMIT + 1);
@@ -620,7 +620,7 @@ describe('paletteRows / ? help', () => {
     expect(rows.map(({ name, insert }) => [name, insert])).toEqual([
       ['Tables', '#'],
       ['Columns', '@'],
-      ['Comments & memos', '"'],
+      ['Comments & memos', ':'],
     ]);
     for (const row of rows) {
       expect(row.keywords).toBeTruthy();
@@ -665,11 +665,11 @@ describe('paletteRows / Hangul', () => {
       expect(rowsFor(step).map(row => row.insert)).toEqual([
         `#${step}`,
         `@${step}`,
-        `"${step}`,
+        `:${step}`,
       ]);
       expect(names(rowsFor(`#${step}`))).toContain('사용자');
       expect(names(rowsFor(`@${step}`))).toContain('사용자');
-      expect(names(rowsFor(`"${step}`))).toContain('주문한 사용자');
+      expect(names(rowsFor(`:${step}`))).toContain('주문한 사용자');
       expect(rowsFor(`#${step}`).every(row => row.tableId)).toBe(true);
     }
   });
@@ -679,7 +679,7 @@ describe('paletteRows / Hangul', () => {
 
     for (const [name, steps] of IME_CLUSTERS) {
       for (const step of steps) {
-        for (const prefix of ['#', '@', '"']) {
+        for (const prefix of ['#', '@', ':']) {
           expect(names(rowsFor(`${prefix}${step}`))).toContain(name);
         }
       }
@@ -706,7 +706,7 @@ describe('paletteRows / Hangul', () => {
   });
 
   it('lists the comments and the memo spelled, and no name', () => {
-    expect(pairs(rowsFor('"ㅅㅇㅈ'))).toEqual([
+    expect(pairs(rowsFor(':ㅅㅇㅈ'))).toEqual([
       ['사용자 고유 번호', '사용자.아이디 · Column comment'],
       ['사용자 한 명이 여러 주문을 남긴다', 'Memo'],
       ['주문한 사용자', '주문 내역.사용자 · Column comment'],
@@ -776,18 +776,18 @@ describe('paletteRows / Hangul', () => {
   it('hands " over when the limit leaves out a text holding the keyword as typed, and not before', () => {
     addMemos(SCOPED_ACTION_LIMIT, index => `사용자 메모 ${index}`);
 
-    expect(rowsFor('"ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(hasShowAll(rowsFor('"ㅅㅇㅈ'))).toBe(false);
-    expect(hasShowAll(rowsFor('"상'))).toBe(false);
+    expect(rowsFor(':ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(hasShowAll(rowsFor(':ㅅㅇㅈ'))).toBe(false);
+    expect(hasShowAll(rowsFor(':상'))).toBe(false);
 
     // 상 spells 사용 in every memo above; this one holds it as typed, so it
     // goes first and the limit leaves out only memos it spells.
     addMemos(1, () => '상품 설명');
-    expect(names(rowsFor('"상'))[0]).toBe('상품 설명');
-    expect(hasShowAll(rowsFor('"상'))).toBe(false);
+    expect(names(rowsFor(':상'))[0]).toBe('상품 설명');
+    expect(hasShowAll(rowsFor(':상'))).toBe(false);
 
     addMemos(SCOPED_ACTION_LIMIT, index => `상품 설명 ${index}`);
-    const last = rowsFor('"상').at(-1);
+    const last = rowsFor(':상').at(-1);
     expect(last?.name).toBe(
       `Show all ${SCOPED_ACTION_LIMIT + 1} matches in Find and Replace`
     );
@@ -825,7 +825,7 @@ describe('paletteRows / Hangul', () => {
     app.store.dispatchSync(actions);
 
     const started = performance.now();
-    for (const prefix of ['', '#', '@', '"']) {
+    for (const prefix of ['', '#', '@', ':']) {
       for (const step of [...STEPS, 'ㅈㅁ']) {
         rowsFor(`${prefix}${step}`);
       }

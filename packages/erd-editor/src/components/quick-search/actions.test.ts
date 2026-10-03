@@ -960,6 +960,10 @@ describe('createScopeActions / no focus actions', () => {
 });
 
 describe('createScopeActions / Find and Replace', () => {
+  it('draws the text-search icon the toolbar button and the context menu draw', async () => {
+    expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('text-search');
+  });
+
   it('shows the find and replace chord and asks the panel to open', () => {
     const opened: unknown[] = [];
     app.emitter.on({
@@ -977,7 +981,7 @@ describe('createScopeActions / Find and Replace', () => {
     expect(opened).toEqual([openFindReplaceAction()]);
   });
 
-  it('names its chord on every tab, the chord taken there too, and opens the panel from each', () => {
+  it('names its chord on every tab, and asks the panel to open from each', () => {
     const opened: unknown[] = [];
     app.emitter.on({
       openFindReplace: action => {

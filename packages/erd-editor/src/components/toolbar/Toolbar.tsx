@@ -68,6 +68,9 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     emitter.emit(openFindReplaceAction());
   };
 
+  /** Spares the selection, and with it the ring on the panel's current match, as the chord does. */
+  const keepSelection = (event: Event) => event.stopPropagation();
+
   const handleTheme = () => {
     const { emitter } = app.value;
     emitter.emit(openThemeBuilderAction());
@@ -180,6 +183,8 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             props.readonly ? 'Find' : 'Find and Replace',
             KeyBindingName.findReplace
           )}
+          on:mousedown={keepSelection}
+          on:touchstart={keepSelection}
           on:click={handleFindReplace}
         >
           <Icon name="text-search" size={16} />

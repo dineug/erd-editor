@@ -276,6 +276,7 @@ test.describe('Find and Replace', () => {
       'Settings',
     ]) {
       await erd.toolbarButton(tab).click();
+      expect((await erd.settings()).canvasType).not.toBe('ERD');
       await erd.focusHost();
       await erd.press(Shortcut.findReplace);
 
@@ -348,11 +349,20 @@ test.describe('Find and Replace', () => {
     await expect(button).not.toHaveClass(/\bdisabled\b/);
 
     await erd.toolbarButton('Schema SQL').click();
+    expect((await erd.settings()).canvasType).toContain('builtin-schema-sql');
     await expect(button).toBeVisible();
     await button.click();
 
     expect((await erd.settings()).canvasType).toBe('ERD');
     await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+
+    // Pressed with the panel shown, it keeps the current match, as the chord does.
+    await erd.page.keyboard.type('user');
+    await erd.press('Enter');
+    await expect(countOf(erd)).toHaveText('1 of 2');
+    await button.click();
+    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    await expect(countOf(erd)).toHaveText('1 of 2');
   });
 
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({
@@ -534,7 +544,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.focusHost();
 
     await erd.press(Shortcut.search);
-    await erd.page.keyboard.type('"login');
+    await erd.page.keyboard.type(':login');
     await erd.host
       .locator('.quick-search')
       .getByText('users.email · Column comment')
@@ -601,7 +611,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(palette.locator('.scrollbar > div')).toHaveText([
       /^#\s*Search tables for "us"$/,
       /^@\s*Search columns for "us"$/,
-      /^"\s*Search comments & memos for "us"$/,
+      /^:\s*Search comments & memos for "us"$/,
     ]);
   });
 
@@ -620,7 +630,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(rows).toHaveText([
       /^#\s*Search tables for "orders"$/,
       /^@\s*Search columns for "orders"$/,
-      /^"\s*Search comments & memos for "orders"$/,
+      /^:\s*Search comments & memos for "orders"$/,
     ]);
     // No command holds orders or even fuzzes to it.
     await expect(palette.locator('.quick-search-empty')).toHaveText(
@@ -698,7 +708,7 @@ test.describe('quick search over columns, comments and memos', () => {
       await expect(rows).toHaveText([
         /^#\s*Search tables for "users"$/,
         /^@\s*Search columns for "users"$/,
-        /^"\s*Search comments & memos for "users"$/,
+        /^:\s*Search comments & memos for "users"$/,
       ]);
     };
 
@@ -836,7 +846,7 @@ test.describe('quick search under a Korean IME', () => {
     await erd.page.keyboard.press('ArrowUp');
     await erd.page.keyboard.press('Enter');
 
-    await expect(input).toHaveValue('"사용');
+    await expect(input).toHaveValue(':사용');
     await expect(palette.getByText('주문한 사용자')).toHaveCount(1);
   });
 

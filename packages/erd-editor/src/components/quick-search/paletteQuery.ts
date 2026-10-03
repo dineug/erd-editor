@@ -30,7 +30,7 @@ export const PALETTE_PREFIXES: ReadonlyArray<PalettePrefix> = [
     description: 'Go to a column by its name, or by table.column',
   },
   {
-    prefix: '"',
+    prefix: ':',
     scope: PaletteScope.text,
     label: 'Comments & memos',
     description: 'Search table comments, column comments and memos',
@@ -56,17 +56,12 @@ export type PaletteQuery = {
 const WIDE_PREFIXES: Readonly<Record<string, string>> = {
   '＃': '#',
   '＠': '@',
-  '＂': '"',
-  '“': '"',
-  '”': '"',
+  '：': ':',
   '？': '?',
 };
 
 /** The dot a column search splits on, and the full stops those IMEs type for it. */
 const TABLE_DOT = /[.．。]/;
-
-/** The quote a free text search may close on, typed plain or by those IMEs. */
-const CLOSING_QUOTE = /["＂“”]$/;
 
 const scopeOf = (value: string) => {
   const head = value.charAt(0);
@@ -78,12 +73,6 @@ const scopeOf = (value: string) => {
 export const scopeLabel = (scope: PaletteScope): string =>
   PALETTE_PREFIXES.find(prefix => prefix.scope === scope)?.label ?? '';
 
-/** What follows a prefix, trimmed; a free text search may close on the quote it opened with. */
-const readRest = (rest: string, scope: PaletteScope): string =>
-  scope === PaletteScope.text
-    ? rest.trim().replace(CLOSING_QUOTE, '').trim()
-    : rest.trim();
-
 /**
  * Reads what is typed into the palette: a prefix counts only as the first
  * character past any space, in its full-width form too, a space may follow it,
@@ -91,7 +80,7 @@ const readRest = (rest: string, scope: PaletteScope): string =>
  *
  * @example
  * parsePaletteQuery('@users.em'); // { scope: 'columns', keyword: 'em', table: 'users' }
- * parsePaletteQuery('"login email"'); // { scope: 'text', keyword: 'login email', table: null }
+ * parsePaletteQuery(':login email'); // { scope: 'text', keyword: 'login email', table: null }
  */
 export function parsePaletteQuery(value: string): PaletteQuery {
   // A space typed before a prefix never hides it: read as a keyword, it would
@@ -102,7 +91,7 @@ export function parsePaletteQuery(value: string): PaletteQuery {
 
   const { scope } = found;
   // Every prefix, full-width or not, is one character.
-  const rest = readRest(typed.slice(1), scope);
+  const rest = typed.slice(1).trim();
   const dot = scope === PaletteScope.columns ? rest.search(TABLE_DOT) : -1;
 
   return dot === -1

@@ -194,7 +194,7 @@ describe('useKeyBindingMap', () => {
     CanvasType.generatorCode,
     CanvasType.settings,
   ])(
-    'takes $mod+KeyF on the %s tab too, from the canvas or a caret, as the panel brings the ERD tab up',
+    'takes $mod+KeyF on the %s tab too, from the canvas or a caret',
     canvasType => {
       app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
       const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
@@ -252,6 +252,18 @@ describe('useKeyBindingMap', () => {
       ]);
     }
   );
+
+  it('leaves $mod+KeyF to the host find on another tab while a takeover stays open', () => {
+    app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.settings })
+    );
+
+    const event = press({ key: 'f', code: 'KeyF', mod: true });
+
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
+  });
 
   it('takes $mod+KeyF under a dialog that only stands the panel aside', () => {
     for (const key of [Open.tableProperties, Open.themeBuilder]) {

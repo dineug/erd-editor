@@ -555,7 +555,12 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         .pipe(filter(({ type }) => type === KeyBindingName.stop))
         .subscribe(handleStop),
       emitter.on({
-        openFindReplace: ({ payload }) => open(payload ?? undefined),
+        // The toolbar, the palette row and the context menu hand no query, and
+        // the panel shown keeps its current match, as it does on the chord.
+        openFindReplace: ({ payload }) =>
+          !payload && isPanelShown(store.state)
+            ? nextTick(focusQuery)
+            : open(payload ?? undefined),
       }),
       // A peer, an undo or an edit on the canvas changes what matches, and
       // nothing else does: a hover, a selection or a scroll leaves it be.
