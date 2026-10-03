@@ -246,47 +246,47 @@ test.describe('Find and Replace', () => {
     expect(await prevented()).toEqual([true, true, true, true]);
   });
 
-  test('leaves its chord to the page find on every other tab, where the palette row still opens it', async ({
+  test('takes its chord on every other tab too, bringing the ERD tab up, no page find opening', async ({
     erd,
     page,
   }) => {
     await erd.seed(schema());
     await page.evaluate(() => {
       Reflect.set(window, '__finds', []);
-      window.addEventListener('keydown', event => {
-        if (event.code === 'KeyF') Reflect.get(window, '__finds').push(event);
-      });
+      window.addEventListener(
+        'keydown',
+        event => {
+          if (event.code === 'KeyF') Reflect.get(window, '__finds').push(event);
+        },
+        true
+      );
     });
-    const heard = () =>
+    const prevented = () =>
       page.evaluate(() =>
         (Reflect.get(window, '__finds') as KeyboardEvent[]).map(
           event => event.defaultPrevented
         )
       );
+    const findInput = panelOf(erd).locator('.find-input');
 
-    for (const [tab, canvasType] of [
-      ['Schema SQL', 'builtin-schema-sql'],
-      ['Code Generator', 'builtin-generator-code'],
-      ['Settings', 'settings'],
+    for (const tab of [
+      'Visualization',
+      'Schema SQL',
+      'Code Generator',
+      'Settings',
     ]) {
       await erd.toolbarButton(tab).click();
+      expect((await erd.settings()).canvasType).not.toBe('ERD');
       await erd.focusHost();
       await erd.press(Shortcut.findReplace);
 
-      expect((await erd.settings()).canvasType).toContain(canvasType);
+      expect((await erd.settings()).canvasType).toBe('ERD');
+      await expect(findInput).toBeFocused();
+      await erd.press('Escape');
       await expect(panelOf(erd)).toHaveCount(0);
     }
-    // Heard by the page unprevented, so a browser opens its own find there.
-    expect(await heard()).toEqual([false, false, false]);
-
-    await erd.press(Shortcut.search);
-    await erd.host
-      .locator('.quick-search')
-      .getByText('Find and Replace', { exact: true })
-      .click();
-
-    expect((await erd.settings()).canvasType).toBe('ERD');
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    // Prevented, so a browser opens no find bar over any of them.
+    expect(await prevented()).toEqual([true, true, true, true]);
   });
 
   test('leaves its chord to the page find under time travel, and takes it once that closes', async ({
@@ -316,7 +316,7 @@ test.describe('Find and Replace', () => {
     await erd.focusHost();
     await erd.press(Shortcut.findReplace);
     await expect(panelOf(erd)).toHaveCount(0);
-    // Heard by the page unprevented, as on the editor's other tabs.
+    // Heard by the page unprevented, so the host's find opens there.
     expect(await heard()).toEqual([false]);
 
     await erd.press('Escape');
@@ -326,6 +326,43 @@ test.describe('Find and Replace', () => {
 
     await expect(panelOf(erd).locator('.find-input')).toBeFocused();
     expect(await heard()).toEqual([false]);
+  });
+
+  test('opens from its toolbar button on any tab, which stays put and greys out under time travel', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    const button = erd.toolbarButton('Find and Replace');
+
+    // An edit, so time travel has a history to open on.
+    await erd.focusHost();
+    await erd.press(Shortcut.addTable);
+    await erd.toolbarButton('Time Travel').click();
+    await expect(erd.toolbarButton('Undo')).toHaveCount(0);
+
+    await expect(button).toHaveClass(/\bdisabled\b/);
+    await button.click();
+    await expect(panelOf(erd)).toHaveCount(0);
+
+    await erd.press('Escape');
+    await expect(erd.toolbarButton('Undo')).toHaveCount(1);
+    await expect(button).not.toHaveClass(/\bdisabled\b/);
+
+    await erd.toolbarButton('Schema SQL').click();
+    expect((await erd.settings()).canvasType).toContain('builtin-schema-sql');
+    await expect(button).toBeVisible();
+    await button.click();
+
+    expect((await erd.settings()).canvasType).toBe('ERD');
+    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+
+    // Pressed with the panel shown, it keeps the current match, as the chord does.
+    await erd.page.keyboard.type('user');
+    await erd.press('Enter');
+    await expect(countOf(erd)).toHaveText('1 of 2');
+    await button.click();
+    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    await expect(countOf(erd)).toHaveText('1 of 2');
   });
 
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({
@@ -507,7 +544,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.focusHost();
 
     await erd.press(Shortcut.search);
-    await erd.page.keyboard.type('"login');
+    await erd.page.keyboard.type(':login');
     await erd.host
       .locator('.quick-search')
       .getByText('users.email · Column comment')
@@ -574,7 +611,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(palette.locator('.scrollbar > div')).toHaveText([
       /^#\s*Search tables for "us"$/,
       /^@\s*Search columns for "us"$/,
-      /^"\s*Search comments & memos for "us"$/,
+      /^:\s*Search comments & memos for "us"$/,
     ]);
   });
 
@@ -593,7 +630,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(rows).toHaveText([
       /^#\s*Search tables for "orders"$/,
       /^@\s*Search columns for "orders"$/,
-      /^"\s*Search comments & memos for "orders"$/,
+      /^:\s*Search comments & memos for "orders"$/,
     ]);
     // No command holds orders or even fuzzes to it.
     await expect(palette.locator('.quick-search-empty')).toHaveText(
@@ -671,7 +708,7 @@ test.describe('quick search over columns, comments and memos', () => {
       await expect(rows).toHaveText([
         /^#\s*Search tables for "users"$/,
         /^@\s*Search columns for "users"$/,
-        /^"\s*Search comments & memos for "users"$/,
+        /^:\s*Search comments & memos for "users"$/,
       ]);
     };
 
@@ -809,7 +846,7 @@ test.describe('quick search under a Korean IME', () => {
     await erd.page.keyboard.press('ArrowUp');
     await erd.page.keyboard.press('Enter');
 
-    await expect(input).toHaveValue('"사용');
+    await expect(input).toHaveValue(':사용');
     await expect(palette.getByText('주문한 사용자')).toHaveCount(1);
   });
 

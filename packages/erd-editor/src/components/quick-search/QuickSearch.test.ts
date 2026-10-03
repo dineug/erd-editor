@@ -623,10 +623,10 @@ describe('QuickSearch column, comment and memo matches', () => {
 
   it('looks the fields up afresh on each keystroke rather than inside the last list', async () => {
     await open();
-    await type('"login');
+    await type(':login');
     expect(rowNames()).toContain('login email');
 
-    await type('"primary');
+    await type(':primary');
 
     expect(rowNames()).toContain('primary id');
     expect(rowNames()).not.toContain('login email');
@@ -651,7 +651,7 @@ describe('QuickSearch column, comment and memo matches', () => {
       changeCanvasTypeAction({ value: CanvasType.schemaSQL })
     );
     await open();
-    await type('"login');
+    await type(':login');
 
     await click(rows()[rowNames().indexOf('login email')]);
 
@@ -710,7 +710,7 @@ describe('QuickSearch with no command matching', () => {
     expect(rowNames()).toEqual(offered('orders'));
     expect(
       rows().map(row => row.querySelector(`.${styles.prefix}`)?.textContent)
-    ).toEqual(['#', '@', '"']);
+    ).toEqual(['#', '@', ':']);
     expect(scopeLabel()).toBeNull();
     expect(mounted?.container.querySelector('.quick-search-hint')).toBeNull();
   });
@@ -737,7 +737,7 @@ describe('QuickSearch with no command matching', () => {
     await keydown('ArrowUp');
     await keydown('Enter');
 
-    expect(input().value).toBe('"email');
+    expect(input().value).toBe(':email');
     expect(scopeLabel()).toBe('Comments & memos');
     expect(rowNames()).toEqual(['login email']);
     expect(selectedIndex()).toBe(-1);
@@ -936,7 +936,7 @@ describe('QuickSearch prefixes', () => {
     expect(hintItems()).toEqual([
       '#Tables',
       '@Columns',
-      '"Comments & memos',
+      ':Comments & memos',
       '?Help',
     ]);
     expect(scopeLabel()).toBeNull();
@@ -1058,7 +1058,7 @@ describe('QuickSearch prefixes', () => {
     expect(rowNames()).toEqual(['email']);
     expect(highlighted(rows()[0])).toEqual(['em', 'users', 'em']);
 
-    await type('“user id”');
+    await type('：user id');
     expect(rowNames()).toEqual(['user id']);
 
     await type('？');
@@ -1091,16 +1091,16 @@ describe('QuickSearch prefixes', () => {
     });
   });
 
-  it('lists the comments and memos alone after a double quote', async () => {
+  it('lists the comments and memos alone after a colon', async () => {
     await open();
 
-    await type('"user');
+    await type(':user');
 
     expect(rowNames()).toEqual(['user id', 'Every user_id points at users.id']);
     expect(scopeLabel()).toBe('Comments & memos');
     expect(rows().map(iconOf)).toEqual(['message-square', 'sticky-note']);
 
-    await type('"user id"');
+    await type(':user id');
 
     expect(rowNames()).toEqual(['user id']);
     expect(highlighted(rows()[0])).toEqual(['user id']);
@@ -1114,7 +1114,7 @@ describe('QuickSearch prefixes', () => {
       );
     }
     await open();
-    await type('" user');
+    await type(': user');
     const last = rows().at(-1) as HTMLDivElement;
     expect(rowNames().at(-1)).toBe(
       `Show all ${SCOPED_ACTION_LIMIT + 4} matches in Find and Replace`
@@ -1243,7 +1243,7 @@ describe('QuickSearch Hangul', () => {
     await open();
 
     for (const [name, steps] of IME_CLUSTERS) {
-      for (const prefix of ['#', '@', '"']) {
+      for (const prefix of ['#', '@', ':']) {
         for (const names of await compose(prefix, steps)) {
           expect(names).toContain(name);
         }
@@ -1255,7 +1255,7 @@ describe('QuickSearch Hangul', () => {
     const targets: Array<[string, string]> = [
       ['#', '사용자'],
       ['@', '사용자'],
-      ['"', '주문한 사용자'],
+      [':', '주문한 사용자'],
     ];
     await open();
 

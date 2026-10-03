@@ -25,7 +25,7 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
 - Export — `.erd.json`, `.sql`, `.png`
 - Force-directed visualization of table relationships
-- Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `"`,
+- Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `:`,
   find and replace, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
 - Collaboration hooks — the editor emits and applies actions; you supply the transport
 
@@ -184,11 +184,11 @@ The editor listens on its own element, so a host that takes keys before the page
 global hotkeys or a capture-phase `keydown` listener, has to let these through while the editor
 is focused. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types come with it.
 
-The page's own find is among them: while the editor is focused on its ERD tab, `$mod+KeyF` opens
-its Find and Replace and is prevented, so the browser opens no find bar; on the editor's other
-tabs, and on the ERD tab while the diff viewer, time travel or the automatic placement preview
-covers it, the press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the
-page on every tab, and the quick search and the context menu still open Find and Replace.
+The page's own find is among them: while the editor is focused, on any of its tabs, `$mod+KeyF`
+opens its Find and Replace, bringing the ERD tab up, and is prevented, so the browser opens no find
+bar; while the diff viewer, time travel or the automatic placement preview covers the ERD tab, the
+press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the page on every
+tab, and the toolbar button, the quick search and the context menu still open Find and Replace.
 
 ## Syntax highlighting
 

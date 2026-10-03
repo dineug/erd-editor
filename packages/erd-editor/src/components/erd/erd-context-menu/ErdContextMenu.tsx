@@ -339,7 +339,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleOpenFindReplace}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="replace" size={14} />}
+                    icon={<Icon name="text-search" size={14} />}
                     name="Find and Replace"
                     right={
                       <Kbd shortcut={keyBindingMap.findReplace[0]?.shortcut} />

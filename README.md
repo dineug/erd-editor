@@ -45,7 +45,7 @@ run **Create new diagram** from the command palette. In Google Drive, choose
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, `.png`
 - **Quick search** over commands, and over tables, columns, comments and memos after `#`, `@` or
-  `"`, **find and replace** across names, comments and memos, **undo / redo**, keyboard
+  `:`, **find and replace** across names, comments and memos, **undo / redo**, keyboard
   shortcuts, and a theme builder
 - **Real-time collaboration** (experimental) — peer-to-peer, end-to-end encrypted, with no
   backend holding your schema. Live on erd-editor.io; embedders get the same action stream

@@ -4,7 +4,6 @@ import { tinykeys } from 'tinykeys';
 
 import { useAppContext } from '@/components/appContext';
 import { isTakenOver } from '@/components/find-replace/panelLayout';
-import { CanvasType } from '@/constants/schema';
 import { Ctx } from '@/internal-types';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 import { isEditableTarget } from '@/utils/validation';
@@ -22,15 +21,13 @@ const YIELDS_TO_A_CARET = new Set<KeyBindingName>([
 ]);
 
 /**
- * The bindings of the ERD tab alone, while no overlay takes its canvas over.
- * On any other tab $mod+F stays the host's find, which searches the SQL, the
- * code or the settings that tab shows, and under a takeover it does as well.
+ * The bindings that open a panel over the ERD canvas, taken on every tab since
+ * opening brings that tab up. Under an overlay taking the canvas over they
+ * would open nothing, so there $mod+F stays the host's find.
  */
-const ERD_TAB_ONLY = new Set<KeyBindingName>([KeyBindingName.findReplace]);
-
-/** Whether the editor takes a binding's chord on the tab shown; a row naming the chord names it only then. */
-export const bindsOnTab = (type: KeyBindingName, canvasType: string) =>
-  !ERD_TAB_ONLY.has(type) || canvasType === CanvasType.ERD;
+const YIELDS_TO_A_TAKEOVER = new Set<KeyBindingName>([
+  KeyBindingName.findReplace,
+]);
 
 export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
   const app = useAppContext(ctx);
@@ -41,8 +38,7 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
     const { state } = app.value.store;
     return (
       (YIELDS_TO_A_CARET.has(type) && isEditableTarget(event.target)) ||
-      !bindsOnTab(type, state.settings.canvasType) ||
-      (ERD_TAB_ONLY.has(type) && isTakenOver(state))
+      (YIELDS_TO_A_TAKEOVER.has(type) && isTakenOver(state))
     );
   };
 

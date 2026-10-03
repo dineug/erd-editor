@@ -960,6 +960,10 @@ describe('createScopeActions / no focus actions', () => {
 });
 
 describe('createScopeActions / Find and Replace', () => {
+  it('draws the text-search icon the toolbar button and the context menu draw', async () => {
+    expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('text-search');
+  });
+
   it('shows the find and replace chord and asks the panel to open', () => {
     const opened: unknown[] = [];
     app.emitter.on({
@@ -977,7 +981,7 @@ describe('createScopeActions / Find and Replace', () => {
     expect(opened).toEqual([openFindReplaceAction()]);
   });
 
-  it('names no chord on the tabs that leave it to the host find, and still opens the panel', () => {
+  it('names its chord on every tab, and asks the panel to open from each', () => {
     const opened: unknown[] = [];
     app.emitter.on({
       openFindReplace: action => {
@@ -994,13 +998,11 @@ describe('createScopeActions / Find and Replace', () => {
       setCanvasType(canvasType);
       const action = find(scope(), 'Find and Replace');
 
-      expect(action.shortcut).toBeUndefined();
+      expect(action.shortcut).toBe('$mod+KeyF');
       action.perform?.(app);
     }
 
     expect(opened).toHaveLength(4);
-    setCanvasType(CanvasType.ERD);
-    expect(find(scope(), 'Find and Replace').shortcut).toBe('$mod+KeyF');
   });
 
   it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(

@@ -24,7 +24,7 @@ describe('parsePaletteQuery', () => {
   it.each([
     ['#', PaletteScope.tables],
     ['@', PaletteScope.columns],
-    ['"', PaletteScope.text],
+    [':', PaletteScope.text],
     ['?', PaletteScope.help],
   ])(
     'reads %s as the %s scope, with or without a space after it',
@@ -48,9 +48,7 @@ describe('parsePaletteQuery', () => {
   it.each([
     ['＃', PaletteScope.tables],
     ['＠', PaletteScope.columns],
-    ['＂', PaletteScope.text],
-    ['“', PaletteScope.text],
-    ['”', PaletteScope.text],
+    ['：', PaletteScope.text],
     ['？', PaletteScope.help],
   ])(
     'reads %s, which a Japanese or Chinese IME types, as the %s scope',
@@ -73,8 +71,19 @@ describe('parsePaletteQuery', () => {
       scope: PaletteScope.tables,
       keyword: '＃hash',
     });
-    expect(parsePaletteQuery('“ok')).toMatchObject({ keyword: 'ok' });
+    expect(parsePaletteQuery('user：id')).toMatchObject({ scope: null });
+    expect(parsePaletteQuery('：ok')).toMatchObject({ keyword: 'ok' });
     expect(parsePaletteQuery('«ok')).toMatchObject({ scope: null });
+  });
+
+  it('reads a double quote and the quotes an IME types as plain text, the colon naming the comments and memos', () => {
+    for (const value of ['"login', '＂login', '“login', '”login']) {
+      expect(parsePaletteQuery(value)).toEqual({
+        scope: null,
+        keyword: value,
+        table: null,
+      });
+    }
   });
 
   it('reads > and the forms an IME types for it as plain text, the list with no prefix being the commands', () => {
@@ -114,6 +123,7 @@ describe('parsePaletteQuery', () => {
     });
     expect(parsePaletteQuery('auto>')).toMatchObject({ scope: null });
     expect(parsePaletteQuery('user@mail')).toMatchObject({ scope: null });
+    expect(parsePaletteQuery('users:id')).toMatchObject({ scope: null });
   });
 
   it('keeps a second prefix character in the keyword', () => {
@@ -122,9 +132,9 @@ describe('parsePaletteQuery', () => {
       keyword: '#hash',
       table: null,
     });
-    expect(parsePaletteQuery('">quoted')).toMatchObject({
+    expect(parsePaletteQuery('::colon')).toMatchObject({
       scope: PaletteScope.text,
-      keyword: '>quoted',
+      keyword: ':colon',
     });
   });
 
@@ -177,37 +187,24 @@ describe('parsePaletteQuery', () => {
     });
   });
 
-  it('drops the one quote a free text search closes on, and no other', () => {
-    expect(parsePaletteQuery('"login email"')).toEqual({
+  it('keeps every quote in a free text search, which the colon opens with nothing to close', () => {
+    expect(parsePaletteQuery(':login email')).toEqual({
       scope: PaletteScope.text,
       keyword: 'login email',
       table: null,
     });
-    expect(parsePaletteQuery('" user " ')).toMatchObject({ keyword: 'user' });
-    expect(parsePaletteQuery('"say "hi""')).toMatchObject({
+    expect(parsePaletteQuery(': user ')).toMatchObject({ keyword: 'user' });
+    expect(parsePaletteQuery(':say "hi"')).toMatchObject({
       keyword: 'say "hi"',
     });
-    expect(parsePaletteQuery('""')).toMatchObject({
+    expect(parsePaletteQuery(':"login email"')).toMatchObject({
       scope: PaletteScope.text,
-      keyword: '',
+      keyword: '"login email"',
     });
-    expect(parsePaletteQuery('“login email”')).toMatchObject({
-      scope: PaletteScope.text,
-      keyword: 'login email',
-    });
-    expect(parsePaletteQuery('”login email”')).toMatchObject({
-      keyword: 'login email',
-    });
-    expect(parsePaletteQuery('"login email＂')).toMatchObject({
-      keyword: 'login email',
-    });
-    expect(parsePaletteQuery('#users"')).toMatchObject({ keyword: 'users"' });
-    expect(parsePaletteQuery('#users”')).toMatchObject({ keyword: 'users”' });
-    expect(parsePaletteQuery('@users.em"')).toMatchObject({ keyword: 'em"' });
   });
 
   it('keeps a dot in the keyword of every other scope', () => {
-    expect(parsePaletteQuery('"users.id')).toMatchObject({
+    expect(parsePaletteQuery(':users.id')).toMatchObject({
       keyword: 'users.id',
       table: null,
     });
@@ -227,7 +224,7 @@ describe('PALETTE_PREFIXES', () => {
     expect(PALETTE_PREFIXES.map(({ prefix }) => prefix)).toEqual([
       '#',
       '@',
-      '"',
+      ':',
       '?',
     ]);
     expect(new Set(PALETTE_PREFIXES.map(({ scope }) => scope)).size).toBe(

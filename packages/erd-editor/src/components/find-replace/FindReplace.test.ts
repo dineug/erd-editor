@@ -426,6 +426,26 @@ describe('FindReplace opening and closing', () => {
     expect(focusEvents).toBe(0);
   });
 
+  it('keeps its current match on an opening with no query while shown, as on its shortcut', async () => {
+    await openWith();
+    await type(findInput(), 'user');
+    await keydown(findInput(), { key: 'Enter', code: 'Enter' });
+    button('find-next').focus();
+    vi.mocked(findMatches).mockClear();
+
+    await openWith();
+
+    expect(document.activeElement).toBe(findInput());
+    expect(findInput().selectionEnd).toBe('user'.length);
+    expect(countText()).toBe('1 of 2');
+    expect(searches()).toBe(0);
+
+    // A query handed over still searches afresh, in every kind of text.
+    await openWith('user');
+    expect(searches()).toBe(1);
+    expect(countText()).toBe('5 matches');
+  });
+
   it('opens in place of the palette, which gives way as its own row does', async () => {
     let toggled = 0;
     app.emitter.on({

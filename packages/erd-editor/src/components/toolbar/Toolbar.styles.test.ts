@@ -80,6 +80,18 @@ describe('Toolbar.styles', () => {
     expect(source).toContain('&.undo-redo.active');
   });
 
+  it('dims a disabled menu item as Find and Replace dims its own, hovered or not', () => {
+    const source = styles.menu.strings.join('');
+    const disabled = source.slice(source.indexOf('&.disabled'));
+
+    expect(source.indexOf('&.disabled')).toBeGreaterThan(
+      source.indexOf('&:hover')
+    );
+    expect(disabled).toContain('cursor: not-allowed');
+    expect(disabled).toContain('color: var(--foreground)');
+    expect(disabled).toContain('opacity: 0.4');
+  });
+
   it('pushes the table count to the end of the bar with paragraph type', () => {
     const source = styles.tableCount.strings.join('');
 

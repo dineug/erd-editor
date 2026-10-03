@@ -445,7 +445,7 @@ describe('quick search over the fields on a real keyboard', () => {
       );
 
     await press(`{${MOD}>}k{/${MOD}}`);
-    await press('"login');
+    await press(':login');
     for (let step = 0; step < 20; step++) {
       await press('{ArrowDown}');
       if (selected()?.textContent?.includes('login email')) break;
