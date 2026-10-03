@@ -3,7 +3,7 @@ import '@dineug/erd-editor';
 import type { ErdEditorElement } from '@dineug/erd-editor';
 import { useLayoutEffect, useRef } from 'react';
 
-import { useApplyPresetTheme, useResolvedTheme } from '@/atoms/modules/theme';
+import { useApplyPresetTheme, useThemeState } from '@/atoms/modules/theme';
 import type { DocumentController, EditorAdapter } from '@/services/gdrive';
 import { reportError } from '@/utils/reportError';
 
@@ -27,7 +27,7 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
   const editorRef = useRef<ErdEditorElement | null>(null);
   const readonlyRef = useRef(readonly);
   readonlyRef.current = readonly;
-  const theme = useResolvedTheme();
+  const theme = useThemeState();
   const applyPresetTheme = useApplyPresetTheme();
 
   useLayoutEffect(() => {

@@ -78,7 +78,7 @@ class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
 
         private const val APPEARANCE_COMMENT = "Auto follows the IDE's light or dark theme and " +
             "switches with it. The theme builder in the editor's toolbar changes these three " +
-            "settings too."
+            "settings too, where Auto is System."
         private const val GRAY_COLOR_COMMENT = "The neutral color of the canvas, the tables and the menus."
         private const val ACCENT_COLOR_COMMENT = "The color of selections and highlights."
         private const val COMMENT = "Lets a coding agent's ERD Editor MCP server edit the diagrams open in " +

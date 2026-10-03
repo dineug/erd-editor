@@ -3,6 +3,7 @@ package com.github.dineug.erdeditorintellijplugin.editor
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.JsonNode
+import com.github.dineug.erdeditorintellijplugin.settings.ErdEditorAppSettings
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.progress.ProcessCanceledException
 import kotlinx.coroutines.*
@@ -109,6 +110,21 @@ sealed class WebviewBridgeCommand {
     }
     data class UpdateTheme(val payload: WebviewUpdateThemeCommandPayload): WebviewBridgeCommand() {
         val type = "webviewUpdateThemeCommand"
+
+        companion object {
+            /** The stored theme, auto included, with the light or dark auto shows, which the page cannot see. */
+            fun of(settings: ErdEditorAppSettings): UpdateTheme {
+                val theme = settings.theme
+                return UpdateTheme(
+                    WebviewUpdateThemeCommandPayload(
+                        theme.appearance,
+                        theme.grayColor,
+                        theme.accentColor,
+                        settings.systemAppearance
+                    )
+                )
+            }
+        }
     }
     data class UpdateReadonly(val payload: Boolean): WebviewBridgeCommand() {
         val type = "webviewUpdateReadonlyCommand"
@@ -119,5 +135,10 @@ sealed class WebviewBridgeCommand {
 }
 data class WebviewImportFileCommandPayload(val type: String, val op: String, val value: String)
 data class WebviewInitialValueCommandPayload(val value: String)
-data class WebviewUpdateThemeCommandPayload(val appearance: String?, val grayColor: String?, val accentColor: String?)
+data class WebviewUpdateThemeCommandPayload(
+    val appearance: String?,
+    val grayColor: String?,
+    val accentColor: String?,
+    val systemAppearance: String? = null
+)
 data class WebviewReplicationCommandPayload(val actions: JsonNode)

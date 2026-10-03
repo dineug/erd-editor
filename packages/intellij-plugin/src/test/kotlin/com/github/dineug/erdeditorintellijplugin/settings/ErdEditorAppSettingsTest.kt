@@ -87,38 +87,50 @@ class ErdEditorAppSettingsTest {
     }
 
     @Test
-    fun `the pages are shown auto as the light or dark the IDE shows now`() {
-        assertEquals(ErdEditorTheme("dark", "slate", "indigo"), settings.shownTheme)
+    fun `auto shows the light or dark the IDE shows now, whatever the setting`() {
+        assertEquals("dark", settings.systemAppearance)
         ideDark = false
-        assertEquals(ErdEditorTheme("light", "slate", "indigo"), settings.shownTheme)
+        assertEquals("light", settings.systemAppearance)
 
         settings.updateTheme { it.copy(appearance = "dark") }
-        assertEquals(ErdEditorTheme("dark", "slate", "indigo"), settings.shownTheme)
+        assertEquals("light", settings.systemAppearance)
+        assertEquals("dark", settings.theme.appearance)
     }
 
     @Test
-    fun `a builder pick of the appearance auto shows keeps auto and re-themes nothing`() {
-        settings.setThemeFromBuilder("dark", "slate", "indigo")
+    fun `a builder pick of auto keeps auto and re-themes nothing`() {
+        settings.setThemeFromBuilder("auto", "slate", "indigo")
 
         assertEquals(ErdEditorTheme.DEFAULT, settings.theme)
         assertEquals(0, published)
 
-        settings.setThemeFromBuilder("dark", "slate", "crimson")
+        settings.setThemeFromBuilder("auto", "slate", "crimson")
 
         assertEquals(ErdEditorTheme("auto", "slate", "crimson"), settings.theme)
         assertEquals(1, published)
     }
 
     @Test
-    fun `a builder pick of the other appearance replaces auto by what the IDE shows now`() {
+    fun `a builder pick of light or dark replaces auto, even the one auto shows now`() {
         ideDark = false
         settings.setThemeFromBuilder("light", "sand", null)
+        assertEquals(ErdEditorTheme("light", "sand", "indigo"), settings.theme)
+
+        settings.setThemeFromBuilder("auto", null, null)
         assertEquals(ErdEditorTheme("auto", "sand", "indigo"), settings.theme)
 
         settings.setThemeFromBuilder("dark", null, null)
-
         assertEquals(ErdEditorTheme("dark", "sand", "indigo"), settings.theme)
-        assertEquals(2, published)
+        assertEquals(3, published)
+    }
+
+    @Test
+    fun `a builder pick keeps the stored value for anything it lacks or holds wrong`() {
+        settings.setThemeFromBuilder(null, null, null)
+        settings.setThemeFromBuilder("dim", null, "plaid")
+
+        assertEquals(ErdEditorTheme.DEFAULT, settings.theme)
+        assertEquals(0, published)
     }
 
     @Test

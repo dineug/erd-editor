@@ -170,8 +170,8 @@ Changing any of the three theme settings re-themes every open diagram immediatel
 Obsidian's light or dark theme and switches with it.
 
 The theme builder in the editor's toolbar changes these same three values and saves them here, so a
-theme you pick on the canvas persists. While Appearance is Auto, picking a color there, or the
-appearance Obsidian shows now, keeps Auto; picking the other appearance sets it.
+theme you pick on the canvas persists. Its System is Auto: picking a color there keeps the
+appearance as it is, and Light, Dark or System sets it.
 
 ## Documentation
 

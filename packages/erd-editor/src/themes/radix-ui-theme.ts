@@ -270,6 +270,14 @@ export const Appearance = {
 export type Appearance = ValuesType<typeof Appearance>;
 export const AppearanceList = Object.values(Appearance);
 
+/** The theme builder's third appearance: the light or dark the system shows. */
+export const SYSTEM_APPEARANCE = 'system';
+export type AppearanceOption = Appearance | typeof SYSTEM_APPEARANCE;
+export const AppearanceOptionList: ReadonlyArray<AppearanceOption> = [
+  ...AppearanceList,
+  SYSTEM_APPEARANCE,
+];
+
 export const GrayColor = {
   gray: 'gray',
   mauve: 'mauve',
@@ -313,16 +321,21 @@ export type AccentColor = ValuesType<typeof AccentColor>;
 export const AccentColorList = Object.values(AccentColor);
 
 export type ThemeOptions = {
-  appearance: Appearance;
+  appearance: AppearanceOption;
   grayColor: GrayColor;
   accentColor: AccentColor;
+};
+
+/** Theme options with system resolved to the light or dark a theme is built for. */
+export type ResolvedThemeOptions = Omit<ThemeOptions, 'appearance'> & {
+  appearance: Appearance;
 };
 
 function createRadixUITheme({
   appearance,
   grayColor,
   accentColor,
-}: ThemeOptions) {
+}: ResolvedThemeOptions) {
   const mode = appearance === Appearance.dark ? 'Dark' : '';
   const grayColors = Palette[`${grayColor}${mode}`];
   const accentColors = Palette[`${accentColor}${mode}`];
@@ -397,7 +410,7 @@ export const createTheme = ({
   grayColor,
   accentColor,
   appearance,
-}: ThemeOptions) =>
+}: ResolvedThemeOptions) =>
   toTheme(
     createRadixUITheme({
       appearance,

@@ -62,6 +62,7 @@ function fakeEditor() {
     setSchemaDBML: vi.fn(),
     setSchemaAML: vi.fn(),
     setPresetTheme: vi.fn(),
+    setSystemAppearance: vi.fn(),
     getSharedStore: () => sharedStore,
   });
 
@@ -211,25 +212,56 @@ describe('mountWebview', () => {
     expect(editor.element.setSchemaAML).toHaveBeenCalledWith('t\n  id uuid pk');
   });
 
-  it('resolves an auto appearance through the host and refreshes only while it stays auto', () => {
+  it('tells the editor what system shows as it mounts', () => {
+    mount({ resolveAppearance: () => 'light' });
+
+    expect(editor.element.setSystemAppearance).toHaveBeenCalledWith('light');
+  });
+
+  it('hands auto to the editor as system, shown as the host resolves it', () => {
     const resolveAppearance = vi.fn(() => 'light' as const);
-    const client = mount({ resolveAppearance });
+    mount({ resolveAppearance });
 
     fromHost(
       Bridge.executeCommand(webviewUpdateThemeCommand, { appearance: 'auto' })
     );
-    client.refreshAppearance();
-    fromHost(
-      Bridge.executeCommand(webviewUpdateThemeCommand, { appearance: 'dark' })
+
+    expect(editor.element.setPresetTheme).toHaveBeenLastCalledWith({
+      appearance: 'system',
+    });
+    expect(editor.element.setSystemAppearance).toHaveBeenLastCalledWith(
+      'light'
     );
-    client.refreshAppearance();
+  });
+
+  it('passes a light or dark appearance through as it is', () => {
+    mount();
+
+    fromHost(
+      Bridge.executeCommand(webviewUpdateThemeCommand, { appearance: 'light' })
+    );
+    fromHost(
+      Bridge.executeCommand(webviewUpdateThemeCommand, { accentColor: 'jade' })
+    );
 
     expect(editor.element.setPresetTheme.mock.calls).toEqual([
       [{ appearance: 'light' }],
-      [{ appearance: 'light' }],
-      [{ appearance: 'dark' }],
+      [{ accentColor: 'jade', appearance: undefined }],
     ]);
-    expect(resolveAppearance).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes what system shows whichever appearance is picked', () => {
+    const resolveAppearance = vi.fn(() => 'light' as const);
+    const client = mount({ resolveAppearance });
+    fromHost(
+      Bridge.executeCommand(webviewUpdateThemeCommand, { appearance: 'dark' })
+    );
+
+    resolveAppearance.mockReturnValue('dark' as never);
+    client.refreshAppearance();
+
+    expect(editor.element.setSystemAppearance).toHaveBeenLastCalledWith('dark');
+    expect(editor.element.setPresetTheme).toHaveBeenCalledTimes(1);
   });
 
   it('means dark by auto where the host does not say', () => {
@@ -242,35 +274,99 @@ describe('mountWebview', () => {
       })
     );
 
+    expect(editor.element.setSystemAppearance).toHaveBeenLastCalledWith('dark');
     expect(editor.element.setPresetTheme).toHaveBeenCalledWith({
-      appearance: 'dark',
+      appearance: 'system',
       grayColor: 'slate',
     });
   });
 
-  it('saves a theme the editor changed and follows its appearance from then on', () => {
-    const resolveAppearance = vi.fn(() => 'light' as const);
+  it('takes what auto shows from a theme update that names it', () => {
+    const resolveAppearance = vi.fn(() => 'dark' as const);
+    mount({ resolveAppearance });
+    resolveAppearance.mockClear();
+
+    fromHost(
+      Bridge.executeCommand(webviewUpdateThemeCommand, {
+        appearance: 'auto',
+        systemAppearance: 'light',
+      })
+    );
+
+    expect(resolveAppearance).not.toHaveBeenCalled();
+    expect(editor.element.setSystemAppearance).toHaveBeenLastCalledWith(
+      'light'
+    );
+    expect(editor.element.setPresetTheme.mock.calls[0][0]).toEqual({
+      appearance: 'system',
+    });
+  });
+
+  it('keeps what a theme update named for auto through a refresh', () => {
+    const resolveAppearance = vi.fn(() => 'dark' as const);
     const client = mount({ resolveAppearance });
+    fromHost(
+      Bridge.executeCommand(webviewUpdateThemeCommand, {
+        appearance: 'auto',
+        systemAppearance: 'light',
+      })
+    );
+
+    client.refreshAppearance();
+    fromHost(
+      Bridge.executeCommand(webviewUpdateThemeCommand, { accentColor: 'jade' })
+    );
+
+    expect(editor.element.setSystemAppearance.mock.calls.slice(1)).toEqual([
+      ['light'],
+      ['light'],
+      ['light'],
+    ]);
+  });
+
+  it('saves a system pick of the theme builder as auto', () => {
+    mount();
+    fromHost(
+      Bridge.executeCommand(webviewInitialValueCommand, { value: '{}' })
+    );
+
+    editor.element.dispatchEvent(
+      new CustomEvent('changePresetTheme', {
+        detail: {
+          appearance: 'system',
+          grayColor: 'gray',
+          accentColor: 'blue',
+        },
+      })
+    );
+
+    expect(dispatch).toHaveBeenCalledWith(
+      Bridge.executeCommand(hostSaveThemeCommand, {
+        appearance: 'auto',
+        grayColor: 'gray',
+        accentColor: 'blue',
+      })
+    );
+  });
+
+  it('saves a light or dark pick of the theme builder as it is', () => {
+    mount();
     fromHost(
       Bridge.executeCommand(webviewInitialValueCommand, { value: '{}' })
     );
     const detail = {
-      appearance: 'auto',
+      appearance: 'light',
       grayColor: 'gray',
       accentColor: 'blue',
-    };
+    } as const;
 
     editor.element.dispatchEvent(
       new CustomEvent('changePresetTheme', { detail })
     );
-    client.refreshAppearance();
 
     expect(dispatch).toHaveBeenCalledWith(
-      Bridge.executeCommand(hostSaveThemeCommand, detail as never)
+      Bridge.executeCommand(hostSaveThemeCommand, detail)
     );
-    expect(editor.element.setPresetTheme).toHaveBeenCalledWith({
-      appearance: 'light',
-    });
   });
 
   it('toggles readonly', () => {

@@ -16,7 +16,9 @@ export function useDarkMode() {
     state.isDark = event.matches;
   };
 
+  // A reconnected element heard no change while it was out of the document.
   onMounted(() => {
+    state.isDark = mediaQuery.matches;
     mediaQuery.addEventListener('change', handleChange);
 
     addUnsubscribe(() => {

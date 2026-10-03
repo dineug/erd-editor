@@ -10,7 +10,11 @@ import { flush } from '@/__test-utils__/index';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { whenDrawn } from '@/konva/batchDraw';
-import { Appearance, GrayColor } from '@/themes/radix-ui-theme';
+import {
+  Appearance,
+  GrayColor,
+  SYSTEM_APPEARANCE,
+} from '@/themes/radix-ui-theme';
 
 await import('@/components/erd-editor/ErdEditor');
 
@@ -291,6 +295,24 @@ describe('<erd-editor> preset changes', () => {
     await settleScene();
 
     expect(tableBody(stage).getAttr('fill')).not.toBe(dark);
+  });
+
+  it('repaints the scene from the light or dark a host names for system', async () => {
+    const el = await createSeededEditor();
+    const stage = stageRegistry().canvas;
+    const dark = tableBody(stage).getAttr('fill');
+    el.setPresetTheme({ appearance: Appearance.light });
+    await settleScene();
+    const light = tableBody(stage).getAttr('fill');
+
+    el.setSystemAppearance(Appearance.dark);
+    el.setPresetTheme({ appearance: SYSTEM_APPEARANCE });
+    await settleScene();
+    expect(tableBody(stage).getAttr('fill')).toBe(dark);
+
+    el.setSystemAppearance(Appearance.light);
+    await settleScene();
+    expect(tableBody(stage).getAttr('fill')).toBe(light);
   });
 
   it('repaints the scene when the gray scale changes', async () => {

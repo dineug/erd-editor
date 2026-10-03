@@ -7,7 +7,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
-import { useApplyPresetTheme, useResolvedTheme } from '@/atoms/modules/theme';
+import { useApplyPresetTheme, useThemeState } from '@/atoms/modules/theme';
 import LiveParticipants from '@/components/live-collaborative/live-participants/LiveParticipants';
 import {
   CollaborativeGuest,
@@ -45,7 +45,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ErdEditorElement | null>(null);
   const guestRef = useRef<CollaborativeGuest | null>(null);
-  const theme = useResolvedTheme();
+  const theme = useThemeState();
   const applyPresetTheme = useApplyPresetTheme();
   const nickname = useAtomValue(nicknameStorageAtom);
   const nicknameRef = useRef(nickname);

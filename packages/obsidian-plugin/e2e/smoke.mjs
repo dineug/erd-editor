@@ -1458,7 +1458,7 @@ try {
     })
   );
 
-  // The builder of one diagram: a color keeps auto, the other appearance replaces it.
+  // The builder of one diagram: a color keeps auto, the other appearance replaces it, System is auto.
   const builderOpened = await clickInEditor(page, 'theme-a.erd', root =>
     root.querySelector('div[title="Theme"]')
   );
@@ -1478,16 +1478,17 @@ try {
     appearance: 'auto',
     accentColor: 'grass',
   });
-  const otherLabel = firstDark ? 'Light' : 'Dark';
-  const appearancePicked = await clickInEditor(
-    page,
-    'theme-a.erd',
-    (root, label) =>
-      [...root.querySelectorAll('.theme-builder span')].find(
-        span => span.textContent === label
-      )?.parentElement,
-    otherLabel
-  );
+  const pickAppearance = label =>
+    clickInEditor(
+      page,
+      'theme-a.erd',
+      (root, label) =>
+        [...root.querySelectorAll('.theme-builder span')].find(
+          span => span.textContent === label
+        )?.parentElement,
+      label
+    );
+  const appearancePicked = await pickAppearance(firstDark ? 'Light' : 'Dark');
   const appearanceShown = await themedAs(page, ['theme-b.erd'], {
     grayColor: 'sand',
     accentColor: 'grass',
@@ -1495,6 +1496,17 @@ try {
   });
   const savedAppearance = await savedAs({
     appearance: appearanceOf(!firstDark),
+    grayColor: 'sand',
+    accentColor: 'grass',
+  });
+  const systemPicked = await pickAppearance('System');
+  const systemShown = await themedAs(page, ['theme-b.erd'], {
+    grayColor: 'sand',
+    accentColor: 'grass',
+    appearance: appearanceOf(firstDark),
+  });
+  const savedSystem = await savedAs({
+    appearance: 'auto',
     grayColor: 'sand',
     accentColor: 'grass',
   });
@@ -1506,8 +1518,18 @@ try {
       savedAccent.ok &&
       appearancePicked &&
       appearanceShown.ok &&
-      savedAppearance.ok,
-    JSON.stringify({ grassShown, savedAccent, appearanceShown, savedAppearance })
+      savedAppearance.ok &&
+      systemPicked &&
+      systemShown.ok &&
+      savedSystem.ok,
+    JSON.stringify({
+      grassShown,
+      savedAccent,
+      appearanceShown,
+      savedAppearance,
+      systemShown,
+      savedSystem,
+    })
   );
   // Obsidian reads data.json again when it changes on disk, as a sync changes it.
   const synced = {

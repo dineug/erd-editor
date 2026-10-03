@@ -134,7 +134,8 @@ follows your VS Code color theme and switches with it; note that the default is 
 theme you use.
 
 The theme builder inside the editor changes these same three values and writes them back
-here, so a theme you pick on the canvas persists.
+here, so a theme you pick on the canvas persists. Its System is `auto`, and picking a color
+there keeps the appearance as it is.
 
 ## Documentation
 

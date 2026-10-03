@@ -12,7 +12,7 @@
 | File | Description |
 | --- | --- |
 | `src/bridge.ts` | `Bridge` (`registerCommand`, `executeAction`, static `executeCommand` / `mergeRegister`) and `createCommand` |
-| `src/commands.ts` | The wire catalogue: six `host*` commands (webview → host) and five `webview*` (host → webview) |
+| `src/commands.ts` | The wire catalogue: six `host*` commands (webview → host) and five `webview*` (host → webview); `webviewUpdateThemeCommand` also carries an optional `systemAppearance`, the light or dark `'auto'` shows, from a host that knows it outside the page (IntelliJ) |
 | `src/theme.ts` | `Appearance` / `GrayColor` / `AccentColor` `as const` maps and `ThemeOptions`; a value added or removed fails a spec in each of three hosts until that host follows: `vscode-extension`'s manifest enums, which its `src/configuration.test.ts` holds to these maps; the Obsidian plugin's `readSettings`, which takes these values and falls back to the default for any other, and whose `settings.test.ts` pins six gray and 26 accent colors; the IntelliJ plugin's settings page, whose `ErdEditorThemeTest` reads this file, holds the page's lists equal to these maps in source order, `auto` added to the appearances, and pins the same counts |
 | `src/safeCallback.ts` | Runs one listener and logs its exception, so one bad listener does not stop the rest |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, minify: false, preserveModules: true })` — the private-library shape |

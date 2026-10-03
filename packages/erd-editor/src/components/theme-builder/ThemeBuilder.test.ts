@@ -1,4 +1,4 @@
-import { html } from '@dineug/r-html';
+import { html, observable } from '@dineug/r-html';
 import { get } from 'es-toolkit/compat';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
@@ -19,6 +19,7 @@ import {
   GrayColor,
   GrayColorList,
   Palette,
+  SYSTEM_APPEARANCE,
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { openThemeBuilderAction } from '@/utils/emitter';
@@ -66,7 +67,9 @@ const byStyle = (className: string) =>
 const palettes = () => byStyle(String(styles.palette));
 const swatches = (index: number) =>
   Array.from(palettes()[index].querySelectorAll<HTMLElement>('span'));
-const appearanceButtons = () => byStyle(String(styles.lightDarkButton));
+const appearanceButtons = () => byStyle(String(styles.appearanceButton));
+const appearanceButton = (label: string) =>
+  appearanceButtons().find(el => el.textContent === label)!;
 
 /** Normalizes a CSS color the way the DOM would after assignment. */
 const asCssColor = (value: string) => {
@@ -175,32 +178,62 @@ describe('ThemeBuilder', () => {
       ]);
     });
 
-    it('renders the light and dark buttons with their icons and labels', async () => {
+    it('renders the system, light and dark buttons in that order, with their icons', async () => {
       await setup();
-      const [light, dark] = appearanceButtons();
+      const buttons = appearanceButtons();
 
-      expect(appearanceButtons()).toHaveLength(2);
-      expect(light.textContent).toContain('Light');
-      expect(dark.textContent).toContain('Dark');
-      expect(light.querySelector('.icon svg')).toBeTruthy();
-      expect(dark.querySelector('.icon svg')).toBeTruthy();
-      expect(byStyle(String(styles.vertical))).toHaveLength(2);
+      expect(buttons.map(el => el.textContent)).toEqual([
+        'System',
+        'Light',
+        'Dark',
+      ]);
+      buttons.forEach(el => expect(el.querySelector('.icon svg')).toBeTruthy());
+      expect(byStyle(String(styles.vertical))).toHaveLength(3);
     });
 
-    it('selects the dark button for a dark appearance', async () => {
-      await setup({ theme: { appearance: Appearance.dark } });
-      const [light, dark] = appearanceButtons();
+    it('draws a distinct icon on each appearance button', async () => {
+      await setup();
+      const icons = appearanceButtons().map(
+        el => el.querySelector('.icon svg')!.innerHTML
+      );
 
-      expect(light.classList.contains('selected')).toBe(false);
-      expect(dark.classList.contains('selected')).toBe(true);
+      expect(new Set(icons).size).toBe(3);
     });
 
-    it('selects the light button for a light appearance', async () => {
-      await setup({ theme: { appearance: Appearance.light } });
-      const [light, dark] = appearanceButtons();
+    it.each([
+      [Appearance.light, 'Light'],
+      [Appearance.dark, 'Dark'],
+      [SYSTEM_APPEARANCE, 'System'],
+    ] as const)(
+      'selects only the button of the %s appearance',
+      async (appearance, label) => {
+        await setup({ theme: { appearance } });
+        const selected = appearanceButtons().filter(el =>
+          el.classList.contains('selected')
+        );
 
-      expect(light.classList.contains('selected')).toBe(true);
-      expect(dark.classList.contains('selected')).toBe(false);
+        expect(selected.map(el => el.textContent)).toEqual([label]);
+      }
+    );
+
+    it('moves the selection when the host changes the appearance', async () => {
+      const app = createTestAppContext();
+      app.store.dispatchSync(
+        changeOpenMapAction({ [Open.themeBuilder]: true })
+      );
+      const theme = observable<ThemeOptions>({ ...defaultTheme });
+      mounted = await mountAndFlush(
+        html`<${ThemeBuilder} theme=${theme} />`,
+        app
+      );
+
+      theme.appearance = SYSTEM_APPEARANCE;
+      await flush();
+
+      const selected = appearanceButtons().filter(el =>
+        el.classList.contains('selected')
+      );
+      expect(selected.map(el => el.textContent)).toEqual(['System']);
     });
   });
 
@@ -236,7 +269,7 @@ describe('ThemeBuilder', () => {
       const setThemeOptions = vi.fn();
       app.emitter.on({ setThemeOptions });
 
-      appearanceButtons()[0].click();
+      appearanceButton('Light').click();
 
       expect(setThemeOptions.mock.calls[0][0].payload).toEqual({
         appearance: Appearance.light,
@@ -248,17 +281,29 @@ describe('ThemeBuilder', () => {
       const setThemeOptions = vi.fn();
       app.emitter.on({ setThemeOptions });
 
-      appearanceButtons()[1].click();
+      appearanceButton('Dark').click();
 
       expect(setThemeOptions.mock.calls[0][0].payload).toEqual({
         appearance: Appearance.dark,
       });
     });
 
+    it('emits the system appearance when the system button is clicked', async () => {
+      const { app } = await setup({ theme: { appearance: Appearance.dark } });
+      const setThemeOptions = vi.fn();
+      app.emitter.on({ setThemeOptions });
+
+      appearanceButton('System').click();
+
+      expect(setThemeOptions.mock.calls[0][0].payload).toEqual({
+        appearance: SYSTEM_APPEARANCE,
+      });
+    });
+
     it('leaves the store untouched when only a theme option changes', async () => {
       const { app } = await setup();
 
-      appearanceButtons()[0].click();
+      appearanceButton('Light').click();
       await flush();
 
       expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);

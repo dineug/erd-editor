@@ -12,8 +12,8 @@ describe('ThemeBuilder.styles', () => {
       String(styles.subTitle),
       String(styles.palette),
       String(styles.color),
-      String(styles.lightDarkButtonGroup),
-      String(styles.lightDarkButton),
+      String(styles.appearanceButtonGroup),
+      String(styles.appearanceButton),
       String(styles.vertical),
     ];
 
@@ -88,19 +88,19 @@ describe('ThemeBuilder.styles', () => {
     expect(styles.color.values).toEqual([]);
   });
 
-  it('lays the appearance buttons out as a two column grid', () => {
-    const source = styles.lightDarkButtonGroup.strings.join('');
+  it('lays the three appearance buttons out as a three column grid', () => {
+    const source = styles.appearanceButtonGroup.strings.join('');
 
     expect(source).toContain('display: grid');
     expect(source).toContain(
-      'grid-template-columns: repeat(2, minmax(0, 1fr))'
+      'grid-template-columns: repeat(3, minmax(0, 1fr))'
     );
     expect(source).toContain('gap: 8px');
-    expect(styles.lightDarkButtonGroup.values).toEqual([]);
+    expect(styles.appearanceButtonGroup.values).toEqual([]);
   });
 
   it('styles an appearance button with hover fill and a selected border', () => {
-    const source = styles.lightDarkButton.strings.join('');
+    const source = styles.appearanceButton.strings.join('');
 
     expect(source).toContain('display: flex');
     expect(source).toContain('align-items: center');
@@ -112,7 +112,7 @@ describe('ThemeBuilder.styles', () => {
     expect(source).toContain('background-color: var(--column-hover)');
     expect(source).toContain('&.selected');
     expect(source).toContain('border-color: var(--gray-color-12)');
-    expect(styles.lightDarkButton.values).toEqual([typography.paragraph]);
+    expect(styles.appearanceButton.values).toEqual([typography.paragraph]);
   });
 
   it('renders the icon-to-label spacer as a fixed width full height gap', () => {

@@ -10,31 +10,39 @@ import {
   GrayColor,
   GrayColorList,
   Palette,
-  type ThemeOptions,
+  type ResolvedThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { ThemeConfig } from '@/themes/radix-ui-theme.config';
 import { ThemeTokens } from '@/themes/tokens';
 
-const lightGrayBlue: ThemeOptions = {
+const lightGrayBlue: ResolvedThemeOptions = {
   appearance: Appearance.light,
   grayColor: GrayColor.gray,
   accentColor: AccentColor.blue,
 };
 
-const darkGrayBlue: ThemeOptions = {
+const darkGrayBlue: ResolvedThemeOptions = {
   appearance: Appearance.dark,
   grayColor: GrayColor.gray,
   accentColor: AccentColor.blue,
 };
 
-const everyThemeOptions: ThemeOptions[] = AppearanceList.flatMap(appearance =>
-  GrayColorList.flatMap(grayColor =>
-    AccentColorList.map(accentColor => ({ appearance, grayColor, accentColor }))
-  )
+const everyThemeOptions: ResolvedThemeOptions[] = AppearanceList.flatMap(
+  appearance =>
+    GrayColorList.flatMap(grayColor =>
+      AccentColorList.map(accentColor => ({
+        appearance,
+        grayColor,
+        accentColor,
+      }))
+    )
 );
 
-const labelOf = ({ appearance, grayColor, accentColor }: ThemeOptions) =>
-  `${appearance}/${grayColor}/${accentColor}`;
+const labelOf = ({
+  appearance,
+  grayColor,
+  accentColor,
+}: ResolvedThemeOptions) => `${appearance}/${grayColor}/${accentColor}`;
 
 /** The 0..1 linear-light channels of an opaque #rrggbb radix step. */
 function toLinearRgb(hex: string): number[] {
@@ -396,7 +404,7 @@ describe('the table header band', () => {
 });
 
 describe('the light appearance', () => {
-  const lightThemeOptions = everyThemeOptions.filter(
+  const lightResolvedThemeOptions = everyThemeOptions.filter(
     options => options.appearance === Appearance.light
   );
 
@@ -404,7 +412,7 @@ describe('the light appearance', () => {
   const MIN_GRAPHIC_CONTRAST = 3;
 
   it('keeps every key icon at 3:1 on the table it sits in', () => {
-    lightThemeOptions.forEach(options => {
+    lightResolvedThemeOptions.forEach(options => {
       const theme = createTheme(options);
 
       [theme.keyPK, theme.keyFK, theme.keyPFK].forEach(key => {
@@ -417,7 +425,7 @@ describe('the light appearance', () => {
   });
 
   it('keeps both relationship colours at 3:1 on the canvas', () => {
-    lightThemeOptions.forEach(options => {
+    lightResolvedThemeOptions.forEach(options => {
       const theme = createTheme(options);
 
       [theme.keyFK, theme.keyPFK].forEach(line => {
@@ -430,7 +438,7 @@ describe('the light appearance', () => {
   });
 
   it('edges a table more sharply against the canvas than the shared gray-6 did', () => {
-    lightThemeOptions.forEach(options => {
+    lightResolvedThemeOptions.forEach(options => {
       const theme = createTheme(options);
 
       expect(
@@ -441,7 +449,7 @@ describe('the light appearance', () => {
   });
 
   it('draws every visualization stroke a gray step darker than dark does', () => {
-    lightThemeOptions.forEach(options => {
+    lightResolvedThemeOptions.forEach(options => {
       const theme = createTheme(options);
       const label = labelOf(options);
 
@@ -453,7 +461,7 @@ describe('the light appearance', () => {
 
   /** These strokes rest dimmed until a hover lights them, so dark sets their bar rather than 3:1. */
   it('holds every visualization stroke level with its dark contrast', () => {
-    lightThemeOptions.forEach(options => {
+    lightResolvedThemeOptions.forEach(options => {
       const light = createTheme(options);
       const dark = createTheme({ ...options, appearance: Appearance.dark });
       const strokes = [
@@ -474,7 +482,7 @@ describe('the light appearance', () => {
   });
 
   it('casts a table and memo shadow in a colour konva reads alpha from', () => {
-    lightThemeOptions.forEach(options => {
+    lightResolvedThemeOptions.forEach(options => {
       const theme = createTheme(options);
 
       expect(theme.tableShadow, labelOf(options)).toBe('rgba(0, 0, 0, 0.18)');
