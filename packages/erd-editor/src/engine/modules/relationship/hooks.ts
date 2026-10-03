@@ -193,6 +193,11 @@ const alternateKeyActionTypes = alternateKeyActions.map(action => action.type);
 
 const isAlternateKeyAction = arrayHas<string>(alternateKeyActionTypes);
 
+/** The referential action labels shown or hidden, which moves no table and no anchor. */
+const isLabelToggle = (action: AnyAction) =>
+  action.type === changeShowAction.type &&
+  action.payload?.show === Show.hideReferentialAction;
+
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
     .pipe(
@@ -200,8 +205,9 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
       // in the Indexes tab would otherwise sort the whole document.
       filter(
         action =>
-          !isAlternateKeyAction(action.type) ||
-          bHas(getState().settings.show, Show.columnAlternateKey)
+          (!isAlternateKeyAction(action.type) ||
+            bHas(getState().settings.show, Show.columnAlternateKey)) &&
+          !isLabelToggle(action)
       ),
       // Invalidation reads every action, the sort reads one per window. Putting
       // this after the throttle would drop the width-changing action whenever

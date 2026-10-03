@@ -75,6 +75,7 @@ async function run(effect: HookEffect, store: Store) {
   return {
     fire: (type = 'test.trigger', tags?: number) =>
       action$.next({ type, payload: undefined, tags }),
+    dispatch: (action: AnyAction) => action$.next(action),
   };
 }
 
@@ -611,6 +612,23 @@ describe('relationship/hooks relationshipSortHook', () => {
 
     store.state.settings.show |= Show.columnAlternateKey;
     fire(addIndexColumnAction.type);
+    await settle();
+    expect(relationshipSort).toHaveBeenCalledTimes(1);
+  });
+
+  it('neither sorts nor measures as the referential action labels show or hide', async () => {
+    const store = createTestStore();
+    const { dispatch } = await run(relationshipSortHook, store);
+    const generation = getWidthGeneration();
+
+    dispatch(
+      changeShowAction({ show: Show.hideReferentialAction, value: true })
+    );
+    await settle();
+    expect(relationshipSort).not.toHaveBeenCalled();
+    expect(getWidthGeneration()).toBe(generation);
+
+    dispatch(changeShowAction({ show: Show.columnComment, value: false }));
     await settle();
     expect(relationshipSort).toHaveBeenCalledTimes(1);
   });

@@ -6,6 +6,8 @@ import { bHas } from '@/utils/bit';
 type Menu = {
   name: string;
   show: number;
+  /** A bit that hides what the menu shows, so the menu is checked while it is off. */
+  hides?: boolean;
 };
 
 const menus: Menu[] = [
@@ -45,13 +47,18 @@ const menus: Menu[] = [
     name: 'Relationship',
     show: Show.relationship,
   },
+  {
+    name: 'Referential Actions',
+    show: Show.hideReferentialAction,
+    hides: true,
+  },
 ];
 
 export function createShowMenus({ store }: AppContext) {
   const { settings } = store.state;
 
   return menus.map(menu => {
-    const checked = bHas(settings.show, menu.show);
+    const checked = bHas(settings.show, menu.show) !== Boolean(menu.hides);
 
     return {
       checked,
@@ -60,7 +67,7 @@ export function createShowMenus({ store }: AppContext) {
         store.dispatch(
           changeShowAction({
             show: menu.show,
-            value: !checked,
+            value: menu.hides ? checked : !checked,
           })
         );
       },

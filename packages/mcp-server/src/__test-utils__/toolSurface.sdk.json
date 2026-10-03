@@ -1215,6 +1215,7 @@
           "columnNotNull",
           "columnPrimaryKey",
           "columnUnique",
+          "hideReferentialAction",
           "relationship",
           "tableComment"
         ]

@@ -48,6 +48,8 @@ export const Show = {
   columnNotNull: 128,
   relationship: 256,
   columnAlternateKey: 512,
+  /** The one bit that hides what it names: the referential action labels. */
+  hideReferentialAction: 1024,
 } as const;
 
 /** The editor's own default for settings.show. */
@@ -110,6 +112,10 @@ export type RelationshipSeed = {
   startColumnIds: string[];
   endTableId: string;
   endColumnIds: string[];
+  /** A value of ReferentialAction; left out of the entity when the seed leaves it out. */
+  onDelete?: number;
+  /** A value of ReferentialAction; left out of the entity when the seed leaves it out. */
+  onUpdate?: number;
 };
 
 export type IndexColumnSeed = {
@@ -343,6 +349,12 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       identification: relationship.identification ?? false,
       relationshipType: relationship.relationshipType ?? RelationshipType.ZeroN,
       startRelationshipType: 2,
+      ...(relationship.onDelete === undefined
+        ? {}
+        : { onDelete: relationship.onDelete }),
+      ...(relationship.onUpdate === undefined
+        ? {}
+        : { onUpdate: relationship.onUpdate }),
       start: {
         tableId: relationship.startTableId,
         columnIds: [...relationship.startColumnIds],
