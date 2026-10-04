@@ -14,6 +14,7 @@ import { collectUnhandledRejections } from '@/__test-utils__/rejections';
 import { renderHook } from '@/__test-utils__/renderHook';
 import { schemaEntitiesAtom } from '@/atoms/modules/schema';
 import {
+  importingFilesAtom,
   importNoticeAtom,
   useExportBackup,
   useImportFiles,
@@ -212,6 +213,46 @@ describe('schema import', () => {
     });
   });
 
+  describe('one import at a time', () => {
+    it('marks files importing until the import ends, refusing more meanwhile', async () => {
+      let place: () => void = () => {};
+      vi.mocked(convertSource).mockImplementation(
+        ({ type, value }) =>
+          new Promise(resolve => {
+            place = () => resolve(parsed(type, value));
+          })
+      );
+      const { result } = renderHook(useImportFiles, store);
+      const refused = file('more.dbml', 'Table more {}');
+      const text = vi.spyOn(refused, 'text');
+
+      const importing = result.current([file('shop.sql', 'create table a;')]);
+      expect(store.get(importingFilesAtom)).toBe(true);
+      await vi.waitFor(() => expect(convertSource).toHaveBeenCalledTimes(1));
+      await expect(result.current([refused])).resolves.toBeUndefined();
+      expect(text).not.toHaveBeenCalled();
+      expect(store.get(importingFilesAtom)).toBe(true);
+
+      place();
+      await importing;
+
+      expect(store.get(importingFilesAtom)).toBe(false);
+      expect(convertSource).toHaveBeenCalledTimes(1);
+      expect(names(store)).toEqual(['shop']);
+      expect(store.get(importNoticeAtom)?.message).toBe('Imported 1 schema');
+    });
+
+    it('takes files again once the import before has ended', async () => {
+      const { result } = renderHook(useImportFiles, store);
+
+      await result.current([file('shop.erd', DOCUMENT)]);
+      await result.current([file('more.erd', DOCUMENT)]);
+
+      expect(names(store)).toEqual(['shop', 'more']);
+      expect(store.get(importingFilesAtom)).toBe(false);
+    });
+  });
+
   it('leaves the selection alone for a backup', async () => {
     store.set(selectedSchemaIdAtom, 'open');
     const { result } = renderHook(useImportFiles, store);
@@ -279,6 +320,7 @@ describe('schema import', () => {
       tone: 'warning',
     });
     expect(Sentry.captureException).toHaveBeenCalledWith(FAILURE);
+    expect(store.get(importingFilesAtom)).toBe(false);
   });
 
   it('imports what the file chooser gives', async () => {

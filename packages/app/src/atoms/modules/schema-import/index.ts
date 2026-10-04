@@ -32,6 +32,9 @@ const SAMPLE_NAME = 'bookstore sample';
 
 export const importNoticeAtom = atom<ImportNotice | null>(null);
 
+/** Whether files given to the file chooser or dropped are being imported. */
+export const importingFilesAtom = atom(false);
+
 const addImportedSchemasAtom = atom(
   null,
   async (get, set, list: NewSchemaEntity[]) => {
@@ -173,20 +176,33 @@ async function runImport(store: Store, read: () => Promise<ImportItem[]>) {
 
 export const useImportNotice = () => useAtomValue(importNoticeAtom);
 
+export const useImportingFiles = () => useAtomValue(importingFilesAtom);
+
 export const useDismissImportNotice = () => {
   const setNotice = useSetAtom(importNoticeAtom);
   return useCallback(() => setNotice(null), [setNotice]);
 };
 
+/**
+ * Imports files one import at a time, as /gdrive does: files given while one
+ * runs are refused, and the controls that start one read importingFilesAtom.
+ */
 export const useImportFiles = () => {
   const store = useStore();
 
   return useCallback(
-    (files: File[]) => {
-      const now = Date.now();
-      return runImport(store, () =>
-        Promise.all(files.map(file => readImportFile(file, now)))
-      );
+    async (files: File[]) => {
+      if (store.get(importingFilesAtom)) return undefined;
+      store.set(importingFilesAtom, true);
+
+      try {
+        const now = Date.now();
+        return await runImport(store, () =>
+          Promise.all(files.map(file => readImportFile(file, now)))
+        );
+      } finally {
+        store.set(importingFilesAtom, false);
+      }
     },
     [store]
   );

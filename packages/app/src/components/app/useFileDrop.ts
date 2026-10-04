@@ -6,14 +6,16 @@ const hasFiles = (event: DragEvent) =>
   Array.from(event.dataTransfer?.types ?? []).includes('Files');
 
 /**
- * Takes files dropped anywhere in the window and reports whether some are
- * being dragged over it. Every element entered and left fires its own event,
- * so the window counts them rather than trusting any single leave.
+ * Takes files dropped anywhere in the window, unless refusing, and reports
+ * whether some are being dragged over it. Every element entered and left fires
+ * its own event, so the window counts them rather than trusting any single leave.
  */
-export function useFileDrop(onDrop: (files: File[]) => void) {
+export function useFileDrop(onDrop: (files: File[]) => void, refusing = false) {
   const [dragging, setDragging] = useState(false);
   const onDropRef = useRef(onDrop);
   onDropRef.current = onDrop;
+  const refusingRef = useRef(refusing);
+  refusingRef.current = refusing;
 
   useEffect(() => {
     let depth = 0;
@@ -28,7 +30,9 @@ export function useFileDrop(onDrop: (files: File[]) => void) {
     const handleDragOver = (event: DragEvent) => {
       if (!hasFiles(event)) return;
       event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = refusingRef.current ? 'none' : 'copy';
+      }
     };
 
     const handleDragLeave = (event: DragEvent) => {
@@ -44,7 +48,7 @@ export function useFileDrop(onDrop: (files: File[]) => void) {
       setDragging(false);
 
       const files = Array.from(event.dataTransfer?.files ?? []);
-      if (files.length) onDropRef.current(files);
+      if (files.length && !refusingRef.current) onDropRef.current(files);
     };
 
     window.addEventListener('dragenter', handleDragEnter);
