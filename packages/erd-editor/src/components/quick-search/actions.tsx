@@ -176,46 +176,48 @@ function rankHangulActions(
 }
 
 /** The five formats under Import, or under Import and Add for an append. */
-const createImportActions = (mode: ImportMode): Action[] => [
-  {
-    icon: <Icon name="braces" size={16} />,
-    name: 'json',
-    perform: app => {
-      importJSON(app, mode);
+function createImportActions(mode: ImportMode): Action[] {
+  return [
+    {
+      icon: <Icon name="braces" size={16} />,
+      name: 'json',
+      perform: app => {
+        importJSON(app, mode);
+      },
     },
-  },
-  {
-    icon: <Icon name="database" size={16} />,
-    name: 'Schema SQL',
-    perform: app => {
-      importSchemaSQL(app, mode);
+    {
+      icon: <Icon name="database" size={16} />,
+      name: 'Schema SQL',
+      perform: app => {
+        importSchemaSQL(app, mode);
+      },
     },
-  },
-  {
-    icon: <Icon name="code" size={16} />,
-    name: 'GraphQL',
-    keywords: 'graphql sdl gql schema',
-    perform: app => {
-      importGraphQL(app, mode);
+    {
+      icon: <Icon name="code" size={16} />,
+      name: 'GraphQL',
+      keywords: 'graphql sdl gql schema',
+      perform: app => {
+        importGraphQL(app, mode);
+      },
     },
-  },
-  {
-    icon: <Icon name="code" size={16} />,
-    name: 'DBML',
-    keywords: 'dbml dbdiagram dbdocs schema',
-    perform: app => {
-      importDBML(app, mode);
+    {
+      icon: <Icon name="code" size={16} />,
+      name: 'DBML',
+      keywords: 'dbml dbdiagram dbdocs schema',
+      perform: app => {
+        importDBML(app, mode);
+      },
     },
-  },
-  {
-    icon: <Icon name="code" size={16} />,
-    name: 'AML',
-    keywords: 'aml azimutt markup language schema',
-    perform: app => {
-      importAML(app, mode);
+    {
+      icon: <Icon name="code" size={16} />,
+      name: 'AML',
+      keywords: 'aml azimutt markup language schema',
+      perform: app => {
+        importAML(app, mode);
+      },
     },
-  },
-];
+  ];
+}
 
 /** The palette's top level: the commands of every tab, then a jump to each table, which only the # prefix lists. */
 export function createScopeActions(app: AppContext): Action[] {

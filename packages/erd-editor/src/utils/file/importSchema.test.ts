@@ -489,23 +489,27 @@ function createScreenApp(options?: RxStoreOptions): AppContext {
   return app;
 }
 
+/** The ids of the selected tables, in the order the selection holds them. */
+function selectedTableIds(app: AppContext): string[] {
+  return Object.entries(app.store.state.editor.selectedMap)
+    .filter(([, type]) => type === SelectType.table)
+    .map(([id]) => id);
+}
+
 /** The left edge of the selected tables, as the screen shows them. */
 function selectedLeftOnScreen(app: AppContext): number {
   const { state } = app.store;
-  const lefts = Object.entries(state.editor.selectedMap)
-    .filter(([, type]) => type === SelectType.table)
-    .map(([id]) => {
-      const rect = getTableRect(state, state.collections.tableEntities[id]);
-      return toScreenPoint(state.settings, rect).x;
-    });
+  const lefts = selectedTableIds(app).map(id => {
+    const rect = getTableRect(state, state.collections.tableEntities[id]);
+    return toScreenPoint(state.settings, rect).x;
+  });
   return Math.min(...lefts);
 }
 
 function selectedNames(app: AppContext): string[] {
-  const { editor, collections } = app.store.state;
-  return Object.entries(editor.selectedMap)
-    .filter(([, type]) => type === SelectType.table)
-    .map(([id]) => collections.tableEntities[id].name)
+  const { collections } = app.store.state;
+  return selectedTableIds(app)
+    .map(id => collections.tableEntities[id].name)
     .sort();
 }
 
@@ -531,7 +535,8 @@ const enterTab = (value: string) => (app: AppContext) => {
   app.store.dispatchSync(changeCanvasTypeAction({ value }));
 };
 
-const ACCOUNTS_JSON = () => {
+/** A document of two tables 600 apart and a memo 360 below the first. */
+function accountsJson(): string {
   const app = createTestAppContext();
   contexts.push(app);
   app.store.dispatchSync(
@@ -542,7 +547,7 @@ const ACCOUNTS_JSON = () => {
     addMemoAction({ id: 'note', ui: { x: 40, y: 400, zIndex: 2 } })
   );
   return JSON.stringify(app.store.state);
-};
+}
 
 describe('appendSchema', () => {
   it('adds an import below the diagram in the grid, leaving what was there', () => {
@@ -713,7 +718,7 @@ describe('appendSchemaJSON', () => {
     const app = createScreenApp();
     const corner = appendCorner(app);
 
-    appendSchemaJSON(app, ACCOUNTS_JSON());
+    appendSchemaJSON(app, accountsJson());
 
     expect(cornerOf(app, 'accounts')).toEqual(corner);
     expect(cornerOf(app, 'roles')).toEqual({ x: corner.x + 600, y: corner.y });
@@ -910,7 +915,7 @@ describe('an append to a readonly editor', () => {
     ['appendSchema', (app: AppContext) => appendSchema(app, 'sql', FAN_SQL)],
     [
       'appendSchemaJSON',
-      (app: AppContext) => appendSchemaJSON(app, ACCOUNTS_JSON()),
+      (app: AppContext) => appendSchemaJSON(app, accountsJson()),
     ],
     [
       'appendSchemaPlaced',

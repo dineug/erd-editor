@@ -142,18 +142,24 @@ function createDocument(): string {
   return toJson(store.state);
 }
 
-const tableByName = ({ doc, collections }: RootState, name: string) => {
+function tableByName({ doc, collections }: RootState, name: string) {
   const table = doc.tableIds
     .map(id => collections.tableEntities[id])
     .find(table => table.name === name);
   if (!table) throw new Error(`table not found: ${name}`);
   return table;
-};
+}
 
-const cornerOf = (state: RootState, name: string) => {
+function cornerOf(state: RootState, name: string) {
   const { x, y } = tableByName(state, name).ui;
   return { x, y };
-};
+}
+
+/** Where the block an append brings starts, under the diagram as it stands. */
+function appendCorner(state: RootState) {
+  const content = getContentRect(state)!;
+  return { x: content.x, y: content.y + content.height + APPEND_GAP };
+}
 
 const UNRELATED_SQL = `
 CREATE TABLE users (id INT NOT NULL, name VARCHAR(255), email VARCHAR(255));
@@ -214,22 +220,21 @@ describe('appendSchemaJsonAction$', () => {
 
   it('stands the block a gap under the diagram in line with its left edge, the file keeping its tables apart', () => {
     const store = createDiagram();
-    const content = getContentRect(store.state)!;
-    const top = content.y + content.height + APPEND_GAP;
+    const corner = appendCorner(store.state);
 
     store.dispatchSync(appendSchemaJsonAction$(createDocument()));
 
     const { collections, doc } = store.state;
     const memo = collections.memoEntities[doc.memoIds[0]];
     expect(cornerOf(store.state, 'old')).toEqual({ x: 100, y: 100 });
-    expect(cornerOf(store.state, 'users')).toEqual({ x: content.x, y: top });
+    expect(cornerOf(store.state, 'users')).toEqual(corner);
     expect(cornerOf(store.state, 'posts')).toEqual({
-      x: content.x + 500,
-      y: top,
+      x: corner.x + 500,
+      y: corner.y,
     });
     expect({ x: memo.ui.x, y: memo.ui.y }).toEqual({
-      x: content.x,
-      y: top + 500,
+      x: corner.x,
+      y: corner.y + 500,
     });
   });
 
@@ -317,8 +322,7 @@ describe('appendSchemaAction$', () => {
   it('lays a schema out in the grid an import replaces with, under the diagram', () => {
     const store = createDiagram();
     const replaced = createTestStore();
-    const content = getContentRect(store.state)!;
-    const top = content.y + content.height + APPEND_GAP;
+    const corner = appendCorner(store.state);
 
     store.dispatchSync(appendSchemaAction$('sql', UNRELATED_SQL));
     replaced.dispatchSync(loadSchemaSQLAction$(UNRELATED_SQL));
@@ -326,8 +330,8 @@ describe('appendSchemaAction$', () => {
     for (const name of ['users', 'posts', 'tags']) {
       const grid = cornerOf(replaced.state, name);
       expect(cornerOf(store.state, name)).toEqual({
-        x: content.x + grid.x - TABLE_SORT_START,
-        y: top + grid.y - TABLE_SORT_START,
+        x: corner.x + grid.x - TABLE_SORT_START,
+        y: corner.y + grid.y - TABLE_SORT_START,
       });
     }
     expect(store.state.settings.databaseName).toBe('mine');
@@ -389,8 +393,7 @@ describe('toSchemaAppend', () => {
     const schema = JSON.parse(createDocument());
     schema.doc.memoIds = [];
     const document = JSON.stringify(schema);
-    const content = getContentRect(store.state)!;
-    const top = content.y + content.height + APPEND_GAP;
+    const corner = appendCorner(store.state);
 
     const append = toSchemaAppend(
       store.state,
@@ -404,12 +407,12 @@ describe('toSchemaAppend', () => {
     store.dispatchSync(append.actions);
 
     expect(cornerOf(store.state, 'users')).toEqual({
-      x: content.x + 600,
-      y: top,
+      x: corner.x + 600,
+      y: corner.y,
     });
     expect(cornerOf(store.state, 'posts')).toEqual({
-      x: content.x,
-      y: top + 1000,
+      x: corner.x,
+      y: corner.y + 1000,
     });
   });
 

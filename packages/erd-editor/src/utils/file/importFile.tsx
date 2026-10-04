@@ -37,25 +37,27 @@ export function setImportFileCallback(callback: ImportFileCallback | null) {
 }
 
 /** What a host is asked for, the mode named only when it is an append. */
-const toImportOptions = (
+function toImportOptions(
   type: ImportOptions['type'],
   accept: string,
   mode: ImportMode
-): ImportOptions =>
-  mode === 'append'
+): ImportOptions {
+  return mode === 'append'
     ? { type, op: 'set', accept, mode }
     : { type, op: 'set', accept };
+}
 
 /** Lands a schema file read in, replacing the document or joining it as the mode says. */
-const landSchema = (
+function landSchema(
   app: AppContext,
   type: Exclude<ImportOptions['type'], 'json'>,
   value: string,
   mode: ImportMode
-) =>
-  mode === 'append'
+): Promise<void> {
+  return mode === 'append'
     ? appendSchemaPlaced(app, type, value)
     : importSchemaPlaced(app, type, value);
+}
 
 export function importJSON(app: AppContext, mode: ImportMode = 'replace') {
   const { store, emitter } = app;

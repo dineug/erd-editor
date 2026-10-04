@@ -204,7 +204,7 @@ const appendLandingAction$ = ({
  * comes up first from any other in a dispatch of its own: a Flow view drops
  * every edit of the document, and a batch is classified by the state before it.
  */
-function landAppend(app: AppContext, json: string, layout: AppendLayout) {
+function landAppend(app: AppContext, json: string, layout: AppendLayout): void {
   const { store } = app;
   // Readonly drops the adds alone, so the selection and scroll would still land.
   if (store.getReadonly()) return;
@@ -259,9 +259,10 @@ export async function appendSchemaPlaced(
   type: SchemaImportType,
   value: string
 ): Promise<void> {
-  if (app.store.getReadonly()) return;
+  const { store } = app;
+  if (store.getReadonly()) return;
 
-  const json = toSchemaImportJson(type, value, app.store.state, app);
+  const json = toSchemaImportJson(type, value, store.state, app);
   await placeAndLand(app, json, false, points =>
     landAppend(app, json, points ?? 'grid')
   );

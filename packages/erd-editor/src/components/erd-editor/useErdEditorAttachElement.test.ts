@@ -805,9 +805,7 @@ describe('useErdEditorAttachElement', () => {
     ctx.setSchemaSQL('CREATE TABLE old (id INT);');
     const { databaseName } = app.store.state.settings;
 
-    ctx.setSchemaJSON(loadedDocument(40), {
-      mode: 'append',
-    });
+    ctx.setSchemaJSON(loadedDocument(40), { mode: 'append' });
 
     expect(namesOf(app)).toEqual(['old', 'loaded']);
     expect(app.store.state.settings.databaseName).toBe(databaseName);
