@@ -41,8 +41,10 @@ import { TablePlacement } from '@/constants/tablePlacement';
 import {
   changeOpenMapAction,
   changeViewportAction,
+  selectAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
+  SelectType,
   ShowMode,
   ViewKind,
   VisualizationMode,
@@ -1469,6 +1471,84 @@ describe('the Flow mode of the visualization tab', () => {
     expect(view.originY).toBeCloseTo(originY + 50, 4);
     expect(app.store.state.settings.originX).toBe(0);
     expect(app.store.state.settings.originY).toBe(0);
+  });
+
+  it('pans the view on a middle drag over a card, and leaves the card and the selection be', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    app.store.dispatchSync(selectAction({ b: SelectType.table }));
+    await settle();
+    await whenPainted();
+    const landed = positionsOf(app)!;
+    const { originX, originY } = app.store.state.editor.views.flow!;
+    const closeColorPicker = vi.fn();
+    app.emitter.on({ closeColorPicker });
+    const stage = flowStage();
+    const card = bodyOf('a').getClientRect({ relativeTo: stage });
+    const content = stage.content.getBoundingClientRect();
+    const at = {
+      clientX: content.left + card.x + card.width / 2,
+      clientY: content.top + card.y + card.height / 2,
+    };
+
+    const press = new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 1,
+      ...at,
+    });
+    stage.content.querySelector('canvas')!.dispatchEvent(press);
+    movePointer(at.clientX + 30, at.clientY + 50);
+    releasePointer();
+    await settle();
+
+    const view = app.store.state.editor.views.flow!;
+    expect(press.defaultPrevented).toBe(true);
+    expect(view.originX).toBeCloseTo(originX + 30, 4);
+    expect(view.originY).toBeCloseTo(originY + 50, 4);
+    expect(positionsOf(app)).toEqual(landed);
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      b: SelectType.table,
+    });
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(app.store.state.settings.originY).toBe(0);
+    // The picker a cached ERD tab may hold open is that tab's, not this scene's.
+    expect(closeColorPicker).not.toHaveBeenCalled();
+  });
+
+  it('keeps the selection and the pin through a middle click on the background', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    await clickTable('a');
+    fireScenePointer(bodyOf('a'), 'mouseleave');
+    app.store.dispatchSync(selectAction({ b: SelectType.table }));
+    await settle();
+    const selected = { ...app.store.state.editor.selectedMap };
+    expect(Object.keys(selected)).toContain('b');
+    const rect = flowRootOf(mounted).getBoundingClientRect();
+    const init: MouseEventInit = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 1,
+      clientX: rect.left + 900,
+      clientY: rect.top + 500,
+    };
+    const canvas = flowStage().content.querySelector('canvas')!;
+
+    const press = new MouseEvent('mousedown', init);
+    canvas.dispatchEvent(press);
+    canvas.dispatchEvent(new MouseEvent('mouseup', init));
+    await settle();
+
+    expect(press.defaultPrevented).toBe(true);
+    expect(litTableIds(app)).toEqual(['a', 'b']);
+    expect({ ...app.store.state.editor.selectedMap }).toEqual(selected);
   });
 
   it('runs particles on the connectors a hover lights, and none while nothing is hovered (AC-33)', async () => {

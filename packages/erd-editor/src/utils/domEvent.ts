@@ -31,6 +31,22 @@ export function isMultiTouch(event: Event): boolean {
   return ((event as Partial<TouchEvent>).touches?.length ?? 0) > 1;
 }
 
+/** The button a mouse event reports for the main press, the one that carries what it lands on. */
+const MAIN_BUTTON = 0;
+
+/** The button a mouse event reports for a middle press, which pans whatever it lands on. */
+const MIDDLE_BUTTON = 1;
+
+/** A press that may carry what it lands on: a touch, or the main mouse button. */
+export function isMainButtonPress(event: Event): boolean {
+  return !isMouseEvent(event) || event.button === MAIN_BUTTON;
+}
+
+/** A press of the middle mouse button. */
+export function isMiddleButtonPress(event: Event): event is MouseEvent {
+  return isMouseEvent(event) && event.button === MIDDLE_BUTTON;
+}
+
 /**
  * The editor root, which is where a pan has to take the selection off: the top
  * toolbar is a sibling of the scene that pans, so suppressing it any lower

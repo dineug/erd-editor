@@ -408,7 +408,83 @@ describe('useMoveTable', () => {
     await flush();
 
     expect(duplicateDragStart).not.toHaveBeenCalled();
-    expect(table.ui.x).toBe(startX + 30);
+    // Nor a move: only the main button carries a table.
+    expect(table.ui.x).toBe(startX);
+  });
+
+  describe('a right press', () => {
+    it('moves no table however far the pointer travels', async () => {
+      const { app, table, otherTable, fire } = await setup();
+      app.store.dispatchSync(
+        selectAction({
+          [table.id]: SelectType.table,
+          [otherTable.id]: SelectType.table,
+        })
+      );
+      const before = [table.ui.x, table.ui.y, otherTable.ui.x, otherTable.ui.y];
+
+      fire(
+        inside('table-body'),
+        mousedown({ button: 2, clientX: 100, clientY: 100 })
+      );
+      mousemove(160, 140);
+      mousemove(220, 190);
+      await flush();
+
+      expect([
+        table.ui.x,
+        table.ui.y,
+        otherTable.ui.x,
+        otherTable.ui.y,
+      ]).toEqual(before);
+      expect(isEntityDragActive(app.store.state)).toBe(false);
+    });
+
+    it('keeps the selection it lands in, for the context menu it opens', async () => {
+      const { app, table, otherTable, fire } = await setup();
+      const selected = {
+        [table.id]: SelectType.table,
+        [otherTable.id]: SelectType.table,
+      };
+      app.store.dispatchSync(selectAction(selected));
+
+      fire(inside('table-body'), mousedown({ button: 2 }));
+      await flush();
+
+      expect({ ...app.store.state.editor.selectedMap }).toEqual(selected);
+      expect(app.store.state.editor.focusTable?.tableId).toBe(table.id);
+    });
+
+    it('selects the table alone when it lands outside the selection', async () => {
+      const { app, table, otherTable, fire } = await setup();
+      app.store.dispatchSync(
+        selectAction({ [otherTable.id]: SelectType.table })
+      );
+
+      fire(inside('table-body'), mousedown({ button: 2 }));
+      await flush();
+
+      expect({ ...app.store.state.editor.selectedMap }).toEqual({
+        [table.id]: SelectType.table,
+      });
+    });
+
+    it('selects the table alone with the modifier held too, which only the main button adds by', async () => {
+      const { app, table, otherTable, fire } = await setup();
+      app.store.dispatchSync(
+        selectAction({ [otherTable.id]: SelectType.table })
+      );
+
+      fire(
+        inside('table-body'),
+        mousedown({ button: 2, ctrlKey: true, metaKey: true })
+      );
+      await flush();
+
+      expect({ ...app.store.state.editor.selectedMap }).toEqual({
+        [table.id]: SelectType.table,
+      });
+    });
   });
 
   it('never starts a duplicate from a touch start', async () => {

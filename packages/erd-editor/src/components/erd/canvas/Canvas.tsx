@@ -4,10 +4,16 @@ import { Stage } from 'konva/lib/Stage';
 import { useAppContext } from '@/components/appContext';
 import { renderCanvasScene } from '@/components/erd/canvas/CanvasScene';
 import EditOverlay from '@/components/erd/canvas/EditOverlay';
+import { listenMiddleButtonPan } from '@/components/erd/canvas/middleButtonPan';
 import { trackSceneHits } from '@/components/erd/hitTest';
+import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import { useSceneSource } from '@/components/sceneSourceContext';
+import { sceneStreamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
+import { closeColorPickerAction } from '@/utils/emitter';
+import type { DragMove } from '@/utils/globalEventObservable';
 
 import * as styles from './Canvas.styles';
 
@@ -27,8 +33,35 @@ export type CanvasProps = {
  */
 const Canvas: FC<CanvasProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const sourceRef = useSceneSource(ctx);
+  const contextMenu = useContextMenuRootContext(ctx);
   const { addUnsubscribe } = useUnmounted();
   let stage: Stage | null = null;
+
+  /**
+   * A middle press pans whatever it lands on, so it closes an open context
+   * menu and colour picker and leaves the selection as it stands.
+   */
+  const handlePanPress = () => {
+    if (contextMenu.value.show) contextMenu.value.show = false;
+    // Only the document scene hangs a colour picker over itself; the one a
+    // cached ERD tab keeps stays as it was under a view.
+    if (sourceRef.value !== 'document') return;
+
+    const { emitter } = app.value;
+    emitter.emit(closeColorPickerAction());
+  };
+
+  /** A step of a middle button pan, landing in the scene this canvas draws. */
+  const handlePanMove = ({ event, movementX, movementY }: DragMove) => {
+    event.type === 'mousemove' && event.preventDefault();
+    if (movementX === 0 && movementY === 0) return;
+
+    const { store } = app.value;
+    store.dispatch(
+      sceneStreamScrollToAction(sourceRef.value, { movementX, movementY })
+    );
+  };
 
   onMounted(() => {
     const { store } = app.value;
@@ -46,6 +79,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
 
     addUnsubscribe(
       trackSceneHits($stage),
+      listenMiddleButtonPan(props.canvas.value, handlePanMove, handlePanPress),
       watch(viewport).subscribe(() => {
         $stage.size({ width: viewport.width, height: viewport.height });
       }),

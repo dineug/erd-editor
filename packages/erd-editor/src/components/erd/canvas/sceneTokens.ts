@@ -9,6 +9,7 @@ import {
 } from '@/constants/layout';
 import { CodeFontFamily, TextFontFamily } from '@/styles/fonts.styles';
 import { isMouseEvent } from '@/utils/domEvent';
+import { holdStageCursor, setStageCursor } from '@/utils/stageCursor';
 
 /** A pointer event as konva hands it to a listener bound on a scene node. */
 export type SceneMouseEvent = KonvaEventObject<MouseEvent>;
@@ -201,11 +202,6 @@ export const CURSOR_TEXT = 'text';
 /** What a node hands back on the way out, leaving the container its own cursor. */
 export const CURSOR_INHERIT = '';
 
-/** The last cursor a hover asked for under a held gesture, noted and not shown. */
-type SceneCursorHold = { requested: string };
-
-const sceneCursorHolds = new WeakMap<HTMLElement, SceneCursorHold>();
-
 const sceneContainerOf = (event: ScenePointerEvent) =>
   event.target?.getStage()?.container();
 
@@ -219,11 +215,7 @@ const sceneContainerOf = (event: ScenePointerEvent) =>
  */
 export function setSceneCursor(event: ScenePointerEvent, cursor: string): void {
   const container = sceneContainerOf(event);
-  if (!container) return;
-
-  const hold = sceneCursorHolds.get(container);
-  if (hold) hold.requested = cursor;
-  else container.style.cursor = cursor;
+  if (container) setStageCursor(container, cursor);
 }
 
 /**
@@ -241,18 +233,5 @@ export function holdSceneCursor(
   const container = sceneContainerOf(event);
   if (!container || !isMouseEvent(event.evt)) return noop;
 
-  // A press inside another one starts from what that one noted, because the
-  // container shows only the cursor the earlier press is holding it on.
-  const hold: SceneCursorHold = {
-    requested:
-      sceneCursorHolds.get(container)?.requested ?? container.style.cursor,
-  };
-  sceneCursorHolds.set(container, hold);
-  container.style.cursor = cursor;
-
-  return () => {
-    if (sceneCursorHolds.get(container) !== hold) return;
-    sceneCursorHolds.delete(container);
-    container.style.cursor = hold.requested;
-  };
+  return holdStageCursor(container, cursor);
 }

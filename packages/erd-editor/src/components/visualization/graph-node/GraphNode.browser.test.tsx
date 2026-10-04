@@ -32,6 +32,7 @@ import { whenDrawn } from '@/konva/batchDraw';
 import { renderKonva } from '@/konva/host';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
+import { CURSOR_GRABBING } from '@/utils/stageCursor';
 
 type Fixture = {
   app: AppContext;
@@ -288,6 +289,33 @@ describe('a graph node', () => {
       expect(table.fy).toBeNull();
       expect(state.drag).toBe(false);
       expect(graph.simulation.alphaTarget()).toBe(0);
+    });
+
+    it('pans the view from a middle press instead, and pins nothing', async () => {
+      const { stage, graph, state, settle } = await setup();
+      const [table] = graph.nodes;
+      const { x, y } = state;
+
+      const press = fireScenePointer(dotOf(stage, 't1'), 'mousedown', {
+        button: 1,
+        clientX: 10,
+        clientY: 10,
+      });
+      movePointer(40, 30);
+      await settle();
+
+      expect(press.defaultPrevented).toBe(true);
+      expect(table.fx ?? null).toBeNull();
+      expect(table.fy ?? null).toBeNull();
+      expect(graph.simulation.alphaTarget()).toBe(0);
+      expect(state.x).toBe(x + 30);
+      expect(state.y).toBe(y + 20);
+      expect(state.drag).toBe(true);
+      expect(stage.container().style.cursor).toBe(CURSOR_GRABBING);
+
+      releasePointer();
+      await settle();
+      expect(state.drag).toBe(false);
     });
 
     it('follows a changed position prop onto the dot', async () => {

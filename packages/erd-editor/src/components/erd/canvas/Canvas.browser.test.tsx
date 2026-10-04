@@ -1,10 +1,11 @@
 // P3-27: the dom shell only. What the scene draws inside the Stage is
 // CanvasScene.browser.test.tsx, and the shell's own contract is the two boxes,
-// the Stage that hangs in the inner one and the size both take.
+// the Stage that hangs in the inner one, the size both take and the middle pan.
 
 import { createRef, useProvider } from '@dineug/r-html';
+import type { Group } from 'konva/lib/Group';
 import type { Stage } from 'konva/lib/Stage';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
@@ -12,16 +13,25 @@ import {
   flush,
   mount,
   type Mounted,
+  movePointer,
+  releasePointer,
+  whenPainted,
 } from '@/__test-utils__';
 import Canvas from '@/components/erd/canvas/Canvas';
 import * as styles from '@/components/erd/canvas/Canvas.styles';
 import { themeContext } from '@/components/themeContext';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeViewportAction,
+  selectAction,
+} from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
+import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { whenDrawn } from '@/konva/batchDraw';
 
 const teardowns: Array<() => void> = [];
 
 afterEach(async () => {
+  releasePointer();
   teardowns.splice(0).forEach(teardown => teardown());
   await whenDrawn();
 });
@@ -152,5 +162,160 @@ describe('the canvas shell', () => {
     expect(stageRegistry().canvas).toBeUndefined();
     expect(stage.getLayers()).toHaveLength(0);
     expect(mounted.container.isConnected).toBe(false);
+  });
+});
+
+/** Two tables on an 800 by 600 screen, the second of them selected. */
+async function mountScene() {
+  const mounted = await mountCanvas();
+  mounted.app.store.dispatchSync(
+    changeViewportAction({ width: 800, height: 600 }),
+    addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 2 } }),
+    addTableAction({ id: 't2', ui: { x: 500, y: 300, zIndex: 3 } }),
+    selectAction({ t2: SelectType.table })
+  );
+  await flush();
+  await whenDrawn();
+  // The hit graph a pointer is tested against lands a frame after the draw.
+  await whenPainted();
+
+  return { mounted, stage: stageRegistry().canvas };
+}
+
+/** The viewport point at the middle of a scene node, which konva resolves the node from. */
+function pointOf(stage: Stage, node: string, child?: string) {
+  const found = stage.findOne<Group>(node)!;
+  const target = child ? found.findOne(child)! : found;
+  const rect = target.getClientRect({ relativeTo: stage, skipShadow: true });
+  const content = stage.content.getBoundingClientRect();
+
+  return {
+    clientX: content.left + rect.x + rect.width / 2,
+    clientY: content.top + rect.y + rect.height / 2,
+  };
+}
+
+/** A real mouse event on the canvas konva draws in, at a viewport point. */
+function fire(
+  stage: Stage,
+  type: string,
+  at: { clientX: number; clientY: number },
+  button: number
+) {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button,
+    buttons: type === 'mousedown' ? 1 << button : 0,
+    ...at,
+  });
+  stage.content.querySelector('canvas')!.dispatchEvent(event);
+  return event;
+}
+
+/** Anchors the move stream far from the scene, as a press the window heard last would. */
+function pressElsewhere() {
+  window.dispatchEvent(new MouseEvent('mousedown', { clientX: 0, clientY: 0 }));
+  releasePointer();
+}
+
+const MIDDLE = 1;
+
+const MAIN = 0;
+
+describe('a middle button press on the scene', () => {
+  it('pans the document from over a table, and leaves the table and the selection be', async () => {
+    const { mounted, stage } = await mountScene();
+    const { store } = mounted.app;
+    const at = pointOf(stage, '#table-t1');
+    pressElsewhere();
+
+    const press = fire(stage, 'mousedown', at, MIDDLE);
+    movePointer(at.clientX + 15, at.clientY + 10);
+    movePointer(at.clientX + 40, at.clientY + 30);
+    releasePointer(at.clientX + 40, at.clientY + 30);
+    await flush();
+
+    expect(press.defaultPrevented).toBe(true);
+    // The first step is measured from the press, not from the corner the
+    // stream heard last, so the origin moves by the pointer travel alone.
+    expect(store.state.settings.originX).toBe(40);
+    expect(store.state.settings.originY).toBe(30);
+    expect(store.state.collections.tableEntities.t1.ui).toMatchObject({
+      x: 100,
+      y: 100,
+    });
+    expect({ ...store.state.editor.selectedMap }).toEqual({
+      t2: SelectType.table,
+    });
+  });
+
+  it('sends nothing for a step that did not move', async () => {
+    const { mounted, stage } = await mountScene();
+    const { store } = mounted.app;
+    const at = pointOf(stage, '#table-t1');
+    const types: string[] = [];
+    store.subscribe(actions => types.push(...actions.map(({ type }) => type)));
+
+    fire(stage, 'mousedown', at, MIDDLE);
+    const move = movePointer(at.clientX, at.clientY);
+    await flush();
+
+    expect(move.defaultPrevented).toBe(true);
+    expect(types).toEqual([]);
+  });
+
+  it('removes nothing from a click on a table remove button, which the main button removes', async () => {
+    const { mounted, stage } = await mountScene();
+    const { store } = mounted.app;
+    const at = pointOf(stage, '#table-t1', '.table-remove');
+
+    fire(stage, 'mousedown', at, MIDDLE);
+    fire(stage, 'mouseup', at, MIDDLE);
+    await flush();
+    await whenDrawn();
+
+    expect(store.state.doc.tableIds).toEqual(['t1', 't2']);
+    expect({ ...store.state.editor.selectedMap }).toEqual({
+      t2: SelectType.table,
+    });
+
+    // The same point under the main button is the button, which shows the
+    // point the middle click went to is the one the button answers.
+    await whenPainted();
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+    await flush();
+
+    expect(store.state.doc.tableIds).toEqual(['t2']);
+  });
+
+  it('lets konva hear no lift of it, so a main click after it on the same table is no double click', async () => {
+    const { stage } = await mountScene();
+    const at = pointOf(stage, '#table-t1');
+    const heard: string[] = [];
+    stage.on('mouseup dblclick', event => heard.push(event.type));
+
+    fire(stage, 'mousedown', at, MIDDLE);
+    const lift = fire(stage, 'mouseup', at, MIDDLE);
+
+    expect(lift.defaultPrevented).toBe(true);
+    expect(heard).toEqual([]);
+
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+
+    expect(heard).toEqual(['mouseup']);
+  });
+
+  it('asks the colour picker of the document scene to close', async () => {
+    const { mounted, stage } = await mountScene();
+    const closeColorPicker = vi.fn();
+    mounted.app.emitter.on({ closeColorPicker });
+
+    fire(stage, 'mousedown', pointOf(stage, '#table-t2'), MIDDLE);
+
+    expect(closeColorPicker).toHaveBeenCalledOnce();
   });
 });

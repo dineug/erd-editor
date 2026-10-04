@@ -655,6 +655,100 @@ test.describe('mouse drag', () => {
     expect(await columnNames(erd, 'tags')).toEqual(['name']);
   });
 
+  test('a middle-button drag over a table pans the canvas and leaves the table and the selection alone', async ({
+    erd,
+  }) => {
+    await erd.seed(threeTables());
+    await pressTableHeader(erd, 'b');
+    await expect(erd.selectedTables()).toHaveCount(1);
+
+    // The press before this one landed on b, far to the right: a pan that
+    // measured its first step from there would jump by that distance.
+    const from = await erd.tableHeaderPoint('a');
+    await erd.drag(
+      from,
+      { x: from.x - 120, y: from.y - 60 },
+      { button: 'middle' }
+    );
+
+    const settings = await erd.settings();
+    expectClose(settings.originX, -120, PIXEL_TOLERANCE);
+    expectClose(settings.originY, -60, PIXEL_TOLERANCE);
+
+    const a = await erd.table('a');
+    expect([a.ui.x, a.ui.y]).toEqual([160, 160]);
+    await expect(erd.tableEl('b')).toHaveAttribute('data-selected', '');
+    await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  test('a middle click on a table remove button removes nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.hoverScene('#table-users');
+
+    const remove = await erd.sceneBox(['#table-users', '.table-remove']);
+    const at = {
+      x: remove.x + remove.width / 2,
+      y: remove.y + remove.height / 2,
+    };
+    await erd.page.mouse.click(at.x, at.y, { button: 'middle' });
+    await erd.whenDrawn();
+
+    expect((await erd.value()).doc.tableIds).toContain('users');
+    await expect(erd.selectedTables()).toHaveCount(0);
+
+    // The main button at the same point is the button, so the middle click
+    // above went where the button answers.
+    await erd.clickAt(at);
+    await expect
+      .poll(async () => (await erd.value()).doc.tableIds)
+      .not.toContain('users');
+  });
+
+  test('a right-button drag moves neither a table nor a memo, and selects each alone', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'users',
+            name: 'users',
+            x: 160,
+            y: 160,
+            columns: [{ id: 'users_id', name: 'id', dataType: 'int' }],
+          },
+        ],
+        memos: [{ id: 'note', value: 'a note', x: 700, y: 160 }],
+      })
+    );
+
+    const from = await erd.tableHeaderPoint('users');
+    await erd.drag(
+      from,
+      { x: from.x + 120, y: from.y + 60 },
+      { button: 'right' }
+    );
+
+    const users = await erd.table('users');
+    expect([users.ui.x, users.ui.y]).toEqual([160, 160]);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+
+    const memo = await erd.sceneBox('#memo-note');
+    const grab = { x: memo.x + 20, y: memo.y + 8 };
+    await erd.drag(
+      grab,
+      { x: grab.x + 120, y: grab.y + 60 },
+      { button: 'right' }
+    );
+
+    const note = await erd.memo('note');
+    expect([note.ui.x, note.ui.y]).toEqual([700, 160]);
+    await expect.poll(() => erd.sceneAttr('#memo-note', 'selected')).toBe(true);
+    await expect(erd.selectedTables()).toHaveCount(0);
+  });
+
   test('a whole move drag collapses into a single undo step', async ({
     erd,
   }) => {

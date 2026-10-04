@@ -14,7 +14,7 @@ import { SelectType } from '@/engine/modules/editor/state';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import type { Ctx } from '@/internal-types';
-import { isMultiTouch } from '@/utils/domEvent';
+import { isMainButtonPress, isMultiTouch } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -61,10 +61,13 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     const { store } = app.value;
     const entityId = options.entityId();
     const source = options.source.value;
-    const canDrag = !hasKindAncestor(
-      event.target,
-      options.blockedKinds(source)
-    );
+    // Only the main button carries an entity: a right press picks what the
+    // context menu it opens is for, by the selection rule below, and moves
+    // nothing however far the pointer then travels.
+    const mainButton = isMainButtonPress(event.evt);
+    const canDrag =
+      mainButton &&
+      !hasKindAncestor(event.target, options.blockedKinds(source));
 
     // move$ is not share()d and mutates module-global prevX/prevY, so
     // a second concurrent drag$ subscriber always reads movementX === 0.
@@ -81,10 +84,11 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     }
 
     // A press on something already selected keeps the rest of the selection,
-    // so a group moves as one under a plain drag; a press on anything else
-    // collapses to it, which is the rule the alt drag duplicate reads too.
+    // so a group moves as one under a plain drag; any other collapses to it,
+    // the rule the alt drag duplicate reads too, unless a main press holds $mod.
     const keepSelection =
-      isMod(event.evt) || Boolean(store.state.editor.selectedMap[entityId]);
+      (mainButton && isMod(event.evt)) ||
+      Boolean(store.state.editor.selectedMap[entityId]);
 
     store.dispatch(
       options.selectType === SelectType.memo

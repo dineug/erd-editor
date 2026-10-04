@@ -48,6 +48,7 @@ import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { TextFontFamily } from '@/styles/fonts.styles';
 import type { Theme } from '@/themes/tokens';
+import { CURSOR_GRABBING } from '@/utils/stageCursor';
 
 type Fixture = {
   app: AppContext;
@@ -531,6 +532,41 @@ describe('the visualization scene', () => {
       await settle();
 
       expect(state.x).toBe(x + 40);
+    });
+
+    it('takes a middle press on the background whole, with the grabbing hand until the lift', async () => {
+      const { stage, state, settle } = await setup();
+      const { x } = state;
+      const container = stage.container();
+
+      const press = fireScenePointer(panOf(stage), 'mousedown', {
+        button: 1,
+        clientX: 0,
+        clientY: 0,
+      });
+      movePointer(25, 0);
+      await settle();
+
+      expect(press.defaultPrevented).toBe(true);
+      expect(container.style.cursor).toBe(CURSOR_GRABBING);
+      expect(state.x).toBe(x + 25);
+
+      releasePointer();
+      await settle();
+      expect(container.style.cursor).toBe('');
+      expect(state.drag).toBe(false);
+    });
+
+    it('leaves the default of a main press on the background alone, and the cursor too', async () => {
+      const { stage } = await setup();
+
+      const press = fireScenePointer(panOf(stage), 'mousedown', {
+        clientX: 0,
+        clientY: 0,
+      });
+
+      expect(press.defaultPrevented).toBe(false);
+      expect(stage.container().style.cursor).toBe('');
     });
   });
 

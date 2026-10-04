@@ -26,6 +26,8 @@ import {
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import { whenDrawn } from '@/konva/batchDraw';
+import { openColorPickerAction } from '@/utils/emitter';
+import { CURSOR_GRABBING } from '@/utils/stageCursor';
 
 const MEMO_ID = 'note';
 
@@ -153,5 +155,72 @@ describe('Erd - a canvas pan', () => {
     window.dispatchEvent(new Event('dragstart'));
 
     expect(root.style.userSelect).toBe('');
+  });
+});
+
+/** A press of one button, the way a mouse delivers it to whatever lies under the point. */
+const pressWith = (target: Element, button: number) => {
+  const event = new MouseEvent('mousedown', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button,
+    clientX: 400,
+    clientY: 300,
+  });
+  target.dispatchEvent(event);
+  return event;
+};
+
+const MIDDLE = 1;
+
+describe('Erd - a middle button press', () => {
+  it('closes the context menu and the colour picker, and keeps the selection', async () => {
+    const mounted = await mountEditingMemo();
+    const root = rootOf(mounted);
+    root.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 600,
+        clientY: 400,
+      })
+    );
+    mounted.app.emitter.emit(
+      openColorPickerAction({ x: 200, y: 200, color: '#ffffff' })
+    );
+    await flush(6);
+    expect(root.querySelector('.context-menu-content')).toBeTruthy();
+    expect(root.querySelector('.color-picker')).toBeTruthy();
+
+    const press = pressWith(canvasOf(mounted).querySelector('canvas')!, MIDDLE);
+    await flush(6);
+
+    expect(press.defaultPrevented).toBe(true);
+    expect(root.querySelector('.context-menu-content')).toBeNull();
+    expect(root.querySelector('.color-picker')).toBeNull();
+    expect(selectedIds(mounted)).toEqual([MEMO_ID]);
+  });
+
+  it('shows the grabbing hand over the scene until the release', async () => {
+    const mounted = await mountEditingMemo();
+    const container = canvasOf(mounted);
+
+    pressWith(container.querySelector('canvas')!, MIDDLE);
+    expect(container.style.cursor).toBe(CURSOR_GRABBING);
+
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(container.style.cursor).not.toBe(CURSOR_GRABBING);
+  });
+
+  it('leaves a press on the editor over the scene to the editor', async () => {
+    const mounted = await mountEditingMemo();
+
+    const press = pressWith(memoEditorOf(mounted), MIDDLE);
+    await flush();
+
+    expect(press.defaultPrevented).toBe(false);
+    expect(mounted.app.store.state.editor.editMemoId).toBe(MEMO_ID);
+    expect(selectedIds(mounted)).toEqual([MEMO_ID]);
   });
 });

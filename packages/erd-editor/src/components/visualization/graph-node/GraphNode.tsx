@@ -10,12 +10,13 @@ import {
   type Visualization,
   type VisualizationNode,
 } from '@/components/visualization/createVisualization';
+import { captureGraphPan } from '@/components/visualization/graphPan';
 import {
   DIM_OPACITY,
   nodeRadius,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
-import { isMultiTouch } from '@/utils/domEvent';
+import { isMiddleButtonPress, isMultiTouch } from '@/utils/domEvent';
 import type { DragMove } from '@/utils/globalEventObservable';
 
 export type GraphNodeProps = {
@@ -60,7 +61,7 @@ function setCursor(event: NodeMouseEvent, cursor: string): void {
 /**
  * One dot, owning its own hover and drag. A hovered table opens its preview
  * and lights its neighbourhood, a hovered column only wears a ring, and a
- * press pins the node under the pointer and reheats the layout around it.
+ * press pins the node and reheats the layout; the middle button pans the view.
  */
 const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
@@ -97,6 +98,10 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
   // again as it ends: where the pointer let go, not where it entered the dot.
   const handleDragStart = (event: KonvaEventObject<Event>) => {
     if (isMultiTouch(event.evt)) return;
+    if (isMiddleButtonPress(event.evt)) {
+      captureGraphPan(event, props.state);
+      return;
+    }
 
     const { node, graph, state } = props;
     let last: DragMove | null = null;

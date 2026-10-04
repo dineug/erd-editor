@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   editorRootOf,
+  isMainButtonPress,
+  isMiddleButtonPress,
   isMouseEvent,
   isTouchEvent,
   onNumberOnly,
@@ -105,6 +107,42 @@ describe('isTouchEvent', () => {
 
   it('is false for a MouseEvent', () => {
     expect(isTouchEvent(new MouseEvent('mousedown'))).toBe(false);
+  });
+});
+
+describe('isMainButtonPress', () => {
+  it('is true for the main mouse button and for a touch', () => {
+    expect(isMainButtonPress(new MouseEvent('mousedown', { button: 0 }))).toBe(
+      true
+    );
+    expect(isMainButtonPress(new TouchEvent('touchstart'))).toBe(true);
+  });
+
+  it('is false for the middle and the right button', () => {
+    expect(isMainButtonPress(new MouseEvent('mousedown', { button: 1 }))).toBe(
+      false
+    );
+    expect(isMainButtonPress(new MouseEvent('mousedown', { button: 2 }))).toBe(
+      false
+    );
+  });
+});
+
+describe('isMiddleButtonPress', () => {
+  it('is true for the middle mouse button alone', () => {
+    expect(
+      isMiddleButtonPress(new MouseEvent('mousedown', { button: 1 }))
+    ).toBe(true);
+    expect(
+      isMiddleButtonPress(new MouseEvent('mousedown', { button: 0 }))
+    ).toBe(false);
+    expect(
+      isMiddleButtonPress(new MouseEvent('mousedown', { button: 2 }))
+    ).toBe(false);
+  });
+
+  it('is false for a touch, which has no button', () => {
+    expect(isMiddleButtonPress(new TouchEvent('touchstart'))).toBe(false);
   });
 });
 
