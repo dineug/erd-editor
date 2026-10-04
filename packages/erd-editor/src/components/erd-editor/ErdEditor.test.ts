@@ -395,6 +395,58 @@ describe('<erd-editor>', () => {
     expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
   });
 
+  // A pan prevents its middle press, which is what focuses the root on any
+  // other press, so the element takes the keyboard itself, or Delete and
+  // $mod+Z would still go wherever the focus was before the pan.
+  it('takes the keyboard on a middle press over the canvas, which the pan keeps from the root', async () => {
+    const { el, shadow } = await createEditor();
+    const canvas = shadow.querySelector(
+      '[data-testid="erd-canvas"]'
+    ) as HTMLDivElement;
+    const outside = document.createElement('input');
+    document.body.append(outside);
+    outside.focus();
+
+    try {
+      canvas.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          button: 1,
+        })
+      );
+      window.dispatchEvent(new MouseEvent('mouseup', { button: 1 }));
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(document.activeElement).toBe(el);
+    } finally {
+      outside.remove();
+    }
+  });
+
+  it('takes the keyboard on a prevented middle press that reaches the root, as the hand tool and Graph mode leave it', async () => {
+    const { el, root } = await createEditor();
+    const outside = document.createElement('input');
+    document.body.append(outside);
+    outside.focus();
+
+    try {
+      const press = new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+        button: 1,
+      });
+      press.preventDefault();
+      root.dispatchEvent(press);
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(document.activeElement).toBe(el);
+    } finally {
+      outside.remove();
+    }
+  });
+
   it('ignores a mousedown that carries no target element', async () => {
     const { app, root } = await createEditor({ enableThemeBuilder: true });
     app.store.dispatchSync(

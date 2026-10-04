@@ -938,6 +938,73 @@ test.describe('mouse drag', () => {
     expect([note.ui.x, note.ui.y]).toEqual([700, 160]);
     await expect.poll(() => erd.sceneAttr('#memo-note', 'selected')).toBe(true);
     await expect(erd.selectedTables()).toHaveCount(0);
+
+    // An edge is part of the memo too: from the left sash a main drag widens
+    // the memo leftward and moves its x, and a right one does neither.
+    await erd.focusCanvas();
+    await expect(erd.contextMenu).toHaveCount(0);
+    const sash = await erd.sceneBox(['#memo-note', '.memo-sash-left']);
+    const edge = { x: sash.x + sash.width / 2, y: sash.y + sash.height / 2 };
+    await erd.drag(
+      edge,
+      { x: edge.x - 120, y: edge.y + 40 },
+      { button: 'right' }
+    );
+
+    const after = await erd.memo('note');
+    expect(after.ui).toMatchObject({
+      x: note.ui.x,
+      y: note.ui.y,
+      width: note.ui.width,
+      height: note.ui.height,
+    });
+  });
+
+  test('a middle-button drag that ends off the canvas has its lift prevented too', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    const heard = await recordMiddleButton(erd);
+
+    // Chromium on Linux pastes the selection on a middle lift left unprevented,
+    // and the toolbar the drag ends over stands beside the stage container.
+    const from = await erd.tableHeaderPoint('users');
+    const toolbar = await boxOf(erd.toolbar);
+    await erd.drag(
+      from,
+      { x: from.x, y: toolbar.y + toolbar.height / 2 },
+      { button: 'middle' }
+    );
+
+    // The pan stops its press at the stage container, so the window hears the
+    // lift alone, which landed on the toolbar.
+    expect(await heard()).toEqual(['mouseup prevented']);
+    const users = await erd.table('users');
+    expect([users.ui.x, users.ui.y]).toEqual([160, 160]);
+  });
+
+  test('a middle-button drag takes the keyboard into the editor, as a main press does', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    // A field of the page's own, outside the element, holds the keyboard.
+    await erd.page.evaluate(() => {
+      const field = window.document.createElement('input');
+      field.id = 'outside-field';
+      field.style.cssText = 'position: fixed; right: 0; bottom: 0';
+      window.document.body.append(field);
+      field.focus();
+    });
+    await expect(erd.page.locator('#outside-field')).toBeFocused();
+
+    const from = await erd.tableHeaderPoint('users');
+    await erd.drag(
+      from,
+      { x: from.x - 80, y: from.y - 40 },
+      { button: 'middle' }
+    );
+
+    await erd.expectKeyboardFocusInside();
   });
 
   test('a whole move drag collapses into a single undo step', async ({

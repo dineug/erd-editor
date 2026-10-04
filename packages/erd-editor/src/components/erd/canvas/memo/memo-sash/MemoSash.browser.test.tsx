@@ -302,15 +302,43 @@ describe('the pointer a sash asks the stage for', () => {
     fireScenePointer(sashAt(stage, 'right'), 'mousedown');
     fireScenePointer(sashAt(stage, 'right'), 'mouseleave');
     fireScenePointer(sashAt(stage, 'bottom'), 'mouseenter');
-    fireScenePointer(sashAt(stage, 'bottom'), 'mousedown', { button: 2 });
+    fireScenePointer(sashAt(stage, 'bottom'), 'mousedown');
     expect(container.style.cursor).toBe('ns-resize');
 
     releasePointer();
     expect(container.style.cursor).toBe('ns-resize');
   });
+
+  it('holds nothing for a right press, which resizes nothing', async () => {
+    const { stage } = await mountSash();
+    const container = stage.container();
+
+    fireScenePointer(sashAt(stage, 'left'), 'mousedown', { button: 2 });
+
+    expect(container.style.cursor).toBe('');
+  });
 });
 
 describe('the resize a sash drag commits', () => {
+  // Only the main button carries a memo, and an edge is part of it: a right
+  // press opens the context menu and leaves the box where it stands.
+  it.each(['left', 'lt', 'rb'] as const)(
+    'resizes and moves nothing on a right drag from the %s sash',
+    async position => {
+      const { memo, stage } = await mountSash();
+
+      fireScenePointer(sashAt(stage, position), 'mousedown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      });
+      movePointer(40, 30);
+      await flush();
+
+      expect(memo.ui).toMatchObject({ x: 30, y: 40, width: 200, height: 150 });
+    }
+  );
+
   it('grows the width from the right edge without moving the memo', async () => {
     const { memo, stage } = await mountSash();
 

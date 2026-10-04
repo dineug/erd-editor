@@ -160,6 +160,19 @@ describe('listenMiddleButtonPan', () => {
     expect(fixture.moves).toEqual([]);
   });
 
+  // Chromium on Linux pastes the selection on a middle lift left unprevented,
+  // into a cell editor the prevented press left focused, wherever it lands.
+  it('prevents a middle lift off the scene too, which ends the pan on the window', () => {
+    press(fixture.canvas, { button: 1, clientX: 10, clientY: 10 });
+
+    const event = lift(document.body, { button: 1 });
+    movePointer(40, 40);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(fixture.moves).toEqual([]);
+    expect(lift(document.body, { button: 1 }).defaultPrevented).toBe(false);
+  });
+
   it('lets a middle lift through once a lift elsewhere has ended the pan', () => {
     press(fixture.canvas, { button: 1, clientX: 10, clientY: 10 });
     releasePointer();

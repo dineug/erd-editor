@@ -18,7 +18,11 @@ import {
 } from '@/constants/layout';
 import { resizeMemoAction } from '@/engine/modules/memo/atom.actions';
 import type { Memo, ValuesType } from '@/internal-types';
-import { isMouseEvent, isMultiTouch } from '@/utils/domEvent';
+import {
+  isMainButtonPress,
+  isMouseEvent,
+  isMultiTouch,
+} from '@/utils/domEvent';
 import { DirectionName } from '@/utils/draw-relationship';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 
@@ -247,7 +251,9 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     event: ScenePointerEvent,
     position: MemoSashPosition
   ) => {
-    if (isMultiTouch(event.evt)) return;
+    // An edge is part of the memo, which only the main button carries: a right
+    // press opens the context menu over a box that stays where it stands.
+    if (!isMainButtonPress(event.evt) || isMultiTouch(event.evt)) return;
 
     const pointer = pointerOf(event);
     clientX = pointer.x;
