@@ -88,7 +88,7 @@ describe('schema import', () => {
       Reflect.deleteProperty(service, key);
     }
     service.importSchemaEntities = importInto(stored);
-    vi.mocked(convertSource).mockImplementation(({ type, value }) =>
+    vi.mocked(convertSource).mockImplementation(async ({ type, value }) =>
       parsed(type, value)
     );
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -144,7 +144,7 @@ describe('schema import', () => {
     });
 
     it('counts a source the editor fails on as an invalid file', async () => {
-      vi.mocked(convertSource).mockImplementation(({ type, value }) => {
+      vi.mocked(convertSource).mockImplementation(async ({ type, value }) => {
         if (type === 'aml') throw new Error('unreadable');
         return parsed(type, value);
       });
@@ -160,6 +160,36 @@ describe('schema import', () => {
         message: 'Imported 1 schema · Skipped 1 invalid file',
         tone: 'warning',
       });
+    });
+
+    it('stores nothing until every source has been placed, one at a time', async () => {
+      const placing: Array<() => void> = [];
+      vi.mocked(convertSource).mockImplementation(
+        ({ type, value }) =>
+          new Promise(resolve => {
+            placing.push(() => resolve(parsed(type, value)));
+          })
+      );
+      const { result } = renderHook(useImportFiles, store);
+
+      const importing = result.current([
+        file('a.sql', 'create table a (id int);'),
+        file('b.dbml', 'Table b {}'),
+      ]);
+      await vi.waitFor(() => expect(placing).toHaveLength(1));
+      store.set(selectedSchemaIdAtom, 'elsewhere');
+      placing[0]();
+      await vi.waitFor(() => expect(placing).toHaveLength(2));
+      expect(stored).toEqual([]);
+      placing[1]();
+      await importing;
+
+      expect(stored.map(({ name, value }) => [name, value])).toEqual([
+        ['a', parsed('sql', 'create table a (id int);')],
+        ['b', parsed('dbml', 'Table b {}')],
+      ]);
+      // Opened elsewhere while the tables were placed, so that stays open.
+      expect(store.get(selectedSchemaIdAtom)).toBe('elsewhere');
     });
 
     it('leaves another schema the user opened meanwhile open', async () => {

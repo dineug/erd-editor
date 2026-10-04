@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 import { AppPage, type StoredSchema } from '../support/AppPage';
+import { expectFanPlaced, FAN_SQL } from '../support/placement';
 
 const DBML = `Table users {
   id integer [pk]
@@ -101,6 +102,18 @@ test.describe('import and export', () => {
       ignoreSaveSettings: 3,
       zoomLevel: 1,
     });
+  });
+
+  test('stores an SQL source with its tables placed by their relationships', async ({
+    context,
+  }) => {
+    const app = await AppPage.open(context);
+    await app.importFiles([
+      { name: 'fan.sql', mimeType: 'text/plain', buffer: Buffer.from(FAN_SQL) },
+    ]);
+
+    await expect(app.importNotice()).toHaveText('Imported 1 schema');
+    expectFanPlaced((await app.storedSchema('fan')).value);
   });
 
   test('exports a backup that imports back as copies', async ({ context }) => {

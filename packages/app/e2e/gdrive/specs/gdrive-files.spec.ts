@@ -17,6 +17,7 @@ import {
   resetOAuthServer,
 } from '../../support/gdrive/fakeGoogle';
 import { GdrivePage } from '../../support/gdrive/GdrivePage';
+import { expectFanPlaced, FAN_SQL } from '../../support/placement';
 import { expectResourceLinks } from '../../support/resourceLinks';
 
 let google: FakeGoogle;
@@ -433,6 +434,34 @@ test.describe('the sidebar', () => {
     await expect
       .poll(async () => (await app.fileNames()).sort())
       .toEqual(['bar.erd.json', 'foo.erd.json', 'shop.erd.json']);
+  });
+
+  test('imports an SQL source with its tables placed by their relationships', async ({
+    context,
+  }) => {
+    const app = await signedIn(context);
+
+    await app.sidebar().getByRole('button', { name: 'Import' }).click();
+    const chooser = app.page.waitForEvent('filechooser');
+    await app.page.getByRole('menuitem', { name: 'Import files' }).click();
+    await (
+      await chooser
+    ).setFiles({
+      name: 'fan.sql',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(FAN_SQL),
+    });
+
+    await expect(
+      app.page
+        .getByRole('status')
+        .filter({ hasText: 'Imported 1 file to Google Drive' })
+    ).toBeVisible();
+    const fan = [...google.files.values()].find(
+      file => file.name === 'fan.erd.json'
+    );
+    expect(fan, 'fan.erd.json uploaded').toBeDefined();
+    expectFanPlaced(fan!.content);
   });
 
   test('shows the account, Sign out and the policy links, and links to nothing of /', async ({

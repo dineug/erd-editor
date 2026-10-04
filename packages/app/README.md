@@ -11,7 +11,7 @@
 - Real-time synchronization between browser tabs.
 - A schema list ordered by last edit, grouped by date (Today, Yesterday, Previous 7 Days, …), with search.
 - A trash that deletes schemas permanently after 30 days, or when you empty it.
-- Backup export and import of every schema, plus import of `.erd`, `.vuerd`, `.json`, SQL, DBML, AML and GraphQL files, from the menu or by dropping them anywhere.
+- Backup export and import of every schema, plus import of `.erd`, `.vuerd`, `.json`, SQL, DBML, AML and GraphQL files, from the menu or by dropping them anywhere; a SQL, DBML, AML or GraphQL file lands with its tables laid out by their relationships, in the Google Drive editor's import too.
 - A link per schema: the open one is in the URL as `/?schema=<id>`.
 - Light, dark or system theme.
 - A Google Drive editor at `/gdrive`, installed from the [Google Workspace Marketplace](https://workspace.google.com/marketplace/app/erd_editor/428467403360): it opens diagrams from Drive's Open with and New menus and saves back to the same file.

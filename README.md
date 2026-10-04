@@ -42,7 +42,9 @@ run **Create new diagram** from the command palette. In Google Drive, choose
   arrow arrive; a check, a struct type and a view are skipped rather than refused
 - **Imports land laid out** — a schema imported from the diagram's Import menu, the command
   palette or an IDE's file dialog arrives with its tables placed by their relationships, and one
-  undo puts the previous diagram back
+  undo puts the previous diagram back. A SQL, DBML, AML or GraphQL file imported into
+  erd-editor.io's schema list or the Google Drive editor becomes a new diagram laid out the
+  same way
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid

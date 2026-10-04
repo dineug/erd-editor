@@ -62,9 +62,9 @@ const showImportNoticeAtom = atom(null, (get, set, result: ImportResult) => {
 });
 
 /**
- * Converts every source into the document it parses to; one the editor fails
- * on is counted as an invalid file. Loaded on demand, since it brings in the
- * whole editor.
+ * Converts every source into the document it parses to, its tables placed,
+ * one after another; one the editor fails on is counted as an invalid file.
+ * Loaded on demand, since it brings in the whole editor.
  */
 async function convertSources(
   sources: Array<{ name: string; source: SourceImport }>
@@ -75,7 +75,7 @@ async function convertSources(
 
   for (const { name, source } of sources) {
     try {
-      documents.push({ name, value: convertSource(source) });
+      documents.push({ name, value: await convertSource(source) });
     } catch (error) {
       console.error(error);
       failed += 1;
