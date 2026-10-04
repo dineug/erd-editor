@@ -263,9 +263,12 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     addUnsubscribe(
       shortcut$.subscribe(({ type }) => {
         // The key a Delete row names takes away what the menu was raised over.
-        (type === KeyBindingName.stop ||
-          type === KeyBindingName.removeSelection) &&
+        if (
+          type === KeyBindingName.stop ||
+          type === KeyBindingName.removeSelection
+        ) {
           props.onClose();
+        }
       })
     );
   });

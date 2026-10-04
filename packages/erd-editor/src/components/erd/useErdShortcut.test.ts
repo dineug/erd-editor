@@ -288,7 +288,7 @@ describe('useErdShortcut - removal and stop', () => {
 });
 
 describe('useErdShortcut - remove selection', () => {
-  const memoIdOf = (app: AppContext) => {
+  const seedMemo = (app: AppContext) => {
     app.store.dispatchSync(addMemoAction$());
     const { memoIds } = app.store.state.doc;
     return memoIds[memoIds.length - 1];
@@ -320,7 +320,7 @@ describe('useErdShortcut - remove selection', () => {
     const listener = vi.fn();
     document.body.addEventListener(focusEvent.type, listener);
     const kept = seedTable(app);
-    const memoId = memoIdOf(app);
+    const memoId = seedMemo(app);
     const tableId = seedTable(app);
     app.store.dispatchSync(selectAction({ [memoId]: SelectType.memo }));
 
@@ -404,7 +404,7 @@ describe('useErdShortcut - remove selection', () => {
   it('removes nothing while nothing is selected', async () => {
     const app = await setup();
     seedTable(app);
-    memoIdOf(app);
+    seedMemo(app);
     app.store.dispatchSync(unselectAllAction());
 
     shortcut(app, KeyBindingName.removeSelection);
@@ -435,7 +435,7 @@ describe('useErdShortcut - remove selection', () => {
   it('records nothing for a table or memo whose add was undone, so no undo brings it back', async () => {
     const app = await setup();
     const kept = seedTable(app);
-    const memoId = memoIdOf(app);
+    const memoId = seedMemo(app);
     const tableId = seedTable(app);
     app.store.dispatchSync(selectAction({ [memoId]: SelectType.memo }));
     app.store.undo();

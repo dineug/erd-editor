@@ -493,6 +493,22 @@ const findByText = (root: ParentNode, text: string) =>
     el => el.textContent?.trim() === text
   );
 
+/** A right button press, then the contextmenu it raises at the same point. */
+async function rightPress(editor: Editor, point: { x: number; y: number }) {
+  pressOn(editor, 'mousedown', point, { button: 2, buttons: 2 });
+  await flush();
+  pressOn(editor, 'contextmenu', point, { button: 2, buttons: 2 });
+  await flush(6);
+}
+
+/** Clicks the open menu's row that reads text, and lets what it does render. */
+async function pickMenuRow(editor: Editor, text: string) {
+  findByText(editor.root, text)!.dispatchEvent(
+    new MouseEvent('click', { bubbles: true })
+  );
+  await flush(6);
+}
+
 describe('Erd - routing what the scene answered', () => {
   it('opens the table menu for a contextmenu inside a table', async () => {
     const editor = await mountEditor();
@@ -506,21 +522,14 @@ describe('Erd - routing what the scene answered', () => {
 
   it('opens the memo menu for a contextmenu inside a memo, and its Delete removes it', async () => {
     const editor = await mountEditor();
-    const point = centerOf(editor.stage, '#memo-m1');
 
-    pressOn(editor, 'mousedown', point, { button: 2, buttons: 2 });
-    await flush();
-    pressOn(editor, 'contextmenu', point, { button: 2, buttons: 2 });
-    await flush(6);
+    await rightPress(editor, centerOf(editor.stage, '#memo-m1'));
 
     expect(findByText(editor.root, 'Color')).toBeTruthy();
     expect(findByText(editor.root, 'New Table')).toBeUndefined();
     expect(findByText(editor.root, 'Table Properties')).toBeUndefined();
 
-    findByText(editor.root, 'Delete')!.dispatchEvent(
-      new MouseEvent('click', { bubbles: true })
-    );
-    await flush(6);
+    await pickMenuRow(editor, 'Delete');
 
     expect(editor.app.store.state.doc.memoIds).toEqual([]);
     expect(findByText(editor.root, 'Color')).toBeUndefined();
@@ -545,23 +554,13 @@ describe('Erd - routing what the scene answered', () => {
       return columnId;
     }
 
-    async function rightPress(editor: Editor, point: { x: number; y: number }) {
-      pressOn(editor, 'mousedown', point, { button: 2, buttons: 2 });
-      await flush();
-      pressOn(editor, 'contextmenu', point, { button: 2, buttons: 2 });
-      await flush(6);
-    }
-
     it('names the column for a right press on its row, and deletes it', async () => {
       const editor = await mountEditor();
       const columnId = await focusFirstColumn(editor);
 
       await rightPress(editor, centerOf(editor.stage, `#column-${columnId}`));
 
-      findByText(editor.root, 'Delete column')!.dispatchEvent(
-        new MouseEvent('click', { bubbles: true })
-      );
-      await flush(6);
+      await pickMenuRow(editor, 'Delete column');
 
       const { doc, collections } = editor.app.store.state;
       expect(doc.tableIds).toContain('t1');
@@ -580,10 +579,7 @@ describe('Erd - routing what the scene answered', () => {
       expect(findByText(editor.root, 'Delete column')).toBeUndefined();
       expect(findByText(editor.root, 'Table Properties')).toBeTruthy();
 
-      findByText(editor.root, 'Delete')!.dispatchEvent(
-        new MouseEvent('click', { bubbles: true })
-      );
-      await flush(6);
+      await pickMenuRow(editor, 'Delete');
 
       expect(editor.app.store.state.doc.tableIds).not.toContain('t1');
     });

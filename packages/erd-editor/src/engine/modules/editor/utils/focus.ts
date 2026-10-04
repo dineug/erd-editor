@@ -224,8 +224,10 @@ export function getRemovableColumns({
   const table = query(collections)
     .collection('tableEntities')
     .selectById(focusTable.tableId);
+  if (!table) return null;
+
   const columnIds = focusTable.selectColumnIds.filter(
-    arrayHas(table?.columnIds ?? [])
+    arrayHas(table.columnIds)
   );
 
   return columnIds.length ? { tableId: focusTable.tableId, columnIds } : null;

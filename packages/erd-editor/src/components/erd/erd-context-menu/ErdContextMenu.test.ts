@@ -486,6 +486,11 @@ describe('ErdContextMenu / table type', () => {
     const MEMO_ID = 'memo-1';
 
     const tableIds = () => app.store.state.doc.tableIds;
+    const memoIds = () => app.store.state.doc.memoIds;
+    const columnIds = () =>
+      query(app.store.state.collections)
+        .collection('tableEntities')
+        .selectById(TABLE_ID)?.columnIds;
 
     function seedNeighbors() {
       seedTable();
@@ -511,7 +516,7 @@ describe('ErdContextMenu / table type', () => {
       await click(findItem(rootItems(), 'Delete'));
 
       expect(tableIds()).toEqual([SECOND_TABLE_ID]);
-      expect(app.store.state.doc.memoIds).toEqual([MEMO_ID]);
+      expect(memoIds()).toEqual([MEMO_ID]);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -529,7 +534,7 @@ describe('ErdContextMenu / table type', () => {
       await click(findItem(rootItems(), 'Delete selected'));
 
       expect(tableIds()).toEqual([SECOND_TABLE_ID]);
-      expect(app.store.state.doc.memoIds).toEqual([]);
+      expect(memoIds()).toEqual([]);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -565,11 +570,7 @@ describe('ErdContextMenu / table type', () => {
       await click(findItem(rootItems(), 'Delete columns'));
 
       expect(tableIds()).toEqual([TABLE_ID]);
-      expect(
-        query(app.store.state.collections)
-          .collection('tableEntities')
-          .selectById(TABLE_ID)?.columnIds
-      ).toEqual(['column-2']);
+      expect(columnIds()).toEqual(['column-2']);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -590,11 +591,7 @@ describe('ErdContextMenu / table type', () => {
       await click(findItem(rootItems(), 'Delete column'));
 
       expect(tableIds()).toEqual([TABLE_ID]);
-      expect(
-        query(app.store.state.collections)
-          .collection('tableEntities')
-          .selectById(TABLE_ID)?.columnIds
-      ).toEqual(['column-2']);
+      expect(columnIds()).toEqual(['column-2']);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -614,11 +611,7 @@ describe('ErdContextMenu / table type', () => {
       expect(labelsOf(rootItems()).at(-1)).toBe('Delete columnDelete');
       await click(findItem(rootItems(), 'Delete column'));
 
-      expect(
-        query(app.store.state.collections)
-          .collection('tableEntities')
-          .selectById(TABLE_ID)?.columnIds
-      ).toEqual(['column-2']);
+      expect(columnIds()).toEqual(['column-2']);
     });
 
     it.each([
