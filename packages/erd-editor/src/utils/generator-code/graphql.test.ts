@@ -122,17 +122,26 @@ const PRIMARY_KEY: ColumnInput = {
   keys: ColumnUIKey.primaryKey,
 };
 
-const foreignKey = (name: string): ColumnInput => ({
-  name,
-  dataType: 'INT',
-  options: ColumnOption.notNull,
-  keys: ColumnUIKey.foreignKey,
-});
+function foreignKey(name: string): ColumnInput {
+  return {
+    name,
+    dataType: 'INT',
+    options: ColumnOption.notNull,
+    keys: ColumnUIKey.foreignKey,
+  };
+}
 
-/** A user table and an order table holding the given columns after its id. */
-function createOrderState(columns: ColumnInput[]): RootState {
+/** A user and an order table, each holding its given columns after its id. */
+function createOrderState(
+  columns: ColumnInput[],
+  userColumns: ColumnInput[] = []
+): RootState {
   const state = createState();
-  addTable(state, { id: 't-user', name: 'user', columns: [PRIMARY_KEY] });
+  addTable(state, {
+    id: 't-user',
+    name: 'user',
+    columns: [PRIMARY_KEY, ...userColumns],
+  });
   addTable(state, {
     id: 't-order',
     name: 'order',
@@ -1455,20 +1464,10 @@ describe('generator-code/graphql round trip through schema-graphql-parser', () =
     [
       'a parent field numbered past a column beside a table name fallback',
       () => {
-        const state = createState();
-        addTable(state, {
-          id: 't-user',
-          name: 'user',
-          columns: [
-            PRIMARY_KEY,
-            { name: 'orderListByBuyer', dataType: 'VARCHAR(10)' },
-          ],
-        });
-        addTable(state, {
-          id: 't-order',
-          name: 'order',
-          columns: [PRIMARY_KEY, foreignKey('buyer_id'), foreignKey('owner')],
-        });
+        const state = createOrderState(
+          [foreignKey('buyer_id'), foreignKey('owner')],
+          [{ name: 'orderListByBuyer', dataType: 'VARCHAR(10)' }]
+        );
         relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
         relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
         return state;
@@ -1527,24 +1526,10 @@ describe('generator-code/graphql round trip through schema-graphql-parser', () =
     [
       'a foreign key stem ending in a digit that numbering repeats',
       () => {
-        const state = createState();
-        addTable(state, {
-          id: 't-user',
-          name: 'user',
-          columns: [
-            PRIMARY_KEY,
-            { name: 'orderListByBuyer', dataType: 'VARCHAR(10)' },
-          ],
-        });
-        addTable(state, {
-          id: 't-order',
-          name: 'order',
-          columns: [
-            PRIMARY_KEY,
-            foreignKey('buyer_id'),
-            foreignKey('buyer2_id'),
-          ],
-        });
+        const state = createOrderState(
+          [foreignKey('buyer_id'), foreignKey('buyer2_id')],
+          [{ name: 'orderListByBuyer', dataType: 'VARCHAR(10)' }]
+        );
         relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
         relateUserToOrder(state, RelationshipType.ZeroOne, ['t-order-c2']);
         return state;

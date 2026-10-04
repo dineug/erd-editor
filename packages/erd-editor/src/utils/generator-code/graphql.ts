@@ -280,8 +280,8 @@ function formatRelation(
 
 /**
  * The field the child type points at its parent through: the parent's name,
- * or, where getForeignKeyStem applies, the foreign key column without its id;
- * a self relationship it cannot name takes parent before the table name.
+ * or the foreign key column without its id where getRelationStem finds one;
+ * a self relationship, which it always checks, takes parent before the name.
  */
 function getChildFieldName(
   state: RootState,
@@ -291,12 +291,7 @@ function getChildFieldName(
 ): string {
   const { columnNameCase } = state.settings;
   const name = getNameCase(parent.name, columnNameCase);
-
-  if (!isNamedByForeignKey(context, relationship)) {
-    return graphqlName(name);
-  }
-
-  const stem = getForeignKeyStem(state, relationship);
+  const stem = getRelationStem(state, context, relationship);
 
   if (stem !== null) {
     return graphqlName(stem);
@@ -312,7 +307,7 @@ function getChildFieldName(
 /**
  * The field the parent type lists its children through: the child's name,
  * with List on the N side, and by and the foreign key stem after it where
- * getForeignKeyStem applies.
+ * getRelationStem finds one.
  */
 function getParentFieldName(
   state: RootState,
@@ -323,9 +318,7 @@ function getParentFieldName(
 ): string {
   const { columnNameCase } = state.settings;
   const name = getNameCase(child.name, columnNameCase);
-  const stem = isNamedByForeignKey(context, relationship)
-    ? getForeignKeyStem(state, relationship)
-    : null;
+  const stem = getRelationStem(state, context, relationship);
 
   if (stem !== null) {
     return graphqlName(
@@ -339,6 +332,17 @@ function getParentFieldName(
   return many
     ? graphqlName(getNameCase(`${name}List`, columnNameCase))
     : graphqlName(name);
+}
+
+/** The foreign key stem both fields take, where isNamedByForeignKey holds. */
+function getRelationStem(
+  state: RootState,
+  context: TypeContext,
+  relationship: Relationship
+): string | null {
+  return isNamedByForeignKey(context, relationship)
+    ? getForeignKeyStem(state, relationship)
+    : null;
 }
 
 // Two relationships between one pair of tables, or one back to its own table,
@@ -361,6 +365,28 @@ function pairKey({ start, end }: Relationship): string {
   return [start.tableId, end.tableId].sort().join(':');
 }
 
+function findSharedPairs({
+  collections,
+  doc: { relationshipIds },
+}: RootState): Set<string> {
+  const pairs = new Set<string>();
+  const sharedPairs = new Set<string>();
+
+  query(collections)
+    .collection('relationshipEntities')
+    .selectByIds(relationshipIds)
+    .forEach(relationship => {
+      const key = pairKey(relationship);
+
+      if (pairs.has(key)) {
+        sharedPairs.add(key);
+      }
+      pairs.add(key);
+    });
+
+  return sharedPairs;
+}
+
 /**
  * The single foreign key column's name without a last word id, in the column
  * name case: buyer for buyer_id or BuyerID. Null for a composite key, a name
@@ -371,12 +397,14 @@ function getForeignKeyStem(
   relationship: Relationship
 ): string | null {
   const { columnIds } = relationship.end;
-  const column =
-    columnIds.length === 1
-      ? query(collections)
-          .collection('tableColumnEntities')
-          .selectById(columnIds[0])
-      : undefined;
+
+  if (columnIds.length !== 1) {
+    return null;
+  }
+
+  const column = query(collections)
+    .collection('tableColumnEntities')
+    .selectById(columnIds[0]);
   const stem = column ? stripIdWord(column.name) : null;
 
   if (stem === null) {
@@ -425,21 +453,8 @@ function createTypeContext(state: RootState): TypeContext {
   const context: TypeContext = {
     typeNames: new Map<string, string>(),
     usedTypeNames: new Set<string>(),
-    sharedPairs: new Set<string>(),
+    sharedPairs: findSharedPairs(state),
   };
-  const pairs = new Set<string>();
-
-  query(state.collections)
-    .collection('relationshipEntities')
-    .selectByIds(state.doc.relationshipIds)
-    .forEach(relationship => {
-      const key = pairKey(relationship);
-
-      if (pairs.has(key)) {
-        context.sharedPairs.add(key);
-      }
-      pairs.add(key);
-    });
 
   query(state.collections)
     .collection('tableEntities')
