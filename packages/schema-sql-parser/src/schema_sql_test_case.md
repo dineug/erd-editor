@@ -3414,8 +3414,9 @@ of SSMS, from the SqlServer PowerShell module 22.4.5.1) against SQL Server 2022 
 the entire database and all its objects. Around the tables it writes `CREATE DATABASE` with
 Linux file paths, 34 `ALTER DATABASE ... SET`, a schema, a sequence and a view, none of which the
 parser reads, nor the view's MS_Description. Each primary and unique key stays inside its
-`CREATE TABLE`; the indexes, defaults, foreign keys and comments follow all the tables. The wizard wrote UTF-16LE
-with a BOM, here UTF-8; SMO, run on Linux, wrote LF line endings; every other byte is kept.
+`CREATE TABLE`; the indexes, defaults, foreign keys and comments follow all the tables. The
+wizard wrote UTF-16LE with a BOM, here UTF-8; SMO, run on Linux, wrote LF line endings; every
+other byte is kept.
 
 ```sql
 USE [master]
