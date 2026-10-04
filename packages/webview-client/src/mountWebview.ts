@@ -53,6 +53,9 @@ const toHostAppearance = (
 ): ThemeOptions['appearance'] =>
   appearance === 'system' ? 'auto' : appearance;
 
+/** How a host's import is placed, the rule the editor's own import menu follows. */
+const HOST_IMPORT = { placement: 'auto' } as const;
+
 export interface WebviewClient {
   editor: ErdEditorElement;
   /** Re-reads what auto shows, for a host whose system theme moved. */
@@ -125,16 +128,16 @@ export function mountWebview(host: WebviewHost): WebviewClient {
           op === 'set' ? (editor.value = value) : editor.setDiffValue(value);
           break;
         case 'sql':
-          op === 'set' && editor.setSchemaSQL(value);
+          op === 'set' && editor.setSchemaSQL(value, HOST_IMPORT);
           break;
         case 'graphql':
-          op === 'set' && editor.setSchemaGraphQL(value);
+          op === 'set' && editor.setSchemaGraphQL(value, HOST_IMPORT);
           break;
         case 'dbml':
-          op === 'set' && editor.setSchemaDBML(value);
+          op === 'set' && editor.setSchemaDBML(value, HOST_IMPORT);
           break;
         case 'aml':
-          op === 'set' && editor.setSchemaAML(value);
+          op === 'set' && editor.setSchemaAML(value, HOST_IMPORT);
           break;
         default: {
           // The host has already read the file by the time we get here, so an

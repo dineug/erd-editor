@@ -182,7 +182,7 @@ describe('mountWebview', () => {
     );
   });
 
-  it('routes every import type the bridge names to the editor method for it', () => {
+  it('routes every import type the bridge names to the editor method for it, placing the schemas', () => {
     mount();
     const send = (type: string, op: string, value: string) =>
       fromHost(
@@ -202,14 +202,23 @@ describe('mountWebview', () => {
 
     expect(editor.element.value).toBe('{"a":1}');
     expect(editor.element.setDiffValue).toHaveBeenCalledWith('{"b":2}');
+    const placed = { placement: 'auto' };
     expect(editor.element.setSchemaSQL).toHaveBeenCalledWith(
-      'CREATE TABLE t ();'
+      'CREATE TABLE t ();',
+      placed
     );
     expect(editor.element.setSchemaGraphQL).toHaveBeenCalledWith(
-      'type T { id: ID }'
+      'type T { id: ID }',
+      placed
     );
-    expect(editor.element.setSchemaDBML).toHaveBeenCalledWith('Table t {}');
-    expect(editor.element.setSchemaAML).toHaveBeenCalledWith('t\n  id uuid pk');
+    expect(editor.element.setSchemaDBML).toHaveBeenCalledWith(
+      'Table t {}',
+      placed
+    );
+    expect(editor.element.setSchemaAML).toHaveBeenCalledWith(
+      't\n  id uuid pk',
+      placed
+    );
   });
 
   it('tells the editor what system shows as it mounts', () => {

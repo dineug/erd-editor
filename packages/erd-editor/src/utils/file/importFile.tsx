@@ -2,14 +2,9 @@ import { isString } from 'es-toolkit';
 
 import { AppContext } from '@/components/appContext';
 import Toast from '@/components/primitives/toast/Toast';
-import {
-  loadJsonAction$,
-  loadSchemaAMLAction$,
-  loadSchemaDBMLAction$,
-  loadSchemaGraphQLAction$,
-  loadSchemaSQLAction$,
-} from '@/engine/modules/editor/generator.actions';
+import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { openDiffViewerAction, openToastAction } from '@/utils/emitter';
+import { importSchemaPlaced } from '@/utils/file/importSchema';
 
 type ImportOptions = {
   type: 'json' | 'sql' | 'graphql' | 'dbml' | 'aml';
@@ -72,7 +67,9 @@ export function importJSON({ store, emitter }: AppContext) {
   input.click();
 }
 
-export function importSchemaSQL({ store, emitter }: AppContext) {
+export function importSchemaSQL(app: AppContext) {
+  const { emitter } = app;
+
   if (performImportFileExtra) {
     performImportFileExtra({ type: 'sql', op: 'set', accept: '.sql' });
     return;
@@ -102,13 +99,15 @@ export function importSchemaSQL({ store, emitter }: AppContext) {
         return;
       }
 
-      store.dispatch(loadSchemaSQLAction$(value));
+      importSchemaPlaced(app, 'sql', value);
     };
   });
   input.click();
 }
 
-export function importGraphQL({ store, emitter }: AppContext) {
+export function importGraphQL(app: AppContext) {
+  const { emitter } = app;
+
   if (performImportFileExtra) {
     performImportFileExtra({
       type: 'graphql',
@@ -142,13 +141,15 @@ export function importGraphQL({ store, emitter }: AppContext) {
         return;
       }
 
-      store.dispatch(loadSchemaGraphQLAction$(value));
+      importSchemaPlaced(app, 'graphql', value);
     };
   });
   input.click();
 }
 
-export function importDBML({ store, emitter }: AppContext) {
+export function importDBML(app: AppContext) {
+  const { emitter } = app;
+
   if (performImportFileExtra) {
     performImportFileExtra({
       type: 'dbml',
@@ -182,13 +183,15 @@ export function importDBML({ store, emitter }: AppContext) {
         return;
       }
 
-      store.dispatch(loadSchemaDBMLAction$(value));
+      importSchemaPlaced(app, 'dbml', value);
     };
   });
   input.click();
 }
 
-export function importAML({ store, emitter }: AppContext) {
+export function importAML(app: AppContext) {
+  const { emitter } = app;
+
   if (performImportFileExtra) {
     performImportFileExtra({
       type: 'aml',
@@ -222,7 +225,7 @@ export function importAML({ store, emitter }: AppContext) {
         return;
       }
 
-      store.dispatch(loadSchemaAMLAction$(value));
+      importSchemaPlaced(app, 'aml', value);
     };
   });
   input.click();

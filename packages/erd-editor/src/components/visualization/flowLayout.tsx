@@ -1,7 +1,7 @@
 import type { AnyAction } from '@dineug/r-html';
 
 import type { AppContext } from '@/components/appContext';
-import { PlacingToast } from '@/components/erd/automatic-table-placement/runElkPlacement';
+import { PlacingToast } from '@/components/erd/automatic-table-placement/elkPlacement';
 import {
   getScrollToCenter,
   getViewTransform,

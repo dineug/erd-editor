@@ -67,6 +67,22 @@ export type ErdEditorProps = {
   enableThemeBuilder: boolean;
 };
 
+export type SchemaImportOptions = {
+  /**
+   * Where the imported tables land: 'auto' lays them out by their
+   * relationships before the document is replaced, as an import from the
+   * menu does, and 'grid', the default, replaces it at once with them in rows.
+   */
+  placement?: 'auto' | 'grid';
+};
+
+/** Replaces the document with an import, returning a Promise when it places first. */
+export type SetSchema = {
+  (value: string, options: { placement: 'auto' }): Promise<void>;
+  (value: string, options?: { placement?: 'grid' }): void;
+  (value: string, options?: SchemaImportOptions): Promise<void> | void;
+};
+
 export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   value: string;
   focus: () => void;
@@ -92,10 +108,10 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
       >
     >
   ) => void;
-  setSchemaSQL: (value: string) => void;
-  setSchemaGraphQL: (value: string) => void;
-  setSchemaDBML: (value: string) => void;
-  setSchemaAML: (value: string) => void;
+  setSchemaSQL: SetSchema;
+  setSchemaGraphQL: SetSchema;
+  setSchemaDBML: SetSchema;
+  setSchemaAML: SetSchema;
   getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
   getSharedStore: (
     config?: SharedStoreConfig & {

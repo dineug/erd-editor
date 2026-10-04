@@ -18,10 +18,7 @@ import {
 import {
   initialLoadJsonAction$,
   loadJsonAction$,
-  loadSchemaAMLAction$,
-  loadSchemaDBMLAction$,
-  loadSchemaGraphQLAction$,
-  loadSchemaSQLAction$,
+  type SchemaImportType,
 } from '@/engine/modules/editor/generator.actions';
 import { createSharedStore, SharedStore } from '@/engine/shared-store';
 import { useDarkMode } from '@/hooks/useDarkMode';
@@ -48,13 +45,19 @@ import {
   openDiffViewerAction,
   schemaGCAction,
 } from '@/utils/emitter';
+import { importSchema, importSchemaPlaced } from '@/utils/file/importSchema';
 import { toSharedFocus, toSharedFocusKey } from '@/utils/focus';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
 import { toLoadValue } from '@/utils/loadValue';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
 
-import { ErdEditorElement, ErdEditorProps } from './ErdEditor';
+import {
+  ErdEditorElement,
+  ErdEditorProps,
+  SchemaImportOptions,
+  SetSchema,
+} from './ErdEditor';
 
 /**
  * The editor's own chords, which a host cannot remap. Search is not among them:
@@ -339,33 +342,27 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     });
   };
 
-  ctx.setSchemaSQL = value => {
-    const safeValue = toSafeString(value);
-    if (isEmpty(safeValue)) return;
+  // A Promise only where the import places first, so a setter called as it
+  // always was still lands before it returns. A readonly editor refuses the
+  // load, so it is spared the layout too.
+  const setSchema = (type: SchemaImportType) =>
+    ((value: string, options?: SchemaImportOptions) => {
+      const safeValue = toSafeString(value);
 
-    store.dispatchSync(loadSchemaSQLAction$(safeValue));
-  };
+      if (options?.placement !== 'auto') {
+        isEmpty(safeValue) || importSchema(app, type, safeValue);
+        return;
+      }
 
-  ctx.setSchemaGraphQL = value => {
-    const safeValue = toSafeString(value);
-    if (isEmpty(safeValue)) return;
+      return isEmpty(safeValue) || getReadonly()
+        ? Promise.resolve()
+        : importSchemaPlaced(app, type, safeValue);
+    }) as SetSchema;
 
-    store.dispatchSync(loadSchemaGraphQLAction$(safeValue));
-  };
-
-  ctx.setSchemaDBML = value => {
-    const safeValue = toSafeString(value);
-    if (isEmpty(safeValue)) return;
-
-    store.dispatchSync(loadSchemaDBMLAction$(safeValue));
-  };
-
-  ctx.setSchemaAML = value => {
-    const safeValue = toSafeString(value);
-    if (isEmpty(safeValue)) return;
-
-    store.dispatchSync(loadSchemaAMLAction$(safeValue));
-  };
+  ctx.setSchemaSQL = setSchema('sql');
+  ctx.setSchemaGraphQL = setSchema('graphql');
+  ctx.setSchemaDBML = setSchema('dbml');
+  ctx.setSchemaAML = setSchema('aml');
 
   ctx.getSchemaSQL = databaseVendor => {
     const isDatabaseVendor = hasDatabaseVendor(databaseVendor ?? '');

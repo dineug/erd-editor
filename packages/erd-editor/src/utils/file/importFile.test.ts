@@ -19,6 +19,15 @@ import {
   importSchemaSQL,
   setImportFileCallback,
 } from '@/utils/file/importFile';
+import { importSchemaPlaced } from '@/utils/file/importSchema';
+
+/**
+ * Where a schema file goes once read, which importSchema.test.ts holds to its
+ * placement; these specs hold only that the file reaches it.
+ */
+vi.mock('@/utils/file/importSchema', () => ({
+  importSchemaPlaced: vi.fn(),
+}));
 
 type Harness = {
   app: AppContext;
@@ -85,6 +94,7 @@ describe('importFile', () => {
   afterEach(() => {
     setImportFileCallback(null);
     vi.restoreAllMocks();
+    vi.mocked(importSchemaPlaced).mockClear();
   });
 
   describe('setImportFileCallback', () => {
@@ -275,15 +285,18 @@ describe('importFile', () => {
       expect(harness.clicks).toBe(1);
     });
 
-    it('dispatches loadSchemaSQLAction$ with the file text', async () => {
+    it('imports the file text, placed by its relationships', async () => {
       importSchemaSQL(harness.app);
       const [input] = harness.inputs;
       attachFile(input, 'dump.SQL', 'CREATE TABLE a (id int);');
 
       await change(input);
 
-      expect(harness.dispatch).toHaveBeenCalledTimes(1);
-      expect(typeof harness.dispatch.mock.calls[0][0]).toBe('function');
+      expect(importSchemaPlaced).toHaveBeenCalledExactlyOnceWith(
+        harness.app,
+        'sql',
+        'CREATE TABLE a (id int);'
+      );
       expect(harness.emitted).toHaveLength(0);
     });
 
@@ -292,7 +305,7 @@ describe('importFile', () => {
 
       await change(harness.inputs[0]);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(0);
     });
 
@@ -303,7 +316,7 @@ describe('importFile', () => {
 
       await change(input);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
     });
@@ -325,7 +338,7 @@ describe('importFile', () => {
 
       await change(input);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       vi.unstubAllGlobals();
     });
   });
@@ -343,7 +356,7 @@ describe('importFile', () => {
     });
 
     it.each(['schema.graphql', 'schema.GQL', 'schema.graphqls'])(
-      'dispatches loadSchemaGraphQLAction$ for %s',
+      'imports %s placed by its relationships',
       async name => {
         importGraphQL(harness.app);
         const [input] = harness.inputs;
@@ -351,8 +364,11 @@ describe('importFile', () => {
 
         await change(input);
 
-        expect(harness.dispatch).toHaveBeenCalledTimes(1);
-        expect(typeof harness.dispatch.mock.calls[0][0]).toBe('function');
+        expect(importSchemaPlaced).toHaveBeenCalledExactlyOnceWith(
+          harness.app,
+          'graphql',
+          sdl
+        );
         expect(harness.emitted).toHaveLength(0);
       }
     );
@@ -362,7 +378,7 @@ describe('importFile', () => {
 
       await change(harness.inputs[0]);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(0);
     });
 
@@ -373,19 +389,19 @@ describe('importFile', () => {
 
       await change(input);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
     });
 
-    it('dispatches whatever the file holds, as the SQL import does', async () => {
+    it('imports whatever the file holds, as the SQL import does', async () => {
       importGraphQL(harness.app);
       const [input] = harness.inputs;
       attachFile(input, 'query.graphql', 'query GetUser { user { id } }');
 
       await change(input);
 
-      expect(harness.dispatch).toHaveBeenCalledTimes(1);
+      expect(importSchemaPlaced).toHaveBeenCalledTimes(1);
       expect(harness.emitted).toHaveLength(0);
     });
 
@@ -411,7 +427,7 @@ describe('importFile', () => {
       await change(input);
 
       expect(readers).toHaveLength(1);
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       vi.unstubAllGlobals();
     });
   });
@@ -429,7 +445,7 @@ describe('importFile', () => {
     });
 
     it.each(['schema.dbml', 'schema.DBML'])(
-      'dispatches loadSchemaDBMLAction$ for %s',
+      'imports %s placed by its relationships',
       async name => {
         importDBML(harness.app);
         const [input] = harness.inputs;
@@ -437,8 +453,11 @@ describe('importFile', () => {
 
         await change(input);
 
-        expect(harness.dispatch).toHaveBeenCalledTimes(1);
-        expect(typeof harness.dispatch.mock.calls[0][0]).toBe('function');
+        expect(importSchemaPlaced).toHaveBeenCalledExactlyOnceWith(
+          harness.app,
+          'dbml',
+          dbml
+        );
         expect(harness.emitted).toHaveLength(0);
       }
     );
@@ -448,7 +467,7 @@ describe('importFile', () => {
 
       await change(harness.inputs[0]);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(0);
     });
 
@@ -459,7 +478,7 @@ describe('importFile', () => {
 
       await change(input);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
     });
@@ -471,7 +490,7 @@ describe('importFile', () => {
 
       await change(input);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
     });
   });
@@ -489,7 +508,7 @@ describe('importFile', () => {
     });
 
     it.each(['schema.aml', 'schema.AML'])(
-      'dispatches loadSchemaAMLAction$ for %s',
+      'imports %s placed by its relationships',
       async name => {
         importAML(harness.app);
         const [input] = harness.inputs;
@@ -497,8 +516,11 @@ describe('importFile', () => {
 
         await change(input);
 
-        expect(harness.dispatch).toHaveBeenCalledTimes(1);
-        expect(typeof harness.dispatch.mock.calls[0][0]).toBe('function');
+        expect(importSchemaPlaced).toHaveBeenCalledExactlyOnceWith(
+          harness.app,
+          'aml',
+          aml
+        );
         expect(harness.emitted).toHaveLength(0);
       }
     );
@@ -508,7 +530,7 @@ describe('importFile', () => {
 
       await change(harness.inputs[0]);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(0);
     });
 
@@ -519,7 +541,7 @@ describe('importFile', () => {
 
       await change(input);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
     });
@@ -531,7 +553,7 @@ describe('importFile', () => {
 
       await change(input);
 
-      expect(harness.dispatch).not.toHaveBeenCalled();
+      expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
     });
   });

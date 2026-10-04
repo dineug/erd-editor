@@ -29,6 +29,7 @@ import {
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
 import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
+import { TABLE_SORT_START } from '@/constants/layout';
 import { SaveSettingType } from '@/constants/schema';
 import {
   dragSelectRectAction,
@@ -51,6 +52,7 @@ import {
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
+import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import {
   AccentColor,
   Appearance,
@@ -63,6 +65,41 @@ import {
   schemaGCAction,
   setThemeOptionsAction,
 } from '@/utils/emitter';
+
+type Layout = (request: ElkLayoutRequest) => Promise<ElkLayoutPoint[]>;
+
+const hoisted = vi.hoisted(() => ({
+  elkLayout: null as Layout | null,
+  requests: [] as ElkLayoutRequest[],
+}));
+
+/**
+ * ELK answers from a shared worker, which this environment runs none of, so
+ * the one call across that boundary is the one the test stands in for.
+ */
+vi.mock('@/services/elk-layout', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services/elk-layout')>();
+
+  return {
+    ...actual,
+    createElkLayout: (request: ElkLayoutRequest) => {
+      hoisted.requests.push(request);
+      return hoisted.elkLayout
+        ? hoisted.elkLayout(request)
+        : Promise.reject(new Error('no worker'));
+    },
+  };
+});
+
+const RELATED_SQL = `
+CREATE TABLE users (id INT NOT NULL, PRIMARY KEY (id));
+CREATE TABLE posts (
+  id INT NOT NULL,
+  user_id INT,
+  PRIMARY KEY (id),
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+`;
 
 type MediaListener = (event: { matches: boolean }) => void;
 
@@ -136,6 +173,8 @@ async function setup(initialProps: Partial<ErdEditorProps> = {}) {
 }
 
 beforeEach(() => {
+  hoisted.elkLayout = null;
+  hoisted.requests.length = 0;
   mediaListeners = [];
   mediaMatches = false;
   vi.stubGlobal('matchMedia', (query: string) => ({
@@ -580,6 +619,78 @@ describe('useErdEditorAttachElement', () => {
 
     ctx.setSchemaGraphQL('   ');
     expect(app.store.state.doc.tableIds).toEqual(tableIds);
+  });
+
+  it('lands an import at once and returns nothing unless asked to place it', async () => {
+    const { app, ctx } = await setup();
+
+    expect(ctx.setSchemaSQL('CREATE TABLE users (id INT);')).toBeUndefined();
+    expect(app.store.state.doc.tableIds).toHaveLength(1);
+
+    expect(
+      ctx.setSchemaAML('accounts\n  id int pk', { placement: 'grid' })
+    ).toBeUndefined();
+    expect(app.store.state.doc.tableIds).toHaveLength(1);
+    expect(hoisted.requests).toEqual([]);
+  });
+
+  it('places an import by its relationships first when asked for auto', async () => {
+    const { app, ctx } = await setup();
+    hoisted.elkLayout = async ({ nodes }) =>
+      nodes.map((node, index) => ({ id: node.id, x: index * 700, y: 0 }));
+
+    const landing = ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto' });
+    expect(landing).toBeInstanceOf(Promise);
+    expect(app.store.state.doc.tableIds).toEqual([]);
+    await landing;
+
+    const { doc, collections } = app.store.state;
+    expect(hoisted.requests).toHaveLength(1);
+    expect(
+      hoisted.requests[0].nodes.map(
+        ({ id }) => collections.tableEntities[id].ui.x
+      )
+    ).toEqual([TABLE_SORT_START, TABLE_SORT_START + 700]);
+    expect(doc.tableIds).toHaveLength(2);
+    expect(app.store.history.size).toBe(1);
+  });
+
+  it.each([
+    ['setSchemaSQL', 'CREATE TABLE a (id INT);', 'a'],
+    ['setSchemaGraphQL', 'type A { id: ID! }', 'A'],
+    ['setSchemaDBML', 'Table a {\n  id int\n}', 'a'],
+    ['setSchemaAML', 'a\n  id int pk', 'a'],
+  ] as const)(
+    'reads %s through its own parser when asked for auto',
+    async (method, source, name) => {
+      const { app, ctx } = await setup();
+
+      await ctx[method](source, { placement: 'auto' });
+
+      const { doc, collections } = app.store.state;
+      expect(
+        doc.tableIds.map(id => collections.tableEntities[id].name)
+      ).toEqual([name]);
+    }
+  );
+
+  it('answers auto on blank input with a settled Promise and no change', async () => {
+    const { app, ctx } = await setup();
+
+    await expect(
+      ctx.setSchemaDBML('   ', { placement: 'auto' })
+    ).resolves.toBeUndefined();
+    expect(app.store.history.size).toBe(0);
+  });
+
+  it('asks no layout for an auto import a readonly editor would refuse', async () => {
+    const { app, ctx } = await setup({ readonly: true });
+
+    await expect(
+      ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto' })
+    ).resolves.toBeUndefined();
+    expect(hoisted.requests).toEqual([]);
+    expect(app.store.state.doc.tableIds).toEqual([]);
   });
 
   it('loads an empty document when the SDL declares no object type', async () => {

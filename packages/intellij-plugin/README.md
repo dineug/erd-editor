@@ -22,7 +22,8 @@ instead of the text editor.
 
 To start from a schema you already have, right-click the canvas and choose **Import → Schema SQL**
 for a `.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. The editor
-opens its own file chooser for both; the file does not have to be inside the project.
+opens its own file chooser for both; the file does not have to be inside the project. Either one
+replaces the diagram in one undoable step, its tables laid out by their relationships.
 
 ## Features
 

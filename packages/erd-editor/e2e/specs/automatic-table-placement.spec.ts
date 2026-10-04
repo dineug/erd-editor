@@ -80,6 +80,56 @@ const chainedTables = (): ErdDocument =>
     ],
   });
 
+/**
+ * A fan, one parent and two children: Flow stands the children in one layer
+ * right of the parent, where the grid an import falls back to lays all three
+ * out in one row, so the two cannot be mistaken for each other.
+ */
+const FAN_SQL = `
+CREATE TABLE users (id INT NOT NULL, PRIMARY KEY (id));
+CREATE TABLE posts (
+  id INT NOT NULL,
+  user_id INT,
+  PRIMARY KEY (id),
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+CREATE TABLE photos (
+  id INT NOT NULL,
+  user_id INT,
+  PRIMARY KEY (id),
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+`;
+
+async function importSchemaSQL(erd: ErdEditorPage, sql: string) {
+  await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
+  await erd.contextMenu.getByText('Import', { exact: true }).hover();
+
+  const item = erd.contextMenu.getByText('Schema SQL', { exact: true });
+  await expect(item).toBeVisible();
+  const chooser = erd.page.waitForEvent('filechooser');
+  await item.click();
+  await (
+    await chooser
+  ).setFiles({
+    name: 'fan.sql',
+    mimeType: 'application/sql',
+    buffer: Buffer.from(sql),
+  });
+}
+
+/** Where each table the document holds sits, by name. */
+async function cornersByName(erd: ErdEditorPage) {
+  const { doc, collections } = await erd.value();
+
+  return Object.fromEntries(
+    doc.tableIds.map(id => {
+      const table = collections.tableEntities[id];
+      return [table.name, { x: table.ui.x, y: table.ui.y }];
+    })
+  );
+}
+
 async function place(erd: ErdEditorPage, placement: string) {
   await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
   await erd.contextMenu.getByText('Auto Layout', { exact: true }).hover();
@@ -148,6 +198,30 @@ test.describe('automatic table placement through the elk worker', () => {
     await erd.press(Shortcut.undo);
 
     await expect.poll(() => cornersOf(erd)).toEqual(before);
+  });
+
+  test('lands an SQL import placed by Flow, and one undo puts the document back', async ({
+    erd,
+  }) => {
+    await erd.seed(chainedTables());
+    const before = await cornersOf(erd);
+
+    await importSchemaSQL(erd, FAN_SQL);
+    await expect
+      .poll(async () => Object.keys(await cornersByName(erd)).sort(), {
+        timeout: PLACEMENT_TIMEOUT,
+      })
+      .toEqual(['photos', 'posts', 'users']);
+
+    const { users, posts, photos } = await cornersByName(erd);
+    expect(posts.x).toBeGreaterThan(users.x);
+    expect(photos.x).toBe(posts.x);
+    expect(photos.y).not.toBe(posts.y);
+
+    await erd.press(Shortcut.undo);
+
+    await expect.poll(() => cornersOf(erd)).toEqual(before);
+    expect(await erd.tableIds()).toEqual(['users', 'posts', 'comments']);
   });
 
   // The frame after an undo keystroke runs before any timer, so a sort that

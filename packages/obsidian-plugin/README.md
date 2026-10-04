@@ -28,7 +28,7 @@ diagram view.
 On the empty canvas, `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to it. To start from
 a schema you already have, right-click the canvas and choose **Import → Schema SQL** for a `.sql`
 dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. Either one replaces the
-diagram in one undoable step.
+diagram in one undoable step, its tables laid out by their relationships.
 
 Obsidian saves a diagram the way it saves a note: about two seconds after you stop editing, and
 when you close the tab or quit. Opening a file never rewrites it. Undo and redo are the diagram

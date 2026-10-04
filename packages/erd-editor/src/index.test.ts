@@ -1,4 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  afterEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import * as index from '@/index';
@@ -33,6 +40,22 @@ describe('@dineug/erd-editor entry point', () => {
     expect(editor.destroy).toBeTypeOf('function');
     expect(editor.setInitialValue).toBeTypeOf('function');
     expect(editor.setKeyBindingMap).toBeTypeOf('function');
+  });
+
+  it('types a schema setter as returning a Promise only where it places first', () => {
+    const editor = document.createElement('erd-editor');
+    const placement = 'auto' as 'auto' | 'grid';
+
+    expectTypeOf(() =>
+      editor.setSchemaSQL('', { placement: 'auto' })
+    ).returns.toEqualTypeOf<Promise<void>>();
+    expectTypeOf(() =>
+      editor.setSchemaGraphQL('', { placement: 'grid' })
+    ).returns.toEqualTypeOf<void>();
+    expectTypeOf(() => editor.setSchemaDBML('')).returns.toEqualTypeOf<void>();
+    expectTypeOf(() =>
+      editor.setSchemaAML('', { placement })
+    ).returns.toEqualTypeOf<Promise<void> | void>();
   });
 
   it('exports the default key bindings, a fresh map on every call', () => {

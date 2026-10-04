@@ -40,6 +40,9 @@ run **Create new diagram** from the command palette. In Google Drive, choose
 - **AML import** — read an `.aml` file written for [Azimutt](https://azimutt.app), in either the
   v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every relation
   arrow arrive; a check, a struct type and a view are skipped rather than refused
+- **Imports land laid out** — a schema imported from the diagram's Import menu, the command
+  palette or an IDE's file dialog arrives with its tables placed by their relationships, and one
+  undo puts the previous diagram back
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
