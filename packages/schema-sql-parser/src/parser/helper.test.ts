@@ -1114,23 +1114,27 @@ describe('matchAlterTableAlter', () => {
     ['ALTER TABLE only ALTER COLUMN c SET DEFAULT 0;', 3],
     ['ALTER TABLE ONLY only ALTER COLUMN c SET DEFAULT 0;', 4],
   ])('spans the head of %s', (sql, length) => {
-    expect(matchAlterTableAlter(tokenizer(sql))(0)).toBe(length);
-    expect(isAlterTableAlter(tokenizer(sql))(0)).toBe(true);
+    const tokens = tokenizer(sql);
+
+    expect(matchAlterTableAlter(tokens)(0)).toBe(length);
+    expect(isAlterTableAlter(tokens)(0)).toBe(true);
   });
 
   it.each([
-    ['ALTER TABLE t ADD COLUMN c INT;'],
-    ['ALTER TABLE ONLY t ADD PRIMARY KEY (id);'],
-    ['ALTER TABLE t OWNER TO postgres;'],
-    ['ALTER TABLE t "ALTER" COLUMN c SET DEFAULT 0;'],
-    ['ALTER SEQUENCE s OWNED BY t.c;'],
-    ['ALTER TABLE ALTER'],
-    ['ALTER TABLE'],
-    ['ALTER TABLE t\nALTER TABLE u ADD PRIMARY KEY (id);'],
-    ['ALTER TABLE ONLY\nALTER TABLE u ALTER COLUMN c SET DEFAULT 0;'],
+    'ALTER TABLE t ADD COLUMN c INT;',
+    'ALTER TABLE ONLY t ADD PRIMARY KEY (id);',
+    'ALTER TABLE t OWNER TO postgres;',
+    'ALTER TABLE t "ALTER" COLUMN c SET DEFAULT 0;',
+    'ALTER SEQUENCE s OWNED BY t.c;',
+    'ALTER TABLE ALTER',
+    'ALTER TABLE',
+    'ALTER TABLE t\nALTER TABLE u ADD PRIMARY KEY (id);',
+    'ALTER TABLE ONLY\nALTER TABLE u ALTER COLUMN c SET DEFAULT 0;',
   ])('rejects %s', sql => {
-    expect(matchAlterTableAlter(tokenizer(sql))(0)).toBe(0);
-    expect(isAlterTableAlter(tokenizer(sql))(0)).toBe(false);
+    const tokens = tokenizer(sql);
+
+    expect(matchAlterTableAlter(tokens)(0)).toBe(0);
+    expect(isAlterTableAlter(tokens)(0)).toBe(false);
   });
 });
 

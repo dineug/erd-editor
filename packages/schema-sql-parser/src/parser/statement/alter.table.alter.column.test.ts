@@ -4,13 +4,17 @@ import { RefPos, StatementType } from '@/parser/statement';
 import { alterTableAlterColumnParser } from '@/parser/statement/alter.table.alter.column';
 import { tokenizer } from '@/parser/tokenizer';
 
-// Parses source, which opens with the statement, and names the token the
-// cursor stops on, '' at the end of the source.
+// Parses source, which opens with the statement: stop names the token the
+// cursor stops on, '' at the end of the source, and next the values of up to
+// three tokens from that one on.
 const parse = (source: string) => {
   const tokens = tokenizer(source);
   const $pos: RefPos = { value: 0 };
   const ast = alterTableAlterColumnParser(tokens, $pos);
-  return { ast, stop: tokens[$pos.value]?.value ?? '' };
+  const next = tokens
+    .slice($pos.value, $pos.value + 3)
+    .map(({ value }) => value);
+  return { ast, stop: next[0] ?? '', next };
 };
 
 const autoIncrement = (name: string, columnName: string) => ({
@@ -146,16 +150,13 @@ describe('alterTableAlterColumnParser', () => {
   });
 
   it('reads an ALTER TABLE after a comma as the next statement', () => {
-    const tokens = tokenizer(
+    const { ast, next } = parse(
       'ALTER TABLE t ALTER COLUMN a DROP NOT NULL,\n' +
         'ALTER TABLE u ALTER COLUMN b ADD GENERATED ALWAYS AS IDENTITY;'
     );
-    const $pos: RefPos = { value: 0 };
 
-    expect(alterTableAlterColumnParser(tokens, $pos)).toEqual([]);
-    expect(
-      tokens.slice($pos.value, $pos.value + 3).map(({ value }) => value)
-    ).toEqual(['ALTER', 'TABLE', 'u']);
+    expect(ast).toEqual([]);
+    expect(next).toEqual(['ALTER', 'TABLE', 'u']);
   });
 
   it.each<[string, string[]]>([
@@ -170,14 +171,11 @@ describe('alterTableAlterColumnParser', () => {
     ['ALTER TABLE t ALTER COLUMN\nDROP TABLE u;', ['DROP', 'TABLE', 'u']],
   ])(
     'reads no column name out of the statement word that opens the next statement in %s',
-    (source, next) => {
-      const tokens = tokenizer(source);
-      const $pos: RefPos = { value: 0 };
+    (source, words) => {
+      const { ast, next } = parse(source);
 
-      expect(alterTableAlterColumnParser(tokens, $pos)).toEqual([]);
-      expect(
-        tokens.slice($pos.value, $pos.value + 3).map(({ value }) => value)
-      ).toEqual(next);
+      expect(ast).toEqual([]);
+      expect(next).toEqual(words);
     }
   );
 
@@ -185,6 +183,6 @@ describe('alterTableAlterColumnParser', () => {
     expect(parse('ALTER TABLE t ALTER COLUMN c').ast).toEqual([]);
     expect(
       parse("ALTER TABLE t ALTER COLUMN c SET DEFAULT nextval('s'")
-    ).toEqual({ ast: [], stop: '' });
+    ).toEqual({ ast: [], stop: '', next: [] });
   });
 });

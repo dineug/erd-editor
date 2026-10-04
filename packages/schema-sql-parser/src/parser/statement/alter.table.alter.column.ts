@@ -62,12 +62,16 @@ export function alterTableAlterColumnParser(
   const isSet = isSetValue(tokens);
   const isDefault = isDefaultValue(tokens);
 
+  // The unquoted word at pos in upper case, '' for anything else.
+  const word = (pos: number) => {
+    const token = tokens[pos];
+    return token && isString(pos) && !token.quoted
+      ? token.value.toUpperCase()
+      : '';
+  };
+
   const isWords = (pos: number, words: ReadonlyArray<string>) =>
-    words.every(
-      (word, index) =>
-        !tokens[pos + index]?.quoted &&
-        tokens[pos + index]?.value.toUpperCase() === word
-    );
+    words.every((value, index) => word(pos + index) === value);
 
   // The expression ends at the next statement too, which a script with no
   // semicolons would run it into.
@@ -84,8 +88,7 @@ export function alterTableAlterColumnParser(
 
   const isColumnName = (pos: number) =>
     isString(pos) &&
-    (!newStatement(pos) ||
-      ColumnActionWords.some(word => isWords(pos + 1, [word])));
+    (!newStatement(pos) || ColumnActionWords.includes(word(pos + 1)));
 
   const length = head($pos.value);
   const name = tokens[$pos.value + length - 1].value;
@@ -123,10 +126,7 @@ export function alterTableAlterColumnParser(
 
         $pos.value++;
 
-        if (
-          isString($pos.value) &&
-          (isDrop($pos.value) || !newStatement($pos.value))
-        ) {
+        if (isDrop($pos.value)) {
           $pos.value++;
         }
       }

@@ -752,17 +752,15 @@ export const matchAlterTableAlter = (tokens: Token[]) => {
 
   const fromName = (pos: number, start: number) => {
     const name = qualifiedName(start);
-    return name && isAlter(start + name) && !isTable(start + name + 1)
-      ? start + name - pos
-      : 0;
+    const end = start + name;
+    return name && isAlter(end) && !isTable(end + 1) ? end - pos : 0;
   };
 
   return (pos: number) => {
     if (!alterTable(pos)) return 0;
 
-    return (
-      (isOnly(pos + 2) && fromName(pos, pos + 3)) || fromName(pos, pos + 2)
-    );
+    const start = pos + 2;
+    return (isOnly(start) && fromName(pos, start + 1)) || fromName(pos, start);
   };
 };
 
