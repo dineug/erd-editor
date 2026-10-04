@@ -3169,28 +3169,535 @@ GO
 
 ### SQL Server sp_addextendedproperty MS_Description
 
+Output of SMO 17.100.0.0 (SQL Server Management Objects, the scripting engine of SSMS, from the
+SqlServer PowerShell module 22.4.5.1) against SQL Server 2022 16.0.4295.3: `Scripter.EnumScript`
+with Object Explorer's scripting defaults over the schema, tables and view of one database, the
+text Generate Scripts writes for those objects when it scripts the whole database. SMO writes
+each MS_Description after all the objects, with named arguments and a table's columns before the
+table, for tables in `dbo` and in `sales` and for the view and one of its columns; those of the
+view give no comment, nor does the `Caption` property. SMO wrote UTF-16LE with a BOM, here UTF-8;
+run on Linux, it wrote LF line endings; every other byte is kept, the space before the comma
+after each `@value` included.
+
 ```sql
-CREATE TABLE [dbo].[Orders](
-	[Id] [int] IDENTITY(1,1) NOT NULL,
-	[Qty] [int] NOT NULL
+USE [p2r_comments]
+GO
+/****** Object:  Schema [sales]    Script Date: 10/4/2026 12:18:23 PM ******/
+CREATE SCHEMA [sales]
+GO
+/****** Object:  Table [dbo].[Customers]    Script Date: 10/4/2026 12:18:23 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Customers](
+	[Id] [int] NOT NULL,
+	[Name] [nvarchar](100) NOT NULL,
+	[Email] [nvarchar](200) NULL,
+ CONSTRAINT [PK_Customers] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [Qty]
+/****** Object:  View [dbo].[CustomerNames]    Script Date: 10/4/2026 12:18:23 PM ******/
+SET ANSI_NULLS ON
 GO
-EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'How many' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders', @level2type=N'COLUMN',@level2name=N'Qty'
+SET QUOTED_IDENTIFIER ON
 GO
-EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Order''s header' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders'
+CREATE VIEW [dbo].[CustomerNames] AS SELECT [Id], [Name] FROM [dbo].[Customers]
 GO
-EXEC sys.sp_addextendedproperty @name=N'MS_DiagramPane1', @value=N'[0E232FF0-B466-11cf-A24F-00AA00A3EFFF, 1.00]' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'VIEW',@level1name=N'OrderView'
+/****** Object:  Table [sales].[Invoices]    Script Date: 10/4/2026 12:18:23 PM ******/
+SET ANSI_NULLS ON
 GO
-EXECUTE sys.sp_addextendedproperty 'MS_Description',
-  'order id', 'user', dbo, 'table', 'Orders', 'column', 'Id'
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [sales].[Invoices](
+	[Id] [int] NOT NULL,
+	[CustomerId] [int] NOT NULL,
+	[Total] [decimal](10, 2) NOT NULL,
+ CONSTRAINT [PK_Invoices] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Customer id' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Customers', @level2type=N'COLUMN',@level2name=N'Id'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Customer''s full name' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Customers', @level2type=N'COLUMN',@level2name=N'Name'
+GO
+EXEC sys.sp_addextendedproperty @name=N'Caption', @value=N'Not a description' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Customers', @level2type=N'COLUMN',@level2name=N'Email'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'People who buy' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Customers'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Amount in EUR (€), tax included' , @level0type=N'SCHEMA',@level0name=N'sales', @level1type=N'TABLE',@level1name=N'Invoices', @level2type=N'COLUMN',@level2name=N'Total'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Billed invoices' , @level0type=N'SCHEMA',@level0name=N'sales', @level1type=N'TABLE',@level1name=N'Invoices'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'View column' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'VIEW',@level1name=N'CustomerNames', @level2type=N'COLUMN',@level2name=N'Name'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Names only' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'VIEW',@level1name=N'CustomerNames'
 GO
 ```
 
 ```json
 {
   "statements": [
+    {
+      "type": "create.table",
+      "name": "Customers",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Name",
+          "dataType": "nvarchar(100)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "dataType": "nvarchar(200)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "keys": [
+        {
+          "name": "PK_Customers",
+          "columnNames": [
+            "Id"
+          ]
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "type": "create.table",
+      "name": "Invoices",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "CustomerId",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Total",
+          "dataType": "decimal(10,2)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "keys": [
+        {
+          "name": "PK_Invoices",
+          "columnNames": [
+            "Id"
+          ]
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "Customers",
+      "columnName": "Id",
+      "comment": "Customer id"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "Customers",
+      "columnName": "Name",
+      "comment": "Customer's full name"
+    },
+    {
+      "type": "comment.on.table",
+      "name": "Customers",
+      "comment": "People who buy"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "Invoices",
+      "columnName": "Total",
+      "comment": "Amount in EUR (€), tax included"
+    },
+    {
+      "type": "comment.on.table",
+      "name": "Invoices",
+      "comment": "Billed invoices"
+    }
+  ]
+}
+```
+
+### SQL Server sp_addextendedproperty by position
+
+The editor's MSSQL export has written each comment by position, level 0 as `'user', dbo`, a form
+SMO never writes. `MS_DiagramPane1`, which SSMS's view designer keeps on a view, is no
+description, and its value, cut short here, holds brackets.
+
+```sql
+EXECUTE sys.sp_addextendedproperty 'MS_Description',
+  'Order''s header', 'user', dbo, 'table', 'Orders'
+GO
+
+EXECUTE sys.sp_addextendedproperty 'MS_Description',
+  'order id', 'user', dbo, 'table', 'Orders', 'column', 'Id'
+GO
+
+EXEC sys.sp_addextendedproperty @name=N'MS_DiagramPane1', @value=N'[0E232FF0-B466-11cf-A24F-00AA00A3EFFF, 1.00]' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'VIEW',@level1name=N'OrderView'
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "comment.on.table",
+      "name": "Orders",
+      "comment": "Order's header"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "Orders",
+      "columnName": "Id",
+      "comment": "order id"
+    }
+  ]
+}
+```
+
+### SQL Server Generate Scripts of a whole database
+
+Generate Scripts output of SMO 17.100.0.0 (SQL Server Management Objects, the scripting engine
+of SSMS, from the SqlServer PowerShell module 22.4.5.1) against SQL Server 2022 16.0.4295.3:
+`SqlScriptPublishModel`, the wizard's own engine, with the wizard's default options, scripting
+the entire database and all its objects. Around the tables it writes `CREATE DATABASE` with
+Linux file paths, 34 `ALTER DATABASE ... SET`, a schema, a sequence and a view, none of which the
+parser reads, nor the view's MS_Description. Each primary and unique key stays inside its
+`CREATE TABLE`; the indexes, defaults, foreign keys and comments follow all the tables. The wizard wrote UTF-16LE
+with a BOM, here UTF-8; SMO, run on Linux, wrote LF line endings; every other byte is kept.
+
+```sql
+USE [master]
+GO
+/****** Object:  Database [p2r_full]    Script Date: 10/4/2026 12:18:23 PM ******/
+CREATE DATABASE [p2r_full]
+ CONTAINMENT = NONE
+ ON  PRIMARY 
+( NAME = N'p2r_full', FILENAME = N'/var/opt/mssql/data/p2r_full.mdf' , SIZE = 8192KB , MAXSIZE = UNLIMITED, FILEGROWTH = 65536KB )
+ LOG ON 
+( NAME = N'p2r_full_log', FILENAME = N'/var/opt/mssql/data/p2r_full_log.ldf' , SIZE = 8192KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
+ WITH CATALOG_COLLATION = DATABASE_DEFAULT, LEDGER = OFF
+GO
+ALTER DATABASE [p2r_full] SET COMPATIBILITY_LEVEL = 160
+GO
+IF (1 = FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'))
+begin
+EXEC [p2r_full].[dbo].[sp_fulltext_database] @action = 'enable'
+end
+GO
+ALTER DATABASE [p2r_full] SET ANSI_NULL_DEFAULT OFF 
+GO
+ALTER DATABASE [p2r_full] SET ANSI_NULLS OFF 
+GO
+ALTER DATABASE [p2r_full] SET ANSI_PADDING OFF 
+GO
+ALTER DATABASE [p2r_full] SET ANSI_WARNINGS OFF 
+GO
+ALTER DATABASE [p2r_full] SET ARITHABORT OFF 
+GO
+ALTER DATABASE [p2r_full] SET AUTO_CLOSE OFF 
+GO
+ALTER DATABASE [p2r_full] SET AUTO_SHRINK OFF 
+GO
+ALTER DATABASE [p2r_full] SET AUTO_UPDATE_STATISTICS ON 
+GO
+ALTER DATABASE [p2r_full] SET CURSOR_CLOSE_ON_COMMIT OFF 
+GO
+ALTER DATABASE [p2r_full] SET CURSOR_DEFAULT  GLOBAL 
+GO
+ALTER DATABASE [p2r_full] SET CONCAT_NULL_YIELDS_NULL OFF 
+GO
+ALTER DATABASE [p2r_full] SET NUMERIC_ROUNDABORT OFF 
+GO
+ALTER DATABASE [p2r_full] SET QUOTED_IDENTIFIER OFF 
+GO
+ALTER DATABASE [p2r_full] SET RECURSIVE_TRIGGERS OFF 
+GO
+ALTER DATABASE [p2r_full] SET  ENABLE_BROKER 
+GO
+ALTER DATABASE [p2r_full] SET AUTO_UPDATE_STATISTICS_ASYNC OFF 
+GO
+ALTER DATABASE [p2r_full] SET DATE_CORRELATION_OPTIMIZATION OFF 
+GO
+ALTER DATABASE [p2r_full] SET TRUSTWORTHY OFF 
+GO
+ALTER DATABASE [p2r_full] SET ALLOW_SNAPSHOT_ISOLATION OFF 
+GO
+ALTER DATABASE [p2r_full] SET PARAMETERIZATION SIMPLE 
+GO
+ALTER DATABASE [p2r_full] SET READ_COMMITTED_SNAPSHOT OFF 
+GO
+ALTER DATABASE [p2r_full] SET HONOR_BROKER_PRIORITY OFF 
+GO
+ALTER DATABASE [p2r_full] SET RECOVERY FULL 
+GO
+ALTER DATABASE [p2r_full] SET  MULTI_USER 
+GO
+ALTER DATABASE [p2r_full] SET PAGE_VERIFY CHECKSUM  
+GO
+ALTER DATABASE [p2r_full] SET DB_CHAINING OFF 
+GO
+ALTER DATABASE [p2r_full] SET FILESTREAM( NON_TRANSACTED_ACCESS = OFF ) 
+GO
+ALTER DATABASE [p2r_full] SET TARGET_RECOVERY_TIME = 60 SECONDS 
+GO
+ALTER DATABASE [p2r_full] SET DELAYED_DURABILITY = DISABLED 
+GO
+ALTER DATABASE [p2r_full] SET ACCELERATED_DATABASE_RECOVERY = OFF  
+GO
+EXEC sys.sp_db_vardecimal_storage_format N'p2r_full', N'ON'
+GO
+ALTER DATABASE [p2r_full] SET QUERY_STORE = ON
+GO
+ALTER DATABASE [p2r_full] SET QUERY_STORE (OPERATION_MODE = READ_WRITE, CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 30), DATA_FLUSH_INTERVAL_SECONDS = 900, INTERVAL_LENGTH_MINUTES = 60, MAX_STORAGE_SIZE_MB = 1000, QUERY_CAPTURE_MODE = AUTO, SIZE_BASED_CLEANUP_MODE = AUTO, MAX_PLANS_PER_QUERY = 200, WAIT_STATS_CAPTURE_MODE = ON)
+GO
+USE [p2r_full]
+GO
+/****** Object:  Schema [sales]    Script Date: 10/4/2026 12:18:23 PM ******/
+CREATE SCHEMA [sales]
+GO
+USE [p2r_full]
+GO
+/****** Object:  Sequence [sales].[OrderSeq]    Script Date: 10/4/2026 12:18:23 PM ******/
+CREATE SEQUENCE [sales].[OrderSeq] 
+ AS [int]
+ START WITH 1000
+ INCREMENT BY 1
+ MINVALUE -2147483648
+ MAXVALUE 2147483647
+ CACHE 
+GO
+/****** Object:  Table [dbo].[Customers]    Script Date: 10/4/2026 12:18:23 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Customers](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](100) NOT NULL,
+	[Email] [nvarchar](200) NULL,
+ CONSTRAINT [PK_Customers] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ_Customers_Email] UNIQUE NONCLUSTERED 
+(
+	[Email] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [sales].[Orders]    Script Date: 10/4/2026 12:18:23 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [sales].[Orders](
+	[Id] [int] NOT NULL,
+	[CustomerId] [int] NOT NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[Qty] [int] NOT NULL,
+	[Created] [datetime2](7) NOT NULL,
+	[Number] [int] NOT NULL,
+	[Label] [nvarchar](20) NULL,
+ CONSTRAINT [PK_Orders] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ_Orders_Number] UNIQUE NONCLUSTERED 
+(
+	[Number] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  View [sales].[OrderSummary]    Script Date: 10/4/2026 12:18:23 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE VIEW [sales].[OrderSummary] AS SELECT o.[Id], c.[Name], o.[Qty] FROM [sales].[Orders] o JOIN [dbo].[Customers] c ON c.[Id] = o.[CustomerId]
+GO
+/****** Object:  Table [sales].[OrderTags]    Script Date: 10/4/2026 12:18:23 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [sales].[OrderTags](
+	[OrderId] [int] NOT NULL,
+	[Tag] [nvarchar](30) NOT NULL,
+	[Weight] [int] NOT NULL,
+ CONSTRAINT [PK_OrderTags] PRIMARY KEY NONCLUSTERED 
+(
+	[OrderId] ASC,
+	[Tag] DESC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_Orders_Created]    Script Date: 10/4/2026 12:18:23 PM ******/
+CREATE NONCLUSTERED INDEX [IX_Orders_Created] ON [sales].[Orders]
+(
+	[Created] DESC,
+	[Status] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [UX_OrderTags_Tag]    Script Date: 10/4/2026 12:18:23 PM ******/
+CREATE UNIQUE NONCLUSTERED INDEX [UX_OrderTags_Tag] ON [sales].[OrderTags]
+(
+	[Tag] ASC,
+	[OrderId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [sales].[Orders] ADD  CONSTRAINT [DF_Orders_Status]  DEFAULT ('draft') FOR [Status]
+GO
+ALTER TABLE [sales].[Orders] ADD  CONSTRAINT [DF_Orders_Qty]  DEFAULT ((0)) FOR [Qty]
+GO
+ALTER TABLE [sales].[Orders] ADD  CONSTRAINT [DF_Orders_Created]  DEFAULT (getdate()) FOR [Created]
+GO
+ALTER TABLE [sales].[Orders] ADD  CONSTRAINT [DF_Orders_Number]  DEFAULT (NEXT VALUE FOR [sales].[OrderSeq]) FOR [Number]
+GO
+ALTER TABLE [sales].[Orders] ADD  CONSTRAINT [DF_Orders_Label]  DEFAULT (N'(none)') FOR [Label]
+GO
+ALTER TABLE [sales].[OrderTags] ADD  CONSTRAINT [DF_OrderTags_Weight]  DEFAULT ((1)) FOR [Weight]
+GO
+ALTER TABLE [sales].[Orders]  WITH CHECK ADD  CONSTRAINT [FK_Orders_Customers] FOREIGN KEY([CustomerId])
+REFERENCES [dbo].[Customers] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [sales].[Orders] CHECK CONSTRAINT [FK_Orders_Customers]
+GO
+ALTER TABLE [sales].[OrderTags]  WITH CHECK ADD  CONSTRAINT [FK_OrderTags_Orders] FOREIGN KEY([OrderId])
+REFERENCES [sales].[Orders] ([Id])
+GO
+ALTER TABLE [sales].[OrderTags] CHECK CONSTRAINT [FK_OrderTags_Orders]
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Customer''s full name' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Customers', @level2type=N'COLUMN',@level2name=N'Name'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'People who buy' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Customers'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Units ordered' , @level0type=N'SCHEMA',@level0name=N'sales', @level1type=N'TABLE',@level1name=N'Orders', @level2type=N'COLUMN',@level2name=N'Qty'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Placed orders' , @level0type=N'SCHEMA',@level0name=N'sales', @level1type=N'TABLE',@level1name=N'Orders'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Tags per order' , @level0type=N'SCHEMA',@level0name=N'sales', @level1type=N'TABLE',@level1name=N'OrderTags'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Order totals' , @level0type=N'SCHEMA',@level0name=N'sales', @level1type=N'VIEW',@level1name=N'OrderSummary'
+GO
+USE [master]
+GO
+ALTER DATABASE [p2r_full] SET  READ_WRITE 
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "Customers",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Name",
+          "dataType": "nvarchar(100)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "dataType": "nvarchar(200)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": true,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "keys": [
+        {
+          "name": "PK_Customers",
+          "columnNames": [
+            "Id"
+          ]
+        },
+        {
+          "name": "UQ_Customers_Email",
+          "columnNames": [
+            "Email"
+          ]
+        }
+      ],
+      "foreignKeys": []
+    },
     {
       "type": "create.table",
       "name": "Orders",
@@ -3201,8 +3708,28 @@ GO
           "dataType": "int",
           "default": "",
           "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "CustomerId",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
           "primaryKey": false,
-          "autoIncrement": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "dataType": "nvarchar(20)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
           "unique": false,
           "nullable": false
         },
@@ -3215,11 +3742,140 @@ GO
           "autoIncrement": false,
           "unique": false,
           "nullable": false
+        },
+        {
+          "name": "Created",
+          "dataType": "datetime2(7)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Number",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "Label",
+          "dataType": "nvarchar(20)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
         }
       ],
       "indexes": [],
-      "keys": [],
+      "keys": [
+        {
+          "name": "PK_Orders",
+          "columnNames": [
+            "Id"
+          ]
+        },
+        {
+          "name": "UQ_Orders_Number",
+          "columnNames": [
+            "Number"
+          ]
+        }
+      ],
       "foreignKeys": []
+    },
+    {
+      "type": "create.table",
+      "name": "OrderTags",
+      "comment": "",
+      "columns": [
+        {
+          "name": "OrderId",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Tag",
+          "dataType": "nvarchar(30)",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Weight",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "keys": [
+        {
+          "name": "PK_OrderTags",
+          "columnNames": [
+            "OrderId",
+            "Tag"
+          ]
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "type": "create.index",
+      "name": "IX_Orders_Created",
+      "unique": false,
+      "tableName": "Orders",
+      "columns": [
+        {
+          "name": "Created",
+          "sort": "DESC"
+        },
+        {
+          "name": "Status",
+          "sort": "ASC"
+        }
+      ]
+    },
+    {
+      "type": "create.index",
+      "name": "UX_OrderTags_Tag",
+      "unique": true,
+      "tableName": "OrderTags",
+      "columns": [
+        {
+          "name": "Tag",
+          "sort": "ASC"
+        },
+        {
+          "name": "OrderId",
+          "sort": "ASC"
+        }
+      ]
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Status",
+      "default": "'draft'"
     },
     {
       "type": "alter.table.add.default",
@@ -3228,21 +3884,81 @@ GO
       "default": "0"
     },
     {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Created",
+      "default": "getdate()"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Number",
+      "default": "NEXT VALUE FOR [sales].[OrderSeq]"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Label",
+      "default": "N'(none)'"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "OrderTags",
+      "columnName": "Weight",
+      "default": "1"
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "Orders",
+      "columnNames": [
+        "CustomerId"
+      ],
+      "refTableName": "Customers",
+      "refColumnNames": [
+        "Id"
+      ],
+      "onDelete": "CASCADE",
+      "onUpdate": ""
+    },
+    {
+      "type": "alter.table.add.foreignKey",
+      "name": "OrderTags",
+      "columnNames": [
+        "OrderId"
+      ],
+      "refTableName": "Orders",
+      "refColumnNames": [
+        "Id"
+      ],
+      "onDelete": "",
+      "onUpdate": ""
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "Customers",
+      "columnName": "Name",
+      "comment": "Customer's full name"
+    },
+    {
+      "type": "comment.on.table",
+      "name": "Customers",
+      "comment": "People who buy"
+    },
+    {
       "type": "comment.on.column",
       "tableName": "Orders",
       "columnName": "Qty",
-      "comment": "How many"
+      "comment": "Units ordered"
     },
     {
       "type": "comment.on.table",
       "name": "Orders",
-      "comment": "Order's header"
+      "comment": "Placed orders"
     },
     {
-      "type": "comment.on.column",
-      "tableName": "Orders",
-      "columnName": "Id",
-      "comment": "order id"
+      "type": "comment.on.table",
+      "name": "OrderTags",
+      "comment": "Tags per order"
     }
   ]
 }
