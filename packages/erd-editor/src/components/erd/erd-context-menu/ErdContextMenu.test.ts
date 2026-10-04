@@ -573,6 +573,31 @@ describe('ErdContextMenu / table type', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
+    it('names a lone selected column in the singular when raised over it, and deletes it', async () => {
+      seedTable();
+      app.store.dispatchSync(
+        addColumnAction({ id: 'column-2', tableId: TABLE_ID }),
+        selectAction({ [TABLE_ID]: SelectType.table })
+      );
+      focusColumn();
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: TABLE_ID,
+        columnId: COLUMN_ID,
+      });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete columnDelete');
+      await click(findItem(rootItems(), 'Delete column'));
+
+      expect(tableIds()).toEqual([TABLE_ID]);
+      expect(
+        query(app.store.state.collections)
+          .collection('tableEntities')
+          .selectById(TABLE_ID)?.columnIds
+      ).toEqual(['column-2']);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it.each([
       ['off the rows', undefined],
       ['over a row outside the selection', 'column-2'],
@@ -930,11 +955,9 @@ describe('ErdContextMenu / memo type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('deletes the memo alone while it is one of a selection', async () => {
+  it('names the memo alone while it is the whole selection', async () => {
     seedMemo();
-    app.store.dispatchSync(
-      selectAction({ [MEMO_ID]: SelectType.memo, [TABLE_ID]: SelectType.table })
-    );
+    app.store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
     await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
 
     expect(labelsOf(rootItems()).at(-1)).toBe('DeleteDelete');
@@ -942,6 +965,23 @@ describe('ErdContextMenu / memo type', () => {
 
     expect(app.store.state.doc.memoIds).toEqual([]);
     expect(app.store.state.doc.tableIds).toEqual([TABLE_ID]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the selection the memo is one of and deletes all of it', async () => {
+    const OTHER_MEMO_ID = 'memo-2';
+    seedMemo();
+    app.store.dispatchSync(
+      addMemoAction({ id: OTHER_MEMO_ID, ui: { x: 0, y: 400, zIndex: 3 } }),
+      selectAction({ [MEMO_ID]: SelectType.memo, [TABLE_ID]: SelectType.table })
+    );
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+
+    expect(labelsOf(rootItems()).at(-1)).toBe('Delete selectedDelete');
+    await click(findItem(rootItems(), 'Delete selected'));
+
+    expect(app.store.state.doc.memoIds).toEqual([OTHER_MEMO_ID]);
+    expect(app.store.state.doc.tableIds).toEqual([]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

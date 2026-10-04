@@ -80,13 +80,19 @@ export type ErdContextMenuProps = {
   onClose: () => void;
 };
 
-/** What the table menu's Delete reads and what it dispatches when picked. */
+/** What a menu's Delete reads and what it dispatches when picked. */
 type Removal = {
   name: string;
   action: () => GeneratorAction;
 };
 
-/** Whether the table a menu was raised over is one of two or more selected. */
+/** Every selected table and memo, which Delete reaches inside a multi-selection. */
+const selectionRemoval: Removal = {
+  name: 'Delete selected',
+  action: removeSelectedAction$,
+};
+
+/** Whether the table or memo a menu was raised over is one of two or more selected. */
 const isOneOfSelection = (
   selectedMap: Record<string, SelectType>,
   id: string
@@ -216,13 +222,13 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
       columns.columnIds.includes(props.columnId)
     ) {
       return {
-        name: 'Delete columns',
+        name: columns.columnIds.length > 1 ? 'Delete columns' : 'Delete column',
         action: () => removeColumnAction$(tableId, columns.columnIds),
       };
     }
 
     return isOneOfSelection(state.editor.selectedMap, tableId)
-      ? { name: 'Delete selected', action: removeSelectedAction$ }
+      ? selectionRemoval
       : { name: 'Delete', action: () => removeTableAction$(tableId) };
   };
 
@@ -234,11 +240,20 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  /**
+   * What Delete reaches from the memo the menu was raised over: the selection
+   * the memo is one of, or the memo alone.
+   */
+  const getMemoRemoval = (memoId: string): Removal =>
+    isOneOfSelection(app.value.store.state.editor.selectedMap, memoId)
+      ? selectionRemoval
+      : { name: 'Delete', action: () => removeMemoAction$(memoId) };
+
   const handleRemoveMemo = () => {
     if (!props.memoId) return;
 
     const { store } = app.value;
-    store.dispatch(removeMemoAction$(props.memoId));
+    store.dispatch(getMemoRemoval(props.memoId).action());
     props.onClose();
   };
 
@@ -352,7 +367,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleRemoveMemo}
                 children={
                   <ContextMenu.Menu
-                    name="Delete"
+                    name={
+                      props.memoId
+                        ? getMemoRemoval(props.memoId).name
+                        : 'Delete'
+                    }
                     right={<Kbd shortcut={removeShortcut} />}
                   />
                 }

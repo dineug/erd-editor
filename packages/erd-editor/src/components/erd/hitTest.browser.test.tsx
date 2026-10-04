@@ -552,13 +552,13 @@ describe('Erd - routing what the scene answered', () => {
       await flush(6);
     }
 
-    it('names the columns for a right press on the row, and deletes them', async () => {
+    it('names the column for a right press on its row, and deletes it', async () => {
       const editor = await mountEditor();
       const columnId = await focusFirstColumn(editor);
 
       await rightPress(editor, centerOf(editor.stage, `#column-${columnId}`));
 
-      findByText(editor.root, 'Delete columns')!.dispatchEvent(
+      findByText(editor.root, 'Delete column')!.dispatchEvent(
         new MouseEvent('click', { bubbles: true })
       );
       await flush(6);
@@ -577,7 +577,7 @@ describe('Erd - routing what the scene answered', () => {
       expect(getRemovableColumns(editor.app.store.state)?.columnIds).toEqual([
         columnId,
       ]);
-      expect(findByText(editor.root, 'Delete columns')).toBeUndefined();
+      expect(findByText(editor.root, 'Delete column')).toBeUndefined();
       expect(findByText(editor.root, 'Table Properties')).toBeTruthy();
 
       findByText(editor.root, 'Delete')!.dispatchEvent(
