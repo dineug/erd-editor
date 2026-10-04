@@ -114,6 +114,41 @@ function createFixture() {
   return { state, users, posts, index, relationship };
 }
 
+/**
+ * Adds a second users table that posts also references, and an unnamed index on
+ * users and on it that the document does not list yet. The table borrows the
+ * users key column, which the DDL reads by id alone.
+ */
+function addSecondUsers(state: RootState, name: string) {
+  const table = createTable({
+    id: 'tbl-users-2',
+    name,
+    columnIds: ['col-id'],
+  });
+  const relationship = createRelationship({
+    id: 'rel-users-2',
+    start: { tableId: table.id, columnIds: ['col-id'] },
+    end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
+  });
+  const usersIndex = createIndex({
+    id: 'idx-users',
+    tableId: 'tbl-users',
+    indexColumnIds: ['idx-col-1'],
+  });
+  const index = createIndex({
+    id: 'idx-users-2',
+    tableId: table.id,
+    indexColumnIds: ['idx-col-1'],
+  });
+  state.collections.tableEntities[table.id] = table;
+  state.collections.relationshipEntities[relationship.id] = relationship;
+  state.collections.indexEntities[usersIndex.id] = usersIndex;
+  state.collections.indexEntities[index.id] = index;
+  state.doc.tableIds.push(table.id);
+  state.doc.relationshipIds.push(relationship.id);
+  return { usersIndex, index };
+}
+
 describe('schema-sql/MySQL', () => {
   describe('formatTable', () => {
     it('aligns columns, emits AUTO_INCREMENT, PRIMARY KEY and the table comment', () => {
@@ -475,34 +510,8 @@ describe('schema-sql/MySQL dotted table names', () => {
     const { state, users, posts } = createFixture();
     users.name = 'sales.users';
     posts.name = 'sales.posts';
-    // The hr table borrows the sales key column, which the DDL reads by id alone.
-    const hrUsers = createTable({
-      id: 'tbl-hr-users',
-      name: 'hr.Users',
-      columnIds: ['col-id'],
-    });
-    const hrRelationship = createRelationship({
-      id: 'rel-hr',
-      start: { tableId: hrUsers.id, columnIds: ['col-id'] },
-      end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
-    });
-    const usersIndex = createIndex({
-      id: 'idx-users',
-      tableId: 'tbl-users',
-      indexColumnIds: ['idx-col-1'],
-    });
-    const hrIndex = createIndex({
-      id: 'idx-hr',
-      tableId: hrUsers.id,
-      indexColumnIds: ['idx-col-1'],
-    });
-    state.collections.tableEntities[hrUsers.id] = hrUsers;
-    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
-    state.collections.indexEntities[usersIndex.id] = usersIndex;
-    state.collections.indexEntities[hrIndex.id] = hrIndex;
-    state.doc.tableIds.push(hrUsers.id);
-    state.doc.relationshipIds.push(hrRelationship.id);
-    state.doc.indexIds = [usersIndex.id, hrIndex.id];
+    const { usersIndex, index } = addSecondUsers(state, 'hr.Users');
+    state.doc.indexIds = [usersIndex.id, index.id];
 
     const sql = createSchema(state);
 
@@ -528,35 +537,8 @@ describe('schema-sql/MySQL dotted table names', () => {
   it('numbers a quoted name repeating an earlier one but for case too', () => {
     const { state } = createFixture();
     state.settings.bracketType = BracketType.backtick;
-    // Users borrows the users key column, which the DDL reads by id alone.
-    const upperUsers = createTable({
-      id: 'tbl-upper-users',
-      name: 'Users',
-      columnIds: ['col-id'],
-    });
-    const upperRelationship = createRelationship({
-      id: 'rel-upper',
-      start: { tableId: upperUsers.id, columnIds: ['col-id'] },
-      end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
-    });
-    const usersIndex = createIndex({
-      id: 'idx-users',
-      tableId: 'tbl-users',
-      indexColumnIds: ['idx-col-1'],
-    });
-    const upperIndex = createIndex({
-      id: 'idx-upper',
-      tableId: upperUsers.id,
-      indexColumnIds: ['idx-col-1'],
-    });
-    state.collections.tableEntities[upperUsers.id] = upperUsers;
-    state.collections.relationshipEntities[upperRelationship.id] =
-      upperRelationship;
-    state.collections.indexEntities[usersIndex.id] = usersIndex;
-    state.collections.indexEntities[upperIndex.id] = upperIndex;
-    state.doc.tableIds.push(upperUsers.id);
-    state.doc.relationshipIds.push(upperRelationship.id);
-    state.doc.indexIds = [usersIndex.id, upperIndex.id];
+    const { usersIndex, index } = addSecondUsers(state, 'Users');
+    state.doc.indexIds = [usersIndex.id, index.id];
 
     const sql = createSchema(state);
 

@@ -290,8 +290,7 @@ function formatRelation(
     // FK
     const startName = tableNamePart(startTable.name, bracketType);
     const endName = tableNamePart(endTable.name, bracketType);
-    let fkName = `FK_${startName}_TO_${endName}`;
-    fkName = autoNameIgnoreCase(fkNames, fkName);
+    const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
     fkNames.push({
       id: nanoid(),
       name: fkName,
@@ -362,8 +361,8 @@ export function formatIndex(
   if (columnNames.length !== 0) {
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${tableNamePart(table.name, bracketType)}`;
-      indexName = autoNameIgnoreCase(indexNames, indexName);
+      const tableName = tableNamePart(table.name, bracketType);
+      indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
         id: nanoid(),
         name: indexName,

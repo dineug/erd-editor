@@ -139,6 +139,39 @@ function createFixture() {
   };
 }
 
+/**
+ * Adds an hr users table that posts also references, and an unnamed index on it
+ * that the document does not list yet. The table borrows the fixture's columns,
+ * which the DDL reads by id alone.
+ */
+function addHrUsers(
+  { state, posts, userId, postUserId }: ReturnType<typeof createFixture>,
+  {
+    name,
+    columnIds,
+    indexColumnId,
+  }: { name: string; columnIds: string[]; indexColumnId: string }
+) {
+  const hrUsers = createTable({ id: 't-hr-users', name, columnIds });
+  const hrRelationship = createRelationship({
+    id: 'r-hr',
+    start: { tableId: hrUsers.id, columnIds: [userId.id] },
+    end: { tableId: posts.id, columnIds: [postUserId.id] },
+  });
+  const hrIndex = createIndex({
+    id: 'i-hr',
+    name: '',
+    tableId: hrUsers.id,
+    indexColumnIds: [indexColumnId],
+  });
+  state.collections.tableEntities[hrUsers.id] = hrUsers;
+  state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+  state.collections.indexEntities[hrIndex.id] = hrIndex;
+  state.doc.tableIds.push(hrUsers.id);
+  state.doc.relationshipIds.push(hrRelationship.id);
+  return hrIndex;
+}
+
 describe('Oracle createSchema', () => {
   it('emits tables, unique constraints, sequences, triggers, comments, FKs and indexes', () => {
     const { state } = createFixture();
@@ -418,35 +451,18 @@ describe('Oracle dotted table names', () => {
   });
 
   it('repeats the primary key and unique names in each schema and numbers the foreign key and index names', () => {
-    const { state, users, posts, userId, userEmail, postUserId } =
-      createFixture();
+    const fixture = createFixture();
+    const { state, users, posts, userId, userEmail, usersIndex } = fixture;
     users.name = 'sales.users';
     posts.name = 'hr.posts';
     userId.options = ColumnOption.primaryKey | ColumnOption.notNull;
-    // The hr table borrows the sales columns, which the DDL reads by id alone.
-    const hrUsers = createTable({
-      id: 't-hr-users',
+    const hrIndex = addHrUsers(fixture, {
       name: 'hr.users',
       columnIds: [userId.id, userEmail.id],
+      indexColumnId: 'ic-2',
     });
-    const hrRelationship = createRelationship({
-      id: 'r-hr',
-      start: { tableId: hrUsers.id, columnIds: [userId.id] },
-      end: { tableId: posts.id, columnIds: [postUserId.id] },
-    });
-    const hrIndex = createIndex({
-      id: 'i-hr',
-      name: '',
-      tableId: hrUsers.id,
-      indexColumnIds: ['ic-2'],
-    });
-    state.collections.tableEntities[hrUsers.id] = hrUsers;
-    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
-    state.collections.indexEntities[hrIndex.id] = hrIndex;
-    state.collections.indexEntities['i-2'].name = '';
-    state.doc.tableIds.push(hrUsers.id);
-    state.doc.relationshipIds.push(hrRelationship.id);
-    state.doc.indexIds = ['i-2', hrIndex.id];
+    usersIndex.name = '';
+    state.doc.indexIds = [usersIndex.id, hrIndex.id];
 
     const sql = createSchema(state);
 
@@ -461,33 +477,17 @@ describe('Oracle dotted table names', () => {
   });
 
   it('numbers a foreign key and an index name repeating an earlier one but for case, not a sequence', () => {
-    const { state, users, posts, userId, postUserId } = createFixture();
+    const fixture = createFixture();
+    const { state, users, posts, userId, usersIndex } = fixture;
     users.name = 'sales.users';
     posts.name = 'sales.posts';
-    // The hr table borrows the sales key column, which the DDL reads by id alone.
-    const hrUsers = createTable({
-      id: 't-hr-users',
+    const hrIndex = addHrUsers(fixture, {
       name: 'hr.Users',
       columnIds: [userId.id],
+      indexColumnId: 'ic-1',
     });
-    const hrRelationship = createRelationship({
-      id: 'r-hr',
-      start: { tableId: hrUsers.id, columnIds: [userId.id] },
-      end: { tableId: posts.id, columnIds: [postUserId.id] },
-    });
-    const hrIndex = createIndex({
-      id: 'i-hr',
-      name: '',
-      tableId: hrUsers.id,
-      indexColumnIds: ['ic-1'],
-    });
-    state.collections.tableEntities[hrUsers.id] = hrUsers;
-    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
-    state.collections.indexEntities[hrIndex.id] = hrIndex;
-    state.collections.indexEntities['i-2'].name = '';
-    state.doc.tableIds.push(hrUsers.id);
-    state.doc.relationshipIds.push(hrRelationship.id);
-    state.doc.indexIds = ['i-2', hrIndex.id];
+    usersIndex.name = '';
+    state.doc.indexIds = [usersIndex.id, hrIndex.id];
 
     const sql = createSchema(state);
 

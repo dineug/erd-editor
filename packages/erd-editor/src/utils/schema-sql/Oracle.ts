@@ -260,8 +260,7 @@ function formatRelation(
     // FK
     const startName = tableNamePart(startTable.name, bracketType);
     const endName = tableNamePart(endTable.name, bracketType);
-    let fkName = `FK_${startName}_TO_${endName}`;
-    fkName = autoNameIgnoreCase(fkNames, fkName);
+    const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
     fkNames.push({
       id: nanoid(),
       name: fkName,
@@ -344,15 +343,12 @@ export function formatIndex(
     // schema it names.
     const indexSchema =
       schema === '' || indexName.includes('.') ? '' : `${schema}.`;
+    const indexRef = `${indexSchema}${bracket}${indexName}${bracket}`;
 
     if (index.unique) {
-      buffer.push(
-        `CREATE UNIQUE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
-      );
+      buffer.push(`CREATE UNIQUE INDEX ${indexRef}`);
     } else {
-      buffer.push(
-        `CREATE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
-      );
+      buffer.push(`CREATE INDEX ${indexRef}`);
     }
     buffer.push(
       `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`

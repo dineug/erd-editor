@@ -240,7 +240,6 @@ export function formatIndex(
     .collection('tableEntities')
     .selectById(index.tableId);
   if (!table) return;
-  const [schema, tableName] = splitTableName(table.name, bracketType);
 
   const columnNames = query(collections)
     .collection('indexColumnEntities')
@@ -261,10 +260,10 @@ export function formatIndex(
     .filter(columnName => columnName !== null) as { name: string }[];
 
   if (columnNames.length !== 0) {
+    const [schema, tableName] = splitTableName(table.name, bracketType);
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${tableName}`;
-      indexName = autoNameIgnoreCase(indexNames, indexName);
+      indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
         id: nanoid(),
         name: indexName,
@@ -274,15 +273,12 @@ export function formatIndex(
     // a name the user already qualified keeps the schema it names.
     const indexSchema =
       schema === '' || indexName.includes('.') ? '' : `${schema}.`;
+    const indexRef = `${indexSchema}${bracket}${indexName}${bracket}`;
 
     if (index.unique) {
-      buffer.push(
-        `CREATE UNIQUE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
-      );
+      buffer.push(`CREATE UNIQUE INDEX ${indexRef}`);
     } else {
-      buffer.push(
-        `CREATE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
-      );
+      buffer.push(`CREATE INDEX ${indexRef}`);
     }
     buffer.push(
       `  ON ${bracket}${tableName}${bracket} (${formatNames(columnNames)});`
