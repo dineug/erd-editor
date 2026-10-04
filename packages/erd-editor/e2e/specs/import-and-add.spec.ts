@@ -90,8 +90,19 @@ const lowTable = (): ErdDocument =>
     tables: [{ id: 'base', name: 'base', x: 160, y: 760, columns: [] }],
   });
 
-/** The tabs besides a Flow view the owner named for an append, and how to open each. */
+/** The tabs an append leaves for the ERD, and how to open each. */
 const OTHER_TABS: Array<[string, (erd: ErdEditorPage) => Promise<void>]> = [
+  [
+    'a Flow view',
+    async erd => {
+      test.setTimeout(120_000);
+      await erd.toolbarButton('Visualization').click();
+      await erd.host.locator('.visualization-toolbar [title="Flow"]').click();
+      await expect(
+        erd.host.locator('.visualization-toolbar [title="Tidy Up"]')
+      ).toBeVisible({ timeout: PLACEMENT_TIMEOUT });
+    },
+  ],
   [
     'Graph mode',
     async erd => {
@@ -191,31 +202,6 @@ test.describe('Import and Add', () => {
     expect(memo.ui.y - corners.accounts.y).toBe(360);
   });
 
-  test('brings the ERD tab up from a Flow view before it adds', async ({
-    erd,
-  }) => {
-    test.setTimeout(120_000);
-    await erd.seed(twoTables());
-    await erd.toolbarButton('Visualization').click();
-    await erd.host.locator('.visualization-toolbar [title="Flow"]').click();
-    await expect(
-      erd.host.locator('.visualization-toolbar [title="Tidy Up"]')
-    ).toBeVisible({ timeout: PLACEMENT_TIMEOUT });
-
-    await erd.page.evaluate(() => {
-      const editor = window.document.querySelector('erd-editor');
-      if (!editor) throw new Error('erd-editor is not mounted');
-      editor.setSchemaSQL('CREATE TABLE tags (id INT);', { mode: 'append' });
-    });
-
-    expect((await erd.settings()).canvasType).toBe('ERD');
-    expect(Object.keys(await cornersByName(erd)).sort()).toEqual([
-      'posts',
-      'tags',
-      'users',
-    ]);
-  });
-
   for (const [tab, open] of OTHER_TABS) {
     test(`brings the ERD tab up from ${tab}, the added table selected and on screen`, async ({
       erd,
@@ -232,8 +218,10 @@ test.describe('Import and Add', () => {
       });
 
       const settings = await erd.settings();
-      const { tags } = await cornersByName(erd);
+      const corners = await cornersByName(erd);
+      const { tags } = corners;
       expect(settings.canvasType).toBe('ERD');
+      expect(Object.keys(corners).sort()).toEqual(['base', 'tags']);
       expect(settings.originY).not.toBe(originY);
       await expect.poll(() => selectedIdsOf(erd)).toEqual([tags.id]);
       await expect.poll(() => isOnScreen(erd, tags.id)).toBe(true);

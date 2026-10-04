@@ -3,6 +3,7 @@ import type { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
 import { AppContext } from '@/components/appContext';
 import { placeByFlow } from '@/components/erd/automatic-table-placement/flowPlacement';
 import { scrollIntoView, showErdTab } from '@/components/erd/goToErdTarget';
+import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { TABLE_SORT_START } from '@/constants/layout';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import { ActionType } from '@/engine/modules/editor/actions';
@@ -177,8 +178,8 @@ export async function importSchemaPlaced(
 
 /**
  * An append as the editor lands it: the new tables and memos alone selected,
- * and brought on screen, in the dispatch that adds them, so one undo takes
- * them away and puts the view back where it stood.
+ * and brought on screen clear of an open Find and Replace panel, in the
+ * dispatch that adds them, so one undo takes them away and the scroll back.
  */
 const appendLandingAction$ = ({
   actions,
@@ -195,7 +196,7 @@ const appendLandingAction$ = ({
         ...memoIds.map(id => [id, SelectType.memo]),
       ])
     );
-    yield* scrollIntoView(state, rect);
+    yield* scrollIntoView(state, rect, coveredWidth(state));
   };
 
 /**

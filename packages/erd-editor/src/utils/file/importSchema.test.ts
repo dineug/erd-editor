@@ -15,9 +15,12 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
+import { Open } from '@/constants/open';
 import { CanvasType, Database } from '@/constants/schema';
 import {
+  changeOpenMapAction,
   changeViewportAction,
   clearAction,
   initialClearAction,
@@ -50,6 +53,8 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import type { RxStoreOptions } from '@/engine/rx-store';
 import { getContentRect } from '@/konva/scene/contentBounds';
+import { getTableRect } from '@/konva/scene/metrics';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import {
   appendSchema,
@@ -484,6 +489,18 @@ function createScreenApp(options?: RxStoreOptions): AppContext {
   return app;
 }
 
+/** The left edge of the selected tables, as the screen shows them. */
+function selectedLeftOnScreen(app: AppContext): number {
+  const { state } = app.store;
+  const lefts = Object.entries(state.editor.selectedMap)
+    .filter(([, type]) => type === SelectType.table)
+    .map(([id]) => {
+      const rect = getTableRect(state, state.collections.tableEntities[id]);
+      return toScreenPoint(state.settings, rect).x;
+    });
+  return Math.min(...lefts);
+}
+
 function selectedNames(app: AppContext): string[] {
   const { editor, collections } = app.store.state;
   return Object.entries(editor.selectedMap)
@@ -586,6 +603,7 @@ describe('appendSchema', () => {
   });
 
   it.each([
+    ['a Flow view', enterFlow],
     ['Graph mode', enterGraph],
     ['the Schema SQL tab', enterTab(CanvasType.schemaSQL)],
     ['the Code Generator tab', enterTab(CanvasType.generatorCode)],
@@ -623,6 +641,38 @@ describe('appendSchema', () => {
       expect(app.store.history.hasUndo()).toBe(false);
     }
   );
+
+  it('lands clear of an open Find and Replace panel', () => {
+    const app = createScreenApp();
+    app.store.dispatchSync(
+      changeViewportAction({ width: 900, height: 600 }),
+      changeOpenMapAction({ [Open.findReplace]: true })
+    );
+
+    appendSchema(app, 'sql', UNRELATED_SQL);
+
+    expect(coveredWidth(app.store.state)).toBeGreaterThan(0);
+    expect(selectedLeftOnScreen(app)).toBeGreaterThanOrEqual(
+      coveredWidth(app.store.state)
+    );
+  });
+
+  it('scrolls a block that would land under an open Find and Replace panel', () => {
+    const app = createScreenApp();
+    const corner = appendCorner(app);
+    // The block would land on screen 50 px in, where only the panel hides it.
+    app.store.dispatchSync(
+      changeViewportAction({ width: 1200, height: 800 }),
+      changeOpenMapAction({ [Open.findReplace]: true }),
+      scrollToAction({ originX: 50 - corner.x, originY: 100 - corner.y })
+    );
+
+    appendSchema(app, 'sql', UNRELATED_SQL);
+
+    expect(selectedLeftOnScreen(app)).toBeGreaterThanOrEqual(
+      coveredWidth(app.store.state)
+    );
+  });
 
   it('dispatches no tab change when the ERD tab is up already', () => {
     const app = createScreenApp();
@@ -709,14 +759,13 @@ describe('appendSchemaPlaced', () => {
 
   it('reads the diagram as it lands, so a table moved meanwhile is cleared all the same', async () => {
     const app = createScreenApp();
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+    const land = pendingColumnLayout();
 
     const placing = appendSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
     app.store.dispatchSync(moveToTableAction({ id: 'old', x: 900, y: 3000 }));
     const corner = appendCorner(app);
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     const tops = ['users', 'posts', 'photos'].map(
@@ -739,13 +788,12 @@ describe('appendSchemaPlaced', () => {
 
   it('lands nothing once a load has replaced the document meanwhile', async () => {
     const app = createScreenApp();
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+    const land = pendingColumnLayout();
 
     const placing = appendSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
     importSchema(app, 'sql', 'CREATE TABLE newer (id INT);');
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     expect(tableNames(app)).toEqual(['newer']);
@@ -824,13 +872,12 @@ describe('appendSchemaPlaced', () => {
   it('brings the ERD tab up when the reader moved to another tab while it placed', async () => {
     const app = createScreenApp();
     app.store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+    const land = pendingColumnLayout();
 
     const placing = appendSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
     enterTab(CanvasType.generatorCode)(app);
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
@@ -912,14 +959,13 @@ describe('an append to a readonly editor', () => {
   it('lands nothing of a placed append once the editor turned readonly meanwhile', async () => {
     const { app, state } = createReadonlyApp();
     const view = viewOf(app);
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+    const land = pendingColumnLayout();
 
     const placing = appendSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
     state.readonly = true;
     const batches = recordActions(app);
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     expect(batches).toEqual([]);

@@ -152,7 +152,7 @@ erd-editor {
 | `setSchemaGraphQL(value: string, options?)` | Parse a GraphQL SDL string and **replace** the current document with it, or add it with `mode: 'append'`. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
 | `setSchemaDBML(value: string, options?)` | Parse a DBML string and **replace** the current document with it, or add it with `mode: 'append'`. Tables, columns, indexes, header colors and every `Ref` spelling are read; a `Project`, `TableGroup` or sticky `Note` is skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
 | `setSchemaAML(value: string, options?)` | Parse an [AML](https://azimutt.app) string and **replace** the current document with it, or add it with `mode: 'append'`. Entities, attributes, indexes, colors and every relation arrow are read, in the v2 and the legacy v1 spelling; a check, a struct type and a view are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
-| `setSchemaJSON(value: string, options?)` | Load an `.erd.json` document in place of the current one, as assigning `value` does, or add its tables, relationships, indexes and memos to it with `{ mode: 'append' }`, which keeps the current settings and the placement the file gives them. Lands in the undo history; an empty string is ignored, and so is text the parser cannot read for an append. |
+| `setSchemaJSON(value: string, options?)` | Load an `.erd.json` document in place of the current one, as assigning `value` does, or add its tables, relationships, indexes and memos to it with `{ mode: 'append' }`, which keeps the current settings, but for the tab and the scroll position (as below), and the placement the file gives them. Lands in the undo history; an empty string is ignored, and so is text the parser cannot read for an append. |
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance` (`light`, `dark` or `system`), `grayColor` and `accentColor`. `system` follows the OS color scheme, or what `setSystemAppearance` names. |
 | `setSystemAppearance(appearance)` | Name the light or dark `system` shows, for a host with its own theme (an IDE's light or dark); `null` hands it back to the OS color scheme. It changes nothing on screen unless the appearance is `system`. |
@@ -171,23 +171,24 @@ rows otherwise, or when the layout fails, the page runs no `SharedWorker`, or th
 Cancel on the toast a slow layout shows. It returns a `Promise` that resolves once the document is
 replaced, still in one undo step, keeping any setting changed meanwhile. A load before then —
 another import that replaces, `value`, `setInitialValue`, `clear()`, a peer's load or an undo of
-one — supersedes it, so the import started last is the one that lands, and its `Promise` resolves
+one — supersedes it, so the replace started last is the one that lands, and its `Promise` resolves
 with nothing loaded. A readonly editor places nothing and resolves at once.
 
 They take `mode?: 'replace' | 'append'` beside it. `'replace'`, the default, is everything above.
 `'append'` does what Import and Add does: the tables, relationships and indexes the text declares
-are added to the document as new ones, below every table and memo it already holds and in line
-with their left edge, with new ids, so a table of a name the document already has is added beside
-it, and a foreign key to a table outside the text is dropped. The tables already there and every
-setting but the tab (below) stay as they are, the new tables end selected and on screen, and one
-undo takes them away.
-With `placement: 'auto'` they are laid out as above before they are added, and the diagram is
-read as they land; with `'grid'` they stand in rows. An append placed with `'auto'` supersedes
-nothing: it lands after every `'auto'` import started before it, on the document a replace among
-them brings, and only a load or a replace started after it drops it. An append lands on the ERD
-tab: from any other — the Visualization tab in Graph or Flow mode, Schema SQL, Code Generator or
-Settings — it brings the ERD tab up first, then selects the new tables and scrolls to them. A
-readonly editor adds nothing, and its menu and command palette offer no Import and Add.
+are added to the document as new ones, below every table and memo it already holds and in line with
+their left edge, with new ids, so a table of a name the document already has is added beside it, and
+a foreign key to a table outside the text is dropped. The tables already there and every setting but
+the tab and the scroll position (below) stay as they are, the new tables end selected and on screen,
+and one undo takes them away.
+With `placement: 'auto'` they are laid out as above before they are added, and the diagram is read
+as they land; with `'grid'` they stand in rows. An append placed with `'auto'` supersedes nothing:
+it lands after every `'auto'` import started before it, on the document a replace among them brings,
+and only a load or a replace started after it drops it. An append lands on the ERD tab: from any
+other — the Visualization tab in Graph or Flow mode, Schema SQL, Code Generator or Settings — it
+brings the ERD tab up first, then selects the new tables and scrolls to them, clear of an open Find
+and Replace panel. A readonly editor adds nothing, and its menu and command palette offer no Import
+and Add.
 
 ### Events
 
@@ -252,7 +253,7 @@ setExportFileCallback((blob, { fileName }) => host.writeFile(fileName, blob));
 
 setImportFileCallback(async ({ type, op, accept, mode }) => {
   const text = await host.pickFile(accept);
-  const options = { placement: 'auto' as const, mode };
+  const options = { placement: 'auto', mode };
 
   if (op === 'diff') {
     editor.setDiffValue(text);
