@@ -73,6 +73,32 @@ describe('the generators the tools add read the state defensively', () => {
   });
 });
 
+describe('the color tools', () => {
+  it('remove the color of a table and of a memo given an empty string', () => {
+    const peer = createSeededPeer();
+    const colorOf = () => [
+      peer.state.collections.tableEntities[SEED.users].ui.color,
+      peer.state.collections.memoEntities[SEED.memo].ui.color,
+    ];
+
+    runTool(peer, 'erd_change_table_color', {
+      tableId: SEED.users,
+      color: '#ff8800',
+    });
+    runTool(peer, 'erd_change_memo_color', {
+      memoId: SEED.memo,
+      color: '#336699',
+    });
+    expect(colorOf()).toEqual(['#ff8800', '#336699']);
+
+    runTool(peer, 'erd_change_table_color', { tableId: SEED.users, color: '' });
+    runTool(peer, 'erd_change_memo_color', { memoId: SEED.memo, color: '' });
+
+    expect(colorOf()).toEqual(['', '']);
+    peer.destroy();
+  });
+});
+
 describe('the memo and index tools read the state defensively', () => {
   it('recolors a memo that is gone from an empty previous color', () => {
     const [action] = emitOnEmpty('erd_change_memo_color', {

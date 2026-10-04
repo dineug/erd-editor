@@ -5,6 +5,7 @@ import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { autoName, Name, orderByNameASC } from '@/utils/schema-sql/utils';
+import { toAMLColor } from '@/utils/tableColor';
 
 import {
   FormatTableOptions,
@@ -83,7 +84,12 @@ function formatAMLTable(
     return;
   }
 
-  buffer.push(`${quoteIdentifier(name)}${formatDoc(table.comment, '')}`);
+  buffer.push(
+    `${quoteIdentifier(name)}${formatEntityProperties(table)}${formatDoc(
+      table.comment,
+      ''
+    )}`
+  );
 
   const indexes = formatIndexes(state, table, context, name);
 
@@ -106,6 +112,12 @@ function formatAMLTable(
         )}`
       );
     });
+}
+
+function formatEntityProperties(table: Table): string {
+  const color = toAMLColor(table.ui.color);
+
+  return color === null ? '' : ` {color: ${color}}`;
 }
 
 function formatAttribute(

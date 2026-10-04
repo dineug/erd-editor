@@ -1,5 +1,7 @@
+import type { ErdEditorPage } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import { createSchema, type ErdDocument, twoTables } from '../support/schema';
+import { Shortcut } from '../support/shortcuts';
 
 // AC-I9. The bar that opens the picker is a scene node and the picker is dom,
 // so the press has to hand over a viewport point konva never dealt in, and the
@@ -17,6 +19,31 @@ function withMemo(): ErdDocument {
   document.collections.memoEntities = memo.collections.memoEntities;
 
   return document;
+}
+
+/** withMemo with every entity coloured, each its own colour. */
+function colored(): ErdDocument {
+  const document = withMemo();
+  document.collections.tableEntities.users.ui.color = COLOR;
+  document.collections.tableEntities.posts.ui.color = '#3b82f6';
+  document.collections.memoEntities.note.ui.color = '#22c55e';
+
+  return document;
+}
+
+async function colorsOf(erd: ErdEditorPage): Promise<string[]> {
+  const { collections } = await erd.value();
+  return [
+    collections.tableEntities.users.ui.color,
+    collections.tableEntities.posts.ui.color,
+    collections.memoEntities.note.ui.color,
+  ].map(color => color.toLowerCase());
+}
+
+/** A point on the memo's header strip, clear of its colour bar and remove button. */
+async function memoHeaderPoint(erd: ErdEditorPage) {
+  const box = await erd.sceneBox('#memo-note');
+  return { x: box.x + 20, y: box.y + 8 };
 }
 
 test.describe('entity colour', () => {
@@ -135,5 +162,89 @@ test.describe('entity colour', () => {
     await expect
       .poll(async () => (await erd.table('users')).ui.color.toLowerCase())
       .toBe(COLOR.toLowerCase());
+  });
+
+  test('No color under the picker clears every entity in the selection, as one undo', async ({
+    erd,
+  }) => {
+    await erd.seed(colored());
+
+    await erd.marqueeSelect({ x: 120, y: 120 }, { x: 1200, y: 800 });
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    const bar = await erd.sceneBox(['#memo-note', '.memo-header-color']);
+    const mod = await erd.pointerModKey();
+    await erd.page.keyboard.down(mod);
+    await erd.clickAt({ x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 });
+    await erd.page.keyboard.up(mod);
+    await expect(erd.colorPicker).toBeVisible();
+
+    await erd.colorPicker.getByRole('button', { name: 'No color' }).click();
+
+    await expect(erd.colorPicker).toHaveCount(0);
+    await expect.poll(() => colorsOf(erd)).toEqual(['', '', '']);
+
+    // The button held the keyboard and left with the picker, so the chord
+    // reaches the editor; one undo brings back all three colours.
+    await expect(erd.toolbarButton('Undo')).toHaveClass(/\bactive\b/);
+    await erd.page.keyboard.press(Shortcut.undo);
+
+    await expect
+      .poll(() => colorsOf(erd))
+      .toEqual([COLOR.toLowerCase(), '#3b82f6', '#22c55e']);
+  });
+
+  test('the table menu offers Remove color only while the selection holds a colour', async ({
+    erd,
+  }) => {
+    const document = twoTables();
+    document.collections.tableEntities.users.ui.color = COLOR;
+    await erd.seed(document);
+
+    await erd.clickAt(await erd.tableHeaderPoint('posts'), { button: 'right' });
+    await expect(
+      erd.contextMenu.getByText('Color', { exact: true })
+    ).toBeVisible();
+    await expect(
+      erd.contextMenu.getByText('Remove color', { exact: true })
+    ).toHaveCount(0);
+
+    await erd.clickAt(await erd.tableHeaderPoint('users'), { button: 'right' });
+    await erd.contextMenu.getByText('Remove color', { exact: true }).click();
+
+    await expect(erd.contextMenu).toHaveCount(0);
+    await expect.poll(async () => (await erd.table('users')).ui.color).toBe('');
+    await expect
+      .poll(async () => {
+        const fill = await erd.sceneAttr(
+          ['#table-users', '.table-header-color'],
+          'fill'
+        );
+        return String(fill).toLowerCase();
+      })
+      .not.toBe(COLOR.toLowerCase());
+  });
+
+  test('the memo menu offers Remove color between Color and Delete', async ({
+    erd,
+  }) => {
+    const document = withMemo();
+    document.collections.memoEntities.note.ui.color = COLOR;
+    await erd.seed(document);
+
+    await erd.clickAt(await memoHeaderPoint(erd), { button: 'right' });
+
+    const rows = erd.host
+      .locator('.context-menu-content[data-id="root"]')
+      .locator(':scope > div:not(.context-menu-content)');
+    await expect(rows).toHaveText([/Color/, /Remove color/, /Delete/]);
+    await rows.nth(1).click();
+
+    await expect(erd.contextMenu).toHaveCount(0);
+    await expect
+      .poll(
+        async () => (await erd.value()).collections.memoEntities.note.ui.color
+      )
+      .toBe('');
   });
 });

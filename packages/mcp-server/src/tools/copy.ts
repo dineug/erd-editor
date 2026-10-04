@@ -26,7 +26,8 @@ const RELATIONSHIP_TYPE =
 const OLDER_EDITOR =
   'An ERD Editor extension or plugin released before referential actions ignores this setting, so the user should update it.';
 const REFERENTIAL_ACTION = `What the database does to the child rows: none (no clause, the database default), noAction, cascade, setNull, setDefault or restrict. A vendor that lacks the action drops it from its DDL. ${OLDER_EDITOR}`;
-const COLOR = 'CSS hex color such as #3b82f6.';
+const COLOR =
+  'CSS hex color such as #3b82f6; an empty string removes the color.';
 const DATA_TYPE_SYNC =
   'spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there';
 const NO_UNDO =

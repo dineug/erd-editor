@@ -14,6 +14,22 @@ describe('ColorPicker.styles', () => {
     );
   });
 
+  it('stretches the No color button to the picker width under it', () => {
+    const clear = styles.clear.strings.raw.join('');
+
+    expect(styles.picker.strings.raw.join('')).toContain('display: flex');
+    expect(clear).toContain('display: block');
+    expect(clear).toContain('width: 100%');
+  });
+
+  it('draws the No color button on the menu surface, lit on hover', () => {
+    const clear = styles.clear.strings.raw.join('');
+
+    expect(clear).toContain('background-color: var(--context-menu-background)');
+    expect(clear).toContain('border: 1px solid var(--context-menu-border)');
+    expect(clear).toContain('background-color: var(--context-menu-hover)');
+  });
+
   it('resolves to a non-empty class identifier', () => {
     const identifier = String(styles.container);
 

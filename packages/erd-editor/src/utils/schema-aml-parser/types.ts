@@ -65,6 +65,8 @@ export type AMLEntity = {
   name: string;
   alias: string;
   comment: string;
+  /** The color property as a hex: a name as its own, a hex as written; '' otherwise. */
+  color: string;
   attributes: AMLAttribute[];
 };
 

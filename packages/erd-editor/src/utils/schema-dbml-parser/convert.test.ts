@@ -108,6 +108,15 @@ describe('schema-dbml-parser/convert', () => {
       ).toBe('people');
     });
 
+    it('carries the header color as the table color', () => {
+      const schema = convert(
+        'Table users [headercolor: #3498DB] { id int }\nTable posts { id int }'
+      );
+
+      expect(tableOf(schema, 'users').ui.color).toBe('#3498DB');
+      expect(tableOf(schema, 'posts').ui.color).toBe('');
+    });
+
     it('measures the name and the comment', () => {
       const table = tableOf(
         convert("Table user_account [note: 'the people table'] { id int }"),
@@ -577,6 +586,15 @@ Ref: users.id <> groups.id`;
       expect(tableOf(convert(MANY), 'users_groups').comment).toBe(
         'Junction table inferred from users <-> groups'
       );
+    });
+
+    it('leaves the invented junction uncolored', () => {
+      const schema = convert(
+        MANY.replace(/\{ id/g, '[headercolor: #ccc] { id')
+      );
+
+      expect(tableOf(schema, 'users').ui.color).toBe('#ccc');
+      expect(tableOf(schema, 'users_groups').ui.color).toBe('');
     });
 
     it('gives the junction a key column per parent key', () => {

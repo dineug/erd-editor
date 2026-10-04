@@ -50,6 +50,7 @@ import {
   openTablePropertiesAction,
 } from '@/utils/emitter';
 import { getRelationshipIcon } from '@/utils/icon';
+import { InternalEventType } from '@/utils/internalEvents';
 
 const colorPicker = vi.hoisted(() => {
   const instances: Array<{ options: any; destroy: () => void }> = [];
@@ -899,6 +900,38 @@ describe('Erd - color picker', () => {
     const table = app.store.state.collections.tableEntities[tableId];
     expect(table.ui.color).toBe('#123456');
     expect(root.querySelector('.color-picker')).toBeTruthy();
+  });
+
+  it('clears the selection color on No color, closes and hands the focus back', async () => {
+    const { app, root } = await setup();
+    const tableId = seedTable(app);
+    app.emitter.emit(openColorPickerAction({ x: 10, y: 10, color: '#ffffff' }));
+    await flush();
+    colorPicker.instances.at(-1)?.options.onChange('#123456');
+    await flush();
+    let focusEvents = 0;
+    const countFocusEvent = () => {
+      focusEvents++;
+    };
+    document.body.addEventListener(InternalEventType.focus, countFocusEvent);
+
+    try {
+      const button = root.querySelector('.color-picker button') as HTMLElement;
+      expect(button.textContent?.trim()).toBe('No color');
+      button.click();
+      await flush();
+
+      expect(app.store.state.collections.tableEntities[tableId].ui.color).toBe(
+        ''
+      );
+      expect(root.querySelector('.color-picker')).toBeNull();
+      expect(focusEvents).toBe(1);
+    } finally {
+      document.body.removeEventListener(
+        InternalEventType.focus,
+        countFocusEvent
+      );
+    }
   });
 });
 

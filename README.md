@@ -34,11 +34,12 @@ run **Create new diagram** from the command palette. In Google Drive, choose
   diagram. Object types become tables, scalars map to the diagram's own dialect, and the
   fields that point at another type become the relationships between them
 - **DBML import** — read a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted by
-  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums and every `Ref`
-  spelling arrive; the elements the diagram has no place for are skipped rather than refused
+  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors and
+  every `Ref` spelling arrive; the elements the diagram has no place for are skipped rather
+  than refused
 - **AML import** — read an `.aml` file written for [Azimutt](https://azimutt.app), in either the
-  v2 or the legacy v1 spelling. Entities, attributes, indexes, enums and every relation arrow
-  arrive; a check, a struct type and a view are skipped rather than refused
+  v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every relation
+  arrow arrive; a check, a struct type and a view are skipped rather than refused
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid

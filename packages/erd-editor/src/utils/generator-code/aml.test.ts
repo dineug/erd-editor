@@ -98,6 +98,29 @@ function relLines(state: RootState): string[] {
     .filter(line => line.startsWith('rel '));
 }
 
+function createColoredState(color: string, comment = ''): RootState {
+  return createState({
+    tables: [
+      createTable({
+        id: 't1',
+        name: 'user',
+        comment,
+        columnIds: ['c1'],
+        ui: { color },
+      }),
+    ],
+    columns: [
+      createColumn({
+        id: 'c1',
+        tableId: 't1',
+        name: 'id',
+        dataType: 'int',
+        options: ColumnOption.notNull,
+      }),
+    ],
+  });
+}
+
 function renderTable(state: RootState, table: Table): string[] {
   const buffer: string[] = [];
   formatTable(state, { buffer, table });
@@ -587,6 +610,59 @@ describe('generator-code/aml', () => {
       expect(
         attributeLine(createSingleColumnState({ comment: 'a\nb ||| c' }))
       ).toBe('  id int nullable | a b ||| c');
+    });
+  });
+
+  describe('table colors', () => {
+    const entityLine = (state: RootState) => createCode(state).split('\n')[1];
+
+    it('writes a named color by its name', () => {
+      expect(entityLine(createColoredState('#ef4444'))).toBe(
+        'user {color: red}'
+      );
+      expect(entityLine(createColoredState('#6B7280'))).toBe(
+        'user {color: gray}'
+      );
+    });
+
+    it('writes any other color by the nearest name', () => {
+      expect(entityLine(createColoredState('#FF8800'))).toBe(
+        'user {color: amber}'
+      );
+      expect(entityLine(createColoredState('rgba(59,130,246,0.5)'))).toBe(
+        'user {color: blue}'
+      );
+    });
+
+    it('writes the color before the doc', () => {
+      expect(entityLine(createColoredState('#ef4444', 'people'))).toBe(
+        'user {color: red} | people'
+      );
+    });
+
+    it('writes no property for no color or for one it cannot read', () => {
+      expect(entityLine(createColoredState(''))).toBe('user');
+      expect(entityLine(createColoredState('tomato'))).toBe('user');
+    });
+
+    it('writes the color of the entity rendered alone', () => {
+      const state = createColoredState('#10b981');
+
+      expect(renderTable(state, state.collections.tableEntities.t1)).toEqual([
+        'user {color: emerald}',
+        '  id int',
+      ]);
+    });
+
+    it('reads back as the hex of the name it wrote', () => {
+      const colorOf = (color: string) => {
+        const result = parseAMLModel(createCode(createColoredState(color)));
+        return result.ok ? result.model.entities[0].color : null;
+      };
+
+      expect(colorOf('#ef4444')).toBe('#ef4444');
+      expect(colorOf('#FF8800')).toBe('#f59e0b');
+      expect(colorOf('')).toBe('');
     });
   });
 

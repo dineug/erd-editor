@@ -78,6 +78,7 @@ import {
   unselectAllAction,
 } from './atom.actions';
 import { FocusType, MoveKey, SelectType } from './state';
+import { getColoredSelection, getColorTargets } from './utils/color';
 import { CreateEntityInput, toCreateEntityActions } from './utils/duplicate';
 import { findRelationshipColumn } from './utils/findRelationshipColumn';
 import {
@@ -87,32 +88,11 @@ import {
   isLastTable,
   isTableFocusType,
 } from './utils/focus';
+import { getSelectTypeIds, SelectTypeIds } from './utils/selection';
 import { viewMoveTableAction } from './view.actions';
 import { viewActions$ } from './view.generator.actions';
 
-type SelectTypeIds = {
-  tableIds: string[];
-  memoIds: string[];
-};
-
 const CENTER_BOX_SIZE = 15;
-
-function getSelectTypeIds(
-  selectedMap: Record<string, SelectType>
-): SelectTypeIds {
-  return Object.entries(selectedMap).reduce<SelectTypeIds>(
-    (acc, [id, type]) => {
-      if (type === SelectType.table) {
-        acc.tableIds.push(id);
-      } else if (type === SelectType.memo) {
-        acc.memoIds.push(id);
-      }
-
-      return acc;
-    },
-    { tableIds: [], memoIds: [] }
-  );
-}
 
 export const loadJsonAction$ = (value: string): GeneratorAction =>
   function* () {
@@ -517,20 +497,38 @@ export const drawStartAddRelationshipAction$ = (
   };
 
 export const changeColorAllAction$ = (color: string): GeneratorAction =>
-  function* ({ editor: { selectedMap }, collections }) {
-    const { tableIds, memoIds } = getSelectTypeIds(selectedMap);
-    const tables = query(collections)
-      .collection('tableEntities')
-      .selectByIds(tableIds);
-    const memos = query(collections)
-      .collection('memoEntities')
-      .selectByIds(memoIds);
+  function* (state) {
+    const { tables, memos } = getColorTargets(state);
 
     yield tables.map(table =>
       changeTableColorAction({ id: table.id, color, prevColor: table.ui.color })
     );
     yield memos.map(memo =>
       changeMemoColorAction({ id: memo.id, color, prevColor: memo.ui.color })
+    );
+  };
+
+/**
+ * Clears the color of every selected table and memo that has one: one stream
+ * group, so one undo entry, and none for a selection that has no color.
+ */
+export const removeColorAllAction$ = (): GeneratorAction =>
+  function* (state) {
+    const { tables, memos } = getColoredSelection(state);
+
+    yield tables.map(table =>
+      changeTableColorAction({
+        id: table.id,
+        color: '',
+        prevColor: table.ui.color,
+      })
+    );
+    yield memos.map(memo =>
+      changeMemoColorAction({
+        id: memo.id,
+        color: '',
+        prevColor: memo.ui.color,
+      })
     );
   };
 
@@ -820,6 +818,7 @@ export const actions$ = {
   drawStartRelationshipAction$,
   drawStartAddRelationshipAction$,
   changeColorAllAction$,
+  removeColorAllAction$,
   loadSchemaSQLAction$,
   loadSchemaGraphQLAction$,
   loadSchemaDBMLAction$,

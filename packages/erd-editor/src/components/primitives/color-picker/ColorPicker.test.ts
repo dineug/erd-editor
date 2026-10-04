@@ -100,8 +100,41 @@ describe('ColorPicker', () => {
     expect(options.type).toBe('sketch');
     expect(options.position).toBe('inline');
     expect(options.color).toBe('#00ff00');
-    expect(options.container).toBe(getPicker(mounted));
+    expect(options.container.parentElement).toBe(getPicker(mounted));
+    expect(getPicker(mounted).firstElementChild).toBe(options.container);
     expect(getPicker(mounted).querySelector('.mock-colorpicker')).toBeTruthy();
+  });
+
+  it('shows no No color button without a clear handler', async () => {
+    mounted = await mountAndFlush(
+      html`<${ColorPicker} x=${0} y=${0} color=${'#00ff00'} />`
+    );
+
+    expect(getPicker(mounted).querySelector('button')).toBeNull();
+  });
+
+  it('shows a No color button under the picker that calls the clear handler', async () => {
+    const onClear = vi.fn();
+    mounted = await mountAndFlush(
+      html`<${ColorPicker}
+        x=${0}
+        y=${0}
+        color=${'#00ff00'}
+        .onClear=${onClear}
+      />`
+    );
+
+    const button = getPicker(mounted).lastElementChild as HTMLButtonElement;
+    expect(button.tagName).toBe('BUTTON');
+    expect(button.type).toBe('button');
+    expect(button.textContent?.trim()).toBe('No color');
+    expect(button.previousElementSibling).toBe(
+      lastInstance().options.container
+    );
+
+    button.click();
+
+    expect(onClear).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to an empty color when none is provided', async () => {

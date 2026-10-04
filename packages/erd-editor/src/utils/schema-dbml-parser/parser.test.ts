@@ -97,6 +97,32 @@ describe('schema-dbml-parser/parser', () => {
       ).toBe('people');
     });
 
+    it('reads the header color as written, from the tokens it was cut into', () => {
+      expect(
+        parse(`Table a [headercolor: #3498DB] { id int }
+Table b [note: 'x', headercolor: #abc] { id int }
+Table c [headercolor: #1e3] { id int }
+Table d [headercolor: #e1e1e1] { id int }`).tables.map(table => table.color)
+      ).toEqual(['#3498DB', '#abc', '#1e3', '#e1e1e1']);
+    });
+
+    it('ignores a header color DBML does not take', () => {
+      expect(
+        parse(`Table a [headercolor: #aabbccdd] { id int }
+Table b [headercolor: '#abc'] { id int }
+Table c [headercolor: red] { id int }
+Table d [headercolor: #12.5] { id int }
+Table e { id int }`).tables.map(table => table.color)
+      ).toEqual(['', '', '', '', '']);
+    });
+
+    it('ignores a header color with a space inside, which DBML does not take', () => {
+      expect(
+        parse(`Table a [headercolor: #3498 DB] { id int }
+Table b [headercolor: # abc] { id int }`).tables.map(table => table.color)
+      ).toEqual(['', '']);
+    });
+
     it('reads a Note block', () => {
       expect(
         firstTable(`Table users {
@@ -566,6 +592,17 @@ Table t {
   ~base
 }`).tables.map(table => table.name)
       ).toEqual(['t']);
+    });
+
+    it('leaves the header color of a partial to the partial', () => {
+      expect(
+        firstTable(`TablePartial base [headercolor: #fff] {
+  created_at timestamp
+}
+Table t {
+  ~base
+}`).color
+      ).toBe('');
     });
 
     it('ignores a reference to a partial that is not declared', () => {

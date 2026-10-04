@@ -25,6 +25,7 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createCode, formatTable } from '@/utils/generator-code/dbml';
+import { parseDBMLModel } from '@/utils/schema-dbml-parser/parser';
 
 type StateInput = {
   tables?: Table[];
@@ -90,6 +91,17 @@ function createSingleColumnState(
 
 function columnLine(state: RootState): string {
   return createCode(state).split('\n')[2];
+}
+
+function createColoredState(color: string): RootState {
+  return createState({
+    tables: [
+      createTable({ id: 't1', name: 'user', columnIds: ['c1'], ui: { color } }),
+    ],
+    columns: [
+      createColumn({ id: 'c1', tableId: 't1', name: 'id', dataType: 'int' }),
+    ],
+  });
 }
 
 function render(state: RootState, table: Table): string[] {
@@ -405,6 +417,58 @@ describe('generator-code/dbml', () => {
       const state = createSingleColumnState({}, { comment: 'line1\nline2' });
 
       expect(createCode(state)).toContain("  Note: 'line1\\nline2'");
+    });
+  });
+
+  describe('table colors', () => {
+    const tableLine = (state: RootState) => createCode(state).split('\n')[1];
+
+    it('writes a three or six digit hex as the header color it is stored as', () => {
+      expect(tableLine(createColoredState('#3498DB'))).toBe(
+        'Table "user" [headercolor: #3498DB] {'
+      );
+      expect(tableLine(createColoredState('#abc'))).toBe(
+        'Table "user" [headercolor: #abc] {'
+      );
+    });
+
+    it('drops the alpha of an eight digit hex, which DBML does not take', () => {
+      expect(tableLine(createColoredState('#ff880080'))).toBe(
+        'Table "user" [headercolor: #ff8800] {'
+      );
+    });
+
+    it('writes an rgb() or hsl() color as its hex', () => {
+      expect(tableLine(createColoredState('rgba(255,136,0,0.5)'))).toBe(
+        'Table "user" [headercolor: #ff8800] {'
+      );
+      expect(tableLine(createColoredState('hsl(0,100%,50%)'))).toBe(
+        'Table "user" [headercolor: #ff0000] {'
+      );
+    });
+
+    it('writes no setting for no color or for one it cannot read', () => {
+      expect(tableLine(createColoredState(''))).toBe('Table "user" {');
+      expect(tableLine(createColoredState('tomato'))).toBe('Table "user" {');
+    });
+
+    it('writes the color of the table rendered alone', () => {
+      const state = createColoredState('#3498DB');
+
+      expect(render(state, state.collections.tableEntities.t1)[0]).toBe(
+        'Table "user" [headercolor: #3498DB] {'
+      );
+    });
+
+    it('reads back through the importer as the header color it wrote', () => {
+      const colorOf = (color: string) => {
+        const result = parseDBMLModel(createCode(createColoredState(color)));
+        return result.ok ? result.model.tables[0].color : null;
+      };
+
+      expect(colorOf('#3498DB')).toBe('#3498DB');
+      expect(colorOf('rgb(255,136,0)')).toBe('#ff8800');
+      expect(colorOf('')).toBe('');
     });
   });
 
@@ -1197,6 +1261,20 @@ describe('generator-code/dbml', () => {
   });
 
   describe('the real DBML parser', () => {
+    it('accepts the header color and reads it back', () => {
+      for (const [color, written] of [
+        ['#3498DB', '#3498DB'],
+        ['#abc', '#abc'],
+        ['#ff880080', '#ff8800'],
+        ['hsla(240,100%,50%,0.3)', '#0000ff'],
+      ]) {
+        const { errors, db } = parseDBML(createCode(createColoredState(color)));
+
+        expect(errors).toEqual([]);
+        expect(db?.tables[0].headerColor).toBe(written);
+      }
+    });
+
     it('accepts the document and reads back every column setting', () => {
       const state = createSingleColumnState({
         name: 'id',

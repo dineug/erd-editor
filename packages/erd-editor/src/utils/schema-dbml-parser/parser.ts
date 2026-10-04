@@ -1,3 +1,5 @@
+import { fromDBMLColor } from '@/utils/tableColor';
+
 import { Token, tokenize, TokenKind } from './tokenizer';
 import {
   DBMLColumn,
@@ -121,6 +123,7 @@ function parseTable(
     name,
     alias: '',
     comment: '',
+    color: '',
     columns: [],
     indexes: [],
   };
@@ -135,7 +138,7 @@ function parseTable(
     table.alias = readName(reader);
   }
 
-  applyNoteSetting(table, readSettings(reader));
+  applyTableSettings(table, readSettings(reader));
 
   if (!consumeBrace(reader)) {
     return name === '' ? null : table;
@@ -642,12 +645,34 @@ function applyIndexSettings(index: DBMLIndex, settings: Setting[]) {
   });
 }
 
-function applyNoteSetting(table: DBMLTable, settings: Setting[]) {
+function applyTableSettings(table: DBMLTable, settings: Setting[]) {
   settings.forEach(({ key, tokens }) => {
     if (key === 'note') {
       table.comment = textOf(tokens);
+    } else if (key === 'headercolor') {
+      table.color = fromDBMLColor(colorOf(tokens));
     }
   });
+}
+
+/**
+ * The tokenizer cuts #3498DB into a mark, a number and a name, so the color is
+ * those tokens joined back while each touches the last; a space between them,
+ * a string or a quoted name is no color literal.
+ */
+function colorOf(tokens: Token[]): string {
+  const literal = tokens.every((token, index) => {
+    const previous = tokens[index - 1];
+
+    return (
+      (token.kind === TokenKind.punctuation ||
+        token.kind === TokenKind.number ||
+        token.kind === TokenKind.identifier) &&
+      (!previous || token.offset === previous.offset + previous.value.length)
+    );
+  });
+
+  return literal ? tokens.map(token => token.value).join('') : '';
 }
 
 function inlineRefOf(tokens: Token[]): DBMLInlineRef | null {

@@ -5,6 +5,7 @@ import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { toDBMLColor } from '@/utils/tableColor';
 
 import {
   FormatTableOptions,
@@ -87,7 +88,7 @@ function formatDBMLTable(
     return;
   }
 
-  buffer.push(`Table ${quoteName(name)} {`);
+  buffer.push(`Table ${quoteName(name)}${formatTableSettings(table)} {`);
 
   query(collections)
     .collection('tableColumnEntities')
@@ -115,6 +116,12 @@ function formatDBMLTable(
   }
 
   buffer.push('}');
+}
+
+function formatTableSettings(table: Table): string {
+  const color = toDBMLColor(table.ui.color);
+
+  return color === null ? '' : ` [headercolor: ${color}]`;
 }
 
 function formatColumn(column: Column): string {
