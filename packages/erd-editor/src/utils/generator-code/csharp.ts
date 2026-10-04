@@ -73,8 +73,6 @@ const mssqlTypes = new Map([
   ['tinyint', 'byte'],
 ]);
 
-const MSSQL_SINGLE_PRECISION_MAX = 24;
-
 const referenceTypes = new Set(['byte[]', 'object', 'string']);
 
 export function createCode(state: RootState): string {
@@ -149,10 +147,10 @@ function formatColumn(
 function formatComment(buffer: string[], indent: string, comment: string) {
   const lines = comment.split(NEWLINE).map(line => line.trimEnd());
 
-  while (lines.length && lines[0] === '') {
+  while (lines[0] === '') {
     lines.shift();
   }
-  while (lines.length && lines[lines.length - 1] === '') {
+  while (lines[lines.length - 1] === '') {
     lines.pop();
   }
 
@@ -210,5 +208,5 @@ function isSinglePrecisionFloat(dataType: string): boolean {
   }
 
   const precision = Number(value);
-  return precision >= 1 && precision <= MSSQL_SINGLE_PRECISION_MAX;
+  return precision >= 1 && precision <= 24;
 }

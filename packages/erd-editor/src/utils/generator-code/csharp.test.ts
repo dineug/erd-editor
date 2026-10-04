@@ -23,6 +23,13 @@ type TableInput = {
   columns?: ColumnInput[];
 };
 
+type VendorCase = [
+  vendor: string,
+  database: number,
+  dataType: string,
+  expected: string,
+];
+
 function createState(): RootState {
   return {
     ...schemaV3Parser({}),
@@ -133,7 +140,7 @@ const MSSQL_TYPES: Array<[string, string]> = [
   ['xml', 'string'],
 ];
 
-const VENDOR_TYPES: Array<[string, number, string, string]> = [
+const VENDOR_TYPES: VendorCase[] = [
   ['PostgreSQL', Database.PostgreSQL, 'bytea', 'byte[]'],
   ['PostgreSQL', Database.PostgreSQL, 'uuid', 'Guid'],
   ['PostgreSQL', Database.PostgreSQL, 'timestamptz', 'DateTimeOffset'],
@@ -226,7 +233,7 @@ const VENDOR_TYPES: Array<[string, number, string, string]> = [
   ['Databricks', Database.Databricks, 'SMALLINT', 'short'],
 ];
 
-const OUTSIDE_MSSQL_TYPES: Array<[string, number, string, string]> = [
+const OUTSIDE_MSSQL_TYPES: VendorCase[] = [
   ['MySQL', Database.MySQL, 'TIMESTAMP', 'DateTime'],
   ['PostgreSQL', Database.PostgreSQL, 'timestamp(6)', 'DateTime'],
   ['MySQL', Database.MySQL, 'TINYINT', 'int'],
@@ -235,14 +242,14 @@ const OUTSIDE_MSSQL_TYPES: Array<[string, number, string, string]> = [
   ['PostgreSQL', Database.PostgreSQL, 'sql_variant', 'string'],
 ];
 
-const NAMES_OF_OTHER_DATABASES: Array<[string, number, string, string]> = [
+const NAMES_OF_OTHER_DATABASES: VendorCase[] = [
   ['PostgreSQL', Database.PostgreSQL, 'uniqueidentifier', 'Guid'],
   ['MySQL', Database.MySQL, 'datetimeoffset', 'DateTimeOffset'],
   ['SQLite', Database.SQLite, 'image', 'byte[]'],
   ['MySQL', Database.MySQL, 'bytea', 'byte[]'],
 ];
 
-const OTHER_TWO_BYTE_INTEGERS: Array<[string, number, string, string]> = [
+const OTHER_TWO_BYTE_INTEGERS: VendorCase[] = [
   ['PostgreSQL', Database.PostgreSQL, 'int2', 'int'],
   ['PostgreSQL', Database.PostgreSQL, 'serial2', 'int'],
   ['PostgreSQL', Database.PostgreSQL, 'smallserial', 'int'],
@@ -252,7 +259,7 @@ const OTHER_TWO_BYTE_INTEGERS: Array<[string, number, string, string]> = [
   ['Databricks', Database.Databricks, 'SHORT', 'int'],
 ];
 
-function byVendor(rows: Array<[string, number, string, string]>) {
+function byVendor(rows: VendorCase[]) {
   return rows.map(([vendor, database, dataType, expected]) => ({
     vendor,
     database,
