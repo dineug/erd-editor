@@ -40,6 +40,7 @@ const binaryTypes = new Set([
   'binary varying',
   'blob',
   'bytea',
+  'char byte',
   'image',
   'long raw',
   'long varbinary',
@@ -151,7 +152,7 @@ function formatComment(buffer: string[], indent: string, comment: string) {
   while (lines.length && lines[0] === '') {
     lines.shift();
   }
-  while (lines.length && lines.at(-1) === '') {
+  while (lines.length && lines[lines.length - 1] === '') {
     lines.pop();
   }
 

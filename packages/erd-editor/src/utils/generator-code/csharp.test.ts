@@ -170,6 +170,7 @@ const VENDOR_TYPES: Array<[string, number, string, string]> = [
   ['MySQL', Database.MySQL, 'BINARY(16)', 'byte[]'],
   ['MySQL', Database.MySQL, 'VARBINARY(255)', 'byte[]'],
   ['MySQL', Database.MySQL, 'LONG VARBINARY', 'byte[]'],
+  ['MySQL', Database.MySQL, 'CHAR(16) BYTE', 'byte[]'],
   ['MySQL', Database.MySQL, 'SMALLINT', 'short'],
   ['MySQL', Database.MySQL, 'INT', 'int'],
   ['MySQL', Database.MySQL, 'BIGINT', 'long'],
@@ -220,6 +221,7 @@ const VENDOR_TYPES: Array<[string, number, string, string]> = [
   ['Snowflake', Database.Snowflake, 'TIME', 'TimeSpan'],
   ['MariaDB', Database.MariaDB, 'UUID', 'Guid'],
   ['MariaDB', Database.MariaDB, 'RAW(16)', 'byte[]'],
+  ['MariaDB', Database.MariaDB, 'CHAR BYTE', 'byte[]'],
   ['Databricks', Database.Databricks, 'BINARY', 'byte[]'],
   ['Databricks', Database.Databricks, 'SMALLINT', 'short'],
 ];
@@ -232,6 +234,32 @@ const OUTSIDE_MSSQL_TYPES: Array<[string, number, string, string]> = [
   ['PostgreSQL', Database.PostgreSQL, 'rowversion', 'string'],
   ['PostgreSQL', Database.PostgreSQL, 'sql_variant', 'string'],
 ];
+
+const NAMES_OF_OTHER_DATABASES: Array<[string, number, string, string]> = [
+  ['PostgreSQL', Database.PostgreSQL, 'uniqueidentifier', 'Guid'],
+  ['MySQL', Database.MySQL, 'datetimeoffset', 'DateTimeOffset'],
+  ['SQLite', Database.SQLite, 'image', 'byte[]'],
+  ['MySQL', Database.MySQL, 'bytea', 'byte[]'],
+];
+
+const OTHER_TWO_BYTE_INTEGERS: Array<[string, number, string, string]> = [
+  ['PostgreSQL', Database.PostgreSQL, 'int2', 'int'],
+  ['PostgreSQL', Database.PostgreSQL, 'serial2', 'int'],
+  ['PostgreSQL', Database.PostgreSQL, 'smallserial', 'int'],
+  ['MySQL', Database.MySQL, 'INT2', 'int'],
+  ['MariaDB', Database.MariaDB, 'INT2', 'int'],
+  ['SQLite', Database.SQLite, 'INT2', 'int'],
+  ['Databricks', Database.Databricks, 'SHORT', 'int'],
+];
+
+function byVendor(rows: Array<[string, number, string, string]>) {
+  return rows.map(([vendor, database, dataType, expected]) => ({
+    vendor,
+    database,
+    dataType,
+    expected,
+  }));
+}
 
 describe('generator-code/csharp', () => {
   it('returns an empty string when there is no table', () => {
@@ -374,18 +402,36 @@ describe('generator-code/csharp', () => {
     });
   });
 
-  it.each(VENDOR_TYPES)(
-    'maps the %s type %s to %s',
-    (_vendor, database, dataType, expected) => {
+  it.each(byVendor(VENDOR_TYPES))(
+    'maps the $vendor type $dataType to $expected',
+    ({ database, dataType, expected }) => {
       expect(propertyLine(database, dataType)).toBe(
         `  public ${expected}? Value { get; set; }`
       );
     }
   );
 
-  it.each(OUTSIDE_MSSQL_TYPES)(
-    'keeps the SQL Server reading of a name out of %s: %s stays %s',
-    (_vendor, database, dataType, expected) => {
+  it.each(byVendor(OUTSIDE_MSSQL_TYPES))(
+    'keeps the SQL Server reading of a name out of $vendor: $dataType stays $expected',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(NAMES_OF_OTHER_DATABASES))(
+    'maps $dataType to $expected under $vendor too, a name read the same under every database',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(OTHER_TWO_BYTE_INTEGERS))(
+    'maps only smallint to short: the $vendor type $dataType stays $expected',
+    ({ database, dataType, expected }) => {
       expect(propertyLine(database, dataType)).toBe(
         `  public ${expected}? Value { get; set; }`
       );
@@ -504,6 +550,30 @@ describe('generator-code/csharp', () => {
       '// first line',
       '//',
       '// second line',
+      'public class Notes {',
+      '  // user id',
+      '  public int? Id { get; set; }',
+      '}',
+    ]);
+  });
+
+  it('writes a comment without Array.prototype.at, which the chrome91 browser floor lacks', () => {
+    const at = Object.getOwnPropertyDescriptor(Array.prototype, 'at')!;
+    let lines: string[];
+
+    Reflect.deleteProperty(Array.prototype, 'at');
+    try {
+      lines = formatTableLines(Database.MySQL, {
+        name: 'notes',
+        comment: 'first line\n',
+        columns: [{ name: 'id', dataType: 'INT', comment: 'user id\n\n' }],
+      });
+    } finally {
+      Object.defineProperty(Array.prototype, 'at', at);
+    }
+
+    expect(lines).toEqual([
+      '// first line',
       'public class Notes {',
       '  // user id',
       '  public int? Id { get; set; }',
