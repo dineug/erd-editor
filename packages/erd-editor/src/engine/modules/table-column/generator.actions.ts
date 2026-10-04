@@ -242,24 +242,33 @@ export const changeColumnValueAction$ = (
     }
   };
 
+/**
+ * Makes every column named a primary key column, or none of them once all are,
+ * leaving the table's other columns as they are and sending no relationship
+ * action. A column already there gets none, as its undo records the negation.
+ */
+export const changeColumnsPrimaryKeyAction$ = (
+  tableId: string,
+  columnIds: string[]
+): GeneratorAction =>
+  function* ({ collections }) {
+    const columns = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(columnIds);
+    const isPrimaryKey = ({ options }: { options: number }) =>
+      bHas(options, ColumnOption.primaryKey);
+    const value = !columns.every(isPrimaryKey);
+
+    yield columns
+      .filter(column => isPrimaryKey(column) !== value)
+      .map(({ id }) => changeColumnPrimaryKeyAction({ tableId, id, value }));
+  };
+
+/** Toggles one column's primary key, the rule above over a single column. */
 export const changeColumnPrimaryKeyAction$ = (
   tableId: string,
   columnId: string
-): GeneratorAction =>
-  function* ({ collections }) {
-    const column = query(collections)
-      .collection('tableColumnEntities')
-      .selectById(columnId);
-    if (!column) return;
-
-    const value = bHas(column.options, ColumnOption.primaryKey);
-
-    yield changeColumnPrimaryKeyAction({
-      tableId,
-      id: columnId,
-      value: !value,
-    });
-  };
+): GeneratorAction => changeColumnsPrimaryKeyAction$(tableId, [columnId]);
 
 export const actions$ = {
   addColumnAction$,
@@ -268,4 +277,5 @@ export const actions$ = {
   changeColumnDataTypeAction$,
   changeColumnValueAction$,
   changeColumnPrimaryKeyAction$,
+  changeColumnsPrimaryKeyAction$,
 };

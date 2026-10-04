@@ -8,6 +8,7 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import { getFocusedColumnIds } from '@/engine/modules/editor/utils/focus';
 import {
   focusCentersOf,
   focusFlowTableAction$,
@@ -15,7 +16,7 @@ import {
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
-import { changeColumnPrimaryKeyAction$ } from '@/engine/modules/table-column/generator.actions';
+import { changeColumnsPrimaryKeyAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { ValuesType } from '@/internal-types';
 import {
@@ -100,16 +101,17 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  /** The focused column's key, or that of the whole selection it belongs to. */
   const handleChangeColumnPrimaryKey = () => {
     if (!props.tableId) return;
     const { store } = app.value;
-    const { editor } = store.state;
-    if (!editor.focusTable || !editor.focusTable.columnId) return;
+    const { focusTable } = store.state.editor;
+    if (!focusTable || !focusTable.columnId) return;
 
     store.dispatch(
-      changeColumnPrimaryKeyAction$(
-        editor.focusTable.tableId,
-        editor.focusTable.columnId
+      changeColumnsPrimaryKeyAction$(
+        focusTable.tableId,
+        getFocusedColumnIds(focusTable)
       )
     );
     props.onClose();
@@ -171,6 +173,8 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     const focusesGroup =
       Boolean(props.tableId) &&
       focusCentersOf(store.state.editor.selectedMap, props.tableId).length > 1;
+    const keysSelection =
+      getFocusedColumnIds(store.state.editor.focusTable).length > 1;
 
     return (
       <ContextMenu.Root
@@ -182,7 +186,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="key-round" size={14} />}
-                    name="Primary Key"
+                    name={
+                      keysSelection
+                        ? 'Primary Key on selected columns'
+                        : 'Primary Key'
+                    }
                     right={
                       <Kbd shortcut={keyBindingMap.primaryKey[0]?.shortcut} />
                     }

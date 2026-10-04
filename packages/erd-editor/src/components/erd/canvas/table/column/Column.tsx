@@ -177,6 +177,9 @@ type ColumnOrderTpl = {
   template: DOMTemplateLiterals | null;
 };
 
+/** MouseEvent.button of the secondary button, the press a context menu follows. */
+const RIGHT_BUTTON = 2;
+
 /** Which of the three key colours a column's key bits paint it, if any. */
 const keyFill = (keys: number, theme: Theme) => {
   const isPrimaryKey = bHas(keys, ColumnUIKey.primaryKey);
@@ -261,6 +264,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   /** Whether the press under way found a relationship draw, which it closes or starts. */
   let pressDraws = false;
 
+  /** The native press a cell of this row focused, which the row then leaves to it. */
+  let focusedPress: MouseEvent | null = null;
+
   /**
    * The row's press, read before the table it bubbles to dispatches anything.
    * Its click on the remove button then belongs to the draw it met, if any.
@@ -268,6 +274,20 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const handlePress = (event: SceneMouseEvent) => {
     pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
     handleDragstart(event);
+
+    const focused = focusedPress === event.evt;
+    focusedPress = null;
+    if (focused || event.evt.button !== RIGHT_BUTTON) return;
+
+    // A right press on the key, between two cells or on an alternate key mark
+    // focuses the row too, so the menu it opens never acts on a stale focus.
+    const { focusTable } = app.value.store.state.editor;
+    handleFocus(
+      focusTable?.columnId === props.column.id
+        ? focusTable.focusType
+        : FocusType.columnName,
+      event
+    );
   };
 
   const handleMouseenter = () => {
@@ -296,11 +316,31 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     return state.removeHover ? theme.active : theme.foreground;
   };
 
+  /**
+   * How a press reshapes the column selection. A right press on a selected row
+   * keeps the selection, which the context menu then acts on, and anywhere else
+   * selects its row alone; any other press reads its modifier keys.
+   */
+  const pressSelection = (evt: MouseEvent) => {
+    if (evt.button !== RIGHT_BUTTON) {
+      return { $mod: isMod(evt), shiftKey: evt.shiftKey };
+    }
+
+    const { focusTable } = app.value.store.state.editor;
+    const { column } = props;
+    const selected =
+      focusTable?.tableId === column.tableId &&
+      focusTable.selectColumnIds.includes(column.id);
+
+    return { $mod: selected, shiftKey: false };
+  };
+
   const handleFocus = (focusType: FocusType, event: SceneMouseEvent) => {
     // A view holds no focus: the cell a reader presses there is not a cell of
     // the document, and the underline it would light belongs to the ERD tab.
     if (props.source !== 'document') return;
 
+    focusedPress = event.evt;
     const { store } = app.value;
     const { column } = props;
     store.dispatch(
@@ -308,8 +348,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         tableId: column.tableId,
         columnId: column.id,
         focusType,
-        $mod: isMod(event.evt),
-        shiftKey: event.evt.shiftKey,
+        ...pressSelection(event.evt),
       })
     );
   };

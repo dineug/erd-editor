@@ -30,6 +30,7 @@ import {
   MoveKey,
   SelectType,
 } from '@/engine/modules/editor/state';
+import { getFocusedColumnIds } from '@/engine/modules/editor/utils/focus';
 import {
   focusCentersOf,
   focusFlowTableAction$,
@@ -45,7 +46,7 @@ import {
 } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction$,
-  changeColumnPrimaryKeyAction$,
+  changeColumnsPrimaryKeyAction$,
   isToggleColumnTypes,
   removeColumnAction$,
   toggleColumnValueAction$,
@@ -234,9 +235,9 @@ export function useErdShortcut(ctx: Ctx) {
 
         if (type === KeyBindingName.primaryKey && editor.focusTable.columnId) {
           store.dispatch(
-            changeColumnPrimaryKeyAction$(
+            changeColumnsPrimaryKeyAction$(
               editor.focusTable.tableId,
-              editor.focusTable.columnId
+              getFocusedColumnIds(editor.focusTable)
             )
           );
         }

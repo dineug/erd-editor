@@ -814,6 +814,140 @@ describe('what a column pointer start owns', () => {
   });
 });
 
+describe('what a right press on a row focuses', () => {
+  const RIGHT = { button: 2 };
+
+  /**
+   * A second column in the same table, focused, with the drawn row's column
+   * selected beside it or not: the state a context menu is opened over.
+   */
+  async function setupSelection(selectDrawn: boolean, props: SceneProps = {}) {
+    const fixture = await setup({ props });
+    const { store } = fixture.app;
+    const { column } = fixture;
+
+    store.dispatchSync(addColumnAction$(column.tableId));
+    const secondId = store.state.collections.tableEntities[
+      column.tableId
+    ].columnIds.find(id => id !== column.id) as string;
+    const focus = (columnId: string, $mod: boolean) =>
+      store.dispatchSync(
+        focusColumnAction({
+          tableId: column.tableId,
+          columnId,
+          focusType: FocusType.columnDataType,
+          $mod,
+          shiftKey: false,
+        })
+      );
+
+    if (selectDrawn) focus(column.id, false);
+    focus(secondId, selectDrawn);
+    await settle();
+
+    return { ...fixture, secondId };
+  }
+
+  it('keeps a selection the row is in, and moves the focus onto its cell', async () => {
+    const { app, stage, column, secondId } = await setupSelection(true);
+
+    fireScenePointer(named(rowOf(stage), 'columnName'), 'mousedown', RIGHT);
+    await settle();
+
+    const { focusTable } = app.store.state.editor;
+    expect(focusTable?.columnId).toBe(column.id);
+    expect(focusTable?.focusType).toBe(FocusType.columnName);
+    expect(focusTable?.selectColumnIds).toEqual([column.id, secondId]);
+  });
+
+  it('selects a row outside the selection alone, whatever key is held', async () => {
+    const { app, stage, column } = await setupSelection(false);
+
+    fireScenePointer(named(rowOf(stage), 'columnName'), 'mousedown', {
+      ...RIGHT,
+      ctrlKey: true,
+      metaKey: true,
+      shiftKey: true,
+    });
+    await settle();
+
+    const { focusTable } = app.store.state.editor;
+    expect(focusTable?.columnId).toBe(column.id);
+    expect(focusTable?.selectColumnIds).toEqual([column.id]);
+  });
+
+  it('focuses the row from its key, leaving no focus on the column before', async () => {
+    const { app, stage, column } = await setupSelection(false);
+
+    fireScenePointer(named(rowOf(stage), 'column-key'), 'mousedown', RIGHT);
+    await settle();
+
+    const { focusTable } = app.store.state.editor;
+    expect(focusTable?.columnId).toBe(column.id);
+    expect(focusTable?.focusType).toBe(FocusType.columnName);
+    expect(focusTable?.selectColumnIds).toEqual([column.id]);
+  });
+
+  it('focuses the row from between two cells or its key mark, keeping the selection', async () => {
+    const { app, stage, column, secondId } = await setupSelection(true, {
+      widthAlternateKey: 34,
+      alternateKey: 'AK1.1',
+    });
+
+    fireScenePointer(
+      named(rowOf(stage), 'column-row-background'),
+      'mousedown',
+      RIGHT
+    );
+    await settle();
+
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId: column.id,
+      focusType: FocusType.columnName,
+      selectColumnIds: [column.id, secondId],
+    });
+
+    // Focused already, the row keeps the cell it was focused on.
+    app.store.state.editor.focusTable!.focusType = FocusType.columnDataType;
+    fireScenePointer(
+      named(rowOf(stage), 'column-alternate-key'),
+      'mousedown',
+      RIGHT
+    );
+    await settle();
+
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId: column.id,
+      focusType: FocusType.columnDataType,
+      selectColumnIds: [column.id, secondId],
+    });
+  });
+
+  it('leaves the focus where it was on a left press outside the cells', async () => {
+    const { app, stage, secondId } = await setupSelection(false);
+
+    fireScenePointer(named(rowOf(stage), 'column-key'), 'mousedown', {
+      button: 0,
+    });
+    releasePointer();
+    await settle();
+
+    expect(app.store.state.editor.focusTable?.columnId).toBe(secondId);
+  });
+
+  it('focuses nothing in a view', async () => {
+    const { app, stage, secondId } = await setupSelection(false, {
+      source: 'flow',
+    });
+
+    fireScenePointer(named(rowOf(stage), 'column-key'), 'mousedown', RIGHT);
+    fireScenePointer(named(rowOf(stage), 'columnName'), 'mousedown', RIGHT);
+    await settle();
+
+    expect(app.store.state.editor.focusTable?.columnId).toBe(secondId);
+  });
+});
+
 // P4-41 and P4-40: the row owns the gesture on itself and the cells own their
 // own edit entry, so both are asserted through the store and through the one
 // callback pair the scene keeps.

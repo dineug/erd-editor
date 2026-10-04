@@ -212,7 +212,7 @@ export const columnTools: readonly ActionTool[] = [
   flagTool({
     name: 'erd_set_column_primary_key',
     atomReason:
-      'changeColumnPrimaryKeyAction$ toggles the key the state holds, so a repeated call flips it back; selectTableAction$ sets a key only while a relationship is drawn, and addRelationshipAction$ only on a new key column of a start table without one. The tool sets the value outright.',
+      'changeColumnPrimaryKeyAction$ toggles the key the state holds, and changeColumnsPrimaryKeyAction$ does over several columns at once, so a repeated call flips it back; selectTableAction$ sets a key only while a relationship is drawn, and addRelationshipAction$ only on a new key column of a start table without one. The tool sets the value outright.',
     actionType: 'column.changePrimaryKey',
     creator: tableColumnActions.changeColumnPrimaryKeyAction,
     option: ColumnOption.primaryKey,

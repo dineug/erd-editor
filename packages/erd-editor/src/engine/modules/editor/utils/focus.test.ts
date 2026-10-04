@@ -13,6 +13,7 @@ import {
   arrowLeft,
   arrowRight,
   arrowUp,
+  getFocusedColumnIds,
   getRemoveFirstColumnId,
   isColumns,
   isLastColumn,
@@ -253,6 +254,42 @@ describe('getRemoveFirstColumnId', () => {
     focusColumn(store, 'c3', FocusType.columnName);
 
     expect(getRemoveFirstColumnId(store.state, ['c1', 'c2', 'c3'])).toBeNull();
+  });
+});
+
+describe('getFocusedColumnIds', () => {
+  it('is empty while no table or no column is focused', () => {
+    const store = createTestStore(['c1', 'c2']);
+    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual([]);
+
+    focusTable(store, FocusType.tableName);
+    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual([]);
+  });
+
+  it('is the focused column alone while it is the only one selected', () => {
+    const store = createTestStore(['c1', 'c2']);
+    focusColumn(store, 'c2', FocusType.columnDataType);
+
+    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual(['c2']);
+  });
+
+  it('is the whole selection, in its order, once the focus is one of several', () => {
+    const store = createTestStore(['c1', 'c2', 'c3']);
+    focusColumn(store, 'c3', FocusType.columnName);
+    focusColumn(store, 'c1', FocusType.columnName, { $mod: true });
+
+    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual([
+      'c3',
+      'c1',
+    ]);
+  });
+
+  it('is the focused column alone while the selection leaves it out', () => {
+    const store = createTestStore(['c1', 'c2', 'c3']);
+    focusColumn(store, 'c1', FocusType.columnName);
+    getFocus(store).selectColumnIds = ['c2', 'c3'];
+
+    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual(['c1']);
   });
 });
 

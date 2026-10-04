@@ -453,6 +453,77 @@ describe('ErdContextMenu / table type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  describe('over a column selection', () => {
+    const SECOND_ID = 'column-2';
+    const THIRD_ID = 'column-3';
+
+    const isPrimaryKey = (columnId: string) =>
+      bHas(
+        query(app.store.state.collections)
+          .collection('tableColumnEntities')
+          .selectById(columnId)?.options ?? 0,
+        ColumnOption.primaryKey
+      );
+
+    /** Three columns, the focus on the second with the first selected too. */
+    function seedSelection() {
+      seedTable();
+      app.store.dispatchSync(
+        addColumnAction({ id: SECOND_ID, tableId: TABLE_ID }),
+        addColumnAction({ id: THIRD_ID, tableId: TABLE_ID })
+      );
+      focusColumn();
+      app.store.dispatchSync(
+        focusColumnAction({
+          tableId: TABLE_ID,
+          columnId: SECOND_ID,
+          focusType: FocusType.columnName,
+          $mod: true,
+          shiftKey: false,
+        })
+      );
+    }
+
+    it('names the selection while the focused column is one of several', async () => {
+      seedSelection();
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      expect(labelsOf(rootItems())[0]).toBe(
+        'Primary Key on selected columnsAlt + K'
+      );
+    });
+
+    it('keys every selected column and closes', async () => {
+      seedSelection();
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      await click(findItem(rootItems(), 'Primary Key on selected columns'));
+
+      expect([COLUMN_ID, SECOND_ID, THIRD_ID].map(isPrimaryKey)).toEqual([
+        true,
+        true,
+        false,
+      ]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('goes back to the one column once the selection is that column alone', async () => {
+      seedSelection();
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      focusColumn();
+      await flush();
+
+      expect(labelsOf(rootItems())[0]).toBe('Primary KeyAlt + K');
+      await click(findItem(rootItems(), 'Primary Key'));
+      expect([COLUMN_ID, SECOND_ID, THIRD_ID].map(isPrimaryKey)).toEqual([
+        true,
+        false,
+        false,
+      ]);
+    });
+  });
+
   it('does nothing for primary key when no column is focused', async () => {
     seedTable();
     await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });

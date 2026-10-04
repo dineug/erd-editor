@@ -2,7 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { ColumnType, Show } from '@/constants/schema';
 import { ActionMap, ActionType } from '@/engine/modules/editor/actions';
-import { FocusType, MoveKey } from '@/engine/modules/editor/state';
+import { FocusTable, FocusType, MoveKey } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
@@ -166,6 +166,20 @@ export function getRemoveFirstColumnId(state: RootState, columnIds: string[]) {
   }
 
   return columnId;
+}
+
+/**
+ * The columns a command on the focused column reaches: the whole selection when
+ * the focused column is one of two or more selected, else that column alone.
+ */
+export function getFocusedColumnIds(focusTable: FocusTable | null): string[] {
+  if (!focusTable?.columnId) return [];
+
+  const { columnId, selectColumnIds } = focusTable;
+
+  return selectColumnIds.length > 1 && selectColumnIds.includes(columnId)
+    ? selectColumnIds
+    : [columnId];
 }
 
 function getTableTypes({ settings: { show } }: RootState): FocusType[] {

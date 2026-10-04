@@ -1,6 +1,8 @@
 import { query } from '@dineug/erd-editor-schema';
+import { compositionActionsFlat } from '@dineug/r-html';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { createTestAppContext } from '@/__test-utils__';
 import { ColumnOption } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
@@ -13,12 +15,16 @@ import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeRelationshipDataTypeSyncAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   actions$,
   addColumnAction$,
   changeColumnDataTypeAction$,
   changeColumnPrimaryKeyAction$,
+  changeColumnsPrimaryKeyAction$,
   changeColumnValueAction$,
   isChangeColumnTypes,
   isToggleColumnTypes,
@@ -561,6 +567,147 @@ describe('changeColumnPrimaryKeyAction$', () => {
   });
 });
 
+describe('changeColumnsPrimaryKeyAction$', () => {
+  const isPrimaryKey = (store: Store, id: string) =>
+    bHas(column(store, id).options, ColumnOption.primaryKey);
+
+  const keys = (store: Store, ids: string[]) =>
+    ids.map(id => isPrimaryKey(store, id));
+
+  function setKeys(store: Store, ids: string[]) {
+    for (const id of ids) {
+      store.dispatchSync(
+        changeColumnPrimaryKeyAction({ tableId: 't1', id, value: true })
+      );
+    }
+  }
+
+  /** The atom actions the generator sends on the state given, nothing else. */
+  const emitted = (store: Store, columnIds: string[]) =>
+    compositionActionsFlat(store.state, store.context, [
+      changeColumnsPrimaryKeyAction$('t1', columnIds),
+    ]).map(({ type, payload }) => ({ type, payload }));
+
+  it('makes every column named a key while one of them is not', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2', 'c3', 'c4']);
+    setKeys(store, ['c2']);
+
+    store.dispatchSync(
+      changeColumnsPrimaryKeyAction$('t1', ['c1', 'c2', 'c3'])
+    );
+
+    expect(keys(store, ['c1', 'c2', 'c3', 'c4'])).toEqual([
+      true,
+      true,
+      true,
+      false,
+    ]);
+  });
+
+  it('sends nothing for a column already a key, whose undo would clear it', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2', 'c3']);
+    setKeys(store, ['c2']);
+
+    expect(emitted(store, ['c1', 'c2', 'c3'])).toEqual([
+      {
+        type: changeColumnPrimaryKeyAction.type,
+        payload: { tableId: 't1', id: 'c1', value: true },
+      },
+      {
+        type: changeColumnPrimaryKeyAction.type,
+        payload: { tableId: 't1', id: 'c3', value: true },
+      },
+    ]);
+  });
+
+  it('clears every column named once all of them are keys, and only those', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2', 'c3']);
+    setKeys(store, ['c1', 'c2', 'c3']);
+
+    store.dispatchSync(changeColumnsPrimaryKeyAction$('t1', ['c1', 'c2']));
+
+    expect(keys(store, ['c1', 'c2', 'c3'])).toEqual([false, false, true]);
+  });
+
+  it('toggles one column the way changeColumnPrimaryKeyAction$ does', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+
+    store.dispatchSync(changeColumnsPrimaryKeyAction$('t1', ['c1']));
+    expect(isPrimaryKey(store, 'c1')).toBe(true);
+
+    store.dispatchSync(changeColumnsPrimaryKeyAction$('t1', ['c1']));
+    expect(isPrimaryKey(store, 'c1')).toBe(false);
+  });
+
+  it('passes over an id with no column, and sends nothing for none', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+
+    expect(emitted(store, ['nope', 'c1'])).toEqual([
+      {
+        type: changeColumnPrimaryKeyAction.type,
+        payload: { tableId: 't1', id: 'c1', value: true },
+      },
+    ]);
+    expect(emitted(store, ['nope'])).toEqual([]);
+    expect(emitted(store, [])).toEqual([]);
+  });
+
+  it('leaves a relationship on the table as it was', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2']);
+    addTable(store, 't2', ['c3']);
+    setKeys(store, ['c1']);
+    addRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c3'] }
+    );
+    const before = JSON.stringify(
+      store.state.collections.relationshipEntities.r1
+    );
+
+    store.dispatchSync(changeColumnsPrimaryKeyAction$('t1', ['c1', 'c2']));
+
+    expect(keys(store, ['c1', 'c2'])).toEqual([true, true]);
+    expect(store.state.doc.relationshipIds).toEqual(['r1']);
+    expect(
+      JSON.stringify(store.state.collections.relationshipEntities.r1)
+    ).toBe(before);
+  });
+
+  it('is one undo that gives back the keys each column had', () => {
+    const { store } = createTestAppContext();
+    store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addColumnAction({ id: 'c1', tableId: 't1' }),
+      addColumnAction({ id: 'c2', tableId: 't1' }),
+      addColumnAction({ id: 'c3', tableId: 't1' })
+    );
+    store.dispatchSync(
+      changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c2', value: true })
+    );
+
+    store.dispatchSync(
+      changeColumnsPrimaryKeyAction$('t1', ['c1', 'c2', 'c3'])
+    );
+    expect(keys(store, ['c1', 'c2', 'c3'])).toEqual([true, true, true]);
+
+    store.undo();
+    expect(keys(store, ['c1', 'c2', 'c3'])).toEqual([false, true, false]);
+
+    store.redo();
+    expect(keys(store, ['c1', 'c2', 'c3'])).toEqual([true, true, true]);
+
+    store.destroy();
+  });
+});
+
 describe('actions$', () => {
   it('exposes every generator action of the module', () => {
     expect(actions$).toEqual({
@@ -570,6 +717,7 @@ describe('actions$', () => {
       changeColumnDataTypeAction$,
       changeColumnValueAction$,
       changeColumnPrimaryKeyAction$,
+      changeColumnsPrimaryKeyAction$,
     });
     expect(
       Object.values(actions$).every(value => typeof value === 'function')

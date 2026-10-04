@@ -313,6 +313,38 @@ test.describe('keyboard shortcuts', () => {
     expect(cleared.ui.keys).toBe(0);
   });
 
+  test('Alt+KeyK keys every selected column, then clears them all in one undo step', async ({
+    erd,
+  }) => {
+    // users.id is a key already and users.name is not; posts sits outside.
+    await erd.seed(twoTables());
+
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+    await erd.press(Shortcut.selectAllColumn);
+    await expect(
+      erd.tableEl('users').locator('.column-row[data-selected]')
+    ).toHaveCount(2);
+
+    await erd.press(Shortcut.primaryKey);
+    await expect(erd.columnKey('users_name', 'pk')).toHaveCount(1);
+    await expect(erd.columnKey('users_id', 'pk')).toHaveCount(1);
+    await expect(erd.columnKey('posts_title', 'pk')).toHaveCount(0);
+
+    await erd.press(Shortcut.primaryKey);
+    await expect(erd.columnKey('users_name', 'pk')).toHaveCount(0);
+    await expect(erd.columnKey('users_id', 'pk')).toHaveCount(0);
+    await expect(erd.columnKey('posts_id', 'pk')).toHaveCount(1);
+
+    await erd.press(Shortcut.undo);
+    await expect(erd.columnKey('users_name', 'pk')).toHaveCount(1);
+    await expect(erd.columnKey('users_id', 'pk')).toHaveCount(1);
+
+    // The key users.id already held took no action, so its undo clears nothing.
+    await erd.press(Shortcut.undo);
+    await expect(erd.columnKey('users_name', 'pk')).toHaveCount(0);
+    await expect(erd.columnKey('users_id', 'pk')).toHaveCount(1);
+  });
+
   test('$mod+Alt+KeyA selects every table, Alt+KeyA every column of the focused one', async ({
     erd,
   }) => {
