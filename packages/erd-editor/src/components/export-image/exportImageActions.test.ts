@@ -232,22 +232,16 @@ describe('exportImageSvg', () => {
   });
 
   it('says nothing when the svg is written quickly', async () => {
-    const log: string[] = [];
-    const off = recordToasts(log);
-
     await exportImageSvg(app, request(), 'shop');
     await flush();
 
     expect(log).toEqual([]);
-    off();
   });
 
   it('reports a failure in place of the file', async () => {
     const broken = new Error('no scene');
     vi.mocked(createDocumentSvg).mockRejectedValueOnce(broken);
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     await exportImageSvg(app, request(), 'shop');
 
@@ -259,15 +253,12 @@ describe('exportImageSvg', () => {
     expect(log).toEqual([
       "open Couldn't export the SVG | See the browser console for the error",
     ]);
-    off();
   });
 
   it('says it is exporting while the svg runs long, and takes that away once written', async () => {
     vi.useFakeTimers();
     const render = createDeferred<string>();
     vi.mocked(createDocumentSvg).mockReturnValueOnce(render.promise);
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     const done = exportImageSvg(app, request(), 'shop');
     await vi.advanceTimersByTimeAsync(400);
@@ -279,7 +270,6 @@ describe('exportImageSvg', () => {
 
     expect(log).toEqual(['open Exporting SVG…', 'close Exporting SVG…']);
     expect(exported).toHaveLength(1);
-    off();
   });
 });
 

@@ -750,11 +750,7 @@ describe('a colour with an alpha', () => {
 
 describe('the svg against the canvas it stands in for', () => {
   /** The alpha channel of an image, drawn at its own size. */
-  async function alphaOf(
-    source: CanvasImageSource,
-    width: number,
-    height: number
-  ) {
+  function alphaOf(source: CanvasImageSource, width: number, height: number) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -773,12 +769,12 @@ describe('the svg against the canvas it stands in for', () => {
     await image.decode();
 
     return {
-      painted: await alphaOf(
+      painted: alphaOf(
         stage.toCanvas({ pixelRatio: 1 }),
-        BOX.width,
-        BOX.height
+        box.width,
+        box.height
       ),
-      written: await alphaOf(image, BOX.width, BOX.height),
+      written: alphaOf(image, box.width, box.height),
     };
   }
 

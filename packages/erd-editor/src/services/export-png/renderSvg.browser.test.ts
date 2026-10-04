@@ -1,5 +1,5 @@
-import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Shape } from 'konva/lib/Shape';
+import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTestTheme } from '@/__test-utils__';
@@ -333,9 +333,7 @@ describe('the svg of a document', () => {
 
 describe('the attributes konva holds for the export scene', () => {
   /** Every node under the Stage, the layers included, with what konva keeps for each. */
-  function attributesOf(
-    stage: KonvaNode & { find: (s: () => boolean) => KonvaNode[] }
-  ) {
+  function attributesOf(stage: Stage) {
     return stage
       .find(() => true)
       .flatMap(node =>

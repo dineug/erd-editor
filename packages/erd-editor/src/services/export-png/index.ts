@@ -183,8 +183,8 @@ function renderInRealm(
   request: RenderPngRequest,
   toWidth: ToWidth,
   onProgress?: DocumentPngOptions['onProgress']
-) {
-  return drawInRealm<RenderPngResult>(
+): Promise<{ result: RenderPngResult; realm: ExportPngRealm }> {
+  return drawInRealm(
     {
       inWorker: (remote, fontProbe) => remote.render({ ...request, fontProbe }),
       onMain: () => renderDocumentPng({ ...request, toWidth }),

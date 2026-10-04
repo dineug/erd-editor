@@ -36,12 +36,15 @@ const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*'([^']+)'/g;
 const posix = (path: string) =>
   relative(SOURCE_ROOT, path).split(sep).join('/');
 
+/** The path a specifier names in the sources, or null for a package's. */
+function specifierBase(from: string, specifier: string): string | null {
+  if (specifier.startsWith('@/')) return join(SOURCE_ROOT, specifier.slice(2));
+  if (specifier.startsWith('.')) return resolve(dirname(from), specifier);
+  return null;
+}
+
 function resolveSpecifier(from: string, specifier: string): string | null {
-  const base = specifier.startsWith('@/')
-    ? join(SOURCE_ROOT, specifier.slice(2))
-    : specifier.startsWith('.')
-      ? resolve(dirname(from), specifier)
-      : null;
+  const base = specifierBase(from, specifier);
   if (!base) return null;
 
   const candidates = [

@@ -149,18 +149,21 @@ const CLIP_TAG = '\u0000';
  * pixel. A transform's linear part keeps more of them, since it scales the
  * shapes under it, and a negative zero is written as zero.
  */
-const num = (value: number, digits = 3) => {
+function num(value: number, digits = 3): string {
   const factor = 10 ** digits;
   const rounded = Math.round(value * factor) / factor;
   return String(rounded === 0 ? 0 : rounded);
-};
+}
 
 /** Whether XML 1.0 has a place for a code point, which a pasted name may lack. */
-const isXmlChar = (code: number) =>
-  code === 0x9 ||
-  code === 0xa ||
-  code === 0xd ||
-  (code >= 0x20 && code !== 0xfffe && code !== 0xffff);
+function isXmlChar(code: number): boolean {
+  return (
+    code === 0x9 ||
+    code === 0xa ||
+    code === 0xd ||
+    (code >= 0x20 && code !== 0xfffe && code !== 0xffff)
+  );
+}
 
 function escapeXml(value: string): string {
   let escaped = '';
@@ -172,8 +175,9 @@ function escapeXml(value: string): string {
   return escaped;
 }
 
-const attr = (name: string, value: string | number) =>
-  ` ${name}="${escapeXml(String(value))}"`;
+function attr(name: string, value: string | number): string {
+  return ` ${name}="${escapeXml(String(value))}"`;
+}
 
 /** An alpha as css spells one, a fraction or a percentage, held to 0 through 1. */
 function readAlpha(value: string): number {
@@ -242,9 +246,14 @@ export function toPaint(color: unknown): Paint | null {
 }
 
 /** A paint as an svg attribute and, for one not wholly opaque, its opacity beside it. */
-const paintAttribute = (name: 'fill' | 'stroke', { color, opacity }: Paint) =>
-  attr(name, color) +
-  (opacity < 1 ? attr(`${name}-opacity`, String(opacity)) : '');
+function paintAttribute(
+  name: 'fill' | 'stroke',
+  { color, opacity }: Paint
+): string {
+  return (
+    attr(name, color) + (opacity < 1 ? attr(`${name}-opacity`, opacity) : '')
+  );
+}
 
 /** A matrix as the file writes it, and nothing once it rounds to no move at all. */
 function transformAttribute([a, b, c, d, e, f]: number[]): string {
@@ -258,8 +267,9 @@ function transformAttribute([a, b, c, d, e, f]: number[]): string {
   return attr('transform', `matrix(${linear} ${move})`);
 }
 
-const transformOf = (node: KonvaNode) =>
-  transformAttribute(node.getTransform().getMatrix());
+function transformOf(node: KonvaNode): string {
+  return transformAttribute(node.getTransform().getMatrix());
+}
 
 /**
  * What a layer moves the scene by past the box mapped onto the Stage, which
@@ -279,8 +289,9 @@ function layerTransformOf(node: KonvaNode, { box, scale }: Writer): string {
   ]);
 }
 
-const opacityOf = (node: KonvaNode) =>
-  node.opacity() < 1 ? attr('opacity', num(node.opacity())) : '';
+function opacityOf(node: KonvaNode): string {
+  return node.opacity() < 1 ? attr('opacity', num(node.opacity())) : '';
+}
 
 /** A clip as konva applies one, only once it has both a width and a height. */
 function clipOf(node: Container, writer: Writer): string {
@@ -447,6 +458,14 @@ function writeRect(node: KonvaRect): string {
   return writeShape(node, 'rect', box);
 }
 
+function writePath(node: Path): string {
+  return writeShape(node, 'path', attr('d', node.data()));
+}
+
+function writeCircle(node: Circle): string {
+  return writeShape(node, 'circle', attr('r', num(node.radius())));
+}
+
 function writeLine(node: Line): string {
   const points = node.points();
   if (points.length < 4) return '';
@@ -481,6 +500,34 @@ function fontStyleOf(fontStyle: string): string {
   return attributes;
 }
 
+/** How far konva lowers a text's lines into the room its height leaves them. */
+function alignYOf(verticalAlign: string, room: number): number {
+  switch (verticalAlign) {
+    case 'middle':
+      return room / 2;
+    case 'bottom':
+      return room;
+    default:
+      return 0;
+  }
+}
+
+/** Where a line starts, or for a centred or right aligned one, where it is anchored. */
+function anchorOf(
+  align: string,
+  width: number,
+  padding: number
+): { x: number; attribute: string } {
+  switch (align) {
+    case 'right':
+      return { x: width - padding, attribute: attr('text-anchor', 'end') };
+    case 'center':
+      return { x: width / 2, attribute: attr('text-anchor', 'middle') };
+    default:
+      return { x: padding, attribute: '' };
+  }
+}
+
 /**
  * A text in the lines konva laid it out in, wrapped and cut with the ellipsis
  * already, each on the baseline konva draws it on. A centred or right aligned
@@ -499,34 +546,16 @@ function writeText(node: Text): string {
     (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2 +
     lineHeight / 2;
 
-  const verticalAlign = node.verticalAlign();
   const room = node.getHeight() - lines.length * lineHeight - padding * 2;
-  const alignY =
-    verticalAlign === 'middle'
-      ? room / 2
-      : verticalAlign === 'bottom'
-        ? room
-        : 0;
+  const alignY = alignYOf(node.verticalAlign(), room);
+  const anchor = anchorOf(node.align(), node.getWidth(), padding);
 
-  const align = node.align();
-  const width = node.getWidth();
-  const anchor =
-    align === 'right'
-      ? { x: width - padding, attribute: attr('text-anchor', 'end') }
-      : align === 'center'
-        ? { x: width / 2, attribute: attr('text-anchor', 'middle') }
-        : { x: padding, attribute: '' };
-
-  const spans = lines.flatMap(({ text }, index) =>
-    text
-      ? [
-          {
-            text,
-            y: padding + alignY + baseline + index * lineHeight,
-          },
-        ]
-      : []
-  );
+  const spans = lines
+    .map(({ text }, index) => ({
+      text,
+      y: padding + alignY + baseline + index * lineHeight,
+    }))
+    .filter(({ text }) => text);
   if (!spans.length) return '';
 
   const fontFamily = node.fontFamily();
@@ -571,15 +600,11 @@ function writeNode(node: KonvaNode, writer: Writer): string {
     case 'Text':
       return writeText(node as Text);
     case 'Path':
-      return writeShape(node as Path, 'path', attr('d', (node as Path).data()));
+      return writePath(node as Path);
     case 'Line':
       return writeLine(node as Line);
     case 'Circle':
-      return writeShape(
-        node as Circle,
-        'circle',
-        attr('r', num((node as Circle).radius()))
-      );
+      return writeCircle(node as Circle);
   }
 
   throw new Error(`[export-svg] no svg element is written for a konva ${kind}`);
