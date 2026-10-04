@@ -137,6 +137,41 @@ describe('ColorPicker', () => {
     expect(onClear).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps a Space or an Enter on the No color button from the editor, and lets Escape through', async () => {
+    mounted = await mountAndFlush(
+      html`<${ColorPicker}
+        x=${0}
+        y=${0}
+        color=${'#00ff00'}
+        .onClear=${vi.fn()}
+      />`
+    );
+    const button = getPicker(mounted).querySelector('button') as HTMLElement;
+    const reached: string[] = [];
+    mounted.container.addEventListener('keydown', event =>
+      reached.push(event.code)
+    );
+    const press = (code: string, key: string) => {
+      const event = new KeyboardEvent('keydown', {
+        code,
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      button.dispatchEvent(event);
+      return event;
+    };
+
+    const space = press('Space', ' ');
+    const enter = press('Enter', 'Enter');
+    press('NumpadEnter', 'Enter');
+    press('Escape', 'Escape');
+
+    expect(reached).toEqual(['Escape']);
+    expect(space.defaultPrevented).toBe(false);
+    expect(enter.defaultPrevented).toBe(false);
+  });
+
   it('falls back to an empty color when none is provided', async () => {
     mounted = await mountAndFlush(html`<${ColorPicker} x=${0} y=${0} />`);
 

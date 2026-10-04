@@ -194,6 +194,26 @@ test.describe('entity colour', () => {
       .toEqual([COLOR.toLowerCase(), '#3b82f6', '#22c55e']);
   });
 
+  test('Space presses No color rather than the hand tool', async ({ erd }) => {
+    await erd.seed(colored());
+    const canvas = erd.host.locator('[data-testid="erd-canvas"]');
+
+    const bar = await erd.sceneBox(['#memo-note', '.memo-header-color']);
+    await erd.clickAt({ x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 });
+    await expect(erd.colorPicker).toBeVisible();
+
+    // The hand tool's Space is cancelled at the editor, which would take the
+    // click from the button and leave the canvas in the hand tool instead.
+    await erd.colorPicker.getByRole('button', { name: 'No color' }).focus();
+    await erd.press(Shortcut.handTool);
+
+    await expect(erd.colorPicker).toHaveCount(0);
+    await expect
+      .poll(() => colorsOf(erd))
+      .toEqual([COLOR.toLowerCase(), '#3b82f6', '']);
+    await expect(canvas).toHaveCSS('pointer-events', 'auto');
+  });
+
   test('the table menu offers Remove color only while the selection holds a colour', async ({
     erd,
   }) => {

@@ -30,6 +30,14 @@ describe('ColorPicker.styles', () => {
     expect(clear).toContain('background-color: var(--context-menu-hover)');
   });
 
+  it('rings the No color button while it holds the keyboard, as the reset takes every outline', () => {
+    const clear = styles.clear.strings.raw.join('');
+
+    expect(clear).toMatch(
+      /&:focus-visible\s*\{\s*outline: 2px solid var\(--input-active\);\s*outline-offset: 1px;\s*\}/
+    );
+  });
+
   it('resolves to a non-empty class identifier', () => {
     const identifier = String(styles.container);
 

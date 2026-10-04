@@ -7,7 +7,7 @@ export type SelectTypeIds = {
 
 /**
  * The selected tables' and memos' ids apart, in selection order: one split
- * for the move, the duplicate and the color picker, so each reaches the same.
+ * for the move and the color picker, so both reach the same.
  */
 export function getSelectTypeIds(
   selectedMap: Record<string, SelectType>

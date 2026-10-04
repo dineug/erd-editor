@@ -33,4 +33,9 @@ export const clear = css`
     background-color: var(--context-menu-hover);
     color: var(--active);
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--input-active);
+    outline-offset: 1px;
+  }
 `;
