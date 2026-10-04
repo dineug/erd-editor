@@ -11,7 +11,7 @@ import {
   toStringLiteral,
 } from '@/parser/helper';
 import { DatabaseVendor, RefPos } from '@/parser/statement';
-import { Token, TokenType } from '@/parser/tokenizer';
+import { Quote, Token, TokenType } from '@/parser/tokenizer';
 
 type PieceKind =
   | 'open'
@@ -29,6 +29,14 @@ type Piece = {
   kind: PieceKind;
   text: string;
   token?: Token;
+};
+
+// The piece a quoted token makes: a literal, a bracketed name or size, a name.
+const QuotedKinds: Readonly<Record<Quote, PieceKind>> = {
+  "'": 'string',
+  '[': 'bracket',
+  '"': 'word',
+  '`': 'word',
 };
 
 // Words a PostgreSQL type name never holds: after one, the :: casts a part of
@@ -83,10 +91,10 @@ export const matchDefaultExpression = (tokens: Token[]) => {
   const constraintState = isConstraintState(tokens);
   const characterSet = isCharacterSet(tokens);
 
-  const isTimeZone = (pos: number): boolean =>
-    word(tokens[pos]) === 'LOCAL'
-      ? isTimeZone(pos + 1)
-      : word(tokens[pos]) === 'TIME' && word(tokens[pos + 1]) === 'ZONE';
+  const isTimeZone = (pos: number): boolean => {
+    if (word(tokens[pos]) === 'LOCAL') return isTimeZone(pos + 1);
+    return word(tokens[pos]) === 'TIME' && word(tokens[pos + 1]) === 'ZONE';
+  };
 
   // FOR ends a default, except in the sequence call NEXT VALUE FOR s that SQL
   // Server and MariaDB take as one, and so do WITH and WITHOUT, except before
@@ -103,6 +111,7 @@ export const matchDefaultExpression = (tokens: Token[]) => {
     if (keyword === 'WITH' || keyword === 'WITHOUT') {
       return !isTimeZone(pos + 1);
     }
+
     if (keyword === 'TAG') return isLeftParent(pos + 1);
 
     return (
@@ -128,10 +137,8 @@ export const matchDefaultExpression = (tokens: Token[]) => {
       } else if (isRightParent(cursor)) {
         if (depth === 0) break;
         depth--;
-      } else if (depth > 0 && isEnd(cursor)) {
-        depth--;
       } else if (depth > 0) {
-        continue;
+        if (isEnd(cursor)) depth--;
       } else if (isComma(cursor) || isRightBracket(cursor)) {
         break;
       } else if (cursor > pos && endsAt(cursor)) {
@@ -158,12 +165,7 @@ const toPieces = (tokens: Token[], database?: DatabaseVendor) =>
     }
 
     if (token.quoted) {
-      const kind =
-        token.quoted === "'"
-          ? 'string'
-          : token.quoted === '['
-            ? 'bracket'
-            : 'word';
+      const kind = QuotedKinds[token.quoted];
       return [{ kind, text: requote(token, database), token }];
     }
 
@@ -250,7 +252,10 @@ const isTypeName = (pieces: Piece[]) => {
     pieces.length > 0 &&
     pieces[0].kind === 'word' &&
     pieces.every(({ kind, text }) => {
-      if (kind === 'open') return ++depth > 0;
+      if (kind === 'open') {
+        depth++;
+        return true;
+      }
       if (kind === 'close') return --depth >= 0;
       if (depth > 0 || kind === 'period') return true;
       if (kind === 'bracket') return ARRAY_DIMENSION.test(text);

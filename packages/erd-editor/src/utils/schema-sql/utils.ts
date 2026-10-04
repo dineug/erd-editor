@@ -298,6 +298,9 @@ function isCall(text: string): boolean {
 
 const NUMBER = String.raw`[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?`;
 
+// The names MySQL gives the current time, called or not.
+const MYSQL_NOW = '(?:current_timestamp|now|localtime|localtimestamp)';
+
 // What MySQL may take after DEFAULT without parentheses: a literal or the
 // current time, which may carry an ON UPDATE written into the default by hand.
 const MYSQL_BARE = new RegExp(
@@ -312,7 +315,7 @@ const MYSQL_BARE = new RegExp(
       String.raw`b'[01]*'`,
       String.raw`(?:date|time|timestamp)\s*'[^']*'`,
       'null|true|false',
-      String.raw`(?:current_timestamp|now|localtime|localtimestamp)(?:\s*\(\s*\d*\s*\))?`,
+      String.raw`${MYSQL_NOW}(?:\s*\(\s*\d*\s*\))?`,
     ].join('|') +
     String.raw`)(\s+on\s+update\s.*)?$`,
   'is'
@@ -322,8 +325,7 @@ const MYSQL_BARE = new RegExp(
 const MYSQL_EXPRESSION_TYPE =
   /^(?:(?:tiny|medium|long)?(?:blob|text)|json|geometry|geom(?:etry)?collection|(?:multi)?(?:point|linestring|polygon))\b/i;
 
-const MYSQL_CURRENT_TIME =
-  /^(?:current_timestamp|now|localtime|localtimestamp)\b/i;
+const MYSQL_CURRENT_TIME = new RegExp(String.raw`^${MYSQL_NOW}\b`, 'i');
 
 // MySQL takes a literal bare but on the types above, NULL whatever the type,
 // and the current time only on a TIMESTAMP or DATETIME column, or with an ON
@@ -349,7 +351,7 @@ const SQLITE_BARE = new RegExp(
       NUMBER,
       String.raw`[+-]?0x[\da-f]+`,
       `'(?:[^']|'')*'`,
-      `x'[\\da-f]*'`,
+      String.raw`x'[\da-f]*'`,
       String.raw`[a-z_][\w$]*`,
       `"(?:[^"]|"")*"`,
       '`(?:[^`]|``)*`',
