@@ -651,7 +651,100 @@ describe('what the writer refuses', () => {
     expect(toPaint(' RGBA(0, 0, 0, 0) ')).toBeNull();
     expect(toPaint('None')).toBeNull();
     expect(toPaint(undefined)).toBeNull();
-    expect(toPaint('rgba(0, 0, 0, 0.5)')).toBe('rgba(0, 0, 0, 0.5)');
+    expect(toPaint('#0000')).toBeNull();
+    expect(toPaint('hsl(0 0% 0% / 0%)')).toBeNull();
+  });
+});
+
+describe('a colour with an alpha', () => {
+  /** What an empty cell's placeholder paints with, as the light preset's grayA-10 spells it. */
+  const PLACEHOLDER = '#00071b7f';
+
+  it('splits the alpha off every spelling of a colour that carries one', () => {
+    expect(toPaint(PLACEHOLDER)).toEqual({ color: '#00071b', opacity: 0.498 });
+    expect(toPaint('#F008')).toEqual({ color: '#ff0000', opacity: 0.533 });
+    expect(toPaint('rgba(0, 0, 0, 0.5)')).toEqual({
+      color: 'rgb(0,0,0)',
+      opacity: 0.5,
+    });
+    expect(toPaint('rgb(0 0 0 / 25%)')).toEqual({
+      color: 'rgb(0,0,0)',
+      opacity: 0.25,
+    });
+    expect(toPaint('HSLA(210, 50%, 40%, .2)')).toEqual({
+      color: 'hsl(210,50%,40%)',
+      opacity: 0.2,
+    });
+  });
+
+  it('leaves a colour with no alpha or a whole one opaque, otherwise as spelled', () => {
+    expect(toPaint('#112233')).toEqual({ color: '#112233', opacity: 1 });
+    expect(toPaint('#112233ff')).toEqual({ color: '#112233', opacity: 1 });
+    expect(toPaint('rgb(1, 2, 3)')).toEqual({
+      color: 'rgb(1, 2, 3)',
+      opacity: 1,
+    });
+    expect(toPaint('steelblue')).toEqual({ color: 'steelblue', opacity: 1 });
+  });
+
+  it('writes a text in the opaque colour, its alpha as an opacity', () => {
+    const text = new Text({ text: 'default', fill: PLACEHOLDER });
+
+    expect(attributesOf(read([text]).querySelector('text'))).toMatchObject({
+      fill: '#00071b',
+      'fill-opacity': '0.498',
+    });
+  });
+
+  it('gives a fill and a stroke each an opacity of its own', () => {
+    const rect = new Rect({
+      width: 10,
+      height: 10,
+      fill: '#ff000088',
+      stroke: 'rgba(0, 0, 255, 0.25)',
+      strokeWidth: 1,
+    });
+
+    expect(attributesOf(read([rect]).querySelector('rect'))).toEqual({
+      width: '10',
+      height: '10',
+      fill: '#ff0000',
+      'fill-opacity': '0.533',
+      stroke: 'rgb(0,0,255)',
+      'stroke-opacity': '0.25',
+      'stroke-width': '1',
+    });
+  });
+
+  it('writes no opacity for an alpha that is whole', () => {
+    const rect = new Rect({ width: 10, height: 10, fill: '#112233ff' });
+
+    expect(attributesOf(read([rect]).querySelector('rect'))).toEqual({
+      width: '10',
+      height: '10',
+      fill: '#112233',
+    });
+  });
+
+  it('leaves out a fill or a stroke whose alpha is none', () => {
+    const shapes = [
+      new Rect({ width: 10, height: 10, fill: '#0000' }),
+      new Text({ text: 'hidden', fill: 'rgba(255, 0, 0, 0)' }),
+      new Path({ data: 'M 0 0 L 9 9', stroke: '#ff000000', strokeWidth: 2 }),
+      new Circle({ radius: 3, fill: 'hsla(0, 0%, 0%, 0)' }),
+    ];
+    const ring = new Circle({
+      radius: 3,
+      fill: '#ffffff00',
+      stroke: '#000000',
+      strokeWidth: 1,
+    });
+
+    const written = shapesOf(read([...shapes, ring]));
+
+    expect(written).toHaveLength(1);
+    expect(written[0].getAttribute('fill')).toBe('none');
+    expect(written[0].hasAttribute('fill-opacity')).toBe(false);
   });
 });
 
@@ -671,6 +764,34 @@ describe('the svg against the canvas it stands in for', () => {
 
     return data.filter((_, index) => index % 4 === 3);
   }
+
+  /** The alpha konva paints the Stage with, beside the alpha of the svg written off it. */
+  async function paintedAndWritten(stage: Stage, box: typeof BOX) {
+    const svg = toSceneSvg(stage, { box, scale: 1, zoomLevel: 1 });
+    const image = new Image();
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    await image.decode();
+
+    return {
+      painted: await alphaOf(
+        stage.toCanvas({ pixelRatio: 1 }),
+        BOX.width,
+        BOX.height
+      ),
+      written: await alphaOf(image, BOX.width, BOX.height),
+    };
+  }
+
+  /** How many pixels two alpha channels hold apart, past what an antialiased edge moves. */
+  const pixelsApart = (
+    painted: Uint8ClampedArray,
+    written: Uint8ClampedArray
+  ) =>
+    painted.filter((alpha, index) => Math.abs(alpha - written[index]) > 128)
+      .length;
+
+  const opaque = (alphas: Uint8ClampedArray) =>
+    alphas.filter(alpha => alpha > 128).length;
 
   it.each([
     { placement: 'by the box', box: BOX, layer: {} },
@@ -701,29 +822,64 @@ describe('the svg against the canvas it stands in for', () => {
           strokeWidth: 3,
         })
       );
-      const stage = createStage([group], { layer });
-      const svg = toSceneSvg(stage, { box, scale: 1, zoomLevel: 1 });
-
-      const image = new Image();
-      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      await image.decode();
-
-      const painted = await alphaOf(
-        stage.toCanvas({ pixelRatio: 1 }),
-        BOX.width,
-        BOX.height
+      const { painted, written } = await paintedAndWritten(
+        createStage([group], { layer }),
+        box
       );
-      const written = await alphaOf(image, BOX.width, BOX.height);
+
       // Edges antialias a little apart; a shape misplaced or misread differs by
       // whole runs of pixels, far past this.
-      const apart = painted.filter(
-        (alpha, index) => Math.abs(alpha - written[index]) > 128
-      ).length;
-
-      expect(painted.filter(alpha => alpha > 128).length).toBeGreaterThan(
-        3_000
+      expect(opaque(painted)).toBeGreaterThan(3_000);
+      expect(pixelsApart(painted, written)).toBeLessThan(
+        BOX.width * BOX.height * 0.005
       );
-      expect(apart).toBeLessThan(BOX.width * BOX.height * 0.005);
     }
   );
+
+  it('sets its text where konva paints it, a cut cell, a centred name and a scrolled memo', async () => {
+    const font = { fontFamily: SCENE_FONT_FAMILY, fill: '#000000' };
+    const cell = new Text({
+      ...font,
+      x: 6,
+      y: 4,
+      width: 90,
+      fontSize: SCENE_FONT_SIZE,
+      text: 'a_column_name_far_too_long_for_its_cell',
+      wrap: 'none',
+      ellipsis: true,
+    });
+    const name = new Text({
+      ...font,
+      x: 100,
+      y: 0,
+      width: 96,
+      height: 36,
+      fontSize: 16,
+      fontStyle: 'bold',
+      text: 'orders',
+      align: 'center',
+      verticalAlign: 'middle',
+    });
+    const memo = new Group({ x: 6, y: 36, clipWidth: 150, clipHeight: 60 });
+    memo.add(
+      new Text({
+        ...font,
+        width: 150,
+        fontSize: SCENE_FONT_SIZE,
+        lineHeight: 1.5,
+        offsetY: 9,
+        text: 'scrolled out of view\nthe second line of the memo\nthe third line\nthe fourth line',
+      })
+    );
+
+    const { painted, written } = await paintedAndWritten(
+      createStage([cell, name, memo]),
+      BOX
+    );
+
+    // Held to konva's own text pass, not to a copy of the writer's arithmetic,
+    // so a baseline konva moves, as its legacy one does, sets whole glyphs apart.
+    expect(opaque(painted)).toBeGreaterThan(800);
+    expect(pixelsApart(painted, written)).toBeLessThan(opaque(painted) * 0.05);
+  });
 });

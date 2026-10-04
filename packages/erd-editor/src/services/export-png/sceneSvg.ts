@@ -104,16 +104,23 @@ export type SceneSvgOptions = {
 };
 
 /**
- * Colours that paint nothing: what a hit box fills with, and what the canvas
- * takes once the background is off, which exportTheme.ts names. Compared
- * without spaces or case, as a canvas reads them.
+ * Colours that paint nothing by name, what a hit box fills with among them,
+ * compared without case or the spaces around them. One whose alpha is none,
+ * the canvas once the background is off, paints nothing either.
  */
-const NO_PAINT: ReadonlySet<string> = new Set([
-  '',
-  'none',
-  'transparent',
-  'rgba(0,0,0,0)',
-]);
+const NO_PAINT: ReadonlySet<string> = new Set(['', 'none', 'transparent']);
+
+/** A colour with its alpha in hex digits: four of them, or eight. */
+const HEX_WITH_ALPHA = /^#([0-9a-f]{4}|[0-9a-f]{8})$/i;
+
+/** A colour named by its rgb or hsl channels, which may carry an alpha. */
+const CHANNELS = /^(rgb|hsl)a?\((.*)\)$/i;
+
+/**
+ * A colour as the file writes it: an opaque colour, and the alpha it carried
+ * apart from it, rounded to the digits an opacity is written in.
+ */
+export type Paint = { color: string; opacity: number };
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
@@ -168,18 +175,76 @@ function escapeXml(value: string): string {
 const attr = (name: string, value: string | number) =>
   ` ${name}="${escapeXml(String(value))}"`;
 
+/** An alpha as css spells one, a fraction or a percentage, held to 0 through 1. */
+function readAlpha(value: string): number {
+  const alpha = value.endsWith('%')
+    ? Number.parseFloat(value) / 100
+    : Number.parseFloat(value);
+
+  return Number.isNaN(alpha) ? 1 : Math.min(Math.max(alpha, 0), 1);
+}
+
 /**
- * Whether a colour paints anything at all. A hit box answers the pointer with
- * a transparent fill, which the svg has no pointer to answer, so it is left out.
+ * A colour split into the opaque colour SVG 1.1 can read and the alpha it
+ * carried, which the theme's alpha tokens do in eight hex digits. A colour
+ * carrying none is kept as it was spelled.
+ */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const hex = HEX_WITH_ALPHA.exec(color);
+  if (hex) {
+    const digits = hex[1].toLowerCase();
+    const full =
+      digits.length === 4
+        ? Array.from(digits, digit => digit + digit).join('')
+        : digits;
+
+    return {
+      color: `#${full.slice(0, 6)}`,
+      alpha: Number.parseInt(full.slice(6), 16) / 255,
+    };
+  }
+
+  const channels = CHANNELS.exec(color);
+  if (!channels) return { color, alpha: 1 };
+
+  const [values, slashed] = channels[2].split('/');
+  const parts = values.split(/[\s,]+/).filter(Boolean);
+  const alpha = slashed ?? (parts.length === 4 ? parts[3] : undefined);
+  if (alpha === undefined) return { color, alpha: 1 };
+
+  const name = channels[1].toLowerCase();
+
+  return {
+    color: `${name}(${parts.slice(0, 3).join(',')})`,
+    alpha: readAlpha(alpha.trim()),
+  };
+}
+
+/**
+ * Whether a colour paints anything at all, and how. A hit box answers the
+ * pointer with a transparent fill, which the svg has no pointer to answer, so
+ * it is left out, as is a colour whose alpha rounds to none.
  *
  * @example
  * toPaint('transparent'); // null
+ * toPaint('#00071b7f'); // { color: '#00071b', opacity: 0.498 }
  */
-export function toPaint(color: unknown): string | null {
+export function toPaint(color: unknown): Paint | null {
   if (typeof color !== 'string') return null;
 
-  return NO_PAINT.has(color.replace(/\s+/g, '').toLowerCase()) ? null : color;
+  const trimmed = color.trim();
+  if (NO_PAINT.has(trimmed.toLowerCase())) return null;
+
+  const split = splitAlpha(trimmed);
+  const opacity = Number(num(split.alpha));
+
+  return opacity > 0 ? { color: split.color, opacity } : null;
 }
+
+/** A paint as an svg attribute and, for one not wholly opaque, its opacity beside it. */
+const paintAttribute = (name: 'fill' | 'stroke', { color, opacity }: Paint) =>
+  attr(name, color) +
+  (opacity < 1 ? attr(`${name}-opacity`, String(opacity)) : '');
 
 /** A matrix as the file writes it, and nothing once it rounds to no move at all. */
 function transformAttribute([a, b, c, d, e, f]: number[]): string {
@@ -281,10 +346,11 @@ function paintOf(node: Shape, fillable: boolean): string | null {
   const stroke = strokeWidth ? toPaint(node.stroke()) : null;
   if (!fill && !stroke) return null;
 
-  let paint = attr('fill', fill ?? 'none');
+  let paint = fill ? paintAttribute('fill', fill) : attr('fill', 'none');
   if (!stroke) return paint;
 
-  paint += attr('stroke', stroke) + attr('stroke-width', num(strokeWidth));
+  paint +=
+    paintAttribute('stroke', stroke) + attr('stroke-width', num(strokeWidth));
 
   const dash = node.dash();
   if (dash?.length) {
@@ -468,7 +534,7 @@ function writeText(node: Text): string {
     (fontFamily === TextFontFamily ? '' : attr('font-family', fontFamily)) +
     (fontSize === CELL_FONT_SIZE ? '' : attr('font-size', num(fontSize))) +
     fontStyleOf(node.fontStyle());
-  const open = `<text${transformOf(node)}${opacityOf(node)}${font}${anchor.attribute}${attr('fill', fill)}`;
+  const open = `<text${transformOf(node)}${opacityOf(node)}${font}${anchor.attribute}${paintAttribute('fill', fill)}`;
   const x = attr('x', num(anchor.x));
 
   if (spans.length === 1) {

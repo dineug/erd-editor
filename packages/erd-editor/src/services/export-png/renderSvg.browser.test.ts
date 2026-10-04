@@ -1,4 +1,5 @@
 import type { Node as KonvaNode } from 'konva/lib/Node';
+import type { Shape } from 'konva/lib/Shape';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTestTheme } from '@/__test-utils__';
@@ -19,7 +20,14 @@ import {
   SVG_SKIPPED_ATTRIBUTES,
   SVG_WRITTEN_ATTRIBUTES,
   type SvgNodeKind,
+  toSceneSvg,
 } from '@/services/export-png/sceneSvg';
+import {
+  AccentColor,
+  Appearance,
+  createTheme,
+  GrayColor,
+} from '@/themes/radix-ui-theme';
 import type { Theme } from '@/themes/tokens';
 import { createText } from '@/utils/text';
 
@@ -365,6 +373,96 @@ describe('the attributes konva holds for the export scene', () => {
         [...kinds].every(kind => SVG_NODE_KINDS.includes(kind as SvgNodeKind))
       ).toBe(true);
       expect([...new Set(unhandled)]).toEqual([]);
+    }
+  );
+});
+
+describe('the svg of a document against the png konva paints', () => {
+  /** A preset, whose contrasts and alpha tokens the test theme's near blacks lack. */
+  const preset = createTheme({
+    appearance: Appearance.light,
+    grayColor: GrayColor.gray,
+    accentColor: AccentColor.blue,
+  });
+
+  function channelsOf(
+    draw: (context: CanvasRenderingContext2D) => void,
+    width: number,
+    height: number
+  ) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d')!;
+    draw(context);
+    return context.getImageData(0, 0, width, height).data;
+  }
+
+  /**
+   * The pixels of the png that stand off its corner, the canvas colour, and
+   * the pixels the two images set apart, past what an antialiased edge moves.
+   */
+  function compare(painted: Uint8ClampedArray, written: Uint8ClampedArray) {
+    const far = (from: number, to: number) => Math.abs(from - to) > 96;
+    let ink = 0;
+    let apart = 0;
+
+    for (let index = 0; index < painted.length; index += 4) {
+      let standsOff = false;
+      let differs = false;
+
+      for (let channel = 0; channel < 4; channel++) {
+        const value = painted[index + channel];
+        standsOff ||= channel < 3 && far(value, painted[channel]);
+        differs ||= far(value, written[index + channel]);
+      }
+
+      ink += Number(standsOff);
+      apart += Number(differs);
+    }
+
+    return { ink, apart };
+  }
+
+  it.each([1, 0.5])(
+    'sets every table, row, label and memo where konva paints them, at zoom %s',
+    async zoomLevel => {
+      const scene = await renderDocumentScene({
+        doc: createDoc(zoomLevel),
+        theme: preset,
+        toWidth,
+      });
+      // The svg leaves the shadows out on purpose, so the png is painted without them.
+      scene.stage
+        .find<Shape>('Shape')
+        .forEach(shape => shape.shadowEnabled(false));
+      const svg = toSceneSvg(scene.stage, {
+        box: scene.box,
+        scale: scene.scale,
+        zoomLevel: scene.zoomLevel,
+      });
+      const width = scene.stage.width();
+      const height = scene.stage.height();
+      const canvas = scene.stage.toCanvas({ pixelRatio: 1 });
+      scene.destroy();
+
+      const image = new Image();
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      await image.decode();
+
+      // The png at its own size and the svg at the Stage's, which a fractional
+      // zoom leaves between two pixels: stretching the png would blur each edge.
+      const { ink, apart } = compare(
+        channelsOf(context => context.drawImage(canvas, 0, 0), width, height),
+        channelsOf(
+          context => context.drawImage(image, 0, 0, width, height),
+          width,
+          height
+        )
+      );
+
+      expect(ink).toBeGreaterThan(500);
+      expect(apart).toBeLessThan(ink * 0.02);
     }
   );
 });

@@ -294,7 +294,7 @@ export function createScopeActions(app: AppContext): Action[] {
         {
           icon: <Icon name="file-image" size={16} />,
           name: 'Image',
-          keywords: 'image png picture clipboard',
+          keywords: 'image png svg vector picture clipboard',
           perform: ({ emitter }) => {
             emitter.emit(openExportImageAction());
           },

@@ -418,7 +418,7 @@ test.describe('the export image dialog', () => {
     const dialog = await openFromMenu(erd);
     const size = dialog.locator('.export-image-size');
     await expect(size).toHaveText(
-      `${BOX * DEFAULT_SCALE} × ${BOX * DEFAULT_SCALE} px`
+      `PNG ${BOX * DEFAULT_SCALE} × ${BOX * DEFAULT_SCALE} px`
     );
     const text = (await size.boundingBox())!;
     const box = (await dialog.boundingBox())!;
