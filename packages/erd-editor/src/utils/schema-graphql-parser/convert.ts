@@ -401,8 +401,7 @@ function appendRelationship(
   const { doc, collections } = schema;
   const { parent, child, relationshipType } = input;
   const parentKeys = primaryKeyColumns(parent.columns);
-  // An empty end.columnIds still draws a connector, and the data type sync
-  // walks the two id lists positionally, so a half-bound pair goes wrong later.
+  // An empty end.columnIds would still draw a connector to nothing.
   if (!parentKeys.length) return;
 
   const { startColumns, endColumns } = resolveForeignKeyColumns(
