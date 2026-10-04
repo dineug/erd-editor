@@ -178,11 +178,12 @@ describe('QuickSearch', () => {
     expect(isOpen()).toBe(true);
   });
 
-  it('closes the table properties and theme builder panels when it opens', async () => {
+  it('closes the table properties, theme builder and export image panels when it opens', async () => {
     app.store.dispatchSync(
       changeOpenMapAction({
         [Open.tableProperties]: true,
         [Open.themeBuilder]: true,
+        [Open.exportImage]: true,
       })
     );
 
@@ -190,6 +191,7 @@ describe('QuickSearch', () => {
 
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(false);
     expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
+    expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
   });
 
   it('toggles closed on a second search shortcut and re-emits focus', async () => {

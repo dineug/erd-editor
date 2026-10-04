@@ -252,6 +252,7 @@ describe('FindReplace opening and closing', () => {
       changeOpenMapAction({
         [Open.tableProperties]: true,
         [Open.themeBuilder]: true,
+        [Open.exportImage]: true,
       })
     );
 
@@ -264,6 +265,7 @@ describe('FindReplace opening and closing', () => {
     expect(countText()).toBe('');
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(false);
     expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
+    expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
   });
 
   it('opens with the query it is handed, already searched', async () => {

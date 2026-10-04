@@ -237,6 +237,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
           changeOpenMapAction({
             [Open.tableProperties]: false,
             [Open.themeBuilder]: false,
+            [Open.exportImage]: false,
           })
         );
       } else {

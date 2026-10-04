@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-40 spec files. Ten of the groups exist because the DOM scene got their subject
+41 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -99,6 +99,15 @@ undo, a json file's tables and memo standing apart as the file has them with
 its settings left out, the ERD tab an append brings up from a Flow view, Graph
 mode, Schema SQL and Code Generator with the added table selected and on screen,
 and a read-only editor whose palette and menu offer no Import and Add.
+
+`export-image-dialog.spec.ts` holds down the dialog every image export goes
+through, from the canvas menu and the palette: it opens on its defaults with
+the PNG button focused and hands the keyboard back on Escape, the png is the
+zoom times the scale (two by default), the background switch leaves the canvas
+transparent, the clipboard receives the png (Chromium with clipboard permissions
+granted), Tab turns round inside the box, a short editor scrolls it to its
+buttons, and while it is open the canvas shortcuts stay off and Space presses
+the focused button. `export-png.spec.ts` drives the same dialog at 1x.
 
 Two more hold down a frame the rest never look at, one on the canvas and one in
 a DOM panel the port left on native drag and drop:

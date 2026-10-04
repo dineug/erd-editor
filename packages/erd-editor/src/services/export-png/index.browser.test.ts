@@ -8,10 +8,16 @@ import { unionRect } from '@/konva/scene/contentBounds';
 import { getMemoRect, type Rect } from '@/konva/scene/metrics';
 import {
   createDocumentPng,
+  createDocumentPreview,
   type ResolutionReduction,
 } from '@/services/export-png';
 import { renderDocumentScene } from '@/services/export-png/documentScene';
-import { EXPORT_MARGIN, getExportScale } from '@/services/export-png/exportBox';
+import {
+  EXPORT_MARGIN,
+  getExportScale,
+  getExportSize,
+} from '@/services/export-png/exportBox';
+import { TRANSPARENT_BACKGROUND } from '@/services/export-png/exportTheme';
 import {
   CANVAS_AREA_MAX,
   CANVAS_SIDE_MAX,
@@ -248,6 +254,45 @@ describe('renderDocumentScene', () => {
     const drawn = await drawnTables(1);
 
     expect(drawn).toEqual({ tables: 1, highLevel: 0, scale: 1 });
+  });
+
+  it('caps the scale at the side it is given, still spelling the table for its zoom', async () => {
+    const scene = await renderDocumentScene({
+      doc: createDoc({ memos: [], tables: [TABLE] }),
+      theme,
+      toWidth,
+      zoomLevel: 1,
+      maxSide: 100,
+    });
+
+    try {
+      const side = Math.max(scene.box.width, scene.box.height);
+      expect(scene.scale).toBeCloseTo(100 / side, 9);
+      expect(Math.max(scene.stage.width(), scene.stage.height())).toBeCloseTo(
+        100,
+        9
+      );
+      expect(scene.stage.find('.table')).toHaveLength(1);
+      expect(scene.stage.find('.high-level-table')).toHaveLength(0);
+    } finally {
+      scene.destroy();
+    }
+  });
+
+  it('leaves the zoom alone when the side it is given is larger than the box', async () => {
+    const drawn = await renderDocumentScene({
+      doc: createDoc({ memos: [], tables: [TABLE] }),
+      theme,
+      toWidth,
+      zoomLevel: 0.8,
+      maxSide: 100_000,
+    });
+
+    try {
+      expect(drawn.scale).toBe(0.8);
+    } finally {
+      drawn.destroy();
+    }
   });
 
   it('draws a table as a named box under the high level threshold', async () => {
@@ -591,6 +636,48 @@ describe('createDocumentPng', () => {
     }
   });
 
+  it('draws every scene unit with as many pixels as the scale asks for', async () => {
+    const box = expectedBox();
+    const image = await decode(
+      await createDocumentPng({
+        doc: createDoc(),
+        theme,
+        toWidth,
+        zoomLevel: 0.5,
+        pixelRatio: 3,
+      })
+    );
+
+    expect([image.width, image.height]).toEqual([
+      Math.round(box.width * 0.5 * 3),
+      Math.round(box.height * 0.5 * 3),
+    ]);
+    const size = getExportSize(box, 0.5, 3);
+    expect([size.width, size.height]).toEqual([image.width, image.height]);
+    expect(size.reduced).toBe(false);
+  });
+
+  it('paints no background once the canvas colour is made transparent', async () => {
+    const blob = await createDocumentPng({
+      doc: createDoc(),
+      theme: { ...theme, canvasBackground: TRANSPARENT_BACKGROUND },
+      toWidth,
+    });
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+
+    const alphaAt = (x: number, y: number) =>
+      context.getImageData(x, y, 1, 1).data[3];
+
+    expect(alphaAt(10, 10)).toBe(0);
+    // The memo still paints itself over the space the background left.
+    expect(alphaAt(EXPORT_MARGIN + 120, EXPORT_MARGIN + 100)).toBe(255);
+  });
+
   it('paints the palette it was handed rather than one it looked up', async () => {
     const repainted: Theme = { ...theme, canvasBackground: '#123456' };
 
@@ -599,5 +686,28 @@ describe('createDocumentPng', () => {
     );
 
     expect(image.at(10, 10)).toBe('#123456');
+  });
+});
+
+describe('createDocumentPreview', () => {
+  it('draws the export no longer than the side it is given, and measures the export box', async () => {
+    const box = expectedBox();
+    const preview = await createDocumentPreview({
+      doc: createDoc(),
+      theme,
+      toWidth,
+      zoomLevel: 1,
+      maxSide: 200,
+    });
+    const image = await decode(preview.blob);
+
+    expect(Math.max(image.width, image.height)).toBeLessThanOrEqual(200);
+    expect(Math.max(image.width, image.height)).toBeGreaterThanOrEqual(199);
+    expect([preview.documentWidth, preview.documentHeight]).toEqual([
+      box.width,
+      box.height,
+    ]);
+    expect(preview.zoomLevel).toBe(1);
+    expect(image.at(1, 1)).toBe(theme.canvasBackground);
   });
 });

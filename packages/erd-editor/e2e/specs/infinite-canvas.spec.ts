@@ -58,6 +58,9 @@ const memoHeight = MEMO_BOX.height + MEMO_FRAME_HEIGHT;
 /** Long enough for one export, the shared worker's first start included. */
 const EXPORT_TIMEOUT = 15_000;
 
+/** components/export-image/ExportImage.tsx — the scale the dialog opens at. */
+const EXPORT_SCALE = 2;
+
 type Box = { x: number; y: number; width: number; height: number };
 
 function expectClose(actual: number, expected: number, tolerance: number) {
@@ -717,17 +720,22 @@ test.describe('an export of a canvas with no edges', () => {
     // both memos have to stay clear of it.
     await erd.openContextMenuAt(600, 400);
     await erd.contextMenu.getByText('Export', { exact: true }).hover();
-    const png = erd.contextMenu.getByText('png', { exact: true });
-    await expect(png).toBeVisible();
-    await png.click();
+    const image = erd.contextMenu.getByText('Image…', { exact: true });
+    await expect(image).toBeVisible();
+    await image.click();
+    await erd.host
+      .getByRole('dialog', { name: 'Export image' })
+      .getByRole('button', { name: 'PNG', exact: true })
+      .click();
 
     const file = await download;
 
     // The image is the union of the two memo frames plus the margin on every
-    // side, which is a box the old export, anchored at zero, never reached.
+    // side, which is a box the old export, anchored at zero, never reached,
+    // drawn at the dialog's default scale of two pixels per scene unit.
     expect(pngSize(await file.path())).toEqual({
-      width: memoWidth - WEST + EXPORT_MARGIN * 2,
-      height: memoHeight - NORTH + EXPORT_MARGIN * 2,
+      width: (memoWidth - WEST + EXPORT_MARGIN * 2) * EXPORT_SCALE,
+      height: (memoHeight - NORTH + EXPORT_MARGIN * 2) * EXPORT_SCALE,
     });
   });
 });

@@ -42,6 +42,7 @@ import { getOriginToPlace } from '@/konva/scene/viewport';
 import {
   FindReplaceQuery,
   openAutomaticTablePlacementAction,
+  openExportImageAction,
   openFindReplaceAction,
 } from '@/utils/emitter';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
@@ -288,6 +289,14 @@ export function createScopeActions(app: AppContext): Action[] {
               createSchemaSQL(store.state),
               store.state.settings.databaseName
             );
+          },
+        },
+        {
+          icon: <Icon name="file-image" size={16} />,
+          name: 'Image…',
+          keywords: 'image png picture clipboard',
+          perform: ({ emitter }) => {
+            emitter.emit(openExportImageAction());
           },
         },
       ],

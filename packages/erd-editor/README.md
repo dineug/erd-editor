@@ -25,7 +25,8 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
 - SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
-- Export — `.erd.json`, `.sql`, `.png`
+- Export — `.erd.json`, `.sql`, and a `.png` from a dialog with a preview: transparent
+  background, light or dark, 1x to 3x, or copied to the clipboard instead
 - Force-directed visualization of table relationships
 - Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `:`,
   find and replace, undo / redo, remappable keyboard shortcuts, and a built-in theme builder

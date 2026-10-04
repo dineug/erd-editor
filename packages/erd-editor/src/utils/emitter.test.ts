@@ -11,6 +11,7 @@ import {
   mouseTrackerStartAction,
   openColorPickerAction,
   openDiffViewerAction,
+  openExportImageAction,
   openFindReplaceAction,
   openTablePropertiesAction,
   openThemeBuilderAction,
@@ -196,6 +197,10 @@ describe('action creators', () => {
     });
     expect(openFindReplaceAction()).toEqual({
       type: 'openFindReplace',
+      payload: undefined,
+    });
+    expect(openExportImageAction()).toEqual({
+      type: 'openExportImage',
       payload: undefined,
     });
     expect(openThemeBuilderAction()).toEqual({

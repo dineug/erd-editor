@@ -74,6 +74,39 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
     expect(result.reduction).toBeNull();
   });
 
+  it('hands back the box it drew and the zoom, and passes the side cap to the scene', async () => {
+    const canvas: FakeCanvas = {
+      width: 50,
+      height: 50,
+      convertToBlob: vi.fn(async () => new Blob(['offscreen'])),
+    };
+    mocks.renderDocumentScene.mockResolvedValueOnce(
+      fakeScene(canvas, { zoomLevel: 0.6 })
+    );
+
+    const result = await renderDocumentPng({
+      doc: '{}',
+      theme,
+      pixelRatio: 1,
+      zoomLevel: 0.6,
+      maxSide: 960,
+      toWidth,
+    });
+
+    expect(mocks.renderDocumentScene).toHaveBeenLastCalledWith({
+      doc: '{}',
+      theme,
+      toWidth,
+      zoomLevel: 0.6,
+      maxSide: 960,
+    });
+    expect(result).toMatchObject({
+      documentWidth: 400,
+      documentHeight: 300,
+      zoomLevel: 0.6,
+    });
+  });
+
   it('falls back to toBlob and reports the pixels lost when the canvas caps the raster', async () => {
     const canvas: FakeCanvas = {
       width: 60,

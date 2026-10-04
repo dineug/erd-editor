@@ -286,6 +286,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         [Open.findReplace]: true,
         [Open.tableProperties]: false,
         [Open.themeBuilder]: false,
+        [Open.exportImage]: false,
       })
     );
 

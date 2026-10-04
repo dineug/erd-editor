@@ -51,7 +51,8 @@ tables placed as new ones below the ones already there, in one undoable step.
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy,
   TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
 - **Visualization** — a force-directed view of how the tables actually relate
-- **Export** — `.erd.json`, `.sql`, `.png`
+- **Export** — `.erd.json`, `.sql`, and a `.png` from a dialog with a preview: transparent
+  background, light or dark, 1x to 3x
 - **Quick search** over commands, and over tables, columns, comments and memos after `#`, `@` or
   `:`, **find and replace** across names, comments and memos, **time travel** through this
   session's edit history, and **undo / redo**

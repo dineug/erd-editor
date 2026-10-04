@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { copyToClipboard } from '@/utils/clipboard';
+import { copyImageToClipboard, copyToClipboard } from '@/utils/clipboard';
 
 const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(
   navigator,
   'clipboard'
 );
 const originalExecCommand = (document as any).execCommand;
+const originalClipboardItem = Reflect.get(globalThis, 'ClipboardItem');
+
+/** Records what it was built with, which is all a write hands the clipboard. */
+class FakeClipboardItem {
+  constructor(public items: Record<string, Promise<Blob>>) {}
+}
 
 function setClipboard(value: any) {
   Object.defineProperty(navigator, 'clipboard', {
@@ -35,6 +41,12 @@ afterEach(() => {
   }
 
   document.body.innerHTML = '';
+
+  if (originalClipboardItem === undefined) {
+    Reflect.deleteProperty(globalThis, 'ClipboardItem');
+  } else {
+    Reflect.set(globalThis, 'ClipboardItem', originalClipboardItem);
+  }
 });
 
 describe('copyToClipboard', () => {
@@ -141,5 +153,80 @@ describe('copyToClipboard', () => {
     });
 
     await expect(copyToClipboard('boom')).rejects.toBe(error);
+  });
+});
+
+describe('copyImageToClipboard', () => {
+  const png = () => new Blob(['png'], { type: 'image/png' });
+
+  it('writes one png item holding the image still to come, in the same call', async () => {
+    Reflect.set(globalThis, 'ClipboardItem', FakeClipboardItem);
+    const write = vi.fn().mockResolvedValue(undefined);
+    setClipboard({ write });
+    let resolve!: (blob: Blob) => void;
+    const pending = new Promise<Blob>(res => {
+      resolve = res;
+    });
+
+    const copied = copyImageToClipboard(() => pending);
+
+    // Written before the image exists, which is what keeps the click's activation.
+    expect(write).toHaveBeenCalledTimes(1);
+    const [[item]] = write.mock.calls[0];
+    expect(item).toBeInstanceOf(FakeClipboardItem);
+    expect(Object.keys(item.items)).toEqual(['image/png']);
+    expect(item.items['image/png']).toBe(pending);
+
+    resolve(png());
+    await expect(copied).resolves.toBeUndefined();
+  });
+
+  it('refuses without drawing on a host that has no ClipboardItem', async () => {
+    Reflect.deleteProperty(globalThis, 'ClipboardItem');
+    setClipboard({ write: vi.fn() });
+    const createPng = vi.fn(async () => png());
+
+    await expect(copyImageToClipboard(createPng)).rejects.toThrow(
+      'puts no image on the clipboard'
+    );
+    expect(createPng).not.toHaveBeenCalled();
+  });
+
+  it('refuses without drawing on a host whose clipboard cannot write items', async () => {
+    Reflect.set(globalThis, 'ClipboardItem', FakeClipboardItem);
+    setClipboard({ writeText: vi.fn() });
+    const createPng = vi.fn(async () => png());
+
+    await expect(copyImageToClipboard(createPng)).rejects.toThrow(
+      'puts no image on the clipboard'
+    );
+    expect(createPng).not.toHaveBeenCalled();
+  });
+
+  it('passes on the refusal of a clipboard that denies the write', async () => {
+    Reflect.set(globalThis, 'ClipboardItem', FakeClipboardItem);
+    const denied = new Error('NotAllowedError');
+    setClipboard({ write: vi.fn().mockRejectedValue(denied) });
+
+    await expect(copyImageToClipboard(async () => png())).rejects.toBe(denied);
+  });
+
+  it('refuses when the item will not take a png, leaving the drawing unreported', async () => {
+    const refused = new Error('image/png is not supported');
+    Reflect.set(
+      globalThis,
+      'ClipboardItem',
+      class {
+        constructor() {
+          throw refused;
+        }
+      }
+    );
+    setClipboard({ write: vi.fn() });
+    const failing = Promise.reject(new Error('no canvas'));
+
+    await expect(copyImageToClipboard(() => failing)).rejects.toBe(refused);
+    // The drawing's own rejection was caught, or the run would report it unhandled.
+    await expect(failing).rejects.toThrow('no canvas');
   });
 });

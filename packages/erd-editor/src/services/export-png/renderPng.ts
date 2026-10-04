@@ -19,12 +19,22 @@ export type RenderPngRequest = {
   pixelRatio: number;
   /** The zoom to draw at; the document's own when the caller names none. */
   zoomLevel?: number;
+  /**
+   * The longest side the drawn box may take, in pixels, for an image that only
+   * previews an export. Left out, the box is drawn at the zoom asked for.
+   */
+  maxSide?: number;
 };
 
 export type RenderPngResult = {
   blob: Blob;
   width: number;
   height: number;
+  /** The box the image holds, in scene units, margin included. */
+  documentWidth: number;
+  documentHeight: number;
+  /** The zoom the box was asked to be drawn at, which the scene read once loaded. */
+  zoomLevel: number;
   /**
    * Null when the box kept every pixel it was written with. A realm that drew
    * the image is the only one that knows this, so it is carried back rather
@@ -62,9 +72,16 @@ export async function renderDocumentPng({
   theme,
   pixelRatio,
   zoomLevel,
+  maxSide,
   toWidth,
 }: RenderPngRequest & { toWidth: ToWidth }): Promise<RenderPngResult> {
-  const scene = await renderDocumentScene({ doc, theme, toWidth, zoomLevel });
+  const scene = await renderDocumentScene({
+    doc,
+    theme,
+    toWidth,
+    zoomLevel,
+    maxSide,
+  });
 
   try {
     // A stage rasterises at its own box times the ratio, so the ratio is fitted
@@ -91,6 +108,9 @@ export async function renderDocumentPng({
       blob,
       width,
       height,
+      documentWidth: scene.box.width,
+      documentHeight: scene.box.height,
+      zoomLevel: scene.zoomLevel,
       reduction:
         drawn < asked
           ? {

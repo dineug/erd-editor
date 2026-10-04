@@ -10,6 +10,7 @@ import {
   EXPORT_MARGIN,
   getExportRect,
   getExportScale,
+  getExportSize,
 } from '@/services/export-png/exportBox';
 import {
   CANVAS_AREA_MAX,
@@ -184,5 +185,54 @@ describe('getExportScale', () => {
 
   it('keeps a box with no area at one image pixel per scene unit', () => {
     expect(getExportScale({ x: 0, y: 0, width: 0, height: 0 })).toBe(1);
+  });
+});
+
+describe('getExportSize', () => {
+  it('is the box times the zoom times the scale for a box a canvas can hold', () => {
+    expect(getExportSize({ width: 2_160, height: 1_080 }, 1, 2)).toEqual({
+      width: 4_320,
+      height: 2_160,
+      askedWidth: 4_320,
+      askedHeight: 2_160,
+      reduced: false,
+    });
+    expect(getExportSize({ width: 2_160, height: 2_160 }, 0.4, 3)).toEqual({
+      width: 2_592,
+      height: 2_592,
+      askedWidth: 2_592,
+      askedHeight: 2_592,
+      reduced: false,
+    });
+  });
+
+  it('truncates a fractional side the way a canvas does', () => {
+    const size = getExportSize({ width: 100.9, height: 50.5 }, 1, 1);
+
+    expect([size.width, size.height]).toEqual([100, 50]);
+  });
+
+  it('says a scale cut by the area ceiling is reduced, and what was asked', () => {
+    const size = getExportSize({ width: 10_000, height: 10_000 }, 1, 2);
+
+    expect(size.reduced).toBe(true);
+    expect([size.askedWidth, size.askedHeight]).toEqual([20_000, 20_000]);
+    expect(size.width).toBe(Math.floor(Math.sqrt(CANVAS_AREA_MAX)));
+    expect(size.width * size.height).toBeLessThanOrEqual(CANVAS_AREA_MAX);
+  });
+
+  it('says a zoom cut by the side ceiling is reduced', () => {
+    const size = getExportSize({ width: 400_000, height: 360 }, 1, 1);
+
+    expect(size.reduced).toBe(true);
+    expect(size.width).toBeLessThanOrEqual(CANVAS_SIDE_MAX);
+  });
+
+  it('reads a zoom of zero or less as no zoom at all', () => {
+    expect(getExportSize({ width: 300, height: 200 }, 0, 2)).toMatchObject({
+      width: 600,
+      height: 400,
+      reduced: false,
+    });
   });
 });

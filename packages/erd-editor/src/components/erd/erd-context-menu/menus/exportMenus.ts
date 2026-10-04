@@ -1,18 +1,9 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { html } from '@dineug/r-html';
 
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
-import Toast from '@/components/primitives/toast/Toast';
-import { openToastWhileRunning } from '@/components/toast-container/openToastWhileRunning';
-import type { ResolutionReduction } from '@/services/export-png';
-import type { Theme } from '@/themes/tokens';
-import { openToastAction } from '@/utils/emitter';
-import {
-  exportJSON,
-  exportPNG,
-  exportSchemaSQL,
-} from '@/utils/file/exportFile';
+import { openExportImageAction } from '@/utils/emitter';
+import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import { createSchemaSQL } from '@/utils/schema-sql';
 
 type Menu = {
@@ -21,96 +12,11 @@ type Menu = {
   onClick: () => void;
 };
 
-/**
- * Says what was lost and why, because a png smaller than the document it came
- * from otherwise looks like the editor drew the wrong thing. The document box
- * is scene units around whatever was drawn, so it is rounded to be read.
- */
-function describeReduction({
-  documentWidth,
-  documentHeight,
-  width,
-  height,
-}: ResolutionReduction) {
-  const box = `${Math.round(documentWidth)}x${Math.round(documentHeight)}`;
-
-  return `The document is ${box}, past what a browser canvas can hold, so the PNG is ${width}x${height}`;
-}
-
-/**
- * Draws the document, saying so while it draws and reporting afterwards. The
- * two messages are sequenced rather than stacked, so what became of the file
- * replaces the message about making it instead of landing under it.
- */
-async function exportDocumentPng(
-  { store, emitter, toWidth }: AppContext,
-  theme: Theme,
-  databaseName: string
-) {
-  let reduction: ResolutionReduction | null = null;
-
-  const outcome = exportPNG(
-    {
-      doc: toJson(store.state),
-      theme,
-      toWidth,
-      // The live zoom rather than the document's, which is 1 for an author who
-      // asked for the zoom not to be saved.
-      zoomLevel: store.state.settings.zoomLevel,
-      // Held, not shown: the file does not exist yet, and this message belongs
-      // after the one saying the editor is still drawing it.
-      onResolutionReduced: value => {
-        reduction = value;
-      },
-    },
-    databaseName
-  ).then(
-    () => null,
-    (error: unknown) => ({ error })
-  );
-
-  await openToastWhileRunning(
-    emitter,
-    outcome,
-    html`<${Toast} busy=${true} description=${'Exporting PNG…'} />`
-  );
-
-  const failure = await outcome;
-
-  if (failure) {
-    console.error(
-      '[export-png] the document could not be exported',
-      failure.error
-    );
-    emitter.emit(
-      openToastAction({
-        message: html`<${Toast}
-          title=${"Couldn't export the PNG"}
-          description=${'See the browser console for the error'}
-        />`,
-      })
-    );
-    return;
-  }
-
-  if (reduction) {
-    emitter.emit(
-      openToastAction({
-        message: html`<${Toast}
-          title=${'Exported at a reduced resolution'}
-          description=${describeReduction(reduction)}
-        />`,
-      })
-    );
-  }
-}
-
 export function createExportMenus(
   app: AppContext,
-  onClose: () => void,
-  theme: Theme
+  onClose: () => void
 ): Menu[] {
-  const { store } = app;
+  const { store, emitter } = app;
   const databaseName = store.state.settings.databaseName;
 
   return [
@@ -132,10 +38,10 @@ export function createExportMenus(
     },
     {
       icon: 'file-image',
-      name: 'png',
+      name: 'Image…',
       onClick: () => {
         onClose();
-        exportDocumentPng(app, theme, databaseName);
+        emitter.emit(openExportImageAction());
       },
     },
   ];
