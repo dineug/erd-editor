@@ -31,6 +31,10 @@ import {
 
 const ACTION_SUPPORT = referentialActionSupport(Database.MSSQL);
 
+// The schema the export assumes where a table's name gives none, the default
+// schema of the database owner and of a user created without one.
+const DEFAULT_SCHEMA = 'dbo';
+
 export function createSchema(state: RootState): string {
   const {
     doc: { tableIds, relationshipIds, indexIds },
@@ -179,17 +183,32 @@ function formatColumn(
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }
 
+/**
+ * The schema and the table an extended property names at levels 0 and 1. An
+ * unquoted name splits at each dot, the last part the table and the one before
+ * it the schema, a database part dropped; a quoted one is one table in dbo.
+ */
+function toLevelNames(name: string, bracket: string): [string, string] {
+  const parts = bracket ? [name] : name.split('.');
+  const table = parts[parts.length - 1];
+  const schema = parts[parts.length - 2] || DEFAULT_SCHEMA;
+
+  return [schema, table];
+}
+
 function formatComment(
-  { collections }: RootState,
+  { settings: { bracketType }, collections }: RootState,
   { table, buffer }: FormatCommentOptions
 ) {
-  const tableName = toStringLiteral(table.name);
+  const [schemaName, tableName] = toLevelNames(
+    table.name,
+    getBracket(bracketType)
+  );
+  const level = `'schema', ${toStringLiteral(schemaName)}, 'table', ${toStringLiteral(tableName)}`;
 
   if (table.comment.trim() !== '') {
     buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
-    buffer.push(
-      `  ${toStringLiteral(table.comment)}, 'user', dbo, 'table', ${tableName}\nGO`
-    );
+    buffer.push(`  ${toStringLiteral(table.comment)}, ${level}\nGO`);
     buffer.push('');
   }
   query(collections)
@@ -199,7 +218,7 @@ function formatComment(
       if (column.comment.trim() !== '') {
         buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
         buffer.push(
-          `  ${toStringLiteral(column.comment)}, 'user', dbo, 'table', ${tableName}, 'column', ${toStringLiteral(column.name)}\nGO`
+          `  ${toStringLiteral(column.comment)}, ${level}, 'column', ${toStringLiteral(column.name)}\nGO`
         );
         buffer.push('');
       }

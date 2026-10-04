@@ -331,7 +331,7 @@ describe('schemaSQLParser', () => {
   // the comments, and the ALTER read on until the next statement it knew.
   it('ends an ALTER TABLE, a CREATE TABLE or a COMMENT ON at the call', () => {
     const comment =
-      "EXECUTE sys.sp_addextendedproperty 'MS_Description', 'c', 'user', dbo, 'table', 'a'\nGO\n";
+      "EXECUTE sys.sp_addextendedproperty 'MS_Description', 'c', 'schema', 'dbo', 'table', 'a'\nGO\n";
     const ast = schemaSQLParser(
       'CREATE TABLE a (id INT)\nGO\n' +
         comment +

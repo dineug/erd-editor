@@ -2418,25 +2418,57 @@ CREATE TABLE \`refs\` (
       }
     );
 
-    // With no quotes CREATE TABLE dbo.users reads back as users, while the
-    // comment calls name the table dbo.users whole; quoted, both keep it.
-    it.each<[string, number, string]>([
-      ['no quotes', BracketType.none, 'users'],
-      ['double quotes', BracketType.doubleQuote, 'dbo.users'],
+    // With no quotes CREATE TABLE sales.users reads back as users, and the
+    // comment calls name schema sales and table users; quoted, both keep the
+    // whole name, one table in dbo.
+    it.each<[string, number, string, string]>([
+      [
+        'no quotes',
+        BracketType.none,
+        'users',
+        "'schema', 'sales', 'table', 'users'",
+      ],
+      [
+        'double quotes',
+        BracketType.doubleQuote,
+        'sales.users',
+        "'schema', 'dbo', 'table', 'sales.users'",
+      ],
     ])(
       'keeps the comments of a MSSQL export of a dotted table name with %s',
-      (_, bracketType, name) => {
+      (_, bracketType, name, level) => {
         const state = commentedState();
         state.settings.bracketType = bracketType;
-        state.collections.tableEntities['tbl-users'].name = 'dbo.users';
+        state.collections.tableEntities['tbl-users'].name = 'sales.users';
 
-        const schema = parse(createSchemaSQL(state, Database.MSSQL));
+        const sql = createSchemaSQL(state, Database.MSSQL);
+        const schema = parse(sql);
         const users = tableByName(schema, name);
 
+        expect(sql).toContain(`'user table', ${level}\n`);
+        expect(sql).toContain(`'user id', ${level}, 'column', 'id'\n`);
         expect(users.comment).toBe('user table');
         expect(columnByName(schema, users, 'id').comment).toBe('user id');
       }
     );
+
+    // A file can name an unquoted table dbo.users whole at level 1, beside a
+    // CREATE TABLE dbo.users that reads back as users: its last part matches.
+    it('keeps the comments a script writes on an unquoted dotted table name whole', () => {
+      const schema = parse(
+        'CREATE TABLE dbo.users (id INT)\nGO\n' +
+          "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+          "  'user table', 'user', dbo, 'table', 'dbo.users'\nGO\n" +
+          "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+          "  'user id', 'user', dbo, 'table', 'dbo.users', 'column', 'id'\nGO\n",
+        undefined,
+        Database.MSSQL
+      );
+      const users = tableByName(schema, 'users');
+
+      expect(users.comment).toBe('user table');
+      expect(columnByName(schema, users, 'id').comment).toBe('user id');
+    });
 
     it('keeps the columns of a SQLite export, whose comments are plain -- lines', () => {
       const schema = parse(createSchemaSQL(commentedState(), Database.SQLite));
@@ -2545,7 +2577,9 @@ CREATE TABLE \`refs\` (
       const schema = parse(sql, undefined, Database.MSSQL);
       const users = tableByName(schema, 'users');
 
-      expect(sql).toContain("'it''s mail', 'user', dbo, 'table', 'users'");
+      expect(sql).toContain(
+        "'it''s mail', 'schema', 'dbo', 'table', 'users', 'column', 'email'"
+      );
       expect(commentsOf(schema)).toEqual([
         'post table',
         'author',

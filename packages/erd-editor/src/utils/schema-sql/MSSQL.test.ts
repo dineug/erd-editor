@@ -171,15 +171,15 @@ describe('MSSQL createSchema', () => {
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'user table', 'user', dbo, 'table', 'users'",
+        "  'user table', 'schema', 'dbo', 'table', 'users'",
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'user id', 'user', dbo, 'table', 'users', 'column', 'id'",
+        "  'user id', 'schema', 'dbo', 'table', 'users', 'column', 'id'",
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'email address', 'user', dbo, 'table', 'users', 'column', 'email'",
+        "  'email address', 'schema', 'dbo', 'table', 'users', 'column', 'email'",
         'GO',
         '',
         'ALTER TABLE posts',
@@ -308,10 +308,78 @@ describe('MSSQL createSchema', () => {
     const sql = createSchema(state);
 
     expect(sql).toContain(
-      "  'user''s table', 'user', dbo, 'table', 'o''users'\nGO"
+      "  'user''s table', 'schema', 'dbo', 'table', 'o''users'\nGO"
     );
     expect(sql).toContain(
-      "  'it''s the id', 'user', dbo, 'table', 'o''users', 'column', 'user''s id'\nGO"
+      "  'it''s the id', 'schema', 'dbo', 'table', 'o''users', 'column', 'user''s id'\nGO"
+    );
+  });
+
+  // SQL Server refuses a property on a table named sales.users in schema dbo
+  // when its unquoted CREATE TABLE put a table users in schema sales.
+  it('names the schema of an unquoted dotted table name at level 0 and the table at level 1', () => {
+    const { state, users } = createFixture();
+    users.name = 'sales.users';
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('CREATE TABLE sales.users\n');
+    expect(sql).toContain(
+      "  'user table', 'schema', 'sales', 'table', 'users'\nGO"
+    );
+    expect(sql).toContain(
+      "  'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
+    );
+  });
+
+  it('takes the last two parts of a longer unquoted name, and dbo for an empty schema', () => {
+    const { state, users } = createFixture();
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    users.name = 'shop.sales.users';
+    expect(createSchema(state)).toContain(
+      "  'user table', 'schema', 'sales', 'table', 'users'\nGO"
+    );
+
+    users.name = 'shop..users';
+    expect(createSchema(state)).toContain(
+      "  'user table', 'schema', 'dbo', 'table', 'users'\nGO"
+    );
+  });
+
+  it('keeps a quoted dotted table name whole, in the dbo schema its CREATE TABLE puts it in', () => {
+    const { state, users } = createFixture();
+    state.settings.bracketType = BracketType.doubleQuote;
+    users.name = 'sales.users';
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('CREATE TABLE "sales.users"\n');
+    expect(sql).toContain(
+      "  'user table', 'schema', 'dbo', 'table', 'sales.users'\nGO"
+    );
+    expect(sql).toContain(
+      "  'user id', 'schema', 'dbo', 'table', 'sales.users', 'column', 'id'\nGO"
+    );
+  });
+
+  it('doubles the quotes of a schema it splits from the table name', () => {
+    const { state, users } = createFixture();
+    users.name = "o'sales.o'users";
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    expect(createSchema(state)).toContain(
+      "  'user table', 'schema', 'o''sales', 'table', 'o''users'\nGO"
     );
   });
 });

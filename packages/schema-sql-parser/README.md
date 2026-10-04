@@ -857,7 +857,7 @@ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'user table' ,
   @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'users'
 GO
 EXECUTE sys.sp_addextendedproperty 'MS_Description',
-  'user id', 'user', dbo, 'table', 'users', 'column', 'id'
+  'user id', 'schema', 'dbo', 'table', 'users', 'column', 'id'
 GO
 ```
 
