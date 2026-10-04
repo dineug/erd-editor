@@ -8,6 +8,7 @@ import { bHas } from '@/utils/bit';
 import {
   autoName,
   FormatColumnOptions,
+  formatDefault,
   FormatIndexOptions,
   formatNames,
   formatReferentialActions,
@@ -218,7 +219,9 @@ function formatColumn(
     !bHas(column.options, ColumnOption.autoIncrement) &&
     column.default.trim() !== ''
   ) {
-    stringBuffer.push(`DEFAULT ${column.default}`);
+    stringBuffer.push(
+      `DEFAULT ${formatDefault(column.default, Database.SQLite)}`
+    );
   }
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }

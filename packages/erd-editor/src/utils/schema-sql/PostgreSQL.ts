@@ -9,6 +9,7 @@ import {
   autoName,
   FormatColumnOptions,
   FormatCommentOptions,
+  formatDefault,
   FormatIndexOptions,
   formatNames,
   formatReferentialActions,
@@ -140,7 +141,9 @@ function formatColumn(
     stringBuffer.push(`GENERATED ALWAYS AS IDENTITY`);
   } else {
     if (column.default.trim() !== '') {
-      stringBuffer.push(`DEFAULT ${column.default}`);
+      stringBuffer.push(
+        `DEFAULT ${formatDefault(column.default, Database.PostgreSQL)}`
+      );
     }
   }
   if (bHas(column.options, ColumnOption.unique)) {

@@ -1240,6 +1240,13 @@ describe('requote', () => {
     ).toEqual(["'it''s'", '"a""b"', '`c``d`']);
   });
 
+  it('writes a literal back behind its prefix', () => {
+    expect(
+      tokenizer("N'it''s' _utf8mb4'a' [b]").map(token => requote(token))
+    ).toEqual(["N'it''s'", "_utf8mb4'a'", '[b]']);
+    expect(requote(tokenizer("X'ff'")[0], 'Databricks')).toBe("X'ff'");
+  });
+
   it('escapes the quote and backslash of a Databricks literal instead', () => {
     const tokens = tokenizer(
       "'it\\'s' 'a\\\\b' \"a\"\"b\" `c``d`",

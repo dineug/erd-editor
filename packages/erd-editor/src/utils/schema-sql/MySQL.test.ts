@@ -170,6 +170,24 @@ describe('schema-sql/MySQL', () => {
       expect(buffer[5]).toBe('  PRIMARY KEY (`id`)');
     });
 
+    it('wraps a DEFAULT expression in the parentheses MySQL needs', () => {
+      const { state, users } = createFixture();
+      const columns = state.collections.tableColumnEntities;
+      columns['col-name'].default = 'uuid()';
+      columns['col-age'].default =
+        'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table: users });
+
+      expect(buffer[3]).toBe(
+        "  name VARCHAR(50) NOT NULL DEFAULT (uuid()) COMMENT 'user name',"
+      );
+      expect(buffer[4]).toBe(
+        '  age  INT         NULL     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,'
+      );
+    });
+
     it('prefers AUTO_INCREMENT over a DEFAULT value on the same column', () => {
       const { state, users } = createFixture();
       state.collections.tableColumnEntities['col-id'].default = '1';

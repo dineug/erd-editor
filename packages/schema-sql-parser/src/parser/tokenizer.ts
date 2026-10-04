@@ -10,6 +10,9 @@ export type Token = {
   // identifier such as key is never read back as the KEY keyword, and a
   // quoted ENUM value can be written back inside the quotes it had.
   quoted?: Quote;
+  // What a single-quoted literal is written behind, kept so it goes back on:
+  // N'x', E'x', B'0', X'ff', U&'x', MySQL's _utf8mb4'x'.
+  prefix?: string;
 };
 
 export const TokenType = {
@@ -88,6 +91,10 @@ const readSparkEscape = (rest: string): [string, number] => {
   return [SparkEscapes[rest[0]] ?? rest[0], 1];
 };
 
+// The words that make the single-quoted literal right after them another kind
+// of string: national, escape, bit, hex, Unicode or charset introduced.
+const LITERAL_PREFIX = /^(?:[nebx]|u&|_[a-z\d]+)$/i;
+
 const createEqual = (type: string) => (char: string) => type === char;
 const createTest = (regexp: RegExp) => (char: string) => regexp.test(char);
 
@@ -142,7 +149,7 @@ export function tokenizer(source: string, database?: DatabaseVendor): Token[] {
   // A doubled quote inside a quoted token is one quote of its value, the way
   // SQL escapes it: 'it''s'. Not inside brackets, where ]] also ends a nested
   // array literal, ARRAY[[1, 2]].
-  const readQuoted = (quote: Quote) => {
+  const readQuoted = (quote: Quote, prefix?: string) => {
     const close = quote === '[' ? ']' : quote;
     let value = '';
     pos++;
@@ -168,7 +175,12 @@ export function tokenizer(source: string, database?: DatabaseVendor): Token[] {
       pos++;
     }
 
-    tokens.push({ type: TokenType.string, value, quoted: quote });
+    tokens.push({
+      type: TokenType.string,
+      value,
+      quoted: quote,
+      ...(prefix ? { prefix } : {}),
+    });
     pos++;
   };
 
@@ -280,13 +292,18 @@ export function tokenizer(source: string, database?: DatabaseVendor): Token[] {
         !match.breakString(char) &&
         // A comment needs no whitespace in front of it: INT-- pk.
         !(match.dash(char) && match.dash(source[pos + 1])) &&
-        !(match.slash(char) && match.asterisk(source[pos + 1]))
+        !(match.slash(char) && match.asterisk(source[pos + 1])) &&
+        !(match.singleQuote(char) && LITERAL_PREFIX.test(value))
       ) {
         value += char;
         char = source[++pos];
       }
 
-      tokens.push({ type: TokenType.string, value });
+      if (match.singleQuote(char)) {
+        readQuoted("'", value);
+      } else {
+        tokens.push({ type: TokenType.string, value });
+      }
       continue;
     }
 

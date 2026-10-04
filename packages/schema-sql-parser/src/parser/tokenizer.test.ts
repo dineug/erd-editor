@@ -252,6 +252,53 @@ describe('tokenizer', () => {
     });
   });
 
+  describe('a prefixed single quote literal', () => {
+    const literal = (value: string, prefix: string) => ({
+      type: TokenType.string,
+      value,
+      quoted: "'",
+      prefix,
+    });
+
+    it('reads the literal behind its prefix as one token that keeps it', () => {
+      expect(tokenizer("N'a,b' E'a  b' n'(none)'")).toEqual([
+        literal('a,b', 'N'),
+        literal('a  b', 'E'),
+        literal('(none)', 'n'),
+      ]);
+    });
+
+    it('reads every prefix a vendor writes', () => {
+      expect(
+        tokenizer("B'01' x'ff' U&'d' _utf8mb4'a' _latin1'b'").map(
+          token => token.prefix
+        )
+      ).toEqual(['B', 'x', 'U&', '_utf8mb4', '_latin1']);
+    });
+
+    it('reads a doubled quote inside it as one quote', () => {
+      expect(tokenizer("N'it''s', b")).toEqual([
+        literal("it's", 'N'),
+        { type: TokenType.comma, value: ',' },
+        { type: TokenType.string, value: 'b' },
+      ]);
+    });
+
+    it('reads it by the Spark rules for Databricks', () => {
+      expect(tokenizer(String.raw`X'a\'b'`, 'Databricks')).toEqual([
+        literal("a'b", 'X'),
+      ]);
+    });
+
+    it('keeps the quote in a word that is no prefix', () => {
+      expect(tokenizer("it's ON'x' _'y'")).toEqual([
+        { type: TokenType.string, value: "it's" },
+        { type: TokenType.string, value: "ON'x'" },
+        { type: TokenType.string, value: "_'y'" },
+      ]);
+    });
+  });
+
   // Spark reads every backslash in a single-quoted literal as an escape, so a
   // Databricks document is read by its rules rather than by the guess above.
   describe('a Databricks single quote literal', () => {
@@ -453,8 +500,10 @@ describe('tokenizer', () => {
       expect(pairs(tokenizer("a'b'"))).toEqual([['string', "a'b'"]]);
     });
 
-    it('keeps a typed literal prefix attached to its literal', () => {
-      expect(pairs(tokenizer("N'hello'"))).toEqual([['string', "N'hello'"]]);
+    it('reads a typed literal prefix into the token of its literal', () => {
+      expect(tokenizer("N'hello'")).toEqual([
+        { type: TokenType.string, value: 'hello', quoted: "'", prefix: 'N' },
+      ]);
     });
 
     it('splits a MySQL table option written without whitespace', () => {
