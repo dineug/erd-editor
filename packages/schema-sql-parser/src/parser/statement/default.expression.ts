@@ -52,6 +52,7 @@ const ExpressionWords: ReadonlyArray<string> = [
 // leaves them out, since it also decides where a column's type stands.
 const VendorColumnWords: ReadonlyArray<string> = [
   'COLUMN_FORMAT',
+  'INDEX',
   'MASK',
   'ROWGUIDCOL',
   'SPARSE',
@@ -69,7 +70,8 @@ const word = (token: Token | undefined) =>
 
 /**
  * How many tokens the DEFAULT expression at pos spans: up to the next column
- * keyword, comma or closing paren at depth 0, or to a semicolon at any depth.
+ * keyword, comma, closing paren or unpaired closing bracket at depth 0, or to
+ * a semicolon at any depth.
  */
 export const matchDefaultExpression = (tokens: Token[]) => {
   const isComma = isCommaToken(tokens);
@@ -87,8 +89,8 @@ export const matchDefaultExpression = (tokens: Token[]) => {
       : word(tokens[pos]) === 'TIME' && word(tokens[pos + 1]) === 'ZONE';
 
   // FOR ends a default, except in the sequence call NEXT VALUE FOR s that SQL
-  // Server and MariaDB take as one, and WITH, except in a cast to a type WITH
-  // [LOCAL] TIME ZONE; TAG ends one only before its list, as Snowflake's.
+  // Server and MariaDB take as one, and so do WITH and WITHOUT, except before
+  // the [LOCAL] TIME ZONE of a cast; TAG ends one only before its list.
   const endsAt = (pos: number) => {
     const keyword = word(tokens[pos]);
 
@@ -98,7 +100,9 @@ export const matchDefaultExpression = (tokens: Token[]) => {
       );
     }
 
-    if (keyword === 'WITH') return !isTimeZone(pos + 1);
+    if (keyword === 'WITH' || keyword === 'WITHOUT') {
+      return !isTimeZone(pos + 1);
+    }
     if (keyword === 'TAG') return isLeftParent(pos + 1);
 
     return (
@@ -109,15 +113,22 @@ export const matchDefaultExpression = (tokens: Token[]) => {
     );
   };
 
+  // CASE opens a level its END closes, as a paren does, so the keywords inside
+  // it end nothing: CASE WHEN x IS NULL THEN 0 END, and END::text too.
+  const isCase = (pos: number) => word(tokens[pos]) === 'CASE';
+  const isEnd = (pos: number) => /^END(?:::|$)/.test(word(tokens[pos]));
+
   return (pos: number) => {
     let depth = 0;
     let cursor = pos;
 
     for (; cursor < tokens.length && !isSemicolon(cursor); cursor++) {
-      if (isLeftParent(cursor)) {
+      if (isLeftParent(cursor) || isCase(cursor)) {
         depth++;
       } else if (isRightParent(cursor)) {
         if (depth === 0) break;
+        depth--;
+      } else if (depth > 0 && isEnd(cursor)) {
         depth--;
       } else if (depth > 0) {
         continue;

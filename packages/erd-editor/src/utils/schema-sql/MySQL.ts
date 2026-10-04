@@ -174,7 +174,7 @@ function formatColumn(
   } else {
     if (column.default.trim() !== '') {
       stringBuffer.push(
-        `DEFAULT ${formatDefault(column.default, Database.MySQL)}`
+        `DEFAULT ${formatDefault(column.default, Database.MySQL, column.dataType)}`
       );
     }
   }

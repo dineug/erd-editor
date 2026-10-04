@@ -478,6 +478,69 @@ describe('createTableParser - column options', () => {
     ]);
   });
 
+  it('reads a literal glued to the operator before it, as SQL Server stores one', () => {
+    const { ast } = parse(
+      "CREATE TABLE [dbo].[U]([Label] [nvarchar](40) NULL DEFAULT (N'a'+N' (b)'), [Id] [int] NOT NULL)"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'Label',
+        dataType: 'nvarchar(40)',
+        default: "N'a' + N' (b)'",
+      }),
+      column({ name: 'Id', dataType: 'int', nullable: false }),
+    ]);
+  });
+
+  it('ends a DEFAULT at the column options MariaDB and SQL Server write after it', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a int DEFAULT NULL WITHOUT SYSTEM VERSIONING,\n' +
+        ' b int DEFAULT 5 WITHOUT SYSTEM VERSIONING,\n' +
+        ' c int NOT NULL DEFAULT 0 INDEX ix_c,\n' +
+        ' d timestamp DEFAULT now()::timestamp without time zone,\n' +
+        ' e int\n' +
+        ') WITH SYSTEM VERSIONING;'
+    );
+
+    expect(ast.columns.map(column => [column.name, column.default])).toEqual([
+      ['a', 'NULL'],
+      ['b', '5'],
+      ['c', '0'],
+      ['d', 'now()::timestamp without time zone'],
+      ['e', ''],
+    ]);
+  });
+
+  it('reads a bare CASE default up to its END', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a text DEFAULT CASE WHEN (x IS NULL) THEN 'a' ELSE NULL END NOT NULL, b int);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: 'text',
+        default: "CASE WHEN(x IS NULL) THEN 'a' ELSE NULL END",
+        nullable: false,
+      }),
+      column({ name: 'b', dataType: 'int' }),
+    ]);
+  });
+
+  it('reads a prefixed COMMENT as its text alone', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a int COMMENT N'hello world', b int COMMENT _utf8mb4'x') COMMENT=_utf8mb4'tbl';"
+    );
+
+    expect(ast.comment).toBe('tbl');
+    expect(ast.columns.map(column => column.comment)).toEqual([
+      'hello world',
+      'x',
+    ]);
+  });
+
   it('reads the expression after the ON NULL of an Oracle DEFAULT', () => {
     const { ast } = parse(
       'CREATE TABLE t (\n' +

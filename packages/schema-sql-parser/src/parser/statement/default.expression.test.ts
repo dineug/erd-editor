@@ -71,6 +71,34 @@ describe('defaultExpressionParser - where it ends', () => {
       'x::timestamp with local time zone',
       'NOT',
     ],
+    ['NULL WITHOUT SYSTEM VERSIONING', 'NULL', 'WITHOUT'],
+    [
+      'now()::timestamp without time zone NOT NULL',
+      'now()::timestamp without time zone',
+      'NOT',
+    ],
+    ['0 INDEX ix_a NONCLUSTERED', '0', 'INDEX'],
+    [
+      "CASE WHEN x IS NULL THEN 'a' ELSE NULL END NOT NULL",
+      "CASE WHEN x IS NULL THEN 'a' ELSE NULL END",
+      'NOT',
+    ],
+    [
+      'CASE WHEN a THEN CASE WHEN b IS NULL THEN 1 END ELSE NULL END, c',
+      'CASE WHEN a THEN CASE WHEN b IS NULL THEN 1 END ELSE NULL END',
+      ',',
+    ],
+    [
+      "(CASE WHEN x IS NULL THEN 'a' END) NOT NULL",
+      "CASE WHEN x IS NULL THEN 'a' END",
+      'NOT',
+    ],
+    [
+      'CASE WHEN x IS NULL THEN \'a\' END::text COLLATE "C"',
+      "CASE WHEN x IS NULL THEN 'a' END::text",
+      'COLLATE',
+    ],
+    ['0 + end NOT NULL', '0 + end', 'NOT'],
   ])('reads %s up to what ends it', (source, value, stop) => {
     expect(parse(source)).toMatchObject({ value, stop });
   });
@@ -140,6 +168,10 @@ describe('defaultExpressionParser - spacing', () => {
     ['ARRAY[CURRENT_DATE]', 'ARRAY[CURRENT_DATE]'],
     ["'{}'::text []", "'{}'"],
     ['(ARRAY[1, 2])[1]', '(ARRAY[1, 2])[1]'],
+    ["(N'a'+N'b')", "N'a' + N'b'"],
+    ["('a'+'b')", "'a' + 'b'"],
+    ["([First]+N' ')+[Last]", "([First] + N' ') + [Last]"],
+    ["'a'||'b'", "'a' || 'b'"],
   ])('writes %s back as %s', (source, value) => {
     expect(read(source)).toBe(value);
   });

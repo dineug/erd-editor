@@ -1793,6 +1793,7 @@ GO
     ratio numeric(3,2) DEFAULT 0.5,
     picked boolean DEFAULT ('x'::text = ANY (ARRAY['a'::text, 'x'::text])),
     level integer DEFAULT CASE WHEN (1 >= 0) THEN 1 ELSE 0 END,
+    fallback text DEFAULT CASE WHEN (now() IS NULL) THEN 'a'::text ELSE NULL::text END NOT NULL,
     flag bit(1) DEFAULT B'0'::"bit",
     placed_at timestamp with time zone DEFAULT ('now'::text)::timestamp with time zone NOT NULL
 );`,
@@ -1804,6 +1805,8 @@ GO
           ratio: '0.5',
           picked: "'x'::text = ANY(ARRAY['a'::text, 'x'::text])",
           level: 'CASE WHEN(1 >= 0) THEN 1 ELSE 0 END',
+          fallback:
+            "CASE WHEN(now() IS NULL) THEN 'a'::text ELSE NULL::text END",
           flag: "B'0'",
           placed_at: "('now'::text)::timestamp with time zone",
         },
@@ -1813,19 +1816,21 @@ GO
           'DEFAULT ARRAY[]::text[]',
           "DEFAULT ('x'::text = ANY(ARRAY['a'::text, 'x'::text]))",
           'DEFAULT CASE WHEN(1 >= 0) THEN 1 ELSE 0 END',
+          "DEFAULT CASE WHEN(now() IS NULL) THEN 'a'::text ELSE NULL::text END",
           "DEFAULT B'0'",
           "DEFAULT ('now'::text)::timestamp with time zone",
         ],
       ],
       [
-        'SSMS',
+        'SQL Server',
         Database.MSSQL,
         `CREATE TABLE [dbo].[Users](
 	[Id] [uniqueidentifier] NOT NULL DEFAULT (newid()),
 	[Active] [bit] NOT NULL DEFAULT ((0)),
 	[Created] [datetime2](7) NOT NULL DEFAULT (getdate()),
 	[Label] [nvarchar](20) NULL DEFAULT (N'(none)'),
-	[Next] [int] NULL DEFAULT (NEXT VALUE FOR [dbo].[seq])
+	[Next] [int] NULL DEFAULT (NEXT VALUE FOR [dbo].[seq]),
+	[Title] [nvarchar](40) NULL DEFAULT (N'a'+N' (b)')
 ) ON [PRIMARY]
 GO`,
         {
@@ -1834,6 +1839,7 @@ GO`,
           Created: 'getdate()',
           Label: "N'(none)'",
           Next: 'NEXT VALUE FOR [dbo].[seq]',
+          Title: "N'a' + N' (b)'",
         },
         [
           'DEFAULT newid()',
@@ -1841,6 +1847,7 @@ GO`,
           'DEFAULT getdate()',
           "DEFAULT N'(none)'",
           'DEFAULT NEXT VALUE FOR [dbo].[seq]',
+          "DEFAULT N'a' + N' (b)'",
         ],
       ],
       [
@@ -1852,7 +1859,10 @@ GO`,
   \`expires_at\` datetime DEFAULT ((now() + interval 1 day)),
   \`price\` decimal(5,2) NOT NULL DEFAULT '4.99',
   \`label\` varchar(20) DEFAULT (concat(_utf8mb4'a',_utf8mb4'b')),
-  \`flag\` bit(1) DEFAULT b'0'
+  \`flag\` bit(1) DEFAULT b'0',
+  \`notes\` text DEFAULT (_utf8mb4''),
+  \`meta\` json DEFAULT (_utf8mb4'{}'),
+  \`seen_on\` date DEFAULT (now())
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
         {
           id: 'uuid_to_bin(uuid())',
@@ -1861,6 +1871,9 @@ GO`,
           price: "'4.99'",
           label: "concat(_utf8mb4'a', _utf8mb4'b')",
           flag: "b'0'",
+          notes: "_utf8mb4''",
+          meta: "_utf8mb4'{}'",
+          seen_on: 'now()',
         },
         [
           'DEFAULT (uuid_to_bin(uuid()))',
@@ -1868,6 +1881,9 @@ GO`,
           'DEFAULT (now() + interval 1 day)',
           "DEFAULT (concat(_utf8mb4'a', _utf8mb4'b'))",
           "DEFAULT b'0'",
+          "DEFAULT (_utf8mb4'')",
+          "DEFAULT (_utf8mb4'{}')",
+          'DEFAULT (now())',
         ],
       ],
       [
@@ -1875,13 +1891,19 @@ GO`,
         Database.MariaDB,
         `CREATE TABLE \`events\` (
   \`id\` uuid NOT NULL DEFAULT uuid(),
-  \`expires_at\` datetime DEFAULT (current_timestamp() + interval 1 day)
-);`,
+  \`expires_at\` datetime DEFAULT (current_timestamp() + interval 1 day),
+  \`note\` int(11) DEFAULT NULL WITHOUT SYSTEM VERSIONING
+) WITH SYSTEM VERSIONING;`,
         {
           id: 'uuid()',
           expires_at: 'current_timestamp() + interval 1 day',
+          note: 'NULL',
         },
-        ['DEFAULT uuid()', 'DEFAULT (current_timestamp() + interval 1 day)'],
+        [
+          'DEFAULT uuid()',
+          'DEFAULT (current_timestamp() + interval 1 day)',
+          'DEFAULT NULL',
+        ],
       ],
       [
         'SQLite',
@@ -1908,7 +1930,7 @@ GO`,
         ],
       ],
     ])(
-      'keeps the defaults %s wrote through its export',
+      'keeps the defaults of %s DDL through its export',
       (_, database, sql, defaults, snippets) => {
         const imported = parse(sql, undefined, database);
         const exported = createSchemaSQL(stateOf(imported), database);

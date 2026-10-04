@@ -265,8 +265,8 @@ describe('schema-sql/utils', () => {
   });
 
   describe('formatDefault', () => {
-    const bare = (database: number, values: string[]) =>
-      values.map(value => formatDefault(value, database));
+    const bare = (database: number, values: string[], dataType?: string) =>
+      values.map(value => formatDefault(value, database, dataType));
     const wrapped = (values: string[]) => values.map(value => `(${value})`);
 
     it('keeps what MySQL takes bare and wraps any other expression', () => {
@@ -303,8 +303,54 @@ describe('schema-sql/utils', () => {
         "concat('a', 'b')",
       ];
 
-      expect(bare(Database.MySQL, literals)).toEqual(literals);
-      expect(bare(Database.MySQL, expressions)).toEqual(wrapped(expressions));
+      expect(bare(Database.MySQL, literals, 'DATETIME')).toEqual(literals);
+      expect(bare(Database.MySQL, expressions, 'DATETIME')).toEqual(
+        wrapped(expressions)
+      );
+    });
+
+    it('wraps any MySQL default but NULL on a type that reads one only in parentheses', () => {
+      const types = [
+        'TEXT',
+        'tinytext',
+        'MEDIUMBLOB',
+        'longtext',
+        'json',
+        'GEOMETRY',
+        'point',
+        'MultiPolygon',
+        'geomcollection',
+      ];
+      const values = ["''", "_utf8mb4'{}'", '0x00', '0', 'CURRENT_TIMESTAMP'];
+
+      for (const dataType of types) {
+        expect(bare(Database.MySQL, values, dataType)).toEqual(wrapped(values));
+        expect(formatDefault('NULL', Database.MySQL, dataType)).toBe('NULL');
+      }
+      expect(bare(Database.MySQL, values, ' VARCHAR(20) ')).toEqual([
+        "''",
+        "_utf8mb4'{}'",
+        '0x00',
+        '0',
+        '(CURRENT_TIMESTAMP)',
+      ]);
+    });
+
+    it('keeps the current time bare for MySQL only on a TIMESTAMP or DATETIME column', () => {
+      const times = ['now()', 'CURRENT_TIMESTAMP(3)', 'localtime'];
+
+      expect(bare(Database.MySQL, times, 'timestamp')).toEqual(times);
+      expect(bare(Database.MySQL, times, 'datetime(3)')).toEqual(times);
+      expect(bare(Database.MySQL, times, 'date')).toEqual(wrapped(times));
+      expect(bare(Database.MySQL, times, 'INT')).toEqual(wrapped(times));
+      expect(bare(Database.MySQL, times)).toEqual(wrapped(times));
+      expect(
+        formatDefault(
+          'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+          Database.MySQL,
+          'INT'
+        )
+      ).toBe('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
     });
 
     it('keeps the calls and names MariaDB takes bare and wraps an operator', () => {

@@ -298,9 +298,8 @@ function isCall(text: string): boolean {
 
 const NUMBER = String.raw`[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?`;
 
-// What MySQL takes after DEFAULT without parentheses: a literal, or the
-// current time for a TIMESTAMP or DATETIME column, which may carry an ON
-// UPDATE written into the default by hand.
+// What MySQL may take after DEFAULT without parentheses: a literal or the
+// current time, which may carry an ON UPDATE written into the default by hand.
 const MYSQL_BARE = new RegExp(
   '^(?:' +
     [
@@ -315,9 +314,32 @@ const MYSQL_BARE = new RegExp(
       'null|true|false',
       String.raw`(?:current_timestamp|now|localtime|localtimestamp)(?:\s*\(\s*\d*\s*\))?`,
     ].join('|') +
-    String.raw`)(?:\s+on\s+update\s.*)?$`,
+    String.raw`)(\s+on\s+update\s.*)?$`,
   'is'
 );
+
+// The types whose default MySQL reads only in parentheses, a literal's too.
+const MYSQL_EXPRESSION_TYPE =
+  /^(?:(?:tiny|medium|long)?(?:blob|text)|json|geometry|geom(?:etry)?collection|(?:multi)?(?:point|linestring|polygon))\b/i;
+
+const MYSQL_CURRENT_TIME =
+  /^(?:current_timestamp|now|localtime|localtimestamp)\b/i;
+
+// MySQL takes a literal bare but on the types above, NULL whatever the type,
+// and the current time only on a TIMESTAMP or DATETIME column, or with an ON
+// UPDATE written by hand.
+function takesBareMySQL(text: string, dataType: string): boolean {
+  const bare = MYSQL_BARE.exec(text);
+
+  if (!bare) return false;
+  if (bare[1] || /^null$/i.test(text)) return true;
+  if (MYSQL_EXPRESSION_TYPE.test(dataType)) return false;
+
+  return (
+    !MYSQL_CURRENT_TIME.test(text) ||
+    /^(?:timestamp|datetime)\b/i.test(dataType)
+  );
+}
 
 // What SQLite takes after DEFAULT without parentheses: a signed number, a
 // string or blob literal, or one name, CURRENT_TIMESTAMP and NULL among them.
@@ -359,11 +381,13 @@ const POSTGRESQL_EXPRESSION_WORDS: ReadonlyArray<string> = [
   'SOME',
 ];
 
-const TAKES_BARE: Record<number, (text: string) => boolean> = {
+type TakesBare = (text: string, dataType: string) => boolean;
+
+const TAKES_BARE: Record<number, TakesBare> = {
   // MariaDB also takes a function call and a name bare, but no operator.
   [Database.MariaDB]: text =>
     MYSQL_BARE.test(text) || isCall(text) || /^[a-z_][\w$]*$/i.test(text),
-  [Database.MySQL]: text => MYSQL_BARE.test(text),
+  [Database.MySQL]: takesBareMySQL,
   [Database.PostgreSQL]: text =>
     !topLevelWords(text).some(word =>
       POSTGRESQL_EXPRESSION_WORDS.includes(word)
@@ -375,9 +399,15 @@ const TAKES_BARE: Record<number, (text: string) => boolean> = {
  * A column default as the DDL of a database writes it after DEFAULT: in
  * parentheses where its grammar reads that expression only inside them.
  */
-export function formatDefault(value: string, database: number): string {
+export function formatDefault(
+  value: string,
+  database: number,
+  dataType = ''
+): string {
   const text = value.trim();
   const takesBare = TAKES_BARE[database];
 
-  return !takesBare || isWrapped(text) || takesBare(text) ? value : `(${text})`;
+  return !takesBare || isWrapped(text) || takesBare(text, dataType.trim())
+    ? value
+    : `(${text})`;
 }

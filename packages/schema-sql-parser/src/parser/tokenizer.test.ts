@@ -297,6 +297,48 @@ describe('tokenizer', () => {
         { type: TokenType.string, value: "_'y'" },
       ]);
     });
+
+    it('reads a literal glued to an operator apart from it', () => {
+      const plain = (value: string) => ({ type: TokenType.string, value });
+      const quoted = (value: string) => ({
+        type: TokenType.string,
+        value,
+        quoted: "'",
+      });
+
+      expect(tokenizer("'a'+N' (b)'")).toEqual([
+        quoted('a'),
+        plain('+'),
+        literal(' (b)', 'N'),
+      ]);
+      expect(tokenizer("'a'+'b' 'c'||'d'")).toEqual([
+        quoted('a'),
+        plain('+'),
+        quoted('b'),
+        quoted('c'),
+        plain('||'),
+        quoted('d'),
+      ]);
+      expect(tokenizer("data->>'a b' x#>>'{c}'")).toEqual([
+        plain('data'),
+        plain('->>'),
+        quoted('a b'),
+        plain('x'),
+        plain('#>>'),
+        quoted('{c}'),
+      ]);
+      expect(tokenizer("a+_utf8mb4' x' 1-b'1' ::text||'e'")).toEqual([
+        plain('a'),
+        plain('+'),
+        literal(' x', '_utf8mb4'),
+        plain('1'),
+        plain('-'),
+        literal('1', 'b'),
+        plain('::text'),
+        plain('||'),
+        quoted('e'),
+      ]);
+    });
   });
 
   // Spark reads every backslash in a single-quoted literal as an escape, so a
