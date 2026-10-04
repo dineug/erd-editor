@@ -24,17 +24,20 @@ const toTypeKey = (dataType: string) => dataType.trim().toLowerCase();
  * Tells a serial type, serial or one of PostgreSQL's own, by its whole name
  * without case once trimmed, whatever the database; serial(4) is none.
  */
-export const isSerialType = (dataType: string) => {
+export function isSerialType(dataType: string): boolean {
   const key = toTypeKey(dataType);
   return key === SERIAL || POSTGRESQL_SERIALS.has(key);
-};
+}
 
 /**
  * The data type a foreign key takes from its key: the integer a serial key
  * stores, in capitals when the key's type is written in capitals, and any other
  * type as it is, a bare serial kept where the database has none.
  */
-export function toReferenceDataType(dataType: string, database: number) {
+export function toReferenceDataType(
+  dataType: string,
+  database: number
+): string {
   const key = toTypeKey(dataType);
   const reference =
     key === SERIAL

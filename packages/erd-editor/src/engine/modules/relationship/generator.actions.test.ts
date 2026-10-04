@@ -630,30 +630,20 @@ describe('addRelationshipAction$ through a real store', () => {
     const [post, comment] = relationshipsOf(rxStore).map(
       ({ end }) => end.columnIds[0]
     );
+    const dataTypes = () =>
+      ['c1', post, comment].map(id => columnOf(rxStore, id).dataType);
 
     rxStore.dispatchSync(
       changeColumnDataTypeAction$({ id: 'c1', tableId: 't1', value: 'serial' })
     );
 
-    expect(
-      [
-        columnOf(rxStore, 'c1'),
-        columnOf(rxStore, post),
-        columnOf(rxStore, comment),
-      ].map(({ dataType }) => dataType)
-    ).toEqual(['serial', 'integer', 'integer']);
+    expect(dataTypes()).toEqual(['serial', 'integer', 'integer']);
 
     rxStore.dispatchSync(
       changeColumnDataTypeAction$({ id: post, tableId: 't2', value: 'bigint' })
     );
 
-    expect(
-      [
-        columnOf(rxStore, 'c1'),
-        columnOf(rxStore, post),
-        columnOf(rxStore, comment),
-      ].map(({ dataType }) => dataType)
-    ).toEqual(['serial', 'bigint', 'integer']);
+    expect(dataTypes()).toEqual(['serial', 'bigint', 'integer']);
   });
 
   it('numbers a kept key name on a second relationship and a self reference', () => {

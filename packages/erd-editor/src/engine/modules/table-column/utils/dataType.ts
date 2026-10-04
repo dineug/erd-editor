@@ -32,6 +32,7 @@ export function getDataTypeSyncColumns(
     if (payloads.some(({ id }) => id === targetId)) continue;
 
     payloads.push(target);
+    const foreignKeyValue = toReferenceDataType(value, database);
 
     for (const { start, end } of relationships) {
       const startIndex = start.columnIds.indexOf(targetId);
@@ -40,11 +41,7 @@ export function getDataTypeSyncColumns(
         const id = end.columnIds[startIndex];
         if (id === undefined) continue;
 
-        stack.push({
-          id,
-          tableId: end.tableId,
-          value: toReferenceDataType(value, database),
-        });
+        stack.push({ id, tableId: end.tableId, value: foreignKeyValue });
         continue;
       }
 

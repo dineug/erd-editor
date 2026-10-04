@@ -450,7 +450,7 @@ describe('toForeignKeyActions', () => {
       [makeColumn({ id: 'c1', tableId: 't1', name: 'id' })],
       't1',
       ['f1'],
-      { startTableName: '', endColumnNames: ['id'], database: Database.MySQL }
+      { ...unnamed, endColumnNames: ['id'] }
     );
 
     expect(actions[2]).toEqual(
