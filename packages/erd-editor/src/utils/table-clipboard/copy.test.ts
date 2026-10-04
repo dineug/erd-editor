@@ -988,6 +988,123 @@ describe('AC-40d — the generated text/html never yields a memo derived column'
   });
 });
 
+/**
+ * A column whose every field holds a character HTML reads as markup. Written
+ * unescaped, a tag a value holds parses as an element and drops out of its
+ * cell text, and the entity typed in its comment comes back decoded.
+ */
+function createMarkupFixture() {
+  const column = createColumn({
+    id: 'column-markup',
+    tableId: 'table-1',
+    name: '<label>',
+    dataType: 'enum("<", "&")',
+    default: `'R&D' "x"`,
+    comment: 'shown as <b>bold</b>, &amp; as typed',
+    options: ColumnOption.notNull,
+  });
+  const table = createTable({
+    id: 'table-1',
+    name: 'markup',
+    columnIds: ['column-markup'],
+  });
+
+  return { table, column };
+}
+
+const MARKUP_ROW =
+  '<tr>' +
+  '<td data-type="columnName">&lt;label&gt;</td>' +
+  '<td data-type="columnDataType">enum(&quot;&lt;&quot;, &quot;&amp;&quot;)</td>' +
+  '<td data-type="columnNotNull">NOT NULL</td>' +
+  '<td data-type="columnUnique">FALSE</td>' +
+  '<td data-type="columnAutoIncrement">FALSE</td>' +
+  '<td data-type="columnDefault">&#39;R&amp;D&#39; &quot;x&quot;</td>' +
+  '<td data-type="columnComment">shown as &lt;b&gt;bold&lt;/b&gt;, &amp;amp; as typed</td>' +
+  '</tr>';
+
+describe('a cell value holding markup', () => {
+  const columnCopyState = () => {
+    const { table, column } = createMarkupFixture();
+    return createState({
+      tables: [table],
+      columns: [column],
+      focusTable: { tableId: 'table-1', selectColumnIds: ['column-markup'] },
+    });
+  };
+
+  const tableCopyState = () => {
+    const { table, column } = createMarkupFixture();
+    return createState({
+      tables: [table],
+      columns: [column],
+      selectedMap: { 'table-1': SelectType.table },
+    });
+  };
+
+  const expectMarkupColumn = (columns: Column[]) => {
+    const { column } = createMarkupFixture();
+
+    expect(columns).toHaveLength(1);
+    expect(columns[0]).toMatchObject({
+      name: column.name,
+      dataType: column.dataType,
+      default: column.default,
+      comment: column.comment,
+      options: column.options,
+    });
+  };
+
+  it('is escaped in the html of a column copy', () => {
+    expect(tableCopyToHtml(columnCopyState())).toBe(
+      `<table><tbody>${MARKUP_ROW}</tbody></table>`
+    );
+  });
+
+  it('is escaped in the visible table of a table copy', () => {
+    const state = tableCopyState();
+    const payload = entitiesCopyToPayload(state)!;
+
+    expect(entitiesToHtmlTable(payload, state.settings)).toBe(
+      `<table><tbody>${MARKUP_ROW}</tbody></table>`
+    );
+  });
+
+  it('pastes back as typed from the html of a column copy', () => {
+    const state = columnCopyState();
+
+    expectMarkupColumn(
+      tablePasteFromHtmlToColumns(state, tableCopyToHtml(state))
+    );
+  });
+
+  it('pastes back as typed from the visible table of a table copy', () => {
+    const state = tableCopyState();
+    const payload = entitiesCopyToPayload(state)!;
+
+    expectMarkupColumn(
+      tablePasteFromHtmlToColumns(
+        state,
+        entitiesToHtmlTable(payload, state.settings)
+      )
+    );
+  });
+
+  it('leaves text/plain as typed', () => {
+    expect(tableCopyToText(columnCopyState())).toBe(
+      [
+        '<label>',
+        'enum("<", "&")',
+        'NOT NULL',
+        'FALSE',
+        'FALSE',
+        `'R&D' "x"`,
+        'shown as <b>bold</b>, &amp; as typed',
+      ].join('\t')
+    );
+  });
+});
+
 const usersToPosts = () =>
   createRelationship({
     id: 'relationship-1',
