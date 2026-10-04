@@ -60,6 +60,9 @@ const MEMO_CORNER_RADIUS = 6;
 /** The height of the colour bar across the memo header. */
 const MEMO_HEADER_COLOR_HEIGHT = 4;
 
+/** The button a mouse event reports for a right press. */
+const RIGHT_BUTTON = 2;
+
 export type MemoProps = {
   memo: Memo;
   /** A drawn copy rather than the memo itself, so nothing in it takes an id. */
@@ -114,7 +117,8 @@ const Memo: FC<MemoProps> = (props, ctx) => {
    * body is scrolled, which is where it was folded, so the mapping holds anywhere.
    */
   const handleEditValue = (event: SceneMouseEvent) => {
-    if (props.preview) return;
+    // Konva clicks on every button, and a right one opens the memo menu alone.
+    if (props.preview || event.evt.button === RIGHT_BUTTON) return;
 
     const { store } = app.value;
     const { memo } = props;

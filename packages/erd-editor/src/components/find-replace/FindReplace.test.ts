@@ -1558,9 +1558,20 @@ describe('FindReplace keyboard isolation', () => {
       { key: 'ƒ', code: 'KeyF', altKey: true },
       { key: 'Backspace', code: 'Backspace', altKey: true },
       { key: 'Backspace', code: 'Backspace', ctrlKey: true },
+      { key: 'Backspace', code: 'Backspace' },
+      { key: 'Delete', code: 'Delete' },
     ]) {
       await keydown(findInput(), init);
     }
+
+    expect(escaped).toEqual([]);
+  });
+
+  it('keeps a bare Delete pressed on one of its buttons off the matched table', async () => {
+    await keydown(button('find-replace-all'), {
+      key: 'Delete',
+      code: 'Delete',
+    });
 
     expect(escaped).toEqual([]);
   });
@@ -1598,7 +1609,7 @@ describe('FindReplace keyboard isolation', () => {
       { key: 'w', code: 'KeyW', metaKey: true },
       { key: 'F5', code: 'F5' },
       { key: 'a', code: 'KeyA' },
-      { key: 'Backspace', code: 'Backspace' },
+      { key: 'Home', code: 'Home' },
     ];
     for (const init of presses) {
       await keydown(findInput(), init);
@@ -1612,7 +1623,7 @@ describe('FindReplace keyboard isolation', () => {
       'KeyW',
       'F5',
       'KeyA',
-      'Backspace',
+      'Home',
       'KeyS',
     ]);
     expect(escaped.every(event => !event.defaultPrevented)).toBe(true);

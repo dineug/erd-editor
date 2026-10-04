@@ -118,6 +118,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     contextMenuType: ErdContextMenuType.ERD as ErdContextMenuType,
     relationshipId: '' as string | undefined,
     tableId: '' as string | undefined,
+    columnId: '' as string | undefined,
+    memoId: '' as string | undefined,
     colorPickerShow: false,
     colorPickerX: 0,
     colorPickerY: 0,
@@ -166,7 +168,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     if (hit?.kind === 'table') {
       state.tableId = hit.id;
+      state.columnId = hit.columnId;
       state.contextMenuType = ErdContextMenuType.table;
+    } else if (hit?.kind === 'memo') {
+      state.memoId = hit.id;
+      state.contextMenuType = ErdContextMenuType.memo;
     } else if (hit?.kind === 'relationship') {
       state.relationshipId = hit.id;
       state.contextMenuType = ErdContextMenuType.relationship;
@@ -524,6 +530,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             type={state.contextMenuType}
             relationshipId={state.relationshipId}
             tableId={state.tableId}
+            columnId={state.columnId}
+            memoId={state.memoId}
             onClose={handleContextmenuClose}
           />
         ) : null}

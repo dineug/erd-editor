@@ -6,14 +6,16 @@ import {
   focusColumnAction,
   focusMoveTableAction,
   focusTableAction,
+  selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType, MoveKey } from '@/engine/modules/editor/state';
+import { FocusType, MoveKey, SelectType } from '@/engine/modules/editor/state';
 import {
   arrowDown,
   arrowLeft,
   arrowRight,
   arrowUp,
   getFocusedColumnIds,
+  getRemovableColumns,
   getRemoveFirstColumnId,
   isColumns,
   isLastColumn,
@@ -21,7 +23,10 @@ import {
   isLastTable,
   isTableFocusType,
 } from '@/engine/modules/editor/utils/focus';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeShowAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -313,6 +318,60 @@ describe('getFocusedColumnIds', () => {
     getFocus(store).selectColumnIds = ['c1'];
 
     expect(getFocusedColumnIds(store.state)).toEqual([]);
+  });
+});
+
+describe('getRemovableColumns', () => {
+  /** Two selected columns of the focused table, which is selected alone. */
+  function createSelection() {
+    const store = createTestStore(['c1', 'c2', 'c3']);
+    store.dispatchSync(selectAction({ [TABLE_ID]: SelectType.table }));
+    focusColumn(store, 'c3', FocusType.columnName);
+    focusColumn(store, 'c1', FocusType.columnName, { $mod: true });
+    return store;
+  }
+
+  it('is the selected columns while their table is the whole selection', () => {
+    const store = createSelection();
+    const removable = getRemovableColumns(store.state);
+
+    expect(removable).toEqual({ tableId: TABLE_ID, columnIds: ['c3', 'c1'] });
+    expect(removable?.columnIds).not.toBe(getFocus(store).selectColumnIds);
+  });
+
+  it('is null while no table is focused or no column selected', () => {
+    const store = createTestStore(['c1']);
+    store.dispatchSync(selectAction({ [TABLE_ID]: SelectType.table }));
+    expect(getRemovableColumns(store.state)).toBeNull();
+
+    focusTable(store, FocusType.tableName);
+    expect(getRemovableColumns(store.state)).toBeNull();
+  });
+
+  it('is null once a memo or another table is selected beside it', () => {
+    const store = createSelection();
+    store.dispatchSync(selectAction({ memo: SelectType.memo }));
+    expect(getRemovableColumns(store.state)).toBeNull();
+
+    const other = createSelection();
+    other.dispatchSync(selectAction({ 'table-2': SelectType.table }));
+    expect(getRemovableColumns(other.state)).toBeNull();
+  });
+
+  it('is null while the selection is another table than the focused one', () => {
+    const store = createSelection();
+    store.state.editor.selectedMap = { 'table-2': SelectType.table };
+
+    expect(getRemovableColumns(store.state)).toBeNull();
+  });
+
+  it('is null at a zoom that draws tables by their names alone', () => {
+    const store = createSelection();
+    store.dispatchSync(changeZoomLevelAction({ value: 0.7 }));
+    expect(getRemovableColumns(store.state)).toBeNull();
+
+    store.dispatchSync(changeZoomLevelAction({ value: 0.71 }));
+    expect(getRemovableColumns(store.state)?.columnIds).toEqual(['c3', 'c1']);
   });
 });
 

@@ -15,6 +15,7 @@ export const Shortcut = {
   addMemo: 'Alt+KeyM',
   removeTable: 'ControlOrMeta+Backspace',
   removeColumn: 'Alt+Backspace',
+  removeSelection: 'Delete',
   primaryKey: 'Alt+KeyK',
   selectAllTable: 'ControlOrMeta+Alt+KeyA',
   /** The second binding of the same command, and the one a caret owns first. */

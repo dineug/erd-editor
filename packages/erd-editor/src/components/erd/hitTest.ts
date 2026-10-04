@@ -7,6 +7,8 @@ export type SceneEntityKind = 'table' | 'memo' | 'relationship';
 export type SceneHit = {
   kind: SceneEntityKind;
   id: string;
+  /** The column whose row a press inside a table landed on, absent off the rows. */
+  columnId?: string;
 };
 
 /**
@@ -18,6 +20,11 @@ const ENTITY_KINDS: readonly string[] = ['table', 'memo', 'relationship'];
 
 const isEntityKind = (kind: unknown): kind is SceneEntityKind =>
   typeof kind === 'string' && ENTITY_KINDS.includes(kind);
+
+/** The label a column row carries, whose konva id is its column id behind a prefix. */
+const COLUMN_ROW_KIND = 'column-row';
+
+const COLUMN_ROW_ID_PREFIX = 'column-';
 
 /**
  * The stage mounted into a container element, or null while none is. Konva
@@ -123,12 +130,23 @@ function entityId(node: KonvaNode, kind: SceneEntityKind): string {
  */
 function entityUnder(target: KonvaNode | null): SceneHit | null {
   let node: KonvaNode | null = target;
+  let columnId = '';
 
   while (node) {
     const kind = node.getAttr('kind');
 
+    if (
+      kind === COLUMN_ROW_KIND &&
+      node.id().startsWith(COLUMN_ROW_ID_PREFIX)
+    ) {
+      columnId = node.id().slice(COLUMN_ROW_ID_PREFIX.length);
+    }
+
     if (isEntityKind(kind)) {
-      return { kind, id: entityId(node, kind) };
+      const id = entityId(node, kind);
+      return kind === 'table' && columnId
+        ? { kind, id, columnId }
+        : { kind, id };
     }
 
     node = node.getParent();

@@ -65,6 +65,10 @@ const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
         shortcuts: keyBindingMap.removeColumn,
       },
       {
+        command: 'Delete Selection',
+        shortcuts: keyBindingMap.removeSelection,
+      },
+      {
         command: 'Primary Key',
         shortcuts: keyBindingMap.primaryKey,
       },

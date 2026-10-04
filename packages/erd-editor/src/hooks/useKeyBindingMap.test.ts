@@ -167,6 +167,55 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('reads a bare Delete and Backspace as removing the selection, prevented and left to bubble', () => {
+    const onKeydown = vi.fn();
+    mounted!.container.addEventListener('keydown', onKeydown);
+
+    const presses = [
+      press({ key: 'Delete', code: 'Delete' }),
+      press({ key: 'Backspace', code: 'Backspace' }),
+    ];
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.removeSelection,
+      KeyBindingName.removeSelection,
+    ]);
+    expect(presses.every(event => event.defaultPrevented)).toBe(true);
+    expect(onKeydown).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['input', 'textarea'])(
+    'leaves Delete and Backspace to a caret in a %s, which erases a character',
+    tagName => {
+      const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+      const field = document.createElement(tagName);
+      $root.append(field);
+
+      const presses = [
+        keydown({ key: 'Delete', code: 'Delete' }),
+        keydown({ key: 'Backspace', code: 'Backspace' }),
+      ];
+      presses.forEach(event => field.dispatchEvent(event));
+
+      expect(shortcuts).toHaveLength(0);
+      expect(presses.some(event => event.defaultPrevented)).toBe(false);
+    }
+  );
+
+  it('takes Backspace from a focused toolbar button too, where no caret erases anything', () => {
+    const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+    const button = document.createElement('button');
+    $root.append(button);
+
+    const event = keydown({ key: 'Backspace', code: 'Backspace' });
+    button.dispatchEvent(event);
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.removeSelection,
+    ]);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it('takes $mod+KeyF on the ERD tab from a caret too, so no browser find opens over the editor', () => {
     expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
     const $root = mounted!.container.querySelector('.root') as HTMLDivElement;

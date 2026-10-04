@@ -7,16 +7,31 @@ import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
+import { GeneratorAction } from '@/engine/generator.actions';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
-import { getFocusedColumnIds } from '@/engine/modules/editor/utils/focus';
+import { removeSelectedAction$ } from '@/engine/modules/editor/generator.actions';
+import { SelectType } from '@/engine/modules/editor/state';
+import {
+  getFocusedColumnIds,
+  getRemovableColumns,
+} from '@/engine/modules/editor/utils/focus';
 import {
   focusCentersOf,
   focusFlowTableAction$,
 } from '@/engine/modules/editor/view.generator.actions';
-import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
+import {
+  addMemoAction$,
+  removeMemoAction$,
+} from '@/engine/modules/memo/generator.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { addTableAction$ } from '@/engine/modules/table/generator.actions';
-import { changeColumnsPrimaryKeyAction$ } from '@/engine/modules/table-column/generator.actions';
+import {
+  addTableAction$,
+  removeTableAction$,
+} from '@/engine/modules/table/generator.actions';
+import {
+  changeColumnsPrimaryKeyAction$,
+  removeColumnAction$,
+} from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { ValuesType } from '@/internal-types';
 import {
@@ -42,6 +57,7 @@ import { createTablePlacementMenus } from './menus/tablePlacementMenus';
 export const ErdContextMenuType = {
   ERD: 'ERD',
   table: 'table',
+  memo: 'memo',
   relationship: 'relationship',
 } as const;
 export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
@@ -58,8 +74,23 @@ export type ErdContextMenuProps = {
   type: ErdContextMenuType;
   relationshipId?: string;
   tableId?: string;
+  /** The column whose row the press that raised a table menu landed on. */
+  columnId?: string;
+  memoId?: string;
   onClose: () => void;
 };
+
+/** What the table menu's Delete reads and what it dispatches when picked. */
+type Removal = {
+  name: string;
+  action: () => GeneratorAction;
+};
+
+/** Whether the table a menu was raised over is one of two or more selected. */
+const isOneOfSelection = (
+  selectedMap: Record<string, SelectType>,
+  id: string
+) => Boolean(selectedMap[id]) && Object.keys(selectedMap).length > 1;
 
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -138,23 +169,76 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  const openColorPicker = (event: MouseEvent, color: string) => {
+    const { emitter } = app.value;
+    emitter.emit(
+      openColorPickerAction({ x: event.clientX, y: event.clientY, color })
+    );
+    props.onClose();
+  };
+
   const handleOpenColorPicker = (event: MouseEvent) => {
     if (!props.tableId) return;
 
-    const { store, emitter } = app.value;
-    const { collections } = store.state;
-    const table = query(collections)
+    const { store } = app.value;
+    const table = query(store.state.collections)
       .collection('tableEntities')
       .selectById(props.tableId);
     if (!table) return;
 
-    emitter.emit(
-      openColorPickerAction({
-        x: event.clientX,
-        y: event.clientY,
-        color: table.ui.color,
-      })
-    );
+    openColorPicker(event, table.ui.color);
+  };
+
+  const handleOpenMemoColorPicker = (event: MouseEvent) => {
+    if (!props.memoId) return;
+
+    const { store } = app.value;
+    const memo = query(store.state.collections)
+      .collection('memoEntities')
+      .selectById(props.memoId);
+    if (!memo) return;
+
+    openColorPicker(event, memo.ui.color);
+  };
+
+  /**
+   * What Delete reaches from the table the menu was raised over: the selected
+   * columns the key would remove when raised over one of them, else the
+   * selection the table is one of, or the table alone.
+   */
+  const getTableRemoval = (tableId: string): Removal => {
+    const { state } = app.value.store;
+    const columns = getRemovableColumns(state);
+
+    if (
+      columns?.tableId === tableId &&
+      props.columnId &&
+      columns.columnIds.includes(props.columnId)
+    ) {
+      return {
+        name: 'Delete columns',
+        action: () => removeColumnAction$(tableId, columns.columnIds),
+      };
+    }
+
+    return isOneOfSelection(state.editor.selectedMap, tableId)
+      ? { name: 'Delete selected', action: removeSelectedAction$ }
+      : { name: 'Delete', action: () => removeTableAction$(tableId) };
+  };
+
+  const handleRemoveTable = () => {
+    if (!props.tableId) return;
+
+    const { store } = app.value;
+    store.dispatch(getTableRemoval(props.tableId).action());
+    props.onClose();
+  };
+
+  const handleRemoveMemo = () => {
+    if (!props.memoId) return;
+
+    const { store } = app.value;
+    store.dispatch(removeMemoAction$(props.memoId));
     props.onClose();
   };
 
@@ -163,7 +247,10 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
 
     addUnsubscribe(
       shortcut$.subscribe(({ type }) => {
-        type === KeyBindingName.stop && props.onClose();
+        // The key a Delete row names takes away what the menu was raised over.
+        (type === KeyBindingName.stop ||
+          type === KeyBindingName.removeSelection) &&
+          props.onClose();
       })
     );
   });
@@ -174,6 +261,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
       Boolean(props.tableId) &&
       focusCentersOf(store.state.editor.selectedMap, props.tableId).length > 1;
     const keysSelection = getFocusedColumnIds(store.state).length > 1;
+    const removeShortcut = keyBindingMap.removeSelection[0]?.shortcut;
 
     return (
       <ContextMenu.Root
@@ -232,6 +320,40 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   <ContextMenu.Menu
                     icon={<Icon name="palette" size={14} />}
                     name="Color"
+                  />
+                }
+              />
+              <ContextMenu.Item
+                onClick={handleRemoveTable}
+                children={
+                  <ContextMenu.Menu
+                    name={
+                      props.tableId
+                        ? getTableRemoval(props.tableId).name
+                        : 'Delete'
+                    }
+                    right={<Kbd shortcut={removeShortcut} />}
+                  />
+                }
+              />
+            </>
+          ) : props.type === ErdContextMenuType.memo ? (
+            <>
+              <ContextMenu.Item
+                onClick={handleOpenMemoColorPicker}
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="palette" size={14} />}
+                    name="Color"
+                  />
+                }
+              />
+              <ContextMenu.Item
+                onClick={handleRemoveMemo}
+                children={
+                  <ContextMenu.Menu
+                    name="Delete"
+                    right={<Kbd shortcut={removeShortcut} />}
                   />
                 }
               />

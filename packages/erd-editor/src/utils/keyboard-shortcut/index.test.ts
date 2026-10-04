@@ -29,11 +29,26 @@ describe('keyboard-shortcut', () => {
       }
     });
 
-    it('lists all 25 binding names', () => {
-      expect(KeyBindingNameList).toHaveLength(25);
+    it('lists all 26 binding names', () => {
+      expect(KeyBindingNameList).toHaveLength(26);
       expect(KeyBindingNameList).toEqual(Object.values(KeyBindingName));
       expect(KeyBindingNameList).toContain('zenMode');
       expect(KeyBindingNameList).toContain('focusView');
+      expect(KeyBindingNameList).toContain('removeSelection');
+    });
+
+    it('binds Delete and Backspace to removing the selection, prevented and left to bubble', () => {
+      const map = createKeyBindingMap();
+      const shortcuts = KeyBindingNameList.filter(
+        name => name !== KeyBindingName.removeSelection
+      ).flatMap(name => map[name].map(option => option.shortcut));
+
+      expect(map[KeyBindingName.removeSelection]).toEqual([
+        { shortcut: 'Delete', preventDefault: true },
+        { shortcut: 'Backspace', preventDefault: true },
+      ]);
+      expect(shortcuts).not.toContain('Delete');
+      expect(shortcuts).not.toContain('Backspace');
     });
 
     it('gives the focusView binding a chord no other binding claims', () => {
@@ -139,6 +154,22 @@ describe('keyboard-shortcut', () => {
         )
       ).toBe(true);
       expect(matchesShortcut(modF, map.findReplace)).toBe(false);
+    });
+
+    it('tells a bare Delete or Backspace from the removals that hold a modifier', () => {
+      const map = createKeyBindingMap();
+      const bare = press({ key: 'Delete', code: 'Delete' });
+      const withAlt = press({
+        key: 'Backspace',
+        code: 'Backspace',
+        altKey: true,
+      });
+
+      expect(matchesShortcut(bare, map.removeSelection)).toBe(true);
+      expect(matchesShortcut(bare, map.removeTable)).toBe(false);
+      expect(matchesShortcut(bare, map.removeColumn)).toBe(false);
+      expect(matchesShortcut(withAlt, map.removeSelection)).toBe(false);
+      expect(matchesShortcut(withAlt, map.removeColumn)).toBe(true);
     });
 
     it('matches a bare key by its value as well as its code', () => {

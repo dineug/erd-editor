@@ -6,6 +6,7 @@ import { FocusType, MoveKey } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
+import { isHighLevelTable } from '@/utils/validation';
 
 import { appendSelectColumns } from './selectRangeColumn';
 
@@ -190,6 +191,35 @@ export function getFocusedColumnIds({
   return selected.length > 1 && selected.includes(columnId)
     ? selected
     : [columnId];
+}
+
+export type RemovableColumns = {
+  tableId: string;
+  columnIds: string[];
+};
+
+/**
+ * The columns Delete removes: those selected in the focused table while that
+ * table is the whole selection and the zoom draws its rows. Null otherwise,
+ * where the selected tables and memos go instead.
+ */
+export function getRemovableColumns({
+  editor: { focusTable, selectedMap },
+  settings: { zoomLevel },
+}: RootState): RemovableColumns | null {
+  if (!focusTable?.selectColumnIds.length || isHighLevelTable(zoomLevel)) {
+    return null;
+  }
+
+  const selectedIds = Object.keys(selectedMap);
+  if (selectedIds.length !== 1 || selectedIds[0] !== focusTable.tableId) {
+    return null;
+  }
+
+  return {
+    tableId: focusTable.tableId,
+    columnIds: [...focusTable.selectColumnIds],
+  };
 }
 
 function getTableTypes({ settings: { show } }: RootState): FocusType[] {
