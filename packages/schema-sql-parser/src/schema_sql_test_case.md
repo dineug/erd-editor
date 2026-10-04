@@ -2858,22 +2858,257 @@ GO
 
 ### SQL Server ALTER TABLE ADD DEFAULT FOR
 
+Generate Scripts output of SMO 17.100.0.0 (SQL Server Management Objects, the scripting engine
+of SSMS, from the SqlServer PowerShell module 22.4.5.1) against SQL Server 2022 16.0.4295.3:
+`SqlScriptPublishModel`, the wizard's own engine, with the wizard's default options, for every
+table of one database. SMO writes no default inside `CREATE TABLE`: each one follows all the
+tables as an `ALTER TABLE ... ADD` of its own, with `CONSTRAINT` for a default the DDL named
+(`Orders`) and without it for one SQL Server named (`Drafts`). Then Script Constraint as CREATE
+(`DefaultConstraint.Script()` with Object Explorer's scripting defaults) for the four defaults of
+a table in another database whose name holds a space. The wizard wrote UTF-16LE with a BOM, here
+UTF-8; SMO, run on Linux, wrote LF line endings; every other byte is kept, the two spaces after
+`ADD` and before `DEFAULT` included. The harness that ran Script Constraint as CREATE put GO and
+a blank line after each batch, as SSMS does in a query window, and a blank line parts the two.
+
 ```sql
+USE [p2r_defaults]
+GO
+/****** Object:  Table [dbo].[Drafts]    Script Date: 10/4/2026 12:18:21 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Drafts](
+	[Id] [int] NOT NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[Qty] [int] NOT NULL,
+	[Created] [datetime2](7) NULL,
+	[Label] [nvarchar](20) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Orders]    Script Date: 10/4/2026 12:18:21 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Orders](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[Qty] [int] NOT NULL,
+	[Created] [datetime2](7) NOT NULL,
+	[Number] [int] NOT NULL,
+	[Label] [nvarchar](20) NULL,
+ CONSTRAINT [PK_Orders] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[Drafts] ADD  DEFAULT ('draft') FOR [Status]
+GO
+ALTER TABLE [dbo].[Drafts] ADD  DEFAULT ((0)) FOR [Qty]
+GO
+ALTER TABLE [dbo].[Drafts] ADD  DEFAULT (getdate()) FOR [Created]
+GO
+ALTER TABLE [dbo].[Drafts] ADD  DEFAULT (N'(none)') FOR [Label]
+GO
 ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Status]  DEFAULT ('draft') FOR [Status]
 GO
-ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [Qty]
+ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Qty]  DEFAULT ((0)) FOR [Qty]
 GO
 ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Created]  DEFAULT (getdate()) FOR [Created]
 GO
-ALTER TABLE [dbo].[Orders] ADD  DEFAULT (NEXT VALUE FOR [dbo].[OrderSeq]) FOR [Number]
+ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Number]  DEFAULT (NEXT VALUE FOR [dbo].[OrderSeq]) FOR [Number]
 GO
-ALTER TABLE [dbo].[Orders] ADD  DEFAULT (N'(none)') FOR [Label]
+ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Label]  DEFAULT (N'(none)') FOR [Label]
+GO
+
+USE [p2r_edge]
+GO
+
+ALTER TABLE [dbo].[Order Lines] ADD  CONSTRAINT [DF_Order_Lines_Price]  DEFAULT ((1.50)) FOR [Unit Price]
+GO
+
+USE [p2r_edge]
+GO
+
+ALTER TABLE [dbo].[Order Lines] ADD  CONSTRAINT [DF_Order_Lines_Folder]  DEFAULT (N'C:\') FOR [Folder]
+GO
+
+USE [p2r_edge]
+GO
+
+ALTER TABLE [dbo].[Order Lines] ADD  CONSTRAINT [DF_Order_Lines_Token]  DEFAULT (newid()) FOR [Token]
+GO
+
+USE [p2r_edge]
+GO
+
+ALTER TABLE [dbo].[Order Lines] ADD  CONSTRAINT [DF_Order_Lines_Active]  DEFAULT ((1)) FOR [Active]
 GO
 ```
 
 ```json
 {
   "statements": [
+    {
+      "type": "create.table",
+      "name": "Drafts",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "dataType": "nvarchar(20)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Qty",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Created",
+          "dataType": "datetime2(7)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "Label",
+          "dataType": "nvarchar(20)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "keys": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "create.table",
+      "name": "Orders",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "dataType": "nvarchar(20)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Qty",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Created",
+          "dataType": "datetime2(7)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Number",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Label",
+          "dataType": "nvarchar(20)",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": [],
+      "keys": [{ "name": "PK_Orders", "columnNames": ["Id"] }],
+      "foreignKeys": []
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Drafts",
+      "columnName": "Status",
+      "default": "'draft'"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Drafts",
+      "columnName": "Qty",
+      "default": "0"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Drafts",
+      "columnName": "Created",
+      "default": "getdate()"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Drafts",
+      "columnName": "Label",
+      "default": "N'(none)'"
+    },
     {
       "type": "alter.table.add.default",
       "name": "Orders",
@@ -2903,6 +3138,30 @@ GO
       "name": "Orders",
       "columnName": "Label",
       "default": "N'(none)'"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Order Lines",
+      "columnName": "Unit Price",
+      "default": "1.50"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Order Lines",
+      "columnName": "Folder",
+      "default": "N'C:\\'"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Order Lines",
+      "columnName": "Token",
+      "default": "newid()"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Order Lines",
+      "columnName": "Active",
+      "default": "1"
     }
   ]
 }
