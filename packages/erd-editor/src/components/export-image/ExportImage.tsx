@@ -356,7 +356,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                 </div>
               </div>
               <div class={['export-image-size', styles.size]}>
-                {size ? `${size.width} × ${size.height} px` : ''}
+                {size ? `PNG ${size.width} × ${size.height} px` : ''}
               </div>
               {size?.reduced ? (
                 <div class={['export-image-reduced', styles.warning]}>

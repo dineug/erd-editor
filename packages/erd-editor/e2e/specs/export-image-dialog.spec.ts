@@ -198,7 +198,7 @@ test.describe('the export image dialog', () => {
     await expect(button(dialog, 'SVG')).toBeVisible();
     await expect(dialog.locator('.export-image-preview img')).toBeVisible();
     await expect(dialog.locator('.export-image-size')).toHaveText(
-      `${BOX * DEFAULT_SCALE} × ${BOX * DEFAULT_SCALE} px`
+      `PNG ${BOX * DEFAULT_SCALE} × ${BOX * DEFAULT_SCALE} px`
     );
 
     await erd.press(Shortcut.stop);
@@ -238,7 +238,7 @@ test.describe('the export image dialog', () => {
 
     await button(dialog, '3x').click();
     await expect(dialog.locator('.export-image-size')).toHaveText(
-      `${BOX * 3} × ${BOX * 3} px`
+      `PNG ${BOX * 3} × ${BOX * 3} px`
     );
     const thrice = await downloadPng(erd, dialog);
 
@@ -257,11 +257,11 @@ test.describe('the export image dialog', () => {
 
     // At 1x the same box fits a canvas: what outruns one is the scale.
     await button(dialog, '1x').click();
-    await expect(size).toHaveText(`${WIDE_BOX} × ${WIDE_BOX} px`);
+    await expect(size).toHaveText(`PNG ${WIDE_BOX} × ${WIDE_BOX} px`);
     await expect(warning).toHaveCount(0);
 
     await button(dialog, '2x').click();
-    await expect(size).toHaveText(written);
+    await expect(size).toHaveText(`PNG ${written}`);
     await expect(warning).toHaveText(
       `Reduced from ${asked}, past what a browser canvas can hold`
     );

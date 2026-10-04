@@ -340,18 +340,18 @@ describe('ExportImage preview', () => {
     expect(image()?.getAttribute('src')).toBe('blob:preview-1');
   });
 
-  it('says how many pixels the file will hold, at the scale picked', async () => {
+  it('says how many pixels the png will hold, at the scale picked', async () => {
     const app = await setup();
     await open(app);
 
-    expect(sizeText()).toBe('4320 × 2160 px');
+    expect(sizeText()).toBe('PNG 4320 × 2160 px');
 
     await click(buttonOf('1x'));
-    expect(sizeText()).toBe('2160 × 1080 px');
+    expect(sizeText()).toBe('PNG 2160 × 1080 px');
     expect(buttonOf('1x')?.getAttribute('aria-pressed')).toBe('true');
 
     await click(buttonOf('3x'));
-    expect(sizeText()).toBe('6480 × 3240 px');
+    expect(sizeText()).toBe('PNG 6480 × 3240 px');
 
     // The scale changes only the size, so no preview is drawn for it.
     expect(preview).toHaveBeenCalledTimes(1);
@@ -366,7 +366,7 @@ describe('ExportImage preview', () => {
 
     await open(app);
 
-    expect(sizeText()).toBe('16384 × 16384 px');
+    expect(sizeText()).toBe('PNG 16384 × 16384 px');
     expect(reducedNote()?.textContent).toBe(
       'Reduced from 20000 × 20000 px, past what a browser canvas can hold'
     );
