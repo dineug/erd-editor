@@ -6,10 +6,7 @@ import { TABLE_SORT_START } from '@/constants/layout';
 import { ActionType } from '@/engine/modules/editor/actions';
 import {
   loadJsonAction$,
-  loadSchemaAMLAction$,
-  loadSchemaDBMLAction$,
-  loadSchemaGraphQLAction$,
-  loadSchemaSQLAction$,
+  loadSchemaAction$,
   type SchemaImportType,
   toSchemaImportJson,
   withImportSettings,
@@ -19,13 +16,6 @@ import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
 import type { ElkLayoutPoint } from '@/services/elk-layout';
 import { arrayHas } from '@/utils/arrayHas';
-
-const LOAD_SCHEMA = {
-  sql: loadSchemaSQLAction$,
-  graphql: loadSchemaGraphQLAction$,
-  dbml: loadSchemaDBMLAction$,
-  aml: loadSchemaAMLAction$,
-} as const;
 
 /** Every action a load or a clear starts with, from this editor, a peer or an undo. */
 const isLoad = arrayHas<string>([
@@ -72,7 +62,7 @@ export function importSchema(
   type: SchemaImportType,
   value: string
 ): void {
-  store.dispatchSync(LOAD_SCHEMA[type](value));
+  store.dispatchSync(loadSchemaAction$(type, value));
 }
 
 /**

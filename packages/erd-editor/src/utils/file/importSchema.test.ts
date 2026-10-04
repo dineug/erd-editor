@@ -167,6 +167,19 @@ function expectDeafToLoads(app: AppContext) {
 const columnLayout: Layout = async ({ nodes }) =>
   nodes.map((node, index) => ({ id: node.id, x: 400, y: 300 + index * 1000 }));
 
+/**
+ * The column layout held back until the test lands it, raising the slow toast
+ * at once when asked to, as a layout that runs long does.
+ */
+function pendingColumnLayout({ slow = false } = {}): () => Promise<void> {
+  let settle = (_: ElkLayoutPoint[]) => {};
+  hoisted.elkLayout = (_, onSlow) => {
+    slow && onSlow?.();
+    return new Promise(resolve => (settle = resolve));
+  };
+  return async () => settle(await columnLayout(hoisted.requests[0]));
+}
+
 beforeEach(() => {
   hoisted.elkLayout = null;
   hoisted.requests.length = 0;
@@ -224,19 +237,14 @@ describe('importSchemaPlaced', () => {
   it('leaves the document as it was until the placement lands, then replaces it in one batch', async () => {
     const app = createApp();
     const batches = recordActions(app);
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = request =>
-      new Promise(resolve => {
-        settle = resolve;
-        void request;
-      });
+    const land = pendingColumnLayout();
 
     const placing = importSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
     expect(tableNames(app)).toEqual(['old']);
     expect(batches).toEqual([]);
 
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     expect(batches).toHaveLength(1);
@@ -278,8 +286,7 @@ describe('importSchemaPlaced', () => {
 
   it('keeps a setting changed while it places, the tab the reader moved to included', async () => {
     const app = createApp();
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+    const land = pendingColumnLayout();
 
     const placing = importSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
@@ -287,7 +294,7 @@ describe('importSchemaPlaced', () => {
       changeDatabaseNameAction({ value: 'renamed' }),
       changeCanvasTypeAction({ value: CanvasType.settings })
     );
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     const { settings } = app.store.state;
@@ -360,20 +367,13 @@ describe('importSchemaPlaced', () => {
   it('lands nothing once a load has replaced the document meanwhile', async () => {
     const app = createApp();
     const toasts = listenToasts(app);
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = (request, onSlow) => {
-      onSlow?.();
-      return new Promise(resolve => {
-        settle = resolve;
-        void request;
-      });
-    };
+    const land = pendingColumnLayout({ slow: true });
 
     const placing = importSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
     importSchema(app, 'sql', 'CREATE TABLE newer (id INT);');
     await expect(toasts[0].close).resolves.toBeUndefined();
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     expect(tableNames(app)).toEqual(['newer']);
@@ -387,13 +387,12 @@ describe('importSchemaPlaced', () => {
     ['editor.initialLoadJson', () => initialLoadJsonAction({ value: '{}' })],
   ])('lands nothing once an %s alone has come meanwhile', async (_, load) => {
     const app = createApp();
-    let settle = (_: ElkLayoutPoint[]) => {};
-    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+    const land = pendingColumnLayout();
 
     const placing = importSchemaPlaced(app, 'sql', FAN_SQL);
     await flush();
     app.store.dispatchSync(load());
-    settle(await columnLayout(hoisted.requests[0]));
+    await land();
     await placing;
 
     expect(tableNames(app)).toEqual([]);

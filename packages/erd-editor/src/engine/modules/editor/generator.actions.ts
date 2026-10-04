@@ -605,29 +605,30 @@ export function toSchemaImportJson(
   }
 }
 
-export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
+/**
+ * The load each of the four text imports runs: the parsed document replaces
+ * this one, then its tables are sorted into the grid.
+ */
+export const loadSchemaAction$ = (
+  type: SchemaImportType,
+  value: string
+): GeneratorAction =>
   function* (state, ctx) {
-    yield loadJsonAction$(toSchemaImportJson('sql', value, state, ctx));
+    yield loadJsonAction$(toSchemaImportJson(type, value, state, ctx));
     yield sortTableAction();
   };
+
+export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
+  loadSchemaAction$('sql', value);
 
 export const loadSchemaGraphQLAction$ = (value: string): GeneratorAction =>
-  function* (state, ctx) {
-    yield loadJsonAction$(toSchemaImportJson('graphql', value, state, ctx));
-    yield sortTableAction();
-  };
+  loadSchemaAction$('graphql', value);
 
 export const loadSchemaDBMLAction$ = (value: string): GeneratorAction =>
-  function* (state, ctx) {
-    yield loadJsonAction$(toSchemaImportJson('dbml', value, state, ctx));
-    yield sortTableAction();
-  };
+  loadSchemaAction$('dbml', value);
 
 export const loadSchemaAMLAction$ = (value: string): GeneratorAction =>
-  function* (state, ctx) {
-    yield loadJsonAction$(toSchemaImportJson('aml', value, state, ctx));
-    yield sortTableAction();
-  };
+  loadSchemaAction$('aml', value);
 
 export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
   function* ({ editor: { focusTable } }) {
