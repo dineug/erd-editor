@@ -158,6 +158,7 @@ describe('QuickSearch', () => {
       'Tab',
       'Database',
       'Import',
+      'Import and Add',
       'Export',
       'New Table',
       'New Memo',
@@ -262,8 +263,8 @@ describe('QuickSearch', () => {
   it('renders an icon, keyword column and shortcut only when the action has them', async () => {
     await open();
     const [tab] = rows();
-    const newTable = rows()[4];
-    const zeroOne = rows()[6];
+    const newTable = rows()[5];
+    const zeroOne = rows()[7];
 
     expect(tab.querySelector(`.${styles.icon}`)).toBeNull();
     expect(tab.querySelector(`.${styles.keyword}`)).toBeNull();
@@ -289,7 +290,7 @@ describe('QuickSearch keyword filtering', () => {
     await type('New Memo');
 
     expect(rowNames()).toContain('New Memo');
-    expect(rowNames().length).toBeLessThan(12);
+    expect(rowNames().length).toBeLessThan(13);
     expect(input().value).toBe('New Memo');
   });
 
@@ -310,7 +311,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('');
 
-    expect(rowNames()).toHaveLength(12);
+    expect(rowNames()).toHaveLength(13);
     expect(rowNames()[0]).toBe('Tab');
   });
 
@@ -320,7 +321,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('   ');
 
-    expect(rowNames()).toHaveLength(12);
+    expect(rowNames()).toHaveLength(13);
   });
 
   it('lists no command when nothing matches, only the prefixes to search the document by', async () => {
@@ -374,10 +375,10 @@ describe('QuickSearch keyboard navigation', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(selectedIndex()).toBe(0);
 
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 12; i++) {
       await keydown('ArrowDown');
     }
-    expect(selectedIndex()).toBe(11);
+    expect(selectedIndex()).toBe(12);
 
     await keydown('ArrowDown');
     expect(selectedIndex()).toBe(0);
@@ -389,7 +390,7 @@ describe('QuickSearch keyboard navigation', () => {
     const event = await keydown('ArrowUp');
 
     expect(event.defaultPrevented).toBe(true);
-    expect(selectedIndex()).toBe(11);
+    expect(selectedIndex()).toBe(12);
   });
 
   it('clears the selection on the horizontal arrows', async () => {
@@ -419,15 +420,15 @@ describe('QuickSearch keyboard navigation', () => {
 
     expect(event.cancelBubble).toBe(false);
     expect(isOpen()).toBe(true);
-    expect(rowNames()).toHaveLength(12);
+    expect(rowNames()).toHaveLength(13);
   });
 
   it('performs the selected action on Enter and closes the palette', async () => {
     await open();
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       await keydown('ArrowDown');
     }
-    expect(rowNames()[5]).toBe('New Memo');
+    expect(rowNames()[6]).toBe('New Memo');
 
     await keydown('Enter');
 
@@ -485,7 +486,7 @@ describe('QuickSearch keyboard navigation', () => {
   it('ignores Enter when the selected index no longer exists', async () => {
     await open();
     await keydown('ArrowUp');
-    expect(selectedIndex()).toBe(11);
+    expect(selectedIndex()).toBe(12);
 
     app.store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.settings })
@@ -505,7 +506,7 @@ describe('QuickSearch mouse interaction', () => {
     await open();
     focusEvents = 0;
 
-    await click(rows()[4]);
+    await click(rows()[5]);
 
     expect(app.store.state.doc.tableIds).toHaveLength(1);
     expect(isOpen()).toBe(false);
@@ -875,6 +876,7 @@ describe('QuickSearch with no command matching', () => {
       'Tab',
       'Database',
       'Import',
+      'Import and Add',
       'Export',
       'New Table',
       'New Memo',

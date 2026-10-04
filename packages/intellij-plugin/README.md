@@ -24,6 +24,8 @@ To start from a schema you already have, right-click the canvas and choose **Imp
 for a `.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. The editor
 opens its own file chooser for both; the file does not have to be inside the project. Either one
 replaces the diagram in one undoable step, its tables laid out by their relationships.
+**Import and Add** beside it takes the same formats and adds the file to the diagram instead, its
+tables placed as new ones below the ones already there, in one undoable step.
 
 ## Features
 
@@ -42,6 +44,9 @@ replaces the diagram in one undoable step, its tables laid out by their relation
 - **AML import** — bring in an `.aml` file written for [Azimutt](https://azimutt.app), in either the
   v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every relation
   arrow arrive; a check, a struct type and a view are skipped rather than refused
+- **Import and Add** — add a `.sql`, GraphQL, DBML, AML or `.erd.json` file to the diagram rather
+  than replacing it: its tables arrive below the ones already there, which stay where they are, and
+  one undo takes them away. A foreign key to a table outside the file is dropped
 - **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy,
   TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid

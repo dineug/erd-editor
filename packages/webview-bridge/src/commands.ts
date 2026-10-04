@@ -7,10 +7,18 @@ export const hostExportFileCommand = createCommand<{
   value: Base64;
   fileName: string;
 }>('hostExportFileCommand');
+/**
+ * Whether an import takes the document's place or joins it below the diagram,
+ * as Import and Add does. The editor names it only for an append, and a host
+ * or a page that knows no mode reads its absence as a replace.
+ */
+export type ImportMode = 'replace' | 'append';
+
 export const hostImportFileCommand = createCommand<{
   type: 'json' | 'sql' | 'graphql' | 'dbml' | 'aml';
   op: 'set' | 'diff';
   accept: string;
+  mode?: ImportMode;
 }>('hostImportFileCommand');
 export const hostInitialCommand = createCommand('hostInitialCommand');
 /**
@@ -33,6 +41,7 @@ export const webviewImportFileCommand = createCommand<{
   type: 'json' | 'sql' | 'graphql' | 'dbml' | 'aml';
   op: 'set' | 'diff';
   value: string;
+  mode?: ImportMode;
 }>('webviewImportFileCommand');
 export const webviewInitialValueCommand = createCommand<{
   value: string;

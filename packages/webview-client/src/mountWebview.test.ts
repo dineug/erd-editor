@@ -61,6 +61,7 @@ function fakeEditor() {
     setSchemaGraphQL: vi.fn(),
     setSchemaDBML: vi.fn(),
     setSchemaAML: vi.fn(),
+    setSchemaJSON: vi.fn(),
     setPresetTheme: vi.fn(),
     setSystemAppearance: vi.fn(),
     getSharedStore: () => sharedStore,
@@ -218,6 +219,70 @@ describe('mountWebview', () => {
     expect(editor.element.setSchemaAML).toHaveBeenCalledWith(
       't\n  id uuid pk',
       placed
+    );
+  });
+
+  it('hands an append to every setter with its mode, placing the schemas', () => {
+    mount();
+    const send = (type: string, value: string, mode?: string) =>
+      fromHost(
+        Bridge.executeCommand(webviewImportFileCommand, {
+          type,
+          op: 'set',
+          value,
+          mode,
+        } as never)
+      );
+
+    send('json', '{"a":1}', 'append');
+    send('sql', 'CREATE TABLE t ();', 'append');
+    send('graphql', 'type T { id: ID }', 'append');
+    send('dbml', 'Table t {}', 'append');
+    send('aml', 't\n  id uuid pk', 'append');
+    send('sql', 'CREATE TABLE r ();', 'replace');
+
+    const added = { placement: 'auto', mode: 'append' };
+    expect(editor.element.value).toBe('');
+    expect(editor.element.setSchemaJSON).toHaveBeenCalledExactlyOnceWith(
+      '{"a":1}',
+      { mode: 'append' }
+    );
+    expect(editor.element.setSchemaSQL.mock.calls).toEqual([
+      ['CREATE TABLE t ();', added],
+      ['CREATE TABLE r ();', { placement: 'auto' }],
+    ]);
+    expect(editor.element.setSchemaGraphQL).toHaveBeenCalledWith(
+      'type T { id: ID }',
+      added
+    );
+    expect(editor.element.setSchemaDBML).toHaveBeenCalledWith(
+      'Table t {}',
+      added
+    );
+    expect(editor.element.setSchemaAML).toHaveBeenCalledWith(
+      't\n  id uuid pk',
+      added
+    );
+  });
+
+  it('asks the host for a file with the mode the editor names', () => {
+    mount({ importFile: true });
+    const [callback] = mocks.setImportFileCallback.mock.calls[0];
+
+    callback({
+      type: 'sql',
+      op: 'set',
+      accept: '.sql',
+      mode: 'append',
+    });
+
+    expect(dispatch).toHaveBeenCalledWith(
+      Bridge.executeCommand(hostImportFileCommand, {
+        type: 'sql',
+        op: 'set',
+        accept: '.sql',
+        mode: 'append',
+      })
     );
   });
 

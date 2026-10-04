@@ -1,9 +1,13 @@
-import { type ERDEditorSchemaV3, query } from '@dineug/erd-editor-schema';
+import {
+  type ERDEditorSchemaV3,
+  parser,
+  query,
+} from '@dineug/erd-editor-schema';
 import { cloneDeep, isEqual, omit, uniq } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 import { nanoid } from 'nanoid';
 
-import { START_ADD } from '@/constants/layout';
+import { APPEND_GAP, START_ADD, TABLE_SORT_START } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
 import type { EngineContext } from '@/engine/context';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -12,10 +16,12 @@ import {
   moveMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
+import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import {
   changeTableColorAction,
   moveTableAction,
   sortTableAction,
+  tableReducers,
 } from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
@@ -37,12 +43,19 @@ import {
 import { RootState } from '@/engine/state';
 import { attachActionTag, Tag } from '@/engine/tag';
 import { Point } from '@/internal-types';
-import { getTableRect } from '@/konva/scene/metrics';
+import {
+  getContentRect,
+  type TableMove,
+  unionRect,
+} from '@/konva/scene/contentBounds';
+import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { getSceneTransform } from '@/konva/scene/viewport';
+import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
-import { isOverlapPosition, Rect } from '@/utils/dragSelect';
+import { measureTableSize } from '@/utils/calcTable';
+import { isOverlapPosition, Rect as DragRect } from '@/utils/dragSelect';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { schemaAMLParserToSchemaJson } from '@/utils/schema-aml-parser';
 import { schemaDBMLParserToSchemaJson } from '@/utils/schema-dbml-parser';
@@ -80,7 +93,11 @@ import {
 } from './atom.actions';
 import { FocusType, MoveKey, SelectType } from './state';
 import { getColoredSelection, getColorTargets } from './utils/color';
-import { CreateEntityInput, toCreateEntityActions } from './utils/duplicate';
+import {
+  CreateEntityActions,
+  CreateEntityInput,
+  toCreateEntityActions,
+} from './utils/duplicate';
 import { findRelationshipColumn } from './utils/findRelationshipColumn';
 import {
   isColumns,
@@ -351,12 +368,190 @@ function toDuplicateInput(
 }
 
 /**
+ * Where the tables of a document an append brings take their points from,
+ * before the block they make goes under the diagram: as the file has them, as
+ * the grid an import lands in has them, or as a placement answered them.
+ */
+export type AppendLayout = 'file' | 'grid' | ReadonlyArray<TableMove>;
+
+/** What an append adds: its actions, the new ids, and the box they make where they land. */
+export type SchemaAppend = CreateEntityActions & { rect: Rect };
+
+/**
+ * Each table and memo of the document read in, at the point the layout gives
+ * it. The grid is the sort an import lands in, run on the document's own
+ * copy, where the parser's canvas size wraps it as it wraps a replace.
+ */
+function toLayoutPoints(
+  state: RootState,
+  schema: ERDEditorSchemaV3,
+  { tables, memos }: CreateEntityInput,
+  layout: AppendLayout,
+  ctx: EngineContext
+): Map<string, Point> {
+  const { tableEntities } = schema.collections;
+
+  if (layout === 'grid') {
+    tableReducers[TableActionType.sortTable](
+      { ...state, ...schema },
+      { type: TableActionType.sortTable, payload: undefined },
+      ctx
+    );
+  }
+
+  const answered = new Map(
+    typeof layout === 'string'
+      ? []
+      : layout.map(({ id, x, y }) => [id, { x, y }])
+  );
+
+  return new Map([
+    ...tables.map(({ sourceId }): [string, Point] => {
+      const { x, y } = tableEntities[sourceId].ui;
+      return [sourceId, answered.get(sourceId) ?? { x, y }];
+    }),
+    ...memos.map(({ sourceId, ui: { x, y } }): [string, Point] => [
+      sourceId,
+      { x, y },
+    ]),
+  ]);
+}
+
+/**
+ * Where the block an append brings starts: under every table and memo the
+ * diagram holds, a gap below them and in line with their left edge, or where
+ * the grid of an import starts in a diagram holding none.
+ */
+function toAppendOrigin(state: RootState): Point {
+  const content = getContentRect(state);
+
+  return content
+    ? { x: content.x, y: content.y + content.height + APPEND_GAP }
+    : { x: TABLE_SORT_START, y: TABLE_SORT_START };
+}
+
+/**
+ * A document's tables, relationships, indexes and memos as new entities of this
+ * one, made as a paste makes them with no field at its default sent, their block
+ * a gap under the diagram. Null for unreadable text or a document holding nothing.
+ *
+ * @example
+ * const append = toSchemaAppend(state, json, 'grid', ctx);
+ */
+export function toSchemaAppend(
+  state: RootState,
+  json: string,
+  layout: AppendLayout,
+  ctx: EngineContext
+): SchemaAppend | null {
+  let schema: ERDEditorSchemaV3;
+  try {
+    schema = parser(json);
+  } catch {
+    return null;
+  }
+
+  const { doc, collections } = schema;
+  const read: RootState = { ...state, doc, collections };
+  const input = toDuplicateInput(read, doc);
+  if (!input.tables.length && !input.memos.length) return null;
+
+  const points = toLayoutPoints(state, schema, input, layout, ctx);
+  let minX = Infinity;
+  let minY = Infinity;
+  for (const { x, y } of points.values()) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+  }
+
+  const origin = toAppendOrigin(state);
+  const baseZIndex = nextZIndex(
+    query(state.collections)
+      .collection('tableEntities')
+      .selectByIds(state.doc.tableIds),
+    query(state.collections)
+      .collection('memoEntities')
+      .selectByIds(state.doc.memoIds)
+  );
+  // A stable sort keeps the document's own order among equal stacks.
+  const stacked = [...input.tables, ...input.memos].sort(
+    (a, b) => a.ui.zIndex - b.ui.zIndex
+  );
+  const placement = new Map<string, PlacementPoint>();
+
+  stacked.forEach(({ sourceId }, index) => {
+    const point = points.get(sourceId)!;
+
+    placement.set(sourceId, {
+      x: round(origin.x + point.x - minX, 4),
+      y: round(origin.y + point.y - minY, 4),
+      zIndex: baseZIndex + index,
+    });
+  });
+
+  const tableRects = query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .map(table => {
+      const { x, y } = placement.get(table.id)!;
+      return { x, y, ...measureTableSize(table, read, ctx.toWidth) };
+    });
+  const memoRects = query(collections)
+    .collection('memoEntities')
+    .selectByIds(doc.memoIds)
+    .map(memo =>
+      getMemoRect({ ...memo, ui: { ...memo.ui, ...placement.get(memo.id)! } })
+    );
+
+  return {
+    ...toCreateEntityActions(input, placement, { valuesOnly: true }),
+    rect: [...tableRects, ...memoRects].reduce(unionRect),
+  };
+}
+
+/**
+ * Adds a document read from a file below the diagram as new entities in one undo
+ * step, leaving the tables already there and every setting as they are; unreadable
+ * text, or a document holding nothing, adds nothing.
+ *
+ * @example
+ * store.dispatch(appendSchemaJsonAction$(json, 'file'));
+ */
+export const appendSchemaJsonAction$ = (
+  json: string,
+  layout: AppendLayout = 'file'
+): GeneratorAction =>
+  function* (state, ctx) {
+    const append = toSchemaAppend(state, json, layout, ctx);
+    if (append) yield append.actions;
+  };
+
+/**
+ * Adds a schema read from SQL, GraphQL, DBML or AML to this document, its
+ * tables laid out in the grid below the diagram, as appendSchemaJsonAction$
+ * adds a document.
+ *
+ * @example
+ * store.dispatch(appendSchemaAction$('sql', value));
+ */
+export const appendSchemaAction$ = (
+  type: SchemaImportType,
+  value: string
+): GeneratorAction =>
+  function* (state, ctx) {
+    yield appendSchemaJsonAction$(
+      toSchemaImportJson(type, value, state, ctx),
+      'grid'
+    );
+  };
+
+/**
  * Selects what the rect covers among what the source shows, each entity read
  * at the point and the size that source draws it: a view places its tables
  * and shows no memo, so a marquee drawn over it picks by the view, not the document.
  */
 export const dragSelectAction$ = (
-  dragRect: Rect,
+  dragRect: DragRect,
   source: GeometrySource = 'document'
 ): GeneratorAction =>
   function* (state) {
@@ -828,6 +1023,8 @@ export const actions$ = {
   loadSchemaGraphQLAction$,
   loadSchemaDBMLAction$,
   loadSchemaAMLAction$,
+  appendSchemaAction$,
+  appendSchemaJsonAction$,
   dragstartColumnAction$,
   dragoverColumnAction$,
   columnKeyHoverStartAction$,

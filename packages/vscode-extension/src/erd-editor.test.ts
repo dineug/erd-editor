@@ -503,6 +503,36 @@ describe('ErdEditor', () => {
       });
     });
 
+    it('relays the mode of an Import and Add back with the file', async () => {
+      const { webview } = await bootstrap();
+      window.showOpenDialog.mockResolvedValue([
+        Uri.file('/workspace/schema.sql'),
+      ]);
+      workspace.fs.readFile.mockResolvedValue(
+        encoder.encode('CREATE TABLE a (id int);')
+      );
+
+      webview.__receive(
+        Bridge.executeCommand(hostImportFileCommand, {
+          type: 'sql',
+          op: 'set',
+          accept: '.sql',
+          mode: 'append',
+        })
+      );
+      await flush();
+
+      expect(webview.postMessage).toHaveBeenCalledWith({
+        type: 'webviewImportFileCommand',
+        payload: {
+          type: 'sql',
+          op: 'set',
+          value: 'CREATE TABLE a (id int);',
+          mode: 'append',
+        },
+      });
+    });
+
     it('refuses a file that is not dbml', async () => {
       const { webview } = await bootstrap();
       window.showOpenDialog.mockResolvedValue([

@@ -3,7 +3,7 @@ import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { comparable, settle } from '@/__test-utils__/mcp';
-import { TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
+import { APPEND_SCENARIOS, TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import {
   createPeerSession,
   type PeerSession,
@@ -154,6 +154,102 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
     expect(positions(agent.state)).toHaveLength(4);
     expect(widths(other.state)).not.toEqual(widths(agent.state));
     expect(positions(other.state)).toEqual(positions(agent.state));
+  });
+});
+
+describe('an import with mode append adds to the document on both sides', () => {
+  const SEED_NAMES = ['users', 'orders', 'empty'];
+
+  it.each([...SCHEMA_IMPORTS, ['erd_import_json', 'accounts']] as const)(
+    '%s adds %s under new ids beside the seed and sends it to the other side',
+    async (name, table) => {
+      const session = open();
+      await quiet();
+      const { agent, other } = session;
+      const seeded = structuredClone(agent.state.collections.tableEntities);
+      const sentBefore = session.sent.length;
+
+      const run = runTool(agent, name, APPEND_SCENARIOS[name]);
+      await quiet();
+
+      const sent = session.sent
+        .slice(sentBefore)
+        .flatMap(actions => actions.map(({ type }) => type));
+      expect(run).toMatchObject({ batches: 1, historyEntries: 1 });
+      expect(run.mismatch).toBeUndefined();
+      expect(tableNames(agent.state)).toEqual([...SEED_NAMES, table]);
+      expect(tableNames(other.state)).toEqual([...SEED_NAMES, table]);
+      expect(agent.state.doc.tableIds).not.toContain('accounts');
+      expect(run.createdIds).toContain(agent.state.doc.tableIds[3]);
+      for (const id of [SEED.users, SEED.orders, SEED.empty]) {
+        expect(agent.state.collections.tableEntities[id].ui).toMatchObject({
+          x: seeded[id].ui.x,
+          y: seeded[id].ui.y,
+        });
+      }
+      expect(agent.state.doc.relationshipIds).toEqual([SEED.relationship]);
+      expect(sent).not.toContain('editor.loadJson');
+      expect(sent.filter(type => type.startsWith('editor.'))).toEqual([]);
+      expect(comparable(other.value)).toEqual(comparable(agent.value));
+    }
+  );
+
+  it('keeps the settings, the database name the document carries included', async () => {
+    const session = open();
+    await quiet();
+    runTool(session.agent, 'erd_set_database_name', { value: 'shop' });
+
+    runTool(session.agent, 'erd_import_json', APPEND_SCENARIOS.erd_import_json);
+    await quiet();
+
+    expect(session.agent.state.settings.databaseName).toBe('shop');
+    expect(session.other.state.settings.databaseName).toBe('shop');
+  });
+
+  it('lays what it adds out below every table and memo the seed holds', async () => {
+    const session = open();
+    await quiet();
+    const { agent } = session;
+    const { tableEntities, memoEntities } = agent.state.collections;
+    const lowest = Math.max(
+      ...Object.values(tableEntities).map(({ ui }) => ui.y),
+      ...Object.values(memoEntities).map(({ ui }) => ui.y)
+    );
+
+    runTool(agent, 'erd_import_sql', APPEND_SCENARIOS.erd_import_sql);
+
+    const added =
+      agent.state.collections.tableEntities[agent.state.doc.tableIds[3]];
+    expect(added.ui.y).toBeGreaterThan(lowest);
+    expect(added.ui.x).toBe(100);
+  });
+
+  it('takes the append away on both sides with one undo', async () => {
+    const session = open();
+    await quiet();
+    const { agent, other } = session;
+
+    runTool(agent, 'erd_import_dbml', APPEND_SCENARIOS.erd_import_dbml);
+    agent.undo();
+    await quiet();
+
+    expect(tableNames(agent.state)).toEqual(SEED_NAMES);
+    expect(tableNames(other.state)).toEqual(SEED_NAMES);
+    expect(comparable(other.value)).toEqual(comparable(agent.value));
+  });
+
+  it('refuses an empty document text, which would add nothing', async () => {
+    const session = open();
+    await quiet();
+    const sentBefore = session.sent.length;
+
+    const error = refusal(() =>
+      runTool(session.agent, 'erd_import_json', { value: '', mode: 'append' })
+    );
+
+    expect(error.code).toBe(ToolErrorCode.invalidArgs);
+    expect(error.message).toBe('value is empty, so nothing was imported');
+    expect(session.sent).toHaveLength(sentBefore);
   });
 });
 

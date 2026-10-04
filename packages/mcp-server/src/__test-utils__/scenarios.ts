@@ -149,3 +149,19 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     erd_import_aml: { value: 'accounts\n  id int pk\n  email varchar' },
     erd_import_json: { value: createImportValue() },
   };
+
+/**
+ * The import tools again with mode append, each adding what its text holds
+ * below the seed: a table, and from the document a memo too.
+ */
+export const APPEND_SCENARIOS: Readonly<
+  Record<string, Record<string, unknown>>
+> = Object.fromEntries(
+  [
+    'erd_import_sql',
+    'erd_import_graphql',
+    'erd_import_dbml',
+    'erd_import_aml',
+    'erd_import_json',
+  ].map(name => [name, { ...TOOL_SCENARIOS[name], mode: 'append' }])
+);

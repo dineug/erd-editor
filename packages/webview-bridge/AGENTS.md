@@ -33,6 +33,7 @@
 - **Payloads must survive `JSON.stringify` / `JSON.parse`** — IntelliJ carries every action as a string. Binary is base64-encoded by the caller (`webview-client`), never here.
 - `executeAction` checks only that the value is a plain object with a string `type`; payload shape is never validated.
 - The import `type` union (`json | sql | graphql | dbml | aml`) is written twice, in `hostImportFileCommand` and `webviewImportFileCommand` — widen both. The build then fails until `webview-client`'s import `switch` and `vscode-extension`'s `IMPORT_FILE_TYPES` gain a case, which is intended.
+- Both import commands carry an optional `mode` (`ImportMode`, `replace | append`), which the editor names only for Import and Add and every reader takes as a replace when it is absent: `vscode-extension` relays it from one command to the other, `webview-client` hands it to the editor, and the Kotlin mirror holds it as a nullable string the mapper leaves out.
 
 ### Testing Requirements
 

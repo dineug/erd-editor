@@ -6,7 +6,7 @@ import {
 } from '@dineug/erd-editor/peer.js';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
+import { APPEND_SCENARIOS, TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import { createSeedValue } from '@/__test-utils__/seed';
 import {
   EXCLUSION_REASONS,
@@ -126,5 +126,24 @@ describe('what a tool declares is what it emits', () => {
     }
 
     expect(sorted(emitted)).toEqual(declared());
+  });
+
+  it('emits only declared types in an import with mode append', () => {
+    for (const [name, args] of Object.entries(APPEND_SCENARIOS)) {
+      const tool = toolByName.get(name)!;
+      const peer = createPeerStore({ nickname: 'agent', presence: false });
+      peers.push(peer);
+      peer.setInitialValue(createSeedValue());
+
+      const types = runTool(peer, name, args).actions.map(({ type }) => type);
+
+      expect(types).toContain('table.add');
+      expect({
+        tool: name,
+        undeclared: types.filter(
+          type => !tool.actionTypes.includes(type as never)
+        ),
+      }).toEqual({ tool: name, undeclared: [] });
+    }
   });
 });

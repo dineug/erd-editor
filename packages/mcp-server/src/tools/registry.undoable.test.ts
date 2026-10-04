@@ -1,7 +1,7 @@
 import type { PeerStore } from '@dineug/erd-editor/peer.js';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
+import { APPEND_SCENARIOS, TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import { createSeededPeer } from '@/__test-utils__/seed';
 import { actionTools } from '@/tools/registry';
 import { runTool } from '@/tools/run';
@@ -33,6 +33,15 @@ describe('undoable is what a run on the engine measures (AC-B4)', () => {
       const tool = actionTools.find(tool => tool.name === name)!;
 
       expect([name, historyEntries(name) > 0]).toEqual([name, tool.undoable]);
+    }
+  );
+
+  it.each(Object.keys(APPEND_SCENARIOS))(
+    '%s with mode append records the one undo entry it says it is undoable by',
+    name => {
+      const run = runTool(seededPeer(), name, APPEND_SCENARIOS[name]);
+
+      expect(run.historyEntries).toBe(1);
     }
   );
 

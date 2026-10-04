@@ -66,6 +66,11 @@ const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_read: ['tableIds', 'tableNames'],
   erd_add_relationship: ['onDelete', 'onUpdate'],
   erd_link_columns: ['onDelete', 'onUpdate'],
+  erd_import_sql: ['mode'],
+  erd_import_graphql: ['mode'],
+  erd_import_dbml: ['mode'],
+  erd_import_aml: ['mode'],
+  erd_import_json: ['mode'],
 };
 
 /** The values a recorded argument's enum gained after the recording was made. */

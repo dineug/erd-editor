@@ -122,32 +122,45 @@ export function mountWebview(host: WebviewHost): WebviewClient {
   };
 
   const disposeCommands = Bridge.mergeRegister(
-    bridge.registerCommand(webviewImportFileCommand, ({ type, op, value }) => {
-      switch (type) {
-        case 'json':
-          op === 'set' ? (editor.value = value) : editor.setDiffValue(value);
-          break;
-        case 'sql':
-          op === 'set' && editor.setSchemaSQL(value, HOST_IMPORT);
-          break;
-        case 'graphql':
-          op === 'set' && editor.setSchemaGraphQL(value, HOST_IMPORT);
-          break;
-        case 'dbml':
-          op === 'set' && editor.setSchemaDBML(value, HOST_IMPORT);
-          break;
-        case 'aml':
-          op === 'set' && editor.setSchemaAML(value, HOST_IMPORT);
-          break;
-        default: {
-          // The host has already read the file by the time we get here, so an
-          // unhandled type is a silent loss. type is never in this arm, so
-          // widening the bridge union without adding a case breaks the build.
-          const unhandled: never = type;
-          throw new Error(`unsupported import file type "${unhandled}"`);
+    bridge.registerCommand(
+      webviewImportFileCommand,
+      ({ type, op, value, mode }) => {
+        // Only an append is named, so a host that relays no mode replaces.
+        const append = mode === 'append';
+        const options = append ? { ...HOST_IMPORT, mode } : HOST_IMPORT;
+
+        switch (type) {
+          case 'json':
+            if (op === 'diff') {
+              editor.setDiffValue(value);
+            } else if (append) {
+              editor.setSchemaJSON(value, { mode });
+            } else {
+              editor.value = value;
+            }
+            break;
+          case 'sql':
+            op === 'set' && editor.setSchemaSQL(value, options);
+            break;
+          case 'graphql':
+            op === 'set' && editor.setSchemaGraphQL(value, options);
+            break;
+          case 'dbml':
+            op === 'set' && editor.setSchemaDBML(value, options);
+            break;
+          case 'aml':
+            op === 'set' && editor.setSchemaAML(value, options);
+            break;
+          default: {
+            // The host has already read the file by the time we get here, so an
+            // unhandled type is a silent loss. type is never in this arm, so
+            // widening the bridge union without adding a case breaks the build.
+            const unhandled: never = type;
+            throw new Error(`unsupported import file type "${unhandled}"`);
+          }
         }
       }
-    }),
+    ),
     bridge.registerCommand(webviewInitialValueCommand, ({ value }) => {
       dispatchWorker(
         Bridge.executeCommand(webviewInitialValueCommand, { value })

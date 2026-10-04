@@ -184,6 +184,32 @@ describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
       },
     ]);
     await expectConverged();
+
+    // A second file of DDL joins the diagram rather than replacing it.
+    const added = await mcp.ok('erd_import_sql', {
+      path: DOCUMENT,
+      value:
+        'CREATE TABLE audit_log (id BIGINT NOT NULL PRIMARY KEY, note TEXT);',
+      mode: 'append',
+    });
+    expect(added).toMatchObject({
+      mode: 'live',
+      batches: 1,
+      historyEntries: 1,
+    });
+
+    document = await snapshot();
+    expect(
+      document.tables.map(({ name }: { name: string }) => name).sort()
+    ).toEqual(['audit_log', 'orders', 'users']);
+    expect(tableNamed(document, 'users')).toMatchObject({
+      id: users.id,
+      x: users.x,
+      y: users.y,
+    });
+    expect(document.relationships).toHaveLength(1);
+    expect(added.createdIds).toContain(tableNamed(document, 'audit_log').id);
+    await expectConverged();
   });
 
   it('refactors an existing diagram by id while the user edits it too', async () => {

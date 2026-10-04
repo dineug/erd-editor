@@ -29,6 +29,8 @@ On the empty canvas, `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to i
 a schema you already have, right-click the canvas and choose **Import → Schema SQL** for a `.sql`
 dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. Either one replaces the
 diagram in one undoable step, its tables laid out by their relationships.
+**Import and Add** beside it takes the same formats and adds the file to the diagram instead, its
+tables placed as new ones below the ones already there, in one undoable step.
 
 Obsidian saves a diagram the way it saves a note: about two seconds after you stop editing, and
 when you close the tab or quit. Opening a file never rewrites it. Undo and redo are the diagram
@@ -55,6 +57,9 @@ editor's own history.
   and the fields pointing at another type become the relationships
 - **DBML and AML import** — `.dbml` files written for dbdiagram.io or dbdocs.io, and `.aml` files
   written for [Azimutt](https://azimutt.app), table colors included
+- **Import and Add** — add a `.sql`, GraphQL, DBML, AML or `.erd.json` file to the diagram rather
+  than replacing it: its tables arrive below the ones already there, which stay where they are,
+  and one undo takes them away. A foreign key to a table outside the file is dropped
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid

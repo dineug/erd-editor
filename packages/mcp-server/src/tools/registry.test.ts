@@ -1,7 +1,7 @@
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
+import { APPEND_SCENARIOS, TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import { createSeededPeer } from '@/__test-utils__/seed';
 import { actionTools } from '@/tools/registry';
 import { runTool, type ToolRun } from '@/tools/run';
@@ -53,6 +53,25 @@ describe('the registry', () => {
       expect([name, outcome.mismatch]).toEqual([name, undefined]);
       expect(outcome.tool).toBe(name);
     }
+  });
+
+  it('runs every import with mode append on the seed inside the counts it declared, in one batch', () => {
+    for (const [name, args] of Object.entries(APPEND_SCENARIOS)) {
+      const outcome = onSeed(peer => runTool(peer, name, args));
+      expect([name, outcome.mismatch, outcome.batches]).toEqual([
+        name,
+        undefined,
+        1,
+      ]);
+    }
+  });
+
+  it('sends nothing for an append of a text that declares no table', () => {
+    const outcome = onSeed(peer =>
+      runTool(peer, 'erd_import_sql', { value: 'SELECT 1;', mode: 'append' })
+    );
+    expect(outcome.batches).toBe(0);
+    expect(outcome.mismatch).toBeUndefined();
   });
 
   it('sends nothing the second time a tool sets a value the document already holds', () => {

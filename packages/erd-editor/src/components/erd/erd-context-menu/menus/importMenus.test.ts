@@ -13,7 +13,12 @@ import { createImportMenus } from '@/components/erd/erd-context-menu/menus/impor
 import { setImportFileCallback } from '@/utils/file/importFile';
 
 let app: AppContext;
-let requests: Array<{ type: string; op: string; accept: string }>;
+let requests: Array<{
+  type: string;
+  op: string;
+  accept: string;
+  mode?: string;
+}>;
 
 beforeEach(() => {
   app = createTestAppContext();
@@ -92,6 +97,34 @@ describe('importMenus', () => {
 
     expect(requests).toEqual([{ type: 'aml', op: 'set', accept: '.aml' }]);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for each format to add for Import and Add, naming the mode', () => {
+    const onClose = vi.fn();
+    const menus = createImportMenus(app, onClose, 'append');
+
+    expect(menus.map(menu => menu.name)).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
+    menus.forEach(menu => menu.onClick());
+
+    expect(requests).toEqual([
+      { type: 'json', op: 'set', accept: '.json', mode: 'append' },
+      { type: 'sql', op: 'set', accept: '.sql', mode: 'append' },
+      {
+        type: 'graphql',
+        op: 'set',
+        accept: '.graphql,.gql,.graphqls',
+        mode: 'append',
+      },
+      { type: 'dbml', op: 'set', accept: '.dbml', mode: 'append' },
+      { type: 'aml', op: 'set', accept: '.aml', mode: 'append' },
+    ]);
+    expect(onClose).toHaveBeenCalledTimes(5);
   });
 
   it('falls back to a file input when no import callback is registered', () => {

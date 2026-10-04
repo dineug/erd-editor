@@ -45,7 +45,13 @@ import {
   openDiffViewerAction,
   schemaGCAction,
 } from '@/utils/emitter';
-import { importSchema, importSchemaPlaced } from '@/utils/file/importSchema';
+import {
+  appendSchema,
+  appendSchemaJSON,
+  appendSchemaPlaced,
+  importSchema,
+  importSchemaPlaced,
+} from '@/utils/file/importSchema';
 import { toSharedFocus, toSharedFocusKey } from '@/utils/focus';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
 import { toLoadValue } from '@/utils/loadValue';
@@ -344,18 +350,27 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
   // A Promise only where the import places first, so a setter called as it
   // always was still lands before it returns. A readonly editor refuses the
-  // load, so it is spared the layout too.
+  // load, so it is spared the layout too, and an append, its selection.
   const setSchema = (type: SchemaImportType) =>
     ((value: string, options?: SchemaImportOptions) => {
       const safeValue = toSafeString(value);
+      const append = options?.mode === 'append';
 
       if (options?.placement !== 'auto') {
-        isEmpty(safeValue) || importSchema(app, type, safeValue);
+        if (isEmpty(safeValue)) return;
+
+        if (!append) {
+          importSchema(app, type, safeValue);
+        } else if (!getReadonly()) {
+          appendSchema(app, type, safeValue);
+        }
         return;
       }
 
-      return isEmpty(safeValue) || getReadonly()
-        ? Promise.resolve()
+      if (isEmpty(safeValue) || getReadonly()) return Promise.resolve();
+
+      return append
+        ? appendSchemaPlaced(app, type, safeValue)
         : importSchemaPlaced(app, type, safeValue);
     }) as SetSchema;
 
@@ -363,6 +378,17 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   ctx.setSchemaGraphQL = setSchema('graphql');
   ctx.setSchemaDBML = setSchema('dbml');
   ctx.setSchemaAML = setSchema('aml');
+
+  ctx.setSchemaJSON = (value, options) => {
+    const safeValue = toSafeString(value);
+    if (isEmpty(safeValue)) return;
+
+    if (options?.mode !== 'append') {
+      store.dispatchSync(loadJsonAction$(safeValue));
+    } else if (!getReadonly()) {
+      appendSchemaJSON(app, safeValue);
+    }
+  };
 
   ctx.getSchemaSQL = databaseVendor => {
     const isDatabaseVendor = hasDatabaseVendor(databaseVendor ?? '');

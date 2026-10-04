@@ -17,6 +17,8 @@ import {
 } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import {
+  appendSchemaAction$,
+  appendSchemaJsonAction$,
   loadJsonAction$,
   loadSchemaAMLAction$,
   loadSchemaDBMLAction$,
@@ -544,4 +546,13 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
       loadSchemaAMLAction$('accounts\n  id int pk\n  email varchar'),
     ]),
   importJson: () => edit('importJson', [loadJsonAction$(createImportValue())]),
+  appendSql: () =>
+    edit('appendSql', [
+      appendSchemaAction$(
+        'sql',
+        'CREATE TABLE accounts (id INT NOT NULL PRIMARY KEY, email VARCHAR(255));'
+      ),
+    ]),
+  appendJson: () =>
+    edit('appendJson', [appendSchemaJsonAction$(createImportValue())]),
 };

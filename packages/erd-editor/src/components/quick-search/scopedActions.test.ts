@@ -116,6 +116,7 @@ const ERD_COMMANDS = [
   'Tab',
   'Database',
   'Import',
+  'Import and Add',
   'Export',
   'New Table',
   'New Memo',

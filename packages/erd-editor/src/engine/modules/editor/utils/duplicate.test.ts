@@ -1041,3 +1041,92 @@ describe('toCreateEntityActions — the graph as a whole', () => {
     expect(types.filter(type => type.startsWith('index'))).toEqual([]);
   });
 });
+
+describe('toCreateEntityActions — values only', () => {
+  const blankInput = () =>
+    createInput({
+      tables: [
+        createClipboardTable('t1', {
+          columnIds: ['c1'],
+          name: '',
+          comment: '',
+        }),
+      ],
+      columns: [
+        createClipboardColumn('c1', 't1', {
+          name: '',
+          comment: '',
+          dataType: '',
+          default: '',
+          options: 0,
+        }),
+      ],
+      memos: [createClipboardMemo('m1', { value: '' })],
+      indexes: [
+        createClipboardIndex('t1', {
+          name: '',
+          unique: false,
+          indexColumns: [{ columnId: 'c1', orderType: OrderType.ASC }],
+        }),
+      ],
+    });
+
+  const placed = () =>
+    createPlacement([
+      ['t1', {}],
+      ['m1', {}],
+    ]);
+
+  it('sends no field that holds what a new entity starts with', () => {
+    const { actions } = toCreateEntityActions(blankInput(), placed(), {
+      valuesOnly: true,
+    });
+
+    expect(toTypes(actions)).toEqual([
+      'table.add',
+      'column.add',
+      'index.add',
+      'indexColumn.add',
+      'memo.add',
+    ]);
+  });
+
+  it('still sends every field that holds something else', () => {
+    const { actions } = toCreateEntityActions(
+      createInput({
+        tables: [createClipboardTable('t1', { columnIds: ['c1'] })],
+        columns: [
+          createClipboardColumn('c1', 't1', {
+            options:
+              ColumnOption.primaryKey |
+              ColumnOption.notNull |
+              ColumnOption.unique |
+              ColumnOption.autoIncrement,
+          }),
+        ],
+        memos: [createClipboardMemo('m1')],
+        indexes: [
+          createClipboardIndex('t1', {
+            name: 'idx',
+            unique: true,
+            indexColumns: [{ columnId: 'c1', orderType: OrderType.DESC }],
+          }),
+        ],
+      }),
+      placed(),
+      { valuesOnly: true }
+    );
+
+    expect(new Set(toTypes(actions))).toEqual(
+      new Set(
+        ALLOWED_ACTION_TYPES.filter(type => !type.startsWith('relationship'))
+      )
+    );
+  });
+
+  it('sends every field by default, as a paste does', () => {
+    const { actions } = toCreateEntityActions(blankInput(), placed());
+
+    expect(toTypes(actions)).toHaveLength(19);
+  });
+});

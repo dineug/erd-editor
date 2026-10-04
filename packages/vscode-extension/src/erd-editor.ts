@@ -104,7 +104,7 @@ export class ErdEditor extends Editor {
       }),
       this.bridge.registerCommand(
         hostImportFileCommand,
-        async ({ type, op }) => {
+        async ({ type, op, mode }) => {
           const { label, extensions } = IMPORT_FILE_TYPES[type];
 
           const uris = await vscode.window.showOpenDialog({
@@ -126,11 +126,13 @@ export class ErdEditor extends Editor {
           }
 
           const value = await vscode.workspace.fs.readFile(uris[0]);
+          // The mode goes back as it came, and only when the page named one.
           dispatch(
             Bridge.executeCommand(webviewImportFileCommand, {
               type,
               op,
               value: textDecoder.decode(value),
+              ...(mode && { mode }),
             })
           );
         }

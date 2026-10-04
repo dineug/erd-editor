@@ -103,6 +103,7 @@ const ERD_TOOLBOX = [
   'Tab',
   'Database',
   'Import',
+  'Import and Add',
   'Export',
   'New Table',
   'New Memo',
@@ -525,6 +526,42 @@ describe('createScopeActions / Import and Export', () => {
       op: 'set',
       accept: '.aml',
     });
+  });
+
+  it('routes every Import and Add entry through the callback as an append', () => {
+    const onImport = vi.fn();
+    setImportFileCallback(onImport);
+    const entries = find(scope(), 'Import and Add').next ?? [];
+
+    expect(names(entries)).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
+    entries.forEach(entry => entry.perform?.(app));
+
+    expect(onImport.mock.calls.map(([options]) => options)).toEqual([
+      { type: 'json', op: 'set', accept: '.json', mode: 'append' },
+      { type: 'sql', op: 'set', accept: '.sql', mode: 'append' },
+      {
+        type: 'graphql',
+        op: 'set',
+        accept: '.graphql,.gql,.graphqls',
+        mode: 'append',
+      },
+      { type: 'dbml', op: 'set', accept: '.dbml', mode: 'append' },
+      { type: 'aml', op: 'set', accept: '.aml', mode: 'append' },
+    ]);
+  });
+
+  it('offers Import and Add on the ERD tab alone, as Import', () => {
+    const importAndAdd = find(scope(), 'Import and Add');
+
+    expect(importAndAdd.filter?.(app)).toBe(true);
+    setCanvasType(CanvasType.schemaSQL);
+    expect(importAndAdd.filter?.(app)).toBe(false);
   });
 
   it('finds the GraphQL import entry by its sdl keywords', () => {
