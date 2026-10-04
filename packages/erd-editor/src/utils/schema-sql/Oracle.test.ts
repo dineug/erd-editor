@@ -356,6 +356,158 @@ describe('Oracle createSchema', () => {
   });
 });
 
+describe('Oracle dotted table names', () => {
+  it('names constraints and indexes after the table part of an unquoted schema.table', () => {
+    const { state, users, posts, userId } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    userId.options = ColumnOption.primaryKey | ColumnOption.notNull;
+
+    expect(createSchema(state)).toBe(
+      [
+        '',
+        'CREATE TABLE sales.posts',
+        '(',
+        '  id      INT,',
+        '  user_id INT NOT NULL,',
+        '  CONSTRAINT PK_posts PRIMARY KEY (id)',
+        ');',
+        '',
+        'CREATE TABLE sales.users',
+        '(',
+        '  id    INT          NOT NULL,',
+        "  email VARCHAR(255) DEFAULT 'a@b.c' NOT NULL,",
+        "  name  VARCHAR(50)  DEFAULT 'guest',",
+        '  CONSTRAINT PK_users PRIMARY KEY (id)',
+        ');',
+        '',
+        'ALTER TABLE sales.users',
+        '  ADD CONSTRAINT UQ_users_email UNIQUE (email);',
+        '',
+        "COMMENT ON TABLE sales.users IS 'user table';",
+        '',
+        "COMMENT ON COLUMN sales.users.id IS 'user id';",
+        '',
+        "COMMENT ON COLUMN sales.users.email IS 'email address';",
+        '',
+        'ALTER TABLE sales.posts',
+        '  ADD CONSTRAINT FK_users_TO_posts',
+        '    FOREIGN KEY (user_id)',
+        '    REFERENCES sales.users (id);',
+        '',
+        'CREATE INDEX sales.IDX_posts',
+        '  ON sales.posts (user_id ASC);',
+        '',
+        'CREATE UNIQUE INDEX IDX_EMAIL',
+        '  ON sales.users (email DESC);',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('repeats the primary key and unique names in each schema and numbers the foreign key and index names', () => {
+    const { state, users, posts, userId, userEmail, postUserId } =
+      createFixture();
+    users.name = 'sales.users';
+    posts.name = 'hr.posts';
+    userId.options = ColumnOption.primaryKey | ColumnOption.notNull;
+    // The hr table borrows the sales columns, which the DDL reads by id alone.
+    const hrUsers = createTable({
+      id: 't-hr-users',
+      name: 'hr.users',
+      columnIds: [userId.id, userEmail.id],
+    });
+    const hrRelationship = createRelationship({
+      id: 'r-hr',
+      start: { tableId: hrUsers.id, columnIds: [userId.id] },
+      end: { tableId: posts.id, columnIds: [postUserId.id] },
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: '',
+      tableId: hrUsers.id,
+      indexColumnIds: ['ic-2'],
+    });
+    state.collections.tableEntities[hrUsers.id] = hrUsers;
+    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexEntities[hrIndex.id] = hrIndex;
+    state.collections.indexEntities['i-2'].name = '';
+    state.doc.tableIds.push(hrUsers.id);
+    state.doc.relationshipIds.push(hrRelationship.id);
+    state.doc.indexIds = ['i-2', hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql.match(/CONSTRAINT PK_users PRIMARY KEY/g)).toHaveLength(2);
+    expect(sql.match(/ADD CONSTRAINT UQ_users_email UNIQUE/g)).toHaveLength(2);
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts1\n');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX sales.IDX_users\n  ON sales.users'
+    );
+    expect(sql).toContain('CREATE INDEX hr.IDX_users1\n  ON hr.users');
+  });
+
+  it('puts an automatic index beside its table, where table parts differing in case cannot clash', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'hr.Users';
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+    const buffer: string[] = [];
+    const indexNames: Name[] = [];
+    const salesIndex = createIndex({
+      id: 'i-sales',
+      name: '',
+      tableId: users.id,
+      indexColumnIds: ['ic-2'],
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: '',
+      tableId: posts.id,
+      indexColumnIds: ['ic-1'],
+    });
+
+    formatIndex(state, { index: salesIndex, buffer, indexNames });
+    formatIndex(state, { index: hrIndex, buffer, indexNames });
+
+    expect(buffer).toEqual([
+      'CREATE INDEX sales.IDX_users',
+      '  ON sales.users (email DESC);',
+      'CREATE INDEX hr.IDX_Users',
+      '  ON hr.Users (user_id ASC);',
+    ]);
+  });
+
+  it('leaves a named index where Oracle puts it', () => {
+    const { state, users, usersIndex } = createFixture();
+    users.name = 'sales.users';
+    const buffer: string[] = [];
+
+    formatIndex(state, { index: usersIndex, buffer, indexNames: [] });
+
+    expect(buffer).toEqual([
+      'CREATE UNIQUE INDEX IDX_EMAIL',
+      '  ON sales.users (email DESC);',
+    ]);
+  });
+
+  it('keeps a quoted dotted name whole in every automatic name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  CONSTRAINT "PK_sales.users" PRIMARY KEY ("id")');
+    expect(sql).toContain('  ADD CONSTRAINT "UQ_sales.users_email" UNIQUE');
+    expect(sql).toContain('  ADD CONSTRAINT "FK_sales.users_TO_sales.posts"');
+    expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
+  });
+});
+
 describe('Oracle formatTable', () => {
   it('omits the primary key constraint and the trailing comma without a primary key', () => {
     const state = createState();

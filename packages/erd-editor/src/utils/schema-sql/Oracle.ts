@@ -23,6 +23,8 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  splitTableName,
+  tableNamePart,
   toOrderName,
   toStringLiteral,
   unique,
@@ -157,10 +159,9 @@ export function formatTable(
 
   if (pk) {
     const pkColumns = primaryKeyColumns(columns);
+    const pkName = `PK_${tableNamePart(table.name, bracketType)}`;
     buffer.push(
-      `  CONSTRAINT ${bracket}PK_${
-        table.name
-      }${bracket} PRIMARY KEY (${formatNames(pkColumns, bracket)})`
+      `  CONSTRAINT ${bracket}${pkName}${bracket} PRIMARY KEY (${formatNames(pkColumns, bracket)})`
     );
   }
   buffer.push(`);`);
@@ -184,7 +185,7 @@ export function formatUnique(
   uniqueColumns(columns).forEach(column => {
     buffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
     buffer.push(
-      `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
+      `  ADD CONSTRAINT ${bracket}UQ_${tableNamePart(table.name, bracketType)}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
     );
     buffer.push('');
   });
@@ -253,7 +254,9 @@ function formatRelation(
     buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
     // FK
-    let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
+    const startName = tableNamePart(startTable.name, bracketType);
+    const endName = tableNamePart(endTable.name, bracketType);
+    let fkName = `FK_${startName}_TO_${endName}`;
     fkName = autoName(fkNames, '', fkName);
     fkNames.push({
       id: nanoid(),
@@ -324,19 +327,29 @@ export function formatIndex(
 
   if (columnNames.length !== 0) {
     let indexName = index.name;
+    let indexSchema = '';
     if (index.name.trim() === '') {
-      indexName = `IDX_${table.name}`;
+      const [schema, tableName] = splitTableName(table.name, bracketType);
+      indexName = `IDX_${tableName}`;
       indexName = autoName(indexNames, '', indexName);
       indexNames.push({
         id: nanoid(),
         name: indexName,
       });
+      // Unqualified, the index lands in the current user's schema, where the
+      // names of sales.users and hr.Users both fold to IDX_USERS; beside its
+      // table the name cannot clash.
+      indexSchema = schema === '' ? '' : `${schema}.`;
     }
 
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(
+        `CREATE UNIQUE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
+      );
     } else {
-      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(
+        `CREATE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
+      );
     }
     buffer.push(
       `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`

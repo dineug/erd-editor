@@ -20,6 +20,9 @@ import {
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
+  splitsTableName,
+  splitTableName,
+  tableNamePart,
   toOrderName,
   toStringLiteral,
   unique,
@@ -141,6 +144,64 @@ describe('schema-sql/utils', () => {
 
     it('falls back to an empty string for an unknown bracket type', () => {
       expect(getBracket(9999)).toBe('');
+    });
+  });
+
+  describe('splitTableName / tableNamePart', () => {
+    it('splits an unquoted name at its last dot', () => {
+      expect(splitTableName('sales.users', BracketType.none)).toEqual([
+        'sales',
+        'users',
+      ]);
+      expect(splitTableName('erp.sales.users', BracketType.none)).toEqual([
+        'erp.sales',
+        'users',
+      ]);
+      expect(tableNamePart('erp.sales.users', BracketType.none)).toBe('users');
+    });
+
+    it('leaves a name without a dot whole with an empty schema', () => {
+      expect(splitTableName('users', BracketType.none)).toEqual(['', 'users']);
+      expect(tableNamePart('users', BracketType.none)).toBe('users');
+    });
+
+    it('keeps a quoted name whole, the dot being part of one identifier', () => {
+      for (const bracketType of [
+        BracketType.doubleQuote,
+        BracketType.backtick,
+        BracketType.singleQuote,
+      ]) {
+        expect(splitTableName('sales.users', bracketType)).toEqual([
+          '',
+          'sales.users',
+        ]);
+        expect(tableNamePart('sales.users', bracketType)).toBe('sales.users');
+      }
+    });
+
+    it('splits under an unknown bracket type, which writes the name unquoted', () => {
+      expect(tableNamePart('sales.users', 9999)).toBe('users');
+    });
+  });
+
+  describe('splitsTableName', () => {
+    it('holds for the six generators that name keys after the table part', () => {
+      for (const database of [
+        Database.MariaDB,
+        Database.MSSQL,
+        Database.MySQL,
+        Database.Oracle,
+        Database.PostgreSQL,
+        Database.SQLite,
+      ]) {
+        expect(splitsTableName(database)).toBe(true);
+      }
+    });
+
+    it('fails for Databricks, Snowflake and an unknown database', () => {
+      expect(splitsTableName(Database.Databricks)).toBe(false);
+      expect(splitsTableName(Database.Snowflake)).toBe(false);
+      expect(splitsTableName(0)).toBe(false);
     });
   });
 

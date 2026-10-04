@@ -23,6 +23,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  tableNamePart,
   toOrderName,
   toStringLiteral,
   unique,
@@ -143,7 +144,7 @@ export function formatUnique(
   uniqueColumns(columns).forEach(column => {
     buffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
     buffer.push(
-      `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
+      `  ADD CONSTRAINT ${bracket}UQ_${tableNamePart(table.name, bracketType)}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
     );
     buffer.push('');
   });
@@ -198,7 +199,9 @@ function formatRelation(
     buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
     // FK
-    let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
+    const startName = tableNamePart(startTable.name, bracketType);
+    const endName = tableNamePart(endTable.name, bracketType);
+    let fkName = `FK_${startName}_TO_${endName}`;
     fkName = autoName(fkNames, '', fkName);
     fkNames.push({
       id: nanoid(),
@@ -270,7 +273,7 @@ export function formatIndex(
   if (columnNames.length !== 0) {
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${table.name}`;
+      indexName = `IDX_${tableNamePart(table.name, bracketType)}`;
       indexName = autoName(indexNames, '', indexName);
       indexNames.push({
         id: nanoid(),

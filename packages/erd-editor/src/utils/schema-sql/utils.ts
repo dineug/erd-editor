@@ -123,6 +123,45 @@ export function getBracket(bracketType: number) {
   return BracketTypeMap[bracketType] ?? '';
 }
 
+/**
+ * A table name split at its last dot into schema and table where it is written
+ * unquoted, the dot then qualifying the table; quoted, the whole name is one
+ * identifier and the schema is empty.
+ */
+export function splitTableName(
+  name: string,
+  bracketType: number
+): [schema: string, table: string] {
+  const dot = getBracket(bracketType) === '' ? name.lastIndexOf('.') : -1;
+  return dot === -1 ? ['', name] : [name.slice(0, dot), name.slice(dot + 1)];
+}
+
+/**
+ * The part of a table name that automatic constraint and index names take, so
+ * sales.users gives PK_users, which every database reads as one identifier.
+ */
+export function tableNamePart(name: string, bracketType: number): string {
+  return splitTableName(name, bracketType)[1];
+}
+
+const TABLE_NAME_PART_DATABASES: ReadonlySet<number> = new Set([
+  Database.MariaDB,
+  Database.MSSQL,
+  Database.MySQL,
+  Database.Oracle,
+  Database.PostgreSQL,
+  Database.SQLite,
+]);
+
+/**
+ * Whether a database's DDL builds automatic names from tableNamePart: the six
+ * generators that read an unquoted dot as a schema do, while Databricks and
+ * Snowflake write the whole table name into them.
+ */
+export function splitsTableName(database: number): boolean {
+  return TABLE_NAME_PART_DATABASES.has(database);
+}
+
 export function orderByNameASC<T extends { name: string }>(a: T, b: T) {
   const nameA = a.name.toLowerCase();
   const nameB = b.name.toLowerCase();

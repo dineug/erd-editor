@@ -22,6 +22,8 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  splitTableName,
+  tableNamePart,
   toOrderName,
 } from './utils';
 
@@ -162,13 +164,16 @@ export function formatTable(
       const actions = formatReferentialActions(relationship, ACTION_SUPPORT)
         .map(clause => ` ${clause}`)
         .join('');
+      // SQLite resolves a foreign key in the child table's own schema and
+      // refuses a qualified name there.
+      const referenced = tableNamePart(startTable.name, bracketType);
 
       if (relationships.length - 1 > i) {
         buffer.push(
           `  FOREIGN KEY (${formatNames(
             columns.end,
             bracket
-          )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+          )}) REFERENCES ${bracket}${referenced}${bracket} (${formatNames(
             columns.start,
             bracket
           )})${actions},`
@@ -178,7 +183,7 @@ export function formatTable(
           `  FOREIGN KEY (${formatNames(
             columns.end,
             bracket
-          )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+          )}) REFERENCES ${bracket}${referenced}${bracket} (${formatNames(
             columns.start,
             bracket
           )})${actions}`
@@ -235,6 +240,7 @@ export function formatIndex(
     .collection('tableEntities')
     .selectById(index.tableId);
   if (!table) return;
+  const [schema, tableName] = splitTableName(table.name, bracketType);
 
   const columnNames = query(collections)
     .collection('indexColumnEntities')
@@ -257,21 +263,29 @@ export function formatIndex(
   if (columnNames.length !== 0) {
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${table.name}`;
+      indexName = `IDX_${tableName}`;
       indexName = autoName(indexNames, '', indexName);
       indexNames.push({
         id: nanoid(),
         name: indexName,
       });
     }
+    // SQLite takes the schema on the index name and the table bare after ON;
+    // a name the user already qualified keeps the schema it names.
+    const indexSchema =
+      schema === '' || indexName.includes('.') ? '' : `${schema}.`;
 
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(
+        `CREATE UNIQUE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
+      );
     } else {
-      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(
+        `CREATE INDEX ${indexSchema}${bracket}${indexName}${bracket}`
+      );
     }
     buffer.push(
-      `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
+      `  ON ${bracket}${tableName}${bracket} (${formatNames(columnNames)});`
     );
   }
 }

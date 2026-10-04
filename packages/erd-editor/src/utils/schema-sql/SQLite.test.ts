@@ -258,6 +258,72 @@ describe('SQLite createSchema', () => {
   });
 });
 
+describe('SQLite dotted table names', () => {
+  it('references the parent without its schema and puts the schema on the index name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+
+    expect(createSchema(state)).toBe(
+      [
+        '',
+        'CREATE TABLE sales.posts',
+        '(',
+        '  id      INT NULL    ,',
+        '  user_id INT NOT NULL,',
+        '  PRIMARY KEY (id),',
+        '  FOREIGN KEY (user_id) REFERENCES users (id)',
+        ');',
+        '',
+        '-- user table',
+        'CREATE TABLE sales.users',
+        '(',
+        '  -- user id',
+        '  id    INT          NOT NULL,',
+        '  -- email address',
+        "  email VARCHAR(255) NOT NULL UNIQUE DEFAULT 'a@b.c',",
+        "  name  VARCHAR(50)  NULL     DEFAULT 'guest',",
+        '  PRIMARY KEY (id AUTOINCREMENT)',
+        ');',
+        '',
+        'CREATE INDEX sales.IDX_posts',
+        '  ON posts (user_id ASC);',
+        '',
+        'CREATE UNIQUE INDEX sales.IDX_EMAIL',
+        '  ON users (email DESC);',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('leaves an index name the user already qualified as written', () => {
+    const { state, users, usersIndex } = createFixture();
+    users.name = 'sales.users';
+    usersIndex.name = 'sales.idx_email';
+
+    expect(createSchema(state)).toContain(
+      'CREATE UNIQUE INDEX sales.idx_email\n  ON users (email DESC);'
+    );
+  });
+
+  it('keeps a quoted dotted name whole', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain(
+      '  FOREIGN KEY ("user_id") REFERENCES "sales.users" ("id")'
+    );
+    expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX "IDX_EMAIL"\n  ON "sales.users"'
+    );
+  });
+});
+
 describe('SQLite formatTable', () => {
   it('adds AUTOINCREMENT and a trailing comma when a relationship follows the single primary key', () => {
     const state = createState();

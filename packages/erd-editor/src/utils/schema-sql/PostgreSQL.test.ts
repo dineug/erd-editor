@@ -257,6 +257,64 @@ describe('PostgreSQL createSchema', () => {
   });
 });
 
+describe('PostgreSQL dotted table names', () => {
+  it('names foreign keys and indexes after the table part of an unquoted schema.table', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+
+    expect(createSchema(state)).toBe(
+      [
+        '',
+        'CREATE TABLE sales.posts',
+        '(',
+        '  id      INT,',
+        '  user_id INT NOT NULL,',
+        '  PRIMARY KEY (id)',
+        ');',
+        '',
+        'CREATE TABLE sales.users',
+        '(',
+        '  id    INT          NOT NULL GENERATED ALWAYS AS IDENTITY,',
+        "  email VARCHAR(255) NOT NULL DEFAULT 'a@b.c' UNIQUE,",
+        "  name  VARCHAR(50)  DEFAULT 'guest',",
+        '  PRIMARY KEY (id)',
+        ');',
+        '',
+        "COMMENT ON TABLE sales.users IS 'user table';",
+        '',
+        "COMMENT ON COLUMN sales.users.id IS 'user id';",
+        '',
+        "COMMENT ON COLUMN sales.users.email IS 'email address';",
+        '',
+        'ALTER TABLE sales.posts',
+        '  ADD CONSTRAINT FK_users_TO_posts',
+        '    FOREIGN KEY (user_id)',
+        '    REFERENCES sales.users (id);',
+        '',
+        'CREATE INDEX IDX_posts',
+        '  ON sales.posts (user_id ASC);',
+        '',
+        'CREATE UNIQUE INDEX IDX_EMAIL',
+        '  ON sales.users (email DESC);',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('keeps a quoted dotted name whole in every automatic name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT "FK_sales.users_TO_sales.posts"');
+    expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
+  });
+});
+
 describe('PostgreSQL formatTable', () => {
   it('omits the primary key clause and the trailing comma without a primary key', () => {
     const state = createState();

@@ -503,6 +503,112 @@ describe('MSSQL createSchema', () => {
   });
 });
 
+describe('MSSQL dotted table names', () => {
+  it('names constraints and indexes after the table part of an unquoted schema.table', () => {
+    const { state, users, posts, userId, userEmail } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    users.comment = '';
+    userId.comment = '';
+    userEmail.comment = '';
+
+    expect(createSchema(state)).toBe(
+      [
+        '',
+        'CREATE TABLE sales.posts',
+        '(',
+        '  id      INT,',
+        '  user_id INT NOT NULL,',
+        '  CONSTRAINT PK_posts PRIMARY KEY (id)',
+        ')',
+        'GO',
+        '',
+        'CREATE TABLE sales.users',
+        '(',
+        '  id    INT          NOT NULL IDENTITY(1,1),',
+        "  email VARCHAR(255) NOT NULL DEFAULT 'a@b.c',",
+        "  name  VARCHAR(50)  DEFAULT 'guest',",
+        '  CONSTRAINT PK_users PRIMARY KEY (id)',
+        ')',
+        'GO',
+        '',
+        'ALTER TABLE sales.users',
+        '  ADD CONSTRAINT UQ_users_email UNIQUE (email)',
+        'GO',
+        '',
+        'ALTER TABLE sales.posts',
+        '  ADD CONSTRAINT FK_users_TO_posts',
+        '    FOREIGN KEY (user_id)',
+        '    REFERENCES sales.users (id)',
+        'GO',
+        '',
+        'CREATE INDEX IDX_posts',
+        '  ON sales.posts (user_id ASC)',
+        'GO',
+        '',
+        'CREATE UNIQUE INDEX IDX_EMAIL',
+        '  ON sales.users (email DESC)',
+        'GO',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('repeats the primary key and unique names in each schema and numbers the foreign key and index names', () => {
+    const { state, users, posts, userId, userEmail, postUserId } =
+      createFixture();
+    users.name = 'sales.users';
+    posts.name = 'hr.posts';
+    // The hr table borrows the sales columns, which the DDL reads by id alone.
+    const hrUsers = createTable({
+      id: 't-hr-users',
+      name: 'hr.users',
+      columnIds: [userId.id, userEmail.id],
+    });
+    const hrRelationship = createRelationship({
+      id: 'r-hr',
+      start: { tableId: hrUsers.id, columnIds: [userId.id] },
+      end: { tableId: posts.id, columnIds: [postUserId.id] },
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: '',
+      tableId: hrUsers.id,
+      indexColumnIds: ['ic-2'],
+    });
+    state.collections.tableEntities[hrUsers.id] = hrUsers;
+    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexEntities[hrIndex.id] = hrIndex;
+    state.collections.indexEntities['i-2'].name = '';
+    state.doc.tableIds.push(hrUsers.id);
+    state.doc.relationshipIds.push(hrRelationship.id);
+    state.doc.indexIds = ['i-2', hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql.match(/CONSTRAINT PK_users PRIMARY KEY/g)).toHaveLength(2);
+    expect(sql.match(/ADD CONSTRAINT UQ_users_email UNIQUE/g)).toHaveLength(2);
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts1\n');
+    expect(sql).toContain('CREATE UNIQUE INDEX IDX_users\n  ON sales.users');
+    expect(sql).toContain('CREATE INDEX IDX_users1\n  ON hr.users');
+  });
+
+  it('keeps a quoted dotted name whole in every automatic name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  CONSTRAINT "PK_sales.users" PRIMARY KEY ("id")');
+    expect(sql).toContain('  ADD CONSTRAINT "UQ_sales.users_email" UNIQUE');
+    expect(sql).toContain('  ADD CONSTRAINT "FK_sales.users_TO_sales.posts"');
+    expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
+  });
+});
+
 describe('MSSQL formatTable', () => {
   it('omits the primary key constraint and the trailing comma without a primary key', () => {
     const state = createState();

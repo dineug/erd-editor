@@ -434,3 +434,53 @@ describe('schema-sql/MySQL', () => {
     });
   });
 });
+
+describe('schema-sql/MySQL dotted table names', () => {
+  it('names constraints and indexes after the table part of an unquoted schema.table', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+
+    expect(createSchema(state).split('\n')).toEqual([
+      '',
+      'CREATE TABLE sales.posts',
+      '(',
+      '  title   VARCHAR(20) NOT NULL,',
+      '  user_id INT         NULL    ',
+      ');',
+      '',
+      'CREATE TABLE sales.users',
+      '(',
+      '  id   INT         NOT NULL AUTO_INCREMENT,',
+      "  name VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',",
+      '  age  INT         NULL    ,',
+      '  PRIMARY KEY (id)',
+      ") COMMENT 'user table';",
+      '',
+      'ALTER TABLE sales.users',
+      '  ADD CONSTRAINT UQ_users_name UNIQUE (name);',
+      '',
+      'ALTER TABLE sales.posts',
+      '  ADD CONSTRAINT FK_users_TO_posts',
+      '    FOREIGN KEY (user_id)',
+      '    REFERENCES sales.users (id);',
+      '',
+      'CREATE INDEX IDX_posts',
+      '  ON sales.posts (title ASC);',
+      '',
+    ]);
+  });
+
+  it('keeps a quoted dotted name whole in every automatic name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.backtick;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT `UQ_sales.users_name` UNIQUE');
+    expect(sql).toContain('  ADD CONSTRAINT `FK_sales.users_TO_sales.posts`');
+    expect(sql).toContain('CREATE INDEX `IDX_sales.posts`\n  ON `sales.posts`');
+  });
+});
