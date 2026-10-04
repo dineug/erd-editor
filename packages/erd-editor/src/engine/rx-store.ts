@@ -51,6 +51,8 @@ export type RxStore = Store & {
    * unless the store was created with manualStreamFlush.
    */
   flushStreamBuffers: () => void;
+  /** Whether the editor is readonly now, which drops every edit of the document. */
+  getReadonly: () => boolean;
 };
 
 export type RxStoreOptions = {
@@ -224,5 +226,6 @@ export function createRxStore(
     resetHistory,
     change$,
     flushStreamBuffers,
+    getReadonly,
   });
 }

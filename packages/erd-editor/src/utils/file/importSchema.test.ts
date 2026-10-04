@@ -17,6 +17,12 @@ import {
 import { AppContext } from '@/components/appContext';
 import { TABLE_SORT_START } from '@/constants/layout';
 import { CanvasType, Database } from '@/constants/schema';
+import {
+  clearAction,
+  initialClearAction,
+  initialLoadJsonAction,
+  loadJsonAction,
+} from '@/engine/modules/editor/atom.actions';
 import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeCanvasTypeAction,
@@ -28,6 +34,7 @@ import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import type { RxStoreOptions } from '@/engine/rx-store';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import { importSchema, importSchemaPlaced } from '@/utils/file/importSchema';
 
@@ -96,8 +103,8 @@ type Toast = { message: DOMTemplateLiterals; close?: Promise<void> };
 let toastContainer: Mounted | null = null;
 const contexts: AppContext[] = [];
 
-function createApp(): AppContext {
-  const app = createTestAppContext();
+function createApp(options?: RxStoreOptions): AppContext {
+  const app = createTestAppContext(options);
   contexts.push(app);
   app.store.dispatchSync(
     addTableAction({ id: 'old', ui: { x: 900, y: 900, zIndex: 2 } }),
@@ -140,6 +147,20 @@ function listenToasts(app: AppContext): Toast[] {
     },
   });
   return toasts;
+}
+
+/**
+ * Dispatches a load and fails if any placement still hears it: the only thing
+ * a placement does with a load is abort its own controller.
+ */
+function expectDeafToLoads(app: AppContext) {
+  const abort = vi.spyOn(AbortController.prototype, 'abort');
+  try {
+    app.store.dispatchSync(loadJsonAction$(JSON.stringify({})));
+    expect(abort).not.toHaveBeenCalled();
+  } finally {
+    abort.mockRestore();
+  }
 }
 
 /** A Flow layout in a column, each node 1000 below the last, from 400, 300. */
@@ -333,6 +354,7 @@ describe('importSchemaPlaced', () => {
     app.store.undo();
 
     expect(tableNames(app)).toEqual(['old']);
+    expectDeafToLoads(app);
   });
 
   it('lands nothing once a load has replaced the document meanwhile', async () => {
@@ -355,6 +377,26 @@ describe('importSchemaPlaced', () => {
     await placing;
 
     expect(tableNames(app)).toEqual(['newer']);
+    expectDeafToLoads(app);
+  });
+
+  it.each([
+    ['editor.clear', () => clearAction()],
+    ['editor.loadJson', () => loadJsonAction({ value: '{}' })],
+    ['editor.initialClear', () => initialClearAction()],
+    ['editor.initialLoadJson', () => initialLoadJsonAction({ value: '{}' })],
+  ])('lands nothing once an %s alone has come meanwhile', async (_, load) => {
+    const app = createApp();
+    let settle = (_: ElkLayoutPoint[]) => {};
+    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+
+    const placing = importSchemaPlaced(app, 'sql', FAN_SQL);
+    await flush();
+    app.store.dispatchSync(load());
+    settle(await columnLayout(hoisted.requests[0]));
+    await placing;
+
+    expect(tableNames(app)).toEqual([]);
   });
 
   it('lands the import started last when two placements overlap', async () => {
@@ -383,8 +425,27 @@ describe('importSchemaPlaced', () => {
     hoisted.elkLayout = columnLayout;
 
     await importSchemaPlaced(app, 'sql', FAN_SQL);
-    app.store.dispatchSync(loadJsonAction$(JSON.stringify({})));
 
-    expect(tableNames(app)).toEqual([]);
+    expect(tableNames(app).sort()).toEqual(['photos', 'posts', 'users']);
+    expectDeafToLoads(app);
+  });
+
+  it('asks no layout and opens no toast in a readonly editor, which drops the load', async () => {
+    let readonly = false;
+    const app = createApp({ getReadonly: () => readonly });
+    readonly = true;
+    const toasts = listenToasts(app);
+    hoisted.elkLayout = (request, onSlow) => {
+      onSlow?.();
+      return columnLayout(request);
+    };
+
+    await expect(
+      importSchemaPlaced(app, 'sql', FAN_SQL)
+    ).resolves.toBeUndefined();
+
+    expect(hoisted.requests).toEqual([]);
+    expect(toasts).toEqual([]);
+    expect(tableNames(app)).toEqual(['old']);
   });
 });

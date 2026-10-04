@@ -630,7 +630,10 @@ describe('useErdEditorAttachElement', () => {
     expect(
       ctx.setSchemaAML('accounts\n  id int pk', { placement: 'grid' })
     ).toBeUndefined();
-    expect(app.store.state.doc.tableIds).toHaveLength(1);
+    const { doc, collections } = app.store.state;
+    expect(doc.tableIds.map(id => collections.tableEntities[id].name)).toEqual([
+      'accounts',
+    ]);
     expect(hoisted.requests).toEqual([]);
   });
 
@@ -671,6 +674,34 @@ describe('useErdEditorAttachElement', () => {
       expect(
         doc.tableIds.map(id => collections.tableEntities[id].name)
       ).toEqual([name]);
+    }
+  );
+
+  it.each<[string, (ctx: ErdEditorElement) => void, string[]]>([
+    [
+      'setInitialValue',
+      ctx => ctx.setInitialValue(loadedDocument()),
+      ['loaded'],
+    ],
+    ['the value setter', ctx => (ctx.value = loadedDocument()), ['loaded']],
+    ['clear', ctx => ctx.clear(), []],
+  ])(
+    'lands no auto import once %s has loaded meanwhile',
+    async (_, load, names) => {
+      const { app, ctx } = await setup();
+      let settle = (_: ElkLayoutPoint[]) => {};
+      hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+
+      const landing = ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto' });
+      await flush();
+      load(ctx);
+      settle(hoisted.requests[0].nodes.map(({ id }) => ({ id, x: 0, y: 0 })));
+
+      await expect(landing).resolves.toBeUndefined();
+      const { doc, collections } = app.store.state;
+      expect(
+        doc.tableIds.map(id => collections.tableEntities[id].name)
+      ).toEqual(names);
     }
   );
 

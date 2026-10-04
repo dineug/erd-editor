@@ -112,6 +112,9 @@ export async function importSchemaPlaced(
   value: string
 ): Promise<void> {
   const { store } = app;
+  // The readonly filter would drop the load, so nothing is parsed or laid out.
+  if (store.getReadonly()) return;
+
   const json = toSchemaImportJson(type, value, store.state, app);
   const { signal, stop } = startPlacement(store);
 
