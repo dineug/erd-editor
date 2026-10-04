@@ -84,7 +84,10 @@ its table: `ALTER TABLE [ONLY] <table> ALTER [COLUMN] <column> SET DEFAULT nextv
 column, after its `CREATE SEQUENCE`, or `ADD GENERATED {ALWAYS | BY DEFAULT} AS IDENTITY [(...)]` for an
 identity column. It carries the table's `name` and the `columnName`, one statement per such action of
 the `ALTER TABLE`; any other action, a `SET DEFAULT` of anything else included, gives none. An `ALTER`
-the source cuts off before its action ends at the next statement, an `ALTER TABLE` included.
+the source cuts off before its action, or before its column's name, swallows no statement read after
+it, an `ALTER TABLE` included, while a column named by a word a statement opens with still reads before
+its action, as pg_dump leaves such a name unquoted where PostgreSQL does not reserve it
+(`ALTER COLUMN delete SET DEFAULT nextval('...')`).
 
 A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
 named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's

@@ -26,6 +26,19 @@ const AddIdentity: ReadonlyArray<ReadonlyArray<string>> = [
   ['ADD', 'GENERATED', 'BY', 'DEFAULT', 'AS', 'IDENTITY'],
 ];
 
+// The words a PostgreSQL column action opens with. Before one, a statement word
+// is the column's name, which pg_dump leaves unquoted where PostgreSQL does not
+// reserve it (delete, drop); before anything else it opens the next statement.
+const ColumnActionWords: ReadonlyArray<string> = [
+  'ADD',
+  'DROP',
+  'OPTIONS',
+  'RESET',
+  'RESTART',
+  'SET',
+  'TYPE',
+];
+
 /**
  * Reads ALTER TABLE [ONLY] t ALTER [COLUMN] c ... and leaves $pos past it, with
  * one statement per action that makes its column auto increment, SET DEFAULT
@@ -69,6 +82,11 @@ export function alterTableAlterColumnParser(
     (isSet(pos) && isDefault(pos + 1) && isNextvalAt(pos + 2)) ||
     AddIdentity.some(words => isWords(pos, words));
 
+  const isColumnName = (pos: number) =>
+    isString(pos) &&
+    (!newStatement(pos) ||
+      ColumnActionWords.some(word => isWords(pos + 1, [word])));
+
   const length = head($pos.value);
   const name = tokens[$pos.value + length - 1].value;
   const ast: AlterTableAlterColumnAutoIncrement[] = [];
@@ -85,7 +103,7 @@ export function alterTableAlterColumnParser(
 
     // Each action opens with an ALTER of its own but for an ALTER TABLE, and
     // the DROP of DROP DEFAULT after the column's name is stepped over too; any
-    // other statement word there ends a statement the source cut short.
+    // other statement word there, or as a name no action follows, ends it.
     if (actionStart && isAlter($pos.value) && !isTable($pos.value + 1)) {
       actionStart = false;
       $pos.value++;
@@ -94,7 +112,7 @@ export function alterTableAlterColumnParser(
         $pos.value++;
       }
 
-      if (isString($pos.value)) {
+      if (isColumnName($pos.value)) {
         if (makesAutoIncrement($pos.value + 1)) {
           ast.push({
             type: StatementType.alterTableAlterColumnAutoIncrement,

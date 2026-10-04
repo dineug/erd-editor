@@ -4948,10 +4948,8 @@ CREATE SEQUENCE `order_seq` start with 1 minvalue 1 maxvalue 9223372036854775806
 DO SETVAL(`order_seq`, 1, 0);
 
 CREATE TABLE `orders` (
-  `id` int(11) NOT NULL DEFAULT nextval(`shop`.`order_seq`),
   `ref` bigint(20) DEFAULT NEXTVAL(order_seq),
-  `code` int(11) DEFAULT NEXT VALUE FOR `order_seq`,
-  PRIMARY KEY (`id`)
+  `code` int(11) DEFAULT NEXT VALUE FOR `order_seq`
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE `orders` ALTER COLUMN `ref` SET DEFAULT (nextval(shop.order_seq));
@@ -4965,16 +4963,6 @@ ALTER TABLE `orders` ALTER COLUMN `ref` SET DEFAULT (nextval(shop.order_seq));
       "name": "orders",
       "comment": "",
       "columns": [
-        {
-          "name": "id",
-          "dataType": "int(11)",
-          "default": "nextval(`shop`.`order_seq`)",
-          "comment": "",
-          "primaryKey": true,
-          "autoIncrement": false,
-          "unique": false,
-          "nullable": false
-        },
         {
           "name": "ref",
           "dataType": "bigint(20)",
