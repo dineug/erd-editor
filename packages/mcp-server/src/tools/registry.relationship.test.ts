@@ -465,3 +465,53 @@ describe.each([
     expect(gone.code).toBe(ToolErrorCode.notFound);
   });
 });
+
+describe('the foreign key data types the descriptions of erd_add_relationship and erd_change_column_data_type state', () => {
+  const dataTypeOf = (peer: PeerStore, columnId: string) =>
+    peer.state.collections.tableColumnEntities[columnId].dataType;
+
+  const setDataType = (
+    peer: PeerStore,
+    tableId: string,
+    columnId: string,
+    value: string
+  ) =>
+    runTool(peer, 'erd_change_column_data_type', { tableId, columnId, value });
+
+  it('gives the foreign key of a serial key the integer it stores, sync off too', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_set_database', { value: 'PostgreSQL' });
+    runTool(peer, 'erd_set_relationship_data_type_sync', { value: false });
+    setDataType(peer, SEED.users, SEED.userId, 'BIGSERIAL');
+
+    const [foreignKeyId] = relate(peer, SEED.users, SEED.empty).createdIds;
+
+    expect(dataTypeOf(peer, foreignKeyId)).toBe('BIGINT');
+  });
+
+  it('maps a bare serial by the document database', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_set_database', { value: 'MySQL' });
+    setDataType(peer, SEED.users, SEED.userId, 'serial');
+
+    const [foreignKeyId] = relate(peer, SEED.users, SEED.empty).createdIds;
+
+    expect(dataTypeOf(peer, foreignKeyId)).toBe('bigint unsigned');
+  });
+
+  it('syncs both ways and stops a foreign key change at a serial key', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_set_database', { value: 'PostgreSQL' });
+    runTool(peer, 'erd_set_relationship_data_type_sync', { value: true });
+
+    setDataType(peer, SEED.orders, SEED.orderUser, 'BIGINT');
+    expect(dataTypeOf(peer, SEED.userId)).toBe('BIGINT');
+
+    setDataType(peer, SEED.users, SEED.userId, 'SERIAL');
+    expect(dataTypeOf(peer, SEED.orderUser)).toBe('INTEGER');
+
+    setDataType(peer, SEED.orders, SEED.orderUser, 'BIGINT');
+    expect(dataTypeOf(peer, SEED.userId)).toBe('SERIAL');
+    expect(dataTypeOf(peer, SEED.orderUser)).toBe('BIGINT');
+  });
+});

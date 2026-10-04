@@ -157,3 +157,31 @@ describe('the words on a referential action', () => {
     }
   });
 });
+
+describe('the words on a foreign key data type', () => {
+  it('give erd_add_relationship the integer each serial key copies as', () => {
+    const text = describeTool('erd_add_relationship');
+
+    for (const phrase of [
+      'serial4 integer',
+      'smallserial and serial2 smallint',
+      'bigserial and serial8 bigint',
+      'serial integer under PostgreSQL',
+      'bigint unsigned under MySQL and MariaDB',
+      'serial elsewhere',
+    ]) {
+      expect(text).toContain(phrase);
+    }
+  });
+
+  it('say the sync of erd_change_column_data_type runs both ways and stops at a serial key', () => {
+    const text = describeTool('erd_change_column_data_type');
+
+    expect(text).toContain('both ways');
+    expect(text).toContain('into the foreign keys that copy the column');
+    expect(text).toContain('from a foreign key back to the key it copies');
+    expect(text).toContain(
+      'except a serial key, which keeps its type and stops the change there'
+    );
+  });
+});

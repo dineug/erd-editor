@@ -10,12 +10,18 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { Column } from '@/internal-types';
 
+import { toReferenceDataType } from './referenceType';
+
 const SEPARATOR = '_';
 
-/** The start table's name and the names the end table's columns hold. */
-export type ForeignKeyNaming = {
+/**
+ * The start table's name and the names the end table's columns hold, which
+ * name the copies, and the document's database, which types a serial key's copy.
+ */
+export type ForeignKeyContext = {
   startTableName: string;
   endColumnNames: string[];
+  database: number;
 };
 
 const toNameKey = (name: string) => name.trim().toLowerCase();
@@ -106,14 +112,14 @@ export function toForeignKeyNames(
 
 /**
  * Adds a NOT NULL copy of each start column to the end table under the id at
- * the same index of endColumnIds, named by toForeignKeyNames, carrying its data
- * type, default and comment. The caller owns the ids the relationship needs.
+ * the same index of endColumnIds, named by toForeignKeyNames, typed by
+ * toReferenceDataType, with its default and comment. The caller owns the ids.
  */
 export const toForeignKeyActions = (
   startColumns: Column[],
   endTableId: string,
   endColumnIds: string[],
-  { startTableName, endColumnNames }: ForeignKeyNaming
+  { startTableName, endColumnNames, database }: ForeignKeyContext
 ): AnyAction[] => {
   const names = toForeignKeyNames(
     startTableName,
@@ -139,7 +145,7 @@ export const toForeignKeyActions = (
       }),
       changeColumnDataTypeAction({
         ...payload,
-        value: startColumn.dataType,
+        value: toReferenceDataType(startColumn.dataType, database),
       }),
       changeColumnDefaultAction({
         ...payload,

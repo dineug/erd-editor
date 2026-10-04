@@ -10,6 +10,7 @@ import {
 
 import {
   ColumnOption,
+  Database,
   ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
@@ -20,7 +21,10 @@ import {
   actions$,
   addRelationshipAction$,
 } from '@/engine/modules/relationship/generator.actions';
-import { changeRelationshipDataTypeSyncAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeDatabaseAction,
+  changeRelationshipDataTypeSyncAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -586,6 +590,70 @@ describe('addRelationshipAction$ through a real store', () => {
       name: 'user_id',
       dataType: 'bigint',
     });
+  });
+
+  it('gives the foreign key of a serial key the integer it stores, whatever the sync', () => {
+    for (const sync of [false, true]) {
+      const rxStore = createRxTestStore();
+      rxStore.dispatchSync(changeDatabaseAction({ value: Database.MySQL }));
+      rxStore.dispatchSync(
+        changeRelationshipDataTypeSyncAction({ value: sync })
+      );
+      seedTable(rxStore, 't1', [{ ...idColumn, dataType: 'serial' }], 'user');
+      seedTable(rxStore, 't2', [], 'post');
+
+      rxStore.dispatchSync(
+        addRelationshipAction$('t1', 't2', RelationshipType.OneN)
+      );
+
+      const [relationship] = relationshipsOf(rxStore);
+      expect(columnOf(rxStore, relationship.end.columnIds[0])).toMatchObject({
+        name: 'user_id',
+        dataType: 'bigint unsigned',
+      });
+    }
+  });
+
+  it('syncs a serial key down as its integer and keeps it when a foreign key changes', () => {
+    const rxStore = createRxTestStore();
+    rxStore.dispatchSync(changeDatabaseAction({ value: Database.PostgreSQL }));
+    rxStore.dispatchSync(changeRelationshipDataTypeSyncAction({ value: true }));
+    seedTable(rxStore, 't1', [idColumn], 'user');
+    seedTable(rxStore, 't2', [], 'post');
+    seedTable(rxStore, 't3', [], 'comment');
+    rxStore.dispatchSync(
+      addRelationshipAction$('t1', 't2', RelationshipType.OneN)
+    );
+    rxStore.dispatchSync(
+      addRelationshipAction$('t1', 't3', RelationshipType.OneN)
+    );
+    const [post, comment] = relationshipsOf(rxStore).map(
+      ({ end }) => end.columnIds[0]
+    );
+
+    rxStore.dispatchSync(
+      changeColumnDataTypeAction$({ id: 'c1', tableId: 't1', value: 'serial' })
+    );
+
+    expect(
+      [
+        columnOf(rxStore, 'c1'),
+        columnOf(rxStore, post),
+        columnOf(rxStore, comment),
+      ].map(({ dataType }) => dataType)
+    ).toEqual(['serial', 'integer', 'integer']);
+
+    rxStore.dispatchSync(
+      changeColumnDataTypeAction$({ id: post, tableId: 't2', value: 'bigint' })
+    );
+
+    expect(
+      [
+        columnOf(rxStore, 'c1'),
+        columnOf(rxStore, post),
+        columnOf(rxStore, comment),
+      ].map(({ dataType }) => dataType)
+    ).toEqual(['serial', 'bigint', 'integer']);
   });
 
   it('numbers a kept key name on a second relationship and a self reference', () => {

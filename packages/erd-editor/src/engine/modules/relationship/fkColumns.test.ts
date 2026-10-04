@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { Database } from '@/constants/schema';
 import {
   isSingleWord,
   toForeignKeyActions,
@@ -20,7 +21,11 @@ function makeColumn(value: Partial<Column>): Column {
   return createColumn(value as any);
 }
 
-const unnamed = { startTableName: '', endColumnNames: [] };
+const unnamed = {
+  startTableName: '',
+  endColumnNames: [],
+  database: Database.MySQL,
+};
 
 describe('isSingleWord', () => {
   it('takes a name of letters and digits in one case run as one word', () => {
@@ -414,6 +419,7 @@ describe('toForeignKeyActions', () => {
       toForeignKeyActions(startColumns, 't2', ['f1', 'f2'], {
         startTableName: 'country',
         endColumnNames: ['id', 'name'],
+        database: Database.MySQL,
       })
     ).toEqual([
       addColumnAction({ id: 'f1', tableId: 't2' }),
@@ -444,7 +450,7 @@ describe('toForeignKeyActions', () => {
       [makeColumn({ id: 'c1', tableId: 't1', name: 'id' })],
       't1',
       ['f1'],
-      { startTableName: '', endColumnNames: ['id'] }
+      { startTableName: '', endColumnNames: ['id'], database: Database.MySQL }
     );
 
     expect(actions[2]).toEqual(
@@ -463,5 +469,41 @@ describe('toForeignKeyActions', () => {
     expect(actions[1]).toEqual(
       changeColumnNotNullAction({ id: 'f1', tableId: 't1', value: true })
     );
+  });
+
+  it('types the copy of a serial key with the integer it stores', () => {
+    const startColumns = [
+      makeColumn({ id: 'c1', tableId: 't1', name: 'id', dataType: 'serial' }),
+      makeColumn({ id: 'c2', tableId: 't1', name: 'no', dataType: 'SERIAL8' }),
+      makeColumn({
+        id: 'c3',
+        tableId: 't1',
+        name: 'at',
+        dataType: 'serial(4)',
+      }),
+    ];
+    const dataTypes = (database: number) =>
+      toForeignKeyActions(startColumns, 't2', ['f1', 'f2', 'f3'], {
+        ...unnamed,
+        database,
+      })
+        .filter(({ type }) => type === changeColumnDataTypeAction.type)
+        .map(({ payload }) => payload.value);
+
+    expect(dataTypes(Database.PostgreSQL)).toEqual([
+      'integer',
+      'BIGINT',
+      'serial(4)',
+    ]);
+    expect(dataTypes(Database.MySQL)).toEqual([
+      'bigint unsigned',
+      'BIGINT',
+      'serial(4)',
+    ]);
+    expect(dataTypes(Database.SQLite)).toEqual([
+      'serial',
+      'BIGINT',
+      'serial(4)',
+    ]);
   });
 });

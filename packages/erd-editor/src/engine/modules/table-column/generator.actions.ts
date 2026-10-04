@@ -198,7 +198,7 @@ export const changeColumnDataTypeAction$ = (
     let payloads: ChangeColumnValuePayload[] = [payload];
 
     if (relationshipDataTypeSync) {
-      payloads = getDataTypeSyncColumns([payload], state, payload);
+      payloads = getDataTypeSyncColumns([payload], state);
     }
 
     yield payloads.map(changeColumnDataTypeAction);

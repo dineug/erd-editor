@@ -127,6 +127,7 @@ export const selectTableAction$ = (
     doc: { tableIds, memoIds },
     collections,
     editor: { drawRelationship },
+    settings: { database },
   }) {
     const tableCollection = query(collections).collection('tableEntities');
     const tables = tableCollection.selectByIds(tableIds);
@@ -166,6 +167,7 @@ export const selectTableAction$ = (
         endColumnNames: columnCollection
           .selectByIds(endTable.columnIds)
           .map(({ name }) => name),
+        database,
       });
       yield addRelationshipAction({
         id: nanoid(),
