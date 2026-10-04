@@ -198,7 +198,7 @@ describe('ErdEditor', () => {
       expect(webview.postMessage.mock.calls[0][0]).toEqual({
         type: 'webviewUpdateThemeCommand',
         payload: {
-          appearance: 'dark',
+          appearance: 'auto',
           grayColor: 'slate',
           accentColor: 'indigo',
         },

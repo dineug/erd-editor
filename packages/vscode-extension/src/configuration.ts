@@ -1,6 +1,5 @@
 import {
   AccentColor,
-  Appearance,
   GrayColor,
   ThemeOptions,
 } from '@dineug/erd-editor-webview-bridge';
@@ -47,7 +46,7 @@ export function getTheme(): ThemeOptions {
   const config = vscode.workspace.getConfiguration('dineug.erd-editor.theme');
 
   return {
-    appearance: config.get('appearance', Appearance.dark),
+    appearance: config.get<ThemeOptions['appearance']>('appearance', 'auto'),
     grayColor: config.get('grayColor', GrayColor.slate),
     accentColor: config.get('accentColor', AccentColor.indigo),
   };

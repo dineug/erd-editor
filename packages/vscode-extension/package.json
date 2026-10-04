@@ -167,7 +167,7 @@
           "dineug.erd-editor.theme.appearance": {
             "description": "Theme appearance",
             "type": "string",
-            "default": "dark",
+            "default": "auto",
             "enum": [
               "auto",
               "light",

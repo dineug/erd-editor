@@ -250,13 +250,13 @@ describe('vuerd-vscode in the Extension Host', () => {
       await clearThemeOverrides();
     });
 
-    it('resolves appearance to the documented "dark" default', () => {
+    it('resolves appearance to the documented "auto" default', () => {
       const config = getThemeConfiguration();
 
       // defaultValue proves VSCode registered the contributed property;
       // get proves that is also what getTheme() resolves to at runtime.
-      assert.strictEqual(config.inspect('appearance')?.defaultValue, 'dark');
-      assert.strictEqual(config.get('appearance'), 'dark');
+      assert.strictEqual(config.inspect('appearance')?.defaultValue, 'auto');
+      assert.strictEqual(config.get('appearance'), 'auto');
     });
 
     it('resolves grayColor to the documented "slate" default', () => {

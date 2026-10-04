@@ -104,18 +104,18 @@ describe('configuration', () => {
       expect(workspace.getConfiguration).toHaveBeenCalledWith(SECTION);
     });
 
-    it('falls back to dark / slate / indigo when nothing is stored', () => {
+    it('falls back to auto / slate / indigo when nothing is stored', () => {
       const config = arrangeConfiguration();
 
       expect(getTheme()).toEqual({
-        appearance: Appearance.dark,
+        appearance: 'auto',
         grayColor: GrayColor.slate,
         accentColor: AccentColor.indigo,
       });
       // The defaults are handed to get per key, which is what makes a
       // partially configured theme fill in the rest rather than yield undefined.
       expect(config.get.mock.calls).toEqual([
-        ['appearance', Appearance.dark],
+        ['appearance', 'auto'],
         ['grayColor', GrayColor.slate],
         ['accentColor', AccentColor.indigo],
       ]);
@@ -141,7 +141,7 @@ describe('configuration', () => {
       arrangeConfiguration({ values: { accentColor: AccentColor.mint } });
 
       expect(getTheme()).toEqual({
-        appearance: Appearance.dark,
+        appearance: 'auto',
         grayColor: GrayColor.slate,
         accentColor: AccentColor.mint,
       });

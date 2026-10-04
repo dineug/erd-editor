@@ -124,14 +124,13 @@ arguments.
 
 | Setting | Default | Values |
 | --- | --- | --- |
-| `dineug.erd-editor.theme.appearance` | `dark` | `auto`, `light`, `dark` |
+| `dineug.erd-editor.theme.appearance` | `auto` | `auto`, `light`, `dark` |
 | `dineug.erd-editor.theme.grayColor` | `slate` | `gray`, `mauve`, `slate`, `sage`, `olive`, `sand` |
 | `dineug.erd-editor.theme.accentColor` | `indigo` | 26 [Radix](https://www.radix-ui.com/colors) accents — `gray`, `gold`, `bronze`, `brown`, `yellow`, `amber`, `orange`, `tomato`, `red`, `ruby`, `crimson`, `pink`, `plum`, `purple`, `violet`, `iris`, `indigo`, `blue`, `cyan`, `teal`, `jade`, `green`, `grass`, `lime`, `mint`, `sky` |
 | `dineug.erd-editor.agentHub.enabled` | `true` | `true`, `false` |
 
 Changing any of the three theme settings re-themes every open diagram immediately. `auto`
-follows your VS Code color theme and switches with it; note that the default is `dark` whichever
-theme you use.
+follows your VS Code color theme and switches with it.
 
 The theme builder inside the editor changes these same three values and writes them back
 here, so a theme you pick on the canvas persists. Its System is `auto`, and picking a color
