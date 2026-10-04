@@ -2452,9 +2452,10 @@ CREATE TABLE \`refs\` (
       }
     );
 
-    // A file can name an unquoted table dbo.users whole at level 1, beside a
-    // CREATE TABLE dbo.users that reads back as users: its last part matches.
-    it('keeps the comments a script writes on an unquoted dotted table name whole', () => {
+    // Older MSSQL exports wrote an unquoted table dbo.users whole at level 1,
+    // beside a CREATE TABLE dbo.users that reads back as users: its last part
+    // matches, so those saved files keep their comments.
+    it('keeps the comments of an older MSSQL export on an unquoted dotted table name', () => {
       const schema = parse(
         'CREATE TABLE dbo.users (id INT)\nGO\n' +
           "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
