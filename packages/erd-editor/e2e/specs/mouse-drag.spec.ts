@@ -121,6 +121,43 @@ async function pressTableHeader(
   if (options.mod) await erd.page.keyboard.up(MOD_KEY);
 }
 
+/**
+ * Records whether each middle press and lift reached the window prevented. The
+ * window hears them last, after every listener in the editor has had its say.
+ */
+async function recordMiddleButton(erd: ErdEditorPage) {
+  await erd.page.evaluate(() => {
+    const heard: string[] = [];
+    Reflect.set(window, '__middleButton', heard);
+    for (const type of ['mousedown', 'mouseup']) {
+      window.addEventListener(type, event => {
+        const { button, defaultPrevented } = event as MouseEvent;
+        if (button !== 1) return;
+        heard.push(`${type} ${defaultPrevented ? 'prevented' : 'unprevented'}`);
+      });
+    }
+  });
+
+  return () =>
+    erd.page.evaluate(() => Reflect.get(window, '__middleButton') as string[]);
+}
+
+/** Opens the diff viewer on the document against itself, as a host hands it a value. */
+async function openDiffViewer(erd: ErdEditorPage) {
+  await erd.host.evaluate(element => {
+    const editor = element as HTMLElement & {
+      value: string;
+      setDiffValue: (value: string) => void;
+    };
+    editor.setDiffValue(editor.value);
+  });
+  const toast = erd.host.locator('.toast-container', {
+    hasText: 'Diff Viewer',
+  });
+  await expect(toast).toBeVisible();
+  return toast;
+}
+
 const threeTables = () =>
   createSchema({
     tables: [
@@ -761,6 +798,103 @@ test.describe('mouse drag', () => {
     expect([posts.ui.x, posts.ui.y]).toEqual([760, 420]);
     await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
     await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  test('a middle-button drag over the diff viewer keeps the selection under it, press and lift prevented', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await pressTableHeader(erd, 'users');
+    await expect(erd.selectedTables()).toHaveCount(1);
+    const heard = await recordMiddleButton(erd);
+
+    const toast = await openDiffViewer(erd);
+    const pane = erd.host.locator('.diff-viewer-insert');
+
+    const box = await boxOf(pane);
+    const from = { x: box.x + box.width / 2, y: box.y + box.height / 3 };
+    await erd.drag(
+      from,
+      { x: from.x - 80, y: from.y - 40 },
+      { button: 'middle' }
+    );
+    expect(await heard()).toEqual(['mousedown prevented', 'mouseup prevented']);
+
+    // The toast stands outside the ERD tab, whose presses take the selection
+    // off, so what is selected once it closes is what the middle drag left.
+    await toast.locator('button', { hasText: 'Close' }).click();
+    await expect(pane).toHaveCount(0);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+    await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  test('a middle click on the diff tree keeps its default, press and lift', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await openDiffViewer(erd);
+    const heard = await recordMiddleButton(erd);
+
+    // The tree scrolls, so a middle press there is left the browser's own.
+    const box = await boxOf(erd.host.locator('.diff-viewer-tree'));
+    await erd.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+      button: 'middle',
+    });
+
+    expect(await heard()).toEqual([
+      'mousedown unprevented',
+      'mouseup unprevented',
+    ]);
+  });
+
+  test('a middle click over time travel is prevented, press and lift', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    // An edit, so time travel has a history to open on.
+    await erd.focusHost();
+    await erd.press(Shortcut.addTable);
+    await erd.toolbarButton('Time Travel').click();
+    await expect(erd.toolbarButton('Undo')).toHaveCount(0);
+    const heard = await recordMiddleButton(erd);
+
+    // The ERD tab's own stage, first in the tree, lies under the preview.
+    const box = await boxOf(
+      erd.host.locator('[data-testid="erd-canvas"]').first()
+    );
+    await erd.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+      button: 'middle',
+    });
+
+    expect(await heard()).toEqual(['mousedown prevented', 'mouseup prevented']);
+  });
+
+  test('a middle click over the automatic placement preview is prevented, press and lift', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.openContextMenuAt(60, 60);
+    await erd.contextMenu.getByText('Auto Layout', { exact: true }).hover();
+    await erd.contextMenu.getByText('Force', { exact: true }).click();
+    const toast = erd.host.locator('.toast-container', {
+      hasText: 'Placing tables',
+    });
+    await expect(toast).toBeVisible();
+    const heard = await recordMiddleButton(erd);
+
+    const box = await boxOf(
+      erd.host.locator('[data-testid="erd-canvas"]').first()
+    );
+    await erd.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+      button: 'middle',
+    });
+
+    // Still settling, so the click landed on the preview rather than on the
+    // canvas it gives back once it has applied.
+    await expect(toast).toBeVisible();
+    expect(await heard()).toEqual(['mousedown prevented', 'mouseup prevented']);
+    await toast.locator('button', { hasText: 'Cancel' }).click();
+    await expect(toast).toHaveCount(0);
   });
 
   test('a right-button drag moves neither a table nor a memo, and selects each alone', async ({

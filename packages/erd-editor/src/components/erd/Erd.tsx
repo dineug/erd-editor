@@ -7,7 +7,7 @@ import {
   useProvider,
   watch,
 } from '@dineug/r-html';
-import { filter, fromEvent, Subscription, throttleTime } from 'rxjs';
+import { filter, fromEvent, Subscription, take, throttleTime } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
@@ -29,6 +29,7 @@ import {
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
+import { isTakenOver } from '@/components/find-replace/panelLayout';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
@@ -68,7 +69,12 @@ import {
 } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { closeColorPickerAction, dragSelectStartAction } from '@/utils/emitter';
-import { drag$, DragMove, keyup$ } from '@/utils/globalEventObservable';
+import {
+  drag$,
+  DragMove,
+  keyup$,
+  moveEnd$,
+} from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
 import { isMod } from '@/utils/keyboard-shortcut';
 
@@ -87,6 +93,20 @@ export type ErdProps = {
  * to this canvas, its map, its scrollbars or its compass.
  */
 const SOURCE: GeometrySource = 'document';
+
+/**
+ * The chrome a takeover lays over its scene, which keeps its own presses for
+ * the middle button as this canvas's does: the diff tree, which scrolls, the
+ * time travel slider, and a diff pane's compass, minimap and scrollbars.
+ */
+const TAKEOVER_CHROME = [
+  '.diff-viewer-tree',
+  '.time-travel-slider',
+  '.content-compass',
+  '.minimap',
+  '.minimap-viewport',
+  '.virtual-scroll',
+].join(', ');
 
 const Erd: FC<ErdProps> = (props, ctx) => {
   const contextMenu = useContextMenuRootProvider(ctx);
@@ -127,19 +147,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const getShowOverLayout = () => {
-    const { store } = app.value;
-    const { editor } = store.state;
-    const showAutomaticTablePlacement =
-      editor.openMap[Open.automaticTablePlacement];
-    const showTableProperties = editor.openMap[Open.tableProperties];
-    const showTimeTravel = editor.openMap[Open.timeTravel];
-    const showDiffViewer = editor.openMap[Open.diffViewer];
-
+    const { state } = app.value.store;
     return (
-      showAutomaticTablePlacement ||
-      showTableProperties ||
-      showTimeTravel ||
-      showDiffViewer
+      isTakenOver(state) || Boolean(state.editor.openMap[Open.tableProperties])
     );
   };
 
@@ -256,7 +266,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     // the selection stays, no marquee, and the press and its lift are prevented.
     const middlePan = canDrag && isMiddleButtonPress(event);
 
-    if (canUnselectAll && !middlePan) {
+    // A takeover stands a scene of its own over this canvas, and the middle
+    // button reads alike there: over the scene the selection under it stays,
+    // and the press and its lift are prevented; its chrome keeps its presses.
+    const middleOverTakeover =
+      canUnselectAll &&
+      isMiddleButtonPress(event) &&
+      isTakenOver(app.value.store.state) &&
+      !el.closest(TAKEOVER_CHROME);
+
+    if (canUnselectAll && !middlePan && !middleOverTakeover) {
       const { store } = app.value;
       store.dispatch(unselectAllAction$());
     }
@@ -264,6 +283,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (canHideColorPicker) {
       const { emitter } = app.value;
       emitter.emit(closeColorPickerAction());
+    }
+
+    if (middleOverTakeover) {
+      event.preventDefault();
+      moveEnd$.pipe(take(1)).subscribe(preventMiddleLift());
     }
 
     if (!canDrag) return;

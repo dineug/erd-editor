@@ -130,7 +130,7 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
           <Minimap />
         </div>
       </div>
-      <div class={styles.slider}>
+      <div class={['time-travel-slider', styles.slider]}>
         <Slider
           min={-1}
           max={history.size - 1}

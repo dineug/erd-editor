@@ -15,7 +15,7 @@ import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.acti
 import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { onPrevent } from '@/utils/domEvent';
+import { isMiddleButtonPress, onPrevent } from '@/utils/domEvent';
 import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -108,7 +108,11 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
       !el.closest('.minimap-viewport') &&
       !el.closest('.virtual-scroll');
 
-    if (canUnselectAll) {
+    // A middle pan keeps the pane's selection as it keeps the canvas's; Erd,
+    // which every takeover stands in, prevents the press and its lift.
+    const middlePan = canDrag && isMiddleButtonPress(event);
+
+    if (canUnselectAll && !middlePan) {
       const { store } = app;
       store.dispatch(unselectAllAction$());
     }
