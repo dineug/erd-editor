@@ -55,9 +55,14 @@ describe('fromAMLColor', () => {
     }
   });
 
-  it('ignores a name spelled in another case than AML lists it', () => {
-    expect(fromAMLColor('Red')).toBe('');
-    expect(fromAMLColor('GRAY')).toBe('');
+  it('reads a name in any letter case as its hex', () => {
+    for (const [name, hex] of Object.entries(AML_COLORS)) {
+      expect(fromAMLColor(name.toUpperCase())).toBe(hex);
+      expect(fromAMLColor(`${name[0].toUpperCase()}${name.slice(1)}`)).toBe(
+        hex
+      );
+    }
+    expect(fromAMLColor('InDiGo')).toBe('#6366f1');
   });
 
   it('keeps a three, six or eight digit hex as written', () => {
@@ -69,6 +74,7 @@ describe('fromAMLColor', () => {
   it('ignores a value it does not know', () => {
     expect(fromAMLColor('#abcd')).toBe('');
     expect(fromAMLColor('magenta')).toBe('');
+    expect(fromAMLColor('Magenta')).toBe('');
     expect(fromAMLColor('toString')).toBe('');
     expect(fromAMLColor('rgb(1, 2, 3)')).toBe('');
     expect(fromAMLColor('')).toBe('');
@@ -125,11 +131,36 @@ describe('toAMLColor', () => {
     }
   });
 
-  it('names any other color by the nearest one in rgb', () => {
-    expect(toAMLColor('#ff0000')).toBe('red');
-    expect(toAMLColor('#FF8800')).toBe('amber');
+  it('names a color whose OKLab chroma is under 0.04 gray, however light or dark', () => {
+    expect(toAMLColor('#ffffff')).toBe('gray');
+    expect(toAMLColor('#000000')).toBe('gray');
+    expect(toAMLColor('#cccccc')).toBe('gray');
+    expect(toAMLColor('#888888')).toBe('gray');
     expect(toAMLColor('#888')).toBe('gray');
+    expect(toAMLColor('#ffeeee')).toBe('gray');
+    expect(toAMLColor('#9ca3af')).toBe('gray');
+    expect(toAMLColor('hsl(0, 0%, 100%)')).toBe('gray');
+    expect(toAMLColor('rgb(0 0 0 / 50%)')).toBe('gray');
+  });
+
+  it('draws the gray line at an OKLab chroma of 0.04', () => {
+    // Chroma 0.0399 and 0.0401, one blue step apart, both nearest teal.
+    expect(toAMLColor('#789c99')).toBe('gray');
+    expect(toAMLColor('#789c98')).toBe('teal');
+  });
+
+  it('never names a color at or over the gray chroma gray, however dark', () => {
+    expect(toAMLColor('#800000')).toBe('red');
+    expect(toAMLColor('#7f1d1d')).toBe('red');
+    expect(toAMLColor('#008080')).toBe('teal');
+    expect(toAMLColor('#1e3a8a')).toBe('indigo');
+  });
+
+  it('names any other color by the nearest other name in OKLab', () => {
+    expect(toAMLColor('#ff0000')).toBe('red');
     expect(toAMLColor('#0000ff')).toBe('indigo');
+    expect(toAMLColor('#FF8800')).toBe('orange');
+    expect(toAMLColor('#ff00ff')).toBe('fuchsia');
     expect(toAMLColor('#3b82f680')).toBe('blue');
     expect(toAMLColor('rgb(16, 185, 129)')).toBe('emerald');
     expect(toAMLColor('hsl(0, 84%, 60%)')).toBe('red');

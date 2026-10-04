@@ -330,6 +330,19 @@ describe('schema-aml-parser/parser', () => {
       expect(model.skipped).toEqual(['tags']);
     });
 
+    it('reads a color name in any letter case', () => {
+      const model = parse(
+        'a {color: Red}\nb {color: "GRAY"}\nc {color: InDiGo}'
+      );
+
+      expect(model.entities.map(entry => entry.color)).toEqual([
+        '#ef4444',
+        '#6b7280',
+        '#6366f1',
+      ]);
+      expect(model.skipped).toEqual([]);
+    });
+
     it('keeps a quoted hex color as written', () => {
       expect(
         parse(
@@ -340,7 +353,7 @@ describe('schema-aml-parser/parser', () => {
 
     it('drops a color it does not know and records the key', () => {
       const model = parse(
-        'a {color: magenta}\nb {color: "#abcd"}\nc {color: Red}'
+        'a {color: magenta}\nb {color: "#abcd"}\nc {color: Magenta}'
       );
 
       expect(model.entities.map(entry => entry.color)).toEqual(['', '', '']);

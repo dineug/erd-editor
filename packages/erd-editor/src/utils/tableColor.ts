@@ -1,4 +1,5 @@
 type Channels = [number, number, number];
+type Lab = [number, number, number];
 
 /** The colors AML names, each the 500 shade of its Tailwind palette, in AML's order. */
 export const AML_COLORS: Readonly<Record<string, string>> = {
@@ -32,17 +33,23 @@ const ANGLE_UNIT = /deg$/i;
 const PERCENT = /%$/;
 const AML_COLOR_BY_NAME = new Map(Object.entries(AML_COLORS));
 
+/** The OKLab chroma under which a color reads as gray, however light or dark. */
+const GRAY_CHROMA = 0.04;
+
 /** A DBML headercolor kept as written when it is #rgb or #rrggbb, else ''. */
 export function fromDBMLColor(value: string): string {
   return DBML_HEX.test(value) ? value : '';
 }
 
 /**
- * One of AML's color names, spelled as AML lists it, as its hex; a #rgb,
- * #rrggbb or #rrggbbaa as written; else ''.
+ * One of AML's color names, in any letter case, as its hex; a #rgb, #rrggbb
+ * or #rrggbbaa as written; else ''.
  */
 export function fromAMLColor(value: string): string {
-  return AML_COLOR_BY_NAME.get(value) ?? (AML_HEX.test(value) ? value : '');
+  return (
+    AML_COLOR_BY_NAME.get(value.toLowerCase()) ??
+    (AML_HEX.test(value) ? value : '')
+  );
 }
 
 /**
@@ -63,20 +70,26 @@ export function toDBMLColor(color: string): string | null {
 }
 
 /**
- * The AML name nearest a table color by rgb distance, the first in AML's order
- * on a tie, so a named hex finds its own name; null when it reads as no color.
+ * The AML name of a table color: gray under the gray chroma and only there,
+ * else the nearest other name in OKLab, the first in AML's order on a tie, so
+ * a named hex finds its own name; null when it reads as no color.
  */
 export function toAMLColor(color: string): string | null {
   const channels = channelsOf(color.trim());
   if (!channels) return null;
 
+  const lab = oklabOf(channels);
+  if (Math.hypot(lab[1], lab[2]) < GRAY_CHROMA) return 'gray';
+
   let nearest: string | null = null;
   let nearestDistance = Infinity;
 
   for (const [name, hex] of AML_COLOR_BY_NAME) {
-    const named = channelsOf(hex) as Channels;
+    if (name === 'gray') continue;
+
+    const named = oklabOf(channelsOf(hex) as Channels);
     const distance = named.reduce(
-      (sum, value, index) => sum + (value - channels[index]) ** 2,
+      (sum, value, index) => sum + (value - lab[index]) ** 2,
       0
     );
 
@@ -147,6 +160,26 @@ function hslChannels(args: string[]): Channels | null {
   };
 
   return [f(0), f(8), f(4)].map(value => clampChannel(value * 255)) as Channels;
+}
+
+/** A color's OKLab lightness, a and b, by Ottosson's sRGB to OKLab matrices. */
+function oklabOf(channels: Channels): Lab {
+  const [r, g, b] = channels.map(toLinear);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+/** An sRGB channel of 0 to 255 as linear light of 0 to 1. */
+function toLinear(channel: number): number {
+  const value = channel / 255;
+  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
 function numberOf(text: string): number | null {

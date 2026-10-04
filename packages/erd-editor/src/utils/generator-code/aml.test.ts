@@ -627,10 +627,22 @@ describe('generator-code/aml', () => {
 
     it('writes any other color by the nearest name', () => {
       expect(entityLine(createColoredState('#FF8800'))).toBe(
-        'user {color: amber}'
+        'user {color: orange}'
+      );
+      expect(entityLine(createColoredState('#0000ff'))).toBe(
+        'user {color: indigo}'
       );
       expect(entityLine(createColoredState('rgba(59,130,246,0.5)'))).toBe(
         'user {color: blue}'
+      );
+    });
+
+    it('writes a color with next to no chroma as gray', () => {
+      expect(entityLine(createColoredState('#ffffff'))).toBe(
+        'user {color: gray}'
+      );
+      expect(entityLine(createColoredState('#000000'))).toBe(
+        'user {color: gray}'
       );
     });
 
@@ -661,7 +673,8 @@ describe('generator-code/aml', () => {
       };
 
       expect(colorOf('#ef4444')).toBe('#ef4444');
-      expect(colorOf('#FF8800')).toBe('#f59e0b');
+      expect(colorOf('#FF8800')).toBe('#f97316');
+      expect(colorOf('#cccccc')).toBe('#6b7280');
       expect(colorOf('')).toBe('');
     });
   });
