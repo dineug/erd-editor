@@ -2541,6 +2541,43 @@ GO
 }
 ```
 
+### SQL Server ALTER TABLE ADD PRIMARY KEY CLUSTERED
+
+```sql
+ALTER TABLE [dbo].[Users] ADD  CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[UserRoles] ADD  CONSTRAINT [PK_UserRoles] PRIMARY KEY NONCLUSTERED
+(
+	[UserId] ASC,
+	[RoleId] DESC
+)WITH (PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Users",
+      "constraintName": "PK_Users",
+      "usingIndexName": "",
+      "columnNames": ["Id"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "UserRoles",
+      "constraintName": "PK_UserRoles",
+      "usingIndexName": "",
+      "columnNames": ["UserId", "RoleId"]
+    }
+  ]
+}
+```
+
 ### PostgreSQL user-defined types, domains and arrays
 
 ```sql

@@ -316,6 +316,28 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(columnByName(schema, t, 'c').options).toBe(0);
     });
 
+    it('applies the PRIMARY KEY CLUSTERED an SSMS script adds after its table', () => {
+      const schema = parse(`
+        CREATE TABLE [dbo].[Users](
+          [Id] [int] IDENTITY(1,1) NOT NULL,
+          [Name] [nvarchar](50) NULL
+        ) ON [PRIMARY]
+        GO
+        ALTER TABLE [dbo].[Users] ADD  CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED
+        (
+          [Id] ASC
+        )WITH (PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
+        GO
+      `);
+      const users = tableByName(schema, 'Users');
+      const id = columnByName(schema, users, 'Id');
+
+      expect(bHas(id.options, ColumnOption.primaryKey)).toBe(true);
+      expect(id.ui.keys).toBe(ColumnUIKey.primaryKey);
+      expect(columnByName(schema, users, 'Name').options).toBe(0);
+      expect(indexesOf(schema)).toEqual([]);
+    });
+
     it('flags no column by the CHECK after the UNIQUE of a column an ALTER adds', () => {
       const schema = parse(`
         CREATE TABLE orders (id INT, price INT);
