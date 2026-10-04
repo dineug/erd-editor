@@ -2,7 +2,9 @@ import { DateTime } from 'luxon';
 
 import {
   createDocumentPng,
+  createDocumentSvg,
   type DocumentPngOptions,
+  type DocumentSvgOptions,
 } from '@/services/export-png';
 
 type ExportOptions = {
@@ -66,6 +68,24 @@ export function exportPNG(
   return createDocumentPng(options).then(blob => {
     performExport(blob, {
       fileName: createName('.png', name),
+    });
+  });
+}
+
+/**
+ * Writes the whole document out as an svg, at the zoom the author is reading
+ * it at and with no scale, drawn again off screen the way the png is.
+ *
+ * @example
+ * exportSVG({ doc: toJson(store.state), theme, toWidth, zoomLevel }, databaseName);
+ */
+export function exportSVG(
+  options: DocumentSvgOptions,
+  name?: string
+): Promise<void> {
+  return createDocumentSvg(options).then(svg => {
+    performExport(new Blob([svg], { type: 'image/svg+xml' }), {
+      fileName: createName('.svg', name),
     });
   });
 }

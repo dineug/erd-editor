@@ -26,8 +26,8 @@ export type DocumentSceneOptions = {
   zoomLevel?: number;
   /**
    * The longest side the Stage may take, in pixels, which caps the scale below
-   * the zoom for a preview. The zoom still decides how a table is drawn, so a
-   * preview shows the same shapes as the export, only smaller.
+   * the zoom for a preview or for an svg read off the nodes. The zoom still
+   * decides how a table is drawn, so either holds the shapes the export does.
    */
   maxSide?: number;
 };

@@ -64,9 +64,9 @@ editor's own history.
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
 - **Visualization** — a force-directed view of how the tables actually relate
-- **Export** — JSON, SQL and PNG, written into the vault where your attachments go; the PNG
-  from a dialog with a preview: transparent background, light or dark, 1x to 3x, or copied to
-  the clipboard instead
+- **Export** — JSON, SQL, PNG and SVG, written into the vault where your attachments go; the
+  images from a dialog with a preview: transparent background, light or dark, the PNG at 1x to
+  3x or copied to the clipboard instead
 - **Quick search** — `Ctrl`/`Cmd`+`K` to run any editor command, or to jump to a table after `#`,
   a column after `@`, and a comment or memo after `:`
 - **Find and replace** — `Ctrl`/`Cmd`+`F` across table and column names, comments and memos,

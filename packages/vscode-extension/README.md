@@ -54,8 +54,8 @@ only; they do not appear in the Command Palette.
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
 - **Visualization** — a force-directed view of how the tables actually relate
-- **Export** — `.erd.json`, `.sql`, and a `.png` from a dialog with a preview: transparent
-  background, light or dark, 1x to 3x, or copied to the clipboard instead
+- **Export** — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
+  transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead
 - **Quick search** — `Ctrl`/`Cmd`+`K` to run any editor command, or to jump to a table after `#`,
   a column after `@`, and a comment or memo after `:`
 - **Find and replace** — `Ctrl`/`Cmd`+`F` across table and column names, comments and memos,

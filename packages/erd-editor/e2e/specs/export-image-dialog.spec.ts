@@ -49,9 +49,10 @@ const MENU_ORIGIN = { x: 400, y: 400 };
 const CLEAR_OF_PANEL = { x: 700, y: 400 };
 
 /** One memo at scene zero and one whose far corner lands on the span. */
-function document(span = SPAN): ErdDocument {
+function document(span = SPAN, zoomLevel = 1): ErdDocument {
   return createSchema({
     databaseName: 'shop',
+    zoomLevel,
     memos: [
       { id: 'origin', value: 'origin', x: 0, y: 0, ...MEMO_BOX },
       {
@@ -114,6 +115,53 @@ async function alphaAt(
   );
 }
 
+/** The alpha of two pixels of an svg, as the browser that wrote it renders the file. */
+async function svgAlphaAt(
+  erd: ErdEditorPage,
+  text: string,
+  points: Array<{ x: number; y: number }>
+) {
+  return erd.page.evaluate(
+    async ({ base64, points }) => {
+      const image = new Image();
+      image.src = `data:image/svg+xml;base64,${base64}`;
+      await image.decode();
+      const canvas = window.document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(image, 0, 0);
+      return points.map(({ x, y }) => context.getImageData(x, y, 1, 1).data[3]);
+    },
+    { base64: Buffer.from(text).toString('base64'), points }
+  );
+}
+
+/** The size and the viewBox an svg declares on its root. */
+function svgRoot(text: string) {
+  const root = /^<svg\b[^>]*>/.exec(text)?.[0] ?? '';
+  const read = (name: string) =>
+    new RegExp(`\\s${name}="([^"]*)"`).exec(root)?.[1] ?? null;
+
+  return {
+    width: read('width'),
+    height: read('height'),
+    viewBox: read('viewBox'),
+  };
+}
+
+async function downloadSvg(erd: ErdEditorPage, dialog: Locator) {
+  const download = erd.page.waitForEvent('download', {
+    timeout: EXPORT_TIMEOUT,
+  });
+  await button(dialog, 'SVG').click();
+  const file = await download;
+  return {
+    name: file.suggestedFilename(),
+    text: readFileSync(await file.path(), 'utf8'),
+  };
+}
+
 async function downloadPng(
   erd: ErdEditorPage,
   dialog: Locator,
@@ -147,7 +195,7 @@ test.describe('the export image dialog', () => {
       dialog.getByRole('switch', { name: 'Dark mode' })
     ).toHaveAttribute('aria-checked', 'true');
     await expect(button(dialog, '2x')).toHaveAttribute('aria-pressed', 'true');
-    await expect(button(dialog, 'SVG')).toHaveCount(0);
+    await expect(button(dialog, 'SVG')).toBeVisible();
     await expect(dialog.locator('.export-image-preview img')).toBeVisible();
     await expect(dialog.locator('.export-image-size')).toHaveText(
       `${BOX * DEFAULT_SCALE} × ${BOX * DEFAULT_SCALE} px`
@@ -253,6 +301,50 @@ test.describe('the export image dialog', () => {
     const bare = await downloadPng(erd, dialog);
 
     expect(await alphaAt(erd, bare.bytes, points)).toEqual([0, 255]);
+  });
+
+  test('writes an svg at the zoom, the scale left to the png, and stays open', async ({
+    erd,
+  }) => {
+    const zoomLevel = 0.8;
+    await erd.seed(document(SPAN, zoomLevel));
+    const dialog = await openFromMenu(erd);
+
+    await button(dialog, '3x').click();
+    const file = await downloadSvg(erd, dialog);
+
+    expect(file.name).toMatch(/^shop-.*\.svg$/);
+    expect(svgRoot(file.text)).toEqual({
+      width: String(BOX * zoomLevel),
+      height: String(BOX * zoomLevel),
+      viewBox: `${-EXPORT_MARGIN} ${-EXPORT_MARGIN} ${BOX} ${BOX}`,
+    });
+    // The memos are written as text a viewer can select, never as pixels.
+    expect(file.text).toContain('>origin</text>');
+    expect(file.text).toContain('>far</text>');
+    await expect(dialog).toBeVisible();
+  });
+
+  test('leaves the canvas out of the svg with the background off', async ({
+    erd,
+  }) => {
+    await erd.seed(document());
+    const dialog = await openFromMenu(erd);
+    // A corner of the margin, and the middle of the memo at scene zero.
+    const points = [
+      { x: 4, y: 4 },
+      { x: EXPORT_MARGIN + 50, y: EXPORT_MARGIN + 60 },
+    ];
+
+    const filled = await downloadSvg(erd, dialog);
+    expect(await svgAlphaAt(erd, filled.text, points)).toEqual([255, 255]);
+
+    const background = dialog.getByRole('switch', { name: 'Background' });
+    await background.click();
+    await expect(background).toHaveAttribute('aria-checked', 'false');
+    const bare = await downloadSvg(erd, dialog);
+
+    expect(await svgAlphaAt(erd, bare.text, points)).toEqual([0, 255]);
   });
 
   test('puts the png on the clipboard and says so', async ({ erd }) => {

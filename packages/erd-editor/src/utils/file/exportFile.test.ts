@@ -8,19 +8,22 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { createDocumentPng } from '@/services/export-png';
+import { createDocumentPng, createDocumentSvg } from '@/services/export-png';
 import {
   exportJSON,
   exportPNG,
   exportSchemaSQL,
+  exportSVG,
   setExportFileCallback,
 } from '@/utils/file/exportFile';
 
 vi.mock('@/services/export-png', () => ({
   createDocumentPng: vi.fn(),
+  createDocumentSvg: vi.fn(),
 }));
 
 const createDocumentPngMock = vi.mocked(createDocumentPng);
+const createDocumentSvgMock = vi.mocked(createDocumentSvg);
 
 const pngRequest = () => ({
   doc: '{"version":"3.0.0"}',
@@ -43,6 +46,7 @@ describe('exportFile', () => {
     vi.useFakeTimers();
     vi.setSystemTime(FIXED_TIME);
     createDocumentPngMock.mockReset();
+    createDocumentSvgMock.mockReset();
   });
 
   afterEach(() => {
@@ -143,6 +147,32 @@ describe('exportFile', () => {
       await expect(exportPNG(pngRequest())).rejects.toThrow(
         'no offscreen canvas'
       );
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('exportSVG', () => {
+    it('writes the svg the document renderer produced as an svg file', async () => {
+      createDocumentSvgMock.mockResolvedValue('<svg/>');
+      const calls: Array<[Blob, { fileName: string }]> = [];
+      setExportFileCallback((blob, options) => calls.push([blob, options]));
+
+      const request = { ...pngRequest(), zoomLevel: 0.75 };
+      await exportSVG(request, 'diagram');
+
+      expect(createDocumentSvgMock).toHaveBeenCalledWith(request);
+      const [blob, options] = calls[0];
+      expect(blob.type).toBe('image/svg+xml');
+      expect(await readBlob(blob)).toBe('<svg/>');
+      expect(options.fileName).toBe(`diagram-${nowPrefix()}.svg`);
+    });
+
+    it('rejects rather than writing a file when the render fails', async () => {
+      createDocumentSvgMock.mockRejectedValue(new Error('no scene'));
+      const callback = vi.fn();
+      setExportFileCallback(callback);
+
+      await expect(exportSVG(pngRequest())).rejects.toThrow('no scene');
       expect(callback).not.toHaveBeenCalled();
     });
   });

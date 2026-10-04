@@ -11,6 +11,7 @@ import {
   type RenderPngResult,
   type ResolutionReduction,
 } from './renderPng';
+import { renderDocumentSvg } from './renderSvg';
 import { measureFontProbe, type ToWidth } from './textWidth';
 
 export type { ResolutionReduction };
@@ -134,16 +135,22 @@ function report(
   return blob;
 }
 
+/** The two ways one drawing can be made: across the worker's port, or here. */
+type Drawing<T> = {
+  inWorker: (remote: Remote, fontProbe: number[]) => Promise<T>;
+  onMain: () => Promise<T>;
+};
+
 /**
- * Draws a request in the shared worker, or on this thread when the worker is
+ * Makes a drawing in the shared worker, or on this thread when the worker is
  * missing or hands it back. Both realms take the same request, which carries
  * nothing but what survives a structured clone.
  */
-async function renderInRealm(
-  request: RenderPngRequest,
+async function drawInRealm<T>(
+  { inWorker, onMain }: Drawing<T>,
   toWidth: ToWidth,
   onProgress?: DocumentPngOptions['onProgress']
-): Promise<{ result: RenderPngResult; realm: ExportPngRealm }> {
+): Promise<{ result: T; realm: ExportPngRealm }> {
   // A face still loading measures differently from the one the document was
   // laid out with, and the image keeps whichever was in place when it was drawn.
   await document.fonts?.ready;
@@ -157,8 +164,7 @@ async function renderInRealm(
 
     if (remote) {
       try {
-        const fontProbe = measureFontProbe(toWidth);
-        const result = await remote.render({ ...request, fontProbe });
+        const result = await inWorker(remote, measureFontProbe(toWidth));
 
         return { result, realm: 'worker' };
       } catch (error) {
@@ -168,9 +174,24 @@ async function renderInRealm(
   }
 
   onProgress?.({ phase: 'started', realm: 'main' });
-  const result = await renderDocumentPng({ ...request, toWidth });
+  const result = await onMain();
 
   return { result, realm: 'main' };
+}
+
+function renderInRealm(
+  request: RenderPngRequest,
+  toWidth: ToWidth,
+  onProgress?: DocumentPngOptions['onProgress']
+) {
+  return drawInRealm<RenderPngResult>(
+    {
+      inWorker: (remote, fontProbe) => remote.render({ ...request, fontProbe }),
+      onMain: () => renderDocumentPng({ ...request, toWidth }),
+    },
+    toWidth,
+    onProgress
+  );
 }
 
 /**
@@ -251,4 +272,37 @@ export async function createDocumentPreview({
     documentHeight: result.documentHeight,
     zoomLevel: result.zoomLevel,
   };
+}
+
+export type DocumentSvgOptions = Pick<
+  DocumentPngOptions,
+  'doc' | 'theme' | 'toWidth' | 'zoomLevel'
+>;
+
+/**
+ * An svg of everything the document draws, at the zoom it is being read at.
+ * It takes the png's path, worker first, and leaves the scale out, since a
+ * vector is sized by the zoom alone and holds no canvas ceiling to cut it.
+ *
+ * @example
+ * const svg = await createDocumentSvg({ doc, theme, toWidth, zoomLevel });
+ */
+export async function createDocumentSvg({
+  doc,
+  theme,
+  toWidth,
+  zoomLevel,
+}: DocumentSvgOptions): Promise<string> {
+  // Copied for the reason the png copies it: a proxy does not clone.
+  const request = { doc, theme: { ...theme }, zoomLevel };
+  const { result } = await drawInRealm(
+    {
+      inWorker: (remote, fontProbe) =>
+        remote.renderSvg({ ...request, fontProbe }),
+      onMain: () => renderDocumentSvg({ ...request, toWidth }),
+    },
+    toWidth
+  );
+
+  return result;
 }

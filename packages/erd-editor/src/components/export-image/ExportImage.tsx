@@ -22,6 +22,7 @@ import {
   copyImagePng,
   describeAskedSize,
   exportImagePng,
+  exportImageSvg,
   type ImageRequest,
 } from './exportImageActions';
 
@@ -45,7 +46,7 @@ export const PREVIEW_DEBOUNCE_MS = 200;
 /** The editor width under which the preview stands above the options. */
 export const STACK_BELOW = 640;
 
-const DIALOG_MAX_WIDTH = 820;
+const DIALOG_MAX_WIDTH = 888;
 
 /** One opening of the dialog: the document and palette as they were then, and its previews. */
 type Session = {
@@ -64,8 +65,8 @@ type Session = {
 
 /**
  * The export image dialog: a preview, the options, and the buttons that write
- * a png or copy one. The options last for the element's life, and the dialog
- * stays open after a button, whose outcome is told in a toast.
+ * a png or an svg or copy a png. The options last for the element's life, and
+ * the dialog stays open after a button, whose outcome is told in a toast.
  */
 const ExportImage: FC<ExportImageProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -255,6 +256,12 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     exportImagePng(app.value, imageRequest(session), session.databaseName);
   };
 
+  /** The png's own request, whose scale exportImageSvg leaves out. */
+  const handleExportSvg = () => {
+    if (!session) return;
+    exportImageSvg(app.value, imageRequest(session), session.databaseName);
+  };
+
   /** Called from the click itself, which the clipboard write has to start inside. */
   const handleCopy = () => {
     if (!session) return;
@@ -368,6 +375,17 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                   on:click={handleExportPng}
                 >
                   PNG
+                </button>
+                <button
+                  class={[
+                    buttonStyles.button,
+                    buttonStyles.soft,
+                    buttonStyles.size2,
+                  ]}
+                  type="button"
+                  on:click={handleExportSvg}
+                >
+                  SVG
                 </button>
                 <button
                   class={[

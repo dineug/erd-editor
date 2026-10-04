@@ -25,8 +25,8 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
 - SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
-- Export — `.erd.json`, `.sql`, and a `.png` from a dialog with a preview: transparent
-  background, light or dark, 1x to 3x, or copied to the clipboard instead
+- Export — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
+  transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead
 - Force-directed visualization of table relationships
 - Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `:`,
   find and replace, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
@@ -40,8 +40,8 @@ npm install @dineug/erd-editor
 
 The package ships ES modules with its dependencies left as bare imports, so any bundler
 (Vite, webpack, Rspack, esbuild, …) resolves, dedupes and tree-shakes them like the rest of
-your app. Four features run in shared workers — schema garbage collection, the PNG export, the
-automatic table placement and the syntax highlighting — constructed as
+your app. Four features run in shared workers — schema garbage collection, the PNG and SVG
+export, the automatic table placement and the syntax highlighting — constructed as
 `new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers emit as worker
 files beside your chunks; a strict CSP needs `worker-src 'self'`. Without a bundler, use the UMD
 file described under [Script tag](#script-tag) instead.
