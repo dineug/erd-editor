@@ -2856,6 +2856,58 @@ GO
 }
 ```
 
+### SQL Server ALTER TABLE ADD DEFAULT FOR
+
+```sql
+ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Status]  DEFAULT ('draft') FOR [Status]
+GO
+ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [Qty]
+GO
+ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Created]  DEFAULT (getdate()) FOR [Created]
+GO
+ALTER TABLE [dbo].[Orders] ADD  DEFAULT (NEXT VALUE FOR [dbo].[OrderSeq]) FOR [Number]
+GO
+ALTER TABLE [dbo].[Orders] ADD  DEFAULT (N'(none)') FOR [Label]
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Status",
+      "default": "'draft'"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Qty",
+      "default": "0"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Created",
+      "default": "getdate()"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Number",
+      "default": "NEXT VALUE FOR [dbo].[OrderSeq]"
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Label",
+      "default": "N'(none)'"
+    }
+  ]
+}
+```
+
 ### PostgreSQL user-defined types, domains and arrays
 
 ```sql

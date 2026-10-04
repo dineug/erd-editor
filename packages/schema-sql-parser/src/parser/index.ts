@@ -1,5 +1,6 @@
 import {
   isAlterTableAdd,
+  isAlterTableAddDefault,
   isAlterTableAddForeignKey,
   isAlterTableAddPrimaryKey,
   isCommentOnColumn,
@@ -13,6 +14,7 @@ import {
   SchemaSQLParserOptions,
   Statement,
 } from '@/parser/statement';
+import { alterTableAddDefaultParser } from '@/parser/statement/alter.table.add.default';
 import { alterTableAddForeignKeyParser } from '@/parser/statement/alter.table.add.foreignKey';
 import { alterTableAddPrimaryKeyParser } from '@/parser/statement/alter.table.add.primaryKey';
 import { alterTableAddUniqueParser } from '@/parser/statement/alter.table.add.unique';
@@ -31,6 +33,7 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
   const createIndex = isCreateIndex(tokens);
   const alterTableAddPrimaryKey = isAlterTableAddPrimaryKey(tokens);
   const alterTableAddForeignKey = isAlterTableAddForeignKey(tokens);
+  const alterTableAddDefault = isAlterTableAddDefault(tokens);
   const alterTableAdd = isAlterTableAdd(tokens);
   const commentOnTable = isCommentOnTable(tokens);
   const commentOnColumn = isCommentOnColumn(tokens);
@@ -56,6 +59,8 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
         ast.push(alterTableAddPrimaryKeyParser(tokens, $pos));
       } else if (alterTableAddForeignKey(start)) {
         ast.push(alterTableAddForeignKeyParser(tokens, $pos));
+      } else if (alterTableAddDefault(start)) {
+        ast.push(alterTableAddDefaultParser(tokens, $pos, database));
       }
 
       const $unique: RefPos = { value: start };

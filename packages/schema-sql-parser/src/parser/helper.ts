@@ -88,6 +88,7 @@ export const isAndValue = createValueEqual('AND');
 export const isOrValue = createValueEqual('OR');
 export const isArrayValue = createValueEqual('ARRAY');
 export const isGeneratedValue = createValueEqual('GENERATED');
+export const isForValue = createValueEqual('FOR');
 
 // A string literal the vendor reads back as the value, its quotes doubled.
 // Spark escapes a quote and a backslash with a backslash instead: all but its
@@ -592,6 +593,7 @@ const ConstraintBodies: ReadonlyArray<string> = [
   'PRIMARY',
   'FOREIGN',
   'CHECK',
+  'DEFAULT',
 ];
 
 // How many tokens the ALTER TABLE ADD head spans, 0 when there is none at pos,
@@ -686,6 +688,18 @@ export const isAlterTableAddForeignKey = (tokens: Token[]) => {
   return (pos: number) => {
     const length = alterTableAdd(pos);
     return length > 0 && isForeign(pos + length) && isKey(pos + length + 1);
+  };
+};
+
+// SQL Server's ADD [CONSTRAINT name] DEFAULT expression FOR column, the form
+// SSMS scripts every default of a table in, apart from the table.
+export const isAlterTableAddDefault = (tokens: Token[]) => {
+  const alterTableAdd = matchAlterTableAdd(tokens);
+  const isDefault = isDefaultValue(tokens);
+
+  return (pos: number) => {
+    const length = alterTableAdd(pos);
+    return length > 0 && isDefault(pos + length);
   };
 };
 

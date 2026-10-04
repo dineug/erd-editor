@@ -6,6 +6,7 @@ export type Statement =
   | AlterTableAddUnique
   | AlterTableAddPrimaryKey
   | AlterTableAddForeignKey
+  | AlterTableAddDefault
   | CommentOnTable
   | CommentOnColumn;
 
@@ -15,6 +16,7 @@ export const StatementType = {
   alterTableAddUnique: 'alter.table.add.unique',
   alterTableAddPrimaryKey: 'alter.table.add.primaryKey',
   alterTableAddForeignKey: 'alter.table.add.foreignKey',
+  alterTableAddDefault: 'alter.table.add.default',
   commentOnTable: 'comment.on.table',
   commentOnColumn: 'comment.on.column',
 } as const;
@@ -154,6 +156,17 @@ export type AlterTableAddForeignKey = {
   refColumnNames: string[];
   onDelete: ReferentialAction | '';
   onUpdate: ReferentialAction | '';
+};
+
+/**
+ * SQL Server's ADD [CONSTRAINT name] DEFAULT expression FOR column. default is
+ * the expression as a column's DEFAULT reads it; the name is not kept.
+ */
+export type AlterTableAddDefault = {
+  type: typeof StatementType.alterTableAddDefault;
+  name: string;
+  columnName: string;
+  default: string;
 };
 
 export type CommentOnTable = {
