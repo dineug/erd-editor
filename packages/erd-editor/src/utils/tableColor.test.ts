@@ -119,6 +119,8 @@ describe('toDBMLColor', () => {
     expect(toDBMLColor('rgb(1, 2)')).toBeNull();
     expect(toDBMLColor('rgb(a, b, c)')).toBeNull();
     expect(toDBMLColor('hsl(0.5turn, 100%, 50%)')).toBeNull();
+    expect(toDBMLColor('hsl(1e999, 50%, 50%)')).toBeNull();
+    expect(toDBMLColor('hsl(-1e999deg, 0%, 50%)')).toBeNull();
     expect(toDBMLColor('rgb(1, 2, 3')).toBeNull();
   });
 });
@@ -144,7 +146,7 @@ describe('toAMLColor', () => {
   });
 
   it('draws the gray line at an OKLab chroma of 0.04', () => {
-    // Chroma 0.0399 and 0.0401, one blue step apart, both nearest teal.
+    // Chroma 0.0399 and 0.0401, one blue step apart, both teal by hue.
     expect(toAMLColor('#789c99')).toBe('gray');
     expect(toAMLColor('#789c98')).toBe('teal');
   });
@@ -153,22 +155,38 @@ describe('toAMLColor', () => {
     expect(toAMLColor('#800000')).toBe('red');
     expect(toAMLColor('#7f1d1d')).toBe('red');
     expect(toAMLColor('#008080')).toBe('teal');
-    expect(toAMLColor('#1e3a8a')).toBe('indigo');
+    expect(toAMLColor('#1e3a8a')).toBe('blue');
   });
 
-  it('names any other color by the nearest other name in OKLab', () => {
+  it('names any other color by the other name nearest in OKLCH hue', () => {
     expect(toAMLColor('#ff0000')).toBe('red');
-    expect(toAMLColor('#0000ff')).toBe('indigo');
+    expect(toAMLColor('#0000ff')).toBe('blue');
     expect(toAMLColor('#FF8800')).toBe('orange');
     expect(toAMLColor('#ff00ff')).toBe('fuchsia');
+    expect(toAMLColor('#ffc0cb')).toBe('rose');
+    expect(toAMLColor('#808000')).toBe('lime');
     expect(toAMLColor('#3b82f680')).toBe('blue');
     expect(toAMLColor('rgb(16, 185, 129)')).toBe('emerald');
     expect(toAMLColor('hsl(0, 84%, 60%)')).toBe('red');
+  });
+
+  it('names a light or dark shade by its hue, whatever its lightness or chroma', () => {
+    // Full OKLab distance named these yellow, indigo and red.
+    expect(toAMLColor('#fecaca')).toBe('rose');
+    expect(toAMLColor('#064e3b')).toBe('emerald');
+    expect(toAMLColor('#713f12')).toBe('orange');
+  });
+
+  it('measures hue around the circle, across the half turn atan2 jumps at', () => {
+    // Hue 179.9: 2.6 degrees from teal at 182.5, which atan2 gives as -177.5,
+    // and 17.4 from emerald at 162.5.
+    expect(toAMLColor('#008877')).toBe('teal');
   });
 
   it('is null for a color it cannot read', () => {
     expect(toAMLColor('')).toBeNull();
     expect(toAMLColor('red')).toBeNull();
     expect(toAMLColor('hsl(x, 1%, 1%)')).toBeNull();
+    expect(toAMLColor('hsl(1e999, 50%, 50%)')).toBeNull();
   });
 });

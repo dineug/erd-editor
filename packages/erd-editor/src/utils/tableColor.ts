@@ -33,7 +33,10 @@ const ANGLE_UNIT = /deg$/i;
 const PERCENT = /%$/;
 const AML_COLOR_BY_NAME = new Map(Object.entries(AML_COLORS));
 
-/** The OKLab chroma under which a color reads as gray, however light or dark. */
+/**
+ * The OKLab chroma under which a color is named gray, however light or dark;
+ * at or over it, its hue alone picks one of the other names.
+ */
 const GRAY_CHROMA = 0.04;
 
 /** A DBML headercolor kept as written when it is #rgb or #rrggbb, else ''. */
@@ -70,28 +73,27 @@ export function toDBMLColor(color: string): string | null {
 }
 
 /**
- * The AML name of a table color: gray under the gray chroma and only there,
- * else the nearest other name in OKLab, the first in AML's order on a tie, so
- * a named hex finds its own name; null when it reads as no color.
+ * The AML name of a table color, null for one it cannot read: gray under the
+ * gray chroma, else the other name nearest in OKLCH hue around the circle by
+ * its 500 shade, first in AML's order on a tie, so a named hex finds its name.
  */
 export function toAMLColor(color: string): string | null {
   const channels = channelsOf(color.trim());
   if (!channels) return null;
 
-  const lab = oklabOf(channels);
-  if (Math.hypot(lab[1], lab[2]) < GRAY_CHROMA) return 'gray';
+  const [, a, b] = oklabOf(channels);
+  if (Math.hypot(a, b) < GRAY_CHROMA) return 'gray';
 
+  const hue = Math.atan2(b, a);
   let nearest: string | null = null;
   let nearestDistance = Infinity;
 
   for (const [name, hex] of AML_COLOR_BY_NAME) {
     if (name === 'gray') continue;
 
-    const named = oklabOf(channelsOf(hex) as Channels);
-    const distance = named.reduce(
-      (sum, value, index) => sum + (value - lab[index]) ** 2,
-      0
-    );
+    const [, namedA, namedB] = oklabOf(channelsOf(hex) as Channels);
+    const turn = Math.abs(hue - Math.atan2(namedB, namedA));
+    const distance = Math.min(turn, 2 * Math.PI - turn);
 
     if (distance < nearestDistance) {
       nearest = name;
@@ -149,6 +151,7 @@ function hslChannels(args: string[]): Channels | null {
   const saturation = numberOf(args[1].replace(PERCENT, ''));
   const lightness = numberOf(args[2].replace(PERCENT, ''));
   if (hue === null || saturation === null || lightness === null) return null;
+  if (!Number.isFinite(hue)) return null;
 
   const h = ((hue % 360) + 360) % 360;
   const s = Math.min(Math.max(saturation, 0), 100) / 100;

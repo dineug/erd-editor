@@ -630,7 +630,7 @@ describe('generator-code/aml', () => {
         'user {color: orange}'
       );
       expect(entityLine(createColoredState('#0000ff'))).toBe(
-        'user {color: indigo}'
+        'user {color: blue}'
       );
       expect(entityLine(createColoredState('rgba(59,130,246,0.5)'))).toBe(
         'user {color: blue}'
