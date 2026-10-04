@@ -277,17 +277,17 @@ function mergeTables({
     column.default = value;
   });
 
-  // PostgreSQL and Oracle carry comments as their own statement rather than as
-  // an option on the table.
+  // PostgreSQL and Oracle carry comments as their own statement, and SQL Server
+  // as its MS_Description extended property, rather than as a table option.
   tableComments.forEach(({ name, comment }) => {
-    const table = findByName(tables, name);
+    const table = findCommentTable(tables, name);
     if (!table) return;
 
     table.comment = comment;
   });
 
   columnComments.forEach(({ tableName, columnName, comment }) => {
-    const table = findByName(tables, tableName);
+    const table = findCommentTable(tables, tableName);
     if (!table) return;
 
     const column = findByName(table.columns, columnName);
@@ -297,6 +297,18 @@ function mergeTables({
   });
 
   return tables;
+}
+
+/**
+ * The table a comment names, else the one its last part names: SQL Server's
+ * export writes a table name dbo.users whole into sp_addextendedproperty,
+ * where its CREATE TABLE dbo.users reads back as users.
+ */
+function findCommentTable(tables: CreateTable[], name: string) {
+  return (
+    findByName(tables, name) ??
+    findByName(tables, name.slice(name.lastIndexOf('.') + 1))
+  );
 }
 
 /**

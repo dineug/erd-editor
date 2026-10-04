@@ -89,6 +89,9 @@ export const isOrValue = createValueEqual('OR');
 export const isArrayValue = createValueEqual('ARRAY');
 export const isGeneratedValue = createValueEqual('GENERATED');
 export const isForValue = createValueEqual('FOR');
+export const isExecValue = createValueEqual('EXEC');
+export const isExecuteValue = createValueEqual('EXECUTE');
+export const isGoValue = createValueEqual('GO');
 
 // A string literal the vendor reads back as the value, its quotes doubled.
 // Spark escapes a quote and a backslash with a backslash instead: all but its
@@ -339,6 +342,7 @@ export const isNewStatement = (tokens: Token[]) => {
   const isDelete = isDeleteValue(tokens);
   const isSelect = isSelectValue(tokens);
   const commentOn = isCommentOn(tokens);
+  const addExtendedProperty = isAddExtendedProperty(tokens);
   return (pos: number) =>
     isCreate(pos) ||
     isAlter(pos) ||
@@ -347,7 +351,8 @@ export const isNewStatement = (tokens: Token[]) => {
     isRename(pos) ||
     isDelete(pos) ||
     isSelect(pos) ||
-    commentOn(pos);
+    commentOn(pos) ||
+    addExtendedProperty(pos);
 };
 
 // What may sit between CREATE and TABLE. A whitelist rather than a scan to the
@@ -482,6 +487,31 @@ export const matchQualifiedName = (tokens: Token[]) => {
 
     return cursor - pos;
   };
+};
+
+// How many tokens SQL Server's EXEC [[db.]sys.]sp_addextendedproperty spans
+// before its arguments, 0 when there is none at pos. Only this call is read as
+// a statement: SSMS and the editor's own export write comments with it.
+export const matchAddExtendedProperty = (tokens: Token[]) => {
+  const isExec = isExecValue(tokens);
+  const isExecute = isExecuteValue(tokens);
+  const qualifiedName = matchQualifiedName(tokens);
+
+  return (pos: number) => {
+    if (!isExec(pos) && !isExecute(pos)) return 0;
+
+    const name = qualifiedName(pos + 1);
+    const isProcedure =
+      name > 0 &&
+      tokens[pos + name].value.toUpperCase() === 'SP_ADDEXTENDEDPROPERTY';
+
+    return isProcedure ? name + 1 : 0;
+  };
+};
+
+export const isAddExtendedProperty = (tokens: Token[]) => {
+  const addExtendedProperty = matchAddExtendedProperty(tokens);
+  return (pos: number) => addExtendedProperty(pos) > 0;
 };
 
 // The words Oracle's USING INDEX takes in place of an index name: the index

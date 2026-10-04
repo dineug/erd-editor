@@ -221,6 +221,71 @@ describe('schemaSQLParser', () => {
     ]);
   });
 
+  it('reads the MS_Description extended properties as table and column comments', () => {
+    const ast = schemaSQLParser(
+      "EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Order header' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders'\n" +
+        'GO\n' +
+        "EXEC sys.sp_addextendedproperty @name=N'Caption', @value=N'x' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders'\n" +
+        'GO\n' +
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+        "  'How many', 'user', dbo, 'table', 'Orders', 'column', 'Qty'\n" +
+        'GO\n'
+    );
+
+    expect(ast).toEqual([
+      { type: 'comment.on.table', name: 'Orders', comment: 'Order header' },
+      {
+        type: 'comment.on.column',
+        tableName: 'Orders',
+        columnName: 'Qty',
+        comment: 'How many',
+      },
+    ]);
+  });
+
+  // The editor's MSSQL export writes each unique key as an ALTER right before
+  // the comments, and the ALTER read on until the next statement it knew.
+  it('ends an ALTER TABLE, a CREATE TABLE or a COMMENT ON at the call', () => {
+    const comment =
+      "EXECUTE sys.sp_addextendedproperty 'MS_Description', 'c', 'user', dbo, 'table', 'a'\nGO\n";
+    const ast = schemaSQLParser(
+      'CREATE TABLE a (id INT)\nGO\n' +
+        comment +
+        'ALTER TABLE a ADD CONSTRAINT UQ_a_id UNIQUE (id)\nGO\n' +
+        comment +
+        'ALTER TABLE a ADD DEFAULT 0 FOR id\nGO\n' +
+        comment +
+        "COMMENT ON TABLE a IS 'x'\n" +
+        comment
+    );
+
+    expect(ast.map(statement => statement.type)).toEqual([
+      'create.table',
+      'comment.on.table',
+      'alter.table.add.unique',
+      'comment.on.table',
+      'alter.table.add.default',
+      'comment.on.table',
+      'comment.on.table',
+      'comment.on.table',
+    ]);
+  });
+
+  it('keeps the statement after a call its arguments leave open', () => {
+    const ast = schemaSQLParser(
+      'EXEC sp_addextendedproperty\n' +
+        'CREATE TABLE a (id INT)\n' +
+        "EXEC sp_addextendedproperty N'MS_Description', N'c', N'SCHEMA', N'dbo', N'TABLE', N'a',\n" +
+        'CREATE TABLE b (id INT)\n'
+    );
+
+    expect(ast.map(statement => statement.type)).toEqual([
+      'create.table',
+      'comment.on.table',
+      'create.table',
+    ]);
+  });
+
   it('collects every statement of a multi statement source in order', () => {
     const ast = schemaSQLParser(`
       USE my_db;

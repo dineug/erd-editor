@@ -3167,6 +3167,87 @@ GO
 }
 ```
 
+### SQL Server sp_addextendedproperty MS_Description
+
+```sql
+CREATE TABLE [dbo].[Orders](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Qty] [int] NOT NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [Qty]
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'How many' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders', @level2type=N'COLUMN',@level2name=N'Qty'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Order''s header' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders'
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_DiagramPane1', @value=N'[0E232FF0-B466-11cf-A24F-00AA00A3EFFF, 1.00]' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'VIEW',@level1name=N'OrderView'
+GO
+EXECUTE sys.sp_addextendedproperty 'MS_Description',
+  'order id', 'user', dbo, 'table', 'Orders', 'column', 'Id'
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "Orders",
+      "comment": "",
+      "columns": [
+        {
+          "name": "Id",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "Qty",
+          "dataType": "int",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        }
+      ],
+      "indexes": [],
+      "keys": [],
+      "foreignKeys": []
+    },
+    {
+      "type": "alter.table.add.default",
+      "name": "Orders",
+      "columnName": "Qty",
+      "default": "0"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "Orders",
+      "columnName": "Qty",
+      "comment": "How many"
+    },
+    {
+      "type": "comment.on.table",
+      "name": "Orders",
+      "comment": "Order's header"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "Orders",
+      "columnName": "Id",
+      "comment": "order id"
+    }
+  ]
+}
+```
+
 ### PostgreSQL user-defined types, domains and arrays
 
 ```sql

@@ -1,4 +1,5 @@
 import {
+  isAddExtendedProperty,
   isAlterTableAdd,
   isAlterTableAddDefault,
   isAlterTableAddForeignKey,
@@ -14,6 +15,7 @@ import {
   SchemaSQLParserOptions,
   Statement,
 } from '@/parser/statement';
+import { addExtendedPropertyParser } from '@/parser/statement/add.extended.property';
 import { alterTableAddDefaultParser } from '@/parser/statement/alter.table.add.default';
 import { alterTableAddForeignKeyParser } from '@/parser/statement/alter.table.add.foreignKey';
 import { alterTableAddPrimaryKeyParser } from '@/parser/statement/alter.table.add.primaryKey';
@@ -37,6 +39,7 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
   const alterTableAdd = isAlterTableAdd(tokens);
   const commentOnTable = isCommentOnTable(tokens);
   const commentOnColumn = isCommentOnColumn(tokens);
+  const addExtendedProperty = isAddExtendedProperty(tokens);
 
   while (isToken()) {
     if (createTable($pos.value)) {
@@ -76,6 +79,17 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
 
     if (commentOnColumn($pos.value)) {
       ast.push(commentOnColumnParser(tokens, $pos));
+      continue;
+    }
+
+    // SQL Server keeps a comment as the MS_Description extended property.
+    if (addExtendedProperty($pos.value)) {
+      const comment = addExtendedPropertyParser(tokens, $pos);
+
+      if (comment) {
+        ast.push(comment);
+      }
+
       continue;
     }
 
