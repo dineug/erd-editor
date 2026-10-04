@@ -23,11 +23,17 @@ const ATTRIBUTE_WORD =
   /^[*A-Za-z_\u00c0-\uffff][A-Za-z0-9\-_[\]().,\u00c0-\uffff*]*$/i;
 /** The lexer tries its key rule first, so pk-id would start with a key too. */
 const ATTRIBUTE_KEY = /^(PK|FK|UK)\b/i;
+/** Its whitespace rule comes ahead of the word rule, so it would eat the character. */
+const LEADING_SPACE = /^\s/;
 /** What a quoted entity name cannot hold; in a class, \b is the backspace. */
 const ENTITY_NAME_EXCLUDED = /["%\r\n\v\b\\]/g;
 const BACKTICK = /`/g;
 const DOUBLE_QUOTE = /"/g;
-const LINE_TERMINATOR = /\r\n|[\n\r]/g;
+/**
+ * A line break, U+2028 and U+2029 included: mermaid strips a comment from the
+ * start of any line its multiline mode sees, and it sees one after each.
+ */
+const LINE_TERMINATOR = /\r\n|[\n\r\u2028\u2029]/g;
 /**
  * The generic type rule of that release, which its lexer tries ahead of a
  * backtick and a comment: a word holding a tilde, up to the line's last tilde.
@@ -66,7 +72,7 @@ export function createCode(state: RootState): string {
     buffer.push('');
   });
 
-  const relationships = formatRelationships(state, entityNames);
+  const relationships = formatRelationships(state, tables, entityNames);
 
   if (relationships.length !== 0) {
     relationships.forEach(line => buffer.push(line));
@@ -158,8 +164,9 @@ function formatAttribute(column: Column, uniqueColumnIds: Set<string>) {
 }
 
 /**
- * The attribute line, every tilde in it written fullwidth when a part would
- * start the generic type rule's run, which would swallow the words after it.
+ * The attribute line, every tilde in it written fullwidth when the generic type
+ * rule would match from one of its words, which would read that word's
+ * backticks into the type or take in the words after it.
  */
 function joinAttribute(parts: string[]): string {
   const line = parts.join(' ');
@@ -181,9 +188,12 @@ function getUniqueIndexColumnIds(state: RootState, table: Table): Set<string> {
 
 function formatRelationships(
   { doc: { relationshipIds }, collections }: RootState,
+  tables: Table[],
   entityNames: Map<string, string>
 ): string[] {
   const columns = query(collections).collection('tableColumnEntities');
+  // A removed column keeps its entity, so only a table's list says it is still there.
+  const columnIds = new Set(tables.flatMap(table => table.columnIds));
 
   return query(collections)
     .collection('relationshipEntities')
@@ -203,6 +213,11 @@ function formatRelationships(
 
       const label = columns
         .selectByIds(relationship.end.columnIds)
+        .filter(
+          column =>
+            column.tableId === relationship.end.tableId &&
+            columnIds.has(column.id)
+        )
         .map(columnName)
         .join(', ');
 
@@ -231,9 +246,11 @@ function toEntityName(name: string): string {
 }
 
 function toAttributeWord(value: string): string {
-  return ATTRIBUTE_WORD.test(value) && !ATTRIBUTE_KEY.test(value)
+  return ATTRIBUTE_WORD.test(value) &&
+    !LEADING_SPACE.test(value) &&
+    !ATTRIBUTE_KEY.test(value)
     ? value
-    : `\`${value.replace(BACKTICK, "'")}\``;
+    : `\`${value.replace(LINE_TERMINATOR, ' ').replace(BACKTICK, "'")}\``;
 }
 
 function toQuoted(value: string): string {

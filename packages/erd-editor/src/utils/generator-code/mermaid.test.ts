@@ -243,12 +243,12 @@ describe('generator-code/mermaid', () => {
 
     it('writes the table comment as a %% line above its entity, on one line', () => {
       const state = createColumnState([{}], {
-        comment: 'members\r\nwho "signed up"\nand left',
+        comment: 'members\r\nwho "signed up"\nand left for good',
       });
 
       expect(createCode(state).split('\n').slice(1, 4)).toEqual([
         'erDiagram',
-        '  %% members who "signed up" and left',
+        '  %% members who "signed up" and left for good',
         '  "user" {',
       ]);
     });
@@ -334,6 +334,42 @@ describe('generator-code/mermaid', () => {
         '    int id "1~5"',
         '    int `a~b` "x"',
         '    int `a b~c` "x~y"',
+      ]);
+    });
+
+    it('wraps a name starting with a whitespace character the pattern holds in backticks', () => {
+      expect(
+        attributeLines(
+          createColumnState([
+            { name: '　PK' },
+            { name: '　id' },
+            { name: '﻿uk' },
+            { name: 'a　PK' },
+          ])
+        )
+      ).toEqual([
+        '    int `　PK`',
+        '    int `　id`',
+        '    int `﻿uk`',
+        '    int a　PK',
+      ]);
+    });
+
+    it('writes a line break inside backticks as a space, the line and paragraph separators included', () => {
+      expect(
+        attributeLines(
+          createColumnState([
+            { name: 'x\n%% y' },
+            { name: 'a %%b', dataType: 'c\r\n%%d' },
+            { name: 'e f g' },
+            { name: ' PK' },
+          ])
+        )
+      ).toEqual([
+        '    int `x %% y`',
+        '    `c %%d` `a %%b`',
+        '    int `e f g`',
+        '    int ` PK`',
       ]);
     });
 
@@ -533,6 +569,7 @@ describe('generator-code/mermaid', () => {
           createColumnState([
             { comment: 'the "real" id' },
             { comment: 'one\r\ntwo\nthree\rfour' },
+            { comment: 'x %% y %% z' },
             {
               comment: 'keyed',
               options: ColumnOption.primaryKey | ColumnOption.notNull,
@@ -543,6 +580,7 @@ describe('generator-code/mermaid', () => {
       ).toEqual([
         `    int id "the 'real' id"`,
         '    int id "one two three four"',
+        '    int id "x %% y %% z"',
         '    int id PK "keyed"',
         '    int id',
       ]);
@@ -633,6 +671,7 @@ describe('generator-code/mermaid', () => {
         name: 'parent_code',
         dataType: 'int',
       });
+      state.collections.tableEntities.c1.columnIds.push('fk2');
       state.collections.relationshipEntities.r1.end.columnIds = ['fk', 'fk2'];
 
       expect(relationshipLines(state)).toEqual([
@@ -648,6 +687,7 @@ describe('generator-code/mermaid', () => {
         name: 'parent_code',
         dataType: 'int',
       });
+      state.collections.tableEntities.c1.columnIds.push('fk2');
       state.collections.relationshipEntities.r1.end.columnIds = ['fk', 'fk2'];
 
       expect(relationshipLines(state)).toEqual([
@@ -664,10 +704,38 @@ describe('generator-code/mermaid', () => {
       ]);
     });
 
+    it('labels only the child columns still in the child table, as a removal leaves the column behind', () => {
+      const state = createRelationshipState();
+      state.collections.tableColumnEntities.fk2 = createColumn({
+        id: 'fk2',
+        tableId: 'c1',
+        name: 'parent_code',
+        dataType: 'int',
+      });
+      state.collections.tableEntities.c1.columnIds = ['fk2'];
+      state.collections.relationshipEntities.r1.end.columnIds = [
+        'fk',
+        'pk',
+        'fk2',
+      ];
+
+      expect(relationshipLines(state)).toEqual([
+        '  "parent" ||..o{ "child" : "parent_code"',
+      ]);
+
+      state.collections.tableEntities.c1.columnIds = [];
+      expect(relationshipLines(state)).toEqual([
+        '  "parent" ||..o{ "child" : ""',
+      ]);
+    });
+
     it("writes a double quote in the label as ' and a line break as a space", () => {
       expect(
         relationshipLines(createRelationshipState({}, 'the "parent"\nid'))
       ).toEqual([`  "parent" ||..o{ "child" : "the 'parent' id"`]);
+      expect(
+        relationshipLines(createRelationshipState({}, 'a\u2028%%b\u2029%%c'))
+      ).toEqual(['  "parent" ||..o{ "child" : "a %%b %%c"']);
     });
 
     it('points at the numbered name of a repeated table', () => {

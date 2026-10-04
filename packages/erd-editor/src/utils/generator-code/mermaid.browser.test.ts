@@ -62,6 +62,26 @@ function relationship(
   });
 }
 
+function createState(
+  tables: Table[],
+  columns: Column[],
+  relationships: Relationship[] = []
+): RootState {
+  const state = schemaV3Parser({}) as unknown as RootState;
+
+  state.doc.tableIds = tables.map(table => table.id);
+  state.doc.relationshipIds = relationships.map(({ id }) => id);
+  tables.forEach(table => (state.collections.tableEntities[table.id] = table));
+  columns.forEach(
+    value => (state.collections.tableColumnEntities[value.id] = value)
+  );
+  relationships.forEach(
+    value => (state.collections.relationshipEntities[value.id] = value)
+  );
+
+  return state;
+}
+
 /**
  * A document holding every spelling the generator writes: names the pattern
  * keeps bare and names it wraps, the three keys, nullable types, comments,
@@ -158,18 +178,9 @@ function createDocument(): RootState {
       startRelationshipType: StartRelationshipType.ring,
     }),
   ];
-  const state = schemaV3Parser({}) as unknown as RootState;
+  const state = createState(tables, columns, relationships);
 
-  state.doc.tableIds = tables.map(table => table.id);
-  state.doc.relationshipIds = relationships.map(({ id }) => id);
   state.doc.indexIds = ['i1'];
-  tables.forEach(table => (state.collections.tableEntities[table.id] = table));
-  columns.forEach(
-    value => (state.collections.tableColumnEntities[value.id] = value)
-  );
-  relationships.forEach(
-    value => (state.collections.relationshipEntities[value.id] = value)
-  );
   state.collections.indexEntities.i1 = createIndex({
     id: 'i1',
     tableId: 'order',
@@ -349,5 +360,55 @@ describe('generator-code/mermaid in mermaid 11.17.2', () => {
       ['empty', 'ONLY_ONE', 'IDENTIFYING', 'ONLY_ONE', '회원2', ''],
       ['회원2', 'ZERO_OR_ONE', 'NON_IDENTIFYING', 'ONE_OR_MORE', 'empty', ''],
     ]);
+  });
+
+  it('reads back a name starting with a whitespace character as written', async () => {
+    const state = createState(
+      [createTable({ id: 't', name: 't', columnIds: ['a', 'b', 'c'] })],
+      [
+        column('a', 't', { name: '\u3000PK', options: NOT_NULL }),
+        column('b', 't', { name: '\u3000id', options: NOT_NULL }),
+        column('c', 't', { name: '\ufeffuk', options: NOT_NULL }),
+      ]
+    );
+    const diagram = await read(createCode(state));
+
+    expect(attributesOf(diagram, 't')).toEqual([
+      { type: 'int', name: '\u3000PK', keys: [], comment: '' },
+      { type: 'int', name: '\u3000id', keys: [], comment: '' },
+      { type: 'int', name: '\ufeffuk', keys: [], comment: '' },
+    ]);
+  });
+
+  it('keeps the rest of a line whose comment, label or name holds a line break before %%', async () => {
+    const state = createState(
+      [
+        createTable({ id: 'p', name: 'p', columnIds: ['p1'] }),
+        createTable({ id: 'c', name: 'c', columnIds: ['c1', 'c2', 'c3'] }),
+      ],
+      [
+        column('p1', 'p', { name: 'id', options: NOT_NULL }),
+        column('c1', 'c', {
+          name: 'x\u2029%%y',
+          options: NOT_NULL,
+          comment: 'a\u2028%% b',
+        }),
+        column('c2', 'c', { name: 'x\n%% y', options: NOT_NULL }),
+        column('c3', 'c', { name: '\u2028PK', options: NOT_NULL }),
+      ],
+      [
+        relationship('r', ['p', ['p1']], ['c', ['c1']], {
+          relationshipType: RelationshipType.ZeroN,
+        }),
+      ]
+    );
+    const diagram = await read(createCode(state));
+
+    expect(attributesOf(diagram, 'c')).toEqual([
+      { type: 'int', name: 'x %%y', keys: [], comment: 'a %% b' },
+      { type: 'int', name: 'x %% y', keys: [], comment: '' },
+      { type: 'int', name: ' PK', keys: [], comment: '' },
+    ]);
+    expect(diagram.relationships.map(({ roleA }) => roleA)).toEqual(['x %%y']);
   });
 });

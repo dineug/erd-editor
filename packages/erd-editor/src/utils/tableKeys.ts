@@ -82,11 +82,14 @@ export type ColumnKey = {
   columnIds: string[];
 };
 
-/** One alternate key: a unique index of the table and the columns it keys, in key order. */
-export type AlternateKey = {
+/** A unique index of the table and the columns of the table it keys, in key order. */
+export type UniqueIndexKey = {
   indexId: string;
   columnIds: string[];
 };
+
+/** One alternate key: a unique index over two or more of the table's columns. */
+export type AlternateKey = UniqueIndexKey;
 
 /**
  * The keys a table's columns declare, primary key first and then each unique
@@ -136,7 +139,7 @@ export function getColumnKeys(
 export function getUniqueIndexKeys(
   state: KeyState,
   table: Table
-): AlternateKey[] {
+): UniqueIndexKey[] {
   const columnIds = new Set(table.columnIds);
   const indexColumns = query(state.collections).collection(
     'indexColumnEntities'
