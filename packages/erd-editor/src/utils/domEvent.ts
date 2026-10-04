@@ -48,6 +48,29 @@ export function isMiddleButtonPress(event: Event): event is MouseEvent {
 }
 
 /**
+ * Prevents the next middle lift wherever it lands, heard on the window ahead of
+ * the listener that ends a pan, since Chromium on Linux pastes the selection on
+ * a lift left unprevented. The returned remover drops it when no lift came.
+ *
+ * @example
+ * drag$.subscribe(handleMove).add(preventMiddleLift());
+ */
+export function preventMiddleLift(): () => void {
+  const release = () => {
+    window.removeEventListener('mouseup', handleMouseup, true);
+  };
+  const handleMouseup = (lift: MouseEvent) => {
+    if (!isMiddleButtonPress(lift)) return;
+
+    lift.preventDefault();
+    release();
+  };
+
+  window.addEventListener('mouseup', handleMouseup, true);
+  return release;
+}
+
+/**
  * The editor root, which is where a pan has to take the selection off: the top
  * toolbar is a sibling of the scene that pans, so suppressing it any lower
  * leaves a drag that reaches the toolbar free to select its text.

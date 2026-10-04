@@ -1551,6 +1551,43 @@ describe('the Flow mode of the visualization tab', () => {
     expect({ ...app.store.state.editor.selectedMap }).toEqual(selected);
   });
 
+  /**
+   * The pan stops its press at the stage container, short of the tree the bar
+   * reads a press outside its menu from, so the menu hears the forward instead.
+   */
+  it('closes the row display menu on a middle press over the scene, as a main press does', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const rect = flowRootOf(mounted).getBoundingClientRect();
+    const canvas = flowStage().content.querySelector('canvas')!;
+    const pressCanvas = (button: number) => {
+      const init: MouseEventInit = {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        button,
+        clientX: rect.left + 900,
+        clientY: rect.top + 500,
+      };
+      canvas.dispatchEvent(new MouseEvent('mousedown', init));
+      canvas.dispatchEvent(new MouseEvent('mouseup', init));
+      window.dispatchEvent(new MouseEvent('mouseup', init));
+    };
+
+    for (const button of [0, 1]) {
+      click(showModeTriggerOf(mounted));
+      await settle();
+      expect(showModeMenuOf(mounted), `button ${button}`).not.toBeNull();
+
+      pressCanvas(button);
+      await settle();
+
+      expect(showModeMenuOf(mounted), `button ${button}`).toBeNull();
+    }
+  });
+
   it('runs particles on the connectors a hover lights, and none while nothing is hovered (AC-33)', async () => {
     const app = createTestAppContext();
     seed(app);

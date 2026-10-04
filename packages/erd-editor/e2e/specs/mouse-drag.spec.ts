@@ -706,6 +706,63 @@ test.describe('mouse drag', () => {
       .not.toContain('users');
   });
 
+  test('a right click on a table remove button removes nothing and opens the table menu', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.hoverScene('#table-users');
+
+    const remove = await erd.sceneBox(['#table-users', '.table-remove']);
+    const at = {
+      x: remove.x + remove.width / 2,
+      y: remove.y + remove.height / 2,
+    };
+    await erd.clickAt(at, { button: 'right' });
+    await erd.whenDrawn();
+
+    // The table's own menu answers, so the right click landed on the table.
+    await expect(erd.contextMenuItem('Table Properties')).toBeVisible();
+    expect((await erd.value()).doc.tableIds).toContain('users');
+
+    // A main press on bare canvas closes the menu, and the main button at the
+    // same point is the button, so the right click went where it answers.
+    await erd.focusCanvas();
+    await expect(erd.contextMenu).toHaveCount(0);
+    await erd.hoverScene('#table-users');
+    await erd.clickAt(at);
+    await expect
+      .poll(async () => (await erd.value()).doc.tableIds)
+      .not.toContain('users');
+  });
+
+  test('under the hand tool a middle-button drag pans too, and keeps the selection', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await pressTableHeader(erd, 'users');
+    await expect(erd.selectedTables()).toHaveCount(1);
+    await erd.press(Shortcut.handTool);
+    await expect(canvasController(erd)).toHaveCSS('pointer-events', 'none');
+
+    const from = await erd.tableHeaderPoint('posts');
+    await erd.drag(
+      from,
+      { x: from.x - 120, y: from.y - 60 },
+      { button: 'middle' }
+    );
+    await erd.press(Shortcut.handTool);
+    await expect(canvasController(erd)).toHaveCSS('pointer-events', 'auto');
+
+    const settings = await erd.settings();
+    expectClose(settings.originX, -120, PIXEL_TOLERANCE);
+    expectClose(settings.originY, -60, PIXEL_TOLERANCE);
+
+    const posts = await erd.table('posts');
+    expect([posts.ui.x, posts.ui.y]).toEqual([760, 420]);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+    await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
   test('a right-button drag moves neither a table nor a memo, and selects each alone', async ({
     erd,
   }) => {

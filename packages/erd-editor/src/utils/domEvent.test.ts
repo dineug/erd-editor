@@ -10,6 +10,7 @@ import {
   onPrevent,
   onStop,
   onStopImmediate,
+  preventMiddleLift,
   suppressSelection,
 } from '@/utils/domEvent';
 
@@ -143,6 +144,48 @@ describe('isMiddleButtonPress', () => {
 
   it('is false for a touch, which has no button', () => {
     expect(isMiddleButtonPress(new TouchEvent('touchstart'))).toBe(false);
+  });
+});
+
+/** A lift of one button, dispatched on an element so it reaches the window. */
+const liftOf = (button: number) => {
+  const lift = new MouseEvent('mouseup', {
+    bubbles: true,
+    cancelable: true,
+    button,
+  });
+  document.body.dispatchEvent(lift);
+  return lift;
+};
+
+describe('preventMiddleLift', () => {
+  it('prevents the next middle lift alone, passing over the lift of another button', () => {
+    const release = preventMiddleLift();
+
+    try {
+      expect(liftOf(0).defaultPrevented).toBe(false);
+      expect(liftOf(1).defaultPrevented).toBe(true);
+      expect(liftOf(1).defaultPrevented).toBe(false);
+    } finally {
+      release();
+    }
+  });
+
+  it('prevents nothing once released before the lift', () => {
+    preventMiddleLift()();
+
+    expect(liftOf(1).defaultPrevented).toBe(false);
+  });
+
+  it('prevents the lift ahead of a listener that ends the gesture on the window', () => {
+    const release = preventMiddleLift();
+    const end = vi.fn(release);
+    window.addEventListener('mouseup', end, { once: true });
+
+    const lift = liftOf(1);
+
+    expect(end).toHaveBeenCalledOnce();
+    expect(lift.defaultPrevented).toBe(true);
   });
 });
 

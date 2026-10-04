@@ -323,9 +323,10 @@ Verified against the running editor, not inferred:
 | plain drag on empty canvas    | **pans** the canvas                                 |
 | `$mod` + drag on empty canvas | marquee-selects (`handleDragSelect` checks `isMod`) |
 | hold `Space` + drag           | grab-pans, even when the drag starts over a table   |
-| middle-button drag            | pans from anywhere on the scene, a table included; selects, moves and clicks nothing (`drag(…, { button: 'middle' })`) |
+| middle-button drag            | pans from anywhere on the scene, a table included, under the hand tool too; selects, moves and clicks nothing (`drag(…, { button: 'middle' })`) |
 | drag a table header           | moves it, and every other selected table with it    |
 | right-button drag on a table or memo | selects it, keeping a selection it lands in, and moves nothing |
+| right click on a scene button | opens the context menu and clicks nothing: a header +/x, a remove icon, a colour edge or the Flow card's Related / Go to ERD acts on the main button alone |
 | drag a simplified table       | anywhere on its body — zoomed out there is no header |
 | plain wheel                   | scrolls; `Shift`+wheel scrolls horizontally         |
 | `$mod` + wheel                | zooms in 0.03 steps                                 |

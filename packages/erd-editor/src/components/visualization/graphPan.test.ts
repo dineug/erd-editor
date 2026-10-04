@@ -38,6 +38,9 @@ const mousedown = (button: number) =>
     clientY: 0,
   });
 
+const mouseup = (button: number) =>
+  new MouseEvent('mouseup', { bubbles: true, cancelable: true, button });
+
 const state = (): VisualizationState => createVisualizationState(900, 700);
 
 afterEach(() => {
@@ -71,8 +74,22 @@ describe('captureGraphPan', () => {
     expect(press.defaultPrevented).toBe(true);
     expect(container.style.cursor).toBe(CURSOR_GRABBING);
 
-    releasePointer();
+    const lift = mouseup(1);
+    window.dispatchEvent(lift);
+    expect(lift.defaultPrevented).toBe(true);
     expect(container.style.cursor).toBe('');
+  });
+
+  it('leaves the lift of a main press to the browser', () => {
+    captureGraphPan(
+      pressOn(mousedown(0), document.createElement('div')),
+      state()
+    );
+
+    const lift = mouseup(0);
+    window.dispatchEvent(lift);
+
+    expect(lift.defaultPrevented).toBe(false);
   });
 
   it('still pans from a middle press on a node no stage holds any more', () => {

@@ -8,7 +8,7 @@ import {
   TABLE_PADDING,
 } from '@/constants/layout';
 import { CodeFontFamily, TextFontFamily } from '@/styles/fonts.styles';
-import { isMouseEvent } from '@/utils/domEvent';
+import { isMainButtonPress, isMouseEvent } from '@/utils/domEvent';
 import { holdStageCursor, setStageCursor } from '@/utils/stageCursor';
 
 /** A pointer event as konva hands it to a listener bound on a scene node. */
@@ -17,6 +17,20 @@ export type SceneMouseEvent = KonvaEventObject<MouseEvent>;
 export type SceneTouchEvent = KonvaEventObject<TouchEvent>;
 
 export type ScenePointerEvent = SceneMouseEvent | SceneTouchEvent;
+
+/**
+ * The click listener of a scene button, which acts on the main button alone:
+ * konva makes a click of any button's press and lift, and a right click is the
+ * context menu's. A Mac control click is the main button, so it still acts.
+ *
+ * @example
+ * on:click={mainButtonClick(handleRemove)}
+ */
+export const mainButtonClick =
+  (click: (event: SceneMouseEvent) => void) =>
+  (event: SceneMouseEvent): void => {
+    if (isMainButtonPress(event.evt)) click(event);
+  };
 
 /**
  * The face utils/text.ts measures a string with. Drawing in anything else would

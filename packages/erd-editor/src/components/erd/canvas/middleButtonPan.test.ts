@@ -9,7 +9,8 @@ import {
 
 import { movePointer, releasePointer } from '@/__test-utils__';
 import { listenMiddleButtonPan } from '@/components/erd/canvas/middleButtonPan';
-import type { DragMove } from '@/utils/globalEventObservable';
+import { type DragMove, middlePanPress$ } from '@/utils/globalEventObservable';
+import { forwardMoveStartEvent } from '@/utils/internalEvents';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';
 
 type Fixture = {
@@ -214,5 +215,44 @@ describe('listenMiddleButtonPan', () => {
     expect(event.defaultPrevented).toBe(false);
     expect(fixture.onPress).not.toHaveBeenCalled();
     expect(fixture.moves).toEqual([]);
+  });
+});
+
+describe('middlePanPress$', () => {
+  it('hands a node above the stage container the middle press the pan kept from it', () => {
+    const heard: MouseEvent[] = [];
+    const onShell = vi.fn();
+    fixture.shell.addEventListener('mousedown', onShell);
+    const subscription = middlePanPress$(fixture.shell).subscribe(event =>
+      heard.push(event)
+    );
+
+    try {
+      const event = press(fixture.canvas, { button: 1 });
+
+      expect(onShell).not.toHaveBeenCalled();
+      expect(heard).toEqual([event]);
+    } finally {
+      subscription.unsubscribe();
+    }
+  });
+
+  it('passes over a forward that carries a press of another button', () => {
+    const heard: MouseEvent[] = [];
+    const subscription = middlePanPress$(fixture.shell).subscribe(event =>
+      heard.push(event)
+    );
+
+    try {
+      fixture.container.dispatchEvent(
+        forwardMoveStartEvent({
+          originEvent: new MouseEvent('mousedown', { button: 0 }),
+        })
+      );
+
+      expect(heard).toEqual([]);
+    } finally {
+      subscription.unsubscribe();
+    }
   });
 });

@@ -46,6 +46,7 @@ import { procGC } from '@/services/schema-gc/procGC';
 import { Appearance, ThemeOptions } from '@/themes/radix-ui-theme';
 import { Theme as ThemeType } from '@/themes/tokens';
 import { copyAction, pasteAction } from '@/utils/emitter';
+import { middlePanPress$ } from '@/utils/globalEventObservable';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
 import { createText } from '@/utils/text';
@@ -294,7 +295,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       fromEvent(ctx, focusEvent.type)
         .pipe(throttleTime(50, undefined, { leading: true, trailing: true }))
         .subscribe(checkAndFocus),
-      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
+      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus),
+      // A middle press on the scene closes the theme builder as a main press
+      // does, though the pan stops it before it bubbles up to this root.
+      middlePanPress$($root).subscribe(handleOutsideClick)
     );
   });
 

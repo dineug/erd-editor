@@ -613,6 +613,28 @@ test.describe('the visualization tab and the flow view over the document', () =>
     });
   });
 
+  /** The middle button closes the row display menu as the main one does. */
+  test('closes the row display menu on a middle press over a card', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+    const menu = erd.host.locator(
+      '.visualization-show-mode-menu .context-menu-content'
+    );
+    await showModeTrigger(erd).click();
+    await expect(menu).toBeVisible();
+
+    const box = await erd.sceneBox('#table-customers');
+    await erd.page.mouse.click(
+      box.x + box.width * 0.3,
+      box.y + box.height * 0.6,
+      { button: 'middle' }
+    );
+
+    await expect(menu).toHaveCount(0);
+  });
+
   /** AC-44. The body click pins the highlight; it never narrows what the view shows. */
   test('leaves the display set alone on a click of a flow box', async ({
     erd,

@@ -3,7 +3,7 @@
 // for it and only a class on an ancestor can.
 
 import { createRef, useProvider } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
@@ -12,10 +12,13 @@ import {
   flush,
   mount,
   type Mounted,
+  movePointer,
+  releasePointer,
 } from '@/__test-utils__';
 import Erd from '@/components/erd/Erd';
 import { themeContext } from '@/components/themeContext';
 import {
+  changeHandToolAction,
   changeViewportAction,
   editMemoAction,
   selectAction,
@@ -159,7 +162,11 @@ describe('Erd - a canvas pan', () => {
 });
 
 /** A press of one button, the way a mouse delivers it to whatever lies under the point. */
-const pressWith = (target: Element, button: number) => {
+const pressWith = (
+  target: Element,
+  button: number,
+  init: MouseEventInit = {}
+) => {
   const event = new MouseEvent('mousedown', {
     bubbles: true,
     cancelable: true,
@@ -167,6 +174,7 @@ const pressWith = (target: Element, button: number) => {
     button,
     clientX: 400,
     clientY: 300,
+    ...init,
   });
   target.dispatchEvent(event);
   return event;
@@ -222,5 +230,53 @@ describe('Erd - a middle button press', () => {
     expect(press.defaultPrevented).toBe(false);
     expect(mounted.app.store.state.editor.editMemoId).toBe(MEMO_ID);
     expect(selectedIds(mounted)).toEqual([MEMO_ID]);
+  });
+
+  /**
+   * The hand tool takes the pointer off the stage container, so its root pans
+   * for the press instead; the middle button still reads the same there.
+   */
+  it('pans under the hand tool too, press and lift prevented, keeping the selection, and draws no marquee for a held modifier', async () => {
+    const mounted = await mountEditingMemo();
+    const { store, emitter } = mounted.app;
+    store.dispatchSync(changeHandToolAction({ value: true }));
+    await flush();
+    const dragSelectStart = vi.fn();
+    emitter.on({ dragSelectStart });
+
+    const press = pressWith(rootOf(mounted), MIDDLE, {
+      ctrlKey: true,
+      metaKey: true,
+    });
+    movePointer(430, 350);
+    const lift = new MouseEvent('mouseup', {
+      bubbles: true,
+      cancelable: true,
+      button: MIDDLE,
+      clientX: 430,
+      clientY: 350,
+    });
+    rootOf(mounted).dispatchEvent(lift);
+    await flush();
+
+    expect(press.defaultPrevented).toBe(true);
+    expect(lift.defaultPrevented).toBe(true);
+    expect(dragSelectStart).not.toHaveBeenCalled();
+    expect(store.state.settings.originX).toBe(30);
+    expect(store.state.settings.originY).toBe(50);
+    expect(selectedIds(mounted)).toEqual([MEMO_ID]);
+  });
+
+  it('takes the selection off on a main press under the hand tool', async () => {
+    const mounted = await mountEditingMemo();
+    mounted.app.store.dispatchSync(changeHandToolAction({ value: true }));
+    await flush();
+
+    const press = pressWith(rootOf(mounted), 0);
+    releasePointer();
+    await flush();
+
+    expect(press.defaultPrevented).toBe(false);
+    expect(selectedIds(mounted)).toEqual([]);
   });
 });

@@ -61,7 +61,9 @@ import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
 import {
   editorRootOf,
+  isMiddleButtonPress,
   isMouseEvent,
+  preventMiddleLift,
   suppressSelection,
 } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
@@ -249,7 +251,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !el.closest('.virtual-scroll') &&
       !showOverLayout;
 
-    if (canUnselectAll) {
+    // The hand tool takes the pointer off the stage container, whose pan takes
+    // a middle press first everywhere else, so the root reads the same rule:
+    // the selection stays, no marquee, and the press and its lift are prevented.
+    const middlePan = canDrag && isMiddleButtonPress(event);
+
+    if (canUnselectAll && !middlePan) {
       const { store } = app.value;
       store.dispatch(unselectAllAction$());
     }
@@ -260,8 +267,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     }
 
     if (!canDrag) return;
+    if (middlePan) event.preventDefault();
 
-    if (isMouseEvent(event) && isMod(event)) {
+    if (!middlePan && isMouseEvent(event) && isMod(event)) {
       event.preventDefault();
       const { emitter } = app.value;
       const { x, y } = root.value.getBoundingClientRect();
@@ -282,14 +290,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       // the native drag it turns into is what eats the mouseup this ends on.
       const restoreSelection = suppressSelection(editorRootOf(root.value));
 
-      drag$
-        .subscribe({
-          next: handleMove,
-          complete: () => {
-            state.grabCursor = 'grab';
-          },
-        })
-        .add(restoreSelection);
+      const pan = drag$.subscribe({
+        next: handleMove,
+        complete: () => {
+          state.grabCursor = 'grab';
+        },
+      });
+      pan.add(restoreSelection);
+      if (middlePan) pan.add(preventMiddleLift());
     }
   };
 

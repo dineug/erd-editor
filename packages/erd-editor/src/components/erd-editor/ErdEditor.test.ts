@@ -369,6 +369,32 @@ describe('<erd-editor>', () => {
     }
   });
 
+  it('closes the theme builder on a middle press over the canvas, which the pan keeps from the root', async () => {
+    const { app, shadow } = await createEditor({ enableThemeBuilder: true });
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.themeBuilder]: true } as any)
+    );
+    await flush();
+    const canvas = shadow.querySelector(
+      '[data-testid="erd-canvas"]'
+    ) as HTMLDivElement;
+    expect(canvas).toBeTruthy();
+
+    const press = new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 1,
+    });
+    canvas.dispatchEvent(press);
+    window.dispatchEvent(new MouseEvent('mouseup', { button: 1 }));
+    await flush();
+
+    // Prevented, so the pan took it and stopped it short of the root.
+    expect(press.defaultPrevented).toBe(true);
+    expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
+  });
+
   it('ignores a mousedown that carries no target element', async () => {
     const { app, root } = await createEditor({ enableThemeBuilder: true });
     app.store.dispatchSync(

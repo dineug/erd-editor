@@ -49,6 +49,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getSceneTransform } from '@/konva/scene/viewport';
+import { middlePanPress$ } from '@/utils/globalEventObservable';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import { toZoomFormat } from '@/utils/validation';
 
@@ -212,9 +213,14 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   };
 
   onMounted(() => {
+    const root = $bar.value.getRootNode();
+
+    // A middle press on the scene closes the menu as a main press does, though
+    // the pan stops it before it bubbles up to the root this listens on.
     addUnsubscribe(
       app.value.shortcut$.subscribe(handleShortcut),
-      fromEvent($bar.value.getRootNode(), 'mousedown').subscribe(handlePress)
+      fromEvent(root, 'mousedown').subscribe(handlePress),
+      middlePanPress$(root).subscribe(handlePress)
     );
   });
 

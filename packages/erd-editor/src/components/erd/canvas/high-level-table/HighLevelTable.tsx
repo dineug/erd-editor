@@ -8,6 +8,7 @@ import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
   HIGH_LEVEL_FONT_SIZES,
+  mainButtonClick,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   type SceneMouseEvent,
@@ -154,7 +155,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           kind="table-header-color"
           data={getColorEdgePath(rect.height)}
           fill={table.ui.color}
-          on:click={handleOpenColorPicker}
+          on:click={mainButtonClick(handleOpenColorPicker)}
           on:mouseenter={(event: SceneMouseEvent) => {
             setSceneCursor(event, CURSOR_POINTER);
           }}
