@@ -598,6 +598,29 @@ describe('ErdContextMenu / table type', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
+    it('counts only the selected columns still in the table', async () => {
+      seedColumnSelection();
+      // The bare atom a peer, an agent or the undo of an add sends, which
+      // leaves the column in the selection.
+      app.store.dispatchSync(
+        removeColumnAction({ id: COLUMN_ID, tableId: TABLE_ID })
+      );
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: TABLE_ID,
+        columnId: 'column-3',
+      });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete columnDelete');
+      await click(findItem(rootItems(), 'Delete column'));
+
+      expect(
+        query(app.store.state.collections)
+          .collection('tableEntities')
+          .selectById(TABLE_ID)?.columnIds
+      ).toEqual(['column-2']);
+    });
+
     it.each([
       ['off the rows', undefined],
       ['over a row outside the selection', 'column-2'],

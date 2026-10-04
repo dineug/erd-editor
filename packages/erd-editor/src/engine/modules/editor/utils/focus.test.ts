@@ -23,11 +23,15 @@ import {
   isLastTable,
   isTableFocusType,
 } from '@/engine/modules/editor/utils/focus';
+import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeShowAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   removeColumnAction,
@@ -350,18 +354,54 @@ describe('getRemovableColumns', () => {
 
   it('is null once a memo or another table is selected beside it', () => {
     const store = createSelection();
-    store.dispatchSync(selectAction({ memo: SelectType.memo }));
+    store.dispatchSync(
+      addMemoAction({ id: 'memo', ui: { x: 0, y: 0, zIndex: 3 } }),
+      selectAction({ memo: SelectType.memo })
+    );
     expect(getRemovableColumns(store.state)).toBeNull();
 
     const other = createSelection();
-    other.dispatchSync(selectAction({ 'table-2': SelectType.table }));
+    other.dispatchSync(
+      addTableAction({ id: 'table-2', ui: { x: 0, y: 0, zIndex: 3 } }),
+      selectAction({ 'table-2': SelectType.table })
+    );
     expect(getRemovableColumns(other.state)).toBeNull();
   });
 
   it('is null while the selection is another table than the focused one', () => {
     const store = createSelection();
+    store.dispatchSync(
+      addTableAction({ id: 'table-2', ui: { x: 0, y: 0, zIndex: 3 } })
+    );
     store.state.editor.selectedMap = { 'table-2': SelectType.table };
 
+    expect(getRemovableColumns(store.state)).toBeNull();
+  });
+
+  it('reads the selection over the tables and memos still in the document', () => {
+    const store = createSelection();
+    store.dispatchSync(
+      addTableAction({ id: 'table-2', ui: { x: 0, y: 0, zIndex: 3 } }),
+      selectAction({ 'table-2': SelectType.table })
+    );
+    // The bare atom a peer, an agent or the undo of an add sends, which
+    // leaves the table in the selection.
+    store.dispatchSync(removeTableAction({ id: 'table-2' }));
+
+    expect(getRemovableColumns(store.state)?.columnIds).toEqual(['c3', 'c1']);
+  });
+
+  it('is only the selected columns still in the table, and null once none is', () => {
+    const store = createSelection();
+
+    store.dispatchSync(removeColumnAction({ id: 'c3', tableId: TABLE_ID }));
+    expect(getFocus(store).selectColumnIds).toEqual(['c3', 'c1']);
+    expect(getRemovableColumns(store.state)).toEqual({
+      tableId: TABLE_ID,
+      columnIds: ['c1'],
+    });
+
+    store.dispatchSync(removeColumnAction({ id: 'c1', tableId: TABLE_ID }));
     expect(getRemovableColumns(store.state)).toBeNull();
   });
 

@@ -413,6 +413,47 @@ describe('useErdShortcut - remove selection', () => {
     expect(app.store.state.doc.tableIds).toHaveLength(1);
     expect(app.store.state.doc.memoIds).toHaveLength(1);
   });
+
+  it('removes the table once the add of its selected column is undone, and one undo brings it back bare', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    const columnId = seedColumn(app, tableId);
+    app.store.undo();
+    expect(app.store.state.editor.focusTable?.selectColumnIds).toEqual([
+      columnId,
+    ]);
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+    expect(app.store.state.doc.tableIds).toEqual([]);
+
+    app.store.undo();
+    expect(app.store.state.doc.tableIds).toEqual([tableId]);
+    expect(getTable(app, tableId)?.columnIds).toEqual([]);
+  });
+
+  it('records nothing for a table or memo whose add was undone, so no undo brings it back', async () => {
+    const app = await setup();
+    const kept = seedTable(app);
+    const memoId = memoIdOf(app);
+    const tableId = seedTable(app);
+    app.store.dispatchSync(selectAction({ [memoId]: SelectType.memo }));
+    app.store.undo();
+    app.store.undo();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      [tableId]: SelectType.table,
+      [memoId]: SelectType.memo,
+    });
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+    expect(app.store.state.doc.tableIds).toEqual([kept]);
+    expect(app.store.history.hasRedo()).toBe(true);
+
+    app.store.undo();
+    expect(app.store.state.doc.tableIds).toEqual([]);
+    expect(app.store.state.doc.memoIds).toEqual([]);
+  });
 });
 
 describe('useErdShortcut - table properties', () => {

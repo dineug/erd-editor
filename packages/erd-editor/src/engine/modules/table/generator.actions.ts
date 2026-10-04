@@ -71,7 +71,7 @@ export const addTableAction$ = (): GeneratorAction =>
 
 export const removeTableAction$ = (id?: string): GeneratorAction =>
   function* ({
-    doc: { relationshipIds, indexIds },
+    doc: { tableIds, relationshipIds, indexIds },
     editor: { selectedMap },
     collections,
   }) {
@@ -99,8 +99,11 @@ export const removeTableAction$ = (id?: string): GeneratorAction =>
       return;
     }
 
+    // A table a peer, an agent or an undo removes stays selected, and its
+    // removal recorded again would make an undo that brings it back.
+    const isInDoc = arrayHas(tableIds);
     const selectedTableIds = Object.entries(selectedMap)
-      .filter(([, type]) => type === SelectType.table)
+      .filter(([id, type]) => type === SelectType.table && isInDoc(id))
       .map(([id]) => id);
     const hasTableIds = arrayHas(selectedTableIds);
     const removeRelationships = relationships.filter(
