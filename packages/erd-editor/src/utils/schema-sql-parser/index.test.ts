@@ -407,28 +407,28 @@ GO
           column.ui.keys,
         ]),
       ]);
-      const key = ColumnOption.primaryKey | ColumnOption.notNull;
+      const primaryKeyOptions = ColumnOption.primaryKey | ColumnOption.notNull;
 
       expect(shapes).toEqual([
         [
           'Roles',
           [
-            ['Id', key, ColumnUIKey.primaryKey],
+            ['Id', primaryKeyOptions, ColumnUIKey.primaryKey],
             ['Title', ColumnOption.notNull, 0],
           ],
         ],
         [
           'UserRoles',
           [
-            ['UserId', key, ColumnUIKey.primaryKey],
-            ['RoleId', key, ColumnUIKey.primaryKey],
+            ['UserId', primaryKeyOptions, ColumnUIKey.primaryKey],
+            ['RoleId', primaryKeyOptions, ColumnUIKey.primaryKey],
             ['Granted', 0, 0],
           ],
         ],
         [
           'Users',
           [
-            ['Id', key, ColumnUIKey.primaryKey],
+            ['Id', primaryKeyOptions, ColumnUIKey.primaryKey],
             ['Name', 0, 0],
           ],
         ],
