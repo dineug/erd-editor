@@ -772,7 +772,8 @@ function readProperties(
     }
 
     const key = token.value.toLowerCase();
-    const color = owner === 'entity' && key === 'color' && fromAMLColor(value);
+    const color =
+      owner === 'entity' && key === 'color' ? fromAMLColor(value) : '';
 
     if (owner === 'relation' && key === 'ondelete') {
       extra.onDelete = value;
@@ -780,7 +781,7 @@ function readProperties(
       extra.onUpdate = value;
     } else if (key === 'autoincrement') {
       extra.autoIncrement = true;
-    } else if (color) {
+    } else if (color !== '') {
       extra.color = color;
     } else {
       skip(token.value);

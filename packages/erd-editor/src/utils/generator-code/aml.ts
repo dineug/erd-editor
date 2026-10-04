@@ -84,12 +84,8 @@ function formatAMLTable(
     return;
   }
 
-  buffer.push(
-    `${quoteIdentifier(name)}${formatEntityProperties(table)}${formatDoc(
-      table.comment,
-      ''
-    )}`
-  );
+  const doc = formatDoc(table.comment, '');
+  buffer.push(`${quoteIdentifier(name)}${formatEntityProperties(table)}${doc}`);
 
   const indexes = formatIndexes(state, table, context, name);
 

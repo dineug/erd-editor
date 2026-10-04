@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vite-plus/test';
 import * as styles from '@/components/primitives/color-picker/ColorPicker.styles';
 
 describe('ColorPicker.styles', () => {
+  const clear = styles.clear.strings.raw.join('');
+
   it('exports the container css template literal', () => {
     expect(styles.container).toBeTruthy();
     expect(styles.container.values).toEqual([]);
@@ -15,24 +17,18 @@ describe('ColorPicker.styles', () => {
   });
 
   it('stretches the No color button to the picker width under it', () => {
-    const clear = styles.clear.strings.raw.join('');
-
     expect(styles.picker.strings.raw.join('')).toContain('display: flex');
     expect(clear).toContain('display: block');
     expect(clear).toContain('width: 100%');
   });
 
   it('draws the No color button on the menu surface, lit on hover', () => {
-    const clear = styles.clear.strings.raw.join('');
-
     expect(clear).toContain('background-color: var(--context-menu-background)');
     expect(clear).toContain('border: 1px solid var(--context-menu-border)');
     expect(clear).toContain('background-color: var(--context-menu-hover)');
   });
 
   it('rings the No color button while it holds the keyboard, as the reset takes every outline', () => {
-    const clear = styles.clear.strings.raw.join('');
-
     expect(clear).toMatch(
       /&:focus-visible\s*\{\s*outline: 2px solid var\(--input-active\);\s*outline-offset: 1px;\s*\}/
     );

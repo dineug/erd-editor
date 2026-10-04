@@ -1,8 +1,9 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import { RootState } from '@/engine/state';
 import { Memo, Table } from '@/internal-types';
+
+import { getSelectTypeIds } from './selection';
 
 type ColorTargets = {
   tables: Table[];

@@ -91,7 +91,7 @@ export function toAMLColor(color: string): string | null {
   for (const [name, hex] of AML_COLOR_BY_NAME) {
     if (name === 'gray') continue;
 
-    const [, namedA, namedB] = oklabOf(channelsOf(hex) as Channels);
+    const [, namedA, namedB] = oklabOf(hexChannels(hex.slice(1)));
     const turn = Math.abs(hue - Math.atan2(namedB, namedA));
     const distance = Math.min(turn, 2 * Math.PI - turn);
 

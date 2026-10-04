@@ -909,11 +909,8 @@ describe('Erd - color picker', () => {
     await flush();
     colorPicker.instances.at(-1)?.options.onChange('#123456');
     await flush();
-    let focusEvents = 0;
-    const countFocusEvent = () => {
-      focusEvents++;
-    };
-    document.body.addEventListener(InternalEventType.focus, countFocusEvent);
+    const onFocus = vi.fn();
+    document.body.addEventListener(InternalEventType.focus, onFocus);
 
     try {
       const button = root.querySelector('.color-picker button') as HTMLElement;
@@ -925,12 +922,9 @@ describe('Erd - color picker', () => {
         ''
       );
       expect(root.querySelector('.color-picker')).toBeNull();
-      expect(focusEvents).toBe(1);
+      expect(onFocus).toHaveBeenCalledTimes(1);
     } finally {
-      document.body.removeEventListener(
-        InternalEventType.focus,
-        countFocusEvent
-      );
+      document.body.removeEventListener(InternalEventType.focus, onFocus);
     }
   });
 });
