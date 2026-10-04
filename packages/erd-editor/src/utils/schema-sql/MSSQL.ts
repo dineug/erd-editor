@@ -184,31 +184,27 @@ function formatColumn(
 }
 
 /**
- * The schema and the table an extended property names at levels 0 and 1. An
+ * The level 0 and 1 arguments of an extended property, its schema and table. An
  * unquoted name splits at each dot, the last part the table and the one before
  * it the schema, a database part dropped; a quoted one is one table in dbo.
  */
-function toLevelNames(name: string, bracket: string): [string, string] {
+function formatLevels(name: string, bracket: string): string {
   const parts = bracket ? [name] : name.split('.');
   const table = parts[parts.length - 1];
   const schema = parts[parts.length - 2] || DEFAULT_SCHEMA;
 
-  return [schema, table];
+  return `'schema', ${toStringLiteral(schema)}, 'table', ${toStringLiteral(table)}`;
 }
 
 function formatComment(
   { settings: { bracketType }, collections }: RootState,
   { table, buffer }: FormatCommentOptions
 ) {
-  const [schemaName, tableName] = toLevelNames(
-    table.name,
-    getBracket(bracketType)
-  );
-  const level = `'schema', ${toStringLiteral(schemaName)}, 'table', ${toStringLiteral(tableName)}`;
+  const levels = formatLevels(table.name, getBracket(bracketType));
 
   if (table.comment.trim() !== '') {
     buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
-    buffer.push(`  ${toStringLiteral(table.comment)}, ${level}\nGO`);
+    buffer.push(`  ${toStringLiteral(table.comment)}, ${levels}\nGO`);
     buffer.push('');
   }
   query(collections)
@@ -218,7 +214,7 @@ function formatComment(
       if (column.comment.trim() !== '') {
         buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
         buffer.push(
-          `  ${toStringLiteral(column.comment)}, ${level}, 'column', ${toStringLiteral(column.name)}\nGO`
+          `  ${toStringLiteral(column.comment)}, ${levels}, 'column', ${toStringLiteral(column.name)}\nGO`
         );
         buffer.push('');
       }
