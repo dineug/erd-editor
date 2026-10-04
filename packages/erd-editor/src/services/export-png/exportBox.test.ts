@@ -11,6 +11,7 @@ import {
   getExportRect,
   getExportScale,
   getExportSize,
+  getStageSize,
 } from '@/services/export-png/exportBox';
 import {
   CANVAS_AREA_MAX,
@@ -233,6 +234,38 @@ describe('getExportSize', () => {
       width: 600,
       height: 400,
       reduced: false,
+    });
+  });
+
+  it('keeps a side the ceilings cut under a pixel at one, as the Stage it is drawn on keeps it', () => {
+    const box = { width: 6_000_000, height: 160 };
+    const scale = getExportScale({ x: 0, y: 0, ...box }, 1);
+    expect(box.height * scale).toBeLessThan(1);
+
+    const size = getExportSize(box, 1, 1);
+
+    expect(size.height).toBe(1);
+    expect(size.width).toBeLessThanOrEqual(CANVAS_SIDE_MAX);
+    expect(size.reduced).toBe(true);
+  });
+});
+
+describe('getStageSize', () => {
+  it('is the box at the scale', () => {
+    expect(getStageSize({ width: 2_000, height: 500 }, 0.5)).toEqual({
+      width: 1_000,
+      height: 250,
+    });
+  });
+
+  it('keeps each side at a pixel at least, since a canvas truncates a side under one to none', () => {
+    expect(getStageSize({ width: 400_000, height: 160 }, 0.0025)).toEqual({
+      width: 1_000,
+      height: 1,
+    });
+    expect(getStageSize({ width: 49, height: 49 }, 1 / 49)).toEqual({
+      width: 1,
+      height: 1,
     });
   });
 });

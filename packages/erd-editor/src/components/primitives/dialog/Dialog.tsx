@@ -42,12 +42,28 @@ const FOCUSABLE = [
  */
 const Dialog: FC<DialogProps> = (props, ctx) => {
   const content = createRef<HTMLDivElement>();
+  /** Whether the press under way began on the dim, which a click there needs to close the box. */
+  let pressedOnDim = false;
+
+  const isOnDim = (event: Event) => {
+    const target = event.target as Node | null;
+    return Boolean(target) && !content.value?.contains(target);
+  };
+
+  /**
+   * Keeps the press from the canvas behind. A press begun in the box and let go
+   * over the dim, a text selection say, clicks the dim too, the nearest
+   * ancestor of both, and closes nothing.
+   */
+  const handleMousedown = (event: MouseEvent) => {
+    event.stopPropagation();
+    pressedOnDim = isOnDim(event);
+  };
 
   const handleOutsideClick = (event: MouseEvent) => {
-    const target = event.target as Node | null;
-    if (!target || content.value?.contains(target)) return;
-
-    props.onClose();
+    const closes = pressedOnDim && isOnDim(event);
+    pressedOnDim = false;
+    if (closes) props.onClose();
   };
 
   /**
@@ -115,7 +131,7 @@ const Dialog: FC<DialogProps> = (props, ctx) => {
       class={styles.root}
       on:click={handleOutsideClick}
       on:contextmenu={onStop}
-      on:mousedown={onStop}
+      on:mousedown={handleMousedown}
       on:touchstart={onStop}
       on:wheel={onStop}
       on:keydown={handleKeydown}

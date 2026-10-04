@@ -45,6 +45,9 @@ const CEILING_EXPORT_TIMEOUT = 30_000;
 /** Bare canvas clear of the memo at scene zero, high enough for the menu to fit. */
 const MENU_ORIGIN = { x: 400, y: 400 };
 
+/** Bare canvas clear of the Find and Replace panel, which stands 396 px in from the canvas edge. */
+const CLEAR_OF_PANEL = { x: 700, y: 400 };
+
 /** One memo at scene zero and one whose far corner lands on the span. */
 function document(span = SPAN): ErdDocument {
   return createSchema({
@@ -68,8 +71,8 @@ const dialogOf = (erd: ErdEditorPage) =>
 const button = (dialog: Locator, name: string) =>
   dialog.getByRole('button', { name, exact: true });
 
-async function openFromMenu(erd: ErdEditorPage) {
-  await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
+async function openFromMenu(erd: ErdEditorPage, at = MENU_ORIGIN) {
+  await erd.openContextMenuAt(at.x, at.y);
   await erd.contextMenu.getByText('Export', { exact: true }).hover();
   const image = erd.contextMenu.getByText('Image…', { exact: true });
   await expect(image).toBeVisible();
@@ -295,6 +298,51 @@ test.describe('the export image dialog', () => {
 
     await erd.press('Shift+Tab');
     await expect(copy).toBeFocused();
+  });
+
+  test('gives way to Find and Replace on its chord, the panel open beneath it already', async ({
+    erd,
+  }) => {
+    await erd.seed(document());
+    const panel = erd.host.locator('.find-replace');
+    await erd.focusCanvas(CLEAR_OF_PANEL);
+    await erd.press(Shortcut.findReplace);
+    await expect(panel).toBeVisible();
+
+    const dialog = await openFromMenu(erd, CLEAR_OF_PANEL);
+    await expect(button(dialog, 'PNG')).toBeFocused();
+    await expect(panel).toHaveCount(0);
+
+    await erd.press(Shortcut.findReplace);
+
+    await expect(dialog).toHaveCount(0);
+    await expect(panel.locator('.find-input')).toBeFocused();
+  });
+
+  test('closes on a press on the dim, never on a text selection let go over it', async ({
+    erd,
+  }) => {
+    await erd.seed(document());
+    const dialog = await openFromMenu(erd);
+    const size = dialog.locator('.export-image-size');
+    await expect(size).toHaveText(
+      `${BOX * DEFAULT_SCALE} × ${BOX * DEFAULT_SCALE} px`
+    );
+    const text = (await size.boundingBox())!;
+    const box = (await dialog.boundingBox())!;
+    const dim = { x: box.x / 2, y: box.y + box.height / 2 };
+
+    await erd.page.mouse.move(text.x + 2, text.y + text.height / 2);
+    await erd.page.mouse.down();
+    await erd.page.mouse.move(dim.x, dim.y, { steps: 5 });
+    await erd.page.mouse.up();
+
+    await expect(dialog).toBeVisible();
+
+    await erd.page.mouse.click(dim.x, dim.y);
+
+    await expect(dialog).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
   });
 
   test('scrolls in a short editor, so the buttons at its foot stay in reach', async ({

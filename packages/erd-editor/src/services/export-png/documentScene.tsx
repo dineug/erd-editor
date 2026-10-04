@@ -12,7 +12,7 @@ import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { delay } from '@/utils/promise';
 
-import { getExportRect, getExportScale } from './exportBox';
+import { getExportRect, getExportScale, getStageSize } from './exportBox';
 import ExportScene from './ExportScene';
 
 export type DocumentSceneOptions = {
@@ -86,6 +86,7 @@ export async function renderDocumentScene({
   const scale = isNumber(maxSide)
     ? Math.min(fitted, maxSide / Math.max(box.width, box.height))
     : fitted;
+  const stageSize = getStageSize(box, scale);
 
   // Detached on purpose: konva needs a container, and one outside the document
   // is never laid out, never painted and never reachable from the editor. No
@@ -94,8 +95,8 @@ export async function renderDocumentScene({
     app,
     container: document.createElement('div'),
     scene: <ExportScene box={box} scale={scale} />,
-    width: box.width * scale,
-    height: box.height * scale,
+    width: stageSize.width,
+    height: stageSize.height,
     theme,
   });
 

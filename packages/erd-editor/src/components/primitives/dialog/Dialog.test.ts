@@ -56,6 +56,12 @@ const keydown = (target: Element, init: KeyboardEventInit) => {
   return event;
 };
 
+/** A press begun on one element and let go where its click lands, the same one unless given. */
+const press = (down: Element, up: Element = down) => {
+  down.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  up.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+};
+
 describe('Dialog', () => {
   it('is a labelled modal box over a dim, as wide as it is let grow', async () => {
     const { root, box } = await setup();
@@ -85,13 +91,27 @@ describe('Dialog', () => {
   it('closes on a press on the dim around the box, never on one inside it', async () => {
     const { root, box, onClose } = await setup();
 
-    box
-      .querySelector('button')!
-      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    box.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    press(box.querySelector('button')!);
+    press(box);
     expect(onClose).not.toHaveBeenCalled();
 
+    press(root);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays open for a press begun in the box and let go over the dim, a text selection say', async () => {
+    const { root, box, onClose } = await setup();
+
+    // The click of a press let go elsewhere goes to the two targets' nearest common ancestor.
+    press(box.querySelector('button')!, root);
+    press(box, root);
+    expect(onClose).not.toHaveBeenCalled();
+
+    // A click with no press heard first, as after a press the box kept, is no press on the dim.
     root.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onClose).not.toHaveBeenCalled();
+
+    press(root);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

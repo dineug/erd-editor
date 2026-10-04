@@ -536,6 +536,32 @@ describe('FindReplace opening and closing', () => {
     expect(findInput().value).toBe('user');
   });
 
+  /** An owner decision: the export image dialog closes once Find and Replace opens, open already under it or not. */
+  it('trades the export image dialog up over it for itself, on its chord and on an opening with no query', async () => {
+    await openWith('user');
+    const exportImageOpen = () =>
+      app.store.state.editor.openMap[Open.exportImage];
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.exportImage]: true }));
+    await flush();
+    expect(isOpen()).toBe(true);
+    expect(panel()).toBeNull();
+
+    await shortcut(KeyBindingName.findReplace);
+
+    expect(exportImageOpen()).toBe(false);
+    expect(document.activeElement).toBe(findInput());
+    expect(findInput().value).toBe('user');
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.exportImage]: true }));
+    await flush();
+    (document.activeElement as HTMLElement).blur();
+    await openWith();
+
+    expect(exportImageOpen()).toBe(false);
+    expect(document.activeElement).toBe(findInput());
+  });
+
   it('sits under the toolbar, or at the top in zen mode, which takes the toolbar away', async () => {
     await openWith();
     expect(panel()?.style.top).toBe('46px');

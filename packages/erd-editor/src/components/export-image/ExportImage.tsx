@@ -142,6 +142,9 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
       if (session !== current || request !== current.request) return;
 
       console.error('[export-png] the preview could not be drawn', error);
+      // The picture still up shows the options before this change, which the
+      // switches no longer say.
+      view.preview = '';
       view.loading = false;
     }
   };

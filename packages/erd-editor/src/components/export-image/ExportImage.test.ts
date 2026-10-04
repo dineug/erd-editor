@@ -229,14 +229,30 @@ describe('ExportImage opening', () => {
     expect(document.activeElement).toBe(buttonOf('PNG'));
   });
 
-  it('offers PNG and the clipboard and nothing else', async () => {
+  /** An owner decision: the options, PNG and the clipboard alone, with no close button, since Escape and the dim close it. */
+  it('holds the options, PNG and the clipboard and nothing else, no close button among them', async () => {
     const app = await setup();
 
     await open(app);
 
-    expect(buttonOf('PNG')).not.toBeNull();
-    expect(buttonOf('Copy to clipboard')).not.toBeNull();
-    expect(buttonOf('SVG')).toBeNull();
+    const controls = Array.from(
+      dialog()!.querySelectorAll<HTMLElement>(
+        'button, input, select, textarea, a'
+      )
+    ).map(control =>
+      control.getAttribute('role') === 'switch'
+        ? control.closest('label')?.textContent?.trim()
+        : control.textContent?.trim()
+    );
+    expect(controls).toEqual([
+      'Background',
+      'Dark mode',
+      '1x',
+      '2x',
+      '3x',
+      'PNG',
+      'Copy to clipboard',
+    ]);
   });
 
   it('starts dark mode at the appearance the editor shows', async () => {
@@ -515,6 +531,30 @@ describe('ExportImage preview', () => {
     ]);
   });
 
+  it('takes the last picture away when the drawing of the combination toggled to fails', async () => {
+    const app = await setup();
+    await open(app);
+    expect(image()?.getAttribute('src')).toBe('blob:preview-1');
+    preview.mockRejectedValueOnce(new Error('no canvas'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.useFakeTimers();
+
+    await click(switchOf('Background'));
+    await vi.advanceTimersByTimeAsync(PREVIEW_DEBOUNCE_MS);
+    await flush();
+
+    // The picture with the background would contradict the switch now off.
+    expect(loading()).toBeNull();
+    expect(image()).toBeNull();
+    expect(error).toHaveBeenCalledWith(
+      '[export-png] the preview could not be drawn',
+      expect.any(Error)
+    );
+
+    await click(switchOf('Background'));
+    expect(image()?.getAttribute('src')).toBe('blob:preview-1');
+  });
+
   it('stops loading and logs when the preview cannot be drawn', async () => {
     preview.mockRejectedValueOnce(new Error('no canvas'));
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -638,6 +678,7 @@ describe('ExportImage closing', () => {
     await open(app);
 
     const dim = dialog()!.parentElement!;
+    dim.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     await click(dim);
 
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);

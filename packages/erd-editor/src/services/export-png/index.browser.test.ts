@@ -715,4 +715,32 @@ describe('createDocumentPreview', () => {
     expect(preview.zoomLevel).toBe(1);
     expect(image.at(1, 1)).toBe(theme.canvasBackground);
   });
+
+  it('draws a document far longer than it is thick, its short side kept at a pixel', async () => {
+    const memos = [
+      DEFAULT_MEMO,
+      { id: 'm-far', x: 400_000, y: 0, width: 240, height: 160 },
+    ];
+    const box = expectedBox({ memos });
+    const maxSide = 960;
+
+    const preview = await createDocumentPreview({
+      doc: createDoc({ memos }),
+      theme,
+      toWidth,
+      zoomLevel: 1,
+      maxSide,
+    });
+    const image = await decode(preview.blob);
+
+    // Capped by its long side alone, the box is under a pixel thick, which a canvas truncates to none.
+    expect(box.height * (maxSide / box.width)).toBeLessThan(1);
+    expect(image.width).toBeLessThanOrEqual(maxSide);
+    expect(image.width).toBeGreaterThanOrEqual(maxSide - 1);
+    expect(image.height).toBe(1);
+    expect([preview.documentWidth, preview.documentHeight]).toEqual([
+      box.width,
+      box.height,
+    ]);
+  });
 });

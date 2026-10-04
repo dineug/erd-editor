@@ -72,8 +72,13 @@ describe('coveredWidth', () => {
   it('covers nothing while the panel stands aside, still open', () => {
     openPanel(1440);
 
-    for (const key of [Open.tableProperties, Open.themeBuilder]) {
+    for (const key of [
+      Open.tableProperties,
+      Open.themeBuilder,
+      Open.exportImage,
+    ]) {
       app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+      expect(isPanelShown(app.store.state)).toBe(false);
       expect(covered()).toBe(0);
       app.store.dispatchSync(changeOpenMapAction({ [key]: false }));
     }
