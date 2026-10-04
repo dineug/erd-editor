@@ -501,6 +501,19 @@ function enterFlow(app: AppContext) {
   );
 }
 
+/** Stands the reader in the visualization tab's Graph mode, which opens no view. */
+function enterGraph(app: AppContext) {
+  app.store.dispatchSync(
+    changeCanvasTypeAction({ value: CanvasType.visualization }),
+    changeVisualizationModeAction({ value: VisualizationMode.graph })
+  );
+}
+
+/** Stands the reader on a tab of the editor other than the ERD. */
+const enterTab = (value: string) => (app: AppContext) => {
+  app.store.dispatchSync(changeCanvasTypeAction({ value }));
+};
+
 const ACCOUNTS_JSON = () => {
   const app = createTestAppContext();
   contexts.push(app);
@@ -572,16 +585,77 @@ describe('appendSchema', () => {
     expect(tableNames(app)).toHaveLength(3);
   });
 
-  it('stays where it is when the import brings nothing', () => {
+  it.each([
+    ['Graph mode', enterGraph],
+    ['the Schema SQL tab', enterTab(CanvasType.schemaSQL)],
+    ['the Code Generator tab', enterTab(CanvasType.generatorCode)],
+    ['the Settings tab', enterTab(CanvasType.settings)],
+  ] as const)(
+    'brings the ERD tab up from %s first, in no undo step, then selects and scrolls to what it adds',
+    (_, enter) => {
+      const app = createScreenApp();
+      app.store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
+      enter(app);
+      app.store.resetHistory();
+      const batches = recordActions(app);
+
+      appendSchema(app, 'sql', UNRELATED_SQL);
+
+      expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+      expect(batches.map(batch => batch.map(({ type }) => type))).toEqual([
+        ['settings.changeCanvasType'],
+        expect.arrayContaining([
+          'table.add',
+          'editor.select',
+          'settings.scrollTo',
+        ]),
+      ]);
+      expect(selectedNames(app)).toEqual(['posts', 'users']);
+      expect(app.store.state.settings.originY).toBeLessThan(0);
+
+      app.store.undo();
+
+      expect(tableNames(app)).toEqual(['old']);
+      expect(app.store.state.settings).toMatchObject({
+        canvasType: CanvasType.ERD,
+        originY: 0,
+      });
+      expect(app.store.history.hasUndo()).toBe(false);
+    }
+  );
+
+  it('dispatches no tab change when the ERD tab is up already', () => {
     const app = createScreenApp();
-    enterFlow(app);
     const batches = recordActions(app);
 
-    appendSchema(app, 'sql', 'SELECT 1;');
+    appendSchema(app, 'sql', UNRELATED_SQL);
 
-    expect(batches).toEqual([]);
-    expect(app.store.state.settings.canvasType).toBe(CanvasType.visualization);
+    expect(batches).toHaveLength(1);
+    expect(batches[0].map(({ type }) => type)).not.toContain(
+      'settings.changeCanvasType'
+    );
   });
+
+  it.each([
+    ['a Flow view', enterFlow, CanvasType.visualization],
+    [
+      'the Schema SQL tab',
+      enterTab(CanvasType.schemaSQL),
+      CanvasType.schemaSQL,
+    ],
+  ] as const)(
+    'stays in %s when the import brings nothing',
+    (_, enter, canvasType) => {
+      const app = createScreenApp();
+      enter(app);
+      const batches = recordActions(app);
+
+      appendSchema(app, 'sql', 'SELECT 1;');
+
+      expect(batches).toEqual([]);
+      expect(app.store.state.settings.canvasType).toBe(canvasType);
+    }
+  );
 });
 
 describe('appendSchemaJSON', () => {
@@ -746,6 +820,23 @@ describe('appendSchemaPlaced', () => {
 
     expect(tableNames(app).sort()).toEqual(['photos', 'posts', 'users']);
   });
+
+  it('brings the ERD tab up when the reader moved to another tab while it placed', async () => {
+    const app = createScreenApp();
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
+    let settle = (_: ElkLayoutPoint[]) => {};
+    hoisted.elkLayout = () => new Promise(resolve => (settle = resolve));
+
+    const placing = appendSchemaPlaced(app, 'sql', FAN_SQL);
+    await flush();
+    enterTab(CanvasType.generatorCode)(app);
+    settle(await columnLayout(hoisted.requests[0]));
+    await placing;
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(selectedNames(app)).toEqual(['photos', 'posts', 'users']);
+    expect(app.store.state.settings.originY).toBeLessThan(0);
+  });
 });
 
 describe('an append to a readonly editor', () => {
@@ -805,6 +896,17 @@ describe('an append to a readonly editor', () => {
 
     expect(app.store.state.settings.canvasType).toBe(CanvasType.visualization);
     expect(getActiveView(app.store.state)).not.toBeNull();
+  });
+
+  it('keeps the Schema SQL tab, the ERD tab never brought up', () => {
+    const { app, state } = createReadonlyApp();
+    enterTab(CanvasType.schemaSQL)(app);
+    state.readonly = true;
+
+    appendSchema(app, 'sql', UNRELATED_SQL);
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.schemaSQL);
+    expect(tableNames(app)).toEqual(['old']);
   });
 
   it('lands nothing of a placed append once the editor turned readonly meanwhile', async () => {

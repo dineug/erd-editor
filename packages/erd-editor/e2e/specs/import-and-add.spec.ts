@@ -84,6 +84,43 @@ const selectedIdsOf = (erd: ErdEditorPage) =>
       .sort() as string[];
   });
 
+/** One table low on the screen, so a block added below it lands out of sight. */
+const lowTable = (): ErdDocument =>
+  createSchema({
+    tables: [{ id: 'base', name: 'base', x: 160, y: 760, columns: [] }],
+  });
+
+/** The tabs besides a Flow view the owner named for an append, and how to open each. */
+const OTHER_TABS: Array<[string, (erd: ErdEditorPage) => Promise<void>]> = [
+  [
+    'Graph mode',
+    async erd => {
+      await erd.toolbarButton('Visualization').click();
+      await erd.host.locator('.visualization-toolbar [title="Graph"]').click();
+      await expect(
+        erd.host.locator('.visualization-toolbar [title="Graph"].active')
+      ).toBeVisible();
+    },
+  ],
+  ['Schema SQL', erd => erd.toolbarButton('Schema SQL').click()],
+  ['Code Generator', erd => erd.toolbarButton('Code Generator').click()],
+];
+
+/** Whether the scene draws the table whole inside the canvas. */
+async function isOnScreen(erd: ErdEditorPage, id: string) {
+  const canvas = await erd.host
+    .locator('[data-testid="erd-canvas"]')
+    .boundingBox();
+  const box = await erd.sceneBox(`#table-${id}`);
+  return (
+    canvas !== null &&
+    box.x >= canvas.x &&
+    box.y >= canvas.y &&
+    box.x + box.width <= canvas.x + canvas.width &&
+    box.y + box.height <= canvas.y + canvas.height
+  );
+}
+
 test.describe('Import and Add', () => {
   test('adds an SQL file below the diagram, placed by Flow and selected, and one undo takes it away', async ({
     erd,
@@ -177,5 +214,55 @@ test.describe('Import and Add', () => {
       'tags',
       'users',
     ]);
+  });
+
+  for (const [tab, open] of OTHER_TABS) {
+    test(`brings the ERD tab up from ${tab}, the added table selected and on screen`, async ({
+      erd,
+    }) => {
+      await erd.seed(lowTable());
+      const { originY } = await erd.settings();
+      await open(erd);
+      expect((await erd.settings()).canvasType).not.toBe('ERD');
+
+      await erd.page.evaluate(() => {
+        const editor = window.document.querySelector('erd-editor');
+        if (!editor) throw new Error('erd-editor is not mounted');
+        editor.setSchemaSQL('CREATE TABLE tags (id INT);', { mode: 'append' });
+      });
+
+      const settings = await erd.settings();
+      const { tags } = await cornersByName(erd);
+      expect(settings.canvasType).toBe('ERD');
+      expect(settings.originY).not.toBe(originY);
+      await expect.poll(() => selectedIdsOf(erd)).toEqual([tags.id]);
+      await expect.poll(() => isOnScreen(erd, tags.id)).toBe(true);
+    });
+  }
+
+  test('offers no Import and Add in a read-only editor, in the palette or the menu', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(twoTables());
+    await page.evaluate(() => {
+      document.querySelector('erd-editor')!.readonly = true;
+    });
+
+    await erd.focusHost();
+    await erd.press(Shortcut.search);
+    const palette = erd.host.locator('.quick-search');
+    await expect(palette).toContainText('Import');
+    await expect(palette).not.toContainText('Import and Add');
+    await erd.press('Escape');
+    await expect(palette).toHaveCount(0);
+
+    await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
+    await expect(
+      erd.contextMenu.getByText('Import', { exact: true })
+    ).toBeVisible();
+    await expect(
+      erd.contextMenu.getByText('Import and Add', { exact: true })
+    ).toHaveCount(0);
   });
 });

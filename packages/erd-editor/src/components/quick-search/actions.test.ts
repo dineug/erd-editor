@@ -564,6 +564,14 @@ describe('createScopeActions / Import and Export', () => {
     expect(importAndAdd.filter?.(app)).toBe(false);
   });
 
+  it('offers no Import and Add in a readonly editor, Import still offered', () => {
+    app.store.destroy();
+    app = createTestAppContext({ getReadonly: () => true });
+
+    expect(find(scope(), 'Import and Add').filter?.(app)).toBe(false);
+    expect(find(scope(), 'Import').filter?.(app)).toBe(true);
+  });
+
   it('finds the GraphQL import entry by its sdl keywords', () => {
     const entries = find(scope(), 'Import').next ?? [];
 

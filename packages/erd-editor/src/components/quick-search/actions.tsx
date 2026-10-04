@@ -261,7 +261,10 @@ export function createScopeActions(app: AppContext): Action[] {
       name: 'Import and Add',
       next: createImportActions('append'),
       filter: ({ store }) => {
-        return store.state.settings.canvasType === CanvasType.ERD;
+        return (
+          store.state.settings.canvasType === CanvasType.ERD &&
+          !store.getReadonly()
+        );
       },
     },
     {

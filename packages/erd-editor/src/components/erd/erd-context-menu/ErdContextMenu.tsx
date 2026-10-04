@@ -624,18 +624,22 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
-              <ContextMenu.Item
-                children={
-                  <ContextMenu.Menu
-                    icon={<Icon name="file-input" size={14} />}
-                    name="Import and Add"
-                    right={chevronRightIcon}
-                  />
-                }
-                subChildren={
-                  <>
-                    {createImportMenus(app.value, props.onClose, 'append').map(
-                      menu => (
+              {app.value.store.getReadonly() ? null : (
+                <ContextMenu.Item
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name="file-input" size={14} />}
+                      name="Import and Add"
+                      right={chevronRightIcon}
+                    />
+                  }
+                  subChildren={
+                    <>
+                      {createImportMenus(
+                        app.value,
+                        props.onClose,
+                        'append'
+                      ).map(menu => (
                         <ContextMenu.Item
                           onClick={menu.onClick}
                           children={
@@ -645,11 +649,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                             />
                           }
                         />
-                      )
-                    )}
-                  </>
-                }
-              />
+                      ))}
+                    </>
+                  }
+                />
+              )}
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu

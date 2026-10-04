@@ -2,9 +2,8 @@ import type { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { placeByFlow } from '@/components/erd/automatic-table-placement/flowPlacement';
-import { scrollIntoView } from '@/components/erd/goToErdTarget';
+import { scrollIntoView, showErdTab } from '@/components/erd/goToErdTarget';
 import { TABLE_SORT_START } from '@/constants/layout';
-import { CanvasType } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import { ActionType } from '@/engine/modules/editor/actions';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
@@ -20,8 +19,6 @@ import {
   withImportSettings,
 } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
-import { getActiveView } from '@/engine/modules/editor/view';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { sortTableAction } from '@/engine/modules/table/atom.actions';
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
@@ -202,9 +199,9 @@ const appendLandingAction$ = ({
   };
 
 /**
- * Lands an append under the diagram as it stands now. A Flow view drops every
- * edit of the document, so the ERD tab comes up first, in a dispatch of its
- * own, since a batch is classified by the state it enters with.
+ * Lands an append under the diagram as it stands now, on the ERD tab, which
+ * comes up first from any other in a dispatch of its own: a Flow view drops
+ * every edit of the document, and a batch is classified by the state before it.
  */
 function landAppend(app: AppContext, json: string, layout: AppendLayout) {
   const { store } = app;
@@ -214,9 +211,7 @@ function landAppend(app: AppContext, json: string, layout: AppendLayout) {
   const append = toSchemaAppend(store.state, json, layout, app);
   if (!append) return;
 
-  if (getActiveView(store.state)) {
-    store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
-  }
+  showErdTab(store);
   store.dispatchSync(appendLandingAction$(append));
 }
 

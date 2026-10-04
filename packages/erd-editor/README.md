@@ -179,13 +179,15 @@ They take `mode?: 'replace' | 'append'` beside it. `'replace'`, the default, is 
 are added to the document as new ones, below every table and memo it already holds and in line
 with their left edge, with new ids, so a table of a name the document already has is added beside
 it, and a foreign key to a table outside the text is dropped. The tables already there and every
-setting stay as they are, the new tables end selected and on screen, and one undo takes them away.
+setting but the tab (below) stay as they are, the new tables end selected and on screen, and one
+undo takes them away.
 With `placement: 'auto'` they are laid out as above before they are added, and the diagram is
 read as they land; with `'grid'` they stand in rows. An append placed with `'auto'` supersedes
 nothing: it lands after every `'auto'` import started before it, on the document a replace among
-them brings, and only a load or a replace started after it drops it. A Flow view drops every edit
-of the document, so an append from there brings the ERD tab up first; from any other tab the tab
-stays. A readonly editor adds nothing.
+them brings, and only a load or a replace started after it drops it. An append lands on the ERD
+tab: from any other — the Visualization tab in Graph or Flow mode, Schema SQL, Code Generator or
+Settings — it brings the ERD tab up first, then selects the new tables and scrolls to them. A
+readonly editor adds nothing, and its menu and command palette offer no Import and Add.
 
 ### Events
 

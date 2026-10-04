@@ -96,7 +96,9 @@ worker the same component boundaries, Vite client included, that it serves the p
 rather than in its place: Import and Add's SQL file placed by Flow below the
 tables already there, which stay where they were, selected and taken back by one
 undo, a json file's tables and memo standing apart as the file has them with
-its settings left out, and the ERD tab an append brings up from a Flow view.
+its settings left out, the ERD tab an append brings up from a Flow view, Graph
+mode, Schema SQL and Code Generator with the added table selected and on screen,
+and a read-only editor whose palette and menu offer no Import and Add.
 
 Two more hold down a frame the rest never look at, one on the canvas and one in
 a DOM panel the port left on native drag and drop:

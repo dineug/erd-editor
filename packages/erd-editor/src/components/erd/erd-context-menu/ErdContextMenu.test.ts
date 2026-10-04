@@ -400,6 +400,24 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('leaves Import and Add out of a readonly editor, Import kept', async () => {
+    app = createTestAppContext({ getReadonly: () => true });
+    await mountMenu();
+
+    expect(labelsOf(rootItems())).toEqual([
+      'New TableAlt + N',
+      'New MemoAlt + M',
+      'Find and ReplaceCtrl + F',
+      'Relationship',
+      'View Option',
+      'Database',
+      'Import',
+      'Export',
+      'Auto Layout',
+      'Diff Viewer',
+    ]);
+  });
+
   it('requests an sql file to add from the Import and Add submenu', async () => {
     await mountMenu();
 
