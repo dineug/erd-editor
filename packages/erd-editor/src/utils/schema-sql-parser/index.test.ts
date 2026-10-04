@@ -345,6 +345,30 @@ describe('schemaSQLParserToSchemaJson', () => {
 
       expect(commentsOf(schema)).toEqual(['', '']);
     });
+
+    it('gives a comment the table its whole name names before the one its last part names', () => {
+      const schema = parse(
+        `
+        CREATE TABLE "dbo.users" (id INT)
+        GO
+        CREATE TABLE users (id INT)
+        GO
+        EXEC sys.sp_addextendedproperty N'MS_Description', N'x', N'SCHEMA', N'dbo', N'TABLE', N'dbo.users'
+        GO
+        EXEC sys.sp_addextendedproperty N'MS_Description', N'y', N'SCHEMA', N'dbo', N'TABLE', N'dbo.users', N'COLUMN', N'id'
+        GO
+      `,
+        undefined,
+        Database.MSSQL
+      );
+      const dotted = tableByName(schema, 'dbo.users');
+      const users = tableByName(schema, 'users');
+
+      expect(dotted.comment).toBe('x');
+      expect(columnByName(schema, dotted, 'id').comment).toBe('y');
+      expect(users.comment).toBe('');
+      expect(columnByName(schema, users, 'id').comment).toBe('');
+    });
   });
 
   describe('ALTER TABLE merging', () => {

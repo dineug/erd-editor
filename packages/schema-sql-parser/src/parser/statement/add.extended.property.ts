@@ -1,5 +1,6 @@
 import {
   isCommaToken,
+  isDefaultValue,
   isEqualToken,
   isGoValue,
   isNewStatement,
@@ -54,6 +55,7 @@ export function addExtendedPropertyParser(
   const isComma = isCommaToken(tokens);
   const isSemicolon = isSemicolonToken(tokens);
   const isNull = isNullValue(tokens);
+  const isDefault = isDefaultValue(tokens);
   const isGo = isGoValue(tokens);
   const newStatement = isNewStatement(tokens);
   const isArgument = (pos: number) =>
@@ -84,8 +86,8 @@ export function addExtendedPropertyParser(
       if (!isArgument($pos.value)) break;
     }
 
-    // NULL leaves a parameter as if it were not given.
-    if (!isNull($pos.value)) {
+    // NULL or DEFAULT, the parameter's own default of NULL, leaves it unset.
+    if (!isNull($pos.value) && !isDefault($pos.value)) {
       args.set(parameter, tokens[$pos.value]);
     }
 

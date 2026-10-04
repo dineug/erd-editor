@@ -95,8 +95,10 @@ SQL Server keeps a comment as the `MS_Description` extended property, and `EXEC
 [sys.]sp_addextendedproperty` setting one comes back as the same two statements: on a `TABLE` at
 level 1 as `comment.on.table`, on a `COLUMN` of it at level 2 as `comment.on.column`. Its arguments are
 read by name (`@name = N'MS_Description'`) or by position, as SSMS and the editor's own MSSQL export
-write them; the value has to be a string literal, `N'...'` or `'...'`. Any other property, level or
-value (a view's, an index's, a variable) gives no statement, and the schema at level 0 is not kept.
+write them; the value has to be a string literal, `N'...'` or `'...'`, and a `NULL` or `DEFAULT`
+argument counts as not given, so one at level 2 still gives the table comment. Any other property,
+level or value (a view's, an index's, a variable for any argument but level 0's) gives no statement,
+and the schema at level 0 is not kept.
 
 ## Support DataType
 

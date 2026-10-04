@@ -100,13 +100,28 @@ describe('addExtendedPropertyParser', () => {
     ).toEqual({ type: StatementType.commentOnTable, name: 't', comment: '' });
   });
 
-  it('reads a table comment where the column level is NULL', () => {
-    expect(
-      named(
-        "N'MS_Description', N'x', N'SCHEMA', N'dbo', N'TABLE', N't', NULL, NULL"
-      )
-    ).toEqual({ type: StatementType.commentOnTable, name: 't', comment: 'x' });
-  });
+  // T-SQL passes DEFAULT as the parameter's own default, NULL for each of these.
+  it.each(['NULL', 'DEFAULT'])(
+    'reads a table comment where the column level is %s',
+    keyword => {
+      const comment = {
+        type: StatementType.commentOnTable,
+        name: 't',
+        comment: 'x',
+      };
+
+      expect(
+        named(
+          `N'MS_Description', N'x', N'SCHEMA', N'dbo', N'TABLE', N't', ${keyword}, ${keyword}`
+        )
+      ).toEqual(comment);
+      expect(
+        named(
+          `@name = N'MS_Description', @value = N'x', @level1type = N'TABLE', @level1name = N't', @level2type = ${keyword}`
+        )
+      ).toEqual(comment);
+    }
+  );
 
   it('reads past an argument the procedure has no parameter for', () => {
     expect(
@@ -139,6 +154,10 @@ describe('addExtendedPropertyParser', () => {
     [
       'a NULL value',
       "N'MS_Description', NULL, N'SCHEMA', N'dbo', N'TABLE', N't'",
+    ],
+    [
+      'a DEFAULT value',
+      "N'MS_Description', DEFAULT, N'SCHEMA', N'dbo', N'TABLE', N't'",
     ],
     ['a number', "N'MS_Description', 42, N'SCHEMA', N'dbo', N'TABLE', N't'"],
     [
