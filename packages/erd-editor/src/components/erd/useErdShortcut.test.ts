@@ -536,8 +536,10 @@ describe('useErdShortcut - column shortcuts', () => {
   });
 
   describe('over a column selection', () => {
-    const isPrimaryKey = (app: AppContext, columnId: string) =>
-      bHas(getColumn(app, columnId)!.options, ColumnOption.primaryKey);
+    const keys = (app: AppContext, columnIds: string[]) =>
+      columnIds.map(id =>
+        bHas(getColumn(app, id)!.options, ColumnOption.primaryKey)
+      );
 
     /** Three columns, the focus on the last with the first selected beside it. */
     async function seedSelection() {
@@ -548,25 +550,18 @@ describe('useErdShortcut - column shortcuts', () => {
         seedColumn(app, tableId),
         seedColumn(app, tableId),
       ];
-      app.store.dispatchSync(
-        focusColumnAction({
-          tableId,
-          columnId: columnIds[0],
-          focusType: FocusType.columnName,
-          $mod: true,
-          shiftKey: false,
-        })
-      );
-      app.store.dispatchSync(
-        focusColumnAction({
-          tableId,
-          columnId: columnIds[2],
-          focusType: FocusType.columnName,
-          $mod: true,
-          shiftKey: false,
-        })
-      );
-      return { app, columnIds };
+      for (const columnId of [columnIds[0], columnIds[2]]) {
+        app.store.dispatchSync(
+          focusColumnAction({
+            tableId,
+            columnId,
+            focusType: FocusType.columnName,
+            $mod: true,
+            shiftKey: false,
+          })
+        );
+      }
+      return { app, tableId, columnIds };
     }
 
     it('makes every selected column a key, leaving the rest', async () => {
@@ -579,11 +574,7 @@ describe('useErdShortcut - column shortcuts', () => {
       shortcut(app, KeyBindingName.primaryKey);
       await flush();
 
-      expect(columnIds.map(id => isPrimaryKey(app, id))).toEqual([
-        true,
-        false,
-        true,
-      ]);
+      expect(keys(app, columnIds)).toEqual([true, false, true]);
     });
 
     it('clears them all on the next press, in one undo each', async () => {
@@ -593,18 +584,10 @@ describe('useErdShortcut - column shortcuts', () => {
       await flush();
       shortcut(app, KeyBindingName.primaryKey);
       await flush();
-      expect(columnIds.map(id => isPrimaryKey(app, id))).toEqual([
-        false,
-        false,
-        false,
-      ]);
+      expect(keys(app, columnIds)).toEqual([false, false, false]);
 
       app.store.undo();
-      expect(columnIds.map(id => isPrimaryKey(app, id))).toEqual([
-        true,
-        false,
-        true,
-      ]);
+      expect(keys(app, columnIds)).toEqual([true, false, true]);
     });
 
     it('keys the focused column alone while the selection leaves it out', async () => {
@@ -617,16 +600,11 @@ describe('useErdShortcut - column shortcuts', () => {
       shortcut(app, KeyBindingName.primaryKey);
       await flush();
 
-      expect(columnIds.map(id => isPrimaryKey(app, id))).toEqual([
-        false,
-        false,
-        true,
-      ]);
+      expect(keys(app, columnIds)).toEqual([false, false, true]);
     });
 
     it('toggles the focused column alone once the rest of the selection leaves the table', async () => {
-      const { app, columnIds } = await seedSelection();
-      const tableId = app.store.state.editor.focusTable!.tableId;
+      const { app, tableId, columnIds } = await seedSelection();
       app.store.dispatchSync(
         changeColumnPrimaryKeyAction({ tableId, id: columnIds[2], value: true })
       );
@@ -637,11 +615,7 @@ describe('useErdShortcut - column shortcuts', () => {
       shortcut(app, KeyBindingName.primaryKey);
       await flush();
 
-      expect(columnIds.map(id => isPrimaryKey(app, id))).toEqual([
-        false,
-        false,
-        false,
-      ]);
+      expect(keys(app, columnIds)).toEqual([false, false, false]);
     });
   });
 });

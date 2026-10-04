@@ -461,12 +461,14 @@ describe('ErdContextMenu / table type', () => {
     const SECOND_ID = 'column-2';
     const THIRD_ID = 'column-3';
 
-    const isPrimaryKey = (columnId: string) =>
-      bHas(
-        query(app.store.state.collections)
-          .collection('tableColumnEntities')
-          .selectById(columnId)?.options ?? 0,
-        ColumnOption.primaryKey
+    const keys = () =>
+      [COLUMN_ID, SECOND_ID, THIRD_ID].map(columnId =>
+        bHas(
+          query(app.store.state.collections)
+            .collection('tableColumnEntities')
+            .selectById(columnId)?.options ?? 0,
+          ColumnOption.primaryKey
+        )
       );
 
     /** Three columns, the focus on the second with the first selected too. */
@@ -503,11 +505,7 @@ describe('ErdContextMenu / table type', () => {
 
       await click(findItem(rootItems(), 'Primary Key on selected columns'));
 
-      expect([COLUMN_ID, SECOND_ID, THIRD_ID].map(isPrimaryKey)).toEqual([
-        true,
-        true,
-        false,
-      ]);
+      expect(keys()).toEqual([true, true, false]);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -520,11 +518,7 @@ describe('ErdContextMenu / table type', () => {
 
       expect(labelsOf(rootItems())[0]).toBe('Primary KeyAlt + K');
       await click(findItem(rootItems(), 'Primary Key'));
-      expect([COLUMN_ID, SECOND_ID, THIRD_ID].map(isPrimaryKey)).toEqual([
-        true,
-        false,
-        false,
-      ]);
+      expect(keys()).toEqual([true, false, false]);
     });
 
     it('goes back to the one column once a selected column leaves the table', async () => {
@@ -550,11 +544,7 @@ describe('ErdContextMenu / table type', () => {
 
       expect(labelsOf(rootItems())[0]).toBe('Primary KeyAlt + K');
       await click(findItem(rootItems(), 'Primary Key'));
-      expect([COLUMN_ID, SECOND_ID, THIRD_ID].map(isPrimaryKey)).toEqual([
-        false,
-        false,
-        false,
-      ]);
+      expect(keys()).toEqual([false, false, false]);
     });
   });
 

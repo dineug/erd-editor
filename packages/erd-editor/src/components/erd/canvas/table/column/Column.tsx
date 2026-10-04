@@ -279,12 +279,11 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     // A right press on the key, between two cells or on an alternate key mark
     // focuses the row too, so the menu it opens never acts on a stale focus.
     const { focusTable } = app.value.store.state.editor;
-    handleFocus(
+    const focusType =
       focusTable?.columnId === props.column.id
         ? focusTable.focusType
-        : FocusType.columnName,
-      event
-    );
+        : FocusType.columnName;
+    handleFocus(focusType, event);
   };
 
   const handleMouseenter = () => {

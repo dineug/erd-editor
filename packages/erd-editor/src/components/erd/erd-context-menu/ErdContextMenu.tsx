@@ -106,7 +106,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     if (!props.tableId) return;
     const { store } = app.value;
     const { focusTable } = store.state.editor;
-    if (!focusTable || !focusTable.columnId) return;
+    if (!focusTable?.columnId) return;
 
     store.dispatch(
       changeColumnsPrimaryKeyAction$(
