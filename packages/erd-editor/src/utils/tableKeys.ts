@@ -140,7 +140,7 @@ export function getUniqueIndexKeys(
   state: KeyState,
   table: Table
 ): UniqueIndexKey[] {
-  const columnIds = new Set(table.columnIds);
+  const tableColumnIds = new Set(table.columnIds);
   const indexColumns = query(state.collections).collection(
     'indexColumnEntities'
   );
@@ -154,7 +154,7 @@ export function getUniqueIndexKeys(
       columnIds: indexColumns
         .selectByIds(index.indexColumnIds)
         .map(indexColumn => indexColumn.columnId)
-        .filter(columnId => columnIds.has(columnId)),
+        .filter(columnId => tableColumnIds.has(columnId)),
     }));
 }
 

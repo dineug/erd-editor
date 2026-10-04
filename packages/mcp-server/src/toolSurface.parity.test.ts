@@ -52,6 +52,15 @@ const declarations = (surface: readonly ToolSurface[]) =>
 const outputSchemas = (surface: readonly ToolSurface[]) =>
   surface.map(({ name, hasOutputSchema }) => ({ name, hasOutputSchema }));
 
+const enumOf = (
+  surface: readonly ToolSurface[],
+  name: string,
+  argName: string
+) =>
+  surface
+    .find(tool => tool.name === name)!
+    .args.find(arg => arg.name === argName)!.enum!;
+
 /** The optional arguments a recorded tool gained after the recording was made. */
 const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_read: ['tableIds', 'tableNames'],
@@ -116,12 +125,8 @@ describe('the tool surface against the SDK-based server recording', () => {
   it('lists each enum value added to a recorded argument, which the recording lacks', () => {
     for (const [name, args] of Object.entries(ADDED_ENUM_VALUES)) {
       for (const [argName, added] of Object.entries(args)) {
-        const listed = live
-          .find(tool => tool.name === name)!
-          .args.find(arg => arg.name === argName)!.enum!;
-        const before = fixture
-          .find(tool => tool.name === name)!
-          .args.find(arg => arg.name === argName)!.enum!;
+        const listed = enumOf(live, name, argName);
+        const before = enumOf(fixture, name, argName);
 
         expect(added.filter(value => listed.includes(value))).toEqual(added);
         expect(added.filter(value => before.includes(value))).toEqual([]);

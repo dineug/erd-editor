@@ -144,6 +144,18 @@ function createRelationshipState(
   });
 }
 
+/** Adds parent_code to the child table and to the relationship's child columns. */
+function addParentCode(state: RootState): void {
+  state.collections.tableColumnEntities.fk2 = createColumn({
+    id: 'fk2',
+    tableId: 'c1',
+    name: 'parent_code',
+    dataType: 'int',
+  });
+  state.collections.tableEntities.c1.columnIds.push('fk2');
+  state.collections.relationshipEntities.r1.end.columnIds.push('fk2');
+}
+
 function relationshipLines(state: RootState): string[] {
   return createCode(state)
     .split('\n')
@@ -474,34 +486,20 @@ describe('generator-code/mermaid', () => {
 
     it('marks UK on the column of a single-column unique index and on no member of a composite one', () => {
       const columns = [
-        createColumn({
-          id: 'c1',
-          tableId: 't1',
-          name: 'email',
-          dataType: 'text',
-          options: ColumnOption.notNull,
-        }),
-        createColumn({
-          id: 'c2',
-          tableId: 't1',
-          name: 'first',
-          dataType: 'text',
-          options: ColumnOption.notNull,
-        }),
-        createColumn({
-          id: 'c3',
-          tableId: 't1',
-          name: 'last',
-          dataType: 'text',
-          options: ColumnOption.notNull,
-        }),
-        createColumn({
-          id: 'c4',
-          tableId: 't1',
-          name: 'nick',
-          dataType: 'text',
-          options: ColumnOption.notNull,
-        }),
+        ...[
+          ['c1', 'email'],
+          ['c2', 'first'],
+          ['c3', 'last'],
+          ['c4', 'nick'],
+        ].map(([id, name]) =>
+          createColumn({
+            id,
+            tableId: 't1',
+            name,
+            dataType: 'text',
+            options: ColumnOption.notNull,
+          })
+        ),
         createColumn({
           id: 'o1',
           tableId: 't2',
@@ -665,14 +663,7 @@ describe('generator-code/mermaid', () => {
 
     it('joins the columns of a composite foreign key with commas', () => {
       const state = createRelationshipState();
-      state.collections.tableColumnEntities.fk2 = createColumn({
-        id: 'fk2',
-        tableId: 'c1',
-        name: 'parent_code',
-        dataType: 'int',
-      });
-      state.collections.tableEntities.c1.columnIds.push('fk2');
-      state.collections.relationshipEntities.r1.end.columnIds = ['fk', 'fk2'];
+      addParentCode(state);
 
       expect(relationshipLines(state)).toEqual([
         '  "parent" ||..o{ "child" : "parent_id, parent_code"',
@@ -681,14 +672,7 @@ describe('generator-code/mermaid', () => {
 
     it('labels a child column with a blank name unnamed, as its entity does', () => {
       const state = createRelationshipState({}, ' ');
-      state.collections.tableColumnEntities.fk2 = createColumn({
-        id: 'fk2',
-        tableId: 'c1',
-        name: 'parent_code',
-        dataType: 'int',
-      });
-      state.collections.tableEntities.c1.columnIds.push('fk2');
-      state.collections.relationshipEntities.r1.end.columnIds = ['fk', 'fk2'];
+      addParentCode(state);
 
       expect(relationshipLines(state)).toEqual([
         '  "parent" ||..o{ "child" : "unnamed, parent_code"',

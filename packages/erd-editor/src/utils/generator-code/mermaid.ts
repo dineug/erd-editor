@@ -7,7 +7,7 @@ import {
   StartRelationshipType,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import { Column, Relationship, Table } from '@/internal-types';
+import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { getUniqueIndexKeys } from '@/utils/tableKeys';
@@ -133,7 +133,7 @@ function formatEntity(
   buffer.push('  }');
 }
 
-function formatAttribute(column: Column, uniqueColumnIds: Set<string>) {
+function formatAttribute(column: Column, uniqueColumnIds: Set<string>): string {
   const dataType = column.dataType.trim();
   const type = dataType === '' ? UNKNOWN_TYPE : toAttributeWord(dataType);
   const nullable = bHas(column.options, ColumnOption.notNull) ? '' : '?';
@@ -193,7 +193,7 @@ function formatRelationships(
 ): string[] {
   const columns = query(collections).collection('tableColumnEntities');
   // A removed column keeps its entity, so only a table's list says it is still there.
-  const columnIds = new Set(tables.flatMap(table => table.columnIds));
+  const tableColumnIds = new Set(tables.flatMap(table => table.columnIds));
 
   return query(collections)
     .collection('relationshipEntities')
@@ -216,23 +216,20 @@ function formatRelationships(
         .filter(
           column =>
             column.tableId === relationship.end.tableId &&
-            columnIds.has(column.id)
+            tableColumnIds.has(column.id)
         )
         .map(columnName)
         .join(', ');
+      const parentCardinality =
+        relationship.startRelationshipType === StartRelationshipType.ring
+          ? '|o'
+          : '||';
+      const lineStyle = relationship.identification ? '--' : '..';
 
       return [
-        `  "${parent}" ${parentCardinality(relationship)}${
-          relationship.identification ? '--' : '..'
-        }${childCardinality} "${child}" : "${toQuoted(label)}"`,
+        `  "${parent}" ${parentCardinality}${lineStyle}${childCardinality} "${child}" : "${toQuoted(label)}"`,
       ];
     });
-}
-
-function parentCardinality(relationship: Relationship): string {
-  return relationship.startRelationshipType === StartRelationshipType.ring
-    ? '|o'
-    : '||';
 }
 
 function columnName({ name }: Column): string {
@@ -246,11 +243,15 @@ function toEntityName(name: string): string {
 }
 
 function toAttributeWord(value: string): string {
-  return ATTRIBUTE_WORD.test(value) &&
+  if (
+    ATTRIBUTE_WORD.test(value) &&
     !LEADING_SPACE.test(value) &&
     !ATTRIBUTE_KEY.test(value)
-    ? value
-    : `\`${value.replace(LINE_TERMINATOR, ' ').replace(BACKTICK, "'")}\``;
+  ) {
+    return value;
+  }
+
+  return `\`${value.replace(LINE_TERMINATOR, ' ').replace(BACKTICK, "'")}\``;
 }
 
 function toQuoted(value: string): string {

@@ -221,9 +221,9 @@ async function read(code: string): Promise<ParsedDiagram> {
   };
 }
 
-function attributesOf(diagram: ParsedDiagram, name: string) {
+function attributesOf(diagram: ParsedDiagram, entityName: string) {
   return diagram.entities
-    .get(name)
+    .get(entityName)
     ?.attributes.map(({ type, name, keys, comment }) => ({
       type,
       name,
