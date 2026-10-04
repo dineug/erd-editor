@@ -896,6 +896,109 @@ describe('schema-graphql-parser/convert pairs by name', () => {
       toUser(RelationshipType.ZeroOne, 'sellerId'),
     ]);
   });
+
+  it('pairs nothing by name where two reciprocals end in by and its name', () => {
+    const schema = convert(`
+      type Order { id: ID! user: User }
+      type User { id: ID! orderListByUser: [Order!]! orderByUser: Order }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroOne, 'userId'),
+      {
+        relationshipType: RelationshipType.ZeroOne,
+        identification: false,
+        start: { table: 'Order', columns: ['id'] },
+        end: { table: 'User', columns: ['orderByUserId'] },
+      },
+      toUser(RelationshipType.OneN, 'userId1'),
+    ]);
+  });
+
+  it('lets the longer name claim its reciprocal first', () => {
+    const schema = convert(`
+      type Order { id: ID! buyer: User byBuyer: User user: User }
+      type User {
+        id: ID!
+        orderListByBuyer: [Order!]!
+        orderByByBuyer: Order
+        orderList: [Order!]!
+      }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroN, 'buyerId'),
+      toUser(RelationshipType.ZeroOne, 'byBuyerId'),
+      toUser(RelationshipType.ZeroN, 'userId'),
+    ]);
+  });
+
+  it('drops the digits a numbered name ends in where its whole name matches none', () => {
+    const schema = convert(`
+      type Order {
+        id: ID!
+        buyer: String
+        seller: String
+        buyer2: User
+        seller2: User
+      }
+      type User {
+        id: ID!
+        orderListByBuyer: [Order!]!
+        orderBySeller: Order
+      }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroN, 'buyer2Id'),
+      toUser(RelationshipType.ZeroOne, 'seller2Id'),
+    ]);
+  });
+
+  it('drops the digits a numbered reciprocal ends in as well', () => {
+    const schema = convert(`
+      type Order { id: ID! buyer: User user: User }
+      type User {
+        id: ID!
+        orderListByBuyer: String
+        orderListByBuyer2: [Order!]!
+        order: Order
+      }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroN, 'buyerId'),
+      toUser(RelationshipType.ZeroOne, 'userId'),
+    ]);
+  });
+
+  it('pairs a name ending in a digit whole before it drops the digit', () => {
+    const schema = convert(`
+      type Order { id: ID! address: User address2: User }
+      type User {
+        id: ID!
+        orderListByAddress2: [Order!]!
+        orderByAddress: Order
+      }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroOne, 'addressId'),
+      toUser(RelationshipType.ZeroN, 'address2Id'),
+    ]);
+  });
+
+  it('pairs nothing on dropped digits that match two reciprocals', () => {
+    const schema = convert(`
+      type Order { id: ID! buyer2: User }
+      type User { id: ID! orderListByBuyer: [Order!]! orderByBuyer: Order }
+    `);
+
+    expect(relationshipShapes(schema)).toHaveLength(3);
+    expect(relationshipShapes(schema)[0]).toEqual(
+      toUser(RelationshipType.ZeroOne, 'buyer2Id')
+    );
+  });
 });
 
 describe('schema-graphql-parser/convert unresolvable parent', () => {

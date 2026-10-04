@@ -363,8 +363,8 @@ function pairKey({ start, end }: Relationship): string {
 
 /**
  * The single foreign key column's name without a last word id, in the column
- * name case: buyer for buyer_id, buyerId or BuyerID. Null for a composite key,
- * a name with no such word, or one left with no letter or digit a Name keeps.
+ * name case: buyer for buyer_id or BuyerID. Null for a composite key, a name
+ * with no such word, or a stem whose Name keeps no letter or digit or opens __.
  */
 function getForeignKeyStem(
   { collections, settings: { columnNameCase } }: RootState,
@@ -383,11 +383,13 @@ function getForeignKeyStem(
     return null;
   }
 
-  // A stem in a non-ASCII script sanitizes to underscores alone, a name that
-  // tells two keys apart no better than the table's and that GraphQL reserves
-  // when it opens with two of them.
+  // A stem in a non-ASCII script sanitizes to underscores alone, which tells
+  // two keys apart no better than the table's name, and a stem that sanitizes
+  // to two leading underscores takes the prefix GraphQL reserves.
   const name = getNameCase(stem, columnNameCase);
-  return NAME_INFORMATIVE.test(name) ? name : null;
+  return NAME_INFORMATIVE.test(name) && !graphqlName(name).startsWith('__')
+    ? name
+    : null;
 }
 
 /**

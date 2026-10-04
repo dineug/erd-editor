@@ -61,6 +61,7 @@ type ConvertState = {
 };
 
 const UNDERSCORES = /_/g;
+const TRAILING_DIGITS = /\d+$/;
 
 export function convertToSchema(
   model: GraphQLModel,
@@ -341,31 +342,55 @@ function convertRelationships(
  * relationship sharing its pair of tables (buyer, orderListByBuyer).
  */
 function pairByName(edges: ReferenceEdge[], singularEdges: ReferenceEdge[]) {
-  singularEdges.forEach(edge => {
-    if (edge.named || edge.field.relationName) return;
+  // The generator numbers a name a column or another field holds (buyer2), so
+  // a field the whole names leave unpaired tries again with its digits dropped.
+  pairBySuffix(edges, singularEdges, toPairingKey);
+  pairBySuffix(edges, singularEdges, toUnnumberedKey);
+}
 
-    const suffix = `by${toPairingKey(edge.field.name)}`;
-    const matches = edges.filter(
-      candidate =>
-        candidate !== edge &&
-        !candidate.named &&
-        !candidate.field.relationName &&
-        !candidate.field.relationFields.length &&
-        candidate.source === edge.target &&
-        candidate.target === edge.source &&
-        toPairingKey(candidate.field.name).endsWith(suffix)
-    );
-    if (matches.length !== 1) return;
+/**
+ * Pairs each unpaired field with the one reciprocal whose key ends in by and
+ * its key, the longer key first, so createdByUser claims its reciprocal before
+ * user can.
+ */
+function pairBySuffix(
+  edges: ReferenceEdge[],
+  singularEdges: ReferenceEdge[],
+  toKey: (name: string) => string
+) {
+  const keyOf = (edge: ReferenceEdge) => toKey(edge.field.name);
 
-    const [reciprocal] = matches;
-    edge.namedReciprocal = reciprocal;
-    edge.named = true;
-    reciprocal.named = true;
-  });
+  [...singularEdges]
+    .sort((a, b) => keyOf(b).length - keyOf(a).length)
+    .forEach(edge => {
+      if (edge.named || edge.field.relationName) return;
+
+      const suffix = `by${keyOf(edge)}`;
+      const matches = edges.filter(
+        candidate =>
+          candidate !== edge &&
+          !candidate.named &&
+          !candidate.field.relationName &&
+          !candidate.field.relationFields.length &&
+          candidate.source === edge.target &&
+          candidate.target === edge.source &&
+          keyOf(candidate).endsWith(suffix)
+      );
+      if (matches.length !== 1) return;
+
+      const [reciprocal] = matches;
+      edge.namedReciprocal = reciprocal;
+      edge.named = true;
+      reciprocal.named = true;
+    });
 }
 
 function toPairingKey(name: string): string {
   return name.replace(UNDERSCORES, '').toLowerCase();
+}
+
+function toUnnumberedKey(name: string): string {
+  return toPairingKey(name).replace(TRAILING_DIGITS, '');
 }
 
 function findReciprocalEdge(

@@ -871,6 +871,71 @@ describe('generator-code/graphql', () => {
     expectServableSDL(code);
   });
 
+  it('keeps the table name for a lone relationship whatever its foreign key', () => {
+    const state = createOrderState([foreignKey('buyer_id')]);
+    relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        'type Order {',
+        '  id: ID!',
+        '  user: User',
+        '}',
+        '',
+        'type User {',
+        '  id: ID!',
+        '  orderList: [Order!]!',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectServableSDL(code);
+  });
+
+  it('names only the relationships of a shared pair after their foreign keys', () => {
+    const state = createOrderState([
+      foreignKey('buyer_id'),
+      foreignKey('seller_id'),
+      foreignKey('owner_id'),
+    ]);
+    addTable(state, { id: 't-shop', name: 'shop', columns: [PRIMARY_KEY] });
+    relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
+    relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+    addRelationship(state, 'r-3', 't-shop', 't-order', RelationshipType.ZeroN, [
+      't-order-c3',
+    ]);
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        'type Order {',
+        '  id: ID!',
+        '  buyer: User',
+        '  seller: User',
+        '  shop: Shop',
+        '}',
+        '',
+        'type Shop {',
+        '  id: ID!',
+        '  orderList: [Order!]!',
+        '}',
+        '',
+        'type User {',
+        '  id: ID!',
+        '  orderListByBuyer: [Order!]!',
+        '  orderListBySeller: [Order!]!',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectServableSDL(code);
+  });
+
   it('leaves List out of the parent field on a one side', () => {
     const state = createOrderState([
       foreignKey('buyer_id'),
@@ -975,6 +1040,44 @@ describe('generator-code/graphql', () => {
           '',
         ].join('\n')
       );
+      expectServableSDL(code);
+    }
+  );
+
+  it.each([
+    [
+      'a mixed-script stem',
+      '회원No_id',
+      NameCase.camelCase,
+      '  orderList: [Order!]!',
+    ],
+    [
+      'a mixed-script stem under snake case',
+      '회원_no_id',
+      NameCase.snakeCase,
+      '  order_list: [Order!]!',
+    ],
+    [
+      'a stem opening with two underscores',
+      '__buyer_id',
+      NameCase.none,
+      '  orderList: [Order!]!',
+    ],
+  ])(
+    'falls back to the table name for %s a Name would open with __',
+    (_, column, columnNameCase, parentField) => {
+      const state = createOrderState([
+        foreignKey('seller_id'),
+        foreignKey(column),
+      ]);
+      state.settings.columnNameCase = columnNameCase;
+      relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
+      relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+
+      const code = createCode(state);
+
+      expect(code).toContain(['  user: User', '}'].join('\n'));
+      expect(code).toContain([parentField, '}'].join('\n'));
       expectServableSDL(code);
     }
   );
@@ -1146,8 +1249,8 @@ describe('generator-code/graphql', () => {
   });
 });
 
-// Several relationships of one pair that no foreign key names import back with
-// more: their numbered halves carry nothing the importer could pair them by.
+// Where numbering leaves two names alike the importer cannot pair them, so the
+// second table pins what imports back with more; the first keeps every count.
 describe('generator-code/graphql round trip through schema-graphql-parser', () => {
   it.each<[string, () => RootState]>([
     [
@@ -1309,6 +1412,82 @@ describe('generator-code/graphql round trip through schema-graphql-parser', () =
         return state;
       },
     ],
+    [
+      'two foreign key names each numbered past a column',
+      () => {
+        const state = createOrderState([
+          { name: 'buyer', dataType: 'VARCHAR(10)' },
+          { name: 'seller', dataType: 'VARCHAR(10)' },
+          foreignKey('buyer_id'),
+          foreignKey('seller_id'),
+        ]);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c3']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c4']);
+        return state;
+      },
+    ],
+    [
+      'a foreign key name numbered past a column beside a table name fallback',
+      () => {
+        const state = createOrderState([
+          { name: 'buyer', dataType: 'INT' },
+          foreignKey('buyer_id'),
+          foreignKey('owner'),
+        ]);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c3']);
+        return state;
+      },
+    ],
+    [
+      'a foreign key name and the user_id_2 fallback numbered past a column',
+      () => {
+        const state = createOrderState([
+          { name: 'user', dataType: 'INT' },
+          foreignKey('user_id'),
+          foreignKey('user_id_2'),
+        ]);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c3']);
+        return state;
+      },
+    ],
+    [
+      'a parent field numbered past a column beside a table name fallback',
+      () => {
+        const state = createState();
+        addTable(state, {
+          id: 't-user',
+          name: 'user',
+          columns: [
+            PRIMARY_KEY,
+            { name: 'orderListByBuyer', dataType: 'VARCHAR(10)' },
+          ],
+        });
+        addTable(state, {
+          id: 't-order',
+          name: 'order',
+          columns: [PRIMARY_KEY, foreignKey('buyer_id'), foreignKey('owner')],
+        });
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+        return state;
+      },
+    ],
+    [
+      'a foreign key name holding another after by',
+      () => {
+        const state = createOrderState([
+          foreignKey('user_id'),
+          foreignKey('created_by_user_id'),
+          foreignKey('owner'),
+        ]);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c3']);
+        return state;
+      },
+    ],
   ])('imports %s back with as many relationships', (_, createDocument) => {
     const state = createDocument();
 
@@ -1319,4 +1498,69 @@ describe('generator-code/graphql round trip through schema-graphql-parser', () =
     );
     expectServableSDL(code);
   });
+
+  it.each<[string, () => RootState]>([
+    [
+      'two relationships of one pair that no foreign key names',
+      () => {
+        const state = createOrderState([
+          foreignKey('buyer'),
+          foreignKey('seller'),
+        ]);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+        return state;
+      },
+    ],
+    [
+      'two foreign keys giving one name on a one and a many side',
+      () => {
+        const state = createOrderState([
+          foreignKey('buyer_id'),
+          foreignKey('BuyerID'),
+        ]);
+        relateUserToOrder(state, RelationshipType.ZeroOne, ['t-order-c1']);
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c2']);
+        return state;
+      },
+    ],
+    [
+      'a foreign key stem ending in a digit that numbering repeats',
+      () => {
+        const state = createState();
+        addTable(state, {
+          id: 't-user',
+          name: 'user',
+          columns: [
+            PRIMARY_KEY,
+            { name: 'orderListByBuyer', dataType: 'VARCHAR(10)' },
+          ],
+        });
+        addTable(state, {
+          id: 't-order',
+          name: 'order',
+          columns: [
+            PRIMARY_KEY,
+            foreignKey('buyer_id'),
+            foreignKey('buyer2_id'),
+          ],
+        });
+        relateUserToOrder(state, RelationshipType.ZeroN, ['t-order-c1']);
+        relateUserToOrder(state, RelationshipType.ZeroOne, ['t-order-c2']);
+        return state;
+      },
+    ],
+  ])(
+    'imports %s back with twice as many relationships',
+    (_, createDocument) => {
+      const state = createDocument();
+
+      const code = createCode(state);
+
+      expect(importedRelationshipCount(code)).toBe(
+        state.doc.relationshipIds.length * 2
+      );
+      expectServableSDL(code);
+    }
+  );
 });
