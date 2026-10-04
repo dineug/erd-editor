@@ -163,6 +163,18 @@ describe('alterTableAddDefaultParser', () => {
     expect(ast.columnName).toBe('');
   });
 
+  it('stops on the terminator or the next statement inside a paren the expression left open', () => {
+    const terminated = parse(
+      "ALTER TABLE t ADD DEFAULT (0; COMMENT ON TABLE t IS 'a';"
+    );
+    const unterminated = parse(
+      'ALTER TABLE t ADD DEFAULT (0\nCREATE TABLE x (a INT)'
+    );
+
+    expect(terminated.tokens[terminated.$pos.value].value).toBe('COMMENT');
+    expect(unterminated.tokens[unterminated.$pos.value].value).toBe('CREATE');
+  });
+
   it('ends at the end of a truncated source', () => {
     const { ast, $pos, tokens } = parse('ALTER TABLE t ADD DEFAULT (');
 

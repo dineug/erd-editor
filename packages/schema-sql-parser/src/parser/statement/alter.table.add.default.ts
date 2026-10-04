@@ -47,6 +47,7 @@ export function alterTableAddDefaultParser(
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
+  const isColumnFor = (pos: number) => isFor(pos) && !nextValueFor(pos);
 
   // No column option follows the expression here, so no column keyword ends
   // it: the FOR naming the column does, a comma or a closing paren nothing
@@ -55,20 +56,15 @@ export function alterTableAddDefaultParser(
     let depth = 0;
     let cursor = start;
 
-    for (
-      ;
-      cursor < tokens.length && !isSemicolon(cursor) && !newStatement(cursor);
-      cursor++
-    ) {
+    for (; cursor < tokens.length; cursor++) {
+      if (isSemicolon(cursor) || newStatement(cursor)) break;
+
       if (isLeftParent(cursor)) {
         depth++;
       } else if (isRightParent(cursor)) {
         if (depth === 0) break;
         depth--;
-      } else if (
-        depth === 0 &&
-        (isComma(cursor) || (isFor(cursor) && !nextValueFor(cursor)))
-      ) {
+      } else if (depth === 0 && (isComma(cursor) || isColumnFor(cursor))) {
         break;
       }
     }
