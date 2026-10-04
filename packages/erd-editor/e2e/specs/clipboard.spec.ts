@@ -578,27 +578,20 @@ async function pasteHtmlIntoOrders(erd: ErdEditorPage, html: string) {
   const appended = (await erd.columnIds('orders')).slice(1);
 
   return Promise.all(
-    appended.map(async id => {
-      const column = await erd.column(id);
-      return {
-        name: column.name,
-        dataType: column.dataType,
-        default: column.default,
-        comment: column.comment,
-        options: column.options,
-      };
-    })
+    appended.map(async id => htmlFields(await erd.column(id)))
   );
 }
 
-const markupFields = () =>
-  MARKUP_COLUMNS.map(column => ({
+/** The fields a paste from a text/html table is compared on. */
+function htmlFields(column: ColumnSeed) {
+  return {
     name: column.name,
     dataType: column.dataType,
     default: column.default,
     comment: column.comment,
     options: column.options,
-  }));
+  };
+}
 
 test.describe('the html table a copy writes', () => {
   // A copy of whole tables: the visible table under the wrapper is the grid
@@ -617,7 +610,9 @@ test.describe('the html table a copy writes', () => {
     );
 
     const table = await visibleTable(erd, flavours['text/html']);
-    expect(await pasteHtmlIntoOrders(erd, table)).toEqual(markupFields());
+    expect(await pasteHtmlIntoOrders(erd, table)).toEqual(
+      MARKUP_COLUMNS.map(htmlFields)
+    );
   });
 
   // A copy of columns writes its table with no wrapper and no JSON hidden in
@@ -638,7 +633,7 @@ test.describe('the html table a copy writes', () => {
     );
 
     expect(await pasteHtmlIntoOrders(erd, flavours['text/html'])).toEqual(
-      markupFields()
+      MARKUP_COLUMNS.map(htmlFields)
     );
   });
 });

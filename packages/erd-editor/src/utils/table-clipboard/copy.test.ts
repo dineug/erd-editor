@@ -1024,22 +1024,30 @@ const MARKUP_ROW =
   '</tr>';
 
 describe('a cell value holding markup', () => {
-  const columnCopyState = () => {
+  const columnCopy = () => {
     const { table, column } = createMarkupFixture();
-    return createState({
+    const state = createState({
       tables: [table],
       columns: [column],
       focusTable: { tableId: 'table-1', selectColumnIds: ['column-markup'] },
     });
+
+    return { state, html: tableCopyToHtml(state) };
   };
 
-  const tableCopyState = () => {
+  const tableCopy = () => {
     const { table, column } = createMarkupFixture();
-    return createState({
+    const state = createState({
       tables: [table],
       columns: [column],
       selectedMap: { 'table-1': SelectType.table },
     });
+    const payload = entitiesCopyToPayload(state)!;
+
+    return {
+      state,
+      visibleTable: entitiesToHtmlTable(payload, state.settings),
+    };
   };
 
   const expectMarkupColumn = (columns: Column[]) => {
@@ -1056,42 +1064,31 @@ describe('a cell value holding markup', () => {
   };
 
   it('is escaped in the html of a column copy', () => {
-    expect(tableCopyToHtml(columnCopyState())).toBe(
+    expect(columnCopy().html).toBe(
       `<table><tbody>${MARKUP_ROW}</tbody></table>`
     );
   });
 
   it('is escaped in the visible table of a table copy', () => {
-    const state = tableCopyState();
-    const payload = entitiesCopyToPayload(state)!;
-
-    expect(entitiesToHtmlTable(payload, state.settings)).toBe(
+    expect(tableCopy().visibleTable).toBe(
       `<table><tbody>${MARKUP_ROW}</tbody></table>`
     );
   });
 
   it('pastes back as typed from the html of a column copy', () => {
-    const state = columnCopyState();
+    const { state, html } = columnCopy();
 
-    expectMarkupColumn(
-      tablePasteFromHtmlToColumns(state, tableCopyToHtml(state))
-    );
+    expectMarkupColumn(tablePasteFromHtmlToColumns(state, html));
   });
 
   it('pastes back as typed from the visible table of a table copy', () => {
-    const state = tableCopyState();
-    const payload = entitiesCopyToPayload(state)!;
+    const { state, visibleTable } = tableCopy();
 
-    expectMarkupColumn(
-      tablePasteFromHtmlToColumns(
-        state,
-        entitiesToHtmlTable(payload, state.settings)
-      )
-    );
+    expectMarkupColumn(tablePasteFromHtmlToColumns(state, visibleTable));
   });
 
   it('leaves text/plain as typed', () => {
-    expect(tableCopyToText(columnCopyState())).toBe(
+    expect(tableCopyToText(columnCopy().state)).toBe(
       [
         '<label>',
         'enum("<", "&")',

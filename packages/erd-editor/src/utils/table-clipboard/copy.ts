@@ -327,19 +327,17 @@ function toClipboardMemo(memo: Memo): ClipboardMemo {
  * app, and a paste reading textContent, as the text it is.
  */
 function rowsToHtmlTable(rows: Row[]): string {
-  return rows.length === 0
-    ? ''
-    : `<table><tbody>${rows
-        .map(
-          row =>
-            `<tr>${row
-              .map(
-                ([type, value]) =>
-                  `<td data-type="${escapeHtml(type)}">${escapeHtml(value)}</td>`
-              )
-              .join('')}</tr>`
-        )
-        .join('')}</tbody></table>`;
+  if (rows.length === 0) return '';
+
+  const body = rows
+    .map(row => `<tr>${row.map(cellToHtml).join('')}</tr>`)
+    .join('');
+
+  return `<table><tbody>${body}</tbody></table>`;
+}
+
+function cellToHtml([type, value]: Cell): string {
+  return `<td data-type="${escapeHtml(type)}">${escapeHtml(value)}</td>`;
 }
 
 function toEntityRows(
