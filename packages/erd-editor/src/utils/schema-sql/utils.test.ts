@@ -11,6 +11,7 @@ import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   ALL_REFERENTIAL_ACTIONS,
   autoName,
+  autoNameIgnoreCase,
   formatDefault,
   formatNames,
   formatReferentialActions,
@@ -261,6 +262,51 @@ describe('schema-sql/utils', () => {
 
     it('honours a custom starting counter', () => {
       expect(autoName([{ id: 'a', name: 'FK' }], '', 'FK', 5)).toBe('FK5');
+    });
+
+    it('keeps a name that differs from an earlier one only in case', () => {
+      expect(autoName([{ id: 'a', name: 'IDX_users' }], '', 'IDX_Users')).toBe(
+        'IDX_Users'
+      );
+    });
+  });
+
+  describe('autoNameIgnoreCase', () => {
+    it('numbers a name equal to an earlier one but for case and keeps its own case', () => {
+      expect(
+        autoNameIgnoreCase(
+          [{ id: 'a', name: 'FK_users_TO_orders' }],
+          'FK_Users_TO_orders'
+        )
+      ).toBe('FK_Users_TO_orders1');
+    });
+
+    it('keeps the bytes of a name that differs in more than case', () => {
+      expect(
+        autoNameIgnoreCase(
+          [{ id: 'a', name: 'FK_users_TO_orders' }],
+          'FK_customers_TO_orders'
+        )
+      ).toBe('FK_customers_TO_orders');
+    });
+
+    it('keeps numbering while a numbered name also matches but for case', () => {
+      const names = [
+        { id: 'a', name: 'IDX_users' },
+        { id: 'b', name: 'idx_USERS1' },
+      ];
+
+      expect(autoNameIgnoreCase(names, 'IDX_Users')).toBe('IDX_Users2');
+    });
+
+    it('numbers an exact repeat as autoName does', () => {
+      expect(autoNameIgnoreCase([{ id: 'a', name: 'SEQ_t' }], 'SEQ_t')).toBe(
+        'SEQ_t1'
+      );
+    });
+
+    it('treats an empty name as always available', () => {
+      expect(autoNameIgnoreCase([{ id: 'a', name: '' }], '')).toBe('');
     });
   });
 

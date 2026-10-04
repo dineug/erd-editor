@@ -6,7 +6,7 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  autoName,
+  autoNameIgnoreCase,
   FormatColumnOptions,
   formatDefault,
   FormatIndexOptions,
@@ -264,7 +264,7 @@ export function formatIndex(
     let indexName = index.name;
     if (index.name.trim() === '') {
       indexName = `IDX_${tableName}`;
-      indexName = autoName(indexNames, '', indexName);
+      indexName = autoNameIgnoreCase(indexNames, indexName);
       indexNames.push({
         id: nanoid(),
         name: indexName,

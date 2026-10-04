@@ -357,11 +357,10 @@ describe('Oracle createSchema', () => {
 });
 
 describe('Oracle dotted table names', () => {
-  it('names constraints and indexes after the table part of an unquoted schema.table', () => {
-    const { state, users, posts, userId } = createFixture();
+  it('names constraints, indexes, the sequence and the trigger after the table part of an unquoted schema.table', () => {
+    const { state, users, posts } = createFixture();
     users.name = 'sales.users';
     posts.name = 'sales.posts';
-    userId.options = ColumnOption.primaryKey | ColumnOption.notNull;
 
     expect(createSchema(state)).toBe(
       [
@@ -384,6 +383,19 @@ describe('Oracle dotted table names', () => {
         'ALTER TABLE sales.users',
         '  ADD CONSTRAINT UQ_users_email UNIQUE (email);',
         '',
+        'CREATE SEQUENCE sales.SEQ_users',
+        'START WITH 1',
+        'INCREMENT BY 1;',
+        '',
+        'CREATE OR REPLACE TRIGGER sales.SEQ_TRG_users',
+        'BEFORE INSERT ON sales.users',
+        'REFERENCING NEW AS NEW FOR EACH ROW',
+        'BEGIN',
+        '  SELECT sales.SEQ_users.NEXTVAL',
+        '  INTO: NEW.id',
+        '  FROM DUAL;',
+        'END;',
+        '',
         "COMMENT ON TABLE sales.users IS 'user table';",
         '',
         "COMMENT ON COLUMN sales.users.id IS 'user id';",
@@ -398,7 +410,7 @@ describe('Oracle dotted table names', () => {
         'CREATE INDEX sales.IDX_posts',
         '  ON sales.posts (user_id ASC);',
         '',
-        'CREATE UNIQUE INDEX IDX_EMAIL',
+        'CREATE UNIQUE INDEX sales.IDX_EMAIL',
         '  ON sales.users (email DESC);',
         '',
       ].join('\n')
@@ -448,7 +460,56 @@ describe('Oracle dotted table names', () => {
     expect(sql).toContain('CREATE INDEX hr.IDX_users1\n  ON hr.users');
   });
 
-  it('puts an automatic index beside its table, where table parts differing in case cannot clash', () => {
+  it('numbers a foreign key and an index name repeating an earlier one but for case, not a sequence', () => {
+    const { state, users, posts, userId, postUserId } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    // The hr table borrows the sales key column, which the DDL reads by id alone.
+    const hrUsers = createTable({
+      id: 't-hr-users',
+      name: 'hr.Users',
+      columnIds: [userId.id],
+    });
+    const hrRelationship = createRelationship({
+      id: 'r-hr',
+      start: { tableId: hrUsers.id, columnIds: [userId.id] },
+      end: { tableId: posts.id, columnIds: [postUserId.id] },
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: '',
+      tableId: hrUsers.id,
+      indexColumnIds: ['ic-1'],
+    });
+    state.collections.tableEntities[hrUsers.id] = hrUsers;
+    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexEntities[hrIndex.id] = hrIndex;
+    state.collections.indexEntities['i-2'].name = '';
+    state.doc.tableIds.push(hrUsers.id);
+    state.doc.relationshipIds.push(hrRelationship.id);
+    state.doc.indexIds = ['i-2', hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('CREATE SEQUENCE hr.SEQ_Users\n');
+    expect(sql).toContain('CREATE SEQUENCE sales.SEQ_users\n');
+    expect(sql).toContain(
+      'CREATE OR REPLACE TRIGGER hr.SEQ_TRG_Users\nBEFORE INSERT ON hr.Users\n'
+    );
+    expect(sql).toContain(
+      'CREATE OR REPLACE TRIGGER sales.SEQ_TRG_users\nBEFORE INSERT ON sales.users\n'
+    );
+    expect(sql).toContain('  SELECT hr.SEQ_Users.NEXTVAL\n');
+    expect(sql).toContain('  SELECT sales.SEQ_users.NEXTVAL\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_Users_TO_posts1\n');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX sales.IDX_users\n  ON sales.users'
+    );
+    expect(sql).toContain('CREATE INDEX hr.IDX_Users1\n  ON hr.Users');
+  });
+
+  it('puts an automatic index beside its table and numbers a table part differing only in case', () => {
     const { state, users, posts } = createFixture();
     users.name = 'sales.users';
     posts.name = 'hr.Users';
@@ -475,20 +536,52 @@ describe('Oracle dotted table names', () => {
     expect(buffer).toEqual([
       'CREATE INDEX sales.IDX_users',
       '  ON sales.users (email DESC);',
-      'CREATE INDEX hr.IDX_Users',
+      'CREATE INDEX hr.IDX_Users1',
       '  ON hr.Users (user_id ASC);',
     ]);
   });
 
-  it('leaves a named index where Oracle puts it', () => {
+  it('puts a named index beside its dotted table, so one name serves two schemas', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'hr.Users';
+    const buffer: string[] = [];
+    const indexNames: Name[] = [];
+    const salesIndex = createIndex({
+      id: 'i-sales',
+      name: 'idx_users_name',
+      tableId: users.id,
+      indexColumnIds: ['ic-2'],
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: 'idx_users_name',
+      tableId: posts.id,
+      indexColumnIds: ['ic-1'],
+    });
+
+    formatIndex(state, { index: salesIndex, buffer, indexNames });
+    formatIndex(state, { index: hrIndex, buffer, indexNames });
+
+    expect(buffer).toEqual([
+      'CREATE INDEX sales.idx_users_name',
+      '  ON sales.users (email DESC);',
+      'CREATE INDEX hr.idx_users_name',
+      '  ON hr.Users (user_id ASC);',
+    ]);
+    expect(indexNames).toEqual([]);
+  });
+
+  it('leaves an index name the user already qualified as written', () => {
     const { state, users, usersIndex } = createFixture();
     users.name = 'sales.users';
+    usersIndex.name = 'hr.idx_email';
     const buffer: string[] = [];
 
     formatIndex(state, { index: usersIndex, buffer, indexNames: [] });
 
     expect(buffer).toEqual([
-      'CREATE UNIQUE INDEX IDX_EMAIL',
+      'CREATE UNIQUE INDEX hr.idx_email',
       '  ON sales.users (email DESC);',
     ]);
   });
@@ -505,6 +598,14 @@ describe('Oracle dotted table names', () => {
     expect(sql).toContain('  ADD CONSTRAINT "UQ_sales.users_email" UNIQUE');
     expect(sql).toContain('  ADD CONSTRAINT "FK_sales.users_TO_sales.posts"');
     expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX "IDX_EMAIL"\n  ON "sales.users"'
+    );
+    expect(sql).toContain('CREATE SEQUENCE SEQ_sales.users\n');
+    expect(sql).toContain(
+      'CREATE OR REPLACE TRIGGER SEQ_TRG_sales.users\nBEFORE INSERT ON sales.users\n'
+    );
+    expect(sql).toContain('  SELECT SEQ_sales.users.NEXTVAL\n');
   });
 });
 

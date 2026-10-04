@@ -463,6 +463,47 @@ describe('schema-sql/MariaDB dotted table names', () => {
     ]);
   });
 
+  it('numbers a foreign key and an index name that repeat an earlier one but for case', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    // The hr table borrows the sales key column, which the DDL reads by id alone.
+    const hrUsers = createTable({
+      id: 'tbl-hr-users',
+      name: 'hr.Users',
+      columnIds: ['col-id'],
+    });
+    const hrRelationship = createRelationship({
+      id: 'rel-hr',
+      start: { tableId: hrUsers.id, columnIds: ['col-id'] },
+      end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
+    });
+    const usersIndex = createIndex({
+      id: 'idx-users',
+      tableId: 'tbl-users',
+      indexColumnIds: ['idx-col-1'],
+    });
+    const hrIndex = createIndex({
+      id: 'idx-hr',
+      tableId: hrUsers.id,
+      indexColumnIds: ['idx-col-1'],
+    });
+    state.collections.tableEntities[hrUsers.id] = hrUsers;
+    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexEntities[usersIndex.id] = usersIndex;
+    state.collections.indexEntities[hrIndex.id] = hrIndex;
+    state.doc.tableIds.push(hrUsers.id);
+    state.doc.relationshipIds.push(hrRelationship.id);
+    state.doc.indexIds = [usersIndex.id, hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_Users_TO_posts1\n');
+    expect(sql).toContain('CREATE INDEX IDX_users\n  ON sales.users');
+    expect(sql).toContain('CREATE INDEX IDX_Users1\n  ON hr.Users');
+  });
+
   it('keeps a quoted dotted name whole in every automatic name', () => {
     const { state, users, posts } = createFixture();
     users.name = 'sales.users';

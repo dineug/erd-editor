@@ -306,6 +306,43 @@ describe('SQLite dotted table names', () => {
     );
   });
 
+  it('numbers an index name that repeats an earlier one but for case', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    // The hr table borrows the sales key column, which the DDL reads by id alone.
+    const hrUsers = createTable({
+      id: 't-hr-users',
+      name: 'hr.Users',
+      columnIds: ['c-user-id'],
+    });
+    const hrRelationship = createRelationship({
+      id: 'r-hr',
+      start: { tableId: hrUsers.id, columnIds: ['c-user-id'] },
+      end: { tableId: posts.id, columnIds: ['c-post-user-id'] },
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: '',
+      tableId: hrUsers.id,
+      indexColumnIds: ['ic-1'],
+    });
+    state.collections.tableEntities[hrUsers.id] = hrUsers;
+    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexEntities[hrIndex.id] = hrIndex;
+    state.collections.indexEntities['i-2'].name = '';
+    state.doc.tableIds.push(hrUsers.id);
+    state.doc.relationshipIds.push(hrRelationship.id);
+    state.doc.indexIds = ['i-2', hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  FOREIGN KEY (user_id) REFERENCES users (id),\n');
+    expect(sql).toContain('  FOREIGN KEY (user_id) REFERENCES Users (id)\n');
+    expect(sql).toContain('CREATE UNIQUE INDEX sales.IDX_users\n  ON users');
+    expect(sql).toContain('CREATE INDEX hr.IDX_Users1\n  ON Users');
+  });
+
   it('keeps a quoted dotted name whole', () => {
     const { state, users, posts } = createFixture();
     users.name = 'sales.users';

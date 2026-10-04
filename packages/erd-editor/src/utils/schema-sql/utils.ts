@@ -179,17 +179,33 @@ export function autoName<T extends { id: string; name: string }>(
   name: string,
   num = 1
 ): string {
-  let result = true;
-  for (const value of list) {
-    if (name === value.name && value.id !== id && name !== '') {
-      result = false;
-      break;
-    }
-  }
-  if (result) {
+  return numberName(list, id, name, num, value => value);
+}
+
+/**
+ * autoName for an automatic foreign key or index name, also numbering a name
+ * equal to an earlier one but for case, quoted or not, since the databases fold
+ * an unquoted name and MySQL and MariaDB a quoted index name too.
+ */
+export function autoNameIgnoreCase(names: Name[], name: string): string {
+  return numberName(names, '', name, 1, value => value.toLowerCase());
+}
+
+function numberName<T extends { id: string; name: string }>(
+  list: T[],
+  id: string,
+  name: string,
+  num: number,
+  fold: (value: string) => string
+): string {
+  const folded = fold(name);
+  const taken =
+    name !== '' &&
+    list.some(value => value.id !== id && fold(value.name) === folded);
+  if (!taken) {
     return name;
   }
-  return autoName(list, id, name.replace(/[0-9]/g, '') + num, num + 1);
+  return numberName(list, id, name.replace(/[0-9]/g, '') + num, num + 1, fold);
 }
 
 export function toOrderName(orderType: number) {

@@ -6,7 +6,7 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  autoName,
+  autoNameIgnoreCase,
   FormatColumnOptions,
   FormatCommentOptions,
   FormatIndexOptions,
@@ -291,7 +291,7 @@ function formatRelation(
     const startName = tableNamePart(startTable.name, bracketType);
     const endName = tableNamePart(endTable.name, bracketType);
     let fkName = `FK_${startName}_TO_${endName}`;
-    fkName = autoName(fkNames, '', fkName);
+    fkName = autoNameIgnoreCase(fkNames, fkName);
     fkNames.push({
       id: nanoid(),
       name: fkName,
@@ -363,7 +363,7 @@ export function formatIndex(
     let indexName = index.name;
     if (index.name.trim() === '') {
       indexName = `IDX_${tableNamePart(table.name, bracketType)}`;
-      indexName = autoName(indexNames, '', indexName);
+      indexName = autoNameIgnoreCase(indexNames, indexName);
       indexNames.push({
         id: nanoid(),
         name: indexName,
