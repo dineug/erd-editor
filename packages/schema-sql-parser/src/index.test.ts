@@ -120,6 +120,8 @@ describe('public entry surface', () => {
       alterTableAddPrimaryKey: 'alter.table.add.primaryKey',
       alterTableAddForeignKey: 'alter.table.add.foreignKey',
       alterTableAddDefault: 'alter.table.add.default',
+      alterTableAlterColumnAutoIncrement:
+        'alter.table.alter.column.autoIncrement',
       commentOnTable: 'comment.on.table',
       commentOnColumn: 'comment.on.column',
     });

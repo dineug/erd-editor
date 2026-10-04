@@ -87,6 +87,15 @@ describe('alterTableAddDefaultParser', () => {
     });
   });
 
+  it('keeps a call of nextval as the default, since SQL Server has no such function', () => {
+    expect(parse("ALTER TABLE t ADD DEFAULT nextval('s') FOR c;").ast).toEqual({
+      type: StatementType.alterTableAddDefault,
+      name: 't',
+      columnName: 'c',
+      default: "nextval('s')",
+    });
+  });
+
   it('names the column after the FOR of NEXT VALUE FOR', () => {
     const { ast } = parse(
       'ALTER TABLE t ADD DEFAULT NEXT VALUE FOR seq FOR [Id] WITH VALUES;'

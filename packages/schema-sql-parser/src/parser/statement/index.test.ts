@@ -12,19 +12,21 @@ describe('StatementType', () => {
       alterTableAddPrimaryKey: 'alter.table.add.primaryKey',
       alterTableAddForeignKey: 'alter.table.add.foreignKey',
       alterTableAddDefault: 'alter.table.add.default',
+      alterTableAlterColumnAutoIncrement:
+        'alter.table.alter.column.autoIncrement',
       commentOnTable: 'comment.on.table',
       commentOnColumn: 'comment.on.column',
     });
   });
 
-  it('exposes exactly eight distinct discriminators', () => {
+  it('exposes exactly nine distinct discriminators', () => {
     const values = Object.values(StatementType);
 
-    expect(values).toHaveLength(8);
-    expect(new Set(values).size).toBe(8);
+    expect(values).toHaveLength(9);
+    expect(new Set(values).size).toBe(9);
   });
 
-  it('names alter statements after their ALTER TABLE ADD prefix', () => {
+  it('names alter statements after the ALTER TABLE clause they read', () => {
     const alterValues = Object.entries(StatementType)
       .filter(([key]) => key.startsWith('alter'))
       .map(([, value]) => value);
@@ -34,9 +36,10 @@ describe('StatementType', () => {
       'alter.table.add.primaryKey',
       'alter.table.add.foreignKey',
       'alter.table.add.default',
+      'alter.table.alter.column.autoIncrement',
     ]);
     for (const value of alterValues) {
-      expect(value.startsWith('alter.table.add.')).toBe(true);
+      expect(value).toMatch(/^alter\.table\.(add|alter\.column)\./);
     }
   });
 });

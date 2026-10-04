@@ -339,3 +339,33 @@ export function defaultExpressionParser(
 
   return writeDefaultExpression(expression, database);
 }
+
+// The function's name unquoted in any case, or in double quotes, which make it
+// case-sensitive, as pg_dump --quote-all-identifiers writes it.
+const isNextvalName = ({ kind, text, token }: Piece) =>
+  kind === 'word' &&
+  (token
+    ? token.quoted === '"' && token.value === 'nextval'
+    : /^nextval$/i.test(text));
+
+/**
+ * Whether the DEFAULT expression at pos is one call of nextval, in parens or
+ * not: the sequence a PostgreSQL serial column takes its values from.
+ */
+export const isNextvalDefault = (tokens: Token[]) => {
+  const defaultExpression = matchDefaultExpression(tokens);
+
+  return (pos: number) => {
+    const pieces = unwrap(
+      toPieces(tokens.slice(pos, pos + defaultExpression(pos)))
+    );
+    const [name, open] = pieces;
+
+    return (
+      !!name &&
+      isNextvalName(name) &&
+      open?.kind === 'open' &&
+      closeOf(pieces, 1) === pieces.length - 1
+    );
+  };
+};

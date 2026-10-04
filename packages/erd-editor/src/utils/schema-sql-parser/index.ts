@@ -9,6 +9,7 @@ import {
   AlterTableAddForeignKey,
   AlterTableAddPrimaryKey,
   AlterTableAddUnique,
+  AlterTableAlterColumnAutoIncrement,
   CommentOnColumn,
   CommentOnTable,
   CreateIndex,
@@ -51,6 +52,7 @@ type StatementMap = {
   foreignKeys: AlterTableAddForeignKey[];
   uniques: AlterTableAddUnique[];
   defaults: AlterTableAddDefault[];
+  autoIncrements: AlterTableAlterColumnAutoIncrement[];
   tableComments: CommentOnTable[];
   columnComments: CommentOnColumn[];
 };
@@ -92,6 +94,7 @@ function getStatementMap(statements: Statement[]): StatementMap {
     foreignKeys: [],
     uniques: [],
     defaults: [],
+    autoIncrements: [],
     tableComments: [],
     columnComments: [],
   };
@@ -134,6 +137,11 @@ function getStatementMap(statements: Statement[]): StatementMap {
           map.defaults.push(statement);
         }
         break;
+      case StatementType.alterTableAlterColumnAutoIncrement:
+        if (statement.name && statement.columnName) {
+          map.autoIncrements.push(statement);
+        }
+        break;
       case StatementType.commentOnTable:
         if (statement.name) {
           map.tableComments.push(statement);
@@ -157,6 +165,7 @@ function mergeTables({
   foreignKeys,
   uniques,
   defaults,
+  autoIncrements,
   tableComments,
   columnComments,
 }: StatementMap): CreateTable[] {
@@ -275,6 +284,20 @@ function mergeTables({
     if (!column) return;
 
     column.default = value;
+  });
+
+  // pg_dump sets a serial column's nextval(...) default and adds an identity
+  // column's identity after its table: either is the auto increment flag, and
+  // leaves no default, as an inline nextval(...) does.
+  autoIncrements.forEach(({ name, columnName }) => {
+    const table = findByName(tables, name);
+    if (!table) return;
+
+    const column = findByName(table.columns, columnName);
+    if (!column) return;
+
+    column.autoIncrement = true;
+    column.default = '';
   });
 
   // PostgreSQL and Oracle carry comments as their own statement, and SQL Server

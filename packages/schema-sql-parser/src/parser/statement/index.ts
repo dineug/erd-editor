@@ -7,6 +7,7 @@ export type Statement =
   | AlterTableAddPrimaryKey
   | AlterTableAddForeignKey
   | AlterTableAddDefault
+  | AlterTableAlterColumnAutoIncrement
   | CommentOnTable
   | CommentOnColumn;
 
@@ -17,6 +18,7 @@ export const StatementType = {
   alterTableAddPrimaryKey: 'alter.table.add.primaryKey',
   alterTableAddForeignKey: 'alter.table.add.foreignKey',
   alterTableAddDefault: 'alter.table.add.default',
+  alterTableAlterColumnAutoIncrement: 'alter.table.alter.column.autoIncrement',
   commentOnTable: 'comment.on.table',
   commentOnColumn: 'comment.on.column',
 } as const;
@@ -168,6 +170,17 @@ export type AlterTableAddDefault = {
   name: string;
   columnName: string;
   default: string;
+};
+
+/**
+ * A column an ALTER TABLE t ALTER [COLUMN] c makes auto increment: pg_dump sets
+ * a serial column's DEFAULT nextval(...), and adds an identity column's
+ * GENERATED ... AS IDENTITY, apart from its table.
+ */
+export type AlterTableAlterColumnAutoIncrement = {
+  type: typeof StatementType.alterTableAlterColumnAutoIncrement;
+  name: string;
+  columnName: string;
 };
 
 export type CommentOnTable = {

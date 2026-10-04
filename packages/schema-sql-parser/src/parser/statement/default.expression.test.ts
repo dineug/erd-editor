@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { DatabaseVendor, RefPos } from '@/parser/statement';
 import {
   defaultExpressionParser,
+  isNextvalDefault,
   matchDefaultExpression,
 } from '@/parser/statement/default.expression';
 import { tokenizer } from '@/parser/tokenizer';
@@ -257,5 +258,38 @@ describe('defaultExpressionParser - what it keeps', () => {
     expect(read(String.raw`concat('a', 'it\'s')`, 'Databricks')).toBe(
       String.raw`concat('a', 'it\'s')`
     );
+  });
+});
+
+describe('isNextvalDefault', () => {
+  const isNextval = (source: string) => isNextvalDefault(tokenizer(source))(0);
+
+  it.each<string>([
+    "nextval('public.orders_id_seq'::regclass)",
+    "nextval('public.orders_id_seq'::regclass) NOT NULL",
+    "NEXTVAL('s'), b INT",
+    "(nextval('s'::regclass))",
+    'nextval(\'public."Users_Id_seq"\'::regclass)',
+    'nextval(s)',
+    '"nextval"(\'s\')',
+    '"nextval"(\'"public"."users_id_seq"\'::"regclass")',
+  ])('reads %s as one call of nextval', source => {
+    expect(isNextval(source)).toBe(true);
+  });
+
+  it.each<string>([
+    '',
+    'nextval',
+    "nextval('s') + 1",
+    "nextval('s')::integer",
+    "1 + nextval('s')",
+    '"NEXTVAL"(\'s\')',
+    "`nextval`('s')",
+    "pg_catalog.nextval('s')",
+    'NEXT VALUE FOR [dbo].[seq]',
+    'seq.nextval',
+    "lower('A')",
+  ])('reads %s as no call of nextval alone', source => {
+    expect(isNextval(source)).toBe(false);
   });
 });

@@ -53,7 +53,10 @@ import {
   RefPos,
   StatementType,
 } from '@/parser/statement';
-import { defaultExpressionParser } from '@/parser/statement/default.expression';
+import {
+  defaultExpressionParser,
+  isNextvalDefault,
+} from '@/parser/statement/default.expression';
 import { indexColumnsParser } from '@/parser/statement/index.columns';
 import { Token } from '@/parser/tokenizer';
 
@@ -243,6 +246,7 @@ function createTableColumnsParser(
   const isDefault = isDefaultValue(tokens);
   const isBy = isByValue(tokens);
   const isGenerated = isGeneratedValue(tokens);
+  const nextvalDefault = isNextvalDefault(tokens);
   const isOn = isOnValue(tokens);
   const isComment = isCommentValue(tokens);
   const isKey = isKeyValue(tokens);
@@ -656,9 +660,14 @@ function createTableColumnsParser(
 
       if (!identity) {
         $pos.value += onNullSpan($pos.value);
+        // A serial column's nextval(...) is its auto increment, which each export
+        // writes its own way; the sequence it calls has no place in the document.
+        const sequence = nextvalDefault($pos.value);
         const value = defaultExpressionParser(tokens, $pos, database);
 
-        if (value) {
+        if (sequence) {
+          column.autoIncrement = true;
+        } else if (value) {
           column.default = value;
         }
       }

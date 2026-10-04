@@ -740,6 +740,37 @@ export const isAlterTableAdd = (tokens: Token[]) => {
   return (pos: number) => alterTableAdd(pos) > 0;
 };
 
+// How many tokens ALTER TABLE [ONLY] name spans before the ALTER of a column
+// action, 0 when none follows at pos (an ALTER TABLE is the next statement).
+// ONLY is also a legal table name, so both readings are tried, as for ADD.
+export const matchAlterTableAlter = (tokens: Token[]) => {
+  const alterTable = isAlterTable(tokens);
+  const isOnly = isOnlyValue(tokens);
+  const isAlter = isAlterValue(tokens);
+  const isTable = isTableValue(tokens);
+  const qualifiedName = matchQualifiedName(tokens);
+
+  const fromName = (pos: number, start: number) => {
+    const name = qualifiedName(start);
+    return name && isAlter(start + name) && !isTable(start + name + 1)
+      ? start + name - pos
+      : 0;
+  };
+
+  return (pos: number) => {
+    if (!alterTable(pos)) return 0;
+
+    return (
+      (isOnly(pos + 2) && fromName(pos, pos + 3)) || fromName(pos, pos + 2)
+    );
+  };
+};
+
+export const isAlterTableAlter = (tokens: Token[]) => {
+  const alterTableAlter = matchAlterTableAlter(tokens);
+  return (pos: number) => alterTableAlter(pos) > 0;
+};
+
 const DataTypes: ReadonlyArray<string> = Array.from(
   new Set(
     [
