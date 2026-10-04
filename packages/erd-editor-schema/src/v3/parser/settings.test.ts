@@ -291,6 +291,18 @@ describe('createAndMergeSettings', () => {
       );
     });
 
+    it('keeps the Mermaid language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.Mermaid }).language
+      ).toBe(Language.Mermaid);
+    });
+
+    it('opens a language flag it does not know as GraphQL, as an editor older than the flag does', () => {
+      expect(
+        createAndMergeSettings({ language: Language.Mermaid * 2 }).language
+      ).toBe(Language.GraphQL);
+    });
+
     it('ignores numbers outside the enum lists', () => {
       const settings = createAndMergeSettings({
         database: 999,

@@ -9,6 +9,7 @@ const LANGS: Lang[] = [
   'graphql',
   'java',
   'kotlin',
+  'mermaid',
   'python',
   'scala',
   'sql',
@@ -67,6 +68,15 @@ describe('ShikiService', () => {
     ]);
 
     expect(none).toBe(dark);
+  });
+
+  it('colours the keyword and a comment of a Mermaid erDiagram', async () => {
+    const html = await service.codeToHtml('erDiagram\n  %% members\n', {
+      lang: 'mermaid',
+    });
+
+    expect(html).toContain('<span style="color:#F97583">erDiagram</span>');
+    expect(html).toContain('<span style="color:#6A737D">  %% members</span>');
   });
 
   it('rejects a grammar it was never given', async () => {

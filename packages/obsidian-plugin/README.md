@@ -57,7 +57,7 @@ editor's own history.
   written for [Azimutt](https://azimutt.app)
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — JSON, SQL and PNG, written into the vault where your attachments go
 - **Quick search** — `Ctrl`/`Cmd`+`K` to run any editor command, or to jump to a table after `#`,

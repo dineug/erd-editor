@@ -22,7 +22,7 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   an `.aml` file
 - SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
 - Export — `.erd.json`, `.sql`, `.png`
 - Force-directed visualization of table relationships
 - Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `:`,
@@ -199,7 +199,7 @@ code panel renders, so a page that opens none never fetches the grammars.
 
 | | |
 | --- | --- |
-| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python |
+| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python, Mermaid |
 | Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
 Those are exactly the languages the panels emit — the JPA generator emits Java, the SQLAlchemy

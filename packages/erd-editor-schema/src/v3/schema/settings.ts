@@ -100,6 +100,7 @@ export const Language = {
   Drizzle: 2048,
   DBML: 4096,
   AML: 8192,
+  Mermaid: 16384,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 

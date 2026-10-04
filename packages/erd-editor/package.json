@@ -103,6 +103,7 @@
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "^20.11.2",
+    "mermaid": "11.17.2",
     "stats.js": "^0.17.0",
     "storybook": "^10.5.8",
     "typescript": "7.0.2",
