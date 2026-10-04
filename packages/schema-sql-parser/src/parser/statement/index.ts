@@ -160,7 +160,8 @@ export type AlterTableAddForeignKey = {
 
 /**
  * SQL Server's ADD [CONSTRAINT name] DEFAULT expression FOR column. default is
- * the expression as a column's DEFAULT reads it; the name is not kept.
+ * the whole expression before FOR, written back as a column's DEFAULT is; the
+ * name is not kept.
  */
 export type AlterTableAddDefault = {
   type: typeof StatementType.alterTableAddDefault;

@@ -69,8 +69,9 @@ else `''`.
 
 `alter.table.add.default` is SQL Server's `ALTER TABLE ... ADD [CONSTRAINT <id>] DEFAULT <expression> FOR
 <column>`, the form SSMS scripts every default in: it carries the table's `name`, the `columnName` after
-`FOR` and the `default`, read as a column's is (`DEFAULT ((0)) FOR [Qty]` gives `0`); the constraint's
-name is not reported. Only the statement's first clause is read.
+`FOR` and the `default`, written back as a column's is (`DEFAULT ((0)) FOR [Qty]` gives `0`) but running
+to that `FOR` past the column keywords a column's stops at (`DEFAULT 'a' COLLATE Latin1_General_CI_AS FOR c`
+keeps its `COLLATE`); the constraint's name is not reported. Only the statement's first clause is read.
 
 A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
 named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's

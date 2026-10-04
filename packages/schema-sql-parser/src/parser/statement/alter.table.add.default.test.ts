@@ -59,6 +59,34 @@ describe('alterTableAddDefaultParser', () => {
     expect(defaultOf('0')).toBe('0');
   });
 
+  it('reads the column keywords of an expression without its parentheses, which only FOR ends', () => {
+    expect(
+      parse(
+        'ALTER TABLE t ADD CONSTRAINT df DEFAULT CASE WHEN 1 = 1 THEN NULL ELSE 0 END FOR c;'
+      ).ast
+    ).toMatchObject({
+      columnName: 'c',
+      default: 'CASE WHEN 1 = 1 THEN NULL ELSE 0 END',
+    });
+    expect(
+      parse("ALTER TABLE t ADD DEFAULT 'a' COLLATE Latin1_General_CI_AS FOR c;")
+        .ast
+    ).toMatchObject({
+      columnName: 'c',
+      default: "'a' COLLATE Latin1_General_CI_AS",
+    });
+    expect(
+      parse('ALTER TABLE t ADD DEFAULT 1 + NULL FOR [c] WITH VALUES;').ast
+    ).toMatchObject({ columnName: 'c', default: '1 + NULL' });
+  });
+
+  it('ends the expression at a closing paren nothing opened', () => {
+    expect(parse('ALTER TABLE t ADD DEFAULT 0) FOR c;').ast).toMatchObject({
+      columnName: '',
+      default: '0',
+    });
+  });
+
   it('names the column after the FOR of NEXT VALUE FOR', () => {
     const { ast } = parse(
       'ALTER TABLE t ADD DEFAULT NEXT VALUE FOR seq FOR [Id] WITH VALUES;'

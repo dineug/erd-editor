@@ -1,9 +1,12 @@
 import {
   isAlterTableAddOnly,
+  isCommaToken,
   isDefaultValue,
   isForValue,
+  isLeftParentToken,
   isNewStatement,
   isPeriodToken,
+  isRightParentToken,
   isSemicolonToken,
   isStringToken,
   isTableValue,
@@ -14,7 +17,10 @@ import {
   RefPos,
   StatementType,
 } from '@/parser/statement';
-import { defaultExpressionParser } from '@/parser/statement/default.expression';
+import {
+  isNextValueFor,
+  writeDefaultExpression,
+} from '@/parser/statement/default.expression';
 import { Token } from '@/parser/tokenizer';
 
 /**
@@ -29,14 +35,46 @@ export function alterTableAddDefaultParser(
 ) {
   const newStatement = isNewStatement(tokens);
   const isSemicolon = isSemicolonToken(tokens);
+  const isComma = isCommaToken(tokens);
+  const isLeftParent = isLeftParentToken(tokens);
+  const isRightParent = isRightParentToken(tokens);
   const isString = isStringToken(tokens);
   const isPeriod = isPeriodToken(tokens);
   const isTable = isTableValue(tokens);
   const isDefault = isDefaultValue(tokens);
   const isFor = isForValue(tokens);
+  const nextValueFor = isNextValueFor(tokens);
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
   const isToken = () => $pos.value < tokens.length;
+
+  // No column option follows the expression here, so no column keyword ends
+  // it: the FOR naming the column does, a comma or a closing paren nothing
+  // opened at depth 0, or a terminator or the next statement at any depth.
+  const expressionEnd = (start: number) => {
+    let depth = 0;
+    let cursor = start;
+
+    for (
+      ;
+      cursor < tokens.length && !isSemicolon(cursor) && !newStatement(cursor);
+      cursor++
+    ) {
+      if (isLeftParent(cursor)) {
+        depth++;
+      } else if (isRightParent(cursor)) {
+        if (depth === 0) break;
+        depth--;
+      } else if (
+        depth === 0 &&
+        (isComma(cursor) || (isFor(cursor) && !nextValueFor(cursor)))
+      ) {
+        break;
+      }
+    }
+
+    return cursor;
+  };
 
   const ast: AlterTableAddDefault = {
     type: StatementType.alterTableAddDefault,
@@ -75,21 +113,12 @@ export function alterTableAddDefaultParser(
       break;
     }
 
-    // The expression ends at FOR, but for the one in NEXT VALUE FOR s, and at
-    // the next statement, which a GO script with no FOR would run it into.
     if (!clauseRead && isDefault($pos.value)) {
-      $pos.value++;
+      const start = $pos.value + 1;
+      const end = expressionEnd(start);
 
-      let end = $pos.value;
-      while (end < tokens.length && !newStatement(end)) end++;
-
-      const $expression: RefPos = { value: 0 };
-      ast.default = defaultExpressionParser(
-        tokens.slice($pos.value, end),
-        $expression,
-        database
-      );
-      $pos.value += $expression.value;
+      ast.default = writeDefaultExpression(tokens.slice(start, end), database);
+      $pos.value = end;
       clauseRead = true;
 
       if (isFor($pos.value) && isString($pos.value + 1)) {

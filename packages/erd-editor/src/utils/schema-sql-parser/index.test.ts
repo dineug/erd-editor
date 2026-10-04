@@ -499,6 +499,26 @@ GO
         });
       });
 
+      it('applies the whole of a DEFAULT written without its parentheses, column keywords and all', () => {
+        const schema = parse(
+          `
+          CREATE TABLE t (a VARCHAR(10), b INT)
+          GO
+          ALTER TABLE t ADD DEFAULT 'x' COLLATE Latin1_General_CI_AS FOR a
+          GO
+          ALTER TABLE t ADD CONSTRAINT df_b DEFAULT CASE WHEN 1 = 1 THEN NULL ELSE 0 END FOR b
+          GO
+        `,
+          undefined,
+          Database.MSSQL
+        );
+
+        expect(defaultsOf(schema, tableByName(schema, 't'))).toEqual({
+          a: "'x' COLLATE Latin1_General_CI_AS",
+          b: 'CASE WHEN 1 = 1 THEN NULL ELSE 0 END',
+        });
+      });
+
       it('drops a DEFAULT with no column or expression, or for a table or column not created', () => {
         const schema = parse(`
           CREATE TABLE t (a INT, b INT DEFAULT 1);
