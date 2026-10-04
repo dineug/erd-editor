@@ -38,6 +38,7 @@ const mousedown = (button: number) =>
     clientY: 0,
   });
 
+/** A lift of one button, for a spec to dispatch on an element as a mouse does. */
 const mouseup = (button: number) =>
   new MouseEvent('mouseup', { bubbles: true, cancelable: true, button });
 
@@ -75,7 +76,7 @@ describe('captureGraphPan', () => {
     expect(container.style.cursor).toBe(CURSOR_GRABBING);
 
     const lift = mouseup(1);
-    window.dispatchEvent(lift);
+    document.body.dispatchEvent(lift);
     expect(lift.defaultPrevented).toBe(true);
     expect(container.style.cursor).toBe('');
   });
@@ -87,7 +88,7 @@ describe('captureGraphPan', () => {
     );
 
     const lift = mouseup(0);
-    window.dispatchEvent(lift);
+    document.body.dispatchEvent(lift);
 
     expect(lift.defaultPrevented).toBe(false);
   });

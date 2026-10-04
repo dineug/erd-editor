@@ -1,4 +1,3 @@
-import { noop } from 'es-toolkit';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { captureDrag } from '@/components/visualization/captureDrag';
@@ -25,23 +24,6 @@ export function captureGraphPan(
 ): void {
   if (isMultiTouch(event.evt)) return;
 
-  let release = noop;
-
-  // The middle button pans from a dot as well, so the press and its lift are
-  // the pan's alone: the browser starts no autoscroll and pastes nothing.
-  if (isMiddleButtonPress(event.evt)) {
-    event.evt.preventDefault();
-    const releaseLift = preventMiddleLift();
-    const container = event.target.getStage()?.container();
-    const releaseCursor = container
-      ? holdStageCursor(container, CURSOR_GRABBING)
-      : noop;
-    release = () => {
-      releaseLift();
-      releaseCursor();
-    };
-  }
-
   const handleMove = ({ event: move, movementX, movementY }: DragMove) => {
     move.type === 'mousemove' && move.preventDefault();
     state.x += movementX;
@@ -49,11 +31,19 @@ export function captureGraphPan(
   };
 
   state.drag = true;
-  captureDrag(event, {
+  const pan = captureDrag(event, {
     next: handleMove,
     complete: () => {
       state.drag = false;
-      release();
     },
   });
+
+  // The middle button pans from a dot as well, so the press and its lift are
+  // the pan's alone: the browser starts no autoscroll and pastes nothing.
+  if (!isMiddleButtonPress(event.evt)) return;
+
+  event.evt.preventDefault();
+  pan.add(preventMiddleLift());
+  const container = event.target.getStage()?.container();
+  if (container) pan.add(holdStageCursor(container, CURSOR_GRABBING));
 }

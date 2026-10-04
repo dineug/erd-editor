@@ -261,17 +261,19 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !el.closest('.virtual-scroll') &&
       !showOverLayout;
 
+    const middlePress = isMiddleButtonPress(event);
+
     // The hand tool takes the pointer off the stage container, whose pan takes
     // a middle press first everywhere else, so the root reads the same rule:
     // the selection stays, no marquee, and the press and its lift are prevented.
-    const middlePan = canDrag && isMiddleButtonPress(event);
+    const middlePan = canDrag && middlePress;
 
     // A takeover stands a scene of its own over this canvas, and the middle
     // button reads alike there: over the scene the selection under it stays,
     // and the press and its lift are prevented; its chrome keeps its presses.
     const middleOverTakeover =
       canUnselectAll &&
-      isMiddleButtonPress(event) &&
+      middlePress &&
       isTakenOver(app.value.store.state) &&
       !el.closest(TAKEOVER_CHROME);
 

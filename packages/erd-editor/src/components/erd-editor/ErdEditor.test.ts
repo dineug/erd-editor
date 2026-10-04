@@ -174,6 +174,18 @@ function emptyGCIds() {
   };
 }
 
+/** A middle press on a node of the shadow tree, composed as a mouse's is. */
+function pressMiddle(target: EventTarget): MouseEvent {
+  const press = new MouseEvent('mousedown', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button: 1,
+  });
+  target.dispatchEvent(press);
+  return press;
+}
+
 describe('<erd-editor>', () => {
   it('renders a focusable root inside its closed shadow root', async () => {
     const { el, shadow, root } = await createEditor();
@@ -380,13 +392,7 @@ describe('<erd-editor>', () => {
     ) as HTMLDivElement;
     expect(canvas).toBeTruthy();
 
-    const press = new MouseEvent('mousedown', {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      button: 1,
-    });
-    canvas.dispatchEvent(press);
+    const press = pressMiddle(canvas);
     window.dispatchEvent(new MouseEvent('mouseup', { button: 1 }));
     await flush();
 
@@ -408,14 +414,7 @@ describe('<erd-editor>', () => {
     outside.focus();
 
     try {
-      canvas.dispatchEvent(
-        new MouseEvent('mousedown', {
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          button: 1,
-        })
-      );
+      pressMiddle(canvas);
       window.dispatchEvent(new MouseEvent('mouseup', { button: 1 }));
       await new Promise(resolve => setTimeout(resolve, 20));
 

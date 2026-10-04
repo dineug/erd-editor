@@ -32,6 +32,7 @@ export function listenMiddleButtonPan(
 
     const pan = drag$.subscribe(onMove);
     pan.add(preventMiddleLift());
+    pan.add(holdStageCursor(container, CURSOR_GRABBING));
 
     // Konva opens its double click window on any lift it hears, so a main click
     // on the same node right after would read as a double one: a lift over the
@@ -44,7 +45,6 @@ export function listenMiddleButtonPan(
     };
 
     container.addEventListener('mouseup', handleMouseup, true);
-    pan.add(holdStageCursor(container, CURSOR_GRABBING));
     pan.add(() => {
       container.removeEventListener('mouseup', handleMouseup, true);
     });

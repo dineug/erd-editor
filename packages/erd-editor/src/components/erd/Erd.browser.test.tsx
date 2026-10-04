@@ -205,6 +205,23 @@ const pressWith = (
   return event;
 };
 
+/** The lift of one button, dispatched where the pointer went up. */
+const liftWith = (
+  target: EventTarget,
+  button: number,
+  init: MouseEventInit = {}
+) => {
+  const event = new MouseEvent('mouseup', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+};
+
 const MIDDLE = 1;
 
 describe('Erd - a middle button press', () => {
@@ -274,14 +291,10 @@ describe('Erd - a middle button press', () => {
       metaKey: true,
     });
     movePointer(430, 350);
-    const lift = new MouseEvent('mouseup', {
-      bubbles: true,
-      cancelable: true,
-      button: MIDDLE,
+    const lift = liftWith(rootOf(mounted), MIDDLE, {
       clientX: 430,
       clientY: 350,
     });
-    rootOf(mounted).dispatchEvent(lift);
     await flush();
 
     expect(press.defaultPrevented).toBe(true);
@@ -361,17 +374,6 @@ async function mountTakeover(open: (app: AppContext) => void) {
   return { mounted, point, shell, target };
 }
 
-const liftWith = (target: EventTarget, button: number) => {
-  const event = new MouseEvent('mouseup', {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    button,
-  });
-  target.dispatchEvent(event);
-  return event;
-};
-
 describe('Erd - a middle button press over a takeover', () => {
   it('runs every takeover the editor knows', () => {
     const keys = OPENED_TAKEOVERS.map(([, key]) => key);
@@ -430,12 +432,7 @@ describe('Erd - a middle button press over a takeover', () => {
     const press = pressWith(target, MIDDLE, point);
     expect(press.defaultPrevented).toBe(true);
     window.dispatchEvent(new FocusEvent('blur'));
-    const lift = new MouseEvent('mouseup', {
-      bubbles: true,
-      cancelable: true,
-      button: MIDDLE,
-    });
-    window.dispatchEvent(lift);
+    const lift = liftWith(window, MIDDLE);
 
     expect(lift.defaultPrevented).toBe(false);
   });
