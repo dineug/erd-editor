@@ -317,7 +317,7 @@ describe('schemaSQLParserToSchemaJson', () => {
     });
 
     it('applies the keys SMO scripts as ALTER TABLE after tables scripted without them', () => {
-      // SMO's Script Table as CREATE with its keys turned off, then its Script Key as CREATE.
+      // SMO's Table.Script with primary keys and indexes off, then Script Key as CREATE per key.
       const schema = parse(`USE [p2r_pk]
 GO
 
