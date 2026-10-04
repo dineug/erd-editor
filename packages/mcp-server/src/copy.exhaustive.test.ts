@@ -184,4 +184,21 @@ describe('the words on a foreign key data type', () => {
       'except a serial key, which keeps its type and stops the change there'
     );
   });
+
+  it('say erd_undo cannot revert erd_set_relationship_data_type_sync, whose sync runs both ways, maps a serial key and stops at one', () => {
+    const text = describeTool('erd_set_relationship_data_type_sync');
+
+    expect(text).toMatch(
+      /^Sets relationship data type sync\. erd_undo cannot revert it: /
+    );
+    for (const phrase of [
+      'a change to the data type of a column spreads along relationships both ways',
+      'into the foreign keys that copy the column, a serial type as the integer it stores',
+      'from a foreign key back to the key it copies',
+      'except a serial key, which keeps its type and stops the change there',
+    ]) {
+      expect(text).toContain(phrase);
+    }
+    expect(text).not.toContain('follow the data type of the columns');
+  });
 });

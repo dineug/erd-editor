@@ -27,6 +27,8 @@ const OLDER_EDITOR =
   'An ERD Editor extension or plugin released before referential actions ignores this setting, so the user should update it.';
 const REFERENTIAL_ACTION = `What the database does to the child rows: none (no clause, the database default), noAction, cascade, setNull, setDefault or restrict. A vendor that lacks the action drops it from its DDL. ${OLDER_EDITOR}`;
 const COLOR = 'CSS hex color such as #3b82f6.';
+const DATA_TYPE_SYNC =
+  'spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
 
@@ -186,8 +188,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { columnIds: 'Column ids in that table, from erd_get.' },
   },
   erd_change_column_data_type: {
-    description:
-      'Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there.',
+    description: `Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change ${DATA_TYPE_SYNC}.`,
     args: { value: 'The data type text.' },
   },
   erd_change_column_name: {
@@ -336,10 +337,10 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     'how generated SQL quotes names',
     'The quote style.'
   ),
-  erd_set_relationship_data_type_sync: setting(
-    'whether foreign key columns follow the data type of the columns they reference',
-    'True to keep them in step.'
-  ),
+  erd_set_relationship_data_type_sync: {
+    description: `Sets relationship data type sync. ${NO_UNDO} When it is on, a change to the data type of a column ${DATA_TYPE_SYNC}.`,
+    args: { value: 'True to spread data type changes along relationships.' },
+  },
   erd_set_relationship_optimization: setting(
     'the relationship optimization flag stored in the document',
     'True to turn it on.'

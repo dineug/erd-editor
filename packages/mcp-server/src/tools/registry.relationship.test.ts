@@ -466,7 +466,7 @@ describe.each([
   });
 });
 
-describe('the foreign key data types the descriptions of erd_add_relationship and erd_change_column_data_type state', () => {
+describe('the foreign key data types the descriptions of erd_add_relationship, erd_change_column_data_type and erd_set_relationship_data_type_sync state', () => {
   const dataTypeOf = (peer: PeerStore, columnId: string) =>
     peer.state.collections.tableColumnEntities[columnId].dataType;
 
@@ -483,6 +483,7 @@ describe('the foreign key data types the descriptions of erd_add_relationship an
     runTool(peer, 'erd_set_database', { value: 'PostgreSQL' });
     runTool(peer, 'erd_set_relationship_data_type_sync', { value: false });
     setDataType(peer, SEED.users, SEED.userId, 'BIGSERIAL');
+    expect(dataTypeOf(peer, SEED.orderUser)).toBe('INT');
 
     const [foreignKeyId] = relate(peer, SEED.users, SEED.empty).createdIds;
 
