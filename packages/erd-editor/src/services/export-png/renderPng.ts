@@ -1,16 +1,15 @@
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
+import { type ExportSize, getExportSize } from './exportBox';
 import { fitPixelRatio } from './pixelRatio';
 import type { ToWidth } from './textWidth';
 
-/** The box that was asked for and the raster that fitted inside a canvas. */
-export type ResolutionReduction = {
-  documentWidth: number;
-  documentHeight: number;
-  width: number;
-  height: number;
-};
+/**
+ * The raster the zoom and scale asked for and the one that fitted inside a
+ * canvas, in the very fields the export dialog reads its warning from.
+ */
+export type ResolutionReduction = Omit<ExportSize, 'reduced'>;
 
 /** Everything a png needs that survives a structured clone to another realm. */
 export type RenderPngRequest = {
@@ -104,6 +103,19 @@ export async function renderDocumentPng({
     // per scene unit.
     const asked = pixelRatio * scene.zoomLevel;
 
+    let reduction: ResolutionReduction | null = null;
+
+    if (drawn < asked) {
+      // Worked out as the dialog works out its warning before the file exists,
+      // so the message after it names the very pixels the dialog named.
+      const { askedWidth, askedHeight } = getExportSize(
+        scene.box,
+        scene.zoomLevel,
+        pixelRatio
+      );
+      reduction = { askedWidth, askedHeight, width, height };
+    }
+
     return {
       blob,
       width,
@@ -111,15 +123,7 @@ export async function renderDocumentPng({
       documentWidth: scene.box.width,
       documentHeight: scene.box.height,
       zoomLevel: scene.zoomLevel,
-      reduction:
-        drawn < asked
-          ? {
-              documentWidth: scene.box.width,
-              documentHeight: scene.box.height,
-              width,
-              height,
-            }
-          : null,
+      reduction,
     };
   } finally {
     scene.destroy();

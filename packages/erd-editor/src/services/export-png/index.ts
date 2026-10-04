@@ -50,9 +50,9 @@ export type DocumentPngOptions = {
    */
   zoomLevel?: number;
   /**
-   * Called once, after a file exists, when the box outran what a canvas holds
-   * and the image had to be scaled down. A caller with somewhere to put it is
-   * what turns a silent loss of resolution into something the author is told.
+   * Called once, after a file exists, when the pixels the zoom and scale asked
+   * for outran what a canvas holds, with those and the pixels written. A caller
+   * with somewhere to put it tells the author of a loss that is otherwise silent.
    */
   onResolutionReduced?: (reduction: ResolutionReduction) => void;
   /** Called as the export moves, for a caller that shows it is running. */

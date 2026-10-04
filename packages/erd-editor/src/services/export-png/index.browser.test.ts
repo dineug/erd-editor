@@ -545,15 +545,20 @@ describe('createDocumentPng', () => {
     expect(image.width).toBe(CANVAS_SIDE_MAX);
     expect(reductions).toEqual([
       {
-        documentWidth: box.width,
-        documentHeight: box.height,
+        askedWidth: Math.floor(box.width * 2),
+        askedHeight: Math.floor(box.height * 2),
         width: image.width,
         height: image.height,
       },
     ]);
+    // The dialog states these very pixels, and warns, before the file exists.
+    expect(getExportSize(box, 1, 2)).toEqual({
+      ...reductions[0],
+      reduced: true,
+    });
   });
 
-  it('draws a document wider than any canvas, and reports the box it was', async () => {
+  it('draws a document wider than any canvas, and reports the pixels it asked for', async () => {
     const memos = [
       DEFAULT_MEMO,
       { id: 'm-far', x: 400_000, y: 0, width: 240, height: 160 },
@@ -575,13 +580,13 @@ describe('createDocumentPng', () => {
     expect(image.width).toBeGreaterThan(0);
     expect(reductions).toEqual([
       {
-        documentWidth: box.width,
-        documentHeight: box.height,
+        askedWidth: Math.floor(box.width),
+        askedHeight: Math.floor(box.height),
         width: image.width,
         height: image.height,
       },
     ]);
-    expect(Number.isFinite(reductions[0].documentWidth)).toBe(true);
+    expect(Number.isFinite(reductions[0].askedWidth)).toBe(true);
   });
 
   /**
@@ -628,7 +633,7 @@ describe('createDocumentPng', () => {
         9
       );
       expect(image.width).toBe(Math.round(stageSide * pixelRatio));
-      expect(reduction?.documentWidth).toBe(box.width);
+      expect(reduction?.askedWidth).toBe(Math.floor(box.width * pixelRatio));
       expect(image.at(middle.x, middle.y)).toBe(theme.memoBackground);
       expect(image.at(image.width - 2, 1)).toBe(theme.canvasBackground);
     } finally {

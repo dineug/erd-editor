@@ -30,11 +30,23 @@ const DEFAULT_SCALE = 2;
 /** Long enough for one export, the shared worker's first start included. */
 const EXPORT_TIMEOUT = 15_000;
 
+/** A box that fits a canvas at 1x and, at the 2x default, asks for more than one holds. */
+const WIDE_BOX = 10_000;
+
+/** The side of the largest square raster every current engine holds. */
+const CANVAS_SQUARE = 16_384;
+
+/**
+ * Long enough for an export at the canvas ceiling, which the shared worker
+ * rasterises and encodes in seconds on a laptop and a few times that on a runner.
+ */
+const CEILING_EXPORT_TIMEOUT = 30_000;
+
 /** Bare canvas clear of the memo at scene zero, high enough for the menu to fit. */
 const MENU_ORIGIN = { x: 400, y: 400 };
 
 /** One memo at scene zero and one whose far corner lands on the span. */
-function document(): ErdDocument {
+function document(span = SPAN): ErdDocument {
   return createSchema({
     databaseName: 'shop',
     memos: [
@@ -42,8 +54,8 @@ function document(): ErdDocument {
       {
         id: 'far',
         value: 'far',
-        x: SPAN - (MEMO_BOX.width + MEMO_FRAME_WIDTH),
-        y: SPAN - (MEMO_BOX.height + MEMO_FRAME_HEIGHT),
+        x: span - (MEMO_BOX.width + MEMO_FRAME_WIDTH),
+        y: span - (MEMO_BOX.height + MEMO_FRAME_HEIGHT),
         ...MEMO_BOX,
       },
     ],
@@ -99,10 +111,12 @@ async function alphaAt(
   );
 }
 
-async function downloadPng(erd: ErdEditorPage, dialog: Locator) {
-  const download = erd.page.waitForEvent('download', {
-    timeout: EXPORT_TIMEOUT,
-  });
+async function downloadPng(
+  erd: ErdEditorPage,
+  dialog: Locator,
+  timeout = EXPORT_TIMEOUT
+) {
+  const download = erd.page.waitForEvent('download', { timeout });
   await button(dialog, 'PNG').click();
   const file = await download;
   return {
@@ -178,6 +192,41 @@ test.describe('the export image dialog', () => {
     const thrice = await downloadPng(erd, dialog);
 
     expect(pngSize(thrice.bytes)).toEqual({ width: BOX * 3, height: BOX * 3 });
+  });
+
+  test('reports a cut the 2x default makes in the pixels the dialog warned of', async ({
+    erd,
+  }) => {
+    await erd.seed(document(WIDE_BOX - EXPORT_MARGIN * 2));
+    const dialog = await openFromMenu(erd);
+    const size = dialog.locator('.export-image-size');
+    const warning = dialog.locator('.export-image-reduced');
+    const asked = `${WIDE_BOX * DEFAULT_SCALE} × ${WIDE_BOX * DEFAULT_SCALE} px`;
+    const written = `${CANVAS_SQUARE} × ${CANVAS_SQUARE} px`;
+
+    // At 1x the same box fits a canvas: what outruns one is the scale.
+    await button(dialog, '1x').click();
+    await expect(size).toHaveText(`${WIDE_BOX} × ${WIDE_BOX} px`);
+    await expect(warning).toHaveCount(0);
+
+    await button(dialog, '2x').click();
+    await expect(size).toHaveText(written);
+    await expect(warning).toHaveText(
+      `Reduced from ${asked}, past what a browser canvas can hold`
+    );
+    const file = await downloadPng(erd, dialog, CEILING_EXPORT_TIMEOUT);
+
+    expect(pngSize(file.bytes)).toEqual({
+      width: CANVAS_SQUARE,
+      height: CANVAS_SQUARE,
+    });
+    await expect(
+      erd.host.locator('.toast-container', {
+        hasText: 'Exported at a reduced resolution',
+      })
+    ).toContainText(
+      `Reduced from ${asked} to ${written}, past what a browser canvas can hold`
+    );
   });
 
   test('leaves the canvas out of the png with the background off', async ({

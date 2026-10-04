@@ -116,22 +116,24 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
     const scene = fakeScene(canvas, {
       stageWidth: 100_000,
       stageHeight: 100_000,
+      zoomLevel: 0.5,
     });
     mocks.renderDocumentScene.mockResolvedValueOnce(scene);
 
     const result = await renderDocumentPng({
       doc: '{}',
       theme,
-      pixelRatio: 2,
+      pixelRatio: 3,
       toWidth,
     });
 
     expect(result.blob).toBeInstanceOf(Blob);
     expect(result.width).toBe(60);
     expect(result.height).toBe(60);
+    // What was asked is the 400 by 300 box times the zoom times the scale.
     expect(result.reduction).toEqual({
-      documentWidth: 400,
-      documentHeight: 300,
+      askedWidth: 600,
+      askedHeight: 450,
       width: 60,
       height: 60,
     });

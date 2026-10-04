@@ -11,6 +11,7 @@ import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
   copyImagePng,
+  describeAskedSize,
   describeReduction,
   exportImagePng,
   type ImageRequest,
@@ -38,16 +39,16 @@ vi.mock('@/utils/clipboard', () => ({
 const theme = { canvasBackground: '#101112' } as Theme;
 
 const REDUCTION: ResolutionReduction = {
-  // The box is the content plus a margin in scene units, so it arrives
-  // fractional and is rounded to the whole units the message reads in.
-  documentWidth: 20_378.5,
-  documentHeight: 20_000.4,
+  // A box of 10000 units a side fits a canvas at 1x and outruns one at 2x,
+  // so the message names pixels, never the size of the document.
+  askedWidth: 20_000,
+  askedHeight: 20_000,
   width: 16_384,
   height: 16_384,
 };
 
 const REDUCED_TEXT =
-  'The document is 20379x20000, past what a browser canvas can hold, so the PNG is 16384x16384';
+  'Reduced from 20000 × 20000 px to 16384 × 16384 px, past what a browser canvas can hold';
 
 let app: AppContext;
 let exported: Array<{ type: string; fileName: string }>;
@@ -109,8 +110,14 @@ function recordToasts(log: string[]) {
 }
 
 describe('describeReduction', () => {
-  it('rounds the document box and names the raster the png came out at', () => {
+  it('names the pixels asked for and the pixels written, as the dialog does', () => {
     expect(describeReduction(REDUCTION)).toBe(REDUCED_TEXT);
+  });
+
+  it('shares its words with the warning the dialog shows before the file', () => {
+    expect(describeAskedSize(REDUCTION)).toBe(
+      'Reduced from 20000 × 20000 px, past what a browser canvas can hold'
+    );
   });
 });
 

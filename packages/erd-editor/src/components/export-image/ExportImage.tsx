@@ -20,6 +20,7 @@ import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import * as styles from './ExportImage.styles';
 import {
   copyImagePng,
+  describeAskedSize,
   exportImagePng,
   type ImageRequest,
 } from './exportImageActions';
@@ -349,7 +350,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
               </div>
               {size?.reduced ? (
                 <div class={['export-image-reduced', styles.warning]}>
-                  {`Reduced from ${size.askedWidth} × ${size.askedHeight} px, past what a browser canvas can hold`}
+                  {describeAskedSize(size)}
                 </div>
               ) : null}
               <div class={styles.actions}>

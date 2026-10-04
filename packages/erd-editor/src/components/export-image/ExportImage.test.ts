@@ -55,10 +55,17 @@ vi.mock('@/services/export-png', () => ({
   createDocumentPreview: vi.fn(),
 }));
 
-vi.mock('@/components/export-image/exportImageActions', () => ({
-  exportImagePng: vi.fn(),
-  copyImagePng: vi.fn(),
-}));
+// The wording stays real, so the warning read here is the toast's own sentence.
+vi.mock(
+  '@/components/export-image/exportImageActions',
+  async importOriginal => {
+    const actual =
+      await importOriginal<
+        typeof import('@/components/export-image/exportImageActions')
+      >();
+    return { ...actual, exportImagePng: vi.fn(), copyImagePng: vi.fn() };
+  }
+);
 
 const preview = vi.mocked(createDocumentPreview);
 

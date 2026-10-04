@@ -217,8 +217,8 @@ describe('what the realm that drew reports back', () => {
 
   it('carries a reduction the worker made back to the caller', async () => {
     const reduction = {
-      documentWidth: 20_000,
-      documentHeight: 20_000,
+      askedWidth: 20_000,
+      askedHeight: 20_000,
       width: 16_384,
       height: 16_384,
     };

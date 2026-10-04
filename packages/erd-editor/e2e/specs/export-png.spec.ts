@@ -226,7 +226,7 @@ test.describe('exporting the document as a png', () => {
 
     await expect(reduced(erd)).toBeVisible();
     await expect(reduced(erd)).toContainText(
-      `The document is ${OVER_LIMIT}x${OVER_LIMIT}, past what a browser canvas can hold, so the PNG is ${CLAMPED}x${CLAMPED}`
+      `Reduced from ${OVER_LIMIT} × ${OVER_LIMIT} px to ${CLAMPED} × ${CLAMPED} px, past what a browser canvas can hold`
     );
     await expect(generating(erd)).toHaveCount(0);
 
@@ -238,7 +238,7 @@ test.describe('exporting the document as a png', () => {
     expect(shown[1]).toHaveLength(1);
     expect(shown[1][0]).toContain('Exported at a reduced resolution');
     expect(shown[1][0]).toContain(
-      `The document is ${OVER_LIMIT}x${OVER_LIMIT}, past what a browser canvas can hold, so the PNG is ${CLAMPED}x${CLAMPED}`
+      `Reduced from ${OVER_LIMIT} × ${OVER_LIMIT} px to ${CLAMPED} × ${CLAMPED} px, past what a browser canvas can hold`
     );
 
     expect(pngSize(await file.path())).toEqual({

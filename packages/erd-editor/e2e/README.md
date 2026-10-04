@@ -103,11 +103,13 @@ and a read-only editor whose palette and menu offer no Import and Add.
 `export-image-dialog.spec.ts` holds down the dialog every image export goes
 through, from the canvas menu and the palette: it opens on its defaults with
 the PNG button focused and hands the keyboard back on Escape, the png is the
-zoom times the scale (two by default), the background switch leaves the canvas
-transparent, the clipboard receives the png (Chromium with clipboard permissions
-granted), Tab turns round inside the box, a short editor scrolls it to its
-buttons, and while it is open the canvas shortcuts stay off and Space presses
-the focused button. `export-png.spec.ts` drives the same dialog at 1x.
+zoom times the scale (two by default), a canvas ceiling the 2x default runs
+into is told in the toast in the pixels the dialog warned of, the background
+switch leaves the canvas transparent, the clipboard receives the png (Chromium
+with clipboard permissions granted), Tab turns round inside the box, a short
+editor scrolls it to its buttons, and while it is open the canvas shortcuts
+stay off and Space presses the focused button. `export-png.spec.ts` drives the
+same dialog at 1x.
 
 Two more hold down a frame the rest never look at, one on the canvas and one in
 a DOM panel the port left on native drag and drop:

@@ -404,8 +404,8 @@ describe('a box past what a canvas holds', () => {
     expect(drawn.height).toBe(CANVAS_SIDE_MAX);
     expect(reductions).toEqual([
       {
-        documentWidth: box.width,
-        documentHeight: box.height,
+        askedWidth: Math.floor(box.width * 2),
+        askedHeight: Math.floor(box.height * 2),
         width: drawn.width,
         height: drawn.height,
       },

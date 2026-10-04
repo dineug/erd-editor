@@ -18,20 +18,30 @@ export type ImageRequest = Omit<
   'onResolutionReduced' | 'onProgress'
 >;
 
-/**
- * Says what was lost and why, because a png smaller than the document it came
- * from otherwise looks like the editor drew the wrong thing. The document box
- * is scene units around whatever was drawn, so it is rounded to be read.
- */
-export function describeReduction({
-  documentWidth,
-  documentHeight,
-  width,
-  height,
-}: ResolutionReduction) {
-  const box = `${Math.round(documentWidth)}x${Math.round(documentHeight)}`;
+type AskedPixels = Pick<ResolutionReduction, 'askedWidth' | 'askedHeight'>;
 
-  return `The document is ${box}, past what a browser canvas can hold, so the PNG is ${width}x${height}`;
+function reducedFrom({ askedWidth, askedHeight }: AskedPixels, written = '') {
+  return `Reduced from ${askedWidth} × ${askedHeight} px${written}, past what a browser canvas can hold`;
+}
+
+/**
+ * The dialog's warning before any file exists: the pixels the zoom times the
+ * scale asks for, which a canvas ceiling cuts. The toast after it opens alike.
+ */
+export function describeAskedSize(size: AskedPixels) {
+  return reducedFrom(size);
+}
+
+/**
+ * Says what was lost and why, in the pixels the dialog warned of: what the zoom
+ * times the scale asked for, then what was written. A box that fits at 1x can
+ * still outrun a canvas at 2x, so the document's own size explains nothing.
+ */
+export function describeReduction(reduction: ResolutionReduction) {
+  return reducedFrom(
+    reduction,
+    ` to ${reduction.width} × ${reduction.height} px`
+  );
 }
 
 function openToast(emitter: Emitter, title: string, description?: string) {
