@@ -1163,12 +1163,17 @@ CREATE TABLE \`refs\` (
         );
         // The export writes its tables by name but its foreign keys in document
         // order, which the import builds table by table, so a second export
-        // swaps the foreign keys of orders and items.
-        expect(
-          createSchemaSQL(stateOf(again), Database.PostgreSQL)
-            .split('\n\n')
-            .sort()
-        ).toEqual(exported.split('\n\n').sort());
+        // swaps the foreign keys of orders and items, and a third changes nothing.
+        const second = createSchemaSQL(stateOf(again), Database.PostgreSQL);
+        const third = createSchemaSQL(
+          stateOf(parse(second, undefined, Database.PostgreSQL)),
+          Database.PostgreSQL
+        );
+
+        expect(second.split('\n\n').sort()).toEqual(
+          exported.split('\n\n').sort()
+        );
+        expect(third).toBe(second);
       });
 
       it('replaces the default of a column a nextval default is set on, and reads no other SET DEFAULT', () => {
