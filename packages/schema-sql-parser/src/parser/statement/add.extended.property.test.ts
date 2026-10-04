@@ -4,9 +4,9 @@ import { RefPos, StatementType } from '@/parser/statement';
 import { addExtendedPropertyParser } from '@/parser/statement/add.extended.property';
 import { tokenizer } from '@/parser/tokenizer';
 
-const parse = (source: string, start = 0) => {
+const parse = (source: string) => {
   const tokens = tokenizer(source);
-  const $pos: RefPos = { value: start };
+  const $pos: RefPos = { value: 0 };
   const ast = addExtendedPropertyParser(tokens, $pos);
   return { ast, $pos, tokens };
 };

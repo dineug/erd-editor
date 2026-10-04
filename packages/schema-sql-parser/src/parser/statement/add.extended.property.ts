@@ -35,7 +35,8 @@ const ReadParameters = Parameters.filter(
 );
 
 // An unquoted @word is a T-SQL variable, whose value the script does not show.
-const isVariable = (token: Token) => !token.quoted && token.value[0] === '@';
+const isVariable = (token?: Token) =>
+  !!token && !token.quoted && token.value[0] === '@';
 
 // What may join a value to more of it, N'a' + N'b': no literal to read whole.
 const isOperator = (token?: Token) =>
@@ -110,12 +111,9 @@ function toComment(
 ): CommentOnTable | CommentOnColumn | null {
   // A variable leaves the property, its level or its text unknown, and a
   // column's description read as its table's would replace that comment.
-  const hasVariable = ReadParameters.some(parameter => {
-    const token = args.get(parameter);
-    return !!token && isVariable(token);
-  });
-
-  if (hasVariable) return null;
+  if (ReadParameters.some(parameter => isVariable(args.get(parameter)))) {
+    return null;
+  }
 
   const nameOf = (parameter: string) => args.get(parameter)?.value ?? '';
   const value = args.get('@VALUE');

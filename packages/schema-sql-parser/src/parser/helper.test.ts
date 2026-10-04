@@ -1112,20 +1112,24 @@ describe('matchAddExtendedProperty', () => {
     ["EXEC [sys].[sp_addextendedproperty] N'MS_Description'", 4],
     ["EXEC [master].[sys].[SP_ADDEXTENDEDPROPERTY] N'MS_Description'", 6],
   ])('spans the call head of %s', (sql, length) => {
-    expect(matchAddExtendedProperty(tokenizer(sql))(0)).toBe(length);
-    expect(isAddExtendedProperty(tokenizer(sql))(0)).toBe(true);
+    const tokens = tokenizer(sql);
+
+    expect(matchAddExtendedProperty(tokens)(0)).toBe(length);
+    expect(isAddExtendedProperty(tokens)(0)).toBe(true);
   });
 
   it.each([
-    ["sys.sp_addextendedproperty N'MS_Description'"],
-    ["EXEC sys.sp_dropextendedproperty N'MS_Description'"],
-    ["EXEC sp_addextendedproperty_x N'MS_Description'"],
-    ["EXEC @rc = sys.sp_addextendedproperty N'MS_Description'"],
-    ["EXEC ('sp_addextendedproperty')"],
-    ['EXEC'],
+    "sys.sp_addextendedproperty N'MS_Description'",
+    "EXEC sys.sp_dropextendedproperty N'MS_Description'",
+    "EXEC sp_addextendedproperty_x N'MS_Description'",
+    "EXEC @rc = sys.sp_addextendedproperty N'MS_Description'",
+    "EXEC ('sp_addextendedproperty')",
+    'EXEC',
   ])('rejects %s', sql => {
-    expect(matchAddExtendedProperty(tokenizer(sql))(0)).toBe(0);
-    expect(isAddExtendedProperty(tokenizer(sql))(0)).toBe(false);
+    const tokens = tokenizer(sql);
+
+    expect(matchAddExtendedProperty(tokens)(0)).toBe(0);
+    expect(isAddExtendedProperty(tokens)(0)).toBe(false);
   });
 });
 
