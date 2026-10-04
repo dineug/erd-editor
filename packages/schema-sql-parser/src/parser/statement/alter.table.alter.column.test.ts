@@ -53,13 +53,18 @@ describe('alterTableAlterColumnParser', () => {
       't',
       'Id',
     ],
-    ['ALTER TABLE ONLY t ALTER c SET DEFAULT (nextval(s));', 't', 'c'],
+    ["ALTER TABLE ONLY t ALTER c SET DEFAULT (nextval('s'));", 't', 'c'],
     [
       'ALTER TABLE ONLY "public"."Orders" ALTER COLUMN "Id" SET DEFAULT nextval(\'public."Orders_Id_seq"\'::regclass);',
       'Orders',
       'Id',
     ],
-    ['ALTER TABLE only ALTER COLUMN c SET DEFAULT nextval(1);', 'only', 'c'],
+    ["ALTER TABLE only ALTER COLUMN c SET DEFAULT nextval('s');", 'only', 'c'],
+    [
+      "ALTER TABLE ONLY public.t ALTER COLUMN id SET DEFAULT nextval(('public.t_id_seq'::text)::regclass);",
+      't',
+      'id',
+    ],
     [
       'ALTER TABLE ONLY "public"."users" ALTER COLUMN "id" SET DEFAULT "nextval"(\'"public"."users_id_seq"\'::"regclass");',
       'users',
@@ -72,6 +77,8 @@ describe('alterTableAlterColumnParser', () => {
   it.each<string>([
     'ALTER TABLE ONLY t ALTER COLUMN c SET DEFAULT 0;',
     "ALTER TABLE ONLY t ALTER COLUMN c SET DEFAULT nextval('s') + 1;",
+    'ALTER TABLE ONLY t ALTER c SET DEFAULT (nextval(s));',
+    'ALTER TABLE t ALTER COLUMN c SET DEFAULT (NEXTVAL(shop.order_seq));',
     'ALTER TABLE t ALTER COLUMN c SET DEFAULT NEXT VALUE FOR s;',
     'ALTER TABLE t ALTER COLUMN c SET NOT NULL;',
     'ALTER TABLE t ALTER COLUMN c DROP DEFAULT;',
@@ -79,7 +86,7 @@ describe('alterTableAlterColumnParser', () => {
     'ALTER TABLE t ALTER COLUMN c TYPE bigint;',
     'ALTER TABLE t ALTER COLUMN c ADD GENERATED ALWAYS AS (a + 1) STORED;',
     'ALTER TABLE t ALTER COLUMN c ADD GENERATED ALWAYS AS',
-    'ALTER TABLE t ALTER COLUMN c "SET" DEFAULT nextval(1);',
+    'ALTER TABLE t ALTER COLUMN c "SET" DEFAULT nextval(\'s\');',
     'ALTER TABLE t ALTER COLUMN;',
     'ALTER TABLE t ALTER COLUMN c',
   ])('reads no auto increment out of %s', source => {

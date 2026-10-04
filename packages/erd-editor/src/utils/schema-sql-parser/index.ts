@@ -286,9 +286,9 @@ function mergeTables({
     column.default = value;
   });
 
-  // pg_dump sets a serial column's nextval(...) default and adds an identity
+  // pg_dump sets a serial column's nextval('s') default and adds an identity
   // column's identity after its table: either is the auto increment flag, and
-  // leaves no default, as an inline nextval(...) does.
+  // leaves no default, as an inline nextval('s') does.
   autoIncrements.forEach(({ name, columnName }) => {
     const table = findByName(tables, name);
     if (!table) return;

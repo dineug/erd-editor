@@ -719,6 +719,62 @@ GO
         ]);
         expect(tablesOf(schema).map(table => table.name)).toEqual(['t']);
       });
+
+      it("reads the late-bound nextval(('s'::text)::regclass) of an old serial column as auto increment", () => {
+        const schema = parse(
+          `
+            CREATE TABLE public.t (
+              id integer DEFAULT nextval(('public.t_id_seq'::text)::regclass) NOT NULL,
+              code integer DEFAULT 0
+            );
+            ALTER TABLE ONLY public.t ALTER COLUMN code SET DEFAULT nextval(('public.t_code_seq'::text)::regclass);
+          `,
+          undefined,
+          Database.PostgreSQL
+        );
+
+        expect(shapesOf(schema, tableByName(schema, 't'))).toEqual([
+          ['id', '', true],
+          ['code', '', true],
+        ]);
+        expect(
+          createSchemaSQL(stateOf(schema), Database.PostgreSQL)
+        ).not.toContain('nextval');
+      });
+
+      it('keeps a MariaDB nextval on a bare sequence name as the default its export writes', () => {
+        const schema = parse(
+          `
+            CREATE TABLE \`orders\` (
+              \`id\` int(11) NOT NULL DEFAULT nextval(\`shop\`.\`order_seq\`)
+            );
+          `,
+          undefined,
+          Database.MariaDB
+        );
+        const exported = createSchemaSQL(stateOf(schema), Database.MariaDB);
+
+        expect(shapesOf(schema, tableByName(schema, 'orders'))).toEqual([
+          ['id', 'nextval(`shop`.`order_seq`)', false],
+        ]);
+        expect(exported).toContain('DEFAULT nextval(`shop`.`order_seq`)');
+        expect(exported).not.toContain('AUTO_INCREMENT');
+      });
+
+      it('leaves the default a MariaDB SET DEFAULT nextval would set, as any SET DEFAULT but a serial one', () => {
+        const schema = parse(
+          `
+            CREATE TABLE \`orders\` (\`ref\` bigint(20) DEFAULT 0);
+            ALTER TABLE \`orders\` ALTER COLUMN \`ref\` SET DEFAULT (NEXTVAL(order_seq));
+          `,
+          undefined,
+          Database.MariaDB
+        );
+
+        expect(shapesOf(schema, tableByName(schema, 'orders'))).toEqual([
+          ['ref', '0', false],
+        ]);
+      });
     });
 
     it('flags no column by the CHECK after the UNIQUE of a column an ALTER adds', () => {

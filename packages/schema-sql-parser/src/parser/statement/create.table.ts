@@ -660,7 +660,7 @@ function createTableColumnsParser(
 
       if (!identity) {
         $pos.value += onNullSpan($pos.value);
-        // A serial column's nextval(...) is its auto increment, which each export
+        // A serial column's nextval('s') is its auto increment, which each export
         // writes its own way; the sequence it calls has no place in the document.
         const sequence = nextvalDefault($pos.value);
         const value = defaultExpressionParser(tokens, $pos, database);

@@ -270,11 +270,43 @@ describe('isNextvalDefault', () => {
     "NEXTVAL('s'), b INT",
     "(nextval('s'::regclass))",
     'nextval(\'public."Users_Id_seq"\'::regclass)',
-    'nextval(s)',
+    "nextval('public.s')",
+    "nextval( 's' :: regclass )",
+    "nextval('s'::pg_catalog.regclass)",
+    "nextval('s'::text)",
+    "nextval(('public.s'::text)::regclass)",
+    "nextval('s'::text::regclass)",
+    "nextval(('s'))",
+    "nextval(('s'::regclass))",
+    "nextval(E's')",
+    "nextval(U&'s'::regclass)",
     '"nextval"(\'s\')',
     '"nextval"(\'"public"."users_id_seq"\'::"regclass")',
   ])('reads %s as one call of nextval', source => {
     expect(isNextval(source)).toBe(true);
+  });
+
+  // PostgreSQL names the sequence in a string literal, MariaDB bare; only the
+  // first shape is a serial column's, and anything else stays a default.
+  it.each<string>([
+    'nextval(db.seq)',
+    'NEXTVAL(seq)',
+    'nextval(`shop`.`order_seq`)',
+    '(nextval(s))',
+    'nextval("s")',
+    'nextval(1)',
+    'nextval()',
+    "nextval(N's')",
+    "nextval(B'1')",
+    "nextval('s', 1)",
+    "nextval('s' || 'x')",
+    "nextval('s'::)",
+    'nextval(::regclass)',
+    "nextval(('s') + 1)",
+    "nextval('s'::regclass + 1)",
+    "nextval(lower('s'))",
+  ])('reads %s as no call of nextval on one quoted sequence name', source => {
+    expect(isNextval(source)).toBe(false);
   });
 
   it.each<string>([

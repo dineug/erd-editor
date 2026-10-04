@@ -29,7 +29,7 @@ const AddIdentity: ReadonlyArray<ReadonlyArray<string>> = [
 /**
  * Reads ALTER TABLE [ONLY] t ALTER [COLUMN] c ... and leaves $pos past it, with
  * one statement per action that makes its column auto increment, SET DEFAULT
- * nextval(...) or ADD GENERATED ... AS IDENTITY, and none for any other action.
+ * nextval('s') or ADD GENERATED ... AS IDENTITY, and none for any other action.
  */
 export function alterTableAlterColumnParser(
   tokens: Token[],
