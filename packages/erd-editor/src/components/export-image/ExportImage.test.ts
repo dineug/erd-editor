@@ -170,6 +170,23 @@ const click = async (el: HTMLElement | null) => {
   await flush();
 };
 
+/** Escape pressed inside the box, which the dialog spends on closing. */
+const pressEscape = async () => {
+  dialog()!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+  );
+  await flush();
+};
+
+/** The stop shortcut as the element hears it from outside the box. */
+const pressStop = async (app: AppContext) => {
+  app.shortcut$.next({
+    type: KeyBindingName.stop,
+    event: new KeyboardEvent('keydown'),
+  });
+  await flush();
+};
+
 const image = () =>
   mounted!.container.querySelector<HTMLImageElement>(
     '.export-image-preview img'
@@ -520,10 +537,7 @@ describe('ExportImage preview', () => {
     expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
     expect(image()?.getAttribute('src')).toBe('blob:preview-2');
 
-    dialog()!.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
-    );
-    await flush();
+    await pressEscape();
 
     expect(vi.mocked(URL.revokeObjectURL).mock.calls).toEqual([
       ['blob:preview-1'],
@@ -633,10 +647,7 @@ describe('ExportImage closing', () => {
     const app = await setup();
     await open(app);
 
-    dialog()!.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
-    );
-    await flush();
+    await pressEscape();
 
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
     expect(dialog()).toBeNull();
@@ -647,11 +658,7 @@ describe('ExportImage closing', () => {
     const app = await setup();
     await open(app);
 
-    app.shortcut$.next({
-      type: KeyBindingName.stop,
-      event: new KeyboardEvent('keydown'),
-    });
-    await flush();
+    await pressStop(app);
 
     expect(dialog()).toBeNull();
   });
@@ -663,11 +670,7 @@ describe('ExportImage closing', () => {
       dispatched.push(...actions.map(action => action.type))
     );
 
-    app.shortcut$.next({
-      type: KeyBindingName.stop,
-      event: new KeyboardEvent('keydown'),
-    });
-    await flush();
+    await pressStop(app);
 
     expect(dispatched).toEqual([]);
     unsubscribe();
@@ -706,11 +709,7 @@ describe('ExportImage closing', () => {
     await click(switchOf('Dark mode'));
     await click(buttonOf('1x'));
 
-    app.shortcut$.next({
-      type: KeyBindingName.stop,
-      event: new KeyboardEvent('keydown'),
-    });
-    await flush();
+    await pressStop(app);
     await open(app);
 
     expect(switchOf('Background')?.getAttribute('aria-checked')).toBe('false');

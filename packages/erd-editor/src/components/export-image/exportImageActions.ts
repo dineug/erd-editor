@@ -53,6 +53,29 @@ function openToast(emitter: Emitter, title: string, description?: string) {
 }
 
 /**
+ * Waits out the work under a busy toast shown only while it runs long, and
+ * settles once that toast is gone, to the work's error or to null.
+ */
+async function settleUnderBusyToast(
+  emitter: Emitter,
+  work: Promise<unknown>,
+  description: string
+): Promise<{ error: unknown } | null> {
+  const outcome = work.then(
+    () => null,
+    (error: unknown) => ({ error })
+  );
+
+  await openToastWhileRunning(
+    emitter,
+    outcome,
+    html`<${Toast} busy=${true} description=${description} />`
+  );
+
+  return outcome;
+}
+
+/**
  * Draws the document into a png file, saying so while it draws and reporting
  * afterwards. The two messages are sequenced rather than stacked, so what
  * became of the file replaces the message about making it.
@@ -67,7 +90,7 @@ export async function exportImagePng(
 ) {
   let reduction: ResolutionReduction | null = null;
 
-  const outcome = exportPNG(
+  const exporting = exportPNG(
     {
       ...request,
       // Held, not shown: the file does not exist yet, and this message belongs
@@ -77,18 +100,12 @@ export async function exportImagePng(
       },
     },
     databaseName
-  ).then(
-    () => null,
-    (error: unknown) => ({ error })
   );
-
-  await openToastWhileRunning(
+  const failure = await settleUnderBusyToast(
     emitter,
-    outcome,
-    html`<${Toast} busy=${true} description=${'Exporting PNG…'} />`
+    exporting,
+    'Exporting PNG…'
   );
-
-  const failure = await outcome;
 
   if (failure) {
     console.error(
@@ -127,7 +144,7 @@ export async function copyImagePng(
   let reduction: ResolutionReduction | null = null;
   let renderError: unknown = null;
 
-  const outcome = copyImageToClipboard(() =>
+  const copying = copyImageToClipboard(() =>
     createDocumentPng({
       ...request,
       onResolutionReduced: value => {
@@ -139,18 +156,12 @@ export async function copyImagePng(
       renderError = error;
       throw error;
     })
-  ).then(
-    () => null,
-    (error: unknown) => ({ error })
   );
-
-  await openToastWhileRunning(
+  const failure = await settleUnderBusyToast(
     emitter,
-    outcome,
-    html`<${Toast} busy=${true} description=${'Copying image…'} />`
+    copying,
+    'Copying image…'
   );
-
-  const failure = await outcome;
 
   if (failure) {
     console.error(

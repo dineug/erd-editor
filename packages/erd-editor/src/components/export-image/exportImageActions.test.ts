@@ -52,6 +52,8 @@ const REDUCED_TEXT =
 
 let app: AppContext;
 let exported: Array<{ type: string; fileName: string }>;
+let log: string[];
+let stopRecording: () => void;
 
 const request = (): ImageRequest => ({
   doc: '{"doc":{}}',
@@ -67,11 +69,14 @@ beforeEach(() => {
   setExportFileCallback((blob, options) => {
     exported.push({ type: blob.type, fileName: options.fileName });
   });
+  log = [];
+  stopRecording = recordToasts(log);
   vi.mocked(createDocumentPng).mockClear();
   vi.mocked(copyImageToClipboard).mockClear();
 });
 
 afterEach(() => {
+  stopRecording();
   setExportFileCallback(null);
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -99,12 +104,12 @@ const labelOf = (payload: any) =>
  * Every open and close of a toast in the order it happened, which is the one
  * way to tell a sequence of messages from a pile of them.
  */
-function recordToasts(log: string[]) {
+function recordToasts(entries: string[]) {
   return app.emitter.on({
     openToast: ({ payload }) => {
       const label = labelOf(payload);
-      log.push(`open ${label}`);
-      payload.close?.then(() => log.push(`close ${label}`));
+      entries.push(`open ${label}`);
+      payload.close?.then(() => entries.push(`close ${label}`));
     },
   });
 }
@@ -139,22 +144,16 @@ describe('exportImagePng', () => {
   });
 
   it('says nothing when the image kept every pixel and drew quickly', async () => {
-    const log: string[] = [];
-    const off = recordToasts(log);
-
     await exportImagePng(app, request(), 'shop');
     await flush();
 
     expect(exported).toHaveLength(1);
     expect(log).toEqual([]);
-    off();
   });
 
   it('reports rather than swallows a render failure, and writes no file', async () => {
     vi.mocked(createDocumentPng).mockRejectedValueOnce(new Error('no canvas'));
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     await exportImagePng(app, request(), 'shop');
 
@@ -163,7 +162,6 @@ describe('exportImagePng', () => {
     expect(log).toEqual([
       "open Couldn't export the PNG | See the browser console for the error",
     ]);
-    off();
   });
 
   it('tells the user what it gave up when the image is scaled down', async () => {
@@ -171,8 +169,6 @@ describe('exportImagePng', () => {
       options.onResolutionReduced?.(REDUCTION);
       return png();
     });
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     await exportImagePng(app, request(), 'shop');
 
@@ -180,7 +176,6 @@ describe('exportImagePng', () => {
     expect(log).toEqual([
       `open Exported at a reduced resolution | ${REDUCED_TEXT}`,
     ]);
-    off();
   });
 
   it('keeps the generating toast up until the file exists, then takes it away first', async () => {
@@ -191,8 +186,6 @@ describe('exportImagePng', () => {
       options.onResolutionReduced?.(REDUCTION);
       return png();
     });
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     const done = exportImagePng(app, request(), 'shop');
     await vi.advanceTimersByTimeAsync(399);
@@ -212,7 +205,6 @@ describe('exportImagePng', () => {
       `open Exported at a reduced resolution | ${REDUCED_TEXT}`,
     ]);
     expect(exported).toHaveLength(1);
-    off();
   });
 });
 
@@ -232,14 +224,10 @@ describe('copyImagePng', () => {
   });
 
   it('says the image is on the clipboard and writes no file', async () => {
-    const log: string[] = [];
-    const off = recordToasts(log);
-
     await copyImagePng(app, request());
 
     expect(log).toEqual(['open Copied the image to the clipboard']);
     expect(exported).toEqual([]);
-    off();
   });
 
   it('says what it gave up when the copied image is scaled down', async () => {
@@ -247,23 +235,18 @@ describe('copyImagePng', () => {
       options.onResolutionReduced?.(REDUCTION);
       return png();
     });
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     await copyImagePng(app, request());
 
     expect(log).toEqual([
       `open Copied at a reduced resolution | ${REDUCED_TEXT}`,
     ]);
-    off();
   });
 
   it('tells the user to save a PNG when the clipboard refuses', async () => {
     const denied = new Error('NotAllowedError');
     vi.mocked(copyImageToClipboard).mockRejectedValueOnce(denied);
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     await copyImagePng(app, request());
 
@@ -274,7 +257,6 @@ describe('copyImagePng', () => {
       '[export-png] the image could not be copied',
       denied
     );
-    off();
   });
 
   it('logs why the drawing failed rather than the refusal it caused', async () => {
@@ -286,8 +268,6 @@ describe('copyImagePng', () => {
       throw new Error('NotAllowedError');
     });
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     await copyImagePng(app, request());
 
@@ -298,15 +278,12 @@ describe('copyImagePng', () => {
       '[export-png] the image could not be copied',
       broken
     );
-    off();
   });
 
   it('says it is copying while the image runs long, and takes that away first', async () => {
     vi.useFakeTimers();
     const render = createDeferred<Blob>();
     vi.mocked(createDocumentPng).mockReturnValueOnce(render.promise);
-    const log: string[] = [];
-    const off = recordToasts(log);
 
     const done = copyImagePng(app, request());
     await vi.advanceTimersByTimeAsync(400);
@@ -321,6 +298,5 @@ describe('copyImagePng', () => {
       'close Copying image…',
       'open Copied the image to the clipboard',
     ]);
-    off();
   });
 });

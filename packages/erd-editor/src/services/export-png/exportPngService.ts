@@ -35,25 +35,15 @@ export class ExportPngService {
   }
 
   async render(request: ExportPngRequest): Promise<RenderPngResult> {
-    const toWidth = this.createMatchingToWidth(request.fontProbe);
-
-    return renderDocumentPng({ ...request, toWidth });
-  }
-
-  /**
-   * This realm's measure, once it is shown to lay the probe out as the asking
-   * realm did. Every drawing a request asks for goes through it first.
-   */
-  private createMatchingToWidth(fontProbe: number[]): ToWidth {
     const toWidth = this.createToWidth();
     const probe = measureFontProbe(toWidth);
-    if (!sameFontProbe(probe, fontProbe)) {
+    if (!sameFontProbe(probe, request.fontProbe)) {
       throw new Error(
-        `[export-png] this realm measures text differently: ${probe.join()} against ${fontProbe.join()}`
+        `[export-png] this realm measures text differently: ${probe.join()} against ${request.fontProbe.join()}`
       );
     }
 
-    return toWidth;
+    return renderDocumentPng({ ...request, toWidth });
   }
 
   private createToWidth(): ToWidth {

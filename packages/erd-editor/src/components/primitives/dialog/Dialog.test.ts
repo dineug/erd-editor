@@ -20,16 +20,19 @@ type Options = {
   controls?: boolean;
 };
 
-async function setup({ autofocus = true, controls = true }: Options = {}) {
+function contentOf({ autofocus = true, controls = true }: Options) {
+  if (!controls) return html`<p>Nothing to press</p>`;
+  if (!autofocus) return html`<button type="button">First</button>`;
+
+  return html`<button type="button">First</button
+    ><button type="button" class="target" data-autofocus="true">
+      Target
+    </button>`;
+}
+
+async function setup(options: Options = {}) {
   const onClose = vi.fn();
-  const content = !controls
-    ? html`<p>Nothing to press</p>`
-    : autofocus
-      ? html`<button type="button">First</button
-          ><button type="button" class="target" data-autofocus="true">
-            Target
-          </button>`
-      : html`<button type="button">First</button>`;
+  const content = contentOf(options);
 
   mounted = await mountAndFlush(
     html`<${Dialog}
