@@ -781,6 +781,123 @@ describe('schema-graphql-parser/convert self relationship', () => {
   });
 });
 
+describe('schema-graphql-parser/convert pairs by name', () => {
+  const toUser = (relationshipType: number, column: string) => ({
+    relationshipType,
+    identification: false,
+    start: { table: 'User', columns: ['id'] },
+    end: { table: 'Order', columns: [column] },
+  });
+
+  it('pairs each field with the reciprocal named by and its name', () => {
+    const schema = convert(`
+      type User {
+        id: ID!
+        orderListByBuyer: [Order!]!
+        orderListBySeller: [Order!]!
+      }
+      type Order { id: ID! buyer: User seller: User! }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroN, 'buyerId'),
+      toUser(RelationshipType.OneN, 'sellerId'),
+    ]);
+  });
+
+  it('pairs by name in any case, with or without underscores', () => {
+    const schema = convert(`
+      type User {
+        id: ID!
+        order_list_by_buyer: [Order!]!
+        OrderListBySeller: [Order!]!
+      }
+      type Order { id: ID! Buyer: User seller: User }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroN, 'BuyerId'),
+      toUser(RelationshipType.ZeroN, 'sellerId'),
+    ]);
+  });
+
+  it('pairs the one field left once the named pairs are taken', () => {
+    const schema = convert(`
+      type Order { id: ID! user: User seller: User }
+      type User {
+        id: ID!
+        orderList: [Order!]!
+        orderListBySeller: [Order!]!
+      }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroN, 'userId'),
+      toUser(RelationshipType.ZeroN, 'sellerId'),
+    ]);
+  });
+
+  it('puts the foreign key on the field the other side is named after', () => {
+    const schema = convert(`
+      type User { id: ID! orderByBuyer: Order orderBySeller: Order }
+      type Order { id: ID! buyer: User seller: User }
+    `);
+
+    expect(columnNames(schema, 'User')).toEqual(['id']);
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroOne, 'buyerId'),
+      toUser(RelationshipType.ZeroOne, 'sellerId'),
+    ]);
+  });
+
+  it('pairs two relationships back to the same table', () => {
+    const schema = convert(`
+      type Employee {
+        id: ID!
+        manager: Employee
+        mentor: Employee
+        employeeListByManager: [Employee!]!
+        employeeByMentor: Employee
+      }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      {
+        relationshipType: RelationshipType.ZeroN,
+        identification: false,
+        start: { table: 'Employee', columns: ['id'] },
+        end: { table: 'Employee', columns: ['managerId'] },
+      },
+      {
+        relationshipType: RelationshipType.ZeroOne,
+        identification: false,
+        start: { table: 'Employee', columns: ['id'] },
+        end: { table: 'Employee', columns: ['mentorId'] },
+      },
+    ]);
+  });
+
+  it('leaves the pairs a @relation(name:) names to it', () => {
+    const schema = convert(`
+      type Order {
+        id: ID!
+        buyer: User @relation(name: "Buyer")
+        seller: User @relation(name: "Seller")
+      }
+      type User {
+        id: ID!
+        orderByBuyer: Order @relation(name: "Seller")
+        orderListBySeller: [Order!]! @relation(name: "Buyer")
+      }
+    `);
+
+    expect(relationshipShapes(schema)).toEqual([
+      toUser(RelationshipType.ZeroN, 'buyerId'),
+      toUser(RelationshipType.ZeroOne, 'sellerId'),
+    ]);
+  });
+});
+
 describe('schema-graphql-parser/convert unresolvable parent', () => {
   const SDL = `
     type Settings { theme: String! }

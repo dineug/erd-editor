@@ -40,6 +40,10 @@ type ReferenceEdge = {
   target: TableContext;
   field: GraphQLField;
   consumed: boolean;
+  /** On the side holding the foreign key, the reciprocal pairByName found. */
+  namedReciprocal: ReferenceEdge | null;
+  /** Either side of a pair pairByName found, which no other edge claims. */
+  named: boolean;
 };
 
 type RelationshipInput = {
@@ -55,6 +59,8 @@ type ConvertState = {
   claimedColumnIds: Set<string>;
   relationshipKeys: Set<string>;
 };
+
+const UNDERSCORES = /_/g;
 
 export function convertToSchema(
   model: GraphQLModel,
@@ -255,7 +261,14 @@ function convertRelationships(
       const target = findContext(field.typeRef.named);
       if (!target) return;
 
-      edges.push({ source, target, field, consumed: false });
+      edges.push({
+        source,
+        target,
+        field,
+        consumed: false,
+        namedReciprocal: null,
+        named: false,
+      });
     });
   });
 
@@ -264,6 +277,7 @@ function convertRelationships(
     relationshipKeys: new Set(),
   };
   const singularEdges = edges.filter(edge => !edge.field.typeRef.isList);
+  pairByName(edges, singularEdges);
 
   // @relation(fields:) marks the side that owns the foreign key, so those edges
   // claim their reciprocal before an unannotated one can.
@@ -271,9 +285,9 @@ function convertRelationships(
     ...singularEdges.filter(edge => edge.field.relationFields.length),
     ...singularEdges.filter(edge => !edge.field.relationFields.length),
   ].forEach(edge => {
-    if (edge.consumed) return;
+    if (edge.consumed || (edge.named && !edge.namedReciprocal)) return;
 
-    const reciprocal = findReciprocalEdge(edges, edge);
+    const reciprocal = edge.namedReciprocal ?? findReciprocalEdge(edges, edge);
     edge.consumed = true;
     if (reciprocal) {
       reciprocal.consumed = true;
@@ -321,6 +335,39 @@ function convertRelationships(
     });
 }
 
+/**
+ * Pairs a singular field with the one reciprocal named by and its name, in any
+ * case, underscores aside, as the GraphQL generator names the two sides of a
+ * relationship sharing its pair of tables (buyer, orderListByBuyer).
+ */
+function pairByName(edges: ReferenceEdge[], singularEdges: ReferenceEdge[]) {
+  singularEdges.forEach(edge => {
+    if (edge.named || edge.field.relationName) return;
+
+    const suffix = `by${toPairingKey(edge.field.name)}`;
+    const matches = edges.filter(
+      candidate =>
+        candidate !== edge &&
+        !candidate.named &&
+        !candidate.field.relationName &&
+        !candidate.field.relationFields.length &&
+        candidate.source === edge.target &&
+        candidate.target === edge.source &&
+        toPairingKey(candidate.field.name).endsWith(suffix)
+    );
+    if (matches.length !== 1) return;
+
+    const [reciprocal] = matches;
+    edge.namedReciprocal = reciprocal;
+    edge.named = true;
+    reciprocal.named = true;
+  });
+}
+
+function toPairingKey(name: string): string {
+  return name.replace(UNDERSCORES, '').toLowerCase();
+}
+
 function findReciprocalEdge(
   edges: ReferenceEdge[],
   edge: ReferenceEdge
@@ -329,6 +376,7 @@ function findReciprocalEdge(
     candidate =>
       candidate !== edge &&
       !candidate.consumed &&
+      !candidate.named &&
       candidate.source === edge.target &&
       candidate.target === edge.source
   );
@@ -351,6 +399,7 @@ function findReciprocalEdge(
   const forward = edges.filter(
     candidate =>
       !candidate.consumed &&
+      !candidate.named &&
       candidate.source === edge.source &&
       candidate.target === edge.target
   );
