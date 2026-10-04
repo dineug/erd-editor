@@ -18,6 +18,7 @@ import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
+  removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import {
   actions$,
@@ -655,6 +656,36 @@ describe('changeColumnsPrimaryKeyAction$', () => {
     ]);
     expect(emitted(store, ['nope'])).toEqual([]);
     expect(emitted(store, [])).toEqual([]);
+  });
+
+  it('passes over a column taken out of the table, whose entity stays behind', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2']);
+    setKeys(store, ['c1']);
+    // The bare atom an undo of an add, a peer or an agent sends: a selection
+    // can still name the column, and only table.columnIds lets go of it.
+    store.dispatchSync(removeColumnAction({ id: 'c2', tableId: 't1' }));
+    expect(column(store, 'c2')).toBeDefined();
+    expect(table(store, 't1').columnIds).toEqual(['c1']);
+
+    expect(emitted(store, ['c2', 'c1'])).toEqual([
+      {
+        type: changeColumnPrimaryKeyAction.type,
+        payload: { tableId: 't1', id: 'c1', value: false },
+      },
+    ]);
+    expect(emitted(store, ['c2'])).toEqual([]);
+  });
+
+  it('sends nothing for a table that is not there', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+
+    expect(
+      compositionActionsFlat(store.state, store.context, [
+        changeColumnsPrimaryKeyAction$('nope', ['c1']),
+      ])
+    ).toEqual([]);
   });
 
   it('leaves a relationship on the table as it was', () => {

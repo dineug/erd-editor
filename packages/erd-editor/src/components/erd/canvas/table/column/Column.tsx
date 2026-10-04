@@ -70,7 +70,7 @@ import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import { tableRowHeight } from '@/utils/calcTable';
-import { isMainButtonPress } from '@/utils/domEvent';
+import { isMainButtonPress, isSecondaryButtonPress } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -177,9 +177,6 @@ type ColumnOrderTpl = {
   template: DOMTemplateLiterals | null;
 };
 
-/** MouseEvent.button of the secondary button, the press a context menu follows. */
-const RIGHT_BUTTON = 2;
-
 /** Which of the three key colours a column's key bits paint it, if any. */
 const keyFill = (keys: number, theme: Theme) => {
   const isPrimaryKey = bHas(keys, ColumnUIKey.primaryKey);
@@ -277,7 +274,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
 
     const focused = focusedPress === event.evt;
     focusedPress = null;
-    if (focused || event.evt.button !== RIGHT_BUTTON) return;
+    if (focused || !isSecondaryButtonPress(event.evt)) return;
 
     // A right press on the key, between two cells or on an alternate key mark
     // focuses the row too, so the menu it opens never acts on a stale focus.
@@ -322,7 +319,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
    * selects its row alone; any other press reads its modifier keys.
    */
   const pressSelection = (evt: MouseEvent) => {
-    if (evt.button !== RIGHT_BUTTON) {
+    if (!isSecondaryButtonPress(evt)) {
       return { $mod: isMod(evt), shiftKey: evt.shiftKey };
     }
 

@@ -23,7 +23,10 @@ import {
 } from '@/engine/modules/editor/utils/focus';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  removeColumnAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { createStore, Store } from '@/engine/store';
 
 const TABLE_ID = 'table-1';
@@ -260,17 +263,17 @@ describe('getRemoveFirstColumnId', () => {
 describe('getFocusedColumnIds', () => {
   it('is empty while no table or no column is focused', () => {
     const store = createTestStore(['c1', 'c2']);
-    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual([]);
+    expect(getFocusedColumnIds(store.state)).toEqual([]);
 
     focusTable(store, FocusType.tableName);
-    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual([]);
+    expect(getFocusedColumnIds(store.state)).toEqual([]);
   });
 
   it('is the focused column alone while it is the only one selected', () => {
     const store = createTestStore(['c1', 'c2']);
     focusColumn(store, 'c2', FocusType.columnDataType);
 
-    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual(['c2']);
+    expect(getFocusedColumnIds(store.state)).toEqual(['c2']);
   });
 
   it('is the whole selection, in its order, once the focus is one of several', () => {
@@ -278,10 +281,7 @@ describe('getFocusedColumnIds', () => {
     focusColumn(store, 'c3', FocusType.columnName);
     focusColumn(store, 'c1', FocusType.columnName, { $mod: true });
 
-    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual([
-      'c3',
-      'c1',
-    ]);
+    expect(getFocusedColumnIds(store.state)).toEqual(['c3', 'c1']);
   });
 
   it('is the focused column alone while the selection leaves it out', () => {
@@ -289,7 +289,30 @@ describe('getFocusedColumnIds', () => {
     focusColumn(store, 'c1', FocusType.columnName);
     getFocus(store).selectColumnIds = ['c2', 'c3'];
 
-    expect(getFocusedColumnIds(store.state.editor.focusTable)).toEqual(['c1']);
+    expect(getFocusedColumnIds(store.state)).toEqual(['c1']);
+  });
+
+  it('leaves out a selected column taken out of the table', () => {
+    const store = createTestStore(['c1', 'c2', 'c3']);
+    focusColumn(store, 'c1', FocusType.columnName);
+    focusColumn(store, 'c2', FocusType.columnName, { $mod: true });
+    focusColumn(store, 'c3', FocusType.columnName, { $mod: true });
+
+    store.dispatchSync(removeColumnAction({ id: 'c2', tableId: TABLE_ID }));
+    expect(getFocus(store).selectColumnIds).toEqual(['c1', 'c2', 'c3']);
+    expect(getFocusedColumnIds(store.state)).toEqual(['c1', 'c3']);
+
+    store.dispatchSync(removeColumnAction({ id: 'c1', tableId: TABLE_ID }));
+    expect(getFocusedColumnIds(store.state)).toEqual(['c3']);
+  });
+
+  it('is empty while the focused table is not there', () => {
+    const store = createTestStore(['c1']);
+    focusMissingTable(store, FocusType.columnName);
+    getFocus(store).columnId = 'c1';
+    getFocus(store).selectColumnIds = ['c1'];
+
+    expect(getFocusedColumnIds(store.state)).toEqual([]);
   });
 });
 

@@ -935,6 +935,37 @@ describe('what a right press on a row focuses', () => {
     expect(app.store.state.editor.focusTable?.columnId).toBe(secondId);
   });
 
+  it('treats a Ctrl press outside the cells as a left press, as a macOS Ctrl+click is', async () => {
+    const { app, stage, secondId } = await setupSelection(false);
+
+    for (const name of ['column-key', 'column-row-background']) {
+      fireScenePointer(named(rowOf(stage), name), 'mousedown', {
+        button: 0,
+        ctrlKey: true,
+      });
+      releasePointer();
+      await settle();
+
+      expect(app.store.state.editor.focusTable).toMatchObject({
+        columnId: secondId,
+        selectColumnIds: [secondId],
+      });
+    }
+  });
+
+  it('keeps the cell a right press focused, which the row then leaves alone', async () => {
+    const { app, stage, column } = await setupSelection(false);
+
+    fireScenePointer(named(rowOf(stage), 'columnDataType'), 'mousedown', RIGHT);
+    await settle();
+
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId: column.id,
+      focusType: FocusType.columnDataType,
+      selectColumnIds: [column.id],
+    });
+  });
+
   it('focuses nothing in a view', async () => {
     const { app, stage, secondId } = await setupSelection(false, {
       source: 'flow',

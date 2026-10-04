@@ -111,7 +111,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     store.dispatch(
       changeColumnsPrimaryKeyAction$(
         focusTable.tableId,
-        getFocusedColumnIds(focusTable)
+        getFocusedColumnIds(store.state)
       )
     );
     props.onClose();
@@ -173,8 +173,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     const focusesGroup =
       Boolean(props.tableId) &&
       focusCentersOf(store.state.editor.selectedMap, props.tableId).length > 1;
-    const keysSelection =
-      getFocusedColumnIds(store.state.editor.focusTable).length > 1;
+    const keysSelection = getFocusedColumnIds(store.state).length > 1;
 
     return (
       <ContextMenu.Root

@@ -2,7 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { ColumnType, Show } from '@/constants/schema';
 import { ActionMap, ActionType } from '@/engine/modules/editor/actions';
-import { FocusTable, FocusType, MoveKey } from '@/engine/modules/editor/state';
+import { FocusType, MoveKey } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
@@ -169,16 +169,26 @@ export function getRemoveFirstColumnId(state: RootState, columnIds: string[]) {
 }
 
 /**
- * The columns a command on the focused column reaches: the whole selection when
- * the focused column is one of two or more selected, else that column alone.
+ * The columns a command on the focused column reaches: the selection still in
+ * the table when the focused column is one of two or more of it, else that
+ * column alone. A column removed by a peer, an agent or an undo stays selected.
  */
-export function getFocusedColumnIds(focusTable: FocusTable | null): string[] {
+export function getFocusedColumnIds({
+  editor: { focusTable },
+  collections,
+}: RootState): string[] {
   if (!focusTable?.columnId) return [];
 
-  const { columnId, selectColumnIds } = focusTable;
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(focusTable.tableId);
+  if (!table) return [];
 
-  return selectColumnIds.length > 1 && selectColumnIds.includes(columnId)
-    ? selectColumnIds
+  const { columnId } = focusTable;
+  const selected = focusTable.selectColumnIds.filter(arrayHas(table.columnIds));
+
+  return selected.length > 1 && selected.includes(columnId)
+    ? selected
     : [columnId];
 }
 

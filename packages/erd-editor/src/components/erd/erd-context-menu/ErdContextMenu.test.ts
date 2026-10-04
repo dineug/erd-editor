@@ -52,7 +52,11 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+  removeColumnAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import { setImportFileCallback } from '@/utils/file/importFile';
@@ -518,6 +522,36 @@ describe('ErdContextMenu / table type', () => {
       await click(findItem(rootItems(), 'Primary Key'));
       expect([COLUMN_ID, SECOND_ID, THIRD_ID].map(isPrimaryKey)).toEqual([
         true,
+        false,
+        false,
+      ]);
+    });
+
+    it('goes back to the one column once a selected column leaves the table', async () => {
+      seedSelection();
+      app.store.dispatchSync(
+        changeColumnPrimaryKeyAction({
+          tableId: TABLE_ID,
+          id: SECOND_ID,
+          value: true,
+        })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+      expect(labelsOf(rootItems())[0]).toBe(
+        'Primary Key on selected columnsAlt + K'
+      );
+
+      // The bare atom a peer, an agent or the undo of an add sends, which
+      // leaves the column in the selection.
+      app.store.dispatchSync(
+        removeColumnAction({ id: COLUMN_ID, tableId: TABLE_ID })
+      );
+      await flush();
+
+      expect(labelsOf(rootItems())[0]).toBe('Primary KeyAlt + K');
+      await click(findItem(rootItems(), 'Primary Key'));
+      expect([COLUMN_ID, SECOND_ID, THIRD_ID].map(isPrimaryKey)).toEqual([
+        false,
         false,
         false,
       ]);

@@ -26,6 +26,17 @@ export function isTouchEvent(event: Event): event is TouchEvent {
   return event instanceof TouchEvent;
 }
 
+/** The button a mouse event reports for a secondary press, which a context menu follows. */
+const SECONDARY_BUTTON = 2;
+
+/**
+ * A press of the secondary mouse button alone. A macOS Ctrl+click reports the
+ * main button with ctrlKey and stays a main press, and a touch has no button.
+ */
+export function isSecondaryButtonPress(event: Event): boolean {
+  return isMouseEvent(event) && event.button === SECONDARY_BUTTON;
+}
+
 /** A touch that puts a finger down beside another: a pinch, never a press of its own. */
 export function isMultiTouch(event: Event): boolean {
   return ((event as Partial<TouchEvent>).touches?.length ?? 0) > 1;

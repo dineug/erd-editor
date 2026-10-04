@@ -237,7 +237,7 @@ export function useErdShortcut(ctx: Ctx) {
           store.dispatch(
             changeColumnsPrimaryKeyAction$(
               editor.focusTable.tableId,
-              getFocusedColumnIds(editor.focusTable)
+              getFocusedColumnIds(store.state)
             )
           );
         }
