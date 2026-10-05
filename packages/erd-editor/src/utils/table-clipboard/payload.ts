@@ -1,5 +1,5 @@
+import { uuid25 } from '@dineug/uuid';
 import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
-import { nanoid } from 'nanoid';
 
 import { ValuesType } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
@@ -129,7 +129,7 @@ type CreatePayloadConfig = {
 
 export function createPayload({
   kind,
-  copyId = nanoid(),
+  copyId = uuid25(),
   tables = [],
   columns = [],
   memos = [],

@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-03 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-05 -->
 
 # erd-editor-schema
 
@@ -56,10 +56,10 @@ Defines the persisted `.erd` / `.vuerd` document: v2 and v3 schemas, defensive p
 
 ### Internal
 
-None — leaf package.
+`@dineug/uuid` (`uuid25`, the index column ids `v2ToV3` mints), in `dependencies` and so left external: `erd-editor` and `mcp-server` list it as a devDependency and inline it.
 
 ### External
 
-`es-toolkit` (type guards, `pick`, `clamp`, `difference`; `round` from `es-toolkit/compat`) and `nanoid` (ids in `v2ToV3`), both left external.
+`es-toolkit` (type guards, `pick`, `clamp`, `difference`; `round` from `es-toolkit/compat`), left external.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

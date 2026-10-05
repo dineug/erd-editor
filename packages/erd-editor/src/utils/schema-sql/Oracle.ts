@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -75,7 +75,7 @@ export function createSchema(state: RootState): string {
       if (bHas(column.options, ColumnOption.autoIncrement)) {
         const aiName = autoName(aiNames, '', `SEQ_${tableName}`);
         aiNames.push({
-          id: nanoid(),
+          id: uuid25(),
           name: aiName,
         });
         const sequence = `${owner}${aiName}`;
@@ -87,7 +87,7 @@ export function createSchema(state: RootState): string {
 
         const trgName = autoName(aiNames, '', `SEQ_TRG_${tableName}`);
         trgNames.push({
-          id: nanoid(),
+          id: uuid25(),
           name: trgName,
         });
         stringBuffer.push(`CREATE OR REPLACE TRIGGER ${owner}${trgName}`);
@@ -263,7 +263,7 @@ function formatRelation(
     const endName = tableNamePart(endTable.name, bracketType);
     const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
     fkNames.push({
-      id: nanoid(),
+      id: uuid25(),
       name: fkName,
     });
 
@@ -336,7 +336,7 @@ export function formatIndex(
       const tableName = tableNamePart(table.name, bracketType);
       indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
-        id: nanoid(),
+        id: uuid25(),
         name: indexName,
       });
     }

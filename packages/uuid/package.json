@@ -1,8 +1,8 @@
 {
-  "name": "@dineug/erd-editor-schema",
+  "name": "@dineug/uuid",
   "version": "0.1.0",
   "private": true,
-  "description": "Entity-Relationship Diagram Editor Schema",
+  "description": "UUIDv7 generation and the Uuid25 encoding",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -18,10 +18,6 @@
   "scripts": {
     "test:dev": "vp test dev",
     "test:coverage": "vp test run --coverage"
-  },
-  "dependencies": {
-    "@dineug/uuid": "workspace:*",
-    "es-toolkit": "^1.50.0"
   },
   "devDependencies": {
     "@typescript/typescript6": "6.0.2",

@@ -85,6 +85,7 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
       pattern: 'packages/schema-sql-parser/dist/**/*.d.ts',
       base: 'workspace',
     },
+    { pattern: 'packages/uuid/dist/**/*.d.ts', base: 'workspace' },
     {
       pattern: 'packages/vite-plugin-r-html/dist/**/*.d.ts',
       base: 'workspace',

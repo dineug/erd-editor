@@ -28,7 +28,6 @@ const BARE_ALLOWLIST = new Set([
   'es-toolkit/compat',
   'graphql',
   'luxon',
-  'nanoid',
   'rxjs',
 ]);
 

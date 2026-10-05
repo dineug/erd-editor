@@ -32,7 +32,7 @@ import { createStore, Store } from '@/engine/store';
 
 const ids = vi.hoisted(() => ({ next: 0 }));
 
-vi.mock('nanoid', () => ({ nanoid: () => `id-${++ids.next}` }));
+vi.mock('@dineug/uuid', () => ({ uuid25: () => `id-${++ids.next}` }));
 
 type SeedColumn = {
   id: string;

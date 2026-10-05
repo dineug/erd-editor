@@ -356,11 +356,11 @@ for (const dir of packageDirs) {
   }
 }
 
-if (libraryCount !== 10) {
-  problems.push(`expected 10 library configs, found ${libraryCount}`);
+if (libraryCount !== 11) {
+  problems.push(`expected 11 library configs, found ${libraryCount}`);
 }
-if (factoryCount !== 9) {
-  problems.push(`expected 9 defineLibraryConfig consumers, found ${factoryCount}`);
+if (factoryCount !== 10) {
+  problems.push(`expected 10 defineLibraryConfig consumers, found ${factoryCount}`);
 }
 if (sharedTaskCount !== 1) {
   problems.push(

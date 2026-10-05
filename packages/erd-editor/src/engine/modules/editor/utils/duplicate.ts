@@ -1,5 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, OrderType } from '@/constants/schema';
 import {
@@ -88,7 +88,7 @@ export function toCreateEntityActions(
     const point = placement.get(table.sourceId);
     if (!point) continue;
 
-    const tableId = nanoid();
+    const tableId = uuid25();
     tableIds.push(tableId);
     tableIdBySourceId.set(table.sourceId, tableId);
 
@@ -116,7 +116,7 @@ export function toCreateEntityActions(
       const column = columnBySourceId.get(sourceColumnId);
       if (!column) continue;
 
-      const payload = { id: nanoid(), tableId };
+      const payload = { id: uuid25(), tableId };
       columnIdBySourceId.set(sourceColumnId, payload.id);
 
       const primaryKey = bHas(column.options, ColumnOption.primaryKey);
@@ -174,7 +174,7 @@ export function toCreateEntityActions(
 
     actions.push(
       addRelationshipAction({
-        id: nanoid(),
+        id: uuid25(),
         relationshipType: relationship.relationshipType,
         onDelete: relationship.onDelete,
         onUpdate: relationship.onUpdate,
@@ -194,7 +194,7 @@ export function toCreateEntityActions(
     );
     if (!columnIds) continue;
 
-    const indexId = nanoid();
+    const indexId = uuid25();
 
     actions.push(addIndexAction({ id: indexId, tableId }));
     set(
@@ -207,7 +207,7 @@ export function toCreateEntityActions(
     );
 
     index.indexColumns.forEach(({ orderType }, i) => {
-      const id = nanoid();
+      const id = uuid25();
       const columnId = columnIds[i];
 
       actions.push(addIndexColumnAction({ id, indexId, tableId, columnId }));
@@ -227,7 +227,7 @@ export function toCreateEntityActions(
     const point = placement.get(memo.sourceId);
     if (!point) continue;
 
-    const memoId = nanoid();
+    const memoId = uuid25();
     memoIds.push(memoId);
 
     actions.push(

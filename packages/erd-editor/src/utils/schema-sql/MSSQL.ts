@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
@@ -265,7 +265,7 @@ function formatRelation(
     const endName = tableNamePart(endTable.name, bracketType);
     const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
     fkNames.push({
-      id: nanoid(),
+      id: uuid25(),
       name: fkName,
     });
 
@@ -337,7 +337,7 @@ export function formatIndex(
       const tableName = tableNamePart(table.name, bracketType);
       indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
-        id: nanoid(),
+        id: uuid25(),
         name: indexName,
       });
     }

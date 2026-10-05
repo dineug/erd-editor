@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -48,7 +48,7 @@ export const addRelationshipAction$ = (
       ? null
       : createColumn({ tableId: startTable.id });
     const startColumns = newPrimaryKey ? [newPrimaryKey] : primaryKeys;
-    const endColumnIds = startColumns.map(() => nanoid());
+    const endColumnIds = startColumns.map(() => uuid25());
 
     yield [
       ...(newPrimaryKey
@@ -72,7 +72,7 @@ export const addRelationshipAction$ = (
         database,
       }),
       addRelationshipAction({
-        id: nanoid(),
+        id: uuid25(),
         relationshipType,
         ...referentialActions,
         start: {

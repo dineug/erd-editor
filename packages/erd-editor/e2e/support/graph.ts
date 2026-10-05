@@ -8,7 +8,7 @@ export function addedIds(before: string[], after: string[]) {
 
 /**
  * A relationship read back by the names it joins rather than by the ids it
- * holds, since every id a duplicate mints is a fresh nanoid.
+ * holds, since every id a duplicate mints is a fresh one.
  */
 export type RelationshipShape = {
   relationshipType: number;

@@ -144,13 +144,14 @@ coding agent such as Claude Code or Codex edit diagrams, live in VS Code, Obsidi
 IDE, or straight on disk. Everything else is internal.
 
 <details>
-<summary>All 17 packages</summary>
+<summary>All 18 packages</summary>
 
 | Package | Description |
 | --- | --- |
 | [`erd-editor`](./packages/erd-editor) | The editor core — the `<erd-editor>` custom element |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | The `.erd.json` document format, parsers and LWW operators |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | Permissive DDL parser used for SQL import |
+| [`uuid`](./packages/uuid) | UUIDv7 and the Uuid25 encoding, the ids the editor mints |
 | [`r-html`](./packages/r-html) | The tagged-template rendering framework the editor is built on |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | JSX → tagged templates, plus HMR boundaries |
 | [`app`](./packages/app) | The React PWA at erd-editor.io |

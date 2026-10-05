@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { GeneratorAction } from '@/engine/generator.actions';
 
@@ -8,7 +8,7 @@ import { addIndexAction, changeIndexUniqueAction } from './atom.actions';
 export const addIndexAction$ = (tableId: string): GeneratorAction =>
   function* () {
     yield addIndexAction({
-      id: nanoid(),
+      id: uuid25(),
       tableId,
     });
   };

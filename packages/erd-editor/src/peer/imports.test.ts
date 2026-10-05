@@ -20,7 +20,6 @@ const BARE_ALLOWLIST = new Set([
   'es-toolkit/compat',
   'graphql',
   'luxon',
-  'nanoid',
   'rxjs',
 ]);
 
@@ -162,7 +161,7 @@ describe('peer source graph (AC-B5)', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('names the three workspace libraries it inlines, none of them in dependencies', () => {
+  it('names the four workspace libraries it inlines, none of them in dependencies', () => {
     const named = inlinedWorkspaceLibraries
       .filter(name => graph.bare.has(name))
       .sort();
@@ -171,6 +170,7 @@ describe('peer source graph (AC-B5)', () => {
       '@dineug/erd-editor-schema',
       '@dineug/r-html',
       '@dineug/schema-sql-parser',
+      '@dineug/uuid',
     ]);
     for (const name of named) {
       expect(manifest.dependencies?.[name]).toBeUndefined();

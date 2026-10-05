@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { GeneratorAction } from '@/engine/generator.actions';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
@@ -23,7 +23,7 @@ export const addMemoAction$ = (): GeneratorAction =>
       .collection('memoEntities')
       .selectByIds(memoIds);
     const point = nextPoint(settings, tables, memos);
-    const id = nanoid();
+    const id = uuid25();
 
     yield unselectAllAction$();
     yield selectAction({ [id]: SelectType.memo });
