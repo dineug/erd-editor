@@ -33,7 +33,7 @@ export function getDataTypeSyncColumns(
 
     payloads.push(target);
     const foreignKeyValue = toReferenceDataType(value, database);
-    const serialValue = isSerialType(value);
+    const isSerialValue = isSerialType(value);
 
     for (const { start, end } of relationships) {
       const startIndex = start.columnIds.indexOf(targetId);
@@ -47,7 +47,7 @@ export function getDataTypeSyncColumns(
       }
 
       const endIndex = end.columnIds.indexOf(targetId);
-      if (endIndex === -1 || serialValue) continue;
+      if (endIndex === -1 || isSerialValue) continue;
 
       const id = start.columnIds[endIndex];
       if (id === undefined) continue;

@@ -501,7 +501,7 @@ describe('changeColumnDataTypeAction$ and a serial type set on a foreign key', (
     COLUMN_IDS.map(id => column(store, id).dataType);
 
   /** Sets the type of orders.user_id once per value, as the canvas cell does per keystroke. */
-  const setForeignKey = (store: Store, values: string[]) => {
+  function setForeignKey(store: Store, values: string[]) {
     for (const value of values) {
       store.dispatchSync(
         changeColumnDataTypeAction$({
@@ -511,7 +511,7 @@ describe('changeColumnDataTypeAction$ and a serial type set on a foreign key', (
         })
       );
     }
-  };
+  }
 
   const typed = (text: string) =>
     [...text].map((_, index) => text.slice(0, index + 1));
