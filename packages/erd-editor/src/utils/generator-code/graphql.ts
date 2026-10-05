@@ -2,8 +2,9 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import { PrimitiveTypeMap } from '@/constants/sql/dataType';
+import { isSingleWord } from '@/engine/modules/relationship/fkColumns';
 import { RootState } from '@/engine/state';
-import { Table } from '@/internal-types';
+import { Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
@@ -49,9 +50,16 @@ const NAME_INFORMATIVE = /[0-9A-Za-z]/;
 const BLOCK_STRING = /"""/g;
 const NEWLINE = /\r\n|\r|\n/g;
 
+const ID_SUFFIX = /id$/i;
+const TRAILING_SEPARATORS = /[^\p{L}\p{M}\p{N}]+$/u;
+/** The last letter of a name, read past the marks and digits after it. */
+const LAST_LETTER = /\p{L}(?=[\p{M}\p{N}]*$)/u;
+
 type TypeContext = {
   typeNames: Map<string, string>;
   usedTypeNames: Set<string>;
+  /** Pairs of tables more than one relationship joins, either way round. */
+  sharedPairs: Set<string>;
 };
 
 export function createCode(state: RootState): string {
@@ -191,19 +199,28 @@ function formatRelation(
   const relationships = query(collections)
     .collection('relationshipEntities')
     .selectByIds(relationshipIds);
+  const tableNamedFields = new Set<string>();
 
-  // A relation field is named after the table it points at, so the description
-  // is judged on that name alone -- the List suffix is ours, and would make
-  // an all-underscore name look informative.
+  // The description is the related table's, so it is judged on that table's
+  // name alone -- the List suffix and the by part are ours, and would make an
+  // all-underscore name look informative.
   const pushField = (
+    relationship: Relationship,
     relatedTable: Table,
     fieldName: string,
     fieldType: string
   ) => {
-    if (fieldNames.has(fieldName)) {
-      return;
+    // Outside the foreign key rule, two relation fields named after one table
+    // keep only the first, which the owner kept for those documents. Any other
+    // taken name takes a digit, since a dropped field drops its relationship.
+    if (!isNamedByForeignKey(context, relationship)) {
+      if (tableNamedFields.has(fieldName)) {
+        return;
+      }
+      tableNamedFields.add(fieldName);
     }
-    fieldNames.add(fieldName);
+
+    const name = uniqueName(fieldNames, fieldName);
 
     pushDescription(
       buffer,
@@ -214,7 +231,7 @@ function formatRelation(
         relatedTable.comment
       )
     );
-    buffer.push(`  ${fieldName}: ${fieldType}`);
+    buffer.push(`  ${name}: ${fieldType}`);
   };
 
   relationships
@@ -224,8 +241,9 @@ function formatRelation(
 
       if (startTable) {
         pushField(
+          relationship,
           startTable,
-          graphqlName(getNameCase(startTable.name, columnNameCase)),
+          getChildFieldName(state, context, relationship, startTable),
           getTypeName(state, context, startTable)
         );
       }
@@ -240,25 +258,202 @@ function formatRelation(
         return;
       }
 
-      const fieldName = getNameCase(endTable.name, columnNameCase);
       const typeName = getTypeName(state, context, endTable);
 
       if (hasOneRelationship(relationship.relationshipType)) {
-        pushField(endTable, graphqlName(fieldName), typeName);
+        pushField(
+          relationship,
+          endTable,
+          getParentFieldName(state, context, relationship, endTable, false),
+          typeName
+        );
       } else if (hasNRelationship(relationship.relationshipType)) {
         pushField(
+          relationship,
           endTable,
-          graphqlName(getNameCase(`${fieldName}List`, columnNameCase)),
+          getParentFieldName(state, context, relationship, endTable, true),
           `[${typeName}!]!`
         );
       }
     });
 }
 
+/**
+ * The field the child type points at its parent through: the parent's name,
+ * or the foreign key column without its id where getRelationStem finds one;
+ * a self relationship, which it always checks, takes parent before the name.
+ */
+function getChildFieldName(
+  state: RootState,
+  context: TypeContext,
+  relationship: Relationship,
+  parent: Table
+): string {
+  const { columnNameCase } = state.settings;
+  const name = getNameCase(parent.name, columnNameCase);
+  const stem = getRelationStem(state, context, relationship);
+
+  if (stem !== null) {
+    return graphqlName(stem);
+  }
+
+  return graphqlName(
+    isSelfRelationship(relationship)
+      ? getNameCase(`parent_${name}`, columnNameCase)
+      : name
+  );
+}
+
+/**
+ * The field the parent type lists its children through: the child's name,
+ * with List on the N side, and by and the foreign key stem after it where
+ * getRelationStem finds one.
+ */
+function getParentFieldName(
+  state: RootState,
+  context: TypeContext,
+  relationship: Relationship,
+  child: Table,
+  many: boolean
+): string {
+  const { columnNameCase } = state.settings;
+  const name = getNameCase(child.name, columnNameCase);
+  const stem = getRelationStem(state, context, relationship);
+
+  if (stem !== null) {
+    return graphqlName(
+      getNameCase(
+        many ? `${name}List_by_${stem}` : `${name}_by_${stem}`,
+        columnNameCase
+      )
+    );
+  }
+
+  return many
+    ? graphqlName(getNameCase(`${name}List`, columnNameCase))
+    : graphqlName(name);
+}
+
+/** The foreign key stem both fields take, where isNamedByForeignKey holds. */
+function getRelationStem(
+  state: RootState,
+  context: TypeContext,
+  relationship: Relationship
+): string | null {
+  return isNamedByForeignKey(context, relationship)
+    ? getForeignKeyStem(state, relationship)
+    : null;
+}
+
+// Two relationships between one pair of tables, or one back to its own table,
+// would give their fields one name, so those take the foreign key's -- the
+// same condition drizzle.ts writes relationName under.
+function isNamedByForeignKey(
+  { sharedPairs }: TypeContext,
+  relationship: Relationship
+): boolean {
+  return (
+    isSelfRelationship(relationship) || sharedPairs.has(pairKey(relationship))
+  );
+}
+
+function isSelfRelationship({ start, end }: Relationship): boolean {
+  return start.tableId === end.tableId;
+}
+
+function pairKey({ start, end }: Relationship): string {
+  return [start.tableId, end.tableId].sort().join(':');
+}
+
+function findSharedPairs({
+  collections,
+  doc: { relationshipIds },
+}: RootState): Set<string> {
+  const pairs = new Set<string>();
+  const sharedPairs = new Set<string>();
+
+  query(collections)
+    .collection('relationshipEntities')
+    .selectByIds(relationshipIds)
+    .forEach(relationship => {
+      const key = pairKey(relationship);
+
+      if (pairs.has(key)) {
+        sharedPairs.add(key);
+      }
+      pairs.add(key);
+    });
+
+  return sharedPairs;
+}
+
+/**
+ * The single foreign key column's name without a last word id, in the column
+ * name case: buyer for buyer_id or BuyerID. Null for a composite key, a name
+ * with no such word, or a stem whose Name keeps no letter or digit or opens __.
+ */
+function getForeignKeyStem(
+  { collections, settings: { columnNameCase } }: RootState,
+  relationship: Relationship
+): string | null {
+  const { columnIds } = relationship.end;
+
+  if (columnIds.length !== 1) {
+    return null;
+  }
+
+  const column = query(collections)
+    .collection('tableColumnEntities')
+    .selectById(columnIds[0]);
+  const stem = column ? stripIdWord(column.name) : null;
+
+  if (stem === null) {
+    return null;
+  }
+
+  // A stem in a non-ASCII script sanitizes to underscores alone, which tells
+  // two keys apart no better than the table's name, and a stem that sanitizes
+  // to two leading underscores takes the prefix GraphQL reserves.
+  const name = getNameCase(stem, columnNameCase);
+  return NAME_INFORMATIVE.test(name) && !graphqlName(name).startsWith('__')
+    ? name
+    : null;
+}
+
+/**
+ * The name before a last word id, in any case, the separator before it
+ * dropped, words split as isSingleWord splits them; null where id is not a
+ * word of its own, or is the only one.
+ */
+function stripIdWord(name: string): string | null {
+  const id = name.slice(-2);
+
+  if (!ID_SUFFIX.test(name) || !isSingleWord(id)) {
+    return null;
+  }
+
+  const head = name.slice(0, -2);
+  const stem = head.replace(TRAILING_SEPARATORS, '');
+
+  if (stem === '') {
+    return null;
+  }
+
+  if (stem !== head) {
+    return stem;
+  }
+
+  // With no separator, id is a word of its own only where a case or script
+  // break meets its first letter, as in sellerId, OwnerID and 회원ID.
+  const letter = LAST_LETTER.exec(head)?.[0];
+  return letter !== undefined && !isSingleWord(`${letter}${id}`) ? head : null;
+}
+
 function createTypeContext(state: RootState): TypeContext {
   const context: TypeContext = {
     typeNames: new Map<string, string>(),
     usedTypeNames: new Set<string>(),
+    sharedPairs: findSharedPairs(state),
   };
 
   query(state.collections)
